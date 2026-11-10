@@ -910,6 +910,60 @@ fn reconcile_pr_create_head_ambiguous_stays_uncertain() {
     );
 }
 
+/// #2329: two PRs of one task and epoch — the first with the original marker, the second
+/// with the `--pr-seq 2` marker (`<task_key>-2`) — are told apart by the full scan: the
+/// second PR's uncertain effect confirms against the second PR only, and the first PR's
+/// old-form marker is still read as its own operation.
+#[test]
+fn reconcile_tells_two_prs_of_one_epoch_apart() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let first_marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let second_marker = "<!-- moai:op pr_create:101:op-9-2:1 -->";
+    let mut first = publish_effect("pr_create-101-op-9-1", first_marker, "uncertain");
+    first["kind"] = json!("pr_create");
+    let mut second = publish_effect("pr_create-101-op-9-2-1", second_marker, "uncertain");
+    second["kind"] = json!("pr_create");
+    let record = seed_record(
+        &repo,
+        38,
+        1,
+        owner("session", "agent-x"),
+        vec![first, second],
+    );
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    let full_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let t = RecordedTransport::new(vec![exchange(
+        "GET",
+        full_url,
+        200,
+        json!([
+            {"number": 2328, "body": "second\n\n<!-- moai-op pr_create:101:op-9-2:1 -->"},
+            {"number": 2324, "body": "first\n\n<!-- moai-op pr_create:101:op-9:1 -->"},
+        ]),
+    )]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "passed", "{out}");
+    let by_op: std::collections::BTreeMap<String, String> = out["transitions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| {
+            (
+                t["operation_id"].as_str().unwrap().to_string(),
+                t["response_id"].as_str().unwrap_or_default().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(by_op["pr_create-101-op-9-1"], "2324");
+    assert_eq!(by_op["pr_create-101-op-9-2-1"], "2328");
+}
+
 /// AC-1/AC-2 (#2099), updated by #2107: a pr_create effect routes to the pull-list
 /// lookup, never to the comments — a comment carrying the same operation's marker in the
 /// `moai-op` spelling must NOT confirm a PR. When the pull lookup cannot answer (the
