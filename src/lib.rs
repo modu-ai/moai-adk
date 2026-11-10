@@ -40,7 +40,6 @@ pub mod run;
 pub mod scope;
 pub mod self_update;
 pub mod session;
-pub mod sources;
 pub mod spec;
 pub mod spec_links;
 pub mod statusline;
