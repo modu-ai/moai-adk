@@ -238,7 +238,8 @@ const CONFIRM_FORCE_PUSH: &str =
 
 /// The confirmation class (decision B2 = A, Issue #2389 c6774899518 row 25): commands that
 /// discard work but are ordinary in development, so they are asked about (Claude) rather than
-/// refused. Read with the same parser, aliases and short-option clusters as the deny guards.
+/// refused. Read with the same parser, aliases, short-option clusters and long-option prefix
+/// rule ([`long_opt`]) as the deny guards.
 /// Only consulted when no deny applies to the line.
 pub fn bash_confirm(command: &str) -> Option<&'static str> {
     for (name, args) in crate::claim_verify::shell_commands(command) {
@@ -248,17 +249,18 @@ pub fn bash_confirm(command: &str) -> Option<&'static str> {
         for sub in crate::claim_verify::git_subcommands(&args) {
             let rest = &sub.rest;
             let reason = match sub.verb.as_str() {
-                // `--hard` or a unique prefix of it (`--ha` and longer; `--h` is ambiguous).
+                // `--hard` or a prefix git takes for it (`--h` too: no other reset option
+                // starts with `h`; measured with git 2.54.0).
                 "reset" => rest
                     .iter()
                     .take_while(|a| *a != "--")
-                    .any(|a| a.len() >= 4 && "--hard".starts_with(a.as_str()))
+                    .any(|a| long_opt(a, "hard", RESET_LONG))
                     .then_some(CONFIRM_RESET),
                 "clean" => {
                     let letters = short_letters(rest, &['e']);
-                    let has = |s: &str| rest.iter().any(|a| a == s);
-                    let forced = letters.contains(&'f') || has("--force");
-                    let dry = letters.contains(&'n') || has("--dry-run");
+                    let has = |w: &str| rest.iter().any(|a| long_opt(a, w, CLEAN_LONG));
+                    let forced = letters.contains(&'f') || has("force");
+                    let dry = letters.contains(&'n') || has("dry-run");
                     (forced && !dry).then_some(CONFIRM_CLEAN)
                 }
                 // A force push that the deny guard did not refuse: another branch, or no
@@ -266,9 +268,9 @@ pub fn bash_confirm(command: &str) -> Option<&'static str> {
                 "push" => {
                     let forced_flag = short_letters(rest, &['o']).contains(&'f')
                         || rest.iter().any(|a| {
-                            a == "--force"
-                                || a.starts_with("--force-with-lease")
-                                || a == "--force-if-includes"
+                            ["force", "force-with-lease", "force-if-includes"]
+                                .iter()
+                                .any(|w| long_opt(a, w, PUSH_LONG))
                         });
                     let plus = push_positionals(rest)
                         .iter()
@@ -427,6 +429,43 @@ pub(crate) const BRANCH_LONG: &[&str] = &[
     "verbose",
     "with",
     "without",
+];
+
+pub(crate) const CLEAN_LONG: &[&str] = &[
+    "dry-run",
+    "exclude",
+    "force",
+    "interactive",
+    "no-dry-run",
+    "no-force",
+    "no-interactive",
+    "no-quiet",
+    "quiet",
+];
+pub(crate) const RESET_LONG: &[&str] = &[
+    "auto-advance",
+    "hard",
+    "intent-to-add",
+    "inter-hunk-context",
+    "keep",
+    "merge",
+    "mixed",
+    "no-auto-advance",
+    "no-intent-to-add",
+    "no-patch",
+    "no-pathspec-file-nul",
+    "no-pathspec-from-file",
+    "no-quiet",
+    "no-recurse-submodules",
+    "no-refresh",
+    "patch",
+    "pathspec-file-nul",
+    "pathspec-from-file",
+    "quiet",
+    "recurse-submodules",
+    "refresh",
+    "soft",
+    "unified",
 ];
 
 /// Whether `arg` selects the long option `wanted` among a subcommand's long options `all`,
@@ -839,7 +878,12 @@ mod tests {
             eprintln!("skipped: the lists were measured with git 2.54");
             return;
         }
-        for (cmd, ours) in [("push", PUSH_LONG), ("branch", BRANCH_LONG)] {
+        for (cmd, ours) in [
+            ("push", PUSH_LONG),
+            ("branch", BRANCH_LONG),
+            ("clean", CLEAN_LONG),
+            ("reset", RESET_LONG),
+        ] {
             let Ok(out) = std::process::Command::new("git")
                 .args([cmd, "--git-completion-helper-all"])
                 .env("GIT_CONFIG_NOSYSTEM", "1")
@@ -1037,13 +1081,19 @@ mod tests {
             ("git -c 'alias.rh=reset --hard' rh", Some(CONFIRM_RESET)),
             ("git reset --soft HEAD~1", None),
             ("git reset HEAD a.txt", None),
-            // `--h` is ambiguous for git (it refuses the command).
-            ("git reset --h", None),
+            // git takes `--h` for `--hard` (measured, git 2.54.0).
+            ("git reset --h", Some(CONFIRM_RESET)),
+            ("git reset --so HEAD~1", None),
             ("git reset -- --hard", None),
             ("git clean -fd", Some(CONFIRM_CLEAN)),
             ("git clean -fdx", Some(CONFIRM_CLEAN)),
             ("git clean --force", Some(CONFIRM_CLEAN)),
             ("git clean -f -e f", Some(CONFIRM_CLEAN)),
+            ("git clean --f", Some(CONFIRM_CLEAN)),
+            ("git clean --fo -d", Some(CONFIRM_CLEAN)),
+            ("git clean --forc", Some(CONFIRM_CLEAN)),
+            ("git clean --f --dry", None),
+            ("git clean --h", None),
             ("git clean -n", None),
             ("git clean -fn", None),
             ("git clean -fd --dry-run", None),
@@ -1052,6 +1102,21 @@ mod tests {
             ("git push -f", Some(CONFIRM_FORCE_PUSH)),
             ("git push origin +feature", Some(CONFIRM_FORCE_PUSH)),
             ("git push --force-with-lease", Some(CONFIRM_FORCE_PUSH)),
+            (
+                "git push --force-w origin feature",
+                Some(CONFIRM_FORCE_PUSH),
+            ),
+            (
+                "git push --force-wi=feature:abc origin feature",
+                Some(CONFIRM_FORCE_PUSH),
+            ),
+            (
+                "git push --force-i origin feature",
+                Some(CONFIRM_FORCE_PUSH),
+            ),
+            // Ambiguous for git (it refuses the command).
+            ("git push --forc origin feature", None),
+            ("git push --force- origin feature", None),
             ("git push origin feature", None),
             ("git push -o f origin feature", None),
             ("git log --hard", None),
