@@ -15,6 +15,10 @@ use std::{
 };
 
 fn git(dir: &Path, args: &[&str]) {
+    git_at(dir, args, "2026-11-10T01:02:03Z");
+}
+
+fn git_at(dir: &Path, args: &[&str], date: &str) {
     let status = Command::new("git")
         .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .args(args)
@@ -25,8 +29,8 @@ fn git(dir: &Path, args: &[&str]) {
         .env("GIT_AUTHOR_EMAIL", "t@example.com")
         .env("GIT_COMMITTER_NAME", "t")
         .env("GIT_COMMITTER_EMAIL", "t@example.com")
-        .env("GIT_AUTHOR_DATE", "2026-11-10T01:02:03Z")
-        .env("GIT_COMMITTER_DATE", "2026-11-10T01:02:03Z")
+        .env("GIT_AUTHOR_DATE", date)
+        .env("GIT_COMMITTER_DATE", date)
         .status()
         .unwrap();
     assert!(status.success(), "git {args:?} failed");
@@ -195,7 +199,13 @@ fn incremental_build_equals_a_full_rebuild() {
         "// @MX:TODO later\n#[test]\nfn req_c6b_03_new() {}\n",
     );
     fs::remove_file(root.join("src/other.rs")).unwrap();
-    commit(&root, "second\n\nRefs: #2348");
+    // A later committer time: reused fragments must be restamped with it.
+    git(&root, &["add", "-A"]);
+    git_at(
+        &root,
+        &["commit", "-q", "-m", "second\n\nRefs: #2348"],
+        "2026-11-10T05:06:07Z",
+    );
 
     let incremental = build(&root);
     let gen = incremental["generation_id"].as_str().unwrap().to_string();
@@ -224,6 +234,11 @@ fn incremental_build_equals_a_full_rebuild() {
 
     // The deleted file's requirement is gone from both views, the new one is present.
     let q = records(&root);
+    for view in ["map", "graph"] {
+        for e in q[view]["edges"].as_array().unwrap() {
+            assert_eq!(e["observed_at"], "2026-11-10T05:06:07Z", "{view}");
+        }
+    }
     let text = serde_json::to_string(&q["graph"]).unwrap();
     assert!(!text.contains("REQ-C6B-02"), "stale requirement kept");
     assert!(text.contains("req:REQ-C6B-03"));
@@ -326,4 +341,54 @@ fn a_generation_without_views_is_unavailable_to_the_records_query() {
     let q = records(&root);
     assert_eq!(q["state"], "unavailable");
     assert_eq!(q["reason"], "generation has no map/graph records");
+}
+
+#[test]
+fn fragments_of_other_extractor_versions_are_never_reused() {
+    let (_tmp, root) = setup();
+    let built = build(&root);
+    let gen = built["generation_id"].as_str().unwrap();
+    let manifest_path = gen_dir(&root, gen).join("manifest.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    // Simulate a generation written by an older link extractor.
+    manifest["records"]["version"] = Value::from("records=1;spec-links=0;tag-parser=1");
+    fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    write(&root, "README.md", "changed\n");
+    commit(&root, "touch");
+    let next = build(&root);
+    assert_eq!(next["records"]["reused_files"], 0);
+    assert_eq!(next["records"]["extracted_files"], 5);
+}
+
+#[test]
+fn unreadable_history_is_missing_coverage_not_a_failed_build() {
+    let (_tmp, root) = setup();
+    // A missing parent commit object makes the history walk fail while the file scan
+    // (the index and HEAD) still succeeds.
+    let parent = String::from_utf8(
+        Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    let parent = parent.trim();
+    commit(&root, "second");
+    fs::remove_file(
+        root.join(".git/objects")
+            .join(&parent[..2])
+            .join(&parent[2..]),
+    )
+    .unwrap();
+    let built = build(&root);
+    assert_eq!(built["status"], "complete");
+    let q = records(&root);
+    let missing = q["graph"]["missing"].as_array().unwrap();
+    assert!(
+        missing.iter().any(|m| m["kind"] == "history_unavailable"),
+        "{missing:?}"
+    );
+    assert!(edges(&q["graph"]).iter().all(|e| e.0 != "mentions_issue"));
 }

@@ -455,14 +455,9 @@ fn content_id(base_commit: &str, files: &[IndexedFile]) -> String {
     // v2: a generation also carries the Map/Graph views, so the record and extractor
     // versions are content — a generation built by older extractors is never reused.
     h.update(b"moai-index-generation-v2\0");
-    for version in [
-        crate::index_records::RECORDS_VERSION,
-        crate::spec_links::EXTRACTOR_VERSION,
-        &crate::atlas_tag::PARSER_VERSION.to_string(),
-    ] {
-        h.update((version.len() as u64).to_be_bytes());
-        h.update(version.as_bytes());
-    }
+    let versions = crate::index_records::versions();
+    h.update((versions.len() as u64).to_be_bytes());
+    h.update(versions.as_bytes());
     h.update((base_commit.len() as u64).to_be_bytes());
     h.update(base_commit.as_bytes());
     for f in sorted {
@@ -551,25 +546,20 @@ fn publish_staged(
 
 /// The commit time of `base` in UTC — the records' `observed_at`. Time is content: the
 /// same snapshot always yields the same records (INCREMENTAL EQUIVALENCE).
+/// Read from the commit object itself (`committer <ident> <secs> <tz>`), so a damaged
+/// history beyond the base commit cannot block the scan.
 fn commit_time(dir: &Path, base: &str) -> Result<String> {
-    let out = git(dir)
-        .env("TZ", "UTC")
-        .args([
-            "show",
-            "-s",
-            "--format=%cd",
-            "--date=format-local:%Y-%m-%dT%H:%M:%SZ",
-            base,
-        ])
-        .stderr(Stdio::null())
-        .output()
-        .map_err(|_| "index source unavailable: git could not start")?;
-    let t = String::from_utf8(out.stdout).unwrap_or_default();
-    let t = t.trim();
-    if !out.status.success() || !crate::ontology::is_rfc3339(t) {
-        return Err("index source unavailable: base commit time unreadable".into());
-    }
-    Ok(t.to_string())
+    let unreadable = || "index source unavailable: base commit time unreadable".to_string();
+    let raw = git_out(dir, &["cat-file", "commit", base]).map_err(|_| unreadable())?;
+    let text = String::from_utf8_lossy(&raw);
+    let header = text.split("\n\n").next().unwrap_or("");
+    let secs: i64 = header
+        .lines()
+        .find_map(|l| l.strip_prefix("committer "))
+        .and_then(|l| l.rsplit(' ').nth(1))
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(unreadable)?;
+    Ok(crate::baseline::utc_from_epoch(secs))
 }
 
 /// Per-origin record lines of the published generation and its file digests, for
@@ -584,6 +574,9 @@ type Reusable = (
 fn reusable_records(source: &IndexIo) -> Option<Reusable> {
     let gen_id = read_pointer(source).ok()??;
     let manifest = load_manifest(source, &gen_id)?;
+    if manifest.records.as_ref()?.version != crate::index_records::versions() {
+        return None;
+    }
     let (map, graph) = stored_views(source, &manifest).ok()?;
     let files = manifest
         .files
@@ -685,8 +678,13 @@ fn build_views(
         };
         fragments.insert(f.path.clone(), frag);
     }
+    // An unreadable history (a git failure, a non-UTF-8 commit body) is reported as
+    // missing coverage; it never fails a build that the file scan completed.
     let mut history = crate::spec_links::Builder::default();
-    crate::spec_links::commit_links(&mut history, root, Some(base_commit))?;
+    if let Err(reason) = crate::spec_links::commit_links(&mut history, root, Some(base_commit)) {
+        history = crate::spec_links::Builder::default();
+        history.miss("history_unavailable", json!({"reason": reason}));
+    }
     let views = rec::assemble(
         fragments,
         history,
@@ -694,14 +692,10 @@ fn build_views(
         &observed_at,
     )?;
     for bytes in [&views.map, &views.graph] {
-        if bytes.len() as u64 > STATE_BYTE_LIMIT {
-            return Err(format!(
-                "index records byte limit exceeded ({STATE_BYTE_LIMIT}); refused, not truncated"
-            ));
-        }
+        rec::within_limit(bytes.len() as u64, STATE_BYTE_LIMIT)?;
     }
     let records = RecordsRef {
-        version: rec::RECORDS_VERSION.into(),
+        version: rec::versions(),
         file_set,
         observed_at,
         map_sha256: crate::digest(&views.map),
@@ -1196,7 +1190,7 @@ mod tests {
                 files: vec![],
                 built_at: "2026-11-10T00:00:00Z".into(),
                 records: Some(RecordsRef {
-                    version: crate::index_records::RECORDS_VERSION.into(),
+                    version: crate::index_records::versions(),
                     file_set,
                     observed_at: "2026-11-10T00:00:00Z".into(),
                     map_sha256: crate::digest(&views.map),
@@ -1286,6 +1280,31 @@ mod handle_io_tests {
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
+    }
+
+    /// AC-3: the views are extracted only from bytes that still match the manifest
+    /// digest. A file rewritten after the scan (same length, so only the digest can
+    /// tell) refuses the build instead of describing content the manifest does not.
+    #[cfg(unix)]
+    #[test]
+    fn source_rewritten_after_the_scan_refuses_the_views() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("project");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("a.rs"), b"// @MOAI:REQ REQ-C6B-01\n").unwrap();
+        fixture_git(&project, &["init", "-q"]);
+        fixture_git(&project, &["add", "a.rs"]);
+        fixture_git(&project, &["commit", "-q", "-m", "first"]);
+        let root = fs::canonicalize(&project).unwrap();
+        let source = IndexIo::new(&root).unwrap();
+        let (base, files) = scan(&root, &source).unwrap();
+        let id = content_id(&base, &files);
+        assert!(build_views(&root, &source, &id, &base, &files).is_ok());
+        fs::write(project.join("a.rs"), b"// @MOAI:REQ REQ-C6B-09\n").unwrap();
+        let err = build_views(&root, &source, &id, &base, &files)
+            .err()
+            .expect("a rewritten source must refuse the views");
+        assert_eq!(err, "index source changed during build: a.rs");
     }
 
     #[cfg(unix)]

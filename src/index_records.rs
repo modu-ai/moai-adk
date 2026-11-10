@@ -1,8 +1,11 @@
 //! Map and Graph records of an index generation (C6b #2347).
 //!
-//! Design basis (Core Brain detailed design, ChatGPT Space text copy
-//! `page_136c8203bf2881919eb1f543f72f87ea.md`, read 2026-11-08T23:19:26Z, sha256
-//! `49e445f4…47fa`): one generation directory holds `manifest.json`, `map.jsonl`,
+//! Design basis (Core Brain detailed design; local text copy
+//! `references/chatgpt-space/page_136c8203bf2881919eb1f543f72f87ea.md`, 4,450 lines,
+//! read by the #2347 lane on 2026-11-10 with sha256 `49e445f4…47fa` — the design
+//! review records `747ac160…57cb` for the same name, so the copy's provenance is
+//! unverified, and the live Space page was not re-read): one generation directory
+//! holds `manifest.json`, `map.jsonl`,
 //! `graph.jsonl` (L3816-3819); Map and Graph are two views built under the same
 //! repository identity and snapshot and never silently show different file sets or
 //! commits (L2936); a full rebuild and an incremental build of the same input give the
@@ -37,6 +40,29 @@ type Result<T> = std::result::Result<T, String>;
 
 /// Bump on any change to the record shape or to what a view contains.
 pub const RECORDS_VERSION: &str = "1";
+/// The record, link-extractor and tag-parser versions that produced a view. Stored
+/// fragments are reused only under the same string: reused edges are restamped with
+/// the current extractor identity, so output of an older extractor must never be
+/// relabelled as current.
+pub fn versions() -> String {
+    format!(
+        "records={RECORDS_VERSION};{}={};tag-parser={}",
+        spec_links::EXTRACTOR_NAME,
+        spec_links::EXTRACTOR_VERSION,
+        atlas_tag::PARSER_VERSION
+    )
+}
+
+/// A view larger than the index state read limit is refused, not truncated.
+pub(crate) fn within_limit(len: u64, limit: u64) -> Result<()> {
+    if len > limit {
+        return Err(format!(
+            "index records byte limit exceeded ({limit}); refused, not truncated"
+        ));
+    }
+    Ok(())
+}
+
 /// Extractor identity of the map view's tag edges.
 pub const MAP_EXTRACTOR: &str = "index-map";
 
@@ -214,7 +240,7 @@ pub(crate) fn file_set_digest(files: &[crate::index::IndexedFile]) -> String {
 
 pub(crate) fn header(view: &str, generation_id: &str, base_commit: &str, file_set: &str) -> Value {
     json!({"header": {
-        "records_version": RECORDS_VERSION,
+        "records_version": versions(),
         "view": view,
         "generation_id": generation_id,
         "base_commit": base_commit,
@@ -398,6 +424,62 @@ mod tests {
         let (_, graph) = parse_view(&v.graph).unwrap();
         let g = document(&graph).unwrap();
         assert_eq!(g["edges"][0]["kind"], "references_requirement");
+    }
+
+    fn map_misses(f: &Fragment) -> Vec<String> {
+        f.map
+            .missing
+            .iter()
+            .map(|m| format!("{}:{}", m["kind"], m["reason"]))
+            .collect()
+    }
+
+    /// The tag scan limit, literal N and N+1: 262,144 bytes are scanned (the tag on
+    /// line 1 is kept), 262,145 are reported as skipped with no tag node.
+    #[test]
+    fn tag_scan_limit_has_literal_n_and_n_plus_one_boundaries() {
+        for (len, scanned) in [(262_144usize, true), (262_145, false)] {
+            let mut bytes = b"<!-- @MX:NOTE edge -->\n".to_vec();
+            bytes.resize(len, b'x');
+            let f = extract_file("doc.md", "sha256:x", Content::Bytes(&bytes));
+            assert_eq!(f.map.nodes.contains_key("tag:doc.md#L1"), scanned, "{len}");
+            let skipped = vec![r#""tag_scan_skipped":"tag file exceeds the size limit""#];
+            if scanned {
+                assert!(map_misses(&f).is_empty(), "{len}");
+            } else {
+                assert_eq!(map_misses(&f), skipped, "{len}");
+            }
+        }
+        // The build reads a non-code file only up to the same limit; code files are
+        // always read for the link view.
+        assert!(needs_bytes("doc.md", 262_144));
+        assert!(!needs_bytes("doc.md", 262_145));
+        assert!(needs_bytes("big.rs", 262_145));
+    }
+
+    #[test]
+    fn unread_entries_are_listed_as_missing_coverage() {
+        let over = extract_file("big.md", "sha256:x", Content::Oversize);
+        assert_eq!(
+            map_misses(&over),
+            [r#""tag_scan_skipped":"tag file exceeds the size limit""#]
+        );
+        let link = extract_file("ln.rs", "symlink-sha256:x", Content::NotRegular);
+        assert_eq!(
+            map_misses(&link),
+            [r#""tag_scan_skipped":"not a regular file""#]
+        );
+        assert_eq!(link.graph.missing[0]["kind"], "unreadable_file");
+        for f in [&over, &link] {
+            assert_eq!(f.map.nodes.len(), 1, "only the file node");
+        }
+    }
+
+    /// The records byte cap, literal N and N+1 (the index state read limit).
+    #[test]
+    fn records_byte_cap_has_literal_n_and_n_plus_one_boundaries() {
+        assert!(within_limit(33_554_432, 33_554_432).is_ok());
+        assert!(within_limit(33_554_433, 33_554_432).is_err());
     }
 
     #[test]
