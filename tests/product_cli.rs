@@ -1254,15 +1254,16 @@ fn launcher_glm_requires_token_name_only() {
 }
 #[test]
 fn launcher_codex_argv() {
+    // Full access since #2359 (user decision 2026-11-10), leader and agent alike.
     let v = launched(&launcher(&["codex", "-l", "--dry-run"], None));
     assert_eq!(
         v["argv"],
         json!([
             "codex",
             "-s",
-            "workspace-write",
+            "danger-full-access",
             "-a",
-            "on-request",
+            "never",
             "MoAI session name: leader"
         ])
     );
@@ -1285,9 +1286,9 @@ fn launcher_codex_argv() {
         json!([
             "codex",
             "-s",
-            "workspace-write",
+            "danger-full-access",
             "-a",
-            "on-request",
+            "never",
             "-m",
             "some-model",
             "MoAI session name: agent-2"

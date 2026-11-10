@@ -52,7 +52,7 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 | 형태 | 동작 |
 | --- | --- |
-| `moai-cli cc\|glm\|codex` (역할 없음) | 평범한 host 세션. 역할·세션 이름을 붙이지 않고 `--dangerously-skip-permissions`도 붙이지 않는다(#2053). Claude 계열은 `--model opus --effort medium --advisor fable` 기본값을 쓴다. |
+| `moai-cli cc\|glm\|codex` (역할 없음) | 평범한 host 세션. 역할·세션 이름을 붙이지 않는다(#2053). 다른 형태와 마찬가지로 전체 권한으로 시작한다(#2359). Claude 계열은 `--model opus --effort medium --advisor fable` 기본값을 쓴다. |
 | `moai-cli cc\|glm\|codex -l` (`--leader`) | 리더 세션. 이름 `leader`. |
 | `moai-cli cc\|glm\|codex -a` (`--agent`) | 에이전트 세션. 이름은 `--name`, 없으면 `agent-1`과 안내 note(자동 번호는 HOLD). |
 | `moai-cli -l` / `moai-cli -a [cc\|glm\|codex]` | 위와 같은 요청의 짧은 형태. 기본 host는 `cc`. |
@@ -60,17 +60,17 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 | `--model M` | 주 모델. Claude 계열 기본 `opus`, codex는 지정했을 때만 `-m M`. |
 | `--effort E` | Claude effort(`low\|medium\|high\|xhigh\|max\|ultracode`), 기본 `medium`. |
 | `--no-advisor` | `--advisor fable`을 붙이지 않는다(Claude 계열). |
-| `--permissions` | `-l\|-a`에서 `--dangerously-skip-permissions`를 붙이지 않는다(권한 확인 유지). |
+| `--permissions` | 권한 확인을 유지한다. Claude 계열은 `--dangerously-skip-permissions`를 붙이지 않고, codex는 `-s workspace-write -a on-request`로 띄운다. |
 | `--dry-run` | host를 띄우지 않고 조립한 명령을 JSON으로 출력한다. |
 | `[PROMPT]` | 첫 프롬프트 텍스트(codex만). |
 
 host별 argv:
 
-- `cc`: `claude --name <name> --model opus --effort medium --advisor fable --dangerously-skip-permissions` (`-l|-a`의 기본).
+- `cc`: `claude --name <name> --model opus --effort medium --advisor fable --dangerously-skip-permissions` (역할 있는 형태의 기본, 역할 없는 형태는 `--name` 없이 같은 권한 플래그).
 - `glm`: `cc`와 같은 Claude Code argv에, Go 도구와 같은 환경 변수 묶음(`ANTHROPIC_BASE_URL`·`API_TIMEOUT_MS`, 모델 별칭 `ANTHROPIC_DEFAULT_*_MODEL`(opus·sonnet·fable은 `glm-5.3`, haiku는 `glm-5.3-flash`), 1M 컨텍스트 선언 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`·`CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`, z.ai MCP용 `Z_AI_API_KEY`)을 더해 z.ai로 보낸다. 토큰은 셸의 `ANTHROPIC_AUTH_TOKEN`을 쓰고, 없으면 키 파일 `~/.moai/.env.glm`(Go 도구와 함께 쓰는 전역 저장소), 이어서 `~/.moai-cli/.env.glm`에서(둘 다 읽기만 하며, 65536바이트 이하의 일반 파일일 때만 연다) `ANTHROPIC_AUTH_TOKEN=` 또는 `GLM_API_KEY=` 줄을 찾아 host 프로세스에만 넘긴다(#2359). 론처는 값을 출력·저장하지 않고 키 파일을 만들거나 고치지 않는다. 어디에도 없으면 `blocked:` 메시지와 exit 1로 끝난다.
-- `codex`: `codex -s workspace-write -a on-request [-m <model>] [PROMPT]`. Codex에는 세션 이름 플래그가 없어 이름은 첫 프롬프트(`MoAI session name: <name>`)로 전한다. Codex 세션에는 RC1의 세션 간 메시지 채널(ListAgents·SendMessage)이 없다. advisor와 permission skip은 Claude 계열에만 붙는다.
+- `codex`: `codex -s danger-full-access -a never [-m <model>] [PROMPT]` (`--permissions`면 `-s workspace-write -a on-request`). Codex에는 세션 이름 플래그가 없어 이름은 첫 프롬프트(`MoAI session name: <name>`)로 전한다. Codex 세션에는 RC1의 세션 간 메시지 채널(ListAgents·SendMessage)이 없다. advisor는 Claude 계열에만 붙는다.
 
-`-l|-a`에 `--dangerously-skip-permissions`를 기본으로 붙이는 것은 결정 기록(`docs/decisions-2026-11-08.md` 18:0x "임시 기본, 추후 설정에서 선택")과 일치한다. 20:3x·20:5x 결정은 역할 없는 경로와 실측에 새 bypass를 더하지 않는다는 것이고, 실물도 역할 없는 경로에는 붙이지 않으며 `--permissions`로 끌 수 있다. 다만 이 체크아웃의 `.claude/settings.local.json`이 `bypassPermissions`이면 론처 플래그와 관계없이 권한 확인이 생략된다(결정 기록 20:3x 훅 범위 확인).
+권한 기본값은 사용자 결정(2026-11-10, Issue #2359 댓글 6759999767)을 따른다. 론처로 여는 모든 세션(역할 없는 `cc|glm|codex`, `-l`, `-a`)이 권한 확인 없는 전체 권한으로 시작하고, `--permissions`를 주면 확인 모드로 뜬다. 이 결정은 역할 없는 세션에 skip을 붙이지 않던 #2053 규칙과, 프로젝트 `.claude/settings.json`에 `permissions` 키가 있으면 skip을 빼던 #2244 규칙을 대체한다. 론처는 이제 그 설정 파일을 읽지 않는다. 기본값은 `session::FULL_ACCESS_DEFAULT` 한 곳에 두었고, 설정에서 고르는 기능은 후속 작업으로 남겼다(설정 키는 아직 없다). codex에 플래그를 명시하는 이유: Codex는 CLI 플래그를 `~/.codex/config.toml`보다 우선하고, 플래그도 설정도 없으면 git 폴더에서 작업 폴더 쓰기와 on-request 승인으로 동작해 작업 폴더 밖 쓰기와 네트워크 사용 때 승인을 묻는다. 그래서 플래그를 빼면 전체 권한 설정이 없는 사용자는 질문을 받게 된다. 옛 `session` 하위 명령(Claude 전용)은 이 결정의 대상이 아니며 지금도 skip을 붙이지 않는다.
 
 ## 채택 시 확인 항목
 

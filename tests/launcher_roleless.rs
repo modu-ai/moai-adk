@@ -1,5 +1,7 @@
 //! Issue #2053: `moai-cli cc|glm|codex` without `-l|-a` composes a plain host session.
-//! Every case uses `--dry-run`; no host is started (AC-4 stays not_run).
+//! Since #2359 (user decision 2026-11-10) it starts with full access like every launched
+//! session; `--permissions` keeps the prompts. Every case uses `--dry-run`; no host is started
+//! (AC-4 stays not_run).
 use serde_json::{json, Value};
 use std::process::Command;
 
@@ -40,12 +42,10 @@ fn roleless_cc_is_a_plain_claude_session() {
     assert_eq!(v["name"], Value::Null);
     let a = argv(&v);
     assert!(!a.iter().any(|x| x == "--name"), "AC-1: no session name");
-    assert!(
-        !a.iter().any(|x| x == "--dangerously-skip-permissions"),
-        "AC-1: no new permission bypass"
-    );
-    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude defaults.
+    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude defaults; user
+    // decision 2026-11-10 (#2359, replaces #2053's "no skip"): full access.
     const { assert!(moai_cli::session::ROLELESS_LAUNCHER_DEFAULTS) };
+    const { assert!(moai_cli::session::FULL_ACCESS_DEFAULT) };
     assert_eq!(
         a,
         [
@@ -55,7 +55,8 @@ fn roleless_cc_is_a_plain_claude_session() {
             "--effort",
             "medium",
             "--advisor",
-            "fable"
+            "fable",
+            "--dangerously-skip-permissions"
         ]
     );
     let notes = v["notes"].to_string();
@@ -70,13 +71,31 @@ fn roleless_cc_is_a_plain_claude_session() {
     assert_eq!(v["role"], Value::Null);
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "mine", "--model", "sonnet", "--effort", "medium"]
+        [
+            "claude",
+            "--name",
+            "mine",
+            "--model",
+            "sonnet",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions"
+        ]
     );
-    // `--permissions` is accepted and changes nothing: there was no skip to remove.
+    // `--permissions` keeps the prompts: the skip goes, the defaults stay.
     let (_, v, _) = dry(&["cc", "--permissions"], None);
-    assert!(!argv(&v)
-        .iter()
-        .any(|x| x == "--dangerously-skip-permissions"));
+    assert_eq!(
+        argv(&v),
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--advisor",
+            "fable"
+        ]
+    );
     // -l and -a together stay an error.
     let (code, _, _) = dry(&["cc", "-l", "-a"], None);
     assert_ne!(code, 0);
@@ -89,8 +108,8 @@ fn roleless_codex_has_no_name_prompt() {
     assert_eq!(v["role"], Value::Null);
     assert_eq!(
         argv(&v),
-        ["codex", "-s", "workspace-write", "-a", "on-request"],
-        "AC-2"
+        ["codex", "-s", "danger-full-access", "-a", "never"],
+        "AC-2 (full access since #2359)"
     );
     // An extra prompt goes in as given, without a session-name line.
     let (_, v, _) = dry(&["codex", "review the diff"], None);
@@ -99,13 +118,19 @@ fn roleless_codex_has_no_name_prompt() {
         [
             "codex",
             "-s",
-            "workspace-write",
+            "danger-full-access",
             "-a",
-            "on-request",
+            "never",
             "review the diff"
         ]
     );
     assert!(!v.to_string().contains("MoAI session name"));
+    // `--permissions` keeps the sandboxed, ask-first pair.
+    let (_, v, _) = dry(&["codex", "--permissions"], None);
+    assert_eq!(
+        argv(&v),
+        ["codex", "-s", "workspace-write", "-a", "on-request"]
+    );
 }
 
 #[test]
@@ -114,7 +139,8 @@ fn roleless_glm_keeps_the_token_check() {
     let (code, _, text) = dry(&["glm"], None);
     assert_ne!(code, 0);
     assert!(text.contains("ANTHROPIC_AUTH_TOKEN"));
-    // With a dummy token: names only, never the value; no name, no skip, no advisor on glm.
+    // With a dummy token: names only, never the value; no name and no advisor on glm, full
+    // access (#2359).
     let dummy = "moai-dummy-token-value";
     let (code, v, text) = dry(&["glm"], Some(dummy));
     assert_eq!(code, 0);
@@ -138,11 +164,19 @@ fn roleless_glm_keeps_the_token_check() {
     );
     assert_eq!(
         argv(&v),
-        ["claude", "--model", "opus", "--effort", "medium"]
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions"
+        ]
     );
 }
 
-/// REQ-4 / AC-3: the role paths keep their argv byte for byte.
+/// REQ-4 / AC-3: the role paths keep their argv byte for byte; codex `-a` carries full access
+/// since #2359 (user decision 2026-11-10).
 #[test]
 fn role_paths_are_unchanged() {
     let skip = "--dangerously-skip-permissions";
@@ -185,9 +219,9 @@ fn role_paths_are_unchanged() {
         [
             "codex",
             "-s",
-            "workspace-write",
+            "danger-full-access",
             "-a",
-            "on-request",
+            "never",
             "MoAI session name: agent-9"
         ]
     );

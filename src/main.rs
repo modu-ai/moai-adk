@@ -70,7 +70,8 @@ struct LaunchOpts {
     /// Do not pass `--advisor fable` (Claude Code host).
     #[arg(long)]
     no_advisor: bool,
-    /// Keep permission prompts: do not pass `--dangerously-skip-permissions`.
+    /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts) and the
+    /// `workspace-write` / `on-request` sandbox on codex. Without it every session has full access.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
@@ -805,27 +806,6 @@ fn launch(
     let name = o
         .name
         .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
-    // #2244 (REQ-I7-01): a role session would get the interim permission skip; a project
-    // whose `.claude/settings.json` has a `permissions` key owns its permissions instead.
-    let wants_skip = role.is_some() && host != "codex" && !o.permissions;
-    let key = if wants_skip {
-        std::env::current_dir()
-            .map(|d| moai_cli::session::permissions_key(&d))
-            .unwrap_or(moai_cli::session::PermissionsKey::Unreadable)
-    } else {
-        moai_cli::session::PermissionsKey::Absent
-    };
-    let key_note = match key {
-        moai_cli::session::PermissionsKey::Present => {
-            let msg = "permissions key found in .claude/settings.json: --dangerously-skip-permissions omitted (#2244)";
-            eprintln!("{msg}");
-            Some(msg)
-        }
-        moai_cli::session::PermissionsKey::Unreadable => Some(
-            ".claude/settings.json unreadable: permissions key not detected; the interim skip default applies",
-        ),
-        moai_cli::session::PermissionsKey::Absent => None,
-    };
     let request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
@@ -833,19 +813,17 @@ fn launch(
         model: o.model,
         effort: o.effort,
         // Claude defaults (user decision 2026-11-08, HOLD-L1 = A, #2053): roleless `cc`
-        // takes the launcher defaults (advisor fable, model, effort) too. The permission
-        // skip stays `-l|-a` only — a roleless session gets none.
+        // takes the launcher defaults (advisor fable, model, effort) too.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        skip_permissions: wants_skip && key != moai_cli::session::PermissionsKey::Present,
+        // Every launched session, any role and host, starts with full access unless
+        // `--permissions` is given (user decision 2026-11-10, #2359; replaces #2053/#2244).
+        skip_permissions: moai_cli::session::full_access(o.permissions),
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
     let mut v = session_launch(&request, o.dry_run)?;
-    if let (Some(msg), Some(notes)) = (key_note, v["notes"].as_array_mut()) {
-        notes.push(msg.into());
-    }
     if leader.is_some() {
         if let Some(notes) = v["notes"].as_array_mut() {
             notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());

@@ -10,13 +10,15 @@
 //! - `glm`: Claude Code pointed at z.ai through process environment only, per
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
-//! - `codex`: Codex CLI `-s workspace-write -a on-request [-m <model>] [PROMPT]`, per
+//! - `codex`: Codex CLI `-s danger-full-access -a never [-m <model>] [PROMPT]`
+//!   (`-s workspace-write -a on-request` with `--permissions`), per
 //!   https://learn.chatgpt.com/docs/developer-commands?surface=cli. Codex has no session-name
 //!   flag, so the name travels in the first prompt.
 //!
 //! Without a role (`moai-cli cc|glm|codex` with neither `-l` nor `-a`, Issue #2053) the launcher
-//! opens a plain host session: no role is guessed, no session name is added, and
-//! `--dangerously-skip-permissions` is never added. `-l|-a` argv are unchanged.
+//! opens a plain host session: no role is guessed and no session name is added. Every session,
+//! with or without a role, starts with full access unless `--permissions` is given
+//! ([`FULL_ACCESS_DEFAULT`], #2359).
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -27,10 +29,16 @@ const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
-/// launcher's Claude defaults (`--model opus --effort medium --advisor fable`), never a
-/// permission skip. False would pass no model, effort or advisor flag so the user's own Claude
+/// launcher's Claude defaults (`--model opus --effort medium --advisor fable`). False would pass no model, effort or advisor flag so the user's own Claude
 /// settings apply (option B, not chosen). This constant is the only place to change.
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
+/// User decision 2026-11-10 (#2359): every session the launcher opens — roleless, `-l` and
+/// `-a`, on every host — starts with full access and no permission prompt
+/// (`--dangerously-skip-permissions` on Claude hosts, `-s danger-full-access -a never` on
+/// codex). `--permissions` keeps the prompts. This replaces #2053 (no skip without a role) and
+/// #2244 (a project `permissions` key drops the skip). Choosing this default from a settings
+/// key is a recorded follow-up; until then this constant is the only place to change.
+pub const FULL_ACCESS_DEFAULT: bool = true;
 /// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
 /// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
 /// alias maps to, the 1M context window of those models (Claude Code assumes 200K for an id
@@ -102,7 +110,8 @@ pub struct SessionRequest {
     pub effort: Option<String>,
     #[serde(default)]
     pub advisor: Option<String>,
-    /// Adds `--dangerously-skip-permissions` on Claude hosts (operator's interim default).
+    /// Full access: `--dangerously-skip-permissions` on Claude hosts, `-s danger-full-access
+    /// -a never` on codex. The launcher sets it from [`full_access`].
     #[serde(default)]
     pub skip_permissions: bool,
     /// Extra first-prompt text (codex only).
@@ -141,29 +150,10 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
-/// What the project's `.claude/settings.json` says about a `permissions` key (#2244).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PermissionsKey {
-    /// A top-level `permissions` key exists (any value): the project owns its permissions.
-    Present,
-    /// No file, or a JSON object without the key.
-    Absent,
-    /// The file exists but is not a bounded regular file holding a JSON object.
-    Unreadable,
-}
-
-/// Reads `<dir>/.claude/settings.json` with the settings reader's bounds (symlink refused,
-/// 256 KiB). Only `settings.json` is read; `settings.local.json` is not (#2244 gap).
-pub fn permissions_key(dir: &std::path::Path) -> PermissionsKey {
-    match crate::claude::read_existing(&dir.join(".claude/settings.json")) {
-        Ok(None) => PermissionsKey::Absent,
-        Ok(Some(bytes)) => match serde_json::from_slice::<Value>(&bytes) {
-            Ok(Value::Object(m)) if m.contains_key("permissions") => PermissionsKey::Present,
-            Ok(Value::Object(_)) => PermissionsKey::Absent,
-            _ => PermissionsKey::Unreadable,
-        },
-        Err(_) => PermissionsKey::Unreadable,
-    }
+/// Whether a launched session runs with full access: [`FULL_ACCESS_DEFAULT`] unless the
+/// `--permissions` flag asks to keep the prompts. Role, host and project settings do not matter.
+pub fn full_access(keep_prompts: bool) -> bool {
+    FULL_ACCESS_DEFAULT && !keep_prompts
 }
 
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
@@ -219,7 +209,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         notes.push("PROMPT is used by codex only; it was not passed to the Claude host");
     }
     if r.skip_permissions {
-        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (operator interim default 2026-11-08; disable with --permissions)");
+        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (full-access default, user decision 2026-11-10 #2359; keep prompts with --permissions)");
         argv.push("--dangerously-skip-permissions".into());
     }
     Ok(argv)
@@ -227,12 +217,21 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
 
 fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     clean("codex_bin", &r.codex_bin)?;
+    // Full access (user decision 2026-11-10, #2359): no sandbox, never ask. The flags are
+    // explicit because Codex ranks CLI flags above `~/.codex/config.toml` and its own default
+    // in a git folder (workspace-write, on-request) still asks.
+    let (sandbox, approval) = if r.skip_permissions {
+        notes.push("codex full access: -s danger-full-access -a never, every command runs without a sandbox or an approval prompt (full-access default, user decision 2026-11-10 #2359; keep prompts with --permissions)");
+        ("danger-full-access", "never")
+    } else {
+        ("workspace-write", "on-request")
+    };
     let mut argv = vec![
         r.codex_bin.clone(),
         "-s".into(),
-        "workspace-write".into(),
+        sandbox.into(),
         "-a".into(),
-        "on-request".into(),
+        approval.into(),
     ];
     if let Some(m) = &r.model {
         clean("model", m)?;
@@ -242,8 +241,8 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
     if r.effort.is_some() {
         notes.push("--effort is not passed to codex by this launcher");
     }
-    if r.advisor.is_some() || r.skip_permissions {
-        notes.push("advisor and permission-skip apply to Claude hosts only; codex runs with -s workspace-write -a on-request");
+    if r.advisor.is_some() {
+        notes.push("the advisor applies to Claude hosts only; it was not passed to codex");
     }
     let mut parts: Vec<String> = r
         .name
@@ -287,7 +286,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
     }
     let mut notes = Vec::new();
     if r.role.is_none() {
-        notes.push("no role: a plain host session; no role, session name or permission skip is added (#2053)");
+        notes.push("no role: a plain host session; no role or session name is added (#2053)");
         if r.host != "codex" {
             notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
                 "launcher defaults without a role: model opus, effort medium, advisor fable (user decision 2026-11-08: A)"

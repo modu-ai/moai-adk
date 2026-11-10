@@ -1,11 +1,15 @@
-//! #2244 (I7, REQ-I7-01): when the project's `.claude/settings.json` (in the directory the
-//! launcher runs from) has a `permissions` key, a role session omits
-//! `--dangerously-skip-permissions` and says so on stderr. Every case is `--dry-run` in a
-//! temporary project; no host is started and no real settings file is read or written.
+//! #2359 (user decision 2026-11-10): every session the launcher opens — roleless, `-l` and
+//! `-a`, on `cc`, `glm` and `codex` — starts with full access and no permission prompt, and
+//! `--permissions` keeps the prompts. This replaces #2053 (no skip without a role) and #2244
+//! (a project `permissions` key drops the skip): the project's `.claude/settings.json` no
+//! longer changes the argv. Every case is `--dry-run` in a temporary project; no host is
+//! started and no real settings file is read or written.
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
 const SKIP: &str = "--dangerously-skip-permissions";
+const CODEX_FULL: [&str; 5] = ["codex", "-s", "danger-full-access", "-a", "never"];
+const CODEX_ASK: [&str; 5] = ["codex", "-s", "workspace-write", "-a", "on-request"];
 
 fn dry(dir: &Path, args: &[&str]) -> (i32, Vec<String>, String, String) {
     let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
@@ -13,7 +17,8 @@ fn dry(dir: &Path, args: &[&str]) -> (i32, Vec<String>, String, String) {
         .arg("--dry-run")
         .current_dir(dir)
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-        .env_remove("ANTHROPIC_AUTH_TOKEN")
+        // A dummy token so `glm` composes; no host is started in this file.
+        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
@@ -35,60 +40,83 @@ fn project(settings: Option<&str>) -> tempfile::TempDir {
     p
 }
 
-#[test]
-fn permissions_key_present_omits_the_skip_flag_and_says_so_on_stderr() {
-    for (settings, args) in [
-        (
-            r#"{"permissions":{"allow":["Bash(cargo test *)"]}}"#,
-            &["cc", "-l"][..],
-        ),
-        (r#"{"model":"opus","permissions":{}}"#, &["cc", "-a"][..]),
-    ] {
-        let p = project(Some(settings));
-        let (code, argv, notes, stderr) = dry(p.path(), args);
-        assert_eq!(code, 0, "{stderr}");
-        assert!(!argv.iter().any(|a| a == SKIP), "{settings}: {argv:?}");
-        assert!(
-            stderr.contains("permissions key") && stderr.contains(SKIP),
-            "stderr names the reason: {stderr}"
-        );
-        assert!(notes.contains("permissions key"), "{notes}");
+/// No file, a file with a `permissions` key (the #2244 case) and an unreadable file.
+const SETTINGS: [Option<&str>; 3] = [
+    None,
+    Some(r#"{"permissions":{"allow":["Bash(cargo test *)"]}}"#),
+    Some("{ not json"),
+];
+/// Roleless, leader and agent, in the host-word form and the old top-level form.
+const FORMS: [&[&str]; 4] = [&[], &["-l"], &["-a"], &["-a", "--name", "agent-7"]];
+
+fn full_access(host: &str, argv: &[String]) -> bool {
+    if host == "codex" {
+        argv.len() >= 5 && argv[..5] == CODEX_FULL
+    } else {
+        argv.iter().any(|a| a == SKIP)
+    }
+}
+fn asks(host: &str, argv: &[String]) -> bool {
+    if host == "codex" {
+        argv.len() >= 5 && argv[..5] == CODEX_ASK && !argv.iter().any(|a| a == SKIP)
+    } else {
+        !argv.iter().any(|a| a == SKIP)
     }
 }
 
 #[test]
-fn no_permissions_key_keeps_the_interim_default() {
-    for settings in [None, Some(r#"{"model":"opus"}"#)] {
+fn every_launched_session_has_full_access_whatever_the_project_settings() {
+    for settings in SETTINGS {
         let p = project(settings);
-        let (code, argv, _, stderr) = dry(p.path(), &["cc", "-l"]);
-        assert_eq!(code, 0, "{stderr}");
-        assert!(argv.iter().any(|a| a == SKIP), "{settings:?}: {argv:?}");
-        assert!(!stderr.contains("permissions key"), "{stderr}");
+        for host in ["cc", "glm", "codex"] {
+            for form in FORMS {
+                let args: Vec<&str> = std::iter::once(host).chain(form.iter().copied()).collect();
+                let (code, argv, notes, stderr) = dry(p.path(), &args);
+                assert_eq!(code, 0, "{args:?} {settings:?}: {stderr}");
+                assert!(full_access(host, &argv), "{args:?} {settings:?}: {argv:?}");
+                assert!(
+                    notes.contains("full-access default"),
+                    "{args:?}: the note names the default: {notes}"
+                );
+                // The project file is not consulted any more, so nothing reports on it.
+                assert!(!stderr.contains("permissions key"), "{args:?}: {stderr}");
+                assert!(!notes.contains("permissions key"), "{args:?}: {notes}");
+                assert!(!notes.contains("unreadable"), "{args:?}: {notes}");
+            }
+        }
     }
 }
 
 #[test]
-fn unreadable_settings_keep_the_default_and_say_why() {
-    let p = project(Some("{ not json"));
-    let (code, argv, notes, stderr) = dry(p.path(), &["cc", "-l"]);
-    assert_eq!(code, 0, "{stderr}");
-    assert!(argv.iter().any(|a| a == SKIP), "{argv:?}");
-    assert!(notes.contains("unreadable"), "{notes}");
+fn the_permissions_flag_keeps_the_prompts_on_every_host_and_form() {
+    for settings in [None, SETTINGS[1]] {
+        let p = project(settings);
+        for host in ["cc", "glm", "codex"] {
+            for form in FORMS {
+                let args: Vec<&str> = std::iter::once(host)
+                    .chain(form.iter().copied())
+                    .chain(["--permissions"])
+                    .collect();
+                let (code, argv, notes, stderr) = dry(p.path(), &args);
+                assert_eq!(code, 0, "{args:?}: {stderr}");
+                assert!(asks(host, &argv), "{args:?} {settings:?}: {argv:?}");
+                assert!(!notes.contains("full-access default"), "{args:?}: {notes}");
+            }
+        }
+    }
 }
 
 #[test]
-fn explicit_permissions_flag_roleless_and_codex_are_unchanged() {
-    let p = project(Some(r#"{"permissions":{}}"#));
-    // --permissions already drops the skip; no notice is needed.
-    let (_, argv, _, stderr) = dry(p.path(), &["cc", "-l", "--permissions"]);
-    assert!(!argv.iter().any(|a| a == SKIP));
-    assert!(!stderr.contains("permissions key"), "{stderr}");
-    // A roleless session never had the skip.
-    let (_, argv, _, stderr) = dry(p.path(), &["cc"]);
-    assert!(!argv.iter().any(|a| a == SKIP));
-    assert!(!stderr.contains("permissions key"), "{stderr}");
-    // Codex argv never carries it.
-    let (_, argv, _, stderr) = dry(p.path(), &["codex", "-a"]);
-    assert!(!argv.iter().any(|a| a == SKIP));
-    assert!(!stderr.contains("permissions key"), "{stderr}");
+fn the_old_top_level_role_form_has_full_access_too() {
+    let p = project(None);
+    let (code, argv, _, stderr) = dry(p.path(), &["-l"]);
+    assert_eq!(code, 0, "{stderr}");
+    assert!(full_access("cc", &argv), "{argv:?}");
+    for (host, word) in [("cc", "cc"), ("glm", "glm"), ("codex", "codex")] {
+        let (code, argv, _, stderr) = dry(p.path(), &["-a", word]);
+        assert_eq!(code, 0, "{word}: {stderr}");
+        assert!(full_access(host, &argv), "{word}: {argv:?}");
+        let (_, argv, _, _) = dry(p.path(), &["-a", word, "--permissions"]);
+        assert!(asks(host, &argv), "{word}: {argv:?}");
+    }
 }
