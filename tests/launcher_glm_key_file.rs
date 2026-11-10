@@ -67,7 +67,15 @@ fn key_file_stands_in_for_the_variable_without_showing_the_value() {
             json!([
                 "ANTHROPIC_BASE_URL",
                 "API_TIMEOUT_MS",
-                "ANTHROPIC_AUTH_TOKEN"
+                "ANTHROPIC_DEFAULT_OPUS_MODEL",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+                "ANTHROPIC_DEFAULT_FABLE_MODEL",
+                "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+                "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+                "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+                "ANTHROPIC_AUTH_TOKEN",
+                "Z_AI_API_KEY"
             ])
         );
         assert!(v["notes"].to_string().contains("key file"), "{text}");
@@ -216,7 +224,7 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
     fs::write(
         &fake,
         format!(
-            "#!/bin/sh\nprintf %s \"$ANTHROPIC_AUTH_TOKEN|$ANTHROPIC_BASE_URL\" > '{}'\n",
+            "#!/bin/sh\nprintf %s \"$ANTHROPIC_AUTH_TOKEN|$ANTHROPIC_BASE_URL|$API_TIMEOUT_MS|$ANTHROPIC_DEFAULT_OPUS_MODEL|$ANTHROPIC_DEFAULT_SONNET_MODEL|$ANTHROPIC_DEFAULT_HAIKU_MODEL|$ANTHROPIC_DEFAULT_FABLE_MODEL|$CLAUDE_CODE_AUTO_COMPACT_WINDOW|$CLAUDE_CODE_MAX_CONTEXT_TOKENS|$CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS|$Z_AI_API_KEY\" > '{}'\n",
             seen.display()
         ),
     )
@@ -234,8 +242,15 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
     );
     assert!(out.status.success(), "{text}");
     let record = fs::read_to_string(&seen).unwrap();
-    let (token, base) = record.split_once('|').unwrap();
-    assert_eq!(base, "https://api.z.ai/api/anthropic");
+    let (token, rest) = record.split_once('|').unwrap();
+    // The connection set of the Go tool, pinned by literal value; the last field is the
+    // same key under the name the z.ai MCP server reads.
+    assert_eq!(
+        rest,
+        format!(
+            "https://api.z.ai/api/anthropic|3000000|glm-5.3|glm-5.3|glm-5.3-flash|glm-5.3|1000000|1000000|1|{token}"
+        )
+    );
     assert!(!text.contains(token), "token value echoed by the launcher");
     token.to_string()
 }

@@ -1226,7 +1226,15 @@ fn launcher_glm_requires_token_name_only() {
         json!([
             "ANTHROPIC_BASE_URL",
             "API_TIMEOUT_MS",
-            "ANTHROPIC_AUTH_TOKEN"
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "ANTHROPIC_DEFAULT_FABLE_MODEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+            "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "ANTHROPIC_AUTH_TOKEN",
+            "Z_AI_API_KEY"
         ])
     );
     assert_eq!(

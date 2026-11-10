@@ -31,11 +31,23 @@ const DEFAULT_EFFORT: &str = "medium";
 /// permission skip. False would pass no model, effort or advisor flag so the user's own Claude
 /// settings apply (option B, not chosen). This constant is the only place to change.
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
-/// z.ai Anthropic-compatible endpoint and timeout from the z.ai Claude Code guide.
-pub const GLM_ENV: [(&str, &str); 2] = [
+/// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
+/// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
+/// alias maps to, the 1M context window of those models (Claude Code assumes 200K for an id
+/// it does not know) and the switch that strips Anthropic beta headers the proxy rejects.
+pub const GLM_ENV: [(&str, &str); 9] = [
     ("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic"),
     ("API_TIMEOUT_MS", "3000000"),
+    ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3"),
+    ("ANTHROPIC_DEFAULT_SONNET_MODEL", "glm-5.3"),
+    ("ANTHROPIC_DEFAULT_HAIKU_MODEL", "glm-5.3-flash"),
+    ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-5.3"),
+    ("CLAUDE_CODE_AUTO_COMPACT_WINDOW", "1000000"),
+    ("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "1000000"),
+    ("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1"),
 ];
+/// The z.ai MCP server reads the same key under this name; the launcher passes it along.
+pub const GLM_MCP_KEY_VAR: &str = "Z_AI_API_KEY";
 /// Taken from the caller's environment, else from a key file (#2359). The value is passed to
 /// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
@@ -301,9 +313,10 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
             if plain.advisor.take().is_some() {
                 notes.push("--advisor omitted on glm: the advisor is Anthropic API only");
             }
-            notes.push("model aliases resolve through ANTHROPIC_DEFAULT_*_MODEL in your own settings; the launcher sets none");
+            notes.push("model aliases map to z.ai models for this session: opus, sonnet and fable to glm-5.3, haiku to glm-5.3-flash, with the 1M context window declared");
             env_keys.extend(GLM_ENV.iter().map(|(k, _)| *k));
             env_keys.push(GLM_TOKEN_VAR);
+            env_keys.push(GLM_MCP_KEY_VAR);
             claude_argv(&plain, &mut notes)?
         }
         _ => claude_argv(r, &mut notes)?,
@@ -324,14 +337,17 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
     let mut command = std::process::Command::new(&argv[0]);
     command.args(&argv[1..]);
     if r.host == "glm" {
-        // The token is inherited unchanged from the caller's environment when it is there.
         command.envs(GLM_ENV);
-        if std::env::var_os(GLM_TOKEN_VAR).is_none() {
-            command.env(
-                GLM_TOKEN_VAR,
-                glm_file_token().ok_or("blocked: the key file changed")?,
-            );
-        }
+        // The token is inherited unchanged from the caller's environment when it is there.
+        let token = match std::env::var_os(GLM_TOKEN_VAR) {
+            Some(token) => token,
+            None => {
+                let token = glm_file_token().ok_or("blocked: the key file changed")?;
+                command.env(GLM_TOKEN_VAR, &token);
+                token.into()
+            }
+        };
+        command.env(GLM_MCP_KEY_VAR, token);
     }
     let status = command
         .status()
