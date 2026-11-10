@@ -8,10 +8,11 @@
 //!   `scrub_git_env(` before the command runs (`.output()`, `.status()` or `.spawn()`);
 //! - a behaviour repro on the claim guard, where a contaminated `GIT_DIR` turned a refusal
 //!   into a pass (fail-open).
+mod common;
+
 use serde_json::json;
 use std::{
     fs,
-    io::Write as _,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -108,8 +109,10 @@ fn the_scan_flags_an_unscrubbed_spawn_and_accepts_a_scrubbed_one() {
 }
 
 fn git(dir: &Path, args: &[&str]) {
+    // Keep the env-isolation probe and identity while applying the shared fixture guards.
     let mut cmd = Command::new("git");
-    cmd.args(args)
+    cmd.args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+        .args(args)
         .current_dir(dir)
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
@@ -174,12 +177,7 @@ fn claim_guard_ignores_an_inherited_git_dir() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, input.as_bytes());
     let out = child.wait_with_output().unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(

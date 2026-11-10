@@ -2,6 +2,7 @@
 //! `~/.moai/.env.glm` (the global store shared with the Go tool), then `~/.moai-cli/.env.glm`.
 //! Both are read only. The value reaches the host process only and never appears in the
 //! launcher's own output.
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -30,7 +31,7 @@ fn project() -> &'static Path {
     PROJECT.get_or_init(|| {
         let p = Path::new(env!("CARGO_TARGET_TMPDIR")).join("launcher-glm-key-file-project");
         fs::create_dir_all(&p).unwrap();
-        let init = Command::new("git")
+        let init = common::git::command()
             .args(["init", "-q"])
             .current_dir(&p)
             .status()

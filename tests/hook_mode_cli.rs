@@ -10,7 +10,6 @@ mod common;
 
 use serde_json::{json, Value};
 use std::fs;
-use std::io::Write as _;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
@@ -35,7 +34,8 @@ fn run(args: &[&str], cwd: &Path, stdin: &[u8], env: &[(&str, &str)]) -> Run {
         cmd.env(k, v);
     }
     let mut child = cmd.spawn().unwrap();
-    child.stdin.take().unwrap().write_all(stdin).unwrap();
+    // A usage error exits before reading stdin; a broken pipe here is not a failure.
+    common::feed_stdin(&mut child, stdin);
     let out: Output = child.wait_with_output().unwrap();
     Run {
         code: out.status.code().unwrap(),
@@ -157,8 +157,10 @@ fn hook_mode_transport_setting_only_matters_to_a_guarded_command() {
     assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
 
     // A lane worktree: a commit is guarded, and the refusal still blocks.
+    // Preserve the fixture's explicit identity while applying the shared git helper's guards.
     let git = |args: &[&str]| {
         let out = Command::new("git")
+            .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
             .args(args)
             .current_dir(&root)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
