@@ -206,6 +206,11 @@ pub struct SubagentTask {
 
 /// The first JSON value of `bytes`, or `None` for empty, malformed or mistyped input.
 pub fn parse(bytes: &[u8]) -> Option<Input> {
+    // Go decodes into a struct, which rejects a top-level array; serde's derived struct
+    // visitor would accept one, so anything but an object is refused up front.
+    if bytes.iter().find(|b| !b.is_ascii_whitespace()) != Some(&b'{') {
+        return None;
+    }
     serde_json::Deserializer::from_slice(bytes)
         .into_iter::<Input>()
         .next()?
@@ -244,20 +249,29 @@ mod tests {
 
     #[test]
     fn model_accepts_a_string_or_an_object() {
-        let s = parse(br#"{"model": "claude-sonnet-5-5"}"#).unwrap().model.unwrap();
+        let s = parse(br#"{"model": "claude-sonnet-5-5"}"#)
+            .unwrap()
+            .model
+            .unwrap();
         assert_eq!(s.display_name, "claude-sonnet-5-5");
         assert_eq!(s.id, "claude-sonnet-5-5");
         let o = parse(br#"{"model": {"id": "x", "display_name": "Opus"}}"#)
             .unwrap()
             .model
             .unwrap();
-        assert_eq!((o.id.as_str(), o.display_name.as_str(), o.name.as_str()), ("x", "Opus", ""));
+        assert_eq!(
+            (o.id.as_str(), o.display_name.as_str(), o.name.as_str()),
+            ("x", "Opus", "")
+        );
         assert!(parse(br#"{"model": 3}"#).is_none());
     }
 
     #[test]
     fn tasks_present_but_empty_differs_from_absent() {
-        assert_eq!(parse(br#"{"tasks": []}"#).unwrap().tasks.map(|t| t.len()), Some(0));
+        assert_eq!(
+            parse(br#"{"tasks": []}"#).unwrap().tasks.map(|t| t.len()),
+            Some(0)
+        );
         assert!(parse(br#"{"tasks": null}"#).unwrap().tasks.is_none());
         assert!(parse(br#"{}"#).unwrap().tasks.is_none());
     }

@@ -43,7 +43,10 @@ impl Context {
     #[cfg(test)]
     pub fn for_test(vars: &[(&str, &str)], cwd: Option<&Path>, now_ms: i64) -> Context {
         Context {
-            vars: vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            vars: vars
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             cwd: cwd.map(Path::to_path_buf),
             now_ms,
             deadline: None,
@@ -52,7 +55,10 @@ impl Context {
 
     /// A variable as Go's `os.Getenv(k) != ""` sees it: unset and empty are both `None`.
     pub fn var(&self, key: &str) -> Option<&str> {
-        self.vars.get(key).map(String::as_str).filter(|v| !v.is_empty())
+        self.vars
+            .get(key)
+            .map(String::as_str)
+            .filter(|v| !v.is_empty())
     }
 
     fn home(&self) -> Option<PathBuf> {
@@ -127,7 +133,7 @@ pub const BINARY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let project_root = find_project_root(ctx);
-    let anchor = input.and_then(|i| resolve_anchor(i));
+    let anchor = input.and_then(resolve_anchor);
     let auto_compact = segments::auto_compact_threshold(ctx.var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"));
     let mut status = Status {
         model: collect_model(input, ctx),
@@ -142,33 +148,60 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let Some(input) = input else {
         return status;
     };
-    status.session_ms = input.cost.as_ref().and_then(|c| c.total_duration_ms).unwrap_or(0);
+    status.session_ms = input
+        .cost
+        .as_ref()
+        .and_then(|c| c.total_duration_ms)
+        .unwrap_or(0);
     status.memory = collect_memory(input, ctx, auto_compact);
     status.directory = directory_name(input, ctx);
     status.session_name = input::text(&input.session_name).to_string();
-    status.agent_name = input.agent.as_ref().map_or("", |a| input::text(&a.name)).to_string();
-    status.output_style = input.output_style.as_ref().map_or("", |s| input::text(&s.name)).to_string();
+    status.agent_name = input
+        .agent
+        .as_ref()
+        .map_or("", |a| input::text(&a.name))
+        .to_string();
+    status.output_style = input
+        .output_style
+        .as_ref()
+        .map_or("", |s| input::text(&s.name))
+        .to_string();
     status.claude_version = input::text(&input.version).to_string();
-    status.effort = input.effort.as_ref().map(|e| input::text(&e.level).to_string());
+    status.effort = input
+        .effort
+        .as_ref()
+        .map(|e| input::text(&e.level).to_string());
     status.thinking = input.thinking.as_ref().map(|t| t.enabled.unwrap_or(false));
     status.cache = input
         .context_window
         .as_ref()
         .and_then(|cw| cw.current_usage.as_ref())
-        .map(|u| (u.cache_read_input_tokens.unwrap_or(0), u.cache_creation_input_tokens.unwrap_or(0)));
+        .map(|u| {
+            (
+                u.cache_read_input_tokens.unwrap_or(0),
+                u.cache_creation_input_tokens.unwrap_or(0),
+            )
+        });
     if let Some(limits) = &input.rate_limits {
         status.five_hour = limits.five_hour;
         status.seven_day = limits.seven_day;
     }
-    status.pr = input
-        .pr
-        .as_ref()
-        .map(|p| (p.number.unwrap_or(0), input::text(&p.review_state).to_string()));
+    status.pr = input.pr.as_ref().map(|p| {
+        (
+            p.number.unwrap_or(0),
+            input::text(&p.review_state).to_string(),
+        )
+    });
     status.repo = input
         .workspace
         .as_ref()
         .and_then(|w| w.repo.as_ref())
-        .map(|r| (input::text(&r.owner).to_string(), input::text(&r.name).to_string()));
+        .map(|r| {
+            (
+                input::text(&r.owner).to_string(),
+                input::text(&r.name).to_string(),
+            )
+        });
     if let Some(anchor) = &anchor {
         status.github = github_counts(anchor);
         status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
@@ -178,7 +211,9 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
 
 /// The configuration root: the state anchor, else the cwd project root (cli/statusline.go).
 pub fn display_config(input: Option<&Input>, ctx: &Context) -> DisplayConfig {
-    let root = input.and_then(resolve_anchor).or_else(|| find_project_root(ctx));
+    let root = input
+        .and_then(resolve_anchor)
+        .or_else(|| find_project_root(ctx));
     root.map(|r| read_display_config(&r.join(".moai/config/sections/statusline.yaml")))
         .unwrap_or_default()
 }
@@ -245,11 +280,19 @@ pub fn resolve_anchor(input: &Input) -> Option<PathBuf> {
     if let Some(p) = ws.and_then(|w| candidate(input::text(&w.project_dir))) {
         return Some(p);
     }
-    if let Some(p) = input.worktree.as_ref().and_then(|w| candidate(input::text(&w.original_cwd))) {
+    if let Some(p) = input
+        .worktree
+        .as_ref()
+        .and_then(|w| candidate(input::text(&w.original_cwd)))
+    {
         return Some(p);
     }
     let dir = ws.map_or("", |w| input::text(&w.current_dir));
-    let dir = if dir.is_empty() { input::text(&input.cwd) } else { dir };
+    let dir = if dir.is_empty() {
+        input::text(&input.cwd)
+    } else {
+        dir
+    };
     if dir.is_empty() {
         return None;
     }
@@ -266,15 +309,26 @@ fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
     }
     let text = std::fs::read_to_string(&dot_git).ok()?;
     let git_dir = PathBuf::from(text.trim().strip_prefix("gitdir:")?.trim());
-    let git_dir = if git_dir.is_absolute() { git_dir } else { top.join(git_dir) };
+    let git_dir = if git_dir.is_absolute() {
+        git_dir
+    } else {
+        top.join(git_dir)
+    };
     let common = match std::fs::read_to_string(git_dir.join("commondir")) {
         Ok(c) => {
             let c = PathBuf::from(c.trim());
-            if c.is_absolute() { c } else { git_dir.join(c) }
+            if c.is_absolute() {
+                c
+            } else {
+                git_dir.join(c)
+            }
         }
         Err(_) => git_dir,
     };
-    std::fs::canonicalize(common).ok()?.parent().map(Path::to_path_buf)
+    std::fs::canonicalize(common)
+        .ok()?
+        .parent()
+        .map(Path::to_path_buf)
 }
 
 fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
@@ -356,12 +410,17 @@ fn collect_memory(input: &Input, ctx: &Context, auto_compact: i64) -> Memory {
                 + u.cache_read_input_tokens.unwrap_or(0)
         }),
     });
-    let size_override = if reading.is_some() { context_window_override(ctx) } else { 0 };
+    let size_override = if reading.is_some() {
+        context_window_override(ctx)
+    } else {
+        0
+    };
     segments::collect_memory(reading, size_override, auto_compact)
 }
 
 /// Built-in GLM context windows (memory.go `glmContextWindows`).
-const GLM_CONTEXT_WINDOWS: [(&str, i64); 2] = [("glm-5.3-flash", 1_000_000), ("glm-5.3", 1_000_000)];
+const GLM_CONTEXT_WINDOWS: [(&str, i64); 2] =
+    [("glm-5.3-flash", 1_000_000), ("glm-5.3", 1_000_000)];
 const GLM_ENV_SLOTS: [&str; 3] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -371,7 +430,10 @@ const GLM_ENV_SLOTS: [&str; 3] = [
 /// `resolveContextWindowOverride`: `MOAI_STATUSLINE_CONTEXT_SIZE`, then `llm.yaml`
 /// `llm.glm.context_windows`, then the built-in table, for non-Claude slot models.
 fn context_window_override(ctx: &Context) -> i64 {
-    if let Some(n) = ctx.var("MOAI_STATUSLINE_CONTEXT_SIZE").and_then(|v| v.parse::<i64>().ok()) {
+    if let Some(n) = ctx
+        .var("MOAI_STATUSLINE_CONTEXT_SIZE")
+        .and_then(|v| v.parse::<i64>().ok())
+    {
         if n > 0 {
             return n;
         }
@@ -383,7 +445,10 @@ fn context_window_override(ctx: &Context) -> i64 {
         .filter(|v| !v.is_empty() && !v.starts_with("claude"))
         .collect();
     let user = llm_context_windows(ctx);
-    for table in [user.as_slice(), &GLM_CONTEXT_WINDOWS.map(|(k, v)| (k.to_string(), v))[..]] {
+    for table in [
+        user.as_slice(),
+        &GLM_CONTEXT_WINDOWS.map(|(k, v)| (k.to_string(), v))[..],
+    ] {
         for model in &slots {
             if let Some(size) = match_context_window(model, table) {
                 return size;
@@ -442,11 +507,17 @@ fn collect_version(ctx: &Context, binary: &str) -> Version {
     let trim = |v: &str| v.strip_prefix('v').unwrap_or(v).to_string();
     let bv = trim(binary);
     let Some(template) = template_version(ctx) else {
-        return Version { current: bv, latest: None };
+        return Version {
+            current: bv,
+            latest: None,
+        };
     };
     let tv = trim(&template);
     let latest = (!bv.is_empty() && !tv.is_empty() && bv != tv).then_some(bv);
-    Version { current: tv, latest }
+    Version {
+        current: tv,
+        latest,
+    }
 }
 
 fn template_version(ctx: &Context) -> Option<String> {
@@ -455,7 +526,11 @@ fn template_version(ctx: &Context) -> Option<String> {
         let path = dir.join(".moai/config/sections/system.yaml");
         if path.exists() {
             let doc = config::read(&path)?;
-            let pick = |key| doc.scalar(&["moai", key]).filter(|v| !v.is_empty()).map(str::to_string);
+            let pick = |key| {
+                doc.scalar(&["moai", key])
+                    .filter(|v| !v.is_empty())
+                    .map(str::to_string)
+            };
             return pick("template_version").or_else(|| pick("version"));
         }
         if !dir.pop() {
@@ -478,7 +553,9 @@ fn directory_name(input: &Input, ctx: &Context) -> String {
             return go_base(candidate);
         }
     }
-    ctx.cwd.as_deref().map_or(String::new(), |p| go_base(&p.to_string_lossy()))
+    ctx.cwd
+        .as_deref()
+        .map_or(String::new(), |p| go_base(&p.to_string_lossy()))
 }
 
 /// Go `filepath.Base`: trailing separators dropped, `/` stays `/`, empty is `.`.
@@ -498,7 +575,11 @@ fn go_base(path: &str) -> String {
 fn collect_git(dir: &Path, ctx: &Context) -> Option<GitStatus> {
     // No repository above `dir`: nothing to ask git, so no process is started.
     find_dot_git(&std::fs::canonicalize(dir).ok()?)?;
-    let out = run_git(dir, &["--no-optional-locks", "status", "--porcelain", "--branch"], ctx)?;
+    let out = run_git(
+        dir,
+        &["--no-optional-locks", "status", "--porcelain", "--branch"],
+        ctx,
+    )?;
     let mut status = segments::parse_porcelain(&out);
     if status.branch.is_empty() {
         status.branch = run_git(dir, &["symbolic-ref", "--short", "HEAD"], ctx)
@@ -520,7 +601,7 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
     crate::identity::scrub_git_env(&mut cmd);
     cmd.env("GIT_TERMINAL_PROMPT", "0");
     let mut child = cmd.spawn().ok()?;
-    let mut stdout = child.stdout.take()?;
+    let stdout = child.stdout.take()?;
     let reader = std::thread::spawn(move || {
         let mut buf = Vec::new();
         stdout.take(1 << 20).read_to_end(&mut buf).map(|_| buf)
@@ -529,7 +610,9 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
         match child.try_wait() {
             Ok(Some(status)) => {
                 let out = reader.join().ok()?.ok()?;
-                return status.success().then(|| String::from_utf8_lossy(&out).into_owned());
+                return status
+                    .success()
+                    .then(|| String::from_utf8_lossy(&out).into_owned());
             }
             Ok(None) if ctx.deadline.is_some_and(|d| Instant::now() >= d) => {
                 let _ = child.kill();
@@ -564,7 +647,10 @@ fn collect_task(ctx: &Context) -> String {
         specs_in_progress: Option<Vec<String>>,
         active_task: Option<Active>,
     }
-    let Some(path) = ctx.moai_home().map(|h| h.join("state/last-session-state.json")) else {
+    let Some(path) = ctx
+        .moai_home()
+        .map(|h| h.join("state/last-session-state.json"))
+    else {
         return String::new();
     };
     let Some(state) = std::fs::read(path)
@@ -602,7 +688,9 @@ fn goal_armed(anchor: &Path, session_id: &str) -> bool {
     struct Goal {
         status: Option<String>,
     }
-    let path = anchor.join(".moai/state/goal").join(format!("{session_id}.json"));
+    let path = anchor
+        .join(".moai/state/goal")
+        .join(format!("{session_id}.json"));
     std::fs::read(path)
         .ok()
         .and_then(|b| serde_json::from_slice::<Goal>(&b).ok())
@@ -630,11 +718,17 @@ fn github_counts(anchor: &Path) -> GitHubCounts {
             open_issues: c.open_issues.unwrap_or(0),
             open_prs: c.open_prs.unwrap_or(0),
         });
-    let forge = [".moai/statusline.local.yaml", ".moai/config/sections/statusline.yaml"]
-        .iter()
-        .filter_map(|rel| config::read(&anchor.join(rel)))
-        .filter_map(|doc| doc.scalar(&["statusline", "forge"]).map(|s| s.trim().to_string()))
-        .find(|v| !v.is_empty());
+    let forge = [
+        ".moai/statusline.local.yaml",
+        ".moai/config/sections/statusline.yaml",
+    ]
+    .iter()
+    .filter_map(|rel| config::read(&anchor.join(rel)))
+    .filter_map(|doc| {
+        doc.scalar(&["statusline", "forge"])
+            .map(|s| s.trim().to_string())
+    })
+    .find(|v| !v.is_empty());
     if let Some(forge) = forge {
         if !matches!(forge.to_lowercase().as_str(), "github" | "gitlab") {
             counts.suppressed = true;
@@ -661,7 +755,11 @@ mod tests {
         assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.3");
         assert_eq!(resolve_glm_model_name("Sonnet", &ctx), "Sonnet");
         assert_eq!(resolve_glm_model_name("gpt-x[1m]", &ctx), "gpt-x");
-        let claude = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None, 0);
+        let claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")],
+            None,
+            0,
+        );
         assert_eq!(resolve_glm_model_name("Opus", &claude), "Opus");
     }
 
@@ -669,7 +767,11 @@ mod tests {
     fn context_override_prefers_env_then_longest_builtin_match() {
         let env = Context::for_test(&[("MOAI_STATUSLINE_CONTEXT_SIZE", "128000")], None, 0);
         assert_eq!(context_window_override(&env), 128_000);
-        let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")], None, 0);
+        let glm = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")],
+            None,
+            0,
+        );
         assert_eq!(context_window_override(&glm), 1_000_000);
         assert_eq!(context_window_override(&Context::for_test(&[], None, 0)), 0);
     }
@@ -678,13 +780,26 @@ mod tests {
     fn version_compares_template_with_binary() {
         let tmp = tempfile::tempdir().unwrap();
         let ctx = Context::for_test(&[], Some(tmp.path()), 0);
-        assert_eq!(collect_version(&ctx, "v3.2.1"), Version { current: "3.2.1".into(), latest: None });
+        assert_eq!(
+            collect_version(&ctx, "v3.2.1"),
+            Version {
+                current: "3.2.1".into(),
+                latest: None
+            }
+        );
         let sections = tmp.path().join(".moai/config/sections");
         std::fs::create_dir_all(&sections).unwrap();
-        std::fs::write(sections.join("system.yaml"), "moai:\n  template_version: v2.0.0\n").unwrap();
+        std::fs::write(
+            sections.join("system.yaml"),
+            "moai:\n  template_version: v2.0.0\n",
+        )
+        .unwrap();
         assert_eq!(
             collect_version(&ctx, "3.2.1"),
-            Version { current: "2.0.0".into(), latest: Some("3.2.1".into()) }
+            Version {
+                current: "2.0.0".into(),
+                latest: Some("3.2.1".into())
+            }
         );
         std::fs::write(sections.join("system.yaml"), "moai:\n  version: 3.2.1\n").unwrap();
         assert_eq!(collect_version(&ctx, "v3.2.1").latest, None);
@@ -702,12 +817,23 @@ mod tests {
         assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
         let gh = tmp.path().join(".moai/state/github");
         std::fs::create_dir_all(&gh).unwrap();
-        std::fs::write(gh.join("counts.json"), r#"{"open_issues":7,"open_prs":3,"fetched_at":1}"#).unwrap();
+        std::fs::write(
+            gh.join("counts.json"),
+            r#"{"open_issues":7,"open_prs":3,"fetched_at":1}"#,
+        )
+        .unwrap();
         let c = github_counts(tmp.path());
-        assert_eq!((c.available, c.open_issues, c.open_prs, c.suppressed), (true, 7, 3, false));
+        assert_eq!(
+            (c.available, c.open_issues, c.open_prs, c.suppressed),
+            (true, 7, 3, false)
+        );
         let sections = tmp.path().join(".moai/config/sections");
         std::fs::create_dir_all(&sections).unwrap();
-        std::fs::write(sections.join("statusline.yaml"), "statusline:\n  forge: none\n").unwrap();
+        std::fs::write(
+            sections.join("statusline.yaml"),
+            "statusline:\n  forge: none\n",
+        )
+        .unwrap();
         assert!(github_counts(tmp.path()).suppressed);
     }
 

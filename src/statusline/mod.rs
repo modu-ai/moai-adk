@@ -30,7 +30,8 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
         return segments::subagent_rows(tasks) + "\n";
     }
     let config = state::display_config(input.as_ref(), ctx);
-    let profile = (!ctx.no_color()).then(|| color::Profile::from_colorterm(ctx.var("COLORTERM").unwrap_or("")));
+    let profile = (!ctx.no_color())
+        .then(|| color::Profile::from_colorterm(ctx.var("COLORTERM").unwrap_or("")));
     let status = state::collect(input.as_ref(), ctx);
     render::Renderer::new(&config, profile).render(&status) + "\n"
 }
@@ -40,7 +41,9 @@ pub fn run() -> String {
     use std::io::{IsTerminal, Read};
     let mut stdin = Vec::new();
     if !std::io::stdin().is_terminal() {
-        let _ = std::io::stdin().take(4 * 1024 * 1024).read_to_end(&mut stdin);
+        let _ = std::io::stdin()
+            .take(4 * 1024 * 1024)
+            .read_to_end(&mut stdin);
     }
     render(&stdin, &state::Context::from_process(RENDER_BUDGET))
 }

@@ -60,7 +60,11 @@ pub fn parse(text: &str) -> Option<Node> {
     (pos == lines.len()).then_some(Node::Map(root))
 }
 
-fn block(lines: &[(usize, String)], pos: &mut usize, indent: usize) -> Option<BTreeMap<String, Node>> {
+fn block(
+    lines: &[(usize, String)],
+    pos: &mut usize,
+    indent: usize,
+) -> Option<BTreeMap<String, Node>> {
     let mut map = BTreeMap::new();
     while let Some((line_indent, text)) = lines.get(*pos) {
         if *line_indent < indent {
@@ -91,14 +95,18 @@ fn split_key(text: &str) -> Option<(String, &str)> {
     if text.starts_with(['-', '[', '{', '&', '*', '!', '|', '>', '?']) {
         return None;
     }
-    let idx = text.find(": ").or_else(|| text.ends_with(':').then(|| text.len() - 1))?;
+    let idx = text
+        .find(": ")
+        .or_else(|| text.ends_with(':').then(|| text.len() - 1))?;
     let key = scalar(text[..idx].trim())?;
     Some((key, text[idx + 1..].trim()))
 }
 
 fn scalar(value: &str) -> Option<String> {
     if let Some(inner) = value.strip_prefix('"') {
-        return inner.strip_suffix('"').map(|s| s.replace("\\\"", "\"").replace("\\\\", "\\"));
+        return inner
+            .strip_suffix('"')
+            .map(|s| s.replace("\\\"", "\"").replace("\\\\", "\\"));
     }
     if let Some(inner) = value.strip_prefix('\'') {
         return inner.strip_suffix('\'').map(|s| s.replace("''", "'"));
@@ -129,8 +137,12 @@ fn strip_comment(line: &str) -> &str {
 /// A YAML boolean as yaml.v3 decodes it into a Go `bool` (YAML 1.1 words included).
 pub fn boolean(value: &str) -> Option<bool> {
     match value {
-        "true" | "True" | "TRUE" | "yes" | "Yes" | "YES" | "on" | "On" | "ON" | "y" | "Y" => Some(true),
-        "false" | "False" | "FALSE" | "no" | "No" | "NO" | "off" | "Off" | "OFF" | "n" | "N" => Some(false),
+        "true" | "True" | "TRUE" | "yes" | "Yes" | "YES" | "on" | "On" | "ON" | "y" | "Y" => {
+            Some(true)
+        }
+        "false" | "False" | "FALSE" | "no" | "No" | "NO" | "off" | "Off" | "OFF" | "n" | "N" => {
+            Some(false)
+        }
         _ => None,
     }
 }

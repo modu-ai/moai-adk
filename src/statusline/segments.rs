@@ -34,7 +34,9 @@ pub fn shorten_model_name(model: &str) -> String {
     let title = |p: &str| -> String {
         let mut chars = p.chars();
         match chars.next() {
-            Some(first) => first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+            Some(first) => {
+                first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+            }
             None => String::new(),
         }
     };
@@ -161,7 +163,11 @@ pub fn handoff_stage(memory: &Memory, auto_compact: i64) -> HandoffStage {
         HANDOFF_SOFT_STANDARD_PCT
     };
     let ceil = (auto_compact + HANDOFF_HARD_CEILING_MARGIN_PCT).min(HANDOFF_HARD_CEILING_CAP_PCT);
-    let hard = if (ceil as f64) < soft { soft } else { ceil as f64 };
+    let hard = if (ceil as f64) < soft {
+        soft
+    } else {
+        ceil as f64
+    };
     if raw >= hard {
         HandoffStage::Hard
     } else if raw >= soft {
@@ -451,7 +457,10 @@ mod tests {
         assert_eq!(handoff_stage(&m(179_999, 200_000), 85), HandoffStage::None);
         assert_eq!(handoff_stage(&m(180_000, 200_000), 85), HandoffStage::Soft);
         assert_eq!(handoff_stage(&m(190_000, 200_000), 85), HandoffStage::Hard);
-        assert_eq!(handoff_stage(&m(500_000, 1_000_000), 85), HandoffStage::Soft);
+        assert_eq!(
+            handoff_stage(&m(500_000, 1_000_000), 85),
+            HandoffStage::Soft
+        );
         // A degenerate override collapses the hard ceiling onto the soft band.
         assert_eq!(handoff_stage(&m(180_000, 200_000), 20), HandoffStage::Hard);
     }
@@ -493,13 +502,21 @@ mod tests {
 
     #[test]
     fn porcelain_counts_and_header() {
-        let s = parse_porcelain("## main...origin/main [ahead 1, behind 2]\n M a\n?? b\nA  c\nMM d\nR  x -> y\n");
+        let s = parse_porcelain(
+            "## main...origin/main [ahead 1, behind 2]\n M a\n?? b\nA  c\nMM d\nR  x -> y\n",
+        );
         assert_eq!(s.branch, "main");
         assert_eq!((s.ahead, s.behind), (1, 2));
         assert_eq!((s.staged, s.modified, s.untracked), (3, 2, 1));
-        assert_eq!(parse_porcelain("## No commits yet on main\n").branch, "main");
+        assert_eq!(
+            parse_porcelain("## No commits yet on main\n").branch,
+            "main"
+        );
         assert_eq!(parse_porcelain("## HEAD (no branch)\n").branch, "");
-        assert_eq!(parse_porcelain("## feat/x...origin/feat/x\n").branch, "feat/x");
+        assert_eq!(
+            parse_porcelain("## feat/x...origin/feat/x\n").branch,
+            "feat/x"
+        );
     }
 
     #[test]
@@ -512,7 +529,11 @@ mod tests {
             token_count: Some(12_000),
             ..Default::default()
         };
-        let out = subagent_rows(&[task("t1", Some("ex\u{1b}plorer")), task("", Some("x")), task("t3", None)]);
+        let out = subagent_rows(&[
+            task("t1", Some("ex\u{1b}plorer")),
+            task("", Some("x")),
+            task("t3", None),
+        ]);
         assert_eq!(
             out,
             "{\"id\":\"t1\",\"content\":\"⚙ [Explore] explorer (running) · 12.0k tokens\"}\n\
@@ -523,6 +544,9 @@ mod tests {
         // Go %.1f rounds the exact binary value half to even: 1.25 → "1.2".
         assert_eq!(token_count(1_250), "1.2k");
         assert_eq!(token_count(1_234_567), "1.2M");
-        assert_eq!(go_json(&serde_json::json!("<a&b>")), "\"\\u003ca\\u0026b\\u003e\"");
+        assert_eq!(
+            go_json(&serde_json::json!("<a&b>")),
+            "\"\\u003ca\\u0026b\\u003e\""
+        );
     }
 }

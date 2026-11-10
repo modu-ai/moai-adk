@@ -4,6 +4,10 @@
 //! channel is `uint8(v * (1/255) * 255)` (which turns 244 into 243), and the ANSI256 path
 //! is termenv's `hexToANSI256Color`, HSLuv distance included.
 
+// The HSLuv constants are go-colorful's literals copied digit for digit, so they can be
+// compared against the source; the extra digits round to the same f64.
+#![allow(clippy::excessive_precision)]
+
 /// Which palette the statusline writes. Claude Code reads stdout through a pipe, so the
 /// profile is chosen from `COLORTERM` alone, never from TTY detection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,22 +65,31 @@ fn channel_255(v: u8) -> u8 {
 /// termenv `hexToANSI256Color`, including its gray-index computation from the cube
 /// indices (which always lands on gray 232; kept as is for byte equality).
 fn ansi256(r: u8, g: u8, b: u8) -> u16 {
-    let v2ci = |v: f64| -> i32 {
+    // The goldens come from an arm64 Go build, where the compiler fuses `c*255 - 35` into
+    // one FNMSUBD (ARM64.rules `(FSUBD (FMULD x y) a)`): the subtraction sees the unrounded
+    // product, so channel 155 lands on cube index 2, not 3. The comparisons still read the
+    // rounded product.
+    let v2ci = |c: f64| -> i32 {
+        let v = c * 255.0;
         if v < 48.0 {
             0
         } else if v < 115.0 {
             1
         } else {
-            ((v - 35.0) / 40.0) as i32
+            (c.mul_add(255.0, -35.0) / 40.0) as i32
         }
     };
     let (rf, gf, bf) = (unit(r), unit(g), unit(b));
-    let (ri, gi, bi) = (v2ci(rf * 255.0), v2ci(gf * 255.0), v2ci(bf * 255.0));
+    let (ri, gi, bi) = (v2ci(rf), v2ci(gf), v2ci(bf));
     let ci = 36 * ri + 6 * gi + bi;
     const I2CV: [i32; 6] = [0, 0x5f, 0x87, 0xaf, 0xd7, 0xff];
     let (cr, cg, cb) = (I2CV[ri as usize], I2CV[gi as usize], I2CV[bi as usize]);
     let average = (ri + gi + bi) / 3;
-    let gray_idx = if average > 238 { 23 } else { (average - 3) / 10 };
+    let gray_idx = if average > 238 {
+        23
+    } else {
+        (average - 3) / 10
+    };
     let gv = 8 + 10 * gray_idx;
     let here = [rf, gf, bf];
     let cube = [cr, cg, cb].map(|c| f64::from(c) / 255.0);
@@ -92,9 +105,21 @@ fn ansi256(r: u8, g: u8, b: u8) -> u16 {
 
 const HSLUV_D65: [f64; 3] = [0.95045592705167, 1.0, 1.089057750759878];
 const M: [[f64; 3]; 3] = [
-    [3.2409699419045214, -1.5373831775700935, -0.49861076029300328],
-    [-0.96924363628087983, 1.8759675015077207, 0.041555057407175613],
-    [0.055630079696993609, -0.20397695888897657, 1.0569715142428786],
+    [
+        3.2409699419045214,
+        -1.5373831775700935,
+        -0.49861076029300328,
+    ],
+    [
+        -0.96924363628087983,
+        1.8759675015077207,
+        0.041555057407175613,
+    ],
+    [
+        0.055630079696993609,
+        -0.20397695888897657,
+        1.0569715142428786,
+    ],
 ];
 const KAPPA: f64 = 903.2962962962963;
 const EPSILON: f64 = 0.0088564516790356308;
@@ -110,7 +135,7 @@ fn sq(v: f64) -> f64 {
 }
 
 fn clamp01(v: f64) -> f64 {
-    v.min(1.0).max(0.0)
+    v.clamp(0.0, 1.0)
 }
 
 fn linearize(v: f64) -> f64 {
@@ -154,7 +179,7 @@ fn hsluv([r, g, b]: [f64; 3]) -> (f64, f64, f64) {
     let c = (sq(u) + sq(v)).sqrt();
     // LuvLChToHSLuv
     let (c, l) = (c * 100.0, l * 100.0);
-    let s = if l > 99.9999999 || l < 0.00000001 {
+    let s = if !(0.00000001..=99.9999999).contains(&l) {
         0.0
     } else {
         c / max_chroma_for_lh(l, h) * 100.0
@@ -182,8 +207,8 @@ fn bounds(l: f64) -> [[f64; 2]; 6] {
         for k in 0..2 {
             let kf = f64::from(k as u8);
             let top1 = (284517.0 * m[0] - 94839.0 * m[2]) * sub2;
-            let top2 =
-                (838422.0 * m[2] + 769860.0 * m[1] + 731718.0 * m[0]) * l * sub2 - 769860.0 * kf * l;
+            let top2 = (838422.0 * m[2] + 769860.0 * m[1] + 731718.0 * m[0]) * l * sub2
+                - 769860.0 * kf * l;
             let bottom = (632260.0 * m[2] - 126452.0 * m[1]) * sub2 + 126452.0 * kf;
             ret[i * 2 + k] = [top1 / bottom, top2 / bottom];
         }
@@ -208,6 +233,14 @@ mod tests {
         assert_eq!(Profile::from_colorterm("24bit"), Profile::TrueColor);
         assert_eq!(Profile::from_colorterm(""), Profile::Ansi256);
         assert_eq!(Profile::from_colorterm("yes"), Profile::Ansi256);
+    }
+
+    #[test]
+    fn ansi256_cube_index_follows_the_fused_go_subtraction() {
+        // Channel 155 is the 2/3 boundary: fused, (155*(1/255))*255 - 35 is just below 120,
+        // so Go picks index 2 (golden b01.ansi256: 222). 156 is past it either way.
+        assert_eq!(ansi256(250, 203, 155), 222);
+        assert_eq!(ansi256(250, 203, 156), 223);
     }
 
     #[test]

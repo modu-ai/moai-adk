@@ -83,7 +83,11 @@ impl Renderer {
         .into_iter()
         .filter(|l| !l.is_empty())
         .collect();
-        let text = if lines.is_empty() { "MoAI".to_string() } else { lines.join("\n") };
+        let text = if lines.is_empty() {
+            "MoAI".to_string()
+        } else {
+            lines.join("\n")
+        };
         match self.profile {
             None => text,
             Some(p) => apply_base_color(&text, &format!("\x1b[{}m", p.foreground(self.theme.text))),
@@ -114,7 +118,10 @@ impl Renderer {
             }
         }
         if self.enabled("cache_hit") {
-            if let Some(pct) = s.cache.and_then(|(read, creation)| segments::cache_hit_percent(read, creation)) {
+            if let Some(pct) = s
+                .cache
+                .and_then(|(read, creation)| segments::cache_hit_percent(read, creation))
+            {
                 segs.push(format!("♻️ {pct}%"));
             }
         }
@@ -213,7 +220,11 @@ impl Renderer {
         }
         let mut out = String::new();
         for i in 0..filled {
-            let at = if filled > 1 { i as f64 / (filled - 1) as f64 } else { 0.0 };
+            let at = if filled > 1 {
+                i as f64 / (filled - 1) as f64
+            } else {
+                0.0
+            };
             let (r, g, b) = interpolate(&self.theme.stops, at);
             out.push_str(&self.paint(&format!("#{r:02X}{g:02X}{b:02X}"), "█"));
         }
@@ -274,7 +285,11 @@ impl Renderer {
         if dirty > 0 {
             branch.push_str(&format!(" +{dirty}"));
         }
-        let Some((owner, name)) = s.repo.as_ref().filter(|(o, n)| !o.is_empty() && !n.is_empty()) else {
+        let Some((owner, name)) = s
+            .repo
+            .as_ref()
+            .filter(|(o, n)| !o.is_empty() && !n.is_empty())
+        else {
             return Some(branch);
         };
         let forge = if !self.enabled("github") || s.github.suppressed {

@@ -1745,6 +1745,8 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+    /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
+    const RAW_OUTPUT: [&str; 1] = ["statusline"];
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -1763,6 +1765,10 @@ mod tests {
                 assert_eq!(op, None, "{word} is a launcher");
                 continue;
             }
+            if RAW_OUTPUT.contains(&word) {
+                assert_eq!(op, None, "{word} prints raw text, not the envelope");
+                continue;
+            }
             let op = op.unwrap_or_else(|| panic!("{word} maps to no operation"));
             if let Some(other) = seen.insert(op, word) {
                 panic!("{word} and {other} share {op}");
@@ -1773,7 +1779,7 @@ mod tests {
             .get_subcommands()
             .filter(|s| s.get_name() != "help")
             .count();
-        assert_eq!(seen.len() + LAUNCHERS.len(), words);
+        assert_eq!(seen.len() + LAUNCHERS.len() + RAW_OUTPUT.len(), words);
         if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
             let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
             pairs.sort();
@@ -1883,6 +1889,17 @@ mod operations_doc {
         if let Err(problems) = compare(&code_words(&cli), DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
+    }
+
+    /// #2350: `statusline` prints raw text, so it is a subcommand outside OPERATIONS and the
+    /// document names it as the one envelope exception.
+    #[test]
+    fn statusline_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli.get_subcommands().any(|s| s.get_name() == "statusline"));
+        assert_eq!(operation_of("statusline"), None);
+        assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "statusline"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `statusline`(#2350)"));
     }
 
     fn render(words: &[&str]) -> String {
