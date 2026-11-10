@@ -12,7 +12,6 @@ mod common;
 
 use serde_json::{json, Value};
 use std::fs;
-use std::io::{ErrorKind, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -24,8 +23,8 @@ struct Run {
     stderr: String,
 }
 
-/// Runs `program args` in `cwd` with `stdin`. The child may exit before reading all of its
-/// stdin; a BrokenPipe on the write is that race, not a failure (#2348).
+/// Runs `program args` in `cwd` with `stdin`, fed through `common::feed_stdin` (#2348: a
+/// child that exits before reading its stdin is tolerated, any other write error fails).
 fn run_program(
     program: &Path,
     args: &[&str],
@@ -47,9 +46,7 @@ fn run_program(
         cmd.env(k, v);
     }
     let mut child = cmd.spawn()?;
-    if let Err(e) = child.stdin.take().unwrap().write_all(stdin) {
-        assert_eq!(e.kind(), ErrorKind::BrokenPipe, "stdin write: {e}");
-    }
+    common::feed_stdin(&mut child, stdin);
     let out = child.wait_with_output()?;
     Ok(Run {
         code: out.status.code().unwrap(),
