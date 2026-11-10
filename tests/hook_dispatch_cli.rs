@@ -1057,3 +1057,53 @@ fn tool_observe_spawns_no_git_without_a_state_dir() {
     let text = fs::read_to_string(engine_log(&root)).unwrap();
     assert!(text.contains("0123456789abcdef0123456789abcdef01234567"));
 }
+
+/// Cost (#2391 stage 4, measured): a lane commit that carries its token is decided after one
+/// `git` call (the branch); only a commit without it pays the two `rev-parse` calls of the
+/// local-record lookup. Counted, not timed: a logging `git` wrapper execs the real one.
+#[test]
+fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
+    let (_d, root) = repo("issue/77-k");
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_string();
+    let bin = root.join("home/wrapbin");
+    fs::create_dir_all(&bin).unwrap();
+    let log = root.join("home/git-calls");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n",
+            log.display(),
+            real
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let calls = |cmd: &str| {
+        let _ = fs::remove_file(&log);
+        let r = dispatch("tool-preflight", &root, &pre_tool(cmd, &root), &env);
+        let n = fs::read_to_string(&log).map_or(0, |t| t.lines().count());
+        (n, r)
+    };
+    let (n, r) = calls("git commit -m 'x\n\nMoai-Claim: 77#5'");
+    assert_allow(&r);
+    assert_eq!(n, 1, "token present: the branch lookup only");
+    let (n, r) = calls("git commit -m x");
+    assert_deny(&r);
+    assert_eq!(n, 3, "no token: branch + two rev-parse for the journal");
+    let (n, r) = calls("ls");
+    assert_allow(&r);
+    assert_eq!(n, 0, "not a commit: no git at all");
+}

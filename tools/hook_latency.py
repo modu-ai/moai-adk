@@ -28,6 +28,8 @@ CASES = {
                                                 "tool_input": {"command": "ls"}}),
     "tool-preflight-deny": ("tool-preflight", {"hook_event_name": "PreToolUse", "tool_name": "Bash",
                                                "tool_input": {"command": "git commit -m x"}}),
+    "tool-preflight-commit-token": ("tool-preflight", {"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                                                       "tool_input": {"command": "git commit -m 'x Moai-Claim: 1#5'"}}),
     "tool-observe": ("tool-observe", {"hook_event_name": "PostToolUse", "tool_name": "Read",
                                       "tool_input": {"file_path": "a.txt"}, "tool_response": "x"}),
     "turn-validation": ("turn-validation", {"hook_event_name": "Stop", "stop_hook_active": False}),

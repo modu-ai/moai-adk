@@ -374,17 +374,21 @@ fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     else {
         return Verdict::Allow;
     };
+    // Cost: the token check reads only the command text, while the local-record lookup spawns
+    // two `git rev-parse` calls to find the journal. Both outcomes allow, so the cheap check
+    // goes first and a commit that carries its token never pays for the lookup.
+    let gap = match crate::claim_verify::commit_claim_id(command, issue) {
+        Ok(_) => return Verdict::Allow,
+        Err(gap) => gap,
+    };
     if crate::claim_verify::has_local_record(cwd, &dir) {
         return Verdict::Allow;
     }
-    match crate::claim_verify::commit_claim_id(command, issue) {
-        Ok(_) => Verdict::Allow,
-        Err(gap) => Verdict::Deny(format!(
-            "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
-             message.",
-            gap.reason(issue)
-        )),
-    }
+    Verdict::Deny(format!(
+        "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
+         message.",
+        gap.reason(issue)
+    ))
 }
 
 /// The log both stage-2 duties share, under `<cwd>/.moai-cli/receipts/`: tool-observe appends
