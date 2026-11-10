@@ -1,16 +1,26 @@
-//! Non-vector-first search (rc.2 C7 #2183): the retrieval pipeline of the Core Brain design
-//! (`page_136c8203…` L3716–3724), without the typed-edge expansion step, which moved to #2408.
+//! Non-vector-first search (rc.2 C7 #2183, C7b #2408): the retrieval pipeline of the Core
+//! Brain design (`page_136c8203…` L3716–3724).
 //!
 //! 1. validate the project (repository top) and read the index freshness (`index_query`);
 //! 2. resolve exact paths before anything else (REQ-C7-01);
 //! 3. search literal strings line by line over the published generation's files, or over the
 //!    tracked files when no generation is published (lower coverage, design L3740);
-//! 4. typed-edge expansion is reported `unavailable` (no producer yet, design L4300);
-//! 5. exact results rank ahead of lexical ones; names and paths are never inferred;
+//!    Code Map declarations: a literal equal to one argument of a `@MOAI:`/`@MX:` tag in
+//!    the generation's map view cites that tag line (grade `map`);
+//! 4. typed edges of the same generation's map and graph views (C6b #2347) are expanded
+//!    from resolved seeds only — exact paths, exact node ids (`req:<id>`, `issue:<n>`, or a
+//!    full node id) and matched declarations — within `max_hops` and `max_fanout` per node;
+//!    every edge evidence span `file:<path>#L<n>@<sha256>` becomes a `graph` citation.
+//!    Without a published generation with records, or when the records do not match the
+//!    generation, the step is `unavailable` and the answer falls back to the lexical result
+//!    (design L4300);
+//! 5. exact results rank first, then map declarations, then graph evidence, then lexical
+//!    matches; names and paths are never inferred (a lexical hit never seeds the expansion);
 //! 6. results are deduplicated by (path, span);
 //! 7. two caps cut the list — files and spans per file — and every cut is an `omitted` entry;
 //! 8. before returning, each cited span is re-read and compared with the digest taken while
-//!    collecting; a changed span is marked `stale`;
+//!    collecting; a changed span is marked `stale`. `map`/`graph` citations are anchored
+//!    to the generation's file digest, so a file edited after the index build is `stale`;
 //! 9. the answer carries coverage, freshness and the omissions.
 //!
 //! Read-only: no file is written, no network is used.
@@ -37,6 +47,15 @@ pub const MAX_TERMS: usize = 64;
 pub const MAX_TERM_BYTES: usize = 512;
 /// Files larger than this are not scanned (recorded as omitted).
 pub const MAX_FILE_BYTES: u64 = 4 * 1024 * 1024;
+/// Hops of the typed-edge expansion (step 4): design L3026 "작업에 필요한 relation만 1~2 hop부터
+/// 확장한다" — one hop by default, two at most.
+pub const DEFAULT_MAX_HOPS: usize = 1;
+pub const MAX_HOPS_LIMIT: usize = 2;
+/// Edges followed from one node per hop. The design bounds fan-out without a number
+/// (L3026, L3734); 20 by default and 200 at most is the #2408 lane decision, matching the
+/// per-file span default.
+pub const DEFAULT_MAX_FANOUT: usize = 20;
+pub const MAX_FANOUT_LIMIT: usize = 200;
 
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
@@ -52,6 +71,8 @@ pub struct Query {
 pub struct Limits {
     pub max_files: Option<usize>,
     pub max_spans_per_file: Option<usize>,
+    pub max_hops: Option<usize>,
+    pub max_fanout: Option<usize>,
 }
 
 #[derive(Deserialize)]
@@ -269,14 +290,312 @@ pub fn cap(hits: Vec<Hit>, max_files: usize, max_spans: usize) -> (Vec<Hit>, Vec
     (kept, omitted)
 }
 
+/// `file:<path>#L<n>@<sha256>` — an edge evidence ref that cites one file line. Other
+/// shapes (a commit trailer) cite no file span and yield `None`.
+fn evidence_span(evidence: &str) -> Option<(&str, usize, &str)> {
+    let rest = evidence.strip_prefix("file:")?;
+    let (location, sha) = rest.rsplit_once('@')?;
+    let (path, line) = location.rsplit_once("#L")?;
+    let line: usize = line.parse().ok().filter(|n| *n > 0)?;
+    Some((path, line, sha))
+}
+
+/// The file a node belongs to: `file:<p>`, `tag:<p>#L<n>`, `test:<p>::<name>`.
+fn node_file(id: &str) -> Option<&str> {
+    if let Some(p) = id.strip_prefix("file:") {
+        return Some(p);
+    }
+    if let Some(rest) = id.strip_prefix("tag:") {
+        return rest.rsplit_once("#L").map(|(p, _)| p);
+    }
+    id.strip_prefix("test:")
+        .and_then(|rest| rest.split_once("::").map(|(p, _)| p))
+}
+
+/// Hops and fan-out of one expansion.
+#[derive(Clone, Copy, Debug)]
+pub struct Bounds {
+    pub max_hops: usize,
+    pub max_fanout: usize,
+}
+
+/// Reads a listed regular file once per answer and keeps its digest and bytes.
+struct Files<'a> {
+    root: &'a Path,
+    listed: BTreeSet<&'a str>,
+    cache: std::collections::BTreeMap<String, Option<(String, Vec<u8>)>>,
+}
+
+impl Files<'_> {
+    fn get(&mut self, path: &str) -> Option<&(String, Vec<u8>)> {
+        if !self.listed.contains(path) {
+            return None;
+        }
+        let root = self.root;
+        self.cache
+            .entry(path.to_string())
+            .or_insert_with(|| {
+                let full = root.join(path);
+                let meta = fs::symlink_metadata(&full).ok()?;
+                if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
+                    return None;
+                }
+                let bytes = fs::read(&full).ok()?;
+                Some((sha256_hex(&bytes), bytes))
+            })
+            .as_ref()
+    }
+}
+
+/// A citation anchored to the generation: `file_sha256` is the digest the index recorded
+/// for the file (the evidence ref's or the tag node's revision), never a fresh read. The
+/// span digest is taken now only when the file still has those bytes; otherwise it stays
+/// empty and step 8 reports the citation `stale`.
+fn anchored(
+    files: &mut Files<'_>,
+    path: &str,
+    line: usize,
+    anchor: &str,
+    grade: &'static str,
+    reason: String,
+) -> std::result::Result<Hit, Value> {
+    // The index stamps `sha256:<hex>` (`crate::digest`); citations carry bare hex.
+    let anchor = anchor.strip_prefix("sha256:").unwrap_or(anchor);
+    if !files.listed.contains(path) {
+        return Err(json!({"path": path, "reason": "evidence outside the searched file list"}));
+    }
+    let span_sha256 = match files.get(path) {
+        Some((sha, bytes)) if sha == anchor => {
+            let span = span_bytes(bytes, line, line);
+            if span.is_empty() {
+                String::new()
+            } else {
+                sha256_hex(span)
+            }
+        }
+        _ => String::new(),
+    };
+    Ok(Hit {
+        path: path.to_string(),
+        grade,
+        start_line: line,
+        end_line: line,
+        span_sha256,
+        file_sha256: anchor.to_string(),
+        reason,
+    })
+}
+
+/// Steps 3 (Code Map declarations) and 4 (typed-edge expansion) over one generation's
+/// `map` and `graph` documents (`{nodes, edges, missing}`, as `index_records` returns
+/// them). Seeds are resolved only: listed exact paths, exact node ids and declarations
+/// whose tag argument equals a literal. Every node expands at most `max_fanout`
+/// untraversed edges per hop (sorted by kind, far endpoint, edge id); the rest and the
+/// edges left beyond `max_hops` are `omitted` entries with the count dropped.
+/// Returns the citations in answer order, the omissions and the expansion counts.
+pub fn structural(
+    root: &Path,
+    files: &[String],
+    query: &Query,
+    map: &Value,
+    graph: &Value,
+    bounds: Bounds,
+) -> (Vec<Hit>, Vec<Value>, Value) {
+    let mut io = Files {
+        root,
+        listed: files.iter().map(String::as_str).collect(),
+        cache: Default::default(),
+    };
+    let mut hits = Vec::new();
+    let mut omitted = Vec::new();
+    let nodes: Vec<&Value> = [map, graph]
+        .iter()
+        .flat_map(|d| d["nodes"].as_array().into_iter().flatten())
+        .collect();
+    let edges: Vec<&Value> = [map, graph]
+        .iter()
+        .flat_map(|d| d["edges"].as_array().into_iter().flatten())
+        .collect();
+    let ids: BTreeSet<&str> = nodes.iter().filter_map(|n| n["id"].as_str()).collect();
+
+    let mut seeds: BTreeSet<String> = BTreeSet::new();
+    for path in &query.paths {
+        if io.listed.contains(path.as_str()) {
+            seeds.extend(
+                ids.iter()
+                    .filter(|id| node_file(id) == Some(path.as_str()))
+                    .map(|id| id.to_string()),
+            );
+        }
+    }
+    for lit in &query.literals {
+        for candidate in [lit.clone(), format!("req:{lit}"), format!("issue:{lit}")] {
+            if ids.contains(candidate.as_str()) {
+                seeds.insert(candidate);
+            }
+        }
+    }
+    // Step 3: a declaration matches when one of its arguments equals a literal exactly.
+    for node in &nodes {
+        if node["kind"] != "tag" {
+            continue;
+        }
+        let props = &node["properties"];
+        let args = props["args"].as_str().unwrap_or("");
+        let matched = args
+            .split(|c: char| c.is_whitespace() || c == ',')
+            .any(|a| !a.is_empty() && query.literals.iter().any(|l| l == a));
+        let (Some(id), Some(path), Some(anchor)) = (
+            node["id"].as_str(),
+            props["path"].as_str(),
+            node["revision"].as_str(),
+        ) else {
+            continue;
+        };
+        let Some(line) = id
+            .rsplit_once("#L")
+            .and_then(|(_, n)| n.parse::<usize>().ok())
+        else {
+            continue;
+        };
+        if !matched {
+            continue;
+        }
+        seeds.insert(id.to_string());
+        let reason = format!(
+            "Code Map declaration {}:{} {args}",
+            props["namespace"].as_str().unwrap_or(""),
+            props["tag_kind"].as_str().unwrap_or("")
+        );
+        match anchored(&mut io, path, line, anchor, "map", reason) {
+            Ok(h) => hits.push(h),
+            Err(o) => omitted.push(o),
+        }
+    }
+
+    // Step 4: breadth-first over the typed edges, both directions.
+    let mut incident: std::collections::BTreeMap<&str, Vec<usize>> = Default::default();
+    for (i, e) in edges.iter().enumerate() {
+        for end in ["source_id", "target_id"] {
+            if let Some(id) = e[end].as_str() {
+                incident.entry(id).or_default().push(i);
+            }
+        }
+    }
+    let far = |i: usize, from: &str| -> String {
+        let e = edges[i];
+        let s = e["source_id"].as_str().unwrap_or("");
+        let t = e["target_id"].as_str().unwrap_or("");
+        if s == from { t } else { s }.to_string()
+    };
+    let mut traversed: BTreeSet<usize> = BTreeSet::new();
+    let mut reached: BTreeSet<String> = seeds.clone();
+    let mut frontier: Vec<String> = seeds.iter().cloned().collect();
+    for hop in 1..=bounds.max_hops {
+        let mut next = Vec::new();
+        for node in &frontier {
+            let mut open: Vec<usize> = incident
+                .get(node.as_str())
+                .into_iter()
+                .flatten()
+                .copied()
+                .filter(|i| !traversed.contains(i))
+                .collect();
+            open.sort_by_key(|i| {
+                (
+                    edges[*i]["kind"].as_str().unwrap_or("").to_string(),
+                    far(*i, node),
+                    edges[*i]["edge_id"].as_str().unwrap_or("").to_string(),
+                )
+            });
+            open.dedup();
+            if open.len() > bounds.max_fanout {
+                omitted.push(json!({
+                    "node": node,
+                    "reason": "max_fanout",
+                    "dropped_edges": open.len() - bounds.max_fanout,
+                }));
+                open.truncate(bounds.max_fanout);
+            }
+            for i in open {
+                traversed.insert(i);
+                let e = edges[i];
+                let kind = e["kind"].as_str().unwrap_or("");
+                let reason = format!(
+                    "{kind}: {} -> {} (hop {hop})",
+                    e["source_id"].as_str().unwrap_or(""),
+                    e["target_id"].as_str().unwrap_or("")
+                );
+                for ev in e["evidence_refs"].as_array().into_iter().flatten() {
+                    let Some((path, line, sha)) = ev.as_str().and_then(evidence_span) else {
+                        continue;
+                    };
+                    match anchored(&mut io, path, line, sha, "graph", reason.clone()) {
+                        Ok(h) => hits.push(h),
+                        Err(o) => omitted.push(o),
+                    }
+                }
+                let other = far(i, node);
+                if reached.insert(other.clone()) {
+                    next.push(other);
+                }
+            }
+        }
+        frontier = next;
+    }
+    for node in &frontier {
+        let left = incident
+            .get(node.as_str())
+            .into_iter()
+            .flatten()
+            .filter(|i| !traversed.contains(*i))
+            .collect::<BTreeSet<_>>()
+            .len();
+        if left > 0 {
+            omitted.push(json!({"node": node, "reason": "max_hops", "dropped_edges": left}));
+        }
+    }
+    let stats = json!({
+        "seeds": seeds.len(),
+        "edges_traversed": traversed.len(),
+        "nodes_reached": reached.len(),
+    });
+    (hits, omitted, stats)
+}
+
+/// Missing-coverage entries of both views, counted by kind (`tag_scan_skipped`,
+/// `unreadable_file`, …), so an answer says what the graph could not see.
+fn missing_counts(map: &Value, graph: &Value) -> Value {
+    let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
+    for doc in [map, graph] {
+        for m in doc["missing"].as_array().into_iter().flatten() {
+            *counts
+                .entry(m["kind"].as_str().unwrap_or("unknown").to_string())
+                .or_insert(0) += 1;
+        }
+    }
+    json!(counts)
+}
+
 /// Step 8: re-read every cited span; `fresh` when its bytes still hash to the collected
-/// digest, `stale` otherwise (changed or gone).
+/// digest, `stale` otherwise (changed or gone). A `map`/`graph` citation is fresh only
+/// while the whole file still has the generation's digest and the span was readable.
 pub fn recheck(root: &Path, hits: &[Hit]) -> Vec<&'static str> {
     hits.iter()
         .map(|h| {
             let Ok(bytes) = fs::read(root.join(&h.path)) else {
                 return "stale";
             };
+            if h.grade == "map" || h.grade == "graph" {
+                return if !h.span_sha256.is_empty()
+                    && sha256_hex(&bytes) == h.file_sha256
+                    && sha256_hex(span_bytes(&bytes, h.start_line, h.end_line)) == h.span_sha256
+                {
+                    "fresh"
+                } else {
+                    "stale"
+                };
+            }
             let now = if h.grade == "exact" {
                 sha256_hex(&bytes)
             } else {
@@ -321,6 +640,16 @@ pub fn search(project: &Path, req: &SearchRequest) -> Result<Value> {
     if max_spans == 0 || max_spans > MAX_SPANS_PER_FILE_LIMIT {
         return Err("search refused: max_spans_per_file must be 1..=1000".into());
     }
+    let bounds = Bounds {
+        max_hops: req.limits.max_hops.unwrap_or(DEFAULT_MAX_HOPS),
+        max_fanout: req.limits.max_fanout.unwrap_or(DEFAULT_MAX_FANOUT),
+    };
+    if bounds.max_hops == 0 || bounds.max_hops > MAX_HOPS_LIMIT {
+        return Err("search refused: max_hops must be 1..=2".into());
+    }
+    if bounds.max_fanout == 0 || bounds.max_fanout > MAX_FANOUT_LIMIT {
+        return Err("search refused: max_fanout must be 1..=200".into());
+    }
     let root = fs::canonicalize(project).map_err(|_| "path unavailable".to_string())?;
     // Step 1: the index freshness answer is reported as it is, never re-derived here.
     let freshness = crate::index::index_query(
@@ -337,7 +666,63 @@ pub fn search(project: &Path, req: &SearchRequest) -> Result<Value> {
         ),
         None => (Value::Null, tracked_files(&root), "tracked_files_fallback"),
     };
-    let (hits, mut omitted) = collect(&root, &files, q);
+    let (collected, mut omitted) = collect(&root, &files, q);
+    // Steps 3–4 over the same generation's views; anything else is `unavailable` and the
+    // answer stays lexical (design L4300).
+    let records = match generation_id.as_str() {
+        None => Err("no published index generation".to_string()),
+        Some(gen) => {
+            let answer = crate::index::index_records(
+                &root,
+                &crate::index::IndexQueryRequest {
+                    protocol_version: 1,
+                },
+            )?;
+            if answer["generation_id"].as_str() != Some(gen) {
+                Err("generation changed during the search".into())
+            } else if answer["map"].is_object() && answer["graph"].is_object() {
+                Ok((answer["map"].clone(), answer["graph"].clone()))
+            } else {
+                Err(answer["reason"]
+                    .as_str()
+                    .unwrap_or("generation has no map/graph records")
+                    .to_string())
+            }
+        }
+    };
+    let (structural_hits, graph_coverage) = match &records {
+        Ok((map, graph)) => {
+            let (h, o, stats) = structural(&root, &files, q, map, graph, bounds);
+            omitted.extend(o);
+            (
+                h,
+                json!({
+                    "state": "available",
+                    "views": ["map", "graph"],
+                    "max_hops": bounds.max_hops,
+                    "max_fanout": bounds.max_fanout,
+                    "seeds": stats["seeds"],
+                    "edges_traversed": stats["edges_traversed"],
+                    "nodes_reached": stats["nodes_reached"],
+                    "missing": missing_counts(map, graph),
+                }),
+            )
+        }
+        Err(reason) => (
+            Vec::new(),
+            json!({"state": "unavailable", "reason": reason}),
+        ),
+    };
+    // Step 5–6: exact, then map and graph evidence, then lexical; one citation per span.
+    let mut seen: BTreeSet<(String, usize, usize)> = BTreeSet::new();
+    let (exact, lexical): (Vec<Hit>, Vec<Hit>) =
+        collected.into_iter().partition(|h| h.grade == "exact");
+    let hits: Vec<Hit> = exact
+        .into_iter()
+        .chain(structural_hits)
+        .chain(lexical)
+        .filter(|h| seen.insert((h.path.clone(), h.start_line, h.end_line)))
+        .collect();
     let (hits, cut) = cap(hits, max_files, max_spans);
     omitted.extend(cut);
     let states = recheck(&root, &hits);
@@ -365,7 +750,7 @@ pub fn search(project: &Path, req: &SearchRequest) -> Result<Value> {
             "file_source": file_source,
             "generation_id": generation_id,
             "files_considered": files.len(),
-            "graph": "unavailable: no typed-edge producer yet (#2408)",
+            "graph": graph_coverage,
         },
         "freshness": freshness["state"],
         "network": "disabled",
@@ -501,6 +886,204 @@ mod tests {
         assert!(!serde_json::to_string(&omitted)
             .unwrap()
             .contains(&sha256_hex(b"s1\ns2\n")));
+    }
+
+    /// A three-file generation: `req:R` is referenced by a.rs line 1 and verified by a test
+    /// at t.rs line 2; a.rs also carries a tag at line 3 (one more hop from `req:R`).
+    fn graph_fixture() -> (tempfile::TempDir, Vec<String>, Value, Value) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let a = b"// @MOAI:REQ R\nfn a() {}\n// @MX:NOTE keep\n".to_vec();
+        let t = b"#[test]\nfn req_r() {}\n".to_vec();
+        fs::write(dir.path().join("a.rs"), &a).unwrap();
+        fs::write(dir.path().join("t.rs"), &t).unwrap();
+        let (sa, st) = (crate::digest(&a), crate::digest(&t));
+        let edge = |kind: &str, s: &str, t: &str, ev: String| {
+            json!({"edge_id": format!("{kind}{s}{t}"), "kind": kind, "source_id": s,
+                   "target_id": t, "evidence_refs": [ev]})
+        };
+        let map = json!({
+            "nodes": [
+                {"id": "file:a.rs", "kind": "file", "revision": sa, "properties": {"path": "a.rs"}},
+                {"id": "tag:a.rs#L1", "kind": "tag", "revision": sa,
+                 "properties": {"path": "a.rs", "namespace": "MOAI", "tag_kind": "REQ", "args": "R"}},
+                {"id": "tag:a.rs#L3", "kind": "tag", "revision": sa,
+                 "properties": {"path": "a.rs", "namespace": "MX", "tag_kind": "NOTE", "args": "keep"}},
+            ],
+            "edges": [edge("annotated_by", "file:a.rs", "tag:a.rs#L3", format!("file:a.rs#L3@{sa}"))],
+            "missing": [{"kind": "tag_scan_skipped", "path": "big.bin"}],
+        });
+        let graph = json!({
+            "nodes": [
+                {"id": "req:R", "kind": "requirement", "revision": "unresolved"},
+                {"id": "test:t.rs::req_r", "kind": "test", "revision": st},
+            ],
+            "edges": [
+                edge("references_requirement", "file:a.rs", "req:R", format!("file:a.rs#L1@{sa}")),
+                edge("verifies", "test:t.rs::req_r", "req:R", format!("file:t.rs#L2@{st}")),
+                edge("mentions_issue", "commit:c", "issue:7", "commit:c#trailer:Refs@d".into()),
+            ],
+            "missing": [],
+        });
+        (dir, vec!["a.rs".into(), "t.rs".into()], map, graph)
+    }
+
+    fn lits(l: &[&str]) -> Query {
+        Query {
+            paths: vec![],
+            literals: l.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    fn cited(hits: &[Hit]) -> Vec<(String, &'static str, usize)> {
+        hits.iter()
+            .map(|h| (h.path.clone(), h.grade, h.start_line))
+            .collect()
+    }
+
+    #[test]
+    fn evidence_refs_parse_only_file_line_spans() {
+        assert_eq!(
+            evidence_span("file:src/a.rs#L12@abc"),
+            Some(("src/a.rs", 12, "abc"))
+        );
+        assert_eq!(evidence_span("file:a.rs#L0@abc"), None);
+        assert_eq!(evidence_span("commit:c#trailer:Refs@d"), None);
+        assert_eq!(evidence_span("file:a.rs@abc"), None);
+        assert_eq!(node_file("tag:x/y.rs#L4"), Some("x/y.rs"));
+        assert_eq!(node_file("test:t.rs::m::f"), Some("t.rs"));
+        assert_eq!(node_file("req:R"), None);
+    }
+
+    /// Hop bound N/N+1 with literal values: one hop from `req:R` cites a.rs:1 and t.rs:2 and
+    /// records the a.rs edge it did not follow; two hops also cite a.rs:3 and drop nothing.
+    #[test]
+    fn max_hops_has_literal_one_and_two_boundaries() {
+        let (dir, files, map, graph) = graph_fixture();
+        let bounds = |h| Bounds {
+            max_hops: h,
+            max_fanout: 20,
+        };
+        let (hits, omitted, stats) = structural(
+            dir.path(),
+            &files,
+            &lits(&["req:R"]),
+            &map,
+            &graph,
+            bounds(1),
+        );
+        assert_eq!(
+            cited(&hits),
+            [("a.rs".into(), "graph", 1), ("t.rs".into(), "graph", 2)]
+        );
+        assert_eq!(
+            omitted,
+            [json!({"node": "file:a.rs", "reason": "max_hops", "dropped_edges": 1})]
+        );
+        assert_eq!(stats["edges_traversed"], 2);
+        let (hits, omitted, _) = structural(
+            dir.path(),
+            &files,
+            &lits(&["req:R"]),
+            &map,
+            &graph,
+            bounds(2),
+        );
+        assert_eq!(
+            cited(&hits),
+            [
+                ("a.rs".into(), "graph", 1),
+                ("t.rs".into(), "graph", 2),
+                ("a.rs".into(), "graph", 3)
+            ]
+        );
+        assert!(omitted.is_empty(), "{omitted:?}");
+    }
+
+    /// Fan-out bound N/N+1: `req:R` has two edges; a fan-out of 1 keeps the first by kind
+    /// (`references_requirement`) and records one dropped edge; 2 keeps both.
+    #[test]
+    fn max_fanout_has_literal_one_and_two_boundaries() {
+        let (dir, files, map, graph) = graph_fixture();
+        let bounds = |f| Bounds {
+            max_hops: 1,
+            max_fanout: f,
+        };
+        let (hits, omitted, _) =
+            structural(dir.path(), &files, &lits(&["R"]), &map, &graph, bounds(1));
+        // "R" is also a declaration argument: the map hit comes first.
+        assert_eq!(
+            cited(&hits),
+            [("a.rs".into(), "map", 1), ("a.rs".into(), "graph", 1)]
+        );
+        assert!(
+            omitted.contains(&json!({"node": "req:R", "reason": "max_fanout", "dropped_edges": 1}))
+        );
+        let (_, omitted, _) =
+            structural(dir.path(), &files, &lits(&["R"]), &map, &graph, bounds(2));
+        assert!(
+            !omitted.iter().any(|o| o["reason"] == "max_fanout"),
+            "{omitted:?}"
+        );
+    }
+
+    /// Names are never inferred: a literal that only occurs as text seeds nothing, and a
+    /// declaration matches a whole argument, not a substring.
+    #[test]
+    fn only_resolved_seeds_expand() {
+        let (dir, files, map, graph) = graph_fixture();
+        let b = Bounds {
+            max_hops: 2,
+            max_fanout: 20,
+        };
+        for q in [lits(&["fn a"]), lits(&["kee"]), lits(&["req:"])] {
+            let (hits, omitted, stats) = structural(dir.path(), &files, &q, &map, &graph, b);
+            assert!(hits.is_empty() && omitted.is_empty(), "{:?}", q.literals);
+            assert_eq!(stats["seeds"], 0);
+        }
+        // An exact path seeds every node of that file.
+        let q = Query {
+            paths: vec!["t.rs".into()],
+            literals: vec![],
+        };
+        let (hits, _, _) = structural(dir.path(), &files, &q, &map, &graph, b);
+        assert_eq!(hits[0].path, "t.rs");
+        assert_eq!(hits[0].start_line, 2);
+        // A path outside the searched list seeds nothing.
+        let (hits, _, _) = structural(dir.path(), &["a.rs".into()], &q, &map, &graph, b);
+        assert!(hits.is_empty());
+    }
+
+    /// AC-2: graph citations are anchored to the generation digest. Fresh while the file
+    /// keeps those bytes; edited after the index build (before collection) or between
+    /// collection and return, the citation is `stale`.
+    #[test]
+    fn graph_citations_are_rechecked_against_the_generation_digest() {
+        let (dir, files, map, graph) = graph_fixture();
+        let b = Bounds {
+            max_hops: 1,
+            max_fanout: 20,
+        };
+        let (hits, _, _) = structural(dir.path(), &files, &lits(&["req:R"]), &map, &graph, b);
+        assert_eq!(recheck(dir.path(), &hits), ["fresh", "fresh"]);
+        // Edited between collection and return.
+        fs::write(dir.path().join("t.rs"), "#[test]\nfn req_r() { }\n").unwrap();
+        assert_eq!(recheck(dir.path(), &hits), ["fresh", "stale"]);
+        // Edited before collection: a.rs line 1 is unchanged but the file is not the
+        // indexed one, so the span is not vouched for.
+        fs::write(
+            dir.path().join("a.rs"),
+            "// @MOAI:REQ R\nfn a() {}\n// changed\n",
+        )
+        .unwrap();
+        let (hits, _, _) = structural(dir.path(), &files, &lits(&["req:R"]), &map, &graph, b);
+        assert_eq!(hits[0].span_sha256, "");
+        assert_eq!(recheck(dir.path(), &hits), ["stale", "stale"]);
+    }
+
+    #[test]
+    fn missing_coverage_is_counted_by_kind() {
+        let (_dir, _files, map, graph) = graph_fixture();
+        assert_eq!(missing_counts(&map, &graph), json!({"tag_scan_skipped": 1}));
     }
 
     /// Pre-audit B3: a file of exactly MAX_FILE_BYTES is scanned; one byte more is omitted.
