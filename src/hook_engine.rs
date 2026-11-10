@@ -255,8 +255,11 @@ pub fn capabilities(host: &str) -> Value {
             "host": "claude",
             "source": "https://code.claude.com/docs/en/hooks (read 2026-11-10)",
             "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": ["Bash: git commit on an issue/<n> branch without a claim token"],
-                               "not_guarded": ["Write", "Edit", "MultiEdit", "NotebookEdit", "MCP tools"],
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content"],
+                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny", "never_uses": ["allow", "ask", "defer", "decision/reason (deprecated)"]},
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
@@ -268,8 +271,11 @@ pub fn capabilities(host: &str) -> Value {
             "source": "https://learn.chatgpt.com/docs/hooks (read 2026-11-10)",
             "trust": "non-managed hooks run only after the user reviews and trusts the exact hook definition",
             "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": ["Bash: git commit on an issue/<n> branch without a claim token"],
-                               "not_guarded": ["apply_patch (edits files, cannot commit)", "MCP tools"],
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines"],
+                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
@@ -357,7 +363,22 @@ fn session_check(cwd: &Path) -> Verdict {
 /// here; a forge check of the claim stays with `claim-verify --hook`.
 fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
-    if input["tool_name"] != json!("Bash") || !crate::claim_verify::is_commit(command) {
+    let tool = input["tool_name"].as_str().unwrap_or("");
+    // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
+    // do not refuse still spawns no `git` unless it is a commit.
+    let write_dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    let guard = if tool == "Bash" {
+        crate::hook_guards::bash_guard(command)
+    } else {
+        crate::hook_guards::write_guard(tool, &input["tool_input"], &write_dir)
+    };
+    if let Some(reason) = guard {
+        return Verdict::Deny(reason.to_string());
+    }
+    if tool != "Bash" || !crate::claim_verify::is_commit(command) {
         return Verdict::Allow;
     }
     // The command runs in the session's directory unless the input names another one.

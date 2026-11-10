@@ -138,6 +138,11 @@ fn remote(reverse: bool) -> Vec<Exchange> {
             &format!("{API}/pulls/{pr}/commits?per_page=100"),
             Value::Array(body),
         ));
+        // #2403 item 3: the PR's own comments (audit reservations and verdicts).
+        out.push(get(
+            &format!("{API}/issues/{pr}/comments?per_page=100"),
+            json!([]),
+        ));
     }
     out
 }
@@ -537,4 +542,165 @@ fn request_limits_at_their_edges() {
         1,
         "validation passed; the PR list read was tried"
     );
+}
+
+/// #2403 item 3: one card handed from agent-a (epoch 1) to agent-b (epoch 2) whose PR #121
+/// carries both claim tokens, audit reservations on a stale and on the current head, and a
+/// verdict posted on the PR (not the Issue).
+fn audit_remote(reverse: bool) -> Vec<Exchange> {
+    let (h1, hm, h2) = (sha('1'), sha('5'), sha('2'));
+    let mut issue_comments = vec![
+        claim(2101, "agent-a", 1),
+        note(
+            2102,
+            "moai-claim-handoff: comment=2101 to=agent-b by=leader",
+        ),
+        claim(2103, "agent-b", 2),
+        // The Issue also carries a verdict on the same head; the PR's verdict wins.
+        note(
+            2104,
+            &format!(
+                "AUDIT #21 (k) head {} base {} — verdict: PASS",
+                sha('2'),
+                sha('0')
+            ),
+        ),
+    ];
+    let mut pr_comments = vec![
+        // Stale: names the first head.
+        note(3001, &format!("moai-audit-claim: lane=lane-x head={h1}")),
+        // Current head: the lowest id (3002) wins over 3003.
+        note(3002, &format!("moai-audit-claim: lane=lane-y head={h2}")),
+        note(3003, &format!("moai-audit-claim: lane=lane-z head={h2}")),
+        // Not reservations: 39 and 41 hex characters, and a reservation quoted mid-line.
+        note(
+            3004,
+            &format!("moai-audit-claim: lane=lane-q head={}", &h2[..39]),
+        ),
+        note(3005, &format!("moai-audit-claim: lane=lane-r head={h2}0")),
+        note(
+            3006,
+            &format!("see `moai-audit-claim: lane=lane-s head={h2}`"),
+        ),
+        // Quoted mid-line without a code span, and a reservation with a trailing word.
+        note(
+            3008,
+            &format!("quoted: moai-audit-claim: lane=lane-t head={h2}"),
+        ),
+        note(
+            3009,
+            &format!("moai-audit-claim: lane=lane-u head={h2} extra"),
+        ),
+        // Third line of a comment: a reservation. Uppercase 40-hex head: not a reservation.
+        note(
+            3010,
+            &format!("감사 시작합니다.\n\nmoai-audit-claim: lane=lane-v head={h2}"),
+        ),
+        note(
+            3011,
+            &format!("moai-audit-claim: lane=lane-w head={}", "A".repeat(40)),
+        ),
+        note(
+            3007,
+            &format!("AUDIT #121 (k) head {h2} base {} — verdict: FAIL", sha('0')),
+        ),
+    ];
+    let commits = vec![
+        json!({"sha": h1, "commit": {"message": "feat: x\n\nMoai-Claim: 21#2101\n"}}),
+        json!({"sha": hm, "commit": {"message": "Merge branch 'v2026.11.0' into issue/21-x"}}),
+        // 2101 repeats (listed once), 2102 is the handoff line (not a claim: unresolved),
+        // 2199 names no comment (unresolved), 99#… is another Issue (ignored).
+        json!({"sha": h2, "commit": {"message": "fix: y\n\nMoai-Claim: 21#2101\nMoai-Claim: 21#2103\nMoai-Claim: 21#2102\nMoai-Claim: 21#2199\nMoai-Claim: 99#9901\n"}}),
+    ];
+    if reverse {
+        issue_comments.reverse();
+        pr_comments.reverse();
+    }
+    vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([{"number": 121, "head": {"sha": h2, "ref": "issue/21-x"}, "body": "Refs #21"}]),
+        ),
+        get(&format!("{API}/issues/21"), issue(21, "Blocked-By: 없음")),
+        get(
+            &format!("{API}/issues/21/comments?per_page=100"),
+            Value::Array(issue_comments),
+        ),
+        get(
+            &format!("{API}/pulls/121/commits?per_page=100"),
+            Value::Array(commits),
+        ),
+        get(
+            &format!("{API}/issues/121/comments?per_page=100"),
+            Value::Array(pr_comments),
+        ),
+    ]
+}
+
+fn audit_request() -> LaneStatusRequest {
+    serde_json::from_value(json!({
+        "schema_version": 1, "owner": "acme", "repo": "widgets", "base_branch": "v2026.11.0",
+        "issues": [21], "lanes": [], "pending_decisions": [],
+    }))
+    .unwrap()
+}
+
+#[test]
+fn audit_columns_list_reservations_verdict_and_author_sessions() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let (h1, h2) = (sha('1'), sha('2'));
+    for reverse in [false, true] {
+        let out = run(&p, audit_request(), audit_remote(reverse));
+        let a = &row(&out, "agent-b", 21)["audit"];
+        assert_eq!(a["head"], json!(h2), "{out}");
+        assert_eq!(
+            a["reservations"],
+            json!([
+                {"lane": "lane-x", "comment_id": 3001, "head": h1, "current": false, "state": "stale"},
+                {"lane": "lane-y", "comment_id": 3002, "head": h2, "current": true, "state": "current"},
+                {"lane": "lane-z", "comment_id": 3003, "head": h2, "current": true, "state": "current"},
+                // A reservation on the third line of a comment still counts.
+                {"lane": "lane-v", "comment_id": 3010, "head": h2, "current": true, "state": "current"},
+            ]),
+            "reverse={reverse}"
+        );
+        assert_eq!(
+            a["winner_on_head"],
+            json!({"lane": "lane-y", "comment_id": 3002})
+        );
+        assert_eq!(
+            a["verdict_on_head"],
+            json!({"verdict": "FAIL", "comment_id": 3007, "source": "pr"})
+        );
+        // Both epochs' sessions wrote this head; neither may audit it. A token for another
+        // Issue is ignored; one whose comment is not a claim on this Issue is unresolved.
+        assert_eq!(
+            a["author_sessions"],
+            json!([
+                {"session": "agent-a", "claim_comment_id": 2101},
+                {"session": "agent-b", "claim_comment_id": 2103},
+            ])
+        );
+        assert_eq!(a["unresolved_claim_ids"], json!([2102, 2199]));
+    }
+}
+
+#[test]
+fn audit_columns_are_null_without_a_pr_and_empty_without_records() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let out = run(&p, request(lanes(), decisions()), remote(false));
+    // #11 has no PR: no audit object.
+    assert_eq!(row(&out, "agent-1", 11)["audit"], Value::Null);
+    // #15's PR has no reservation and no claim token; its PASS sits on the Issue.
+    let a = &row(&out, "agent-6", 15)["audit"];
+    assert_eq!(a["reservations"], json!([]));
+    assert_eq!(a["winner_on_head"], Value::Null);
+    assert_eq!(a["author_sessions"], json!([]));
+    assert_eq!(a["unresolved_claim_ids"], json!([]));
+    assert_eq!(a["verdict_on_head"]["source"], json!("issue"));
+    assert_eq!(a["verdict_on_head"]["verdict"], json!("PASS"));
 }

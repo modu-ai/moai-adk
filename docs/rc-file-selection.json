@@ -171,12 +171,6 @@
       "selected": true
     },
     {
-      "path": "experiments/todo_promotion.py",
-      "sha256": "669ead50c21e62703865c176de07bc51c1f151868be1e51b7b71bf2bc4ae0b42",
-      "classification": "session-authored experiment; not product integration",
-      "selected": true
-    },
-    {
       "path": "experiments/update_coordinator.rs",
       "sha256": "cd904c7e9bb2bdbcc2f75d3577cfb51c654d8d5c90aacd43026f7f308a64cbde",
       "classification": "session-authored experiment; not product integration",
@@ -239,12 +233,6 @@
     {
       "path": "tests/claude_update_test.py",
       "sha256": "89b26818cd6cf8d2e738a3f41db80864d2f1fb921d6b4ee4412be38a1f93f02d",
-      "classification": "session-authored temporary-file verification",
-      "selected": true
-    },
-    {
-      "path": "tests/todo_promotion_test.py",
-      "sha256": "a413e9678a41391e3bd602775a4fb89bb97cf1b6c3d534b52be3803daadc00f0",
       "classification": "session-authored temporary-file verification",
       "selected": true
     }

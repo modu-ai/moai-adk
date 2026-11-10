@@ -946,6 +946,17 @@ fn is_empty_changes(c: &Value) -> bool {
         && c["branch_switched"] == json!(false)
 }
 
+/// The published generation id and its indexed file list, for read-only consumers such as
+/// `search` (C7 #2183). `None` when no generation is published or it cannot be read; the
+/// caller reports that through `index_query`'s freshness answer instead of guessing.
+pub(crate) fn published_files(project: &Path) -> Option<(String, Vec<IndexedFile>)> {
+    let root = fs::canonicalize(project).ok()?;
+    let source = IndexIo::new(&root).ok()?;
+    let gen_id = read_pointer(&source).ok()??;
+    let manifest = load_manifest(&source, &gen_id)?;
+    Some((manifest.generation_id, manifest.files))
+}
+
 /// Read-only query: resolves the published generation, scans the current state, and
 /// reports one of the four freshness states with the detected changes. Never guesses a
 /// state it cannot ground: anything unresolvable is `unavailable` with a reason — a
