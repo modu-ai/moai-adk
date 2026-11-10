@@ -229,6 +229,11 @@ enum Command {
     LaneHandoffCheck {
         project: PathBuf,
     },
+    /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
+    /// named Issues, their open PRs and the local worktrees; writes nothing.
+    LaneStatus {
+        project: PathBuf,
+    },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -934,6 +939,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         Identity { .. } => "identity",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
+        LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1375,6 +1381,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             }
             Ok(report)
         }
+        Command::LaneStatus { project } => moai_cli::lane_status::status_cli(
+            &project,
+            input::<moai_cli::lane_status::LaneStatusRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
