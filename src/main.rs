@@ -542,6 +542,10 @@ enum Command {
         /// Extra bullet for the remaining-gap section (repeatable).
         #[arg(long)]
         gap: Vec<String>,
+        /// Which PR of this claim epoch the body is for (#2329). 1 (default) keeps the
+        /// original marker; N >= 2 gives a further PR its own operation and marker.
+        #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
+        pr_seq: u32,
     },
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
@@ -1475,6 +1479,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             not_run,
             review_link,
             gap,
+            pr_seq,
         } => {
             let rec = source.load(&project)?;
             let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
@@ -1501,6 +1506,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                     review_link: review_link.as_deref(),
                     changes: &changes,
                     gaps: &gap,
+                    pr_seq,
                 },
                 &moai_cli::forge::policy::SystemClock,
             )

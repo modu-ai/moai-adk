@@ -1,5 +1,6 @@
 //! rc.2 E6 (#2198) RELEASE test suite: Go/RC feed isolation and interrupted-update
-//! recovery. Design §17 RELEASE ("Go/RC 경로·feed 격리, attestation·중단 복구"); builds on
+//! recovery. Design §17 RELEASE ("Go/RC paths and feed isolation, attestation and interrupted-update
+//! recovery"); builds on
 //! the 04-A characterization in `tests/install_cli.rs` without editing it.
 //!
 //! Every case is a fixture: fake release feeds, a model of documented GitHub semantics, and
