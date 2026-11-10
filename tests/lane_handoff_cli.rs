@@ -4,6 +4,8 @@
 //! mutated request fields to observe every failure path. No real host is used:
 //! the remote head and PR record are injected observations.
 
+mod common;
+
 use moai_cli::forge::outbox::{OutboxEntry, OutboxState, Phase};
 use serde_json::{json, Value};
 use std::{
@@ -22,7 +24,7 @@ struct FixtureRepo {
 }
 
 fn git(repo: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = common::git::command()
         .arg("-C")
         .arg(repo)
         .args(args)

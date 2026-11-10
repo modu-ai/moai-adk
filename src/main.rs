@@ -191,6 +191,18 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
+    /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
+    /// build keeps the previous generation and marks partial (REQ-C6-01).
+    IndexBuild {
+        project: PathBuf,
+    },
+    /// Query the incremental index (C6 #2182): read-only — resolves the published
+    /// generation and reports one of fresh/stale/partial/unavailable with the detected
+    /// changes (additions, deletions, modifications, untracked new files, branch switch).
+    IndexQuery {
+        project: PathBuf,
+    },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
     LayoutPlan {
@@ -227,6 +239,11 @@ enum Command {
     /// record present, no publish_unknown outbox effects. A failed status blocks
     /// the exit (kind blocked, exit 1) with a preservation note.
     LaneHandoffCheck {
+        project: PathBuf,
+    },
+    /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
+    /// named Issues, their open PRs and the local worktrees; writes nothing.
+    LaneStatus {
         project: PathBuf,
     },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
@@ -411,7 +428,7 @@ enum Command {
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
-        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
+        /// Absolute skill directory named `moai-cli`, e.g. ~/.agents/skills/moai-cli (no default).
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -421,7 +438,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
         #[arg(long)]
@@ -437,7 +454,7 @@ enum Command {
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
         package: PathBuf,
-        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        /// Absolute skill directory named `moai-cli`; the same target the plan was made for.
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -447,7 +464,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         #[arg(long)]
         allow_implicit_invocation: Option<bool>,
@@ -524,6 +541,17 @@ enum Command {
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan {
         path: PathBuf,
+    },
+    /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
+    /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
+    /// command's stdout as is. Always exits 0.
+    Statusline {
+        /// Test seam (#2350 leader decision): the render budget in milliseconds instead of
+        /// the Go 800 ms. Hidden; Claude Code runs `statusline` without options. The golden
+        /// test passes a large value so a git call slowed by machine load still lands; `0`
+        /// is an already expired budget (no git call is started).
+        #[arg(long, hide = true, value_name = "MS")]
+        render_budget_ms: Option<u64>,
     },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
@@ -889,7 +917,8 @@ fn launch(
 fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } => return None,
+        // Not envelope operations: the launchers, and the raw-text statusline (#2350).
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
@@ -932,8 +961,11 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
+        IndexBuild { .. } => "index.build",
+        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
+        LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1001,9 +1033,14 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         return match (cli.leader, cli.agent) {
             (true, _) => launch("claude", Some(true), cli.launch, None),
             (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
-            (false, None) => Err(
-                "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
-            ),
+            (false, None) => {
+                // Bare no-argument run: the banner rides stdout for humans only
+                // (Issue #2363); the usage error contract below is unchanged.
+                moai_cli::banner::maybe_print_banner();
+                Err(
+                    "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
+                )
+            }
         };
     };
     match command {
@@ -1353,6 +1390,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
+            &project,
+            &input::<moai_cli::index::IndexBuildRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
+            &project,
+            &input::<moai_cli::index::IndexQueryRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1370,6 +1417,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             }
             Ok(report)
         }
+        Command::LaneStatus { project } => moai_cli::lane_status::status_cli(
+            &project,
+            input::<moai_cli::lane_status::LaneStatusRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -1785,6 +1838,12 @@ fn usage_error(e: clap::Error) -> ExitCode {
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {
+        // Root help carries the logo above clap's help body (Issue #2363);
+        // subcommand help and version stay logo-free.
+        if matches!(e.kind(), ErrorKind::DisplayHelp) {
+            let rest: Vec<String> = std::env::args().skip(1).collect();
+            moai_cli::banner::maybe_print_logo_for(&rest);
+        }
         e.exit()
     };
     let message = match e.kind() {
@@ -1843,6 +1902,13 @@ fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
+    if let Some(Command::Statusline { render_budget_ms }) = cli.command {
+        let budget = render_budget_ms
+            .map(std::time::Duration::from_millis)
+            .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
+        print!("{}", moai_cli::statusline::run(budget));
+        return ExitCode::SUCCESS;
+    }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {
@@ -1884,6 +1950,8 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+    /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
+    const RAW_OUTPUT: [&str; 1] = ["statusline"];
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -1902,6 +1970,10 @@ mod tests {
                 assert_eq!(op, None, "{word} is a launcher");
                 continue;
             }
+            if RAW_OUTPUT.contains(&word) {
+                assert_eq!(op, None, "{word} prints raw text, not the envelope");
+                continue;
+            }
             let op = op.unwrap_or_else(|| panic!("{word} maps to no operation"));
             if let Some(other) = seen.insert(op, word) {
                 panic!("{word} and {other} share {op}");
@@ -1912,7 +1984,7 @@ mod tests {
             .get_subcommands()
             .filter(|s| s.get_name() != "help")
             .count();
-        assert_eq!(seen.len() + LAUNCHERS.len(), words);
+        assert_eq!(seen.len() + LAUNCHERS.len() + RAW_OUTPUT.len(), words);
         if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
             let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
             pairs.sort();
@@ -2022,6 +2094,25 @@ mod operations_doc {
         if let Err(problems) = compare(&code_words(&cli), DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
+    }
+
+    /// #2350: `statusline` prints raw text, so it is a subcommand outside OPERATIONS and the
+    /// document names it as the one envelope exception.
+    #[test]
+    fn statusline_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli.get_subcommands().any(|s| s.get_name() == "statusline"));
+        assert_eq!(operation_of("statusline"), None);
+        assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "statusline"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `statusline`(#2350)"));
+        // The render-budget test seam is documented and hidden from help.
+        assert!(DOC.contains("`--render-budget-ms`"));
+        let sub = cli.find_subcommand("statusline").unwrap();
+        let seam = sub
+            .get_arguments()
+            .find(|a| a.get_long() == Some("render-budget-ms"))
+            .unwrap();
+        assert!(seam.is_hide_set());
     }
 
     fn render(words: &[&str]) -> String {

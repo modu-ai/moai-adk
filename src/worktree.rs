@@ -279,14 +279,14 @@ pub fn active_records(project: &Path) -> Result<Vec<ClaimRecord>> {
 
 // ---- plan ----
 
-struct Entry {
-    path: String,
-    head: String,
-    branch: Option<String>,
-    locked: Option<String>,
+pub(crate) struct Entry {
+    pub(crate) path: String,
+    pub(crate) head: String,
+    pub(crate) branch: Option<String>,
+    pub(crate) locked: Option<String>,
 }
 
-fn worktrees(project: &Path) -> Result<Vec<Entry>> {
+pub(crate) fn worktrees(project: &Path) -> Result<Vec<Entry>> {
     let text = git(project, &["worktree", "list", "--porcelain"])?;
     let mut out = Vec::new();
     for block in text.split("\n\n").filter(|b| !b.trim().is_empty()) {

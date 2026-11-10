@@ -181,6 +181,11 @@ const RULES: &[(&str, Kind)] = &[
     ("malformed ls-", Kind::Io),
     ("read failed", Kind::Io),
     ("write failed", Kind::Io),
+    // C6 tracked-file count is an input refusal even inside the build wrapper.
+    ("index file limit exceeded", Kind::InvalidInput),
+    // incremental index (rc.2 C6 #2182): a failed build is plain I/O trouble; the
+    // previous generation is kept and the query state turns partial.
+    ("index build failed", Kind::Io),
     ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
@@ -344,6 +349,12 @@ mod tests {
             ("leader tick state directory unavailable", Io),
             ("leader tick state write failed", Io),
             ("leader tick state replace failed", Io),
+            // lane-status (rc.2 A11 #2265)
+            ("lane status issues must be 1 to 50 Issue numbers", InvalidInput),
+            ("lane status lanes must be at most 50", InvalidInput),
+            ("lane status base_branch must be a plain branch name", InvalidInput),
+            ("lane status evidence must be given with a session, a source and a time", InvalidInput),
+            ("lane status page limit exceeded (50)", InvalidInput),
             // identity (01-A #1988)
             ("path unavailable", NotFound),
             ("path must be a directory", InvalidInput),
@@ -472,6 +483,15 @@ mod tests {
             ),
             ("existing .codex/hooks.json requires preservation review", Conflict),
             (".codex/hooks.json receipt requires preservation review", Conflict),
+            // incremental index (rc.2 C6 #2182); every current message of the module
+            ("index build failed; previous generation kept: a.txt read failed", Io),
+            ("index source unavailable: no HEAD commit", Io),
+            ("index generation staging write failed: x", Io),
+            ("index file limit exceeded (16384)", InvalidInput),
+            ("index manifest encode failed", Internal),
+            ("index pointer write failed", Io),
+            ("index pointer replace failed", Io),
+            ("index pointer encode failed", Internal),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

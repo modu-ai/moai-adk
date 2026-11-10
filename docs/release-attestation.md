@@ -1,4 +1,4 @@
-# moai-cli 릴리스 attestation과 macOS quarantine 안내 (E4 #2196)
+# MoAI 릴리스 attestation과 macOS quarantine 안내 (E4 #2196)
 
 이 문서는 `moai-cli` 릴리스 산출물의 출처를 증명하는 방법(GitHub artifact attestation)과, 사용자가 받은 파일을 확인하고 macOS에서 여는 방법을 정한다. 결정 근거는 decisions 15:5x(04-A "GitHub artifact attestation만")와 01:1x(notarization 없음)다.
 

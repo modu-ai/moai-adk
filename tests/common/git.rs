@@ -20,6 +20,18 @@ fn base_args() -> [&'static str; 4] {
     ["-c", "gc.auto=0", "-c", "maintenance.auto=false"]
 }
 
+/// Starts a guarded git command without choosing its directory, identity or stdio.
+/// Callers keep their existing command chain and output/assertion semantics.
+pub fn command() -> Command {
+    let mut command = Command::new("git");
+    command
+        .args(base_args())
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("LC_ALL", "C");
+    command
+}
+
 /// The guarded result of one git call: success flag plus lossy text streams.
 pub struct GitOut {
     pub success: bool,
@@ -32,13 +44,9 @@ pub struct GitOut {
 /// whose failure is reported with context).
 #[allow(dead_code)] // adopted incrementally as test files convert to the helper
 pub fn git_raw(dir: &Path, args: &[&str]) -> GitOut {
-    let out = Command::new("git")
-        .args(base_args())
+    let out = command()
         .args(args)
         .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env("LC_ALL", "C")
         .stdin(Stdio::null())
         .output()
         .expect("spawn git");
@@ -71,14 +79,8 @@ pub fn git_ok(dir: &Path, args: &[&str]) {
 /// fixtures (#2187 archive family) use this so their object ids stay stable.
 #[allow(dead_code)] // adopted incrementally as test files convert to the helper
 pub fn git_pinned(dir: &Path, args: &[&str], date: Option<&str>) {
-    let mut cmd = Command::new("git");
-    cmd.args(base_args())
-        .args(args)
-        .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env("LC_ALL", "C")
-        .stdin(Stdio::null());
+    let mut cmd = command();
+    cmd.args(args).current_dir(dir).stdin(Stdio::null());
     if let Some(d) = date {
         cmd.env("GIT_AUTHOR_DATE", format!("{d} +0000"))
             .env("GIT_COMMITTER_DATE", format!("{d} +0000"));

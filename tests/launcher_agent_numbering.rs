@@ -5,6 +5,7 @@
 //! written is an error, never a silent `agent-1`. Real launches run stub `claude` / `codex`
 //! executables from a temporary PATH in a temporary git project; no real host starts.
 #![cfg(unix)]
+mod common;
 use serde_json::Value;
 use std::os::unix::fs::PermissionsExt;
 use std::{
@@ -20,7 +21,7 @@ struct Fixture {
 }
 
 fn git(dir: &Path, args: &[&str]) {
-    let ok = Command::new("git")
+    let ok = common::git::command()
         .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
         .args(args)
         .current_dir(dir)
@@ -122,7 +123,7 @@ fn numbers_count_up_across_hosts_and_live_in_the_clone_common_dir() {
     );
     assert_eq!(stored(&f).as_deref(), Some("5\n"));
     // The counter sits under `.git`, so git never lists it.
-    let status = Command::new("git")
+    let status = common::git::command()
         .args(["status", "--porcelain", "--ignored"])
         .current_dir(f.project.path())
         .output()

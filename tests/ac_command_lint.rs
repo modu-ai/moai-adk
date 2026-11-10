@@ -97,8 +97,8 @@ fn git_helper_applies_the_guards_to_every_call() {
     );
     let raw = common::git::git_raw(dir.path(), &["config", "--get", "gc.auto"]);
     assert_eq!(raw.stdout.trim(), "0", "git_raw() must run with gc.auto=0");
-    // git_pinned builds its own command and only asserts success; a value pattern
-    // makes `git config --get` exit 1 unless the guard value is exactly the one set.
+    // git_pinned only asserts success; a value pattern makes `git config --get`
+    // exit 1 unless the shared factory supplied exactly the expected guard.
     common::git::git_pinned(dir.path(), &["config", "--get", "gc.auto", "^0$"], None);
     common::git::git_pinned(
         dir.path(),

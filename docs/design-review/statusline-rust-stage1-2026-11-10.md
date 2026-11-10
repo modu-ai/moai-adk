@@ -99,7 +99,7 @@
 
 카드 본문은 (c) 예로 "OAuth 사용량 API"를 들었지만, 기준 커밋의 `internal/statusline`에는 HTTP·OAuth·키체인 호출이 없다. 5H/7D는 공식 stdin `rate_limits`(또는 로컬 기록)에서 온다. 업데이트 확인기(update.go:29)도 연결되어 있지 않다.
 
-landed 갱신은 분리된 자식을 띄우지만 로컬 git만 쓰므로 (b)다. 렌더에서 자식 프로세스를 띄우지 않으려면 2단계에서 다시 정해야 한다(7절).
+landed 갱신은 분리된 자식을 띄우지만 로컬 git만 쓰므로 (b)다. 렌더 중 자식 프로세스는 2단계에서 정했다(2026-11-10 11:50Z 사용자 결정, #2350 댓글 6766596464): 렌더는 Go와 같게 git만 제한 시간(800ms) 안에서 실행하고, 넘기면 git 칸을 뺀다. 분리된 갱신 자식은 띄우지 않는다.
 
 ## 4. 동등성 기준 (AC-3)
 
@@ -160,7 +160,7 @@ stdin만 넣어도 위 두 곳에 쓴다. 그래서 HOME과 `MOAI_HOME`을 함�
   2. CLI: `moai-cli statusline`. **JSON envelope를 쓰지 않는 예외 op**다. Claude Code가 stdout을 그대로 보여 주기 때문이다. OPERATIONS·`interfaces.md`·`operations_doc` 시험에 예외로 명시한다.
   3. 설정 호환: `.moai/config/sections/statusline.yaml`의 `theme`·`segments`를 그대로 읽는다(Go 사용자 설정 유지). RC1 쪽 위치(`.moai-cli/`)로 옮길지는 사용자 결정 거리다(HOLD).
   4. 동등성: `python3 -I tools/statusline_golden.py --bin target/debug/moai-cli --argv statusline --check`가 30/30 일치해야 한다. 버전 표시(`🗿 v…`)는 binary마다 다르므로, 이 줄의 비교 방식(버전 문자열을 고정할지, 정규화할지)을 2단계 첫 단계에서 정한다.
-  5. 렌더에서 자식 프로세스를 띄우지 않는다. forge 수는 캐시 파일만 읽고(갱신 없음), landed는 표시하지 않거나 캐시만 읽는다. 결정은 2단계 기록으로 남긴다.
+  5. 렌더 중 실행하는 자식 프로세스는 git뿐이며 제한 시간(800ms) 안에서만 실행한다(2026-11-10 11:50Z 사용자 결정, #2350 댓글 6766596464). 분리된 갱신 자식(`gh`/`glab`, `--refresh-*`)은 띄우지 않는다. forge 수는 캐시 파일만 읽고(갱신 없음), landed는 표시하지 않는다.
 - 제외: (c) 갱신 경로 전체, `gh`/`glab` 호출, 사용자 `statusLine` 설정 변경, Orca wrapper·Go binary 변경.
 - 경로 전환 계획(이 카드와 2단계 모두 실행하지 않음):
   1. 2단계 PR 병합 뒤 golden `--check` 통과를 확인한다.
@@ -168,7 +168,7 @@ stdin만 넣어도 위 두 곳에 쓴다. 그래서 HOME과 `MOAI_HOME`을 함�
   3. 되돌리기는 같은 op의 receipt로 한다.
 - 수용 기준 초안:
   - AC-1: (a)(b) 사례 15건의 plain·ansi golden 30개 `--check` 일치.
-  - AC-2: 렌더 중 네트워크 0과 자식 프로세스 0(sandbox 실측).
+  - AC-2: 렌더 중 네트워크 0, git 외 자식 프로세스 0, git은 800ms 안에서만(sandbox 실측)(2026-11-10 11:50Z 사용자 결정, #2350 댓글 6766596464).
   - AC-3: 800ms 안에 출력(10회 실측 최댓값 기록).
   - AC-4: check set과 Self-Audit.
 
