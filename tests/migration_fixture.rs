@@ -6,6 +6,154 @@ use moai_cli::apply;
 use std::fs;
 use tempfile::TempDir;
 
+#[test]
+fn excluded_token_variants_never_reach_backup_or_import() {
+    for bytes in [
+        b"token = 'synthetic-value'".as_slice(),
+        br#"{"TOKEN":"synthetic-value"}"#,
+        br#"{"\u0074oken":"synthetic-value"}"#,
+    ] {
+        let (d, h, mut item) = fixture();
+        fs::write(d.path().join(&item.source), bytes).unwrap();
+        item.recorded_sha256 = Some(hash(bytes));
+        let p = preview(&h, &[item]);
+        assert_eq!(p.entries[0].action, "excluded_secret");
+        assert!(h.apply(&p, &p.digest).is_err());
+        assert!(!d.path().join(".moai-go-backup").exists());
+        assert!(!d.path().join(".moai-cli/imports").exists());
+    }
+}
+
+#[test]
+fn unconfirmed_publish_is_an_explicit_conflict_and_preserves_both_copies() {
+    let (d, h, item) = fixture();
+    let p = preview(&h, &[item]);
+    let mut receipt = h.apply(&p, &p.digest).unwrap();
+    receipt.published[0] = false;
+    let manifest = d
+        .path()
+        .join(".moai-go-backup")
+        .join(&p.digest)
+        .join("manifest.json");
+    fs::write(&manifest, serde_json::to_vec(&receipt).unwrap()).unwrap();
+    for body in [b"{\"language\":\"ko\"}".as_slice(), b"late user edit"] {
+        let target = d.path().join(".moai-cli/imports/language.json");
+        fs::write(&target, body).unwrap();
+        let recovery = h.recovery_plan(&receipt).unwrap();
+        assert_eq!(recovery.actions, vec!["conflict_unconfirmed_publish"]);
+        assert_eq!(
+            h.recover(&recovery, &recovery.digest).unwrap(),
+            vec!["conflict_unconfirmed_publish"]
+        );
+        assert_eq!(fs::read(target).unwrap(), body);
+        assert!(d.path().join(".moai/config/language.json").is_file());
+    }
+}
+
+#[test]
+fn receipt_digest_tamper_is_refused_before_any_recovery_write() {
+    let (d, h, item) = fixture();
+    let p = preview(&h, &[item]);
+    let mut receipt = h.apply(&p, &p.digest).unwrap();
+    let manifest = d
+        .path()
+        .join(".moai-go-backup")
+        .join(&p.digest)
+        .join("manifest.json");
+    receipt.plan.summary.push_str("tampered summary");
+    fs::write(&manifest, serde_json::to_vec(&receipt).unwrap()).unwrap();
+    let before = moai_cli::tree_digest(d.path(), &[]).unwrap();
+    assert!(h.recovery_plan(&receipt).is_err());
+    assert_eq!(before, moai_cli::tree_digest(d.path(), &[]).unwrap());
+}
+
+fn audit_fixture() -> (tempfile::TempDir, SyntheticHome, Selection) {
+    let d = tempfile::tempdir().unwrap();
+    fs::create_dir_all(d.path().join(".moai/config")).unwrap();
+    fs::write(d.path().join(".moai/config/lang.json"), b"language: ko").unwrap();
+    let h = SyntheticHome::new(d.path()).unwrap();
+    let s = Selection {
+        source: ".moai/config/lang.json".into(),
+        target: ".moai-cli/imports/lang.json".into(),
+        recorded_sha256: Some(hash(b"language: ko")),
+        project_current: None,
+    };
+    (d, h, s)
+}
+#[test]
+fn tampered_manifest_must_not_delete_a_preexisting_user_import() {
+    let (d, h, s) = audit_fixture();
+    let p = h.plan(&[Host::Claude], Mode::Default, &[s]).unwrap();
+    let mut r = h.apply(&p, &p.digest).unwrap();
+    let user = ".moai-cli/imports/user.txt";
+    fs::write(d.path().join(user), b"language: ko").unwrap();
+    r.plan.entries[0].selection.target = user.into();
+    let dir = d.path().join(".moai-go-backup").join(&p.digest);
+    fs::write(dir.join("manifest.json"), serde_json::to_vec(&r).unwrap()).unwrap();
+    let rp = h.recovery_plan(&r);
+    let rejected = match rp {
+        Err(_) => true,
+        Ok(rp) => h.recover(&rp, &rp.digest).is_err(),
+    };
+    assert!(
+        rejected && d.path().join(user).exists(),
+        "tampered digest accepted; user_import_exists={}",
+        d.path().join(user).exists()
+    );
+}
+#[test]
+fn interrupted_publish_must_not_silently_preserve_import() {
+    let (d, h, s) = audit_fixture();
+    let p = h.plan(&[Host::Claude], Mode::Default, &[s]).unwrap();
+    let mut r = h.apply(&p, &p.digest).unwrap();
+    r.published[0] = false;
+    fs::write(
+        d.path()
+            .join(".moai-go-backup")
+            .join(&p.digest)
+            .join("manifest.json"),
+        serde_json::to_vec(&r).unwrap(),
+    )
+    .unwrap();
+    let rp = h.recovery_plan(&r).unwrap();
+    assert_ne!(
+        rp.actions[0], "preserved",
+        "published bytes exist, durable marker false; actions={:?}",
+        rp.actions
+    );
+}
+#[test]
+fn generic_token_content_must_be_excluded() {
+    let (d, h, mut s) = audit_fixture();
+    let bytes = b"token: synthetic-audit-value";
+    fs::write(d.path().join(&s.source), bytes).unwrap();
+    s.recorded_sha256 = Some(hash(bytes));
+    let p = h.plan(&[Host::Glm], Mode::Default, &[s]).unwrap();
+    let applied = h.apply(&p, &p.digest);
+    assert!(
+        applied.is_err(),
+        "generic token copied into import={}",
+        d.path().join(".moai-cli/imports/lang.json").is_file()
+    );
+}
+#[test]
+fn fifo_and_traversal_are_rejected_before_read() {
+    let (d, h, s) = audit_fixture();
+    let fifo = d.path().join(".moai/config/pipe");
+    assert!(std::process::Command::new("/usr/bin/mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap()
+        .success());
+    for source in [".moai/config/pipe", ".moai/config/../../../escape"] {
+        let bad = Selection {
+            source: source.into(),
+            ..s.clone()
+        };
+        assert!(h.plan(&[Host::Claude], Mode::Default, &[bad]).is_err());
+    }
+}
+
 fn fixture() -> (TempDir, SyntheticHome, Selection) {
     let d = TempDir::new().unwrap();
     fs::create_dir_all(d.path().join(".moai/config")).unwrap();

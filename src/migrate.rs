@@ -26,6 +26,27 @@ fn digest<T: Serialize>(value: &T) -> Result<String> {
     ))
 }
 
+// Inspect decoded JSON strings as well as YAML/TOML-like text. This is a
+// conservative exclusion rule, not a credential discovery or declassification API.
+fn generic_token_content(bytes: &[u8]) -> bool {
+    fn token_word(text: &str) -> bool {
+        text.split(|c: char| !c.is_ascii_alphanumeric())
+            .any(|word| word.eq_ignore_ascii_case("token"))
+    }
+    fn json_token(value: &serde_json::Value) -> bool {
+        match value {
+            serde_json::Value::Object(map) => {
+                map.iter().any(|(k, v)| token_word(k) || json_token(v))
+            }
+            serde_json::Value::Array(values) => values.iter().any(json_token),
+            serde_json::Value::String(s) => token_word(s),
+            _ => false,
+        }
+    }
+    token_word(&String::from_utf8_lossy(bytes))
+        || serde_json::from_slice(bytes).is_ok_and(|value| json_token(&value))
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Host {
     Claude,
@@ -210,7 +231,9 @@ impl SyntheticHome {
                 Some(h) if h == &source_sha256 => "owned",
                 Some(_) => "modified",
             };
-            let action = if ownership != "owned" {
+            let action = if generic_token_content(&src) {
+                "excluded_secret"
+            } else if ownership != "owned" {
                 "preserved"
             } else if project_sha256.as_ref().is_some_and(|h| h != &source_sha256) {
                 "conflict"
@@ -258,11 +281,9 @@ impl SyntheticHome {
         if plan != &fresh || confirmed != fresh.digest {
             return Err("stale, altered or unconfirmed summary".into());
         }
-        if plan
-            .entries
-            .iter()
-            .any(|e| e.action == "conflict" || e.ownership != "owned")
-        {
+        if plan.entries.iter().any(|e| {
+            e.action == "conflict" || e.action == "excluded_secret" || e.ownership != "owned"
+        }) {
             return Err("conflict or preserved source; reselect before apply".into());
         }
         let root = self
@@ -310,6 +331,14 @@ impl SyntheticHome {
         if receipt.plan.home != self.root || receipt.published.len() != receipt.plan.entries.len() {
             return Err("receipt scope mismatch".into());
         }
+        // The durable receipt is not its own authority: bind every target and
+        // before/after identity to the confirmed plan, without rereading sources
+        // that may legitimately have changed since the backup was made.
+        let mut unsigned = receipt.plan.clone();
+        unsigned.digest.clear();
+        if digest(&unsigned)? != receipt.plan.digest {
+            return Err("recovery plan digest mismatch".into());
+        }
         let saved = self
             .read(&Self::backup_rel(&receipt.plan, "manifest.json"))?
             .ok_or("manifest missing")?;
@@ -330,10 +359,15 @@ impl SyntheticHome {
             }
             let current = self.read(&e.selection.target)?.map(|b| hash(&b));
             actions.push(
-                if !receipt.published[i] {
+                if e.action != "create" {
                     "preserved"
                 } else if current.is_none() {
                     "unchanged"
+                } else if !receipt.published[i] {
+                    // A rename can precede the durable publication marker. The
+                    // bytes alone cannot prove who created the file after a race;
+                    // expose the unresolved crash window and never delete it.
+                    "conflict_unconfirmed_publish"
                 } else if current.as_ref() == Some(&e.source_sha256) {
                     "removed_import"
                 } else {
