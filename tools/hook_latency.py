@@ -106,7 +106,9 @@ def main(argv):
     args = list(argv)
     if "--bin" not in args or args.index("--bin") + 1 >= len(args):
         usage()
-    binary = args[args.index("--bin") + 1]
+    # Each run's working directory is the fixture repository, so a relative path would no
+    # longer resolve there: fix it to an absolute path first.
+    binary = str(Path(args[args.index("--bin") + 1]).resolve())
     samples = 50
     if "--samples" in args:
         try:
