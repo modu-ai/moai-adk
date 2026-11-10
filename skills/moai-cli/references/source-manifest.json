@@ -136,21 +136,21 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "09de73c8223e1b7da3a39ced6503747f20b9380f6bb30f8422939efa8b85e6f5",
+      "sha256": "c30f193406395cafa228e42332b323735bd46d4916c16c355bec970e93329d8a",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration."
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "16244c84b682b3afd48a62d5a11d1c2850082d0473a0614e82885ae98746f368",
+      "sha256": "94e43178811b448df87c7c0dd6cbb9390dfecb05c5c90fa0e553728fc9b3df73",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration."
       }
     }
   }

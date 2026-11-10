@@ -1,7 +1,7 @@
 #!/bin/bash
 # #2262 local RC1 kit — isolation rehearsal. Everything happens under a fresh
 # temporary HOME and a fresh temporary project; the real HOME is never passed.
-# Usage: bash tools/local-rc1-isolation.sh <moai-cli binary> <repo root (for skills/moai)> <out dir>
+# Usage: bash tools/local-rc1-isolation.sh <moai-cli binary> <repo root (for skills/moai-cli)> <out dir>
 # Project leg order (#2291): project -> generation (creates .moai-cli/workflows/<id>/ itself,
 # #2274) -> agents with the same workflow_reference. No WF_REF workaround is needed or
 # accepted any more. Results: docs/local-rc1-kit.md §2.
