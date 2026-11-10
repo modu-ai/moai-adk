@@ -37,6 +37,7 @@ pub mod pr_link;
 pub mod profile;
 pub mod project_skills;
 pub mod queue;
+pub mod queue_query;
 pub mod recovery;
 pub mod redact;
 pub mod run;

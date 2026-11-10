@@ -214,6 +214,10 @@ enum Command {
     QueueNext {
         project: PathBuf,
     },
+    /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
+    QueueQuery {
+        project: PathBuf,
+    },
     /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
     /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
     LeaderTick {
@@ -1000,6 +1004,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
         QueueNext { .. } => "queue.next",
+        QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
@@ -1121,6 +1126,12 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::QueueQuery { project } => Ok(moai_cli::queue_query::query_cli(
+            &project,
+            input::<moai_cli::queue_query::QueueQueryRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        )?),
         Command::ClaimRelease {
             project,
             task,

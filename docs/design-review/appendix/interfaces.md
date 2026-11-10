@@ -83,6 +83,7 @@
 - `project-skill-plan`
 - `project-skill-revert`
 - `queue-next`
+- `queue-query`
 - `recovery-apply`
 - `recovery-plan`
 - `run-verify`
