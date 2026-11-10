@@ -1,8 +1,9 @@
 //! Hook engine (rc.2 #2391): one policy core for the four MoAI hook duties (session-check,
 //! tool-preflight, tool-observe, turn-validation) with a native adapter per host. Stage 1:
 //! `session-check` and `tool-preflight`; stage 2: `tool-observe` (observation record only)
-//! and `turn-validation` (Stop machinery with an empty rule set) — all for Claude Code. The
-//! Codex adapter is the next stage and answers as an engine error.
+//! and `turn-validation` (Stop machinery with an empty rule set); stage 3: the Codex adapter
+//! for all four (`render_codex`, from the Codex hooks page) and [`capabilities`], the per-host
+//! coverage `hooks-plan` reports.
 //!
 //! Sources (read 2026-11-10, https://code.claude.com/docs/en/hooks):
 //! - PreToolUse decision control: exit 0 and print
@@ -110,12 +111,9 @@ fn engine_error(reason: &str) -> Answer {
 pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Answer {
     let cwd = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
     let cwd = cwd.as_path();
-    if host == "codex" {
-        return engine_error("the codex adapter is not implemented yet (#2391 stage 2)");
-    }
-    if host != "claude" {
+    let Some(host) = Host::parse(host) else {
         return engine_error("unknown hook host; must be claude or codex");
-    }
+    };
     let Some(event) = Event::parse(event) else {
         return engine_error(
             "unknown hook event; must be session-check, tool-preflight, tool-observe or turn-validation",
@@ -135,18 +133,161 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     match input.get("hook_event_name") {
         None => {}
         Some(Value::String(name)) if name == event.host_event() => {}
-        // tool-observe also records failed tool calls (Claude Code `PostToolUseFailure`).
+        // tool-observe also records failed tool calls on Claude Code (`PostToolUseFailure`);
+        // Codex has no such event, so there the name is a configuration error.
         Some(Value::String(name))
-            if event == Event::ToolObserve && name == "PostToolUseFailure" => {}
+            if host == Host::Claude
+                && event == Event::ToolObserve
+                && name == "PostToolUseFailure" => {}
         Some(_) => return engine_error("hook_event_name does not match the requested duty"),
     }
     let verdict = match event {
         Event::SessionCheck => session_check(cwd),
         Event::ToolPreflight => tool_preflight(&input, cwd),
-        Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms),
+        Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
     };
-    render_claude(event, verdict)
+    if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
+        record_deny(&input, cwd, now_unix_ms, host);
+    }
+    match host {
+        Host::Claude => render_claude(event, verdict),
+        Host::Codex => render_codex(event, verdict),
+    }
+}
+
+/// The hosts with a native adapter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Host {
+    Claude,
+    Codex,
+}
+
+impl Host {
+    pub fn parse(word: &str) -> Option<Host> {
+        match word {
+            "claude" => Some(Host::Claude),
+            "codex" => Some(Host::Codex),
+            _ => None,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Host::Claude => "claude",
+            Host::Codex => "codex",
+        }
+    }
+}
+
+/// A short key for the host's `tool_use_id` (sha256, first 16 hex digits), so a deny and the
+/// observation of the same call can be matched without logging the raw id.
+fn call_key(input: &Value) -> Value {
+    match input["tool_use_id"].as_str() {
+        Some(id) if !id.is_empty() => {
+            let d = crate::digest(id.as_bytes());
+            json!(d.trim_start_matches("sha256:")[..16].to_string())
+        }
+        _ => Value::Null,
+    }
+}
+
+/// A tool-preflight deny leaves one `deny` line (session, call key, host, time) in the engine
+/// log when `.moai-cli/` exists — the evidence `hooks::status` reads as `action_blocked` when
+/// no observation of the same call follows. Best effort, never changes the answer.
+fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
+    let line = json!({
+        "schema_version": 1,
+        "kind": "deny",
+        "host": host.name(),
+        "session": session_key(input),
+        "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+}
+
+/// Codex rendering of a verdict, from the Codex hooks page only
+/// (https://learn.chatgpt.com/docs/hooks, read 2026-11-10), not copied from the Claude shapes:
+/// - PreToolUse deny: `hookSpecificOutput` with `hookEventName: "PreToolUse"`,
+///   `permissionDecision: "deny"` and `permissionDecisionReason`. `"ask"`, `"approve"`,
+///   `continue: false` and `stopReason` are "parsed but not supported yet" there — the hook run
+///   is marked failed and the tool call continues — so none of them is ever used to block.
+/// - SessionStart context: `hookSpecificOutput.additionalContext` "is added as extra developer
+///   context".
+/// - Stop: "expects JSON on stdout when it exits 0"; `decision: "block"` with `reason` makes
+///   Codex continue with a new continuation prompt. Allow prints nothing ("Exit 0 with no
+///   output is treated as success" — stated generally, not for Stop; recorded as unverified).
+/// - PostToolUse: "Plain text on stdout is ignored"; tool-observe prints nothing.
+fn render_codex(event: Event, verdict: Verdict) -> Answer {
+    let stdout = match (event, verdict) {
+        (_, Verdict::Allow) => String::new(),
+        (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": reason,
+            }
+        })
+        .to_string(),
+        (Event::SessionCheck, Verdict::Context(text)) => json!({
+            "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}
+        })
+        .to_string(),
+        (Event::TurnValidation, Verdict::Deny(reason)) => {
+            json!({"decision": "block", "reason": reason}).to_string()
+        }
+        _ => return engine_error("policy returned a verdict this duty cannot carry"),
+    };
+    Answer {
+        stdout,
+        stderr: String::new(),
+        exit: 0,
+    }
+}
+
+/// What each duty covers on `host`: the host event, the tools it acts on, how it answers and
+/// what it never uses. `hooks-plan` reports it next to the plan so the coverage difference
+/// between hosts is visible before anything is installed. Source pages as in the renderers.
+pub fn capabilities(host: &str) -> Value {
+    match Host::parse(host) {
+        Some(Host::Claude) => json!({
+            "host": "claude",
+            "source": "https://code.claude.com/docs/en/hooks (read 2026-11-10)",
+            "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content"],
+                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
+                               "answer": "hookSpecificOutput.permissionDecision=deny", "never_uses": ["allow", "ask", "defer", "decision/reason (deprecated)"]},
+            "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
+            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
+                                "host_cap": "8 consecutive continuations (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP)", "moai_cap": MOAI_STOP_BLOCK_CAP},
+            "on_engine_error": "exit 1: non-blocking by the host's rules",
+        }),
+        Some(Host::Codex) => json!({
+            "host": "codex",
+            "source": "https://learn.chatgpt.com/docs/hooks (read 2026-11-10)",
+            "trust": "non-managed hooks run only after the user reviews and trusts the exact hook definition",
+            "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines"],
+                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
+                               "answer": "hookSpecificOutput.permissionDecision=deny",
+                               "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
+            "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
+                             "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
+                             "outcome": "PostToolUse also runs after a failed Bash command, so the event never means success: outcome is unknown unless a Bash tool_response carries an integer exit_code (a field the docs do not name)"},
+            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
+                                "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
+                                "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
+            "on_engine_error": "exit 1: not documented for command hooks (unverified)",
+        }),
+        None => json!({"error": "unknown hook host; must be claude or codex"}),
+    }
 }
 
 fn allow_quietly() -> Answer {
@@ -222,7 +363,22 @@ fn session_check(cwd: &Path) -> Verdict {
 /// here; a forge check of the claim stays with `claim-verify --hook`.
 fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
-    if input["tool_name"] != json!("Bash") || !crate::claim_verify::is_commit(command) {
+    let tool = input["tool_name"].as_str().unwrap_or("");
+    // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
+    // do not refuse still spawns no `git` unless it is a commit.
+    let write_dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    let guard = if tool == "Bash" {
+        crate::hook_guards::bash_guard(command)
+    } else {
+        crate::hook_guards::write_guard(tool, &input["tool_input"], &write_dir)
+    };
+    if let Some(reason) = guard {
+        return Verdict::Deny(reason.to_string());
+    }
+    if tool != "Bash" || !crate::claim_verify::is_commit(command) {
         return Verdict::Allow;
     }
     // The command runs in the session's directory unless the input names another one.
@@ -240,17 +396,21 @@ fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     else {
         return Verdict::Allow;
     };
+    // Cost: the token check reads only the command text, while the local-record lookup spawns
+    // two `git rev-parse` calls to find the journal. Both outcomes allow, so the cheap check
+    // goes first and a commit that carries its token never pays for the lookup.
+    let gap = match crate::claim_verify::commit_claim_id(command, issue) {
+        Ok(_) => return Verdict::Allow,
+        Err(gap) => gap,
+    };
     if crate::claim_verify::has_local_record(cwd, &dir) {
         return Verdict::Allow;
     }
-    match crate::claim_verify::commit_claim_id(command, issue) {
-        Ok(_) => Verdict::Allow,
-        Err(gap) => Verdict::Deny(format!(
-            "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
-             message.",
-            gap.reason(issue)
-        )),
-    }
+    Verdict::Deny(format!(
+        "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
+         message.",
+        gap.reason(issue)
+    ))
 }
 
 /// The log both stage-2 duties share, under `<cwd>/.moai-cli/receipts/`: tool-observe appends
@@ -334,7 +494,38 @@ fn target_path(input: &Value, cwd: &Path) -> Value {
 /// tool name and class, target path, outcome, the `HEAD` commit and the time. It never blocks
 /// and never stores `tool_input` content, `tool_response` or messages. Marking earlier evidence
 /// stale waits for a persisted verification receipt (#2392; leader decision, Issue #2391).
-fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
+/// The observed call's outcome and what it was read from, per host (#2402 audit H3-B1):
+/// - Claude Code: `PostToolUse` "runs immediately after a tool completes successfully" and
+///   failures arrive as `PostToolUseFailure` — the event name decides.
+/// - Codex: `PostToolUse` also runs "after commands that exit with a non-zero status", and the
+///   page gives no shape for `tool_response` beyond "Tool-specific output" (read 2026-11-11).
+///   The event name therefore never means success. Only a Bash `tool_response` carrying an
+///   integer `exit_code` decides (0 success, anything else failure); that field is not named
+///   in the docs, so its use is recorded in `outcome_source`. Everything else is `unknown`.
+fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
+    match host {
+        Host::Claude if input["hook_event_name"] == json!("PostToolUseFailure") => {
+            ("failure", "event")
+        }
+        Host::Claude => ("success", "event"),
+        Host::Codex => match (
+            input["tool_name"].as_str(),
+            input["tool_response"]["exit_code"].as_i64(),
+        ) {
+            (Some("Bash"), Some(0)) => ("success", "tool_response.exit_code (undocumented)"),
+            (Some("Bash"), Some(_)) => ("failure", "tool_response.exit_code (undocumented)"),
+            _ => ("unknown", "none"),
+        },
+    }
+}
+
+fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
+    // Cost (audit #2400 N3): a project without a real `.moai-cli/` directory records nothing,
+    // so return before spawning `git` for the HEAD commit.
+    match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
+        Ok(m) if m.is_dir() => {}
+        _ => return Verdict::Allow,
+    }
     let tool = input["tool_name"].as_str().unwrap_or("");
     let tool_ok = !tool.is_empty()
         && tool.len() <= 64
@@ -342,24 +533,23 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.');
     let class = match tool {
-        "Write" | "Edit" | "MultiEdit" | "NotebookEdit" => "write",
+        "Write" | "Edit" | "MultiEdit" | "NotebookEdit" | "apply_patch" => "write",
         "Bash" => "bash",
         "Read" | "Glob" | "Grep" | "LS" | "WebFetch" | "WebSearch" => "read",
         _ => "other",
     };
-    let outcome = if input["hook_event_name"] == json!("PostToolUseFailure") {
-        "failure"
-    } else {
-        "success"
-    };
+    let (outcome, outcome_source) = observe_outcome(input, host);
     let line = json!({
         "schema_version": 1,
         "kind": "observe",
+        "host": host.name(),
         "session": session_key(input),
+        "call": call_key(input),
         "tool": if tool_ok { json!(tool) } else { json!("unrecorded") },
         "class": class,
         "path": target_path(input, cwd),
         "outcome": outcome,
+        "outcome_source": outcome_source,
         "head": head_commit(cwd),
         "unix_ms": now_unix_ms as u64,
     });
@@ -549,7 +739,10 @@ mod tests {
         );
         let post = json!({"hook_event_name": "PostToolUse", "session_id": "sess-A",
                           "tool_name": "Read", "tool_input": {"file_path": "a"}});
-        assert_eq!(tool_observe(&post, p.path(), 4), Verdict::Allow);
+        assert_eq!(
+            tool_observe(&post, p.path(), 4, Host::Claude),
+            Verdict::Allow
+        );
         assert!(matches!(
             turn_validation_with(FAKE, &stop(false), p.path(), 5),
             Verdict::Deny(_)
@@ -594,6 +787,39 @@ mod tests {
         assert_eq!(a.exit, 0);
         let v: Value = serde_json::from_str(&a.stdout).unwrap();
         assert_eq!(v, json!({"decision": "block", "reason": "why"}));
+    }
+
+    #[test]
+    fn codex_renders_only_documented_codex_shapes() {
+        let stop = render_codex(Event::TurnValidation, Verdict::Deny("why".into()));
+        assert_eq!(
+            serde_json::from_str::<Value>(&stop.stdout).unwrap(),
+            json!({"decision": "block", "reason": "why"})
+        );
+        let deny = render_codex(Event::ToolPreflight, Verdict::Deny("no".into()));
+        assert_eq!(
+            serde_json::from_str::<Value>(&deny.stdout).unwrap(),
+            json!({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                   "permissionDecision": "deny", "permissionDecisionReason": "no"}})
+        );
+        let ctx = render_codex(Event::SessionCheck, Verdict::Context("c".into()));
+        assert_eq!(
+            serde_json::from_str::<Value>(&ctx.stdout).unwrap(),
+            json!({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "c"}})
+        );
+        for event in [
+            Event::SessionCheck,
+            Event::ToolPreflight,
+            Event::ToolObserve,
+            Event::TurnValidation,
+        ] {
+            assert_eq!(render_codex(event, Verdict::Allow), allow_quietly());
+        }
+        // tool-observe never answers with a decision on Codex either.
+        assert_eq!(
+            render_codex(Event::ToolObserve, Verdict::Deny("x".into())).exit,
+            ENGINE_ERROR_EXIT
+        );
     }
 
     #[test]

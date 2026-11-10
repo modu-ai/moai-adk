@@ -173,20 +173,6 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
-    /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
-    TodoPromotePreview {
-        project: PathBuf,
-    },
-    /// Promote the previewed TODOs: refuses a different `--preview-digest`, records an outbox
-    /// intent before each create and `published` only after a confirming GET.
-    TodoPromoteApply {
-        project: PathBuf,
-        #[arg(long)]
-        preview_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
@@ -428,7 +414,7 @@ enum Command {
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
     /// answer; reads the host's hook JSON on stdin, no network.
     HookDispatch {
-        /// `claude` (stage 1; `codex` answers as an engine error until stage 2).
+        /// `claude` or `codex`.
         #[arg(long)]
         host: String,
         /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.
@@ -527,6 +513,12 @@ enum Command {
         path: Option<PathBuf>,
         #[arg(long)]
         plan_digest: String,
+    },
+    /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
+    /// matches over the published index generation (or the tracked files), each result with
+    /// a source citation; the typed-edge step is reported unavailable (#2408).
+    Search {
+        project: PathBuf,
     },
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
@@ -996,12 +988,11 @@ fn operation(command: &Command) -> Option<&'static str> {
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
+        Search { .. } => "search.query",
         SkillReadReceipt { .. } => "skill_source.read_receipt",
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
         SnapshotDescribe { .. } => "snapshot.describe",
-        TodoPromoteApply { .. } => "todo.promote.apply",
-        TodoPromotePreview { .. } => "todo.promote.plan",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
@@ -1203,6 +1194,11 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::Search { project } => serde_json::to_value(moai_cli::search::search(
+            &project,
+            &input::<moai_cli::search::SearchRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::ScopeCheck {
             project,
             source,
@@ -1210,13 +1206,29 @@ fn run_internal(
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
+            // #2404: the PR state of overlapping handed-off claims, read before the journal
+            // lock; with no overlap with a `pr_ready` record the forge is not set up at all.
+            let clock = moai_cli::forge::policy::SystemClock;
+            let handed_off = if moai_cli::scope::needs_pr_status(&mine, &others) {
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+                let client = moai_cli::forge::Client::new(
+                    &transport,
+                    &clock,
+                    Default::default(),
+                    Default::default(),
+                );
+                moai_cli::scope::handed_off_status(&mine, &others, &client)
+            } else {
+                Default::default()
+            };
             moai_cli::scope::check_and_record(
                 &project,
                 &mine,
                 source.task.is_some(),
                 &others,
                 integration_order.as_deref(),
-                &moai_cli::forge::policy::SystemClock,
+                &handed_off,
+                &clock,
             )
         }
         Command::PrConfirm {
@@ -1373,24 +1385,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::TodoPromoteApply {
-            project,
-            preview_digest,
-            permission_reference,
-        } => moai_cli::forge::promote::apply_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &preview_digest,
-            &permission_reference,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -1528,6 +1522,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out);
+            // Outside the plan digest: the #2391 hook state from local evidence, read only.
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            out["hook_status"] =
+                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
         Command::HooksApply {

@@ -247,7 +247,8 @@ fn engine_errors_exit_1_with_empty_stdout() {
     assert_engine_error(&dispatch("tool-observe", &root, &good, &[]));
     assert_engine_error(&dispatch("turn-validation", &root, &good, &[]));
     assert_engine_error(&dispatch("no-such-duty", &root, &good, &[]));
-    for host in ["codex", "other"] {
+    // Codex has an adapter since stage 3 (tests below); any other host is an engine error.
+    for host in ["other", "Claude", ""] {
         let r = run_program(
             Path::new(BIN),
             &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
@@ -728,6 +729,168 @@ fn stage_two_duties_never_call_the_forge() {
     assert!(!marker.exists());
 }
 
+// ---- stage 3: the Codex adapter (https://learn.chatgpt.com/docs/hooks, read 2026-11-10) ----
+
+fn codex(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
+    run_program(
+        Path::new(BIN),
+        &["hook-dispatch", "--host", "codex", "--event", event],
+        cwd,
+        stdin,
+        &[],
+    )
+    .unwrap()
+}
+
+/// Fields the Codex page says are parsed but not supported (the hook run fails and the tool
+/// call continues) — never a way to block.
+fn assert_no_unsupported_codex_fields(stdout: &str) {
+    for field in [
+        "\"ask\"",
+        "\"approve\"",
+        "\"continue\"",
+        "\"stopReason\"",
+        "\"updatedInput\"",
+        "\"allow\"",
+    ] {
+        assert!(!stdout.contains(field), "{field} in {stdout}");
+    }
+}
+
+#[test]
+fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
+    let (_d, root) = repo("issue/77-k");
+    let input = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PreToolUse",
+                       "tool_name": "Bash", "tool_use_id": "u", "model": "m",
+                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
+    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
+    let reason = assert_deny(&r);
+    assert!(reason.contains("Moai-Claim: 77#"), "{reason}");
+    assert_no_unsupported_codex_fields(&r.stdout);
+    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
+    assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
+    // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
+    // only .git internals, credential paths and secret content in patches).
+    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                       "tool_input": {"command": "*** Begin Patch\n*** git commit\n*** End Patch"},
+                       "cwd": root});
+    assert_allow(&codex(
+        "tool-preflight",
+        &root,
+        patch.to_string().as_bytes(),
+    ));
+}
+
+#[test]
+fn codex_denied_commit_leaves_no_commit() {
+    let (_d, root) = repo("issue/77-k");
+    fs::write(root.join("a.txt"), "z\n").unwrap();
+    git(&root, &["add", "a.txt"]);
+    let before = commit_count(&root);
+    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                       "tool_input": {"command": "git commit -q -m 'no token'"}, "cwd": root});
+    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
+    // Codex rules: exit 2, or the PreToolUse deny object, blocks the call.
+    let blocked = r.code == 2
+        || serde_json::from_str::<Value>(r.stdout.trim())
+            .map(|v| v["hookSpecificOutput"]["permissionDecision"] == "deny")
+            .unwrap_or(false);
+    assert!(blocked, "{}", r.stdout);
+    assert_eq!(commit_count(&root), before, "a blocked call never runs");
+}
+
+#[test]
+fn codex_session_check_and_turn_validation_answers() {
+    let (_d, root) = repo("issue/77-k");
+    let start =
+        br#"{"hook_event_name":"SessionStart","source":"startup","session_id":"s","model":"m"}"#;
+    let r = codex("session-check", &root, start);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 1);
+    assert_eq!(v["hookSpecificOutput"]["hookEventName"], "SessionStart");
+    assert!(v["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap()
+        .contains("lane branch: Issue #77"));
+    assert_no_unsupported_codex_fields(&r.stdout);
+    let stop = br#"{"hook_event_name":"Stop","session_id":"s","turn_id":"t","stop_hook_active":false,"last_assistant_message":null}"#;
+    let r = codex("turn-validation", &root, stop);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+}
+
+#[test]
+fn codex_tool_observe_records_apply_patch_and_has_no_failure_event() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let post = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PostToolUse",
+                      "tool_name": "apply_patch", "tool_use_id": "u",
+                      "tool_input": {"command": "*** Begin Patch PATCHMARK"},
+                      "tool_response": "RESPONSEMARK"});
+    let r = codex("tool-observe", &root, post.to_string().as_bytes());
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    let line: Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
+    assert_eq!(line["tool"], "apply_patch");
+    assert_eq!(line["class"], "write");
+    assert_eq!(line["path"], Value::Null);
+    assert!(
+        !text.contains("PATCHMARK") && !text.contains("RESPONSEMARK"),
+        "{text}"
+    );
+    // Codex has no PostToolUseFailure: that name is a configuration error there.
+    let failure = json!({"hook_event_name": "PostToolUseFailure", "tool_name": "Bash"});
+    assert_engine_error(&codex(
+        "tool-observe",
+        &root,
+        failure.to_string().as_bytes(),
+    ));
+}
+
+#[test]
+fn hooks_plan_reports_per_host_engine_capabilities() {
+    let (_d, root) = repo("main");
+    let mut seen = Vec::new();
+    for host in ["claude", "codex"] {
+        let r = run_program(
+            Path::new(BIN),
+            &["hooks-plan", root.to_str().unwrap(), "--host", host],
+            &root,
+            b"",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(r.code, 0, "{}", r.stdout);
+        let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+        let caps = v["result"]["engine_capabilities"].clone();
+        assert_eq!(caps["host"], json!(host));
+        seen.push(caps);
+    }
+    let guards = |c: &Value| c["tool-preflight"]["guards"].to_string();
+    let not_guarded = |c: &Value| c["tool-preflight"]["not_guarded"].to_string();
+    // Codex file edits arrive as apply_patch, Claude's as Write/Edit/MultiEdit/NotebookEdit.
+    assert!(guards(&seen[1]).contains("apply_patch"));
+    assert!(!guards(&seen[0]).contains("apply_patch"));
+    assert!(guards(&seen[0]).contains("NotebookEdit"));
+    for caps in &seen {
+        assert!(not_guarded(caps).contains("outside the project"));
+        assert!(not_guarded(caps).contains("MCP tools"));
+    }
+    assert_eq!(seen[1]["tool-observe"]["events"], json!(["PostToolUse"]));
+    assert_eq!(
+        seen[0]["tool-observe"]["events"],
+        json!(["PostToolUse", "PostToolUseFailure"])
+    );
+    assert!(seen[1]["trust"].as_str().unwrap().contains("trust"));
+    for never in ["ask", "continue=false", "stopReason"] {
+        assert!(seen[1]["tool-preflight"]["never_uses"]
+            .to_string()
+            .contains(never));
+    }
+    assert!(!root.join(".codex").exists() && !root.join(".claude").exists());
+}
+
 // ---- audit #2400 (6770591310) B1-B2 and the canonical-cwd question ----
 
 /// A receipt log of exactly `len` bytes (one padding line, newline-terminated).
@@ -867,4 +1030,202 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
         "{}",
         r.stdout
     );
+}
+
+/// Audit #2402 H3-B1: Codex sends `PostToolUse` after a failed Bash command too, so the event
+/// alone never records success. Literal cases: exit 0 → success, exit 17 → failure, no
+/// `exit_code` / a string / another tool → unknown. Claude keeps its event-based outcome.
+#[test]
+fn codex_observe_outcome_comes_from_the_tool_response_or_is_unknown() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let observe = |host: &str, event: &str, tool: &str, response: Value| {
+        let input = json!({"hook_event_name": event, "session_id": "s", "tool_name": tool,
+                           "tool_input": {"command": "x"}, "tool_response": response});
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-observe"],
+            &root,
+            input.to_string().as_bytes(),
+            &[],
+        )
+        .unwrap();
+        assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+        let text = fs::read_to_string(engine_log(&root)).unwrap();
+        let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
+        (
+            last["outcome"].as_str().unwrap().to_string(),
+            last["outcome_source"].as_str().unwrap().to_string(),
+        )
+    };
+    let codex = |tool: &str, response: Value| observe("codex", "PostToolUse", tool, response);
+    let (o, src) = codex("Bash", json!({"exit_code": 0, "aggregated_output": ""}));
+    assert_eq!(o, "success");
+    assert!(src.contains("undocumented"), "{src}");
+    assert_eq!(
+        codex("Bash", json!({"exit_code": 17, "aggregated_output": ""})).0,
+        "failure"
+    );
+    assert_eq!(codex("Bash", json!({"exit_code": -1})).0, "failure");
+    assert_eq!(codex("Bash", json!({"output": "done"})).0, "unknown");
+    assert_eq!(codex("Bash", json!("plain text output")).0, "unknown");
+    assert_eq!(codex("Bash", json!({"exit_code": "0"})).0, "unknown");
+    assert_eq!(codex("apply_patch", json!({"exit_code": 0})).0, "unknown");
+    assert_eq!(codex("mcp__fs__read", json!({"content": []})).0, "unknown");
+    // Claude: the event decides, as before.
+    assert_eq!(
+        observe("claude", "PostToolUse", "Bash", json!({"exit_code": 17})),
+        ("success".to_string(), "event".to_string())
+    );
+    assert_eq!(
+        observe("claude", "PostToolUseFailure", "Bash", json!({})).0,
+        "failure"
+    );
+}
+
+// ---- stage 4: cost ----
+
+/// Audit #2400 N3: tool-observe spawns `git` only when it will record. A fake `git` first on
+/// PATH leaves a marker; without `.moai-cli/` there is no marker, with it there is one (the
+/// control proves the fake is the `git` the engine would run).
+#[test]
+fn tool_observe_spawns_no_git_without_a_state_dir() {
+    let (_d, root) = repo("main");
+    let bin = root.join("home/fakebin");
+    fs::create_dir_all(&bin).unwrap();
+    let marker = root.join("home/git-called");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\ntouch '{}'\necho 0123456789abcdef0123456789abcdef01234567\n",
+            marker.display()
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let post = post_tool("PostToolUse", "Read", "a.txt", "x");
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(!marker.exists(), "git ran although nothing is recorded");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(marker.exists(), "control: the fake git is the one run");
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    assert!(text.contains("0123456789abcdef0123456789abcdef01234567"));
+}
+
+/// Cost (#2391 stage 4, measured): a lane commit that carries its token is decided after one
+/// `git` call (the branch); only a commit without it pays the two `rev-parse` calls of the
+/// local-record lookup. Counted, not timed: a logging `git` wrapper execs the real one.
+#[test]
+fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
+    let (_d, root) = repo("issue/77-k");
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_string();
+    let bin = root.join("home/wrapbin");
+    fs::create_dir_all(&bin).unwrap();
+    let log = root.join("home/git-calls");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n",
+            log.display(),
+            real
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let calls = |cmd: &str| {
+        let _ = fs::remove_file(&log);
+        let r = dispatch("tool-preflight", &root, &pre_tool(cmd, &root), &env);
+        let n = fs::read_to_string(&log).map_or(0, |t| t.lines().count());
+        (n, r)
+    };
+    let (n, r) = calls("git commit -m 'x\n\nMoai-Claim: 77#5'");
+    assert_allow(&r);
+    assert_eq!(n, 1, "token present: the branch lookup only");
+    let (n, r) = calls("git commit -m x");
+    assert_deny(&r);
+    assert_eq!(n, 3, "no token: branch + two rev-parse for the journal");
+    let (n, r) = calls("ls");
+    assert_allow(&r);
+    assert_eq!(n, 0, "not a commit: no git at all");
+}
+
+// ---- stage 5: minimal guard bundle (A1–A4) ----
+
+/// The refused removal leaves the fixture's `.git` in place; the allowed control really runs.
+/// Both commands stay inside the temporary fixture repository.
+#[test]
+fn a_refused_removal_runs_nothing_and_an_allowed_one_runs() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join("build")).unwrap();
+    assert!(!host_runs_tool(Path::new(BIN), &root, "rm -rf .git"));
+    assert!(root.join(".git").is_dir(), "refused: .git must survive");
+    assert!(host_runs_tool(Path::new(BIN), &root, "rm -rf build"));
+    assert!(!root.join("build").exists(), "allowed control must run");
+}
+
+#[test]
+fn stage_five_reasons_are_fixed_text_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let marker = "UNIQUEMARK7";
+    let cmd = format!("git push --force origin main # {marker}");
+    for host in ["claude", "codex"] {
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
+            &root,
+            &pre_tool(&cmd, &root),
+            &[],
+        )
+        .unwrap();
+        let reason = assert_deny(&r);
+        assert!(reason.contains("force push"), "{reason}");
+        assert!(!reason.contains(marker), "{reason}");
+    }
+}
+
+#[test]
+fn file_writes_into_git_internals_are_refused_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let write = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                       "tool_input": {"file_path": ".git/hooks/pre-commit", "content": "x"}, "cwd": root});
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        write.to_string().as_bytes(),
+        &[],
+    ));
+    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                       "tool_input": {"command": "*** Begin Patch\n*** Update File: .git/config\n@@\n-a\n+b\n*** End Patch"},
+                       "cwd": root});
+    assert_deny(&codex(
+        "tool-preflight",
+        &root,
+        patch.to_string().as_bytes(),
+    ));
+    let fine = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                      "tool_input": {"file_path": "src/ok.rs", "content": "x"}, "cwd": root});
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        fine.to_string().as_bytes(),
+        &[],
+    ));
 }
