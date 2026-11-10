@@ -12,7 +12,7 @@ Refs #<Issue 번호>
 
 - 대상 Issue: #<n> (<논리 키, 예: 00-E>)
 - claim 토큰: `Moai-Claim: <n>#<claim 댓글 id>`
-- merge train: `<순번 또는 끼워 넣기(문서 전용)>` · base 병합은 자기 차례에 1회만 (#2388)
+- merge train: `<순번 또는 끼워 넣기(문서 전용)>` · base 병합은 자기 차례에 1회만 · 미리 쌓기라면 앞 PR #<n>의 감사된 head `<40자 SHA>` (#2388)
 - base: `v2026.11.0` @ `<base 40자 SHA>`
 - candidate head: `<head 40자 SHA>` (exact SHA, 독립 review가 본 SHA와 같아야 한다)
 - SPEC: `<SPEC id>` · revision `<revision>` · digest `<digest 또는 null>`
