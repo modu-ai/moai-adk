@@ -528,6 +528,18 @@ enum Command {
         #[arg(long)]
         plan_digest: String,
     },
+    /// Read-only space report of the repository's worktrees, their build folders and the
+    /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
+    /// evaluated. Writes nothing.
+    WorktreeReport {
+        project: PathBuf,
+        /// Folder whose `moai-*` children are classified (default `/tmp`).
+        #[arg(long)]
+        tmp_root: Option<PathBuf>,
+        /// Time budget in milliseconds for the size walk; past it a class is `partial`.
+        #[arg(long, default_value_t = moai_cli::worktree_report::DEFAULT_BUDGET_MS)]
+        budget_ms: u64,
+    },
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
         project: PathBuf,
@@ -1006,6 +1018,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
+        WorktreeReport { .. } => "worktree.report",
     })
 }
 
@@ -1652,6 +1665,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+        ),
+        Command::WorktreeReport {
+            project,
+            tmp_root,
+            budget_ms,
+        } => moai_cli::worktree_report::report(
+            &project,
+            &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
+            std::time::Duration::from_millis(budget_ms),
         ),
         Command::ParityCheck {
             template,

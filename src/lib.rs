@@ -46,6 +46,7 @@ pub mod statusline;
 pub mod update;
 pub mod verify;
 pub mod worktree;
+pub mod worktree_report;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
 pub use profile::{apply, plan, read_profile, DecisionRecord, Delta, Plan, Profile};
