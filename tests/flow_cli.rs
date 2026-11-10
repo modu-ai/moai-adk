@@ -656,3 +656,126 @@ fn gate_verdict_head_moved_between_reads_blocks() {
         v
     );
 }
+
+/// Audit F1: an empty policy must block regardless of the returned CI result.
+/// Every other check passes, so no unrelated failure can mask a missing CI guard.
+fn assert_empty_required_checks_block(required: &str) {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    for conclusion in ["failure", "success"] {
+        let envs = [
+            ("FLOW_PR", http200(&pr_body(true))),
+            ("FLOW_COMMITS", http200(&commit_list(true))),
+            ("FLOW_TIP", http200(&tip_body())),
+            ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+            (
+                "FLOW_CHECK_RUNS",
+                http200(&check_runs_body(&[check_run(
+                    "rc-ci",
+                    "completed",
+                    conclusion,
+                )])),
+            ),
+            ("FLOW_STATUS", http200(&status_body(conclusion))),
+        ];
+        let mut owned = gate_args("pr-5a4b3c2d");
+        owned.extend(["--required-checks".to_string(), required.to_string()]);
+        let args: Vec<&str> = owned.iter().map(String::as_str).collect();
+        let (v, out) = run_flow(&gh, &envs, &args);
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(
+            v["verdict"],
+            json!("blocked"),
+            "required={required:?}, CI={conclusion}: {v}"
+        );
+        let checks = v["checks"].as_array().unwrap();
+        let ci = checks
+            .iter()
+            .find(|c| c["check"] == json!("ci_status"))
+            .unwrap();
+        assert_eq!(ci["pass"], json!(false));
+        assert_eq!(
+            ci["detail"],
+            json!("required check runs: no required checks configured")
+        );
+        assert!(checks
+            .iter()
+            .filter(|c| c["check"] != json!("ci_status"))
+            .all(|c| c["pass"] == json!(true)));
+        assert_eq!(
+            reasons_of(&v),
+            vec!["ci_status: required check runs: no required checks configured"]
+        );
+        assert_eq!(v["writes"], json!(false));
+    }
+}
+
+#[test]
+fn gate_verdict_empty_required_checks_blocks() {
+    assert_empty_required_checks_block("");
+}
+
+#[test]
+fn gate_verdict_comma_only_required_checks_blocks() {
+    assert_empty_required_checks_block(",");
+}
+
+#[test]
+fn gate_verdict_whitespace_required_checks_blocks() {
+    assert_empty_required_checks_block(" , ");
+}
+
+/// Preserve the existing first-returned matching-run policy. A second success
+/// cannot hide the first failure or pending result; reversing them changes the answer.
+#[test]
+fn gate_verdict_duplicate_required_names_keep_first_result() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    for (first_status, first_conclusion, second_status, second_conclusion, verdict) in [
+        ("completed", "failure", "completed", "success", "blocked"),
+        ("completed", "success", "completed", "failure", "ok"),
+        ("in_progress", "", "completed", "success", "blocked"),
+        ("completed", "success", "in_progress", "", "ok"),
+    ] {
+        let envs = [
+            ("FLOW_PR", http200(&pr_body(true))),
+            ("FLOW_COMMITS", http200(&commit_list(true))),
+            ("FLOW_TIP", http200(&tip_body())),
+            ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+            (
+                "FLOW_CHECK_RUNS",
+                http200(&check_runs_body(&[
+                    check_run("rc-ci", first_status, first_conclusion),
+                    check_run("rc-ci", second_status, second_conclusion),
+                ])),
+            ),
+            ("FLOW_STATUS", http200(&status_body("success"))),
+        ];
+        let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+        assert!(out.status.success());
+        assert_eq!(v["verdict"], json!(verdict), "{v}");
+        let ci = v["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == json!("ci_status"))
+            .unwrap();
+        assert_eq!(ci["pass"], json!(verdict == "ok"));
+        let detail = if first_conclusion.is_empty() {
+            "rc-ci: in_progress, pending"
+        } else if first_conclusion == "failure" {
+            "rc-ci: failure"
+        } else {
+            "rc-ci: success"
+        };
+        assert_eq!(
+            ci["detail"],
+            json!(format!("required check runs: {detail}"))
+        );
+        assert_eq!(v["writes"], json!(false));
+    }
+}

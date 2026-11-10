@@ -215,8 +215,11 @@ fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
 /// The CI judgment over the required check runs: every required name must exist on the
 /// head and have concluded `success`; anything pending, failed, or missing fails the
 /// check by name. Unrelated check runs are ignored by construction — only the
-/// configured required list is consulted (default: `rc-ci`).
+/// configured required list is consulted (default: `rc-ci`). An empty policy blocks.
 fn required_ci_judgment(runs: &[Value], required: &[String]) -> (bool, String) {
+    if required.is_empty() {
+        return (false, "no required checks configured".to_string());
+    }
     for name in required {
         let Some(r) = runs
             .iter()
