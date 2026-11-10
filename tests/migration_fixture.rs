@@ -7,6 +7,18 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
+fn credential_container_and_token_name_variants_are_not_clearance() {
+    for bytes in [
+        br#"{"clientCredentials":{"value":"synthetic-audit-value"}}"#.as_slice(),
+        br#"{"clientToken":"synthetic-audit-value"}"#,
+        br#"{"tokenValue":"synthetic-audit-value"}"#,
+        br#"{"\u0063lient\u0043redentials":{"value":"synthetic-audit-value"}}"#,
+    ] {
+        excluded(bytes, "config.json");
+    }
+}
+
+#[test]
 fn decoded_policy_covers_nested_keys_values_arrays_and_tables() {
     for (bytes, name) in [
         (

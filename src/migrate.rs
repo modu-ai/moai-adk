@@ -34,7 +34,17 @@ fn sensitive_text(text: &str) -> bool {
         .filter(char::is_ascii_alphanumeric)
         .flat_map(char::to_lowercase)
         .collect();
-    text.split(|c: char| !c.is_ascii_alphanumeric())
+    let mut words = String::new();
+    let mut previous_lower = false;
+    for c in text.chars() {
+        if c.is_ascii_uppercase() && previous_lower {
+            words.push(' ');
+        }
+        words.push(c);
+        previous_lower = c.is_ascii_lowercase();
+    }
+    words
+        .split(|c: char| !c.is_ascii_alphanumeric())
         .any(|word| {
             [
                 "credential",
@@ -52,6 +62,9 @@ fn sensitive_text(text: &str) -> bool {
             .iter()
             .any(|s| word.eq_ignore_ascii_case(s))
         })
+        || normalized.contains("credential")
+        || normalized.contains("secret")
+        || normalized.ends_with("token")
         || [
             "apikey",
             "privatekey",
