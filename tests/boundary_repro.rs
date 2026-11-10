@@ -857,3 +857,18 @@ fn d2_independence_basis_is_reported_as_self_declared() {
     assert_eq!(out["independence"]["accepted"], json!(true), "{out}");
     assert_eq!(out["admission"], "admitted", "{out}");
 }
+
+/// D3-B (decision 6774899518 row 15 = A, pin only): a review export the reviewer writes into
+/// PROJECT — here a decision record under `.moai-cli/` — is a change to the candidate, so the
+/// verdict is `rejected` with `candidate-changed`, never an admission of the unchanged commit.
+#[test]
+fn d3b_review_export_into_project_is_a_new_candidate() {
+    let Some(dir) = project() else { return };
+    let input = audit_input(dir.path(), &["true"]);
+    let export = dir.path().join(".moai-cli/decisions");
+    fs::create_dir_all(&export).unwrap();
+    fs::write(export.join("review.jsonl"), "{\"verdict\":\"pass\"}\n").unwrap();
+    let out = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+    assert_eq!(out["admission"], "rejected", "{out}");
+    assert_eq!(out["reasons"], json!(["candidate-changed"]), "{out}");
+}
