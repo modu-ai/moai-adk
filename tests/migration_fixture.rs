@@ -65,6 +65,8 @@ fn benign_duplicate_keys_are_refused_before_any_write() {
             "config.json",
         ),
         (b"language: ko\nlanguage: en", "config.yml"),
+        (br#"{"k":1,"k":2}"#, "config.json"),
+        (b"\"k\": a\nk: b", "config.yml"),
     ] {
         let (d, h, s) = independent_fixture(bytes, name);
         let before = moai_cli::tree_digest(d.path(), &[]).unwrap();
@@ -91,6 +93,32 @@ fn toml_duplicate_definitions_are_parser_errors_and_never_copied() {
     ] {
         assert!(text.parse::<toml_edit::DocumentMut>().is_err(), "{text}");
         excluded(text.as_bytes(), "config.toml");
+    }
+}
+
+// The raw source filter refuses these substrings; an escape hides them from
+// that filter, so the decoded policy must cover at least the same words.
+#[test]
+fn escaped_raw_filter_words_are_excluded_after_decoding() {
+    for word in [
+        "db\\u0070assword",
+        "my\\u0061pi_key",
+        "x\\u0061pi-key",
+        "my\\u0061pikey",
+        "my\\u0073ecret",
+        "\\u0062earer ",
+        "my\\u0061ccess_token",
+        "my\\u0061uth_token",
+        "\\u0070rivate key",
+    ] {
+        let json = format!(r#"{{"{word}":"synthetic-audit-value"}}"#);
+        excluded(json.as_bytes(), "config.json");
+        let toml = format!(r#""{word}" = "synthetic-audit-value""#);
+        excluded(toml.as_bytes(), "config.toml");
+        let yaml = format!(r#""{word}": "synthetic-audit-value""#);
+        excluded(yaml.as_bytes(), "config.yml");
+        let value = format!(r#"{{"ordinary":"{word}"}}"#);
+        excluded(value.as_bytes(), "config.json");
     }
 }
 

@@ -26,9 +26,27 @@ fn digest<T: Serialize>(value: &T) -> Result<String> {
     ))
 }
 
+// Substrings the raw source filter refuses. sensitive_text applies the same
+// list to every decoded key/string, so an escape cannot hide one of them.
+const RAW_CONTENT_WORDS: [&str; 9] = [
+    "api_key",
+    "api-key",
+    "apikey",
+    "password",
+    "secret",
+    "bearer ",
+    "access_token",
+    "auth_token",
+    "private key",
+];
+
 // One policy for raw text AND every parser-decoded key/string, recursively.
 // Ownership hashes prove identity, never clearance to copy credentials.
 fn sensitive_text(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    if RAW_CONTENT_WORDS.iter().any(|w| lower.contains(w)) {
+        return true;
+    }
     let normalized: String = text
         .chars()
         .filter(char::is_ascii_alphanumeric)
@@ -381,20 +399,7 @@ impl SyntheticHome {
         let text = std::str::from_utf8(&bytes)
             .map_err(|_| "text source required")?
             .to_ascii_lowercase();
-        if [
-            "api_key",
-            "api-key",
-            "apikey",
-            "password",
-            "secret",
-            "bearer ",
-            "access_token",
-            "auth_token",
-            "private key",
-        ]
-        .iter()
-        .any(|s| text.contains(s))
-        {
+        if RAW_CONTENT_WORDS.iter().any(|s| text.contains(s)) {
             return Err("potential credential content refused; no values logged".into());
         }
         Ok(bytes)
