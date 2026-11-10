@@ -470,6 +470,32 @@ fn input_cwd_decides_over_the_process_cwd() {
     ));
 }
 
+/// #2399 review: read commands that merely mention `commit` are not commits (they were denied
+/// before the subcommand-position fix); a real commit behind global options still is.
+#[test]
+fn read_commands_mentioning_commit_are_allowed_and_real_commits_are_not() {
+    let (_d, root) = repo("issue/77-k");
+    for cmd in [
+        "git log --grep commit",
+        "git log -- commit",
+        "git show commit-ish",
+    ] {
+        assert_allow(&dispatch(
+            "tool-preflight",
+            &root,
+            &pre_tool(cmd, &root),
+            &[],
+        ));
+    }
+    let dir_commit = format!("git -C {} commit -m x", root.display());
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool(&dir_commit, &root),
+        &[],
+    ));
+}
+
 /// B3: stage 1 guards commits only; a push stays with `claim-verify --hook`.
 #[test]
 fn lane_push_without_token_is_allowed_by_stage_one() {
