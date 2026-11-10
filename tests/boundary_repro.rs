@@ -398,7 +398,7 @@ fn f5a_quoted_argument_is_not_split_on_whitespace() {
 
 /// F5b: a check that ran zero tests is not a pass; one test that ran is (the boundary).
 #[test]
-#[ignore = "#2392 repro F5b: RED until zero tests stop counting as passed"]
+#[ignore = "#2392 repro F5b: RED until zero tests are not_run"]
 fn f5b_zero_tests_is_not_a_pass() {
     let dir = tempfile::TempDir::new().unwrap();
     fs::write(
@@ -411,18 +411,50 @@ fn f5b_zero_tests_is_not_a_pass() {
         "test result: ok. 1 passed; 0 failed; 0 ignored\n",
     )
     .unwrap();
+    // Oracle edit (2026-11-10, before the fix, decision 6774899518 row 19 = A): zero is
+    // exactly `not_run`, and only when the output carries test counts; a command with no test
+    // output keeps its exit-code result, and ignored tests are not tests that ran.
+    fs::write(
+        dir.path().join("ignored.txt"),
+        "test result: ok. 0 passed; 0 failed; 3 ignored\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.path().join("split.txt"),
+        "test result: ok. 0 passed; 0 failed; 0 ignored\n\
+         test result: ok. 2 passed; 0 failed; 0 ignored\n",
+    )
+    .unwrap();
     let timeout = Duration::from_secs(10);
     let zero = run_check(dir.path(), 0, "cat zero.txt", timeout);
-    assert_ne!(
+    assert_eq!(
         zero.result,
-        CheckResult::Passed,
-        "zero tests counted as passed"
+        CheckResult::NotRun,
+        "zero tests must be not_run"
+    );
+    let ignored = run_check(dir.path(), 0, "cat ignored.txt", timeout);
+    assert_eq!(
+        ignored.result,
+        CheckResult::NotRun,
+        "only ignored tests must be not_run"
     );
     let one = run_check(dir.path(), 0, "cat one.txt", timeout);
     assert_eq!(
         one.result,
         CheckResult::Passed,
         "one test that ran must pass"
+    );
+    let split = run_check(dir.path(), 0, "cat split.txt", timeout);
+    assert_eq!(
+        split.result,
+        CheckResult::Passed,
+        "an empty target beside a target that ran tests must pass"
+    );
+    let plain = run_check(dir.path(), 0, "true", timeout);
+    assert_eq!(
+        plain.result,
+        CheckResult::Passed,
+        "a command without test output keeps its exit-code result"
     );
 }
 
