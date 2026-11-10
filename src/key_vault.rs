@@ -724,8 +724,15 @@ pub fn set(home: &Path, scope: &Scope, provider: &str, value: &str) -> Result<Va
 /// (`--yes`). The machine key and every other file stay (a legacy key file too).
 pub fn remove(home: &Path, scope: &Scope, provider: &str, confirmed: bool) -> Result<Value> {
     check_provider(provider)?;
+    // The same folder rule as read and set (pre-audit B1, Issue #2393): a vault or scope folder
+    // that is a symlink or not private is refused, so a removal never follows a folder link
+    // out of the vault. The entry itself is removed as a name (a symlink entry loses only the
+    // link).
+    let to_text = |b: Blocked| format!("{}: {}", b.code, b.reason);
+    let dirs_present = check_dir(home, &vault_dir(home)).map_err(to_text)?
+        && check_dir(home, &scope_dir(home, scope)).map_err(to_text)?;
     let entry = entry_path(home, scope, provider);
-    let exists = fs::symlink_metadata(&entry).is_ok();
+    let exists = dirs_present && fs::symlink_metadata(&entry).is_ok();
     if !confirmed {
         return Ok(json!({
             "provider": provider,
