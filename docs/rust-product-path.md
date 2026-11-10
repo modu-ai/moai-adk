@@ -369,6 +369,10 @@ declaration, not native-host receipt or cryptographic session identity. Identica
 duplicate comments are one logical packet; observed conflicts block mutation.
 Cross-host atomicity and exactly-once delivery are not guaranteed.
 
+Pagination stays within the exact Issue comments collection; foreign next URLs
+are refused before GET. Cyclic or malformed next links fail closed. ACK and
+reconciliation leave existing receipt files unchanged on these traversal errors.
+
 A response-lost publication can succeed only after a fresh matching read.
 Otherwise record/ACK return a typed error and retain the attempt; reconciliation
 may report `publish_unknown`. Transport/408/5xx uncertainty never permits blind

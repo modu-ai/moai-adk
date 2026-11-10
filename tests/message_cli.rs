@@ -35,6 +35,9 @@ struct Remote {
     crash: Cell<bool>,
     expected_intent: RefCell<Option<std::path::PathBuf>>,
     post_status: Cell<u16>,
+    links: RefCell<Vec<(String, String)>>,
+    comments_gets: Cell<usize>,
+    comments_get_limit: Cell<Option<usize>>,
 }
 impl Remote {
     fn new() -> Self {
@@ -48,6 +51,9 @@ impl Remote {
             crash: Cell::new(false),
             expected_intent: RefCell::new(None),
             post_status: Cell::new(201),
+            links: RefCell::new(vec![]),
+            comments_gets: Cell::new(0),
+            comments_get_limit: Cell::new(None),
         }
     }
     fn posts(&self) -> usize {
@@ -86,6 +92,15 @@ impl Transport for Remote {
         let body = if request.url.ends_with("/user") {
             json!({"id":self.actor.get()})
         } else if request.url.contains("/comments?") {
+            let gets = self.comments_gets.get() + 1;
+            self.comments_gets.set(gets);
+            if self
+                .comments_get_limit
+                .get()
+                .is_some_and(|limit| gets > limit)
+            {
+                return Err("comments GET limit exceeded".into());
+            }
             let page: usize = request
                 .url
                 .split("&page=")
@@ -98,7 +113,14 @@ impl Transport for Remote {
             let start = (page - 1) * size;
             let body = json!(comments.iter().skip(start).take(size).collect::<Vec<_>>());
             let mut response = HttpResponse::new(200).with_body(body);
-            if start + size < comments.len() {
+            if let Some((_, link)) = self
+                .links
+                .borrow()
+                .iter()
+                .find(|(url, _)| url == &request.url)
+            {
+                response = response.with_header("link", link.clone());
+            } else if start + size < comments.len() {
                 response = response.with_header("link", format!("<https://api.github.com/repos/org/repo/issues/3/comments?per_page=100&page={}>; rel=\"next\"", page + 1));
             }
             return Ok(response);
@@ -164,6 +186,120 @@ fn rewrite_wire(comment: &mut Value, f: impl FnOnce(&mut Value)) {
     let mut wire: Value = serde_json::from_str(lines[1]).unwrap();
     f(&mut wire);
     comment["body"] = json!(format!("{}\n{}\n{}", lines[0], wire, lines[2]));
+}
+
+fn assert_pagination_rejected(
+    links: &[(&str, &str)],
+    kind: Kind,
+    forbidden: Option<&str>,
+    expected_gets: usize,
+) {
+    for explicit_ack in [true, false] {
+        let root = temp_root();
+        let receiver = temp_root();
+        let remote = Remote::new();
+        let m = message();
+        record(root.path(), &m, &remote).unwrap();
+        remote.actor.set(22);
+        // Produce a genuine receiver ACK, available only on the second page.
+        ack(receiver.path(), &m, &remote).unwrap();
+        remote.page_size.set(1);
+        *remote.links.borrow_mut() = links
+            .iter()
+            .map(|(url, link)| (url.to_string(), link.to_string()))
+            .collect();
+        remote.comments_gets.set(0);
+        remote.comments_get_limit.set(Some(2));
+        remote.sent.borrow_mut().clear();
+        let outbox = root.path().join(".moai-cli/messages/outbox/r1.json");
+        let before = fs::read(&outbox).unwrap();
+        let comments = remote.comments.borrow().clone();
+        let error = if explicit_ack {
+            ack(root.path(), &m, &remote)
+        } else {
+            reconcile(root.path(), &m, &remote)
+        }
+        .unwrap_err();
+        assert_eq!(error.kind, kind);
+        assert_eq!(remote.comments_gets.get(), expected_gets);
+        if let Some(target) = forbidden {
+            assert_eq!(
+                remote
+                    .sent
+                    .borrow()
+                    .iter()
+                    .filter(|request| request.method == "GET" && request.url == target)
+                    .count(),
+                0
+            );
+        }
+        assert_eq!(remote.posts(), 0);
+        assert_eq!(fs::read(&outbox).unwrap(), before);
+        assert!(!root
+            .path()
+            .join(".moai-cli/messages/inbox/r1.json")
+            .exists());
+        assert_eq!(*remote.comments.borrow(), comments);
+        if !explicit_ack {
+            assert!(remote
+                .sent
+                .borrow()
+                .iter()
+                .all(|request| request.method == "GET"));
+        }
+    }
+}
+
+#[test]
+fn ack_and_reconcile_refuse_next_links_outside_exact_issue_comments() {
+    for target in [
+        "https://api.github.com/repos/org/repo/issues/4/comments?per_page=100&page=2",
+        "https://api.github.com/repos/org/other/issues/3/comments?per_page=100&page=2",
+        "https://other.example/repos/org/repo/issues/3/comments?per_page=100&page=2",
+    ] {
+        let link = format!("<{target}>; rel=\"next\"");
+        assert_pagination_rejected(
+            &[(
+                "https://api.github.com/repos/org/repo/issues/3/comments?per_page=100",
+                &link,
+            )],
+            Kind::InvalidInput,
+            Some(target),
+            1,
+        );
+    }
+}
+
+#[test]
+fn ack_and_reconcile_block_cyclic_pagination_before_repeating_get() {
+    assert_pagination_rejected(
+        &[
+            (
+                "https://api.github.com/repos/org/repo/issues/3/comments?per_page=100",
+                "<https://api.github.com/repos/org/repo/issues/3/comments?per_page=100&page=2>; rel=\"next\"",
+            ),
+            (
+                "https://api.github.com/repos/org/repo/issues/3/comments?per_page=100&page=2",
+                "<https://api.github.com/repos/org/repo/issues/3/comments?per_page=100>; rel=\"next\"",
+            ),
+        ],
+        Kind::Blocked,
+        None,
+        2,
+    );
+}
+
+#[test]
+fn ack_and_reconcile_reject_malformed_next_link() {
+    assert_pagination_rejected(
+        &[(
+            "https://api.github.com/repos/org/repo/issues/3/comments?per_page=100",
+            "not-a-link; rel=\"next\"",
+        )],
+        Kind::Transport,
+        None,
+        1,
+    );
 }
 
 #[test]
