@@ -1,10 +1,11 @@
 //! #2239 (rc.2 I2): `claude-settings-plan` / `claude-settings-apply` expose the existing
 //! three-way settings merge (`src/claude.rs`) on the CLI. Every case runs in a temporary
 //! project with a temporary HOME; no real user settings are read or written.
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
-    io::Write,
     path::Path,
     process::{Command, Stdio},
 };
@@ -22,12 +23,7 @@ fn run(args: &[&str], home: &Path, stdin: &Value) -> (Option<i32>, Value) {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(stdin.to_string().as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, stdin.to_string().as_bytes());
     let out = child.wait_with_output().unwrap();
     let v = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
     (out.status.code(), v)
@@ -192,10 +188,8 @@ fn home_and_claude_config_dir_are_refused() {
         .stdout(Stdio::piped())
         .spawn()
         .and_then(|mut c| {
-            c.stdin
-                .take()
-                .unwrap()
-                .write_all(desired().to_string().as_bytes())?;
+            // The plan is refused (exit 1) and may exit before reading stdin.
+            common::feed_stdin(&mut c, desired().to_string().as_bytes());
             c.wait_with_output()
         })
         .unwrap();
