@@ -488,77 +488,9 @@ fn e2e_never_writes_outside_temp_home() {
 #[test]
 fn e2e_clean_clone_carries_portable_read_plan_assets() {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let discovery = Command::new("git")
-        .args([
-            "-C",
-            manifest.to_str().unwrap(),
-            "rev-parse",
-            "--git-common-dir",
-        ])
-        .output()
-        .unwrap();
-    let discovered = String::from_utf8_lossy(&discovery.stdout)
-        .trim()
-        .to_string();
-    if !discovery.status.success() || discovered.is_empty() {
-        // Explicit not_run that cargo cannot count as ok (Issue #2104): this tree
-        // carries no git metadata (e.g. an exported source archive), so there is no
-        // repository to clean-clone. A silent return read as a vacuous pass — the
-        // one thing RL-10 forbids — so the unmeasurable condition surfaces as a
-        // failure naming its reason. docs/e2e-matrix.md records the combination as
-        // not_run; inside a git checkout this path is never taken.
-        panic!(
-            "NOT RUN: e2e_clean_clone_carries_portable_read_plan_assets — no git \
-             metadata in this tree ({}); the clean-clone portability check was not \
-             performed. Run from a git checkout, or record the combination as \
-             not_run in docs/e2e-matrix.md",
-            String::from_utf8_lossy(&discovery.stderr).trim()
-        );
-    }
-    let gitdir = PathBuf::from(discovered);
-    let gitdir = if gitdir.is_absolute() {
-        gitdir
-    } else {
-        manifest.join(gitdir)
-    };
-    // Clone THIS checkout's branch, not the repository's default one: a worktree
-    // (e.g. `.claude/worktrees/…`) shares the common dir with a main checkout whose
-    // default branch may not carry this tree's files yet. A default-branch clone made
-    // the check read a tip that predates the work under test and miss its assets.
-    let branch = {
-        let b = Command::new("git")
-            .args([
-                "-C",
-                manifest.to_str().unwrap(),
-                "rev-parse",
-                "--abbrev-ref",
-                "HEAD",
-            ])
-            .output()
-            .unwrap();
-        assert!(b.status.success(), "cannot resolve the current branch");
-        String::from_utf8_lossy(&b.stdout).trim().to_string()
-    };
     let dest = TempDir::new().unwrap();
     let clone = dest.path().join("clean");
-    let out = Command::new("git")
-        .args([
-            "clone",
-            "--no-hardlinks",
-            "--depth",
-            "1",
-            "--branch",
-            &branch,
-            gitdir.to_str().unwrap(),
-            clone.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    clone_checkout(&manifest, &clone);
 
     // The portable assets are all plain files in the clone — no binary, no state dir.
     let skill = clone.join("skills/moai-cli");
@@ -597,4 +529,156 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     }
     // The clone carries no installed user state (only repo content such as the
     // tracked .moai-cli manifests): nothing under the clone references a real HOME.
+}
+
+fn clone_checkout(manifest: &Path, clone: &Path) {
+    let discovery = Command::new("git")
+        .args([
+            "-C",
+            manifest.to_str().unwrap(),
+            "rev-parse",
+            "--git-common-dir",
+        ])
+        .output()
+        .unwrap();
+    let discovered = String::from_utf8_lossy(&discovery.stdout)
+        .trim()
+        .to_string();
+    if !discovery.status.success() || discovered.is_empty() {
+        // Explicit not_run that cargo cannot count as ok (Issue #2104): this tree
+        // carries no git metadata (e.g. an exported source archive), so there is no
+        // repository to clean-clone. A silent return read as a vacuous pass — the
+        // one thing RL-10 forbids — so the unmeasurable condition surfaces as a
+        // failure naming its reason. docs/e2e-matrix.md records the combination as
+        // not_run; inside a git checkout this path is never taken.
+        panic!(
+            "NOT RUN: e2e_clean_clone_carries_portable_read_plan_assets — no git \
+             metadata in this tree ({}); the clean-clone portability check was not \
+             performed. Run from a git checkout, or record the combination as \
+             not_run in docs/e2e-matrix.md",
+            String::from_utf8_lossy(&discovery.stderr).trim()
+        );
+    }
+    let gitdir = PathBuf::from(discovered);
+    let gitdir = if gitdir.is_absolute() {
+        gitdir
+    } else {
+        manifest.join(gitdir)
+    };
+    // Pin this checkout's commit: a linked worktree may differ from the common-dir
+    // default branch, and CI checks out a detached merge commit with no branch name.
+    let revision = {
+        let out = Command::new("git")
+            .args([
+                "-C",
+                manifest.to_str().unwrap(),
+                "rev-parse",
+                "--verify",
+                "HEAD^{commit}",
+            ])
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "cannot resolve the tested commit");
+        String::from_utf8(out.stdout).unwrap().trim().to_string()
+    };
+    // A local copy includes the detached worktree's object even if no branch names
+    // it. Do not use a shallow transport clone, which only fetches advertised refs.
+    let out = Command::new("git")
+        .args([
+            "clone",
+            "--no-hardlinks",
+            "--no-checkout",
+            gitdir.to_str().unwrap(),
+            clone.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let checkout = Command::new("git")
+        .arg("-C")
+        .arg(clone)
+        .args(["checkout", "--detach", &revision])
+        .output()
+        .unwrap();
+    assert!(
+        checkout.status.success(),
+        "{}",
+        String::from_utf8_lossy(&checkout.stderr)
+    );
+}
+
+/// The clone must select the tested revision even when the common-dir HEAD differs.
+#[test]
+fn e2e_clean_clone_keeps_exact_attached_and_detached_revision() {
+    fn git(root: &Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args([
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.hooksPath=/dev/null",
+            ])
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap().trim().to_string()
+    }
+    let temp = TempDir::new().unwrap();
+    let source = temp.path().join("source");
+    fs::create_dir(&source).unwrap();
+    git(&source, &["init", "--initial-branch=default"]);
+    fs::write(source.join("asset"), "default").unwrap();
+    git(&source, &["add", "asset"]);
+    git(&source, &["commit", "-m", "default assets"]);
+    let lane = temp.path().join("lane");
+    git(
+        &source,
+        &["worktree", "add", "-b", "lane", lane.to_str().unwrap()],
+    );
+    fs::write(lane.join("asset"), "attached lane").unwrap();
+    git(&lane, &["add", "asset"]);
+    git(&lane, &["commit", "-m", "lane assets"]);
+    let attached = temp.path().join("attached-clone");
+    clone_checkout(&lane, &attached);
+    assert_eq!(
+        git(&attached, &["rev-parse", "HEAD"]),
+        git(&lane, &["rev-parse", "HEAD"])
+    );
+    assert_eq!(
+        fs::read_to_string(attached.join("asset")).unwrap(),
+        "attached lane"
+    );
+
+    git(&lane, &["checkout", "--detach"]);
+    fs::write(lane.join("asset"), "detached merge assets").unwrap();
+    git(&lane, &["add", "asset"]);
+    git(&lane, &["commit", "-m", "detached assets"]);
+    let detached = temp.path().join("detached-clone");
+    clone_checkout(&lane, &detached);
+    assert_eq!(
+        git(&detached, &["rev-parse", "HEAD"]),
+        git(&lane, &["rev-parse", "HEAD"])
+    );
+    assert_eq!(
+        fs::read_to_string(detached.join("asset")).unwrap(),
+        "detached merge assets"
+    );
+    assert_eq!(fs::read_to_string(source.join("asset")).unwrap(), "default");
 }
