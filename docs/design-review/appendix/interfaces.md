@@ -90,8 +90,6 @@
 - `skill-source-apply`
 - `skill-source-plan`
 - `snapshot-describe`
-- `todo-promote-apply`
-- `todo-promote-preview`
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
