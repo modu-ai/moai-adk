@@ -425,7 +425,7 @@ Known gaps: the expected revision is a commit id, so uncommitted changes are not
 | test-failure | output containing `test result: FAILED` or `panicked at` |
 | unclassified | any other failure; never counted as RED |
 
-- **Retry budget.** `budget_exhausted` stops once `max_attempts` attempts ran and the last ones failed on the same checks; there is no default and no budget means no retry decision. `remaining_evidence` lists the steps still missing. The caller holds the attempt history.
+- **Retry budget.** `budget_exhausted` stops once `max_attempts` attempts ran and the last ones failed on the same checks; there is no default and no budget means no retry decision. `remaining_evidence` lists the steps still missing: only runner receipts count, the RED step (`red`, `repro-fail`) is settled by that step's receipt with `red_confirmed: true` rather than by a pass, and every other step by a passed receipt of that step (#2392). The caller holds the attempt history.
 
 Known gaps: receipts and command output are not written anywhere (P09, owned by 01-B #1989); failure classes are a text heuristic (libtest JSON is unstable) and `--list` is not run, so the test selection is the filters and the summed counts; a trusted `preserve` baseline is impossible until receipts are stored or signed; the tree digest is taken before the run, so a command that writes in `PROJECT` (a new `Cargo.lock`, for example) makes the receipt stale at once; receipts are unsigned and claim no tamper resistance.
 
