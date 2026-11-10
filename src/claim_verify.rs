@@ -626,6 +626,15 @@ const GIT_GLOBAL_FLAGS: &[&str] = &[
 /// unknown option ends the scan, so the arguments of a subcommand that was already a
 /// candidate (`git --new log --grep commit`) are not read as a subcommand.
 fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
+    git_subcommand_positions(args)
+        .into_iter()
+        .map(|i| args[i].as_str())
+        .collect()
+}
+
+/// The indexes in `args` of [`git_subcommand_candidates`] (the one parser; the hook guards of
+/// #2391 stage 5 read each subcommand's own arguments from these positions).
+fn git_subcommand_positions(args: &[String]) -> Vec<usize> {
     let mut out = Vec::new();
     let mut seen_unknown = false;
     let mut i = 0;
@@ -634,7 +643,7 @@ fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
         if GIT_GLOBAL_OPTIONS_WITH_VALUE.contains(&w) {
             i += 2;
         } else if !w.starts_with('-') {
-            out.push(w);
+            out.push(i);
             return out;
         } else if GIT_GLOBAL_FLAGS.contains(&w) || w.contains('=') || w.starts_with("-c") {
             // `--opt=value` and the attached `-c<name>=<value>` form carry their own value.
@@ -644,13 +653,46 @@ fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
         } else {
             // Unknown option: its next word is either its value or the subcommand.
             seen_unknown = true;
-            if let Some(next) = args.get(i + 1).filter(|n| !n.starts_with('-')) {
-                out.push(next.as_str());
+            if args.get(i + 1).is_some_and(|n| !n.starts_with('-')) {
+                out.push(i + 1);
             }
             i += 2;
         }
     }
     out
+}
+
+/// Every command a shell line runs, as (name without its path, arguments), past assignments
+/// and wrapper words, with a shell's `-c` script expanded one level deep — the same reading
+/// `runs_git` uses. Quoted text stays one argument and is never a command.
+pub(crate) fn shell_commands(command: &str) -> Vec<(String, Vec<String>)> {
+    let mut out = Vec::new();
+    collect_commands(command, 0, &mut out);
+    out
+}
+
+fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>)>) {
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        let name = command_name(&words[i]).to_string();
+        let args = words[i + 1..].to_vec();
+        if depth == 0 && SHELLS.contains(&name.as_str()) {
+            if let Some(script) = shell_script(&args) {
+                collect_commands(script, depth + 1, out);
+            }
+        }
+        out.push((name, args));
+    }
+}
+
+/// Each git subcommand a `git` argument list may run, with the arguments that follow it.
+pub(crate) fn git_subcommands(args: &[String]) -> Vec<(&str, &[String])> {
+    git_subcommand_positions(args)
+        .into_iter()
+        .map(|i| (args[i].as_str(), &args[i + 1..]))
+        .collect()
 }
 
 /// True when one segment of a shell command line runs `git <verb>`. The segment's command is

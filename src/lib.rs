@@ -18,6 +18,7 @@ pub mod generation;
 pub mod github_templates;
 pub mod handoff;
 pub mod hook_engine;
+pub mod hook_guards;
 pub mod hooks;
 pub mod hosts;
 pub mod identity;

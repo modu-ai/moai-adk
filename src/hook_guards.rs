@@ -1,0 +1,647 @@
+//! tool-preflight guards, #2391 stage 5: the minimal set that keeps everyday development safe
+//! without the Go hooks (Issue #2391 classification 6771810987, corrected in 6772429210).
+//!
+//! Every rule is a deny with no override, so each one is limited to damage that cannot be undone
+//! and is pinned by allowed look-alikes in its tests. The reasons are fixed strings; the command
+//! text, paths and file contents are never echoed.
+//!
+//! - A1 `rm` aimed at `/`, the home directory, a top-level directory, a bare `*`/`.`/`..`, or a
+//!   `.git` directory (Go issue #1658). `node_modules` is not included: it can be regenerated.
+//! - A2 irreversible commands: a force push to `main`/`master`, a force delete of the
+//!   `main`/`master` branch, `mkfs*`, `dd` onto a device, a fork bomb, and a database client
+//!   running `DROP DATABASE`, `DROP SCHEMA` or `TRUNCATE TABLE`. The integration branch of this
+//!   repository is not covered (a recorded gap; widening it is configuration, not a constant).
+//! - A3 `git commit` with the hook-bypass option (`--no-verify`, or `-n` in a short-option
+//!   cluster before any option that takes a value).
+//! - A4 file writes, wherever they land: inside a `.git` directory, into credential directories
+//!   (`.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, gcloud's configuration), onto a private-key
+//!   file named `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`, or content that carries a private-key
+//!   block or a GitHub token. A file extension alone (`.pem`, `.key`) decides nothing: public
+//!   certificates and test fixtures use them too. Writes outside the project are not refused
+//!   here (decision pending: the hook cannot see a session's extra directories).
+//!
+//! Known gaps: shell redirections (`>`, `tee`) into protected paths; Codex `apply_patch` paths
+//! are read from `*** Add/Update/Delete File:` and `*** Move to:` lines, a format the official
+//! pages do not define (an unreadable patch is not path-checked, its added lines still are);
+//! input past the 4 MiB stdin bound is an engine error and not checked at all (decision D1).
+
+use serde_json::Value;
+use std::path::{Component, Path, PathBuf};
+
+const RM_TARGET: &str =
+    "MoAI tool-preflight: rm aimed at the root, the home directory, a top-level directory, a bare wildcard or dot, or a .git directory is refused.";
+const FORCE_PUSH: &str = "MoAI tool-preflight: a force push to main or master is refused.";
+const BRANCH_DELETE: &str =
+    "MoAI tool-preflight: force-deleting the main or master branch is refused.";
+const DEVICE: &str =
+    "MoAI tool-preflight: formatting a filesystem or writing raw data onto a device is refused.";
+const FORK_BOMB: &str = "MoAI tool-preflight: a fork bomb is refused.";
+const DATABASE: &str =
+    "MoAI tool-preflight: dropping a database or schema, or truncating a table, is refused.";
+const HOOK_BYPASS: &str =
+    "MoAI tool-preflight: a commit that skips the repository's commit hooks is refused.";
+const PROTECTED_PATH: &str =
+    "MoAI tool-preflight: writing inside a .git directory, a credential directory or a private-key file is refused.";
+const SECRET_CONTENT: &str =
+    "MoAI tool-preflight: writing a private key or a GitHub token into a file is refused.";
+
+const PROTECTED_BRANCHES: &[&str] = &["main", "master"];
+const DB_CLIENTS: &[&str] = &["psql", "mysql", "mariadb", "sqlite3", "cockroach"];
+const DB_STATEMENTS: &[&str] = &["drop database", "drop schema", "truncate table"];
+const CREDENTIAL_DIRS: &[&str] = &[".ssh", ".aws", ".azure", ".kube", ".gnupg"];
+const KEY_FILES: &[&str] = &["id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"];
+/// `git commit` short options that take a value (`-m msg`, `-F file`, `-C rev`, `-c rev`,
+/// `-t file`); after one of them the rest of a cluster is that value, not more options.
+const COMMIT_VALUE_OPTS: &[char] = &['m', 'F', 'C', 'c', 't'];
+
+/// The reason a Bash command line is refused, or `None`.
+pub fn bash_guard(command: &str) -> Option<&'static str> {
+    // A fork bomb defines a function made of punctuation; read the raw text.
+    if command.contains(":(){") || command.contains(": () {") {
+        return Some(FORK_BOMB);
+    }
+    for (name, args) in crate::claim_verify::shell_commands(command) {
+        let reason = match name.as_str() {
+            "rm" => rm_guard(&args),
+            "git" => git_guard(&args),
+            "dd" => args
+                .iter()
+                .any(|a| is_device_target(a.strip_prefix("of=").unwrap_or("")))
+                .then_some(DEVICE),
+            n if n.starts_with("mkfs") => Some(DEVICE),
+            n if DB_CLIENTS.contains(&n) => args
+                .iter()
+                .any(|a| {
+                    let lower = a.to_ascii_lowercase();
+                    DB_STATEMENTS.iter().any(|s| lower.contains(s))
+                })
+                .then_some(DATABASE),
+            _ => None,
+        };
+        if reason.is_some() {
+            return reason;
+        }
+    }
+    None
+}
+
+fn is_device_target(path: &str) -> bool {
+    path.starts_with("/dev/")
+        && !matches!(
+            path,
+            "/dev/null" | "/dev/zero" | "/dev/stdout" | "/dev/stderr" | "/dev/tty"
+        )
+}
+
+fn rm_guard(args: &[String]) -> Option<&'static str> {
+    let mut options_done = false;
+    for a in args {
+        if !options_done && a == "--" {
+            options_done = true;
+            continue;
+        }
+        if !options_done && a.starts_with('-') && a.len() > 1 {
+            continue;
+        }
+        if is_dangerous_rm_target(a) {
+            return Some(RM_TARGET);
+        }
+    }
+    None
+}
+
+fn is_dangerous_rm_target(target: &str) -> bool {
+    let t = target.trim_end_matches('/');
+    let t = if t.is_empty() && target.starts_with('/') {
+        "/"
+    } else {
+        t
+    };
+    if matches!(
+        t,
+        "/" | "/*" | "~" | "~/*" | "$HOME" | "${HOME}" | "$HOME/*" | "${HOME}/*" | "*" | "." | ".."
+    ) {
+        return true;
+    }
+    // A top-level directory such as `/usr` or `/Users`.
+    if let Some(rest) = t.strip_prefix('/') {
+        if !rest.is_empty() && !rest.contains('/') {
+            return true;
+        }
+    }
+    // A `.git` directory anywhere.
+    t == ".git" || t.ends_with("/.git")
+}
+
+fn git_guard(args: &[String]) -> Option<&'static str> {
+    for (sub, rest) in crate::claim_verify::git_subcommands(args) {
+        let reason = match sub {
+            "push" => force_push_to_protected(rest).then_some(FORCE_PUSH),
+            "branch" => force_delete_protected(rest).then_some(BRANCH_DELETE),
+            "commit" => skips_hooks(rest).then_some(HOOK_BYPASS),
+            _ => None,
+        };
+        if reason.is_some() {
+            return reason;
+        }
+    }
+    None
+}
+
+fn branch_of_refspec(spec: &str) -> &str {
+    let spec = spec.trim_start_matches('+');
+    let dst = spec.rsplit(':').next().unwrap_or(spec);
+    dst.strip_prefix("refs/heads/").unwrap_or(dst)
+}
+
+fn force_push_to_protected(rest: &[String]) -> bool {
+    let force_flag = rest.iter().any(|a| {
+        a == "-f"
+            || a == "--force"
+            || a.starts_with("--force-with-lease")
+            || a == "--force-if-includes"
+    });
+    // The first non-option word is the remote; the others are refspecs.
+    let refspecs: Vec<&String> = rest
+        .iter()
+        .filter(|a| !a.starts_with('-'))
+        .skip(1)
+        .collect();
+    refspecs.iter().any(|spec| {
+        let forced = force_flag || spec.starts_with('+');
+        forced && PROTECTED_BRANCHES.contains(&branch_of_refspec(spec))
+    })
+}
+
+fn force_delete_protected(rest: &[String]) -> bool {
+    let has = |s: &str| rest.iter().any(|a| a == s);
+    let force_delete =
+        has("-D") || ((has("-d") || has("--delete")) && (has("-f") || has("--force")));
+    force_delete
+        && rest
+            .iter()
+            .any(|a| PROTECTED_BRANCHES.contains(&a.as_str()))
+}
+
+fn skips_hooks(rest: &[String]) -> bool {
+    let mut take_value = false;
+    for a in rest {
+        if take_value {
+            take_value = false;
+            continue;
+        }
+        if a == "--" {
+            return false;
+        }
+        if a == "--no-verify" {
+            return true;
+        }
+        if a.starts_with("--") || !a.starts_with('-') || a.len() < 2 {
+            continue;
+        }
+        // A short-option cluster: `-n` counts unless a value-taking option came first.
+        for (k, c) in a[1..].char_indices() {
+            if c == 'n' {
+                return true;
+            }
+            if COMMIT_VALUE_OPTS.contains(&c) {
+                // `-m` alone takes the next word; `-mtext` holds its value inline.
+                take_value = k + c.len_utf8() == a.len() - 1;
+                break;
+            }
+        }
+    }
+    false
+}
+
+/// The reason a file write is refused, or `None`. `cwd` resolves relative paths.
+pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'static str> {
+    let mut paths: Vec<String> = Vec::new();
+    let mut contents: Vec<String> = Vec::new();
+    match tool {
+        "Write" | "Edit" | "MultiEdit" | "NotebookEdit" => {
+            for key in ["file_path", "notebook_path"] {
+                if let Some(p) = tool_input[key].as_str() {
+                    paths.push(p.to_string());
+                }
+            }
+            for key in ["content", "new_string", "new_source"] {
+                if let Some(c) = tool_input[key].as_str() {
+                    contents.push(c.to_string());
+                }
+            }
+            for edit in tool_input["edits"].as_array().into_iter().flatten() {
+                if let Some(c) = edit["new_string"].as_str() {
+                    contents.push(c.to_string());
+                }
+            }
+        }
+        "apply_patch" => {
+            let patch = tool_input["command"].as_str().unwrap_or("");
+            for line in patch.lines() {
+                for head in [
+                    "*** Add File: ",
+                    "*** Update File: ",
+                    "*** Delete File: ",
+                    "*** Move to: ",
+                ] {
+                    if let Some(p) = line.strip_prefix(head) {
+                        paths.push(p.trim().to_string());
+                    }
+                }
+                if let Some(added) = line.strip_prefix('+') {
+                    contents.push(added.to_string());
+                }
+            }
+            if !contents.is_empty() {
+                contents = vec![contents.join("\n")];
+            }
+        }
+        _ => return None,
+    }
+    if paths.iter().any(|p| is_protected_path(Path::new(p), cwd)) {
+        return Some(PROTECTED_PATH);
+    }
+    if contents.iter().any(|c| carries_secret(c)) {
+        return Some(SECRET_CONTENT);
+    }
+    None
+}
+
+/// The path as written and as resolved through existing symlinks; either one in a protected
+/// place is enough.
+fn is_protected_path(path: &Path, cwd: &Path) -> bool {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    is_protected_lexical(&absolute) || is_protected_lexical(&resolve_existing(&absolute))
+}
+
+/// Resolves the longest existing prefix through symlinks and appends the rest unchanged.
+fn resolve_existing(path: &Path) -> PathBuf {
+    let mut existing = path.to_path_buf();
+    let mut tail = Vec::new();
+    while !existing.exists() {
+        match (
+            existing.file_name().map(|n| n.to_os_string()),
+            existing.parent(),
+        ) {
+            (Some(name), Some(parent)) => {
+                tail.push(name);
+                existing = parent.to_path_buf();
+            }
+            _ => return path.to_path_buf(),
+        }
+    }
+    let mut out = std::fs::canonicalize(&existing).unwrap_or(existing);
+    for name in tail.into_iter().rev() {
+        out.push(name);
+    }
+    out
+}
+
+fn is_protected_lexical(path: &Path) -> bool {
+    let parts: Vec<String> = path
+        .components()
+        .filter_map(|c| match c {
+            Component::Normal(s) => Some(s.to_string_lossy().into_owned()),
+            _ => None,
+        })
+        .collect();
+    let in_dir = |name: &str| parts.iter().any(|p| p == name);
+    if in_dir(".git") || CREDENTIAL_DIRS.iter().any(|d| in_dir(d)) {
+        return true;
+    }
+    if parts
+        .windows(2)
+        .any(|w| w[0] == ".config" && w[1] == "gcloud")
+    {
+        return true;
+    }
+    parts
+        .last()
+        .is_some_and(|name| KEY_FILES.contains(&name.as_str()))
+}
+
+fn carries_secret(content: &str) -> bool {
+    // Assembled so this file itself never holds the whole marker.
+    let begin = concat!("-----", "BEGIN");
+    let private = concat!("PRIVATE", " KEY-----");
+    if content.contains(begin) && content.contains(private) {
+        return true;
+    }
+    has_token(content, "ghp_", 36, false) || has_token(content, "github_pat_", 22, true)
+}
+
+/// True when `prefix` is followed by at least `min` token characters.
+fn has_token(content: &str, prefix: &str, min: usize, underscore: bool) -> bool {
+    content.match_indices(prefix).any(|(at, _)| {
+        content[at + prefix.len()..]
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || (underscore && *c == '_'))
+            .count()
+            >= min
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    //! Literal cases only; nothing here runs a command. Secret-shaped and hook-bypass
+    //! fixtures are assembled at run time so no source line holds them whole.
+    use super::*;
+    use serde_json::json;
+
+    fn bypass() -> String {
+        format!("--no-{}", "verify")
+    }
+
+    #[test]
+    fn rm_refuses_only_irreversible_targets() {
+        for cmd in [
+            "rm -rf /",
+            "rm -rf /*",
+            "rm -rf ~",
+            "rm -rf ~/",
+            "rm -fr $HOME",
+            "rm -rf ${HOME}/*",
+            "rm -rf *",
+            "rm -rf .",
+            "rm -rf ..",
+            "rm -rf /usr",
+            "rm -rf /Users/",
+            "rm -rf .git",
+            "rm -rf repo/.git/",
+            "rm -rf -- /",
+            "sudo rm -rf /",
+            "cd x && rm -rf ~",
+            "bash -c 'rm -rf /'",
+        ] {
+            assert_eq!(bash_guard(cmd), Some(RM_TARGET), "{cmd}");
+        }
+        for cmd in [
+            "rm -rf build",
+            "rm -rf ./build",
+            "rm -rf node_modules",
+            "rm -rf /tmp/x",
+            "rm -f .gitignore",
+            "rm -rf src/.github",
+            "echo rm -rf /",
+            "grep -n 'rm -rf /' notes.md",
+            "rm -- -weird-name",
+        ] {
+            assert_eq!(bash_guard(cmd), None, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn force_push_and_delete_of_main_or_master_are_refused() {
+        for cmd in [
+            "git push --force origin main",
+            "git push -f origin master",
+            "git push origin +main",
+            "git push --force-with-lease origin HEAD:main",
+            "git push -f origin refs/heads/master",
+            "git -C repo push --force origin main",
+        ] {
+            assert_eq!(bash_guard(cmd), Some(FORCE_PUSH), "{cmd}");
+        }
+        for cmd in ["git branch -D main", "git branch --delete --force master"] {
+            assert_eq!(bash_guard(cmd), Some(BRANCH_DELETE), "{cmd}");
+        }
+        for cmd in [
+            "git push origin main",
+            "git push --force origin feature",
+            "git push -f origin issue/1-x",
+            "git push --force origin v2026.11.0",
+            "git branch -d main",
+            "git branch -D feature",
+            "git log --force main",
+        ] {
+            assert_eq!(bash_guard(cmd), None, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn devices_fork_bombs_and_database_drops_are_refused() {
+        for cmd in [
+            "mkfs.ext4 /dev/sdb1",
+            "sudo mkfs -t ext4 /dev/sdc",
+            "dd if=img of=/dev/disk2 bs=1m",
+        ] {
+            assert_eq!(bash_guard(cmd), Some(DEVICE), "{cmd}");
+        }
+        assert_eq!(bash_guard(":(){ :|:& };:"), Some(FORK_BOMB));
+        for cmd in [
+            "psql -c 'DROP DATABASE app'",
+            "mysql -e \"drop schema s\"",
+            "sqlite3 db.sqlite 'TRUNCATE TABLE t'",
+        ] {
+            assert_eq!(bash_guard(cmd), Some(DATABASE), "{cmd}");
+        }
+        for cmd in [
+            "dd if=/dev/zero of=img bs=1m count=1",
+            "dd if=x of=/dev/null",
+            "psql -c 'select 1'",
+            "echo 'DROP DATABASE app'",
+            "cat mkfs-notes.txt",
+        ] {
+            assert_eq!(bash_guard(cmd), None, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn a_commit_that_skips_hooks_is_refused_only_as_a_commit_option() {
+        let flag = bypass();
+        for cmd in [
+            format!("git commit {flag} -m x"),
+            "git commit -n -m x".to_string(),
+            "git commit -anm x".to_string(),
+            "git commit -nm x".to_string(),
+            format!("git -C repo commit {flag}"),
+        ] {
+            assert_eq!(bash_guard(&cmd), Some(HOOK_BYPASS), "{cmd}");
+        }
+        for cmd in [
+            "git commit -m x".to_string(),
+            // `n` here is the message text, not an option.
+            "git commit -mn".to_string(),
+            "git commit -m -n".to_string(),
+            "git commit -am x".to_string(),
+            format!("git log {flag}"),
+            "git push -n origin main".to_string(),
+            format!("git commit -m 'skip {flag}'"),
+        ] {
+            assert_eq!(bash_guard(&cmd), None, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn writes_into_git_and_credential_paths_are_refused() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let cwd = dir.path();
+        let write =
+            |path: &str| write_guard("Write", &json!({"file_path": path, "content": "x"}), cwd);
+        for path in [
+            ".git/config",
+            ".git/hooks/pre-commit",
+            "/home/u/.ssh/authorized_keys",
+            "~/.ssh/config",
+            "/home/u/.aws/credentials",
+            "/home/u/.config/gcloud/credentials.db",
+            "/home/u/.kube/config",
+            "/home/u/.gnupg/pubring.kbx",
+            "keys/id_ed25519",
+            "/home/u/id_rsa",
+        ] {
+            assert_eq!(write(path), Some(PROTECTED_PATH), "{path}");
+        }
+        for path in [
+            ".gitignore",
+            ".github/workflows/ci.yml",
+            "src/git/mod.rs",
+            "certs/server.pem",
+            "keys/id_ed25519.pub",
+            "docs/ssh.md",
+            "/tmp/scratch/out.txt",
+        ] {
+            assert_eq!(write(path), None, "{path}");
+        }
+        for tool in ["Edit", "MultiEdit"] {
+            assert_eq!(
+                write_guard(tool, &json!({"file_path": ".git/HEAD"}), cwd),
+                Some(PROTECTED_PATH)
+            );
+        }
+        assert_eq!(
+            write_guard(
+                "NotebookEdit",
+                &json!({"notebook_path": ".git/x.ipynb"}),
+                cwd
+            ),
+            Some(PROTECTED_PATH)
+        );
+        assert_eq!(
+            write_guard("Read", &json!({"file_path": ".git/config"}), cwd),
+            None
+        );
+    }
+
+    #[test]
+    fn a_symlink_into_a_protected_place_is_followed() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = std::fs::canonicalize(dir.path()).unwrap();
+        std::fs::create_dir_all(root.join("real/.ssh")).unwrap();
+        std::os::unix::fs::symlink(root.join("real/.ssh"), root.join("innocent")).unwrap();
+        assert_eq!(
+            write_guard("Write", &json!({"file_path": "innocent/config"}), &root),
+            Some(PROTECTED_PATH)
+        );
+    }
+
+    #[test]
+    fn private_keys_and_github_tokens_in_content_are_refused() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let cwd = dir.path();
+        let key = format!(
+            "{}{} RSA {}\nMIIB\n",
+            "-----",
+            "BEGIN",
+            concat!("PRIVATE", " KEY-----")
+        );
+        let ghp = format!("{}{}", "ghp_", "a".repeat(36));
+        let pat = format!("{}{}", "github_pat_", "b_".repeat(11));
+        for content in [&key, &ghp, &pat] {
+            assert_eq!(
+                write_guard(
+                    "Write",
+                    &json!({"file_path": "a.txt", "content": content}),
+                    cwd
+                ),
+                Some(SECRET_CONTENT)
+            );
+        }
+        assert_eq!(
+            write_guard(
+                "Edit",
+                &json!({"file_path": "a.txt", "new_string": key}),
+                cwd
+            ),
+            Some(SECRET_CONTENT)
+        );
+        assert_eq!(
+            write_guard(
+                "MultiEdit",
+                &json!({"file_path": "a.txt", "edits": [{"new_string": "ok"}, {"new_string": ghp}]}),
+                cwd
+            ),
+            Some(SECRET_CONTENT)
+        );
+        let short = format!("{}{}", "ghp_", "a".repeat(35));
+        let public = format!("{}{} PUBLIC KEY-----", "-----", "BEGIN");
+        for content in [
+            short.as_str(),
+            public.as_str(),
+            "token = env_var",
+            "use ghp_ prefix",
+        ] {
+            assert_eq!(
+                write_guard(
+                    "Write",
+                    &json!({"file_path": "a.txt", "content": content}),
+                    cwd
+                ),
+                None,
+                "{content}"
+            );
+        }
+    }
+
+    #[test]
+    fn codex_patches_are_read_from_their_file_lines() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let cwd = dir.path();
+        let patch =
+            |body: &str| json!({"command": format!("*** Begin Patch\n{body}\n*** End Patch")});
+        for body in [
+            "*** Update File: .git/config\n@@\n-a\n+b",
+            "*** Add File: /home/u/.ssh/config\n+Host x",
+            "*** Delete File: .git/HEAD",
+            "*** Update File: a.txt\n*** Move to: .git/x",
+        ] {
+            assert_eq!(
+                write_guard("apply_patch", &patch(body), cwd),
+                Some(PROTECTED_PATH),
+                "{body}"
+            );
+        }
+        let key = format!(
+            "+{}{} EC {}",
+            "-----",
+            "BEGIN",
+            concat!("PRIVATE", " KEY-----")
+        );
+        assert_eq!(
+            write_guard(
+                "apply_patch",
+                &patch(&format!("*** Add File: k.txt\n{key}")),
+                cwd
+            ),
+            Some(SECRET_CONTENT)
+        );
+        assert_eq!(
+            write_guard(
+                "apply_patch",
+                &patch("*** Update File: src/a.rs\n@@\n-a\n+b"),
+                cwd
+            ),
+            None
+        );
+        // An unreadable patch is not path-checked (documented gap), but never an error.
+        assert_eq!(
+            write_guard("apply_patch", &json!({"command": "garbage"}), cwd),
+            None
+        );
+    }
+}
