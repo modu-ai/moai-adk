@@ -219,6 +219,11 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
+    /// named Issues, their open PRs and the local worktrees; writes nothing.
+    LaneStatus {
+        project: PathBuf,
+    },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -934,6 +939,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
         InstallInspect { .. } => "install.inspect",
+        LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1353,6 +1359,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::LaneStatus { project } => moai_cli::lane_status::status_cli(
+            &project,
+            input::<moai_cli::lane_status::LaneStatusRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,

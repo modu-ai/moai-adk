@@ -62,6 +62,7 @@
 - `hooks-plan`
 - `identity`
 - `install-inspect`
+- `lane-status`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`
