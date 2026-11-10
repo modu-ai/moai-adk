@@ -202,6 +202,66 @@ fn apply_requires_a_permission_reference() {
 }
 
 #[test]
+fn permission_reference_placeholders_and_the_128_char_edge() {
+    // Refused values: the three placeholders, blank, 129 characters, a control character.
+    // Each leaves the log byte for byte as it was.
+    let long_ok = "r".repeat(128);
+    let long_bad = "r".repeat(129);
+    for bad in [
+        "null",
+        "placeholder",
+        "   ",
+        long_bad.as_str(),
+        "ref\u{7}bell",
+    ] {
+        let (tmp, head) = repo_with(&standard_log());
+        let (code, v) = run(
+            tmp.path(),
+            &["--apply", "--permission-reference", bad],
+            &request(&head, one_row()),
+        );
+        assert_ne!(code, 0, "{bad:?} -> {v}");
+        assert!(
+            error_message(&v).contains("permission reference required"),
+            "{bad:?} -> {v}"
+        );
+        assert_eq!(
+            fs::read_to_string(tmp.path().join(LOG)).unwrap(),
+            standard_log(),
+            "{bad:?}"
+        );
+    }
+    // 128 characters is the largest accepted reference.
+    let (tmp, head) = repo_with(&standard_log());
+    let (code, v) = run(
+        tmp.path(),
+        &["--apply", "--permission-reference", &long_ok],
+        &request(&head, one_row()),
+    );
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["mode"], json!("applied"));
+}
+
+#[test]
+fn rows_go_after_the_table_not_after_a_later_pipe_line() {
+    // A paragraph after the table holds a line that starts with `|`. The table ends at the
+    // first line that is not a row, so the insert point stays after the table's last row.
+    let stray_tail = "\n문단.\n| stray |\n";
+    let log = format!("{HEADER}{ROWS}{stray_tail}");
+    let (tmp, head) = repo_with(&log);
+    let (code, v) = run(tmp.path(), &[], &request(&head, one_row()));
+    assert_eq!(code, 0, "{v}");
+    // HEADER is 6 lines and ROWS 2, so the table's last row is line 8.
+    assert_eq!(v["result"]["insert_after_line"], json!(8), "{v}");
+    let (code, v) = run(tmp.path(), &apply_flags(), &request(&head, one_row()));
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        fs::read_to_string(tmp.path().join(LOG)).unwrap(),
+        format!("{HEADER}{ROWS}| 12:00Z | c | 결정 c | #3 | — |\n{stray_tail}")
+    );
+}
+
+#[test]
 fn zero_rows_are_refused_and_one_row_is_accepted() {
     let (tmp, head) = repo_with(&standard_log());
     let (code, v) = run(tmp.path(), &[], &request(&head, json!([])));
