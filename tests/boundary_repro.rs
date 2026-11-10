@@ -518,6 +518,17 @@ fn f5d_other_language_failures_are_classified() {
         Some(FailureClass::EnvironmentFailure),
         "an import error beside an assertion failure must not count as RED"
     );
+    // Each environment sign on its own (mutation M5d-1 survived while both appeared together).
+    for alone in [
+        "ImportError: cannot import name 'x' from 'y'\n",
+        "ModuleNotFoundError: No module named 'missing'\n",
+    ] {
+        assert_eq!(
+            classify(None, false, false, alone),
+            Some(FailureClass::EnvironmentFailure),
+            "{alone:?}"
+        );
+    }
     // Boundary: a Python failure with neither sign stays unclassified (never RED).
     assert_eq!(
         classify(
