@@ -576,6 +576,25 @@ pub fn read(
     Ok(read_entry(home, &Scope::Shared, provider)?.map(|v| (v, Scope::Shared)))
 }
 
+/// [`read`] for the project of the current directory (the launcher's entry point). A project
+/// that cannot be resolved is a refusal, not a silent skip to the shared folder.
+pub fn read_here(
+    home: &Path,
+    provider: &str,
+) -> std::result::Result<Option<(String, Scope)>, Blocked> {
+    let unresolved = |why: String| {
+        Blocked::new(
+            "key_absent",
+            format!("cannot resolve the project for the vault: {why}"),
+            format!("run it inside the project, or store the key with `moai-cli key-set {provider} --shared`"),
+        )
+    };
+    let dir = std::env::current_dir()
+        .map_err(|_| unresolved("the current directory is unreadable".into()))?;
+    let project = project_scope(&dir).map_err(unresolved)?;
+    read(home, project.as_ref(), provider)
+}
+
 /// `key-status`: whether the scope's entry exists, passes the safety rules and decrypts.
 /// Never the value, its length or a fingerprint.
 pub fn status(home: &Path, scope: &Scope, provider: &str) -> Result<Value> {

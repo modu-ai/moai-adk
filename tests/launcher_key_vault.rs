@@ -1,19 +1,22 @@
-//! #2393 S2: the `glm` launcher reads the key from the variable, then the vault. A legacy key
-//! file is never read (user decision, Issue #2393 comment 6778150969): with no vault entry its
-//! presence ends `blocked: legacy_key_only` with the way to move the key. The source is
-//! reported by name (`key_source`), never the value. A vault that is present but unsafe, or a backend
-//! that cannot answer, stops the launch instead of falling back. Temporary HOME, synthetic
-//! keys only; the real home and the OS key store are never read.
+//! #2393: the `glm` launcher reads the key from the variable, then the encrypted vault — the
+//! current project's folder, then `_shared` (user decision, Issue #2393 comment 6778671862).
+//! A legacy key file is never read (6778150969): with no vault entry its presence ends
+//! `blocked: legacy_key_only`. The source is reported by name (`key_source`), never the
+//! value. An entry that is present but unsafe or does not decrypt stops the launch instead of
+//! falling back. Temporary HOME, synthetic keys only; entries are made by the binary's own
+//! `key-set`, so they carry the real format.
 #![cfg(unix)]
 mod common;
 use serde_json::Value;
 use std::fs;
+use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-const VAULT_KEY: &str = "moai-test-vault-key-not-real";
+const PROJECT_KEY: &str = "moai-test-project-key-not-real";
+const SHARED_KEY: &str = "moai-test-shared-key-not-real";
 const LEGACY_KEY: &str = "moai-test-legacy-key-not-real";
 const ENV_KEY: &str = "moai-test-env-key-not-real";
 
@@ -32,18 +35,44 @@ fn project() -> &'static Path {
     })
 }
 
-/// A temporary HOME with an optional vault entry (mode `vault_mode`) and legacy file.
-fn home(vault: Option<(&str, u32)>, legacy: bool) -> tempfile::TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    let h = dir.path();
-    if let Some((value, mode)) = vault {
-        let v = h.join(".moai-cli/vault");
-        fs::create_dir_all(&v).unwrap();
-        fs::set_permissions(&v, fs::Permissions::from_mode(0o700)).unwrap();
-        fs::write(v.join("glm.key"), value).unwrap();
-        fs::set_permissions(v.join("glm.key"), fs::Permissions::from_mode(mode)).unwrap();
+fn bin(home: &Path) -> Command {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    cmd.current_dir(project())
+        .env("HOME", home)
+        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
+        .env_remove("ANTHROPIC_AUTH_TOKEN");
+    cmd
+}
+
+/// Stores `value` for the test project, or in `_shared`, with the binary's `key-set`; returns
+/// the entry path.
+fn store(home: &Path, shared: bool, value: &str) -> PathBuf {
+    let mut cmd = bin(home);
+    cmd.args(["key-set", "glm"]);
+    if shared {
+        cmd.arg("--shared");
     }
+    let mut child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(value.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    PathBuf::from(v["result"]["path"].as_str().unwrap())
+}
+
+fn home(legacy: bool) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
     if legacy {
+        let h = dir.path();
         fs::create_dir_all(h.join(".moai")).unwrap();
         fs::write(
             h.join(".moai/.env.glm"),
@@ -54,27 +83,16 @@ fn home(vault: Option<(&str, u32)>, legacy: bool) -> tempfile::TempDir {
     dir
 }
 
-fn launcher(home: &Path, env_key: Option<&str>) -> Command {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    cmd.current_dir(project())
-        .env("HOME", home)
-        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-        .env_remove("ANTHROPIC_AUTH_TOKEN");
+/// `(exit code, stdout JSON, all output)` of `glm -a --dry-run`; no key text may appear.
+fn dry(home: &Path, env_key: Option<&str>) -> (i32, Value, String) {
+    let mut cmd = bin(home);
     if let Some(k) = env_key {
         cmd.env("ANTHROPIC_AUTH_TOKEN", k);
     }
-    cmd
-}
-
-/// `(exit code, stdout JSON, all output)` of `glm -a --dry-run`; no key text may appear.
-fn dry(home: &Path, env_key: Option<&str>) -> (i32, Value, String) {
-    let out = launcher(home, env_key)
-        .args(["glm", "-a", "--dry-run"])
-        .output()
-        .unwrap();
+    let out = cmd.args(["glm", "-a", "--dry-run"]).output().unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
     let text = format!("{stdout}{}", String::from_utf8_lossy(&out.stderr));
-    for key in [VAULT_KEY, LEGACY_KEY, ENV_KEY] {
+    for key in [PROJECT_KEY, SHARED_KEY, LEGACY_KEY, ENV_KEY] {
         assert!(!text.contains(key), "key text in launcher output");
     }
     (
@@ -86,9 +104,9 @@ fn dry(home: &Path, env_key: Option<&str>) -> (i32, Value, String) {
 
 /// The token the host process receives (a fake `claude` on PATH records it).
 fn host_token(home: &Path) -> String {
-    let bin = tempfile::tempdir().unwrap();
-    let seen = bin.path().join("seen");
-    let fake = bin.path().join("claude");
+    let bin_dir = tempfile::tempdir().unwrap();
+    let seen = bin_dir.path().join("seen");
+    let fake = bin_dir.path().join("claude");
     fs::write(
         &fake,
         format!(
@@ -98,8 +116,11 @@ fn host_token(home: &Path) -> String {
     )
     .unwrap();
     fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
-    let out = launcher(home, None)
-        .env("PATH", format!("{}:/usr/bin:/bin", bin.path().display()))
+    let out = bin(home)
+        .env(
+            "PATH",
+            format!("{}:/usr/bin:/bin", bin_dir.path().display()),
+        )
         .args(["glm", "-a"])
         .output()
         .unwrap();
@@ -109,21 +130,31 @@ fn host_token(home: &Path) -> String {
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(out.status.success(), "{text}");
-    assert!(!text.contains(VAULT_KEY) && !text.contains(LEGACY_KEY));
+    for key in [PROJECT_KEY, SHARED_KEY, LEGACY_KEY] {
+        assert!(!text.contains(key));
+    }
     let record = fs::read_to_string(&seen).unwrap();
     let (a, b) = record.split_once('|').unwrap();
     assert_eq!(a, b, "both names carry the same key");
     a.to_string()
 }
 
+/// Decision 4: variable, then project, then shared; the legacy file is never reached.
 #[test]
-fn the_vault_comes_before_the_legacy_file_and_after_the_variable() {
-    let h = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), true);
+fn the_variable_then_the_project_then_the_shared_folder() {
+    let h = home(true);
+    store(h.path(), true, SHARED_KEY);
     let (code, v, text) = dry(h.path(), None);
     assert_eq!(code, 0, "{text}");
-    assert_eq!(v["key_source"], "vault:glm", "{text}");
+    assert_eq!(v["key_source"], "vault:shared:glm", "{text}");
     assert!(v["notes"].to_string().contains("key vault"));
-    assert_eq!(host_token(h.path()), VAULT_KEY);
+    assert_eq!(host_token(h.path()), SHARED_KEY);
+
+    store(h.path(), false, PROJECT_KEY);
+    let (code, v, text) = dry(h.path(), None);
+    assert_eq!(code, 0, "{text}");
+    assert_eq!(v["key_source"], "vault:project:glm", "{text}");
+    assert_eq!(host_token(h.path()), PROJECT_KEY);
 
     let (code, v, text) = dry(h.path(), Some(ENV_KEY));
     assert_eq!(code, 0, "{text}");
@@ -132,7 +163,7 @@ fn the_vault_comes_before_the_legacy_file_and_after_the_variable() {
 
 #[test]
 fn without_a_vault_entry_the_legacy_file_is_named_not_read() {
-    let h = home(None, true);
+    let h = home(true);
     let file = h.path().join(".moai/.env.glm");
     let before = fs::read(&file).unwrap();
     let mtime = fs::metadata(&file).unwrap().modified().unwrap();
@@ -144,69 +175,52 @@ fn without_a_vault_entry_the_legacy_file_is_named_not_read() {
         text.contains(".moai/.env.glm") && text.contains("key-set glm"),
         "{text}"
     );
-    assert!(!text.contains(LEGACY_KEY), "{text}");
     // Untouched: same bytes, same time, and no vault was created.
     assert_eq!(fs::read(&file).unwrap(), before);
     assert_eq!(fs::metadata(&file).unwrap().modified().unwrap(), mtime);
     assert!(!h.path().join(".moai-cli").exists());
     // With the key in the variable the legacy file does not matter.
-    let (code, v, text) = dry(h.path(), Some("moai-test-env-key"));
-    assert_eq!(code, 0, "{text}");
-    assert_eq!(v["key_source"], "env:ANTHROPIC_AUTH_TOKEN");
-}
-
-#[test]
-fn an_unusable_vault_stops_the_launch_instead_of_falling_back() {
-    // An entry other users can read, an empty entry, a symlinked entry: each with a legacy
-    // file present that would otherwise answer.
-    let open = home(Some((&format!("{VAULT_KEY}\n"), 0o644)), true);
-    let empty = home(Some(("\n", 0o600)), true);
-    let linked = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), true);
-    let entry = linked.path().join(".moai-cli/vault/glm.key");
-    fs::remove_file(&entry).unwrap();
-    std::os::unix::fs::symlink(linked.path().join(".moai/.env.glm"), &entry).unwrap();
-    for (h, code_word) in [
-        (&open, "key_file_unsafe"),
-        (&empty, "key_absent"),
-        (&linked, "key_file_unsafe"),
-    ] {
-        let (code, v, text) = dry(h.path(), None);
-        assert_ne!(code, 0, "{code_word}: {text}");
-        assert_eq!(v, Value::Null);
-        assert!(text.contains(&format!("blocked: {code_word}")), "{text}");
-        assert!(text.contains("next:"), "{text}");
-    }
-}
-
-#[test]
-fn an_os_store_backend_that_cannot_answer_blocks_without_a_file_fallback() {
-    for name in ["keyring", "auto"] {
-        let h = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), true);
-        fs::write(
-            h.path().join(".moai-cli/config"),
-            format!("key_store = \"{name}\"\n"),
-        )
-        .unwrap();
-        let (code, _, text) = dry(h.path(), None);
-        assert_ne!(code, 0, "{name}: {text}");
-        assert!(text.contains("blocked: key_store_unavailable"), "{text}");
-    }
-    // The variable still wins, so a user is never locked out by the config.
-    let h = home(None, false);
-    fs::create_dir_all(h.path().join(".moai-cli")).unwrap();
-    fs::write(
-        h.path().join(".moai-cli/config"),
-        "key_store = \"keyring\"\n",
-    )
-    .unwrap();
     let (code, v, text) = dry(h.path(), Some(ENV_KEY));
     assert_eq!(code, 0, "{text}");
     assert_eq!(v["key_source"], "env:ANTHROPIC_AUTH_TOKEN");
 }
 
+/// A broken project entry stops the launch even though a shared key (and a legacy file)
+/// would answer: other users' bits, a plain-text file, a symlink, a lost machine key.
+#[test]
+fn an_unusable_project_entry_stops_the_launch_instead_of_falling_back() {
+    type Break = fn(&Path, &Path);
+    let cases: [(&str, Break); 4] = [
+        ("open bits", |entry, _| {
+            fs::set_permissions(entry, fs::Permissions::from_mode(0o644)).unwrap()
+        }),
+        ("plain text", |entry, _| {
+            fs::write(entry, format!("{PROJECT_KEY}\n")).unwrap()
+        }),
+        ("symlink", |entry, home| {
+            fs::remove_file(entry).unwrap();
+            std::os::unix::fs::symlink(home.join(".moai/.env.glm"), entry).unwrap();
+        }),
+        ("lost machine key", |_, home| {
+            fs::remove_file(home.join(".moai-cli/vault/.master.key")).unwrap()
+        }),
+    ];
+    for (what, break_it) in cases {
+        let h = home(true);
+        store(h.path(), true, SHARED_KEY);
+        let entry = store(h.path(), false, PROJECT_KEY);
+        break_it(&entry, h.path());
+        let (code, v, text) = dry(h.path(), None);
+        assert_eq!(code, 1, "{what}: {text}");
+        assert_eq!(v, Value::Null, "{what}");
+        assert!(text.contains("blocked: key_file_unsafe"), "{what}: {text}");
+        assert!(text.contains("next:"), "{what}: {text}");
+    }
+}
+
 #[test]
 fn no_key_anywhere_names_the_vault_command() {
-    let h = home(None, false);
+    let h = home(false);
     let (code, _, text) = dry(h.path(), None);
     assert_ne!(code, 0);
     assert!(text.contains("blocked: key_absent"), "{text}");
@@ -215,8 +229,9 @@ fn no_key_anywhere_names_the_vault_command() {
 
 #[test]
 fn other_hosts_report_no_key_source() {
-    let h = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), false);
-    let out = launcher(h.path(), None)
+    let h = home(false);
+    store(h.path(), true, SHARED_KEY);
+    let out = bin(h.path())
         .args(["cc", "-a", "--dry-run"])
         .output()
         .unwrap();
