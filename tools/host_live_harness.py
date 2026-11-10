@@ -20,7 +20,8 @@ written. Nothing is written outside DIR and the temporary tree, which is removed
 
 Output (REQ-I8-01): DIR/receipts.jsonl (schemas/e2e-receipt.schema.json fields, appended),
 DIR/<AC>.out / .err (raw host output), DIR/rows.md (docs/support-matrix.md rows: passed
-items in the "지원 행" shape, the rest in the "not_run 행" shape). rows.md is also printed.
+items in the supported-row shape, the rest in the not_run-row shape; see render_rows).
+rows.md is also printed.
 
 Exit codes: 0 = receipts written, 1 = unreadable input or I/O failure, 2 = usage.
 """
@@ -246,8 +247,8 @@ def run_item(item, args, overrides: dict, skill_digest: str, cli_sha: str, versi
 
 
 def render_rows(receipts: list) -> str:
-    """docs/support-matrix.md rows. A passed receipt becomes a "지원 행" row citing
-    receipts.jsonl; every other result becomes a "not_run 행" row with its reason."""
+    """docs/support-matrix.md rows. A passed receipt becomes a supported row citing
+    receipts.jsonl; every other result becomes a not_run row with its reason."""
     caps = {ac: (host, kind, cap) for ac, host, kind, cap in ITEMS}
     supported, others = [], []
     for r in receipts:

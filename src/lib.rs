@@ -38,6 +38,7 @@ pub mod recovery;
 pub mod redact;
 pub mod run;
 pub mod scope;
+pub mod search;
 pub mod self_update;
 pub mod session;
 pub mod sources;
