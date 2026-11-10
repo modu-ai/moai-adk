@@ -6,9 +6,13 @@ binary; this test only keeps the fixture set self-consistent so stage 2 can trus
 
 import json
 import pathlib
+import sys
+import tempfile
 import unittest
 
 FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures" / "statusline"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
+import statusline_golden  # noqa: E402
 
 
 class StatuslineFixturesTest(unittest.TestCase):
@@ -51,6 +55,26 @@ class StatuslineFixturesTest(unittest.TestCase):
         names = {c["name"] for c in self.cases}
         for g in (FIXTURES / "golden").iterdir():
             self.assertIn(g.name.rsplit(".", 2)[0], names, g)
+
+
+class BinaryVersionDetectionTest(unittest.TestCase):
+    """#2350: `--check` without `--binary-version` reads the version from `<bin> --version`."""
+
+    def detect(self, script):
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = pathlib.Path(tmp) / "fake-bin"
+            exe.write_text("#!/bin/sh\n" + script + "\n", encoding="utf-8")
+            exe.chmod(0o755)
+            return statusline_golden.detect_binary_version(exe)
+
+    def test_last_token_without_a_leading_v(self):
+        self.assertEqual(self.detect('echo "moai-cli 2026.11.0-rc.1"'), "2026.11.0-rc.1")
+        self.assertEqual(self.detect('echo "moai version v3.2.1"'), "3.2.1")
+
+    def test_no_version_or_a_failed_run_is_none(self):
+        self.assertIsNone(self.detect('echo "moai-cli unknown"'))
+        self.assertIsNone(self.detect("exit 0"))
+        self.assertIsNone(self.detect('echo "moai-cli 1.2.3"; exit 1'))
 
 
 if __name__ == "__main__":

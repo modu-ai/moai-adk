@@ -27,7 +27,8 @@ comparing. Nothing else is normalized.
 
 Usage:
   python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write [--variant V]
-  python3 -I tools/statusline_golden.py --bin <statusline binary> --binary-version <v> --check
+  python3 -I tools/statusline_golden.py --bin <statusline binary> [--binary-version <v>] --check
+(`--binary-version` defaults to the last token `<bin> --version` prints, `v` stripped.)
 Exit codes: 0 = all written / all equal, 1 = a mismatch or a failed run, 2 = usage.
 """
 
@@ -35,6 +36,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -116,6 +118,26 @@ def normalize_version(text, version):
     return text.replace(f"🗿 v{version}", VERSION_PLACEHOLDER)
 
 
+VERSION_TOKEN = re.compile(r"v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)")
+
+
+def detect_binary_version(binary):
+    """The version `<binary> --version` reports in its last token (`moai-cli 2026.11.0-rc.1`,
+    `moai version v3.2.1`), without a leading `v`; None when it does not print one. Run with
+    a throwaway HOME and a minimal PATH, like the cases."""
+    with tempfile.TemporaryDirectory(prefix="sl-version-") as home:
+        try:
+            proc = subprocess.run([str(binary), "--version"], capture_output=True, text=True,
+                                  env={"PATH": "/usr/bin:/bin", "HOME": home}, timeout=30)
+        except OSError:
+            return None
+    tokens = proc.stdout.split()
+    if proc.returncode != 0 or not tokens:
+        return None
+    match = VERSION_TOKEN.fullmatch(tokens[-1])
+    return match.group(1) if match else None
+
+
 def run_case(binary, argv, case, variant):
     with tempfile.TemporaryDirectory(prefix="sl-golden-") as tmp:
         root = Path(tmp).resolve()
@@ -149,8 +171,9 @@ def main():
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
-    ap.add_argument("--binary-version", default=GOLDEN_BINARY_VERSION,
-                    help="version the binary under --check reports in its 🗿 segment")
+    ap.add_argument("--binary-version",
+                    help="version the binary under --check reports in its 🗿 segment "
+                         "(default: read from `<bin> --version`)")
     ap.add_argument("--variant", choices=sorted(VARIANTS), action="append",
                     help="restrict to these variants (default: all)")
     args = ap.parse_args()
@@ -161,6 +184,13 @@ def main():
     cases = json.loads((FIXTURES / "cases.json").read_text(encoding="utf-8"))["cases"]
     variants = args.variant or list(VARIANTS)
     print(f"binary sha256 {hashlib.sha256(binary.read_bytes()).hexdigest()}")
+    if args.check and not args.binary_version:
+        args.binary_version = detect_binary_version(binary)
+        if not args.binary_version:
+            print("binary version unknown: `--version` printed no version; pass --binary-version")
+            return 2
+    if args.check:
+        print(f"binary version {args.binary_version} (goldens: {GOLDEN_BINARY_VERSION})")
     failed = 0
     for case in cases:
         for variant in variants:
