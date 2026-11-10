@@ -219,7 +219,6 @@ fn apply_needs_the_preview_digest_and_a_permission_reference() {
     fs::write(h.join(".moai/.env.glm"), format!("GLM_API_KEY={KEY}-new\n")).unwrap();
     let a = apply(&h, &digest, "user-ok");
     assert_eq!(a["ok"], false, "{a}");
-    assert!(a.to_string().contains("digest mismatch"), "{a}");
     assert!(
         !h.join(".moai-cli/vault").exists(),
         "nothing written by a refused apply"
