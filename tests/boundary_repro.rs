@@ -429,8 +429,16 @@ fn f6_scope_overlap_sees_case_and_dotdot_variants() {
         overlap("agents.md", "AGENTS.md"),
         "scope overlap missed case variant of a shared interface path"
     );
-    // Boundary: different paths still do not overlap.
+    // A `..` that climbs out of the repository names no known path, so it is treated as
+    // overlapping everything (conservative).
+    assert!(
+        overlap("../outside/x.rs", "src/a.rs"),
+        "scope overlap missed an escaping dotdot path"
+    );
+    // Boundary: different paths still do not overlap, and `..` inside the repository resolves
+    // to a different path when it names one.
     assert!(!overlap("src/a.rs", "src/b.rs"));
+    assert!(!overlap("src/../docs/a.md", "src/a.md"));
 }
 
 /// F8: a check that changes the tree while it runs leaves no admissible receipt.
