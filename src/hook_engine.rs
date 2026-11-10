@@ -432,6 +432,12 @@ fn target_path(input: &Value, cwd: &Path) -> Value {
 /// and never stores `tool_input` content, `tool_response` or messages. Marking earlier evidence
 /// stale waits for a persisted verification receipt (#2392; leader decision, Issue #2391).
 fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
+    // Cost (audit #2400 N3): a project without a real `.moai-cli/` directory records nothing,
+    // so return before spawning `git` for the HEAD commit.
+    match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
+        Ok(m) if m.is_dir() => {}
+        _ => return Verdict::Allow,
+    }
     let tool = input["tool_name"].as_str().unwrap_or("");
     let tool_ok = !tool.is_empty()
         && tool.len() <= 64

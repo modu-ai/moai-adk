@@ -1023,3 +1023,37 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
         r.stdout
     );
 }
+
+// ---- stage 4: cost ----
+
+/// Audit #2400 N3: tool-observe spawns `git` only when it will record. A fake `git` first on
+/// PATH leaves a marker; without `.moai-cli/` there is no marker, with it there is one (the
+/// control proves the fake is the `git` the engine would run).
+#[test]
+fn tool_observe_spawns_no_git_without_a_state_dir() {
+    let (_d, root) = repo("main");
+    let bin = root.join("home/fakebin");
+    fs::create_dir_all(&bin).unwrap();
+    let marker = root.join("home/git-called");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\ntouch '{}'\necho 0123456789abcdef0123456789abcdef01234567\n",
+            marker.display()
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let post = post_tool("PostToolUse", "Read", "a.txt", "x");
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(!marker.exists(), "git ran although nothing is recorded");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(marker.exists(), "control: the fake git is the one run");
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    assert!(text.contains("0123456789abcdef0123456789abcdef01234567"));
+}
