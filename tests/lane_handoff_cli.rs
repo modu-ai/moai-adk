@@ -4,11 +4,12 @@
 //! mutated request fields to observe every failure path. No real host is used:
 //! the remote head and PR record are injected observations.
 
+mod common;
+
 use moai_cli::forge::outbox::{OutboxEntry, OutboxState, Phase};
 use serde_json::{json, Value};
 use std::{
     ffi::OsStr,
-    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -132,12 +133,7 @@ fn run_check_with_env(
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .as_mut()
-        .unwrap()
-        .write_all(request.to_string().as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, request.to_string().as_bytes());
     let out = child.wait_with_output().unwrap();
     let envelope: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
     (
@@ -624,12 +620,7 @@ fn inherited_git_work_tree_cannot_hide_actual_dirty_files() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .as_mut()
-        .unwrap()
-        .write_all(request.to_string().as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, request.to_string().as_bytes());
     let out = child.wait_with_output().unwrap();
     let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert!(!out.status.success());
