@@ -64,27 +64,19 @@ pub const GLM_MCP_KEY_VAR: &str = "Z_AI_API_KEY";
 /// Taken from the caller's environment, else from a key file (#2359). The value is passed to
 /// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
-/// Legacy key files under HOME, read in this order when the variable is absent and the vault
-/// holds no entry (#2393 S2). The first is the global store shared with the Go tool (user
-/// decision 2026-11-10). Both are read, never created or changed. One list with the import.
+/// Legacy key files under HOME (`~/.moai/.env.glm` is the store shared with the Go tool), one
+/// list with `key-import-*`. The launcher never opens or reads them (user decision, Issue
+/// #2393 comment 6778150969): only their presence is checked, to point at the move into the
+/// vault (`legacy_key_only`). Only `key-import-plan`/`key-import-apply` read them, on request.
 pub const GLM_KEY_FILES: [&str; 2] = crate::key_vault::LEGACY_GLM_FILES;
-/// Largest key file that is read; a bigger one is skipped.
-const GLM_KEY_FILE_MAX: u64 = 65536;
 
-/// The token from the first key file that holds a non-empty one. Only a regular file within
-/// the size limit is opened, so a FIFO or a device at the path cannot block the launcher.
-fn glm_file_token() -> Option<String> {
-    let home = std::path::PathBuf::from(std::env::var_os("HOME")?);
-    GLM_KEY_FILES.iter().find_map(|file| {
-        let path = home.join(file);
-        let meta = std::fs::metadata(&path).ok()?;
-        if !meta.is_file() || meta.len() > GLM_KEY_FILE_MAX {
-            return None;
-        }
-        let text = std::fs::read_to_string(path).ok()?;
-        // One parser for the launcher and `key-import-*` (#2393 S3).
-        crate::key_vault::legacy_token_in(&text)
-    })
+/// The first legacy key file present at all (any kind of entry). Only `symlink_metadata` is
+/// used, so a FIFO, an unreadable file or a symlink is never opened.
+fn legacy_key_file(home: &std::path::Path) -> Option<&'static str> {
+    GLM_KEY_FILES
+        .iter()
+        .copied()
+        .find(|f| std::fs::symlink_metadata(home.join(f)).is_ok())
 }
 
 /// The one rule for a token value from any source: surrounding whitespace is dropped, and an
@@ -99,7 +91,6 @@ fn usable_token(value: &str) -> Option<String> {
 enum KeySource {
     Env,
     Vault(crate::key_vault::Backend),
-    LegacyFile,
 }
 
 impl KeySource {
@@ -107,7 +98,6 @@ impl KeySource {
         match self {
             KeySource::Env => "env:ANTHROPIC_AUTH_TOKEN",
             KeySource::Vault(_) => "vault:glm",
-            KeySource::LegacyFile => "legacy_key_file",
         }
     }
 }
@@ -117,8 +107,9 @@ impl KeySource {
 /// 2. the vault's `glm` entry through the selected backend (`~/.moai-cli/config`, file by
 ///    default) — a vault that is present but unsafe, or a backend that cannot answer, stops
 ///    the launch with its code instead of falling through, so a broken store is not bypassed;
-/// 3. only when the vault holds no entry, the legacy key files (read only, as before #2393),
-///    so a user who has not moved the key yet keeps working and the Go tool's file is kept.
+/// 3. with no vault entry, a legacy key file is not read (user decision, Issue #2393 comment
+///    6778150969); its presence stops the launch with `legacy_key_only` and the way to move
+///    the key, and the file is left as it is.
 fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked> {
     let from_env = std::env::var(GLM_TOKEN_VAR)
         .ok()
@@ -132,8 +123,11 @@ fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked>
                 crate::key_vault::backend(&home).unwrap_or(crate::key_vault::Backend::File);
             return Ok(Some((token, KeySource::Vault(backend))));
         }
+        if let Some(file) = legacy_key_file(&home) {
+            return Err(crate::key_vault::Blocked::legacy_key_only(file));
+        }
     }
-    Ok(glm_file_token().map(|token| (token, KeySource::LegacyFile)))
+    Ok(None)
 }
 
 /// The launcher's one-line refusal for a vault that cannot give the key: code, reason and the
@@ -492,14 +486,12 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
                 Err(b) => return Err(blocked_line(&b)),
                 Ok(None) => {
                     return Err(format!(
-                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment, the vault holds no glm key and no key file holds one (store it with `moai-cli key-set glm` reading the value from stdin, or set the variable; the legacy ~/{} and ~/{} are still read; the launcher never prints or stores the value)",
-                        GLM_KEY_FILES[0], GLM_KEY_FILES[1]
+                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment and the vault holds no glm key (store it with `moai-cli key-set glm` reading the value from stdin, or set the variable; the launcher never prints or stores the value)"
                     ));
                 }
                 Ok(Some((_, source))) => {
                     key_source = Some(source.name());
                     match source {
-                        KeySource::LegacyFile => notes.push("ANTHROPIC_AUTH_TOKEN comes from a legacy key file under HOME (read only); `moai-cli key-set glm` moves it into the vault; it is passed to the host process only"),
                         KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only"),
                         KeySource::Env => {}
                     }

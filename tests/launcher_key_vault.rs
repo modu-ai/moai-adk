@@ -1,6 +1,7 @@
-//! #2393 S2: the `glm` launcher reads the key from the variable, then the vault, then (only
-//! when the vault holds no entry) the legacy key files, read only. The source is reported by
-//! name (`key_source`), never the value. A vault that is present but unsafe, or a backend
+//! #2393 S2: the `glm` launcher reads the key from the variable, then the vault. A legacy key
+//! file is never read (user decision, Issue #2393 comment 6778150969): with no vault entry its
+//! presence ends `blocked: legacy_key_only` with the way to move the key. The source is
+//! reported by name (`key_source`), never the value. A vault that is present but unsafe, or a backend
 //! that cannot answer, stops the launch instead of falling back. Temporary HOME, synthetic
 //! keys only; the real home and the OS key store are never read.
 #![cfg(unix)]
@@ -130,28 +131,29 @@ fn the_vault_comes_before_the_legacy_file_and_after_the_variable() {
 }
 
 #[test]
-fn without_a_vault_entry_the_legacy_file_is_still_read_only() {
+fn without_a_vault_entry_the_legacy_file_is_named_not_read() {
     let h = home(None, true);
-    let before = fs::read(h.path().join(".moai/.env.glm")).unwrap();
-    let mtime = fs::metadata(h.path().join(".moai/.env.glm"))
-        .unwrap()
-        .modified()
-        .unwrap();
+    let file = h.path().join(".moai/.env.glm");
+    let before = fs::read(&file).unwrap();
+    let mtime = fs::metadata(&file).unwrap().modified().unwrap();
     let (code, v, text) = dry(h.path(), None);
-    assert_eq!(code, 0, "{text}");
-    assert_eq!(v["key_source"], "legacy_key_file");
-    assert!(v["notes"].to_string().contains("key-set glm"), "{text}");
-    assert_eq!(host_token(h.path()), LEGACY_KEY);
-    // Read only: same bytes, same time, and no vault was created.
-    assert_eq!(fs::read(h.path().join(".moai/.env.glm")).unwrap(), before);
-    assert_eq!(
-        fs::metadata(h.path().join(".moai/.env.glm"))
-            .unwrap()
-            .modified()
-            .unwrap(),
-        mtime
+    assert_eq!(code, 1, "{text}");
+    assert_eq!(v, Value::Null);
+    assert!(text.contains("blocked: legacy_key_only"), "{text}");
+    assert!(
+        text.contains(".moai/.env.glm") && text.contains("key-set glm"),
+        "{text}"
     );
+    assert!(text.contains("moai-cli key-import-plan glm"), "{text}");
+    assert!(!text.contains(LEGACY_KEY), "{text}");
+    // Untouched: same bytes, same time, and no vault was created.
+    assert_eq!(fs::read(&file).unwrap(), before);
+    assert_eq!(fs::metadata(&file).unwrap().modified().unwrap(), mtime);
     assert!(!h.path().join(".moai-cli").exists());
+    // With the key in the variable the legacy file does not matter.
+    let (code, v, text) = dry(h.path(), Some("moai-test-env-key"));
+    assert_eq!(code, 0, "{text}");
+    assert_eq!(v["key_source"], "env:ANTHROPIC_AUTH_TOKEN");
 }
 
 #[test]

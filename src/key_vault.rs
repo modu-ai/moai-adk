@@ -47,6 +47,18 @@ pub struct Blocked {
 }
 
 impl Blocked {
+    /// No vault entry, but a legacy key file exists (`file` relative to HOME). Its content is
+    /// not read (user decision, Issue #2393 comment 6778150969).
+    pub fn legacy_key_only(file: &str) -> Self {
+        Blocked::new(
+            "legacy_key_only",
+            format!(
+                "the vault holds no glm key; ~/{file} exists but is no longer read"
+            ),
+            "preview the move with `moai-cli key-import-plan glm` (then `key-import-apply`), or store a key with `moai-cli key-set glm` (value on stdin); the old file is left as it is",
+        )
+    }
+
     fn new(code: &'static str, reason: impl Into<String>, next: impl Into<String>) -> Self {
         Self {
             code,
