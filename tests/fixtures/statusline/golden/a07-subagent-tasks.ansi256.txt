@@ -1,0 +1,3 @@
+{"id":"t1","content":"⚙ [Explore] explorer (running) · 12.0k tokens"}
+{"id":"t2","content":"⚙ [manager-develop] builder (completed) · 3.0k tokens"}
+

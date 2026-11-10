@@ -1,6 +1,6 @@
 # 공통 protocol v1 초안 (Issue #1987, 00-D)
 
-이 문서는 moai-cli의 stdin/stdout 계약과 상태 어휘를 한 곳에 모은 **초안**이다. P06이 사용자 미결이라 HOLD-00D-1~5는 모두 결정되지 않았고, 이 문서와 산출물은 선택지마다 무엇이 달라지는지를 보여 줄 뿐 어느 쪽도 고르지 않는다. HOLD-00D-3(오류 형태)과 HOLD-00D-4(exit code 표)의 결정 주체는 01-C #1990이며, 00-D는 선택지를 참조용으로만 정리한다.
+이 문서는 MoAI의 stdin/stdout 계약과 상태 어휘를 한 곳에 모은 **초안**이다. P06이 사용자 미결이라 HOLD-00D-1~5는 모두 결정되지 않았고, 이 문서와 산출물은 선택지마다 무엇이 달라지는지를 보여 줄 뿐 어느 쪽도 고르지 않는다. HOLD-00D-3(오류 형태)과 HOLD-00D-4(exit code 표)의 결정 주체는 01-C #1990이며, 00-D는 선택지를 참조용으로만 정리한다.
 
 코드(`src/`)는 바꾸지 않았다. 구현 계획 6단계(Rust 오류 타입·exit 매핑·version 검사)는 선택지가 정해진 뒤에 한다.
 
@@ -50,7 +50,7 @@
 | REQ-00D-03 미지 필드 거부 | 거부는 하지만 malformed JSON과 같은 메시지(`invalid typed JSON input`) | 03, 04 |
 | REQ-00D-04 지원 밖 protocol_version | project-apply는 `stale or altered plan`, agents-plan은 `invalid agents request`로 나온다. 05-B #2002의 `plan-admit`만 전용 메시지 `unsupported protocol_version; supported: 1`을 내고, `contract::classify` 규칙으로 `kind: unsupported_protocol_version`이 된다(규칙과 단위 시험은 `src/contract.rs`) | 07, 15 |
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |
-| REQ-00D-11 값 echo 금지 | moai-cli가 직접 내는 메시지에는 입력 값이 없다(`effort must be one of …`는 허용값 목록). 다만 clap 사용 오류는 입력한 하위 명령 이름을 그대로 되돌려 준다(`unrecognized subcommand 'no-such-command'`) | 01, 19 |
+| REQ-00D-11 값 echo 금지 | MoAI가 직접 내는 메시지에는 입력 값이 없다(`effort must be one of …`는 허용값 목록). 다만 clap 사용 오류는 입력한 하위 명령 이름을 그대로 되돌려 준다(`unrecognized subcommand 'no-such-command'`) | 01, 19 |
 
 ### 추가된 operation (02-C #1993)
 

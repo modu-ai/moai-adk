@@ -130,6 +130,7 @@ const RULES: &[(&str, Kind)] = &[
     // forge-read (07-A #2008): its messages carry these prefixes; they precede the generic
     // words because a transport message may quote `unavailable` or `refused`.
     ("forge blocked: ", Kind::Blocked),
+    ("lane handoff blocked: ", Kind::Blocked),
     ("gh transport: ", Kind::Transport),
     ("forge resource not found", Kind::NotFound),
     (
@@ -348,6 +349,12 @@ mod tests {
             ("leader tick state directory unavailable", Io),
             ("leader tick state write failed", Io),
             ("leader tick state replace failed", Io),
+            // lane-status (rc.2 A11 #2265)
+            ("lane status issues must be 1 to 50 Issue numbers", InvalidInput),
+            ("lane status lanes must be at most 50", InvalidInput),
+            ("lane status base_branch must be a plain branch name", InvalidInput),
+            ("lane status evidence must be given with a session, a source and a time", InvalidInput),
+            ("lane status page limit exceeded (50)", InvalidInput),
             // identity (01-A #1988)
             ("path unavailable", NotFound),
             ("path must be a directory", InvalidInput),

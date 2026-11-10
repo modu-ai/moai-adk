@@ -64,6 +64,8 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `lane-handoff-check`
+- `lane-status`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`
@@ -94,7 +96,9 @@
 - `worktree-apply`
 - `worktree-plan`
 
-(알파벳순, 한 줄에 operation 하나, 개수는 적지 않는다. `src/main.rs`의 시험 `operations_doc_matches_code`가 이 목록과 OPERATIONS 배열의 이름 집합을 비교해 빠진 것·남는 것·중복·순서 어긋남을 이름으로 보고한다 — op를 더하거나 빼는 PR은 알파벳 위치에 자기 줄만 넣거나 뺀다. 이력: tip `604792666` 47개에서 시작해 rc.2 카드들이 더했고, #2241에서 이 형식으로 바꿨다. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
+(알파벳순, 한 줄에 operation 하나, 개수는 적지 않는다. `src/main.rs`의 시험 `operations_doc_matches_code`가 이 목록과 OPERATIONS 배열의 이름 집합을 비교해 빠진 것·남는 것·중복·순서 어긋남을 이름으로 보고한다 — op를 더하거나 빼는 PR은 알파벳 위치에 자기 줄만 넣거나 뺀다. 이력: tip `604792666` 47개에서 시작해 rc.2 카드들이 더했고, #2241에서 이 형식으로 바꿨다; `lane-handoff-check`은 A10 #2264 수리 r2에서 더했다. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
+
+envelope 예외 하위 명령: `statusline`(#2350). Claude Code가 `statusLine` 명령의 stdout을 그대로 화면에 보여 주므로 JSON envelope 대신 상태줄 원문을 출력하고 항상 exit 0으로 끝난다. OPERATIONS에 들어가지 않으므로 위 목록에도 없다. 실행기 `cc`·`glm`·`codex`·`session`도 같은 이유로 목록 밖이다. 숨은 시험용 옵션 `--render-budget-ms`는 렌더 예산(기본 800ms, Go와 같음)을 바꾼다. golden 시험이 부하와 무관하게 결정적으로 돌도록 큰 값을 넘기고, `0`은 이미 지난 예산(git을 시작하지 않음)이다. `src/main.rs`의 시험 `statusline_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
 
 ## 문서별 내부 명령 체계 → RC1
 
