@@ -5,6 +5,8 @@
 //! hand-enumerated ground truth — precision and recall both 100% (AC-1; REQ-C5-01:
 //! no inferred link) — and every non-link must surface as a `missing` row (AC-2).
 
+mod common;
+
 use moai_cli::spec_links::extract;
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path, process::Command};
@@ -13,7 +15,7 @@ use tempfile::TempDir;
 const OBSERVED_AT: &str = "2026-11-10T00:00:00Z";
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = common::git::command()
         .arg("-C")
         .arg(dir)
         .args([

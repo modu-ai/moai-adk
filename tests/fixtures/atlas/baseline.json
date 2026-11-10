@@ -1,0 +1,492 @@
+{
+ "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+ "diagnostics": {
+  "retrieval_precision_min": 0.0,
+  "retrieval_recall_min": 0.0
+ },
+ "rg_version": "ripgrep 15.1.0",
+ "schema_version": 2,
+ "source_commit": "98dab71433617ba179c164be8b7ca169e62fe7dc",
+ "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+ "source_tree_sha1": "80b40d51b10db15ee732956aedc421f71d0e3301",
+ "tasks": [
+  {
+   "hits": [
+    "src/archive.rs",
+    "src/context/mod.rs",
+    "src/github_templates.rs"
+   ],
+   "id": "G-001",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/forge/outbox.rs",
+    "src/forge/promote.rs",
+    "src/handoff.rs",
+    "src/pr_link.rs"
+   ],
+   "id": "G-002",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/forge/outbox.rs",
+    "src/forge/promote.rs",
+    "src/handoff.rs",
+    "src/pr_link.rs"
+   ],
+   "id": "G-003",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/apply.rs",
+    "src/archive.rs",
+    "src/audit.rs",
+    "src/baseline.rs",
+    "src/claim.rs",
+    "src/claude.rs",
+    "src/decision.rs",
+    "src/forge/promote.rs",
+    "src/forge/report.rs",
+    "src/forge/write.rs",
+    "src/github_templates.rs",
+    "src/hooks.rs",
+    "src/hosts/codex_config.rs",
+    "src/install.rs",
+    "src/plan.rs",
+    "src/pr_link.rs",
+    "src/recovery.rs",
+    "src/run.rs",
+    "src/self_update.rs",
+    "src/spec.rs",
+    "src/update.rs",
+    "src/verify.rs",
+    "src/worktree.rs"
+   ],
+   "id": "G-004",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/audit.rs",
+    "src/baseline.rs",
+    "src/lib.rs",
+    "src/run.rs",
+    "src/sources.rs"
+   ],
+   "id": "G-005",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/claim_verify.rs"
+   ],
+   "id": "G-006",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/claim.rs",
+    "src/claim_verify.rs",
+    "src/flow.rs",
+    "src/handoff.rs",
+    "src/leader.rs",
+    "src/main.rs",
+    "src/queue.rs"
+   ],
+   "id": "G-007",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/atlas_tag.rs",
+    "src/main.rs"
+   ],
+   "id": "G-008",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/contract.rs",
+    "src/install.rs",
+    "src/main.rs",
+    "src/recovery.rs",
+    "src/update.rs"
+   ],
+   "id": "G-009",
+   "kind": "graph",
+   "relation_file_coverage": 1.0
+  },
+  {
+   "hits": [
+    "src/forge/outbox.rs",
+    "src/forge/promote.rs",
+    "src/handoff.rs",
+    "src/pr_link.rs"
+   ],
+   "id": "T-001",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/claim.rs",
+    "src/handoff.rs",
+    "src/queue.rs",
+    "src/worktree.rs"
+   ],
+   "id": "T-002",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/ontology.rs"
+   ],
+   "id": "T-003",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/ontology.rs"
+   ],
+   "id": "T-004",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/ontology.rs"
+   ],
+   "id": "T-005",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/atlas_tag.rs",
+    "src/main.rs"
+   ],
+   "id": "T-006",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/claim_verify.rs",
+    "src/contract.rs",
+    "src/parity.rs",
+    "src/recovery.rs",
+    "src/verify.rs"
+   ],
+   "id": "T-007",
+   "kind": "retrieval",
+   "precision": 0.2,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/agents.rs",
+    "src/archive.rs",
+    "src/claude.rs",
+    "src/contract.rs",
+    "src/forge/promote.rs",
+    "src/generation.rs",
+    "src/github_templates.rs",
+    "src/hooks.rs",
+    "src/hosts/codex.rs",
+    "src/hosts/codex_config.rs",
+    "src/profile.rs",
+    "src/recovery.rs",
+    "src/sources.rs",
+    "src/update.rs",
+    "src/worktree.rs"
+   ],
+   "id": "T-008",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/forge/promote.rs",
+    "src/forge/report.rs",
+    "src/install.rs",
+    "src/lib.rs",
+    "src/profile.rs",
+    "src/redact.rs",
+    "src/sources.rs"
+   ],
+   "id": "T-009",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/profile.rs"
+   ],
+   "id": "T-010",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/profile.rs"
+   ],
+   "id": "T-011",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/flow.rs"
+   ],
+   "id": "T-012",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/claim_verify.rs"
+   ],
+   "id": "T-013",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/recovery.rs",
+    "src/self_update.rs",
+    "src/update.rs"
+   ],
+   "id": "T-014",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/contract.rs",
+    "src/leader.rs",
+    "src/profile.rs"
+   ],
+   "id": "T-015",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/audit.rs",
+    "src/baseline.rs",
+    "src/lib.rs",
+    "src/run.rs",
+    "src/sources.rs"
+   ],
+   "id": "T-016",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/main.rs",
+    "src/recovery.rs"
+   ],
+   "id": "T-017",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/main.rs",
+    "src/session.rs"
+   ],
+   "id": "T-018",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/pr_link.rs"
+   ],
+   "id": "T-019",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/archive.rs"
+   ],
+   "id": "T-020",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/ontology.rs"
+   ],
+   "id": "T-021",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/ontology.rs"
+   ],
+   "id": "T-022",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/claim.rs",
+    "src/handoff.rs",
+    "src/queue.rs",
+    "src/worktree.rs"
+   ],
+   "id": "T-023",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/hosts/codex.rs",
+    "src/main.rs"
+   ],
+   "id": "T-024",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/flow.rs"
+   ],
+   "id": "T-025",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/context/mod.rs"
+   ],
+   "id": "T-026",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/main.rs"
+   ],
+   "id": "T-027",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/forge/promote.rs",
+    "src/forge/transport.rs",
+    "src/redact.rs"
+   ],
+   "id": "T-028",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/claim.rs",
+    "src/lib.rs",
+    "src/main.rs",
+    "src/queue.rs"
+   ],
+   "id": "T-029",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/run.rs"
+   ],
+   "id": "T-030",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/sources.rs"
+   ],
+   "id": "T-031",
+   "kind": "retrieval",
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  {
+   "hits": [
+    "src/contract.rs",
+    "src/install.rs",
+    "src/main.rs",
+    "src/recovery.rs",
+    "src/update.rs"
+   ],
+   "id": "T-032",
+   "kind": "retrieval",
+   "precision": 0.2,
+   "recall": 1.0
+  },
+  {
+   "hits": [],
+   "id": "T-033",
+   "kind": "retrieval",
+   "precision": 0.0,
+   "recall": 0.0
+  }
+ ],
+ "threshold_policy": {
+  "comparison": ">=",
+  "graph": "relation-file coverage proxy, not semantic graph correctness",
+  "minima": "diagnostic only",
+  "scope": "per-suite macro means; no per-task floors"
+ },
+ "thresholds": {
+  "graph_relation_file_coverage_mean": 1.0,
+  "retrieval_precision_mean": 0.9212,
+  "retrieval_recall_mean": 0.9697
+ },
+ "tool": "rg"
+}
