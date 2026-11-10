@@ -26,7 +26,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    io::{self, Read},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -154,15 +154,18 @@ fn scan(project: &Path) -> Result<(String, Vec<IndexedFile>)> {
     let mut files = Vec::new();
     for p in &paths {
         let full = project.join(p);
-        let meta = fs::symlink_metadata(&full)
-            .map_err(|_| format!("index source unavailable: {p} disappeared"))?;
+        let meta = match fs::symlink_metadata(&full) {
+            Ok(meta) => meta,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(_) => return Err(format!("index source unavailable: {p} metadata unreadable")),
+        };
         let (sha, bytes) = if meta.file_type().is_symlink() {
             let t: String = fs::read_link(&full)
                 .ok()
                 .and_then(|t| t.into_os_string().into_string().ok())
                 .ok_or_else(|| format!("index source unavailable: {p} symlink unreadable"))?;
             let d = Sha256::digest(t.as_bytes());
-            (format!("sha256:{d:x}"), t.len() as u64)
+            (format!("symlink-sha256:{d:x}"), t.len() as u64)
         } else if meta.is_file() {
             file_sha(&full).ok_or_else(|| format!("index source unavailable: {p} read failed"))?
         } else {
@@ -258,9 +261,9 @@ fn orphan_candidates(project: &Path) -> Vec<String> {
 /// Writes the pointer through a temp file plus a rename in the same directory: a reader
 /// either sees the previous pointer or the new one, never a partial write (AC-2).
 fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
+    let pointer = crate::apply::target(project, ".moai-cli/index/current.json")?;
     let dir = index_root(project);
     fs::create_dir_all(&dir).map_err(|_| "index directory unavailable".to_string())?;
-    let pointer = pointer_path(project);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -270,8 +273,38 @@ fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
         &json!({"schema_version": SCHEMA_VERSION, "generation_id": generation_id}),
     )
     .map_err(|_| "index pointer encode failed".to_string())?;
-    fs::write(&tmp, &body).map_err(|_| "index pointer write failed".to_string())?;
+    let mut staged = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .map_err(|_| "index pointer write failed".to_string())?;
+    staged
+        .write_all(&body)
+        .map_err(|_| "index pointer write failed".to_string())?;
+    drop(staged);
     fs::rename(&tmp, &pointer).map_err(|_| "index pointer replace failed".to_string())
+}
+
+/// A simultaneous publisher may win the rename. Reuse only a validated identical
+/// snapshot; keep this attempt's staging directory as an orphan, never delete data.
+fn publish_staged(
+    project: &Path,
+    staging: &Path,
+    generation_id: &str,
+    expected: &IndexManifest,
+) -> Result<&'static str> {
+    match fs::rename(staging, generations_dir(project).join(generation_id)) {
+        Ok(()) => Ok("created"),
+        Err(e) => {
+            if load_manifest(project, generation_id).is_some_and(|stored| {
+                stored.base_commit == expected.base_commit && stored.files == expected.files
+            }) {
+                Ok("unchanged")
+            } else {
+                Err(format!("index generation staging write failed: {e}"))
+            }
+        }
+    }
 }
 
 /// Builds a new generation from the current scan and publishes it with the atomic
@@ -284,6 +317,13 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
     }
     let root = fs::canonicalize(project).map_err(|_| "path unavailable".to_string())?;
     let build = || -> Result<Value> {
+        for rel in [
+            ".moai-cli/index/generations",
+            ".moai-cli/index/current.json",
+            ".moai-cli/index/last-build.json",
+        ] {
+            crate::apply::target(&root, rel)?;
+        }
         let (base_commit, files) = scan(&root)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
         let gen_id = content_id(&base_commit, &files);
@@ -297,25 +337,29 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         let gens = generations_dir(&root);
         fs::create_dir_all(&gens).map_err(|_| "index directory unavailable".to_string())?;
         let gen_dir = gens.join(&gen_id);
-        let mut action = "created";
-        if !gen_dir.is_dir() {
+        crate::apply::target(
+            &root,
+            &format!(".moai-cli/index/generations/{gen_id}/manifest.json"),
+        )?;
+        let action = if !gen_dir.is_dir() {
             let nanos = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos())
                 .unwrap_or(0);
             let tmp = gens.join(format!(".tmp-{}-{nanos}", std::process::id()));
-            fs::create_dir_all(&tmp)
+            fs::create_dir(&tmp)
                 .map_err(|_| "index generation staging write failed".to_string())?;
             let bytes = canonical_manifest_bytes(&manifest)?;
-            let write = fs::write(tmp.join("manifest.json"), &bytes);
-            if let Err(e) = write {
-                let _ = fs::remove_dir_all(&tmp);
-                return Err(format!("index generation staging write failed: {e}"));
-            }
-            if let Err(e) = fs::rename(&tmp, &gen_dir) {
-                let _ = fs::remove_dir_all(&tmp);
-                return Err(format!("index generation staging write failed: {e}"));
-            }
+            let mut staged = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(tmp.join("manifest.json"))
+                .map_err(|e| format!("index generation staging write failed: {e}"))?;
+            staged
+                .write_all(&bytes)
+                .map_err(|e| format!("index generation staging write failed: {e}"))?;
+            drop(staged);
+            publish_staged(&root, &tmp, &gen_id, &manifest)?
         } else {
             // Reuse is successful only when the immutable manifest still describes
             // this snapshot. Never publish a damaged cache or overwrite it in place.
@@ -324,8 +368,8 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             if stored.base_commit != base_commit || stored.files != files {
                 return Err("index generation manifest invalid; refusing reuse".into());
             }
-            action = "unchanged";
-        }
+            "unchanged"
+        };
         swap_pointer(&root, &gen_id)?;
         let _ = fs::remove_file(failure_marker_path(&root));
         Ok(json!({
@@ -351,10 +395,14 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
                 reason: e.clone(),
                 at: utc_now(),
             };
-            let dir = index_root(&root);
-            if fs::create_dir_all(&dir).is_ok() {
-                if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
-                    let _ = fs::write(failure_marker_path(&root), bytes);
+            // The failure path must enforce the same target/ancestor rule as the
+            // success path, or its marker could overwrite a symlinked source.
+            if let Ok(path) = crate::apply::target(&root, ".moai-cli/index/last-build.json") {
+                let dir = index_root(&root);
+                if fs::create_dir_all(&dir).is_ok() {
+                    if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
+                        let _ = fs::write(path, bytes);
+                    }
                 }
             }
             Err(format!("index build failed; previous generation kept: {e}"))
@@ -389,7 +437,12 @@ fn generation_id_valid(id: &str) -> bool {
 }
 
 fn load_manifest(project: &Path, gen_id: &str) -> Option<IndexManifest> {
-    let bytes = fs::read(generations_dir(project).join(gen_id).join("manifest.json")).ok()?;
+    let path = crate::apply::target(
+        project,
+        &format!(".moai-cli/index/generations/{gen_id}/manifest.json"),
+    )
+    .ok()?;
+    let bytes = fs::read(path).ok()?;
     let m: IndexManifest = serde_json::from_slice(&bytes).ok()?;
     (m.schema_version == SCHEMA_VERSION
         && m.generation_id == gen_id
@@ -637,5 +690,45 @@ mod tests {
             content_id("base1", &files(&[("a.md", "OTHER"), ("b.md", "s2")]))
         );
         assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")])));
+    }
+
+    #[test]
+    fn racing_publication_reuses_only_an_identical_winner() {
+        for matching in [true, false] {
+            let tmp = tempfile::tempdir().unwrap();
+            let expected = IndexManifest {
+                schema_version: SCHEMA_VERSION,
+                generation_id: content_id("base", &[]),
+                base_commit: "base".into(),
+                files: vec![],
+                built_at: "2026-11-10T00:00:00Z".into(),
+            };
+            let winner = generations_dir(tmp.path()).join(&expected.generation_id);
+            let staging = generations_dir(tmp.path()).join(".tmp-loser");
+            fs::create_dir_all(&winner).unwrap();
+            fs::create_dir(&staging).unwrap();
+            let mut stored = expected.clone();
+            if !matching {
+                stored.base_commit = "other".into();
+            }
+            let winner_bytes = canonical_manifest_bytes(&stored).unwrap();
+            let staged_bytes = canonical_manifest_bytes(&expected).unwrap();
+            fs::write(winner.join("manifest.json"), &winner_bytes).unwrap();
+            fs::write(staging.join("manifest.json"), &staged_bytes).unwrap();
+            let result = publish_staged(tmp.path(), &staging, &expected.generation_id, &expected);
+            if matching {
+                assert_eq!(result.unwrap(), "unchanged");
+            } else {
+                assert!(result.is_err(), "a mismatched winner cannot be reused");
+            }
+            assert_eq!(
+                fs::read(winner.join("manifest.json")).unwrap(),
+                winner_bytes
+            );
+            assert_eq!(
+                fs::read(staging.join("manifest.json")).unwrap(),
+                staged_bytes
+            );
+        }
     }
 }

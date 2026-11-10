@@ -64,6 +64,8 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `layout-apply`
+- `layout-plan`
 - `leader-tick`
 - `package-inspect`
 - `package-resolve`

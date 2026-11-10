@@ -20,6 +20,7 @@ pub mod hosts;
 pub mod identity;
 pub mod index;
 pub mod install;
+pub mod layout;
 pub mod leader;
 pub mod ontology;
 pub mod parity;

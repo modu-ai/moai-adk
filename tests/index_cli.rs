@@ -143,7 +143,6 @@ fn freshness_suite_detects_add_delete_modify_new_and_branch_switch() {
 
     // Deletion: removing a tracked file is detected under "deleted".
     fs::remove_file(project.join("a.txt")).unwrap();
-    git(&project, &["rm", "--cached", "a.txt"]);
     let v = query(&project);
     assert_eq!(v["state"], json!("stale"));
     assert!(v["changes"]["deleted"]
@@ -439,4 +438,77 @@ fn orphan_temp_dirs_are_ignored_and_the_pointer_is_the_only_path() {
     let v = query(&project);
     assert_eq!(v["state"], json!("unavailable"));
     assert!(v["reason"].as_str().unwrap().contains("unreadable"));
+}
+
+#[cfg(unix)]
+#[test]
+fn source_file_to_symlink_transition_changes_freshness_and_generation() {
+    let (_tmp, project) = setup_project();
+    fs::write(project.join("a.txt"), b"target.txt").unwrap();
+    fs::write(project.join("target.txt"), b"different target bytes").unwrap();
+    git(&project, &["add", "a.txt", "target.txt"]);
+    git(&project, &["commit", "-q", "-m", "file and symlink target"]);
+    assert!(build(&project).status.success());
+    let old = pointer_gen(&project).unwrap();
+    fs::remove_file(project.join("a.txt")).unwrap();
+    std::os::unix::fs::symlink("target.txt", project.join("a.txt")).unwrap();
+    let result = query(&project);
+    assert_eq!(result["state"], json!("stale"));
+    assert_eq!(result["changes"]["modified"], json!(["a.txt"]));
+    assert!(build(&project).status.success());
+    assert_ne!(pointer_gen(&project).as_deref(), Some(old.as_str()));
+    assert_eq!(query(&project)["state"], json!("fresh"));
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_failure_marker_never_overwrites_source() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    let old = pointer_gen(&project).unwrap();
+    std::os::unix::fs::symlink(
+        "../../a.txt",
+        project.join(".moai-cli/index/last-build.json"),
+    )
+    .unwrap();
+    fs::write(
+        project.join("too-large.txt"),
+        vec![b'x'; 16 * 1024 * 1024 + 1],
+    )
+    .unwrap();
+    git(&project, &["add", "too-large.txt"]);
+    let attempt = build(&project);
+    assert!(!attempt.status.success());
+    assert_eq!(fs::read(project.join("a.txt")).unwrap(), b"alpha");
+    assert_eq!(pointer_gen(&project).as_deref(), Some(old.as_str()));
+    assert!(
+        fs::symlink_metadata(project.join(".moai-cli/index/last-build.json"))
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_index_ancestors_never_receive_build_writes() {
+    for rel in [
+        ".moai-cli",
+        ".moai-cli/index",
+        ".moai-cli/index/generations",
+    ] {
+        let (tmp, project) = setup_project();
+        assert!(build(&project).status.success());
+        let external = tmp.path().join("external");
+        fs::create_dir(&external).unwrap();
+        fs::write(external.join("sentinel"), b"keep").unwrap();
+        let original = project.join(rel);
+        fs::rename(&original, original.with_extension("kept")).unwrap();
+        std::os::unix::fs::symlink(&external, &original).unwrap();
+        let attempt = build(&project);
+        assert!(!attempt.status.success(), "{rel}");
+        assert_eq!(fs::read(external.join("sentinel")).unwrap(), b"keep");
+        assert_eq!(fs::read_dir(&external).unwrap().count(), 1, "{rel}");
+        assert_eq!(fs::read(project.join("a.txt")).unwrap(), b"alpha");
+    }
 }
