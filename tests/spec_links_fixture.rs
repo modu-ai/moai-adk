@@ -656,3 +656,57 @@ fn review_fixture_literal_payloads_do_not_verify_this_repository() {
         "fixture payloads are not real tests"
     );
 }
+
+/// A host hook's repository variables cannot replace the requested tree or history.
+#[test]
+fn inherited_git_environment_cannot_redirect_extraction() {
+    if let Some(root) = std::env::var_os("MOAI_C5_ENV_REPRO_ROOT") {
+        let head = std::env::var("MOAI_C5_ENV_REPRO_HEAD").unwrap();
+        let doc = extract(Path::new(&root), &head, OBSERVED_AT).unwrap();
+        fs::write(
+            std::env::var_os("MOAI_C5_ENV_REPRO_OUTPUT").unwrap(),
+            serde_json::to_vec(&doc).unwrap(),
+        )
+        .unwrap();
+        return;
+    }
+
+    let f = fixture();
+    let head = f.commits.last().unwrap();
+    let expected = extract(&f.root, head, OBSERVED_AT).unwrap();
+    let other = TempDir::new().unwrap();
+    git(other.path(), &["init", "-q", "-b", "main"]);
+    write(
+        other.path(),
+        "other.py",
+        b"def test_req_foreign_01():\n    pass\n",
+    );
+    commit(
+        other.path(),
+        "fixture: foreign repository\n\nRefs: #99991\n",
+    );
+    let result_path = f._dir.path().join("contaminated.json");
+    let output = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "inherited_git_environment_cannot_redirect_extraction",
+        ])
+        .env("MOAI_C5_ENV_REPRO_ROOT", &f.root)
+        .env("MOAI_C5_ENV_REPRO_HEAD", head)
+        .env("MOAI_C5_ENV_REPRO_OUTPUT", &result_path)
+        .env("GIT_DIR", other.path().join(".git"))
+        .env("GIT_WORK_TREE", other.path())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "isolated extractor failed: {}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let actual: Value = serde_json::from_slice(&fs::read(result_path).unwrap()).unwrap();
+    assert_eq!(
+        actual, expected,
+        "foreign repository must not supply evidence"
+    );
+}

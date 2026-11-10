@@ -443,12 +443,10 @@ fn test_functions(path: &str, text: &str) -> Vec<(usize, String)> {
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
-        .output()
-        .map_err(|_| "git unavailable".to_string())?;
+    let mut cmd = Command::new("git");
+    cmd.arg("-C").arg(root).args(args);
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd.output().map_err(|_| "git unavailable".to_string())?;
     if !out.status.success() {
         return Err(format!("git {} failed", args.join(" ")));
     }
