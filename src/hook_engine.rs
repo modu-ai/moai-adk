@@ -620,9 +620,14 @@ fn consecutive_blocks(cwd: &Path, session: &str) -> usize {
 /// turn-validation (Stop): runs `rules` and keeps the session working only when a rule asks
 /// and MoAI's own bound allows it:
 /// - no rule → allow, nothing read or written (the shipped default);
-/// - `stop_hook_active` while MoAI has not blocked this session → allow: the continuation came
-///   from another stop hook (for example a user's `/goal`), and MoAI does not compete with it;
-/// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow;
+/// - `stop_hook_active` → allow, always (decision D2 = a, Issue #2389 c6774899518 row 24): the
+///   turn is already being continued by a stop hook — a user's `/goal`, another hook, or MoAI's
+///   own earlier block, which the field cannot tell apart — and MoAI never competes with it.
+///   Both hosts send the field (Claude Code; Codex "Whether this turn was already continued by
+///   `Stop`", learn.chatgpt.com/docs/hooks read 2026-11-11). The Go `/goal` Stop link is not
+///   carried over (B5 rejected);
+/// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow (backstop for a host that
+///   does not report a continuation);
 /// - a block that cannot be recorded (no `.moai-cli/`, refused log) → allow, because an
 ///   unrecorded block could not be bounded.
 ///
@@ -640,7 +645,7 @@ pub fn turn_validation_with(
     let active = input["stop_hook_active"] == json!(true);
     let session = session_key(input);
     let blocks = consecutive_blocks(cwd, &session);
-    if (active && blocks == 0) || blocks >= MOAI_STOP_BLOCK_CAP {
+    if active || blocks >= MOAI_STOP_BLOCK_CAP {
         return Verdict::Allow;
     }
     let ctx = StopContext {
@@ -706,35 +711,49 @@ mod tests {
         assert!(!log(p.path()).exists());
     }
 
+    /// Decision D2 = a (Issue #2389 c6774899518 row 24): once the host is continuing the turn
+    /// (`stop_hook_active`), MoAI never blocks — not even after its own block, since the field
+    /// cannot tell whose block continued it. MoAI therefore blocks at most once per stop.
     #[test]
-    fn fixture_rule_blocks_exactly_two_times_in_a_row_then_allows() {
+    fn fixture_rule_blocks_once_and_never_while_a_continuation_runs() {
         let p = project(true);
         let first = turn_validation_with(FAKE, &stop(false), p.path(), 1);
         assert!(matches!(first, Verdict::Deny(ref r) if r.contains("fake-always")));
         // The host now continues the turn: stop_hook_active is true from here on.
-        assert!(matches!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 2),
-            Verdict::Deny(_)
-        ));
-        assert_eq!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 3),
-            Verdict::Allow
-        );
-        assert_eq!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 4),
-            Verdict::Allow
-        );
+        for t in 2..5 {
+            assert_eq!(
+                turn_validation_with(FAKE, &stop(true), p.path(), t),
+                Verdict::Allow
+            );
+        }
         let text = std::fs::read_to_string(log(p.path())).unwrap();
-        assert_eq!(text.lines().count(), 2, "two recorded blocks: {text}");
+        assert_eq!(text.lines().count(), 1, "one recorded block: {text}");
+    }
+
+    /// The block cap stays as the backstop for a host that reports `stop_hook_active: false`
+    /// again without a tool call in between: two blocks, then allow.
+    #[test]
+    fn the_cap_bounds_blocks_when_the_host_never_reports_a_continuation() {
+        let p = project(true);
+        for t in 1..3 {
+            assert!(matches!(
+                turn_validation_with(FAKE, &stop(false), p.path(), t),
+                Verdict::Deny(_)
+            ));
+        }
+        assert_eq!(
+            turn_validation_with(FAKE, &stop(false), p.path(), 3),
+            Verdict::Allow
+        );
     }
 
     #[test]
     fn a_tool_call_resets_the_count() {
         let p = project(true);
         let _ = turn_validation_with(FAKE, &stop(false), p.path(), 1);
-        let _ = turn_validation_with(FAKE, &stop(true), p.path(), 2);
+        let _ = turn_validation_with(FAKE, &stop(false), p.path(), 2);
         assert_eq!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 3),
+            turn_validation_with(FAKE, &stop(false), p.path(), 3),
             Verdict::Allow
         );
         let post = json!({"hook_event_name": "PostToolUse", "session_id": "sess-A",
