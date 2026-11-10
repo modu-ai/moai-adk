@@ -173,20 +173,6 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
-    /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
-    TodoPromotePreview {
-        project: PathBuf,
-    },
-    /// Promote the previewed TODOs: refuses a different `--preview-digest`, records an outbox
-    /// intent before each create and `published` only after a confirming GET.
-    TodoPromoteApply {
-        project: PathBuf,
-        #[arg(long)]
-        preview_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
@@ -425,6 +411,16 @@ enum Command {
         #[arg(long)]
         host: String,
     },
+    /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
+    /// answer; reads the host's hook JSON on stdin, no network.
+    HookDispatch {
+        /// `claude` or `codex`.
+        #[arg(long)]
+        host: String,
+        /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.
+        #[arg(long)]
+        event: String,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -517,6 +513,12 @@ enum Command {
         path: Option<PathBuf>,
         #[arg(long)]
         plan_digest: String,
+    },
+    /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
+    /// matches over the published index generation (or the tracked files), each result with
+    /// a source citation; the typed-edge step is reported unavailable (#2408).
+    Search {
+        project: PathBuf,
     },
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
@@ -957,6 +959,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         GenerationPlan { .. } => "generation.plan",
         GithubApply { .. } => "github.apply",
         GithubPlan { .. } => "github.plan",
+        HookDispatch { .. } => "hook.dispatch",
         HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
@@ -985,12 +988,11 @@ fn operation(command: &Command) -> Option<&'static str> {
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
+        Search { .. } => "search.query",
         SkillReadReceipt { .. } => "skill_source.read_receipt",
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
         SnapshotDescribe { .. } => "snapshot.describe",
-        TodoPromoteApply { .. } => "todo.promote.apply",
-        TodoPromotePreview { .. } => "todo.promote.plan",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
@@ -1192,6 +1194,11 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::Search { project } => serde_json::to_value(moai_cli::search::search(
+            &project,
+            &input::<moai_cli::search::SearchRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::ScopeCheck {
             project,
             source,
@@ -1362,24 +1369,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::TodoPromoteApply {
-            project,
-            preview_digest,
-            permission_reference,
-        } => moai_cli::forge::promote::apply_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &preview_digest,
-            &permission_reference,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -1517,6 +1506,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out);
+            // Outside the plan digest: the #2391 hook state from local evidence, read only.
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            out["hook_status"] =
+                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
         Command::HooksApply {
@@ -1535,6 +1528,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )?;
             merge_binary_state(&mut out);
             Ok(out)
+        }
+        // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
+        Command::HookDispatch { .. } => {
+            Err("hook-dispatch is answered before internal dispatch".into())
         }
         Command::HookReceipt { host } => {
             // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
@@ -1865,7 +1862,38 @@ fn usage_error(e: clap::Error) -> ExitCode {
 /// still handled as a hook. Both hosts read a hook's stdout as hook output and its exit 2 as
 /// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
 fn hook_mode_argv(args: &[String]) -> bool {
-    args.get(1).is_some_and(|w| w == "hook-receipt") || args.iter().skip(1).any(|a| a == "--hook")
+    args.get(1)
+        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch")
+        || args.iter().skip(1).any(|a| a == "--hook")
+}
+
+/// `hook-dispatch` (#2391): prints exactly the host's native answer — no contract envelope —
+/// and exits with the engine's code (0 allow/deny/context, 1 engine error).
+fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
+    let mut bytes = Vec::new();
+    let _ = io::stdin()
+        .take(moai_cli::hook_engine::STDIN_LIMIT)
+        .read_to_end(&mut bytes);
+    let answer = match std::env::current_dir() {
+        Ok(cwd) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            moai_cli::hook_engine::dispatch(host, event, &bytes, &cwd, now)
+        }
+        Err(_) => moai_cli::hook_engine::Answer {
+            stdout: String::new(),
+            stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
+            exit: moai_cli::hook_engine::ENGINE_ERROR_EXIT,
+        },
+    };
+    if !answer.stdout.is_empty() {
+        println!("{}", answer.stdout);
+    }
+    if !answer.stderr.is_empty() {
+        eprintln!("{}", answer.stderr);
+    }
+    ExitCode::from(answer.exit)
 }
 
 /// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
@@ -1922,6 +1950,9 @@ fn main() -> ExitCode {
             }
         };
     };
+    if let Some(Command::HookDispatch { host, event }) = &cli.command {
+        return hook_dispatch_main(host, event);
+    }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
     let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));

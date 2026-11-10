@@ -5,6 +5,7 @@
 //! written is an error, never a silent `agent-1`. Real launches run stub `claude` / `codex`
 //! executables from a temporary PATH in a temporary git project; no real host starts.
 #![cfg(unix)]
+mod common;
 use serde_json::Value;
 use std::os::unix::fs::PermissionsExt;
 use std::{
@@ -20,7 +21,7 @@ struct Fixture {
 }
 
 fn git(dir: &Path, args: &[&str]) {
-    let ok = Command::new("git")
+    let ok = common::git::command()
         .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
         .args(args)
         .current_dir(dir)
@@ -122,7 +123,7 @@ fn numbers_count_up_across_hosts_and_live_in_the_clone_common_dir() {
     );
     assert_eq!(stored(&f).as_deref(), Some("5\n"));
     // The counter sits under `.git`, so git never lists it.
-    let status = Command::new("git")
+    let status = common::git::command()
         .args(["status", "--porcelain", "--ignored"])
         .current_dir(f.project.path())
         .output()
@@ -350,4 +351,109 @@ fn worktrees_of_one_clone_share_the_counter() {
     assert_eq!(name(&run_in(&f, &wt, &["codex", "-a"])), "agent-2");
     assert_eq!(name(&run(&f, &["glm", "-a"])), "agent-3");
     assert_eq!(stored(&f).as_deref(), Some("3\n"));
+}
+
+/// #2361 AC-5 as amended by the 06:45Z user decision (`-l`, `-a` = full-access mode): a
+/// launch with `--name X` or `-l` takes no number and starts the host with exactly this argv,
+/// pinned byte for byte per host. Real launches against the stub hosts, not `--dry-run`.
+#[test]
+fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
+    let f = fixture();
+    let cases: [(&[&str], &[&str]); 6] = [
+        (
+            &["cc", "-l"],
+            &[
+                "claude",
+                "--name",
+                "leader",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--advisor",
+                "fable",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["glm", "-l"],
+            &[
+                "claude",
+                "--name",
+                "leader",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["codex", "-l"],
+            &[
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "MoAI session name: leader",
+            ],
+        ),
+        (
+            &["cc", "-a", "--name", "x"],
+            &[
+                "claude",
+                "--name",
+                "x",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--advisor",
+                "fable",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["glm", "-a", "--name", "x"],
+            &[
+                "claude",
+                "--name",
+                "x",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["codex", "-a", "--name", "x"],
+            &[
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "MoAI session name: x",
+            ],
+        ),
+    ];
+    for (args, want) in cases {
+        let out = run(&f, args);
+        assert!(
+            out.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let argv: Vec<&str> = v["argv"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{args:?}: no argv in {v}"))
+            .iter()
+            .map(|a| a.as_str().unwrap())
+            .collect();
+        assert_eq!(argv, want, "{args:?}");
+    }
+    assert_eq!(stored(&f), None, "--name and -l take no number");
 }

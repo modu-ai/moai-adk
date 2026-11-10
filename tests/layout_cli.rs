@@ -4,6 +4,7 @@
 //! (AC-2) and the opt-in switch (AC-1) are both exercised without touching the real
 //! `~/.moai-cli`. REQ-B8-01: the originals are never deleted; the pointer switches only
 //! after the copy verifies; removing the marker reverts everything.
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -13,14 +14,7 @@ use std::{
 };
 
 fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .status()
-        .unwrap();
-    assert!(status.success(), "git {args:?} failed");
+    common::git::git_ok(dir, args);
 }
 
 /// A project with a profile and populated receipt/outbox/claim stores.

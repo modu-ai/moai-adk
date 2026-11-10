@@ -7,7 +7,7 @@ use moai_cli::forge::policy::Clock;
 use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::lane_status::{status_cli, IdleCause, LaneStatusRequest, Phase};
 use serde_json::{json, Value};
-use std::{cell::Cell, fs, path::Path, process::Command};
+use std::{cell::Cell, fs, path::Path};
 
 const API: &str = "https://api.github.com/repos/acme/widgets";
 const LIVE: &str = "2030-01-01T00:00:00Z";
@@ -174,7 +174,7 @@ fn decisions() -> Value {
 }
 
 fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
+    let status = common::git::command()
         .args(args)
         .current_dir(dir)
         .env_remove("GIT_DIR")

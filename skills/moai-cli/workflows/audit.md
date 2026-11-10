@@ -15,6 +15,7 @@ Findings from an independent context and an evidence-bound verdict.
 3. Record functional, security, consistency, and maintainability findings, with the conditions for fixing each.
 4. Have a deterministic admission step confirm the must-pass conditions and their evidence.
 5. If the reviewer changes code, verify the result again as a new candidate.
+6. Which checks the auditor runs locally and when an exact-head CI run may be cited follow the check-run rules in the VERIFY workflow (section "Check-run rules"); a cited run id appears in the verdict.
 
 The review package and the way a verdict reaches integration are described in the SYNC workflow (procedure steps 7 and 8).
 
