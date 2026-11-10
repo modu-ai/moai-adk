@@ -399,8 +399,8 @@ fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
 ///   the file is absent, `drifted` when it exists with other hooks (or does not parse).
 /// - `trusted`: always `unknown`. Claude Code checks workspace trust before running any hook
 ///   from a settings file, and Codex records trust against each hook's hash, but neither page
-///   says where that is stored (read 2026-11-10), so it is never read here; `fired` is the
-///   only evidence that a host ran the hooks.
+///   says where that is stored (read 2026-11-10), so it is never read here. No local line
+///   proves a host ran the hooks either (see `verified`).
 /// - `fired`: a receipt or engine line from this host stamped at or after the host file's
 ///   last modification (a changed definition makes older lines stale).
 /// - `action_blocked`: since then, an engine `deny` line from this host, with a session key and
