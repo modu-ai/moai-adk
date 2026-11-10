@@ -109,6 +109,9 @@ const RULES: &[(&str, Kind)] = &[
     ("not uniquely locatable", Kind::Conflict),
     ("generation manifest", Kind::Conflict),
     ("digest mismatch", Kind::Conflict),
+    // home layout (#2175): a failed integrity verify is the digest-mismatch family; the
+    // copy failure is plain I/O.
+    ("home layout verify failed", Kind::Conflict),
     ("SKILL.md missing", Kind::NotFound),
     // Generic "not found" suffix. First match wins, so the specific phrases before it
     // (the forge rule above) keep their kinds; the phrases after it do not contain
@@ -131,6 +134,7 @@ const RULES: &[(&str, Kind)] = &[
     ("malformed ls-", Kind::Io),
     ("read failed", Kind::Io),
     ("write failed", Kind::Io),
+    ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
     ("unavailable", Kind::Io),
@@ -328,6 +332,16 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
+            // home layout (rc.2 B8 #2175); every current message of the module
+            ("conflict in home layout: already switched; remove the home layout.json marker to revert first", Conflict),
+            ("conflict in home layout: home target for receipts already exists; refusing overwrite; remove or merge it first; nothing applied", Conflict),
+            ("conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied", Conflict),
+            ("home layout verify failed; partial copy removed", Conflict),
+            ("home layout copy failed", Io),
+            ("home layout target unavailable", Io),
+            ("layout source unreadable", Io),
+            ("home layout marker write failed", Io),
+            ("home root unavailable; HOME is not set", Io),
             // claim-verify (rc.2 A9 #2255)
             (
                 "claim verify: not owner; the lowest open claim is comment 7 (REQ-A9-01), so no commit or push",
