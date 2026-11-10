@@ -13,14 +13,21 @@ Isolation, per case and per color variant:
   NO_COLOR or COLORTERM values), TZ=UTC;
 - the binary is copied under a name other than `moai`, so the Go statusline's
   detached `gh`/`glab` refresh child is never spawned (isSelfInvocable);
-- on macOS the run is wrapped in `sandbox-exec` denying every network operation
-  and every write under the real HOME.
+- on macOS the run is wrapped in `sandbox-exec` denying every network operation,
+  every read and write under the real HOME (so no credential can be used), and
+  every process exec except the binary under test and git (#2350 AC-2, AC-5).
 
-Variants: `plain` sets NO_COLOR=1; `ansi` sets COLORTERM=truecolor.
+Variants: `plain` sets NO_COLOR=1; `ansi` sets COLORTERM=truecolor; `ansi256` sets
+neither, which is the ANSI256 palette path (#2350).
+
+Version token (#2350): the goldens carry the version of the binary that recorded them
+(`GOLDEN_BINARY_VERSION`). `--check` replaces `🗿 v<--binary-version>` in the actual
+output and `🗿 v<GOLDEN_BINARY_VERSION>` in the golden with one placeholder before
+comparing. Nothing else is normalized.
 
 Usage:
-  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write
-  python3 -I tools/statusline_golden.py --bin <statusline binary> --check
+  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write [--variant V]
+  python3 -I tools/statusline_golden.py --bin <statusline binary> --binary-version <v> --check
 Exit codes: 0 = all written / all equal, 1 = a mismatch or a failed run, 2 = usage.
 """
 
@@ -36,7 +43,10 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "tests" / "fixtures" / "statusline"
-VARIANTS = {"plain": {"NO_COLOR": "1"}, "ansi": {"COLORTERM": "truecolor"}}
+VARIANTS = {"plain": {"NO_COLOR": "1"}, "ansi": {"COLORTERM": "truecolor"}, "ansi256": {}}
+# The Go `moai statusline` the goldens were recorded with reports this version.
+GOLDEN_BINARY_VERSION = "3.2.1"
+VERSION_PLACEHOLDER = "🗿 v<binary-version>"
 GIT_ENV = {
     "GIT_AUTHOR_NAME": "fixture",
     "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
@@ -79,6 +89,33 @@ def apply_setup(step, root, project, moai_home):
         raise ValueError(f"unknown setup kind {kind!r}")
 
 
+def git_exec_clauses():
+    """Sandbox clauses for what a `git` call may exec on macOS: the /usr/bin shim, xcrun,
+    and the developer-tools bin directory the shim resolves git into (git runs more than
+    the one `git` file from there; measured on #2350)."""
+    clauses = ['(literal "/usr/bin/git")', '(literal "/usr/bin/xcrun")']
+    found = subprocess.run(["/usr/bin/xcrun", "--find", "git"], capture_output=True, text=True)
+    if found.returncode == 0 and found.stdout.strip():
+        dev_bin = os.path.dirname(os.path.realpath(found.stdout.strip()))
+        clauses.append(f'(subpath "{dev_bin}")')
+    return clauses
+
+
+def sandbox_profile(exe):
+    """Deny all network, every read or write under the real HOME, and every exec except
+    the binary under test and git."""
+    real_home = os.path.realpath(os.path.expanduser("~"))
+    allowed = " ".join([f'(literal "{exe}")', *git_exec_clauses()])
+    return (f'(version 1)(allow default)(deny network*)'
+            f'(deny file-read* (subpath "{real_home}"))'
+            f'(deny file-write* (subpath "{real_home}"))'
+            f'(deny process-exec*)(allow process-exec* {allowed})')
+
+
+def normalize_version(text, version):
+    return text.replace(f"🗿 v{version}", VERSION_PLACEHOLDER)
+
+
 def run_case(binary, argv, case, variant):
     with tempfile.TemporaryDirectory(prefix="sl-golden-") as tmp:
         root = Path(tmp).resolve()
@@ -99,10 +136,7 @@ def run_case(binary, argv, case, variant):
         env.update(VARIANTS[variant])
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":
-            real_home = os.path.realpath(os.path.expanduser("~"))
-            profile = (f'(version 1)(allow default)(deny network*)'
-                       f'(deny file-write* (subpath "{real_home}"))')
-            cmd = ["/usr/bin/sandbox-exec", "-p", profile, *cmd]
+            cmd = ["/usr/bin/sandbox-exec", "-p", sandbox_profile(exe), *cmd]
         proc = subprocess.run(cmd, input=stdin.encode(), cwd=project, env=env,
                               capture_output=True, timeout=30)
         return proc.returncode, proc.stdout.decode("utf-8", "replace"), proc.stderr.decode("utf-8", "replace")
@@ -115,16 +149,21 @@ def main():
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
+    ap.add_argument("--binary-version", default=GOLDEN_BINARY_VERSION,
+                    help="version the binary under --check reports in its 🗿 segment")
+    ap.add_argument("--variant", choices=sorted(VARIANTS), action="append",
+                    help="restrict to these variants (default: all)")
     args = ap.parse_args()
     binary = Path(args.bin).resolve()
     if not binary.is_file():
         print(f"binary not found: {binary}")
         return 2
     cases = json.loads((FIXTURES / "cases.json").read_text(encoding="utf-8"))["cases"]
+    variants = args.variant or list(VARIANTS)
     print(f"binary sha256 {hashlib.sha256(binary.read_bytes()).hexdigest()}")
     failed = 0
     for case in cases:
-        for variant in VARIANTS:
+        for variant in variants:
             code, out, err = run_case(binary, args.argv.split(), case, variant)
             golden = FIXTURES / "golden" / f"{case['name']}.{variant}.txt"
             if code != 0:
@@ -135,7 +174,10 @@ def main():
                 golden.parent.mkdir(parents=True, exist_ok=True)
                 golden.write_text(out, encoding="utf-8")
                 print(f"wrote {golden.relative_to(REPO)}")
-            elif golden.read_text(encoding="utf-8") != out:
+                continue
+            want = normalize_version(golden.read_text(encoding="utf-8"), GOLDEN_BINARY_VERSION)
+            got = normalize_version(out, args.binary_version)
+            if want != got:
                 print(f"DIFF {case['name']} {variant}")
                 failed += 1
             else:

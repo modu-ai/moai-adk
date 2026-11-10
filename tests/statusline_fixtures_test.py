@@ -40,6 +40,13 @@ class StatuslineFixturesTest(unittest.TestCase):
             self.assertTrue(ansi.is_file(), ansi)
             self.assertNotIn("\x1b[", plain.read_text(encoding="utf-8"), plain)
 
+    def test_every_case_has_an_ansi256_golden_without_truecolor(self):
+        # #2350: the ANSI256 path (COLORTERM unset) is recorded as its own variant.
+        for c in self.cases:
+            golden = FIXTURES / "golden" / f"{c['name']}.ansi256.txt"
+            self.assertTrue(golden.is_file(), golden)
+            self.assertNotIn("38;2;", golden.read_text(encoding="utf-8"), golden)
+
     def test_no_stray_goldens(self):
         names = {c["name"] for c in self.cases}
         for g in (FIXTURES / "golden").iterdir():
