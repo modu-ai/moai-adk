@@ -318,7 +318,8 @@ fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
         .filter_map(|c| {
             let (lane, head) = reservation_in(&c.body)?;
             let current = head == pr.head;
-            Some(json!({"lane": lane, "comment_id": c.id, "head": head, "current": current}))
+            let state = if current { "current" } else { "stale" };
+            Some(json!({"lane": lane, "comment_id": c.id, "head": head, "current": current, "state": state}))
         })
         .collect();
     let winner = reservations

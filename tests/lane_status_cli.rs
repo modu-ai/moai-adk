@@ -556,6 +556,15 @@ fn audit_remote(reverse: bool) -> Vec<Exchange> {
             "moai-claim-handoff: comment=2101 to=agent-b by=leader",
         ),
         claim(2103, "agent-b", 2),
+        // The Issue also carries a verdict on the same head; the PR's verdict wins.
+        note(
+            2104,
+            &format!(
+                "AUDIT #21 (k) head {} base {} — verdict: PASS",
+                sha('2'),
+                sha('0')
+            ),
+        ),
     ];
     let mut pr_comments = vec![
         // Stale: names the first head.
@@ -581,6 +590,15 @@ fn audit_remote(reverse: bool) -> Vec<Exchange> {
         note(
             3009,
             &format!("moai-audit-claim: lane=lane-u head={h2} extra"),
+        ),
+        // Third line of a comment: a reservation. Uppercase 40-hex head: not a reservation.
+        note(
+            3010,
+            &format!("감사 시작합니다.\n\nmoai-audit-claim: lane=lane-v head={h2}"),
+        ),
+        note(
+            3011,
+            &format!("moai-audit-claim: lane=lane-w head={}", "A".repeat(40)),
         ),
         note(
             3007,
@@ -640,9 +658,11 @@ fn audit_columns_list_reservations_verdict_and_author_sessions() {
         assert_eq!(
             a["reservations"],
             json!([
-                {"lane": "lane-x", "comment_id": 3001, "head": h1, "current": false},
-                {"lane": "lane-y", "comment_id": 3002, "head": h2, "current": true},
-                {"lane": "lane-z", "comment_id": 3003, "head": h2, "current": true},
+                {"lane": "lane-x", "comment_id": 3001, "head": h1, "current": false, "state": "stale"},
+                {"lane": "lane-y", "comment_id": 3002, "head": h2, "current": true, "state": "current"},
+                {"lane": "lane-z", "comment_id": 3003, "head": h2, "current": true, "state": "current"},
+                // A reservation on the third line of a comment still counts.
+                {"lane": "lane-v", "comment_id": 3010, "head": h2, "current": true, "state": "current"},
             ]),
             "reverse={reverse}"
         );
