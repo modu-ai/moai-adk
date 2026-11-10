@@ -173,20 +173,6 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
-    /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
-    TodoPromotePreview {
-        project: PathBuf,
-    },
-    /// Promote the previewed TODOs: refuses a different `--preview-digest`, records an outbox
-    /// intent before each create and `published` only after a confirming GET.
-    TodoPromoteApply {
-        project: PathBuf,
-        #[arg(long)]
-        preview_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
@@ -1007,8 +993,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
         SnapshotDescribe { .. } => "snapshot.describe",
-        TodoPromoteApply { .. } => "todo.promote.apply",
-        TodoPromotePreview { .. } => "todo.promote.plan",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
@@ -1385,24 +1369,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::TodoPromoteApply {
-            project,
-            preview_digest,
-            permission_reference,
-        } => moai_cli::forge::promote::apply_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &preview_digest,
-            &permission_reference,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -1540,6 +1506,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out);
+            // Outside the plan digest: the #2391 hook state from local evidence, read only.
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            out["hook_status"] =
+                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
         Command::HooksApply {
