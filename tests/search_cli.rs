@@ -183,3 +183,23 @@ fn bad_requests_are_refused_with_the_bound_named() {
     );
     assert_ne!(code, 0);
 }
+
+/// Pre-audit B2: paths + literals together are capped at 64 terms — 64 is accepted, 65 refused.
+#[test]
+fn the_query_term_limit_is_64() {
+    let p = project();
+    let terms = |n: usize| -> Vec<String> { (0..n).map(|i| format!("t{i}")).collect() };
+    let (code, v) = run(
+        p.path(),
+        "search",
+        &json!({"protocol_version": 1, "query": {"literals": terms(63), "paths": ["a.txt"]}}),
+    );
+    assert_eq!(code, 0, "64 terms: {v}");
+    let (code, v) = run(
+        p.path(),
+        "search",
+        &json!({"protocol_version": 1, "query": {"literals": terms(64), "paths": ["a.txt"]}}),
+    );
+    assert_ne!(code, 0, "65 terms: {v}");
+    assert!(v.to_string().contains("too many query terms"), "{v}");
+}

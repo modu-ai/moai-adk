@@ -153,7 +153,23 @@ pub fn collect(root: &Path, files: &[String], query: &Query) -> (Vec<Hit>, Vec<V
             hits.push(h);
         }
     };
+    // Step 1 (access) applies to exact paths too: only a regular file in the searched file
+    // list is read; anything else — outside the list, a symlink, a directory — is an omission,
+    // so its existence and digest never reach the answer (pre-audit B1).
+    let listed: BTreeSet<&str> = files.iter().map(String::as_str).collect();
     for path in &query.paths {
+        if !listed.contains(path.as_str()) {
+            omitted
+                .push(json!({"path": path, "reason": "exact path not in the searched file list"}));
+            continue;
+        }
+        match fs::symlink_metadata(root.join(path)) {
+            Ok(m) if m.is_file() => {}
+            _ => {
+                omitted.push(json!({"path": path, "reason": "exact path is not a regular file"}));
+                continue;
+            }
+        }
         match fs::read(root.join(path)) {
             Ok(bytes) => {
                 let lines = bytes.split(|b| *b == b'\n').count().max(1);
@@ -440,5 +456,78 @@ mod tests {
         assert_eq!(hits[0].grade, "exact");
         assert_eq!(hits[1].path, "a.txt");
         assert_eq!(hits[1].grade, "lexical");
+    }
+
+    /// Pre-audit B1: an exact path outside the searched file list, or one that is not a
+    /// regular file (a symlink to a file outside the repository), is omitted — never read,
+    /// never hashed into the answer.
+    #[test]
+    fn exact_paths_outside_the_list_or_not_regular_files_are_omitted() {
+        let outside = tempfile::TempDir::new().unwrap();
+        fs::write(outside.path().join("secret.txt"), "s1\ns2\n").unwrap();
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join(".env"), "TOKEN=x\n").unwrap();
+        fs::write(dir.path().join("ok.txt"), "fine\n").unwrap();
+        let mut listed = vec!["ok.txt".to_string()];
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(
+                outside.path().join("secret.txt"),
+                dir.path().join("link.txt"),
+            )
+            .unwrap();
+            listed.push("link.txt".into());
+        }
+        let query = Query {
+            paths: vec![".env".into(), "link.txt".into(), "ok.txt".into()],
+            literals: vec![],
+        };
+        let (hits, omitted) = collect(dir.path(), &listed, &query);
+        let paths: Vec<&str> = hits.iter().map(|h| h.path.as_str()).collect();
+        assert_eq!(paths, ["ok.txt"]);
+        let reasons: Vec<(String, String)> = omitted
+            .iter()
+            .map(|o| {
+                (
+                    o["path"].as_str().unwrap().into(),
+                    o["reason"].as_str().unwrap().into(),
+                )
+            })
+            .collect();
+        assert!(reasons.contains(&(
+            ".env".into(),
+            "exact path not in the searched file list".into()
+        )));
+        if cfg!(unix) {
+            assert!(
+                reasons.contains(&("link.txt".into(), "exact path is not a regular file".into()))
+            );
+        }
+        assert!(!serde_json::to_string(&omitted)
+            .unwrap()
+            .contains(&sha256_hex(b"s1\ns2\n")));
+    }
+
+    /// Pre-audit B3: a file of exactly MAX_FILE_BYTES is scanned; one byte more is omitted.
+    #[test]
+    fn the_scan_size_limit_is_4_mib() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut at = vec![b'x'; 4_194_304 - 7];
+        at.extend_from_slice(b"needle\n");
+        assert_eq!(at.len(), 4_194_304);
+        let mut over = at.clone();
+        over.push(b'\n');
+        fs::write(dir.path().join("at.txt"), &at).unwrap();
+        fs::write(dir.path().join("over.txt"), &over).unwrap();
+        let query = Query {
+            paths: vec![],
+            literals: vec!["needle".into()],
+        };
+        let (hits, omitted) = collect(dir.path(), &["at.txt".into(), "over.txt".into()], &query);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].path, "at.txt");
+        assert_eq!(omitted.len(), 1);
+        assert_eq!(omitted[0]["path"], "over.txt");
+        assert_eq!(omitted[0]["reason"], "file larger than the scan limit");
     }
 }
