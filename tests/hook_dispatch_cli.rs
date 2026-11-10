@@ -770,7 +770,8 @@ fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
     let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                     "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
     assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
-    // apply_patch edits files and cannot commit: not guarded (capability `not_guarded`).
+    // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
+    // only .git internals, credential paths and secret content in patches).
     let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
                        "tool_input": {"command": "*** Begin Patch\n*** git commit\n*** End Patch"},
                        "cwd": root});
@@ -866,9 +867,16 @@ fn hooks_plan_reports_per_host_engine_capabilities() {
         assert_eq!(caps["host"], json!(host));
         seen.push(caps);
     }
+    let guards = |c: &Value| c["tool-preflight"]["guards"].to_string();
     let not_guarded = |c: &Value| c["tool-preflight"]["not_guarded"].to_string();
-    assert!(not_guarded(&seen[1]).contains("apply_patch"));
-    assert!(!not_guarded(&seen[0]).contains("apply_patch"));
+    // Codex file edits arrive as apply_patch, Claude's as Write/Edit/MultiEdit/NotebookEdit.
+    assert!(guards(&seen[1]).contains("apply_patch"));
+    assert!(!guards(&seen[0]).contains("apply_patch"));
+    assert!(guards(&seen[0]).contains("NotebookEdit"));
+    for caps in &seen {
+        assert!(not_guarded(caps).contains("outside the project"));
+        assert!(not_guarded(caps).contains("MCP tools"));
+    }
     assert_eq!(seen[1]["tool-observe"]["events"], json!(["PostToolUse"]));
     assert_eq!(
         seen[0]["tool-observe"]["events"],
@@ -1073,4 +1081,151 @@ fn codex_observe_outcome_comes_from_the_tool_response_or_is_unknown() {
         observe("claude", "PostToolUseFailure", "Bash", json!({})).0,
         "failure"
     );
+}
+
+// ---- stage 4: cost ----
+
+/// Audit #2400 N3: tool-observe spawns `git` only when it will record. A fake `git` first on
+/// PATH leaves a marker; without `.moai-cli/` there is no marker, with it there is one (the
+/// control proves the fake is the `git` the engine would run).
+#[test]
+fn tool_observe_spawns_no_git_without_a_state_dir() {
+    let (_d, root) = repo("main");
+    let bin = root.join("home/fakebin");
+    fs::create_dir_all(&bin).unwrap();
+    let marker = root.join("home/git-called");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\ntouch '{}'\necho 0123456789abcdef0123456789abcdef01234567\n",
+            marker.display()
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let post = post_tool("PostToolUse", "Read", "a.txt", "x");
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(!marker.exists(), "git ran although nothing is recorded");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(marker.exists(), "control: the fake git is the one run");
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    assert!(text.contains("0123456789abcdef0123456789abcdef01234567"));
+}
+
+/// Cost (#2391 stage 4, measured): a lane commit that carries its token is decided after one
+/// `git` call (the branch); only a commit without it pays the two `rev-parse` calls of the
+/// local-record lookup. Counted, not timed: a logging `git` wrapper execs the real one.
+#[test]
+fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
+    let (_d, root) = repo("issue/77-k");
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_string();
+    let bin = root.join("home/wrapbin");
+    fs::create_dir_all(&bin).unwrap();
+    let log = root.join("home/git-calls");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n",
+            log.display(),
+            real
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let calls = |cmd: &str| {
+        let _ = fs::remove_file(&log);
+        let r = dispatch("tool-preflight", &root, &pre_tool(cmd, &root), &env);
+        let n = fs::read_to_string(&log).map_or(0, |t| t.lines().count());
+        (n, r)
+    };
+    let (n, r) = calls("git commit -m 'x\n\nMoai-Claim: 77#5'");
+    assert_allow(&r);
+    assert_eq!(n, 1, "token present: the branch lookup only");
+    let (n, r) = calls("git commit -m x");
+    assert_deny(&r);
+    assert_eq!(n, 3, "no token: branch + two rev-parse for the journal");
+    let (n, r) = calls("ls");
+    assert_allow(&r);
+    assert_eq!(n, 0, "not a commit: no git at all");
+}
+
+// ---- stage 5: minimal guard bundle (A1–A4) ----
+
+/// The refused removal leaves the fixture's `.git` in place; the allowed control really runs.
+/// Both commands stay inside the temporary fixture repository.
+#[test]
+fn a_refused_removal_runs_nothing_and_an_allowed_one_runs() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join("build")).unwrap();
+    assert!(!host_runs_tool(Path::new(BIN), &root, "rm -rf .git"));
+    assert!(root.join(".git").is_dir(), "refused: .git must survive");
+    assert!(host_runs_tool(Path::new(BIN), &root, "rm -rf build"));
+    assert!(!root.join("build").exists(), "allowed control must run");
+}
+
+#[test]
+fn stage_five_reasons_are_fixed_text_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let marker = "UNIQUEMARK7";
+    let cmd = format!("git push --force origin main # {marker}");
+    for host in ["claude", "codex"] {
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
+            &root,
+            &pre_tool(&cmd, &root),
+            &[],
+        )
+        .unwrap();
+        let reason = assert_deny(&r);
+        assert!(reason.contains("force push"), "{reason}");
+        assert!(!reason.contains(marker), "{reason}");
+    }
+}
+
+#[test]
+fn file_writes_into_git_internals_are_refused_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let write = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                       "tool_input": {"file_path": ".git/hooks/pre-commit", "content": "x"}, "cwd": root});
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        write.to_string().as_bytes(),
+        &[],
+    ));
+    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                       "tool_input": {"command": "*** Begin Patch\n*** Update File: .git/config\n@@\n-a\n+b\n*** End Patch"},
+                       "cwd": root});
+    assert_deny(&codex(
+        "tool-preflight",
+        &root,
+        patch.to_string().as_bytes(),
+    ));
+    let fine = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                      "tool_input": {"file_path": "src/ok.rs", "content": "x"}, "cwd": root});
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        fine.to_string().as_bytes(),
+        &[],
+    ));
 }

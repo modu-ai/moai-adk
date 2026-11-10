@@ -147,6 +147,9 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
     };
+    if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
+        record_deny(&input, cwd, now_unix_ms, host);
+    }
     match host {
         Host::Claude => render_claude(event, verdict),
         Host::Codex => render_codex(event, verdict),
@@ -168,6 +171,40 @@ impl Host {
             _ => None,
         }
     }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Host::Claude => "claude",
+            Host::Codex => "codex",
+        }
+    }
+}
+
+/// A short key for the host's `tool_use_id` (sha256, first 16 hex digits), so a deny and the
+/// observation of the same call can be matched without logging the raw id.
+fn call_key(input: &Value) -> Value {
+    match input["tool_use_id"].as_str() {
+        Some(id) if !id.is_empty() => {
+            let d = crate::digest(id.as_bytes());
+            json!(d.trim_start_matches("sha256:")[..16].to_string())
+        }
+        _ => Value::Null,
+    }
+}
+
+/// A tool-preflight deny leaves one `deny` line (session, call key, host, time) in the engine
+/// log when `.moai-cli/` exists — the evidence `hooks::status` reads as `action_blocked` when
+/// no observation of the same call follows. Best effort, never changes the answer.
+fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
+    let line = json!({
+        "schema_version": 1,
+        "kind": "deny",
+        "host": host.name(),
+        "session": session_key(input),
+        "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
 /// Codex rendering of a verdict, from the Codex hooks page only
@@ -218,8 +255,11 @@ pub fn capabilities(host: &str) -> Value {
             "host": "claude",
             "source": "https://code.claude.com/docs/en/hooks (read 2026-11-10)",
             "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": ["Bash: git commit on an issue/<n> branch without a claim token"],
-                               "not_guarded": ["Write", "Edit", "MultiEdit", "NotebookEdit", "MCP tools"],
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content"],
+                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny", "never_uses": ["allow", "ask", "defer", "decision/reason (deprecated)"]},
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
@@ -231,8 +271,11 @@ pub fn capabilities(host: &str) -> Value {
             "source": "https://learn.chatgpt.com/docs/hooks (read 2026-11-10)",
             "trust": "non-managed hooks run only after the user reviews and trusts the exact hook definition",
             "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": ["Bash: git commit on an issue/<n> branch without a claim token"],
-                               "not_guarded": ["apply_patch (edits files, cannot commit)", "MCP tools"],
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines"],
+                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
@@ -320,7 +363,22 @@ fn session_check(cwd: &Path) -> Verdict {
 /// here; a forge check of the claim stays with `claim-verify --hook`.
 fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
-    if input["tool_name"] != json!("Bash") || !crate::claim_verify::is_commit(command) {
+    let tool = input["tool_name"].as_str().unwrap_or("");
+    // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
+    // do not refuse still spawns no `git` unless it is a commit.
+    let write_dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    let guard = if tool == "Bash" {
+        crate::hook_guards::bash_guard(command)
+    } else {
+        crate::hook_guards::write_guard(tool, &input["tool_input"], &write_dir)
+    };
+    if let Some(reason) = guard {
+        return Verdict::Deny(reason.to_string());
+    }
+    if tool != "Bash" || !crate::claim_verify::is_commit(command) {
         return Verdict::Allow;
     }
     // The command runs in the session's directory unless the input names another one.
@@ -338,17 +396,21 @@ fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     else {
         return Verdict::Allow;
     };
+    // Cost: the token check reads only the command text, while the local-record lookup spawns
+    // two `git rev-parse` calls to find the journal. Both outcomes allow, so the cheap check
+    // goes first and a commit that carries its token never pays for the lookup.
+    let gap = match crate::claim_verify::commit_claim_id(command, issue) {
+        Ok(_) => return Verdict::Allow,
+        Err(gap) => gap,
+    };
     if crate::claim_verify::has_local_record(cwd, &dir) {
         return Verdict::Allow;
     }
-    match crate::claim_verify::commit_claim_id(command, issue) {
-        Ok(_) => Verdict::Allow,
-        Err(gap) => Verdict::Deny(format!(
-            "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
-             message.",
-            gap.reason(issue)
-        )),
-    }
+    Verdict::Deny(format!(
+        "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
+         message.",
+        gap.reason(issue)
+    ))
 }
 
 /// The log both stage-2 duties share, under `<cwd>/.moai-cli/receipts/`: tool-observe appends
@@ -458,6 +520,12 @@ fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
 }
 
 fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
+    // Cost (audit #2400 N3): a project without a real `.moai-cli/` directory records nothing,
+    // so return before spawning `git` for the HEAD commit.
+    match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
+        Ok(m) if m.is_dir() => {}
+        _ => return Verdict::Allow,
+    }
     let tool = input["tool_name"].as_str().unwrap_or("");
     let tool_ok = !tool.is_empty()
         && tool.len() <= 64
@@ -474,7 +542,9 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
     let line = json!({
         "schema_version": 1,
         "kind": "observe",
+        "host": host.name(),
         "session": session_key(input),
+        "call": call_key(input),
         "tool": if tool_ok { json!(tool) } else { json!("unrecorded") },
         "class": class,
         "path": target_path(input, cwd),

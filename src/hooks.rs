@@ -366,6 +366,107 @@ pub fn apply(
     Ok(out)
 }
 
+/// Where each host keeps the project hook definitions MoAI generates.
+fn host_config_path(host: &str) -> &'static str {
+    if host == "claude" {
+        ".claude/settings.json"
+    } else {
+        CODEX_FILE
+    }
+}
+
+/// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
+/// a missing, oversized or non-regular log reads as empty).
+fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
+    let path = root
+        .join(crate::PROJECT_STATE_DIR)
+        .join("receipts")
+        .join(file);
+    match fs::symlink_metadata(&path) {
+        Ok(m) if m.is_file() && m.len() <= RECEIPT_LOG_LIMIT => {}
+        _ => return Vec::new(),
+    }
+    fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
+/// The hook state vocabulary of Issue #2391, each from evidence that exists locally, read only:
+/// - `installed`: the hook binary resolves on `path_env`.
+/// - `configured`: `yes` when the host file's `hooks` equal the generated hook set, `no` when
+///   the file is absent, `drifted` when it exists with other hooks (or does not parse).
+/// - `trusted`: always `unknown`. Claude Code checks workspace trust before running any hook
+///   from a settings file, and Codex records trust against each hook's hash, but neither page
+///   says where that is stored (read 2026-11-10), so it is never read here. No local line
+///   proves a host ran the hooks either (see `verified`).
+/// - `fired`: a receipt or engine line from this host stamped at or after the host file's
+///   last modification (a changed definition makes older lines stale).
+/// - `action_blocked`: since then, an engine `deny` line from this host, with a session key and
+///   a call key, that no `observe` line of the same host, session and call at or after the deny
+///   time follows — the denied tool did not run (audit H4-B1: another host's, another
+///   session's or an earlier observation never cancels a deny).
+/// - `verified`: always `false`. `fired` and `action_blocked` read local lines that any
+///   `hook-dispatch` call writes, a direct command-line call included, so they show the engine
+///   ran and answered — not that a host ran the hook or obeyed the deny (audit H4-B2). No
+///   host-originated evidence is read; `evidence` names what the other two rest on.
+pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -> Result<Value> {
+    check_host(host)?;
+    let root = project_root(project, home)?;
+    // Compared directly, not through the plan: the Claude settings plan preserves a user's
+    // edit to an owned key and then reports `unchanged`, which is not "configured as generated".
+    let generated = Value::Object(hooks_object(host)?);
+    let configured = match crate::claude::read_existing(&root.join(host_config_path(host)))? {
+        None => "no",
+        Some(bytes) => match serde_json::from_slice::<Value>(&bytes) {
+            Ok(v) if v["hooks"] == generated => "yes",
+            _ => "drifted",
+        },
+    };
+    let config_ms = fs::metadata(root.join(host_config_path(host)))
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64);
+    let since = |line: &Value| {
+        line["host"] == json!(host)
+            && config_ms.is_some_and(|c| line["unix_ms"].as_u64().is_some_and(|t| t >= c))
+    };
+    let receipts = receipt_lines(&root, "hooks.jsonl");
+    let engine = receipt_lines(&root, crate::hook_engine::ENGINE_LOG);
+    let fired = receipts.iter().chain(engine.iter()).any(since);
+    // A deny pairs only with an observation of the same host, session and call at or after it.
+    let ran_later = |deny: &Value, deny_ms: u64| {
+        engine.iter().any(|o| {
+            o["kind"] == json!("observe")
+                && o["host"] == deny["host"]
+                && o["session"] == deny["session"]
+                && o["call"] == deny["call"]
+                && o["unix_ms"].as_u64().is_some_and(|t| t >= deny_ms)
+        })
+    };
+    let action_blocked = engine.iter().any(|l| {
+        let keyed = l["call"].is_string() && l["session"].as_str().is_some_and(|s| s != "unknown");
+        l["kind"] == json!("deny")
+            && since(l)
+            && keyed
+            && l["unix_ms"].as_u64().is_some_and(|t| !ran_later(l, t))
+    });
+    let installed = crate::install::resolve_on_path(path_env, HOOK_BINARY).is_some();
+    Ok(json!({
+        "host": host,
+        "installed": installed,
+        "configured": configured,
+        "trusted": "unknown",
+        "fired": fired,
+        "action_blocked": action_blocked,
+        "verified": false,
+        "evidence": "local engine and receipt lines; a direct hook-dispatch call writes the same lines, so no host run is proven",
+        "config_path": host_config_path(host),
+    }))
+}
+
 /// Size bound for a hook receipt log; past it lines are not appended (never truncated).
 pub const RECEIPT_LOG_LIMIT: u64 = 4 * 1024 * 1024;
 
