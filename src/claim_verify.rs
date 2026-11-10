@@ -32,7 +32,7 @@
 //! a git alias defined in config, a shell alias or function, `$VAR` / `$(...)` expansion,
 //! `eval`, a script file, a second shell level, or another program that runs git itself. The
 //! ANSI-C quoting `$'git' push` likewise stays invisible — it is `$` expansion to this text
-//! detector (docs/hooks-generation.md §3, named limit; rc.2 A9 후속 2 #2323).
+//! detector (docs/hooks-generation.md §3, named limit; rc.2 A9 follow-up 2 #2323).
 
 use crate::claim::{parse_claim_line, ClaimRecord};
 use crate::forge::policy::{next_link, parse_utc, Clock};
@@ -511,7 +511,9 @@ fn command_index(words: &[String]) -> Option<usize> {
 
 /// The script a shell runs with `-c` (`sh -c '...'`, `bash -lc "..."`), if any. Options that
 /// take a value (`bash -o pipefail -c …`, `sh -O extglob -c …`, `bash +o posix -c …`) consume
-/// their next word so the scan reaches the `-c` script (rc.2 A9 후속 2 #2323).
+/// their next word so the scan reaches the `-c` script (rc.2 A9 follow-up 2 #2323). Bundled
+/// short options ending in `o`/`O` take the value too (`bash -eo pipefail -c …`, `bash -euo
+/// pipefail -c …`; rc.2 A9 follow-up 3 #2330).
 fn shell_script(args: &[String]) -> Option<&str> {
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -520,9 +522,18 @@ fn shell_script(args: &[String]) -> Option<&str> {
             iter.next();
             continue;
         }
-        match arg.strip_prefix('-') {
+        // A bundled flag word (`-eo`, `-euo`) carrying `-` or `+`: when it ends in `o`/`O`
+        // its last short option takes a value, so the next word is that value.
+        let flags = arg.strip_prefix('-').or_else(|| arg.strip_prefix('+'));
+        match flags {
             Some(flags) if !flags.starts_with('-') && flags.contains('c') => {
                 return iter.next().map(String::as_str)
+            }
+            Some(flags)
+                if !flags.starts_with('-') && (flags.ends_with('o') || flags.ends_with('O')) =>
+            {
+                iter.next();
+                continue;
             }
             Some(_) => continue,
             None => return None,

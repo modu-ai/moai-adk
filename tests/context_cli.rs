@@ -171,22 +171,31 @@ fn bundle_marks_modified_items_stale() {
 #[test]
 fn sensitive_paths_are_excluded() {
     let d = repo();
+    #[cfg(unix)]
     let outside = TempDir::new().unwrap();
-    write(outside.path(), "secret.txt", "outside do-not-leak\n");
-    std::os::unix::fs::symlink(outside.path().join("secret.txt"), d.path().join("link.txt"))
-        .unwrap();
-    std::os::unix::fs::symlink(d.path().join(".env"), d.path().join("innocent.txt")).unwrap();
+    #[cfg(unix)]
+    {
+        write(outside.path(), "secret.txt", "outside do-not-leak\n");
+        std::os::unix::fs::symlink(outside.path().join("secret.txt"), d.path().join("link.txt"))
+            .unwrap();
+        std::os::unix::fs::symlink(d.path().join(".env"), d.path().join("innocent.txt")).unwrap();
+    }
     let b = bundle(
         d.path(),
-        json!([
-            {"path": ".env", "reason": "x"},
-            {"path": "certs/server.pem", "reason": "x"},
-            {"path": "build/out.txt", "reason": "x"},
-            {"path": "link.txt", "reason": "x"},
-            {"path": "innocent.txt", "reason": "x"},
-            {"path": "../etc/passwd", "reason": "x"},
-            {"path": "README.md", "reason": "kept"}
-        ]),
+        Value::Array(
+            [
+                json!({"path": ".env", "reason": "x"}),
+                json!({"path": "certs/server.pem", "reason": "x"}),
+                json!({"path": "build/out.txt", "reason": "x"}),
+                #[cfg(unix)]
+                json!({"path": "link.txt", "reason": "x"}),
+                #[cfg(unix)]
+                json!({"path": "innocent.txt", "reason": "x"}),
+                json!({"path": "../etc/passwd", "reason": "x"}),
+                json!({"path": "README.md", "reason": "kept"}),
+            ]
+            .into(),
+        ),
         json!({"max_items": 10}),
     );
     assert_eq!(b["items"].as_array().unwrap().len(), 1);
@@ -202,7 +211,9 @@ fn sensitive_paths_are_excluded() {
             ("blocked_sensitive", "secret_pattern"),
             ("blocked_sensitive", "secret_pattern"),
             ("blocked_sensitive", "ignored"),
+            #[cfg(unix)]
             ("blocked_sensitive", "outside_repository"),
+            #[cfg(unix)]
             ("blocked_sensitive", "secret_pattern"),
             ("blocked_sensitive", "outside_repository"),
         ]
@@ -307,6 +318,7 @@ fn profile_redefines_the_byte_budget_and_the_request_wins() {
 
 /// Codex review #2057 (P1): a symlink inside the tree that points at an ignored file is
 /// blocked like the file itself; checking only the requested name let it through.
+#[cfg(unix)]
 #[test]
 fn symlink_to_an_ignored_file_is_excluded() {
     let d = repo();
