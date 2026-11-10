@@ -178,15 +178,17 @@ fn an_unsettled_lookup_keeps_the_conflict_as_uncertain() {
             vec![pr_create("abc", "confirmed")],
         ),
         ("empty response id", vec![pr_create("", "confirmed")]),
+        // `+12` parses as 12 (merged) — only the digits-only rule keeps it unsettled.
+        ("signed response id", vec![pr_create("+12", "confirmed")]),
         ("no pr_create at all", vec![]),
         // #2329: the first PR merged, a second one is still only intended.
         (
             "second PR intended",
-            vec![pr_create("12", "confirmed"), pr_create("16", "intended")],
+            vec![pr_create("12", "confirmed"), pr_create("13", "intended")],
         ),
         (
             "second PR uncertain",
-            vec![pr_create("12", "confirmed"), pr_create("16", "uncertain")],
+            vec![pr_create("12", "confirmed"), pr_create("13", "uncertain")],
         ),
     ] {
         let (r, _) = decide(record(KEY_B, 2, "pr_ready", effects));
