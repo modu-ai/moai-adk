@@ -207,7 +207,7 @@ enum Command {
     },
     /// Lane handoff gate (rc.2 A10 #2264): typed JSON request on stdin; read-only
     /// verification that the worktree is safe to exit — status clean, HEAD ==
-    /// observed remote == PR head, claim trailers on all commits, leader report
+    /// observed remote == PR head, claim trailers on lane-authored non-merge commits, leader report
     /// record present, no publish_unknown outbox effects. A failed status blocks
     /// the exit (kind blocked, exit 1) with a preservation note.
     LaneHandoffCheck {

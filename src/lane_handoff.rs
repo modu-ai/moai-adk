@@ -11,12 +11,12 @@
 //!    and merge explicitly unobserved (design §25).
 //! 4. `trailers` — every lane-authored commit (`rev-list --no-merges`,
 //!    decision 06:02: tool merges are records, never claim-checked) in `base..HEAD`
-//!    carries `Moai-Claim: <issue>#<comment_id>` as an exact, trimmed line
-//!    (prefix-sharing ids and prose mentions do not count — #2255 rule).
+//!    carries an exact claim line for the current claim or an earlier claim
+//!    closed by a confirmed handoff (prefix-sharing ids and prose do not count).
 //! 5. `leader_report` — a durable report record file exists, is non-empty, and
 //!    mentions the issue. The record's existence is enforced; the sending itself
-//!    is attested (AC-3: 권고/강제 구분 — enforced rows are the mechanically
-//!    verified paths only).
+//!    is attested (AC-3: enforced checks and host recommendations are distinct;
+//!    only mechanically verified paths are enforced).
 //! 6. `no_uncertain_effects` — no forge outbox entry is left in `publish_unknown`
 //!    (EXIT-01: uncertain external effects block exit). An unreadable or
 //!    unparsable outbox entry counts as uncertain — fail-closed.
@@ -45,6 +45,10 @@ pub struct LaneHandoffRequest {
     pub base_branch: String,
     pub issue: u64,
     pub claim_comment_id: u64,
+    /// Earlier claims of this Issue closed by verified handoff records.
+    /// These are injected observations, just like the PR and remote head.
+    #[serde(default)]
+    pub handoff_claim_comment_ids: Vec<u64>,
     /// The remote head the lane observed via `git ls-remote origin <branch>`
     /// (injected observation record, 40-hex).
     pub remote_head: String,
@@ -216,6 +220,11 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
     //    carries the claim trailer as an exact line (audit F2/F3; decision 06:02:
     //    tool merges are records, never checked for the claim).
     let trailer = format!("Moai-Claim: {}#{}", req.issue, req.claim_comment_id);
+    let handoff_trailers: Vec<String> = req
+        .handoff_claim_comment_ids
+        .iter()
+        .map(|id| format!("Moai-Claim: {}#{}", req.issue, id))
+        .collect();
     let revs = git(
         &project,
         &[
@@ -233,7 +242,10 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
             trailer_commits += 1;
             // Exact-line match: a prefix-sharing id or prose mentioning the
             // token must NOT satisfy the check (audit F2 — P1/P2 probes).
-            if !body.lines().any(|l| l.trim() == trailer) {
+            if !body.lines().any(|l| {
+                let line = l.trim();
+                line == trailer || handoff_trailers.iter().any(|token| line == token)
+            }) {
                 missing_trailers.push(short(sha));
             }
         }
@@ -246,12 +258,12 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
             "no lane-authored commits in base..HEAD (--no-merges)".into()
         } else if !missing_trailers.is_empty() {
             format!(
-                "commits without the exact claim line: {}",
+                "commits without an accepted exact claim line: {}",
                 missing_trailers.join(", ")
             )
         } else {
             format!(
-                "all {} lane-authored commits carry the exact claim line",
+                "all {} lane-authored commits carry an accepted exact claim line",
                 trailer_commits
             )
         },
@@ -265,7 +277,15 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
                 .map(|m| m.is_file() && m.len() > 0)
                 .unwrap_or(false)
                 && fs::read_to_string(p)
-                    .map(|c| c.contains(&format!("#{}", req.issue)))
+                    .map(|c| {
+                        let issue = format!("#{}", req.issue);
+                        c.match_indices(&issue).any(|(at, _)| {
+                            c[at + issue.len()..]
+                                .chars()
+                                .next()
+                                .is_none_or(|next| !next.is_ascii_digit())
+                        })
+                    })
                     .unwrap_or(false)
         }
         None => false,
@@ -343,7 +363,7 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
         "checks": rows,
         "failed_checks": failed,
         "pr": pr_json,
-        // PR 제출은 delivered이지 issue done·merge가 아니다 (design §25).
+        // A submitted PR is delivered, not issue completion or a merge (design §25).
         "separation": {
             "pr_created_is_not_done": true,
             "issue_done": null,

@@ -24,9 +24,21 @@ fn git(repo: &Path, args: &[&str]) -> String {
         .arg("-C")
         .arg(repo)
         .args(args)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", repo.join(".git/absent-global-config"))
+        .env_remove("GIT_AUTHOR_NAME")
+        .env_remove("GIT_AUTHOR_EMAIL")
+        .env_remove("GIT_COMMITTER_NAME")
+        .env_remove("GIT_COMMITTER_EMAIL")
         .output()
         .expect("git runs");
-    assert!(out.status.success(), "git {:?} failed", args);
+    assert!(
+        out.status.success(),
+        "git {args:?} failed ({}): stdout={} stderr={}",
+        out.status,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
@@ -57,6 +69,11 @@ fn fixture_repo(parent: &Path) -> FixtureRepo {
     let root = parent.join("repo");
     std::fs::create_dir_all(&root).unwrap();
     git(&root, &["init", "-b", "v2026.11.0"]);
+    git(&root, &["config", "--local", "user.name", "t"]);
+    git(
+        &root,
+        &["config", "--local", "user.email", "t@example.invalid"],
+    );
     std::fs::write(root.join("f.txt"), "base\n").unwrap();
     // The durable report record lives under the project state dir and must not
     // dirty the tree at handoff time — the base commit ignores it (repo convention).
@@ -87,6 +104,7 @@ fn base_request(repo: &Path, remote_head: &str) -> Value {
         "base_branch": "v2026.11.0",
         "issue": 2193,
         "claim_comment_id": 6730943161u64,
+        "handoff_claim_comment_ids": [],
         "remote_head": remote_head,
         "pr": {"url": "https://github.com/modu-ai/moai-adk/pull/2258", "number": 2258, "head": remote_head},
         "leader_report_path": null,
@@ -116,6 +134,14 @@ fn run_check(request: &Value, project: &Path) -> (i32, Value, String) {
         envelope,
         String::from_utf8_lossy(&out.stderr).to_string(),
     )
+}
+
+fn failure_report(stderr: &str) -> Value {
+    serde_json::Deserializer::from_str(stderr)
+        .into_iter::<Value>()
+        .next()
+        .expect("the gate emits a structured check report")
+        .expect("the structured report is valid JSON")
 }
 
 fn write_report(repo: &Path) -> PathBuf {
@@ -178,7 +204,7 @@ fn lane_handoff_check_failure_paths() {
     let repo = fixture_repo(parent.path());
     let request = base_request(&repo.root, &repo.head);
 
-    // 1. 미커밋 (uncommitted changes)
+    // 1. Uncommitted changes.
     std::fs::write(repo.root.join("f.txt"), "dirty\n").unwrap();
     let (code, envelope, _) = run_check(&request, &repo.root);
     assert_ne!(code, 0, "dirty tree must block exit");
@@ -192,7 +218,7 @@ fn lane_handoff_check_failure_paths() {
     );
     std::fs::write(repo.root.join("f.txt"), "base\ncard work\n").unwrap();
 
-    // 2. head 불일치 (remote observation differs from local HEAD)
+    // 2. The observed remote head differs from the local HEAD.
     let mut r = request.clone();
     r["remote_head"] = json!(format!("{}", "f".repeat(40)));
     let (code, envelope, _) = run_check(&r, &repo.root);
@@ -223,7 +249,7 @@ fn lane_handoff_check_failure_paths() {
     // roll back the trailer-less commit (HEAD^ = the trailer commit)
     git(&repo.root, &["reset", "--hard", "HEAD^"]);
 
-    // 4. PR 없음 (no PR record)
+    // 4. No PR record.
     let mut r = request.clone();
     r["pr"] = json!(null);
     let (code, envelope, _) = run_check(&r, &repo.root);
@@ -236,7 +262,7 @@ fn lane_handoff_check_failure_paths() {
         "names pr_exists"
     );
 
-    // 5. 보고 없음 (leader report record missing)
+    // 5. The leader report record is missing.
     let mut r = request.clone();
     r["leader_report_path"] = json!(null);
     let (code, envelope, _) = run_check(&r, &repo.root);
@@ -387,13 +413,6 @@ fn unparsable_outbox_entry_counts_as_uncertain() {
     let outbox = repo.root.join(".moai-cli/forge/outbox");
     std::fs::create_dir_all(&outbox).unwrap();
     std::fs::write(outbox.join("broken.json"), b"{\"state\": \"publi").unwrap();
-    // A `publishing` entry (sent, outcome unrecorded) blocks the same way —
-    // Codex review r4509909048.
-    std::fs::write(
-        outbox.join("publishing.json"),
-        b"{\"state\": \"publishing\"}",
-    )
-    .unwrap();
     let (code, envelope, _) = run_check(&r, &repo.root);
     assert_ne!(code, 0, "an unparsable entry must block (fail-closed)");
     let msg = envelope["error"]["message"].as_str().unwrap();
@@ -402,6 +421,13 @@ fn unparsable_outbox_entry_counts_as_uncertain() {
         "names no_uncertain_effects: {msg}"
     );
     std::fs::remove_file(outbox.join("broken.json")).unwrap();
+    // A `publishing` entry (sent, outcome unrecorded) blocks the same way —
+    // Codex review r4509909048.
+    std::fs::write(
+        outbox.join("publishing.json"),
+        b"{\"state\": \"publishing\"}",
+    )
+    .unwrap();
     let (code, _, _) = run_check(&r, &repo.root);
     assert_ne!(code, 0, "an interrupted publishing entry must still block");
     std::fs::remove_file(outbox.join("publishing.json")).unwrap();
@@ -410,11 +436,8 @@ fn unparsable_outbox_entry_counts_as_uncertain() {
     assert_eq!(code, 0);
 }
 
-/// AC-2: one cycle iteration (PR → 점검 → 다음 claim 준비) replayed with
-/// fixtures only — no real host. The check is read-only and deterministic:
-/// a rerun of the same request on the unchanged tree passes identically, and
-/// the queue-next link (#2255/#2161, not yet merged) is stubbed as the
-/// claim text a next card would need.
+/// AC-2 handoff segment replayed with observed-PR fixtures, without a real host.
+/// Repeating the read-only check preserves both the tree and the result.
 #[test]
 fn cycle_replay_with_stubs() {
     let parent = TempDir::new().unwrap();
@@ -454,8 +477,81 @@ fn cycle_replay_with_stubs() {
     );
     // Deterministic: the second run reproduces the first exactly.
     assert_eq!(first, again);
-    // The stub for 다음 claim: a new fixture issue's claim text is derived
-    // from the same generator rules (deterministic, no host).
-    let next_claim = format!("/goal #{}의 PR이 병합되거나 blocked로 보고됨", 2194);
-    assert!(next_claim.starts_with("/goal #"));
+}
+
+#[test]
+fn handoff_accepts_current_and_handed_off_epochs() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let head = commit(
+        &repo.root,
+        "work after handoff",
+        Some("Moai-Claim: 2193#6730943162"),
+    );
+    let mut request = base_request(&repo.root, &head);
+    request["claim_comment_id"] = json!(6730943162u64);
+    request["handoff_claim_comment_ids"] = json!([6730943161u64]);
+    request["leader_report_path"] = json!(report);
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(envelope["result"]["status"], json!("passed"));
+    assert_eq!(envelope["result"]["trailer_commits"], json!(2));
+}
+
+#[test]
+fn handoff_refuses_an_unlisted_claim_after_handoff() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let head = commit(
+        &repo.root,
+        "another claim's work",
+        Some("Moai-Claim: 2193#6730943163"),
+    );
+    let mut request = base_request(&repo.root, &head);
+    request["claim_comment_id"] = json!(6730943162u64);
+    request["handoff_claim_comment_ids"] = json!([6730943161u64]);
+    request["leader_report_path"] = json!(report);
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_ne!(code, 0);
+    assert_eq!(envelope["error"]["kind"], json!("blocked"));
+    let report = failure_report(&stderr);
+    assert_eq!(report["failed_checks"], json!(["trailers"]));
+}
+
+#[test]
+fn git_status_errors_block_an_otherwise_valid_handoff() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let mut request = base_request(&repo.root, &repo.head);
+    request["leader_report_path"] = json!(report);
+    let index = repo.root.join(".git/index");
+    std::fs::write(&index, b"invalid index").unwrap();
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_ne!(code, 0);
+    assert_eq!(envelope["error"]["kind"], json!("blocked"));
+    let report = failure_report(&stderr);
+    assert_eq!(report["failed_checks"], json!(["status_clean"]));
+    assert_eq!(std::fs::read(index).unwrap(), b"invalid index");
+}
+
+#[test]
+fn leader_report_requires_the_complete_issue_number() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let mut request = base_request(&repo.root, &repo.head);
+    request["leader_report_path"] = json!(report);
+    std::fs::write(&report, "#21930 is a different issue\n").unwrap();
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_ne!(code, 0);
+    assert_eq!(envelope["error"]["kind"], json!("blocked"));
+    let failed = failure_report(&stderr);
+    assert_eq!(failed["failed_checks"], json!(["leader_report"]));
+    std::fs::write(&report, "#2193 handoff report\n").unwrap();
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(envelope["result"]["status"], json!("passed"));
 }
