@@ -602,6 +602,8 @@ mod tests {
         );
     }
 
+    // Creating the symlink fixture uses the Unix API; the resolution logic itself is portable.
+    #[cfg(unix)]
     #[test]
     fn a_symlink_into_a_protected_place_is_followed() {
         let dir = tempfile::TempDir::new().unwrap();
