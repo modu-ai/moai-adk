@@ -166,7 +166,8 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
 
     // 1. status_clean — fail-closed (audit non-blocking 2): a failing `git status`
     //    is a failed check, not a clean tree.
-    let status_out = git(&project, &["status", "--porcelain"]);
+    // Pin visibility so user configuration cannot hide untracked work.
+    let status_out = git(&project, &["status", "--porcelain", "--untracked-files=all"]);
     let (status_ok, status_detail) = match status_out {
         Ok(porcelain) => {
             let dirty: Vec<&str> = porcelain.lines().filter(|l| !l.is_empty()).collect();

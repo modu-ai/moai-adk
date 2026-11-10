@@ -7,6 +7,7 @@
 use moai_cli::forge::outbox::{OutboxEntry, OutboxState, Phase};
 use serde_json::{json, Value};
 use std::{
+    ffi::OsStr,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -112,11 +113,20 @@ fn base_request(repo: &Path, remote_head: &str) -> Value {
     })
 }
 
-/// Runs the CLI with the fixture repo as the positional project path.
 fn run_check(request: &Value, project: &Path) -> (i32, Value, String) {
+    run_check_with_env(request, project, &[])
+}
+
+/// Runs the CLI with the fixture repo as the positional project path.
+fn run_check_with_env(
+    request: &Value,
+    project: &Path,
+    environment: &[(&str, &OsStr)],
+) -> (i32, Value, String) {
     let mut child = Command::new(EXE)
         .arg("lane-handoff-check")
         .arg(project.to_str().unwrap())
+        .envs(environment.iter().copied())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -675,4 +685,48 @@ fn invalid_outbox_schema_or_state_blocks_but_confirmed_entry_is_safe() {
     let (code, envelope, stderr) = run_check(&request, &repo.root);
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(envelope["result"]["uncertain_effects"], 0);
+}
+
+#[test]
+fn untracked_work_blocks_exit_with_default_local_and_global_status_config() {
+    for configuration in ["default", "local", "global"] {
+        let parent = TempDir::new().unwrap();
+        let repo = fixture_repo(parent.path());
+        let report = write_report(&repo.root);
+        let mut request = base_request(&repo.root, &repo.head);
+        request["leader_report_path"] = json!(report.to_str().unwrap());
+        let global = parent.path().join("gitconfig");
+        std::fs::write(
+            &global,
+            if configuration == "global" {
+                "[status]\nshowUntrackedFiles = no\n"
+            } else {
+                ""
+            },
+        )
+        .unwrap();
+        if configuration == "local" {
+            git(
+                &repo.root,
+                &["config", "--local", "status.showUntrackedFiles", "no"],
+            );
+        }
+        let environment = [
+            ("GIT_CONFIG_GLOBAL", global.as_os_str()),
+            ("GIT_CONFIG_NOSYSTEM", OsStr::new("1")),
+        ];
+        let (code, _, stderr) = run_check_with_env(&request, &repo.root, &environment);
+        assert_eq!(code, 0, "{configuration} clean handoff: {stderr}");
+        let untracked = repo.root.join("unfinished/new.rs");
+        std::fs::create_dir_all(untracked.parent().unwrap()).unwrap();
+        std::fs::write(&untracked, "fn unfinished() {}\n").unwrap();
+        let (code, envelope, stderr) = run_check_with_env(&request, &repo.root, &environment);
+        assert_eq!(code, 1, "{configuration} untracked work: {stderr}");
+        assert_eq!(envelope["error"]["kind"], json!("blocked"));
+        assert_eq!(
+            failure_report(&stderr)["failed_checks"],
+            json!(["status_clean"]),
+            "{configuration}: all other handoff conditions remain valid"
+        );
+    }
 }
