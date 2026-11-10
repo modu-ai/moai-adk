@@ -14,7 +14,8 @@ fn fixture(name: &str) -> Value {
         .join("tests/fixtures/atlas")
         .join(name);
     let bytes = fs::read(&path).unwrap_or_else(|e| panic!("fixture {name} unreadable: {e}"));
-    serde_json::from_slice(&bytes).unwrap_or_else(|e| panic!("fixture {name} is not valid JSON: {e}"))
+    serde_json::from_slice(&bytes)
+        .unwrap_or_else(|e| panic!("fixture {name} is not valid JSON: {e}"))
 }
 
 #[test]
@@ -32,14 +33,18 @@ fn corpus_has_at_least_thirty_tasks_with_ground_truth_and_source() {
         let id = task["id"].as_str().expect("task id");
         assert!(ids.insert(id.to_string()), "duplicate task id {id}");
         assert!(
-            task["source"].as_str().is_some_and(|s| !s.trim().is_empty()),
+            task["source"]
+                .as_str()
+                .is_some_and(|s| !s.trim().is_empty()),
             "{id}: the source citation is required (REQ-C10-01)"
         );
         let kind = task["kind"].as_str().expect("task kind");
         if kind == "freshness" {
             // Freshness tasks carry a suite case reference instead of an rg pattern.
             assert!(
-                task["suite_ref"].as_str().is_some_and(|s| !s.trim().is_empty()),
+                task["suite_ref"]
+                    .as_str()
+                    .is_some_and(|s| !s.trim().is_empty()),
                 "{id}: a freshness task names its FRESHNESS suite case"
             );
         } else {
@@ -48,7 +53,9 @@ fn corpus_has_at_least_thirty_tasks_with_ground_truth_and_source() {
                 .expect("ground truth files");
             assert!(!files.is_empty(), "{id}: ground truth files are required");
             assert!(
-                task["pattern"].as_str().is_some_and(|s| !s.trim().is_empty()),
+                task["pattern"]
+                    .as_str()
+                    .is_some_and(|s| !s.trim().is_empty()),
                 "{id}: the rg pattern is required"
             );
             for f in files {
@@ -133,7 +140,10 @@ fn three_suites_are_defined_and_the_freshness_suite_reconciles_with_c6() {
         let kind = task["kind"].as_str().unwrap();
         if kind != "freshness" {
             let id = task["id"].as_str().unwrap();
-            assert!(referenced.contains(id), "{id} is not referenced by any suite");
+            assert!(
+                referenced.contains(id),
+                "{id} is not referenced by any suite"
+            );
         }
     }
 }
