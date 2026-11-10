@@ -416,7 +416,7 @@ enum Command {
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
-        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
+        /// Absolute skill directory named `moai-cli`, e.g. ~/.agents/skills/moai-cli (no default).
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -426,7 +426,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
         #[arg(long)]
@@ -442,7 +442,7 @@ enum Command {
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
         package: PathBuf,
-        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        /// Absolute skill directory named `moai-cli`; the same target the plan was made for.
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -452,7 +452,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         #[arg(long)]
         allow_implicit_invocation: Option<bool>,
@@ -1007,9 +1007,14 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         return match (cli.leader, cli.agent) {
             (true, _) => launch("claude", Some(true), cli.launch, None),
             (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
-            (false, None) => Err(
-                "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
-            ),
+            (false, None) => {
+                // Bare no-argument run: the banner rides stdout for humans only
+                // (Issue #2363); the usage error contract below is unchanged.
+                moai_cli::banner::maybe_print_banner();
+                Err(
+                    "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
+                )
+            }
         };
     };
     match command {
@@ -1797,6 +1802,12 @@ fn usage_error(e: clap::Error) -> ExitCode {
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {
+        // Root help carries the logo above clap's help body (Issue #2363);
+        // subcommand help and version stay logo-free.
+        if matches!(e.kind(), ErrorKind::DisplayHelp) {
+            let rest: Vec<String> = std::env::args().skip(1).collect();
+            moai_cli::banner::maybe_print_logo_for(&rest);
+        }
         e.exit()
     };
     let message = match e.kind() {
