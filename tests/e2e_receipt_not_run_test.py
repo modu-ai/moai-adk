@@ -98,7 +98,7 @@ class HostClaudeScriptNotRunReceiptsTest(unittest.TestCase):
             # repository's shipped SKILL.md.
             import hashlib
 
-            with open(os.path.join(REPO, "skills", "moai", "SKILL.md"), "rb") as f:
+            with open(os.path.join(REPO, "skills", "moai-cli", "SKILL.md"), "rb") as f:
                 digest = hashlib.sha256(f.read()).hexdigest()
             self.assertEqual(by_ac["AC-08C-5"]["skill_digest"], digest)
 

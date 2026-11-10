@@ -411,7 +411,7 @@ enum Command {
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
-        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
+        /// Absolute skill directory named `moai-cli`, e.g. ~/.agents/skills/moai-cli (no default).
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -421,7 +421,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
         #[arg(long)]
@@ -437,7 +437,7 @@ enum Command {
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
         package: PathBuf,
-        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        /// Absolute skill directory named `moai-cli`; the same target the plan was made for.
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -447,7 +447,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         #[arg(long)]
         allow_implicit_invocation: Option<bool>,
