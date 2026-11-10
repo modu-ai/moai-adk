@@ -86,6 +86,7 @@
 - `recovery-plan`
 - `run-verify`
 - `scope-check`
+- `search`
 - `skill-read-receipt`
 - `skill-source-apply`
 - `skill-source-plan`

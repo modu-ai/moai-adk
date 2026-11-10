@@ -528,6 +528,12 @@ enum Command {
         #[arg(long)]
         plan_digest: String,
     },
+    /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
+    /// matches over the published index generation (or the tracked files), each result with
+    /// a source citation; the typed-edge step is reported unavailable (#2408).
+    Search {
+        project: PathBuf,
+    },
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
         project: PathBuf,
@@ -996,6 +1002,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
+        Search { .. } => "search.query",
         SkillReadReceipt { .. } => "skill_source.read_receipt",
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
@@ -1203,6 +1210,11 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::Search { project } => serde_json::to_value(moai_cli::search::search(
+            &project,
+            &input::<moai_cli::search::SearchRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::ScopeCheck {
             project,
             source,
