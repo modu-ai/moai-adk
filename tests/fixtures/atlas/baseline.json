@@ -1,7 +1,14 @@
 {
- "corpus_sha256": "4861f097eca14bc47e21c5d329d3e44abcea209866accdcf936d1fe4266f8ab6",
+ "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+ "diagnostics": {
+  "retrieval_precision_min": 0.0,
+  "retrieval_recall_min": 0.0
+ },
  "rg_version": "ripgrep 15.1.0",
- "schema_version": 1,
+ "schema_version": 2,
+ "source_commit": "98dab71433617ba179c164be8b7ca169e62fe7dc",
+ "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+ "source_tree_sha1": "80b40d51b10db15ee732956aedc421f71d0e3301",
  "tasks": [
   {
    "hits": [
@@ -10,8 +17,8 @@
     "src/github_templates.rs"
    ],
    "id": "G-001",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -21,8 +28,8 @@
     "src/pr_link.rs"
    ],
    "id": "G-002",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -32,8 +39,8 @@
     "src/pr_link.rs"
    ],
    "id": "G-003",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -62,8 +69,8 @@
     "src/worktree.rs"
    ],
    "id": "G-004",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -74,16 +81,16 @@
     "src/sources.rs"
    ],
    "id": "G-005",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
     "src/claim_verify.rs"
    ],
    "id": "G-006",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -96,8 +103,8 @@
     "src/queue.rs"
    ],
    "id": "G-007",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -105,8 +112,8 @@
     "src/main.rs"
    ],
    "id": "G-008",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -117,8 +124,8 @@
     "src/update.rs"
    ],
    "id": "G-009",
-   "precision": 1.0,
-   "recall": 1.0
+   "kind": "graph",
+   "relation_file_coverage": 1.0
   },
   {
    "hits": [
@@ -128,6 +135,7 @@
     "src/pr_link.rs"
    ],
    "id": "T-001",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -139,6 +147,7 @@
     "src/worktree.rs"
    ],
    "id": "T-002",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -147,6 +156,7 @@
     "src/ontology.rs"
    ],
    "id": "T-003",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -155,6 +165,7 @@
     "src/ontology.rs"
    ],
    "id": "T-004",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -163,6 +174,7 @@
     "src/ontology.rs"
    ],
    "id": "T-005",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -172,6 +184,7 @@
     "src/main.rs"
    ],
    "id": "T-006",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -184,6 +197,7 @@
     "src/verify.rs"
    ],
    "id": "T-007",
+   "kind": "retrieval",
    "precision": 0.2,
    "recall": 1.0
   },
@@ -206,6 +220,7 @@
     "src/worktree.rs"
    ],
    "id": "T-008",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -220,6 +235,7 @@
     "src/sources.rs"
    ],
    "id": "T-009",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -228,6 +244,7 @@
     "src/profile.rs"
    ],
    "id": "T-010",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -236,6 +253,7 @@
     "src/profile.rs"
    ],
    "id": "T-011",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -244,6 +262,7 @@
     "src/flow.rs"
    ],
    "id": "T-012",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -252,6 +271,7 @@
     "src/claim_verify.rs"
    ],
    "id": "T-013",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -262,6 +282,7 @@
     "src/update.rs"
    ],
    "id": "T-014",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -272,6 +293,7 @@
     "src/profile.rs"
    ],
    "id": "T-015",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -284,6 +306,7 @@
     "src/sources.rs"
    ],
    "id": "T-016",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -293,6 +316,7 @@
     "src/recovery.rs"
    ],
    "id": "T-017",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -302,6 +326,7 @@
     "src/session.rs"
    ],
    "id": "T-018",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -310,6 +335,7 @@
     "src/pr_link.rs"
    ],
    "id": "T-019",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -318,6 +344,7 @@
     "src/archive.rs"
    ],
    "id": "T-020",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -326,6 +353,7 @@
     "src/ontology.rs"
    ],
    "id": "T-021",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -334,6 +362,7 @@
     "src/ontology.rs"
    ],
    "id": "T-022",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -345,6 +374,7 @@
     "src/worktree.rs"
    ],
    "id": "T-023",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -354,6 +384,7 @@
     "src/main.rs"
    ],
    "id": "T-024",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -362,6 +393,7 @@
     "src/flow.rs"
    ],
    "id": "T-025",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -370,6 +402,7 @@
     "src/context/mod.rs"
    ],
    "id": "T-026",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -378,6 +411,7 @@
     "src/main.rs"
    ],
    "id": "T-027",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -388,6 +422,7 @@
     "src/redact.rs"
    ],
    "id": "T-028",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -399,6 +434,7 @@
     "src/queue.rs"
    ],
    "id": "T-029",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -407,6 +443,7 @@
     "src/run.rs"
    ],
    "id": "T-030",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -415,6 +452,7 @@
     "src/sources.rs"
    ],
    "id": "T-031",
+   "kind": "retrieval",
    "precision": 1.0,
    "recall": 1.0
   },
@@ -427,15 +465,28 @@
     "src/update.rs"
    ],
    "id": "T-032",
+   "kind": "retrieval",
    "precision": 0.2,
    "recall": 1.0
+  },
+  {
+   "hits": [],
+   "id": "T-033",
+   "kind": "retrieval",
+   "precision": 0.0,
+   "recall": 0.0
   }
  ],
+ "threshold_policy": {
+  "comparison": ">=",
+  "graph": "relation-file coverage proxy, not semantic graph correctness",
+  "minima": "diagnostic only",
+  "scope": "per-suite macro means; no per-task floors"
+ },
  "thresholds": {
-  "precision_mean": 0.961,
-  "precision_min": 0.2,
-  "recall_mean": 1.0,
-  "recall_min": 1.0
+  "graph_relation_file_coverage_mean": 1.0,
+  "retrieval_precision_mean": 0.9212,
+  "retrieval_recall_mean": 0.9697
  },
  "tool": "rg"
 }

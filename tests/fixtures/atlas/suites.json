@@ -135,6 +135,10 @@
     {
      "task_ref": "T-032",
      "scenario": "envelope protocol 상수는 어디에 있는가"
+    },
+    {
+     "task_ref": "T-033",
+     "scenario": "moai_cli::ontology::is_rfc3339의 실제 구현 파일은 어디인가"
     }
    ]
   },

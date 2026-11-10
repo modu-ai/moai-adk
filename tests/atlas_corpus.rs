@@ -5,68 +5,119 @@
 //!
 //! These tests run against the committed fixtures only — no network, no `gh`.
 
+use serde::{de::IgnoredAny, Deserialize};
 use serde_json::Value;
-use std::{collections::BTreeSet, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::PathBuf,
+    sync::LazyLock,
+};
 
-fn fixture(name: &str) -> Value {
+fn fixture_bytes(name: &str) -> Vec<u8> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/atlas")
         .join(name);
-    let bytes = fs::read(&path).unwrap_or_else(|e| panic!("fixture {name} unreadable: {e}"));
-    serde_json::from_slice(&bytes)
+    fs::read(&path).unwrap_or_else(|e| panic!("fixture {name} unreadable: {e}"))
+}
+
+fn fixture(name: &str) -> Value {
+    serde_json::from_slice(&fixture_bytes(name))
         .unwrap_or_else(|e| panic!("fixture {name} is not valid JSON: {e}"))
+}
+
+#[derive(Deserialize)]
+struct FrozenSource {
+    schema_version: u64,
+    // Only membership is needed here. Python verifies the content digests.
+    files: BTreeMap<String, IgnoredAny>,
+}
+
+fn frozen_source() -> &'static FrozenSource {
+    static SOURCE: LazyLock<FrozenSource> = LazyLock::new(|| {
+        let source: FrozenSource =
+            serde_json::from_slice(&fixture_bytes("source_snapshot.json")).unwrap();
+        assert_eq!(source.schema_version, 1);
+        source
+    });
+    &SOURCE
+}
+
+fn validate_tasks(tasks: &[Value], files: &BTreeMap<String, IgnoredAny>) -> Result<(), String> {
+    if tasks.len() < 30 {
+        return Err(format!(
+            "the corpus needs at least 30 tasks, got {}",
+            tasks.len()
+        ));
+    }
+    let mut ids = BTreeSet::new();
+    for task in tasks {
+        let id = task["id"].as_str().ok_or("task id is required")?;
+        if id.is_empty() || !ids.insert(id) {
+            return Err("task ids must be nonempty and unique".into());
+        }
+        if !task["source"]
+            .as_str()
+            .is_some_and(|s| !s.trim().is_empty())
+        {
+            return Err(format!("{id}: source citation is required"));
+        }
+        match task["kind"].as_str() {
+            Some("freshness") => {
+                if !task["suite_ref"].as_str().is_some_and(|s| !s.is_empty()) {
+                    return Err(format!("{id}: freshness suite reference is required"));
+                }
+            }
+            Some("retrieval" | "graph") => {
+                let truth = task["ground_truth"]["files"]
+                    .as_array()
+                    .ok_or("ground truth files")?;
+                if truth.is_empty() || !task["pattern"].as_str().is_some_and(|s| !s.is_empty()) {
+                    return Err(format!("{id}: ground truth and pattern are required"));
+                }
+                for file in truth {
+                    let path = file.as_str().ok_or("ground truth file path")?;
+                    if !files.contains_key(path) {
+                        return Err(format!(
+                            "{id}: ground truth file {path} is outside frozen source"
+                        ));
+                    }
+                }
+            }
+            _ => return Err(format!("{id}: unsupported task kind")),
+        }
+    }
+    Ok(())
 }
 
 #[test]
 fn corpus_has_at_least_thirty_tasks_with_ground_truth_and_source() {
     let corpus = fixture("corpus.json");
-    assert_eq!(corpus["schema_version"], 1);
+    assert_eq!(corpus["schema_version"], 2);
     let tasks = corpus["tasks"].as_array().expect("tasks array");
-    assert!(
-        tasks.len() >= 30,
-        "the corpus needs at least 30 tasks, got {}",
-        tasks.len()
-    );
-    let mut ids = BTreeSet::new();
-    for task in tasks {
-        let id = task["id"].as_str().expect("task id");
-        assert!(ids.insert(id.to_string()), "duplicate task id {id}");
-        assert!(
-            task["source"]
-                .as_str()
-                .is_some_and(|s| !s.trim().is_empty()),
-            "{id}: the source citation is required (REQ-C10-01)"
-        );
-        let kind = task["kind"].as_str().expect("task kind");
-        if kind == "freshness" {
-            // Freshness tasks carry a suite case reference instead of an rg pattern.
-            assert!(
-                task["suite_ref"]
-                    .as_str()
-                    .is_some_and(|s| !s.trim().is_empty()),
-                "{id}: a freshness task names its FRESHNESS suite case"
-            );
-        } else {
-            let files = task["ground_truth"]["files"]
-                .as_array()
-                .expect("ground truth files");
-            assert!(!files.is_empty(), "{id}: ground truth files are required");
-            assert!(
-                task["pattern"]
-                    .as_str()
-                    .is_some_and(|s| !s.trim().is_empty()),
-                "{id}: the rg pattern is required"
-            );
-            for f in files {
-                let rel = f.as_str().expect("ground truth file path");
-                let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel);
-                assert!(
-                    path.exists(),
-                    "{id}: ground truth file {rel} does not exist at this tip"
-                );
-            }
-        }
-    }
+    validate_tasks(tasks, &frozen_source().files).unwrap();
+}
+
+#[test]
+fn the_minimum_corpus_boundary_accepts_thirty_and_rejects_twenty_nine() {
+    let corpus = fixture("corpus.json");
+    let tasks = corpus["tasks"].as_array().unwrap();
+    let files = &frozen_source().files;
+    assert!(validate_tasks(&tasks[..29], files).is_err());
+    assert_eq!(validate_tasks(&tasks[..30], files), Ok(()));
+}
+
+#[test]
+fn ground_truth_membership_uses_frozen_source_not_live_paths() {
+    let mut corpus = fixture("corpus.json");
+    let tasks = corpus["tasks"].as_array_mut().unwrap();
+    let mut files = frozen_source().files.clone();
+    files.insert("src/__c10_frozen_only.rs".into(), IgnoredAny);
+    tasks[0]["ground_truth"]["files"] = serde_json::json!(["src/__c10_frozen_only.rs"]);
+    assert_eq!(validate_tasks(tasks, &files), Ok(()));
+    // This file exists in the checkout, but is not part of the frozen src input.
+    tasks[0]["ground_truth"]["files"] = serde_json::json!(["tests/atlas_corpus.rs"]);
+    assert!(validate_tasks(tasks, &files).is_err());
 }
 
 #[test]

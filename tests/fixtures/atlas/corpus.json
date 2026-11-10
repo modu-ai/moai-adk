@@ -1,6 +1,7 @@
 {
- "schema_version": 1,
- "description": "C10a eval corpus (Issue #2346): explicit-evidence tasks over this repository at the audited tip. Ground truths verified against the working tree when the card was written (reviewer-checked scope).",
+ "schema_version": 2,
+ "description": "C10a eval corpus (Issue #2346): explicit-evidence tasks over the immutable src snapshot captured from 98dab71433617ba179c164be8b7ca169e62fe7dc. Ground-truth scope is source_snapshot.json, never the live working tree; a literal search miss is a measured miss, not an invalid oracle.",
+ "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
  "tasks": [
   {
    "kind": "retrieval",
@@ -527,6 +528,21 @@
    },
    "source": "01-C protocol_version",
    "id": "T-032"
+  },
+  {
+   "kind": "retrieval",
+   "query": "moai_cli::ontology::is_rfc3339의 실제 구현 파일은 어디인가",
+   "pattern": "moai_cli::ontology::is_rfc3339",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "Pinned 98dab71433617ba179c164be8b7ca169e62fe7dc src/ontology.rs:162 public is_rfc3339 declaration. Reviewer scope: the fully qualified public Rust name resolves to this implementation; the declaration does not contain the qualified spelling, so rg's literal miss is valid.",
+   "id": "T-033"
   },
   {
    "kind": "graph",
