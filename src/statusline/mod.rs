@@ -36,14 +36,36 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
     render::Renderer::new(&config, profile).render(&status) + "\n"
 }
 
+/// At most this many stdin bytes are read; the rest is ignored (and the JSON then fails
+/// to parse, which degrades to empty input).
+pub const STDIN_CAP: u64 = 4 * 1024 * 1024;
+
+fn read_capped(reader: impl std::io::Read) -> Vec<u8> {
+    use std::io::Read;
+    let mut buf = Vec::new();
+    let _ = reader.take(STDIN_CAP).read_to_end(&mut buf);
+    buf
+}
+
 /// The CLI entry: stdin is read only when it is not a terminal (a pipe or a file).
 pub fn run() -> String {
-    use std::io::{IsTerminal, Read};
-    let mut stdin = Vec::new();
-    if !std::io::stdin().is_terminal() {
-        let _ = std::io::stdin()
-            .take(4 * 1024 * 1024)
-            .read_to_end(&mut stdin);
-    }
+    use std::io::IsTerminal;
+    let stdin = if std::io::stdin().is_terminal() {
+        Vec::new()
+    } else {
+        read_capped(std::io::stdin())
+    };
     render(&stdin, &state::Context::from_process(RENDER_BUDGET))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stdin_is_read_up_to_exactly_four_mebibytes() {
+        assert_eq!(read_capped(&vec![b' '; 4_194_304][..]).len(), 4_194_304);
+        assert_eq!(read_capped(&vec![b' '; 4_194_305][..]).len(), 4_194_304);
+        assert_eq!(read_capped(&vec![b' '; 4_194_303][..]).len(), 4_194_303);
+    }
 }
