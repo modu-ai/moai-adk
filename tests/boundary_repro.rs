@@ -611,3 +611,17 @@ fn f8_tree_change_during_the_run_is_not_admitted() {
         "a check that changed the tree left the receipt digest unchanged: {verdict}"
     );
 }
+
+/// D2 stage 1 (decision 6774899518 row 14 = B, staged): the verdict says on what basis the
+/// reviewer's independence was judged. Today the reviewer fields are the caller's own words,
+/// so the basis is `self-declared`; the acceptance table itself is unchanged. Stage 2 derives
+/// author and reviewer from the commit's claim trailer and the host session id.
+#[test]
+fn d2_independence_basis_is_reported_as_self_declared() {
+    let Some(dir) = project() else { return };
+    let input = audit_input(dir.path(), &["true"]);
+    let out = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+    assert_eq!(out["independence_basis"], json!("self-declared"), "{out}");
+    assert_eq!(out["independence"]["accepted"], json!(true), "{out}");
+    assert_eq!(out["admission"], "admitted", "{out}");
+}
