@@ -100,6 +100,7 @@ def main():
     per_author: dict = {}
     ages: dict = {}
     issues: list = []
+    unparsed: list = []
     for p in pulls:
         author = (p.get("author") or {}).get("login") or "unknown"
         per_author[author] = per_author.get(author, 0) + 1
@@ -107,9 +108,14 @@ def main():
         ages[str(p["number"])] = round((now - created).total_seconds() / 86400.0, 2)
         # Every lane shares one GitHub account, so the author split cannot see
         # lanes; the branch name (issue/<n>-<slug>) is the lane-resolved split.
-        m = re.match(r"issue/(\d+)", p.get("headRefName") or "")
+        # Same rule as claim_verify::lane_branch (#2336): the Issue number comes first,
+        # with no leading zero; any other issue/ branch is listed, not miscounted.
+        head = p.get("headRefName") or ""
+        m = re.fullmatch(r"issue/([1-9]\d*)(?:-.*)?", head)
         if m:
             issues.append(int(m.group(1)))
+        elif head.startswith("issue/"):
+            unparsed.append(head)
 
     baseline = {
         "schema_version": 1,
@@ -120,6 +126,7 @@ def main():
         "gh_call_ceiling": gh.ceiling,
         "open_pr_count": len(pulls),
         "open_issues": sorted(issues),
+        "unparsed_lane_branches": sorted(unparsed),
         "per_author": dict(sorted(per_author.items())),
         "ages_days": dict(sorted(ages.items(), key=lambda kv: int(kv[0]))),
         "max_age_days": max(ages.values(), default=0.0),
