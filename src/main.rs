@@ -1433,7 +1433,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         .map_err(|_| "encode failed".into()),
         Command::KeyRemove { provider, yes } => {
             moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &provider, yes)
-                .map_err(Into::into)
         }
         Command::KeySet { provider } => {
             use std::io::IsTerminal;
@@ -1446,11 +1445,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             }
             let value = moai_cli::key_vault::read_value(io::stdin())?;
             moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &provider, &value)
-                .map_err(Into::into)
         }
         Command::KeyStatus { provider } => {
             moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &provider)
-                .map_err(Into::into)
         }
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
