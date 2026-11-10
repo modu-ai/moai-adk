@@ -10,6 +10,7 @@
 #![cfg(unix)]
 mod common;
 
+use moai_cli::claim::{ClaimRecord, Journal, Owner, SpecRef, TaskRef, WorktreeId};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -406,4 +407,140 @@ fn a_missing_binary_is_non_blocking_by_the_host_rules() {
         "git commit -q -m 'no token'"
     ));
     assert_eq!(commit_count(&root), before + 1);
+}
+
+// ---- audit #2399 (6770112093) B1-B4: guards pinned by tests ----
+
+/// A PreToolUse input for a lane commit without a claim token, padded to exactly `total`
+/// bytes (the padding is a field the engine ignores).
+fn sized_commit_input(root: &Path, total: usize) -> Vec<u8> {
+    let make = |pad: &str| {
+        json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+               "tool_input": {"command": "git commit -m x", "pad": pad}, "cwd": root})
+        .to_string()
+        .into_bytes()
+    };
+    let base = make("").len();
+    let bytes = make(&"y".repeat(total - base));
+    assert_eq!(bytes.len(), total);
+    bytes
+}
+
+/// B1: the stdin bound is 4,194,304 bytes. An input of exactly that size is read whole and
+/// decided (deny); one byte more is cut off, no longer parses and is an engine error — exit 1,
+/// which the host treats as non-blocking, so such a commit goes ahead. That oversized-input
+/// bypass is the same question as fail-closed (`onFailure: "block"`, #2383 / Issue #2391 D1).
+#[test]
+fn stdin_bound_is_4194304_bytes_and_one_more_is_a_non_blocking_engine_error() {
+    let (_d, root) = repo("issue/77-k");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &sized_commit_input(&root, 4_194_304),
+        &[],
+    );
+    assert_deny(&r);
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &sized_commit_input(&root, 4_194_305),
+        &[],
+    );
+    assert_engine_error(&r);
+}
+
+/// B2: the branch is read in the directory the input's `cwd` names, not the hook process's.
+#[test]
+fn input_cwd_decides_over_the_process_cwd() {
+    let (_a, plain) = repo("main");
+    let (_b, lane) = repo("issue/77-k");
+    // Process in a non-lane repo, command in the lane repo: denied.
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &plain,
+        &pre_tool("git commit -m x", &lane),
+        &[],
+    ));
+    // Process in the lane repo, command in the non-lane repo: allowed.
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        &pre_tool("git commit -m x", &plain),
+        &[],
+    ));
+}
+
+/// B3: stage 1 guards commits only; a push stays with `claim-verify --hook`.
+#[test]
+fn lane_push_without_token_is_allowed_by_stage_one() {
+    let (_d, root) = repo("issue/77-k");
+    for cmd in [
+        "git push",
+        "git push origin HEAD",
+        "git push -u origin issue/77-k",
+    ] {
+        assert_allow(&dispatch(
+            "tool-preflight",
+            &root,
+            &pre_tool(cmd, &root),
+            &[],
+        ));
+    }
+}
+
+/// B4: with an active local claim record for the worktree, the engine allows and leaves the
+/// forge check to `claim-verify --hook`.
+#[test]
+fn a_local_claim_record_hands_the_commit_to_the_claim_guard() {
+    let (_d, root) = repo("issue/77-k");
+    let base = git(&root, &["rev-parse", "HEAD"]);
+    let record = ClaimRecord {
+        schema_version: 1,
+        task_ref: TaskRef::new("github", "github.com", "acme", "widgets", 1, 70, 77),
+        task_key: "0123456789abcdef".into(),
+        logical_key: "B4".into(),
+        owner: Owner::new("session", "agent-fixture"),
+        assignee: None,
+        provider_session: None,
+        integration_owner: None,
+        attempt: None,
+        epoch: 1,
+        base_revision: base,
+        worktree: WorktreeId::new(
+            root.join(".git").display().to_string(),
+            root.join(".git").display().to_string(),
+            root.display().to_string(),
+            "b".repeat(40),
+        ),
+        write_scope: vec!["a.txt".into()],
+        spec_ref: SpecRef {
+            id: "SPEC-B4".into(),
+            revision: "r1".into(),
+            digest: None,
+        },
+        comment_id: Some(5),
+        claim_token: Some("Moai-Claim: 77#5".into()),
+        lease_until: Some("2026-11-10T23:00:00Z".into()),
+        state: "assigned".into(),
+        effects: vec![],
+        last_observed_at: "2026-11-10T12:00:00Z".into(),
+    };
+    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
+    assert!(journal.try_lock().unwrap());
+    journal.commit("acquire", &record).unwrap();
+    drop(journal);
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git commit -m x", &root),
+        &[],
+    ));
+    // Control: the same commit in an identical repo without the record is denied.
+    let (_e, bare) = repo("issue/77-k");
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &bare,
+        &pre_tool("git commit -m x", &bare),
+        &[],
+    ));
 }
