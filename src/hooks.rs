@@ -290,6 +290,8 @@ pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
     };
     out["host"] = json!(host);
     out["hooks"] = hook_list(host);
+    // Outside the plan digest: what the hook engine covers on this host (#2391 stage 3).
+    out["engine_capabilities"] = crate::hook_engine::capabilities(host);
     Ok(out)
 }
 
@@ -364,8 +366,148 @@ pub fn apply(
     Ok(out)
 }
 
-/// Size bound for the hook receipt log; past it lines are not appended (never truncated).
-const RECEIPT_LOG_LIMIT: u64 = 4 * 1024 * 1024;
+/// Where each host keeps the project hook definitions MoAI generates.
+fn host_config_path(host: &str) -> &'static str {
+    if host == "claude" {
+        ".claude/settings.json"
+    } else {
+        CODEX_FILE
+    }
+}
+
+/// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
+/// a missing, oversized or non-regular log reads as empty).
+fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
+    let path = root
+        .join(crate::PROJECT_STATE_DIR)
+        .join("receipts")
+        .join(file);
+    match fs::symlink_metadata(&path) {
+        Ok(m) if m.is_file() && m.len() <= RECEIPT_LOG_LIMIT => {}
+        _ => return Vec::new(),
+    }
+    fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
+/// The hook state vocabulary of Issue #2391, each from evidence that exists locally, read only:
+/// - `installed`: the hook binary resolves on `path_env`.
+/// - `configured`: `yes` when the host file's `hooks` equal the generated hook set, `no` when
+///   the file is absent, `drifted` when it exists with other hooks (or does not parse).
+/// - `trusted`: always `unknown`. Claude Code checks workspace trust before running any hook
+///   from a settings file, and Codex records trust against each hook's hash, but neither page
+///   says where that is stored (read 2026-11-10), so it is never read here. No local line
+///   proves a host ran the hooks either (see `verified`).
+/// - `fired`: a receipt or engine line from this host stamped at or after the host file's
+///   last modification (a changed definition makes older lines stale).
+/// - `action_blocked`: since then, an engine `deny` line from this host, with a session key and
+///   a call key, that no `observe` line of the same host, session and call at or after the deny
+///   time follows — the denied tool did not run (audit H4-B1: another host's, another
+///   session's or an earlier observation never cancels a deny).
+/// - `verified`: always `false`. `fired` and `action_blocked` read local lines that any
+///   `hook-dispatch` call writes, a direct command-line call included, so they show the engine
+///   ran and answered — not that a host ran the hook or obeyed the deny (audit H4-B2). No
+///   host-originated evidence is read; `evidence` names what the other two rest on.
+pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -> Result<Value> {
+    check_host(host)?;
+    let root = project_root(project, home)?;
+    // Compared directly, not through the plan: the Claude settings plan preserves a user's
+    // edit to an owned key and then reports `unchanged`, which is not "configured as generated".
+    let generated = Value::Object(hooks_object(host)?);
+    let configured = match crate::claude::read_existing(&root.join(host_config_path(host)))? {
+        None => "no",
+        Some(bytes) => match serde_json::from_slice::<Value>(&bytes) {
+            Ok(v) if v["hooks"] == generated => "yes",
+            _ => "drifted",
+        },
+    };
+    let config_ms = fs::metadata(root.join(host_config_path(host)))
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64);
+    let since = |line: &Value| {
+        line["host"] == json!(host)
+            && config_ms.is_some_and(|c| line["unix_ms"].as_u64().is_some_and(|t| t >= c))
+    };
+    let receipts = receipt_lines(&root, "hooks.jsonl");
+    let engine = receipt_lines(&root, crate::hook_engine::ENGINE_LOG);
+    let fired = receipts.iter().chain(engine.iter()).any(since);
+    // A deny pairs only with an observation of the same host, session and call at or after it.
+    let ran_later = |deny: &Value, deny_ms: u64| {
+        engine.iter().any(|o| {
+            o["kind"] == json!("observe")
+                && o["host"] == deny["host"]
+                && o["session"] == deny["session"]
+                && o["call"] == deny["call"]
+                && o["unix_ms"].as_u64().is_some_and(|t| t >= deny_ms)
+        })
+    };
+    let action_blocked = engine.iter().any(|l| {
+        let keyed = l["call"].is_string() && l["session"].as_str().is_some_and(|s| s != "unknown");
+        l["kind"] == json!("deny")
+            && since(l)
+            && keyed
+            && l["unix_ms"].as_u64().is_some_and(|t| !ran_later(l, t))
+    });
+    let installed = crate::install::resolve_on_path(path_env, HOOK_BINARY).is_some();
+    Ok(json!({
+        "host": host,
+        "installed": installed,
+        "configured": configured,
+        "trusted": "unknown",
+        "fired": fired,
+        "action_blocked": action_blocked,
+        "verified": false,
+        "evidence": "local engine and receipt lines; a direct hook-dispatch call writes the same lines, so no host run is proven",
+        "config_path": host_config_path(host),
+    }))
+}
+
+/// Size bound for a hook receipt log; past it lines are not appended (never truncated).
+pub const RECEIPT_LOG_LIMIT: u64 = 4 * 1024 * 1024;
+
+/// Appends one JSON line to `<cwd>/.moai-cli/receipts/<file>`, the write path every hook
+/// handler shares (`hook-receipt`, and the hook engine's tool-observe, #2391). It writes only
+/// when `<cwd>/.moai-cli` is a real directory (never through a symlink), creates `receipts/`
+/// once, refuses a log that is not a regular file or has reached [`RECEIPT_LOG_LIMIT`], and
+/// only appends — concurrent hooks never read-modify-write. The error is a fixed reason.
+pub fn append_receipt_line(
+    cwd: &Path,
+    file: &str,
+    line: &Value,
+) -> std::result::Result<(), &'static str> {
+    let state_dir = cwd.join(crate::PROJECT_STATE_DIR);
+    match fs::symlink_metadata(&state_dir) {
+        Ok(m) if m.is_dir() => {}
+        _ => return Err("no .moai-cli directory in the working directory"),
+    }
+    let dir = state_dir.join("receipts");
+    if let Ok(m) = fs::symlink_metadata(&dir) {
+        if !m.is_dir() {
+            return Err("receipts path is not a directory");
+        }
+    } else if fs::create_dir(&dir).is_err() {
+        return Err("receipts directory unavailable");
+    }
+    let log = dir.join(file);
+    match fs::symlink_metadata(&log) {
+        Ok(m) if !m.is_file() => return Err("receipt log is not a regular file"),
+        Ok(m) if m.len() >= RECEIPT_LOG_LIMIT => return Err("receipt log full"),
+        _ => {}
+    }
+    let mut bytes = serde_json::to_vec(line).map_err(|_| "receipt line encode failed")?;
+    bytes.push(b'\n');
+    fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log)
+        .and_then(|mut f| f.write_all(&bytes))
+        .map_err(|_| "receipt log write failed")
+}
 /// Hook stdin fields a receipt keeps. Everything else — `tool_input`, `tool_response`,
 /// `prompt`, transcript paths — is never read into the log.
 const RECEIPT_FIELDS: &[&str] = &["hook_event_name", "tool_name", "source"];
@@ -398,38 +540,12 @@ pub fn receipt(host: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Value
             Some(_) => dropped.push(*key),
         }
     }
-    let state_dir = cwd.join(crate::PROJECT_STATE_DIR);
-    match fs::symlink_metadata(&state_dir) {
-        Ok(m) if m.is_dir() => {}
-        _ => return skip("no .moai-cli directory in the working directory"),
-    }
-    let dir = state_dir.join("receipts");
-    if let Ok(m) = fs::symlink_metadata(&dir) {
-        if !m.is_dir() {
-            return skip("receipts path is not a directory");
-        }
-    } else if fs::create_dir(&dir).is_err() {
-        return skip("receipts directory unavailable");
-    }
-    let log = dir.join("hooks.jsonl");
-    match fs::symlink_metadata(&log) {
-        Ok(m) if !m.is_file() => return skip("receipt log is not a regular file"),
-        Ok(m) if m.len() >= RECEIPT_LOG_LIMIT => return skip("receipt log full"),
-        _ => {}
-    }
     let mut line = json!({"schema_version": 1, "host": host, "unix_ms": now_unix_ms as u64});
     for (k, v) in &fields {
         line[k] = v.clone();
     }
-    let mut bytes = serde_json::to_vec(&line).expect("receipt line");
-    bytes.push(b'\n');
-    let written = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log)
-        .and_then(|mut f| f.write_all(&bytes));
-    if written.is_err() {
-        return skip("receipt log write failed");
+    if let Err(reason) = append_receipt_line(cwd, "hooks.jsonl", &line) {
+        return skip(reason);
     }
     json!({
         "recorded": true,
