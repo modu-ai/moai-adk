@@ -189,6 +189,20 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
+    /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
+    LayoutPlan {
+        project: PathBuf,
+    },
+    /// Execute a confirmed layout plan: copy without deleting the originals, verify the
+    /// copy, then switch the pointer (`layout.json`). The default stays project-side.
+    LayoutApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
     ClaimAcquire {
@@ -897,6 +911,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
         InstallInspect { .. } => "install.inspect",
+        LayoutApply { .. } => "layout.apply",
+        LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
         PackageInspect { .. } => "package.inspect",
         PackageResolve { .. } => "package.resolve",
@@ -1249,6 +1265,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
+        Command::LayoutApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::FlowWipCheck {
             owner,
             repo,
