@@ -416,7 +416,7 @@ enum Command {
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
     /// answer; reads the host's hook JSON on stdin, no network.
     HookDispatch {
-        /// `claude` (stage 1; `codex` answers as an engine error until stage 2).
+        /// `claude` or `codex`.
         #[arg(long)]
         host: String,
         /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.

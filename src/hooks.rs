@@ -290,6 +290,8 @@ pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
     };
     out["host"] = json!(host);
     out["hooks"] = hook_list(host);
+    // Outside the plan digest: what the hook engine covers on this host (#2391 stage 3).
+    out["engine_capabilities"] = crate::hook_engine::capabilities(host);
     Ok(out)
 }
 

@@ -247,7 +247,8 @@ fn engine_errors_exit_1_with_empty_stdout() {
     assert_engine_error(&dispatch("tool-observe", &root, &good, &[]));
     assert_engine_error(&dispatch("turn-validation", &root, &good, &[]));
     assert_engine_error(&dispatch("no-such-duty", &root, &good, &[]));
-    for host in ["codex", "other"] {
+    // Codex has an adapter since stage 3 (tests below); any other host is an engine error.
+    for host in ["other", "Claude", ""] {
         let r = run_program(
             Path::new(BIN),
             &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
@@ -726,4 +727,158 @@ fn stage_two_duties_never_call_the_forge() {
     let stop = br#"{"hook_event_name":"Stop","session_id":"s","stop_hook_active":false}"#;
     dispatch("turn-validation", &root, stop, &env);
     assert!(!marker.exists());
+}
+
+// ---- stage 3: the Codex adapter (https://learn.chatgpt.com/docs/hooks, read 2026-11-10) ----
+
+fn codex(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
+    run_program(
+        Path::new(BIN),
+        &["hook-dispatch", "--host", "codex", "--event", event],
+        cwd,
+        stdin,
+        &[],
+    )
+    .unwrap()
+}
+
+/// Fields the Codex page says are parsed but not supported (the hook run fails and the tool
+/// call continues) — never a way to block.
+fn assert_no_unsupported_codex_fields(stdout: &str) {
+    for field in [
+        "\"ask\"",
+        "\"approve\"",
+        "\"continue\"",
+        "\"stopReason\"",
+        "\"updatedInput\"",
+        "\"allow\"",
+    ] {
+        assert!(!stdout.contains(field), "{field} in {stdout}");
+    }
+}
+
+#[test]
+fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
+    let (_d, root) = repo("issue/77-k");
+    let input = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PreToolUse",
+                       "tool_name": "Bash", "tool_use_id": "u", "model": "m",
+                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
+    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
+    let reason = assert_deny(&r);
+    assert!(reason.contains("Moai-Claim: 77#"), "{reason}");
+    assert_no_unsupported_codex_fields(&r.stdout);
+    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
+    assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
+    // apply_patch edits files and cannot commit: not guarded (capability `not_guarded`).
+    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                       "tool_input": {"command": "*** Begin Patch\n*** git commit\n*** End Patch"},
+                       "cwd": root});
+    assert_allow(&codex(
+        "tool-preflight",
+        &root,
+        patch.to_string().as_bytes(),
+    ));
+}
+
+#[test]
+fn codex_denied_commit_leaves_no_commit() {
+    let (_d, root) = repo("issue/77-k");
+    fs::write(root.join("a.txt"), "z\n").unwrap();
+    git(&root, &["add", "a.txt"]);
+    let before = commit_count(&root);
+    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                       "tool_input": {"command": "git commit -q -m 'no token'"}, "cwd": root});
+    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
+    // Codex rules: exit 2, or the PreToolUse deny object, blocks the call.
+    let blocked = r.code == 2
+        || serde_json::from_str::<Value>(r.stdout.trim())
+            .map(|v| v["hookSpecificOutput"]["permissionDecision"] == "deny")
+            .unwrap_or(false);
+    assert!(blocked, "{}", r.stdout);
+    assert_eq!(commit_count(&root), before, "a blocked call never runs");
+}
+
+#[test]
+fn codex_session_check_and_turn_validation_answers() {
+    let (_d, root) = repo("issue/77-k");
+    let start =
+        br#"{"hook_event_name":"SessionStart","source":"startup","session_id":"s","model":"m"}"#;
+    let r = codex("session-check", &root, start);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 1);
+    assert_eq!(v["hookSpecificOutput"]["hookEventName"], "SessionStart");
+    assert!(v["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap()
+        .contains("lane branch: Issue #77"));
+    assert_no_unsupported_codex_fields(&r.stdout);
+    let stop = br#"{"hook_event_name":"Stop","session_id":"s","turn_id":"t","stop_hook_active":false,"last_assistant_message":null}"#;
+    let r = codex("turn-validation", &root, stop);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+}
+
+#[test]
+fn codex_tool_observe_records_apply_patch_and_has_no_failure_event() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let post = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PostToolUse",
+                      "tool_name": "apply_patch", "tool_use_id": "u",
+                      "tool_input": {"command": "*** Begin Patch PATCHMARK"},
+                      "tool_response": "RESPONSEMARK"});
+    let r = codex("tool-observe", &root, post.to_string().as_bytes());
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    let line: Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
+    assert_eq!(line["tool"], "apply_patch");
+    assert_eq!(line["class"], "write");
+    assert_eq!(line["path"], Value::Null);
+    assert!(
+        !text.contains("PATCHMARK") && !text.contains("RESPONSEMARK"),
+        "{text}"
+    );
+    // Codex has no PostToolUseFailure: that name is a configuration error there.
+    let failure = json!({"hook_event_name": "PostToolUseFailure", "tool_name": "Bash"});
+    assert_engine_error(&codex(
+        "tool-observe",
+        &root,
+        failure.to_string().as_bytes(),
+    ));
+}
+
+#[test]
+fn hooks_plan_reports_per_host_engine_capabilities() {
+    let (_d, root) = repo("main");
+    let mut seen = Vec::new();
+    for host in ["claude", "codex"] {
+        let r = run_program(
+            Path::new(BIN),
+            &["hooks-plan", root.to_str().unwrap(), "--host", host],
+            &root,
+            b"",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(r.code, 0, "{}", r.stdout);
+        let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+        let caps = v["result"]["engine_capabilities"].clone();
+        assert_eq!(caps["host"], json!(host));
+        seen.push(caps);
+    }
+    let not_guarded = |c: &Value| c["tool-preflight"]["not_guarded"].to_string();
+    assert!(not_guarded(&seen[1]).contains("apply_patch"));
+    assert!(!not_guarded(&seen[0]).contains("apply_patch"));
+    assert_eq!(seen[1]["tool-observe"]["events"], json!(["PostToolUse"]));
+    assert_eq!(
+        seen[0]["tool-observe"]["events"],
+        json!(["PostToolUse", "PostToolUseFailure"])
+    );
+    assert!(seen[1]["trust"].as_str().unwrap().contains("trust"));
+    for never in ["ask", "continue=false", "stopReason"] {
+        assert!(seen[1]["tool-preflight"]["never_uses"]
+            .to_string()
+            .contains(never));
+    }
+    assert!(!root.join(".codex").exists() && !root.join(".claude").exists());
 }
