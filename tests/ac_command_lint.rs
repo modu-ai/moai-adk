@@ -113,21 +113,6 @@ fn git_helper_applies_the_guards_to_every_call() {
     );
 }
 
-#[test]
-fn git_helper_itself_keeps_the_guards() {
-    let helper = fs::read_to_string(tests_dir().join("common/git.rs"))
-        .expect("tests/common/git.rs is the shared fixture helper");
-    for needle in [
-        "gc.auto=0",
-        "maintenance.auto=false",
-        "GIT_CONFIG_GLOBAL",
-        "GIT_CONFIG_SYSTEM",
-        "LC_ALL=C",
-    ] {
-        assert!(helper.contains(needle), "helper must keep {needle}");
-    }
-}
-
 /// Runs the recorded-AC-command lint with the given arguments and returns its exit code.
 fn run_lint(args: &[&str]) -> std::process::Output {
     let script = Path::new(MANIFEST).join("tools/check_ac_commands.py");

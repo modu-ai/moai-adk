@@ -157,8 +157,10 @@ fn hook_mode_transport_setting_only_matters_to_a_guarded_command() {
     assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
 
     // A lane worktree: a commit is guarded, and the refusal still blocks.
+    // Preserve the fixture's explicit identity while applying the shared git helper's guards.
     let git = |args: &[&str]| {
         let out = Command::new("git")
+            .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
             .args(args)
             .current_dir(&root)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
