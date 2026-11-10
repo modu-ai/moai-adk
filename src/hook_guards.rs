@@ -89,8 +89,10 @@ const BYPASS_MIN_PREFIX: usize = 9;
 
 /// The reason a Bash command line is refused, or `None`.
 pub fn bash_guard(command: &str) -> Option<&'static str> {
-    // A fork bomb defines a function made of punctuation; read the raw text.
-    if command.contains(":(){") || command.contains(": () {") {
+    // A fork bomb defines a function made of punctuation, which the word splitter does not
+    // keep; read the text outside quotes (quoted, it is only data — pre-audit H5-B4).
+    let bare = unquoted(command);
+    if bare.contains(":(){") || bare.contains(": () {") {
         return Some(FORK_BOMB);
     }
     for (name, args) in crate::claim_verify::shell_commands(command) {
@@ -102,10 +104,11 @@ pub fn bash_guard(command: &str) -> Option<&'static str> {
                 .any(|a| is_device_target(a.strip_prefix("of=").unwrap_or("")))
                 .then_some(DEVICE),
             n if n.starts_with("mkfs") => Some(DEVICE),
+            // A statement inside an SQL string literal is data, not a statement (H5-B5).
             n if DB_CLIENTS.contains(&n) => args
                 .iter()
                 .any(|a| {
-                    let lower = a.to_ascii_lowercase();
+                    let lower = outside_sql_literals(a).to_ascii_lowercase();
                     DB_STATEMENTS.iter().any(|s| lower.contains(s))
                 })
                 .then_some(DATABASE),
@@ -116,6 +119,44 @@ pub fn bash_guard(command: &str) -> Option<&'static str> {
         }
     }
     None
+}
+
+/// The shell text with single- and double-quoted spans removed (backslash escapes kept as is).
+fn unquoted(text: &str) -> String {
+    let mut out = String::new();
+    let mut quote: Option<char> = None;
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        match (quote, c) {
+            (None, '\\') => {
+                out.push(c);
+                out.extend(chars.next());
+            }
+            (None, '\'' | '"') => quote = Some(c),
+            (None, _) => out.push(c),
+            (Some('"'), '\\') => {
+                chars.next();
+            }
+            (Some(q), _) if c == q => quote = None,
+            (Some(_), _) => {}
+        }
+    }
+    out
+}
+
+/// An SQL argument with its single-quoted string literals removed (`''` inside a literal
+/// closes and reopens it, which removes the same text).
+fn outside_sql_literals(sql: &str) -> String {
+    let mut out = String::new();
+    let mut in_literal = false;
+    for c in sql.chars() {
+        if c == '\'' {
+            in_literal = !in_literal;
+        } else if !in_literal {
+            out.push(c);
+        }
+    }
+    out
 }
 
 fn is_device_target(path: &str) -> bool {
@@ -157,13 +198,17 @@ fn is_dangerous_rm_target(target: &str) -> bool {
     t == ".git" || t.ends_with("/.git")
 }
 
+/// Each subcommand the line may run — an alias defined on the same line resolved to its verb
+/// and the words it carries (pre-audit H5-B7, the same reading as the claim check).
 fn git_guard(args: &[String]) -> Option<&'static str> {
-    for (sub, rest) in crate::claim_verify::git_subcommands(args) {
-        let global = &args[..args.len() - rest.len() - 1];
-        let reason = match sub {
+    for sub in crate::claim_verify::git_subcommands(args) {
+        let rest = &sub.rest;
+        let reason = match sub.verb.as_str() {
             "push" => force_push_to_protected(rest).then_some(FORCE_PUSH),
             "branch" => force_delete_protected(rest).then_some(BRANCH_DELETE),
-            "commit" => (skips_hooks(rest) || overrides_hooks_path(global)).then_some(HOOK_BYPASS),
+            "commit" => {
+                (skips_hooks(rest) || overrides_hooks_path(&sub.global)).then_some(HOOK_BYPASS)
+            }
             _ => None,
         };
         if reason.is_some() {
@@ -173,6 +218,62 @@ fn git_guard(args: &[String]) -> Option<&'static str> {
     None
 }
 
+/// The option letters of every short-option cluster (`-vf` → v, f) up to `--`. A letter in
+/// `value_opts` takes the rest of its cluster, or the next word when it ends the cluster, as
+/// its value (pre-audit H5-B3: git aggregates short options).
+fn short_letters(rest: &[String], value_opts: &[char]) -> Vec<char> {
+    let mut out = Vec::new();
+    let mut skip_next = false;
+    for a in rest {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if a == "--" {
+            break;
+        }
+        if a.starts_with("--") || !a.starts_with('-') || a.len() < 2 {
+            continue;
+        }
+        for (k, c) in a[1..].char_indices() {
+            out.push(c);
+            if value_opts.contains(&c) {
+                skip_next = k + c.len_utf8() == a.len() - 1;
+                break;
+            }
+        }
+    }
+    out
+}
+
+/// The words that are not options or option values: for `git push`, the remote then the
+/// refspecs. `-o` and the long options below take the next word as their value.
+fn push_positionals(rest: &[String]) -> Vec<&String> {
+    const LONG_VALUE: &[&str] = &["--push-option", "--repo", "--receive-pack", "--exec"];
+    let mut out = Vec::new();
+    let mut skip_next = false;
+    let mut options_done = false;
+    for a in rest {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if !options_done && a == "--" {
+            options_done = true;
+            continue;
+        }
+        if !options_done && a.starts_with('-') && a.len() > 1 {
+            skip_next = LONG_VALUE.contains(&a.as_str())
+                || (!a.starts_with("--")
+                    && a.ends_with('o')
+                    && a[1..].find('o') == Some(a.len() - 2));
+            continue;
+        }
+        out.push(a);
+    }
+    out
+}
+
 fn branch_of_refspec(spec: &str) -> &str {
     let spec = spec.trim_start_matches('+');
     let dst = spec.rsplit(':').next().unwrap_or(spec);
@@ -180,28 +281,23 @@ fn branch_of_refspec(spec: &str) -> &str {
 }
 
 fn force_push_to_protected(rest: &[String]) -> bool {
-    let force_flag = rest.iter().any(|a| {
-        a == "-f"
-            || a == "--force"
-            || a.starts_with("--force-with-lease")
-            || a == "--force-if-includes"
-    });
-    // The first non-option word is the remote; the others are refspecs.
-    let refspecs: Vec<&String> = rest
-        .iter()
-        .filter(|a| !a.starts_with('-'))
-        .skip(1)
-        .collect();
-    refspecs.iter().any(|spec| {
+    let force_flag = short_letters(rest, &['o']).contains(&'f')
+        || rest.iter().any(|a| {
+            a == "--force" || a.starts_with("--force-with-lease") || a == "--force-if-includes"
+        });
+    // The first positional word is the remote; the others are refspecs.
+    push_positionals(rest).iter().skip(1).any(|spec| {
         let forced = force_flag || spec.starts_with('+');
         forced && PROTECTED_BRANCHES.contains(&branch_of_refspec(spec))
     })
 }
 
 fn force_delete_protected(rest: &[String]) -> bool {
+    let letters = short_letters(rest, &['u']);
     let has = |s: &str| rest.iter().any(|a| a == s);
-    let force_delete =
-        has("-D") || ((has("-d") || has("--delete")) && (has("-f") || has("--force")));
+    let force_delete = letters.contains(&'D')
+        || ((letters.contains(&'d') || has("--delete"))
+            && (letters.contains(&'f') || has("--force")));
     force_delete
         && rest
             .iter()
@@ -222,7 +318,16 @@ fn skips_hooks(rest: &[String]) -> bool {
         if a.len() >= BYPASS_MIN_PREFIX && flag.starts_with(a.as_str()) {
             return true;
         }
-        if COMMIT_LONG_VALUE_OPTS.contains(&a.as_str()) {
+        // A long value option, written out or as a prefix git accepts (`--mess` for
+        // `--message`, pre-audit H5-B6). An ambiguous prefix makes git refuse the command, so
+        // reading it as a value option can only allow a call that does not run.
+        if a.len() >= 3
+            && a.starts_with("--")
+            && !a.contains('=')
+            && COMMIT_LONG_VALUE_OPTS
+                .iter()
+                .any(|o| o.starts_with(a.as_str()))
+        {
             take_value = true;
             continue;
         }
@@ -548,6 +653,77 @@ mod tests {
             "git -c core.hooksPathX=1 commit -m x".to_string(),
         ] {
             assert_eq!(bash_guard(&cmd), None, "{cmd}");
+        }
+    }
+
+    /// Pre-audit FAIL (#2391 stage 5, pr-4) B2–B7: the literal inputs of the report, each with
+    /// its control. Nothing here runs a command.
+    #[test]
+    fn pre_audit_literals_are_judged_as_git_and_the_shell_read_them() {
+        let flag = bypass();
+        for (cmd, want) in [
+            // B2: `eval` runs its joined arguments as a script.
+            ("eval 'rm -rf /'".to_string(), Some(RM_TARGET)),
+            ("eval rm -rf /".to_string(), Some(RM_TARGET)),
+            ("sh -c 'rm -rf /'".to_string(), Some(RM_TARGET)),
+            ("echo 'rm -rf /'".to_string(), None),
+            // B3: short options aggregate.
+            ("git push -vf origin main".to_string(), Some(FORCE_PUSH)),
+            ("git push -fv origin main".to_string(), Some(FORCE_PUSH)),
+            ("git branch -df main".to_string(), Some(BRANCH_DELETE)),
+            ("git branch -fd main".to_string(), Some(BRANCH_DELETE)),
+            ("git push -v origin main".to_string(), None),
+            ("git branch -dv main".to_string(), None),
+            // `-o` takes a value: `f` inside it is not the force option, and its value is not
+            // the remote.
+            ("git push -o f origin feature".to_string(), None),
+            ("git push -of origin main".to_string(), None),
+            (
+                "git push -o ci.skip -f origin main".to_string(),
+                Some(FORCE_PUSH),
+            ),
+            // `-u` takes a value for `git branch`.
+            ("git branch -uf origin/x -d main".to_string(), None),
+            // B4: quoted punctuation is data.
+            ("printf '%s' ':(){'".to_string(), None),
+            ("echo \":(){ :|:& };:\"".to_string(), None),
+            (":(){ :|:& };:".to_string(), Some(FORK_BOMB)),
+            // B5: a statement inside an SQL string literal is data.
+            ("psql -c \"SELECT 'DROP DATABASE app';\"".to_string(), None),
+            (
+                "psql -c \"SELECT 'it''s'; DROP DATABASE app;\"".to_string(),
+                Some(DATABASE),
+            ),
+            ("psql -c 'DROP DATABASE app'".to_string(), Some(DATABASE)),
+            // B6: a unique prefix of a long value option takes the next word.
+            ("git commit --mess -n".to_string(), None),
+            ("git commit --auth -n -m x".to_string(), None),
+            ("git commit --mess x -n".to_string(), Some(HOOK_BYPASS)),
+            // B7: an alias defined on the same line, including the words it carries.
+            (
+                "git -c alias.ci=commit ci -n -m x".to_string(),
+                Some(HOOK_BYPASS),
+            ),
+            (
+                "git -calias.ci=commit ci -n -m x".to_string(),
+                Some(HOOK_BYPASS),
+            ),
+            (
+                format!("git -c 'alias.ci=commit {flag}' ci -m x"),
+                Some(HOOK_BYPASS),
+            ),
+            (
+                "git -c 'alias.pf=push -f' pf origin main".to_string(),
+                Some(FORCE_PUSH),
+            ),
+            (
+                "git -c 'alias.nuke=!git branch -D' nuke main".to_string(),
+                Some(BRANCH_DELETE),
+            ),
+            ("git -c alias.ci=commit ci -m x".to_string(), None),
+            ("git -c alias.lg=log lg -n 3".to_string(), None),
+        ] {
+            assert_eq!(bash_guard(&cmd), want, "{cmd}");
         }
     }
 

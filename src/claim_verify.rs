@@ -546,7 +546,22 @@ fn shell_script(args: &[String]) -> Option<&str> {
 /// the same command line (`git -c alias.ci=commit ci`). An alias defined in git config is not
 /// visible here.
 fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
-    let mut aliases: Vec<&str> = Vec::new();
+    let aliases = inline_aliases(args);
+    // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
+    // names the word as an argument of a read command, not as the command (#2399 review).
+    git_subcommand_candidates(args).iter().any(|w| {
+        verbs.contains(w)
+            || aliases.iter().any(|(name, words)| {
+                name == w && words.first().is_some_and(|v| verbs.contains(&v.as_str()))
+            })
+    })
+}
+
+/// Aliases defined on the same command line (`git -c alias.ci=commit ci`, also the attached
+/// `-calias.ci=commit` form), as (name, expansion words). A `!` shell alias that runs `git`
+/// expands to the words after `git`. An alias defined in git config is not visible here.
+fn inline_aliases(args: &[String]) -> Vec<(String, Vec<String>)> {
+    let mut out = Vec::new();
     let mut i = 0;
     while i < args.len() {
         let config = match args[i].as_str() {
@@ -560,24 +575,19 @@ fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
             .and_then(|c| c.strip_prefix("alias."))
             .and_then(|c| c.split_once('='))
         {
-            let mut target = value.trim_start_matches('!').split_whitespace();
-            let first = target.next().unwrap_or("");
-            let verb = if command_name(first) == "git" {
-                target.next().unwrap_or("")
-            } else {
-                first
-            };
-            if verbs.contains(&verb) {
-                aliases.push(name);
+            let mut words: Vec<String> = value
+                .trim_start_matches('!')
+                .split_whitespace()
+                .map(str::to_string)
+                .collect();
+            if words.first().is_some_and(|w| command_name(w) == "git") {
+                words.remove(0);
             }
+            out.push((name.to_string(), words));
         }
         i += 1;
     }
-    // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
-    // names the word as an argument of a read command, not as the command (#2399 review).
-    git_subcommand_candidates(args)
-        .iter()
-        .any(|w| verbs.contains(w) || aliases.contains(w))
+    out
 }
 
 /// git(1) OPTIONS (git 2.54.0, read 2026-11-10) that take their value as the next word.
@@ -683,15 +693,48 @@ fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>
                 collect_commands(script, depth + 1, out);
             }
         }
+        // `eval` joins its arguments with spaces and runs the result as a script.
+        if depth == 0 && name == "eval" && !args.is_empty() {
+            collect_commands(&args.join(" "), depth + 1, out);
+        }
         out.push((name, args));
     }
 }
 
-/// Each git subcommand a `git` argument list may run, with the arguments that follow it.
-pub(crate) fn git_subcommands(args: &[String]) -> Vec<(&str, &[String])> {
+/// One git subcommand a `git` argument list may run: the verb, its arguments, and git's own
+/// arguments before it. An alias defined on the same line (`-c alias.ci=commit ci`) is
+/// resolved to its verb, with the words the alias carries put before the call's arguments.
+pub(crate) struct GitSub {
+    pub verb: String,
+    pub rest: Vec<String>,
+    pub global: Vec<String>,
+}
+
+/// Each git subcommand a `git` argument list may run (see [`GitSub`]).
+pub(crate) fn git_subcommands(args: &[String]) -> Vec<GitSub> {
+    let aliases = inline_aliases(args);
     git_subcommand_positions(args)
         .into_iter()
-        .map(|i| (args[i].as_str(), &args[i + 1..]))
+        .map(|i| {
+            let global = args[..i].to_vec();
+            let rest = &args[i + 1..];
+            match aliases.iter().find(|(name, _)| *name == args[i]) {
+                Some((_, words)) if !words.is_empty() => GitSub {
+                    verb: words[0].clone(),
+                    rest: words[1..]
+                        .iter()
+                        .cloned()
+                        .chain(rest.iter().cloned())
+                        .collect(),
+                    global,
+                },
+                _ => GitSub {
+                    verb: args[i].clone(),
+                    rest: rest.to_vec(),
+                    global,
+                },
+            }
+        })
         .collect()
 }
 
