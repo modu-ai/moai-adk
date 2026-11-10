@@ -526,11 +526,14 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         }
         _ => claude_argv(r, &mut notes)?,
     };
-    Ok(
-        json!({"host": r.host, "role": r.role, "name": r.name, "argv": argv,
-        "env_keys": env_keys, "key_source": key_source, "notes": notes, "host_loaded": false,
-        "executed": false}),
-    )
+    let mut out = json!({"host": r.host, "role": r.role, "name": r.name, "argv": argv,
+        "env_keys": env_keys, "notes": notes, "host_loaded": false, "executed": false});
+    // Only a launch that reads a key names its source (#2393 S2); the other hosts' answer
+    // keeps its recorded protocol shape.
+    if let Some(source) = key_source {
+        out["key_source"] = json!(source);
+    }
+    Ok(out)
 }
 
 /// Composes and, unless `dry_run`, starts the host and waits for it to exit.
