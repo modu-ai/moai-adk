@@ -9,6 +9,8 @@
 //!   for a filter that matches nothing, which has silently passed as verification
 //!   more than once (survey 2.11, s01-scope-05).
 
+mod common;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -73,6 +75,41 @@ fn git_fixture_calls_live_in_the_shared_helper() {
         "test files spawning git without the gc/maintenance fixture guards — route \
          them through tests/common/git.rs or add the guards:\n{}",
         violations.join("\n")
+    );
+}
+
+/// Behavioural check: the guards must reach git itself, not just appear in the
+/// helper's text (its doc comment names them, so a text match alone survives a
+/// mutation of the actual argument values).
+#[test]
+fn git_helper_applies_the_guards_to_every_call() {
+    let dir = tempfile::TempDir::new().unwrap();
+    common::git::git_ok(dir.path(), &["init", "-q"]);
+    assert_eq!(
+        common::git::git(dir.path(), &["config", "--get", "gc.auto"]),
+        "0",
+        "git() must run with gc.auto=0"
+    );
+    assert_eq!(
+        common::git::git(dir.path(), &["config", "--get", "maintenance.auto"]),
+        "false",
+        "git() must run with maintenance.auto=false"
+    );
+    let raw = common::git::git_raw(dir.path(), &["config", "--get", "gc.auto"]);
+    assert_eq!(raw.stdout.trim(), "0", "git_raw() must run with gc.auto=0");
+    // git_pinned builds its own command and only asserts success; a value pattern
+    // makes `git config --get` exit 1 unless the guard value is exactly the one set.
+    common::git::git_pinned(dir.path(), &["config", "--get", "gc.auto", "^0$"], None);
+    common::git::git_pinned(
+        dir.path(),
+        &["config", "--get", "maintenance.auto", "^false$"],
+        None,
+    );
+    let global = common::git::git_raw(dir.path(), &["config", "--global", "--list"]);
+    assert!(
+        global.stdout.trim().is_empty(),
+        "GIT_CONFIG_GLOBAL must point at an empty config: {}",
+        global.stdout
     );
 }
 
