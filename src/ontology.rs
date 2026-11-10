@@ -5,15 +5,16 @@
 //! Evidence base: `docs/design-review/appendix/dr07-ontology-table.md` (the
 //! merged DR-07 appendix table). Every rule below cites its row.
 //!
-//! HOLD items from the appendix's 확인 불가 section — carried, not guessed:
-//! 1. The leader instruction "노드 8종" (exact 8 node kinds) is unverifiable
+//! HOLD items from the appendix's "unverifiable / conflicts" section
+//! (`docs/design-review/appendix/dr07-ontology-table.md`, from L121) — carried, not guessed:
+//! 1. The leader instruction "8 node kinds" (the exact list) is unverifiable
 //!    against [TO] 12 rows / [CB] L741 7 kinds — node `kind` is therefore
 //!    validated structurally (non-empty identifier) until DR-07 supplies the
-//!    list (appendix 확인 불가 row 1).
+//!    list (appendix unverifiable row 1).
 //! 2. [TO] mermaid `Other symbol` self-reference has no explicit node
-//!    definition — not modeled (appendix 확인 불가 row 2).
+//!    definition — not modeled (appendix unverifiable row 2).
 //! 3. [CB] L2491 `included_in_context` has no supplied definition — excluded
-//!    from the edge type list (appendix 확인 불가 row 3).
+//!    from the edge type list (appendix unverifiable row 3).
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -95,7 +96,7 @@ pub struct Extractor {
 pub struct OntologyNode {
     /// Logical identity ([TO] L354-369, per-kind identity rules).
     pub id: String,
-    /// Kind — structurally validated only (HOLD 1: the "노드 8종" list is
+    /// Kind — structurally validated only (HOLD 1: the "8 node kinds" list is
     /// unverifiable until DR-07 supplies it; measured vocabularies live in the
     /// appendix, not in this schema's enforced set).
     pub kind: String,
