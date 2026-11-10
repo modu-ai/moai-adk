@@ -26,7 +26,7 @@ output and `🗿 v<GOLDEN_BINARY_VERSION>` in the golden with one placeholder be
 comparing. Nothing else is normalized.
 
 Usage:
-  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write [--variant V]
+  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write [--variant V] [--case NAME]
   python3 -I tools/statusline_golden.py --bin <statusline binary> [--binary-version <v>] --check
 (`--binary-version` defaults to the last token `<bin> --version` prints, `v` stripped.)
 Exit codes: 0 = all written / all equal, 1 = a mismatch or a failed run, 2 = usage.
@@ -46,7 +46,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "tests" / "fixtures" / "statusline"
 VARIANTS = {"plain": {"NO_COLOR": "1"}, "ansi": {"COLORTERM": "truecolor"}, "ansi256": {}}
-# The Go `moai statusline` the goldens were recorded with reports this version.
+# The Go `moai statusline` the goldens were recorded with reports this version; a case
+# recorded later names its own binary in `recorded_with` (#2350 audit F1).
 GOLDEN_BINARY_VERSION = "3.2.1"
 VERSION_PLACEHOLDER = "🗿 v<binary-version>"
 GIT_ENV = {
@@ -164,15 +165,16 @@ def run_case(binary, argv, case, variant):
         exe = root / "bin" / "sl-under-test"
         exe.parent.mkdir()
         shutil.copy2(binary, exe)
-        stdin_raw = (FIXTURES / case["stdin"]).read_text(encoding="utf-8")
-        stdin = stdin_raw.replace("{PROJECT}", str(project))
+        # Bytes, not text: a fixture may hold invalid UTF-8 on purpose (#2350 audit F1).
+        stdin_raw = (FIXTURES / case["stdin"]).read_bytes()
+        stdin = stdin_raw.replace(b"{PROJECT}", str(project).encode())
         env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "MOAI_HOME": str(moai_home),
                "TZ": "UTC", "LANG": "C.UTF-8"}
         env.update(VARIANTS[variant])
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":
             cmd = ["/usr/bin/sandbox-exec", "-p", sandbox_profile(exe), *cmd]
-        proc = subprocess.run(cmd, input=stdin.encode(), cwd=project, env=env,
+        proc = subprocess.run(cmd, input=stdin, cwd=project, env=env,
                               capture_output=True, timeout=30)
         return proc.returncode, proc.stdout.decode("utf-8", "replace"), proc.stderr.decode("utf-8", "replace")
 
@@ -189,6 +191,8 @@ def main():
                          "(default: read from `<bin> --version`)")
     ap.add_argument("--variant", choices=sorted(VARIANTS), action="append",
                     help="restrict to these variants (default: all)")
+    ap.add_argument("--case", action="append",
+                    help="restrict to these case names (default: all)")
     args = ap.parse_args()
     binary = Path(args.bin).resolve()
     if not binary.is_file():
@@ -196,6 +200,10 @@ def main():
         return 2
     cases = json.loads((FIXTURES / "cases.json").read_text(encoding="utf-8"))["cases"]
     variants = args.variant or list(VARIANTS)
+    unknown = sorted(set(args.case or []) - {c["name"] for c in cases})
+    if unknown:
+        print(f"unknown case: {', '.join(unknown)}")
+        return 2
     print(f"binary sha256 {hashlib.sha256(binary.read_bytes()).hexdigest()}")
     if args.check and not args.binary_version:
         args.binary_version = detect_binary_version(binary)
@@ -206,6 +214,8 @@ def main():
         print(f"binary version {args.binary_version} (goldens: {GOLDEN_BINARY_VERSION})")
     failed = 0
     for case in cases:
+        if args.case and case["name"] not in args.case:
+            continue
         for variant in variants:
             code, out, err = run_case(binary, args.argv.split(), case, variant)
             golden = FIXTURES / "golden" / f"{case['name']}.{variant}.txt"
@@ -218,7 +228,8 @@ def main():
                 golden.write_text(out, encoding="utf-8")
                 print(f"wrote {golden.relative_to(REPO)}")
                 continue
-            want = normalize_version(golden.read_text(encoding="utf-8"), GOLDEN_BINARY_VERSION)
+            recorded = case.get("recorded_with", {}).get("version", GOLDEN_BINARY_VERSION)
+            want = normalize_version(golden.read_text(encoding="utf-8"), recorded)
             got = normalize_version(out, args.binary_version)
             if want != got:
                 print(f"DIFF {case['name']} {variant}")

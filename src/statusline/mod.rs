@@ -69,6 +69,29 @@ mod tests {
         assert_eq!(read_capped(&vec![b' '; 4_194_303][..]).len(), 4_194_303);
     }
 
+    /// #2350 audit F2: either variable set to a non-empty value turns colour off, as Go's
+    /// `NO_COLOR != "" || MOAI_NO_COLOR != ""` (internal/cli/statusline.go).
+    #[test]
+    fn no_color_and_moai_no_color_turn_escapes_off() {
+        let stdin = br#"{"model":{"display_name":"Opus"}}"#;
+        let out = |vars: &[(&str, &str)]| render(stdin, &state::Context::for_test(vars, None, 0));
+        for colored in [
+            out(&[("COLORTERM", "truecolor")]),
+            out(&[]),
+            out(&[("NO_COLOR", ""), ("MOAI_NO_COLOR", "")]),
+        ] {
+            assert!(colored.contains('\x1b'), "{colored:?}");
+        }
+        for plain in [
+            out(&[("NO_COLOR", "1")]),
+            out(&[("MOAI_NO_COLOR", "1")]),
+            out(&[("COLORTERM", "truecolor"), ("MOAI_NO_COLOR", "0")]),
+        ] {
+            assert!(!plain.contains('\x1b'), "{plain:?}");
+            assert!(plain.contains("Opus"), "{plain:?}");
+        }
+    }
+
     #[test]
     fn render_budget_is_go_800ms() {
         assert_eq!(RENDER_BUDGET, Duration::from_millis(800));

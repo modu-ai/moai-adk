@@ -8,6 +8,8 @@
 //! value of the stream is read. Known difference: Go matches keys case-insensitively,
 //! this decoder matches them exactly.
 
+use std::borrow::Cow;
+
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
@@ -205,16 +207,96 @@ pub struct SubagentTask {
 }
 
 /// The first JSON value of `bytes`, or `None` for empty, malformed or mistyped input.
+///
+/// Like Go's `json.Decoder` into a struct (#2350 audit F1): a top-level `null` is an empty
+/// payload, not an error; invalid UTF-8 bytes and unpaired `\uD800`–`\uDFFF` escapes
+/// become U+FFFD instead of failing the whole payload.
 pub fn parse(bytes: &[u8]) -> Option<Input> {
+    let text = go_lossy_utf8(bytes);
+    let text = replace_unpaired_surrogates(&text);
     // Go decodes into a struct, which rejects a top-level array; serde's derived struct
-    // visitor would accept one, so anything but an object is refused up front.
-    if bytes.iter().find(|b| !b.is_ascii_whitespace()) != Some(&b'{') {
-        return None;
+    // visitor would accept one, so anything but an object or `null` is refused up front.
+    match text.bytes().find(|b| !b.is_ascii_whitespace()) {
+        Some(b'{') => serde_json::Deserializer::from_str(&text)
+            .into_iter::<Input>()
+            .next()?
+            .ok(),
+        Some(b'n') => serde_json::Deserializer::from_str(&text)
+            .into_iter::<Option<Input>>()
+            .next()?
+            .ok()
+            .map(Option::unwrap_or_default),
+        _ => None,
     }
-    serde_json::Deserializer::from_slice(bytes)
-        .into_iter::<Input>()
-        .next()?
-        .ok()
+}
+
+/// UTF-8 decoding as Go's `encoding/json` does it inside strings: every byte of an invalid
+/// sequence becomes one U+FFFD (`utf8.DecodeRune` returns width 1 for it).
+fn go_lossy_utf8(bytes: &[u8]) -> Cow<'_, str> {
+    if let Ok(s) = std::str::from_utf8(bytes) {
+        return Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(bytes.len() + 8);
+    let mut rest = bytes;
+    loop {
+        match std::str::from_utf8(rest) {
+            Ok(s) => {
+                out.push_str(s);
+                return Cow::Owned(out);
+            }
+            Err(e) => {
+                let (valid, after) = rest.split_at(e.valid_up_to());
+                out.push_str(std::str::from_utf8(valid).unwrap_or_default());
+                let bad = e.error_len().unwrap_or(after.len());
+                out.extend(std::iter::repeat_n('\u{FFFD}', bad));
+                rest = &after[bad..];
+            }
+        }
+    }
+}
+
+/// Rewrites every `\uXXXX` escape inside a JSON string that is a surrogate without its
+/// partner to `\uFFFD`, as Go's `unquote` does; serde_json would reject the payload.
+fn replace_unpaired_surrogates(text: &str) -> Cow<'_, str> {
+    if !text.contains("\\u") {
+        return Cow::Borrowed(text);
+    }
+    let b = text.as_bytes();
+    let hex4 = |at: usize| {
+        let digits = b.get(at..at + 4)?;
+        u32::from_str_radix(std::str::from_utf8(digits).ok()?, 16).ok()
+    };
+    let escape_at = |at: usize| (b.get(at..at + 2) == Some(b"\\u")).then(|| hex4(at + 2))?;
+    let mut out = String::new();
+    let (mut i, mut copied, mut in_string) = (0, 0, false);
+    while i < b.len() {
+        match (in_string, b[i]) {
+            (false, b'"') | (true, b'"') => {
+                in_string = !in_string;
+                i += 1;
+            }
+            (true, b'\\') => match escape_at(i) {
+                // A high surrogate followed by a low one is a valid pair.
+                Some(0xD800..=0xDBFF) if matches!(escape_at(i + 6), Some(0xDC00..=0xDFFF)) => {
+                    i += 12
+                }
+                Some(0xD800..=0xDFFF) => {
+                    out.push_str(&text[copied..i]);
+                    out.push_str("\\uFFFD");
+                    i += 6;
+                    copied = i;
+                }
+                Some(_) => i += 6,
+                None => i += 2,
+            },
+            _ => i += 1,
+        }
+    }
+    if copied == 0 {
+        return Cow::Borrowed(text);
+    }
+    out.push_str(&text[copied..]);
+    Cow::Owned(out)
 }
 
 /// A string field, empty when absent.
@@ -231,6 +313,59 @@ mod tests {
         assert!(parse(b"{ this is not json\n").is_none());
         assert!(parse(b"").is_none());
         assert!(parse(b"[]").is_none());
+    }
+
+    /// #2350 audit F1: valid JSON Go renders must not blank the Rust status line.
+    #[test]
+    fn top_level_null_is_an_empty_payload() {
+        let input = parse(b" null\n").unwrap();
+        assert!(input.model.is_none() && input.session_id.is_none());
+        assert!(parse(b"nul").is_none());
+        assert!(parse(b"nope").is_none());
+    }
+
+    #[test]
+    fn unpaired_surrogate_escapes_become_replacement_characters() {
+        let name = |json: &[u8]| parse(json).unwrap().model.unwrap().display_name;
+        assert_eq!(
+            name(br#"{"model":{"display_name":"Op\ud800us"}}"#),
+            "Op\u{FFFD}us"
+        );
+        assert_eq!(
+            name(br#"{"model":{"display_name":"a\udc00b"}}"#),
+            "a\u{FFFD}b"
+        );
+        // A high surrogate whose next escape is not a low one: only the high is replaced.
+        assert_eq!(
+            name(br#"{"model":{"display_name":"\ud800\u0041"}}"#),
+            "\u{FFFD}A"
+        );
+        // A valid pair and an escaped backslash stay as they are.
+        assert_eq!(
+            name(br#"{"model":{"display_name":"\ud83d\ude00"}}"#),
+            "\u{1F600}"
+        );
+        assert_eq!(name(br#"{"model":{"display_name":"\\ud800"}}"#), "\\ud800");
+        // Range edges: D7FF and E000 are ordinary characters; D800, DBFF, DC00 and DFFF
+        // alone are surrogates; DBFF+DFFF is the last valid pair (U+10FFFF).
+        assert_eq!(name(br#"{"model":"\ud7ff\ue000"}"#), "\u{D7FF}\u{E000}");
+        assert_eq!(name(br#"{"model":"\ud800\udbff"}"#), "\u{FFFD}\u{FFFD}");
+        assert_eq!(name(br#"{"model":"\udc00\udfff"}"#), "\u{FFFD}\u{FFFD}");
+        assert_eq!(name(br#"{"model":"\udbff\udfff"}"#), "\u{10FFFF}");
+        assert_eq!(name(br#"{"model":"\ud800\ue000"}"#), "\u{FFFD}\u{E000}");
+        let s = parse(br#"{"session_name":"my-se\udc00ssion","session_id":"x"}"#).unwrap();
+        assert_eq!(s.session_name.as_deref(), Some("my-se\u{FFFD}ssion"));
+        assert_eq!(s.session_id.as_deref(), Some("x"));
+    }
+
+    #[test]
+    fn invalid_utf8_bytes_become_one_replacement_character_each() {
+        let name = |json: &[u8]| parse(json).unwrap().model.unwrap().display_name;
+        assert_eq!(name(b"{\"model\":\"a\xff\xfeb\"}"), "a\u{FFFD}\u{FFFD}b");
+        // A truncated 3-byte sequence: Go replaces each of its 2 bytes.
+        assert_eq!(name(b"{\"model\":\"a\xe2\x82b\"}"), "a\u{FFFD}\u{FFFD}b");
+        // Outside a string it is still a syntax error.
+        assert!(parse(b"{\xff}").is_none());
     }
 
     #[test]

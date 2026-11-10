@@ -32,12 +32,22 @@ class StatuslineFixturesTest(unittest.TestCase):
 
     def test_every_stdin_exists_and_parses_except_the_invalid_case(self):
         for c in self.cases:
-            raw = (FIXTURES / c["stdin"]).read_text(encoding="utf-8")
+            # a12 holds invalid UTF-8 on purpose; Go decodes it with U+FFFD, so does this read.
+            raw = (FIXTURES / c["stdin"]).read_bytes().decode("utf-8", "replace")
             if c["name"] == "a06-invalid-json":
                 with self.assertRaises(json.JSONDecodeError):
                     json.loads(raw)
                 continue
             json.loads(raw.replace("{PROJECT}", "/tmp/demo-project"))
+
+    def test_late_recorded_cases_name_their_binary(self):
+        # #2350 audit F1: cases recorded after stage 1 carry the Go binary that wrote them.
+        for c in self.cases:
+            rec = c.get("recorded_with")
+            if rec is None:
+                continue
+            self.assertRegex(rec["version"], r"^\d+\.\d+\.\d+", c["name"])
+            self.assertRegex(rec["sha256"], r"^[0-9a-f]{64}$", c["name"])
 
     def test_every_case_has_a_plain_and_an_ansi_golden(self):
         for c in self.cases:
