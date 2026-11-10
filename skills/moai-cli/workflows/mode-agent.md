@@ -25,7 +25,7 @@ A mode banner, a read-only state summary, and, for every round, the claim outcom
 
 Ownership comes only from the claim comment (SPEC §4). Labels, messages and an assignment hint never grant it. Never decide a HOLD, merge, or post an audit status; those belong to the leader and the audit gate.
 
-Stay reachable while waiting and keep reports lean. While a background wait runs, re-read new leader messages at least every five minutes. Report a state change once — one update of the Issue's owned comment and one line to the leader — and when nothing changed, do not re-read the state or rewrite a pull request body. Send outward effects (Issue or pull request comments, leader messages, pushes) as commands of their own, never chained with other commands, and put multi-line or looping shell work in a script file under the worktree's ignored `target/` directory.
+Stay reachable while waiting and keep reports lean. While a background wait runs, re-read new leader messages at least every five minutes. Report a state change once — one update of the Issue's owned comment and one line to the leader — and when nothing changed, do not re-post a report or rewrite a pull request body. Send outward effects (Issue or pull request comments, leader messages, pushes) as commands of their own, never chained with other commands — except an audit reservation, which is posted only when its own check finds no other reservation for that head (AUDIT workflow) — and put multi-line or looping shell work in a script file under the worktree's ignored `target/` directory.
 
 ## Completion Check
 
