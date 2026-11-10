@@ -1,0 +1,246 @@
+{
+ "schema_version": 1,
+ "suites": [
+  {
+   "id": "RETRIEVAL",
+   "design_source": [
+    "Core Brain L4418 (survey s03-corebrain-03 quoting): 'rg만 사용한 기준선, rg+Map, rg+Map+Graph … 같은 source scope와 task로' with 'precision@5·recall@10 … stale 결과 비율 … token·tool call'",
+    "Caveat: line numbers come from the survey's 2026-11-09 dump (not re-readable in this session)."
+   ],
+   "cases": [
+    {
+     "task_ref": "T-001",
+     "scenario": "PR reconciliation이 op marker를 어디서 파싱하는가"
+    },
+    {
+     "task_ref": "T-002",
+     "scenario": "claim journal의 advisory lock 획득은 어디서 하는가"
+    },
+    {
+     "task_ref": "T-003",
+     "scenario": "ontology edge 어휘(core 17종) 상수는 어디에 있는가"
+    },
+    {
+     "task_ref": "T-004",
+     "scenario": "ontology 시간 필드의 RFC3339 게이트는 어디인가"
+    },
+    {
+     "task_ref": "T-005",
+     "scenario": "edge_id 결정적 해시는 어디서 계산되는가"
+    },
+    {
+     "task_ref": "T-006",
+     "scenario": "@MOAI/@MX marker 스캐너 진입점은 어디인가"
+    },
+    {
+     "task_ref": "T-007",
+     "scenario": "오류 메시지를 envelope kind로 분류하는 함수는 어디인가"
+    },
+    {
+     "task_ref": "T-008",
+     "scenario": "stale plan 거부 문구는 어느 파일들이 쓰는가"
+    },
+    {
+     "task_ref": "T-009",
+     "scenario": "비밀 모양 문자열 필터 상수는 어디인가"
+    },
+    {
+     "task_ref": "T-010",
+     "scenario": "profile 스키마의 관리 키 한 표는 어디인가"
+    },
+    {
+     "task_ref": "T-011",
+     "scenario": "leader 감독 설정 구조체는 어디에 정의되는가"
+    },
+    {
+     "task_ref": "T-012",
+     "scenario": "flow 게이트의 CI status 조회는 어디서 하는가"
+    },
+    {
+     "task_ref": "T-013",
+     "scenario": "claim-handoff 기계 줄의 파서는 어디인가"
+    },
+    {
+     "task_ref": "T-014",
+     "scenario": "update known-good receipt 검사는 어디서 하는가"
+    },
+    {
+     "task_ref": "T-015",
+     "scenario": "leader PR 검사 주기 설정 읽기는 어디인가"
+    },
+    {
+     "task_ref": "T-016",
+     "scenario": "baseline tree digest는 어디서 계산하는가"
+    },
+    {
+     "task_ref": "T-017",
+     "scenario": "recovery plan 생성은 어디인가"
+    },
+    {
+     "task_ref": "T-018",
+     "scenario": "세션 런처의 role 기본값은 어디서 정해지는가"
+    },
+    {
+     "task_ref": "T-019",
+     "scenario": "pr-body-render의 effect intent 기록은 어디서 하는가"
+    },
+    {
+     "task_ref": "T-020",
+     "scenario": "archive 유예일 resolve는 어디인가"
+    },
+    {
+     "task_ref": "T-021",
+     "scenario": "tombstone 마커 생성·검증은 어디인가"
+    },
+    {
+     "task_ref": "T-022",
+     "scenario": "C4 문서 단위 검증은 어디인가"
+    },
+    {
+     "task_ref": "T-023",
+     "scenario": "claim journal 열기는 어디서 하는가"
+    },
+    {
+     "task_ref": "T-024",
+     "scenario": "Codex projection의 openai.yaml 타입은 어디에 정의되는가"
+    },
+    {
+     "task_ref": "T-025",
+     "scenario": "flow 게이트 검사 결과 구조체는 어디인가"
+    },
+    {
+     "task_ref": "T-026",
+     "scenario": "context bundle의 snapshot 생성은 어디인가"
+    },
+    {
+     "task_ref": "T-027",
+     "scenario": "OPERATIONS 덤프 스위치는 어디에서 처리하는가"
+    },
+    {
+     "task_ref": "T-028",
+     "scenario": "redact 함수들은 어느 파일에 있는가"
+    },
+    {
+     "task_ref": "T-029",
+     "scenario": "claim-verify 모듈은 어디서 참조되는가"
+    },
+    {
+     "task_ref": "T-030",
+     "scenario": "cost report op 구현은 어디인가"
+    },
+    {
+     "task_ref": "T-031",
+     "scenario": "receipts 저장소 디렉터리 resolve는 어디인가"
+    },
+    {
+     "task_ref": "T-032",
+     "scenario": "envelope protocol 상수는 어디에 있는가"
+    }
+   ]
+  },
+  {
+   "id": "GRAPH",
+   "design_source": [
+    "DR-07 appendix relations: docs/design-review/appendix/dr07-ontology-table.md 75-100행 (targets_host, governed_by, revision_of, …)",
+    "Core Brain L1890 (survey s03-corebrain-11 quoting): naming-derived relations are distinguished from directly referenced ones."
+   ],
+   "cases": [
+    {
+     "task_ref": "G-001",
+     "scenario": "src/archive.rs references src/profile.rs (profile::read_profile)"
+    },
+    {
+     "task_ref": "G-002",
+     "scenario": "src/pr_link.rs references src/forge/outbox.rs (parse_op_markers)"
+    },
+    {
+     "task_ref": "G-003",
+     "scenario": "src/handoff.rs references src/forge/outbox.rs (parse_op_markers)"
+    },
+    {
+     "task_ref": "G-004",
+     "scenario": "src/decision.rs references src/lib.rs (crate::digest)"
+    },
+    {
+     "task_ref": "G-005",
+     "scenario": "src/audit.rs references src/baseline.rs (tree_digest)"
+    },
+    {
+     "task_ref": "G-006",
+     "scenario": "src/leader.rs references src/profile.rs (LeaderSettings)"
+    },
+    {
+     "task_ref": "G-007",
+     "scenario": "src/flow.rs references src/forge/transport.rs (forge::transport)"
+    },
+    {
+     "task_ref": "G-008",
+     "scenario": "src/main.rs references src/atlas_tag.rs (scan_path)"
+    },
+    {
+     "task_ref": "G-009",
+     "scenario": "src/main.rs references src/contract.rs (PROTOCOL_VERSION)"
+    }
+   ]
+  },
+  {
+   "id": "FRESHNESS",
+   "authority": "this card (AC-3) — PR #2326 keeps implementing its own detection; this fixture is the case authority",
+   "design_source": [
+    "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362): '신규 파일·삭제·rename·checkout·두 worktree·parser 실패'",
+    "Core Brain L3857 (survey s03-corebrain-13 quoting): '파일이 없어져 edge가 사라진 경우와 parser가 실패해 edge가 사라진 경우를 구분한다'",
+    "design snapshot 13-page:92: '두 worktree의 같은 파일 다른 내용 | bundle과 cache가 올바른 overlay로 분리'"
+   ],
+   "cases": [
+    {
+     "case_id": "F-01",
+     "scenario": "add",
+     "c6_status": "covered by PR #2326",
+     "task_ref": "TF-01"
+    },
+    {
+     "case_id": "F-02",
+     "scenario": "delete",
+     "c6_status": "covered by PR #2326",
+     "task_ref": "TF-02"
+    },
+    {
+     "case_id": "F-03",
+     "scenario": "modify",
+     "c6_status": "covered by PR #2326",
+     "task_ref": "TF-03"
+    },
+    {
+     "case_id": "F-04",
+     "scenario": "untracked new file",
+     "c6_status": "covered by PR #2326",
+     "task_ref": "TF-04"
+    },
+    {
+     "case_id": "F-05",
+     "scenario": "branch switch",
+     "c6_status": "covered by PR #2326",
+     "task_ref": "TF-05"
+    },
+    {
+     "case_id": "F-06",
+     "scenario": "rename",
+     "c6_status": "gap: not implemented in C6",
+     "task_ref": "TF-06"
+    },
+    {
+     "case_id": "F-07",
+     "scenario": "two worktrees of one repository",
+     "c6_status": "gap: not implemented in C6",
+     "task_ref": "TF-07"
+    },
+    {
+     "case_id": "F-08",
+     "scenario": "scan failure removes an edge while the file remains",
+     "c6_status": "gap: not implemented in C6",
+     "task_ref": "TF-08"
+    }
+   ]
+  }
+ ]
+}
