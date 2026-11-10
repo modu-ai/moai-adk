@@ -4,6 +4,8 @@
 //! counts: the render describes the repository of the session directory only.
 #![cfg(unix)]
 
+mod common;
+
 use std::{
     fs,
     io::Write as _,
@@ -12,7 +14,7 @@ use std::{
 };
 
 fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
+    let status = common::git::command()
         .args(args)
         .current_dir(dir)
         .env_remove("GIT_DIR")
