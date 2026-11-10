@@ -1166,14 +1166,28 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaimVerify { project, hook } => {
-            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
             let clock = moai_cli::forge::policy::SystemClock;
             if hook {
                 // Host hook stdin can carry large tool input; read a bounded prefix.
                 let mut bytes = Vec::new();
                 let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+                // #2348: a command the guard does not check never reaches the transport
+                // setup, so a bad `MOAI_FORGE_GH_BIN` cannot turn every Bash call into a
+                // refusal. `hook_cli` repeats this check and stays the single decision.
+                let input: serde_json::Value =
+                    serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+                let command = input["tool_input"]["command"].as_str().unwrap_or("");
+                if input["tool_name"] != "Bash"
+                    || !moai_cli::claim_verify::is_commit_or_push(command)
+                {
+                    return Ok(serde_json::json!({
+                        "allowed": true, "reason": "not a git commit or push"
+                    }));
+                }
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
                 moai_cli::claim_verify::hook_cli(&project, &bytes, &transport, &clock)
             } else {
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
                 let request = input::<moai_cli::claim_verify::VerifyRequest>()?;
                 moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
             }
@@ -1296,7 +1310,9 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan { project, host } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            moai_cli::hooks::plan(&project, &host, home.as_deref())
+            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
+            merge_binary_state(&mut out);
+            Ok(out)
         }
         Command::HooksApply {
             project,
@@ -1305,13 +1321,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            moai_cli::hooks::apply(
+            let mut out = moai_cli::hooks::apply(
                 &project,
                 &host,
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
-            )
+            )?;
+            merge_binary_state(&mut out);
+            Ok(out)
         }
         Command::HookReceipt { host } => {
             // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
@@ -1719,9 +1737,46 @@ fn usage_error(e: clap::Error) -> ExitCode {
     ExitCode::from(2)
 }
 
+/// True when the command line is a generated host hook (#2348): `hook-receipt` or any word
+/// run with `--hook`. Read from the raw arguments so a command line that fails to parse is
+/// still handled as a hook. Both hosts read a hook's stdout as hook output and its exit 2 as
+/// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
+fn hook_mode_argv(args: &[String]) -> bool {
+    args.get(1).is_some_and(|w| w == "hook-receipt") || args.iter().skip(1).any(|a| a == "--hook")
+}
+
+/// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
+/// hooks-plan / hooks-apply result.
+fn merge_binary_state(out: &mut serde_json::Value) {
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    if let (Some(out), serde_json::Value::Object(state)) = (
+        out.as_object_mut(),
+        moai_cli::hooks::binary_state(&path_env),
+    ) {
+        out.extend(state);
+    }
+}
+
+/// Exit code of a hook-mode error that is not the guard's refusal: 1, which both hosts treat
+/// as a non-blocking hook error; the reason goes to stderr.
+const HOOK_NON_BLOCKING_ERROR: u8 = 1;
+
 fn main() -> ExitCode {
+    let argv: Vec<String> = std::env::args().collect();
+    let hook_mode = hook_mode_argv(&argv);
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
+        Err(e) if hook_mode => {
+            if matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
+                e.exit()
+            }
+            let rendered = e.render().to_string();
+            eprintln!(
+                "moai-cli hook: {}",
+                rendered.lines().next().unwrap_or("invalid command line")
+            );
+            return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
+        }
         Err(e) => return usage_error(e),
     };
     let op = cli.command.as_ref().and_then(operation);
@@ -1737,12 +1792,18 @@ fn main() -> ExitCode {
             }
         };
     };
-    // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs).
-    let hook_mode = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
+    // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
+    // guard's refusal is the one error that may block. A receipt hook never blocks.
+    let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
     match run_internal(cli.command.expect("internal operation")) {
+        Ok(_) if hook_mode => ExitCode::SUCCESS,
         Ok(result) => {
             println!("{}", contract::success(op, result));
             ExitCode::SUCCESS
+        }
+        Err(message) if hook_mode => {
+            eprintln!("{message}");
+            ExitCode::from(if guard { 2 } else { HOOK_NON_BLOCKING_ERROR })
         }
         Err(message) => {
             println!(
@@ -1750,7 +1811,7 @@ fn main() -> ExitCode {
                 contract::failure(op, contract::classify(&message), &message)
             );
             eprintln!("{message}");
-            ExitCode::from(if hook_mode { 2 } else { 1 })
+            ExitCode::from(1)
         }
     }
 }

@@ -92,14 +92,18 @@ pub trait Transport {
     fn send(&self, req: &HttpRequest) -> Result<HttpResponse>;
 }
 
+/// The merged token prefix list (REQ-FORGE-010). This is the single list the
+/// shared redact module consumes too (#2351) — the prefixes stay spelled here,
+/// because this is where they were already merged; nothing else restates them.
+pub(crate) const TOKEN_PREFIXES: [&str; 6] =
+    ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"];
+
 /// Removes token-shaped text from anything this program may surface (REQ-FORGE-010).
 pub fn redact(text: &str) -> String {
     text.split_inclusive(char::is_whitespace)
         .map(|word| {
             let w = word.trim_end();
-            let token = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"]
-                .iter()
-                .any(|p| w.contains(p));
+            let token = TOKEN_PREFIXES.iter().any(|p| w.contains(p));
             if token {
                 format!("[redacted]{}", &word[w.len()..])
             } else {

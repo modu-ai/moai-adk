@@ -70,8 +70,33 @@ fn check_host(host: &str) -> Result<()> {
 /// names the project as `.`: both hosts run a command hook in the session's working directory.
 pub fn hook_command(host: &str, handler: Handler) -> String {
     match handler {
-        Handler::Receipt => format!("moai-cli hook-receipt --host {host}"),
-        Handler::ClaimGuard => "moai-cli claim-verify . --hook".to_string(),
+        Handler::Receipt => format!("{HOOK_BINARY} hook-receipt --host {host}"),
+        Handler::ClaimGuard => format!("{HOOK_BINARY} claim-verify . --hook"),
+    }
+}
+
+/// The binary every generated hook command names.
+pub const HOOK_BINARY: &str = "moai-cli";
+
+/// Whether the generated command's binary resolves on `path_env` (#2348). `hooks-plan` and
+/// `hooks-apply` report it next to the plan, outside the plan digest: the PATH a host gives
+/// its hook process may differ from the shell's, so `resolved` only says this PATH finds it,
+/// and the set is never reported active before a host receipt shows a hook ran.
+pub fn binary_state(path_env: &str) -> Value {
+    match crate::install::resolve_on_path(path_env, HOOK_BINARY) {
+        Some(_) => json!({
+            "hook_binary": {"name": HOOK_BINARY, "state": "resolved"},
+            "hooks_active": "not_run",
+        }),
+        None => json!({
+            "hook_binary": {
+                "name": HOOK_BINARY,
+                "state": "binary_unresolved",
+                "note": "moai-cli is not on this PATH; each generated hook fails as a \
+                         non-blocking error and the claim guard does not run",
+            },
+            "hooks_active": false,
+        }),
     }
 }
 
