@@ -1,0 +1,3 @@
+# Goldens are byte-exact program output (trailing blank lines included); whitespace
+# checks must not ask for them to be edited.
+golden/* -whitespace

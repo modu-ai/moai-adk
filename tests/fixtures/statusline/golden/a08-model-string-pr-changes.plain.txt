@@ -1,0 +1,4 @@
+🤖 claude-sonnet-5-5 | 🗿 v3.2.1
+🔋 CW: ██░░░░░░░░ 29% | 5H: ░░░░░░░░░░ n/a | 7D: ░░░░░░░░░░ n/a
+📁 demo-project | 💌 PR #7 (⌥changes_requested)
+👤 reviewer
