@@ -87,26 +87,28 @@ fn usable_token(value: &str) -> Option<String> {
 }
 
 /// Where the GLM token came from, by name only (never the value).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum KeySource {
     Env,
-    Vault(crate::key_vault::Backend),
+    Vault(crate::key_vault::Scope),
 }
 
 impl KeySource {
-    fn name(self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             KeySource::Env => "env:ANTHROPIC_AUTH_TOKEN",
-            KeySource::Vault(_) => "vault:glm",
+            KeySource::Vault(crate::key_vault::Scope::Project(_)) => "vault:project:glm",
+            KeySource::Vault(crate::key_vault::Scope::Shared) => "vault:shared:glm",
         }
     }
 }
 
 /// The token and its source, in this order (#2393 S2, leader decision on the Issue):
 /// 1. the variable, when it holds a usable value (an empty or blank one does not hide the rest);
-/// 2. the vault's `glm` entry through the selected backend (`~/.moai-cli/config`, file by
-///    default) — a vault that is present but unsafe, or a backend that cannot answer, stops
-///    the launch with its code instead of falling through, so a broken store is not bypassed;
+/// 2. the encrypted vault's `glm` entry: the current project's folder, then `_shared`
+///    (decision 4 of Issue #2393 comment 6778671862) — an entry that is present but unsafe or
+///    does not decrypt stops the launch with its code instead of falling through, so a broken
+///    entry is not bypassed;
 /// 3. with no vault entry, a legacy key file is not read (user decision, Issue #2393 comment
 ///    6778150969); its presence stops the launch with `legacy_key_only` and the way to move
 ///    the key, and the file is left as it is.
@@ -118,10 +120,8 @@ fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked>
         return Ok(Some((token, KeySource::Env)));
     }
     if let Ok(home) = crate::key_vault::home() {
-        if let Some(token) = crate::key_vault::read(&home, "glm")? {
-            let backend =
-                crate::key_vault::backend(&home).unwrap_or(crate::key_vault::Backend::File);
-            return Ok(Some((token, KeySource::Vault(backend))));
+        if let Some((token, scope)) = crate::key_vault::read_here(&home, "glm")? {
+            return Ok(Some((token, KeySource::Vault(scope))));
         }
         if let Some(file) = legacy_key_file(&home) {
             return Err(crate::key_vault::Blocked::legacy_key_only(file));

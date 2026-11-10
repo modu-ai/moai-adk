@@ -1,9 +1,12 @@
-//! #2393 S3: `key-import-plan` / `key-import-apply` move a legacy GLM key file into the vault.
+//! #2393 S3: `key-import-plan` / `key-import-apply` move a legacy GLM key file into the
+//! encrypted vault (user decision, Issue #2393 comment 6778671862: `_shared` with `--shared`,
+//! else the current project's folder).
 //! Preview writes nothing and shows no value; apply needs the preview's digest and a
 //! permission reference, reads back and compares, records a receipt without the value, and
 //! leaves the legacy file byte- and time-identical. Temporary HOME and synthetic keys only.
 #![cfg(unix)]
 
+mod common;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
@@ -27,13 +30,37 @@ fn home(go: Option<&str>, rust: Option<&str>) -> (tempfile::TempDir, PathBuf) {
     (dir, h)
 }
 
+/// Runs from HOME (not a git work tree) with `--shared`.
 fn run(home: &Path, args: &[&str]) -> Output {
+    run_in(home, home, &[args, &["--shared"]].concat())
+}
+
+fn run_in(home: &Path, cwd: &Path, args: &[&str]) -> Output {
     Command::new(BIN)
         .args(args)
+        .current_dir(cwd)
         .env("HOME", home)
+        .env("GIT_CEILING_DIRECTORIES", home)
         .env_remove("ANTHROPIC_AUTH_TOKEN")
         .output()
         .unwrap()
+}
+
+fn shared_entry(home: &Path) -> PathBuf {
+    home.join(".moai-cli/vault/_shared/glm.key")
+}
+
+/// Sealed, private, and without the key text.
+fn assert_sealed(entry: &Path) {
+    let bytes = fs::read(entry).unwrap();
+    assert!(bytes.starts_with(b"MOAIKV1\n"));
+    for key in [KEY, RUST_KEY] {
+        assert!(!bytes.windows(key.len()).any(|w| w == key.as_bytes()));
+    }
+    assert_eq!(
+        fs::metadata(entry).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
 }
 
 fn envelope(out: &Output) -> Value {
@@ -89,7 +116,7 @@ fn the_permission_reference_bounds_are_kept() {
         let p = plan(&h);
         let a = apply(&h, p["plan_digest"].as_str().unwrap(), &reference);
         assert_eq!(a["ok"], ok, "{} bytes: {a}", reference.len());
-        assert_eq!(h.join(".moai-cli/vault/glm.key").exists(), ok);
+        assert_eq!(shared_entry(&h).exists(), ok);
     }
 }
 
@@ -155,13 +182,11 @@ fn preview_writes_nothing_and_apply_copies_keeping_the_original() {
     let a = apply(&h, p["plan_digest"].as_str().unwrap(), "user-ok-2393");
     assert_eq!(a["ok"], true, "{a}");
     assert_eq!(a["result"]["matched"], true);
-    // The vault holds the key, private.
-    let entry = h.join(".moai-cli/vault/glm.key");
-    assert_eq!(fs::read_to_string(&entry).unwrap(), format!("{KEY}\n"));
-    assert_eq!(
-        fs::metadata(&entry).unwrap().permissions().mode() & 0o777,
-        0o600
-    );
+    // The vault holds the key, sealed and private; it decrypts (status present).
+    assert_eq!(p["folder"], "_shared");
+    assert_sealed(&shared_entry(&h));
+    let s = envelope(&run(&h, &["key-status", "glm"]));
+    assert_eq!(s["result"]["entry"], "present", "{s}");
     // The legacy file is byte- and time-identical.
     let go = h.join(".moai/.env.glm").to_string_lossy().into_owned();
     assert_eq!(snapshot(&h)[&go], before[&go]);
@@ -215,10 +240,44 @@ fn the_launcher_order_picks_the_go_file_first_then_the_rust_one() {
     );
     let a = apply(&h, p["plan_digest"].as_str().unwrap(), "user-ok");
     assert_eq!(a["ok"], true, "{a}");
-    assert_eq!(
-        fs::read_to_string(h.join(".moai-cli/vault/glm.key")).unwrap(),
-        format!("{RUST_KEY}\n")
-    );
+    assert_eq!(a["result"]["matched"], true);
+    assert_sealed(&shared_entry(&h));
+}
+
+/// Without `--shared` the key goes to the working directory's project folder; outside a git
+/// work tree that is refused before anything is read or written.
+#[test]
+fn the_destination_is_the_project_folder_without_shared() {
+    let (_d, h) = home(Some(&format!("GLM_API_KEY={KEY}\n")), None);
+    let out = envelope(&run_in(&h, &h, &["key-import-plan", "glm"]));
+    assert_eq!(out["ok"], false, "{out}");
+    let repo = h.join("proj");
+    fs::create_dir(&repo).unwrap();
+    let init = common::git::command()
+        .args(["init", "-q"])
+        .current_dir(&repo)
+        .status()
+        .unwrap();
+    assert!(init.success());
+    let p = envelope(&run_in(&h, &repo, &["key-import-plan", "glm"]))["result"].clone();
+    assert_eq!(p["scope"], "project", "{p}");
+    let folder = p["folder"].as_str().unwrap().to_string();
+    assert!(folder.starts_with("proj-"), "{folder}");
+    let a = envelope(&run_in(
+        &h,
+        &repo,
+        &[
+            "key-import-apply",
+            "glm",
+            "--plan-digest",
+            p["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "user-ok",
+        ],
+    ));
+    assert_eq!(a["ok"], true, "{a}");
+    assert_sealed(&h.join(".moai-cli/vault").join(&folder).join("glm.key"));
+    assert!(!shared_entry(&h).exists());
 }
 
 #[test]
@@ -239,45 +298,22 @@ fn nothing_to_import_and_blocked_states_write_nothing() {
     let p = plan(&h2);
     assert_eq!(p["sources"][0]["regular_file"], false, "{p}");
     assert_eq!(p["action"], "nothing_to_import");
-    // An OS store backend is selected.
-    let (_d3, h3) = home(Some(&format!("GLM_API_KEY={KEY}\n")), None);
-    fs::create_dir_all(h3.join(".moai-cli")).unwrap();
-    fs::write(h3.join(".moai-cli/config"), "key_store = \"keyring\"\n").unwrap();
-    let p = plan(&h3);
-    assert_eq!(p["action"], "blocked");
-    assert!(p["reason"]
-        .as_str()
-        .unwrap()
-        .starts_with("key_store_unavailable"));
-    assert_eq!(
-        apply(&h3, p["plan_digest"].as_str().unwrap(), "ok")["ok"],
-        false
-    );
-    assert!(!h3.join(".moai-cli/vault").exists());
-    // An unusable vault entry blocks instead of being overwritten.
+    // An unusable vault entry (a plain-text file from before the format) blocks instead of
+    // being overwritten.
     let (_d4, h4) = home(Some(&format!("GLM_API_KEY={KEY}\n")), None);
-    fs::create_dir_all(h4.join(".moai-cli/vault")).unwrap();
-    fs::set_permissions(
-        h4.join(".moai-cli/vault"),
-        fs::Permissions::from_mode(0o700),
-    )
-    .unwrap();
-    fs::write(h4.join(".moai-cli/vault/glm.key"), "x\n").unwrap();
-    fs::set_permissions(
-        h4.join(".moai-cli/vault/glm.key"),
-        fs::Permissions::from_mode(0o644),
-    )
-    .unwrap();
+    fs::create_dir_all(h4.join(".moai-cli/vault/_shared")).unwrap();
+    for dir in [".moai-cli/vault", ".moai-cli/vault/_shared"] {
+        fs::set_permissions(h4.join(dir), fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    fs::write(shared_entry(&h4), "x\n").unwrap();
+    fs::set_permissions(shared_entry(&h4), fs::Permissions::from_mode(0o600)).unwrap();
     let p = plan(&h4);
     assert_eq!(p["action"], "blocked", "{p}");
     assert_eq!(
         apply(&h4, p["plan_digest"].as_str().unwrap(), "ok")["ok"],
         false
     );
-    assert_eq!(
-        fs::read_to_string(h4.join(".moai-cli/vault/glm.key")).unwrap(),
-        "x\n"
-    );
+    assert_eq!(fs::read_to_string(shared_entry(&h4)).unwrap(), "x\n");
 }
 
 #[test]
