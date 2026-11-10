@@ -31,9 +31,30 @@ the PR head; the auditor reads the run back with `gh api`. The independent audit
 place — this tool only pulls the audit evidence forward, before the PR is
 opened.
 
+Re-audits (Issue #2388) require explicit `--reaudit` (or check(body, reaudit=True));
+neither template fields nor a claim epoch enables this mode. In the exact
+`## 독립 review` section, up to the next Markdown heading, require exactly one
+line for each field (whitespace and Markdown list markers are accepted):
+
+  - 수리 확인 범위: F1 path/boundary repaired and touched scope
+  - 새 지적 분류: 없음
+
+The classification can instead be `차단: <concrete reason>` or
+`후속 Issue #<positive ASCII integer>: <concrete reason>`. Angle-bracket text is
+documentation notation, not an accepted value. Empty, duplicate, punctuation-only,
+TODO/TBD/not_run and angle-placeholder values fail. Contract violations, data
+damage and security findings are blocking; other new findings belong in a
+follow-up Issue. This is a text-completeness check only: it cannot judge repair
+truth, classification policy compliance, or whether the follow-up Issue exists.
+Initial audits keep the existing checks and output; the AUDIT verdict format
+and CI requirements are unchanged.
+
 Usage:
   python3 -I tools/check_pr_self_audit.py --file BODY.md
   python3 -I tools/check_pr_self_audit.py < BODY.md
+  python3 -I tools/check_pr_self_audit.py --reaudit < BODY.md
+  python3 -I tools/check_pr_self_audit.py --reaudit --file BODY.md
+  python3 -I tools/check_pr_self_audit.py --file BODY.md --reaudit
 
 Exit codes: 0 = section complete, 1 = section/items missing or unmeasured,
 2 = usage.
@@ -65,7 +86,7 @@ def strip_marker(line: str) -> str:
     return line.strip().lstrip("-*").strip().lower()
 
 
-def check(body: str) -> None:
+def check(body: str, *, reaudit: bool = False) -> None:
     lines = body.splitlines()
     starts = [i for i, ln in enumerate(lines) if ln.strip().lower() == SECTION]
     if not starts:
@@ -90,6 +111,8 @@ def check(body: str) -> None:
     if "failed" not in mut.lower():
         fail(["mutation:FAILED"])
     check_ci_lines(section)
+    if reaudit:
+        check_reaudit(lines)
     print("self-audit: pass (mutation/clone/host/receipt measured)")
 
 
@@ -111,6 +134,52 @@ def check_ci_lines(section) -> None:
             fail(missing)
 
 
+def meaningful(value: str) -> bool:
+    """Reject unfilled evidence without attempting to judge its truth."""
+    return (
+        any(char.isalnum() for char in value)
+        and not re.search(r"(?<![A-Za-z0-9])(?:TODO|TBD|not_run)(?![A-Za-z0-9])",
+                          value, re.IGNORECASE)
+        and not re.search(r"<[^>]*>", value)
+    )
+
+
+def check_reaudit(lines) -> None:
+    """Require one repair scope and one explicit new-finding classification."""
+    starts = [i for i, line in enumerate(lines) if line.strip() == "## 독립 review"]
+    if not starts:
+        fail(["## 독립 review"])
+    fields = {"수리 확인 범위": [], "새 지적 분류": []}
+    for line in lines[starts[0] + 1:]:
+        if re.match(r"^\s*#{1,6}(?:\s|$)", line):
+            break
+        match = re.fullmatch(
+            r"\s*(?:(?:[-*+]|[0-9]+[.)])\s+)?"
+            r"(수리 확인 범위|새 지적 분류)\s*:\s*(.*)", line,
+        )
+        if match:
+            fields[match[1]].append(match[2].strip())
+    missing = []
+    scope = fields["수리 확인 범위"]
+    if len(scope) != 1 or not meaningful(scope[0]):
+        missing.append("reaudit:scope")
+    findings = fields["새 지적 분류"]
+    valid_findings = False
+    if len(findings) == 1 and meaningful(findings[0]):
+        if findings[0] == "없음":
+            valid_findings = True
+        else:
+            match = re.fullmatch(
+                r"(?:차단|후속\s+Issue\s+#[1-9][0-9]*)\s*:\s*(.*)",
+                findings[0],
+            )
+            valid_findings = bool(match and meaningful(match[1]))
+    if not valid_findings:
+        missing.append("reaudit:findings")
+    if missing:
+        fail(missing)
+
+
 def usage() -> None:
     print(__doc__)
     raise SystemExit(2)
@@ -118,7 +187,14 @@ def usage() -> None:
 
 def main() -> None:
     args = [a for a in sys.argv[1:]]
-    if args and args[0] == "--file" and len(args) == 2:
+    reaudit = False
+    if args and args[0] == "--reaudit":
+        reaudit = True
+        args.pop(0)
+    elif args and args[-1] == "--reaudit":
+        reaudit = True
+        args.pop()
+    if args and args[0] == "--file" and len(args) == 2 and not args[1].startswith("--"):
         body = Path(args[1]).read_text(encoding="utf-8")
     elif args:
         usage()
@@ -126,7 +202,7 @@ def main() -> None:
         usage()
     else:
         body = sys.stdin.read()
-    check(body)
+    check(body, reaudit=reaudit)
 
 
 if __name__ == "__main__":
