@@ -20,7 +20,7 @@
 //! `hooks-apply --host codex`, rc.2 I1 #2238); the projection target is always explicit.
 //! Writing the project `.codex/config.toml` is the separate plan/apply in `codex_config`
 //! (#2240); the doctor reading it is a follow-up.
-//! The install location (`~/.agents/skills/moai` vs `<repo>/.agents/skills/moai`) stays a
+//! The install location (`~/.agents/skills/moai-cli` vs `<repo>/.agents/skills/moai-cli`) stays a
 //! HOLD (P04 / contract gap C5): there is no default, the caller names the target.
 use crate::{apply, digest, package_digest};
 use serde_json::{json, Value};
@@ -39,7 +39,7 @@ const STATUS_LINE_HOLD: &str = "tui.status_line item identifiers are not listed 
 /// The package's own digest record (02-A); it lists every other package file's sha256.
 const SOURCE_MANIFEST: &str = "references/source-manifest.json";
 const TARGET_FILES: usize = 4096;
-const LOCATION_HOLD: &str = "caller-chosen target; ~/.agents/skills/moai vs <repo>/.agents/skills/moai is a HOLD (P04 / C5), no default";
+const LOCATION_HOLD: &str = "caller-chosen target; ~/.agents/skills/moai-cli vs <repo>/.agents/skills/moai-cli is a HOLD (P04 / C5), no default";
 
 /// Options for `agents/openai.yaml`; `None` keeps the documented default by omitting the key.
 pub struct OpenAiYaml {
@@ -347,11 +347,11 @@ pub fn projection_plan(
         "skill_md_identical": skill_md_identical,
         "config_changes": config,
         "hooks": {"generated": [], "reason": "a projection generates no hooks; see hooks-plan / hooks-apply --host codex (#2238)"},
-        "invocation": {"desktop": "$moai in the composer", "cli": "/skills or $moai", "ide": "/skills or $moai"},
+        "invocation": {"desktop": "$moai-cli in the composer", "cli": "/skills or $moai-cli", "ide": "/skills or $moai-cli"},
         "notes": [
             "plan only: nothing is written; codex-projection-apply writes this plan when given its plan_digest",
-            "target candidates ~/.agents/skills/moai and <repo>/.agents/skills/moai are a HOLD; the caller chooses",
-            "a second skill named moai in another location is not merged; both can appear in selectors"
+            "target candidates ~/.agents/skills/moai-cli and <repo>/.agents/skills/moai-cli are a HOLD; the caller chooses",
+            "a second skill named moai-cli in another location is not merged; both can appear in selectors"
         ],
         "files_created": [],
         "host_loaded": false,

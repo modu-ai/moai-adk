@@ -224,7 +224,7 @@ fn receipts_dir(home: &Path) -> PathBuf {
         .filter(|p| p.is_dir())
         .collect();
     assert_eq!(entries.len(), 1, "one installation id directory");
-    entries.pop().unwrap().join("hosts")
+    entries.pop().unwrap().join("hosts/moai-cli")
 }
 
 fn receipt_value(home: &Path, host: &str) -> Value {
@@ -713,9 +713,9 @@ fn go_type_moai_is_untouched_while_moai_cli_installs() {
             .unwrap()
             .clone();
         assert!(
-            host["blocked"].is_null(),
+            host["blocked_reason"].is_null(),
             "{host_name} blocked: {}",
-            host["blocked"]
+            host["blocked_reason"]
         );
         let mentioned: Vec<&str> = host["files"]
             .as_array()
@@ -736,4 +736,65 @@ fn go_type_moai_is_untouched_while_moai_cli_installs() {
         go_after, go_before,
         "the Go-type moai trees must be byte-identical"
     );
+}
+
+/// A pre-rename Rust receipt owns `skills/moai`, not the new projection root.
+#[test]
+fn legacy_receipts_cannot_supply_the_new_skill_baseline_or_recovery() {
+    let (_root, home, stage1, stage2, _s3) = setup();
+    let go_before = go_digest(&home);
+    let (initial, _) = plan_via_cli(&home, &stage1);
+    apply_ok(
+        &home,
+        &stage1,
+        &initial,
+        initial["plan_digest"].as_str().unwrap(),
+    );
+    let current_receipts = receipts_dir(&home);
+    let legacy_receipts = current_receipts.parent().unwrap();
+    let mut legacy_state = Vec::new();
+    for (name, parent) in [("claude", ".claude/skills"), ("codex", ".agents/skills")] {
+        let old_root = home.join(parent).join("moai");
+        fs::rename(home.join(parent).join("moai-cli"), &old_root).unwrap();
+        let current = current_receipts.join(format!("{name}.json"));
+        let legacy = legacy_receipts.join(format!("{name}.json"));
+        // Use the receipt the fixture CLI emitted, including pre-rename layouts.
+        let generated = if current.is_file() { &current } else { &legacy };
+        let mut receipt: Value = serde_json::from_slice(&fs::read(generated).unwrap()).unwrap();
+        // Pending legacy work must not be recovered against the new, absent root.
+        receipt["status"] = json!("pending");
+        fs::write(&legacy, serde_json::to_vec(&receipt).unwrap()).unwrap();
+        if generated != &legacy {
+            fs::remove_file(generated).unwrap();
+        }
+        let old_digest = tree_digest(&old_root, &[]).unwrap();
+        let legacy_bytes = fs::read(&legacy).unwrap();
+        legacy_state.push((old_root, old_digest, legacy, legacy_bytes));
+    }
+    let recovery = ok_result(&run_cli(&["recovery-plan", home.to_str().unwrap()], None));
+    for name in ["claude", "codex"] {
+        assert_eq!(host(&recovery, name)["receipt_status"], "none");
+    }
+    let (plan, _) = plan_via_cli(&home, &stage2);
+    for name in ["claude", "codex"] {
+        assert_eq!(host(&plan, name)["blocked_reason"], Value::Null);
+        for (path, _) in stage_v2() {
+            assert_eq!(plan_action(&plan, name, path), "create");
+        }
+    }
+    apply_ok(&home, &stage2, &plan, plan["plan_digest"].as_str().unwrap());
+    for (name, parent) in [("claude", ".claude/skills"), ("codex", ".agents/skills")] {
+        for (path, bytes) in stage_v2() {
+            assert_eq!(
+                fs::read(home.join(parent).join("moai-cli").join(path)).unwrap(),
+                bytes.as_bytes()
+            );
+        }
+        assert_eq!(receipt_value(&home, name)["status"], "committed");
+    }
+    for (root, digest, receipt, bytes) in legacy_state {
+        assert_eq!(tree_digest(&root, &[]).unwrap(), digest);
+        assert_eq!(fs::read(receipt).unwrap(), bytes);
+    }
+    assert_eq!(go_digest(&home), go_before);
 }

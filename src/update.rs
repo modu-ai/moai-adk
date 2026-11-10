@@ -15,7 +15,7 @@
 //! `unchanged` where the bytes already match — never as a silent overwrite.
 //!
 //! Host receipts live beside the 04-A install receipt:
-//! `~/.moai-cli/installations/<install_id>/hosts/<host>.json`. The `install_id` is the
+//! `~/.moai-cli/installations/<install_id>/hosts/moai-cli/<host>.json`. The `install_id` is the
 //! 04-A derivation, obtained through the public `install::plan_receipt` so this module
 //! does not modify 04-A. Host config keys (Claude `settings.json`, Codex `config.toml`)
 //! are out of scope (P04 HOLD — the REQs name projections only). Projections are
@@ -277,6 +277,7 @@ pub struct HostReceipt {
 
 /// Receipt path; `create` also creates the directory chain (apply only — the plan must
 /// not write anything, so it passes `false`).
+/// The skill namespace keeps pre-rename receipts from owning the new projection.
 pub(crate) fn host_receipt_path(
     home: &Path,
     install_id: &str,
@@ -287,7 +288,8 @@ pub(crate) fn host_receipt_path(
         .join(crate::HOME_STATE_DIR)
         .join("installations")
         .join(install_id)
-        .join("hosts");
+        .join("hosts")
+        .join(SKILL_DIR);
     if create {
         // Refuse a symlink in any component below ~/.moai-cli before creating.
         let mut cursor = dir.as_path();
@@ -345,7 +347,7 @@ pub(crate) fn save_host_receipt(
 /// REQ-04C-03 (#2089): preserve every file this host will overwrite as a known-good
 /// copy BEFORE the apply transaction starts (the pending receipt included) — a copy
 /// failure starts nothing for the host. Copies live at
-/// `~/.moai-cli/installations/<id>/hosts/<host>/known-good/<hex>`, where `<hex>` is the
+/// `~/.moai-cli/installations/<id>/hosts/moai-cli/<host>/known-good/<hex>`, where `<hex>` is the
 /// bare-hex sha256 of the exact before bytes — a filename-valid form like `install_id`;
 /// the receipt's `before_sha256` carries the same digest with its `sha256:` prefix, so
 /// recovery derives the path by stripping that prefix. `create` actions have no before
@@ -376,6 +378,7 @@ fn known_good_copies(
             .join("installations")
             .join(install_id)
             .join("hosts")
+            .join(SKILL_DIR)
             .join(host)
             .join("known-good");
         // Refuse a symlink in any component below ~/.moai-cli before creating (same

@@ -59,7 +59,7 @@ else
   (cd "$WORK/project" && HOME="$WORK/home" CODEX_HOME="$WORK/home/.codex" codex exec --json --ephemeral \
       --ignore-user-config --sandbox read-only --skip-git-repo-check \
       -o "$WORK/last.md" \
-      '$moai 프로젝트 설정 미리보기만 해줘' \
+      '$moai-cli 프로젝트 설정 미리보기만 해줘' \
       > "$WORK/ac4.jsonl" 2> "$WORK/ac4.err")
   RC4=$?
   keep last.md > /dev/null

@@ -189,7 +189,7 @@ impl Fixture {
             .filter(|p| p.is_dir())
             .collect();
         assert_eq!(dirs.len(), 1);
-        dirs[0].join("hosts")
+        dirs[0].join("hosts/moai-cli")
     }
 
     fn receipt(&self, host: &str) -> Value {

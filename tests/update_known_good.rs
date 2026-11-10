@@ -1,6 +1,6 @@
 //! Known-good copies + `version_before` (04-B #2089). `update-apply` preserves the
 //! exact bytes of every overwritten file under
-//! `~/.moai-cli/installations/<id>/hosts/<host>/known-good/<sha256-hex>` before the
+//! `~/.moai-cli/installations/<id>/hosts/moai-cli/<host>/known-good/<sha256-hex>` before the
 //! apply transaction starts (REQ-04C-03 recovery input), and each receipt carries the
 //! previous receipt's `package_version` as `version_before` (REQ-04C-06). New-file
 //! discipline: existing test files are untouched. Packages are built at RUNTIME inside
@@ -175,6 +175,7 @@ fn receipt_json(home: &Path) -> Value {
         installations
             .join(id)
             .join("hosts")
+            .join("moai-cli")
             .join(format!("{HOST}.json")),
     )
     .unwrap();
@@ -186,6 +187,7 @@ fn known_good_dir(home: &Path, install_id: &str) -> PathBuf {
         .join("installations")
         .join(install_id)
         .join("hosts")
+        .join("moai-cli")
         .join(HOST)
         .join("known-good")
 }

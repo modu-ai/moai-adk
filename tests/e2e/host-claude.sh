@@ -78,7 +78,7 @@ if [ -z "$(printenv ANTHROPIC_API_KEY || true)" ]; then
   receipt "AC-08C-3" not_run "credential ANTHROPIC_API_KEY not set; command not executed"
 else
   (cd "$WORK/project" && HOME="$WORK/home" claude --bare \
-      -p '/moai 프로젝트 설정 미리보기만 해줘' \
+      -p '/moai-cli 프로젝트 설정 미리보기만 해줘' \
       --add-dir "$WORK/project" \
       --output-format stream-json --verbose \
       --permission-mode dontAsk --permission-prompts none \
@@ -110,7 +110,7 @@ if [ -z "$(printenv ANTHROPIC_API_KEY || true)" ]; then
 else
   BEFORE="$(find "$WORK/project" -type f -print0 2>/dev/null | sort -z | xargs -0 shasum -a 256)"
   (cd "$WORK/project" && HOME="$WORK/home" claude --bare \
-      -p '/moai 설정 적용까지 진행해줘' \
+      -p '/moai-cli 설정 적용까지 진행해줘' \
       --add-dir "$WORK/project" \
       --output-format stream-json --verbose \
       --permission-mode dontAsk --permission-prompts none \
