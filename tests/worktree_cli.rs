@@ -200,6 +200,39 @@ fn apply(f: &Fixture, prefix: &str, digest: &str) -> Value {
 
 // ---- worktree ----
 
+/// #2336 AC-1: the branch `worktree-plan` names reads back, through the claim guard's
+/// parser, as the record's Issue — for logical keys led by digits, by letters, and ending in
+/// digits. The guard reads `issue/` lane branches only, so the round trip uses that prefix;
+/// another prefix is reported as not a lane branch (the prefix itself stays a HOLD).
+#[test]
+fn worktree_plan_branch_round_trips_through_the_claim_guard() {
+    use moai_cli::claim_verify::{issue_from_branch, lane_branch, LaneBranch};
+    for logical in ["06-C", "A9", "rc2-a9", "D9-2", "7-B"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path().join("primary");
+        let base = make_repo(&repo);
+        let rec = record(KEY_A, logical, &base, &["src/worktree.rs"], "running");
+        let source = record_args(tmp.path(), &rec, &comment(1));
+        let p: String = repo.to_string_lossy().into();
+        for (prefix, want) in [
+            ("issue", LaneBranch::Issue(ISSUE)),
+            ("lane", LaneBranch::NotLane),
+        ] {
+            let out = run(
+                &repo,
+                &args(&["worktree-plan", &p, "--branch-prefix", prefix], &source),
+            );
+            let env = envelope(&out);
+            assert_eq!(env["ok"], true, "{env}");
+            let branch = env["result"]["branch"].as_str().unwrap().to_string();
+            assert_eq!(branch, format!("{prefix}/{ISSUE}-{logical}-e1"));
+            assert_eq!(lane_branch(&branch), want, "{branch}");
+        }
+        let issue_branch = format!("issue/{ISSUE}-{logical}-e1");
+        assert_eq!(issue_from_branch(&issue_branch), Some(ISSUE));
+    }
+}
+
 #[test]
 fn worktree_plan_idempotent() {
     let f = fixture();
@@ -210,7 +243,7 @@ fn worktree_plan_idempotent() {
     assert!(first.status.success());
     assert_eq!(first.stdout, second.stdout, "plan output is byte-identical");
     let r = envelope(&first)["result"].clone();
-    assert_eq!(r["branch"], "lane/06-C-7-e1");
+    assert_eq!(r["branch"], "lane/7-06-C-e1");
     assert_eq!(r["writes"], false);
     assert_eq!(r["base_sha"], f.base);
     assert!(r["path"]
@@ -330,7 +363,7 @@ fn worktree_refuses_checked_out_branch() {
             "add",
             "-q",
             "-b",
-            "lane/06-C-7-e1",
+            "lane/7-06-C-e1",
             other.to_str().unwrap(),
             &f.base,
         ],

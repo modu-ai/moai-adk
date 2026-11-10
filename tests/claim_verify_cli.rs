@@ -663,6 +663,51 @@ fn hook_guards_commit_in_claimed_worktree_only() {
     assert!(t.sent.borrow().is_empty());
 }
 
+/// #2336: a lane branch carries its Issue number first (`issue/<n>-<key>`), the shape every
+/// lane uses and `worktree-plan` now emits. The two card cases — the old `worktree-plan`
+/// shape `issue/<key>-<n>-e<epoch>` with a digit-led key, and a letter-led key — are reported
+/// as unparseable instead of reading a wrong Issue (6) or passing as "not a lane branch".
+#[test]
+fn lane_branch_reads_issue_first_and_reports_unparseable() {
+    use moai_cli::claim_verify::{issue_from_branch, lane_branch, LaneBranch};
+    assert_eq!(issue_from_branch("issue/06-C-2007-e1"), None);
+    assert_eq!(lane_branch("issue/06-C-2007-e1"), LaneBranch::Unparseable);
+    assert_eq!(lane_branch("issue/A9-x-2306-e1"), LaneBranch::Unparseable);
+    assert_eq!(lane_branch("issue/2007-06-C-e1"), LaneBranch::Issue(2007));
+    assert_eq!(lane_branch("issue/2306-A9-x-e1"), LaneBranch::Issue(2306));
+    assert_eq!(
+        lane_branch("issue/2255-rc2-a9-claim-enforce"),
+        LaneBranch::Issue(2255)
+    );
+    assert_eq!(lane_branch("issue/7"), LaneBranch::Issue(7));
+    for unparseable in ["issue/", "issue/x-1", "issue/7x", "issue/0-a", "issue/06-C"] {
+        assert_eq!(
+            lane_branch(unparseable),
+            LaneBranch::Unparseable,
+            "{unparseable}"
+        );
+    }
+    for not_lane in ["main", "feature/7-a", "lane/2007-06-C-e1", "issues/7-a"] {
+        assert_eq!(lane_branch(not_lane), LaneBranch::NotLane, "{not_lane}");
+    }
+}
+
+/// #2336: with no claim record, a commit on a lane-looking branch whose Issue number cannot be
+/// read is still allowed (fail-open stays: decision D5 HOLD), but the verdict says so in a
+/// field of its own instead of the plain "not a lane worktree" reason. No GitHub read.
+#[test]
+fn hook_reports_unparseable_lane_branch_without_blocking() {
+    let clock = FixedClock(now());
+    let (_dir, root) = lane_repo("issue/A9-x-2306-e1");
+    let t = RecordedTransport::new(vec![]);
+    let v = hook_cli(&root, &hook_input("git commit -m x", &root), &t, &clock).unwrap();
+    assert_eq!(v["allowed"], json!(true));
+    assert_eq!(v["branch"], json!("unparseable"));
+    let reason = v["reason"].as_str().unwrap();
+    assert!(reason.contains("issue/A9-x-2306-e1"), "{reason}");
+    assert!(t.sent.borrow().is_empty());
+}
+
 fn gh_stub(dir: &Path, json_body: &str) -> std::path::PathBuf {
     let path = dir.join("gh-stub");
     fs::write(

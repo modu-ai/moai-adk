@@ -528,24 +528,49 @@ fn cli_round_trip_in_isolated_home() {
         "{refused}"
     );
 
+    // Hook mode prints nothing (#2348); the receipt log is the record.
     fs::create_dir(p.path().join(".moai-cli/receipts")).ok();
-    let (code, rec) = cli(
+    let log = p.path().join(".moai-cli/receipts/hooks.jsonl");
+    let lines = || {
+        fs::read_to_string(&log)
+            .map(|s| s.lines().count())
+            .unwrap_or(0)
+    };
+    let (code, stdout) = cli_raw(
         &["hook-receipt", "--host", "codex"],
         p.path(),
         home.path(),
         br#"{"hook_event_name":"SessionStart","source":"startup"}"#,
     );
-    assert_eq!(code, 0);
-    assert_eq!(rec["operation"], json!("hook.receipt"));
-    assert_eq!(rec["result"]["recorded"], json!(true), "{rec}");
-    let (code, rec) = cli(
+    assert_eq!((code, stdout.as_str()), (0, ""));
+    assert_eq!(lines(), 1);
+    let (code, stdout) = cli_raw(
         &["hook-receipt", "--host", "codex"],
         p.path(),
         home.path(),
         b"{oops",
     );
-    assert_eq!(code, 0);
-    assert_eq!(rec["result"]["recorded"], json!(false));
+    assert_eq!((code, stdout.as_str()), (0, ""));
+    assert_eq!(lines(), 1, "a cut-off object records nothing");
+}
+
+fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String) {
+    use std::io::Write as _;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .args(args)
+        .current_dir(cwd)
+        .env("HOME", home)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(stdin).unwrap();
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+    )
 }
 
 /// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
