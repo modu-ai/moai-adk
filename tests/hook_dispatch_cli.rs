@@ -770,7 +770,8 @@ fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
     let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                     "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
     assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
-    // apply_patch edits files and cannot commit: not guarded (capability `not_guarded`).
+    // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
+    // only .git internals, credential paths and secret content in patches).
     let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
                        "tool_input": {"command": "*** Begin Patch\n*** git commit\n*** End Patch"},
                        "cwd": root});
@@ -866,9 +867,16 @@ fn hooks_plan_reports_per_host_engine_capabilities() {
         assert_eq!(caps["host"], json!(host));
         seen.push(caps);
     }
+    let guards = |c: &Value| c["tool-preflight"]["guards"].to_string();
     let not_guarded = |c: &Value| c["tool-preflight"]["not_guarded"].to_string();
-    assert!(not_guarded(&seen[1]).contains("apply_patch"));
-    assert!(!not_guarded(&seen[0]).contains("apply_patch"));
+    // Codex file edits arrive as apply_patch, Claude's as Write/Edit/MultiEdit/NotebookEdit.
+    assert!(guards(&seen[1]).contains("apply_patch"));
+    assert!(!guards(&seen[0]).contains("apply_patch"));
+    assert!(guards(&seen[0]).contains("NotebookEdit"));
+    for caps in &seen {
+        assert!(not_guarded(caps).contains("outside the project"));
+        assert!(not_guarded(caps).contains("MCP tools"));
+    }
     assert_eq!(seen[1]["tool-observe"]["events"], json!(["PostToolUse"]));
     assert_eq!(
         seen[0]["tool-observe"]["events"],
@@ -1157,4 +1165,127 @@ fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
     let (n, r) = calls("ls");
     assert_allow(&r);
     assert_eq!(n, 0, "not a commit: no git at all");
+}
+
+// ---- stage 5: minimal guard bundle (A1–A4) ----
+
+/// The refused removal leaves the fixture's `.git` in place; the allowed control really runs.
+/// Both commands stay inside the temporary fixture repository.
+#[test]
+fn a_refused_removal_runs_nothing_and_an_allowed_one_runs() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join("build")).unwrap();
+    assert!(!host_runs_tool(Path::new(BIN), &root, "rm -rf .git"));
+    assert!(root.join(".git").is_dir(), "refused: .git must survive");
+    assert!(host_runs_tool(Path::new(BIN), &root, "rm -rf build"));
+    assert!(!root.join("build").exists(), "allowed control must run");
+}
+
+#[test]
+fn stage_five_reasons_are_fixed_text_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let marker = "UNIQUEMARK7";
+    let cmd = format!("git push --force origin main # {marker}");
+    for host in ["claude", "codex"] {
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
+            &root,
+            &pre_tool(&cmd, &root),
+            &[],
+        )
+        .unwrap();
+        let reason = assert_deny(&r);
+        assert!(reason.contains("force push"), "{reason}");
+        assert!(!reason.contains(marker), "{reason}");
+    }
+}
+
+#[test]
+fn file_writes_into_git_internals_are_refused_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let write = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                       "tool_input": {"file_path": ".git/hooks/pre-commit", "content": "x"}, "cwd": root});
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        write.to_string().as_bytes(),
+        &[],
+    ));
+    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                       "tool_input": {"command": "*** Begin Patch\n*** Update File: .git/config\n@@\n-a\n+b\n*** End Patch"},
+                       "cwd": root});
+    assert_deny(&codex(
+        "tool-preflight",
+        &root,
+        patch.to_string().as_bytes(),
+    ));
+    let fine = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                      "tool_input": {"file_path": "src/ok.rs", "content": "x"}, "cwd": root});
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        fine.to_string().as_bytes(),
+        &[],
+    ));
+}
+
+// ---- stage 6: the confirmation class (B2 = A) ----
+
+/// The PreToolUse object's decision and reason.
+fn decision(r: &Run) -> (String, String) {
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).expect("one JSON object");
+    let h = &v["hookSpecificOutput"];
+    assert_eq!(h["hookEventName"], "PreToolUse");
+    (
+        h["permissionDecision"].as_str().unwrap().to_string(),
+        h["permissionDecisionReason"].as_str().unwrap().to_string(),
+    )
+}
+
+/// Decision B2 = A (Issue #2389 c6774899518 row 25): Claude asks, Codex refuses with a fixed
+/// suffix; nothing is recorded as a deny for an ask. Strings only, nothing is executed.
+#[test]
+fn a_confirmation_asks_on_claude_and_is_refused_on_codex() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
+    let input = pre_tool("git reset --hard HEAD~1", &root);
+    let (d, reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
+    assert_eq!(d, "ask");
+    assert!(reason.contains("discards uncommitted changes"), "{reason}");
+    let (d, reason) = decision(&codex("tool-preflight", &root, &input));
+    assert_eq!(d, "deny");
+    assert!(reason.contains("Codex cannot ask"), "{reason}");
+    // An ask leaves no deny line (the user's answer is unknown).
+    let log = root.join(".moai-cli/receipts/hook-engine.jsonl");
+    let text = fs::read_to_string(&log).unwrap_or_default();
+    assert!(!text.contains("\"kind\":\"deny\""), "{text}");
+}
+
+/// A deny anywhere on the line wins over a confirmation (Claude's order deny > ask).
+#[test]
+fn a_deny_on_the_same_line_wins_over_a_confirmation() {
+    let (_d, root) = repo("issue/77-x");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard && git push --force origin main", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "deny");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard; git commit -m no-token", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "deny");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "ask");
 }
