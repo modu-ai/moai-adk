@@ -1,9 +1,10 @@
 //! #2106: the GitHub template opt-in read from the project profile (`github_issues`).
 //! Each test works in its own temporary project; no network and no `gh`.
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
-    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -16,12 +17,7 @@ fn cli(args: &[&str], input: &Value) -> Value {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.to_string().as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
     let out = child.wait_with_output().unwrap();
     serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
         panic!(
