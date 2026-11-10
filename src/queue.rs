@@ -79,7 +79,7 @@ pub struct Candidate {
 }
 
 /// Issue numbers named on lines that start with `prefix` (`#123` tokens only).
-fn refs_on(body: &str, prefix: &str) -> Vec<i64> {
+pub(crate) fn refs_on(body: &str, prefix: &str) -> Vec<i64> {
     body.lines()
         .filter_map(|l| l.trim().strip_prefix(prefix))
         .flat_map(|rest| {

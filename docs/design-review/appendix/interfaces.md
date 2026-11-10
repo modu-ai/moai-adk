@@ -63,6 +63,7 @@
 - `identity`
 - `install-inspect`
 - `lane-handoff-check`
+- `lane-status`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "covers": "every file under skills/moai/ except this manifest",
+  "covers": "every file under skills/moai-cli/ except this manifest",
   "design_source": {
     "id": "design-22",
     "title": "MoAI 생성 파일 원문 템플릿과 적용 계약",
@@ -46,12 +46,12 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "98ff360c40f6fbd651b147c7cf9f4312ee522da52a350d9a807fc5324bc3c063",
+      "sha256": "66f7221166a887bda0d3ff7af40aa7e778b3dd64e4dea141afb0203843a63fdf",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286."
       }
     },
     "references/routes.json": {
@@ -136,21 +136,21 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "ba1e014b8247ebd5aad50eb741a1b888ef16cc7db1f211e821f0942343e12cdc",
+      "sha256": "c30f193406395cafa228e42332b323735bd46d4916c16c355bec970e93329d8a",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. Step 5 now names the tested goal-block generator (tools/gen_goal_block.py) and its keep-set exclusion rule — #2334."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration."
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "a444bf6109d903ec5ec141f6d5c76c92b35627d919efd6d60776e6d7c9dc318f",
+      "sha256": "7c8d254b2c57ed7a87ead86a73e1b6ab106698b75d3b3278cb3d418170de099e",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. Step 8 now names the tested goal-block generator (tools/gen_goal_block.py, agent kind) — #2334. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344."
       }
     }
   }
