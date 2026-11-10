@@ -173,6 +173,26 @@ class AtlasBaselineConsistency(unittest.TestCase):
                     self.assertEqual(result["failed_metrics"], [metric])
                     self.assertLess(result["metrics"][metric], result["thresholds"][metric])
 
+    def test_judge_rejects_omitted_hard_tasks_and_duplicate_rows(self):
+        with self.project() as root:
+            out, result = self.judge(root, self.candidate(root))
+            self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+            self.assertTrue(result["passed"])
+            for defect in ("omitted-hard-tasks", "duplicate-row"):
+                with self.subTest(defect=defect):
+                    candidate = self.candidate(root)
+                    if defect == "omitted-hard-tasks":
+                        candidate["tasks"] = [
+                            row for row in candidate["tasks"]
+                            if row["id"] not in {"T-007", "T-032", "T-033"}
+                        ]
+                    else:
+                        candidate["tasks"].append(dict(candidate["tasks"][0]))
+                    path = root / "incomplete-candidate.json"
+                    path.write_text(json.dumps(candidate), encoding="utf-8")
+                    out = self.invoke(root, "--judge", str(path))
+                    self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
+
     def test_mean_floors_allow_compensating_improvement_not_per_task_floors(self):
         with self.project() as root:
             candidate = self.candidate(root)
