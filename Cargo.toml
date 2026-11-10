@@ -14,6 +14,18 @@ sha2 = "=0.10.9"
 # Format-preserving TOML for `.codex/config.toml` (Issue #2240): comments, order and every
 # key MoAI does not manage survive an edit. MIT OR Apache-2.0; default features only.
 toml_edit = "=0.25.3"
+# Replacing the running binary, Windows included (Issue #2195, decision 16:1x(11-08)).
+# Apache-2.0; MSRV 1.63. windows-sys and fastrand are pulled only on Windows targets.
+self-replace = "=1.5.1"
 
 [dev-dependencies]
 tempfile = "=3.27.0"
+
+# The profile that 'dist' will build with (cargo-dist 0.34, E1 #2193)
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# cargo-dist: publish = false hides binaries, so mark this package explicitly
+[package.metadata.dist]
+dist = true

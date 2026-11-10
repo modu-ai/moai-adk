@@ -161,13 +161,14 @@ pub fn parse_tasks(text: &str) -> Result<TasksFile, ForgeError> {
     Ok(TasksFile { project_id, tasks })
 }
 
-/// Conservative disclosure gate: the profile filter's credential shapes, a few more common
-/// ones (cloud keys, bearer headers, chat tokens) and personal absolute paths.
+/// Conservative disclosure gate: the shared redact module's shapes (profile shapes
+/// plus the merged gh token prefixes — #2351, single list) plus this gate's own
+/// extra cloud/chat key shapes and personal absolute paths. The extra shapes below
+/// stay here: adding new prefixes elsewhere is out of this card's scope.
 fn sensitive(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
-    crate::SECRET_SHAPES
-        .iter()
-        .chain(&[
+    crate::redact::contains_secret_shape(s)
+        || [
             "akia",
             "bearer ",
             "xoxb-",
@@ -177,7 +178,8 @@ fn sensitive(s: &str) -> bool {
             "/home/",
             "~/",
             ":\\",
-        ])
+        ]
+        .iter()
         .any(|x| lower.contains(x))
         || s.chars().any(|c| c.is_control() && c != '\t')
 }
@@ -647,15 +649,16 @@ pub fn apply<T: Transport, C: Clock>(
                 if wrote {
                     client.clock.sleep(1);
                 }
-                let sent = client.send_with_backoff(&HttpRequest {
-                    method: "POST".into(),
-                    url: format!(
-                        "{API}/repos/{}/{}/issues",
-                        req.target.owner, req.target.repo
-                    ),
-                    headers: Default::default(),
-                    body: Some(payload),
-                });
+                let sent = client.send_with_backoff(
+                    &HttpRequest::new(
+                        "POST",
+                        format!(
+                            "{API}/repos/{}/{}/issues",
+                            req.target.owner, req.target.repo
+                        ),
+                    )
+                    .with_body(payload),
+                );
                 wrote = true;
                 let uncertain = |entry: &mut OutboxEntry, why: String| -> Result<(), ForgeError> {
                     entry.advance(

@@ -10,8 +10,10 @@ use moai_cli::claim::{
 };
 use moai_cli::contract;
 use moai_cli::forge::policy::{format_utc, Clock};
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+use moai_cli::forge::transport::{Exchange, HttpRequest, RecordedTransport};
 use moai_cli::forge::{Client, Config};
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -53,76 +55,39 @@ impl Clock for FakeClock {
 }
 
 fn task_ref() -> TaskRef {
-    TaskRef {
-        provider: "github".into(),
-        host: "github.com".into(),
-        owner: "acme".into(),
-        repo: "widgets".into(),
-        repository_id: 101,
-        issue_id: 7001,
-        issue_number: 7,
-    }
+    TaskRef::new("github", "github.com", "acme", "widgets", 101, 7001, 7)
 }
 
 fn lib_req(session: &str, lease_until: &str) -> ClaimRequest {
-    ClaimRequest {
-        schema_version: 1,
-        task_ref: task_ref(),
-        logical_key: "06-A".into(),
-        owner: Owner {
-            kind: "session".into(),
-            id: session.into(),
-            host_id: None,
-            pid: None,
-            process_start: None,
-        },
-        assignee: None,
-        provider_session: None,
-        attempt: None,
-        base_revision: "a".repeat(40),
-        write_scope: vec!["src/claim.rs".into()],
-        spec_ref: SpecRef {
+    ClaimRequest::new(
+        1,
+        task_ref(),
+        "06-A",
+        Owner::new("session", session),
+        "a".repeat(40),
+        vec!["src/claim.rs".into()],
+        SpecRef {
             id: "SPEC-RC1-06-A".into(),
             revision: "r1".into(),
             digest: None,
         },
-        lease_until: lease_until.into(),
-        projection_intents: vec![
-            json!({"kind": "projection_intent", "target": "assignees", "action": "add"}),
-        ],
-        expected_epoch: None,
-    }
+    )
+    .lease_until(lease_until)
+    .projection_intents(vec![
+        json!({"kind": "projection_intent", "target": "assignees", "action": "add"}),
+    ])
 }
 
 fn worktree() -> WorktreeId {
-    WorktreeId {
-        common_dir: "/tmp/repo/.git".into(),
-        git_dir: "/tmp/repo/.git/worktrees/lane".into(),
-        path: "/tmp/repo".into(),
-        head: "b".repeat(40),
-        branch: None,
-    }
+    WorktreeId::new(
+        "/tmp/repo/.git",
+        "/tmp/repo/.git/worktrees/lane",
+        "/tmp/repo",
+        "b".repeat(40),
+    )
 }
 
-fn resp(status: u16, body: Value) -> HttpResponse {
-    HttpResponse {
-        status,
-        headers: Default::default(),
-        body: Some(body),
-    }
-}
-
-fn exchange(method: &str, url: &str, response: HttpResponse) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: method.into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response,
-    }
-}
+use common::{exchange, json_response as resp};
 
 fn comments_url() -> String {
     "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100".into()
@@ -834,12 +799,7 @@ fn git_repo(dir: &Path) {
 fn stub_gh(dir: &Path) -> PathBuf {
     let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -n \"${CLAIM_STUB_JSON:-}\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$CLAIM_STUB_JSON\";\n    elif [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, script);
     path
 }
 
@@ -1036,8 +996,10 @@ fn claim_concurrent_exclusive() {
     let lease = format_utc(now_utc() + 3600);
     let req = cli_req(&lease, "agent-x");
 
-    // AC-06A-1: N >= 8 parallel claim attempts, each retrying `busy` (the caller-side
-    // waiting policy — the product itself never waits, REQ-06A-05).
+    // AC-06A-1: N >= 8 parallel claim attempts, each retrying the journal lock-busy
+    // answer (the caller-side waiting policy — the product itself never waits,
+    // REQ-06A-05). #2345: a held lock answers the failure envelope — kind `unavailable`,
+    // retryable true, exit 1 — the same answer as every other journal-writing op.
     let n = 8u32;
     let outcomes: Vec<Value> = thread::scope(|s| {
         let handles: Vec<_> = (0..n)
@@ -1052,16 +1014,20 @@ fn claim_concurrent_exclusive() {
                             &gh,
                             &claim_body("agent-x", &lease),
                         );
+                        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+                        if v["error"]["kind"] == json!("unavailable") {
+                            assert_eq!(v["ok"], json!(false));
+                            assert_eq!(v["error"]["retryable"], json!(true));
+                            assert!(!out.status.success());
+                            thread::sleep(Duration::from_millis(5));
+                            continue;
+                        }
                         assert!(
                             out.status.success(),
                             "{}",
                             String::from_utf8_lossy(&out.stderr)
                         );
-                        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-                        if v["result"]["outcome"] != json!("busy") {
-                            return v;
-                        }
-                        thread::sleep(Duration::from_millis(5));
+                        return v;
                     }
                     panic!("the journal stayed busy for 300 attempts");
                 })

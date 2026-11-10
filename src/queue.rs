@@ -39,6 +39,9 @@ use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
 
+/// The record state pr-confirm writes once the PR is handed to the gate (#2344).
+const HANDED_OFF_STATE: &str = "pr_ready";
+
 const API: &str = "https://api.github.com";
 /// Same safety bound as the claim comment pagination.
 const MAX_PAGES: u32 = 50;
@@ -190,6 +193,7 @@ fn read_claim_comments<T: Transport, C: Clock>(
         "{API}/repos/{owner}/{repo}/issues/{number}/comments?per_page=100"
     ));
     let mut out = Vec::new();
+    let mut closed = Vec::new();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -205,9 +209,16 @@ fn read_claim_comments<T: Transport, C: Clock>(
                 line.comment_id = id;
                 out.push(line);
             }
+            // #2255: a claim closed by a release or handoff line no longer holds the card.
+            match crate::claim_verify::classify_comment(text) {
+                crate::claim_verify::CommentKind::Release { target }
+                | crate::claim_verify::CommentKind::Handoff { target, .. } => closed.push(target),
+                _ => {}
+            }
         }
         url = next;
     }
+    out.retain(|c| !closed.contains(&c.comment_id));
     Ok(out)
 }
 
@@ -263,42 +274,49 @@ pub fn next<T: Transport, C: Clock>(
     });
     let mut lost_to = Vec::new();
     for c in &candidates {
-        let claim = ClaimRequest {
-            schema_version: 1,
-            task_ref: TaskRef {
-                provider: "github".into(),
-                host: "github.com".into(),
-                owner: req.owner.clone(),
-                repo: req.repo.clone(),
+        // #2169 display projections (assignee, provider_session) stay empty: queue-next's
+        // request carries neither, and they never decide ownership (REQ-B2-01). The
+        // constructor leaves them and expected_epoch/attempt unset (#2256).
+        let claim = ClaimRequest::new(
+            1,
+            TaskRef::new(
+                "github",
+                "github.com",
+                req.owner.clone(),
+                req.repo.clone(),
                 repository_id,
-                issue_id: c.id,
-                issue_number: c.number,
-            },
-            logical_key: c.logical_key.clone(),
-            owner: req.claim.owner.clone(),
-            attempt: None,
-            base_revision: req.claim.base_revision.clone(),
-            write_scope: req.claim.write_scope.clone(),
-            spec_ref: req.claim.spec_ref.clone(),
-            lease_until: req.claim.lease_until.clone(),
-            projection_intents: vec![
-                json!({"kind": "projection_intent", "target": "label", "action": "not_run"}),
-                json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
-            ],
-            expected_epoch: None,
-            // #2169 display projections: queue-next's request carries neither, so the
-            // record leaves them empty (they never decide ownership, REQ-B2-01).
-            assignee: None,
-            provider_session: None,
-        };
+                c.id,
+                c.number,
+            ),
+            c.logical_key.clone(),
+            req.claim.owner.clone(),
+            req.claim.base_revision.clone(),
+            req.claim.write_scope.clone(),
+            req.claim.spec_ref.clone(),
+        )
+        .lease_until(req.claim.lease_until.clone())
+        .projection_intents(vec![
+            json!({"kind": "projection_intent", "target": "label", "action": "not_run"}),
+            json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
+        ]);
         // REQ-A2-01/02: a card that already carries a claim comment (live or expired) is
         // not a candidate, unless this journal holds an active record for it.
         let key = task_key(&claim.task_ref);
-        let own_active = events
-            .iter()
-            .rev()
-            .find(|e| e.record.task_key == key)
-            .is_some_and(|e| is_active(&e.record.state));
+        let own = events.iter().rev().find(|e| e.record.task_key == key);
+        // #2344: a card this lane already handed to the gate (`pr_ready`, written by
+        // pr-confirm) stays open until the merge, but it is not work to pick up again. Skip
+        // it here only; the record itself stays active so a repair handoff, worktree ops and
+        // scope-check keep treating it as owned.
+        if let Some(e) = own.filter(|e| e.record.state == HANDED_OFF_STATE) {
+            skipped.push(json!({
+                "issue": c.number,
+                "reason": "handed_off",
+                "state": e.record.state,
+                "epoch": e.record.epoch,
+            }));
+            continue;
+        }
+        let own_active = own.is_some_and(|e| is_active(&e.record.state));
         if !own_active {
             let claims = read_claim_comments(client, &req.owner, &req.repo, c.number)?;
             if let Some(entry) = claimed_entry(c.number, &claims, clock.now()) {
@@ -355,27 +373,21 @@ pub fn next_cli<T: Transport, C: Clock>(
     req: QueueRequest,
     transport: &T,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let root = journal_root(project)?;
     let id = identity::identity(project)?;
     let worktree = worktree_id(&id)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Ok(json!({
-            "outcome": "busy",
-            "issue": Value::Null,
-            "record": Value::Null,
-            "foreign_owner": Value::Null,
-            "coordination_scope": "single-host",
-            "cross_host_atomic": false,
-            "lost_to": [],
-            "skipped": [],
-            "projection": Value::Null,
-            "notes": ["another process holds the journal lock; retry policy is the caller's (REQ-06A-05)"],
-        }));
+        // #2345: the same journal lock-busy answer as every other journal-writing op,
+        // with the kind set at the raise site.
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    next(&journal, &req, worktree, &client, clock)
+    Ok(next(&journal, &req, worktree, &client, clock)?)
 }
 
 #[cfg(test)]
@@ -423,5 +435,45 @@ mod tests {
         assert_eq!(logical_key("[rc.2][A2] x", 7), "A2");
         assert_eq!(logical_key("plain title", 7), "issue-7");
         assert_eq!(logical_key("[only] one", 7), "issue-7");
+    }
+
+    /// #2255: a claim closed by a release or handoff line no longer counts, so the card can
+    /// be a candidate again; an open claim still does.
+    #[test]
+    fn released_claims_do_not_hold_the_card() {
+        use crate::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+        struct Fixed;
+        impl Clock for Fixed {
+            fn now(&self) -> i64 {
+                0
+            }
+            fn sleep(&self, _: u64) {}
+        }
+        let lease = "2026-11-09T09:00:00Z";
+        let page = |body: Value| Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/repos/acme/widgets/issues/7/comments?per_page=100"),
+            ),
+            response: HttpResponse::new(200).with_body(body),
+        };
+        let claim = |id: i64, s: &str| json!({"id": id, "body": format!("moai-claim: session={s} epoch=1 lease_until={lease}")});
+        let t = RecordedTransport::new(vec![
+            page(json!([
+                claim(100, "a"),
+                {"id": 150, "body": crate::claim_verify::render_release_line(100, "leader")},
+            ])),
+            page(json!([
+                claim(100, "a"),
+                {"id": 150, "body": crate::claim_verify::render_handoff_line(100, "b", "leader")},
+                claim(200, "b"),
+            ])),
+        ]);
+        let client = Client::new(&t, &Fixed, Default::default(), Default::default());
+        assert!(read_claim_comments(&client, "acme", "widgets", 7)
+            .unwrap()
+            .is_empty());
+        let open = read_claim_comments(&client, "acme", "widgets", 7).unwrap();
+        assert_eq!(open.iter().map(|c| c.comment_id).collect::<Vec<_>>(), [200]);
     }
 }

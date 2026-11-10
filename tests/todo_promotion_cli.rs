@@ -12,6 +12,8 @@ use moai_cli::{
         Client, Config, ForgeError,
     },
 };
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -112,18 +114,12 @@ impl Transport for Script {
 }
 
 fn ok(body: Value) -> HttpResponse {
-    HttpResponse {
-        status: 200,
-        headers: [("etag".to_string(), "\"e1\"".to_string())].into(),
-        body: Some(body),
-    }
+    HttpResponse::new(200)
+        .with_header("etag", "\"e1\"")
+        .with_body(body)
 }
 fn status(code: u16, body: Value) -> HttpResponse {
-    HttpResponse {
-        status: code,
-        headers: Default::default(),
-        body: Some(body),
-    }
+    HttpResponse::new(code).with_body(body)
 }
 fn repo() -> (&'static str, String, Reply) {
     (
@@ -709,12 +705,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
         "#!/bin/sh\n# test stub for gh api (GET only)\nfor a in \"$@\"; do last=\"$a\"; done\nfor a in \"$@\"; do [ \"$a\" = POST ] && {{ echo 'stub refuses writes' >&2; exit 9; }}; done\ncase \"$last\" in\n  *issues*) printf '%s' '{issues}';;\n  *) printf '%s' '{repo}';;\nesac\n"
     );
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &script);
     path
 }
 

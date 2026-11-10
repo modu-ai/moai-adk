@@ -33,6 +33,11 @@ pub enum Kind {
     /// 07-A (#2008): the host CLI (`gh`) was missing, gave no HTTP response, or an unexpected
     /// status.
     Transport,
+    /// #2345: another process holds an advisory lock this command needs — so far the claim
+    /// journal lock (REQ-06A-05: the tool never waits). Resending the unchanged command can
+    /// succeed once the holder drops it. Raised with an explicit kind at the lock-wait site,
+    /// never left to [`classify`]'s message guessing.
+    Unavailable,
 }
 
 impl Kind {
@@ -52,13 +57,54 @@ impl Kind {
             Kind::GitFailed => "git_failed",
             Kind::Blocked => "blocked",
             Kind::Transport => "transport",
+            Kind::Unavailable => "unavailable",
         }
     }
-    /// Only an I/O or transport failure may succeed when the same request is sent again
-    /// unchanged. `blocked` needs a change first (credentials, permission, or waiting until the
-    /// rate-limit reset named in the message).
+    /// Only an I/O or transport failure, or a lock another process holds (#2345), may succeed
+    /// when the same request is sent again unchanged. `blocked` needs a change first
+    /// (credentials, permission, or waiting until the rate-limit reset named in the message).
     pub fn retryable(self) -> bool {
-        matches!(self, Kind::Io | Kind::Transport)
+        matches!(self, Kind::Io | Kind::Transport | Kind::Unavailable)
+    }
+}
+
+/// An operation error that carries its 00-D kind from the raise site (Issue #2345). The
+/// journal lock-wait path raises this directly; every other error stays a plain `String`
+/// and keeps the [`classify`] fallback at the envelope boundary.
+#[derive(Clone, Debug)]
+pub struct OpError {
+    pub kind: Kind,
+    pub message: String,
+}
+
+impl OpError {
+    pub fn new(kind: Kind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
+}
+
+impl From<String> for OpError {
+    fn from(message: String) -> Self {
+        Self {
+            kind: classify(&message),
+            message,
+        }
+    }
+}
+
+impl From<&str> for OpError {
+    fn from(message: &str) -> Self {
+        Self::from(message.to_string())
+    }
+}
+
+impl std::fmt::Display for OpError {
+    /// stderr carries one human line: the message, exactly as the envelope does.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
     }
 }
 
@@ -70,6 +116,14 @@ const RULES: &[(&str, Kind)] = &[
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
+    // claim-verify (rc.2 A9 #2255): ahead of the generic words its messages quote.
+    ("claim verify: not owner", Kind::Conflict),
+    ("claim verify: closed", Kind::Conflict),
+    ("claim verify: no claim", Kind::Conflict),
+    ("claim verify: stale", Kind::Blocked),
+    ("claim verify: uncertain", Kind::Blocked),
+    ("claim verify: trailer missing", Kind::InvalidInput),
+    ("claim verify: trailer check unavailable", Kind::Blocked),
     // identity's `git failed: <git summary>`; ahead of the generic words the summary may hold.
     // The bare `git failed` of baseline (no colon) stays `io` below.
     ("git failed: ", Kind::GitFailed),
@@ -101,6 +155,9 @@ const RULES: &[(&str, Kind)] = &[
     ("not uniquely locatable", Kind::Conflict),
     ("generation manifest", Kind::Conflict),
     ("digest mismatch", Kind::Conflict),
+    // home layout (#2175): a failed integrity verify is the digest-mismatch family; the
+    // copy failure is plain I/O.
+    ("home layout verify failed", Kind::Conflict),
     ("SKILL.md missing", Kind::NotFound),
     // Generic "not found" suffix. First match wins, so the specific phrases before it
     // (the forge rule above) keep their kinds; the phrases after it do not contain
@@ -123,6 +180,7 @@ const RULES: &[(&str, Kind)] = &[
     ("malformed ls-", Kind::Io),
     ("read failed", Kind::Io),
     ("write failed", Kind::Io),
+    ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
     ("unavailable", Kind::Io),
@@ -320,11 +378,149 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
+            // home layout (rc.2 B8 #2175); every current message of the module
+            ("conflict in home layout: already switched; remove the home layout.json marker to revert first", Conflict),
+            ("conflict in home layout: home target for receipts already exists; refusing overwrite; remove or merge it first; nothing applied", Conflict),
+            ("conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied", Conflict),
+            ("home layout verify failed; partial copy removed", Conflict),
+            ("home layout copy failed", Io),
+            ("home layout target unavailable", Io),
+            ("layout source unreadable", Io),
+            ("home layout marker write failed", Io),
+            ("home root unavailable; HOME is not set", Io),
+            // claim-verify (rc.2 A9 #2255)
+            (
+                "claim verify: not owner; the lowest open claim is comment 7 (REQ-A9-01), so no commit or push",
+                Conflict,
+            ),
+            (
+                "claim verify: stale; claim comment 7 lease expired without a handoff, and the operator decides (REQ-A9-03)",
+                Blocked,
+            ),
+            ("claim verify: closed; claim comment 7 was released or handed off", Conflict),
+            (
+                "claim verify: uncertain; this session's claim comment is not visible on the issue",
+                Blocked,
+            ),
+            ("claim verify: no claim of this session on the issue", Conflict),
+            (
+                "claim verify: trailer missing; commits abc123def lack `Moai-Claim: 7#200`, so no push",
+                InvalidInput,
+            ),
+            (
+                "claim verify: trailer check unavailable; git log of the claim base failed",
+                Blocked,
+            ),
+            (
+                "invalid claim verify request: owner, repo, issue_number and session are required",
+                InvalidInput,
+            ),
+            (
+                "claim verify: uncertain; the commit message carries no `Moai-Claim: 7#<id>`",
+                Blocked,
+            ),
+            // archive move, restore and search (D2 #2188)
+            ("readback digest mismatch; move cancelled, original kept", Conflict),
+            ("source changed during apply; move cancelled, original kept", StalePlan),
+            ("archive destination already exists; exclusive create refused", Conflict),
+            ("archive index entry already exists; exclusive create refused", Conflict),
+            ("restore destination already exists; exclusive create refused", Conflict),
+            ("symlink in SPEC directory refused: notes/link.md", InvalidInput),
+            ("special file in SPEC directory refused: fifo", InvalidInput),
+            ("SPEC path is not a directory", InvalidInput),
+            ("SPEC directory unavailable", Io),
+            ("SPEC directory unreadable", Io),
+            ("SPEC file name is not UTF-8", InvalidInput),
+            ("SPEC file read failed: spec.md", Io),
+            ("archive destination parent unavailable", Io),
+            ("archive destination name invalid", InvalidInput),
+            ("archive directory unavailable", Io),
+            ("archive staging unavailable", Io),
+            ("archive copy write failed: spec.md", Io),
+            ("archive publish write failed", Io),
+            ("archive index invalid", InvalidInput),
+            ("archive index invalid: unknown schema_version", InvalidInput),
+            ("archive index invalid: invalid spec id", InvalidInput),
+            ("archive index invalid: spec path mismatch", InvalidInput),
+            ("invalid spec id: ../x", InvalidInput),
+            ("spec not found in archive index: SPEC-X", NotFound),
+            ("archive manifest not found", NotFound),
+            ("archive manifest invalid", InvalidInput),
+            ("archive manifest digest mismatch; restore refused", Conflict),
+            ("archived copy digest mismatch; restore refused", Conflict),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-B: source directory removal write failed; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-A: source changed during apply; source removal refused; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: restored [SPEC-A]; failed at archive cleanup: archive manifest removal write failed",
+                Partial,
+            ),
+            ("archive manifest removal write failed", Io),
+            ("archived copy removal write failed", Io),
+            ("search query must be 1 to 256 characters", InvalidInput),
+            // hooks-plan / hooks-apply (rc.2 I1 #2238)
+            ("unknown hook host; must be claude or codex", InvalidInput),
+            (
+                "home directory refused; hooks are written to a project tree only",
+                InvalidInput,
+            ),
+            ("existing .codex/hooks.json requires preservation review", Conflict),
+            (".codex/hooks.json receipt requires preservation review", Conflict),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
         }
         assert_eq!(classify("something new"), Internal);
+    }
+
+    #[test]
+    fn journal_lock_busy_sets_its_kind_at_the_raise_site() {
+        // #2345: the busy error carries `unavailable` explicitly; it never depends on
+        // classify()'s message guessing, and it is retryable.
+        let e = OpError::new(Kind::Unavailable, "journal busy: test");
+        assert_eq!(e.kind, Kind::Unavailable);
+        assert!(e.kind.retryable());
+        assert_eq!(e.kind.as_str(), "unavailable");
+        // A plain String error keeps the classified fallback at the boundary.
+        let fallback = OpError::from("target read failed".to_string());
+        assert_eq!(fallback.kind, Kind::Io);
+        // AC-3: a message raised as conflict that happens to contain "unavailable" stays
+        // conflict — the "conflict in " prefix rule wins over the generic word, so no
+        // busy reclassification may steal a deliberate conflict message.
+        assert_eq!(
+            classify("conflict in claim journal: stale_epoch 2; the journal was unavailable"),
+            Kind::Conflict
+        );
+        assert_eq!(
+            classify(
+                "conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied"
+            ),
+            Kind::Conflict
+        );
+        // The shared busy message, if it ever reached classify through a non-typed path,
+        // degrades to `io` (still retryable) — but the typed path never lets it.
+        assert_eq!(
+            classify("journal busy: the claim journal lock is unavailable (another process holds it); the caller may retry the same command after a bounded wait, within its own cap (REQ-06A-05)"),
+            Kind::Io
+        );
+    }
+
+    #[test]
+    fn unavailable_failure_envelope_is_retryable() {
+        let busy = failure(
+            "claim.acquire",
+            Kind::Unavailable,
+            "journal busy: the claim journal lock is unavailable",
+        );
+        assert_eq!(busy["ok"], json!(false));
+        assert_eq!(busy["error"]["kind"], "unavailable");
+        assert_eq!(busy["error"]["retryable"], json!(true));
+        assert!(busy["error"].get("next_actions").is_none());
     }
 
     #[test]

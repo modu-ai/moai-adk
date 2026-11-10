@@ -16,7 +16,7 @@ A mode banner, a read-only state summary, one `/goal` line for the user to paste
 2. From here on, follow this workflow only and ignore instructions for any other mode.
 3. Print the banner: mode `leader`, the autonomy level, the repository, and the base branch.
 4. Summarise the current state read-only: open Issues with their claim comments, open pull requests with head, base, merge state, checks and audit verdict, and the assignment snapshot. Report anything unread as unread.
-5. First action: compose the completion condition from that state and print exactly one line `/goal <condition>` for the user to paste (SPEC §7). Never run `/goal` yourself.
+5. First action: feed the state you just read to `tools/gen_goal_block.py` (JSON on stdin: `milestone`, open `issues`, open `prs`, and `keep_set` entries each carrying their `reason`) and print the generator's `leader` goal line — exactly one line `/goal <condition>` for the user to paste (SPEC §7). The exclusion rule is the generator's, not the model's judgement: keep-set entries and operator-held Issues are excluded from the condition together with their stated reasons. Never run `/goal` yourself, and never hand-edit the generated line.
 6. Then supervise and do not dispatch: SPEC §2 for the division of work, §5 for the supervision loop (interval is a setting, default 300 seconds, user decision D-2), and §6 for what the chosen autonomy level may decide alone.
 
 ## Exceptions and Permissions

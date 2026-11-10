@@ -25,7 +25,7 @@ moai-cli pr-body-render <worktree> (--task <key> | --record <file> --claim-comme
 | 독립 review | 판정과 판정 댓글 링크를 적을 자리다. 판정이 나오기 전에는 대기로 둔다. |
 | not_run / blocked | 실행하지 않은 검사와 그 이유, 기다리는 결정이나 HOLD를 적는다. 표에서 빼지 않는다. |
 | 남은 gap | 관측하지 못한 것과, 관측했어도 여전히 틀릴 수 있는 것을 적는다. |
-| op marker | 본문 끝에 `<!-- moai-op pr_create:<repository_id>:<task_key>:<epoch> -->`를 둔다. 06-B의 reconcile이 이 marker로 PR을 찾는다. |
+| op marker | 본문 끝에 `<!-- moai-op pr_create:<repository_id>:<task_key>:<epoch> -->`를 둔다. 06-B의 reconcile이 이 marker로 PR을 찾는다. 같은 claim epoch에서 PR을 하나 더 열면(후속 PR·범위 분할) 그 PR은 `pr-body-render --pr-seq N`(N은 2부터)으로 렌더링해 `<!-- moai-op pr_create:<repository_id>:<task_key>-<N>:<epoch> -->`를 쓴다(#2329). 첫 PR의 marker는 그대로이고, 기존 marker도 그대로 읽힌다. 같은 marker를 가진 PR이 둘이면 reconcile은 어느 쪽도 확정하지 않고 `uncertain`으로 남긴다. 이미 확정된 operation에 다른 PR의 ACK가 오면 `pr-confirm`은 충돌로 거부한다. |
 
 ## 자동 종료 키워드는 쓰지 않는다
 

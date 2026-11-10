@@ -210,7 +210,7 @@ fn expand_home(home: &Path, stored: &str) -> PathBuf {
     }
 }
 
-fn sha256_file(path: &Path) -> Result<String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String> {
     let meta = fs::metadata(path).map_err(|_| "binary metadata unavailable")?;
     if !meta.is_file() {
         return Err("binary path is not a regular file".into());
@@ -509,7 +509,7 @@ fn is_executable(path: &Path) -> bool {
 
 /// First PATH entry holding an executable `<name>` (shell order); on Windows the
 /// `.exe` spelling is tried after the bare name.
-fn resolve_on_path(path_env: &str, name: &str) -> Option<PathBuf> {
+pub(crate) fn resolve_on_path(path_env: &str, name: &str) -> Option<PathBuf> {
     for dir in std::env::split_paths(path_env) {
         if dir.as_os_str().is_empty() {
             continue;

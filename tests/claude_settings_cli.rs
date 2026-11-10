@@ -108,6 +108,28 @@ fn plan_apply_then_replan_is_a_no_op() {
     assert_eq!(again["planned_sha256"], Value::Null);
 }
 
+/// #2244 x #2238: a caller may set `permissions` (narrowing values only) through the CLI,
+/// alongside the key the caller may never set, `hooks`.
+#[test]
+fn permissions_are_settable_through_the_cli_but_widening_modes_are_refused() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let narrowing = json!({"permissions": {"deny": ["Bash(rm:*)"], "defaultMode": "plan"}});
+    let result = plan(p, home.path(), &narrowing);
+    assert_eq!(result["action"], json!("create"), "{result}");
+    let (code, v) = run(
+        &["claude-settings-plan", p.to_str().unwrap()],
+        home.path(),
+        &json!({"permissions": {"defaultMode": "bypassPermissions"}}),
+    );
+    assert_eq!(code, Some(1), "{v}");
+    assert!(v["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("widening modes are refused"));
+    assert!(!p.join(".claude").exists(), "nothing written");
+}
+
 /// AC-1 / REQ-I2-01: keys outside the managed settings are refused and named,
 /// and nothing is written; a stale digest is refused too.
 #[test]

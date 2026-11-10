@@ -4,7 +4,7 @@
 //! top §9 L1184 `@MOAI:REQ SPEC-X/REQ-007` (space form) and Core Brain
 //! L3472-3473 `@MOAI:SPEC: SPEC-PAYMENT-001` (colon form); the conflict and the
 //! "define schema + parser version before adding sub-lines" note are recorded in
-//! review-group2 §태그 문법):
+//! review-group2, tag grammar section):
 //!
 //! ```text
 //! line    := prefix? "@MOAI:" payload | prefix? "@MX:" payload
@@ -204,10 +204,11 @@ fn scan_file(path: &Path) -> Result<Value> {
             "args": p.args,
             "line": line,
             "raw": raw,
+            "raw_untrusted": true,
             "parser_version": PARSER_VERSION,
         })).collect::<Vec<_>>(),
         "invalid": invalid.into_iter().map(|(line, raw, reason)| json!({
-            "line": line, "raw": raw, "reason": reason,
+            "line": line, "raw": raw, "raw_untrusted": true, "reason": reason,
         })).collect::<Vec<_>>(),
     }))
 }

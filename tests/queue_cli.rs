@@ -2,9 +2,12 @@
 //! with an injected clock — no network, no sleeping), in the fixture style of
 //! `tests/claim_cli.rs`. `RecordedTransport` asserts method and URL in order, so an
 //! unexpected request (for example a second POST to a lost card) fails the test.
+mod common;
+
+use common::{exchange, json_response as resp};
 use moai_cli::claim::{task_key, Journal, Owner, SpecRef, TaskRef, WorktreeId};
 use moai_cli::forge::policy::Clock;
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::forge::{Client, Config};
 use moai_cli::queue::{next, ClaimTemplate, QueueRequest};
 use serde_json::{json, Value};
@@ -31,13 +34,7 @@ fn request(session: &str) -> QueueRequest {
         repo: "widgets".into(),
         milestone: 3,
         claim: ClaimTemplate {
-            owner: Owner {
-                kind: "session".into(),
-                id: session.into(),
-                host_id: None,
-                pid: None,
-                process_start: None,
-            },
+            owner: Owner::new("session", session),
             base_revision: "a".repeat(40),
             write_scope: vec!["src/queue.rs".into()],
             spec_ref: SpecRef {
@@ -51,33 +48,12 @@ fn request(session: &str) -> QueueRequest {
 }
 
 fn worktree() -> WorktreeId {
-    WorktreeId {
-        common_dir: "/tmp/repo/.git".into(),
-        git_dir: "/tmp/repo/.git/worktrees/lane".into(),
-        path: "/tmp/repo".into(),
-        head: "b".repeat(40),
-        branch: None,
-    }
-}
-
-fn resp(status: u16, body: Value) -> HttpResponse {
-    HttpResponse {
-        status,
-        headers: Default::default(),
-        body: Some(body),
-    }
-}
-
-fn exchange(method: &str, url: &str, response: HttpResponse) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: method.into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response,
-    }
+    WorktreeId::new(
+        "/tmp/repo/.git",
+        "/tmp/repo/.git/worktrees/lane",
+        "/tmp/repo",
+        "b".repeat(40),
+    )
 }
 
 fn card(number: i64, key: &str, body: &str) -> Value {
@@ -143,15 +119,15 @@ fn run(root: &Path, session: &str, exchanges: Vec<Exchange>) -> (Value, Recorded
 }
 
 fn record_file(root: &Path, issue: i64) -> std::path::PathBuf {
-    let key = task_key(&TaskRef {
-        provider: "github".into(),
-        host: "github.com".into(),
-        owner: "acme".into(),
-        repo: "widgets".into(),
-        repository_id: 101,
-        issue_id: issue * 1000,
-        issue_number: issue,
-    });
+    let key = task_key(&TaskRef::new(
+        "github",
+        "github.com",
+        "acme",
+        "widgets",
+        101,
+        issue * 1000,
+        issue,
+    ));
     root.join(format!("{key}.json"))
 }
 
@@ -302,6 +278,91 @@ fn live_foreign_claim_is_skipped_and_posts_nothing() {
     assert_eq!(out["skipped"][0]["claimed_by"], json!("session-b"));
     assert_eq!(out["skipped"][0]["expired"], json!(false));
     assert!(posts(&t).is_empty());
+    assert_eq!(t.remaining(), 0);
+}
+
+/// #2344 AC-1/AC-3(a): once the lane has handed its card to the gate (`pr_ready`, written
+/// by pr-confirm), the next queue-next skips that card even though its Issue is still open
+/// until the merge, and claims the free one. The handed-off record is left exactly as it
+/// was: still `pr_ready` (so handoff, worktree and scope-check keep treating it as active)
+/// and still visible to claim-show, never `cancelled`.
+#[test]
+fn own_pr_ready_card_is_skipped_and_the_free_card_is_claimed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+
+    // Round 1: claim #7.
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.extend(attempt(7, 500, vec![claim(500, "session-a")]));
+    let (first, t1) = run(&root, "session-a", ex);
+    assert_eq!(first["outcome"], json!("claimed"), "{first}");
+    assert_eq!(first["issue"], json!(7));
+    assert_eq!(t1.remaining(), 0);
+
+    // Hand-off: the same change pr-confirm makes (pr_link.rs: `r.state = "pr_ready"`).
+    {
+        let journal = locked(&root);
+        let mut rec = journal
+            .read_events()
+            .unwrap()
+            .last()
+            .unwrap()
+            .record
+            .clone();
+        rec.state = "pr_ready".into();
+        journal.commit("pr_ready", &rec).unwrap();
+    }
+
+    // Round 2: #7 is still open (not merged yet), #8 is free. Every request the run makes
+    // is recorded, so a read or POST for #7 beyond the open-issue list fails the test.
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.extend(attempt(8, 600, vec![claim(600, "session-a")]));
+    let (second, t2) = run(&root, "session-a", ex);
+    assert_eq!(second["outcome"], json!("claimed"), "{second}");
+    assert_eq!(second["issue"], json!(8), "{second}");
+    assert_eq!(
+        second["skipped"],
+        json!([{"issue": 7, "reason": "handed_off", "state": "pr_ready", "epoch": 1}]),
+        "{second}"
+    );
+    assert_eq!(t2.remaining(), 0);
+
+    // AC-3(a): the #7 record is unchanged and still shown.
+    let key7 = task_key(&TaskRef::new(
+        "github",
+        "github.com",
+        "acme",
+        "widgets",
+        101,
+        7000,
+        7,
+    ));
+    let shown = moai_cli::claim::show(&root, &key7).unwrap();
+    assert_eq!(shown["outcome"], json!("held"), "{shown}");
+    assert_eq!(shown["record"]["state"], json!("pr_ready"), "{shown}");
+    assert_eq!(shown["record"]["comment_id"], json!(500), "{shown}");
+}
+
+/// #2344 control for the skip above: an own card that is NOT handed off yet (`assigned`) is
+/// still returned as `already_owned`, so a restarted lane resumes its unfinished card
+/// instead of claiming another one. No request is made for the free #8.
+#[test]
+fn own_unfinished_card_is_resumed_not_skipped() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.extend(attempt(7, 500, vec![claim(500, "session-a")]));
+    let (first, _) = run(&root, "session-a", ex);
+    assert_eq!(first["record"]["state"], json!("assigned"), "{first}");
+
+    let (again, t) = run(
+        &root,
+        "session-a",
+        reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]),
+    );
+    assert_eq!(again["outcome"], json!("already_owned"), "{again}");
+    assert_eq!(again["issue"], json!(7), "{again}");
+    assert_eq!(again["skipped"], json!([]), "{again}");
     assert_eq!(t.remaining(), 0);
 }
 

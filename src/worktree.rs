@@ -41,12 +41,18 @@ type Result<T> = std::result::Result<T, String>;
 pub const RECORD_UPDATE_OWNER: &str =
     "06-C via 06-B Journal::commit when the record came from --task; not written for --record";
 
-/// The journal of `project`, opened for writing and locked; a held lock is a conflict at
-/// once (06-A busy-never-waits, REQ-06A-05).
-pub fn open_locked_journal(project: &Path) -> Result<Journal> {
+/// The journal of `project`, opened for writing and locked; a held lock is the one
+/// journal lock-busy answer — the explicit `unavailable` kind, retryable (06-A
+/// busy-never-waits, REQ-06A-05; #2345 sets the kind at this raise site).
+pub fn open_locked_journal(
+    project: &Path,
+) -> std::result::Result<Journal, crate::contract::OpError> {
     let journal = Journal::open(&claim::journal_root(project)?)?;
     if !journal.try_lock()? {
-        return Err("conflict in claim journal: another process holds the journal lock".into());
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     Ok(journal)
 }
@@ -105,7 +111,7 @@ pub fn apply_and_record<C: Clock>(
     path: Option<&Path>,
     plan_digest: &str,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = if from_journal {
         Some(open_locked_journal(project)?)
     } else {
@@ -137,7 +143,9 @@ pub fn not_written() -> Value {
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
         .args(args)
         .current_dir(dir)
         .output()
@@ -153,8 +161,9 @@ fn git(dir: &Path, args: &[&str]) -> Result<String> {
 }
 
 fn git_ok(dir: &Path, args: &[&str]) -> Result<bool> {
-    Command::new("git")
-        .args(args)
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.args(args)
         .current_dir(dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -319,8 +328,9 @@ fn valid_prefix(p: &str) -> bool {
 }
 
 // @MX:DEBT: [AUTO] the branch prefix is a required input with no default (HOLD, leader 2026-11-08)
-// @MX:CEILING: REQ-06C-01 layout `<prefix>/<logical_key>-<issue>-e<epoch>`; it differs from the
-//   lanes' `issue/<n>-<key>` and from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
+// @MX:CEILING: REQ-06C-01 layout `<prefix>/<issue>-<logical_key>-e<epoch>` (Issue first since
+//   #2336, like the lanes' `issue/<n>-<key>`, so `claim_verify::lane_branch` reads the same
+//   Issue); it still differs from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
 pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>) -> Result<Value> {
@@ -331,7 +341,7 @@ pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>
         return Err("invalid record: base_revision must be 40 lowercase hex".into());
     }
     let issue = rec.task_ref.issue_number;
-    let branch = format!("{prefix}/{}-{issue}-e{}", rec.logical_key, rec.epoch);
+    let branch = format!("{prefix}/{issue}-{}-e{}", rec.logical_key, rec.epoch);
     if !git_ok(project, &["check-ref-format", "--branch", &branch])? {
         return Err(format!("invalid branch name {branch}"));
     }
@@ -387,15 +397,11 @@ pub fn identity(path: &Path) -> Result<WorktreeId> {
     let [top, common, gitdir, head, abbrev] = lines[..] else {
         return Err("unexpected git rev-parse output".into());
     };
-    Ok(WorktreeId {
-        common_dir: common.into(),
-        git_dir: gitdir.into(),
-        path: top.into(),
-        head: head.into(),
-        // #2131: the branch checked out at claim time, from the same rev-parse call.
-        // A detached HEAD prints `HEAD` (git forbids a branch of that name), so it is None.
-        branch: (abbrev != "HEAD").then(|| abbrev.to_string()),
-    })
+    let mut id = WorktreeId::new(common, gitdir, top, head);
+    // #2131: the branch checked out at claim time, from the same rev-parse call.
+    // A detached HEAD prints `HEAD` (git forbids a branch of that name), so it is None.
+    id.branch = (abbrev != "HEAD").then(|| abbrev.to_string());
+    Ok(id)
 }
 
 fn conflict(reason: &str, plan: &Value, existing: Vec<Value>) -> Value {

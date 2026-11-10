@@ -5,6 +5,8 @@
 //! its own repository and journal in a temporary directory; no network, no `gh`.
 use moai_cli::claim::JournalEvent;
 use moai_cli::forge::outbox::parse_op_markers;
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -371,6 +373,116 @@ fn pr_ready_waits_when_the_ack_is_uncertain() {
     assert_eq!(env["ok"], false);
 }
 
+fn pr_create_effects(repo: &Path) -> Vec<Value> {
+    latest(repo, KEY_A)["effects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["kind"] == "pr_create")
+        .cloned()
+        .collect()
+}
+
+/// #2329: a second PR under the same claim epoch, rendered with `--pr-seq 2`, gets its own
+/// operation and marker, and its ACK is recorded next to the first PR's. Before the fix both
+/// PRs shared `pr_create:101:<key>:1` and the second ACK was taken as the first's.
+#[test]
+fn second_pr_in_the_same_epoch_gets_its_own_operation() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("primary");
+    let base = make_repo(&repo);
+    seed(&repo, &[record(KEY_A, "06-C", &base, &["src/a.rs"])]);
+    let first = render(&repo, &base, &["--task", KEY_A]);
+    let op1 = first["effect_intent"]["operation_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // The first PR's marker is the one written before the sequence existed.
+    assert!(first["body"]
+        .as_str()
+        .unwrap()
+        .contains(&format!("<!-- moai-op pr_create:101:{KEY_A}:1 -->")));
+    assert_eq!(
+        pr_confirm(&repo, &op1, "2324", "opened")["effect_state"],
+        "confirmed"
+    );
+
+    git(
+        &repo,
+        &["commit", "-q", "--allow-empty", "-m", "second change"],
+    );
+    let second = render(&repo, &base, &["--task", KEY_A, "--pr-seq", "2"]);
+    let op2 = second["effect_intent"]["operation_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_ne!(op1, op2);
+    assert_eq!(op2, format!("pr_create-101-{KEY_A}-2-1"));
+    assert_eq!(second["effect_intent"]["state"], "intended");
+    assert_eq!(second["record_update"]["applied"], true);
+    let body2 = second["body"].as_str().unwrap();
+    assert!(body2.contains(&format!("<!-- moai-op pr_create:101:{KEY_A}-2:1 -->")));
+    let (m1, m2) = (
+        parse_op_markers(first["body"].as_str().unwrap()),
+        parse_op_markers(body2),
+    );
+    assert_eq!((m1.len(), m2.len()), (1, 1));
+    assert_ne!(m1[0], m2[0], "two PRs, two operation identities");
+
+    let ack2 = pr_confirm(&repo, &op2, "2328", "opened");
+    assert_eq!(ack2["effect_state"], "confirmed");
+    assert_eq!(ack2["effect_confirm"]["response_id"], "2328");
+    let responses: Vec<Value> = pr_create_effects(&repo)
+        .iter()
+        .map(|e| e["response_id"].clone())
+        .collect();
+    assert_eq!(responses, vec![json!("2324"), json!("2328")]);
+}
+
+/// #2329: an ACK for a different PR on an operation already confirmed is refused as a
+/// conflict instead of being taken silently, and the journal is not written.
+#[test]
+fn a_different_pr_ack_on_a_confirmed_operation_is_a_conflict() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("primary");
+    let base = make_repo(&repo);
+    seed(&repo, &[record(KEY_A, "06-C", &base, &["src/a.rs"])]);
+    let first = render(&repo, &base, &["--task", KEY_A]);
+    let op = first["effect_intent"]["operation_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    pr_confirm(&repo, &op, "2324", "opened");
+    let count = events(&repo).len();
+    let p = repo.to_string_lossy().to_string();
+    let out = run(
+        &repo,
+        &[
+            "pr-confirm",
+            &p,
+            "--task",
+            KEY_A,
+            "--operation-id",
+            &op,
+            "--response-id",
+            "2328",
+            "--observed-state",
+            "opened",
+        ],
+        &[],
+    );
+    let env: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(env["ok"], false, "{env}");
+    assert!(env.to_string().contains("--pr-seq"), "{env}");
+    assert_eq!(events(&repo).len(), count);
+    assert_eq!(pr_create_effects(&repo)[0]["response_id"], "2324");
+    // The same PR's ACK again is still accepted as is.
+    assert_eq!(
+        pr_confirm(&repo, &op, "2324", "opened")["effect_state"],
+        "confirmed"
+    );
+}
+
 #[test]
 fn reconcile_finds_the_pr_by_its_body_marker() {
     let tmp = tempfile::tempdir().unwrap();
@@ -402,17 +514,11 @@ fn reconcile_finds_the_pr_by_its_body_marker() {
     ));
     // A PR-body probe: the recorded marker's operation, looked up as the body's marker.
     let probe = tmp.path().join("probe.sh");
-    fs::write(
+    common::write_executable(
         &probe,
         "#!/bin/sh\nid=$(printf '%s' \"$1\" | sed -e 's/^<!-- moai:op //' -e 's/ -->$//')\n\
          if grep -qF \"<!-- moai-op $id -->\" \"$PR_BODY\"; then echo '{\"remote_id\":\"2080\"}'; exit 0; fi\nexit 4\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&probe, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    );
     let probe_s = probe.to_string_lossy().to_string();
     let body_s = body_path.to_string_lossy().to_string();
     let rec = ok(&run(

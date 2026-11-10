@@ -1,4 +1,4 @@
-use clap::{error::ErrorKind, ArgGroup, Args, Parser, Subcommand};
+use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, Parser, Subcommand};
 use moai_cli::{
     agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
     AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
@@ -152,6 +152,11 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Probe whether the sub-issue and dependency APIs answer for one Issue and plan the
+    /// links: API write intents, or `Parent:`/`Blocked-By:` body lines (GET only; #2172).
+    ForgeLinksProbe {
+        project: PathBuf,
+    },
     /// Create or update the one report comment of a run on its Issue (typed JSON payload on
     /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
     ForgeReport {
@@ -184,6 +189,20 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
+    /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
+    LayoutPlan {
+        project: PathBuf,
+    },
+    /// Execute a confirmed layout plan: copy without deleting the originals, verify the
+    /// copy, then switch the pointer (`layout.json`). The default stays project-side.
+    LayoutApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
     ClaimAcquire {
@@ -199,6 +218,13 @@ enum Command {
     /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
     LeaderTick {
         project: PathBuf,
+    },
+    /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
+    /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
+    ClaimVerify {
+        project: PathBuf,
+        #[arg(long)]
+        hook: bool,
     },
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
@@ -306,8 +332,9 @@ enum Command {
         total_cap: u64,
     },
     /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
-    /// tip containment, changed-since-audit, claim lines, CI status, head stability.
-    /// Status posting and merging stay with the leader flow.
+    /// tip containment (behind_by 0), changed-since-audit, claim lines, required check
+    /// runs' conclusions, head stability. Status posting and merging stay with the
+    /// leader flow.
     FlowGateVerdict {
         /// GitHub owner.
         #[arg(long)]
@@ -324,6 +351,11 @@ enum Command {
         /// The base ref the tip is read from (e.g. v2026.11.0).
         #[arg(long = "base-ref", default_value = "v2026.11.0")]
         base_ref: String,
+        /// Comma-separated required check-run names (#2335). The verdict reads these
+        /// runs' conclusions; unrelated checks and the combined commit status are
+        /// excluded from the judgment.
+        #[arg(long = "required-checks", default_value = "rc-ci")]
+        required_checks: String,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
@@ -342,6 +374,29 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+    },
+    /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
+    HooksPlan {
+        project: PathBuf,
+        /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
+        #[arg(long)]
+        host: String,
+    },
+    /// Write a previewed hook set and its receipt; requires the plan digest.
+    HooksApply {
+        project: PathBuf,
+        #[arg(long)]
+        host: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
+    /// ./.moai-cli/receipts/; never fails the hook.
+    HookReceipt {
+        #[arg(long)]
+        host: String,
     },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
@@ -499,6 +554,10 @@ enum Command {
         /// Extra bullet for the remaining-gap section (repeatable).
         #[arg(long)]
         gap: Vec<String>,
+        /// Which PR of this claim epoch the body is for (#2329). 1 (default) keeps the
+        /// original marker; N >= 2 gives a further PR its own operation and marker.
+        #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
+        pr_seq: u32,
     },
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
@@ -528,6 +587,33 @@ enum Command {
         project: PathBuf,
         #[arg(long)]
         grace_days: Option<u64>,
+    },
+    /// Move the archive-eligible SPECs (D2 #2188, REQ-D2-01): recomputes the plan and
+    /// requires its `plan_digest`; each SPEC is hashed, copied, read back and indexed
+    /// before its source is removed. Any mismatch cancels the move and keeps the source.
+    ArchiveApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        #[arg(long)]
+        grace_days: Option<u64>,
+    },
+    /// Restore one archived SPEC to `.moai-cli/specs/<id>` after verifying its manifest
+    /// (D2 #2188).
+    ArchiveRestore {
+        project: PathBuf,
+        #[arg(long)]
+        spec: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Read-only, non-vector search over the archive index and archived text (D2 #2188).
+    ArchiveSearch {
+        project: PathBuf,
+        #[arg(long)]
+        query: String,
     },
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
@@ -696,6 +782,23 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
 }
+/// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
+/// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
+/// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
+/// (`update::WALK_BYTES`); the plan is never trusted for its size, since every apply checks
+/// it against `--plan-digest`.
+const PLAN_INPUT_LIMIT: usize = 16 * 1024 * 1024;
+fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
+    let mut bytes = Vec::new();
+    io::stdin()
+        .take(PLAN_INPUT_LIMIT as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "stdin read failed")?;
+    if bytes.len() > PLAN_INPUT_LIMIT {
+        return Err("plan input exceeds 16 MiB".into());
+    }
+    serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+}
 /// Maps the launcher's host word to the session host.
 fn host_of(word: &str) -> Result<&'static str, String> {
     match word {
@@ -780,78 +883,107 @@ fn launch(
     Ok(v)
 }
 
-/// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract. A slice, not a fixed-length array:
-/// two branches each bumping the length to the same number merged silently (#2044).
-const OPERATIONS: &[(&str, &str)] = &[
-    ("package-inspect", "package.inspect"),
-    ("project-plan", "project.plan"),
-    ("project-apply", "project.apply"),
-    ("package-resolve", "package.resolve"),
-    ("agents-plan", "agents.plan"),
-    ("agents-apply", "agents.apply"),
-    ("apply-recover", "apply.recover"),
-    ("baseline-inventory", "baseline.inventory"),
-    ("identity", "identity"),
-    ("forge-read", "forge.read"),
-    ("forge-report", "forge.report"),
-    ("plan-admit", "plan.admit"),
-    ("claude-doctor", "claude.doctor"),
-    ("claude-settings-plan", "claude.settings_plan"),
-    ("claude-settings-apply", "claude.settings_apply"),
-    ("codex-projection-plan", "codex.projection_plan"),
-    ("codex-projection-apply", "codex.projection_apply"),
-    ("codex-doctor", "codex.doctor"),
-    ("claim-acquire", "claim.acquire"),
-    ("queue-next", "queue.next"),
-    ("leader-tick", "leader.tick"),
-    ("claim-show", "claim.show"),
-    ("claim-release", "claim.release"),
-    ("claim-handoff", "claim.handoff"),
-    ("effect-intend", "effect.intend"),
-    ("effect-confirm", "effect.confirm"),
-    ("effects-reconcile", "effects.reconcile"),
-    ("todo-promote-preview", "todo.promote.plan"),
-    ("todo-promote-apply", "todo.promote.apply"),
-    ("run-verify", "run.verify"),
-    ("snapshot-describe", "snapshot.describe"),
-    ("skill-source-plan", "skill_source.plan"),
-    ("cost-report", "cost.report"),
-    ("project-skill-plan", "project_skill.plan"),
-    ("project-skill-apply", "project_skill.apply"),
-    ("project-skill-revert", "project_skill.revert"),
-    ("generation-plan", "generation.plan"),
-    ("generation-apply", "generation.apply"),
-    ("skill-source-apply", "skill_source.apply"),
-    ("skill-read-receipt", "skill_source.read_receipt"),
-    ("context-bundle", "context.bundle"),
-    ("context-verify", "context.verify"),
-    ("decision-record", "decision.record"),
-    ("audit-reduce", "audit.reduce"),
-    ("install-inspect", "install.inspect"),
-    ("worktree-plan", "worktree.plan"),
-    ("worktree-apply", "worktree.apply"),
-    ("scope-check", "scope.check"),
-    ("pr-body-render", "pr.body.render"),
-    ("github-plan", "github.plan"),
-    ("github-apply", "github.apply"),
-    ("update-plan", "update.plan"),
-    ("update-apply", "update.apply"),
-    ("recovery-plan", "recovery.plan"),
-    ("recovery-apply", "recovery.apply"),
-    ("pr-confirm", "pr.confirm"),
-    ("parity-check", "parity.check"),
-    ("archive-plan", "archive.plan"),
-    ("forge-audit-status", "forge.audit_status"),
-    ("atlas-tag-scan", "atlas_tag.scan"),
-    ("flow-wip-check", "flow.wip_check"),
-    ("flow-gate-verdict", "flow.gate_verdict"),
-];
+/// Operation name of an internal command (01-C #1990); `None` for the launchers, which are
+/// developer tools outside the envelope contract. Exhaustive on purpose (#2254, REQ-D8-01):
+/// a `Command` variant without an arm here does not compile, where the old word table only
+/// panicked at run time. Put a new arm at its alphabetical place, not at the end.
+fn operation(command: &Command) -> Option<&'static str> {
+    use Command::*;
+    Some(match command {
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } => return None,
+        AgentsApply { .. } => "agents.apply",
+        AgentsPlan { .. } => "agents.plan",
+        ApplyRecover { .. } => "apply.recover",
+        ArchiveApply { .. } => "archive.apply",
+        ArchivePlan { .. } => "archive.plan",
+        ArchiveRestore { .. } => "archive.restore",
+        ArchiveSearch { .. } => "archive.search",
+        AtlasTagScan { .. } => "atlas_tag.scan",
+        AuditReduce { .. } => "audit.reduce",
+        BaselineInventory { .. } => "baseline.inventory",
+        ClaimAcquire { .. } => "claim.acquire",
+        ClaimHandoff { .. } => "claim.handoff",
+        ClaimRelease { .. } => "claim.release",
+        ClaimShow { .. } => "claim.show",
+        ClaimVerify { .. } => "claim.verify",
+        ClaudeDoctor { .. } => "claude.doctor",
+        ClaudeSettingsApply { .. } => "claude.settings_apply",
+        ClaudeSettingsPlan { .. } => "claude.settings_plan",
+        CodexDoctor { .. } => "codex.doctor",
+        CodexProjectionApply { .. } => "codex.projection_apply",
+        CodexProjectionPlan { .. } => "codex.projection_plan",
+        ContextBundle { .. } => "context.bundle",
+        ContextVerify { .. } => "context.verify",
+        CostReport { .. } => "cost.report",
+        DecisionRecord { .. } => "decision.record",
+        EffectConfirm { .. } => "effect.confirm",
+        EffectIntend { .. } => "effect.intend",
+        EffectsReconcile { .. } => "effects.reconcile",
+        FlowGateVerdict { .. } => "flow.gate_verdict",
+        FlowWipCheck { .. } => "flow.wip_check",
+        ForgeAuditStatus { .. } => "forge.audit_status",
+        ForgeLinksProbe { .. } => "forge.links_probe",
+        ForgeRead { .. } => "forge.read",
+        ForgeReport { .. } => "forge.report",
+        GenerationApply { .. } => "generation.apply",
+        GenerationPlan { .. } => "generation.plan",
+        GithubApply { .. } => "github.apply",
+        GithubPlan { .. } => "github.plan",
+        HookReceipt { .. } => "hook.receipt",
+        HooksApply { .. } => "hooks.apply",
+        HooksPlan { .. } => "hooks.plan",
+        Identity { .. } => "identity",
+        InstallInspect { .. } => "install.inspect",
+        LayoutApply { .. } => "layout.apply",
+        LayoutPlan { .. } => "layout.plan",
+        LeaderTick { .. } => "leader.tick",
+        PackageInspect { .. } => "package.inspect",
+        PackageResolve { .. } => "package.resolve",
+        ParityCheck { .. } => "parity.check",
+        PlanAdmit { .. } => "plan.admit",
+        PrBodyRender { .. } => "pr.body.render",
+        PrConfirm { .. } => "pr.confirm",
+        ProjectApply { .. } => "project.apply",
+        ProjectPlan { .. } => "project.plan",
+        ProjectSkillApply { .. } => "project_skill.apply",
+        ProjectSkillPlan { .. } => "project_skill.plan",
+        ProjectSkillRevert { .. } => "project_skill.revert",
+        QueueNext { .. } => "queue.next",
+        RecoveryApply { .. } => "recovery.apply",
+        RecoveryPlan { .. } => "recovery.plan",
+        RunVerify { .. } => "run.verify",
+        ScopeCheck { .. } => "scope.check",
+        SkillReadReceipt { .. } => "skill_source.read_receipt",
+        SkillSourceApply { .. } => "skill_source.apply",
+        SkillSourcePlan { .. } => "skill_source.plan",
+        SnapshotDescribe { .. } => "snapshot.describe",
+        TodoPromoteApply { .. } => "todo.promote.apply",
+        TodoPromotePreview { .. } => "todo.promote.plan",
+        UpdateApply { .. } => "update.apply",
+        UpdatePlan { .. } => "update.plan",
+        WorktreeApply { .. } => "worktree.apply",
+        WorktreePlan { .. } => "worktree.plan",
+    })
+}
+
+/// Operation of a subcommand word when the command line did not parse (`usage_error`): the
+/// word's subcommand is parsed once with each required argument filled in, so the name
+/// still comes from `operation` alone. A word that names no internal operation is `None`.
 fn operation_of(word: &str) -> Option<&'static str> {
-    OPERATIONS
-        .iter()
-        .find(|(w, _)| *w == word)
-        .map(|&(_, op)| op)
+    let cli = Cli::command();
+    let sub = cli.get_subcommands().find(|s| s.get_name() == word)?;
+    let mut argv = vec!["moai-cli".to_string(), word.to_string()];
+    for arg in sub.get_arguments().filter(|a| a.is_required_set()) {
+        let value = arg
+            .get_possible_values()
+            .first()
+            .map_or_else(|| "1".to_string(), |v| v.get_name().to_string());
+        if let Some(long) = arg.get_long() {
+            argv.push(format!("--{long}"));
+        }
+        argv.push(value);
+    }
+    operation(Cli::try_parse_from(argv).ok()?.command.as_ref()?)
 }
 
 /// `-l` → leader, `-a` → agent, neither → no role (never guessed).
@@ -915,130 +1047,16 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
 }
 
 /// Internal operations; `main` wraps the result in the envelope.
-fn run_internal(command: Command) -> Result<serde_json::Value, String> {
+/// #2345: the eleven journal-writing operations raise the journal lock-busy kind at its
+/// source and return it typed, so the envelope never re-derives it from message text;
+/// every other operation keeps the classified `String` fallback.
+fn run_internal(
+    command: Command,
+) -> std::result::Result<serde_json::Value, moai_cli::contract::OpError> {
     match command {
-        Command::PackageInspect { package } => Ok(
-            serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
-        ),
-        Command::ProjectPlan { project } => {
-            // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
-            // the profile message; no input value is echoed.
-            let profile: Profile = serde_json::from_value(input::<serde_json::Value>()?)
-                .map_err(|_| "invalid or nonportable profile; no values were logged".to_string())?;
-            serde_json::to_value(plan(&project, profile)?).map_err(|_| "encode failed".into())
-        }
-        Command::ProjectApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => apply(
-            &project,
-            input::<Plan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::PackageResolve {
-            project,
-            repo_package,
-            user_package,
-        } => resolve(&project, repo_package.as_deref(), user_package.as_deref()),
-        Command::AgentsPlan { project } => {
-            serde_json::to_value(agents_plan(&project, input::<AgentsRequest>()?)?)
-                .map_err(|_| "encode failed".into())
-        }
-        Command::AgentsApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => agents_apply(
-            &project,
-            input::<AgentsPlan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::ApplyRecover {
-            project,
-            receipt,
-            permission_reference,
-        } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
-        Command::ForgeReport {
-            project,
-            permission_reference,
-        } => {
-            let mut bytes = Vec::new();
-            io::stdin()
-                .take(65537)
-                .read_to_end(&mut bytes)
-                .map_err(|_| "stdin read failed")?;
-            if bytes.len() > 65536 {
-                return Err(
-                    "input exceeds 64 KiB; put large output in an artifact reference, not the payload"
-                        .into(),
-                );
-            }
-            let payload: moai_cli::forge::report::ReportPayload =
-                serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input")?;
-            moai_cli::forge::report::report_cli(
-                &project,
-                payload,
-                &permission_reference,
-                &moai_cli::forge::transport::GhTransport::from_env()?,
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
-        Command::ForgeAuditStatus {
-            project,
-            permission_reference,
-        } => moai_cli::forge::audit_status::audit_status_cli(
-            &project,
-            input::<moai_cli::forge::audit_status::AuditStatusRequest>()?,
-            &permission_reference,
-            moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
-            &project,
-            input::<moai_cli::forge::ReadRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::TodoPromoteApply {
-            project,
-            preview_digest,
-            permission_reference,
-        } => moai_cli::forge::promote::apply_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &preview_digest,
-            &permission_reference,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::BaselineInventory {
-            project,
-            go_baseline_commit,
-            go_repo,
-        } => moai_cli::baseline::inventory(
-            &project,
-            go_baseline_commit.as_deref(),
-            go_repo.as_deref(),
-        ),
-        Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
             input::<moai_cli::claim::ClaimRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::LeaderTick { project } => moai_cli::leader::tick_cli(
-            &project,
-            input::<moai_cli::leader::TickRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
@@ -1048,7 +1066,6 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
         Command::ClaimRelease {
             project,
             task,
@@ -1123,6 +1140,259 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::WorktreeApply {
+            project,
+            source,
+            branch_prefix,
+            path,
+            plan_digest,
+        } => moai_cli::worktree::apply_and_record(
+            &project,
+            &source.load(&project)?,
+            source.task.is_some(),
+            &branch_prefix,
+            path.as_deref(),
+            &plan_digest,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ScopeCheck {
+            project,
+            source,
+            integration_order,
+        } => {
+            let mine = source.load(&project)?;
+            let others = moai_cli::worktree::active_records(&project)?;
+            moai_cli::scope::check_and_record(
+                &project,
+                &mine,
+                source.task.is_some(),
+                &others,
+                integration_order.as_deref(),
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
+        Command::PrConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::pr_link::confirm_and_record(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::PrBodyRender {
+            project,
+            source,
+            receipts,
+            base_sha,
+            base_branch,
+            default_branch,
+            allow_close,
+            not_run,
+            review_link,
+            gap,
+            pr_seq,
+        } => {
+            let rec = source.load(&project)?;
+            let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
+            let receipts: Vec<moai_cli::run::Receipt> =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
+            let head = moai_cli::worktree::head(&project)?;
+            let changes = if moai_cli::worktree::is_sha(&base_sha) {
+                moai_cli::worktree::changes(&project, &base_sha)?
+            } else {
+                Vec::new()
+            };
+            moai_cli::pr_link::render_and_record(
+                &project,
+                &rec,
+                source.task.is_some(),
+                &receipts,
+                &moai_cli::pr_link::RenderInput {
+                    base_branch: &base_branch,
+                    default_branch: &default_branch,
+                    base_sha: &base_sha,
+                    candidate_sha: &head,
+                    allow_close,
+                    not_run: &not_run,
+                    review_link: review_link.as_deref(),
+                    changes: &changes,
+                    gaps: &gap,
+                    pr_seq,
+                },
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
+        other => run_internal_classified(other).map_err(moai_cli::contract::OpError::from),
+    }
+}
+
+fn run_internal_classified(command: Command) -> Result<serde_json::Value, String> {
+    match command {
+        Command::PackageInspect { package } => Ok(
+            serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
+        ),
+        Command::ProjectPlan { project } => {
+            // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
+            // the profile message; no input value is echoed.
+            let profile: Profile = serde_json::from_value(input::<serde_json::Value>()?)
+                .map_err(|_| "invalid or nonportable profile; no values were logged".to_string())?;
+            serde_json::to_value(plan(&project, profile)?).map_err(|_| "encode failed".into())
+        }
+        Command::ProjectApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => apply(
+            &project,
+            plan_input::<Plan>()?,
+            &plan_digest,
+            &permission_reference,
+        ),
+        Command::PackageResolve {
+            project,
+            repo_package,
+            user_package,
+        } => resolve(&project, repo_package.as_deref(), user_package.as_deref()),
+        Command::AgentsPlan { project } => {
+            serde_json::to_value(agents_plan(&project, input::<AgentsRequest>()?)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::AgentsApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => agents_apply(
+            &project,
+            plan_input::<AgentsPlan>()?,
+            &plan_digest,
+            &permission_reference,
+        ),
+        Command::ApplyRecover {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
+        Command::ForgeReport {
+            project,
+            permission_reference,
+        } => {
+            let mut bytes = Vec::new();
+            io::stdin()
+                .take(65537)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "stdin read failed")?;
+            if bytes.len() > 65536 {
+                return Err(
+                    "input exceeds 64 KiB; put large output in an artifact reference, not the payload"
+                        .into(),
+                );
+            }
+            let payload: moai_cli::forge::report::ReportPayload =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input")?;
+            moai_cli::forge::report::report_cli(
+                &project,
+                payload,
+                &permission_reference,
+                &moai_cli::forge::transport::GhTransport::from_env()?,
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
+        Command::ForgeAuditStatus {
+            project,
+            permission_reference,
+        } => moai_cli::forge::audit_status::audit_status_cli(
+            &project,
+            input::<moai_cli::forge::audit_status::AuditStatusRequest>()?,
+            &permission_reference,
+            moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
+            &project,
+            input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ForgeLinksProbe { project } => moai_cli::forge::links::links_probe_cli(
+            &project,
+            input::<moai_cli::forge::links::LinksRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
+            &project,
+            input::<moai_cli::forge::promote::PromoteRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::TodoPromoteApply {
+            project,
+            preview_digest,
+            permission_reference,
+        } => moai_cli::forge::promote::apply_cli(
+            &project,
+            input::<moai_cli::forge::promote::PromoteRequest>()?,
+            &preview_digest,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::BaselineInventory {
+            project,
+            go_baseline_commit,
+            go_repo,
+        } => moai_cli::baseline::inventory(
+            &project,
+            go_baseline_commit.as_deref(),
+            go_repo.as_deref(),
+        ),
+        Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::LeaderTick { project } => moai_cli::leader::tick_cli(
+            &project,
+            input::<moai_cli::leader::TickRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ClaimVerify { project, hook } => {
+            let clock = moai_cli::forge::policy::SystemClock;
+            if hook {
+                // Host hook stdin can carry large tool input; read a bounded prefix.
+                let mut bytes = Vec::new();
+                let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+                // #2348: a command the guard does not check never reaches the transport
+                // setup, so a bad `MOAI_FORGE_GH_BIN` cannot turn every Bash call into a
+                // refusal. `hook_cli` repeats this check and stays the single decision.
+                let input: serde_json::Value =
+                    serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+                let command = input["tool_input"]["command"].as_str().unwrap_or("");
+                if input["tool_name"] != "Bash"
+                    || !moai_cli::claim_verify::is_commit_or_push(command)
+                {
+                    return Ok(serde_json::json!({
+                        "allowed": true, "reason": "not a git commit or push"
+                    }));
+                }
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+                moai_cli::claim_verify::hook_cli(&project, &bytes, &transport, &clock)
+            } else {
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+                let request = input::<moai_cli::claim_verify::VerifyRequest>()?;
+                moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
+            }
+        }
+        Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
+        Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
+        Command::LayoutApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::FlowWipCheck {
             owner,
             repo,
@@ -1146,6 +1416,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             pr,
             audit_head,
             base_ref,
+            required_checks,
         } => {
             let transport = moai_cli::forge::transport::GhTransport::from_env()?;
             let clock = moai_cli::forge::policy::SystemClock;
@@ -1155,22 +1426,78 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 Default::default(),
                 Default::default(),
             );
-            moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
+            let checks: Vec<String> = required_checks
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
+            moai_cli::flow::gate_verdict(
+                &client,
+                &owner,
+                &repo,
+                pr,
+                &audit_head,
+                &base_ref,
+                &checks,
+            )
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::HooksPlan { project, host } => {
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
+            merge_binary_state(&mut out);
+            Ok(out)
+        }
+        Command::HooksApply {
+            project,
+            host,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let mut out = moai_cli::hooks::apply(
+                &project,
+                &host,
+                home.as_deref(),
+                &plan_digest,
+                &permission_reference,
+            )?;
+            merge_binary_state(&mut out);
+            Ok(out)
+        }
+        Command::HookReceipt { host } => {
+            // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
+            // fails to parse and is skipped, never an error: the hook must not fail.
+            let mut bytes = Vec::new();
+            let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            Ok(match std::env::current_dir() {
+                Ok(cwd) => moai_cli::hooks::receipt(&host, &bytes, &cwd, now),
+                Err(_) => {
+                    serde_json::json!({"recorded": false, "reason": "working directory unavailable"})
+                }
+            })
+        }
         Command::ClaudeSettingsPlan { project } => {
-            moai_cli::claude::settings_plan(&project, &input()?)
+            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
+            moai_cli::claude::settings_plan(&project, &desired)
         }
         Command::ClaudeSettingsApply {
             project,
             plan_digest,
             permission_reference,
-        } => moai_cli::claude::settings_apply(
-            &project,
-            &input()?,
-            &plan_digest,
-            &permission_reference,
-        ),
+        } => {
+            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
+            moai_cli::claude::settings_apply(
+                &project,
+                &desired,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
         Command::CodexProjectionPlan {
             package,
             target,
@@ -1241,98 +1568,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &branch_prefix,
             path.as_deref(),
         ),
-        Command::WorktreeApply {
-            project,
-            source,
-            branch_prefix,
-            path,
-            plan_digest,
-        } => moai_cli::worktree::apply_and_record(
-            &project,
-            &source.load(&project)?,
-            source.task.is_some(),
-            &branch_prefix,
-            path.as_deref(),
-            &plan_digest,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::ScopeCheck {
-            project,
-            source,
-            integration_order,
-        } => {
-            let mine = source.load(&project)?;
-            let others = moai_cli::worktree::active_records(&project)?;
-            moai_cli::scope::check_and_record(
-                &project,
-                &mine,
-                source.task.is_some(),
-                &others,
-                integration_order.as_deref(),
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
         Command::ParityCheck {
             template,
             generated,
             doc,
         } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
         Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
-        Command::PrConfirm {
-            project,
-            task,
-            operation_id,
-            response_id,
-            observed_state,
-        } => moai_cli::pr_link::confirm_and_record(
-            &project,
-            &task,
-            &operation_id,
-            &response_id,
-            &observed_state,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::PrBodyRender {
-            project,
-            source,
-            receipts,
-            base_sha,
-            base_branch,
-            default_branch,
-            allow_close,
-            not_run,
-            review_link,
-            gap,
-        } => {
-            let rec = source.load(&project)?;
-            let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
-            let receipts: Vec<moai_cli::run::Receipt> =
-                serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
-            let head = moai_cli::worktree::head(&project)?;
-            let changes = if moai_cli::worktree::is_sha(&base_sha) {
-                moai_cli::worktree::changes(&project, &base_sha)?
-            } else {
-                Vec::new()
-            };
-            moai_cli::pr_link::render_and_record(
-                &project,
-                &rec,
-                source.task.is_some(),
-                &receipts,
-                &moai_cli::pr_link::RenderInput {
-                    base_branch: &base_branch,
-                    default_branch: &default_branch,
-                    base_sha: &base_sha,
-                    candidate_sha: &head,
-                    allow_close,
-                    not_run: &not_run,
-                    review_link: review_link.as_deref(),
-                    changes: &changes,
-                    gaps: &gap,
-                },
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
@@ -1353,7 +1594,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
-            let plan = input::<moai_cli::update::UpdatePlan>()?;
+            let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
             moai_cli::update::apply_update(
                 &home,
                 &staged,
@@ -1371,7 +1612,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             plan_digest,
             permission_reference,
         } => {
-            let plan = input::<moai_cli::recovery::RecoveryPlan>()?;
+            let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
         Command::PlanAdmit { project } => {
@@ -1402,6 +1643,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             grace_days,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::ArchiveApply {
+            project,
+            plan_digest,
+            permission_reference,
+            grace_days,
+        } => moai_cli::archive::apply(
+            &project,
+            std::time::SystemTime::now(),
+            grace_days,
+            &plan_digest,
+            &permission_reference,
+        ),
+        Command::ArchiveRestore {
+            project,
+            spec,
+            permission_reference,
+        } => moai_cli::archive::restore(&project, &spec, &permission_reference),
+        Command::ArchiveSearch { project, query } => moai_cli::archive::search(&project, &query),
         Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
             &project,
             input::<moai_cli::sources::SourcesRequest>()?,
@@ -1418,7 +1677,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             moai_cli::sources::sources_apply(
                 &project,
                 &home,
-                input::<moai_cli::sources::SourcePlan>()?,
+                plan_input::<moai_cli::sources::SourcePlan>()?,
                 &plan_digest,
                 &permission_reference,
             )
@@ -1461,7 +1720,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => moai_cli::github_templates::github_apply(
             &project,
-            input::<moai_cli::github_templates::GithubPlan>()?,
+            plan_input::<moai_cli::github_templates::GithubPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1478,7 +1737,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => moai_cli::generation::generation_apply(
             &project,
-            input::<moai_cli::generation::GenerationPlan>()?,
+            plan_input::<moai_cli::generation::GenerationPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1525,16 +1784,49 @@ fn usage_error(e: clap::Error) -> ExitCode {
     ExitCode::from(2)
 }
 
+/// True when the command line is a generated host hook (#2348): `hook-receipt` or any word
+/// run with `--hook`. Read from the raw arguments so a command line that fails to parse is
+/// still handled as a hook. Both hosts read a hook's stdout as hook output and its exit 2 as
+/// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
+fn hook_mode_argv(args: &[String]) -> bool {
+    args.get(1).is_some_and(|w| w == "hook-receipt") || args.iter().skip(1).any(|a| a == "--hook")
+}
+
+/// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
+/// hooks-plan / hooks-apply result.
+fn merge_binary_state(out: &mut serde_json::Value) {
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    if let (Some(out), serde_json::Value::Object(state)) = (
+        out.as_object_mut(),
+        moai_cli::hooks::binary_state(&path_env),
+    ) {
+        out.extend(state);
+    }
+}
+
+/// Exit code of a hook-mode error that is not the guard's refusal: 1, which both hosts treat
+/// as a non-blocking hook error; the reason goes to stderr.
+const HOOK_NON_BLOCKING_ERROR: u8 = 1;
+
 fn main() -> ExitCode {
+    let argv: Vec<String> = std::env::args().collect();
+    let hook_mode = hook_mode_argv(&argv);
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
+        Err(e) if hook_mode => {
+            if matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
+                e.exit()
+            }
+            let rendered = e.render().to_string();
+            eprintln!(
+                "moai-cli hook: {}",
+                rendered.lines().next().unwrap_or("invalid command line")
+            );
+            return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
+        }
         Err(e) => return usage_error(e),
     };
-    let op = match &cli.command {
-        Some(Command::Cc(_) | Command::Glm(_) | Command::Codex(_) | Command::Session { .. })
-        | None => None,
-        Some(_) => std::env::args().nth(1).and_then(|w| operation_of(&w)),
-    };
+    let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {
             Ok(value) => {
@@ -1547,18 +1839,74 @@ fn main() -> ExitCode {
             }
         };
     };
+    // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
+    // guard's refusal is the one error that may block. A receipt hook never blocks.
+    let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
     match run_internal(cli.command.expect("internal operation")) {
+        Ok(_) if hook_mode => ExitCode::SUCCESS,
         Ok(result) => {
             println!("{}", contract::success(op, result));
             ExitCode::SUCCESS
         }
-        Err(message) => {
-            println!(
-                "{}",
-                contract::failure(op, contract::classify(&message), &message)
-            );
-            eprintln!("{message}");
+        Err(e) if hook_mode => {
+            eprintln!("{e}");
+            ExitCode::from(if guard { 2 } else { HOOK_NON_BLOCKING_ERROR })
+        }
+        Err(e) => {
+            // #2345: the journal lock-busy error carries its kind from the raise site;
+            // every other error was classified at the dispatch boundary.
+            println!("{}", contract::failure(op, e.kind, &e.message));
+            eprintln!("{e}");
             ExitCode::from(1)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
+    /// word whose required arguments cannot be filled, or two words with one name, fail here.
+    /// `MOAI_DUMP_OPERATIONS=1` prints the `word operation` pairs (the before/after diff).
+    #[test]
+    fn every_subcommand_word_maps_to_one_operation() {
+        let mut seen = std::collections::BTreeMap::new();
+        let cli = Cli::command();
+        for sub in cli.get_subcommands() {
+            let word = sub.get_name();
+            if word == "help" {
+                continue;
+            }
+            let op = operation_of(word);
+            if LAUNCHERS.contains(&word) {
+                assert_eq!(op, None, "{word} is a launcher");
+                continue;
+            }
+            let op = op.unwrap_or_else(|| panic!("{word} maps to no operation"));
+            if let Some(other) = seen.insert(op, word) {
+                panic!("{word} and {other} share {op}");
+            }
+        }
+        // Every non-launcher word was counted once: no hand-kept total to bump.
+        let words = cli
+            .get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .count();
+        assert_eq!(seen.len() + LAUNCHERS.len(), words);
+        if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
+            let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
+            pairs.sort();
+            println!("{}", pairs.join("\n"));
+        }
+    }
+
+    #[test]
+    fn a_word_that_is_no_subcommand_has_no_operation() {
+        for word in ["", "nope", "package", "package.inspect", "--help"] {
+            assert_eq!(operation_of(word), None, "{word:?}");
         }
     }
 }
@@ -1566,13 +1914,14 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod operations_doc {
     //! rc.2 D7 #2246: `docs/design-review/appendix/interfaces.md` § "RC1 OPERATIONS 전수" must list
-    //! exactly the subcommand words of `OPERATIONS`, so a PR that adds or removes an operation
+    //! exactly the internal subcommand words mapped by `operation`, so a PR that adds or removes an operation
     //! fails here unless it updates the document in the same change.
     //!
     //! The list is one `- `word`` line per operation in alphabetical order, with no count
     //! (#2241 repair, leader rule ③): PRs that each add an operation then touch different lines
     //! instead of all rewriting one shared count and one shared line.
-    use super::OPERATIONS;
+    use super::{operation_of, Cli};
+    use clap::CommandFactory;
     use std::collections::BTreeSet;
 
     const DOC: &str = include_str!("../docs/design-review/appendix/interfaces.md");
@@ -1644,13 +1993,16 @@ mod operations_doc {
         }
     }
 
-    fn code_words() -> Vec<&'static str> {
-        OPERATIONS.iter().map(|&(word, _)| word).collect()
+    fn code_words(cli: &clap::Command) -> Vec<&str> {
+        cli.get_subcommands()
+            .filter_map(|sub| operation_of(sub.get_name()).map(|_| sub.get_name()))
+            .collect()
     }
 
     #[test]
     fn operations_doc_matches_code() {
-        if let Err(problems) = compare(&code_words(), DOC) {
+        let cli = Cli::command();
+        if let Err(problems) = compare(&code_words(&cli), DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
     }
@@ -1666,7 +2018,8 @@ mod operations_doc {
 
     #[test]
     fn mutations_are_detected() {
-        let code = code_words();
+        let cli = Cli::command();
+        let code = code_words(&cli);
         let mut sorted = code.clone();
         sorted.sort_unstable();
         assert_eq!(compare(&code, &render(&sorted)), Ok(()));
