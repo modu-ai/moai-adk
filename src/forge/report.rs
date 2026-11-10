@@ -234,13 +234,14 @@ fn valid_digest(s: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-/// Conservative shape filter: the profile filter's credential shapes, a few more common ones
-/// and personal absolute paths. Not a secret scanner (the shared module is 03-B #1996).
+/// Conservative shape filter: the shared redact module's shapes (profile shapes
+/// plus the merged gh token prefixes — #2351, single list) plus this report's own
+/// extra cloud/chat key shapes and personal absolute paths. The extra shapes below
+/// stay here: adding new prefixes elsewhere is out of this card's scope.
 fn sensitive(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
-    crate::SECRET_SHAPES
-        .iter()
-        .chain(&[
+    crate::redact::contains_secret_shape(s)
+        || [
             "akia",
             "bearer ",
             "xoxb-",
@@ -250,7 +251,8 @@ fn sensitive(s: &str) -> bool {
             "/home/",
             "~/",
             ":\\",
-        ])
+        ]
+        .iter()
         .any(|x| lower.contains(x))
 }
 
