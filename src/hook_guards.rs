@@ -11,8 +11,11 @@
 //!   `main`/`master` branch, `mkfs*`, `dd` onto a device, a fork bomb, and a database client
 //!   running `DROP DATABASE`, `DROP SCHEMA` or `TRUNCATE TABLE`. The integration branch of this
 //!   repository is not covered (a recorded gap; widening it is configuration, not a constant).
-//! - A3 `git commit` with the hook-bypass option (`--no-verify`, or `-n` in a short-option
-//!   cluster before any option that takes a value).
+//! - A3 `git commit` that skips the repository's hooks: the long bypass option or a unique
+//!   abbreviation of it (nine characters or more), `-n` in a short-option cluster before any
+//!   option that takes a value (`-uno`, `-m n` and `--message -n` are values, not options), or
+//!   `core.hooksPath` set on git's own arguments (`-c`, `-c<key>=`, `--config-env`), any key
+//!   case. Measured against git 2.54.0 with a failing pre-commit hook in a fixture repository.
 //! - A4 file writes, wherever they land: inside a `.git` directory, into credential directories
 //!   (`.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, gcloud's configuration), onto a private-key
 //!   file named `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`, or content that carries a private-key
@@ -20,10 +23,14 @@
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
 //!
-//! Known gaps: shell redirections (`>`, `tee`) into protected paths; Codex `apply_patch` paths
-//! are read from `*** Add/Update/Delete File:` and `*** Move to:` lines, a format the official
-//! pages do not define (an unreadable patch is not path-checked, its added lines still are);
-//! input past the 4 MiB stdin bound is an engine error and not checked at all (decision D1).
+//! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
+//! force push with no refspec while `main` is checked out (the branch is not read here); a
+//! `--mirror` or `--all` push; deleting `main`/`master` on a remote (`--delete`, `:main`);
+//! `core.hooksPath` set through `GIT_CONFIG_*` environment variables or a config file; Codex
+//! `apply_patch` paths are read from `*** Add/Update/Delete File:` and `*** Move to:` lines, a
+//! format the official pages do not define — a patch without such lines is allowed without a
+//! path check (its added lines are still checked for secrets); input past the 4 MiB stdin
+//! bound is an engine error and not checked at all (decision D1).
 
 use serde_json::Value;
 use std::path::{Component, Path, PathBuf};
@@ -53,6 +60,32 @@ const KEY_FILES: &[&str] = &["id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"];
 /// `git commit` short options that take a value (`-m msg`, `-F file`, `-C rev`, `-c rev`,
 /// `-t file`); after one of them the rest of a cluster is that value, not more options.
 const COMMIT_VALUE_OPTS: &[char] = &['m', 'F', 'C', 'c', 't'];
+/// `git commit` short options whose value can only be attached (`-uno`, `-S<keyid>`): the rest
+/// of the cluster is that value, and the next word is not consumed. Measured with git 2.54.0:
+/// `-uno` and `-unormal` run the pre-commit hook.
+const COMMIT_ATTACHED_OPTS: &[char] = &['u', 'S'];
+/// `git commit` long options that take the next word as their value unless written `--x=v`.
+const COMMIT_LONG_VALUE_OPTS: &[&str] = &[
+    "--message",
+    "--file",
+    "--author",
+    "--date",
+    "--reuse-message",
+    "--reedit-message",
+    "--fixup",
+    "--squash",
+    "--template",
+    "--cleanup",
+    "--trailer",
+    "--pathspec-from-file",
+];
+/// The hook-bypass long option, assembled so this file never holds it as one literal. Git
+/// accepts a unique abbreviation; with git 2.54.0 the shortest one that skips the hook is
+/// nine characters (shorter ones are ambiguous with `--no-verbose`).
+fn bypass_flag() -> String {
+    format!("--no-{}", "verify")
+}
+const BYPASS_MIN_PREFIX: usize = 9;
 
 /// The reason a Bash command line is refused, or `None`.
 pub fn bash_guard(command: &str) -> Option<&'static str> {
@@ -126,10 +159,11 @@ fn is_dangerous_rm_target(target: &str) -> bool {
 
 fn git_guard(args: &[String]) -> Option<&'static str> {
     for (sub, rest) in crate::claim_verify::git_subcommands(args) {
+        let global = &args[..args.len() - rest.len() - 1];
         let reason = match sub {
             "push" => force_push_to_protected(rest).then_some(FORCE_PUSH),
             "branch" => force_delete_protected(rest).then_some(BRANCH_DELETE),
-            "commit" => skips_hooks(rest).then_some(HOOK_BYPASS),
+            "commit" => (skips_hooks(rest) || overrides_hooks_path(global)).then_some(HOOK_BYPASS),
             _ => None,
         };
         if reason.is_some() {
@@ -175,6 +209,7 @@ fn force_delete_protected(rest: &[String]) -> bool {
 }
 
 fn skips_hooks(rest: &[String]) -> bool {
+    let flag = bypass_flag();
     let mut take_value = false;
     for a in rest {
         if take_value {
@@ -184,8 +219,12 @@ fn skips_hooks(rest: &[String]) -> bool {
         if a == "--" {
             return false;
         }
-        if a == "--no-verify" {
+        if a.len() >= BYPASS_MIN_PREFIX && flag.starts_with(a.as_str()) {
             return true;
+        }
+        if COMMIT_LONG_VALUE_OPTS.contains(&a.as_str()) {
+            take_value = true;
+            continue;
         }
         if a.starts_with("--") || !a.starts_with('-') || a.len() < 2 {
             continue;
@@ -195,6 +234,9 @@ fn skips_hooks(rest: &[String]) -> bool {
             if c == 'n' {
                 return true;
             }
+            if COMMIT_ATTACHED_OPTS.contains(&c) {
+                break;
+            }
             if COMMIT_VALUE_OPTS.contains(&c) {
                 // `-m` alone takes the next word; `-mtext` holds its value inline.
                 take_value = k + c.len_utf8() == a.len() - 1;
@@ -203,6 +245,23 @@ fn skips_hooks(rest: &[String]) -> bool {
         }
     }
     false
+}
+
+/// True when git's own arguments (before the subcommand) set `core.hooksPath` — git reads the
+/// key case-insensitively, and pointing it elsewhere skips the repository's hooks (measured
+/// with git 2.54.0). Covers `-c key=value`, the attached `-ckey=value` and `--config-env`.
+fn overrides_hooks_path(global: &[String]) -> bool {
+    let sets = |s: &str| {
+        s.split('=')
+            .next()
+            .is_some_and(|k| k.eq_ignore_ascii_case("core.hooksPath"))
+    };
+    global.iter().enumerate().any(|(i, a)| {
+        (a == "-c" && global.get(i + 1).is_some_and(|v| sets(v)))
+            || a.strip_prefix("-c")
+                .is_some_and(|v| !v.is_empty() && sets(v))
+            || a.strip_prefix("--config-env=").is_some_and(sets)
+    })
 }
 
 /// The reason a file write is refused, or `None`. `cwd` resolves relative paths.
@@ -453,6 +512,14 @@ mod tests {
             "git commit -anm x".to_string(),
             "git commit -nm x".to_string(),
             format!("git -C repo commit {flag}"),
+            // Unique abbreviations git accepts (9 and 10 characters, measured with 2.54.0).
+            format!("git commit {} -m x", &flag[..9]),
+            format!("git commit {} -m x", &flag[..10]),
+            // A hooks directory override on git's own arguments, any key case.
+            "git -c core.hooksPath=/dev/null commit -m x".to_string(),
+            "git -c core.hookspath=/tmp/none commit -m x".to_string(),
+            "git -ccore.hooksPath=x commit -m x".to_string(),
+            "git --config-env=core.hooksPath=HOOKS commit -m x".to_string(),
         ] {
             assert_eq!(bash_guard(&cmd), Some(HOOK_BYPASS), "{cmd}");
         }
@@ -465,6 +532,20 @@ mod tests {
             format!("git log {flag}"),
             "git push -n origin main".to_string(),
             format!("git commit -m 'skip {flag}'"),
+            // Eight characters is ambiguous for git and runs the hook (measured).
+            format!("git commit {} -m x", &flag[..8]),
+            // `-u` and `-S` hold an attached value: `n` there is not an option (measured:
+            // `-uno` and `-unormal` run the hook).
+            "git commit -uno -m x".to_string(),
+            "git commit -unormal -m x".to_string(),
+            "git commit -Snkey -m x".to_string(),
+            // A long option's separate value is not an option either.
+            "git commit --message -n".to_string(),
+            "git commit --author -n -m x".to_string(),
+            // Other configuration, or the override on a command that is not a commit.
+            "git -c user.name=n commit -m x".to_string(),
+            "git -c core.hooksPath=/dev/null log".to_string(),
+            "git -c core.hooksPathX=1 commit -m x".to_string(),
         ] {
             assert_eq!(bash_guard(&cmd), None, "{cmd}");
         }
