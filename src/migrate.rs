@@ -79,14 +79,79 @@ fn sensitive_text(text: &str) -> bool {
         .any(|s| normalized.contains(s))
 }
 
-fn json_sensitive(value: &serde_json::Value) -> bool {
-    match value {
-        serde_json::Value::Object(map) => map
-            .iter()
-            .any(|(k, v)| sensitive_text(k) || json_sensitive(v)),
-        serde_json::Value::Array(values) => values.iter().any(json_sensitive),
-        serde_json::Value::String(s) => sensitive_text(s),
-        _ => false,
+// Streams the JSON token sequence instead of a serde_json::Value, which keeps
+// only the last duplicate key while backup/import copy the raw bytes. Every
+// decoded key and string is checked in order, and a repeated key at any depth
+// rejects the whole document because parsers disagree on which value wins.
+struct JsonScan(bool);
+const DUPLICATE_KEY: &str = "duplicate JSON key";
+
+impl<'de> Deserialize<'de> for JsonScan {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+        d.deserialize_any(JsonScanVisitor)
+    }
+}
+
+struct JsonScanVisitor;
+impl<'de> serde::de::Visitor<'de> for JsonScanVisitor {
+    type Value = JsonScan;
+    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("JSON value")
+    }
+    fn visit_bool<E>(self, _: bool) -> std::result::Result<JsonScan, E> {
+        Ok(JsonScan(false))
+    }
+    fn visit_i64<E>(self, _: i64) -> std::result::Result<JsonScan, E> {
+        Ok(JsonScan(false))
+    }
+    fn visit_u64<E>(self, _: u64) -> std::result::Result<JsonScan, E> {
+        Ok(JsonScan(false))
+    }
+    fn visit_f64<E>(self, _: f64) -> std::result::Result<JsonScan, E> {
+        Ok(JsonScan(false))
+    }
+    fn visit_unit<E>(self) -> std::result::Result<JsonScan, E> {
+        Ok(JsonScan(false))
+    }
+    fn visit_str<E>(self, v: &str) -> std::result::Result<JsonScan, E> {
+        Ok(JsonScan(sensitive_text(v)))
+    }
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        self,
+        mut seq: A,
+    ) -> std::result::Result<JsonScan, A::Error> {
+        let mut sensitive = false;
+        while let Some(JsonScan(s)) = seq.next_element()? {
+            sensitive |= s;
+        }
+        Ok(JsonScan(sensitive))
+    }
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        mut map: A,
+    ) -> std::result::Result<JsonScan, A::Error> {
+        let mut keys = BTreeSet::new();
+        let mut sensitive = false;
+        while let Some(key) = map.next_key::<String>()? {
+            sensitive |= sensitive_text(&key);
+            if !keys.insert(key) {
+                return Err(serde::de::Error::custom(DUPLICATE_KEY));
+            }
+            let JsonScan(s) = map.next_value()?;
+            sensitive |= s;
+        }
+        Ok(JsonScan(sensitive))
+    }
+}
+
+// Ok(Some(sensitive)) for a JSON document, Ok(None) when the text is not JSON.
+fn json_sensitive(text: &str) -> Result<Option<bool>> {
+    match serde_json::from_str::<JsonScan>(text) {
+        Ok(JsonScan(sensitive)) => Ok(Some(sensitive)),
+        Err(e) if e.is_data() => Err(format!(
+            "{DUPLICATE_KEY} or unsupported JSON value; nothing copied"
+        )),
+        Err(_) => Ok(None),
     }
 }
 
@@ -122,8 +187,8 @@ fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
     if sensitive_text(text) {
         return Ok(true);
     }
-    if let Ok(value) = serde_json::from_str::<serde_json::Value>(text) {
-        return Ok(json_sensitive(&value));
+    if let Some(sensitive) = json_sensitive(text)? {
+        return Ok(sensitive);
     }
     if let Ok(doc) = text.parse::<toml_edit::DocumentMut>() {
         return Ok(toml_table_sensitive(doc.as_table()));
@@ -154,7 +219,7 @@ fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
         }
         return Ok(false);
     }
-    let mut entries = 0;
+    let mut keys = BTreeSet::new();
     for line in text
         .lines()
         .map(str::trim)
@@ -163,12 +228,16 @@ fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
         let (key, value) = line
             .split_once(':')
             .ok_or("unsupported config format; nothing copied")?;
-        if sensitive_text(&scalar(key)?) || sensitive_text(&scalar(value)?) {
+        let key = scalar(key)?;
+        if sensitive_text(&key) || sensitive_text(&scalar(value)?) {
             return Ok(true);
         }
-        entries += 1;
+        // YAML parsers disagree on which repeated key wins; refuse instead.
+        if !keys.insert(key) {
+            return Err("duplicate YAML key; nothing copied".into());
+        }
     }
-    if entries == 0 {
+    if keys.is_empty() {
         return Err("empty or unclassified config; nothing copied".into());
     }
     Ok(false)

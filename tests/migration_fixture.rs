@@ -18,6 +18,117 @@ fn credential_container_and_token_name_variants_are_not_clearance() {
     }
 }
 
+// AUDIT-2016-1340: serde_json::Value keeps only the last duplicate key, while
+// backup/import copy the raw bytes. The parser must not be the only witness.
+#[test]
+fn duplicate_json_string_must_not_hide_escaped_secret() {
+    let bytes = br#"{"ordinary":"\u0073ecrets","ordinary":"ko"}"#;
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(bytes).unwrap()["ordinary"],
+        "ko"
+    );
+    excluded(bytes, "config.json");
+}
+
+#[test]
+fn duplicate_json_object_must_not_hide_nested_credentials() {
+    let bytes = br#"{"ordinary":{"\u0063redentials":{"value":"synthetic-audit-value"}},"ordinary":{"language":"ko"}}"#;
+    assert!(
+        serde_json::from_slice::<serde_json::Value>(bytes).unwrap()["ordinary"]
+            .get("credentials")
+            .is_none()
+    );
+    excluded(bytes, "config.json");
+}
+
+#[test]
+fn nested_duplicate_json_key_hiding_escaped_token_is_excluded() {
+    for bytes in [
+        br#"{"a":[{"k":"\u0073ecret","k":"x"}]}"#.as_slice(),
+        br#"{"k":"\u0074oken","k":1}"#,
+    ] {
+        excluded(bytes, "config.json");
+    }
+}
+
+// Kills a mutant that drops the duplicate-key refusal: no value here is
+// sensitive, so only the duplicate rule refuses these documents.
+#[test]
+fn benign_duplicate_keys_are_refused_before_any_write() {
+    for (bytes, name) in [
+        (
+            br#"{"language":"ko","language":"en"}"#.as_slice(),
+            "config.json",
+        ),
+        (
+            br#"{"outer":[{"language":"ko","language":"en"}]}"#,
+            "config.json",
+        ),
+        (b"language: ko\nlanguage: en", "config.yml"),
+    ] {
+        let (d, h, s) = independent_fixture(bytes, name);
+        let before = moai_cli::tree_digest(d.path(), &[]).unwrap();
+        let err = h.plan(&[Host::Claude], Mode::Default, &[s]).unwrap_err();
+        assert!(err.contains("duplicate"), "{name}: {err}");
+        assert_eq!(before, moai_cli::tree_digest(d.path(), &[]).unwrap());
+    }
+}
+
+#[test]
+fn duplicate_yaml_key_hiding_escaped_secret_is_excluded() {
+    excluded(b"ordinary: \"\\u0073ecrets\"\nordinary: ko", "config.yml");
+}
+
+// toml_edit 0.25.3 must reject every duplicate definition form, so a TOML
+// document can never hide an earlier value from the decoded walk.
+#[test]
+fn toml_duplicate_definitions_are_parser_errors_and_never_copied() {
+    for text in [
+        "k = \"\\u0073ecrets\"\nk = \"ko\"",
+        "[t]\nk = \"\\u0073ecrets\"\n[t]\nk = \"ko\"",
+        "t = { k = \"\\u0073ecrets\", k = \"ko\" }",
+        "t.k = \"\\u0073ecrets\"\nt.k = \"ko\"",
+    ] {
+        assert!(text.parse::<toml_edit::DocumentMut>().is_err(), "{text}");
+        excluded(text.as_bytes(), "config.toml");
+    }
+}
+
+// The raw-text pass misses this spelling; only the decoded key walk sees it.
+#[test]
+fn decoded_key_without_escape_is_excluded() {
+    excluded(br#"{"mytoken":"synthetic-audit-value"}"#, "config.json");
+    excluded(b"mytoken = \"synthetic-audit-value\"", "config.toml");
+}
+
+// Boundary pair for the 262144-byte source limit (literal values on purpose).
+#[test]
+fn source_size_limit_accepts_262144_and_refuses_262145_bytes() {
+    for (len, accepted) in [(262_144usize, true), (262_145, false)] {
+        let mut bytes = br#"{"language":"ko"}"#.to_vec();
+        bytes.resize(len, b' ');
+        let (_d, h, s) = independent_fixture(&bytes, "config.json");
+        let plan = h.plan(&[Host::Claude], Mode::Default, &[s]);
+        assert_eq!(plan.is_ok(), accepted, "len {len}: {plan:?}");
+    }
+}
+
+// Boundary pair for the 128-selection limit (literal values on purpose).
+#[test]
+fn selection_limit_accepts_128_and_refuses_129() {
+    for (count, accepted) in [(128usize, true), (129, false)] {
+        let (_d, h, s) = independent_fixture(br#"{"language":"ko"}"#, "config.json");
+        let items: Vec<_> = (0..count)
+            .map(|i| Selection {
+                target: format!(".moai-cli/imports/config-{i}.json"),
+                ..s.clone()
+            })
+            .collect();
+        let plan = h.plan(&[Host::Claude], Mode::Default, &items);
+        assert_eq!(plan.is_ok(), accepted, "count {count}");
+    }
+}
+
 #[test]
 fn decoded_policy_covers_nested_keys_values_arrays_and_tables() {
     for (bytes, name) in [
