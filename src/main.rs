@@ -58,7 +58,7 @@ struct Cli {
 /// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm|codex -l|-a` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
-    /// Session name (default `leader` for -l, `agent-1` for -a).
+    /// Session name (default `leader` for -l, the project's next `agent-N` for -a; none without a role).
     #[arg(long)]
     name: Option<String>,
     /// Main model (Claude hosts default `opus`; codex uses its own default unless set).
@@ -71,7 +71,8 @@ struct LaunchOpts {
     #[arg(long)]
     no_advisor: bool,
     /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts) and the
-    /// `workspace-write` / `on-request` sandbox on codex. Without it every session has full access.
+    /// `workspace-write` / `on-request` sandbox on codex. Without it a -l|-a session has full access;
+    /// a session without a role never gets a permission flag.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.

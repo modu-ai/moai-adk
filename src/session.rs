@@ -164,6 +164,8 @@ pub fn full_access(has_role: bool, keep_prompts: bool) -> bool {
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361) ----
 
+/// Largest store that is read: `u64::MAX` is 20 digits, plus the newline.
+const AGENT_SEQ_MAX_BYTES: u64 = 21;
 /// Test-only: milliseconds to hold the counter lock between reading and writing.
 pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_AGENT_SEQ_HOLD_MS";
 
@@ -208,7 +210,7 @@ fn read_last(file: &Path) -> Result<u64, String> {
     match fs::symlink_metadata(file) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
         Err(_) => return Err(broken()),
-        Ok(m) if !m.file_type().is_file() || m.len() > 32 => return Err(broken()),
+        Ok(m) if !m.file_type().is_file() || m.len() > AGENT_SEQ_MAX_BYTES => return Err(broken()),
         Ok(_) => {}
     }
     let text = fs::read_to_string(file).map_err(|_| broken())?;

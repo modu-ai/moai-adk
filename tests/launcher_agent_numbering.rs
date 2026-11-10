@@ -254,12 +254,30 @@ fn a_store_that_is_not_one_number_is_an_error_and_stays_as_it_was() {
         }
         assert_eq!(stored(&f).as_deref(), Some(bad));
     }
-    // The last number: nothing comes after it.
+    // The last number: nothing comes after it. 21 bytes, the largest store that is read.
     let f = fixture();
     seed(&f, "18446744073709551615\n");
     let err = refused(&run(&f, &["cc", "-a"]));
     assert!(err.contains("exhausted"), "{err}");
     assert_eq!(stored(&f).as_deref(), Some("18446744073709551615\n"));
+}
+
+#[test]
+fn the_store_size_limit_is_21_bytes() {
+    // 21 bytes (20 digits + newline) is read, leading zeros and all.
+    let f = fixture();
+    seed(&f, "00000000000000000041\n");
+    assert_eq!("00000000000000000041\n".len(), 21);
+    assert_eq!(name(&run(&f, &["cc", "-a"])), "agent-42");
+    assert_eq!(stored(&f).as_deref(), Some("42\n"));
+    // 22 bytes is refused before it is read, although it would parse as 41.
+    let f = fixture();
+    seed(&f, "000000000000000000041\n");
+    assert_eq!("000000000000000000041\n".len(), 22);
+    for args in [&["cc", "-a"][..], &["cc", "-a", "--dry-run"][..]] {
+        refused(&run(&f, args));
+    }
+    assert_eq!(stored(&f).as_deref(), Some("000000000000000000041\n"));
 }
 
 #[test]
