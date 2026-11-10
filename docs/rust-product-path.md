@@ -682,3 +682,13 @@ Git inventory and history reads use the shared `identity::scrub_git_env` policy,
 The cleanliness check explicitly runs `git status --porcelain --untracked-files=all`, so local or global `status.showUntrackedFiles=no` cannot conceal an untracked file. The [official git-status option rules](https://git-scm.com/docs/git-status) define the explicit mode and the configurable default (checked 2026-11-10). The regression checks clean-to-untracked transitions under default, repository-local, and `GIT_CONFIG_GLOBAL` configurations; only `status_clean` must fail. This does not expand the gate to ignored files or override other user Git configuration.
 
 Outbox JSON must decode as a schema-1 `forge::outbox::OutboxEntry`, including its typed `OutboxState`. Missing fields, unknown states or schema versions, read/parse errors, `publishing` and `publish_unknown` block exit. A valid confirmed entry remains safe. Only a missing outbox counts as empty; the earlier directory/entry inspection fail-closed behavior is preserved. Regression fixtures exercise both the dirty-project/clean-shadow environment attack and malformed records, with a valid confirmed entry as the positive boundary.
+
+## Test Git fixture hygiene (#2352)
+
+`tests/common/git.rs::command()` starts a Git `Command` with `gc.auto=0`,
+`maintenance.auto=false`, empty global/system configuration and `LC_ALL=C`.
+It leaves the directory, identity, dates and stdio to each caller, preserving
+existing `status`/`output`, byte decoding and failure assertions. `git_raw` and
+`git_pinned` use the same factory. New unguarded fixture spawns must use this
+helper; `tests/ac_command_lint.rs` reports unguarded files without weakening
+their tests or treating a zero-selected-test verification command as success.
