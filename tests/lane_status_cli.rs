@@ -338,6 +338,10 @@ fn idle_causes_are_classified_from_records_only() {
     // An active card and no pane observation: nothing says whether the lane is idle.
     assert_eq!(cause("agent-1"), json!("unknown"));
     assert_eq!(idle(&out, "agent-1")["idle"], Value::Null);
+    assert_eq!(
+        idle(&out, "agent-1")["evidence"]["active_issues"],
+        json!([11])
+    );
     assert_eq!(cause("agent-5"), json!("unknown"));
 
     // The draft pairs the lane without a card with the ready card; nothing is posted.
@@ -493,6 +497,31 @@ fn request_limits_at_their_edges() {
     assert_eq!(
         refused(req(vec![1], 51)),
         "lane status lanes must be at most 50"
+    );
+    // Caller evidence without a source or a time is refused.
+    for lanes in [
+        json!([{"session": "s", "pane": {"state": "working", "source": " ", "observed_at": "t"}}]),
+        json!([{"session": "s", "pane": {"state": "working", "source": "hc", "observed_at": ""}}]),
+        json!([{"session": ""}]),
+    ] {
+        let r: LaneStatusRequest = serde_json::from_value(json!({
+            "schema_version": 1, "owner": "acme", "repo": "widgets",
+            "base_branch": "v2026.11.0", "issues": [1], "lanes": lanes,
+        }))
+        .unwrap();
+        assert_eq!(
+            refused(r),
+            "lane status evidence must be given with a session, a source and a time"
+        );
+    }
+    let r: LaneStatusRequest = serde_json::from_value(json!({
+        "schema_version": 1, "owner": "acme", "repo": "widgets", "base_branch": "v2026.11.0",
+        "issues": [1], "pending_decisions": [{"issue": 1, "source": "", "recorded_at": "t"}],
+    }))
+    .unwrap();
+    assert_eq!(
+        refused(r),
+        "lane status evidence must be given with a session, a source and a time"
     );
     // N = 50 Issues and 50 lanes pass validation: the first GitHub read is attempted.
     let t = RecordedTransport::new(vec![]);
