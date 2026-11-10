@@ -895,7 +895,7 @@ fn launch(
 ) -> Result<serde_json::Value, String> {
     use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
-    // `-a` is `agent-N` from the project's counter; both start with full access.
+    // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
     // `-a` without `--name` is numbered; `--name` takes no number.
     let numbered = leader == Some(false) && o.name.is_none();
@@ -912,9 +912,9 @@ fn launch(
         // takes the launcher defaults (advisor fable, model, effort) too.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        // A role session starts with full access unless `--permissions` is given; a roleless
-        // one gets no permission flag (user decision 2026-11-10, #2359; replaces #2244).
-        skip_permissions: full_access(role.is_some(), o.permissions),
+        // Validate user configuration even for roleless sessions or CLI --permissions.
+        // Resolution precedes host composition and any agent-number allocation.
+        skip_permissions: full_access(role.is_some(), o.permissions)?,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),

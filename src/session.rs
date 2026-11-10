@@ -18,8 +18,8 @@
 //! Without a role (`moai-cli cc|glm|codex` with neither `-l` nor `-a`, Issue #2053) the launcher
 //! opens a plain host session: no role is guessed, no session name is added and no permission
 //! flag is passed, so the host starts in the mode its own settings choose. A role session
-//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless `--permissions`
-//! is given ([`FULL_ACCESS_DEFAULT`], user decision 2026-11-10, #2359).
+//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless the user setting
+//! `launcher.role_access` selects prompts or `--permissions` is given.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
@@ -40,9 +40,8 @@ pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// host starts with full access and no permission prompt (`--dangerously-skip-permissions` on
 /// Claude hosts whatever the project's `permissions` key says, `-s danger-full-access -a never`
 /// on codex); `--permissions` keeps the prompts. A roleless session gets no permission flag at
-/// all. This replaces #2244 (a project `permissions` key dropped the skip). Choosing this
-/// default from a settings key is a recorded follow-up; until then this constant is the only
-/// place to change.
+/// all. The user-only `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose
+/// `full` or `prompt`; an absent file or key keeps this default. Project settings are ignored.
 pub const FULL_ACCESS_DEFAULT: bool = true;
 /// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
 /// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
@@ -193,11 +192,51 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
-/// Whether a launched session runs with full access: only a role session, and then
-/// [`FULL_ACCESS_DEFAULT`] unless `--permissions` asks to keep the prompts. Host and project
-/// settings do not matter.
-pub fn full_access(has_role: bool, keep_prompts: bool) -> bool {
-    has_role && FULL_ACCESS_DEFAULT && !keep_prompts
+/// Reads the user-only launcher setting. Like the project profile's `.yaml` file, this file
+/// accepts only the JSON subset, parsed by serde_json (not general YAML).
+fn role_full_access() -> Result<bool, String> {
+    let Ok(home) = crate::key_vault::home() else {
+        return Ok(FULL_ACCESS_DEFAULT);
+    };
+    let path = home.join(".moai-cli/config/launcher.yaml");
+    // Check the entry before reading: directories, symlinks and special files (including
+    // FIFOs, which could block a read) are not launcher configuration files.
+    match fs::symlink_metadata(&path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(FULL_ACCESS_DEFAULT),
+        Err(_) => return Err("user launcher configuration cannot be read".into()),
+        Ok(metadata) if !metadata.file_type().is_file() => {
+            return Err("user launcher configuration must be a regular file".into())
+        }
+        Ok(_) => {}
+    }
+    let bytes = fs::read(&path).map_err(|_| "user launcher configuration cannot be read")?;
+    let value: Value = serde_json::from_slice(&bytes)
+        .map_err(|_| "user launcher configuration must use valid JSON-subset syntax")?;
+    let root = value
+        .as_object()
+        .ok_or("user launcher configuration must be an object")?;
+    let Some(launcher) = root.get("launcher") else {
+        return Ok(FULL_ACCESS_DEFAULT);
+    };
+    let launcher = launcher
+        .as_object()
+        .ok_or("user launcher configuration launcher must be an object")?;
+    match launcher.get("role_access") {
+        None => Ok(FULL_ACCESS_DEFAULT),
+        Some(Value::String(access)) if access == "full" => Ok(true),
+        Some(Value::String(access)) if access == "prompt" => Ok(false),
+        Some(_) => {
+            Err("user launcher configuration launcher.role_access must be full or prompt".into())
+        }
+    }
+}
+
+/// Resolves CLI `--permissions` > user `launcher.role_access` > [`FULL_ACCESS_DEFAULT`].
+/// The configuration is validated even for `--permissions` and roleless sessions; roleless
+/// sessions always leave permission flags to the host. Project settings do not matter.
+pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
+    let configured = role_full_access()?;
+    Ok(has_role && !keep_prompts && configured)
 }
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361) ----
@@ -398,7 +437,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
 fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     clean("codex_bin", &r.codex_bin)?;
     // User decision 2026-11-10 (#2359): a role session gets full access (no sandbox, never
-    // ask), or the sandboxed ask-first pair with `--permissions`; a roleless session gets no
+    // ask), or the sandboxed ask-first pair when prompts are selected; a roleless session gets no
     // flag, so `~/.codex/config.toml` decides (Codex ranks CLI flags above it, so any flag here
     // would override the user's choice).
     let pair = if r.skip_permissions {
