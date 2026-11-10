@@ -43,6 +43,7 @@
 - `context-bundle`
 - `context-verify`
 - `cost-report`
+- `decision-append`
 - `decision-record`
 - `effect-confirm`
 - `effect-intend`

@@ -742,6 +742,19 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
+    /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
+    /// rows are never edited or removed. Preview by default; `--apply` writes.
+    DecisionAppend {
+        project: PathBuf,
+        /// Repository-relative path of the log, e.g. `docs/decisions-2026-11-08.md`.
+        #[arg(long)]
+        log: PathBuf,
+        #[arg(long)]
+        apply: bool,
+        #[arg(long)]
+        permission_reference: Option<String>,
+    },
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
     AuditReduce {
@@ -943,6 +956,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ContextBundle { .. } => "context.bundle",
         ContextVerify { .. } => "context.verify",
         CostReport { .. } => "cost.report",
+        DecisionAppend { .. } => "decision.append",
         DecisionRecord { .. } => "decision.record",
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
@@ -1818,6 +1832,18 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             run,
             permission_reference,
         } => moai_cli::decision::append(&project, &run, &input()?, &permission_reference),
+        Command::DecisionAppend {
+            project,
+            log,
+            apply,
+            permission_reference,
+        } => moai_cli::decision_log::append(
+            &project,
+            &log,
+            &input()?,
+            apply,
+            permission_reference.as_deref(),
+        ),
         Command::AuditReduce { project } => {
             let request = input::<moai_cli::audit::AuditInput>()?;
             if request.protocol_version != contract::PROTOCOL_VERSION {
