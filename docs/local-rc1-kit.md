@@ -7,9 +7,9 @@
 | --- | --- | --- |
 | 1 계획(이 문서) | 작성 | 완료 |
 | 2 스테이징 빌드 | 실행 | passed |
-| 3 격리 시험(임시 HOME·임시 프로젝트) | 실행 | passed. 결함 1건 발견(#2268) |
+| 3 격리 시험(임시 HOME·임시 프로젝트) | 실행 | passed. 처음 실측에서 결함 1건 발견(#2268), #2291 재실측에서 해소 확인(2절) |
 | 4 사용자 실제 프로젝트 적용 | 실행하지 않음 | 사용자 확인 대상. 명령만 아래에 둡니다 |
-| 5 사용자 실제 HOME 적용(`update-apply`) | 실행하지 않음 | **사용 불가 — #2268 병합 전** |
+| 5 사용자 실제 HOME 적용(`update-apply`) | 실행하지 않음 | 사용자 확인 대상. #2268(PR #2278) 병합 뒤에는 기존 비관리 `moai` skill 폴더가 있으면 `update-plan`이 `blocked`, `update-apply`는 0 write(3절) |
 | 6 실제 host(Claude Code·Codex) 실행 | 실행하지 않음 | T2 not_run(#2014) |
 | 7 공개 배포(tag·release) | 실행하지 않음 | blocked(사용자 승인) |
 
@@ -37,28 +37,27 @@ shasum -a 256 /tmp/moai-rc1-stage-target/release/moai-cli   # 바이너리 hash�
 
 ## 2. 격리 시험 (실측)
 
-재현: `WF_REF=.moai-cli/ bash tools/local-rc1-isolation.sh <BIN> <repo root> <out dir>`(`WF_REF`를 빼면 b 행처럼 agents-plan이 멈춤). 아래 표는 #2274 이전 head의 실측이다. #2274 뒤에는 `WF_REF` 우회가 필요 없고 4절 순서(generation 먼저)를 쓴다 — 스크립트 자체는 이 카드에서 바꾸지 않았다. 시험은 `mktemp -d`로 만든 HOME과 프로젝트에서 돌렸고, 실제 HOME은 넘기지 않았습니다. 실제 기계를 흉내 내려고 다음을 먼저 심었습니다: `~/.claude/skills/moai/SKILL.md`와 `~/.agents/skills/moai/SKILL.md`(RC1이 아닌 기존 skill), 다른 skill 하나, `~/.moai/`, `~/.codex/AGENTS.md`, 프로젝트의 `.moai/`, `.claude/settings.json`, 사용자 내용이 든 `AGENTS.md`, `AGENTS.override.md`.
+재현: `bash tools/local-rc1-isolation.sh <BIN> <repo root> <out dir>`. 스크립트는 4절과 같은 순서(project → generation → agents)로 돌고, `WF_REF` 우회는 없앴다(#2291). 실측은 2026-11-09, `v2026.11.0` tip `496cdedbb` 위 #2291 브랜치의 debug 빌드로 했다. 실제 HOME 쓰기 0은 `sandbox-exec -p '(version 1)(allow default)(deny file-write* (subpath "<실제 HOME>"))'` 아래에서 실행해 확인했다(같은 프로필로 HOME 아래 `touch`를 시도하면 `Operation not permitted`). 시험은 `mktemp -d`로 만든 HOME과 프로젝트에서 돌렸고, 실제 HOME은 넘기지 않았습니다. 실제 기계를 흉내 내려고 다음을 먼저 심었습니다: `~/.claude/skills/moai/SKILL.md`와 `~/.agents/skills/moai/SKILL.md`(RC1이 아닌 기존 skill), 다른 skill 하나, `~/.moai/`, `~/.codex/AGENTS.md`, 프로젝트의 `.moai/`, `.claude/settings.json`, 사용자 내용이 든 `AGENTS.md`, `AGENTS.override.md`.
 
 | 순서 | 명령 | 결과 |
 | --- | --- | --- |
 | a | `moai-cli project-plan <P>` (stdin: profile 요청) → `project-apply <P> --plan-digest … --permission-reference …` (stdin: plan) | exit 0 / 0. 새 파일 `.moai-cli/project.yaml`, `manifests/profile-baseline.json`, receipt |
-| b | `moai-cli agents-plan <P>` (stdin: `{"protocol_version":1,"language":"en","workflow_reference":"skills/moai/workflows/","local_file":"none"}`) | **exit 1** `not_found: workflow reference directory missing; generate it first` — 아래 gap G2 |
-| b′ | 같은 요청, `workflow_reference` = 이미 있는 `.moai-cli/`(시험용 우회일 뿐 권장하지 않음) → `agents-apply` | exit 0 / 0. `AGENTS.md`의 사용자 줄은 그대로이고 그 아래 `<!-- moai:managed:begin id=moai-workflow -->` 블록이 추가됨. 원본은 `.moai-cli/receipts/agents-apply-….before/AGENTS.md`에 보관(hash가 원본과 같음) |
-| c | `moai-cli apply-recover <P> --receipt <agents-apply receipt id> --permission-reference …` | exit 0, `state: reverted`, `reverted: ["AGENTS.md", ".moai-cli/manifests/generation.json"]`, `AGENTS.md` hash가 원본으로 돌아옴 |
-| d | `moai-cli update-plan <H> <repo>/skills/moai` | exit 0. 두 host 모두 `preflight: ok`, `SKILL.md` = **`conflict`**, 나머지 12개 = `create` |
-| e | `moai-cli update-apply <H> <repo>/skills/moai --plan-digest … --permission-reference …` (stdin: plan) | exit 0. 기존 `SKILL.md`는 바이트 그대로이지만 **같은 폴더에 RC1 workflows·references 12개가 추가됨** → 결함 #2268 |
-| f | `moai-cli recovery-plan <H>` | exit 0, 두 host `receipt_status: committed`, `files: []`(되돌릴 대상 없음) |
+| b | `moai-cli generation-plan <P>` (stdin: 4절 `generation-request.json`, `workflow_id` `kit-demo`, `workflow_reference` `.moai-cli/workflows/kit-demo/`) → `generation-apply` | exit 0 / 0. `state: applied`, 새 파일 `.moai-cli/workflows/kit-demo/SKILL.md`·`references/workflow.md`, `manifests/generation.json`. `AGENTS.md`의 사용자 줄(`keep this line`)은 그대로이고 그 아래 `<!-- moai:managed:begin id=moai-workflow -->` 블록이 1개 추가됨. 원본은 `.moai-cli/receipts/agents-apply-….before/AGENTS.md`에 보관 |
+| c | `moai-cli agents-plan <P>` (stdin: 같은 `workflow_reference`) → `agents-apply` | exit 0 / 0. `AGENTS.md` action `unchanged`, apply `state: unchanged`(generation이 이미 맞춘 블록을 다시 맞춰도 바뀌지 않음). host note: `AGENTS.override.md present; preserved; …` |
+| d | `moai-cli update-plan <H> <repo>/skills/moai` | exit 0. 두 host 모두 `preflight: blocked`, `blocked_reason: unmanaged existing package: 1 file(s) present in the projection root that install receipt … does not own (SKILL.md)` |
+| e | `moai-cli update-apply <H> <repo>/skills/moai --plan-digest … --permission-reference …` (stdin: plan) | exit 0, `status: blocked`, 두 host 모두 `files: []`, `reload_basis: no files written` |
+| f | `moai-cli recovery-plan <H>` | exit 0, 두 host `receipt_status: none`, `files: []` |
 
-보존 확인(작업 전후 `find … | shasum -a 256` 비교): 실행 전부터 있던 파일 중 바뀌거나 사라진 것은 HOME 0건이고, 프로젝트는 `AGENTS.md` 1건뿐입니다(관리 블록 추가, c로 복구됨). `AGENTS.override.md`, `.claude/settings.json`, `.moai/`, `~/.moai/`, `~/.codex/AGENTS.md`, 다른 skill은 모두 그대로였습니다.
+보존 확인(작업 전후 `find … | shasum -a 256` 비교): 실행 전부터 있던 파일 중 바뀌거나 사라진 것은 HOME 0건이고, 프로젝트는 `AGENTS.md` 1건뿐입니다(관리 블록 추가). 새로 생긴 HOME 파일도 0건입니다. `AGENTS.override.md`, `.claude/settings.json`, `.moai/`, `~/.moai/`, `~/.codex/AGENTS.md`, 기존 `moai` skill 두 개, 다른 skill은 모두 그대로였습니다. 블록 되돌리기(`apply-recover`)는 이번 실측 순서에 넣지 않았습니다. 명령은 4절 3)에 있고, 이전 실측(#2274 전)에서 `state: reverted`와 원본 hash 복귀를 확인했습니다.
 
 ## 3. 사용자 실제 HOME에 대해 알아야 할 사실
 
 - 2026-11-09 읽기 전용 `ls` 결과, 사용자 HOME에는 이미 `~/.claude/skills/moai`(2026-10-22)와 `~/.agents/skills/moai`(2026-10-29)가 있습니다. RC1이 투영하려는 경로와 정확히 같습니다.
-- 그래서 지금 `update-apply`를 실제 HOME에 돌리면 위 e와 같은 섞인 폴더가 됩니다. **#2268이 병합되기 전에는 실제 HOME 적용을 하지 마세요.**
-- 규칙: `update-plan` 결과에 `conflict`가 하나라도 있으면 apply하지 않습니다.
+- #2268(PR #2278) 병합 뒤에는 이런 HOME에서 `update-plan`이 두 host를 `blocked`(`unmanaged existing package … (SKILL.md)`)로 보고하고, `update-apply`는 아무 파일도 쓰지 않습니다(위 d·e). 이전처럼 기존 폴더에 RC1 파일이 섞여 들어가는 일은 없습니다.
+- 규칙: `update-plan` 결과에 `blocked`나 `conflict`가 하나라도 있으면 apply하지 않습니다.
 - 안전한 대안(모두 사용자가 직접 결정하고 실행하며, 자동이 아닙니다):
   1. **별도 설치 위치로 시험**: 실제 host를 띄우지 않는 확인은 위 2절처럼 임시 HOME에서만 합니다.
-  2. **백업한 뒤 교체**: 사용자가 기존 `~/.claude/skills/moai`, `~/.agents/skills/moai`를 다른 이름으로 옮겨 보관합니다. 그다음 `update-plan`에 `conflict`가 0인 것을 확인한 뒤에만 apply합니다. 기존 skill은 Go 세대 MoAI가 쓰고 있을 수 있으니, 옮기면 그쪽 동작이 바뀝니다.
+  2. **백업한 뒤 교체**: 사용자가 기존 `~/.claude/skills/moai`, `~/.agents/skills/moai`를 다른 이름으로 옮겨 보관합니다. 그다음 `update-plan`에 `blocked`·`conflict`가 0인 것을 확인한 뒤에만 apply합니다. 기존 skill은 Go 세대 MoAI가 쓰고 있을 수 있으니, 옮기면 그쪽 동작이 바뀝니다.
 
 ## 4. 사용자 실제 프로젝트 적용 순서 (사용자 확인 대상 — 이 카드는 실행하지 않음)
 
@@ -95,7 +94,7 @@ BIN=/tmp/moai-rc1-stage-target/release/moai-cli
 
 - Go `moai` 바이너리, `.moai/`, `~/.moai/`는 읽기만 하고 덮지도 지우지도 않습니다. 격리 시험에서 바이트가 그대로인 것을 확인했습니다.
 - 개인 `AGENTS.md`의 사용자 내용과 `AGENTS.override.md`는 덮지 않습니다. RC1은 `AGENTS.md`에 표시된 관리 블록만 넣고 고칩니다.
-- 기존 skill과 설정(`~/.claude/skills/*`, `~/.agents/skills/*`, `.claude/settings.json`)은 덮지 않습니다. 같은 경로에 다른 내용이 있으면 `conflict`로 보고하고 원본을 보존합니다. 단, #2268 전에는 conflict가 있어도 apply가 나머지 파일을 그 폴더에 씁니다.
+- 기존 skill과 설정(`~/.claude/skills/*`, `~/.agents/skills/*`, `.claude/settings.json`)은 덮지 않습니다. 같은 경로에 다른 내용이 있으면 `conflict`로 보고하고 원본을 보존합니다. RC1 receipt가 소유하지 않은 기존 skill 폴더가 있으면 그 host 전체가 `blocked`이고 apply는 0 write입니다(#2268).
 
 ## 6. host별 instruction·skill 경로 (공식 문서, 2026-11-09 GET 확인)
 
@@ -119,7 +118,7 @@ BIN=/tmp/moai-rc1-stage-target/release/moai-cli
 
 | # | 내용 | 상태 |
 | --- | --- | --- |
-| G1 | `update-plan`이 루트 `SKILL.md` conflict를 `preflight: ok`로 두고, `update-apply`가 기존 폴더에 나머지 파일을 씀 | 결함 #2268(agent-6). 병합 전 실제 HOME 적용 금지 |
+| G1 | `update-plan`이 루트 `SKILL.md` conflict를 `preflight: ok`로 두고, `update-apply`가 기존 폴더에 나머지 파일을 씀 | #2268(PR #2278)에서 해소: 비관리 기존 폴더면 `update-plan` `blocked`, `update-apply` 0 write(2절 d·e 재실측) |
 | G2 | `agents-plan`은 프로젝트 안에 `workflow_reference` 디렉터리가 있어야 하는데, 일반 프로젝트에 그것을 만드는 RC1 단계가 없음(시험 fixture도 손으로 만듦) | #2274에서 해소: `generation-plan`이 자기 출력 위치(`.moai-cli/workflows/<id>/`)를 받으면 미리 요구하지 않음(시험 `tests/generation_own_reference.rs`). 단독 `agents-plan`은 계속 거부 |
 | G3 | `recovery-plan`·`recovery-apply`는 `pending` host만 되돌림. `committed` 설치를 지우는 명령은 없음 | 설계 범위. 기록만 |
 | G4 | 실제 host가 투영된 skill을 로드하는지 | not_run(T2, #2014) |

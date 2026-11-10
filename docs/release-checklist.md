@@ -5,7 +5,7 @@
 ## (a) version · SemVer prerelease
 
 - [x] version `2026.11.0-rc.1`은 SemVer 2.0.0 prerelease(`-rc.1` 하이픈 식별자)이며 `2026.11.0`보다 precedence가 낮다(semver.org, 2026-11-08 검증). 문서·tag·Release는 prerelease로 취급한다.
-- [x] tag는 `moai-cli-v2026.11.0-rc.1`(04-A 결정 B: 같은 repo, `moai-cli-v<version>` 접두사 — Go stable updater의 `/releases/latest`와 Go RC 채널의 `v`/`go-v` 접두사 필터 어느 쪽에도 걸리지 않는다).
+- [x] tag는 `moai-cli-v2026.11.0-rc.1`(04-A 결정 B: 같은 repo, `moai-cli-v<version>` 접두사). Go RC 채널의 `v`/`go-v` 접두사 필터에는 걸리지 않는다. rc.N은 prerelease라 GitHub가 latest로 지정하지 않으므로 Go stable updater의 `/releases/latest`에도 나오지 않는다. **정식판은 다르다**: `/releases/latest`는 접두사로 거르지 않으므로, 접미사 없는 `moai-cli-v<version>`을 `make_latest` 기본값(true)으로 게시하면 그 릴리스가 latest가 되어 Go stable updater가 실패한다. 정식판은 `--latest=false`(또는 `docs/release-attestation.md` 운영자 승인 항목 6의 해결안)로만 게시한다. 근거: `docs/release-attestation.md` "prerelease와 정식판의 latest"·승인 항목 6, `tests/release_suite.rs` `go_feed_contamination_table_reproduces_plain_v_risk`·`rust_final_release_hides_newer_go_release_from_stable_clients`(E6 #2198).
 - [ ] **HOLD/not_run — tag ruleset**: 기존 ruleset `Release tag immutability (v*)`(id 19583648)은 `moai-cli-v*`를 덮지 않는다 → 같은 version 재배포 금지(REQ-08D-09)의 ruleset 근거가 없다. `moai-cli-v*` 전용 ruleset 추가는 저장소 설정 변경 = **운영자 결정(HOLD)**. 결정 전까지 REQ-08D-09는 절차상 규약으로만 성립한다.
 
 ## (b) exact candidate SHA · base SHA
@@ -44,7 +44,7 @@
 ## (g) 3.x updater 격리 (AC-08D-4 — Release 미게시 → not_run)
 
 - [ ] **not_run — `/releases/latest` 확인(게시 후 재실행)**: 실측(2026-11-09): `gh api …/releases/latest` → `v3.1.2`(Go stable — RC 부재 확인), `gh release view moai-cli-v2026.11.0-rc.1` → **release not found**(미게시 확인). 게시 단계에서: RC는 `--prerelease --latest=false --verify-tag`로 올려 Go stable updater(`non-prerelease, non-draft latest`)가 접근하지 못함을 재확인한다.
-- [x] 설계 정합: tag namespace `moai-cli-v*`는 Go checker의 `v`/`go-v` 접두사 필터와 `/releases/latest` 어느 쪽에도 노출되지 않는다(04-A 특성화 시험 `go_updater_feed_contamination_table` — `tests/update_cli.rs`… 04-B 이후 `tests/install_cli.rs`가 계승, 본 repo 기록). **다만 실측은 같은 repo 게시 후에만 성립** — 게시 전까지는 설계 근거 상태다.
+- [x] 설계 정합: tag namespace `moai-cli-v*`는 Go checker의 `v`/`go-v` 접두사 필터(RC 채널)에 걸리지 않는다(04-A 특성화 시험 `go_updater_feed_contamination_table` — `tests/update_cli.rs`… 04-B 이후 `tests/install_cli.rs`가 계승, 본 repo 기록). `/releases/latest`(stable 채널)는 접두사로 거르지 않는다. 그래서 rc.N(prerelease)은 latest가 될 수 없어 노출되지 않지만, 정식판은 `--latest=false` 없이 게시하면 latest가 되어 노출된다(E6 #2198 `tests/release_suite.rs` `rust_final_release_hides_newer_go_release_from_stable_clients`: dist 기본값이면 Go stable 검사가 `checksum_unavailable` 오류, `make_latest=false`면 더 새 Go 릴리스가 그대로 보임; `docs/release-attestation.md` 운영자 승인 항목 6). **다만 실측은 같은 repo 게시 후에만 성립** — 게시 전까지는 설계·fixture 근거 상태다.
 - [ ] **HOLD — `moai-cli-v*` 전용 tag ruleset**: (a) 참조. 사용자 결정 대상.
 
 ## (h) 문서 예제 재현 (AC-08D-8)

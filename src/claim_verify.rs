@@ -25,6 +25,14 @@
 //! Limits: every lane posts through one shared GitHub account, so "author mismatch" means an
 //! author outside `allowed_authors`; a forged session value from an allowed author cannot be
 //! told apart from a real one.
+//!
+//! The `--hook` detector reads the command line as text, so it is a guardrail, not a complete
+//! boundary (#2306). It sees past wrapper words, quoting, backslash escapes, one level of
+//! `sh -c` / `bash -c`, and `git -c alias.<name>=commit|push` on the same line. It does not see
+//! a git alias defined in config, a shell alias or function, `$VAR` / `$(...)` expansion,
+//! `eval`, a script file, a second shell level, or another program that runs git itself. The
+//! ANSI-C quoting `$'git' push` likewise stays invisible — it is `$` expansion to this text
+//! detector (docs/hooks-generation.md §3, named limit; rc.2 A9 follow-up 2 #2323).
 
 use crate::claim::{parse_claim_line, ClaimRecord};
 use crate::forge::policy::{next_link, parse_utc, Clock};
@@ -356,22 +364,241 @@ pub fn verify_cli<T: Transport, C: Clock>(
     }
 }
 
-/// True when one segment of a shell command line runs `git <verb>`: the segment's first word,
-/// after `NAME=value` assignments, is `git` (or a path ending in `/git`), and `verb` follows
-/// it. A `git` that is only an argument (`echo git commit`) does not count. Quoting is not
-/// parsed: a separator inside quotes splits the segment, which can only add a check.
+/// Words that run the command after them (#2306). Their options, `NAME=value` assignments and
+/// a leading number or duration (`nice -n 10`, `timeout 30`) are skipped to reach the command.
+const WRAPPERS: &[&str] = &[
+    "builtin",
+    "caffeinate",
+    "chrt",
+    "command",
+    "doas",
+    "env",
+    "exec",
+    "ionice",
+    "nice",
+    "nohup",
+    "setsid",
+    "stdbuf",
+    "sudo",
+    "time",
+    "timeout",
+    "xargs",
+];
+
+/// A wrapper's options that take the next word as their value (`sudo -u lane`, `xargs -I {}`).
+/// Kept per wrapper: a flag misread as value-taking would swallow the `git` after it
+/// (`time -p git commit`, `env -i git push`).
+fn value_options(wrapper: &str) -> &'static [&'static str] {
+    match wrapper {
+        "caffeinate" => &["-t", "-w"],
+        "doas" => &["-C", "-u"],
+        "env" => &["-C", "-u"],
+        "exec" => &["-a"],
+        "ionice" => &["-c", "-n", "-P", "-p", "-u"],
+        "nice" => &["-n"],
+        "stdbuf" => &["-e", "-i", "-o"],
+        "sudo" => &[
+            "-C", "-D", "-g", "-h", "-p", "-R", "-r", "-T", "-t", "-U", "-u",
+        ],
+        "timeout" => &["-k", "-s"],
+        "xargs" => &["-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s"],
+        _ => &[],
+    }
+}
+
+/// Shells whose `-c` argument is itself a command line, judged one level deep.
+const SHELLS: &[&str] = &["bash", "dash", "ksh", "sh", "zsh"];
+
+/// Splits a shell command line into segments of words at unquoted `;`, `&`, `|`, newline and
+/// parentheses, removing quotes and backslash escapes the way the shell does (#2306). This is
+/// not a full shell parser: an unbalanced quote runs to the end of the line, and expansions
+/// (`$(...)`, `$VAR`, globs, aliases) are left as literal text.
+fn shell_segments(command: &str) -> Vec<Vec<String>> {
+    let mut segments = Vec::new();
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut in_word = false;
+    let mut chars = command.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => {
+                if let Some(next) = chars.next() {
+                    word.push(next);
+                }
+                in_word = true;
+            }
+            '\'' => {
+                for next in chars.by_ref() {
+                    if next == '\'' {
+                        break;
+                    }
+                    word.push(next);
+                }
+                in_word = true;
+            }
+            '"' => {
+                while let Some(next) = chars.next() {
+                    match next {
+                        '"' => break,
+                        '\\' => word.extend(chars.next()),
+                        other => word.push(other),
+                    }
+                }
+                in_word = true;
+            }
+            ';' | '&' | '|' | '\n' | '(' | ')' => {
+                if in_word {
+                    words.push(std::mem::take(&mut word));
+                    in_word = false;
+                }
+                segments.push(std::mem::take(&mut words));
+            }
+            c if c.is_whitespace() => {
+                if in_word {
+                    words.push(std::mem::take(&mut word));
+                    in_word = false;
+                }
+            }
+            other => {
+                word.push(other);
+                in_word = true;
+            }
+        }
+    }
+    if in_word {
+        words.push(word);
+    }
+    segments.push(words);
+    segments
+}
+
+/// The last path component of a command word (`/usr/bin/git` → `git`).
+fn command_name(word: &str) -> &str {
+    word.rsplit('/').next().unwrap_or(word)
+}
+
+/// True when a word is a number or a duration (`10`, `-10`, `30s`, `1.5m`).
+fn numeric_word(word: &str) -> bool {
+    let digits = word.trim_start_matches(['-', '+']);
+    let body = digits.trim_end_matches(['s', 'm', 'h', 'd']);
+    !body.is_empty() && body.chars().all(|c| c.is_ascii_digit() || c == '.')
+}
+
+/// The index of the word a segment actually runs: past `NAME=value` assignments and past any
+/// wrapper words together with their options and values.
+fn command_index(words: &[String]) -> Option<usize> {
+    let assignment = |w: &str| w.contains('=') && !w.starts_with('-');
+    let mut i = 0;
+    while i < words.len() && assignment(&words[i]) {
+        i += 1;
+    }
+    while i < words.len() && WRAPPERS.contains(&command_name(&words[i])) {
+        let takes_value = value_options(command_name(&words[i]));
+        i += 1;
+        while i < words.len() {
+            let w = words[i].as_str();
+            if takes_value.contains(&w) {
+                i += 2;
+            } else if w.starts_with('-') || assignment(w) || numeric_word(w) {
+                i += 1;
+            } else {
+                break;
+            }
+        }
+    }
+    (i < words.len()).then_some(i)
+}
+
+/// The script a shell runs with `-c` (`sh -c '...'`, `bash -lc "..."`), if any. Options that
+/// take a value (`bash -o pipefail -c …`, `sh -O extglob -c …`, `bash +o posix -c …`) consume
+/// their next word so the scan reaches the `-c` script (rc.2 A9 follow-up 2 #2323). Bundled
+/// short options ending in `o`/`O` take the value too (`bash -eo pipefail -c …`, `bash -euo
+/// pipefail -c …`; rc.2 A9 follow-up 3 #2330).
+fn shell_script(args: &[String]) -> Option<&str> {
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if matches!(arg.as_str(), "-o" | "-O" | "+o" | "+O") {
+            // The next word is this option's value, not a non-option word.
+            iter.next();
+            continue;
+        }
+        // A bundled flag word (`-eo`, `-euo`) carrying `-` or `+`: when it ends in `o`/`O`
+        // its last short option takes a value, so the next word is that value.
+        let flags = arg.strip_prefix('-').or_else(|| arg.strip_prefix('+'));
+        match flags {
+            Some(flags) if !flags.starts_with('-') && flags.contains('c') => {
+                return iter.next().map(String::as_str)
+            }
+            Some(flags)
+                if !flags.starts_with('-') && (flags.ends_with('o') || flags.ends_with('O')) =>
+            {
+                iter.next();
+                continue;
+            }
+            Some(_) => continue,
+            None => return None,
+        }
+    }
+    None
+}
+
+/// True when `git`'s arguments name one of `verbs`, directly or through an alias defined on
+/// the same command line (`git -c alias.ci=commit ci`). An alias defined in git config is not
+/// visible here.
+fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
+    let mut aliases: Vec<&str> = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        let config = match args[i].as_str() {
+            "-c" => {
+                i += 1;
+                args.get(i).map(String::as_str)
+            }
+            other => other.strip_prefix("-c").filter(|v| v.starts_with("alias.")),
+        };
+        if let Some((name, value)) = config
+            .and_then(|c| c.strip_prefix("alias."))
+            .and_then(|c| c.split_once('='))
+        {
+            let mut target = value.trim_start_matches('!').split_whitespace();
+            let first = target.next().unwrap_or("");
+            let verb = if command_name(first) == "git" {
+                target.next().unwrap_or("")
+            } else {
+                first
+            };
+            if verbs.contains(&verb) {
+                aliases.push(name);
+            }
+        }
+        i += 1;
+    }
+    args.iter()
+        .any(|w| verbs.contains(&w.as_str()) || aliases.contains(&w.as_str()))
+}
+
+/// True when one segment of a shell command line runs `git <verb>`. The segment's command is
+/// found past assignments and wrapper words (`env`, `command`, `nice`, `sudo`, `xargs`, ...),
+/// after quotes and backslashes are removed (`\git`, `"git"`); a shell's `-c` script is judged
+/// one level deep. A `git` that is only an argument (`echo git commit`) does not count.
 fn runs_git(command: &str, verbs: &[&str]) -> bool {
-    command
-        .split([';', '&', '|', '\n', '(', ')'])
-        .any(|segment| {
-            let mut words = segment
-                .split_whitespace()
-                .skip_while(|w| w.contains('=') && !w.starts_with('-'));
-            words
-                .next()
-                .is_some_and(|w| w == "git" || w.ends_with("/git"))
-                && words.any(|w| verbs.contains(&w))
-        })
+    runs_git_at(command, verbs, 0)
+}
+
+fn runs_git_at(command: &str, verbs: &[&str], depth: u8) -> bool {
+    shell_segments(command).iter().any(|words| {
+        let Some(i) = command_index(words) else {
+            return false;
+        };
+        let name = command_name(&words[i]);
+        let args = &words[i + 1..];
+        if name == "git" {
+            return git_runs_verb(args, verbs);
+        }
+        depth == 0
+            && SHELLS.contains(&name)
+            && shell_script(args).is_some_and(|script| runs_git_at(script, verbs, depth + 1))
+    })
 }
 
 /// True when a shell command line runs `git commit` or `git push` in any of its segments.
