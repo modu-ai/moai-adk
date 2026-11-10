@@ -882,3 +882,144 @@ fn hooks_plan_reports_per_host_engine_capabilities() {
     }
     assert!(!root.join(".codex").exists() && !root.join(".claude").exists());
 }
+
+// ---- audit #2400 (6770591310) B1-B2 and the canonical-cwd question ----
+
+/// A receipt log of exactly `len` bytes (one padding line, newline-terminated).
+fn log_of_len(path: &Path, len: usize) {
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let mut bytes = vec![b'x'; len - 1];
+    bytes.push(b'\n');
+    fs::write(path, bytes).unwrap();
+    assert_eq!(fs::metadata(path).unwrap().len(), len as u64);
+}
+
+/// B1: the shared append path takes a line while the log is below 4,194,304 bytes and
+/// refuses at exactly 4,194,304 — for the engine log and for `hook-receipt`'s log alike.
+#[test]
+fn receipt_logs_append_below_4194304_bytes_and_refuse_at_exactly_4194304() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let engine = engine_log(&root);
+    let post = post_tool("PostToolUse", "Read", "a.txt", "x");
+    log_of_len(&engine, 4_194_303);
+    dispatch("tool-observe", &root, &post, &[]);
+    assert!(
+        fs::metadata(&engine).unwrap().len() > 4_194_303,
+        "4,194,303 bytes: appended"
+    );
+    log_of_len(&engine, 4_194_304);
+    dispatch("tool-observe", &root, &post, &[]);
+    assert_eq!(
+        fs::metadata(&engine).unwrap().len(),
+        4_194_304,
+        "4,194,304 bytes: refused"
+    );
+    let receipts = root.join(".moai-cli/receipts/hooks.jsonl");
+    let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
+    let receipt = |root: &Path| {
+        run_program(
+            Path::new(BIN),
+            &["hook-receipt", "--host", "claude"],
+            root,
+            start,
+            &[],
+        )
+        .unwrap()
+    };
+    log_of_len(&receipts, 4_194_303);
+    assert_eq!(receipt(&root).code, 0);
+    assert!(fs::metadata(&receipts).unwrap().len() > 4_194_303);
+    log_of_len(&receipts, 4_194_304);
+    assert_eq!(receipt(&root).code, 0);
+    assert_eq!(fs::metadata(&receipts).unwrap().len(), 4_194_304);
+}
+
+/// B2: a secret-shaped target path is never logged, and a relative path that climbs out of
+/// the session directory is logged as `outside`, not as written.
+#[test]
+fn tool_observe_never_logs_secret_shaped_or_escaping_paths() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let cases = [
+        ("notes/ghp_SECRETVALUE123.txt", "unrecorded"),
+        ("cfg/token=SECRETVALUE456", "unrecorded"),
+        ("../x", "outside"),
+        ("a/../../x", "outside"),
+        ("./src/ok.rs", "./src/ok.rs"),
+    ];
+    for (path, _) in cases {
+        let r = dispatch(
+            "tool-observe",
+            &root,
+            &post_tool("PostToolUse", "Edit", path, "x"),
+            &[],
+        );
+        assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+    }
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    let logged: Vec<Value> = text
+        .lines()
+        .map(|l| serde_json::from_str::<Value>(l).unwrap()["path"].clone())
+        .collect();
+    let expected: Vec<Value> = cases.iter().map(|(_, want)| json!(want)).collect();
+    assert_eq!(logged, expected);
+    for leak in ["SECRETVALUE", "../x"] {
+        assert!(!text.contains(leak), "{leak} leaked: {text}");
+    }
+}
+
+/// The engine canonicalizes the hook process's working directory before any duty (stage 2,
+/// applied to the stage-1 duties too, deliberately): a session started through a symlinked
+/// path still finds its local claim record, as `claim-verify --hook` does.
+#[test]
+fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
+    let (_d, root) = repo("issue/77-k");
+    let base = git(&root, &["rev-parse", "HEAD"]);
+    let record = ClaimRecord {
+        schema_version: 1,
+        task_ref: TaskRef::new("github", "github.com", "acme", "widgets", 1, 70, 77),
+        task_key: "0123456789abcdef".into(),
+        logical_key: "CW".into(),
+        owner: Owner::new("session", "agent-fixture"),
+        assignee: None,
+        provider_session: None,
+        integration_owner: None,
+        attempt: None,
+        epoch: 1,
+        base_revision: base,
+        worktree: WorktreeId::new(
+            root.join(".git").display().to_string(),
+            root.join(".git").display().to_string(),
+            root.display().to_string(),
+            "b".repeat(40),
+        ),
+        write_scope: vec!["a.txt".into()],
+        spec_ref: SpecRef {
+            id: "SPEC-CW".into(),
+            revision: "r1".into(),
+            digest: None,
+        },
+        comment_id: Some(5),
+        claim_token: Some("Moai-Claim: 77#5".into()),
+        lease_until: Some("2026-11-10T23:00:00Z".into()),
+        state: "assigned".into(),
+        effects: vec![],
+        last_observed_at: "2026-11-10T12:00:00Z".into(),
+    };
+    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
+    assert!(journal.try_lock().unwrap());
+    journal.commit("acquire", &record).unwrap();
+    drop(journal);
+    let link_dir = tempfile::TempDir::new().unwrap();
+    let link = link_dir.path().join("via-link");
+    std::os::unix::fs::symlink(&root, &link).unwrap();
+    fs::create_dir_all(link.join("home")).unwrap();
+    let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
+    let r = dispatch("session-check", &link, start, &[]);
+    assert!(
+        r.stdout.contains("local claim record: present"),
+        "{}",
+        r.stdout
+    );
+}
