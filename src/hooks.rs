@@ -403,10 +403,14 @@ fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
 ///   only evidence that a host ran the hooks.
 /// - `fired`: a receipt or engine line from this host stamped at or after the host file's
 ///   last modification (a changed definition makes older lines stale).
-/// - `action_blocked`: since then, an engine `deny` line from this host whose call key never
-///   appears on an `observe` line — the denied tool did not run.
-/// - `verified`: `fired` and `action_blocked` both hold — a real host ran the guard and a
-///   denied call stayed denied. Only a real host session can produce it.
+/// - `action_blocked`: since then, an engine `deny` line from this host, with a session key and
+///   a call key, that no `observe` line of the same host, session and call at or after the deny
+///   time follows — the denied tool did not run (audit H4-B1: another host's, another
+///   session's or an earlier observation never cancels a deny).
+/// - `verified`: always `false`. `fired` and `action_blocked` read local lines that any
+///   `hook-dispatch` call writes, a direct command-line call included, so they show the engine
+///   ran and answered — not that a host ran the hook or obeyed the deny (audit H4-B2). No
+///   host-originated evidence is read; `evidence` names what the other two rest on.
 pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -> Result<Value> {
     check_host(host)?;
     let root = project_root(project, home)?;
@@ -432,16 +436,22 @@ pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -
     let receipts = receipt_lines(&root, "hooks.jsonl");
     let engine = receipt_lines(&root, crate::hook_engine::ENGINE_LOG);
     let fired = receipts.iter().chain(engine.iter()).any(since);
-    let observed: Vec<&Value> = engine
-        .iter()
-        .filter(|l| l["kind"] == json!("observe") && !l["call"].is_null())
-        .map(|l| &l["call"])
-        .collect();
+    // A deny pairs only with an observation of the same host, session and call at or after it.
+    let ran_later = |deny: &Value, deny_ms: u64| {
+        engine.iter().any(|o| {
+            o["kind"] == json!("observe")
+                && o["host"] == deny["host"]
+                && o["session"] == deny["session"]
+                && o["call"] == deny["call"]
+                && o["unix_ms"].as_u64().is_some_and(|t| t >= deny_ms)
+        })
+    };
     let action_blocked = engine.iter().any(|l| {
+        let keyed = l["call"].is_string() && l["session"].as_str().is_some_and(|s| s != "unknown");
         l["kind"] == json!("deny")
             && since(l)
-            && !l["call"].is_null()
-            && !observed.contains(&&l["call"])
+            && keyed
+            && l["unix_ms"].as_u64().is_some_and(|t| !ran_later(l, t))
     });
     let installed = crate::install::resolve_on_path(path_env, HOOK_BINARY).is_some();
     Ok(json!({
@@ -451,7 +461,8 @@ pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -
         "trusted": "unknown",
         "fired": fired,
         "action_blocked": action_blocked,
-        "verified": fired && action_blocked,
+        "verified": false,
+        "evidence": "local engine and receipt lines; a direct hook-dispatch call writes the same lines, so no host run is proven",
         "config_path": host_config_path(host),
     }))
 }
