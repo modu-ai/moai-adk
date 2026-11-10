@@ -9,7 +9,12 @@ fn dry(args: &[&str], token: Option<&str>) -> (i32, Value, String) {
     cmd.args(args)
         .arg("--dry-run")
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-        .env_remove("ANTHROPIC_AUTH_TOKEN");
+        .env_remove("ANTHROPIC_AUTH_TOKEN")
+        // No home, so no key file (#2359) can stand in for the token.
+        .env(
+            "HOME",
+            std::env::temp_dir().join("moai-cli-test-no-such-home"),
+        );
     if let Some(t) = token {
         cmd.env("ANTHROPIC_AUTH_TOKEN", t);
     }

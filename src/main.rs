@@ -737,7 +737,7 @@ enum Command {
     },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
-    /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
+    /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
     Glm(HostLaunch),
     /// Codex CLI session launcher: `codex -l|-a`.
     Codex(HostLaunch),

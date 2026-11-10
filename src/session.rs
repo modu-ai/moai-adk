@@ -36,8 +36,32 @@ pub const GLM_ENV: [(&str, &str); 2] = [
     ("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic"),
     ("API_TIMEOUT_MS", "3000000"),
 ];
-/// Inherited from the caller; presence is checked, the value is never kept, printed or written.
+/// Taken from the caller's environment, else from a key file (#2359). The value is passed to
+/// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
+/// Key files under HOME, read in this order when the variable is absent. The second is the Go
+/// tool's store: it is read, never created or changed.
+pub const GLM_KEY_FILES: [&str; 2] = [".moai-cli/.env.glm", ".moai/.env.glm"];
+/// Names a key file may use for the token.
+const GLM_KEY_NAMES: [&str; 2] = [GLM_TOKEN_VAR, "GLM_API_KEY"];
+
+/// The token from the first key file that holds a non-empty one.
+fn glm_file_token() -> Option<String> {
+    let home = std::path::PathBuf::from(std::env::var_os("HOME")?);
+    GLM_KEY_FILES.iter().find_map(|file| {
+        let text = std::fs::read_to_string(home.join(file)).ok()?;
+        text.lines().find_map(|line| {
+            let line = line.trim();
+            let line = line.strip_prefix("export ").unwrap_or(line);
+            let (key, value) = line.split_once('=')?;
+            if !GLM_KEY_NAMES.contains(&key.trim()) {
+                return None;
+            }
+            let value = value.trim().trim_matches(|c| c == '"' || c == '\'');
+            (!value.is_empty() && !value.chars().any(char::is_control)).then(|| value.to_string())
+        })
+    })
+}
 const MAX_PROMPT: usize = 4096;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -256,9 +280,13 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         "codex" => codex_argv(r, &mut notes)?,
         "glm" => {
             if std::env::var_os(GLM_TOKEN_VAR).is_none() {
-                return Err(format!(
-                    "blocked: {GLM_TOKEN_VAR} is not set in this environment (set it in your shell; the launcher only checks that it exists and never prints or stores it)"
-                ));
+                if glm_file_token().is_none() {
+                    return Err(format!(
+                        "blocked: {GLM_TOKEN_VAR} is not set in this environment and no key file holds one (set it in your shell, or put GLM_API_KEY=<key> in ~/{}; ~/{} is read too; the launcher never prints or stores the value)",
+                        GLM_KEY_FILES[0], GLM_KEY_FILES[1]
+                    ));
+                }
+                notes.push("ANTHROPIC_AUTH_TOKEN comes from a key file under HOME; it is passed to the host process only");
             }
             let mut plain = r.clone();
             if plain.advisor.take().is_some() {
@@ -287,8 +315,14 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
     let mut command = std::process::Command::new(&argv[0]);
     command.args(&argv[1..]);
     if r.host == "glm" {
-        // The token is inherited unchanged from the caller's environment.
+        // The token is inherited unchanged from the caller's environment when it is there.
         command.envs(GLM_ENV);
+        if std::env::var_os(GLM_TOKEN_VAR).is_none() {
+            command.env(
+                GLM_TOKEN_VAR,
+                glm_file_token().ok_or("blocked: the key file changed")?,
+            );
+        }
     }
     let status = command
         .status()

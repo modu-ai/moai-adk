@@ -1057,7 +1057,13 @@ fn session_rejects_lower_ranked_advisor_and_unknown_host() {
 /// Runs the launcher syntax (00-F #2028). Tests use `--dry-run` only and never start a host.
 fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
     let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    c.args(args).env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL");
+    c.args(args)
+        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
+        // No home, so no key file (#2359) can stand in for the token.
+        .env(
+            "HOME",
+            std::env::temp_dir().join("moai-cli-test-no-such-home"),
+        );
     match token {
         Some(t) => c.env("ANTHROPIC_AUTH_TOKEN", t),
         None => c.env_remove("ANTHROPIC_AUTH_TOKEN"),
