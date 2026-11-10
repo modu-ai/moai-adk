@@ -18,8 +18,8 @@
 //!    is attested (AC-3: enforced checks and host recommendations are distinct;
 //!    only mechanically verified paths are enforced).
 //! 6. `no_uncertain_effects` — no forge outbox entry is left in `publish_unknown`
-//!    (EXIT-01: uncertain external effects block exit). An unreadable or
-//!    unparsable outbox entry counts as uncertain — fail-closed.
+//!    (EXIT-01: uncertain external effects block exit). Only a missing outbox is
+//!    empty; directory/entry inspection and decoding errors count as uncertain.
 //!
 //! Any failed check blocks exit: the operation surfaces
 //! `lane handoff blocked: <failed names>` (kind `blocked`, exit != 0) with
@@ -102,11 +102,18 @@ fn uncertain_effects(project: &Path) -> Result<u64> {
     let dir = project.join(".moai-cli").join("forge").join("outbox");
     let entries = match std::fs::read_dir(&dir) {
         Ok(e) => e,
-        Err(_) => return Ok(0), // no outbox yet = no unresolved effects
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => return Err(e.to_string()),
     };
     let mut uncertain = 0u64;
-    for entry in entries.flatten() {
-        let path = entry.path();
+    for entry in entries {
+        let path = match entry {
+            Ok(entry) => entry.path(),
+            Err(_) => {
+                uncertain += 1;
+                continue;
+            }
+        };
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
@@ -302,7 +309,7 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
     ));
 
     // 6. no_uncertain_effects (EXIT-01)
-    let uncertain = uncertain_effects(&project).unwrap_or(0);
+    let uncertain = uncertain_effects(&project).unwrap_or(1);
     checks.push(check(
         "no_uncertain_effects",
         "enforced",

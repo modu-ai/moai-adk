@@ -555,3 +555,27 @@ fn leader_report_requires_the_complete_issue_number() {
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(envelope["result"]["status"], json!("passed"));
 }
+
+#[test]
+fn outbox_inspection_error_blocks_an_otherwise_valid_handoff() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let mut request = base_request(&repo.root, &repo.head);
+    request["leader_report_path"] = json!(report);
+    let outbox = repo.root.join(".moai-cli/forge/outbox");
+    std::fs::create_dir_all(outbox.parent().unwrap()).unwrap();
+    std::fs::write(&outbox, b"not a directory").unwrap();
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_ne!(code, 0);
+    assert_eq!(envelope["error"]["kind"], json!("blocked"));
+    assert_eq!(
+        failure_report(&stderr)["failed_checks"],
+        json!(["no_uncertain_effects"])
+    );
+    assert_eq!(std::fs::read(&outbox).unwrap(), b"not a directory");
+    std::fs::remove_file(outbox).unwrap();
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(envelope["result"]["status"], json!("passed"));
+}
