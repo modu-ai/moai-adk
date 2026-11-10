@@ -518,6 +518,42 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 
 `host_loaded` and `execution_verified` stay false. Desktop `$moai` and CLI `$moai` runs are not_run from a lane: the first needs the GUI, the second sends a prompt to OpenAI. Local evidence is `codex --version` → `codex-cli 0.163.0` only.
 
+## Claude Code status line (`statusline`, #2376)
+
+`moai-cli statusline` reads Claude Code JSON from stdin and prints raw text, not an
+operation envelope. The main layout replaces the earlier Go-parity layout:
+
+1. Model, effort/thinking, cache hit, Claude/MoAI versions, elapsed time and output style.
+2. Optional session name, two spaces, then `CTX`, available `5H`, and available `Week`
+   bars. Missing rate windows are hidden; reset times are not printed. Context handoff
+   warnings and the existing usage calculation are retained.
+3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
+   arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
+
+Directory, PR review state, agent name and active task segments are never rendered in
+the main layout, including when their old segment options are enabled. Remaining
+segment switches and themes still apply; empty lines are omitted and an entirely
+disabled layout prints `MoAI`. `NO_COLOR`, `MOAI_NO_COLOR`, or non-terminal stdout
+disables ANSI color without changing visible content.
+
+The separate Claude Code `subagentStatusLine` protocol still accepts `tasks[]` and
+returns JSONL rows. It is not a second main layout. Empty, malformed and oversized
+main input degrades to the normal nonempty fallback; the input ceiling is 4 MiB,
+including when an oversized stream begins with otherwise valid JSON.
+
+Rendering remains read-only and network-free. Local git retains its 800 ms render
+budget; no forge refresh is added. Existing configuration/cache sources are unchanged,
+and this command does not change Claude settings, Go scripts or Orca wrappers.
+
+`tests/fixtures/statusline/` preserves the historical Go recordings unchanged.
+The active Rust layout recordings are in `tests/fixtures/statusline-claude/`;
+`tools/statusline_golden.py --check` verifies them with isolated state and actual
+terminal capture for the ANSI variants. The main layout follows Issue #2376 and
+decision comment `6774899518` (recommendation rows 7–12 and 28). The official
+[status-line contract](https://code.claude.com/docs/en/statusline.md), including the
+separate subagent protocol, was read on 2026-11-10; source retrieval evidence is
+recorded on the Issue.
+
 ## Host hook generation (`hooks-plan` / `hooks-apply` / `hook-receipt`, rc.2 I1 #2238)
 
 `hooks-plan PROJECT --host claude|codex` previews one fixed MoAI hook set — `SessionStart`, `PostToolUse` (matcher `Bash`) and `Stop`, each a `type: "command"` handler running `moai-cli hook-receipt --host <host>`, plus `PreToolUse` (matcher `Bash`) running the claim guard `moai-cli claim-verify . --hook` (rc.2 A9 #2255), all with an explicit `timeout` of 10 s — and writes nothing. `hooks-apply` re-plans, requires the same `plan_digest` and a permission reference, then writes. Claude: the `hooks` key of `PROJECT/.claude/settings.json` through the existing three-way settings ownership (`hooks` joined `MANAGED_SETTINGS`); a `hooks` key the user already set plans as `conflict` and nothing is written, and keys MoAI already owns (`outputStyle`, `statusLine`) are kept. Codex: `PROJECT/.codex/hooks.json` as a whole file with the receipt `.moai-cli/manifests/codex-hooks.json` (`sha256`, a `pending_sha256` during apply, and the `hooks` list); a file MoAI did not write, or one edited since, stops with `requires preservation review`. A PROJECT equal to `$HOME`, or inside its `.claude`, `.codex`, `.agents` or `.moai-cli`, is refused. `hook-receipt` is the handler: it reads the host's hook stdin and appends one line with `schema_version`, `host`, `unix_ms` and only the allow-listed fields `hook_event_name`, `tool_name` and `source` (128 characters, no control characters, no secret shapes; others are reported in `dropped`) to `./.moai-cli/receipts/hooks.jsonl`, only when `./.moai-cli/` already exists; it never fails the hook (exit 0, `recorded: false` with a reason). Whether a host loads the hooks is `host_loaded: not_run`; both hosts run project hooks only after trust (Codex additionally per-hook hash review). Rationale and sources: `docs/hooks-generation.md`. Tests: `tests/hooks_cli.rs` (plan → apply → re-plan no-op for both hosts, user-hooks conflict, owned-key preservation, unowned/edited Codex file, pending receipt, HOME refusal, refusal kinds, receipt allow-list and secrets, symlinked log, CLI round trip in a temporary HOME).

@@ -63,7 +63,7 @@ pub fn shorten_model_name(model: &str) -> String {
     }
 }
 
-/// The context-window reading behind the CW bar (`MemoryData`).
+/// The context-window reading behind the CTX bar (`MemoryData`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Memory {
     pub tokens_used: i64,
@@ -201,65 +201,6 @@ pub fn session_time(ms: i64) -> String {
     }
 }
 
-/// `formatResetTimeRelative`: `rolling` for a zero or past reset. `now_ms` carries the
-/// sub-second part Go's `time.Until` sees, so a reset exactly one hour ahead in whole
-/// seconds reads `59m`, as in Go.
-pub fn reset_relative(resets_at: i64, now_ms: i64) -> String {
-    if resets_at <= 0 {
-        return "rolling".into();
-    }
-    let remaining_ms = resets_at * 1000 - now_ms;
-    if remaining_ms <= 0 {
-        return "rolling".into();
-    }
-    let hours = remaining_ms / 3_600_000;
-    let minutes = (remaining_ms / 60_000) % 60;
-    if hours >= 24 {
-        let mut parts = vec![format!("{}D", hours / 24)];
-        if hours % 24 > 0 {
-            parts.push(format!("{}h", hours % 24));
-        }
-        if minutes > 0 {
-            parts.push(format!("{minutes}m"));
-        }
-        return parts.join(", ");
-    }
-    if hours > 0 {
-        if minutes > 0 {
-            return format!("{hours}h {minutes}m");
-        }
-        return format!("{hours}h");
-    }
-    format!("{minutes}m")
-}
-
-/// `formatResetTimeAbsolute` as `Jan 2`, in UTC (Go uses the local zone; the harness
-/// pins TZ=UTC, and this binary carries no time-zone database).
-pub fn reset_absolute(resets_at: i64) -> String {
-    if resets_at <= 0 {
-        return "rolling".into();
-    }
-    let (_, month, day) = civil_from_days(resets_at.div_euclid(86_400));
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    format!("{} {day}", MONTHS[(month - 1) as usize])
-}
-
-/// Days since 1970-01-01 → (year, month 1..=12, day 1..=31) (Howard Hinnant's algorithm).
-fn civil_from_days(days: i64) -> (i64, i64, i64) {
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let day = doy - (153 * mp + 2) / 5 + 1;
-    let month = if mp < 10 { mp + 3 } else { mp - 9 };
-    let year = yoe + era * 400 + i64::from(month <= 2);
-    (year, month, day)
-}
-
 /// What `git --no-optional-locks status --porcelain --branch` reports (manager.go).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GitStatus {
@@ -267,7 +208,6 @@ pub struct GitStatus {
     pub staged: i64,
     pub modified: i64,
     pub untracked: i64,
-    pub ahead: i64,
     pub behind: i64,
 }
 
@@ -276,9 +216,8 @@ pub fn parse_porcelain(out: &str) -> GitStatus {
     let mut status = GitStatus::default();
     for line in out.split('\n') {
         if let Some(header) = line.strip_prefix("## ") {
-            let (branch, ahead, behind) = parse_branch_header(header);
+            let (branch, behind) = parse_branch_header(header);
             status.branch = branch;
-            status.ahead = ahead;
             status.behind = behind;
             continue;
         }
@@ -301,22 +240,16 @@ pub fn parse_porcelain(out: &str) -> GitStatus {
     status
 }
 
-fn parse_branch_header(header: &str) -> (String, i64, i64) {
+fn parse_branch_header(header: &str) -> (String, i64) {
     let mut rest = header.strip_prefix("No commits yet on ").unwrap_or(header);
-    let (mut ahead, mut behind) = (0, 0);
+    let mut behind = 0;
     if let Some(idx) = rest.rfind(" [") {
         if rest.ends_with(']') {
             for part in rest[idx + 2..rest.len() - 1].split(", ") {
-                let Some((field, value)) = part.split_once(' ') else {
-                    continue;
-                };
-                let Ok(n) = value.parse::<i64>() else {
-                    continue;
-                };
-                match field {
-                    "ahead" => ahead = n,
-                    "behind" => behind = n,
-                    _ => {}
+                if let Some(value) = part.strip_prefix("behind ") {
+                    if let Ok(n) = value.parse::<i64>() {
+                        behind = n;
+                    }
                 }
             }
             rest = &rest[..idx];
@@ -326,9 +259,9 @@ fn parse_branch_header(header: &str) -> (String, i64, i64) {
         rest = &rest[..idx];
     }
     if rest.contains([' ', '\t']) {
-        return (String::new(), ahead, behind);
+        return (String::new(), behind);
     }
-    (rest.to_string(), ahead, behind)
+    (rest.to_string(), behind)
 }
 
 /// `renderSubagentOutput`: one `{"id","content"}` line per row with a non-empty id.
@@ -516,17 +449,6 @@ mod tests {
         assert_eq!(session_time(5_400_000), "⏳ 1h 30m");
         assert_eq!(session_time(90_000_000), "⏳ 1d 1h");
         assert_eq!(session_time(0), "");
-        let now = 200_000; // 200 s in ms
-        assert_eq!(reset_relative(100, now), "rolling");
-        assert_eq!(reset_relative(200, now), "rolling");
-        assert_eq!(reset_relative(200 + 4 * 3600 + 30 * 60, now), "4h 30m");
-        assert_eq!(reset_relative(200 + 3600, now), "1h");
-        assert_eq!(reset_relative(200 + 3600, now + 1), "59m");
-        assert_eq!(reset_relative(200 + 26 * 3600 + 60, now), "1D, 2h, 1m");
-        assert_eq!(reset_relative(200 + 59, now), "0m");
-        assert_eq!(reset_absolute(1_738_857_600), "Feb 6");
-        assert_eq!(reset_absolute(0), "rolling");
-        assert_eq!(reset_absolute(951_782_400), "Feb 29");
     }
 
     #[test]
@@ -535,7 +457,7 @@ mod tests {
             "## main...origin/main [ahead 1, behind 2]\n M a\n?? b\nA  c\nMM d\nR  x -> y\n",
         );
         assert_eq!(s.branch, "main");
-        assert_eq!((s.ahead, s.behind), (1, 2));
+        assert_eq!(s.behind, 2);
         assert_eq!((s.staged, s.modified, s.untracked), (3, 2, 1));
         assert_eq!(
             parse_porcelain("## No commits yet on main\n").branch,

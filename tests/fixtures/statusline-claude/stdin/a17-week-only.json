@@ -1,0 +1,6 @@
+{
+  "model": {"display_name": "Sonnet"},
+  "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"},
+  "context_window": {"context_window_size": 200000, "used_percentage": 12},
+  "rate_limits": {"seven_day": {"used_percentage": 67, "resets_at": 1738857600}}
+}
