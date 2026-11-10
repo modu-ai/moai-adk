@@ -1,16 +1,16 @@
 # 제품 표기 인벤토리 — 사용자 대면 표기 'MoAI' 통일 (#2363)
 
 - **이 판은 감사 FAIL(6762643101) 수리로 전면 재생성된 것**이다. 이전 판(1,556→1,572 재검증)은 base 병합 이전 트리의 스냅샷이라 후보 head와 어긋났고, 그 불일치가 감사 FAIL의 사유다. 경과는 맨 아래 부록에 보존한다.
-- 측정 트리: **`fad15f59d670fdefff13b8a0595e42b9cd8d89bc`**(본 수리 커밋의 부모 — branch `issue/2363-moai-name`, origin/v2026.11.0 `0c13195747` 병합 완료 상태)
-- 측정 일시: 2026-11-10T10:03:34Z ± · 측정자: agent-9-t69 (claim `Moai-Claim: 2363#6762753812`, epoch=3; 최초 claim 2363#6759493149 epoch=2)
+- 측정 트리: **`346f3cf3e75afc808a1042a5d77f7c03c568f830`**(본 수리 커밋의 부모 — branch `issue/2363-moai-name`, origin/v2026.11.0 `e0f2fb0854` 병합 완료 상태; 측정 직전 base가 한 번 더 이동해 재병합·재측정했다)
+- 측정 일시: 2026-11-10T10:09:44Z ± · 측정자: agent-9-t69 (claim `Moai-Claim: 2363#6762753812`, epoch=3; 최초 claim 2363#6759493149 epoch=2)
 - 패턴: `moai[ _-]cli`(대소문자 무시, 매치 단위) — 제외: `.moai-cli/**`(상태·원장), `.claude/**`, `target/**`, `.git/**`, `references/**`, `adapters/**`, `experiments/**`, `Cargo.lock`
 - 두 개의 독립 계수(서로 다른 엔진):
-  1. `git grep -Iio 'moai[ _-]cli'`(tracked 파일 스캔) → **1,628매치 / 183파일** — 본 문서의 전수 표는 이 값
-  2. BSD `grep -RIioE 'moai[ _-]cli'`(모든 파일, 위 디렉터리 제외) → **1,627매치** — 1매치 차이는 엔진 파일 범위 차이(tracked 한정 vs 무시 파일 포함)이며 교차 확인으로 충분하다. `rg --count-matches` 병행 실행은 이 문서 작성 시점에 미완료(3차 확인 not_run — 2개 독립 계수로 충분).
+  1. `git grep -Iio 'moai[ _-]cli'`(tracked 파일 스캔) → **1,684매치 / 189파일** — 본 문서의 전수 표는 이 값
+  2. BSD `grep -RIioE 'moai[ _-]cli'`(모든 파일, 위 디렉터리 제외) → **1,683매치** — 1매치 차이는 엔진 파일 범위 차이(tracked 한정 vs 무시 파일 포함)이며 교차 확인으로 충분하다. `rg --count-matches` 병행 실행은 이 문서 작성 시점에 미완료(3차 확인 not_run — 2개 독립 계수로 충분).
 
 ## 요약 (측정 트리 기준)
 
-- 총계: **1,628매치 / 183파일**(방법 1; 방법 2는 1,627)
+- 총계: **1,684매치 / 189파일**(방법 1; 방법 2는 1,683)
 - 브랜드형('MoAI CLI'·'MOAI CLI'·'Moai CLI'·'moai CLI'): **5건 = 본 문서의 측정 패턴 인용 3 + `tests/fixtures/atlas-tag/go-corpus.txt`(테스트 픽스처 코퍼스) 2** — 제품 표면의 브랜드형은 0
 - 무구분자 변형('moaicli'): **1건 = 본 문서의 패턴 인용 1** — 제품 표면 0
 - `.github/` 템플릿: 0건(이슈 폼은 'MoAI: …' 표기) / 루트 `README.md`: 없음
@@ -33,33 +33,35 @@
 
 | 버킷 | 매치 | 사유 |
 |---|---|---|
-| 보호 파일(PR #2360 소유, 미병합) | 475 | `docs/rust-product-path.md` 182, `src/main.rs` 177, `tests/product_cli.rs` 97, `docs/user-entry-draft.md` 14, `src/session.rs` 1, launcher 시험 등 — 소유 PR이 open인 동안 편집하지 않음(단, 배너 call-site 2곳은 리더 추가 배차 예외를 PR 본문에 명시) |
-| 시험·픽스처(tests/** 중 보호 파일 제외) | 504 | 단언·기록 데이터 — Issue 제목 인용, 프로토콜 fixture, go-corpus 등 |
+| 보호 파일(PR #2360 소유, 미병합) | 481 | `docs/rust-product-path.md` 182, `src/main.rs` 177, `tests/product_cli.rs` 97, `docs/user-entry-draft.md` 14, `src/session.rs` 1, launcher 시험 등 — 소유 PR이 open인 동안 편집하지 않음(단, 배너 call-site 2곳은 리더 추가 배차 예외를 PR 본문에 명시) |
+| 시험·픽스처(tests/** 중 보호 파일 제외) | 550 | 단언·기록 데이터 — Issue 제목 인용, 프로토콜 fixture, go-corpus 등 |
 | 기록물(decisions·design-review·e2e-receipts) | 283 | 결정 원장·설계 검토 스냅샷·측정 receipt — 이력 기록이므로 재작성하지 않음 |
 | docs(살아있는 문서, 보호·기록물·본 문서 제외) | 184 | 경로·명령·tag 참조가 대부분; 변경 목록 2~7행이 이 버킷에서 나온 전부 |
-| src(보호 파일 제외) | 108 | `.moai-cli` 경로·명령·문서 주석 — 사용자 메시지는 변경 목록 1행뿐 |
+| src(보호 파일 제외) | 111 | `.moai-cli` 경로·명령·문서 주석 — 사용자 메시지는 변경 목록 1행뿐 |
 | 기타(지시 파일·스키마·gitignore·Cargo.toml) | 28 | AGENTS.local.md 22(설치 경로·명령 맥락), schemas 3(`moai_cli_sha` 필드), .gitignore 2, Cargo.toml 1(`name = "moai-cli"`) |
 | skills/**(#2297 대기) | 7 | base의 구경로 스킬 파일이 이미 `moai-cli claim-verify` 등 명령 문자열을 포함 — PR #2297(감사 PASS, 병합 대기)이 경로를 moai-cli로 통일 |
 | scripts·tools | 16 | 개발 도구 주석·픽스처 문자열 — 사용자 대면 아님 |
-| 본 문서(product-naming-inventory.md) | 23 | 측정 방법론·버킷 기술 문자열 — 재검색 시 자기매치로 정상 등장 |
+| 본 문서(product-naming-inventory.md) | 24 | 측정 방법론·버킷 기술 문자열 — 재검색 시 자기매치로 정상 등장 |
 
 식별자 유지 공통: `~/.moai-cli/`·`.moai-cli/` 경로, `moai-cli <subcommand>` 명령, `pub const PRODUCT = "moai-cli"`(`src/install.rs:46`), `moai-cli-v*` tag/ruleset(Issue 범위 밖), 생성 훅 명령 문자열(`src/hooks.rs` — 출력 계약).
 
-## 전수 파일별 집계 (방법 1, 183파일)
+## 전수 파일별 집계 (방법 1, 189파일)
+
 | 파일 | 매치 | 분류 |
 |---|---|---|
-| `docs/rust-product-path.md` | 182 | PROTECTED(2360-open) |
-| `src/main.rs` | 177 | PROTECTED(2360-open) |
+| `docs/rust-product-path.md` | 183 | PROTECTED(2360-open) |
+| `src/main.rs` | 182 | PROTECTED(2360-open) |
 | `tests/product_cli.rs` | 97 | PROTECTED(2360-open) |
 | `docs/design-review/fixes/top-5490c4ee.md` | 42 | RECORDS |
 | `docs/decisions-2026-11-08.md` | 40 | RECORDS |
 | `tests/install_cli.rs` | 35 | TESTS |
+| `tests/migration_fixture.rs` | 31 | TESTS |
 | `tests/layout_cli.rs` | 31 | TESTS |
 | `tests/hooks_cli.rs` | 30 | TESTS |
 | `docs/release-checklist.md` | 26 | DOCS_REST |
 | `docs/design-review/review-group3-install-host-plan-run-release.md` | 25 | RECORDS |
 | `docs/design-review/review-group1-rc1-plan.md` | 25 | RECORDS |
-| `docs/product-naming-inventory.md` | 23 | DOCS_REST |
+| `docs/product-naming-inventory.md` | 24 | DOCS_REST |
 | `docs/local-rc1-kit.md` | 23 | DOCS_REST |
 | `tests/run_verify.rs` | 22 | TESTS |
 | `AGENTS.local.md` | 22 | OTHER |
@@ -98,12 +100,14 @@
 | `docs/design-review/fixes/group3-83f162ef.md` | 9 | RECORDS |
 | `docs/design-review/appendix/paths.md` | 9 | RECORDS |
 | `tests/todo_promotion_cli.rs` | 8 | TESTS |
+| `tests/lane_handoff_cli.rs` | 8 | TESTS |
 | `docs/design-review/autonomy-modes-spec.md` | 8 | RECORDS |
 | `tools/host_live_harness.py` | 7 | SCRIPTSTOOLS |
 | `tests/workflow_e2e.rs` | 7 | TESTS |
 | `tests/profile_apply_engine.rs` | 7 | TESTS |
 | `tests/queue_cli.rs` | 6 | TESTS |
 | `tests/leader_cli.rs` | 6 | TESTS |
+| `tests/journal_lock_busy_cli.rs` | 6 | TESTS |
 | `tests/generation_receipt_order.rs` | 6 | TESTS |
 | `tests/audit_admission.rs` | 6 | TESTS |
 | `src/hooks.rs` | 6 | SRC_REST |
@@ -174,6 +178,7 @@
 | `tests/fixtures/atlas-tag/go-corpus.txt` | 2 | TESTS |
 | `tests/claude_transaction_boundary_test.py` | 2 | TESTS |
 | `src/worktree.rs` | 2 | SRC_REST |
+| `src/migrate.rs` | 2 | SRC_REST |
 | `src/github_templates.rs` | 2 | SRC_REST |
 | `src/forge/outbox.rs` | 2 | SRC_REST |
 | `docs/rc-isolation-decision.md` | 2 | DOCS_REST |
@@ -193,6 +198,7 @@
 | `tests/plan_input_limit_cli.rs` | 1 | TESTS |
 | `tests/parity_cli.rs` | 1 | TESTS |
 | `tests/ontology_schema.rs` | 1 | TESTS |
+| `tests/omp_adapter.rs` | 1 | TESTS |
 | `tests/launcher_permissions_setting.rs` | 1 | PROTECTED(2360-open) |
 | `tests/host_live_harness_test.py` | 1 | TESTS |
 | `tests/gitlab_forge_contract.rs` | 1 | TESTS |
@@ -213,6 +219,7 @@
 | `src/scope.rs` | 1 | SRC_REST |
 | `src/recovery.rs` | 1 | SRC_REST |
 | `src/leader.rs` | 1 | SRC_REST |
+| `src/lane_handoff.rs` | 1 | SRC_REST |
 | `src/identity.rs` | 1 | SRC_REST |
 | `src/hosts/codex_config.rs` | 1 | SRC_REST |
 | `src/forge/mod.rs` | 1 | SRC_REST |
@@ -232,8 +239,6 @@
 | `docs/claude-owned-update.md` | 1 | DOCS_REST |
 | `Cargo.toml` | 1 | OTHER |
 
-
-
 ## 변경 후 재검증 (측정 트리 기준)
 
 - 변경한 7줄은 head 트리에서 'MoAI' 표기로 확인(7건 grep 실측, 2026-11-10T10:0xZ) — 대상 표기 0. 남은 항목은 위 버킷 사유로 전부 커버.
@@ -247,6 +252,7 @@
 | 2026-11-10T05:10Z | 8c57326151(개명 커밋 전 base) | 1,556/177파일 | 이전 판의 baseline |
 | 2026-11-10T05:4xZ | 8393a7f72(명칭 커밋, 병합 전) | 1,572/176파일 | −7 편집 표면 +23 본 문서(구판) |
 | 2026-11-10T07:5xZ | e0f1ef3983(배너+55f383eaa8 병합) | 1,603 | 감사자 실측 — 구판 문서 수치와의 어긋남이 FAIL 사유 |
-| 2026-11-10T10:03Z | **fad15f59d6**(0c13195747 병합, 본 판) | **1,628/183파일**(git grep)·1,627(BSD grep) | 본 문서 수치 |
+| 2026-11-10T10:03Z | fad15f59d6(0c13195747 병합, 첫 수리판) | 1,628/183파일(git grep)·1,627(BSD grep) | base 추가 이동(e0f2fb0854)으로 대체 |
+| 2026-11-10T10:09Z | **346f3cf3e7**(e0f2fb0854 병합, **본 판**) | **1,684/189파일**(git grep)·1,683(BSD grep) | 본 문서 수치 |
 
 병합이 base 측 `moai-cli` 문자열을 계속 늘린다(#2345·#2335·#2344 문서와 git_env_scrub 등 신규 시험) — 총매치의 증가 자체는 제품명 위반이 아니라 위 지시·시험 문서의 명령 참조이며, 파일별 분류표가 이를 전부 사유와 함께 분류한다.
