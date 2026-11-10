@@ -332,8 +332,9 @@ enum Command {
         total_cap: u64,
     },
     /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
-    /// tip containment, changed-since-audit, claim lines, CI status, head stability.
-    /// Status posting and merging stay with the leader flow.
+    /// tip containment (behind_by 0), changed-since-audit, claim lines, required check
+    /// runs' conclusions, head stability. Status posting and merging stay with the
+    /// leader flow.
     FlowGateVerdict {
         /// GitHub owner.
         #[arg(long)]
@@ -350,6 +351,11 @@ enum Command {
         /// The base ref the tip is read from (e.g. v2026.11.0).
         #[arg(long = "base-ref", default_value = "v2026.11.0")]
         base_ref: String,
+        /// Comma-separated required check-run names (#2335). The verdict reads these
+        /// runs' conclusions; unrelated checks and the combined commit status are
+        /// excluded from the judgment.
+        #[arg(long = "required-checks", default_value = "rc-ci")]
+        required_checks: String,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
@@ -776,6 +782,23 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
 }
+/// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
+/// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
+/// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
+/// (`update::WALK_BYTES`); the plan is never trusted for its size, since every apply checks
+/// it against `--plan-digest`.
+const PLAN_INPUT_LIMIT: usize = 16 * 1024 * 1024;
+fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
+    let mut bytes = Vec::new();
+    io::stdin()
+        .take(PLAN_INPUT_LIMIT as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "stdin read failed")?;
+    if bytes.len() > PLAN_INPUT_LIMIT {
+        return Err("plan input exceeds 16 MiB".into());
+    }
+    serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+}
 /// Maps the launcher's host word to the session host.
 fn host_of(word: &str) -> Result<&'static str, String> {
     match word {
@@ -1026,7 +1049,192 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
 }
 
 /// Internal operations; `main` wraps the result in the envelope.
-fn run_internal(command: Command) -> Result<serde_json::Value, String> {
+/// #2345: the eleven journal-writing operations raise the journal lock-busy kind at its
+/// source and return it typed, so the envelope never re-derives it from message text;
+/// every other operation keeps the classified `String` fallback.
+fn run_internal(
+    command: Command,
+) -> std::result::Result<serde_json::Value, moai_cli::contract::OpError> {
+    match command {
+        Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
+            &project,
+            input::<moai_cli::claim::ClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::QueueNext { project } => moai_cli::queue::next_cli(
+            &project,
+            input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ClaimRelease {
+            project,
+            task,
+            epoch,
+            reason,
+        } => moai_cli::claim::release_cli(
+            &project,
+            &task,
+            epoch,
+            reason.as_deref().unwrap_or("unspecified"),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ClaimHandoff {
+            project,
+            task,
+            from_epoch,
+            reason,
+            force_explicit,
+            host_id,
+        } => moai_cli::handoff::claim_handoff_cli(
+            &project,
+            &task,
+            from_epoch,
+            &reason,
+            force_explicit,
+            host_id.as_deref(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectIntend {
+            project,
+            task,
+            epoch,
+            operation,
+            project_id,
+            local_id,
+            attempt,
+            kind,
+        } => moai_cli::handoff::effect_intend_cli(
+            &project,
+            &task,
+            epoch,
+            &operation,
+            &project_id,
+            &local_id,
+            attempt,
+            &kind,
+            input::<serde_json::Value>()?.to_string().as_bytes(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::handoff::effect_confirm_cli(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectsReconcile {
+            project,
+            task,
+            remote_probe,
+        } => moai_cli::handoff::effects_reconcile_cli(
+            &project,
+            &task,
+            remote_probe.as_deref(),
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::WorktreeApply {
+            project,
+            source,
+            branch_prefix,
+            path,
+            plan_digest,
+        } => moai_cli::worktree::apply_and_record(
+            &project,
+            &source.load(&project)?,
+            source.task.is_some(),
+            &branch_prefix,
+            path.as_deref(),
+            &plan_digest,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ScopeCheck {
+            project,
+            source,
+            integration_order,
+        } => {
+            let mine = source.load(&project)?;
+            let others = moai_cli::worktree::active_records(&project)?;
+            moai_cli::scope::check_and_record(
+                &project,
+                &mine,
+                source.task.is_some(),
+                &others,
+                integration_order.as_deref(),
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
+        Command::PrConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::pr_link::confirm_and_record(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::PrBodyRender {
+            project,
+            source,
+            receipts,
+            base_sha,
+            base_branch,
+            default_branch,
+            allow_close,
+            not_run,
+            review_link,
+            gap,
+            pr_seq,
+        } => {
+            let rec = source.load(&project)?;
+            let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
+            let receipts: Vec<moai_cli::run::Receipt> =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
+            let head = moai_cli::worktree::head(&project)?;
+            let changes = if moai_cli::worktree::is_sha(&base_sha) {
+                moai_cli::worktree::changes(&project, &base_sha)?
+            } else {
+                Vec::new()
+            };
+            moai_cli::pr_link::render_and_record(
+                &project,
+                &rec,
+                source.task.is_some(),
+                &receipts,
+                &moai_cli::pr_link::RenderInput {
+                    base_branch: &base_branch,
+                    default_branch: &default_branch,
+                    base_sha: &base_sha,
+                    candidate_sha: &head,
+                    allow_close,
+                    not_run: &not_run,
+                    review_link: review_link.as_deref(),
+                    changes: &changes,
+                    gaps: &gap,
+                    pr_seq,
+                },
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
+        other => run_internal_classified(other).map_err(moai_cli::contract::OpError::from),
+    }
+}
+
+fn run_internal_classified(command: Command) -> Result<serde_json::Value, String> {
     match command {
         Command::PackageInspect { package } => Ok(
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
@@ -1044,7 +1252,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => apply(
             &project,
-            input::<Plan>()?,
+            plan_input::<Plan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1063,7 +1271,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => agents_apply(
             &project,
-            input::<AgentsPlan>()?,
+            plan_input::<AgentsPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1147,21 +1355,9 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
-        Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
-            &project,
-            input::<moai_cli::claim::ClaimRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::QueueNext { project } => moai_cli::queue::next_cli(
-            &project,
-            input::<moai_cli::queue::QueueRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
@@ -1193,80 +1389,6 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             }
         }
         Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
-        Command::ClaimRelease {
-            project,
-            task,
-            epoch,
-            reason,
-        } => moai_cli::claim::release_cli(
-            &project,
-            &task,
-            epoch,
-            reason.as_deref().unwrap_or("unspecified"),
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::ClaimHandoff {
-            project,
-            task,
-            from_epoch,
-            reason,
-            force_explicit,
-            host_id,
-        } => moai_cli::handoff::claim_handoff_cli(
-            &project,
-            &task,
-            from_epoch,
-            &reason,
-            force_explicit,
-            host_id.as_deref(),
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::EffectIntend {
-            project,
-            task,
-            epoch,
-            operation,
-            project_id,
-            local_id,
-            attempt,
-            kind,
-        } => moai_cli::handoff::effect_intend_cli(
-            &project,
-            &task,
-            epoch,
-            &operation,
-            &project_id,
-            &local_id,
-            attempt,
-            &kind,
-            input::<serde_json::Value>()?.to_string().as_bytes(),
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::EffectConfirm {
-            project,
-            task,
-            operation_id,
-            response_id,
-            observed_state,
-        } => moai_cli::handoff::effect_confirm_cli(
-            &project,
-            &task,
-            &operation_id,
-            &response_id,
-            &observed_state,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::EffectsReconcile {
-            project,
-            task,
-            remote_probe,
-        } => moai_cli::handoff::effects_reconcile_cli(
-            &project,
-            &task,
-            remote_probe.as_deref(),
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
         Command::LayoutApply {
             project,
@@ -1296,6 +1418,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             pr,
             audit_head,
             base_ref,
+            required_checks,
         } => {
             let transport = moai_cli::forge::transport::GhTransport::from_env()?;
             let clock = moai_cli::forge::policy::SystemClock;
@@ -1305,7 +1428,21 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 Default::default(),
                 Default::default(),
             );
-            moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
+            let checks: Vec<String> = required_checks
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
+            moai_cli::flow::gate_verdict(
+                &client,
+                &owner,
+                &repo,
+                pr,
+                &audit_head,
+                &base_ref,
+                &checks,
+            )
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan { project, host } => {
@@ -1433,100 +1570,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &branch_prefix,
             path.as_deref(),
         ),
-        Command::WorktreeApply {
-            project,
-            source,
-            branch_prefix,
-            path,
-            plan_digest,
-        } => moai_cli::worktree::apply_and_record(
-            &project,
-            &source.load(&project)?,
-            source.task.is_some(),
-            &branch_prefix,
-            path.as_deref(),
-            &plan_digest,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::ScopeCheck {
-            project,
-            source,
-            integration_order,
-        } => {
-            let mine = source.load(&project)?;
-            let others = moai_cli::worktree::active_records(&project)?;
-            moai_cli::scope::check_and_record(
-                &project,
-                &mine,
-                source.task.is_some(),
-                &others,
-                integration_order.as_deref(),
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
         Command::ParityCheck {
             template,
             generated,
             doc,
         } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
         Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
-        Command::PrConfirm {
-            project,
-            task,
-            operation_id,
-            response_id,
-            observed_state,
-        } => moai_cli::pr_link::confirm_and_record(
-            &project,
-            &task,
-            &operation_id,
-            &response_id,
-            &observed_state,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::PrBodyRender {
-            project,
-            source,
-            receipts,
-            base_sha,
-            base_branch,
-            default_branch,
-            allow_close,
-            not_run,
-            review_link,
-            gap,
-            pr_seq,
-        } => {
-            let rec = source.load(&project)?;
-            let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
-            let receipts: Vec<moai_cli::run::Receipt> =
-                serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
-            let head = moai_cli::worktree::head(&project)?;
-            let changes = if moai_cli::worktree::is_sha(&base_sha) {
-                moai_cli::worktree::changes(&project, &base_sha)?
-            } else {
-                Vec::new()
-            };
-            moai_cli::pr_link::render_and_record(
-                &project,
-                &rec,
-                source.task.is_some(),
-                &receipts,
-                &moai_cli::pr_link::RenderInput {
-                    base_branch: &base_branch,
-                    default_branch: &default_branch,
-                    base_sha: &base_sha,
-                    candidate_sha: &head,
-                    allow_close,
-                    not_run: &not_run,
-                    review_link: review_link.as_deref(),
-                    changes: &changes,
-                    gaps: &gap,
-                    pr_seq,
-                },
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
@@ -1547,7 +1596,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
-            let plan = input::<moai_cli::update::UpdatePlan>()?;
+            let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
             moai_cli::update::apply_update(
                 &home,
                 &staged,
@@ -1565,7 +1614,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             plan_digest,
             permission_reference,
         } => {
-            let plan = input::<moai_cli::recovery::RecoveryPlan>()?;
+            let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
         Command::PlanAdmit { project } => {
@@ -1630,7 +1679,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             moai_cli::sources::sources_apply(
                 &project,
                 &home,
-                input::<moai_cli::sources::SourcePlan>()?,
+                plan_input::<moai_cli::sources::SourcePlan>()?,
                 &plan_digest,
                 &permission_reference,
             )
@@ -1673,7 +1722,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => moai_cli::github_templates::github_apply(
             &project,
-            input::<moai_cli::github_templates::GithubPlan>()?,
+            plan_input::<moai_cli::github_templates::GithubPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1690,7 +1739,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => moai_cli::generation::generation_apply(
             &project,
-            input::<moai_cli::generation::GenerationPlan>()?,
+            plan_input::<moai_cli::generation::GenerationPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1801,16 +1850,15 @@ fn main() -> ExitCode {
             println!("{}", contract::success(op, result));
             ExitCode::SUCCESS
         }
-        Err(message) if hook_mode => {
-            eprintln!("{message}");
+        Err(e) if hook_mode => {
+            eprintln!("{e}");
             ExitCode::from(if guard { 2 } else { HOOK_NON_BLOCKING_ERROR })
         }
-        Err(message) => {
-            println!(
-                "{}",
-                contract::failure(op, contract::classify(&message), &message)
-            );
-            eprintln!("{message}");
+        Err(e) => {
+            // #2345: the journal lock-busy error carries its kind from the raise site;
+            // every other error was classified at the dispatch boundary.
+            println!("{}", contract::failure(op, e.kind, &e.message));
+            eprintln!("{e}");
             ExitCode::from(1)
         }
     }

@@ -3037,6 +3037,145 @@ fn doctor(
     (out, v)
 }
 
+/// A killed orphan can remain a zombie under a non-reaping container PID 1.
+/// Only absence or a terminated state proves that the fixture is no longer running.
+fn assert_fixture_process_stopped(pid: &str) {
+    for _ in 0..40 {
+        let out = Command::new("ps")
+            .args(["-p", pid, "-o", "stat="])
+            .output()
+            .unwrap();
+        let zombie = out.status.success()
+            && String::from_utf8_lossy(&out.stdout)
+                .trim_start()
+                .starts_with('Z');
+        let absent = out.status.code() == Some(1) && out.stdout.is_empty() && out.stderr.is_empty();
+        if absent || zombie {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    panic!("fixture child {pid} is still running");
+}
+
+/// #2349 (e): a `claude` that never answers `--version` is bounded. The doctor returns
+/// `unknown` with a timeout reason, and the process group ends with it — the hanging
+/// script's own child is gone too.
+#[test]
+fn claude_doctor_bounds_a_hanging_claude() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    let pidfile = bin.path().join("child.pid");
+    common::write_executable(
+        &bin.path().join("claude"),
+        &format!(
+            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            pidfile.display()
+        ),
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let started = std::time::Instant::now();
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    let elapsed = started.elapsed();
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert!(
+        elapsed < std::time::Duration::from_secs(12),
+        "doctor waited {elapsed:?} for a hanging claude"
+    );
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    assert_eq!(v["claude_version"], json!(null));
+    assert!(
+        v["reason"].as_str().unwrap().contains("timed out"),
+        "{}",
+        v["reason"]
+    );
+    let pid = fs::read_to_string(&pidfile).unwrap().trim().to_string();
+    assert_fixture_process_stopped(&pid);
+}
+
+#[test]
+fn claude_doctor_waits_for_inherited_stdout_within_the_deadline() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    common::write_executable(
+        &bin.path().join("claude"),
+        "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 1 &\nexit 0\n",
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["claude_version"], json!("2.1.319"));
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+}
+
+#[test]
+fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    let pidfile = bin.path().join("child.pid");
+    common::write_executable(
+        &bin.path().join("claude"),
+        &format!(
+            "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 30 &\necho $! > '{}'\nexit 0\n",
+            pidfile.display()
+        ),
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let started = std::time::Instant::now();
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert!(started.elapsed() < std::time::Duration::from_secs(12));
+    assert_eq!(v["claude_version"], json!(null));
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    assert!(v["reason"].as_str().unwrap().contains("timed out"));
+    let pid = fs::read_to_string(pidfile).unwrap();
+    assert_fixture_process_stopped(pid.trim());
+}
+
+#[cfg(unix)]
+#[test]
+fn claude_doctor_cleans_groups_without_trusting_path_kill() {
+    for shadow_kill in [false, true] {
+        let home = TempDir::new().unwrap();
+        let bin = TempDir::new().unwrap();
+        let pidfile = bin.path().join("child.pid");
+        common::write_executable(
+            &bin.path().join("claude"),
+            &format!(
+                "#!/bin/sh\n/bin/sleep 25 &\necho $! > '{}'\nwait\n",
+                pidfile.display()
+            ),
+        );
+        if shadow_kill {
+            common::write_executable(&bin.path().join("kill"), "#!/bin/sh\nexit 1\n");
+        }
+        let project = TempDir::new().unwrap();
+        write_file(project.path(), "AGENTS.md", b"# rules\n");
+        let started = std::time::Instant::now();
+        let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            .args(["claude-doctor", project.path().to_str().unwrap()])
+            .env("HOME", home.path())
+            .env("PATH", bin.path())
+            .output()
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(out.status.success(), "{:?}", out.stderr);
+        let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let result = &envelope["result"];
+        assert_eq!(result["agents_md_status"], json!("unknown"));
+        assert_eq!(result["claude_version"], json!(null));
+        assert!(
+            elapsed < std::time::Duration::from_secs(9),
+            "the documented five-second probe took {elapsed:?}"
+        );
+        let pid = fs::read_to_string(pidfile).unwrap();
+        assert_fixture_process_stopped(pid.trim());
+    }
+}
+
 /// HA-03-CLAUDE: the four AGENTS/CLAUDE combinations, judged without writing anything.
 #[test]
 fn claude_doctor_agents_loading_combinations() {
