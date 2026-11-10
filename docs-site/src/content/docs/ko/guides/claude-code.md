@@ -47,7 +47,7 @@ printf '%s\n' '{"outputStyle":"Default"}' |
 
 `claude-settings-apply`는 별도의 변경 작업입니다. 같은 desired JSON과 `--plan-digest`, `--permission-reference`를 받아 재계획한 뒤 프로젝트 설정과 `.moai-cli/manifests/claude-settings.json`을 씁니다. 이 안내서는 실행하지 않습니다. reference는 권한 승인이 아니므로 정확한 diff를 먼저 승인해야 합니다. 다른 사용자 소유 키는 보존해야 합니다.
 
-설정 병합은 **자산 설치가 아닙니다.** Rust 대체 경로는 임시 Python adapter의 출력 스타일 파일, `statusline.py`, 라이선스를 복사하지 않습니다. 없는 스크립트를 `statusLine.command`에 지정하거나 설정에 이름이 있다고 스타일 파일도 있다고 가정하지 마세요. Rust 바이너리는 그 Python adapter를 호출하지 않습니다. 기존 hook·권한도 별도 검토 대상이며 이 RC는 MoAI hook 세트를 생성하지 않습니다.
+설정 병합은 **자산 설치가 아닙니다.** Rust 대체 경로는 임시 Python adapter의 출력 스타일 파일, `statusline.py`, 라이선스를 복사하지 않습니다. 없는 스크립트를 `statusLine.command`에 지정하거나 설정에 이름이 있다고 스타일 파일도 있다고 가정하지 마세요. Rust 바이너리는 그 Python adapter를 호출하지 않습니다. 기존 hook·권한도 별도 검토 대상이며, 이 안내서들이 기준으로 삼는 고정 revision은 MoAI hook 세트를 생성하지 않습니다.
 
 ## 론처 미리보기
 

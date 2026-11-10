@@ -47,7 +47,7 @@ This writes nothing. Read the planned action, conflicts, expected/current digest
 
 `claude-settings-apply` is the separate mutating operation: it takes the same desired JSON, `--plan-digest`, and `--permission-reference`, re-plans, and writes project settings plus `.moai-cli/manifests/claude-settings.json`. This guide does not invoke it. The reference is not authorization; approve the exact diff first. Other user-owned keys must be preserved.
 
-A settings merge is **not** an asset installer. The Rust replacement does not copy the provisional Python adapter's output-style files, `statusline.py`, or licenses. Do not point `statusLine.command` at a nonexistent script or assume an output style is present because its name appears in settings. The Rust binary does not call that Python adapter. Existing hooks and permissions still need review; this RC does not generate a MoAI hook set.
+A settings merge is **not** an asset installer. The Rust replacement does not copy the provisional Python adapter's output-style files, `statusline.py`, or licenses. Do not point `statusLine.command` at a nonexistent script or assume an output style is present because its name appears in settings. The Rust binary does not call that Python adapter. Existing hooks and permissions still need review; the pinned snapshot these guides document does not generate a MoAI hook set.
 
 ## Preview the launcher
 
