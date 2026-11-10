@@ -203,6 +203,8 @@ const RULES: &[(&str, Kind)] = &[
     // incremental index (rc.2 C6 #2182): a failed build is plain I/O trouble; the
     // previous generation is kept and the query state turns partial.
     ("index build failed", Kind::Io),
+    // search (rc.2 C7 #2183): every refusal is about the request itself.
+    ("search refused: ", Kind::InvalidInput),
     ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
@@ -519,6 +521,22 @@ mod tests {
             ("index pointer write failed", Io),
             ("index pointer replace failed", Io),
             ("index pointer encode failed", Internal),
+            // search (rc.2 C7 #2183); every current message of the module
+            ("search refused: give at least one path or literal", InvalidInput),
+            ("search refused: too many query terms", InvalidInput),
+            (
+                "search refused: a path must be relative inside the repository",
+                InvalidInput,
+            ),
+            (
+                "search refused: a literal must be non-empty, one line, at most 512 bytes",
+                InvalidInput,
+            ),
+            ("search refused: max_files must be 1..=2000", InvalidInput),
+            (
+                "search refused: max_spans_per_file must be 1..=1000",
+                InvalidInput,
+            ),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

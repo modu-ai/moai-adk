@@ -514,6 +514,12 @@ enum Command {
         #[arg(long)]
         plan_digest: String,
     },
+    /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
+    /// matches over the published index generation (or the tracked files), each result with
+    /// a source citation; the typed-edge step is reported unavailable (#2408).
+    Search {
+        project: PathBuf,
+    },
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
         project: PathBuf,
@@ -982,6 +988,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
+        Search { .. } => "search.query",
         SkillReadReceipt { .. } => "skill_source.read_receipt",
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
@@ -1187,6 +1194,11 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::Search { project } => serde_json::to_value(moai_cli::search::search(
+            &project,
+            &input::<moai_cli::search::SearchRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::ScopeCheck {
             project,
             source,
@@ -1194,13 +1206,29 @@ fn run_internal(
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
+            // #2404: the PR state of overlapping handed-off claims, read before the journal
+            // lock; with no overlap with a `pr_ready` record the forge is not set up at all.
+            let clock = moai_cli::forge::policy::SystemClock;
+            let handed_off = if moai_cli::scope::needs_pr_status(&mine, &others) {
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+                let client = moai_cli::forge::Client::new(
+                    &transport,
+                    &clock,
+                    Default::default(),
+                    Default::default(),
+                );
+                moai_cli::scope::handed_off_status(&mine, &others, &client)
+            } else {
+                Default::default()
+            };
             moai_cli::scope::check_and_record(
                 &project,
                 &mine,
                 source.task.is_some(),
                 &others,
                 integration_order.as_deref(),
-                &moai_cli::forge::policy::SystemClock,
+                &handed_off,
+                &clock,
             )
         }
         Command::PrConfirm {
