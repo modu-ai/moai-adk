@@ -142,15 +142,20 @@ fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
     let (_d, root) = project();
     configure(&root, "codex");
     let t = config_ms(&root, ".codex/hooks.json");
-    let deny = |call: Value, ms: u64| json!({"kind": "deny", "host": "codex", "call": call, "unix_ms": ms});
-    append(&root, "hook-engine.jsonl", deny(json!("aaaa"), t - 1));
-    append(&root, "hook-engine.jsonl", deny(Value::Null, t + 1));
+    let deny = |session: &str, call: Value, ms: u64| json!({"kind": "deny", "host": "codex", "session": session, "call": call, "unix_ms": ms});
+    append(&root, "hook-engine.jsonl", deny("s", json!("aaaa"), t - 1));
+    append(&root, "hook-engine.jsonl", deny("s", Value::Null, t + 1));
+    append(
+        &root,
+        "hook-engine.jsonl",
+        deny("unknown", json!("cccc"), t + 1),
+    );
     assert_eq!(
         status(&root, "codex", "")["action_blocked"],
         json!(false),
-        "early or keyless"
+        "early, keyless, or without a session key"
     );
-    append(&root, "hook-engine.jsonl", deny(json!("bbbb"), t));
+    append(&root, "hook-engine.jsonl", deny("s", json!("bbbb"), t));
     let s = status(&root, "codex", "");
     assert_eq!(s["action_blocked"], json!(true));
     assert_eq!(
@@ -158,19 +163,100 @@ fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
         json!(true),
         "the deny line is itself a fired line"
     );
-    assert_eq!(s["verified"], json!(true));
     append(
         &root,
         "hook-engine.jsonl",
-        json!({"kind": "observe", "host": "codex", "call": "bbbb", "unix_ms": t + 2}),
+        json!({"kind": "observe", "host": "codex", "session": "s", "call": "bbbb", "unix_ms": t}),
     );
+    assert_eq!(
+        status(&root, "codex", "")["action_blocked"],
+        json!(false),
+        "the denied call ran after all (same host, session, call, same ms)"
+    );
+}
+
+/// Audit H4-B1: only an observation of the same host, session and call at or after the deny
+/// cancels it. Literal counter-examples from the audit, each against a fresh deny at `t + 10`.
+#[test]
+fn unrelated_or_earlier_observations_never_cancel_a_deny() {
+    for (label, host, session, offset, cancels) in [
+        ("other host", "claude", "s", 2i64, false),
+        ("earlier", "codex", "s", -1, false),
+        ("other session", "codex", "other", 2, false),
+        ("same call later", "codex", "s", 2, true),
+    ] {
+        let (_d, root) = project();
+        configure(&root, "codex");
+        let t = config_ms(&root, ".codex/hooks.json") + 10;
+        append(
+            &root,
+            "hook-engine.jsonl",
+            json!({"kind": "deny", "host": "codex", "session": "s", "call": "same-call", "unix_ms": t}),
+        );
+        append(
+            &root,
+            "hook-engine.jsonl",
+            json!({"kind": "observe", "host": host, "session": session, "call": "same-call",
+                   "unix_ms": (t as i64 + offset) as u64}),
+        );
+        assert_eq!(
+            status(&root, "codex", "")["action_blocked"],
+            json!(!cancels),
+            "{label}"
+        );
+    }
+}
+
+/// Audit H4-B2: a deny produced by calling the engine directly (no host) leaves the same lines a
+/// host run would, so local evidence never sets `verified`.
+#[test]
+fn a_direct_engine_call_never_makes_the_hooks_verified() {
+    let (_d, root) = project();
+    configure(&root, "codex");
+    let input = json!({"hook_event_name": "PreToolUse", "session_id": "direct-cli-no-host",
+                       "tool_use_id": "fixture-direct-call", "tool_name": "Bash",
+                       "tool_input": {"command": "git commit -m no-token"}, "cwd": root});
+    common::git::command()
+        .args(["init", "-q", "-b", "issue/77-x"])
+        .current_dir(&root)
+        .env("HOME", root.join("home"))
+        .status()
+        .unwrap();
+    let mut child = Command::new(BIN)
+        .args([
+            "hook-dispatch",
+            "--host",
+            "codex",
+            "--event",
+            "tool-preflight",
+        ])
+        .current_dir(&root)
+        .env("HOME", root.join("home"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    use std::io::Write;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(String::from_utf8_lossy(&out.stdout).contains("\"deny\""));
     let s = status(&root, "codex", "");
+    assert_eq!(s["fired"], json!(true), "local line exists");
     assert_eq!(
         s["action_blocked"],
-        json!(false),
-        "the denied call ran after all"
+        json!(true),
+        "local deny, no later observation"
     );
-    assert_eq!(s["verified"], json!(false));
+    assert_eq!(s["verified"], json!(false), "no host ran");
+    assert!(s["evidence"]
+        .as_str()
+        .unwrap()
+        .contains("direct hook-dispatch call"));
 }
 
 #[test]
