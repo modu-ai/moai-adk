@@ -15,7 +15,8 @@ Isolation, per case and per color variant:
   detached `gh`/`glab` refresh child is never spawned (isSelfInvocable);
 - on macOS the run is wrapped in `sandbox-exec` denying every network operation,
   every read and write under the real HOME (so no credential can be used), and
-  every process exec except the binary under test and git (#2350 AC-2, AC-5).
+  every process exec except the binary under test and git (#2350 AC-2, AC-5; git during the
+  render is allowed, user decision 2026-11-10).
 
 Variants: `plain` sets NO_COLOR=1; `ansi` sets COLORTERM=truecolor; `ansi256` sets
 neither, which is the ANSI256 palette path (#2350).
