@@ -8,7 +8,7 @@
 //! | --- | --- | --- |
 //! | tag in a tracked code file | C2 grammar v1, kind `REQ` in either namespace (`@MOAI:REQ REQ-C5-01`, `@MX:REQ …`); args split on whitespace and commas | `file:<path>` → `references_requirement` → `req:<id>` |
 //! | test name | a Rust fn whose attribute block carries `#[test]` or `#[tokio::test]`, or a Python `def test_…`; the name carries `req_<segs>_<digits>` (`req_08c_01` → `REQ-08C-01`) | `test:<path>::<fn>` → `verifies` → `req:<id>` |
-//! | commit trailer | `git interpret-trailers` view of each commit reachable from HEAD: `Moai-Claim: <issue>#<id>` or `Refs: #<issue>` | `commit:<sha>` → `mentions_issue` → `issue:<n>` |
+//! | commit protocol line | exact raw-body lines in each commit reachable from HEAD: `Moai-Claim: <issue>#<id>` or `Refs: #<issue>` (ASCII decimal ids) | `commit:<sha>` → `mentions_issue` → `issue:<n>` |
 //!
 //! The REQ ↔ code ↔ test triangle closes through the requirement node; no
 //! file ↔ test edge is ever emitted (the only candidates would be static or
@@ -160,6 +160,17 @@ fn git(root: &Path, args: &[&str]) -> Result<String> {
         return Err(format!("git {} failed", args.join(" ")));
     }
     String::from_utf8(out.stdout).map_err(|_| "git output is not UTF-8".to_string())
+}
+
+/// Project protocol lines are independent of Git's final trailer-block rules.
+fn issue_trailer(line: &str) -> Option<(&'static str, &str)> {
+    let decimal = |value: &str| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit());
+    if let Some(value) = line.strip_prefix("Moai-Claim: ") {
+        let (issue, claim) = value.split_once('#')?;
+        return (decimal(issue) && decimal(claim)).then_some(("Moai-Claim", issue));
+    }
+    let issue = line.strip_prefix("Refs: #")?;
+    decimal(issue).then_some(("Refs", issue))
 }
 
 /// Collected records before serialization: edges keyed by (kind, source, target) so
@@ -320,39 +331,24 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
         }
     }
 
-    // Commit trailers. %x1e separates commits, %x1f separates the three fields.
-    let log = git(
-        root,
-        &[
-            "log",
-            "--format=%H%x1f%B%x1f%(trailers:only=true,unfold=true)%x1e",
-        ],
-    )?;
+    // Read raw bodies: a footer or a separate coauthor paragraph must not hide
+    // explicit protocol lines. %x1e separates commits; %x1f separates SHA and body.
+    let log = git(root, &["log", "--format=%H%x1f%B%x1e"])?;
     for rec in log.split('\x1e') {
-        let fields: Vec<&str> = rec.trim_start_matches('\n').splitn(3, '\x1f').collect();
-        if fields.len() != 3 || fields[0].is_empty() {
+        let Some((sha, body)) = rec.trim_start_matches('\n').split_once('\x1f') else {
+            continue;
+        };
+        if sha.is_empty() {
             continue;
         }
-        let (sha, body, trailers) = (fields[0], fields[1], fields[2]);
         let msg_digest = digest(body.as_bytes());
         let commit_id = format!("commit:{sha}");
         let mut trailer_issues = BTreeSet::new();
-        for t in trailers.lines() {
-            let Some((key, value)) = t.split_once(':') else {
+        for t in body.lines() {
+            if !t.starts_with("Moai-Claim:") && !t.starts_with("Refs:") {
                 continue;
-            };
-            let (key, value) = (key.trim(), value.trim());
-            let issue = match key {
-                "Moai-Claim" => value
-                    .split_once('#')
-                    .map(|(n, _)| n)
-                    .filter(|n| !n.is_empty() && n.bytes().all(|c| c.is_ascii_digit())),
-                "Refs" => value
-                    .strip_prefix('#')
-                    .filter(|n| !n.is_empty() && n.bytes().all(|c| c.is_ascii_digit())),
-                _ => continue,
-            };
-            let Some(n) = issue else {
+            }
+            let Some((key, n)) = issue_trailer(t) else {
                 b.miss(
                     "malformed_issue_trailer",
                     json!({"commit": sha, "trailer": t}),
@@ -374,7 +370,7 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
                 format!("commit:{sha}#trailer:{key}@{msg_digest}"),
             );
         }
-        // A `Refs #N` body line that git does not parse as a trailer is reported, not linked.
+        // A colonless `Refs #N` line is reported rather than inferred as a link.
         for line in body.lines() {
             if let Some(n) = line.trim().strip_prefix("Refs #") {
                 let n = n.trim();
