@@ -1,23 +1,59 @@
-# P07 local TODO promotion
+# P07 local TODO promotion — superseded (2026-11-10)
 
-When a forge is connected later, preview existing local TODOs and promote only user-selected items. Review disclosure before any transmission and reconcile stable task IDs with existing remote issues to prevent duplicates. No current repository is authorized for publication by this decision.
+**Status: superseded.** User decision 2026-11-10T11:52Z (Issue #2384): "Remove the local TODO; use only GitHub/GitLab Issues. Without GitHub/GitLab the existing todo is not used. Remove SQLite too." The earlier P07 rule ("when a forge is connected later, preview existing local TODOs and promote only user-selected items", 07-B #2009) no longer applies. Its text and product path stay in git history (this file before #2384; `src/forge/promote.rs` until the removal commit).
 
-`experiments/todo_promotion.py` provides an in-memory selection preview. Nonselected tasks never enter its output; unreviewed text is omitted; mapped tasks are marked already published. An approval label is supplied data, not a secret scanner or remote permission. Remote reconciliation, concurrent publication and actual publishing are not implemented in that experiment.
+## Rule
 
-## Product path (07-B #2009)
+- **The work ledger is forge Issues only** (GitHub; GitLab when its adapter lands). There is no local TODO list, no local task store and no promotion from one.
+- **No forge connected means no ledger.** Ledger operations report the ledger as unavailable with error kind `blocked` (`retryable: false`: connecting a forge is a change, not a retry) and a message naming the missing forge. They never create, read or migrate a local TODO, and they never fall back to a local store. `unavailable` is not used here: in the 00-D vocabulary it means a retry may succeed (a lock wait).
+- **No SQLite.** No state, index, queue or TODO store uses SQLite. The stores that exist are file based and already implemented: the claim journal (`claim::journal_root`), the generation receipts (`apply::Receipt`), the forge outbox (`<project>/.moai-cli/forge/outbox/`) and the P09 home layout pointer. `Cargo.toml` has no SQLite dependency (checked at tip `2930b8631f`).
+- **Out of scope** (preserved): the Go tool's own todo and SQLite features and any data under `~/.moai/`. Existing `<project>/.moai-cli/forge/promotions.json` files written by the removed preview/apply are left in place; nothing deletes user data.
 
-`moai-cli todo-promote-preview PROJECT` and `moai-cli todo-promote-apply PROJECT --preview-digest D --permission-reference R` (operations `todo.promote.plan` and `todo.promote.apply`, 01-C envelope) promote selected tasks from a design-22 `tasks.md` to GitHub Issues through the 07-A adapter (`gh api`, serial client, rate-limit backoff). The request on stdin names `tasks_path` (required, no default: RC1 interim decision), `target{owner,repo}` and `selected`.
+## Inventory at tip `2930b8631f` (two independent counts)
 
-- Preview reads only: the tasks file, `<project>/.moai-cli/forge/promotions.json`, the outbox, the repository and its Issue list. It writes no file and sends no write. Each selected task yields `local_id`, `state` (`preview_only`, `blocked_review`, `already_published`, `duplicate_candidate`, or `uncertain`), `target{owner,repo,visibility}`, `redacted_title`, `redacted_body_digest`; the result carries `preview_digest`. Unselected tasks appear nowhere.
-- `blocked_review` applies when a task lacks `disclosure_review: approved` or any line is credential-shaped or names a personal absolute path. `Evidence` and `External issue` lines never leave the machine.
-- Apply recomputes the preview and refuses a different digest (`stale_plan`). For each `preview_only` row it saves an outbox intent (`<project>/.moai-cli/forge/outbox/<op-id>.json`), creates the Issue with the marker `<!-- moai:op promote:<project_id>:<local_id>:<attempt> -->`, and records `published` with the 07-A external reference only after a GET shows the same id, node_id, number, html_url and the marker. A full second is slept between consecutive creates. Rows in any other state are reported `not_sent`; a `duplicate_candidate` is neither linked to the similar Issue nor created (the reading implemented for REQ-PROMO-009 "display only").
-- A transport error, timeout or 5xx is recorded `uncertain` (outbox `publish_unknown`) and is never created again automatically: not found is not "not created". A later run that finds the marker in the Issue list links it after a confirming GET. A 4xx is `blocked`; a confirming GET that disagrees is `conflict`. Apply stops at the first such row with `partial`.
-- `promotions.json` is replaced by temporary file + rename and only if its digest still equals the one read (`conflict` otherwise; nothing is overwritten). Offline runs fail before any change, so published records stay as they were.
+Method A is `git grep -i -E` over tracked files. Method B (`target/agent5-2384/scan.py`, kept out of the tree) reads every tracked blob through `git cat-file --batch` and matches with Python `re`. Both report 585 tracked files and the same numbers:
 
-Limits, recorded rather than resolved:
-- Duplicate detection reads the whole Issue list (`state=all`) and compares normalized titles (word Jaccard ≥ 0.8). It does not use `since`: an old Issue with the same marker or title must still be found. The search API is follow-up work (interim decision B).
-- The disclosure gate is a conservative shape filter shared with the profile filter (`SECRET_SHAPES` in `src/lib.rs`) plus a few more shapes. It is not a secret scanner. A scanner such as gitleaks is HOLD; the shared redaction module belongs to 03-B #1996.
-- `uncertain` is a fifth preview state beyond the four named in the Issue, so an unknown publish is visible instead of looking like `preview_only`.
-- `GhTransport` bounds each `gh api` call at `GH_TIMEOUT` = 60 s (#2048, PR #2051). Past the bound `gh` is killed and its whole process group ended (unix `kill -KILL -- -<pgid>`; `gh` runs in its own group), and the call fails as `transport` — the same bucket as a timeout reported by `gh` — which apply records `uncertain`. Still open: the 60 s value is unmeasured against real calls, and the process-group teardown is written for unix (`#[cfg(unix)]`); Windows behavior is unverified.
-- The permission reference is checked for presence and shape only; caller authorization remains host-owned.
-- Live GitHub writes were not run (`not_run`); tests use a scripted transport and a stub `gh` that refuses writes.
+| pattern | files | lines |
+| --- | ---: | ---: |
+| `todo-promote\|TodoPromote\|todo_promot` | 17 | 85 |
+| `sqlite` | 16 | 39 |
+| `로컬 TODO\|local TODO\|local todo` | 14 | 24 |
+
+### Removed by the code card (waits for its merge-train turn; every open PR touches `src/main.rs`)
+
+| path | what |
+| --- | --- |
+| `src/main.rs` | `TodoPromotePreview`/`TodoPromoteApply` variants, their operation names `todo.promote.plan`/`todo.promote.apply`, dispatch arms |
+| `src/forge/promote.rs` (857 lines), `src/forge/mod.rs` `pub mod promote;` | the promotion module; not in the leader's first inventory |
+| `tests/todo_promotion_cli.rs`, `tests/todo_promotion_test.py`, `experiments/todo_promotion.py` | tests and the in-memory experiment |
+| `docs/design-review/appendix/interfaces.md` | the two lines `todo-promote-apply`, `todo-promote-preview` (the test `operations_doc_matches_code` compares the list with the code) |
+| `docs/rc-file-selection.json` | the two entries for `experiments/todo_promotion.py` and `tests/todo_promotion_test.py` |
+| `src/lib.rs:70`, `src/redact.rs:8` | doc comments that name `forge::promote` as a consumer of the shared secret-shape filter (the filter itself stays; promote only consumed it) |
+| `.gitignore:41-42` | `*.sqlite`, `*.sqlite3` (no such file exists in the primary checkout to depth 4; leader-owned file) |
+| `src/forge/outbox.rs:276,295-303` | test fixtures use the operation word `promote`; they test the marker grammar, not promotion, and may stay or be renamed |
+
+After removal the code card checks for dead code left behind in `forge::{outbox, transport, write}` (clippy `-D warnings` fails on it) and adds the AC-1/AC-2 tests: the two subcommands exit 2 as usage errors and are absent from `--help`; a temporary project with no forge gives ledger operations the `blocked` response above and creates no file.
+
+### Changed in this document card
+
+- this file (supersession, rule, inventory);
+- `skills/moai-cli/workflows/sync.md` step 4: the sentence about moving local TODOs to a newly connected forge is replaced by the forge-only rule, and `skills/moai-cli/references/source-manifest.json` carries the new digest of that file.
+
+### Kept: history, records and other systems (not current design)
+
+| path | why it stays |
+| --- | --- |
+| `docs/decisions-2026-11-08.md:69` | decision log entry (history); the leader records the 2026-11-10 decision there |
+| `docs/release-notes/2026.11.0-rc.1.md:84` | release history of #2009 |
+| `docs/design-review/review-group2-core-brain-sync-owner.md:138,146`, `review-group3-install-host-plan-run-release.md:52,368`, `review-group4-past-designs.md`, `synthesis-improvement-report-2026-11-09.md`, `fixes/group2-0d4538a27fb88191a19ba261bd5a3442.md`, `fixes/top-section20-lessons.md` | dated review records. The SQLite lines there already say SQLite is not adopted or describe the Go factory; review-group3:52 records that promotion was implemented at that time |
+| `docs/design-review/codex-statusline-official-scope-2026-11-10.md:52`, `statusline-rust-stage1-2026-11-10.md:177`, `docs/session-hub-research-2026-11-08.md:176` | Codex's or the Go tool's own SQLite, read as research; not a MoAI store |
+| `tests/fixtures/github/issues-open.json:480`, `tests/fixtures/atlas-tag/go-corpus.txt:1386` | recorded fixtures (Issue title, Go source corpus) |
+| `.moai-cli/manifests/issue-design-research*.json`, `github-issues.json`, `github-duplicate-map.json`, `baseline/rc1-inventory.*`, `.moai-cli/reports/rc1-issue-design-2026-11-08.html` | leader ledger mirror and design snapshots (history) |
+| `.moai-cli/reports/issue-bodies/{1977,1983,1989,2005,2006,2009}*.md` | Issue body copies; the leader edits the live Issue bodies (proposals below) and refreshes the copies |
+
+## Proposed Issue body edits (the leader applies them)
+
+Each affected requirement gets one line: "Removed by the user decision 2026-11-10 (#2384): the work ledger is forge Issues only; no local TODO and no SQLite."
+
+- #1983 (EP-08) and #2009 (07-B): the "local TODO selected promotion" section and its acceptance rows.
+- #1977 (EP-02), #1989 (01-B), #2005 (06-A), #2006 (06-B): the sentences that name SQLite as a state store or index; the file stores listed under Rule replace them.
