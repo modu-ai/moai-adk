@@ -493,6 +493,42 @@ fn f5d_other_language_failures_are_classified() {
         Some(FailureClass::EnvironmentFailure),
         "a Python import error was not classified as an environment failure"
     );
+    // Decision 6774899518 row 20 = A: unittest too, and the environment still wins when both
+    // signs appear in one run.
+    let unittest_assert = "FAIL: test_a (test_x.T.test_a)\n\
+                           Traceback (most recent call last):\n\
+                           AssertionError: 1 != 2\n\
+                           FAILED (failures=1)\n";
+    let unittest_import = "ERROR: test_x (unittest.loader._FailedTest.test_x)\n\
+                           ImportError: Failed to import test module: test_x\n\
+                           ModuleNotFoundError: No module named 'missing'\n\
+                           FAILED (errors=1)\n";
+    assert_eq!(
+        classify(None, false, false, unittest_assert),
+        Some(FailureClass::TestFailure),
+        "a unittest assertion failure was not classified as a test failure"
+    );
+    assert_eq!(
+        classify(None, false, false, unittest_import),
+        Some(FailureClass::EnvironmentFailure),
+        "a unittest import failure was not classified as an environment failure"
+    );
+    let both = format!("{pytest_assert}{pytest_import}");
+    assert_eq!(
+        classify(None, false, false, &both),
+        Some(FailureClass::EnvironmentFailure),
+        "an import error beside an assertion failure must not count as RED"
+    );
+    // Boundary: a Python failure with neither sign stays unclassified (never RED).
+    assert_eq!(
+        classify(
+            None,
+            false,
+            false,
+            "Traceback (most recent call last):\nKeyError: 'x'\n"
+        ),
+        Some(FailureClass::Unclassified)
+    );
 }
 
 /// F6: scope overlap sees case variants and `..` segments of the same path; the shared
