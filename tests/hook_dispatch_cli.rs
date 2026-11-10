@@ -487,6 +487,13 @@ fn read_commands_mentioning_commit_are_allowed_and_real_commits_are_not() {
             &[],
         ));
     }
+    // #2399 re-audit B5: a value-taking global option does not hide the commit.
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git --attr-source HEAD commit -m x", &root),
+        &[],
+    ));
     let dir_commit = format!("git -C {} commit -m x", root.display());
     assert_deny(&dispatch(
         "tool-preflight",
