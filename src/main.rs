@@ -978,9 +978,14 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         return match (cli.leader, cli.agent) {
             (true, _) => launch("claude", Some(true), cli.launch, None),
             (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
-            (false, None) => Err(
-                "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
-            ),
+            (false, None) => {
+                // Bare no-argument run: the banner rides stdout for humans only
+                // (Issue #2363); the usage error contract below is unchanged.
+                moai_cli::banner::maybe_print_banner();
+                Err(
+                    "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
+                )
+            }
         };
     };
     match command {
@@ -1701,6 +1706,12 @@ fn usage_error(e: clap::Error) -> ExitCode {
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {
+        // Root help carries the logo above clap's help body (Issue #2363);
+        // subcommand help and version stay logo-free.
+        if matches!(e.kind(), ErrorKind::DisplayHelp) {
+            let rest: Vec<String> = std::env::args().skip(1).collect();
+            moai_cli::banner::maybe_print_logo_for(&rest);
+        }
         e.exit()
     };
     let message = match e.kind() {
