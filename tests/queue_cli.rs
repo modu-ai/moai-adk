@@ -380,3 +380,101 @@ fn no_candidate_is_idle_and_posts_nothing() {
     assert_eq!(out["skipped"], json!([{"issue": 2, "reason": "epic"}]));
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
 }
+
+// ---- #2345 pre-audit FAIL 6779691666 B1: queue-next turns the picked card's acquire
+// refusal into a `blocked` failure (through `next_cli`, the CLI entry point) ----
+
+/// A git work tree for `next_cli` (it resolves the journal from the project's identity).
+fn project_repo() -> tempfile::TempDir {
+    let tmp = tempfile::tempdir().unwrap();
+    let init = common::git::command()
+        .args(["init", "-q"])
+        .current_dir(tmp.path())
+        .status()
+        .unwrap();
+    assert!(init.success());
+    // The worktree identity needs a HEAD commit.
+    let commit = common::git::command()
+        .args([
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "fixture",
+        ])
+        .current_dir(tmp.path())
+        .status()
+        .unwrap();
+    assert!(commit.success());
+    tmp
+}
+
+type CliOut = Result<Value, moai_cli::contract::OpError>;
+
+fn run_cli(
+    project: &Path,
+    clock_secs: i64,
+    exchanges: Vec<Exchange>,
+) -> (CliOut, RecordedTransport) {
+    let t = RecordedTransport::new(exchanges);
+    let clock = FakeClock(Cell::new(clock_secs));
+    let out = moai_cli::queue::next_cli(project, request("session-a"), &t, &clock);
+    (out, t)
+}
+
+fn assert_blocked(out: CliOut, outcome: &str) {
+    let err = out.expect_err("a refused acquire must be a failure");
+    assert_eq!(err.kind, moai_cli::contract::Kind::Blocked, "{outcome}");
+    let detail = err.detail.expect("the refusal carries the acquire result");
+    assert_eq!(detail["outcome"], json!(outcome), "{detail}");
+}
+
+/// The claim comment was posted but the re-read does not show it, so the winner cannot be
+/// judged: acquire answers `uncertain` (no journal record), and queue-next fails `blocked`.
+#[test]
+fn an_uncertain_acquire_is_a_blocked_failure() {
+    let repo = project_repo();
+    let mut ex = reads(vec![card(7, "A1", "상위: #2")]);
+    ex.extend(attempt(7, 500, vec![]));
+    let (out, t) = run_cli(repo.path(), CLOCK0, ex);
+    assert_blocked(out, "uncertain");
+    assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+    assert_eq!(t.remaining(), 0);
+}
+
+/// This journal's own active record for the card has an expired lease: acquire answers
+/// `expired` (takeover needs the operator), and queue-next fails `blocked`.
+#[test]
+fn an_expired_own_record_is_a_blocked_failure() {
+    let repo = project_repo();
+    let mut ex = reads(vec![card(7, "A1", "상위: #2")]);
+    ex.extend(attempt(7, 500, vec![claim(500, "session-a")]));
+    let (first, t) = run_cli(repo.path(), CLOCK0, ex);
+    let first = first.unwrap();
+    assert_eq!(first["outcome"], json!("claimed"), "{first}");
+    assert_eq!(t.remaining(), 0);
+    // A clock past the lease (2026-11-09T12:00:00Z is 1_794_225_600).
+    let (out, t) = run_cli(
+        repo.path(),
+        1_794_225_601,
+        reads(vec![card(7, "A1", "상위: #2")]),
+    );
+    assert_blocked(out, "expired");
+    assert!(posts(&t).is_empty());
+}
+
+/// Control: an empty queue stays a success (`idle`) through the same entry point.
+#[test]
+fn an_empty_queue_through_the_cli_entry_is_still_a_success() {
+    let repo = project_repo();
+    let ex = reads(vec![
+        json!({"number": 2, "id": 2000, "title": "[rc.2][EP-A] epic",
+                              "body": "", "milestone": {"number": 3}}),
+    ]);
+    let (out, _) = run_cli(repo.path(), CLOCK0, ex);
+    assert_eq!(out.unwrap()["outcome"], json!("idle"));
+}
