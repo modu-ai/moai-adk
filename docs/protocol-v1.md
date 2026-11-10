@@ -11,6 +11,8 @@
 >
 > 추가는 #1990 HOLD-C2 / REQ-01C-02(r27)의 "필요 시 추가는 docs에 기록" 조항을 따랐고, 기존 11종의 의미는 바꾸지 않았다.
 >
+> **갱신(#2345, 2026-11-10 사용자 결정 #2389 댓글 6774899518 표 행 44 = A)**: 가드가 요청된 변경을 거부한 결과(거부, refusal)는 성공 안의 결과 키가 아니라 실패 envelope로 낸다. 거부한 결과는 그대로 선택 필드 `error.detail`에 담고, 다른 실패는 `detail`을 내지 않는다. 적용 op와 kind는 `docs/rust-product-path.md`의 `Output envelope` 절에 있다. 이 결정은 위 envelope 결정(B)과 별개 항목이며, 상태 어휘 통합은 여전히 미결이다.
+>
 > 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
 
 ## HOLD 현황

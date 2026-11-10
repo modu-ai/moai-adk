@@ -1393,7 +1393,44 @@ pub fn acquire_cli<T: Transport, C: Clock>(
     }
     let client = Client::new(transport, clock, Default::default(), Default::default());
     let out = acquire(&journal, &req, worktree, &client, clock)?;
-    Ok(out.to_json())
+    let v = out.to_json();
+    match acquire_refusal(&v, Some(&req.owner)) {
+        Some(refused) => Err(refused),
+        None => Ok(v),
+    }
+}
+
+/// HOLD-00D-1 (user decision 6774899518 row 44 = A): an acquire the guard declined is a
+/// failure whose `detail` is the unchanged acquire result. Kinds follow the claim-verify
+/// precedent: another owner is `conflict`; an expired lease (operator approval, 06-B) and
+/// an unresolved winner are `blocked`. An active record of the requesting owner is the
+/// same request repeated and stays a success; `requester: None` (queue-next, whose picked
+/// card is its own resume) leaves `already_owned` to the caller.
+pub(crate) fn acquire_refusal(v: &Value, requester: Option<&Owner>) -> Option<OpError> {
+    let (kind, message) = match v["outcome"].as_str()? {
+        "already_owned" => {
+            let requester = requester?;
+            let holder = &v["record"]["owner"];
+            if holder["kind"] == requester.kind.as_str() && holder["id"] == requester.id.as_str()
+            {
+                return None;
+            }
+            (
+                Kind::Conflict,
+                "claim refused: the task is owned by another owner; nothing was written",
+            )
+        }
+        "expired" => (
+            Kind::Blocked,
+            "claim refused: the active record's lease has expired; takeover needs operator approval (claim-handoff)",
+        ),
+        "uncertain" => (
+            Kind::Blocked,
+            "claim refused: the winning live claim comment is not resolved to this journal; nothing was written",
+        ),
+        _ => return None,
+    };
+    Some(OpError::refused(kind, message, v.clone()))
 }
 
 pub fn show_cli(project: &Path, key: &str) -> Result<Value> {
@@ -1424,6 +1461,41 @@ mod tests {
 
     fn task_ref() -> TaskRef {
         TaskRef::new("github", "github.com", "acme", "widgets", 101, 7001, 7)
+    }
+
+    /// HOLD-00D-1 (decision 6774899518 row 44 = A): each refusal outcome maps to its kind
+    /// with the unchanged result as detail; success outcomes and the owner's own repeat
+    /// stay successes.
+    #[test]
+    fn acquire_refusals_map_to_their_kinds() {
+        let me = Owner::new("session", "agent-x");
+        let held_by = |kind: &str, id: &str| json!({"outcome": "already_owned", "record": {"owner": {"kind": kind, "id": id}}});
+        let refused = |v: &Value, who: Option<&Owner>| {
+            acquire_refusal(v, who).map(|e| (e.kind, e.detail.unwrap() == *v))
+        };
+        assert_eq!(refused(&held_by("session", "agent-x"), Some(&me)), None);
+        assert_eq!(
+            refused(&held_by("session", "agent-y"), Some(&me)),
+            Some((Kind::Conflict, true))
+        );
+        // Same id under another owner kind is another owner.
+        assert_eq!(
+            refused(&held_by("leader", "agent-x"), Some(&me)),
+            Some((Kind::Conflict, true))
+        );
+        let foreign = json!({"outcome": "already_owned", "record": null,
+            "foreign_owner": {"session": "agent-y", "comment_id": 9}});
+        assert_eq!(refused(&foreign, Some(&me)), Some((Kind::Conflict, true)));
+        // queue-next leaves already_owned (its own resume) to the caller.
+        assert_eq!(refused(&held_by("session", "agent-y"), None), None);
+        for outcome in ["expired", "uncertain"] {
+            let v = json!({"outcome": outcome});
+            assert_eq!(refused(&v, Some(&me)), Some((Kind::Blocked, true)));
+            assert_eq!(refused(&v, None), Some((Kind::Blocked, true)));
+        }
+        for outcome in ["claimed", "released", "unclaimed", "idle", "exhausted"] {
+            assert_eq!(refused(&json!({"outcome": outcome}), Some(&me)), None);
+        }
     }
 
     #[test]

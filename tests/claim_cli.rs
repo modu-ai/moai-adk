@@ -1057,6 +1057,64 @@ fn claim_concurrent_exclusive() {
     assert_eq!(record["record"]["epoch"], 1);
 }
 
+/// HOLD-00D-1 (user decision 6774899518 row 44 = A): another owner's acquire is refused
+/// with a failure envelope — kind `conflict`, exit 1, the refused result in
+/// `error.detail` — while the owner's own repeat stays a success.
+#[test]
+fn claim_refusal_by_another_owner_is_a_conflict_failure() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    let home = tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    git_repo(&repo);
+    let gh = stub_gh(tmp.path());
+    let lease = format_utc(now_utc() + 3600);
+    let body = claim_body("agent-x", &lease);
+    let acquire = |session: &str| {
+        run_claim(
+            &repo,
+            &["claim-acquire", "."],
+            Some(&cli_req(&lease, session)),
+            &home,
+            &gh,
+            &body,
+        )
+    };
+
+    let first = acquire("agent-x");
+    assert!(first.status.success());
+    assert_eq!(envelope(&first)["result"]["outcome"], json!("claimed"));
+
+    let repeat = acquire("agent-x");
+    assert!(
+        repeat.status.success(),
+        "the owner's repeat stays a success"
+    );
+    assert_eq!(
+        envelope(&repeat)["result"]["outcome"],
+        json!("already_owned")
+    );
+
+    let other = acquire("agent-y");
+    assert_eq!(other.status.code(), Some(1));
+    let v = envelope(&other);
+    assert_eq!(v["ok"], json!(false));
+    assert_eq!(v["error"]["kind"], json!("conflict"));
+    assert_eq!(v["error"]["retryable"], json!(false));
+    assert_eq!(v["error"]["detail"]["outcome"], json!("already_owned"));
+    assert_eq!(
+        v["error"]["detail"]["record"]["owner"]["id"],
+        json!("agent-x")
+    );
+    assert!(v.get("result").is_none());
+    let stderr = String::from_utf8_lossy(&other.stderr);
+    assert_eq!(stderr.lines().count(), 1, "{stderr}");
+    assert!(stderr.starts_with("claim refused: "), "{stderr}");
+    // Nothing was written by the refused acquire.
+    let log = fs::read_to_string(journal_dir(&repo).join("journal.log")).unwrap();
+    assert_eq!(log.lines().count(), 1);
+}
+
 #[test]
 fn claim_go_paths_untouched() {
     let tmp = tempfile::tempdir().unwrap();

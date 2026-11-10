@@ -1956,8 +1956,9 @@ fn main() -> ExitCode {
         }
         Err(e) => {
             // #2345: the journal lock-busy error carries its kind from the raise site;
-            // every other error was classified at the dispatch boundary.
-            println!("{}", contract::failure(op, e.kind, &e.message));
+            // every other error was classified at the dispatch boundary. A guard refusal
+            // (HOLD-00D-1) also carries the refused result as `error.detail`.
+            println!("{}", contract::failure_of(op, &e));
             eprintln!("{e}");
             ExitCode::from(1)
         }

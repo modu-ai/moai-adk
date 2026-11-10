@@ -71,10 +71,16 @@ impl Kind {
 /// An operation error that carries its 00-D kind from the raise site (Issue #2345). The
 /// journal lock-wait path raises this directly; every other error stays a plain `String`
 /// and keeps the [`classify`] fallback at the envelope boundary.
+///
+/// HOLD-00D-1 (user decision 6774899518 row 44 = A): a guard that refuses the requested
+/// change answers with a failure, not a success with a refusal outcome. The refusal keeps
+/// what the caller needs to act on (owner, record, existing worktree) in `detail`, which
+/// the envelope prints as `error.detail` only when it is present.
 #[derive(Clone, Debug)]
 pub struct OpError {
     pub kind: Kind,
     pub message: String,
+    pub detail: Option<Value>,
 }
 
 impl OpError {
@@ -82,6 +88,16 @@ impl OpError {
         Self {
             kind,
             message: message.into(),
+            detail: None,
+        }
+    }
+
+    /// A guard refusal (HOLD-00D-1): the kind, one human line, and the refused result.
+    pub fn refused(kind: Kind, message: impl Into<String>, detail: Value) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+            detail: Some(detail),
         }
     }
 }
@@ -91,6 +107,7 @@ impl From<String> for OpError {
         Self {
             kind: classify(&message),
             message,
+            detail: None,
         }
     }
 }
@@ -235,6 +252,16 @@ pub fn failure(operation: &str, kind: Kind, message: &str) -> Value {
         }
     }
     json!({"protocol_version": PROTOCOL_VERSION, "operation": operation, "ok": false, "error": error})
+}
+
+/// [`failure`] for an [`OpError`]: a guard refusal adds `error.detail`; every other error
+/// prints the same bytes as [`failure`].
+pub fn failure_of(operation: &str, e: &OpError) -> Value {
+    let mut out = failure(operation, e.kind, &e.message);
+    if let Some(detail) = &e.detail {
+        out["error"]["detail"] = detail.clone();
+    }
+    out
 }
 
 #[cfg(test)]
@@ -497,6 +524,23 @@ mod tests {
             assert_eq!(classify(message), kind, "{message}");
         }
         assert_eq!(classify("something new"), Internal);
+    }
+
+    /// HOLD-00D-1: a refusal prints `error.detail`; any other error prints the bytes of
+    /// [`failure`] unchanged, so existing failure envelopes keep their exact shape.
+    #[test]
+    fn a_refusal_adds_detail_and_other_errors_keep_their_bytes() {
+        let refused = OpError::refused(Kind::Conflict, "claim refused: x", json!({"a": 1}));
+        let v = failure_of("claim.acquire", &refused);
+        assert_eq!(v["ok"], json!(false));
+        assert_eq!(v["error"]["kind"], json!("conflict"));
+        assert_eq!(v["error"]["detail"], json!({"a": 1}));
+        let plain = OpError::new(Kind::Io, "target read failed");
+        assert_eq!(
+            failure_of("claim.acquire", &plain).to_string(),
+            failure("claim.acquire", Kind::Io, "target read failed").to_string()
+        );
+        assert!(OpError::from("target read failed").detail.is_none());
     }
 
     #[test]

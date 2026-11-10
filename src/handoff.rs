@@ -982,7 +982,7 @@ pub fn claim_handoff_cli<C: Clock>(
     clock: &C,
 ) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    Ok(claim_handoff(
+    let v = claim_handoff(
         &journal,
         key,
         from_epoch,
@@ -990,7 +990,17 @@ pub fn claim_handoff_cli<C: Clock>(
         force_explicit,
         host_id,
         clock,
-    )?)
+    )?;
+    // HOLD-00D-1: a refused takeover is a failure. The `handoff_pending` mark is already in
+    // the journal (REQ-06B-03 keeps it as evidence), so the message says so.
+    if v["outcome"] == "handoff_pending" {
+        return Err(crate::contract::OpError::refused(
+            crate::contract::Kind::Blocked,
+            "handoff refused: the owner is alive or indeterminate; pass --force-explicit with a reason (the record is marked handoff_pending)",
+            v,
+        ));
+    }
+    Ok(v)
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -309,10 +309,19 @@ fn worktree_one_writer_per_task() {
     let digest = plan["plan_digest"].as_str().unwrap();
     assert_eq!(apply(&f, "lane", digest)["result"]["decision"], "created");
     let again = apply(&f, "lane", digest);
-    assert_eq!(again["ok"], true);
-    assert_eq!(again["result"]["decision"], "conflict");
-    assert_eq!(again["result"]["reason"], "branch_in_use");
-    assert_eq!(again["result"]["existing"].as_array().unwrap().len(), 1);
+    // HOLD-00D-1 (decision 6774899518 row 44 = A): the refused create is a failure; the
+    // refused result stays in `error.detail`.
+    assert_eq!(again["ok"], false);
+    assert_eq!(again["error"]["kind"], "conflict");
+    assert_eq!(again["error"]["detail"]["decision"], "conflict");
+    assert_eq!(again["error"]["detail"]["reason"], "branch_in_use");
+    assert_eq!(
+        again["error"]["detail"]["existing"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     // Another branch name for the same task still meets the task's locked worktree.
     let other = run(
         &f.repo,
@@ -347,8 +356,12 @@ fn worktree_one_writer_per_task() {
         ),
     );
     let env = envelope(&out);
-    assert_eq!(env["result"]["decision"], "conflict", "{env}");
-    assert_eq!(env["result"]["reason"], "task_has_worktree");
+    assert_eq!(env["error"]["kind"], "conflict", "{env}");
+    assert_eq!(env["error"]["detail"]["reason"], "task_has_worktree");
+    assert!(env["error"]["message"]
+        .as_str()
+        .unwrap()
+        .starts_with("worktree refused: task_has_worktree"));
     assert!(!f.repo.join("elsewhere").exists());
 }
 

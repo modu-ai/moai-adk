@@ -118,6 +118,18 @@ pub fn apply_and_record<C: Clock>(
         None
     };
     let mut out = apply(project, rec, prefix, path, plan_digest)?;
+    // HOLD-00D-1: an existing owner refuses the create; nothing was created or written.
+    if out["decision"] == "conflict" {
+        let message = format!(
+            "worktree refused: {}; nothing was created",
+            out["reason"].as_str().unwrap_or("existing owner")
+        );
+        return Err(crate::contract::OpError::refused(
+            crate::contract::Kind::Conflict,
+            message,
+            out,
+        ));
+    }
     out["record_update"] = if out["decision"] != "created" {
         json!({"applied": false, "reason": "no worktree was created"})
     } else if let Some(journal) = &journal {

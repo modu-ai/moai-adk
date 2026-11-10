@@ -329,9 +329,16 @@ fn claim_handoff_with_failing_ps_stays_pending() {
         .output()
         .unwrap();
     let v = envelope(&out);
-    assert_eq!(v["result"]["outcome"], "handoff_pending", "{v}");
-    assert_eq!(v["result"]["liveness"], "indeterminate");
-    assert_eq!(v["result"]["verdict"], "blocked");
+    // HOLD-00D-1 (decision 6774899518 row 44 = A): the refused takeover is a `blocked`
+    // failure, exit 1; the refused result (already marked handoff_pending) is the detail.
+    assert_eq!(out.status.code(), Some(1), "{v}");
+    assert_eq!(v["ok"], false, "{v}");
+    assert_eq!(v["error"]["kind"], "blocked");
+    assert_eq!(v["error"]["retryable"], false);
+    assert_eq!(v["error"]["detail"]["outcome"], "handoff_pending", "{v}");
+    assert_eq!(v["error"]["detail"]["liveness"], "indeterminate");
+    assert_eq!(v["error"]["detail"]["verdict"], "blocked");
+    assert_eq!(v["error"]["detail"]["record"]["state"], "handoff_pending");
     assert!(
         child.try_wait().unwrap().is_none(),
         "the owner process is still running"

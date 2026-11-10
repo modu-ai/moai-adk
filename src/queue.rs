@@ -387,7 +387,13 @@ pub fn next_cli<T: Transport, C: Clock>(
         ));
     }
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    Ok(next(&journal, &req, worktree, &client, clock)?)
+    let v = next(&journal, &req, worktree, &client, clock)?;
+    // HOLD-00D-1: the picked card's acquire refusal (expired, uncertain) is a failure, as
+    // in claim-acquire. Foreign owners were skipped into `lost_to` above.
+    match crate::claim::acquire_refusal(&v, None) {
+        Some(refused) => Err(refused),
+        None => Ok(v),
+    }
 }
 
 #[cfg(test)]
