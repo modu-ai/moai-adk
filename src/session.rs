@@ -91,10 +91,29 @@ fn glm_file_token() -> Option<String> {
             if !GLM_KEY_NAMES.contains(&key.trim()) {
                 return None;
             }
-            let value = value.trim().trim_matches(|c| c == '"' || c == '\'');
-            (!value.is_empty() && !value.chars().any(char::is_control)).then(|| value.to_string())
+            usable_token(value.trim().trim_matches(|c| c == '"' || c == '\''))
         })
     })
+}
+
+/// The one rule for a token value from any source: surrounding whitespace is dropped, and an
+/// empty, whitespace-only or control-character value counts as no token (#2359 AC4).
+fn usable_token(value: &str) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty() && !value.chars().any(char::is_control)).then(|| value.to_string())
+}
+
+/// The token and whether it came from a key file: the variable when it holds a usable value,
+/// else the first key file that does. An empty or whitespace-only variable does not hide a
+/// key file.
+fn glm_token() -> Option<(String, bool)> {
+    let from_env = std::env::var(GLM_TOKEN_VAR)
+        .ok()
+        .and_then(|v| usable_token(&v));
+    match from_env {
+        Some(token) => Some((token, false)),
+        None => glm_file_token().map(|token| (token, true)),
+    }
 }
 const MAX_PROMPT: usize = 4096;
 
@@ -442,14 +461,15 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
     let argv = match r.host.as_str() {
         "codex" => codex_argv(r, &mut notes)?,
         "glm" => {
-            if std::env::var_os(GLM_TOKEN_VAR).is_none() {
-                if glm_file_token().is_none() {
+            match glm_token() {
+                None => {
                     return Err(format!(
-                        "blocked: {GLM_TOKEN_VAR} is not set in this environment and no key file holds one (set it in your shell, or put GLM_API_KEY=<key> in ~/{}; ~/{} is read too; the launcher never prints or stores the value)",
+                        "blocked: {GLM_TOKEN_VAR} is not set or is empty in this environment and no key file holds one (set it in your shell, or put GLM_API_KEY=<key> in ~/{}; ~/{} is read too; the launcher never prints or stores the value)",
                         GLM_KEY_FILES[0], GLM_KEY_FILES[1]
                     ));
                 }
-                notes.push("ANTHROPIC_AUTH_TOKEN comes from a key file under HOME; it is passed to the host process only");
+                Some((_, true)) => notes.push("ANTHROPIC_AUTH_TOKEN comes from a key file under HOME; it is passed to the host process only"),
+                Some((_, false)) => {}
             }
             let mut plain = r.clone();
             if plain.advisor.take().is_some() {
@@ -480,16 +500,11 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
     command.args(&argv[1..]);
     if r.host == "glm" {
         command.envs(GLM_ENV);
-        // The token is inherited unchanged from the caller's environment when it is there.
-        let token = match std::env::var_os(GLM_TOKEN_VAR) {
-            Some(token) => token,
-            None => {
-                let token = glm_file_token().ok_or("blocked: the key file changed")?;
-                command.env(GLM_TOKEN_VAR, &token);
-                token.into()
-            }
-        };
-        command.env(GLM_MCP_KEY_VAR, token);
+        // The same rule as `compose`: both names carry the trimmed token, so an empty variable
+        // is replaced by the key file value and never reaches the host.
+        let (token, _) = glm_token().ok_or("blocked: the key changed")?;
+        command.env(GLM_TOKEN_VAR, &token);
+        command.env(GLM_MCP_KEY_VAR, &token);
     }
     let status = command
         .status()

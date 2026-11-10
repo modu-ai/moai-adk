@@ -274,8 +274,75 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
             "https://api.z.ai/api/anthropic|3000000|glm-5.3|glm-5.3|glm-5.3-flash|glm-5.3|1000000|1000000|1|{token}"
         )
     );
-    assert!(!text.contains(token), "token value echoed by the launcher");
+    // A one-character boundary token occurs in ordinary output words, so the echo check only
+    // applies to tokens long enough to be distinctive.
+    if token.len() >= 8 {
+        assert!(!text.contains(token), "token value echoed by the launcher");
+    }
     token.to_string()
+}
+
+/// AC4 boundary for the variable (audit F1 on 8e6cb1e4a4): an empty or whitespace-only value is
+/// no token, a one-character value is one. Literal values, not a shared constant.
+#[test]
+fn an_empty_or_blank_variable_is_no_token_and_one_character_is_one() {
+    let bare = home(&[]);
+    for value in ["", " ", "   ", "\t"] {
+        let (code, v, text) = dry(bare.path(), Some(value));
+        assert_eq!(code, 1, "env {value:?}: {text}");
+        assert_eq!(v, Value::Null, "env {value:?}");
+        assert!(
+            text.contains("blocked") && text.contains("ANTHROPIC_AUTH_TOKEN"),
+            "env {value:?}: {text}"
+        );
+    }
+    let (code, v, text) = dry(bare.path(), Some("k"));
+    assert_eq!(code, 0, "env \"k\": {text}");
+    assert!(!v["notes"].to_string().contains("key file"), "{text}");
+}
+
+/// An empty or whitespace-only variable must not hide a key file: the file value reaches the
+/// host under both names, never the blank one.
+#[cfg(unix)]
+#[test]
+fn a_blank_variable_falls_through_to_each_key_file() {
+    for file in [".moai/.env.glm", ".moai-cli/.env.glm"] {
+        let h = home(&[(file, "GLM_API_KEY=from-file\n")]);
+        for value in ["", "   "] {
+            assert_eq!(
+                host_token(h.path(), Some(value)),
+                "from-file",
+                "{file} env {value:?}"
+            );
+            let (code, v, text) = dry(h.path(), Some(value));
+            assert_eq!(code, 0, "{file} env {value:?}: {text}");
+            assert!(v["notes"].to_string().contains("key file"), "{text}");
+        }
+        assert_eq!(host_token(h.path(), Some("k")), "k", "{file}");
+    }
+}
+
+/// AC4 boundary for each key file: empty and whitespace-only values are blocked, a
+/// one-character value is used.
+#[cfg(unix)]
+#[test]
+fn each_key_file_blocks_empty_and_blank_values_and_takes_one_character() {
+    for file in [".moai/.env.glm", ".moai-cli/.env.glm"] {
+        for line in [
+            "GLM_API_KEY=\n",
+            "GLM_API_KEY=   \n",
+            "GLM_API_KEY=\" \"\n",
+            "ANTHROPIC_AUTH_TOKEN=\t\n",
+        ] {
+            let h = home(&[(file, line)]);
+            let (code, v, text) = dry(h.path(), None);
+            assert_eq!(code, 1, "{file} {line:?}: {text}");
+            assert_eq!(v, Value::Null, "{file} {line:?}");
+            assert!(text.contains("blocked"), "{file} {line:?}: {text}");
+        }
+        let h = home(&[(file, "GLM_API_KEY=k\n")]);
+        assert_eq!(host_token(h.path(), None), "k", "{file}");
+    }
 }
 
 #[cfg(unix)]
