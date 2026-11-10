@@ -24,7 +24,7 @@ A mode banner, a read-only state summary, one `/goal` line for the user to paste
 
 Keep-set decisions go to the user at every autonomy level (SPEC §6). At `semi`, new Issues, lifting a HOLD, merge-policy changes and releases also go to the user. Ownership comes only from claim comments (SPEC §4), never from labels, messages or an assignment hint — including this mode's own assignment pointers. Merging follows the audit gate; this mode never merges without an independent audit.
 
-Before dispatching a card or an audit, read the receiving lane's live claim comments and the pull request's `moai-audit-claim` lines; do not hand out work that a live claim or reservation already covers without naming that claim or reservation in the dispatch. Record a user decision first as an Issue comment; publish decision-log rows only from a worktree at the current tip, comparing with the tip so that rows merged in the meantime are kept.
+Before dispatching a card or an audit, read the receiving lane's live claim comments and the pull request's `moai-audit-claim` lines. Record a user decision first as an Issue comment; publish decision-log rows only from a worktree at the current tip, comparing with the tip so that rows merged in the meantime are kept.
 
 ## Completion Check
 
