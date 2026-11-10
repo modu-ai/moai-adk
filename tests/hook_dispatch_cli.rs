@@ -1229,3 +1229,63 @@ fn file_writes_into_git_internals_are_refused_for_both_hosts() {
         &[],
     ));
 }
+
+// ---- stage 6: the confirmation class (B2 = A) ----
+
+/// The PreToolUse object's decision and reason.
+fn decision(r: &Run) -> (String, String) {
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).expect("one JSON object");
+    let h = &v["hookSpecificOutput"];
+    assert_eq!(h["hookEventName"], "PreToolUse");
+    (
+        h["permissionDecision"].as_str().unwrap().to_string(),
+        h["permissionDecisionReason"].as_str().unwrap().to_string(),
+    )
+}
+
+/// Decision B2 = A (Issue #2389 c6774899518 row 25): Claude asks, Codex refuses with a fixed
+/// suffix; nothing is recorded as a deny for an ask. Strings only, nothing is executed.
+#[test]
+fn a_confirmation_asks_on_claude_and_is_refused_on_codex() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
+    let input = pre_tool("git reset --hard HEAD~1", &root);
+    let (d, reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
+    assert_eq!(d, "ask");
+    assert!(reason.contains("discards uncommitted changes"), "{reason}");
+    let (d, reason) = decision(&codex("tool-preflight", &root, &input));
+    assert_eq!(d, "deny");
+    assert!(reason.contains("Codex cannot ask"), "{reason}");
+    // An ask leaves no deny line (the user's answer is unknown).
+    let log = root.join(".moai-cli/receipts/hook-engine.jsonl");
+    let text = fs::read_to_string(&log).unwrap_or_default();
+    assert!(!text.contains("\"kind\":\"deny\""), "{text}");
+}
+
+/// A deny anywhere on the line wins over a confirmation (Claude's order deny > ask).
+#[test]
+fn a_deny_on_the_same_line_wins_over_a_confirmation() {
+    let (_d, root) = repo("issue/77-x");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard && git push --force origin main", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "deny");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard; git commit -m no-token", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "deny");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "ask");
+}
