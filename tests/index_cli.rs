@@ -72,16 +72,22 @@ fn setup_project() -> (tempfile::TempDir, PathBuf) {
     (tmp, project)
 }
 
-fn cli(project: &Path, args: &[&str], stdin: &str) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
-        .args(args)
+fn cli_command(project: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    command
         .current_dir(project)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_AUTHOR_NAME", "t")
         .env("GIT_AUTHOR_EMAIL", "t@example.com")
         .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@example.com")
+        .env("GIT_COMMITTER_EMAIL", "t@example.com");
+    command
+}
+
+fn cli(project: &Path, args: &[&str], stdin: &str) -> std::process::Output {
+    let mut child = cli_command(project)
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -94,6 +100,51 @@ fn cli(project: &Path, args: &[&str], stdin: &str) -> std::process::Output {
         .write_all(stdin.as_bytes())
         .unwrap();
     child.wait_with_output().unwrap()
+}
+
+/// Only intentional special-file probes use a deadline. File-backed output cannot
+/// deadlock a child whose diagnostic or manifest exceeds a pipe's capacity.
+#[cfg(unix)]
+fn cli_before_deadline(project: &Path, args: &[&str]) -> std::process::Output {
+    use std::io::{Read, Seek};
+    use std::time::{Duration, Instant};
+    let mut stdout = tempfile::tempfile().unwrap();
+    let mut stderr = tempfile::tempfile().unwrap();
+    let mut child = cli_command(project)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(stdout.try_clone().unwrap())
+        .stderr(stderr.try_clone().unwrap())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(br#"{"protocol_version":1}"#)
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("index CLI exceeded the special-file deadline: {args:?}");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    stdout.rewind().unwrap();
+    stderr.rewind().unwrap();
+    let mut output = std::process::Output {
+        status,
+        stdout: vec![],
+        stderr: vec![],
+    };
+    stdout.read_to_end(&mut output.stdout).unwrap();
+    stderr.read_to_end(&mut output.stderr).unwrap();
+    output
 }
 
 fn envelope(out: &std::process::Output) -> Value {
@@ -842,4 +893,143 @@ fn actual_gitlink_keeps_the_submodule_commit_in_the_manifest() {
         .unwrap();
     assert_eq!(entry["sha256"], json!(format!("commit:{commit}")));
     assert_eq!(query(&project)["state"], json!("fresh"));
+}
+
+#[cfg(unix)]
+fn fifo(path: &Path) {
+    assert!(Command::new("mkfifo").arg(path).status().unwrap().success());
+}
+
+#[cfg(unix)]
+#[test]
+fn state_fifos_are_unavailable_and_never_wait_for_a_writer() {
+    for state in ["current.json", "last-build.json", "manifest.json"] {
+        let (_tmp, project) = setup_project();
+        assert!(build(&project).status.success());
+        let generation = pointer_gen(&project).unwrap();
+        let path = if state == "manifest.json" {
+            project
+                .join(".moai-cli/index/generations")
+                .join(&generation)
+                .join(state)
+        } else {
+            project.join(".moai-cli/index").join(state)
+        };
+        if path.exists() {
+            fs::remove_file(&path).unwrap();
+        }
+        fifo(&path);
+        let queried = cli_before_deadline(&project, &["index-query", "."]);
+        assert!(queried.status.success(), "{state}: {queried:?}");
+        let result = envelope(&queried)["result"].clone();
+        assert_eq!(result["state"], "unavailable", "{state}");
+        assert_eq!(result["changes"], Value::Null, "{state}");
+        if state == "manifest.json" {
+            let failed = cli_before_deadline(&project, &["index-build", "."]);
+            assert!(!failed.status.success());
+            assert_eq!(pointer_gen(&project).as_deref(), Some(generation.as_str()));
+            assert_eq!(query(&project)["state"], "partial");
+        }
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn failed_build_never_waits_when_its_failure_marker_is_a_fifo() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    let previous = pointer_gen(&project).unwrap();
+    let pointer = fs::read(project.join(".moai-cli/index/current.json")).unwrap();
+    fifo(&project.join(".moai-cli/index/last-build.json"));
+    fs::remove_file(project.join("a.txt")).unwrap();
+    fifo(&project.join("a.txt"));
+    let failed = cli_before_deadline(&project, &["index-build", "."]);
+    assert!(!failed.status.success());
+    assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()));
+    assert_eq!(
+        fs::read(project.join(".moai-cli/index/current.json")).unwrap(),
+        pointer
+    );
+    let queried = cli_before_deadline(&project, &["index-query", "."]);
+    assert_eq!(envelope(&queried)["result"]["state"], "unavailable");
+    use std::os::unix::fs::FileTypeExt;
+    assert!(
+        fs::symlink_metadata(project.join(".moai-cli/index/last-build.json"))
+            .unwrap()
+            .file_type()
+            .is_fifo()
+    );
+}
+
+#[test]
+fn manifest_file_count_has_literal_n_and_n_plus_one_read_boundaries() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    let generation = pointer_gen(&project).unwrap();
+    let path = project
+        .join(".moai-cli/index/generations")
+        .join(&generation)
+        .join("manifest.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let original = manifest["files"][0].clone();
+    let missing: Vec<String> = (1..16_384).map(|n| format!("missing-{n:05}")).collect();
+    let mut files = vec![original.clone()];
+    files.extend(missing.iter().map(|name| {
+        let mut entry = original.clone();
+        entry["path"] = json!(name);
+        entry
+    }));
+    manifest["files"] = json!(files);
+    fs::write(&path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let accepted = query(&project);
+    assert_eq!(accepted["state"], "stale");
+    assert_eq!(accepted["generation_id"], generation);
+    assert_eq!(accepted["changes"]["deleted"], json!(missing));
+    let mut last = original;
+    last["path"] = json!("missing-16384");
+    manifest["files"].as_array_mut().unwrap().push(last);
+    fs::write(&path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let refused = query(&project);
+    assert_eq!(refused["state"], "unavailable");
+    assert_eq!(refused["changes"], Value::Null);
+}
+
+#[test]
+fn state_byte_budget_has_literal_n_and_n_plus_one_read_boundaries() {
+    for state in ["current.json", "last-build.json", "manifest.json"] {
+        let (_tmp, project) = setup_project();
+        assert!(build(&project).status.success());
+        let generation = pointer_gen(&project).unwrap();
+        let path = if state == "manifest.json" {
+            project
+                .join(".moai-cli/index/generations")
+                .join(generation)
+                .join(state)
+        } else {
+            project.join(".moai-cli/index").join(state)
+        };
+        let mut bytes = if state == "last-build.json" {
+            br#"{"status":"partial","reason":"known failure","at":"2026-11-10T00:00:00Z"}"#.to_vec()
+        } else {
+            fs::read(&path).unwrap()
+        };
+        bytes.reserve(33_554_433 - bytes.len());
+        bytes.resize(33_554_432, b' ');
+        fs::write(&path, &bytes).unwrap();
+        let accepted = query(&project);
+        assert_eq!(
+            accepted["state"],
+            if state == "last-build.json" {
+                "partial"
+            } else {
+                "fresh"
+            },
+            "{state}"
+        );
+        bytes.push(b' ');
+        fs::write(&path, &bytes).unwrap();
+        let refused = query(&project);
+        assert_eq!(refused["state"], "unavailable", "{state}");
+        assert_eq!(refused["changes"], Value::Null, "{state}");
+    }
 }

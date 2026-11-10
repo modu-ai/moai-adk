@@ -21,13 +21,18 @@
 //!   added/deleted/modified files vs the manifest).
 //! - `fresh`: the manifest matches the current scan exactly.
 use crate::baseline::utc_now;
+use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
+use cap_std::fs::{Dir, OpenOptions};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
+    ffi::OsStr,
     fs,
     io::{self, Read, Write},
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -39,6 +44,151 @@ pub const MAX_FILES: usize = 16384;
 const GIT_OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 /// A manifest file-count cap on read (a hand-edited generation must not blow memory).
 const MAX_MANIFEST_FILES: usize = MAX_FILES;
+// Covers the maximum Git path table even after JSON's six-byte control escaping.
+const STATE_BYTE_LIMIT: u64 = 32 * 1024 * 1024;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ReadPoint {
+    BeforeParentOpen,
+    BeforeFileOpen,
+}
+
+/// One operation's authority. Paths below this directory are never reopened ambiently.
+struct IndexIo {
+    root: Dir,
+}
+
+impl IndexIo {
+    fn new(project: &Path) -> io::Result<Self> {
+        Ok(Self {
+            root: Dir::open_ambient_dir(project, cap_std::ambient_authority())?,
+        })
+    }
+
+    fn parent<'a>(
+        &self,
+        relative: &'a Path,
+        create: bool,
+        hook: &mut impl FnMut(ReadPoint, &Path),
+    ) -> io::Result<(Option<Dir>, &'a OsStr)> {
+        let mut components = relative.components().peekable();
+        let mut owned = None;
+        while let Some(component) = components.next() {
+            let Component::Normal(name) = component else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "non-relative index path",
+                ));
+            };
+            if components.peek().is_none() {
+                return Ok((owned, name));
+            }
+            let current = owned.as_ref().unwrap_or(&self.root);
+            hook(ReadPoint::BeforeParentOpen, relative);
+            let mut opened = current.open_dir_nofollow(name);
+            if create
+                && opened
+                    .as_ref()
+                    .is_err_and(|e| e.kind() == io::ErrorKind::NotFound)
+            {
+                match current.create_dir(name) {
+                    Ok(()) => (),
+                    Err(e) if e.kind() == io::ErrorKind::AlreadyExists => (),
+                    Err(e) => return Err(e),
+                }
+                opened = current.open_dir_nofollow(name);
+            }
+            let next = opened.map_err(|error| {
+                // This is error classification, never authorization for a subsequent open.
+                if current
+                    .symlink_metadata(name)
+                    .is_ok_and(|m| !m.is_dir() || m.file_type().is_symlink())
+                {
+                    io::Error::new(io::ErrorKind::NotFound, "source parent replaced")
+                } else {
+                    error
+                }
+            })?;
+            owned = Some(next);
+        }
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "empty index path",
+        ))
+    }
+
+    fn regular_file(
+        parent: &Dir,
+        name: &OsStr,
+        write: bool,
+    ) -> io::Result<(fs::File, fs::Metadata)> {
+        let mut options = OpenOptions::new();
+        options
+            .read(!write)
+            .write(write)
+            .create(write)
+            .follow(FollowSymlinks::No);
+        #[cfg(unix)]
+        options.custom_flags(libc::O_NONBLOCK);
+        let file = parent.open_with(name, &options)?.into_std();
+        let metadata = file.metadata()?;
+        if !metadata.is_file() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "index state/source is not a regular file",
+            ));
+        }
+        Ok((file, metadata))
+    }
+
+    fn read_state(&self, relative: &Path) -> io::Result<Option<Vec<u8>>> {
+        let (owned, name) = match self.parent(relative, false, &mut |_, _| {}) {
+            Ok(parent) => parent,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(e),
+        };
+        let parent = owned.as_ref().unwrap_or(&self.root);
+        let (file, metadata) = match Self::regular_file(parent, name, false) {
+            Ok(file) => file,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(e),
+        };
+        if metadata.len() > STATE_BYTE_LIMIT {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "index state byte limit exceeded",
+            ));
+        }
+        let mut bytes = Vec::with_capacity(metadata.len() as usize + 1);
+        file.take(STATE_BYTE_LIMIT + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > STATE_BYTE_LIMIT {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "index state byte limit exceeded",
+            ));
+        }
+        Ok(Some(bytes))
+    }
+
+    fn write_marker(&self, bytes: &[u8]) -> io::Result<()> {
+        if bytes.len() as u64 > STATE_BYTE_LIMIT {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "index state byte limit exceeded",
+            ));
+        }
+        let (owned, name) = self.parent(
+            Path::new(".moai-cli/index/last-build.json"),
+            true,
+            &mut |_, _| {},
+        )?;
+        let parent = owned.as_ref().unwrap_or(&self.root);
+        let (mut file, _) = Self::regular_file(parent, name, true)?;
+        // Never truncate until the opened handle itself is known to be regular.
+        file.set_len(0)?;
+        file.write_all(bytes)
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IndexBuildRequest {
@@ -106,9 +256,8 @@ fn git_line(dir: &Path, args: &[&str]) -> Option<String> {
     Some(s.trim_end_matches('\n').to_string()).filter(|s| !s.is_empty() && !s.contains('\n'))
 }
 
-fn file_sha(path: &Path) -> Option<(String, u64)> {
+fn file_sha(f: &mut fs::File) -> Option<(String, u64)> {
     let mut h = Sha256::new();
-    let mut f = fs::File::open(path).ok()?;
     let mut buf = [0u8; 65536];
     let mut total = 0u64;
     loop {
@@ -133,10 +282,6 @@ fn generations_dir(project: &Path) -> PathBuf {
     index_root(project).join("generations")
 }
 
-fn pointer_path(project: &Path) -> PathBuf {
-    index_root(project).join("current.json")
-}
-
 fn failure_marker_path(project: &Path) -> PathBuf {
     index_root(project).join("last-build.json")
 }
@@ -147,7 +292,15 @@ fn failure_marker_path(project: &Path) -> PathBuf {
 /// `.moai-cli/index/**` is excluded even when a repository tracks it, or every build
 /// would flip the pointer it just wrote into a "modification". Symlinks are digested by
 /// their target text (the same rule the 07-D snapshot uses).
-fn scan(project: &Path) -> Result<(String, Vec<IndexedFile>)> {
+fn scan(project: &Path, source: &IndexIo) -> Result<(String, Vec<IndexedFile>)> {
+    scan_with_hook(project, source, |_, _| {})
+}
+
+fn scan_with_hook(
+    project: &Path,
+    source: &IndexIo,
+    mut hook: impl FnMut(ReadPoint, &Path),
+) -> Result<(String, Vec<IndexedFile>)> {
     let raw = git_out(project, &["ls-files", "-z"])?;
     let mut paths: Vec<String> = raw
         .split(|b| *b == 0)
@@ -166,53 +319,43 @@ fn scan(project: &Path) -> Result<(String, Vec<IndexedFile>)> {
         .ok_or("index source unavailable: no HEAD commit")?;
     let mut files = Vec::new();
     for p in &paths {
-        let full = project.join(p);
-        // Preserve leaf symlinks, but never follow an ancestor outside the source scope.
-        let mut linked_parent = false;
-        for parent in full
-            .ancestors()
-            .skip(1)
-            .take_while(|parent| parent.starts_with(project) && *parent != project)
-        {
-            match fs::symlink_metadata(parent) {
-                Ok(meta) if meta.file_type().is_symlink() => {
-                    linked_parent = true;
-                    break;
-                }
-                Ok(_) => (),
-                Err(e) if e.kind() == io::ErrorKind::NotFound => (),
-                Err(_) => {
-                    return Err(format!(
-                        "index source unavailable: {p} parent metadata unreadable"
-                    ))
-                }
-            }
-        }
-        if linked_parent {
-            continue;
-        }
-        let meta = match fs::symlink_metadata(&full) {
+        let relative = Path::new(p);
+        let (owned, name) = match source.parent(relative, false, &mut hook) {
+            Ok(parent) => parent,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(_) => return Err(format!("index source unavailable: {p} parent unavailable")),
+        };
+        let parent = owned.as_ref().unwrap_or(&source.root);
+        let meta = match parent.symlink_metadata(name) {
             Ok(meta) => meta,
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             Err(_) => return Err(format!("index source unavailable: {p} metadata unreadable")),
         };
         let (sha, bytes) = if meta.file_type().is_symlink() {
-            let t: String = fs::read_link(&full)
+            let t: String = parent
+                .read_link_contents(name)
                 .ok()
                 .and_then(|t| t.into_os_string().into_string().ok())
                 .ok_or_else(|| format!("index source unavailable: {p} symlink unreadable"))?;
             let d = Sha256::digest(t.as_bytes());
             (format!("symlink-sha256:{d:x}"), t.len() as u64)
         } else if meta.is_file() {
-            file_sha(&full).ok_or_else(|| format!("index source unavailable: {p} read failed"))?
+            hook(ReadPoint::BeforeFileOpen, relative);
+            let (mut file, _) = IndexIo::regular_file(parent, name, false)
+                .map_err(|_| format!("index source unavailable: {p} read failed"))?;
+            file_sha(&mut file)
+                .ok_or_else(|| format!("index source unavailable: {p} read failed"))?
         } else if meta.is_dir() {
             // Only an actual gitlink is a submodule, not a file replaced by a directory.
             let entry = git_out(project, &["ls-files", "--stage", "-z", "--", p])?;
             if !entry.starts_with(b"160000 ") {
                 continue;
             }
-            let head = git_line(&full, &["rev-parse", "--verify", "HEAD^{commit}"])
-                .ok_or_else(|| format!("index source unavailable: {p} submodule unreadable"))?;
+            let head = git_line(
+                &project.join(p),
+                &["rev-parse", "--verify", "HEAD^{commit}"],
+            )
+            .ok_or_else(|| format!("index source unavailable: {p} submodule unreadable"))?;
             (format!("commit:{head}"), 0)
         } else {
             return Err(format!(
@@ -337,6 +480,7 @@ fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
 /// snapshot; keep this attempt's staging directory as an orphan, never delete data.
 fn publish_staged(
     project: &Path,
+    source: &IndexIo,
     staging: &Path,
     generation_id: &str,
     expected: &IndexManifest,
@@ -344,7 +488,7 @@ fn publish_staged(
     match fs::rename(staging, generations_dir(project).join(generation_id)) {
         Ok(()) => Ok("created"),
         Err(e) => {
-            if load_manifest(project, generation_id).is_some_and(|stored| {
+            if load_manifest(source, generation_id).is_some_and(|stored| {
                 stored.base_commit == expected.base_commit && stored.files == expected.files
             }) {
                 Ok("unchanged")
@@ -364,6 +508,8 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         return Err("unsupported protocol_version; supported: 1".into());
     }
     let root = fs::canonicalize(project).map_err(|_| "path unavailable".to_string())?;
+    let source =
+        IndexIo::new(&root).map_err(|_| "index directory handle unavailable".to_string())?;
     let build = || -> Result<Value> {
         for rel in [
             ".moai-cli/index/generations",
@@ -372,7 +518,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         ] {
             crate::apply::target(&root, rel)?;
         }
-        let (base_commit, files) = scan(&root)?;
+        let (base_commit, files) = scan(&root, &source)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
         let gen_id = content_id(&base_commit, &files);
         let manifest = IndexManifest {
@@ -407,11 +553,11 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
                 .write_all(&bytes)
                 .map_err(|e| format!("index generation staging write failed: {e}"))?;
             drop(staged);
-            publish_staged(&root, &tmp, &gen_id, &manifest)?
+            publish_staged(&root, &source, &tmp, &gen_id, &manifest)?
         } else {
             // Reuse is successful only when the immutable manifest still describes
             // this snapshot. Never publish a damaged cache or overwrite it in place.
-            let stored = load_manifest(&root, &gen_id)
+            let stored = load_manifest(&source, &gen_id)
                 .ok_or("index generation manifest invalid; refusing reuse")?;
             if stored.base_commit != base_commit || stored.files != files {
                 return Err("index generation manifest invalid; refusing reuse".into());
@@ -445,12 +591,9 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             };
             // The failure path must enforce the same target/ancestor rule as the
             // success path, or its marker could overwrite a symlinked source.
-            if let Ok(path) = crate::apply::target(&root, ".moai-cli/index/last-build.json") {
-                let dir = index_root(&root);
-                if fs::create_dir_all(&dir).is_ok() {
-                    if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
-                        let _ = fs::write(path, bytes);
-                    }
+            if crate::apply::target(&root, ".moai-cli/index/last-build.json").is_ok() {
+                if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
+                    let _ = source.write_marker(&bytes);
                 }
             }
             Err(format!("index build failed; previous generation kept: {e}"))
@@ -458,20 +601,20 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
     }
 }
 
-fn read_pointer(project: &Path) -> Result<Option<String>> {
-    let bytes = match fs::read(pointer_path(project)) {
-        Ok(b) => b,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => return Ok(None),
+fn read_pointer(source: &IndexIo) -> Result<Option<String>> {
+    let Some(bytes) = source
+        .read_state(Path::new(".moai-cli/index/current.json"))
+        .map_err(|_| "index pointer unreadable".to_string())?
+    else {
+        return Ok(None);
     };
-    let v: Value = match serde_json::from_slice(&bytes) {
-        Ok(v) => v,
-        Err(_) => return Ok(None),
-    };
-    Ok(v["generation_id"]
+    let v: Value =
+        serde_json::from_slice(&bytes).map_err(|_| "index pointer unreadable".to_string())?;
+    v["generation_id"]
         .as_str()
-        .map(str::to_string)
-        .filter(|s| generation_id_valid(s)))
+        .filter(|s| generation_id_valid(s))
+        .map(|s| Some(s.to_string()))
+        .ok_or_else(|| "index pointer unreadable".to_string())
 }
 
 /// A generation name is exactly one canonical component, never a caller-supplied path.
@@ -484,13 +627,15 @@ fn generation_id_valid(id: &str) -> bool {
     })
 }
 
-fn load_manifest(project: &Path, gen_id: &str) -> Option<IndexManifest> {
-    let path = crate::apply::target(
-        project,
-        &format!(".moai-cli/index/generations/{gen_id}/manifest.json"),
-    )
-    .ok()?;
-    let bytes = fs::read(path).ok()?;
+fn load_manifest(source: &IndexIo, gen_id: &str) -> Option<IndexManifest> {
+    if !generation_id_valid(gen_id) {
+        return None;
+    }
+    let bytes = source
+        .read_state(Path::new(&format!(
+            ".moai-cli/index/generations/{gen_id}/manifest.json"
+        )))
+        .ok()??;
     let m: IndexManifest = serde_json::from_slice(&bytes).ok()?;
     (m.schema_version == SCHEMA_VERSION
         && m.generation_id == gen_id
@@ -570,50 +715,55 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
             "writes": false,
         }))
     };
+    let source = match IndexIo::new(&root) {
+        Ok(source) => source,
+        Err(_) => return unavailable("index directory handle unavailable"),
+    };
     // REQ-C6-01: a recorded failed attempt outranks the pointer — the index is known
     // incomplete until the next successful build clears the marker. The check comes
     // before the scan so the state stays readable even while the source is broken.
-    if let Ok(bytes) = fs::read(failure_marker_path(&root)) {
-        if let Ok(marker) = serde_json::from_slice::<BuildFailure>(&bytes) {
-            let pointer = read_pointer(&root)?;
-            let changes = scan(&root)
-                .and_then(|(base, files)| untracked(&root).map(|new| (base, files, new)))
-                .ok()
-                .and_then(|(base, files, new)| {
-                    pointer
-                        .as_deref()
-                        .and_then(|g| load_manifest(&root, g))
-                        .map(|m| changes_vs(&m, &base, &files, &new))
-                });
-            return Ok(json!({
-                "protocol_version": SCHEMA_VERSION,
-                "schema_version": SCHEMA_VERSION,
-                "state": "partial",
-                "reason": marker.reason,
-                "generation_id": pointer,
-                "changes": changes,
-                "orphan_candidates": orphans,
-                "network": "disabled",
-                "writes": false,
-            }));
-        }
+    let marker = match source.read_state(Path::new(".moai-cli/index/last-build.json")) {
+        Ok(Some(bytes)) => match serde_json::from_slice::<BuildFailure>(&bytes) {
+            Ok(marker) => Some(marker),
+            Err(_) => return unavailable("index failure marker unreadable"),
+        },
+        Ok(None) => None,
+        Err(_) => return unavailable("index failure marker unreadable"),
+    };
+    if let Some(marker) = marker {
+        let pointer = read_pointer(&source).ok().flatten();
+        let changes = scan(&root, &source)
+            .and_then(|(base, files)| untracked(&root).map(|new| (base, files, new)))
+            .ok()
+            .and_then(|(base, files, new)| {
+                pointer
+                    .as_deref()
+                    .and_then(|g| load_manifest(&source, g))
+                    .map(|m| changes_vs(&m, &base, &files, &new))
+            });
+        return Ok(json!({
+            "protocol_version": SCHEMA_VERSION,
+            "schema_version": SCHEMA_VERSION,
+            "state": "partial",
+            "reason": marker.reason,
+            "generation_id": pointer,
+            "changes": changes,
+            "orphan_candidates": orphans,
+            "network": "disabled",
+            "writes": false,
+        }));
     }
-    let scan = match scan(&root).and_then(|(b, f)| untracked(&root).map(|n| (b, f, n))) {
+    let scan = match scan(&root, &source).and_then(|(b, f)| untracked(&root).map(|n| (b, f, n))) {
         Ok(v) => v,
         Err(e) => return unavailable(&e),
     };
     let (base_commit, files, new_files) = scan;
-    let pointer_exists = pointer_path(&root).is_file();
-    let Some(gen_id) = read_pointer(&root)? else {
-        // Distinguish "never built" from "the pointer is damaged": both are
-        // unavailable (cache loss is a performance loss), with honest reasons.
-        return unavailable(if pointer_exists {
-            "index pointer unreadable"
-        } else {
-            "no generation has been built"
-        });
+    let gen_id = match read_pointer(&source) {
+        Ok(Some(id)) => id,
+        Ok(None) => return unavailable("no generation has been built"),
+        Err(e) => return unavailable(&e),
     };
-    let Some(manifest) = load_manifest(&root, &gen_id) else {
+    let Some(manifest) = load_manifest(&source, &gen_id) else {
         return unavailable("generation manifest unavailable");
     };
     let changes = changes_vs(&manifest, &base_commit, &files, &new_files);
@@ -761,7 +911,14 @@ mod tests {
             let staged_bytes = canonical_manifest_bytes(&expected).unwrap();
             fs::write(winner.join("manifest.json"), &winner_bytes).unwrap();
             fs::write(staging.join("manifest.json"), &staged_bytes).unwrap();
-            let result = publish_staged(tmp.path(), &staging, &expected.generation_id, &expected);
+            let source = IndexIo::new(tmp.path()).unwrap();
+            let result = publish_staged(
+                tmp.path(),
+                &source,
+                &staging,
+                &expected.generation_id,
+                &expected,
+            );
             if matching {
                 assert_eq!(result.unwrap(), "unchanged");
             } else {
@@ -776,5 +933,145 @@ mod tests {
                 staged_bytes
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod handle_io_tests {
+    use super::*;
+
+    #[cfg(unix)]
+    fn fixture_git(project: &Path, args: &[&str]) {
+        let output = git(project)
+            .args([
+                "-c",
+                "gc.auto=0",
+                "-c",
+                "maintenance.auto=false",
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.com",
+            ])
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn parent_swap_at_open_seams_never_hashes_the_replacement() {
+        for point in [ReadPoint::BeforeParentOpen, ReadPoint::BeforeFileOpen] {
+            for replaced in ["dir", "dir/nested"] {
+                for external in [false, true] {
+                    let tmp = tempfile::tempdir().unwrap();
+                    let project = tmp.path().join("project");
+                    fs::create_dir_all(project.join("dir/nested")).unwrap();
+                    fs::write(project.join("dir/nested/x.txt"), b"INSIDE!-SECRET-CONTENT").unwrap();
+                    let outside = if external {
+                        tmp.path().join("outside")
+                    } else {
+                        project
+                            .join(Path::new(replaced).parent().unwrap())
+                            .join("elsewhere")
+                    };
+                    fs::create_dir_all(outside.join("nested")).unwrap();
+                    fs::write(outside.join("x.txt"), b"OUTSIDE-SECRET-CONTENT").unwrap();
+                    fs::write(outside.join("nested/x.txt"), b"OUTSIDE-SECRET-CONTENT").unwrap();
+                    fixture_git(&project, &["init", "-q", "--initial-branch=main"]);
+                    fixture_git(&project, &["add", "dir/nested/x.txt"]);
+                    fixture_git(&project, &["commit", "-q", "-m", "fixture"]);
+                    let source = IndexIo::new(&project).unwrap();
+                    let mut swapped = false;
+                    let (_, files) = scan_with_hook(&project, &source, |at, relative| {
+                        if !swapped && at == point && relative == Path::new("dir/nested/x.txt") {
+                            fs::rename(project.join(replaced), tmp.path().join("kept")).unwrap();
+                            let link = if external {
+                                outside.as_path()
+                            } else {
+                                Path::new("elsewhere")
+                            };
+                            std::os::unix::fs::symlink(link, project.join(replaced)).unwrap();
+                            swapped = true;
+                        }
+                    })
+                    .unwrap();
+                    assert!(swapped, "{point:?} {replaced}");
+                    if point == ReadPoint::BeforeParentOpen {
+                        assert_eq!(files, vec![], "{replaced} external={external}");
+                    } else {
+                        assert_eq!(
+                            files,
+                            vec![IndexedFile {
+                                path: "dir/nested/x.txt".into(),
+                                sha256: format!(
+                                    "sha256:{:x}",
+                                    Sha256::digest(b"INSIDE!-SECRET-CONTENT")
+                                ),
+                                bytes: 22,
+                            }],
+                            "{replaced} external={external}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn leaf_replaced_after_metadata_is_not_followed() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("x.txt"), b"inside").unwrap();
+        fs::write(tmp.path().join("sibling.txt"), b"outside").unwrap();
+        fixture_git(tmp.path(), &["init", "-q", "--initial-branch=main"]);
+        fixture_git(tmp.path(), &["add", "x.txt"]);
+        fixture_git(tmp.path(), &["commit", "-q", "-m", "fixture"]);
+        let source = IndexIo::new(tmp.path()).unwrap();
+        let result = scan_with_hook(tmp.path(), &source, |point, relative| {
+            if point == ReadPoint::BeforeFileOpen && relative == Path::new("x.txt") {
+                fs::rename(tmp.path().join("x.txt"), tmp.path().join("kept.txt")).unwrap();
+                std::os::unix::fs::symlink("sibling.txt", tmp.path().join("x.txt")).unwrap();
+            }
+        });
+        assert!(
+            result.is_err(),
+            "a metadata/open replacement must not become a regular digest"
+        );
+    }
+
+    #[test]
+    fn marker_byte_budget_preserves_the_previous_failure_when_exceeded() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = IndexIo::new(tmp.path()).unwrap();
+        let mut bytes = Vec::with_capacity(33_554_433);
+        bytes.extend_from_slice(
+            br#"{"status":"partial","reason":"original","at":"2026-11-10T00:00:00Z"}"#,
+        );
+        bytes.resize(33_554_432, b' ');
+        source.write_marker(&bytes).unwrap();
+        let request = IndexQueryRequest {
+            protocol_version: 1,
+        };
+        let accepted = index_query(tmp.path(), &request).unwrap();
+        assert_eq!(accepted["state"], "partial");
+        assert_eq!(accepted["reason"], "original");
+        let offset = bytes.windows(8).position(|v| v == b"original").unwrap();
+        bytes[offset..offset + 8].copy_from_slice(b"replaced");
+        bytes.push(b' ');
+        assert_eq!(
+            source.write_marker(&bytes).unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
+        let retained = index_query(tmp.path(), &request).unwrap();
+        assert_eq!(retained["state"], "partial");
+        assert_eq!(retained["reason"], "original");
     }
 }
