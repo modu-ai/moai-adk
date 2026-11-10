@@ -397,6 +397,12 @@ pub fn bundle(project: &Path, req: &BundleRequest) -> Result<Value> {
                     continue;
                 }
                 used_bytes += size;
+                // The content field is the masked view (rc.2 #2351): it passes the
+                // shared redaction so credential shapes (including the merged gh
+                // token prefixes) never leave the project verbatim. The digest
+                // stays the digest of the raw file bytes — it is the verification
+                // key compare against the file, not of this view. Every bundled
+                // item is untrusted data (design: source is data, never authority).
                 items.push(json!({
                     "path": it.path,
                     "range": {"start_line": start, "end_line": end},
@@ -405,7 +411,8 @@ pub fn bundle(project: &Path, req: &BundleRequest) -> Result<Value> {
                     "lines": if start == 0 { 0 } else { end + 1 - start },
                     "reason": it.reason,
                     "freshness": "fresh",
-                    "content": content,
+                    "untrusted": true,
+                    "content": crate::redact::redact_secret_shapes(&content),
                 }));
             }
         }

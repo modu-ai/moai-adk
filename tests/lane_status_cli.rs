@@ -1,0 +1,540 @@
+//! rc.2 A11 (#2265) `lane-status` over recorded GitHub exchanges (`RecordedTransport`, injected
+//! clock, no network) and a real temporary git repository for the worktree list.
+//! Research record: docs/design-review/lane-status-a11-2026-11-10.md.
+mod common;
+
+use moai_cli::forge::policy::Clock;
+use moai_cli::forge::transport::{Exchange, RecordedTransport};
+use moai_cli::lane_status::{status_cli, IdleCause, LaneStatusRequest, Phase};
+use serde_json::{json, Value};
+use std::{cell::Cell, fs, path::Path, process::Command};
+
+const API: &str = "https://api.github.com/repos/acme/widgets";
+const LIVE: &str = "2030-01-01T00:00:00Z";
+const NOW: i64 = 1_794_000_000; // 2026-11-07, before LIVE
+
+struct FakeClock(Cell<i64>);
+impl Clock for FakeClock {
+    fn now(&self) -> i64 {
+        self.0.get()
+    }
+    fn sleep(&self, secs: u64) {
+        self.0.set(self.0.get() + secs as i64);
+    }
+}
+
+fn sha(c: char) -> String {
+    std::iter::repeat_n(c, 40).collect()
+}
+
+fn get(url: &str, body: Value) -> Exchange {
+    common::exchange("GET", url, common::json_response(200, body))
+}
+
+fn claim(id: i64, session: &str, epoch: u64) -> Value {
+    json!({"id": id, "created_at": format!("2026-11-10T00:00:{:02}Z", id % 60),
+           "body": format!("moai-claim: session={session} epoch={epoch} lease_until={LIVE}")})
+}
+
+fn note(id: i64, body: &str) -> Value {
+    json!({"id": id, "created_at": format!("2026-11-10T00:01:{:02}Z", id % 60), "body": body})
+}
+
+fn issue(n: i64, body: &str) -> Value {
+    json!({"number": n, "state": "open", "body": body})
+}
+
+/// The recorded remote. Issues 11-19:
+/// 11 agent-1 claimed · 12 agent-2 implementing (worktree) · 13 agent-3 PR #113 with
+/// duplicate and out-of-order reports · 14 handed off to agent-5 · 15 agent-6 PR #115 PASS
+/// (waiting) · 16 no claim (ready) · 17 agent-7 PR #117 whose head no report names ·
+/// 18 agent-8 blocked by open #99 · 19 agent-9 (a pending user decision from the caller).
+fn remote(reverse: bool) -> Vec<Exchange> {
+    let (a, b) = (sha('a'), sha('b'));
+    let (c, d) = (sha('c'), sha('d'));
+    let (e, f) = (sha('e'), sha('f'));
+    let base = sha('0');
+    let mut prs = vec![
+        json!({"number": 113, "head": {"sha": b, "ref": "issue/13-x"}, "body": "x\n\nRefs #13\n"}),
+        json!({"number": 115, "head": {"sha": d, "ref": "issue/15-x"}, "body": "Refs #15"}),
+        json!({"number": 117, "head": {"sha": f, "ref": "issue/17-x"}, "body": "Refs #17"}),
+        json!({"number": 200, "head": {"sha": sha('9'), "ref": "other"}, "body": "Refs #999"}),
+    ];
+    let mut comments: Vec<(i64, Vec<Value>)> = vec![
+        (11, vec![claim(1101, "agent-1", 1)]),
+        (12, vec![claim(1201, "agent-2", 1)]),
+        (
+            13,
+            vec![
+                claim(1301, "agent-3", 1),
+                note(1302, &format!("report: pushed head `{a}` (base {base})")),
+                note(1303, &format!("report again: head {a}")),
+                note(1304, &format!("report: head {b}")),
+                note(1305, &format!("late report: head {a}")),
+            ],
+        ),
+        (
+            14,
+            vec![
+                claim(1401, "agent-4", 1),
+                note(
+                    1402,
+                    "moai-claim-handoff: comment=1401 to=agent-5 by=leader",
+                ),
+            ],
+        ),
+        (
+            15,
+            vec![
+                claim(1501, "agent-6", 1),
+                note(
+                    1502,
+                    &format!("AUDIT #15 (k) head {d} base {base} — verdict: PASS"),
+                ),
+            ],
+        ),
+        (16, vec![note(1601, "design notes, no claim")]),
+        (
+            17,
+            vec![
+                claim(1701, "agent-7", 1),
+                note(1702, &format!("report: head {e}")),
+            ],
+        ),
+        (18, vec![claim(1801, "agent-8", 1)]),
+        (19, vec![claim(1901, "agent-9", 1)]),
+    ];
+    // The commit lists stay in order: the API's order is the record of head order.
+    let commits = [
+        (113, vec![a.clone(), b.clone()]),
+        (115, vec![c.clone(), d.clone()]),
+        (117, vec![e.clone(), f.clone()]),
+    ];
+    if reverse {
+        prs.reverse();
+        for (_, list) in comments.iter_mut() {
+            list.reverse();
+        }
+    }
+    let mut out = vec![get(
+        &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+        Value::Array(prs),
+    )];
+    for (n, list) in comments {
+        let body = match n {
+            18 => "상위: #10\nBlocked-By: #99",
+            _ => "상위: #10\nBlocked-By: 없음",
+        };
+        out.push(get(&format!("{API}/issues/{n}"), issue(n, body)));
+        out.push(get(
+            &format!("{API}/issues/{n}/comments?per_page=100"),
+            Value::Array(list),
+        ));
+    }
+    out.push(get(&format!("{API}/issues/99"), issue(99, "")));
+    for (pr, list) in commits.iter() {
+        let body: Vec<Value> = list.iter().map(|s| json!({"sha": s})).collect();
+        out.push(get(
+            &format!("{API}/pulls/{pr}/commits?per_page=100"),
+            Value::Array(body),
+        ));
+    }
+    out
+}
+
+fn request(lanes: Value, decisions: Value) -> LaneStatusRequest {
+    serde_json::from_value(json!({
+        "schema_version": 1,
+        "owner": "acme",
+        "repo": "widgets",
+        "base_branch": "v2026.11.0",
+        "issues": [19, 11, 12, 13, 14, 15, 16, 17, 18, 13],
+        "lanes": lanes,
+        "pending_decisions": decisions,
+    }))
+    .unwrap()
+}
+
+fn lanes() -> Value {
+    let pane = |state: &str| json!({"state": state, "source": "hc get t6x", "observed_at": "2026-11-10T09:00:00Z"});
+    json!([
+        {"session": "agent-1", "name": "lane-1"},
+        {"session": "agent-2", "pane": pane("working")},
+        {"session": "agent-3"}, {"session": "agent-5"}, {"session": "agent-6"},
+        {"session": "agent-7"}, {"session": "agent-8"}, {"session": "agent-9"},
+        {"session": "agent-10"},
+        {"session": "agent-11", "pane": pane("unreachable")},
+        {"session": "agent-12", "pane": pane("permission_prompt")},
+        {"session": "agent-13", "pane": pane("input_pending")},
+    ])
+}
+
+fn decisions() -> Value {
+    json!([{"issue": 19, "source": "decisions-2026-11-10.md HOLD row", "recorded_at": "2026-11-10T08:00:00Z"}])
+}
+
+fn git(dir: &Path, args: &[&str]) {
+    let status = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("GIT_AUTHOR_NAME", "t")
+        .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
+        .env("GIT_COMMITTER_NAME", "t")
+        .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
+        .status()
+        .unwrap();
+    assert!(status.success(), "git {args:?}");
+}
+
+/// A project repository with one lane worktree, `issue/12-x`.
+fn project(root: &Path) -> std::path::PathBuf {
+    let p = root.join("primary");
+    fs::create_dir(&p).unwrap();
+    git(&p, &["init", "-q", "-b", "main"]);
+    fs::write(p.join("a.txt"), "a\n").unwrap();
+    git(&p, &["add", "a.txt"]);
+    git(&p, &["commit", "-q", "-m", "a"]);
+    let wt = root.join("wt-12");
+    git(
+        &p,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/12-x",
+            wt.to_str().unwrap(),
+        ],
+    );
+    p
+}
+
+fn run(project: &Path, req: LaneStatusRequest, exchanges: Vec<Exchange>) -> Value {
+    let t = RecordedTransport::new(exchanges);
+    let clock = FakeClock(Cell::new(NOW));
+    let out = status_cli(project, req, &t, &clock).unwrap();
+    assert_eq!(t.remaining(), 0, "every recorded exchange was used");
+    assert!(
+        t.sent.borrow().iter().all(|r| r.method == "GET"),
+        "GET only"
+    );
+    out
+}
+
+fn row<'a>(out: &'a Value, session: &str, issue: i64) -> &'a Value {
+    out["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["session"] == json!(session) && r["issue"] == json!(issue))
+        .unwrap_or_else(|| panic!("no row ({session}, #{issue}) in {out}"))
+}
+
+fn idle<'a>(out: &'a Value, session: &str) -> &'a Value {
+    out["idle"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["session"] == json!(session))
+        .unwrap_or_else(|| panic!("no idle entry for {session} in {out}"))
+}
+
+/// AC-1: one table over nine cards and twelve lanes, every phase present, each with the
+/// record it was read from, ownership from the claim comments.
+#[test]
+fn lane_status_covers_every_phase_with_its_evidence() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let out = run(&p, request(lanes(), decisions()), remote(false));
+
+    let r = row(&out, "agent-1", 11);
+    assert_eq!(r["phase"], json!("claimed"));
+    assert_eq!(r["phase_evidence"]["claim_comment_id"], json!(1101));
+    assert_eq!(r["lane"], json!("lane-1"));
+    assert_eq!(r["ownership"]["claim_comment_id"], json!(1101));
+    assert_eq!(r["ownership"]["live"], json!(true));
+
+    let r = row(&out, "agent-2", 12);
+    assert_eq!(r["phase"], json!("implementing"));
+    assert_eq!(r["branch"], json!("issue/12-x"));
+    assert_eq!(
+        r["worktree"],
+        json!(root.join("wt-12").display().to_string())
+    );
+    assert_eq!(r["phase_evidence"]["worktree"], r["worktree"]);
+
+    let r = row(&out, "agent-3", 13);
+    assert_eq!(r["phase"], json!("pr_open"));
+    assert_eq!(
+        (r["pr"].clone(), r["head"].clone()),
+        (json!(113), json!(sha('b')))
+    );
+    assert_eq!(r["branch"], json!("issue/13-x"));
+
+    let r = row(&out, "agent-5", 14);
+    assert_eq!(r["phase"], json!("handoff"));
+    assert_eq!(r["phase_evidence"]["handoff_comment_id"], json!(1402));
+    assert_eq!(r["ownership"]["claim_comment_id"], Value::Null);
+
+    let r = row(&out, "agent-6", 15);
+    assert_eq!(r["phase"], json!("waiting"));
+    assert_eq!(r["phase_evidence"]["verdict"], json!("PASS"));
+    assert_eq!(r["phase_evidence"]["verdict_comment_id"], json!(1502));
+
+    // Every phase variant appears in this fixture.
+    let phases: Vec<Value> = out["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["phase"].clone())
+        .collect();
+    for p in Phase::ALL {
+        assert!(
+            phases.contains(&json!(p.as_str())),
+            "{p:?} missing in {phases:?}"
+        );
+    }
+    // The issue listed twice is one row; #16 (no claim) and the foreign PR #200 make none.
+    assert_eq!(out["rows"].as_array().unwrap().len(), 8, "{out}");
+    assert_eq!(out["writes"], json!("none"));
+}
+
+/// AC-2: every idle cause, each with its evidence; `unknown` when no record supports one.
+#[test]
+fn idle_causes_are_classified_from_records_only() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let out = run(&p, request(lanes(), decisions()), remote(false));
+
+    let cause = |s: &str| idle(&out, s)["cause"].clone();
+    assert_eq!(cause("agent-2"), Value::Null);
+    assert_eq!(idle(&out, "agent-2")["idle"], json!(false));
+    assert_eq!(cause("agent-3"), json!("waiting_audit"));
+    assert_eq!(idle(&out, "agent-3")["evidence"]["pr"], json!(113));
+    assert_eq!(cause("agent-6"), json!("waiting_integration"));
+    assert_eq!(cause("agent-8"), json!("waiting_prerequisite"));
+    assert_eq!(idle(&out, "agent-8")["evidence"]["blocked_by"], json!([99]));
+    assert_eq!(cause("agent-9"), json!("user_decision"));
+    assert_eq!(
+        idle(&out, "agent-9")["evidence"]["source"],
+        json!("decisions-2026-11-10.md HOLD row")
+    );
+    assert_eq!(cause("agent-10"), json!("ready_card_unassigned"));
+    assert_eq!(idle(&out, "agent-10")["evidence"]["ready"], json!([16]));
+    assert_eq!(cause("agent-11"), json!("unreachable"));
+    assert_eq!(
+        idle(&out, "agent-11")["evidence"]["source"],
+        json!("hc get t6x")
+    );
+    assert_eq!(cause("agent-12"), json!("permission_prompt"));
+    assert_eq!(cause("agent-13"), json!("input_pending"));
+    // An active card and no pane observation: nothing says whether the lane is idle.
+    assert_eq!(cause("agent-1"), json!("unknown"));
+    assert_eq!(idle(&out, "agent-1")["idle"], Value::Null);
+    assert_eq!(
+        idle(&out, "agent-1")["evidence"]["active_issues"],
+        json!([11])
+    );
+    assert_eq!(cause("agent-5"), json!("unknown"));
+
+    // The draft pairs the lane without a card with the ready card; nothing is posted.
+    assert_eq!(
+        out["assignment_drafts"],
+        json!([{"lane": "agent-10", "issue": 16, "posted": false}])
+    );
+
+    // `no_ready_card`: the same remote without the unclaimed #16 in the inspected set.
+    let mut req = request(lanes(), decisions());
+    req.issues.retain(|n| *n != 16);
+    let mut ex = remote(false);
+    ex.retain(|e| !e.request.url.contains("/issues/16"));
+    let out2 = run(&p, req, ex);
+    assert_eq!(idle(&out2, "agent-10")["cause"], json!("no_ready_card"));
+    assert_eq!(out2["assignment_drafts"], json!([]));
+
+    // Every idle cause variant appears across the two runs.
+    let mut seen: Vec<Value> = Vec::new();
+    for o in [&out, &out2] {
+        seen.extend(
+            o["idle"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|i| i["cause"].clone()),
+        );
+    }
+    for c in IdleCause::ALL {
+        assert!(
+            seen.contains(&json!(c.as_str())),
+            "{c:?} missing in {seen:?}"
+        );
+    }
+}
+
+/// AC-3: duplicate, out-of-order and unreported heads are judged by the PR's commit order,
+/// not by comment ids or arrival; reversing every list gives a byte-identical table.
+#[test]
+fn duplicate_out_of_order_and_unreported_heads() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let out = run(&p, request(lanes(), decisions()), remote(false));
+
+    let ev = &row(&out, "agent-3", 13)["events"];
+    assert_eq!(
+        ev["duplicate"],
+        json!([{"comment_id": 1303, "head": sha('a'), "first_reported_by": 1302}])
+    );
+    assert_eq!(
+        ev["out_of_order"],
+        json!([{"comment_id": 1305, "head": sha('a'), "newer_head": sha('b'), "newer_reported_by": 1304}])
+    );
+    assert_eq!(ev["unreported_head"], Value::Null);
+    assert_eq!(
+        ev["ignored_shas"],
+        json!(1),
+        "the base SHA is outside the PR's commits"
+    );
+
+    let ev = &row(&out, "agent-7", 17)["events"];
+    assert_eq!(
+        ev["unreported_head"],
+        json!({"head": sha('f'), "last_reported_head": sha('e')})
+    );
+    // An AUDIT line naming the head counts as a report of it.
+    assert_eq!(
+        row(&out, "agent-6", 15)["events"]["unreported_head"],
+        Value::Null
+    );
+
+    let reversed = run(&p, request(lanes(), decisions()), remote(true));
+    assert_eq!(
+        serde_json::to_vec(&reversed).unwrap(),
+        serde_json::to_vec(&out).unwrap(),
+        "input order changes nothing"
+    );
+}
+
+/// The page limit: a list that links 50 pages is read whole; a 51st page is refused.
+#[test]
+fn page_limit_at_its_edge() {
+    let tmp = tempfile::tempdir().unwrap();
+    let list = format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100");
+    let paged = |pages: usize| -> Vec<Exchange> {
+        let mut out = Vec::new();
+        for k in 1..=pages {
+            let url = if k == 1 {
+                list.clone()
+            } else {
+                format!("{list}&page={k}")
+            };
+            let mut resp = common::json_response(200, json!([]));
+            if k < pages {
+                resp = resp.with_header("link", format!("<{list}&page={}>; rel=\"next\"", k + 1));
+            }
+            out.push(common::exchange("GET", &url, resp));
+        }
+        out
+    };
+    let req = || -> LaneStatusRequest {
+        serde_json::from_value(json!({
+            "schema_version": 1, "owner": "acme", "repo": "widgets",
+            "base_branch": "v2026.11.0", "issues": [1],
+        }))
+        .unwrap()
+    };
+    let mut ok = paged(50);
+    ok.push(get(&format!("{API}/issues/1"), issue(1, "")));
+    ok.push(get(
+        &format!("{API}/issues/1/comments?per_page=100"),
+        json!([]),
+    ));
+    let out = run(tmp.path(), req(), ok);
+    assert_eq!(out["rows"], json!([]));
+
+    let t = RecordedTransport::new(paged(51));
+    let err = status_cli(tmp.path(), req(), &t, &FakeClock(Cell::new(NOW))).unwrap_err();
+    assert_eq!(err, "lane status page limit exceeded (50)");
+    assert_eq!(t.sent.borrow().len(), 50, "the 51st page is not requested");
+}
+
+/// Limits: 1-50 inspected Issues, at most 50 lanes; N passes, N+1 is refused before any read.
+#[test]
+fn request_limits_at_their_edges() {
+    let tmp = tempfile::tempdir().unwrap();
+    let p = tmp.path();
+    let req = |issues: Vec<i64>, lanes: usize| -> LaneStatusRequest {
+        let lanes: Vec<Value> = (0..lanes)
+            .map(|i| json!({"session": format!("s{i}")}))
+            .collect();
+        serde_json::from_value(json!({
+            "schema_version": 1, "owner": "acme", "repo": "widgets",
+            "base_branch": "v2026.11.0", "issues": issues, "lanes": lanes,
+        }))
+        .unwrap()
+    };
+    let refused = |r: LaneStatusRequest| {
+        let t = RecordedTransport::new(vec![]);
+        let err = status_cli(p, r, &t, &FakeClock(Cell::new(NOW))).unwrap_err();
+        assert!(t.sent.borrow().is_empty(), "refused before any read");
+        err
+    };
+    assert_eq!(
+        refused(req((1..=51).collect(), 0)),
+        "lane status issues must be 1 to 50 Issue numbers"
+    );
+    assert_eq!(
+        refused(req(vec![], 0)),
+        "lane status issues must be 1 to 50 Issue numbers"
+    );
+    assert_eq!(
+        refused(req(vec![1], 51)),
+        "lane status lanes must be at most 50"
+    );
+    // Caller evidence without a source or a time is refused.
+    for lanes in [
+        json!([{"session": "s", "pane": {"state": "working", "source": " ", "observed_at": "t"}}]),
+        json!([{"session": "s", "pane": {"state": "working", "source": "hc", "observed_at": ""}}]),
+        json!([{"session": ""}]),
+    ] {
+        let r: LaneStatusRequest = serde_json::from_value(json!({
+            "schema_version": 1, "owner": "acme", "repo": "widgets",
+            "base_branch": "v2026.11.0", "issues": [1], "lanes": lanes,
+        }))
+        .unwrap();
+        assert_eq!(
+            refused(r),
+            "lane status evidence must be given with a session, a source and a time"
+        );
+    }
+    let r: LaneStatusRequest = serde_json::from_value(json!({
+        "schema_version": 1, "owner": "acme", "repo": "widgets", "base_branch": "v2026.11.0",
+        "issues": [1], "pending_decisions": [{"issue": 1, "source": "", "recorded_at": "t"}],
+    }))
+    .unwrap();
+    assert_eq!(
+        refused(r),
+        "lane status evidence must be given with a session, a source and a time"
+    );
+    // N = 50 Issues and 50 lanes pass validation: the first GitHub read is attempted.
+    let t = RecordedTransport::new(vec![]);
+    let err = status_cli(
+        p,
+        req((1..=50).collect(), 50),
+        &t,
+        &FakeClock(Cell::new(NOW)),
+    );
+    assert!(err.is_err());
+    assert_eq!(
+        t.sent.borrow().len(),
+        1,
+        "validation passed; the PR list read was tried"
+    );
+}

@@ -299,7 +299,7 @@ fn profile_v1_file_still_readable_under_v2() {
     // REQ-03A-01: v1 files stay readable with defaulted new fields, and a matching v2
     // input plans the upgrade instead of stalling on the schema marker (audit #2052).
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     let file = root.path().join(".moai-cli/project.yaml");
     fs::create_dir_all(file.parent().unwrap()).unwrap();
     let v1 = json!({
@@ -563,7 +563,7 @@ fn package_inspection_is_stable_and_covers_support_files() {
 // ---- AGENTS.md managed-section generation -------------------------------------------------
 
 fn agents_request(language: &str, local_file: &str) -> Value {
-    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
+    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai-cli/workflows/","local_file":local_file})
 }
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
     cli(&["agents-plan", root.path().to_str().unwrap()], request)
@@ -583,7 +583,7 @@ fn agents_apply(root: &TempDir, plan: &Value) -> std::process::Output {
 }
 fn agents_project(language: &str, local_file: &str) -> (TempDir, Value) {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     create(&root, &profile(None));
     let out = agents_plan(&root, &agents_request(language, local_file));
     assert!(
@@ -617,7 +617,7 @@ fn actions(plan: &Value) -> Vec<(String, String)> {
 #[test]
 fn agents_generation_is_idempotent_and_preserves_user_body() {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     create(&root, &profile(None));
     let user_body = "# My project\r\n\r\nUser rules stay as written.\r\n";
     fs::write(root.path().join("AGENTS.md"), user_body).unwrap();
@@ -642,7 +642,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
     assert!(agents.starts_with(user_body));
     assert!(agents.contains("<!-- moai:managed:begin id=moai-workflow -->"));
-    assert!(agents.contains("skills/moai/workflows/"));
+    assert!(agents.contains("skills/moai-cli/workflows/"));
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
     assert!(ignore.starts_with("target/\n"));
     assert!(ignore.contains("\nAGENTS.local.md\n"));
@@ -808,7 +808,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     assert!(!agents_plan(&root, &agents_request("en", "none"))
         .status
         .success());
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     fs::write(root.path().join("CLAUDE.md"), "existing\n").unwrap();
     fs::write(root.path().join("AGENTS.override.md"), "codex override\n").unwrap();
     let out = agents_plan(&root, &agents_request("en", "none"));
@@ -819,7 +819,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     // Replay in another project is refused.
     let other = TempDir::new().unwrap();
     create(&other, &profile(None));
-    fs::create_dir_all(other.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(other.path().join("skills/moai-cli/workflows")).unwrap();
     assert!(!agents_apply(&other, &plan).status.success());
     assert!(!other.path().join("AGENTS.md").exists());
     // Tampered plan is refused.
@@ -861,7 +861,7 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     use std::os::unix::fs::symlink;
     let root = TempDir::new().unwrap();
     let outside = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     create(&root, &profile(None));
     symlink(outside.path(), root.path().join("AGENTS.md")).unwrap();
     assert!(!agents_plan(&root, &agents_request("en", "none"))
@@ -953,7 +953,7 @@ fn profile_values_cannot_inject_managed_markers() {
         ("purpose", json!("mentions moai:managed: syntax")),
     ] {
         let root = TempDir::new().unwrap();
-        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
         let mut input = profile(None);
         input[field] = value;
         create(&root, &input);
@@ -1056,8 +1056,24 @@ fn session_rejects_lower_ranked_advisor_and_unknown_host() {
 
 /// Runs the launcher syntax (00-F #2028). Tests use `--dry-run` only and never start a host.
 fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
+    // A fresh git project per call: `-a` previews its `agent-N` from that project's counter
+    // (#2359), never from this repository's.
+    let project = tempfile::tempdir().unwrap();
+    assert!(Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(project.path())
+        .status()
+        .unwrap()
+        .success());
     let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    c.args(args).env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL");
+    c.args(args)
+        .current_dir(project.path())
+        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
+        // No home, so no key file (#2359) can stand in for the token.
+        .env(
+            "HOME",
+            std::env::temp_dir().join("moai-cli-test-no-such-home"),
+        );
     match token {
         Some(t) => c.env("ANTHROPIC_AUTH_TOKEN", t),
         None => c.env_remove("ANTHROPIC_AUTH_TOKEN"),
@@ -1101,11 +1117,13 @@ fn launcher_leader_default_claude() {
         );
         assert_eq!(v["env_keys"], json!([]));
     }
-    // `-a` without a host is the Claude Code agent with a fixed default name.
+    // `-a` without a host is the Claude Code agent named from the project counter (#2359); a
+    // fresh project previews `agent-1` and the dry run takes no number.
     let v = launched(&launcher(&["-a", "--dry-run"], None));
     assert_eq!(v["role"], json!("agent"));
     assert_eq!(v["argv"][2], json!("agent-1"));
-    assert!(v["notes"].to_string().contains("HOLD"));
+    assert!(v["notes"].to_string().contains("--dry-run takes no number"));
+    assert!(!v["notes"].to_string().contains("HOLD"));
     // Ambiguous or empty invocations fail instead of guessing.
     assert!(!launcher(&["-l", "-a", "--dry-run"], None).status.success());
     assert!(!launcher(&["-l", "cc", "--dry-run"], None).status.success());
@@ -1157,39 +1175,29 @@ fn launcher_flags_can_be_disabled() {
         .success());
 }
 
-/// REQ-A5-01 (#2164): `-l|-a` warns on stderr, records the deprecation note, and
-/// keeps the composed behavior — both launcher shapes.
+/// #2164 (A5) warned that `-l|-a` were deprecated; the user decision of 2026-11-10 (#2359,
+/// comment 6760976883) keeps them as the way to name a session `leader` / `agent-N`, so no
+/// shape warns any more and each still composes.
 #[test]
-fn launcher_deprecated_roles_warn_and_keep_compose() {
-    let phrase = "deprecated: use `/moai --mode leader|agent` inside the session";
+fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
     for args in [
         &["-l", "--dry-run"][..],
         &["-a", "--name", "agent-7", "--dry-run"][..],
         &["cc", "-l", "--dry-run"][..],
         &["codex", "-a", "--dry-run"][..],
+        &["cc", "--dry-run"][..],
     ] {
         let out = launcher(args, None);
         let v = launched(&out);
         assert!(
-            String::from_utf8_lossy(&out.stderr).contains(phrase),
+            !String::from_utf8_lossy(&out.stderr).contains("deprecated"),
             "stderr: {args:?}"
         );
         assert!(
-            v["notes"]
-                .to_string()
-                .contains("deprecated: use `/moai --mode leader|agent` inside the session"),
+            !v["notes"].to_string().contains("deprecated"),
             "notes: {args:?}"
         );
     }
-    // REQ-A5-02: a role-less host session carries neither the warning nor the note.
-    let out = launcher(&["cc", "--dry-run"], None);
-    let v = launched(&out);
-    assert!(
-        !String::from_utf8_lossy(&out.stderr).contains("deprecated"),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(!v["notes"].to_string().contains("deprecated"));
 }
 
 #[test]
@@ -1220,7 +1228,15 @@ fn launcher_glm_requires_token_name_only() {
         json!([
             "ANTHROPIC_BASE_URL",
             "API_TIMEOUT_MS",
-            "ANTHROPIC_AUTH_TOKEN"
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "ANTHROPIC_DEFAULT_FABLE_MODEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+            "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "ANTHROPIC_AUTH_TOKEN",
+            "Z_AI_API_KEY"
         ])
     );
     assert_eq!(
@@ -1240,15 +1256,16 @@ fn launcher_glm_requires_token_name_only() {
 }
 #[test]
 fn launcher_codex_argv() {
+    // Full access since #2359 (user decision 2026-11-10), leader and agent alike.
     let v = launched(&launcher(&["codex", "-l", "--dry-run"], None));
     assert_eq!(
         v["argv"],
         json!([
             "codex",
             "-s",
-            "workspace-write",
+            "danger-full-access",
             "-a",
-            "on-request",
+            "never",
             "MoAI session name: leader"
         ])
     );
@@ -1271,9 +1288,9 @@ fn launcher_codex_argv() {
         json!([
             "codex",
             "-s",
-            "workspace-write",
+            "danger-full-access",
             "-a",
-            "on-request",
+            "never",
             "-m",
             "some-model",
             "MoAI session name: agent-2"
@@ -1728,7 +1745,7 @@ fn protocol_fixtures_record_current_contract() {
     let e = empty.path().to_str().unwrap().to_string();
     let repo = TempDir::new().unwrap();
     let r = repo.path().to_str().unwrap().to_string();
-    fs::create_dir_all(project.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(project.path().join("skills/moai-cli/workflows")).unwrap();
     fs::write(package.path().join("SKILL.md"), "router\n").unwrap();
     let mut run = FixtureRun {
         roots: [&project, &package, &empty, &repo]
@@ -2233,7 +2250,7 @@ mod skill_package {
     const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
 
     fn root() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
     }
     fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
         for entry in fs::read_dir(dir).unwrap() {
@@ -2398,11 +2415,88 @@ mod skill_package {
         }
     }
 
+    /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
+    /// generator instead of free-form wording — leader feeds the state it read
+    /// to tools/gen_goal_block.py and prints its `leader` line, with the
+    /// keep-set exclusion rule stated as the generator's rule; agent binds its
+    /// card-scoped lines to the generator's `agent` kind.
+    #[test]
+    fn goal_step_is_bound_to_the_goal_block_generator() {
+        let leader = mode_workflow("MODE-LEADER");
+        assert!(
+            leader.contains("`tools/gen_goal_block.py`"),
+            "leader workflow must name the generator: {leader}"
+        );
+        assert!(
+            leader.contains("`leader` goal line"),
+            "leader workflow must print the generator's leader line: {leader}"
+        );
+        assert!(
+            leader.contains("keep-set") && leader.contains("reason"),
+            "leader workflow must state the keep-set exclusion with reasons: {leader}"
+        );
+        assert!(
+            leader.contains("never hand-edit the generated line"),
+            "leader workflow must forbid editing the generated line: {leader}"
+        );
+        let agent = mode_workflow("MODE-AGENT");
+        assert!(
+            agent.contains("`tools/gen_goal_block.py`"),
+            "agent workflow must name the generator: {agent}"
+        );
+        assert!(
+            agent.contains("`agent` goal lines"),
+            "agent workflow must print the generator's agent lines: {agent}"
+        );
+        assert!(
+            agent.contains("never hand-edit the generated lines"),
+            "agent workflow must forbid editing the generated lines: {agent}"
+        );
+        // The generator itself still enforces the rule: a keep-set entry without
+        // a reason is refused, and excluded numbers leave the condition.
+        let run = |input: &str| {
+            let mut out = std::process::Command::new("python3")
+                .args(["-I", "tools/gen_goal_block.py"])
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            out.stdin
+                .take()
+                .unwrap()
+                .write_all(input.as_bytes())
+                .unwrap();
+            out.wait_with_output().unwrap()
+        };
+        use std::io::Write as _;
+        let bad = run(r#"{"milestone":"m","keep_set":[{"number":7}]}"#);
+        assert!(
+            !bad.status.success(),
+            "keep-set entry without a reason must be refused"
+        );
+        let good = run(
+            r#"{"milestone":"m1","issues":[{"number":1,"state":"open"},{"number":2,"state":"open"}],"prs":[{"number":3,"state":"open"}],"keep_set":[{"number":2,"reason":"operator-held"}]}"#,
+        );
+        let v: Value = serde_json::from_slice(&good.stdout).unwrap();
+        // The excluded entry drops out of the counts (2 issues -> 1) and the
+        // condition carries its number and reason.
+        assert_eq!(v["counts"]["open_issues"], json!(1));
+        assert_eq!(v["counts"]["open_prs"], json!(1));
+        assert_eq!(v["counts"]["keep_set"], json!(1));
+        let cond = v["leader"]["condition"].as_str().unwrap();
+        assert!(cond.contains("#2(operator-held)"), "{cond}");
+        assert!(v["keep_set_excluded"][0]["reason"] == json!("operator-held"));
+    }
+
     #[test]
     fn mode_leader_route_loads_its_workflow() {
         let body = mode_workflow("MODE-LEADER");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(skill.contains("`--mode leader`") && skill.contains("`--autonomy full|semi`"));
+        assert!(
+            skill.contains("`--leader-mode`") && skill.contains("`--autonomy full|semi`"),
+            "the canonical leader flag is --leader-mode (#2286): {skill}"
+        );
         // REQ-A1-01: the loaded mode ignores the other mode's instructions.
         assert!(body.contains("ignore instructions for any other mode"));
         assert!(
@@ -2415,10 +2509,13 @@ mod skill_package {
     fn mode_agent_route_loads_its_workflow() {
         let body = mode_workflow("MODE-AGENT");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(skill.contains("`--mode agent`") && skill.contains("`$moai --mode …`"));
+        assert!(
+            skill.contains("`--agent-mode`") && skill.contains("`$moai-cli --agent-mode …`"),
+            "the canonical agent flag is --agent-mode (#2286): {skill}"
+        );
         assert!(body.contains("ignore instructions for any other mode"));
         assert!(
-            body.contains("`$moai --mode agent`"),
+            body.contains("`$moai-cli --agent-mode`"),
             "Codex may enter agent mode"
         );
         cites_spec_sections_only(&body, "MODE-AGENT");
@@ -2439,8 +2536,44 @@ mod skill_package {
             "{first}"
         );
         assert!(
-            first.contains("`$moai --mode agent`"),
+            first.contains("`$moai-cli --agent-mode`"),
             "the refusal points to agent mode"
+        );
+    }
+
+    /// AC-2 (#2286): the routing line must send each spelled flag to its route and
+    /// keep `--mode agent|leader` working as a legacy alias; the routes file must
+    /// carry both MODE routes for those picks to resolve.
+    #[test]
+    fn mode_routing_flags_map_to_routes() {
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(
+            skill.contains("`--agent-mode` or `--leader-mode`"),
+            "SKILL.md must route the canonical flags: {skill}"
+        );
+        assert!(
+            skill.contains("`--mode agent|leader`"),
+            "SKILL.md must keep the --mode legacy alias: {skill}"
+        );
+        // The canonical picks and the alias must pick the same routes.
+        assert!(
+            skill.contains("pick the MODE-AGENT or MODE-LEADER route")
+                || (skill.contains("MODE-AGENT") && skill.contains("MODE-LEADER")),
+            "SKILL.md must name both routes for the flags: {skill}"
+        );
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let route = |k: &str| routes["routes"][k]["reference"].as_str().unwrap_or("");
+        assert_eq!(route("MODE-AGENT"), "../workflows/mode-agent.md");
+        assert_eq!(route("MODE-LEADER"), "../workflows/mode-leader.md");
+        assert_eq!(
+            routes["routes"]["MODE-AGENT"]["requires_binary"],
+            json!(false)
+        );
+        assert_eq!(
+            routes["routes"]["MODE-LEADER"]["requires_binary"],
+            json!(false)
         );
     }
 
@@ -2921,6 +3054,145 @@ fn doctor(
     (out, v)
 }
 
+/// A killed orphan can remain a zombie under a non-reaping container PID 1.
+/// Only absence or a terminated state proves that the fixture is no longer running.
+fn assert_fixture_process_stopped(pid: &str) {
+    for _ in 0..40 {
+        let out = Command::new("ps")
+            .args(["-p", pid, "-o", "stat="])
+            .output()
+            .unwrap();
+        let zombie = out.status.success()
+            && String::from_utf8_lossy(&out.stdout)
+                .trim_start()
+                .starts_with('Z');
+        let absent = out.status.code() == Some(1) && out.stdout.is_empty() && out.stderr.is_empty();
+        if absent || zombie {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    panic!("fixture child {pid} is still running");
+}
+
+/// #2349 (e): a `claude` that never answers `--version` is bounded. The doctor returns
+/// `unknown` with a timeout reason, and the process group ends with it — the hanging
+/// script's own child is gone too.
+#[test]
+fn claude_doctor_bounds_a_hanging_claude() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    let pidfile = bin.path().join("child.pid");
+    common::write_executable(
+        &bin.path().join("claude"),
+        &format!(
+            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            pidfile.display()
+        ),
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let started = std::time::Instant::now();
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    let elapsed = started.elapsed();
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert!(
+        elapsed < std::time::Duration::from_secs(12),
+        "doctor waited {elapsed:?} for a hanging claude"
+    );
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    assert_eq!(v["claude_version"], json!(null));
+    assert!(
+        v["reason"].as_str().unwrap().contains("timed out"),
+        "{}",
+        v["reason"]
+    );
+    let pid = fs::read_to_string(&pidfile).unwrap().trim().to_string();
+    assert_fixture_process_stopped(&pid);
+}
+
+#[test]
+fn claude_doctor_waits_for_inherited_stdout_within_the_deadline() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    common::write_executable(
+        &bin.path().join("claude"),
+        "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 1 &\nexit 0\n",
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["claude_version"], json!("2.1.319"));
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+}
+
+#[test]
+fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    let pidfile = bin.path().join("child.pid");
+    common::write_executable(
+        &bin.path().join("claude"),
+        &format!(
+            "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 30 &\necho $! > '{}'\nexit 0\n",
+            pidfile.display()
+        ),
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let started = std::time::Instant::now();
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert!(started.elapsed() < std::time::Duration::from_secs(12));
+    assert_eq!(v["claude_version"], json!(null));
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    assert!(v["reason"].as_str().unwrap().contains("timed out"));
+    let pid = fs::read_to_string(pidfile).unwrap();
+    assert_fixture_process_stopped(pid.trim());
+}
+
+#[cfg(unix)]
+#[test]
+fn claude_doctor_cleans_groups_without_trusting_path_kill() {
+    for shadow_kill in [false, true] {
+        let home = TempDir::new().unwrap();
+        let bin = TempDir::new().unwrap();
+        let pidfile = bin.path().join("child.pid");
+        common::write_executable(
+            &bin.path().join("claude"),
+            &format!(
+                "#!/bin/sh\n/bin/sleep 25 &\necho $! > '{}'\nwait\n",
+                pidfile.display()
+            ),
+        );
+        if shadow_kill {
+            common::write_executable(&bin.path().join("kill"), "#!/bin/sh\nexit 1\n");
+        }
+        let project = TempDir::new().unwrap();
+        write_file(project.path(), "AGENTS.md", b"# rules\n");
+        let started = std::time::Instant::now();
+        let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            .args(["claude-doctor", project.path().to_str().unwrap()])
+            .env("HOME", home.path())
+            .env("PATH", bin.path())
+            .output()
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(out.status.success(), "{:?}", out.stderr);
+        let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let result = &envelope["result"];
+        assert_eq!(result["agents_md_status"], json!("unknown"));
+        assert_eq!(result["claude_version"], json!(null));
+        assert!(
+            elapsed < std::time::Duration::from_secs(9),
+            "the documented five-second probe took {elapsed:?}"
+        );
+        let pid = fs::read_to_string(pidfile).unwrap();
+        assert_fixture_process_stopped(pid.trim());
+    }
+}
+
 /// HA-03-CLAUDE: the four AGENTS/CLAUDE combinations, judged without writing anything.
 #[test]
 fn claude_doctor_agents_loading_combinations() {
@@ -3302,7 +3574,7 @@ fn sources_manifest_rerun_is_byte_identical() {
 
 fn generation_project() -> TempDir {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
@@ -3315,7 +3587,7 @@ fn generation_request(local_file: &str) -> Value {
     json!({
         "protocol_version": 1,
         "language": "en",
-        "workflow_reference": "skills/moai/workflows",
+        "workflow_reference": "skills/moai-cli/workflows",
         "local_file": local_file,
         "workflow_id": "review-flow",
         "native_roles": [],

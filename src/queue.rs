@@ -39,6 +39,9 @@ use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
 
+/// The record state pr-confirm writes once the PR is handed to the gate (#2344).
+const HANDED_OFF_STATE: &str = "pr_ready";
+
 const API: &str = "https://api.github.com";
 /// Same safety bound as the claim comment pagination.
 const MAX_PAGES: u32 = 50;
@@ -76,7 +79,7 @@ pub struct Candidate {
 }
 
 /// Issue numbers named on lines that start with `prefix` (`#123` tokens only).
-fn refs_on(body: &str, prefix: &str) -> Vec<i64> {
+pub(crate) fn refs_on(body: &str, prefix: &str) -> Vec<i64> {
     body.lines()
         .filter_map(|l| l.trim().strip_prefix(prefix))
         .flat_map(|rest| {
@@ -299,11 +302,21 @@ pub fn next<T: Transport, C: Clock>(
         // REQ-A2-01/02: a card that already carries a claim comment (live or expired) is
         // not a candidate, unless this journal holds an active record for it.
         let key = task_key(&claim.task_ref);
-        let own_active = events
-            .iter()
-            .rev()
-            .find(|e| e.record.task_key == key)
-            .is_some_and(|e| is_active(&e.record.state));
+        let own = events.iter().rev().find(|e| e.record.task_key == key);
+        // #2344: a card this lane already handed to the gate (`pr_ready`, written by
+        // pr-confirm) stays open until the merge, but it is not work to pick up again. Skip
+        // it here only; the record itself stays active so a repair handoff, worktree ops and
+        // scope-check keep treating it as owned.
+        if let Some(e) = own.filter(|e| e.record.state == HANDED_OFF_STATE) {
+            skipped.push(json!({
+                "issue": c.number,
+                "reason": "handed_off",
+                "state": e.record.state,
+                "epoch": e.record.epoch,
+            }));
+            continue;
+        }
+        let own_active = own.is_some_and(|e| is_active(&e.record.state));
         if !own_active {
             let claims = read_claim_comments(client, &req.owner, &req.repo, c.number)?;
             if let Some(entry) = claimed_entry(c.number, &claims, clock.now()) {
@@ -360,27 +373,21 @@ pub fn next_cli<T: Transport, C: Clock>(
     req: QueueRequest,
     transport: &T,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let root = journal_root(project)?;
     let id = identity::identity(project)?;
     let worktree = worktree_id(&id)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Ok(json!({
-            "outcome": "busy",
-            "issue": Value::Null,
-            "record": Value::Null,
-            "foreign_owner": Value::Null,
-            "coordination_scope": "single-host",
-            "cross_host_atomic": false,
-            "lost_to": [],
-            "skipped": [],
-            "projection": Value::Null,
-            "notes": ["another process holds the journal lock; retry policy is the caller's (REQ-06A-05)"],
-        }));
+        // #2345: the same journal lock-busy answer as every other journal-writing op,
+        // with the kind set at the raise site.
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    next(&journal, &req, worktree, &client, clock)
+    Ok(next(&journal, &req, worktree, &client, clock)?)
 }
 
 #[cfg(test)]

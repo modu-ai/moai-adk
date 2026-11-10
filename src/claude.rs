@@ -22,6 +22,8 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::mpsc,
+    time::{Duration, Instant},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -42,18 +44,104 @@ fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
     parts.next().is_none().then_some(v)
 }
 
-/// `claude --version` with a fixed argv; `None` when claude is absent or prints no version.
-fn claude_version() -> Option<(u32, u32, u32)> {
-    let out = Command::new("claude")
-        .arg("--version")
+/// How long `claude --version` may run before the probe gives up (#2349).
+const VERSION_TIMEOUT: Duration = Duration::from_secs(5);
+const VERSION_GROUP_KILLER: &str = "/bin/kill";
+
+/// Outcome of the `claude --version` probe.
+enum VersionProbe {
+    Found((u32, u32, u32)),
+    NoVersion,
+    TimedOut { group_signal_sent: bool },
+}
+
+/// The leader has not been reaped at any call site, keeping its group id reserved.
+fn stop_version_probe(child: &mut std::process::Child, _group_kill_program: &Path) -> bool {
+    #[cfg(unix)]
+    let group_signal_sent = Command::new(_group_kill_program)
+        .args(["-KILL", "--", &format!("-{}", child.id())])
         .stdin(Stdio::null())
+        .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if !out.status.success() || out.stdout.len() > VERSION_OUTPUT_LIMIT {
-        return None;
+        .status()
+        .is_ok_and(|status| status.success());
+    #[cfg(not(unix))]
+    let group_signal_sent = false;
+    let _ = child.kill();
+    let _ = child.wait();
+    group_signal_sent
+}
+
+fn timeout_reason(group_signal_sent: bool) -> &'static str {
+    if group_signal_sent {
+        "claude --version timed out after 5 s; process-group SIGKILL was acknowledged"
+    } else {
+        "claude --version timed out after 5 s; process-group termination was not confirmed"
     }
-    parse_version(std::str::from_utf8(&out.stdout).ok()?)
+}
+
+/// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
+/// its own process group; timeout cleanup signals the group before reaping its
+/// leader and reports whether the system signal command acknowledged the request.
+fn claude_version() -> VersionProbe {
+    let mut cmd = Command::new("claude");
+    cmd.arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let Ok(mut child) = cmd.spawn() else {
+        return VersionProbe::NoVersion;
+    };
+    let stdout = child.stdout.take();
+    let (tx, rx) = mpsc::channel();
+    // Read on its own thread so the wait below stays bounded.
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(pipe) = stdout {
+            let _ = pipe
+                .take(VERSION_OUTPUT_LIMIT as u64 + 1)
+                .read_to_end(&mut buf);
+        }
+        let _ = tx.send(buf);
+    });
+    let deadline = Instant::now() + VERSION_TIMEOUT;
+    // Wait for stdout before reaping the leader: a launcher may exit while a
+    // descendant still holds the pipe, and its process group must remain reserved.
+    let out = match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(out) => out,
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            let group_signal_sent = stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
+            return VersionProbe::TimedOut { group_signal_sent };
+        }
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
+            return VersionProbe::NoVersion;
+        }
+    };
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
+            Ok(None) => break None,
+            Err(_) => {
+                stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
+                return VersionProbe::NoVersion;
+            }
+        }
+    };
+    let Some(status) = status else {
+        let group_signal_sent = stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
+        return VersionProbe::TimedOut { group_signal_sent };
+    };
+    if !status.success() || out.len() > VERSION_OUTPUT_LIMIT {
+        return VersionProbe::NoVersion;
+    }
+    match std::str::from_utf8(&out).ok().and_then(parse_version) {
+        Some(v) => VersionProbe::Found(v),
+        None => VersionProbe::NoVersion,
+    }
 }
 
 fn read_bounded(path: &Path) -> Option<Vec<u8>> {
@@ -160,7 +248,11 @@ pub fn doctor(project: &Path) -> Result<Value> {
         .filter(|p| imports_agents(p))
         .cloned()
         .collect();
-    let version = claude_version();
+    let probe = claude_version();
+    let version = match probe {
+        VersionProbe::Found(v) => Some(v),
+        VersionProbe::NoVersion | VersionProbe::TimedOut { .. } => None,
+    };
     let mut out = json!({
         "agents_md_status": "unknown",
         "reason": null,
@@ -183,7 +275,11 @@ pub fn doctor(project: &Path) -> Result<Value> {
         out["reason"] = json!(reason);
     };
     let Some(version) = version else {
-        set(&mut out, "unknown", "claude --version gave no version");
+        let reason = match probe {
+            VersionProbe::TimedOut { group_signal_sent } => timeout_reason(group_signal_sent),
+            _ => "claude --version gave no version",
+        };
+        set(&mut out, "unknown", reason);
         return Ok(out);
     };
     if version < MIN_AGENTS_VERSION {
@@ -790,7 +886,7 @@ pub fn projection(package: &Path, skills_root: &Path, added: &Map<String, Value>
             "frontmatter_added": recorded,
             "supporting_files": "byte-identical copies of the package",
         },
-        "target": text(&skills_root.join("moai"))?,
+        "target": text(&skills_root.join(crate::update::SKILL_DIR))?,
         "reload_skills_required": reload,
         "files_created": false,
         "host_loaded": "not_run",
@@ -803,7 +899,7 @@ mod tests {
     use super::*;
 
     fn package() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
     }
     fn added(pairs: &[(&str, Value)]) -> Map<String, Value> {
         pairs
@@ -1290,5 +1386,28 @@ mod tests {
             assert_eq!(parse_version(bad), None, "{bad}");
         }
         assert!(MIN_AGENTS_VERSION <= (2, 1, 277) && (2, 1, 276) < MIN_AGENTS_VERSION);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn version_cleanup_does_not_acknowledge_a_failed_group_signal() {
+        let tmp = tempfile::tempdir().unwrap();
+        for program in [
+            tmp.path().join("missing-kill"),
+            PathBuf::from("/usr/bin/false"),
+        ] {
+            let mut cmd = Command::new("/bin/sleep");
+            cmd.arg("25")
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+            std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+            let mut child = cmd.spawn().unwrap();
+            assert!(!stop_version_probe(&mut child, &program));
+            assert!(
+                child.try_wait().unwrap().is_some(),
+                "the leader must be reaped"
+            );
+        }
     }
 }

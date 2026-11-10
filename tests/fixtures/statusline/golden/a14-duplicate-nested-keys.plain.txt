@@ -1,0 +1,3 @@
+🤖 Opus | 🗿 v3.2.1-rc.6
+🔋 CW: ████░░░░░░ 47% | 🔋 5H: ███░░░░░░░ 30% (rolling) | 🔋 7D: ████░░░░░░ 41% (rolling)
+📁 demo-project

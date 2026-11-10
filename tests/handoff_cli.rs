@@ -249,10 +249,93 @@ fn liveness_reads_pid_and_start_time() {
     let (unknown, ev) = moai_cli::handoff::probe_liveness(Some(pid), None);
     assert_eq!(unknown, "indeterminate");
     assert!(ev["reason"] == "no recorded start time");
-    // An absent pid is dead, not unknown.
-    let (gone, _) = moai_cli::handoff::probe_liveness(Some(999_999_999), Some("x"));
-    assert_eq!(gone, "dead");
+    // An absent pid is dead, not unknown. The pid belongs to a process that has exited
+    // (#2349: an out-of-range pid makes `ps` print an error, which is indeterminate).
+    let mut exited = Command::new("/usr/bin/true").spawn().unwrap();
+    let exited_pid = exited.id();
+    exited.wait().unwrap();
+    let (gone, ev) = moai_cli::handoff::probe_liveness(Some(exited_pid), Some("x"));
+    assert_eq!(gone, "dead", "{ev}");
 
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
+/// A directory holding a fake `ps` with the given script body.
+fn fake_ps(body: &str) -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let ps = dir.path().join("ps");
+    common::write_executable(&ps, &format!("#!/bin/sh\n{body}\n"));
+    (dir, ps)
+}
+
+/// #2349 (f): only `ps`'s own "no such process" answer (exit 1, no output, no error text)
+/// means dead. Any other failure says nothing about the owner and is indeterminate.
+#[test]
+fn liveness_ps_failure_is_indeterminate_not_dead() {
+    let (_d1, denied) = fake_ps("echo 'ps: permission denied' >&2\nexit 2");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&denied, Some(4242), Some("x"));
+    assert_eq!(verdict, "indeterminate", "{ev}");
+    assert_eq!(ev["exit_code"], 2);
+    assert!(ev["reason"].as_str().unwrap().starts_with("ps failed"));
+
+    let (_d2, err1) = fake_ps("echo 'ps: sysctl failed' >&2\nexit 1");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&err1, Some(4242), Some("x"));
+    assert_eq!(verdict, "indeterminate", "exit 1 with error text: {ev}");
+
+    let (_d3, other) = fake_ps("exit 3");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&other, Some(4242), Some("x"));
+    assert_eq!(verdict, "indeterminate", "silent exit 3: {ev}");
+
+    let (_d4, absent) = fake_ps("exit 1");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&absent, Some(4242), Some("x"));
+    assert_eq!(verdict, "dead", "{ev}");
+    assert_eq!(ev["reason"], "no such process");
+}
+
+/// #2349 (f) end to end: a failing `ps` must not let `claim-handoff` take over a live
+/// owner without `--force-explicit`; the owner process keeps running.
+#[test]
+fn claim_handoff_with_failing_ps_stays_pending() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let (owner, mut child, host) = live_sleep_owner();
+    let record = seed_record(&repo, 28, 1, owner, vec![]);
+    let key = record.task_key.clone();
+    {
+        let journal = journal_of(&repo);
+        journal.commit("acquire", &record).unwrap();
+    }
+    let (bin, _ps) = fake_ps("echo 'ps: permission denied' >&2\nexit 2");
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .args([
+            "claim-handoff",
+            ".",
+            "--task",
+            &key,
+            "--from-epoch",
+            "1",
+            "--reason",
+            "probe with a failing ps",
+            "--host-id",
+            &host,
+        ])
+        .current_dir(&repo)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.path().display()))
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let v = envelope(&out);
+    assert_eq!(v["result"]["outcome"], "handoff_pending", "{v}");
+    assert_eq!(v["result"]["liveness"], "indeterminate");
+    assert_eq!(v["result"]["verdict"], "blocked");
+    assert!(
+        child.try_wait().unwrap().is_none(),
+        "the owner process is still running"
+    );
     child.kill().unwrap();
     let _ = child.wait();
 }
@@ -825,6 +908,60 @@ fn reconcile_pr_create_head_ambiguous_stays_uncertain() {
         fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
         before
     );
+}
+
+/// #2329: two PRs of one task and epoch — the first with the original marker, the second
+/// with the `--pr-seq 2` marker (`<task_key>-2`) — are told apart by the full scan: the
+/// second PR's uncertain effect confirms against the second PR only, and the first PR's
+/// old-form marker is still read as its own operation.
+#[test]
+fn reconcile_tells_two_prs_of_one_epoch_apart() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let first_marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let second_marker = "<!-- moai:op pr_create:101:op-9-2:1 -->";
+    let mut first = publish_effect("pr_create-101-op-9-1", first_marker, "uncertain");
+    first["kind"] = json!("pr_create");
+    let mut second = publish_effect("pr_create-101-op-9-2-1", second_marker, "uncertain");
+    second["kind"] = json!("pr_create");
+    let record = seed_record(
+        &repo,
+        38,
+        1,
+        owner("session", "agent-x"),
+        vec![first, second],
+    );
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    let full_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let t = RecordedTransport::new(vec![exchange(
+        "GET",
+        full_url,
+        200,
+        json!([
+            {"number": 2328, "body": "second\n\n<!-- moai-op pr_create:101:op-9-2:1 -->"},
+            {"number": 2324, "body": "first\n\n<!-- moai-op pr_create:101:op-9:1 -->"},
+        ]),
+    )]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "passed", "{out}");
+    let by_op: std::collections::BTreeMap<String, String> = out["transitions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| {
+            (
+                t["operation_id"].as_str().unwrap().to_string(),
+                t["response_id"].as_str().unwrap_or_default().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(by_op["pr_create-101-op-9-1"], "2324");
+    assert_eq!(by_op["pr_create-101-op-9-2-1"], "2328");
 }
 
 /// AC-1/AC-2 (#2099), updated by #2107: a pr_create effect routes to the pull-list
