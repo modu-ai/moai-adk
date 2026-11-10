@@ -1,6 +1,7 @@
 # Codex CLI·Desktop 상태 표시 공식 지원 범위와 Rust 어댑터 선택지 (#2357)
 
 - 조사: Codex t3j, `session=codex-t3j`, epoch 1, `Moai-Claim: 2357#6755712814`.
+- epoch 3 독립 재검증: agent-10-t6b, `Moai-Claim: 2357#6759371745`, 2026-11-10 — 11개 소스 전건 재확보·해시 대조와 주장별 원문 확인. 상세 기록: `codex-statusline-verification-2026-11-10.md`. epoch 3은 판정을 바꾸지 않았고 사실 서술 2곳을 공식 원문 실측 명칭으로 정정했다.
 - 조사일: 2026-11-10 UTC. 출처별 정확한 시각·응답 SHA-256은 마지막 표에 있다.
 - 저장소 기준 ref: `6bf79ecd85b9d40653c798f89266a7ffe2f28cbf`(착수 시 원격 integration tip 조회, 이 문서가 커밋된 커밋의 부모). 인계 경위: Codex t3j의 `/tmp` 인계 초안을 agent-8 [860b69]가 4파일 SHA-256 검증(254952ea…·a6e8b621…·3c311f56…·179d9c5b…)과 출처 스냅샷 11건·claude-contract-snapshot hash 대조, 원격 URL 2건 재확인(200·bytes 일치) 뒤 원문 그대로 `docs/design-review/`로 커밋했다. 조사 본문과 판정은 t3j 원문이며 이 커밋이 내용을 고르지 않았다.
 - 비교 계약: #2331의 병합본 `01e123e6c374386f952277103673bee6a05a3ad0`, `docs/design-review/statusline-rust-stage1-2026-11-10.md` §1·2·6을 실제 읽었다. 아래 Claude 열은 이 고정 문서의 계약이며, 현재 설치된 Claude의 실세션을 관측한 결과가 아니다.
@@ -24,7 +25,7 @@ Codex CLI의 내장 상태줄과 터미널 제목 선택은 공식 지원된다.
 | CLI 터미널 알림 | supported | `tui.notifications`, `tui.notification_method`의 auto/osc9/bel, `tui.notification_condition`. 완료·승인 요청 등 이벤트에 반응 | 알림 기능이며 연속 표시·모든 세그먼트 공급을 보장하지 않음 | S04 |
 | 외부 notify 프로그램 | supported | `notify`가 현재 `agent-turn-complete`에서 프로그램을 실행. JSON은 stdin이 아니라 단일 인자로 전달됨. `type`, `thread-id`, `turn-id`, `cwd`, 입력 메시지·마지막 답변 필드 설명 | 완료 이벤트 중심. 토큰·context·과금·사용량의 정기 공급 계약은 확인되지 않음. 메시지 원문 수집은 이번 설계 입력에서 제외해야 함 | S04 |
 | CLI·Desktop hook 상태 메시지 | supported | command hook stdin JSON의 `session_id`, `transcript_path`, `cwd`, `hook_event_name`, `model`; turn-scoped 이벤트는 `turn_id` 등. `statusMessage`는 hook 실행 중 표시, `systemMessage`는 경고 UI/event stream | 이벤트별·일시적 표시. raw stdout을 상시 footer로 쓰는 계약 아님. 비관리 hook은 검토·신뢰가 선행됨. transcript 파일 형식은 안정 인터페이스가 아니라고 명시 | S05 |
-| Desktop 완료 알림·기본 UI | supported | 공식 Desktop Settings의 완료 알림·외관·활동 관련 기본 기능, 명령/단축키의 Codex view·terminal·side chat 등 | 공식 문서가 현재 ChatGPT desktop app의 Codex 화면을 함께 설명함. 앱 버전별 실제 표시와 현재 사용자의 설치본은 not_verified | S06·S07 |
+| Desktop 완료 알림·기본 UI | supported | 공식 Desktop Settings의 완료 알림·외관·활동 관련 기본 기능, 명령/단축키의 Codex 전용 terminal·side chat·review tab 등(epoch 3 정정: S07 원문에 "Codex view"라는 명칭은 없고, 실측 명칭은 "Toggle terminal (Codex only)", "Open side chat (Codex only)", "Open review tab (Codex only)"이다) | 공식 문서가 현재 ChatGPT desktop app의 Codex 화면을 함께 설명함. 앱 버전별 실제 표시와 현재 사용자의 설치본은 not_verified | S06·S07 |
 | Desktop 사용자 정의 고정 footer/Rust command slot | not_verified | Desktop 설정·명령·hooks 자료를 읽었으나 해당 계약을 확인하지 못함 | CLI `tui.*` 키나 Desktop의 내장 화면이 곧 사용자 정의 확장 슬롯이라는 추정은 하지 않음 | S02·S05·S06·S07 |
 | app-server 기반 별도 클라이언트 | supported(문서상 통합 인터페이스 존재) | 자체 JSON-RPC; thread/turn·plan·token usage·rate limit 이벤트/조회가 문서화됨. 기존 Desktop에 주입하는 API가 아니라 별도 클라이언트 설계 경로 | 운영 안정성은 문서 간 주의 문구가 다름. S11은 app-server 전체를 experimental/production 비지원으로 설명하고 S08은 특히 WebSocket을 experimental/unsupported로 명시. 최소 버전·선택 transport·인가·스키마 검증 전 제품 의존 채택 불가 | S08·S11 |
 | CLI·Desktop의 외부 MCP 서버 | supported | host 측 MCP 연결, STDIO/Streamable HTTP, 도구 요청과 설정 공유가 공식 설명됨 | 도구 결과·외부 문맥 경로이지, 모델 없이 지속 갱신하는 native footer 또는 CLI 내부 사용량 구독권을 보장하지 않음. 상세 UI 슬롯·표시 주기는 not_verified | S10 |
@@ -32,7 +33,7 @@ Codex CLI의 내장 상태줄과 터미널 제목 선택은 공식 지원된다.
 | 릴리스 노트의 실험 UI renderer | not_verified(공개 확장 계약) | 공식 changelog에 상태줄의 experimental UI tree renderer 관련 항목을 확인 | 릴리스 항목만으로 외부 등록 schema·프로그램 입력·Desktop 표시 지원이 확정되지 않음. 내부 renderer와 공용 확장 API를 동일시하지 않음 | S09 |
 | 일부 workspace의 내장 credits/cost 표시 | supported(출시 기록의 자격 범위 한정) | changelog는 eligible workspace의 /status·상태줄·터미널 제목에 추정 credits/cost 표시를 언급 | 모든 계정 지원·정확한 과금·외부 Rust 입력 schema는 not_verified. 현재 계정의 사용량을 조회하지 않음 | S09 |
 
-설정의 비활성화 표기도 자료 차이가 있다. reference는 `null`, sample은 빈 배열 `[]`을 설명한다. 이 카드에서는 어느 값을 실제 설정에 쓰거나 설치본에서 동작을 단정하지 않는다(S02·S03).
+설정의 비활성화 표기도 자료 차이가 있다. reference는 `null`을 비활성으로 설명하고, sample은 status_line 비활성 표기 없이 주석 예시(항목 목록)만 두고 있다(epoch 3 정정: S03 원문에 status_line의 빈 배열 `[]` 표기는 없고, `[]`는 sample의 다른 키들에 있다). 이 카드에서는 어느 값을 실제 설정에 쓰거나 설치본에서 동작을 단정하지 않는다(S02·S03).
 
 ## 3. 입력 데이터와 갱신 경계
 
