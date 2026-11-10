@@ -56,15 +56,12 @@ fn validate_tasks(tasks: &[Value], files: &BTreeMap<String, IgnoredAny>) -> Resu
         if id.is_empty() || !ids.insert(id) {
             return Err("task ids must be nonempty and unique".into());
         }
-        if !task["source"]
-            .as_str()
-            .is_some_and(|s| !s.trim().is_empty())
-        {
+        if task["source"].as_str().is_none_or(|s| s.trim().is_empty()) {
             return Err(format!("{id}: source citation is required"));
         }
         match task["kind"].as_str() {
             Some("freshness") => {
-                if !task["suite_ref"].as_str().is_some_and(|s| !s.is_empty()) {
+                if task["suite_ref"].as_str().is_none_or(|s| s.is_empty()) {
                     return Err(format!("{id}: freshness suite reference is required"));
                 }
             }
@@ -72,7 +69,7 @@ fn validate_tasks(tasks: &[Value], files: &BTreeMap<String, IgnoredAny>) -> Resu
                 let truth = task["ground_truth"]["files"]
                     .as_array()
                     .ok_or("ground truth files")?;
-                if truth.is_empty() || !task["pattern"].as_str().is_some_and(|s| !s.is_empty()) {
+                if truth.is_empty() || task["pattern"].as_str().is_none_or(|s| s.is_empty()) {
                     return Err(format!("{id}: ground truth and pattern are required"));
                 }
                 for file in truth {
