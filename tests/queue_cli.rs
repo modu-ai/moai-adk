@@ -343,6 +343,29 @@ fn own_pr_ready_card_is_skipped_and_the_free_card_is_claimed() {
     assert_eq!(shown["record"]["comment_id"], json!(500), "{shown}");
 }
 
+/// #2344 control for the skip above: an own card that is NOT handed off yet (`assigned`) is
+/// still returned as `already_owned`, so a restarted lane resumes its unfinished card
+/// instead of claiming another one. No request is made for the free #8.
+#[test]
+fn own_unfinished_card_is_resumed_not_skipped() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.extend(attempt(7, 500, vec![claim(500, "session-a")]));
+    let (first, _) = run(&root, "session-a", ex);
+    assert_eq!(first["record"]["state"], json!("assigned"), "{first}");
+
+    let (again, t) = run(
+        &root,
+        "session-a",
+        reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]),
+    );
+    assert_eq!(again["outcome"], json!("already_owned"), "{again}");
+    assert_eq!(again["issue"], json!(7), "{again}");
+    assert_eq!(again["skipped"], json!([]), "{again}");
+    assert_eq!(t.remaining(), 0);
+}
+
 /// No candidate left: `idle`, nothing posted.
 #[test]
 fn no_candidate_is_idle_and_posts_nothing() {
