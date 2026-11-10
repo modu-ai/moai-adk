@@ -12,6 +12,7 @@
 
 #![cfg(unix)]
 
+mod common;
 use moai_cli::tree_digest;
 use serde_json::{json, Value};
 use std::{
@@ -488,19 +489,9 @@ fn e2e_never_writes_outside_temp_home() {
 #[test]
 fn e2e_clean_clone_carries_portable_read_plan_assets() {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let discovery = Command::new("git")
-        .args([
-            "-C",
-            manifest.to_str().unwrap(),
-            "rev-parse",
-            "--git-common-dir",
-        ])
-        .output()
-        .unwrap();
-    let discovered = String::from_utf8_lossy(&discovery.stdout)
-        .trim()
-        .to_string();
-    if !discovery.status.success() || discovered.is_empty() {
+    let discovery = common::git::git_raw(&manifest, &["rev-parse", "--git-common-dir"]);
+    let discovered = discovery.stdout.trim().to_string();
+    if !discovery.success || discovered.is_empty() {
         // Explicit not_run that cargo cannot count as ok (Issue #2104): this tree
         // carries no git metadata (e.g. an exported source archive), so there is no
         // repository to clean-clone. A silent return read as a vacuous pass — the
@@ -512,7 +503,7 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
              metadata in this tree ({}); the clean-clone portability check was not \
              performed. Run from a git checkout, or record the combination as \
              not_run in docs/e2e-matrix.md",
-            String::from_utf8_lossy(&discovery.stderr).trim()
+            discovery.stderr.trim()
         );
     }
     let gitdir = PathBuf::from(discovered);
@@ -523,22 +514,18 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     };
     let dest = TempDir::new().unwrap();
     let clone = dest.path().join("clean");
-    let out = Command::new("git")
-        .args([
+    let out = common::git::git_raw(
+        &manifest,
+        &[
             "clone",
             "--no-hardlinks",
             "--depth",
             "1",
             gitdir.to_str().unwrap(),
             clone.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
+        ],
     );
+    assert!(out.success, "{}", out.stderr);
 
     // The portable assets are all plain files in the clone — no binary, no state dir.
     let skill = clone.join("skills/moai");
