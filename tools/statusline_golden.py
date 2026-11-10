@@ -121,21 +121,34 @@ def normalize_version(text, version):
 VERSION_TOKEN = re.compile(r"v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)")
 
 
-def detect_binary_version(binary):
-    """The version `<binary> --version` reports in its last token (`moai-cli 2026.11.0-rc.1`,
-    `moai version v3.2.1`), without a leading `v`; None when it does not print one. Run with
-    a throwaway HOME and a minimal PATH, like the cases."""
-    with tempfile.TemporaryDirectory(prefix="sl-version-") as home:
-        try:
-            proc = subprocess.run([str(binary), "--version"], capture_output=True, text=True,
-                                  env={"PATH": "/usr/bin:/bin", "HOME": home}, timeout=30)
-        except OSError:
-            return None
-    tokens = proc.stdout.split()
-    if proc.returncode != 0 or not tokens:
+def parse_version_output(returncode, stdout):
+    """The version in the last token of a `--version` run (`moai-cli 2026.11.0-rc.1`,
+    `moai version v3.2.1`), without a leading `v`; None for a failed run or no version."""
+    tokens = stdout.split()
+    if returncode != 0 or not tokens:
         return None
     match = VERSION_TOKEN.fullmatch(tokens[-1])
     return match.group(1) if match else None
+
+
+def detect_binary_version(binary):
+    """`<binary> --version`, run the way the cases run it: a copy under another name, a
+    throwaway HOME, a minimal PATH and, on macOS, the same sandbox."""
+    with tempfile.TemporaryDirectory(prefix="sl-version-") as tmp:
+        root = Path(tmp).resolve()
+        exe = root / "bin" / "sl-under-test"
+        exe.parent.mkdir()
+        (root / "home").mkdir()
+        shutil.copy2(binary, exe)
+        cmd = [str(exe), "--version"]
+        if sys.platform == "darwin":
+            cmd = ["/usr/bin/sandbox-exec", "-p", sandbox_profile(exe), *cmd]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=30,
+                                  env={"PATH": "/usr/bin:/bin", "HOME": str(root / "home")})
+        except OSError:
+            return None
+    return parse_version_output(proc.returncode, proc.stdout)
 
 
 def run_case(binary, argv, case, variant):

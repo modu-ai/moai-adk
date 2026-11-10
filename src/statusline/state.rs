@@ -26,6 +26,8 @@ pub struct Context {
     pub now_ms: i64,
     /// When the render must be finished; git is stopped at this point.
     pub deadline: Option<Instant>,
+    /// The git executable; `git` from PATH outside tests.
+    pub git_program: String,
 }
 
 impl Context {
@@ -37,6 +39,7 @@ impl Context {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_millis() as i64),
             deadline: Some(Instant::now() + budget),
+            git_program: "git".to_string(),
         }
     }
 
@@ -50,6 +53,7 @@ impl Context {
             cwd: cwd.map(Path::to_path_buf),
             now_ms,
             deadline: None,
+            git_program: "git".to_string(),
         }
     }
 
@@ -603,7 +607,7 @@ fn read_git_output(stdout: impl Read) -> std::io::Result<Vec<u8>> {
 /// One read-only git call, its environment scrubbed like every other git runner in the
 /// crate, stopped at the render deadline.
 fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
-    let mut cmd = Command::new("git");
+    let mut cmd = Command::new(&ctx.git_program);
     cmd.args(args)
         .current_dir(dir)
         .stdin(Stdio::null())
@@ -881,5 +885,46 @@ mod tests {
         assert!(run_git(tmp.path(), &["status", "--porcelain"], &ctx).is_some());
         ctx.deadline = Some(Instant::now());
         assert_eq!(run_git(tmp.path(), &["status", "--porcelain"], &ctx), None);
+    }
+
+    /// AC-2: git is started only when a `.git` entry is found, and then once.
+    #[cfg(unix)]
+    #[test]
+    fn git_is_started_only_inside_a_repository() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let log = tmp.path().join("git-calls.log");
+        let wrapper = tmp.path().join("git-wrapper");
+        std::fs::write(
+            &wrapper,
+            format!(
+                "#!/bin/sh\necho \"$*\" >> '{}'\nexec git \"$@\"\n",
+                log.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let calls = || std::fs::read_to_string(&log).map_or(0, |s| s.lines().count());
+
+        let plain = tmp.path().join("plain");
+        std::fs::create_dir(&plain).unwrap();
+        let mut ctx = Context::for_test(&[], Some(&plain), 0);
+        ctx.git_program = wrapper.display().to_string();
+        assert!(collect_git(&plain, &ctx).is_none());
+        assert_eq!(calls(), 0);
+
+        let repo = tmp.path().join("repo");
+        std::fs::create_dir(&repo).unwrap();
+        let init = Command::new("git")
+            .args(["init", "-q", "-b", "main"])
+            .current_dir(&repo)
+            .status()
+            .unwrap();
+        assert!(init.success());
+        assert_eq!(
+            collect_git(&repo, &ctx).map(|s| s.branch),
+            Some("main".into())
+        );
+        assert_eq!(calls(), 1);
     }
 }
