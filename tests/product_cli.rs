@@ -2462,14 +2462,9 @@ mod skill_package {
                 .stderr(std::process::Stdio::piped())
                 .spawn()
                 .unwrap();
-            out.stdin
-                .take()
-                .unwrap()
-                .write_all(input.as_bytes())
-                .unwrap();
+            crate::common::feed_stdin(&mut out, input.as_bytes());
             out.wait_with_output().unwrap()
         };
-        use std::io::Write as _;
         let bad = run(r#"{"milestone":"m","keep_set":[{"number":7}]}"#);
         assert!(
             !bad.status.success(),
