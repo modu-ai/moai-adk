@@ -127,7 +127,9 @@ pub fn parse_argv(command: &str) -> Result<Vec<String>> {
 }
 
 /// Words that mark a failure of the environment rather than of the code under test.
-const ENVIRONMENT_SIGNS: [&str; 8] = [
+/// Cargo first, then Python (pytest, unittest): a test module that cannot be imported tested
+/// nothing (#2392 decision 6774899518 row 20 = A; other runners stay `Unclassified`).
+const ENVIRONMENT_SIGNS: [&str; 10] = [
     "could not compile",
     "error[e",
     "failed to download",
@@ -136,9 +138,20 @@ const ENVIRONMENT_SIGNS: [&str; 8] = [
     "spurious network error",
     "failed to load manifest",
     "no such command",
+    "importerror",
+    "modulenotfounderror",
 ];
-/// Words that mark an assertion failure in the tests.
-const TEST_SIGNS: [&str; 2] = ["test result: failed", "panicked at"];
+/// Words that mark an assertion failure in the tests: cargo, then Python's `AssertionError`
+/// (unittest, and pytest without assertion rewriting).
+const TEST_SIGNS: [&str; 3] = ["test result: failed", "panicked at", "assertionerror"];
+
+/// pytest's rewritten assertion: an `E` detail line whose text starts with `assert`.
+fn pytest_assert_line(lower: &str) -> bool {
+    lower.lines().any(|l| {
+        l.strip_prefix('e')
+            .is_some_and(|rest| rest.starts_with(' ') && rest.trim_start().starts_with("assert"))
+    })
+}
 
 /// Failure class of a finished check; `None` when it passed. Environment signs win over test
 /// signs, so a run that could not build is never counted as RED. Text-based (libtest JSON is
@@ -158,7 +171,7 @@ pub fn classify(
     let lower = output.to_ascii_lowercase();
     Some(if ENVIRONMENT_SIGNS.iter().any(|s| lower.contains(s)) {
         FailureClass::EnvironmentFailure
-    } else if TEST_SIGNS.iter().any(|s| lower.contains(s)) {
+    } else if TEST_SIGNS.iter().any(|s| lower.contains(s)) || pytest_assert_line(&lower) {
         FailureClass::TestFailure
     } else {
         FailureClass::Unclassified

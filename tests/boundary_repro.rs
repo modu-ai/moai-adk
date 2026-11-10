@@ -461,7 +461,6 @@ fn f5b_zero_tests_is_not_a_pass() {
 /// so a Python RED can be confirmed; a Python import error is an environment failure, so it
 /// is never counted as RED. The cargo cases are the control and already hold today.
 #[test]
-#[ignore = "#2392 repro F5d: RED until failure classes are read beyond cargo output"]
 fn f5d_other_language_failures_are_classified() {
     let pytest_assert = "E       assert 1 == 2\n\
                          FAILED tests/test_x.py::test_a - assert 1 == 2\n\
