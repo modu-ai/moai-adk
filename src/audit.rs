@@ -179,6 +179,9 @@ pub struct Verdict {
     pub observed: Observed,
     pub reviewer: Reviewer,
     pub independence: Independence,
+    /// What `independence` was judged from: `self-declared` while the reviewer fields are the
+    /// caller's own words (#2392 decision 6774899518 row 14, stage 1).
+    pub independence_basis: &'static str,
     pub pr_binding: PrBinding,
     pub run_decision: Decision,
     pub run_reasons: Vec<String>,
@@ -214,6 +217,10 @@ const INDEPENDENCE: [(&str, &str, Option<&str>); 6] = [
         Some("fork shares the parent conversation and the files it read"),
     ),
 ];
+
+/// The reviewer fields are taken as the caller states them; stage 2 of #2392 D2 derives them
+/// from the candidate's claim trailer and the host session id instead.
+const INDEPENDENCE_BASIS: &str = "self-declared";
 
 pub fn independence(r: &Reviewer) -> Independence {
     match INDEPENDENCE
@@ -550,6 +557,7 @@ pub fn reduce(input: &AuditInput, observed: &Observed, outcome: &RunOutcome, now
         observed: observed.clone(),
         reviewer: input.reviewer.clone(),
         independence,
+        independence_basis: INDEPENDENCE_BASIS,
         pr_binding: pr,
         run_decision: outcome.decision,
         run_reasons: outcome.reasons.clone(),
