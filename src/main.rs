@@ -428,10 +428,10 @@ enum Command {
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
     /// answer; reads the host's hook JSON on stdin, no network.
     HookDispatch {
-        /// `claude` (stage 1; `codex` answers as an engine error until stage 2).
+        /// `claude` or `codex`.
         #[arg(long)]
         host: String,
-        /// `session-check` or `tool-preflight` (stage 1).
+        /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.
         #[arg(long)]
         event: String,
     },
@@ -1893,7 +1893,12 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
         .take(moai_cli::hook_engine::STDIN_LIMIT)
         .read_to_end(&mut bytes);
     let answer = match std::env::current_dir() {
-        Ok(cwd) => moai_cli::hook_engine::dispatch(host, event, &bytes, &cwd),
+        Ok(cwd) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            moai_cli::hook_engine::dispatch(host, event, &bytes, &cwd, now)
+        }
         Err(_) => moai_cli::hook_engine::Answer {
             stdout: String::new(),
             stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
