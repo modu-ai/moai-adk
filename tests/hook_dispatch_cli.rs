@@ -407,3 +407,153 @@ fn a_missing_binary_is_non_blocking_by_the_host_rules() {
     ));
     assert_eq!(commit_count(&root), before + 1);
 }
+
+// ---- stage 2: tool-observe and turn-validation ----
+
+fn engine_log(root: &Path) -> PathBuf {
+    root.join(".moai-cli/receipts/hook-engine.jsonl")
+}
+
+fn post_tool(event: &str, tool: &str, file_path: &str, response: &str) -> Vec<u8> {
+    json!({"session_id": "raw-session-id-123", "hook_event_name": event, "tool_name": tool,
+           "tool_use_id": "t1", "tool_input": {"file_path": file_path, "content": "CONTENTMARK"},
+           "tool_response": {"output": response}})
+    .to_string()
+    .into_bytes()
+}
+
+#[test]
+fn tool_observe_records_a_bounded_line_and_never_answers() {
+    let (_d, root) = repo("issue/77-k");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let head = git(&root, &["rev-parse", "HEAD"]);
+    let abs = root.join("src/x.rs");
+    let r = dispatch(
+        "tool-observe",
+        &root,
+        &post_tool(
+            "PostToolUse",
+            "Write",
+            abs.to_str().unwrap(),
+            "RESPONSEMARK",
+        ),
+        &[],
+    );
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    let r = dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("PostToolUseFailure", "Edit", "/etc/hosts", "x"),
+        &[],
+    );
+    assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    let lines: Vec<Value> = text
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 2, "{text}");
+    assert_eq!(lines[0]["kind"], "observe");
+    assert_eq!(lines[0]["tool"], "Write");
+    assert_eq!(lines[0]["class"], "write");
+    assert_eq!(lines[0]["path"], "src/x.rs");
+    assert_eq!(lines[0]["outcome"], "success");
+    assert_eq!(lines[0]["head"], json!(head));
+    assert_eq!(lines[1]["path"], "outside");
+    assert_eq!(lines[1]["outcome"], "failure");
+    for mark in [
+        "RESPONSEMARK",
+        "CONTENTMARK",
+        "raw-session-id-123",
+        "/etc/hosts",
+    ] {
+        assert!(!text.contains(mark), "{mark} leaked: {text}");
+    }
+}
+
+#[test]
+fn tool_observe_without_state_dir_or_with_bad_input_is_a_quiet_skip() {
+    let (_d, root) = repo("main");
+    let ok = post_tool("PostToolUse", "Read", "a.txt", "x");
+    let r = dispatch("tool-observe", &root, &ok, &[]);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    assert!(
+        !root.join(".moai-cli").exists(),
+        "never creates the state dir"
+    );
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    // A tool result past the 4 MiB stdin bound is cut off: quiet skip, nothing recorded.
+    let big = post_tool("PostToolUse", "Bash", "a.txt", &"y".repeat(5 * 1024 * 1024));
+    let r = dispatch("tool-observe", &root, &big, &[]);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    let r = dispatch("tool-observe", &root, b"{oops", &[]);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    assert!(!engine_log(&root).exists());
+    // A wrong event name is a configuration error: engine error, still non-blocking.
+    assert_engine_error(&dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("Stop", "Read", "a.txt", "x"),
+        &[],
+    ));
+}
+
+#[test]
+fn tool_observe_refuses_a_symlinked_receipts_dir() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let elsewhere = root.join("home/elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, root.join(".moai-cli/receipts")).unwrap();
+    let r = dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("PostToolUse", "Read", "a.txt", "x"),
+        &[],
+    );
+    assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+    assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
+}
+
+#[test]
+fn turn_validation_ships_with_no_rule_and_never_blocks() {
+    let (_d, root) = repo("issue/77-k");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    for active in [false, true] {
+        let stop = json!({"hook_event_name": "Stop", "session_id": "s",
+                          "stop_hook_active": active, "last_assistant_message": "MSGMARK"});
+        let r = dispatch("turn-validation", &root, stop.to_string().as_bytes(), &[]);
+        assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    }
+    assert!(!engine_log(&root).exists(), "no rule, nothing written");
+    assert_engine_error(&dispatch("turn-validation", &root, b"{oops", &[]));
+    let wrong = json!({"hook_event_name": "PreToolUse"});
+    assert_engine_error(&dispatch(
+        "turn-validation",
+        &root,
+        wrong.to_string().as_bytes(),
+        &[],
+    ));
+}
+
+#[test]
+fn stage_two_duties_never_call_the_forge() {
+    let (_d, root) = repo("issue/77-k");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let marker = root.join("home/gh-called");
+    let fake = root.join("home/fake-gh");
+    common::write_executable(
+        &fake,
+        &format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+    );
+    let env = [("MOAI_FORGE_GH_BIN", fake.to_str().unwrap())];
+    dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("PostToolUse", "Bash", "a.txt", "x"),
+        &env,
+    );
+    let stop = br#"{"hook_event_name":"Stop","session_id":"s","stop_hook_active":false}"#;
+    dispatch("turn-validation", &root, stop, &env);
+    assert!(!marker.exists());
+}
