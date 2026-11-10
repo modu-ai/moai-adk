@@ -57,6 +57,7 @@
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `hook-dispatch`
 - `hook-receipt`
 - `hooks-apply`
 - `hooks-plan`
