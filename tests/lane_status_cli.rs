@@ -573,6 +573,15 @@ fn audit_remote(reverse: bool) -> Vec<Exchange> {
             3006,
             &format!("see `moai-audit-claim: lane=lane-s head={h2}`"),
         ),
+        // Quoted mid-line without a code span, and a reservation with a trailing word.
+        note(
+            3008,
+            &format!("quoted: moai-audit-claim: lane=lane-t head={h2}"),
+        ),
+        note(
+            3009,
+            &format!("moai-audit-claim: lane=lane-u head={h2} extra"),
+        ),
         note(
             3007,
             &format!("AUDIT #121 (k) head {h2} base {} — verdict: FAIL", sha('0')),
@@ -581,7 +590,9 @@ fn audit_remote(reverse: bool) -> Vec<Exchange> {
     let commits = vec![
         json!({"sha": h1, "commit": {"message": "feat: x\n\nMoai-Claim: 21#2101\n"}}),
         json!({"sha": hm, "commit": {"message": "Merge branch 'v2026.11.0' into issue/21-x"}}),
-        json!({"sha": h2, "commit": {"message": "fix: y\n\nMoai-Claim: 21#2103\nMoai-Claim: 21#2199\nMoai-Claim: 99#9901\n"}}),
+        // 2101 repeats (listed once), 2102 is the handoff line (not a claim: unresolved),
+        // 2199 names no comment (unresolved), 99#… is another Issue (ignored).
+        json!({"sha": h2, "commit": {"message": "fix: y\n\nMoai-Claim: 21#2101\nMoai-Claim: 21#2103\nMoai-Claim: 21#2102\nMoai-Claim: 21#2199\nMoai-Claim: 99#9901\n"}}),
     ];
     if reverse {
         issue_comments.reverse();
@@ -652,7 +663,7 @@ fn audit_columns_list_reservations_verdict_and_author_sessions() {
                 {"session": "agent-b", "claim_comment_id": 2103},
             ])
         );
-        assert_eq!(a["unresolved_claim_ids"], json!([2199]));
+        assert_eq!(a["unresolved_claim_ids"], json!([2102, 2199]));
     }
 }
 
