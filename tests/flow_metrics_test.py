@@ -4,7 +4,6 @@ refuses the call before it starts, and a failing gh exits 1. All through a fake
 gh executable — no network."""
 
 import json
-import os
 import pathlib
 import stat
 import subprocess
@@ -70,6 +69,31 @@ class FlowMetricsTest(unittest.TestCase):
                 ["pr_to_first_verdict", "pass_to_merge", "fail_ratio_and_causes", "sync_count"],
             )
             self.assertIn("calls=1/4", r.stdout)
+
+    def test_lane_branches_read_issue_first_like_the_claim_guard(self):
+        # #2336: the same rule as claim_verify::lane_branch. An issue/ branch whose Issue
+        # number is not first (old worktree-plan shape, letter-led key, leading zero) is not
+        # counted as some other Issue; it is listed as unparsed instead.
+        prs = json.dumps(
+            [
+                {"number": 1, "author": {"login": "a"}, "createdAt": NOW, "headRefName": "issue/2007-06-C-e1"},
+                {"number": 2, "author": {"login": "a"}, "createdAt": NOW, "headRefName": "issue/06-C-2007-e1"},
+                {"number": 3, "author": {"login": "a"}, "createdAt": NOW, "headRefName": "issue/A9-x-2306-e1"},
+                {"number": 4, "author": {"login": "a"}, "createdAt": NOW, "headRefName": "issue/7x"},
+                {"number": 5, "author": {"login": "a"}, "createdAt": NOW, "headRefName": "feature/9-a"},
+            ]
+        )
+        with tempfile.TemporaryDirectory() as d:
+            temp = pathlib.Path(d)
+            out = temp / "baseline.json"
+            r = run(make_gh(temp, prs), out)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            base = json.loads(out.read_text())
+            self.assertEqual(base["open_issues"], [2007])
+            self.assertEqual(
+                base["unparsed_lane_branches"],
+                ["issue/06-C-2007-e1", "issue/7x", "issue/A9-x-2306-e1"],
+            )
 
     def test_call_ceiling_zero_refuses_before_call(self):
         with tempfile.TemporaryDirectory() as d:

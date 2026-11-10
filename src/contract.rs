@@ -33,6 +33,11 @@ pub enum Kind {
     /// 07-A (#2008): the host CLI (`gh`) was missing, gave no HTTP response, or an unexpected
     /// status.
     Transport,
+    /// #2345: another process holds an advisory lock this command needs — so far the claim
+    /// journal lock (REQ-06A-05: the tool never waits). Resending the unchanged command can
+    /// succeed once the holder drops it. Raised with an explicit kind at the lock-wait site,
+    /// never left to [`classify`]'s message guessing.
+    Unavailable,
 }
 
 impl Kind {
@@ -52,13 +57,54 @@ impl Kind {
             Kind::GitFailed => "git_failed",
             Kind::Blocked => "blocked",
             Kind::Transport => "transport",
+            Kind::Unavailable => "unavailable",
         }
     }
-    /// Only an I/O or transport failure may succeed when the same request is sent again
-    /// unchanged. `blocked` needs a change first (credentials, permission, or waiting until the
-    /// rate-limit reset named in the message).
+    /// Only an I/O or transport failure, or a lock another process holds (#2345), may succeed
+    /// when the same request is sent again unchanged. `blocked` needs a change first
+    /// (credentials, permission, or waiting until the rate-limit reset named in the message).
     pub fn retryable(self) -> bool {
-        matches!(self, Kind::Io | Kind::Transport)
+        matches!(self, Kind::Io | Kind::Transport | Kind::Unavailable)
+    }
+}
+
+/// An operation error that carries its 00-D kind from the raise site (Issue #2345). The
+/// journal lock-wait path raises this directly; every other error stays a plain `String`
+/// and keeps the [`classify`] fallback at the envelope boundary.
+#[derive(Clone, Debug)]
+pub struct OpError {
+    pub kind: Kind,
+    pub message: String,
+}
+
+impl OpError {
+    pub fn new(kind: Kind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
+}
+
+impl From<String> for OpError {
+    fn from(message: String) -> Self {
+        Self {
+            kind: classify(&message),
+            message,
+        }
+    }
+}
+
+impl From<&str> for OpError {
+    fn from(message: &str) -> Self {
+        Self::from(message.to_string())
+    }
+}
+
+impl std::fmt::Display for OpError {
+    /// stderr carries one human line: the message, exactly as the envelope does.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
     }
 }
 
@@ -430,6 +476,51 @@ mod tests {
             assert_eq!(classify(message), kind, "{message}");
         }
         assert_eq!(classify("something new"), Internal);
+    }
+
+    #[test]
+    fn journal_lock_busy_sets_its_kind_at_the_raise_site() {
+        // #2345: the busy error carries `unavailable` explicitly; it never depends on
+        // classify()'s message guessing, and it is retryable.
+        let e = OpError::new(Kind::Unavailable, "journal busy: test");
+        assert_eq!(e.kind, Kind::Unavailable);
+        assert!(e.kind.retryable());
+        assert_eq!(e.kind.as_str(), "unavailable");
+        // A plain String error keeps the classified fallback at the boundary.
+        let fallback = OpError::from("target read failed".to_string());
+        assert_eq!(fallback.kind, Kind::Io);
+        // AC-3: a message raised as conflict that happens to contain "unavailable" stays
+        // conflict — the "conflict in " prefix rule wins over the generic word, so no
+        // busy reclassification may steal a deliberate conflict message.
+        assert_eq!(
+            classify("conflict in claim journal: stale_epoch 2; the journal was unavailable"),
+            Kind::Conflict
+        );
+        assert_eq!(
+            classify(
+                "conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied"
+            ),
+            Kind::Conflict
+        );
+        // The shared busy message, if it ever reached classify through a non-typed path,
+        // degrades to `io` (still retryable) — but the typed path never lets it.
+        assert_eq!(
+            classify("journal busy: the claim journal lock is unavailable (another process holds it); the caller may retry the same command after a bounded wait, within its own cap (REQ-06A-05)"),
+            Kind::Io
+        );
+    }
+
+    #[test]
+    fn unavailable_failure_envelope_is_retryable() {
+        let busy = failure(
+            "claim.acquire",
+            Kind::Unavailable,
+            "journal busy: the claim journal lock is unavailable",
+        );
+        assert_eq!(busy["ok"], json!(false));
+        assert_eq!(busy["error"]["kind"], "unavailable");
+        assert_eq!(busy["error"]["retryable"], json!(true));
+        assert!(busy["error"].get("next_actions").is_none());
     }
 
     #[test]

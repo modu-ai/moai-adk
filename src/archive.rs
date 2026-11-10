@@ -294,7 +294,9 @@ fn evidence_marker(value: Option<&str>) -> Marker {
 /// to mtimes.
 fn git_activity(project: &Path, specs: &Path) -> BTreeMap<String, u64> {
     let mut map = BTreeMap::new();
-    let out = Command::new("git")
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
         .arg("-C")
         .arg(project)
         .args([
