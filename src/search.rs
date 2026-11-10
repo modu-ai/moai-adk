@@ -468,16 +468,15 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         fs::write(dir.path().join(".env"), "TOKEN=x\n").unwrap();
         fs::write(dir.path().join("ok.txt"), "fine\n").unwrap();
-        let mut listed = vec!["ok.txt".to_string()];
         #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(
-                outside.path().join("secret.txt"),
-                dir.path().join("link.txt"),
-            )
-            .unwrap();
-            listed.push("link.txt".into());
-        }
+        std::os::unix::fs::symlink(
+            outside.path().join("secret.txt"),
+            dir.path().join("link.txt"),
+        )
+        .unwrap();
+        // link.txt is listed on every platform; where it does not exist (no symlink on
+        // Windows) it is omitted as "not a regular file" just the same.
+        let listed = vec!["ok.txt".to_string(), "link.txt".to_string()];
         let query = Query {
             paths: vec![".env".into(), "link.txt".into(), "ok.txt".into()],
             literals: vec![],
@@ -498,11 +497,7 @@ mod tests {
             ".env".into(),
             "exact path not in the searched file list".into()
         )));
-        if cfg!(unix) {
-            assert!(
-                reasons.contains(&("link.txt".into(), "exact path is not a regular file".into()))
-            );
-        }
+        assert!(reasons.contains(&("link.txt".into(), "exact path is not a regular file".into())));
         assert!(!serde_json::to_string(&omitted)
             .unwrap()
             .contains(&sha256_hex(b"s1\ns2\n")));
