@@ -76,11 +76,23 @@ impl Event {
     }
 }
 
+/// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
+pub const CONFIRM_COMMANDS: &str =
+    "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master";
+
+/// Appended to a confirmation on Codex, which cannot ask.
+pub const CODEX_ASK_SUFFIX: &str =
+    "Codex cannot ask for confirmation in a hook, so it is refused here; run it yourself outside the agent if you mean it.";
+
 /// What the policy core decided, before any host rendering.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verdict {
     Allow,
     Deny(String),
+    /// Confirmation needed (decision B2 = A, Issue #2389 c6774899518 row 25): Claude Code asks
+    /// the user; Codex has no ask, so it is rendered as a deny there. Never written as a deny
+    /// line: the user's answer is unknown to the engine.
+    Ask(String),
     Context(String),
 }
 
@@ -222,6 +234,16 @@ fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
 fn render_codex(event: Event, verdict: Verdict) -> Answer {
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
+        // Codex parses `ask` but does not support it (the hook run fails and the call
+        // continues), so a confirmation becomes a deny the user can act on outside the agent.
+        (Event::ToolPreflight, Verdict::Ask(reason)) => json!({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": format!("{reason} {CODEX_ASK_SUFFIX}"),
+            }
+        })
+        .to_string(),
         (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -260,7 +282,10 @@ pub fn capabilities(host: &str) -> Value {
                                    "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
                                    "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content"],
                                "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
-                               "answer": "hookSpecificOutput.permissionDecision=deny", "never_uses": ["allow", "ask", "defer", "decision/reason (deprecated)"]},
+                               "answer": "hookSpecificOutput.permissionDecision=deny",
+                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=ask", "commands": CONFIRM_COMMANDS,
+                                           "note": "a deny anywhere on the line wins; ask in a bypass-permissions or -p session is not documented"},
+                               "never_uses": ["allow", "defer", "decision/reason (deprecated)"]},
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
                                 "host_cap": "8 consecutive continuations (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP)", "moai_cap": MOAI_STOP_BLOCK_CAP},
@@ -277,6 +302,7 @@ pub fn capabilities(host: &str) -> Value {
                                    "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines"],
                                "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
+                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=deny (Codex has no ask)", "commands": CONFIRM_COMMANDS},
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
                              "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
@@ -302,6 +328,16 @@ fn allow_quietly() -> Answer {
 fn render_claude(event: Event, verdict: Verdict) -> Answer {
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
+        // "`ask` prompts the user to confirm" (code.claude.com/docs/en/hooks, read 2026-11-11);
+        // how a bypass-permissions or `-p` session treats it is not documented.
+        (Event::ToolPreflight, Verdict::Ask(reason)) => json!({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": reason,
+            }
+        })
+        .to_string(),
         (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -361,7 +397,22 @@ fn session_check(cwd: &Path) -> Verdict {
 /// no local claim record must carry `Moai-Claim: <n>#<id>` in its command line (the decided
 /// lane rule; AGENTS.local.md and the MODE-AGENT workflow step 6). Everything else is allowed
 /// here; a forge check of the claim stays with `claim-verify --hook`.
+/// tool-preflight with the confirmation class (B2): any deny — a guard or the claim token, in
+/// any segment of the line — wins; only a call that would be allowed is turned into `Ask`
+/// (Claude's own order is deny > defer > ask > allow).
 fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
+    let verdict = tool_preflight_deny(input, cwd);
+    if verdict != Verdict::Allow || input["tool_name"] != json!("Bash") {
+        return verdict;
+    }
+    let command = input["tool_input"]["command"].as_str().unwrap_or("");
+    match crate::hook_guards::bash_confirm(command) {
+        Some(reason) => Verdict::Ask(reason.to_string()),
+        None => Verdict::Allow,
+    }
+}
+
+fn tool_preflight_deny(input: &Value, cwd: &Path) -> Verdict {
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
     let tool = input["tool_name"].as_str().unwrap_or("");
     // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
