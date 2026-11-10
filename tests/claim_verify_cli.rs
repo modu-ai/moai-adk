@@ -370,6 +370,64 @@ fn commit_or_push_detection() {
     assert!(!is_commit_or_push("git status && echo push"));
 }
 
+/// #2399 review (pr-2, PR comment 6770138445): only git's subcommand position counts. A read
+/// command whose arguments contain the word is not a commit or push; global options that take
+/// a value are skipped before the subcommand.
+#[test]
+fn commit_or_push_is_read_at_the_subcommand_position_only() {
+    for no in [
+        "git log --grep commit",
+        "git log -- commit",
+        "git show commit-ish",
+        "git log --grep push",
+        "git branch push",
+        "git -C commit status",
+        "git -c user.name=commit log",
+    ] {
+        assert!(!is_commit_or_push(no), "{no}");
+    }
+    for yes in [
+        "git -C dir commit -m x",
+        "git --no-pager commit -m x",
+        "git --git-dir .git --work-tree . commit -m x",
+        "git -c user.name=x -C dir push origin HEAD",
+        "git -c alias.ci=commit ci -m x",
+        "git -calias.ci=commit ci -m x",
+    ] {
+        assert!(is_commit_or_push(yes), "{yes}");
+    }
+}
+
+/// #2399 re-audit B5: every git(1) global option that takes a separate value is skipped with
+/// its value, and an option the list does not know makes both its next word and the following
+/// subcommand candidates — a real commit or push is never missed behind it.
+#[test]
+fn global_options_with_values_and_unknown_options_never_hide_a_commit_or_push() {
+    for yes in [
+        "git --attr-source HEAD commit -m x",
+        "git --attr-source HEAD push",
+        "git --attr-source=HEAD commit -m x",
+        "git --config-env k=E commit -m x",
+        "git --namespace ns push",
+        "git --list-cmds main commit -m x",
+        "git --future-option val commit -m x",
+        "git --future-option commit -m x",
+        "git --future-option val --no-pager push",
+    ] {
+        assert!(is_commit_or_push(yes), "{yes}");
+    }
+    for no in [
+        // The listed option's value is skipped, even a tree-ish spelled like a verb.
+        "git --attr-source commit log",
+        "git --namespace push status",
+        "git --attr-source HEAD log --grep commit",
+        "git --future-option log --grep commit",
+        "git --future-option val log -- push",
+    ] {
+        assert!(!is_commit_or_push(no), "{no}");
+    }
+}
+
 /// #2306: the bypass spellings the #2255 audit (#2270, comment 6738997664) found undetected —
 /// a wrapper word before `git`, a command inside `sh -c`/`bash -c`, a `git -c alias.*` verb,
 /// and a quoted or backslash-escaped `git`.
