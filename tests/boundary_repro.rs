@@ -872,3 +872,84 @@ fn d3b_review_export_into_project_is_a_new_candidate() {
     assert_eq!(out["admission"], "rejected", "{out}");
     assert_eq!(out["reasons"], json!(["candidate-changed"]), "{out}");
 }
+
+/// Pre-audit 6777054180 B1/B2: the stored-baseline file name rule at its edges, with literal
+/// values. 128 characters are stored and 129 are not; the empty id and an id starting with a
+/// dot (which could collide with the store's `.<id>.<pid>.tmp` files) are refused. A later
+/// step naming such an id is `baseline-untrusted`.
+#[test]
+fn d1_attempt_id_file_name_edges() {
+    let Some(dir) = project() else { return };
+    let p = dir.path();
+    let rev = observe(p).unwrap().commit;
+    let store = |id: &str| {
+        serde_json::to_value(
+            run_verify(
+                p,
+                &preserve_request(&["true"], &rev, "baseline", id, None),
+                &rev,
+            )
+            .unwrap(),
+        )
+        .unwrap()["baseline_store"]
+            .clone()
+    };
+    let id128 = "a".repeat(128);
+    let id129 = "b".repeat(129);
+    assert_eq!(id128.len(), 128);
+    assert_eq!(id129.len(), 129);
+    let ok = store(&id128);
+    assert_eq!(ok["stored"], json!(true), "{ok}");
+    for refused in [id129.as_str(), "", ".x"] {
+        let out = store(refused);
+        assert_eq!(out["stored"], json!(false), "{refused:?}: {out}");
+        assert_eq!(
+            out["reason"],
+            json!("attempt-id-not-a-safe-file-name"),
+            "{refused:?}: {out}"
+        );
+    }
+    // The 128-character baseline unlocks; refused names never reach the file system.
+    let digest = ok["digest"].as_str().unwrap().to_string();
+    let after = |id: &str| {
+        run(
+            p,
+            &preserve_request(
+                &["true"],
+                &rev,
+                "after",
+                "A1",
+                Some(BaselineRef {
+                    attempt_id: id.into(),
+                    digest: digest.clone(),
+                }),
+            ),
+            &rev,
+        )
+        .unwrap()
+    };
+    assert_eq!(after(&id128).decision, Decision::Ready);
+    for refused in [id129.as_str(), "", ".x"] {
+        assert_eq!(
+            after(refused).reasons,
+            ["baseline-untrusted"],
+            "{refused:?}"
+        );
+    }
+}
+
+/// Pre-audit 6777054180 N1: the pytest `E` detail line needs the space after `E`, and a
+/// severity is compared after trimming.
+#[test]
+fn n1_pytest_e_line_and_trimmed_severity() {
+    assert_eq!(
+        classify(None, false, false, "E   assert x\n"),
+        Some(FailureClass::TestFailure)
+    );
+    assert_eq!(
+        classify(None, false, false, "eassert x\n"),
+        Some(FailureClass::Unclassified)
+    );
+    assert!(!moai_cli::audit::blocking_severity(" medium "));
+    assert!(moai_cli::audit::blocking_severity(" high "));
+}
