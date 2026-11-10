@@ -3,7 +3,12 @@
 //! Both are read only. The value reaches the host process only and never appears in the
 //! launcher's own output.
 use serde_json::{json, Value};
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::OnceLock,
+};
 
 const TOKEN: &str = "moai-test-file-token-not-real";
 const ENV_TOKEN: &str = "moai-test-env-token-not-real";
@@ -18,9 +23,27 @@ fn home(files: &[(&str, &str)]) -> tempfile::TempDir {
     home
 }
 
+/// A git project under cargo's test scratch dir, outside HOME: `glm -a` reads and takes its
+/// `agent-N` number there (#2359), never in this repository's own counter.
+fn project() -> &'static Path {
+    static PROJECT: OnceLock<PathBuf> = OnceLock::new();
+    PROJECT.get_or_init(|| {
+        let p = Path::new(env!("CARGO_TARGET_TMPDIR")).join("launcher-glm-key-file-project");
+        fs::create_dir_all(&p).unwrap();
+        let init = Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&p)
+            .status()
+            .unwrap();
+        assert!(init.success());
+        p
+    })
+}
+
 fn launcher(home: &Path, env_token: Option<&str>) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    cmd.env("HOME", home)
+    cmd.current_dir(project())
+        .env("HOME", home)
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
         .env_remove("ANTHROPIC_AUTH_TOKEN");
     if let Some(t) = env_token {

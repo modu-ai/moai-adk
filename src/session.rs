@@ -16,11 +16,15 @@
 //!   flag, so the name travels in the first prompt.
 //!
 //! Without a role (`moai-cli cc|glm|codex` with neither `-l` nor `-a`, Issue #2053) the launcher
-//! opens a plain host session: no role is guessed and no session name is added. Every session,
-//! with or without a role, starts with full access unless `--permissions` is given
-//! ([`FULL_ACCESS_DEFAULT`], #2359).
+//! opens a plain host session: no role is guessed, no session name is added and no permission
+//! flag is passed, so the host starts in the mode its own settings choose. A role session
+//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless `--permissions`
+//! is given ([`FULL_ACCESS_DEFAULT`], user decision 2026-11-10, #2359).
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 const ROLES: [&str; 2] = ["leader", "agent"];
 const HOSTS: [&str; 3] = ["claude", "glm", "codex"];
@@ -32,12 +36,13 @@ const DEFAULT_EFFORT: &str = "medium";
 /// launcher's Claude defaults (`--model opus --effort medium --advisor fable`). False would pass no model, effort or advisor flag so the user's own Claude
 /// settings apply (option B, not chosen). This constant is the only place to change.
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
-/// User decision 2026-11-10 (#2359): every session the launcher opens — roleless, `-l` and
-/// `-a`, on every host — starts with full access and no permission prompt
-/// (`--dangerously-skip-permissions` on Claude hosts, `-s danger-full-access -a never` on
-/// codex). `--permissions` keeps the prompts. This replaces #2053 (no skip without a role) and
-/// #2244 (a project `permissions` key drops the skip). Choosing this default from a settings
-/// key is a recorded follow-up; until then this constant is the only place to change.
+/// User decision 2026-11-10 (#2359, comment 6760976883): a role session (`-l`, `-a`) on every
+/// host starts with full access and no permission prompt (`--dangerously-skip-permissions` on
+/// Claude hosts whatever the project's `permissions` key says, `-s danger-full-access -a never`
+/// on codex); `--permissions` keeps the prompts. A roleless session gets no permission flag at
+/// all. This replaces #2244 (a project `permissions` key dropped the skip). Choosing this
+/// default from a settings key is a recorded follow-up; until then this constant is the only
+/// place to change.
 pub const FULL_ACCESS_DEFAULT: bool = true;
 /// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
 /// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
@@ -150,10 +155,143 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
-/// Whether a launched session runs with full access: [`FULL_ACCESS_DEFAULT`] unless the
-/// `--permissions` flag asks to keep the prompts. Role, host and project settings do not matter.
-pub fn full_access(keep_prompts: bool) -> bool {
-    FULL_ACCESS_DEFAULT && !keep_prompts
+/// Whether a launched session runs with full access: only a role session, and then
+/// [`FULL_ACCESS_DEFAULT`] unless `--permissions` asks to keep the prompts. Host and project
+/// settings do not matter.
+pub fn full_access(has_role: bool, keep_prompts: bool) -> bool {
+    has_role && FULL_ACCESS_DEFAULT && !keep_prompts
+}
+
+// ---- agent-N numbering (#2359 decision 6760976883; resolves #2361) ----
+
+/// Test-only: milliseconds to hold the counter lock between reading and writing.
+pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_AGENT_SEQ_HOLD_MS";
+
+/// Where `-a` session numbers are kept: `<clone common dir>/.moai-cli/sessions/`, beside the
+/// claim journal (`claim::journal_root`). Every worktree of one clone resolves the same common
+/// dir, so they share one counter across hosts, and git never lists the files. `agent-seq`
+/// holds the last number handed out (decimal, one line); `.lock` is the `File::lock` target.
+pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
+    let id = crate::identity::identity(project)
+        .map_err(|e| format!("agent numbering: {e}; pass --name"))?;
+    if id["identity_status"].as_str() != Some("ok") {
+        return Err(format!(
+            "agent numbering needs a git repository (identity_status {}); run from the project or pass --name",
+            id["identity_status"].as_str().unwrap_or("unknown")
+        ));
+    }
+    let common = id["clone_anchor"]
+        .as_str()
+        .ok_or("agent numbering needs a git repository; pass --name")?;
+    Ok(Path::new(common).join(".moai-cli").join("sessions"))
+}
+
+fn refuse_symlink(path: &Path) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(m) if m.file_type().is_symlink() => Err(format!(
+            "agent number store {} is a symlink; refused (pass --name)",
+            path.display()
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// The last number handed out; 0 when none was. Only a regular file is read (a FIFO at the
+/// path would block a plain read). Anything but one decimal number is an error, never 0.
+fn read_last(file: &Path) -> Result<u64, String> {
+    let broken = || {
+        format!(
+            "agent number store {} is unreadable or not a number; fix or remove it, or pass --name",
+            file.display()
+        )
+    };
+    match fs::symlink_metadata(file) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(_) => return Err(broken()),
+        Ok(m) if !m.file_type().is_file() || m.len() > 32 => return Err(broken()),
+        Ok(_) => {}
+    }
+    let text = fs::read_to_string(file).map_err(|_| broken())?;
+    let digits = text.strip_suffix('\n').unwrap_or(&text);
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(broken());
+    }
+    digits.parse().map_err(|_| broken())
+}
+
+fn next_of(last: u64) -> Result<u64, String> {
+    last.checked_add(1)
+        .ok_or_else(|| "agent number store is exhausted; pass --name".into())
+}
+
+/// The number the next `-a` launch would take, read without taking it (`--dry-run`).
+pub fn peek_agent_number(project: &Path) -> Result<u64, String> {
+    let dir = agent_seq_dir(project)?;
+    refuse_symlink(&dir)?;
+    next_of(read_last(&dir.join("agent-seq"))?)
+}
+
+// @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
+//   first has renamed its new number into place.
+// @MX:REASON: two launches that read the same last number would both open `agent-<n+1>`.
+/// Takes the next agent number. Under an exclusive `File::lock` on `.lock` (a concurrent launch
+/// waits, it does not fail) it reads the last number, writes last + 1 (temp file, fsync,
+/// rename) and returns it. Numbers only increase and are never handed out twice; every failure
+/// is an error for the caller to show, never a silent `agent-1`.
+pub fn take_agent_number(project: &Path) -> Result<u64, String> {
+    let dir = agent_seq_dir(project)?;
+    refuse_symlink(&dir)?;
+    fs::create_dir_all(&dir).map_err(|_| {
+        format!(
+            "agent number store {} cannot be created; pass --name",
+            dir.display()
+        )
+    })?;
+    let lock_path = dir.join(".lock");
+    refuse_symlink(&lock_path)?;
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock_path)
+        .and_then(|f| f.lock().map(|()| f))
+        .map_err(|_| {
+            format!(
+                "agent number lock {} unavailable; pass --name",
+                lock_path.display()
+            )
+        })?;
+    let file = dir.join("agent-seq");
+    refuse_symlink(&file)?;
+    let n = next_of(read_last(&file)?)?;
+    // Test seam: widens the read-to-write window (at most 2 s) so the concurrency test can
+    // show the lock is what keeps numbers apart. Unset in normal use.
+    if let Some(ms) = std::env::var(AGENT_SEQ_TEST_HOLD_VAR)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+    {
+        std::thread::sleep(std::time::Duration::from_millis(ms.min(2000)));
+    }
+    let tmp = dir.join(format!("agent-seq.tmp-{}", std::process::id()));
+    let written = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .and_then(|mut f| {
+            f.write_all(format!("{n}\n").as_bytes())?;
+            f.sync_all()
+        })
+        .and_then(|()| fs::rename(&tmp, &file));
+    if written.is_err() {
+        let _ = fs::remove_file(&tmp);
+        return Err(format!(
+            "agent number store {} cannot be written; pass --name",
+            file.display()
+        ));
+    }
+    drop(lock);
+    Ok(n)
 }
 
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
@@ -209,30 +347,33 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         notes.push("PROMPT is used by codex only; it was not passed to the Claude host");
     }
     if r.skip_permissions {
-        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (full-access default, user decision 2026-11-10 #2359; keep prompts with --permissions)");
+        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
         argv.push("--dangerously-skip-permissions".into());
+    } else if r.role.is_none() {
+        notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (roleless session, #2359)");
     }
     Ok(argv)
 }
 
 fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     clean("codex_bin", &r.codex_bin)?;
-    // Full access (user decision 2026-11-10, #2359): no sandbox, never ask. The flags are
-    // explicit because Codex ranks CLI flags above `~/.codex/config.toml` and its own default
-    // in a git folder (workspace-write, on-request) still asks.
-    let (sandbox, approval) = if r.skip_permissions {
-        notes.push("codex full access: -s danger-full-access -a never, every command runs without a sandbox or an approval prompt (full-access default, user decision 2026-11-10 #2359; keep prompts with --permissions)");
-        ("danger-full-access", "never")
+    // User decision 2026-11-10 (#2359): a role session gets full access (no sandbox, never
+    // ask), or the sandboxed ask-first pair with `--permissions`; a roleless session gets no
+    // flag, so `~/.codex/config.toml` decides (Codex ranks CLI flags above it, so any flag here
+    // would override the user's choice).
+    let pair = if r.skip_permissions {
+        notes.push("codex full access: -s danger-full-access -a never, every command runs without a sandbox or an approval prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
+        Some(("danger-full-access", "never"))
+    } else if r.role.is_some() {
+        Some(("workspace-write", "on-request"))
     } else {
-        ("workspace-write", "on-request")
+        notes.push("no sandbox or approval flag: codex takes them from ~/.codex/config.toml (roleless session, #2359)");
+        None
     };
-    let mut argv = vec![
-        r.codex_bin.clone(),
-        "-s".into(),
-        sandbox.into(),
-        "-a".into(),
-        approval.into(),
-    ];
+    let mut argv = vec![r.codex_bin.clone()];
+    if let Some((sandbox, approval)) = pair {
+        argv.extend(["-s".into(), sandbox.into(), "-a".into(), approval.into()]);
+    }
     if let Some(m) = &r.model {
         clean("model", m)?;
         argv.push("-m".into());

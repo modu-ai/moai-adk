@@ -795,18 +795,16 @@ fn launch(
     o: LaunchOpts,
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
+    // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
+    // `-a` is `agent-N` from the project's counter; both start with full access.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
-    // REQ-A5-01 (#2164): `-l|-a` is deprecated — warn on stderr and record a note,
-    // keeping the composed behavior unchanged until the removal card lands.
-    if leader.is_some() {
-        eprintln!("deprecated: use `/moai --mode leader|agent` inside the session");
-    }
-    let name_given = o.name.is_some();
-    // A role brings its default name; a plain session gets none.
+    // `-a` without `--name` is numbered; `--name` takes no number.
+    let numbered = leader == Some(false) && o.name.is_none();
     let name = o
         .name
-        .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
-    let request = SessionRequest {
+        .or_else(|| (leader == Some(true)).then(|| "leader".into()));
+    let mut request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
         name,
@@ -816,24 +814,38 @@ fn launch(
         // takes the launcher defaults (advisor fable, model, effort) too.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        // Every launched session, any role and host, starts with full access unless
-        // `--permissions` is given (user decision 2026-11-10, #2359; replaces #2053/#2244).
-        skip_permissions: moai_cli::session::full_access(o.permissions),
+        // A role session starts with full access unless `--permissions` is given; a roleless
+        // one gets no permission flag (user decision 2026-11-10, #2359; replaces #2244).
+        skip_permissions: full_access(role.is_some(), o.permissions),
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
-    let mut v = session_launch(&request, o.dry_run)?;
-    if leader.is_some() {
-        if let Some(notes) = v["notes"].as_array_mut() {
-            notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
-        }
+    let mut number_note = None;
+    if numbered {
+        let here = std::env::current_dir()
+            .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
+        let dir = moai_cli::session::agent_seq_dir(&here)?;
+        let n = if o.dry_run {
+            number_note = Some(format!(
+                "agent-N preview: --dry-run takes no number (store {})",
+                dir.display()
+            ));
+            peek_agent_number(&here)?
+        } else {
+            // Compose first, so a launch that is refused anyway (a blocked glm, an invalid
+            // option) takes no number.
+            request.name = Some("agent-0".into());
+            moai_cli::session::compose(&request)?;
+            let n = take_agent_number(&here)?;
+            number_note = Some(format!("agent number {n} taken (store {})", dir.display()));
+            n
+        };
+        request.name = Some(format!("agent-{n}"));
     }
-    if leader == Some(false) && !name_given {
-        // HOLD (00-F): automatic agent numbering is undecided; RC1 uses a fixed default.
-        if let Some(notes) = v["notes"].as_array_mut() {
-            notes.push("agent name defaulted to agent-1 (automatic numbering is HOLD); pass --name agent-<n>".into());
-        }
+    let mut v = session_launch(&request, o.dry_run)?;
+    if let (Some(note), Some(notes)) = (number_note, v["notes"].as_array_mut()) {
+        notes.push(note.into());
     }
     Ok(v)
 }

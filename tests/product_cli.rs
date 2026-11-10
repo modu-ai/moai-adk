@@ -1056,8 +1056,18 @@ fn session_rejects_lower_ranked_advisor_and_unknown_host() {
 
 /// Runs the launcher syntax (00-F #2028). Tests use `--dry-run` only and never start a host.
 fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
+    // A fresh git project per call: `-a` previews its `agent-N` from that project's counter
+    // (#2359), never from this repository's.
+    let project = tempfile::tempdir().unwrap();
+    assert!(Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(project.path())
+        .status()
+        .unwrap()
+        .success());
     let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     c.args(args)
+        .current_dir(project.path())
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
         // No home, so no key file (#2359) can stand in for the token.
         .env(
@@ -1107,11 +1117,13 @@ fn launcher_leader_default_claude() {
         );
         assert_eq!(v["env_keys"], json!([]));
     }
-    // `-a` without a host is the Claude Code agent with a fixed default name.
+    // `-a` without a host is the Claude Code agent named from the project counter (#2359); a
+    // fresh project previews `agent-1` and the dry run takes no number.
     let v = launched(&launcher(&["-a", "--dry-run"], None));
     assert_eq!(v["role"], json!("agent"));
     assert_eq!(v["argv"][2], json!("agent-1"));
-    assert!(v["notes"].to_string().contains("HOLD"));
+    assert!(v["notes"].to_string().contains("--dry-run takes no number"));
+    assert!(!v["notes"].to_string().contains("HOLD"));
     // Ambiguous or empty invocations fail instead of guessing.
     assert!(!launcher(&["-l", "-a", "--dry-run"], None).status.success());
     assert!(!launcher(&["-l", "cc", "--dry-run"], None).status.success());
@@ -1163,39 +1175,29 @@ fn launcher_flags_can_be_disabled() {
         .success());
 }
 
-/// REQ-A5-01 (#2164): `-l|-a` warns on stderr, records the deprecation note, and
-/// keeps the composed behavior — both launcher shapes.
+/// #2164 (A5) warned that `-l|-a` were deprecated; the user decision of 2026-11-10 (#2359,
+/// comment 6760976883) keeps them as the way to name a session `leader` / `agent-N`, so no
+/// shape warns any more and each still composes.
 #[test]
-fn launcher_deprecated_roles_warn_and_keep_compose() {
-    let phrase = "deprecated: use `/moai --mode leader|agent` inside the session";
+fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
     for args in [
         &["-l", "--dry-run"][..],
         &["-a", "--name", "agent-7", "--dry-run"][..],
         &["cc", "-l", "--dry-run"][..],
         &["codex", "-a", "--dry-run"][..],
+        &["cc", "--dry-run"][..],
     ] {
         let out = launcher(args, None);
         let v = launched(&out);
         assert!(
-            String::from_utf8_lossy(&out.stderr).contains(phrase),
+            !String::from_utf8_lossy(&out.stderr).contains("deprecated"),
             "stderr: {args:?}"
         );
         assert!(
-            v["notes"]
-                .to_string()
-                .contains("deprecated: use `/moai --mode leader|agent` inside the session"),
+            !v["notes"].to_string().contains("deprecated"),
             "notes: {args:?}"
         );
     }
-    // REQ-A5-02: a role-less host session carries neither the warning nor the note.
-    let out = launcher(&["cc", "--dry-run"], None);
-    let v = launched(&out);
-    assert!(
-        !String::from_utf8_lossy(&out.stderr).contains("deprecated"),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(!v["notes"].to_string().contains("deprecated"));
 }
 
 #[test]
