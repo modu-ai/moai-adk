@@ -1,0 +1,808 @@
+{
+ "schema_version": 2,
+ "description": "C10a eval corpus (Issue #2346): explicit-evidence tasks over the immutable src snapshot captured from 98dab71433617ba179c164be8b7ca169e62fe7dc. Ground-truth scope is source_snapshot.json, never the live working tree; a literal search miss is a measured miss, not an invalid oracle.",
+ "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+ "tasks": [
+  {
+   "kind": "retrieval",
+   "query": "PR reconciliation이 op marker를 어디서 파싱하는가",
+   "pattern": "parse_op_markers",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/forge/outbox.rs",
+     "src/handoff.rs",
+     "src/pr_link.rs",
+     "src/forge/promote.rs"
+    ]
+   },
+   "source": "docs/pr-contract.md op marker 행; 06-B reconcile 계약",
+   "id": "T-001"
+  },
+  {
+   "kind": "retrieval",
+   "query": "claim journal의 advisory lock 획득은 어디서 하는가",
+   "pattern": "try_lock",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/claim.rs",
+     "src/worktree.rs",
+     "src/handoff.rs",
+     "src/queue.rs"
+    ]
+   },
+   "source": "#2175 review thread 3; src/claim.rs Journal",
+   "id": "T-002"
+  },
+  {
+   "kind": "retrieval",
+   "query": "ontology edge 어휘(core 17종) 상수는 어디에 있는가",
+   "pattern": "CORE_EDGE_TYPES",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "#2318; docs/design-review/appendix/dr07-ontology-table.md 56행 [TO] L375",
+   "id": "T-003"
+  },
+  {
+   "kind": "retrieval",
+   "query": "ontology 시간 필드의 RFC3339 게이트는 어디인가",
+   "pattern": "is_rfc3339",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "#2318 RFC3339 format gate",
+   "id": "T-004"
+  },
+  {
+   "kind": "retrieval",
+   "query": "edge_id 결정적 해시는 어디서 계산되는가",
+   "pattern": "fn edge_id",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "#2318; [TO] L377 type·endpoints·evidence hash",
+   "id": "T-005"
+  },
+  {
+   "kind": "retrieval",
+   "query": "@MOAI/@MX marker 스캐너 진입점은 어디인가",
+   "pattern": "scan_path",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/atlas_tag.rs",
+     "src/main.rs"
+    ]
+   },
+   "source": "#2178 C2 grammar v1",
+   "id": "T-006"
+  },
+  {
+   "kind": "retrieval",
+   "query": "오류 메시지를 envelope kind로 분류하는 함수는 어디인가",
+   "pattern": "fn classify",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/contract.rs"
+    ]
+   },
+   "source": "01-C envelope contract; reviewer scope: src/contract.rs::classify and RULES classify envelope errors, unlike unrelated claim/file classifiers",
+   "id": "T-007"
+  },
+  {
+   "kind": "retrieval",
+   "query": "stale plan 거부 문구는 어느 파일들이 쓰는가",
+   "pattern": "stale or altered plan",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/agents.rs",
+     "src/archive.rs",
+     "src/claude.rs",
+     "src/contract.rs",
+     "src/forge/promote.rs",
+     "src/generation.rs",
+     "src/github_templates.rs",
+     "src/hosts/codex.rs",
+     "src/hosts/codex_config.rs",
+     "src/hooks.rs",
+     "src/profile.rs",
+     "src/recovery.rs",
+     "src/sources.rs",
+     "src/update.rs",
+     "src/worktree.rs"
+    ]
+   },
+   "source": "shared stale-plan vocabulary (05-B stale 계약)",
+   "id": "T-008"
+  },
+  {
+   "kind": "retrieval",
+   "query": "비밀 모양 문자열 필터 상수는 어디인가",
+   "pattern": "SECRET_SHAPES",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/lib.rs",
+     "src/redact.rs",
+     "src/sources.rs",
+     "src/install.rs",
+     "src/forge/report.rs",
+     "src/forge/promote.rs",
+     "src/profile.rs"
+    ]
+   },
+   "source": "profile portable filter; 03-B promotion gate",
+   "id": "T-009"
+  },
+  {
+   "kind": "retrieval",
+   "query": "profile 스키마의 관리 키 한 표는 어디인가",
+   "pattern": "PROFILE_KEYS",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/profile.rs"
+    ]
+   },
+   "source": "#2254 D8 single key table",
+   "id": "T-010"
+  },
+  {
+   "kind": "retrieval",
+   "query": "leader 감독 설정 구조체는 어디에 정의되는가",
+   "pattern": "LeaderSettings",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/profile.rs"
+    ]
+   },
+   "source": "#2161/#2162 leader supervision (rc.2 A3)",
+   "id": "T-011"
+  },
+  {
+   "kind": "retrieval",
+   "query": "flow 게이트의 CI status 조회는 어디서 하는가",
+   "pattern": "check: \"ci_status\"",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/flow.rs"
+    ]
+   },
+   "source": "#2279 A13 flow gate (survey 2.1: combined state 주의)",
+   "id": "T-012"
+  },
+  {
+   "kind": "retrieval",
+   "query": "claim-handoff 기계 줄의 파서는 어디인가",
+   "pattern": "moai-claim-handoff",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/claim_verify.rs"
+    ]
+   },
+   "source": "#2006 handoff machine line; language rule verbatim protocol lines",
+   "id": "T-013"
+  },
+  {
+   "kind": "retrieval",
+   "query": "update known-good receipt 검사는 어디서 하는가",
+   "pattern": "known_good",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/self_update.rs",
+     "src/update.rs",
+     "src/recovery.rs"
+    ]
+   },
+   "source": "04-A/04-B update known-good path",
+   "id": "T-014"
+  },
+  {
+   "kind": "retrieval",
+   "query": "leader PR 검사 주기 설정 읽기는 어디인가",
+   "pattern": "pr_check_interval_secs",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/profile.rs",
+     "src/leader.rs",
+     "src/contract.rs"
+    ]
+   },
+   "source": "#2161 leader tick 설정",
+   "id": "T-015"
+  },
+  {
+   "kind": "retrieval",
+   "query": "baseline tree digest는 어디서 계산하는가",
+   "pattern": "tree_digest",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/lib.rs",
+     "src/baseline.rs",
+     "src/sources.rs",
+     "src/run.rs",
+     "src/audit.rs"
+    ]
+   },
+   "source": "00-A tree digest",
+   "id": "T-016"
+  },
+  {
+   "kind": "retrieval",
+   "query": "recovery plan 생성은 어디인가",
+   "pattern": "recovery_plan",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/main.rs",
+     "src/recovery.rs"
+    ]
+   },
+   "source": "04-B recovery-plan op",
+   "id": "T-017"
+  },
+  {
+   "kind": "retrieval",
+   "query": "세션 런처의 role 기본값은 어디서 정해지는가",
+   "pattern": "launcher_defaults",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/main.rs",
+     "src/session.rs"
+    ]
+   },
+   "source": "#2053 session launcher defaults",
+   "id": "T-018"
+  },
+  {
+   "kind": "retrieval",
+   "query": "pr-body-render의 effect intent 기록은 어디서 하는가",
+   "pattern": "effect_intent",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/pr_link.rs"
+    ]
+   },
+   "source": "#2329 op marker/intent",
+   "id": "T-019"
+  },
+  {
+   "kind": "retrieval",
+   "query": "archive 유예일 resolve는 어디인가",
+   "pattern": "resolve_grace_days",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/archive.rs"
+    ]
+   },
+   "source": "#2187 D1 grace_days",
+   "id": "T-020"
+  },
+  {
+   "kind": "retrieval",
+   "query": "tombstone 마커 생성·검증은 어디인가",
+   "pattern": "tombstone_node",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "#2318 C4 tombstone",
+   "id": "T-021"
+  },
+  {
+   "kind": "retrieval",
+   "query": "C4 문서 단위 검증은 어디인가",
+   "pattern": "validate_document",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "#2318 C4 validate_document",
+   "id": "T-022"
+  },
+  {
+   "kind": "retrieval",
+   "query": "claim journal 열기는 어디서 하는가",
+   "pattern": "Journal::open",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/claim.rs",
+     "src/queue.rs",
+     "src/worktree.rs",
+     "src/handoff.rs"
+    ]
+   },
+   "source": "06-A claim journal",
+   "id": "T-023"
+  },
+  {
+   "kind": "retrieval",
+   "query": "Codex projection의 openai.yaml 타입은 어디에 정의되는가",
+   "pattern": "OpenAiYaml",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/hosts/codex.rs",
+     "src/main.rs"
+    ]
+   },
+   "source": "#2241 I4 openai.yaml",
+   "id": "T-024"
+  },
+  {
+   "kind": "retrieval",
+   "query": "flow 게이트 검사 결과 구조체는 어디인가",
+   "pattern": "GateCheck",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/flow.rs"
+    ]
+   },
+   "source": "#2279 A13 GateCheck",
+   "id": "T-025"
+  },
+  {
+   "kind": "retrieval",
+   "query": "context bundle의 snapshot 생성은 어디인가",
+   "pattern": "fn snapshot",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/context/mod.rs"
+    ]
+   },
+   "source": "07-D context snapshot",
+   "id": "T-026"
+  },
+  {
+   "kind": "retrieval",
+   "query": "OPERATIONS 덤프 스위치는 어디에서 처리하는가",
+   "pattern": "MOAI_DUMP_OPERATIONS",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/main.rs"
+    ]
+   },
+   "source": "#2254 D7 dump",
+   "id": "T-027"
+  },
+  {
+   "kind": "retrieval",
+   "query": "redact 함수들은 어느 파일에 있는가",
+   "pattern": "fn redact",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/redact.rs",
+     "src/forge/transport.rs",
+     "src/forge/promote.rs"
+    ]
+   },
+   "source": "redaction module",
+   "id": "T-028"
+  },
+  {
+   "kind": "retrieval",
+   "query": "claim-verify 모듈은 어디서 참조되는가",
+   "pattern": "claim_verify",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/lib.rs",
+     "src/main.rs",
+     "src/queue.rs",
+     "src/claim.rs"
+    ]
+   },
+   "source": "#2323 claim-verify",
+   "id": "T-029"
+  },
+  {
+   "kind": "retrieval",
+   "query": "cost report op 구현은 어디인가",
+   "pattern": "fn cost_report",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/run.rs"
+    ]
+   },
+   "source": "#2191 D5 cost breakdown",
+   "id": "T-030"
+  },
+  {
+   "kind": "retrieval",
+   "query": "receipts 저장소 디렉터리 resolve는 어디인가",
+   "pattern": "receipts_dir",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/sources.rs"
+    ]
+   },
+   "source": "03-B skill sources receipts",
+   "id": "T-031"
+  },
+  {
+   "kind": "retrieval",
+   "query": "envelope protocol 상수는 어디에 있는가",
+   "pattern": "PROTOCOL_VERSION",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/contract.rs"
+    ]
+   },
+   "source": "01-C protocol_version",
+   "id": "T-032"
+  },
+  {
+   "kind": "retrieval",
+   "query": "moai_cli::ontology::is_rfc3339의 실제 구현 파일은 어디인가",
+   "pattern": "moai_cli::ontology::is_rfc3339",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/ontology.rs"
+    ]
+   },
+   "source": "Pinned 98dab71433617ba179c164be8b7ca169e62fe7dc src/ontology.rs:162 public is_rfc3339 declaration. Reviewer scope: the fully qualified public Rust name resolves to this implementation; the declaration does not contain the qualified spelling, so rg's literal miss is valid.",
+   "id": "T-033"
+  },
+  {
+   "kind": "graph",
+   "query": "src/archive.rs references src/profile.rs (profile::read_profile)",
+   "pattern": "profile::read_profile",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/archive.rs"
+    ],
+    "relation": [
+     "src/archive.rs",
+     "references",
+     "src/profile.rs"
+    ]
+   },
+   "source": "#2187 D1 grace resolve reads the profile",
+   "id": "G-001"
+  },
+  {
+   "kind": "graph",
+   "query": "src/pr_link.rs references src/forge/outbox.rs (parse_op_markers)",
+   "pattern": "parse_op_markers",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/pr_link.rs"
+    ],
+    "relation": [
+     "src/pr_link.rs",
+     "references",
+     "src/forge/outbox.rs"
+    ]
+   },
+   "source": "#2329 op marker round trip",
+   "id": "G-002"
+  },
+  {
+   "kind": "graph",
+   "query": "src/handoff.rs references src/forge/outbox.rs (parse_op_markers)",
+   "pattern": "parse_op_markers",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/handoff.rs"
+    ],
+    "relation": [
+     "src/handoff.rs",
+     "references",
+     "src/forge/outbox.rs"
+    ]
+   },
+   "source": "#2329 op marker round trip",
+   "id": "G-003"
+  },
+  {
+   "kind": "graph",
+   "query": "src/decision.rs references src/lib.rs (crate::digest)",
+   "pattern": "crate::digest",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/decision.rs"
+    ],
+    "relation": [
+     "src/decision.rs",
+     "references",
+     "src/lib.rs"
+    ]
+   },
+   "source": "#2011 decision line_sha256",
+   "id": "G-004"
+  },
+  {
+   "kind": "graph",
+   "query": "src/audit.rs references src/baseline.rs (tree_digest)",
+   "pattern": "tree_digest",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/audit.rs"
+    ],
+    "relation": [
+     "src/audit.rs",
+     "references",
+     "src/baseline.rs"
+    ]
+   },
+   "source": "#2318 audit re-check",
+   "id": "G-005"
+  },
+  {
+   "kind": "graph",
+   "query": "src/claim_verify.rs references the handoff protocol (moai-claim-handoff)",
+   "pattern": "moai-claim-handoff",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/claim_verify.rs"
+    ],
+    "relation": [
+     "src/claim_verify.rs",
+     "references",
+     "handoff protocol"
+    ]
+   },
+   "source": "#2006 handoff machine line; verified on the audited tip (leader.rs does not reference LeaderSettings — the original G-006 relation does not exist)",
+   "id": "G-006"
+  },
+  {
+   "kind": "graph",
+   "query": "src/flow.rs references src/forge/transport.rs (forge::transport)",
+   "pattern": "forge::transport",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/flow.rs"
+    ],
+    "relation": [
+     "src/flow.rs",
+     "references",
+     "src/forge/transport.rs"
+    ]
+   },
+   "source": "#2279 gate transport",
+   "id": "G-007"
+  },
+  {
+   "kind": "graph",
+   "query": "src/main.rs references src/atlas_tag.rs (scan_path)",
+   "pattern": "scan_path",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/main.rs"
+    ],
+    "relation": [
+     "src/main.rs",
+     "references",
+     "src/atlas_tag.rs"
+    ]
+   },
+   "source": "#2178 routes the tag scanner",
+   "id": "G-008"
+  },
+  {
+   "kind": "graph",
+   "query": "src/main.rs references src/contract.rs (PROTOCOL_VERSION)",
+   "pattern": "PROTOCOL_VERSION",
+   "roots": [
+    "src"
+   ],
+   "ground_truth": {
+    "files": [
+     "src/main.rs"
+    ],
+    "relation": [
+     "src/main.rs",
+     "references",
+     "src/contract.rs"
+    ]
+   },
+   "source": "01-C envelope constant",
+   "id": "G-009"
+  },
+  {
+   "id": "TF-01",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-01: add",
+   "suite_ref": "F-01",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-02",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-02: delete",
+   "suite_ref": "F-02",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-03",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-03: modify",
+   "suite_ref": "F-03",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-04",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-04: untracked new file",
+   "suite_ref": "F-04",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-05",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-05: branch switch",
+   "suite_ref": "F-05",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-06",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-06: rename",
+   "suite_ref": "F-06",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-07",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-07: two worktrees of one repository",
+   "suite_ref": "F-07",
+   "ground_truth": {
+    "expected_state": "stale"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  },
+  {
+   "id": "TF-08",
+   "kind": "freshness",
+   "query": "FRESHNESS fixture case F-08: scan failure removes an edge while the file remains",
+   "suite_ref": "F-08",
+   "ground_truth": {
+    "expected_state": "partial"
+   },
+   "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
+  }
+ ]
+}

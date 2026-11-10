@@ -109,8 +109,10 @@ fn the_scan_flags_an_unscrubbed_spawn_and_accepts_a_scrubbed_one() {
 }
 
 fn git(dir: &Path, args: &[&str]) {
+    // Keep the env-isolation probe and identity while applying the shared fixture guards.
     let mut cmd = Command::new("git");
-    cmd.args(args)
+    cmd.args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+        .args(args)
         .current_dir(dir)
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
