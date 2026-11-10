@@ -1,200 +1,132 @@
-# #2383 설계 — Claude Code 상태줄을 moai-cli로 전환(경로 이름 `moai` 제거 전제)
+# #2383 설계(v2, 수리판) — Claude Code 상태줄을 moai-cli로 전환(경로 이름 `moai` 제거 전제)
 
-상태: 설계(design-only) — 이 문서는 아무것도 바꾸지 않는다. 읽기 전용 실측만 수행했다.
-요청: 사용자 지시 2026-11-10T11:50Z ("기존 `moai`를 PATH 제거하고 moai-cli로 claude code statusline은 moai 제거해도 동일하게 statusline이 나오도록").
-선행: PR #2374(#2350 Rust statusline) 병합·재설치 — 본 문서는 그 전제 위의 전환 설계다. #2374 자체는 수정하지 않는다.
+상태: 설계(design-only) v2 — v1(감사 FAIL, agent-3-t62 코멘트 6767987735, 차단 B1–B4)의 전면 재작성판. 이 문서는 아무것도 바꾸지 않는다. 모든 실측은 2026-11-10 읽기 전용이며, 이 문서가 다루는 "실행"은 전부 후속 구현 단계의 것으로 본 PR은 실행하지 않는다(§5 각 단계의 직전 확인 포함).
+요청: 사용자 지시 2026-11-10T11:50Z. 선행: PR #2374(#2350 Rust statusline) 병합·재설치 — #2374 자체는 수정하지 않는다.
+v1 대비 정정: 실제 경로를 프로젝트 기준으로 바로잡았고(§0), Go 플러그인 MCP 소비자를 인벤토리에 넣었으며(§1.4), 훅 전환을 "Go 스크립트 복사·sed" 대신 **Rust 책임 4개 기준 대체/폐기 표**(§3)로 다시 설계했고, 되돌리기를 진짜 역연산+해시 검증으로 고쳤으며(§6), 절차를 승인 순서(인벤토리 → 격리 검증 → 미리보기·백업 → 단계별 직전 확인)로 재배열했다(§5).
 
-## 1. 현재 상태 실측 인벤토리 (2026-11-10, 읽기 전용 — 방법은 §9)
+## 0. 대상 파일 원장 — 소유·mode·해시 (승인 순서 1단계: 맨 먼저)
 
-### 1.1 `moai` 이름이 존재하는 파일 3종
+모든 경로는 이 기계 실측(2026-11-10). `$PRI` = `/Users/goos/MoAI/moai-adk`.
 
-| 경로 | 실체 | PATH 도달성 |
-| --- | --- | --- |
-| `~/go/bin/moai` | 라우팅 shim 스크립트(2026-11-10 리더 설치). launcher 단어(cc·glm·codex·omp·-l·-a)→ Rust(`~/.moai-cli/path/moai-cli`), Go 전용 하위명령(hook·statusline·mcp-server·session 등 80단어)→ `~/go/bin/moai.old` | **PATH에 있음**(`~/go/bin`) |
-| `~/.moai-cli/path/moai` | 위 shim과 **바이트 동일**한 사본(2026-11-10 15:28 설치) | 디렉터리가 PATH에 없음 |
-| `~/.moai-cli/path/moai-cli` | Rust 빌드 심링크(versions/2026.11.0-rc.1+f259f15a1) | 디렉터리가 PATH에 없음 |
-
-shim 헤더에 Undo가 문서화되어 있다: `mv "$HOME/go/bin/moai.old" "$HOME/go/bin/moai"` (및 `~/.moai-cli/path/moai` 제거).
-
-### 1.2 PATH 이름 `moai`에 의존하는 파일·행 (전수)
-
-1. **`.moai/status_line.sh`** — 상태줄 wrapper. PATH 의존 행:
-   - 22행 `if command -v moai &> /dev/null; then` / 23행 `exec moai statusline`
-   - 29–30행 절대 폴백 `exec "/Users/goos/go/bin/moai" statusline` — **가리키는 것은 moai.old가 아니라 shim 자체**
-   - 34–35행 `$HOME/go/bin/moai`(위와 같은 파일), 39–40행 `~/.local/bin/moai`(부재)
-   - 9–11행 `~/.moai/.env.glm` source(stdin 닫음 — 값은 출력·복사하지 않음, 기존 행동 보존)
-2. **`.claude/hooks/moai/*.sh`** — `.sh` 46개 중 44개가 `moai` 문자열 포함, 명령형 호출 행 182행. 호출 형태: `moai hook <sub>`(exec 또는 `printf | moai hook …`) 전부 — Go 훅 포워더. 폴백 사슬(handle-pre-tool.sh 70–86행이 대표): PATH `moai` → `$HOME/go/bin/moai`(shim) → `~/.local/bin/moai` → exit 0(침묵).
-3. **`.claude/settings.json`** — `hooks/moai/` 참조 36곳, 20 이벤트에 **30개 스크립트 배선**. 차단 가능 이벤트(PreToolUse·UserPromptSubmit·Stop·SubagentStop·StopFailure)에 걸린 스크립트 **13개**(handle-pre-tool·handle-stop·handle-stop-goal·handle-security-turn·handle-security-commit·sync-phase-quality-gate·handle-multi-review-gate·handle-codex-review-gate·handle-codex-review-entry·handle-user-prompt-submit·chain-event·handle-subagent-stop·handle-stop-failure). statusLine 자체는 10행 `.moai/status_line.sh` 참조.
-4. **MCP 서버** — 등록 무: 프로젝트 `.claude/settings.json`·`~/.claude/settings.json` 모두 `mcpServers` 키 없음, `.mcp.json` 파일 없음, `~/.claude.json`의 mcpServers는 무관 항목(higgsfield)만. `moai mcp-server`는 Go 능력으로 존재하지만 어디에도 배선되어 있지 않다.
-5. **사용자 전역 `~/.claude/settings.json` statusLine** — Orca wrapper 스크립트, `moai` 문자열 없음(영향 없음).
-
-정산: 리더 실측 "42/48" 대비 본 문서 "44/46" — 측정 방법 차이(리더: 훅 스크립트 48개 기준 moai 호출 여부 / 본 문서: `.sh` 확장자 46파일 중 moai 문자열 포함 44, 디렉터리 49항목 중 비-스크립트 3). 어느 쪽도 규칙 판정에는 영향 없으며 이후 카드는 본 문서의 방법(§9 명령)을 표준으로 쓴다.
-
-### 1.3 moai 제거 시 항목별 영향 ("제거"의 두 층을 구분)
-
-`moai` 제거에는 두 층이 있다 — **(i) PATH 이름 제거**(shim 파일은 유지)와 **(ii) shim 파일 제거**(~/go/bin/moai 삭제·이동). 결과가 다르다.
-
-| 항목 | (i) PATH 이름만 제거 | (ii) shim 파일까지 제거 |
-| --- | --- | --- |
-| 상태줄(현행 스크립트) | `command -v moai` 실패 → 29행 절대 폴백이 shim 파일을 exec → **Go statusline 계속 렌더**(변화 없음) | 29·34행 폴백 모두 실패(`~/.local/bin/moai` 부재) → 42행 exit 0 → **상태줄 소멸** |
-| 훅 44파일(가드) | PATH 호출 실패 → `$HOME/go/bin/moai`(shim) 절대 폴백 → moai.old 훅 계속 실행 → **가드 유지**(차단 계약 포함) | 폴백 전부 실패 → handle-pre-tool 등은 exit 0(침묵, **차단하지 않는 안전 방향**) · `exec moai hook …`형도 exit 0 → **가드 소멸**(보호 없음) |
-| MCP 서버 | 등록 자체가 없음 → **영향 없음** | 동일 |
-| session 런처 | shim의 `session` 단어는 moai.old session(Go 세션 런처)로 라우팅 — PATH 이름 제거 후에도 shim 파일이 있으면 동작. `moai-cli session`(Rust)은 별개 이름으로 상시 가능 | `moai session` 소멸(Rust `moai-cli session`은 계속) |
-| launcher(cc·glm·-l·-a) | shim 경유 Rust — shim 파일 유지 시 무관. `moai-cli` 직접 호출은 `~/.moai-cli/path`가 PATH에 없어 **절대 경로 필요** | `moai-cli` 절대 경로로만 가능 |
-
-결론: **(i)만으로는 아무것도 깨지지 않는다**(shim 파일이 절대 폴백으로 모든 것을 계속 서빙). 실질 전환의 본체는 상태줄 스크립트 교체(§4)이고, 훅은 §3 선택지에 따른다.
-
-## 2. 훅 3 선택지 판정
-
-| 선택지 | 내용 | 즉시 가능 | 되돌리기 | 부작용 |
+| 파일 | 소유 | mode | sha256(앞 16) | 역할 |
 | --- | --- | --- | --- | --- |
-| (가) 훅은 절대 경로 Go(moai.old) 호출로 변환, PATH 이름만 제거 | 44파일의 `moai hook` 호출을 `"$HOME/go/bin/moai.old" hook`으로 일괄 치환(sed 1패스) 후 `~/go/bin/moai` 파일 제거 | **가능**(기계적 치환) | 치환 역방향 sed + shim 복원(§7) | 훅은 계속 Go 동작 — Rust 전환은 나중으로. shim 삭제로 launcher 단어는 `moai-cli` 직접 호출 필요(§4 스크립트가 그 경로) |
-| (나) 훅을 Rust hook 진입점으로 이전 후 제거 | Rust 쪽 훅 핸들러 구현이 선행 | **불가** — Rust 훅 진입점이 아직 없다(#2374는 statusline만) | — | #2374 이후 별도 카드 |
-| (다) 이 프로젝트 Go 훅 종료 | settings.json 훅 블록 제거 | 가능 | 훅 블록 백업 복원 | **가드 소멸**(차단 계약·품질 게이트 전부 off) — 실행 중 세션 보호 상실 |
+| `$PRI/.moai/status_line.sh` | goos | `-rwxr-xr-x@` | `2f5eb54cfb1094dd` | 상태줄 wrapper — settings.json `statusLine.command`(같은 파일 10행)이 이것을 실행 |
+| `~/go/bin/moai` | goos | `-rwxr-xr-x` | `bbedd136ab623dd3` (1510B) | 라우팅 shim — **PATH에 있음**(`~/go/bin`). launcher 단어→Rust, Go 전용 64단어(hook·statusline·mcp-server·session 포함)→`~/go/bin/moai.old` |
+| `~/.moai-cli/path/moai` | goos | `-rwxr-xr-x` | `bbedd136ab623dd3` (1510B) | 위 shim과 바이트 동일 사본 — 디렉터리가 PATH에 없음 |
+| `$PRI/.moai-cli/install/moai-shim.sh` | goos | `-rw-r--r--@` | `bbedd136ab623dd3` (1510B) | shim **설치 원본** — live shim 2곳과 `cmp` 동일 실측. 되돌리기의 정본(§6) |
+| `~/go/bin/moai.old` | goos | `-rwxr-xr-x` | — (78,709,760바이트 Go 바이너리) | Go 빌드 — 훅·statusline·mcp-server·session의 현재 실행체 |
+| `~/.moai-cli/path/moai-cli` | goos | 심링크 | → `versions/2026.11.0-rc.1+f259f15a1/bin/moai-cli` | Rust 빌드(PR #2374의 statusline은 미포함 — 미병합) |
+| `$PRI/.claude/hooks/moai/` (디렉터리) | goos | `drwxr-xr-x` | — | Go 훅 포워더 `.sh` **46개**(전부 .sh — 디렉터리에 비-.sh 항목 없음) |
 
-**권고: (가)를 이 전환의 훅 방침으로 채택, (나)를 #2374 병합 이후 후속 카드로 등록.** 근거: (가)는 무중단·기계적·완전 되돌리기 가능이고 가드를 유지한다. (나)는 전제(구현)가 없어 지금 설계할 수 없고, (다)는 사용자가 유지 중인 가드를 없애는 방향이라 본 카드의 목적(statusline만 동일하게)과 무관하게 범위를 넓힌다.
+참고: v1의 "디렉터리 49항목 중 비-.sh 3"은 셸 별칭(`ls`→`ls -l`)이 만든 착시였다. 정정: `ls -A` 항목 46 = `.sh` 46, 비-.sh 없음(이전 감사 t62 관측과 일치).
 
-(가)의 정확한 절차(후속 구현 카드용, 본 PR은 실행하지 않음):
-1. 사본: `cp -R ~/.claude/hooks/moai ~/.claude/hooks/moai.bak-<date>` (사용자 확인 후).
-2. 치환: `*.sh`에서 `moai hook ` → `"$HOME/go/bin/moai.old" hook ` (182행 중 `moai hook`형 전부; 다른 형태는 §1.2 분포 표 기준 없음을 사전 grep으로 재확인).
-3. 검증: 치환 후 각 파일의 남은 `moai ` 호출 0건(grep), dry 실행 1건(한 스크립트에 빈 stdin → 기존과 동일 분류).
-4. 제거: `rm ~/go/bin/moai`(shim) — `~/.moai-cli/path/moai`는 비-PATH라 유지해도 무방하나 혼동 방지를 위해 함께 제거 권고.
-5. 이 시점부터 launcher는 `moai-cli` 이름으로 호출(§4 스크립트가 절대 경로 폴백을 포함하므로 PATH 등록과 무관하게 동작).
+## 1. 활성 consumer 인벤토리 (승인 순서 1단계 — "무엇이 지금 moai를 쓰는가")
 
-## 3. 대체 statusline 스크립트 (`.moai/status_line.sh` 교체안 전문)
+### 1.1 Go 플러그인 MCP 서버 — **v1에서 누락된 살아 있는 소비자 (B1 정정)**
 
-설계 원칙: (1) `moai-cli` 우선 — 절대 경로가 PATH 변화에 무관하게 먼저, (2) moai-cli 부재 시 **Go(moai.old) 절대 경로** 폴백 — 상태줄이 사라지지 않는다, (3) 마지막 폴백으로 현행 shim(전환 실패 시에도 렌더 유지), (4) `.env.glm` source 행동은 현행 그대로 보존(stdin 닫음·값 출력 없음), (5) 임시 파일 없음(현행 exec 규약 유지).
+- `~/.claude/settings.json` `enabledPlugins`: `"moai@moai-adk": true`.
+- 설치본 `~/.claude/plugins/cache/moai-adk/moai/3.1.3/.mcp.json`: `{"mcpServers": {"moai": {"command": "moai", "args": ["mcp-server"]}}}` — **PATH 이름 `moai`로 기동하는 절대 경로 아닌 등록**.
+- 실행 실측(2026-11-10 재측정): `moai mcp-server`(PATH 이름) 프로세스 **22개**, `/Users/goos/go/bin/moai.old mcp-server` **11개** — 합계 33개가 살아 있다(이전 감사 t62의 12:59Z 측정 22+11과 동일 수준).
 
-```bash
-#!/bin/bash
-# MoAI Statusline Wrapper — Issue #2383 design (replaces the moai-PATH lookup).
-# 1) moai-cli (Rust, absolute install path first), 2) legacy Go via absolute
-# moai.old, 3) the routing shim. stdin JSON is passed straight through; no
-# temp files are created (exec replaces the shell, see the old comment below).
+### 1.2 Go 훅 포워더 — settings 배선
 
-if [ -f "$HOME/.moai/.env.glm" ]; then
-	# shellcheck disable=SC1091
-	source "$HOME/.moai/.env.glm" </dev/null
-fi
+`.claude/settings.json`의 `hooks/moai/` 참조 36곳, 20 이벤트에 **30개 스크립트** 배선. 차단 가능 이벤트에 걸린 13개: handle-pre-tool(PreToolUse)·handle-user-prompt-submit·handle-stop·handle-stop-goal·handle-security-turn·handle-security-commit·sync-phase-quality-gate·handle-multi-review-gate·handle-codex-review-gate·handle-codex-review-entry·chain-event·handle-subagent-stop·handle-stop-failure. 호출 형태는 전부 `moai hook <sub>`(exec 또는 `printf | moai hook …`)이며, 스크립트 내부에 PATH 폴백 사슬이 있다(handle-pre-tool.sh 70–86행: `command -v moai` → `$HOME/go/bin/moai` → `~/.local/bin/moai` → exit 0).
 
-# 1) The Rust statusline (PR #2374). Absolute install path first: it does not
-#    depend on PATH at all.
-if [ -x "$HOME/.moai-cli/path/moai-cli" ]; then
-	exec "$HOME/.moai-cli/path/moai-cli" statusline
-fi
-if command -v moai-cli &> /dev/null; then
-	exec moai-cli statusline
-fi
+### 1.3 statusline
 
-# 2) Legacy Go statusline by absolute path — keeps the same rendering when
-#    moai-cli is missing. Deliberately NOT the `moai` routing shim: this script
-#    must render even after the `moai` name leaves PATH.
-if [ -x "$HOME/go/bin/moai.old" ]; then
-	exec "$HOME/go/bin/moai.old" statusline
-fi
+`.claude/settings.json` `statusLine.command` = `"$CLAUDE_PROJECT_DIR/.moai/status_line.sh"`(refreshInterval 60). 스크립트의 PATH 의존 행: 22–23(`command -v moai` + `exec moai statusline`), 29–30(절대 `~/go/bin/moai` = **shim**), 34–35(같은 파일 $HOME 확장), 39–40(`~/.local/bin/moai`, 부재). 9–11행 `~/.moai/.env.glm` source(stdin 닫음 — 값은 다루지 않는다).
 
-# 3) Last resort: the old shim (renders via Go today). Removed in option (가)
-#    step 4, so this arm exists only before that step runs.
-if [ -x "/Users/goos/go/bin/moai" ]; then
-	exec "/Users/goos/go/bin/moai" statusline
-fi
+### 1.4 그 외
 
-# Not found - exit silently (Claude Code handles missing statusline gracefully)
-exit 0
-```
+- 사용자 전역 `~/.claude/settings.json` statusLine: Orca wrapper — `moai` 문자열 없음(영향 없음).
+- MCP 등록: 프로젝트·사용자 settings에 `mcpServers` 키 없음, 저장소 루트 `.mcp.json` 없음. 유일한 moai MCP 배선이 §1.1의 플러그인이다(v1의 "MCP 0건"은 이 배선을 놓쳤다 — 정정).
+- 세션 런처: shim의 launcher 단어(cc·glm·codex·omp·-l·-a)는 Rust로 간다. `moai-cli` 자체는 `~/.moai-cli/path`가 PATH에 없어 **이름으로는 해석되지 않는다**(절대 경로 또는 shim 경유).
 
-폴백 사슬 요약: `~/.moai-cli/path/moai-cli` → PATH `moai-cli` → `~/go/bin/moai.old` → 기존 shim → exit 0. "moai-cli가 없을 때"는 2단계(Go)로 렌더가 유지되고, "moai가 PATH에 없는 셸"에서도 1단계 절대 경로는 영향받지 않는다(Issue AC-2).
+## 2. 영향 분석 — "moai 제거"의 두 층
 
-## 4. 사용자에게 보일 변경 전/후 diff (`.moai/status_line.sh`)
+| 항목 | (i) PATH 이름만 제거(shim 파일 유지) | (ii) shim 파일 제거 |
+| --- | --- | --- |
+| 상태줄(현행) | `command -v moai` 실패 → 29행 절대 폴백=shim exec → **Go 렌더 유지** | 폴백 전부 실패 → exit 0 → **상태줄 소멸** |
+| 훅 44파일(가드) | PATH 호출 실패 → `$HOME/go/bin/moai`(shim) 절대 폴백 → moai.old 훅 실행 → **가드 유지** | 폴백 실패 → exit 0(침묵) 또는 exec 실패 → **13개 차단 가드 포함 전부 소멸** |
+| 플러그인 MCP(§1.1) | 기존 33프로세스는 생존, **신규 기동은 실패**(PATH 이름 의존) — 세션 재시작 시마다 증가 | 신규 기동 실패는 동일 |
+| launcher(cc·glm·-l·-a) | shim 경유 Rust — 유지 | `~/.moai-cli/path/moai-cli` 절대 호출만 가능 |
 
-전환 적용 시 사용자에게 승인·공개할 diff의 요지(전문은 §3의 after와 현재 파일이 before):
+## 3. 훅 전환 — Rust 책임 4개 기준 대체/폐기 표 (B2 정정: Go 스크립트 복사·sed 없음)
 
-```diff
---- a/.moai/status_line.sh   (before — PATH 이름 의존)
-+++ b/.moai/status_line.sh   (after — moai-cli 우선 + Go 절대 폴백)
-@@ -9,7 +9,7 @@
- if [ -f "$HOME/.moai/.env.glm" ]; then
-     source "$HOME/.moai/.env.glm" </dev/null
- fi
--
--if command -v moai &> /dev/null; then
--	exec moai statusline
--fi
--
--# Try the installed binary's own resolved path (captured at init/update time).
--if [ -f "/Users/goos/go/bin/moai" ]; then
--	exec "/Users/goos/go/bin/moai" statusline
--fi
--
--# Try the Go bin directory ($HOME-relative for portability).
--if [ -f "$HOME/go/bin/moai" ]; then
--	exec "$HOME/go/bin/moai" statusline
--fi
--
--# Try user local bin directory.
--if [ -f "$HOME/.local/bin/moai" ]; then
--	exec "$HOME/.local/bin/moai" statusline
--fi
-+if [ -x "$HOME/.moai-cli/path/moai-cli" ]; then
-+	exec "$HOME/.moai-cli/path/moai-cli" statusline
-+fi
-+if command -v moai-cli &> /dev/null; then
-+	exec moai-cli statusline
-+fi
-+if [ -x "$HOME/go/bin/moai.old" ]; then
-+	exec "$HOME/go/bin/moai.old" statusline
-+fi
-+if [ -x "/Users/goos/go/bin/moai" ]; then
-+	exec "/Users/goos/go/bin/moai" statusline
-+fi
+전제 실측: Rust 빌드에 `hook` 하위 명령이 없다(`src/main.rs` grep 0건 — 2026-11-10). 따라서 **지금 시점의 전환은 없으며**, 아래 표는 Rust 훅 진입점이 구현된 이후의 대체/폐기 계획표다. 그 이전 단계에서 훅은 전부 현행(PATH shim 경유 Go)으로 **무변경 유지**가 기본이고, 이것이 v1 (가)의 "복사·sed"를 대체한다.
 
- # Not found - exit silently (Claude Code handles missing statusline gracefully)
- exit 0
-```
+| Rust 책임 | 커버하는 Go 훅(스크립트) | 전환 시 대체 | 버려지는 것(의도된 폐기) |
+| --- | --- | --- | --- |
+| **session-check** | handle-session-start(-navigator)·handle-session-end·session-start-compact | 세션 시작·종료 기록과 게이트를 Rust가 판정 | Go의 세션 기록 포맷 의존(이관 후 폐기) |
+| **tool-preflight** | handle-pre-tool(PreToolUse 차단)·handle-user-prompt-submit·chain-event·handle-subagent-stop | **exit-2/JSON 거부 계약을 Rust가 이관** — 이관 완료 전까지 Go 훅 제거 금지 | Go 폴백 사슬(command -v/절대 경로 3단 — Rust는 자체 바이너리 경로를 쓰므로 불필요) |
+| **tool-observe** | handle-post-tool·handle-post-tool-failure·handle-harness-observe·handle-codex-review-entry | 관찰 전용(비차단) 기록 이관 | 기록 포맷의 Go 호환 필드 |
+| **turn-validation** | handle-stop·handle-stop-goal·handle-security-turn·handle-security-commit·sync-phase-quality-gate·handle-multi-review-gate·handle-codex-review-gate·handle-task-completed·handle-teammate-idle | 턴 완료 검증 게이트 이관 | 동일 |
+| **해당 없음(책임 밖)** | handle-compact·handle-post-compact·handle-config-change·handle-cwd-changed·handle-file-changed·handle-instructions-loaded·handle-permission-denied·handle-permission-request·status-transition-ownership·handle-elicitation* ·trace-ledger·verify-sync-backup(moai 언급 없음 2개 포함) | 대체 없음 — Go 유지 또는 별도 결정 | 없음 |
 
-사용자 관점 변화: `settings.json`은 **무변경**(statusLine.command는 같은 스크립트를 가리킨다). 화면에 보이는 상태줄은 #2374의 Rust statusline이 Go와 바이트 동일임이 구현 단계에서 검증된 뒤에야 바뀐다(Issue AC-1 — 이 카드의 실행 단계에서 수행).
+표의 운용 규칙: 각 행의 "이관 완료"는 (a) Rust 진입점 존재, (b) 동일 stdin 계약 시험, (c) 기존 fixture 시험 녹색 — 세 조건으로 판정하고, 미충족 행은 Go 유지. **13개 차단 가드가 조용히 꺼지는 상태**(v1 (가)의 결함)는 이 규칙으로 원천 차단된다.
 
-## 5. 되돌리기 명령 (각 변경 1:1)
+## 4. 영향받는 사용자 설정과 활성 세션 보존 (B4 정정)
+
+- 살아 있는 moai MCP 프로세스 33개(§1.1)는 PATH 이름 제거 시 **신규 기동만 실패**(기존 프로세스는 계속 렌더·응답). 세션을 재시작하지 않는 한 즉시 깨지지 않는다 — 그래도 제거는 §5 최종 단계로 미루고, 제거 전 플러그인 MCP의 처리(비활성화 / 절대 경로化 / 유지)는 **사용자 결정**으로 올린다(§5 단계 6의 직전 확인 항목).
+- 현재 세션들이 사용 중인 훅 30스크립트는 §3 규칙으로 무변경 유지된다. 본 PR·본 설계는 그 어떤 파일도 쓰지 않았다(§0 원장의 해시가 적용 전후 동일함을 확인하는 용도).
+
+## 5. 승인 순서 절차 (각 실제 변경·영구 삭제의 직전 별도 확인)
+
+격리 검증이 실제 변경보다 **먼저** 온다. `$PRI` 기준 실제 경로를 쓴다.
+
+1. **원장·인벤토리 기록**(완료 — §0·§1): 소유·mode·sha256·활성 consumer. 변경 후 이 표와 재대조한다.
+2. **격리 HOME 선검증(실제 변경 전)**: 임시 HOME·임시 프로젝트에서 (a) §4 대체 statusline 스크립트가 같은 stdin에 같은 출력을 내는지(Issue AC-2 — PATH에서 moai 제거된 셸), (b) moai-cli 부재 시 Go 폴백 렌더, (c) 전환 후 훅 경로가 도구 호출을 막지 않음(AC-3). 실패 시 여기서 중단 — 실제 파일은 아직 무변경.
+3. **미리보기 제시**: §6의 before/after diff를 사용자에게 보인다.
+4. **복구 백업(사본 생성 — 원본 불변)**: `cp $PRI/.moai/status_line.sh $PRI/.moai/status_line.sh.before-2383` + sha256 기록. (훅은 무변경이므로 백업 불필요 — §3 무변경 유지 원칙.)
+5. **실행 직전 확인 ①**: 상태줄 교체(`status_line.sh` 갱신) — 운영자 확인을 받은 직후에만 실행. readback: sha256 재대조 + `bash -n` 통과.
+6. **실행 직전 확인 ②**: PATH에서 `moai` 제거(`rm ~/go/bin/moai` — **영구 삭제**) — (a) §4 대체 스크립트 적용 완료, (b) 훅 무변경 유지 확인, (c) 플러그인 MCP 처리 사용자 결정 완료, (d) 격리 검증 GREEN — 네 조건 확인 직후에만. 제거 후 readback: `command -v moai` 실패 + 상태줄 렌더 유지 + 훅 통과(AC-2·AC-3 재관측).
+7. **기록**: decisions log에 각 단계의 승인·readback·되돌리기 명령을 함께 기록.
+
+되돌리기(§6)는 모든 단계에서 유효하며 단계별로 즉시 실행 가능해야 한다.
+
+## 6. 되돌리기 — 진짜 역연산 + 해시 검증 (B3 정정: 실제 경로·정본 원본)
 
 ```sh
-# 0) 적용 직전 사본 (변경의 일부로 먼저 수행)
-cp ~/.moai/status_line.sh ~/.moai/status_line.sh.before-2383
+# R1. 상태줄 스크립트 복원 (5단계 되돌리기) — 백업 사본에서 복원 후 해시 검증
+cp /Users/goos/MoAI/moai-adk/.moai/status_line.sh.before-2383 \
+   /Users/goos/MoAI/moai-adk/.moai/status_line.sh
+shasum -a 256 /Users/goos/MoAI/moai-adk/.moai/status_line.sh   # → 2f5eb54cfb10… 일치 확인
 
-# 1) 상태줄 스크립트 되돌리기 (사본 복원 — 즉시 효과, 다음 렌더부터 Go 렌더)
-cp ~/.moai/status_line.sh.before-2383 ~/.moai/status_line.sh
-
-# 2) 훅 치환 되돌리기 ((가)를 실행한 경우 — 사본 디렉터리 역복사)
-rm -r ~/.claude/hooks/moai && cp -R ~/.claude/hooks/moai.bak-<date> ~/.claude/hooks/moai
-
-# 3) PATH/shim 되돌리기 (shim 헤더의 Undo 그대로)
-mv "$HOME/go/bin/moai.old" "$HOME/go/bin/moai" 2>/dev/null || true
-#   (~/.moai-cli/path/moai를 제거했다면: cp "$HOME/go/bin/moai" "$HOME/.moai-cli/path/moai")
-
-# 4) 확인: command -v moai → shim 재등장, 상태줄 즉시 Go 렌더 복귀
+# R2. PATH 이름 복원 ((6)단계 되돌리기) — 설치 원본에서 복원 + 해시 검증
+cp /Users/goos/MoAI/moai-adk/.moai-cli/install/moai-shim.sh "$HOME/go/bin/moai"
+shasum -a 256 "$HOME/go/bin/moai"                              # → bbedd136ab62… 일치 확인
+command -v moai                                                # 재등장 관찰
 ```
 
-되돌리기 전제: 1·2는 사본이 있어야 하고(적용 절차 0단계), 3은 shim 헤더에 문서화된 공식 Undo다.
+- v1의 `mv moai.old moai`는 **삭제한다**: moai.old를 없애는 것이 역연산이 아니며, §3 스크립트·(가) 치환 뒤의 절대 호출을 깨뜨린다(t62 지적 정당). moai.old는 항상 그 자리에 남는다.
+- 설치 원본의 정본: `$PRI/.moai-cli/install/moai-shim.sh`(sha `bbedd136ab623dd3…`, live shim 2곳과 `cmp` 동일 실측). v1이 상대했던 `~/.moai-cli/install/`은 존재하지 않는다 — 경로 정정 기록.
+- 훅은 §3 원칙상 무변경이므로 훅 되돌리기는 존재하지 않는다(무엇도 바꾸지 않았다).
 
-## 6. 적용 절차 (후속 구현 카드용 — 본 PR은 실행하지 않음)
+## 7. 실측 방법 (재현 가능 — BSD grep 괄호 문제 회피)
 
-0. **운영자 승인 1회**(저장소 설정·사용자 설정 변경 — release-checklist 규칙) + 사본 생성(§5-0, 훅은 §2-(가)-1).
-1. **#2374 병합·재설치 확인**: `~/.moai-cli/path/moai-cli statusline`이 실행되는지(없으면 이 카드의 실행 부분은 대기).
-2. **바이트 비교(Issue AC-1)**: 기록된 실제 stdin 사본 N개에 대해 `$HOME/go/bin/moai.old statusline` 출력 vs `moai-cli statusline` 출력 — 다르면 차이 목록·원인을 문서화하고 전환 보류.
-3. **교체**: §3 스크립트로 `.moai/status_line.sh` 갱신(§5-0 사본 후) + 사용자에게 §4 diff 제시.
-4. **검증(Issue AC-2)**: `env PATH=/usr/bin:/bin` (moai 이름 없는 셸)에서 같은 stdin → 같은 출력(1단계 절대 경로가 잡음). **AC-3**: 임시 HOME·임시 프로젝트에서 훅이 도구 호출을 막지 않음을 선택지 (가) 기준으로 확인(훅은 moai.old 절대 호출 유지).
-5. **훅 (가) 전환**(§2 절차) — 별도 승인 시.
-6. **`moai` 이름 제거**: `rm ~/go/bin/moai` (+ `~/.moai-cli/path/moai`) — 2·4·5가 전부 관찰된 뒤에만.
-7. **기록**: decisions log에 적용·검증·되돌리기 명령과 함께 기록.
+v1의 `grep -rhE '([;&|…])'` 명령은 macOS BSD grep에서 `brackets not balanced`로 실패했다(정정). 측정 표준은 Python `re`로 통일한다:
 
-## 7. 이 문서의 실측 방법 (재현 가능한 명령)
+```sh
+python3 - <<'EOF'
+import re, pathlib, collections
+d = pathlib.Path('/Users/goos/MoAI/moai-adk/.claude/hooks/moai')
+pat = re.compile(r'(^|[;&|"`\s(])(command -v\s+)?moai(?=[\s;&|)"\']|$)')
+total = 0
+for f in sorted(d.glob('*.sh')):
+    n = sum(len(pat.findall(l)) for l in f.read_text().splitlines())
+    total += n
+print('moai call lines:', total)
+EOF
+```
 
-- shim 3종: `which moai` + `diff ~/.moai-cli/path/moai ~/go/bin/moai`(IDENTICAL) + `ls ~/.moai-cli/path/`
-- 훅 수: `ls .claude/hooks/moai/*.sh | wc -l`(46) · `grep -lic moai .claude/hooks/moai/*.sh | wc -l`(44) · `grep -rhE '(^|[;&|"'\'' (])(command -v )?moai([ ;&|)"'\''|$)' .claude/hooks/moai/ | wc -l`(182)
-- 배선: `.claude/settings.json` 파싱 — 이벤트 20종, `hooks/moai/` 참조 36곳, 스크립트 30종, 차단 이벤트 스크립트 13종(§1.2 스크립트별 매핑은 본 감사 세션 로그의 이벤트→스크립트 표)
-- statusLine: `.claude/settings.json` `statusLine.command`(10행 앵커) · `~/.claude/settings.json` statusLine(Orca wrapper, moai 문자열 없음)
-- MCP: settings 2종 + `.mcp.json`(부재) + `~/.claude.json` mcpServers(moai 무관) — moai MCP 배선 0건
-- status_line.sh: 행번호 목록(§1.2-1) · 전문 인용
+이 방식으로 182행(2026-11-10 실측 — t62의 Python 측정과 일치). 배선·차단 목록은 settings.json 파싱(python3 + json)으로, 해시·mode는 §0 표의 명령으로 재현한다.
 
 ## 8. 이 문서가 바꾸지 않는 것
 
-`~/.claude/settings.json`·프로젝트 `.claude/settings.json`·`.moai/status_line.sh`·`.claude/hooks/moai/*`·PATH·`~/go/bin/*` — 본 PR은 `docs/`의 이 문서 하나만 추가한다. 모든 실행은 위 절차의 운영자 승인 후 구현 카드에서 수행한다.
+`~/.claude/settings.json`·`$PRI/.claude/settings.json`·`$PRI/.moai/status_line.sh`·`$PRI/.claude/hooks/moai/*`·`~/go/bin/*`·`~/.moai-cli/*`·PATH — 본 PR은 `docs/`의 이 문서 하나만 추가한다(§0 원장 해시가 적용 전후 동일한지 확인하는 용도로 쓰인다).
+
+## 9. v1 대비 정정 일람 (감사 6767987735 대응)
+
+B1 → §1.1(플러그인 MCP·33프로세스)·§2 표·§4·§5-6. B2 → §3(복사·sed 폐기, Rust 책임 4개 표, 13가드 사일런스 원천 차단). B3 → §0 원장·§6(실제 경로, 설치 원본+해시 검증, moai.old 보존). B4 → §5 재배열(인벤토리 맨 먼저·격리 선검증·단계별 직전 확인·활성 세션 보존). 비차단 → §0 정산 정정(46 전부 .sh)·§7 측정 표준 교체·clone 표기는 §실측에 "워크트리 커밋 트리"로 명시. t62가 옳다고 확인한 항목(.sh 46·44 언급·182행·배선 30/13·shim 해시·status_line 행)은 전부 유지한다.
+
+🗿 MoAI
