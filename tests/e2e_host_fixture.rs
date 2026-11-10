@@ -13,6 +13,7 @@
 #![cfg(unix)]
 
 mod common;
+
 use moai_cli::tree_digest;
 use serde_json::{json, Value};
 use std::{
@@ -465,12 +466,7 @@ fn e2e_never_writes_outside_temp_home() {
         .spawn()
         .unwrap();
     let mut child = out;
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(plan.to_string().as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, plan.to_string().as_bytes());
     let out = child.wait_with_output().unwrap();
     assert!(
         out.status.success(),

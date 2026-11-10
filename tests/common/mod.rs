@@ -31,7 +31,6 @@ pub fn exchange(method: &str, url: &str, response: HttpResponse) -> Exchange {
 pub fn write_executable(path: &Path, content: &str) {
     #[cfg(unix)]
     {
-        use std::io::Write;
         use std::process::{Command, Stdio};
         let mut child = Command::new("sh")
             .args(["-c", "cat > \"$1\" && chmod 755 \"$1\"", "sh"])
@@ -39,12 +38,9 @@ pub fn write_executable(path: &Path, content: &str) {
             .stdin(Stdio::piped())
             .spawn()
             .expect("spawn sh to write a test script");
-        child
-            .stdin
-            .take()
-            .expect("sh stdin")
-            .write_all(content.as_bytes())
-            .expect("write test script to sh");
+        // If the redirection fails, sh exits without reading; the status check below then
+        // reports the real failure instead of an EPIPE panic.
+        feed_stdin(&mut child, content.as_bytes());
         let status = child.wait().expect("wait for sh");
         assert!(status.success(), "writing {} failed", path.display());
     }
@@ -76,5 +72,35 @@ pub fn copy_executable(src: &Path, dest: &Path) {
     #[cfg(not(unix))]
     {
         std::fs::copy(src, dest).unwrap();
+    }
+}
+
+/// Writes `bytes` to a spawned child's stdin and closes it (#2348, PR #2382 CI).
+///
+/// A child may exit before reading its stdin (a usage error, a refused request), and the
+/// write then races that exit: once the read end is gone the write fails with EPIPE. The
+/// tests assert the child's exit status and output, never that the write completed, so a
+/// broken pipe is tolerated and any other write error still fails the test.
+#[allow(dead_code)] // not every test crate feeds a child's stdin
+pub fn feed_stdin(child: &mut std::process::Child, bytes: &[u8]) {
+    let pipe = child.stdin.take().expect("child stdin is piped");
+    write_stdin(pipe, bytes);
+}
+
+/// The write half of [`feed_stdin`] for a pipe already taken from the child; the pipe is
+/// closed on return.
+#[allow(dead_code)] // not every test crate feeds a child's stdin
+pub fn write_stdin(mut pipe: std::process::ChildStdin, bytes: &[u8]) {
+    use std::io::Write;
+    stdin_write_outcome(pipe.write_all(bytes));
+}
+
+/// Accepts a completed write or a broken pipe; panics on any other write error.
+#[allow(dead_code)] // not every test crate feeds a child's stdin
+pub fn stdin_write_outcome(result: std::io::Result<()>) {
+    match result {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+        Err(e) => panic!("stdin write failed: {e}"),
     }
 }

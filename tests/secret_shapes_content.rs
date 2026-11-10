@@ -5,10 +5,11 @@
 //! prefix literal: every synthetic value is built at runtime from the shared list
 //! returned by [`moai_cli::redact::secret_shapes`]. No real credential anywhere.
 
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
-    io::Write,
     path::Path,
     process::{Command, Stdio},
 };
@@ -85,12 +86,7 @@ fn run(args: &[&str], dir: &Path, stdin: Option<&Value>) -> (std::process::Outpu
         .spawn()
         .unwrap();
     let body = stdin.map(|v| v.to_string()).unwrap_or_default();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(body.as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, body.as_bytes());
     let out = child.wait_with_output().unwrap();
     let v = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
     (out, v)

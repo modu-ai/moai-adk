@@ -754,7 +754,6 @@ fn hook_binary_exits_2_on_refusal() {
     .to_string();
     let gh = gh_stub(stub_dir.path(), &body);
     let run = |command: &str| {
-        use std::io::Write as _;
         let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
             .args(["claim-verify", root.to_str().unwrap(), "--hook"])
             .current_dir(&root)
@@ -767,12 +766,7 @@ fn hook_binary_exits_2_on_refusal() {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(&hook_input(command, &root))
-            .unwrap();
+        common::feed_stdin(&mut child, &hook_input(command, &root));
         child.wait_with_output().unwrap()
     };
     let refused = run("git commit -m x");
@@ -1226,7 +1220,6 @@ fn lane_push_works_when_the_integration_branch_is_unrelated_to_the_default_branc
 fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
     let (_d, root) = lane_repo("issue/7-widget");
     let run = |command: &str| {
-        use std::io::Write as _;
         let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
             .args(["claim-verify", ".", "--hook"])
             .current_dir(&root)
@@ -1239,12 +1232,7 @@ fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(&hook_input(command, &root))
-            .unwrap();
+        common::feed_stdin(&mut child, &hook_input(command, &root));
         child.wait_with_output().unwrap()
     };
     let refused = run("git commit -m work");
