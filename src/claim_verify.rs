@@ -542,11 +542,26 @@ fn shell_script(args: &[String]) -> Option<&str> {
     None
 }
 
-/// True when `git`'s arguments name one of `verbs`, directly or through an alias defined on
+/// True when `git`'s subcommand is one of `verbs`, directly or through an alias defined on
 /// the same command line (`git -c alias.ci=commit ci`). An alias defined in git config is not
 /// visible here.
 fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
-    let mut aliases: Vec<&str> = Vec::new();
+    let aliases = inline_aliases(args);
+    // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
+    // names the word as an argument of a read command, not as the command (#2399 review).
+    git_subcommand_candidates(args).iter().any(|w| {
+        verbs.contains(w)
+            || aliases.iter().any(|(name, words)| {
+                name == w && words.first().is_some_and(|v| verbs.contains(&v.as_str()))
+            })
+    })
+}
+
+/// Aliases defined on the same command line (`git -c alias.ci=commit ci`, also the attached
+/// `-calias.ci=commit` form), as (name, expansion words). A `!` shell alias that runs `git`
+/// expands to the words after `git`. An alias defined in git config is not visible here.
+fn inline_aliases(args: &[String]) -> Vec<(String, Vec<String>)> {
+    let mut out = Vec::new();
     let mut i = 0;
     while i < args.len() {
         let config = match args[i].as_str() {
@@ -560,21 +575,190 @@ fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
             .and_then(|c| c.strip_prefix("alias."))
             .and_then(|c| c.split_once('='))
         {
-            let mut target = value.trim_start_matches('!').split_whitespace();
-            let first = target.next().unwrap_or("");
-            let verb = if command_name(first) == "git" {
-                target.next().unwrap_or("")
-            } else {
-                first
-            };
-            if verbs.contains(&verb) {
-                aliases.push(name);
+            let mut words: Vec<String> = value
+                .trim_start_matches('!')
+                .split_whitespace()
+                .map(str::to_string)
+                .collect();
+            if words.first().is_some_and(|w| command_name(w) == "git") {
+                words.remove(0);
             }
+            out.push((name.to_string(), words));
         }
         i += 1;
     }
-    args.iter()
-        .any(|w| verbs.contains(&w.as_str()) || aliases.contains(&w.as_str()))
+    out
+}
+
+/// git(1) OPTIONS (git 2.54.0, read 2026-11-10) that take their value as the next word.
+const GIT_GLOBAL_OPTIONS_WITH_VALUE: &[&str] = &[
+    "-C",
+    "-c",
+    "--config-env",
+    "--git-dir",
+    "--work-tree",
+    "--namespace",
+    "--list-cmds",
+    "--attr-source",
+];
+
+/// git(1) OPTIONS (git 2.54.0) that never take a separate value word. `--exec-path` takes its
+/// value only as `--exec-path=<path>`.
+const GIT_GLOBAL_FLAGS: &[&str] = &[
+    "-v",
+    "--version",
+    "-h",
+    "--help",
+    "--exec-path",
+    "--html-path",
+    "--man-path",
+    "--info-path",
+    "-p",
+    "--paginate",
+    "-P",
+    "--no-pager",
+    "--bare",
+    "--no-replace-objects",
+    "--no-lazy-fetch",
+    "--no-optional-locks",
+    "--no-advice",
+    "--literal-pathspecs",
+    "--glob-pathspecs",
+    "--noglob-pathspecs",
+    "--icase-pathspecs",
+];
+
+/// The words that may be a `git` argument list's subcommand. Known value options skip their
+/// value and known flags stand alone; the first other word is the subcommand. An option this
+/// list does not know (a newer git, a typo) may or may not take the next word as its value,
+/// so both that word and the subcommand found after it are candidates: the guard errs toward
+/// seeing a commit or push rather than missing one (#2399 audit B5, `--attr-source`). A second
+/// unknown option ends the scan, so the arguments of a subcommand that was already a
+/// candidate (`git --new log --grep commit`) are not read as a subcommand.
+fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
+    git_subcommand_positions(args)
+        .into_iter()
+        .map(|i| args[i].as_str())
+        .collect()
+}
+
+/// The indexes in `args` of [`git_subcommand_candidates`] (the one parser; the hook guards of
+/// #2391 stage 5 read each subcommand's own arguments from these positions).
+fn git_subcommand_positions(args: &[String]) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut seen_unknown = false;
+    let mut i = 0;
+    while i < args.len() {
+        let w = args[i].as_str();
+        if GIT_GLOBAL_OPTIONS_WITH_VALUE.contains(&w) {
+            i += 2;
+        } else if !w.starts_with('-') {
+            out.push(i);
+            return out;
+        } else if GIT_GLOBAL_FLAGS.contains(&w) || w.contains('=') || w.starts_with("-c") {
+            // `--opt=value` and the attached `-c<name>=<value>` form carry their own value.
+            i += 1;
+        } else if seen_unknown {
+            return out;
+        } else {
+            // Unknown option: its next word is either its value or the subcommand.
+            seen_unknown = true;
+            if args.get(i + 1).is_some_and(|n| !n.starts_with('-')) {
+                out.push(i + 1);
+            }
+            i += 2;
+        }
+    }
+    out
+}
+
+/// Every command a shell line runs, as (name without its path, arguments), past assignments
+/// and wrapper words, with a shell's `-c` script expanded one level deep — the same reading
+/// `runs_git` uses. Quoted text stays one argument and is never a command.
+pub(crate) fn shell_commands(command: &str) -> Vec<(String, Vec<String>)> {
+    let mut out = Vec::new();
+    collect_commands(command, 0, &mut out);
+    out
+}
+
+fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>)>) {
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        let name = command_name(&words[i]).to_string();
+        let args = words[i + 1..].to_vec();
+        if depth == 0 {
+            if let Some(script) = script_run_by(&name, &args) {
+                collect_commands(&script, depth + 1, out);
+            }
+        }
+        out.push((name, args));
+    }
+}
+
+/// The script a command runs as shell code: a shell's `-c` script, or `eval`'s arguments
+/// joined with spaces. The one place that decides which quoted text is code, shared by the
+/// command reading above and [`executed_scripts`].
+fn script_run_by(name: &str, args: &[String]) -> Option<String> {
+    if SHELLS.contains(&name) {
+        return shell_script(args).map(str::to_string);
+    }
+    (name == "eval" && !args.is_empty()).then(|| args.join(" "))
+}
+
+/// The shell text a command line runs: the line itself, then every script it hands to a
+/// shell (`sh -c '…'`) or to `eval`, one level deep — the same reading as
+/// [`shell_commands`]. A check that reads raw text (a fork bomb is punctuation, not a
+/// command word) looks at each of these, so quoting a script for `sh -c` does not hide it.
+pub(crate) fn executed_scripts(command: &str) -> Vec<String> {
+    let mut out = vec![command.to_string()];
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        if let Some(script) = script_run_by(command_name(&words[i]), &words[i + 1..]) {
+            out.push(script);
+        }
+    }
+    out
+}
+
+/// One git subcommand a `git` argument list may run: the verb, its arguments, and git's own
+/// arguments before it. An alias defined on the same line (`-c alias.ci=commit ci`) is
+/// resolved to its verb, with the words the alias carries put before the call's arguments.
+pub(crate) struct GitSub {
+    pub verb: String,
+    pub rest: Vec<String>,
+    pub global: Vec<String>,
+}
+
+/// Each git subcommand a `git` argument list may run (see [`GitSub`]).
+pub(crate) fn git_subcommands(args: &[String]) -> Vec<GitSub> {
+    let aliases = inline_aliases(args);
+    git_subcommand_positions(args)
+        .into_iter()
+        .map(|i| {
+            let global = args[..i].to_vec();
+            let rest = &args[i + 1..];
+            match aliases.iter().find(|(name, _)| *name == args[i]) {
+                Some((_, words)) if !words.is_empty() => GitSub {
+                    verb: words[0].clone(),
+                    rest: words[1..]
+                        .iter()
+                        .cloned()
+                        .chain(rest.iter().cloned())
+                        .collect(),
+                    global,
+                },
+                _ => GitSub {
+                    verb: args[i].clone(),
+                    rest: rest.to_vec(),
+                    global,
+                },
+            }
+        })
+        .collect()
 }
 
 /// True when one segment of a shell command line runs `git <verb>`. The segment's command is
@@ -604,6 +788,60 @@ fn runs_git_at(command: &str, verbs: &[&str], depth: u8) -> bool {
 /// True when a shell command line runs `git commit` or `git push` in any of its segments.
 pub fn is_commit_or_push(command: &str) -> bool {
     runs_git(command, &["commit", "push"])
+}
+
+/// True when a shell command line runs `git commit` in any of its segments.
+pub fn is_commit(command: &str) -> bool {
+    runs_git(command, &["commit"])
+}
+
+/// Why a commit command line on a lane branch carries no usable claim token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommitTokenGap {
+    /// Tokens are present, but none names the branch's Issue.
+    OtherIssue,
+    /// No `Moai-Claim:` token at all.
+    Missing,
+}
+
+impl CommitTokenGap {
+    /// The refusal reason. Built from fixed text and the branch's Issue number only, so it
+    /// never echoes the command line.
+    pub fn reason(self, issue: i64) -> String {
+        match self {
+            CommitTokenGap::OtherIssue => {
+                format!("the commit message names another Issue than the branch's #{issue}")
+            }
+            CommitTokenGap::Missing => format!(
+                "the commit message carries no `Moai-Claim: {issue}#<id>` (a message from \
+                 -F or an editor is not read)"
+            ),
+        }
+    }
+}
+
+/// The claim comment id a commit command line names for `issue` (the highest when several),
+/// read from the command text without any forge call. The single decider for the local part
+/// of the commit guard: `hook_cli` and the hook engine's tool-preflight both use it (#2391).
+pub fn commit_claim_id(command: &str, issue: i64) -> std::result::Result<i64, CommitTokenGap> {
+    let tokens = claim_tokens(command);
+    match tokens.iter().filter(|t| t.0 == issue).map(|t| t.1).max() {
+        Some(id) => Ok(id),
+        None if !tokens.is_empty() => Err(CommitTokenGap::OtherIssue),
+        None => Err(CommitTokenGap::Missing),
+    }
+}
+
+/// The current branch of the worktree at `cwd`, or `None` on a detached HEAD or outside git.
+pub fn current_branch(cwd: &Path) -> Option<String> {
+    git_out(cwd, &["symbolic-ref", "--short", "-q", "HEAD"])
+}
+
+/// True when this clone's local claim journal has an active record whose worktree contains
+/// `cwd` (local read only; the record path of `hook_cli` then decides with the forge).
+pub fn has_local_record(project: &Path, cwd: &Path) -> bool {
+    let records = crate::worktree::active_records(project).unwrap_or_default();
+    record_for(records, cwd).is_some()
 }
 
 /// How a branch name reads as a lane branch (#2336).
@@ -765,7 +1003,7 @@ pub fn hook_cli<T: Transport, C: Clock>(
     }
     // No record (the claim was posted for the lane, not by `claim-acquire`): a lane branch
     // `issue/<n>-…` is still guarded, from the branch name and the `Moai-Claim` token.
-    let Some(branch) = git_out(&cwd, &["symbolic-ref", "--short", "-q", "HEAD"]) else {
+    let Some(branch) = current_branch(&cwd) else {
         return allow("no claim record and no branch (detached HEAD); not a lane worktree");
     };
     let issue = match lane_branch(&branch) {
@@ -799,20 +1037,9 @@ pub fn hook_cli<T: Transport, C: Clock>(
     };
     let comment_id = if runs_git(command, &["commit"]) {
         // The commit being written: its message, as typed in the command line.
-        let tokens = claim_tokens(command);
-        match tokens.iter().filter(|t| t.0 == issue).map(|t| t.1).max() {
-            Some(id) => id,
-            None if !tokens.is_empty() => {
-                return uncertain(format!(
-                    "the commit message names another Issue than the branch's #{issue}"
-                ))
-            }
-            None => {
-                return uncertain(format!(
-                    "the commit message carries no `Moai-Claim: {issue}#<id>` (a message from \
-                     -F or an editor is not read)"
-                ))
-            }
+        match commit_claim_id(command, issue) {
+            Ok(id) => id,
+            Err(gap) => return uncertain(gap.reason(issue)),
         }
     } else {
         // A push: the highest claim comment id among this Issue's tokens on the branch's
