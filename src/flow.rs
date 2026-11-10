@@ -212,30 +212,33 @@ fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
     Ok(out)
 }
 
-/// The CI judgment over the required check runs: every required name must exist on the
-/// head and have concluded `success`; anything pending, failed, or missing fails the
-/// check by name. Unrelated check runs are ignored by construction — only the
-/// configured required list is consulted (default: `rc-ci`). An empty policy blocks.
+/// Every required name must exist, and all returned runs with that name must have
+/// concluded `success`. A failed or pending duplicate cannot be hidden by list order.
+/// Unrelated names are ignored. An empty policy blocks.
 fn required_ci_judgment(runs: &[Value], required: &[String]) -> (bool, String) {
     if required.is_empty() {
         return (false, "no required checks configured".to_string());
     }
     for name in required {
-        let Some(r) = runs
+        let mut found = false;
+        for r in runs
             .iter()
-            .find(|r| r["name"].as_str() == Some(name.as_str()))
-        else {
+            .filter(|r| r["name"].as_str() == Some(name.as_str()))
+        {
+            found = true;
+            let status = r["status"].as_str().unwrap_or_default();
+            let conclusion = r["conclusion"].as_str().unwrap_or_default();
+            if conclusion == "success" {
+                continue;
+            }
+            if conclusion.is_empty() {
+                return (false, format!("{name}: {status}, pending"));
+            }
+            return (false, format!("{name}: {conclusion}"));
+        }
+        if !found {
             return (false, format!("{name} check run not found"));
-        };
-        let status = r["status"].as_str().unwrap_or_default();
-        let conclusion = r["conclusion"].as_str().unwrap_or_default();
-        if conclusion == "success" {
-            continue;
         }
-        if conclusion.is_empty() {
-            return (false, format!("{name}: {status}, pending"));
-        }
-        return (false, format!("{name}: {conclusion}"));
     }
     (true, format!("{}: success", required.join(", ")))
 }

@@ -56,6 +56,28 @@ case "$*" in
 esac
 "##;
 
+/// The required check appears only on the last page, so truncating a successful
+/// ten-page response or accepting an eleven-page response changes the verdict.
+const PAGINATED_CHECKS_STUB: &str = r##"#!/bin/sh
+case "$*" in
+  *pulls/9/commits*) printf '%s' "$FLOW_COMMITS";;
+  *pulls/9*) printf '%s' "$FLOW_PR";;
+  *compare/*) printf '%s' "$FLOW_COMPARE";;
+  *commits/*/check-runs*)
+    n=$(cat "$FLOW_PAGE_COUNT" 2>/dev/null || echo 0)
+    n=$((n + 1))
+    printf '%s' "$n" > "$FLOW_PAGE_COUNT"
+    printf 'HTTP/1.1 200 OK\n'
+    if [ "$n" -lt "$FLOW_CHECK_PAGES" ]; then
+      printf 'link: <https://api.github.com/repos/acme/widgets/commits/pr-5a4b3c2d/check-runs?per_page=100&page=%s>; rel="next"\n' "$((n + 1))"
+      printf '\n%s' '{"check_runs":[]}'
+    else
+      printf '\n%s' "$FLOW_LAST_CHECKS"
+    fi;;
+  *) printf '%s' "$FLOW_TIP";;
+esac
+"##;
+
 fn install_stub(dir: &Path, script: &str) -> PathBuf {
     let path = dir.join("gh-stub");
     common::write_executable(&path, script);
@@ -729,17 +751,17 @@ fn gate_verdict_whitespace_required_checks_blocks() {
     assert_empty_required_checks_block(" , ");
 }
 
-/// Preserve the existing first-returned matching-run policy. A second success
-/// cannot hide the first failure or pending result; reversing them changes the answer.
+/// Every matching run must succeed, regardless of response ordering.
 #[test]
-fn gate_verdict_duplicate_required_names_keep_first_result() {
+fn gate_verdict_duplicate_required_names_all_must_succeed() {
     let tmp = TempDir::new().unwrap();
     let gh = install_stub(tmp.path(), STUB_SCRIPT);
     for (first_status, first_conclusion, second_status, second_conclusion, verdict) in [
         ("completed", "failure", "completed", "success", "blocked"),
-        ("completed", "success", "completed", "failure", "ok"),
+        ("completed", "success", "completed", "failure", "blocked"),
         ("in_progress", "", "completed", "success", "blocked"),
-        ("completed", "success", "in_progress", "", "ok"),
+        ("completed", "success", "in_progress", "", "blocked"),
+        ("completed", "success", "completed", "success", "ok"),
     ] {
         let envs = [
             ("FLOW_PR", http200(&pr_body(true))),
@@ -765,17 +787,56 @@ fn gate_verdict_duplicate_required_names_keep_first_result() {
             .find(|c| c["check"] == json!("ci_status"))
             .unwrap();
         assert_eq!(ci["pass"], json!(verdict == "ok"));
-        let detail = if first_conclusion.is_empty() {
-            "rc-ci: in_progress, pending"
-        } else if first_conclusion == "failure" {
-            "rc-ci: failure"
-        } else {
-            "rc-ci: success"
-        };
-        assert_eq!(
-            ci["detail"],
-            json!(format!("required check runs: {detail}"))
-        );
         assert_eq!(v["writes"], json!(false));
     }
+}
+
+fn run_paginated_check_runs(pages: usize) -> (Value, std::process::Output, usize) {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), PAGINATED_CHECKS_STUB);
+    let count = tmp.path().join("page-count");
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        ("FLOW_PAGE_COUNT", count.to_str().unwrap().to_string()),
+        ("FLOW_CHECK_PAGES", pages.to_string()),
+        (
+            "FLOW_LAST_CHECKS",
+            check_runs_body(&[check_run("rc-ci", "completed", "success")]),
+        ),
+    ];
+    let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    let requested = std::fs::read_to_string(count).unwrap().parse().unwrap();
+    (v, out, requested)
+}
+
+#[test]
+fn gate_verdict_accepts_ten_check_run_pages() {
+    let (v, out, requested) = run_paginated_check_runs(10);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["verdict"], json!("ok"), "{v}");
+    assert_eq!(requested, 10);
+    assert_eq!(v["writes"], json!(false));
+}
+
+#[test]
+fn gate_verdict_blocks_eleven_check_run_pages() {
+    let (v, out, requested) = run_paginated_check_runs(11);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+    assert_eq!(requested, 10, "never request a page beyond the cap");
+    let ci = v["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check"] == json!("ci_status"))
+        .unwrap();
+    assert_eq!(ci["pass"], json!(false));
+    assert_eq!(
+        ci["detail"],
+        json!("required check runs: check runs unavailable")
+    );
+    assert_eq!(v["writes"], json!(false));
 }

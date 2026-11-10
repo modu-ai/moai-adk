@@ -89,6 +89,8 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 
 Only the mutating operations (`project.apply`, `agents.apply`, `apply.recover`) write files, and each refuses to run without the confirmed `plan_digest` (recover: the receipt id) and a non-placeholder permission reference; whatever transport carries them later keeps that boundary (REQ-01C-03). `decision.record` only appends to its own log and also refuses a placeholder permission reference; it has no plan digest because it never rewrites existing bytes. The launchers (`-l`, `-a`, `cc|glm|codex`, `session`; see below) are developer tools, not internal operations, and stay out of this table.
 
+`flow.gate_verdict` (#2335) accepts at most 10 check-run pages; a required success on page 10 can pass, but an eleventh page blocks the CI check with detail `required check runs: check runs unavailable`. The page-cap error remains internal to that judgment, not an envelope error. Every returned run whose name is required must conclude `success`: a failed or pending duplicate blocks regardless of response order. This intentionally fails closed across multiple check suites on the same head; it does not guess which suite is authoritative.
+
 ### Output envelope (01-C #1990, user decision 2026-11-08)
 
 Every internal operation prints exactly one JSON object on stdout:
