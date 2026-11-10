@@ -205,6 +205,11 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         # One build folder per worktree, and lanes report instead of deleting (#2385 follow-up).
         self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
         self.assertNotIn("Reuse the existing target directory instead of creating a new one", text)
+        # Cleaning removes cargo output only; `target/` and lane files stay (pre-audit B1).
+        self.assertIn("removes only cargo's output folders (`debug`, `release`, `<target triple>`)", text)
+        self.assertIn("never removes `target/` itself or the lane files under it", text)
+        self.assertNotIn("the leader removes them after checking the list", text)
+        self.assertNotIn("A lane does not delete build folders", text)
 
     def test_other_places_reference_without_restating(self):
         for rel in ("skills/moai-cli/workflows/audit.md", "skills/moai-cli/workflows/sync.md",

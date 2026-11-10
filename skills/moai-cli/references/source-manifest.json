@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "a03aca079fc54e84ab00eb58c3821fd7c62e75221e5b2227de328946fcb7f65a",
+      "sha256": "cef949ea7bda73838323de553891d477c25563896b202a8e167d829ebdd6c416",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
