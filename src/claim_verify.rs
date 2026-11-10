@@ -644,12 +644,9 @@ pub fn claim_tokens(text: &str) -> Vec<(i64, i64)> {
 }
 
 fn git_out(cwd: &Path, args: &[&str]) -> Option<String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(cwd)
-        .args(args)
-        .output()
-        .ok()?;
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd.arg("-C").arg(cwd).args(args).output().ok()?;
     out.status
         .success()
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
@@ -840,7 +837,9 @@ fn missing_trailers_since(cwd: &Path, base: &str, tokens: &[String]) -> Result<u
 
 /// [`missing_trailers_since`] over a revision range given as `git log` arguments.
 fn missing_trailers(cwd: &Path, range: &[&str], tokens: &[String]) -> Result<usize> {
-    let out = std::process::Command::new("git")
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
         .arg("-C")
         .arg(cwd)
         .args([

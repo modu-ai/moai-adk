@@ -75,7 +75,10 @@ fn every_git_subprocess_in_src_is_scrubbed() {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let (missing, seen) = unscrubbed_git_spawns(&src);
     // At 44c0bc063 there are 12 git spawn sites; a scan that finds none checks nothing.
-    assert!(seen >= 12, "only {seen} git spawn sites found; the scan is broken");
+    assert!(
+        seen >= 12,
+        "only {seen} git spawn sites found; the scan is broken"
+    );
     assert!(
         missing.is_empty(),
         "git subprocesses without scrub_git_env (#2337): {missing:?}"
