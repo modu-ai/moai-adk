@@ -219,6 +219,14 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Lane handoff gate (rc.2 A10 #2264): typed JSON request on stdin; read-only
+    /// verification that the worktree is safe to exit — status clean, HEAD ==
+    /// observed remote == PR head, claim trailers on lane-authored non-merge commits, leader report
+    /// record present, no publish_unknown outbox effects. A failed status blocks
+    /// the exit (kind blocked, exit 1) with a preservation note.
+    LaneHandoffCheck {
+        project: PathBuf,
+    },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -934,6 +942,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
         InstallInspect { .. } => "install.inspect",
+        LaneHandoffCheck { .. } => "lane_handoff.check",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1353,6 +1362,23 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::LaneHandoffCheck { project } => {
+            let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
+            // The CLI positional project wins over any stdin value (consistency
+            // with every other project-taking op).
+            request.project = project.clone();
+
+            let report = moai_cli::lane_handoff::handoff_check(&request)?;
+            if report["status"] == serde_json::json!("failed") {
+                eprintln!(
+                    "{}",
+                    serde_json::to_string_pretty(&report).unwrap_or_default()
+                );
+                return Err(moai_cli::lane_handoff::blocked_message(&report)
+                    .unwrap_or_else(|| "lane handoff blocked".into()));
+            }
+            Ok(report)
+        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
