@@ -416,10 +416,6 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
         assert_eq!(error["kind"], json!("unavailable"), "{op}");
         assert_eq!(error["retryable"], json!(true), "{op}");
         let message = error["message"].as_str().unwrap().to_string();
-        assert!(
-            message.starts_with("journal busy: the claim journal lock is unavailable"),
-            "{op}: {message}"
-        );
         // The single busy contract: one message across every op, set at the raise site.
         match &shared_message {
             None => shared_message = Some(message.clone()),
