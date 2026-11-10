@@ -1023,3 +1023,54 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
         r.stdout
     );
 }
+
+/// Audit #2402 H3-B1: Codex sends `PostToolUse` after a failed Bash command too, so the event
+/// alone never records success. Literal cases: exit 0 → success, exit 17 → failure, no
+/// `exit_code` / a string / another tool → unknown. Claude keeps its event-based outcome.
+#[test]
+fn codex_observe_outcome_comes_from_the_tool_response_or_is_unknown() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let observe = |host: &str, event: &str, tool: &str, response: Value| {
+        let input = json!({"hook_event_name": event, "session_id": "s", "tool_name": tool,
+                           "tool_input": {"command": "x"}, "tool_response": response});
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-observe"],
+            &root,
+            input.to_string().as_bytes(),
+            &[],
+        )
+        .unwrap();
+        assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+        let text = fs::read_to_string(engine_log(&root)).unwrap();
+        let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
+        (
+            last["outcome"].as_str().unwrap().to_string(),
+            last["outcome_source"].as_str().unwrap().to_string(),
+        )
+    };
+    let codex = |tool: &str, response: Value| observe("codex", "PostToolUse", tool, response);
+    let (o, src) = codex("Bash", json!({"exit_code": 0, "aggregated_output": ""}));
+    assert_eq!(o, "success");
+    assert!(src.contains("undocumented"), "{src}");
+    assert_eq!(
+        codex("Bash", json!({"exit_code": 17, "aggregated_output": ""})).0,
+        "failure"
+    );
+    assert_eq!(codex("Bash", json!({"exit_code": -1})).0, "failure");
+    assert_eq!(codex("Bash", json!({"output": "done"})).0, "unknown");
+    assert_eq!(codex("Bash", json!("plain text output")).0, "unknown");
+    assert_eq!(codex("Bash", json!({"exit_code": "0"})).0, "unknown");
+    assert_eq!(codex("apply_patch", json!({"exit_code": 0})).0, "unknown");
+    assert_eq!(codex("mcp__fs__read", json!({"content": []})).0, "unknown");
+    // Claude: the event decides, as before.
+    assert_eq!(
+        observe("claude", "PostToolUse", "Bash", json!({"exit_code": 17})),
+        ("success".to_string(), "event".to_string())
+    );
+    assert_eq!(
+        observe("claude", "PostToolUseFailure", "Bash", json!({})).0,
+        "failure"
+    );
+}

@@ -144,7 +144,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     let verdict = match event {
         Event::SessionCheck => session_check(cwd),
         Event::ToolPreflight => tool_preflight(&input, cwd),
-        Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms),
+        Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
     };
     match host {
@@ -236,7 +236,8 @@ pub fn capabilities(host: &str) -> Value {
                                "answer": "hookSpecificOutput.permissionDecision=deny",
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
-                             "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded"},
+                             "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
+                             "outcome": "PostToolUse also runs after a failed Bash command, so the event never means success: outcome is unknown unless a Bash tool_response carries an integer exit_code (a field the docs do not name)"},
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
                                 "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
                                 "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
@@ -431,7 +432,32 @@ fn target_path(input: &Value, cwd: &Path) -> Value {
 /// tool name and class, target path, outcome, the `HEAD` commit and the time. It never blocks
 /// and never stores `tool_input` content, `tool_response` or messages. Marking earlier evidence
 /// stale waits for a persisted verification receipt (#2392; leader decision, Issue #2391).
-fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
+/// The observed call's outcome and what it was read from, per host (#2402 audit H3-B1):
+/// - Claude Code: `PostToolUse` "runs immediately after a tool completes successfully" and
+///   failures arrive as `PostToolUseFailure` — the event name decides.
+/// - Codex: `PostToolUse` also runs "after commands that exit with a non-zero status", and the
+///   page gives no shape for `tool_response` beyond "Tool-specific output" (read 2026-11-11).
+///   The event name therefore never means success. Only a Bash `tool_response` carrying an
+///   integer `exit_code` decides (0 success, anything else failure); that field is not named
+///   in the docs, so its use is recorded in `outcome_source`. Everything else is `unknown`.
+fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
+    match host {
+        Host::Claude if input["hook_event_name"] == json!("PostToolUseFailure") => {
+            ("failure", "event")
+        }
+        Host::Claude => ("success", "event"),
+        Host::Codex => match (
+            input["tool_name"].as_str(),
+            input["tool_response"]["exit_code"].as_i64(),
+        ) {
+            (Some("Bash"), Some(0)) => ("success", "tool_response.exit_code (undocumented)"),
+            (Some("Bash"), Some(_)) => ("failure", "tool_response.exit_code (undocumented)"),
+            _ => ("unknown", "none"),
+        },
+    }
+}
+
+fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
     let tool = input["tool_name"].as_str().unwrap_or("");
     let tool_ok = !tool.is_empty()
         && tool.len() <= 64
@@ -444,11 +470,7 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
         "Read" | "Glob" | "Grep" | "LS" | "WebFetch" | "WebSearch" => "read",
         _ => "other",
     };
-    let outcome = if input["hook_event_name"] == json!("PostToolUseFailure") {
-        "failure"
-    } else {
-        "success"
-    };
+    let (outcome, outcome_source) = observe_outcome(input, host);
     let line = json!({
         "schema_version": 1,
         "kind": "observe",
@@ -457,6 +479,7 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
         "class": class,
         "path": target_path(input, cwd),
         "outcome": outcome,
+        "outcome_source": outcome_source,
         "head": head_commit(cwd),
         "unix_ms": now_unix_ms as u64,
     });
@@ -646,7 +669,10 @@ mod tests {
         );
         let post = json!({"hook_event_name": "PostToolUse", "session_id": "sess-A",
                           "tool_name": "Read", "tool_input": {"file_path": "a"}});
-        assert_eq!(tool_observe(&post, p.path(), 4), Verdict::Allow);
+        assert_eq!(
+            tool_observe(&post, p.path(), 4, Host::Claude),
+            Verdict::Allow
+        );
         assert!(matches!(
             turn_validation_with(FAKE, &stop(false), p.path(), 5),
             Verdict::Deny(_)
