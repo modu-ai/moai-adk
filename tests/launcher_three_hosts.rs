@@ -5,6 +5,7 @@
 //! project with a stub of that host on PATH that leaves a trace when it is started; no real host
 //! starts. The name is assembled at run time so that the whole-word scan below stays clean.
 #![cfg(unix)]
+mod common;
 use std::os::unix::fs::PermissionsExt;
 use std::{
     fs,
@@ -25,7 +26,7 @@ struct Fixture {
 impl Fixture {
     fn new() -> Self {
         let project = tempfile::tempdir().unwrap();
-        let ok = Command::new("git")
+        let ok = common::git::command()
             .args(["init", "-q"])
             .current_dir(project.path())
             .stdout(Stdio::null())

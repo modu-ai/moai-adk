@@ -609,23 +609,12 @@ fn verify_op_refuses_non_owner_with_one_get() {
 }
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env("GIT_AUTHOR_NAME", "t")
-        .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
-        .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "git {args:?}: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    String::from_utf8_lossy(&out.stdout).trim().to_string()
+    let full = [
+        ["-c", "user.name=t", "-c", "user.email=t@example.invalid"].as_slice(),
+        args,
+    ]
+    .concat();
+    common::git::git(dir, &full)
 }
 
 /// A temporary repository with one active claim record whose worktree is the repo itself.

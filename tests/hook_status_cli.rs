@@ -177,11 +177,10 @@ fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
 fn engine_deny_leaves_a_keyed_line_without_the_raw_call_id() {
     let (_d, root) = project();
     let git = |args: &[&str]| {
-        let ok = Command::new("git")
+        // Fixture git through the shared runner (#2352 guards), with the fixture HOME.
+        let ok = common::git::command()
             .args(args)
             .current_dir(&root)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .env("HOME", root.join("home"))
             .status()
             .unwrap()
