@@ -69,3 +69,11 @@ t3j 원문은 커밋 `73afc14cd6`의 git history에 보존되어 있다.
 - 부재 주장(행3 외부 상시 상태줄, 행8 Desktop 커스텀 footer)은 키워드 스캔으로 계약 문구를 찾지 못한 것이며, 문서 부재가 기능 부재의 증거가 아니라는 조사 문서 §1 원칙을 그대로 따른다.
 - 라이브 동작 검증(Codex CLI/Desktop·hook·notify·MCP·app-server 실행), 설치본 버전 확인, Windows/Linux 확인은 이번에도 `not_run`이다 — 조사 문서 §6과 같은 경계다.
 - 검증에 쓴 재확보 원문은 gitignored `target/epoch3-verify/fetched/`에만 있고 저장소에 커밋하지 않았다. 근거 인용은 본 문서 §2의 원문 인용과 sources.json의 해시 원장으로 남는다.
+
+## 6. epoch 4 감사 수리 기록 (2026-11-10, 감사 `6762170355`의 F1·F2에 따름)
+
+- **F1 — `/status` 누락 수리**: 독립 감사(agent-4-t63)가 Desktop·CLI 모두의 공식 표시 수단 `/status`가 §2·§4·§5 표에서 빠져 있다고 지적했다. 수리로 새 출처 **S12**(`reference/slash-commands.md`)를 재확보했다 — **2026-11-10T08:08:36Z, HTTP 200, 5,012 bytes, SHA-256 `31116b5621fa26a4fe944a92517cab42941ca18f68495f04b1f19370571b7c07`** — 감사자의 재수신 기록(07:53:00Z, 같은 bytes·해시)과 완전히 일치한다. 원문 48행 "`/status` — Show the chat ID, context usage, and rate limits."를 직접 확인했다. S01도 재독했다 — **2026-11-10T08:08:36Z, HTTP 200, 64,320 bytes, SHA-256 `d65c47d1…`(인계 원장과 일치)** — 494행 "Display session configuration and token usage … remaining context capacity", 806–813행 "Inspect the session with `/status`", 14–26행의 Desktop 명령 안내(Slash commands 페이지에 `/status` 명시)를 직접 확인했다. 조사 문서 §2에 CLI·Desktop `/status` 행을 신설(요청형·일시 표시 한계 명시)하고 §4 context·사용 한도 행과 §5 선택지(B′)에 반영했다.
+- **F2 — §6 시점 정정**: 조사 문서 §6의 not_run·미실행 문장들이 epoch 1 시점 기록인데 현재 사실처럼 읽힌다고 지적됐다. §6 머리에 범위 주석(epoch 1 이력임을 명시, epoch 2–4 진행 안내)을 두고 각 문장을 epoch 1 시점 표기로 고쳤다.
+- **S09 주석 권고 이행**: §7 원장과 sources.json의 changelog-full 엔트리에 재현 불일치 주석을 달았다(epoch-1 해시 `5ca7955b…`·4,771,489 bytes는 이후 재확보에서 `443bf502…`·4,771,490 bytes로 재현되지 않음 +1바이트 동적 요소, 근거 문장 2건은 재확보 원문에서 그대로 확인 — 본 문서 §1과 감사자 재수신(10/11 일치)이 같은 값을 보고).
+- **비차단 표현 정정**: PR 본문의 "`73afc14cd6`의 trailer" 표현은 interpret-trailers가 파싱하지 않는 형태라 감사자가 부정확하다고 봤다 — 본문 표현을 line-match 규칙 기준 표현으로 고친다.
+- 라이브 동작·설치본·Windows/Linux는 이번 수리에서도 `not_run`이며, 감사자와 동일하게 본 카드의 경계를 유지한다.

@@ -146,6 +146,19 @@
     "bytes": 4771489,
     "sha256": "5ca7955b2fb4b5fc80be87488ccc4a83fc262367a3fb92a4f9d1a5c85aa2e13b",
     "file": "changelog-full.html",
-    "hash_scope": "complete decoded response body"
+    "hash_scope": "complete decoded response body",
+    "reproducibility_note": "epoch-4 annotation: the changelog is a live HTML response and its byte count drifts between responses. Later re-fetches (epoch-3 2026-11-10T04:59:15Z, auditor 2026-11-10 ~07:52Z) returned 4771490 bytes with sha256 443bf5020c9813cc001315059f3354522aab7eca023fb5ea71530596ee46c3b3, so this epoch-1 hash is not reproducible byte-for-byte (+1 byte, cause unpinned). The two cited evidence sentences were re-confirmed verbatim in the re-fetched body."
+  },
+  {
+    "id": "desktop-slash-commands",
+    "url": "https://learn.chatgpt.com/docs/reference/slash-commands.md",
+    "final_url": "https://learn.chatgpt.com/docs/reference/slash-commands.md",
+    "checked_at": "2026-11-10T08:08:36Z",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 5012,
+    "sha256": "31116b5621fa26a4fe944a92517cab42941ca18f68495f04b1f19370571b7c07",
+    "file": "slash-commands.md",
+    "added_by": "epoch-4 (audit 6762170355 F1 repair): Desktop /status evidence"
   }
 ]

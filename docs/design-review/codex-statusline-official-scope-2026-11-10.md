@@ -2,6 +2,7 @@
 
 - 조사: Codex t3j, `session=codex-t3j`, epoch 1, `Moai-Claim: 2357#6755712814`.
 - epoch 3 독립 재검증: agent-10-t6b, `Moai-Claim: 2357#6759371745`, 2026-11-10 — 11개 소스 전건 재확보·해시 대조와 주장별 원문 확인. 상세 기록: `codex-statusline-verification-2026-11-10.md`. epoch 3은 판정을 바꾸지 않았고 사실 서술 2곳을 공식 원문 실측 명칭으로 정정했다.
+- epoch 4 감사 수리(agent-10-t6b, 독립 감사 `6762170355`의 F1·F2에 따름, 2026-11-10): §2에 CLI·Desktop `/status` 행을 신설하고 §4·§5에 반영했다(출처 S12 신설, 재확보 시각 2026-11-10T08:08:36Z). §6을 epoch 1 시점 이력으로 정정했고 §7에 S09 재현 불일치 주석을 달았다.
 - 조사일: 2026-11-10 UTC. 출처별 정확한 시각·응답 SHA-256은 마지막 표에 있다.
 - 저장소 기준 ref: `6bf79ecd85b9d40653c798f89266a7ffe2f28cbf`(착수 시 원격 integration tip 조회, 이 문서가 커밋된 커밋의 부모). 인계 경위: Codex t3j의 `/tmp` 인계 초안을 agent-8 [860b69]가 4파일 SHA-256 검증(254952ea…·a6e8b621…·3c311f56…·179d9c5b…)과 출처 스냅샷 11건·claude-contract-snapshot hash 대조, 원격 URL 2건 재확인(200·bytes 일치) 뒤 원문 그대로 `docs/design-review/`로 커밋했다. 조사 본문과 판정은 t3j 원문이며 이 커밋이 내용을 고르지 않았다.
 - 비교 계약: #2331의 병합본 `01e123e6c374386f952277103673bee6a05a3ad0`, `docs/design-review/statusline-rust-stage1-2026-11-10.md` §1·2·6을 실제 읽었다. 아래 Claude 열은 이 고정 문서의 계약이며, 현재 설치된 Claude의 실세션을 관측한 결과가 아니다.
@@ -21,6 +22,8 @@ Codex CLI의 내장 상태줄과 터미널 제목 선택은 공식 지원된다.
 |---|---|---|---|---|
 | CLI 내장 footer | supported | `/statusline`, `tui.status_line`. 모델·reasoning·context·rate limit·git·토큰·세션·디렉터리·버전 등의 내장 항목 선택·순서 조정. picker 변경은 즉시 반영, 세션 한정 인자도 설명됨 | 외부 명령 stdin JSON/사용자 정의 항목 등록 계약은 아님. 데이터별 정확한 갱신 주기는 not_verified | S01·S02·S03 |
 | CLI 터미널 제목 | supported | `/title`, `tui.terminal_title`. project·spinner·status·thread·git branch·model·task-progress 등 내장 ID 선택 | OS 터미널 제목이며 Desktop 본문/전역 footer 확장과 다름. 임의 Rust stdout 연결은 not_verified | S01·S02·S03 |
+| CLI `/status`(요청형 세션 조회) | supported | S01 494행 "`/status` … Display session configuration and token usage", 806–813행 "Inspect the session with `/status`": 활성 모델·승인 정책·쓰기 가능 root·현재 토큰 사용량·남은 context capacity 확인, 원격 접속 시 주소·서버 버전도 표시(epoch 4 보강: 이 행은 epoch 1–3 표에서 빠져 있었다) | 요청형·일시 표시라 상시 footer가 아니다. 표시 항목의 프로그램적 수집 계약(외부 프로세스로의 export)은 not_verified | S01 |
+| Desktop `/status`(요청형 세션 조회) | supported | Desktop의 공식 명령 페이지가 `/status`를 명령으로 나열하고 S12 48행 "`/status` — Show the chat ID, context usage, and rate limits"(epoch 4 보강: 이 행은 epoch 1–3 표에서 빠져 있었다). S01 14–26행의 app 절이 Desktop 명령을 이 slash-commands 페이지로 안내한다 | 요청형·일시 표시라 상시 footer가 아니다. 앱 버전별 실제 화면과 현재 사용자의 설치본은 not_verified | S12·S01 |
 | CLI 외부 Rust 상시 상태줄 | not_verified | 읽은 문서에는 위 내장 ID 설정만 확인 | Claude `statusLine.command`와 같은 실행 명령·stdin JSON·refreshInterval 계약을 확인하지 못함 | S01·S02·S03 |
 | CLI 터미널 알림 | supported | `tui.notifications`, `tui.notification_method`의 auto/osc9/bel, `tui.notification_condition`. 완료·승인 요청 등 이벤트에 반응 | 알림 기능이며 연속 표시·모든 세그먼트 공급을 보장하지 않음 | S04 |
 | 외부 notify 프로그램 | supported | `notify`가 현재 `agent-turn-complete`에서 프로그램을 실행. JSON은 stdin이 아니라 단일 인자로 전달됨. `type`, `thread-id`, `turn-id`, `cwd`, 입력 메시지·마지막 답변 필드 설명 | 완료 이벤트 중심. 토큰·context·과금·사용량의 정기 공급 계약은 확인되지 않음. 메시지 원문 수집은 이번 설계 입력에서 제외해야 함 | S04 |
@@ -56,8 +59,8 @@ S08의 이벤트를 읽기 위해 이번 세션에서 서버를 기동하거나 
 |---|---|---|---|
 | 모델·작업 디렉터리 | stdin model·workspace/cwd | hook model·cwd와 CLI 내장 항목(S01·S05) | 입력이 있을 때 공통 가능 |
 | reasoning/effort | effort·thinking | CLI model+reasoning 내장 표시 확인. 외부 hook의 effort 공급은 미확인 | 계산 함수 공유 가능, Codex 수집은 별도 확인 |
-| context 비율·토큰 | context_window·current_usage | CLI 내장 context/token 표시, app-server usage 이벤트 존재(S01·S08). 외부 전달 필드·분모 상세는 미확인 | 조건부 공통; 단위·상한·cache 포함 정의 필요 |
-| 사용 한도·리셋 | five_hour·seven_day 등 | app-server 가변 길이 bucket(S08). Claude 명칭을 그대로 대입할 수 없음 | window 길이를 가진 공통 모델 가능 |
+| context 비율·토큰 | context_window·current_usage | CLI 내장 context/token 표시와 CLI `/status`의 토큰 사용량·남은 context capacity 표시, app-server usage 이벤트 존재(S01·S08, epoch 4 보강: CLI `/status` 행 추가). 외부 전달 필드·분모 상세는 미확인 | 조건부 공통; 단위·상한·cache 포함 정의 필요 |
+| 사용 한도·리셋 | five_hour·seven_day 등 | app-server 가변 길이 bucket(S08)과 Desktop `/status`의 rate limits 표시(S12, epoch 4 보강). Claude 명칭을 그대로 대입할 수 없음 | window 길이를 가진 공통 모델 가능 |
 | 비용·credits | total_cost_usd 등 | 일부 workspace의 내장 추정 표시 출시 기록은 있음(S09). 일반 알림/hook의 USD 입력은 미확인이고 rate-limit credits는 USD와 동의어가 아님 | 공통 금액 표시 채택 보류 |
 | cache-hit·prompt cache | current_usage·prompt_cache | 동등한 공개 hook 입력·계산 의미 미확인 | 현재는 Claude 계약 전용; Codex not_verified |
 | 세션/turn·진행 상태 | session_id, session_name 등 | hook·notify 식별자와 app-server thread/turn/status/plan(S04·S05·S08) | 출처와 namespace를 보존하는 공통 상태 모델 가능 |
@@ -73,7 +76,7 @@ S08의 이벤트를 읽기 위해 이번 세션에서 서버를 기동하거나 
 
 | 결정 질문 | 선택지·장점 | 대가·남은 확인 |
 |---|---|---|
-| Codex에서는 어디에 표시할까? | A 내장 footer/title만 사용: 공식 범위가 명확함. B 완료 알림·필요 시 상태 요약: 별도 상시 UI 불필요. C 별도 app-server client/panel: 세부 상태 설계 가능 | A 임의 MoAI 세그먼트 주입 미확인. B 연속 telemetry 아님. C 안정성·스키마·인가·보안·개발 비용 별도 결정. Desktop native footer 확장은 미확인 상태로 남음 |
+| Codex에서는 어디에 표시할까? | A 내장 footer/title만 사용: 공식 범위가 명확함. B 완료 알림·필요 시 상태 요약: 별도 상시 UI 불필요. B′ `/status` 요청형 조회를 안내(Desktop·CLI 모두 공식 지원, epoch 4 보강): 상시 UI 없이 사용자가 필요할 때 chat ID·context 사용량·rate limits·세션 설정을 확인. C 별도 app-server client/panel: 세부 상태 설계 가능 | A 임의 MoAI 세그먼트 주입 미확인. B 연속 telemetry 아님. B′ 요청형·일시 표시라 상시 상태줄 대체는 아님. C 안정성·스키마·인가·보안·개발 비용 별도 결정. Desktop native footer 확장은 미확인 상태로 남음 |
 | Rust 공통 계층의 입력은 어디까지인가? | A 호출자가 넘긴 최소 데이터만 순수 계산. B 승인된 읽기 collector·캐시 추가. C app-server 이벤트 추가 | A 누락값이 많음. B 경로·소유권·freshness 계약 필요. C 실험 API·인증·버전 경계 필요. transcript 내부 파일 직접 해석은 안정 API가 아님 |
 | 결과가 없는 세그먼트는 어떻게 할까? | A 숨김. B unknown·출처/시각 표시 | A 사용자가 미지원과 0을 혼동할 수 있음. B 표시가 길어짐. 리더가 선택하도록 남김 |
 | 설정 위치·적용 주체는? | A 제품의 별도 계획만 생성. B 검토된 host별 plan/apply로 선택 항목만 적용 | B는 별도 승인·receipt·rollback·소유권이 필요. 이번 카드에서 ~/.codex나 wrapper를 바꾸지 않음 |
@@ -83,14 +86,16 @@ S08의 이벤트를 읽기 위해 이번 세션에서 서버를 기동하거나 
 
 ## 6. 확인 한계와 인계 (AC-4)
 
-- actual runtime: Codex CLI/Desktop·hook·notify·MCP·app-server를 실행하거나 연결하지 않았다. 사용자 설정·대화·인증 정보도 읽지 않았다.
-- 로컬 metadata: PATH는 standalone Codex를 가리키고, 별도 npm 패키지 README/package.json은 0.130.0이었다. 이 둘을 같은 설치본으로 보거나 현재 활성 버전으로 적지 않는다. 공식 자료는 현재 문서의 지원 범위일 뿐 이 컴퓨터의 동작 보증이 아니다.
+**범위 주석(epoch 4 정정)**: 이 절은 epoch 1 조사 세션(Codex t3j, 2026-11-10 UTC 00:55–00:58)의 한계 기록을 epoch 1 시점 기준의 이력으로 보존한 것이다. 그 뒤의 실제 진행 — epoch 2(agent-8-860b69)의 인수·커밋, epoch 3(agent-10-t6b)의 소스 재확보 재검증·체크셋·fresh-clone 검사·문서 PR, epoch 4의 감사 수리 — 은 문서 머리말의 인계 경위, `codex-statusline-verification-2026-11-10.md`, PR 본문과 Issue 기록을 따른다. 아래의 not_run·미실행 문장을 현재 상태로 읽으면 안 된다.
+
+- actual runtime(epoch 1): Codex CLI/Desktop·hook·notify·MCP·app-server를 실행하거나 연결하지 않았다. 사용자 설정·대화·인증 정보도 읽지 않았다. 이 경계는 epoch 2–4에서도 유지된다.
+- 로컬 metadata(epoch 1): PATH는 standalone Codex를 가리키고, 별도 npm 패키지 README/package.json은 0.130.0이었다. 이 둘을 같은 설치본으로 보거나 현재 활성 버전으로 적지 않는다. 공식 자료는 현재 문서의 지원 범위일 뿐 이 컴퓨터의 동작 보증이 아니다.
 - Desktop 문서는 현재 ChatGPT desktop app 안의 Codex 기능도 다룬다. 이것을 Orca wrapper의 기능으로 확대하지 않는다.
-- source acquisition: Markdown 404와 잘린 첫 changelog 응답은 미확인/부분 응답으로 보존했다. 이후 정상 URL의 완전 응답만 공식 근거로 사용한다. 실패를 지원 부재의 증거로 삼지 않는다.
-- native worktree: list_worktrees가 로컬 MCP transport 연결 오류로 실패했다. worktree 생성·대체 git worktree add·repo 쓰기·commit/push는 하지 않았다. HERDR_ENV 조건도 미충족이며 우회하지 않는다.
-- `cargo test`, `cargo clippy`, `cargo fmt`, Python 전체 unittest, Git 작업 tree diff 검사, fresh clone 검사는 모두 not_run이다. 문서 PR·독립 감사·병합도 미실행이다. 출처·문서 검사와 전체 check set을 혼동하지 않는다.
-- 디스크: 착수 때 약 5.9GiB, 후속 조회 약 9.1GiB. 이 세션에서 정리·빌드·설치를 하지 않았다.
-- 역할 정정 `adk-role-20261110-0957`을 접수했다. #2357은 실제 착수 카드이므로 산출·소유권·검사 한계를 갖춘 리더의 명시 안전 인계 전까지 보존한다. 그 뒤 신규 PR 전담 역할로 전환한다. 이 초안이 있다고 AC-4·이슈 종료를 완료 처리하지 않는다.
+- source acquisition(epoch 1): Markdown 404와 잘린 첫 changelog 응답은 미확인/부분 응답으로 보존했다. 이후 정상 URL의 완전 응답만 공식 근거로 사용한다. 실패를 지원 부재의 증거로 삼지 않는다. (epoch 3·4와 감사자가 changelog를 재확보했을 때의 +1바이트 변동은 §7 주석 참조.)
+- native worktree(epoch 1): list_worktrees가 로컬 MCP transport 연결 오류로 실패했고, epoch 1 세션에서는 worktree 생성·대체 `git worktree add`·repo 쓰기·commit/push를 하지 않았다. 이후 커밋·push는 epoch 2(커밋 `73afc14cd6`)와 epoch 3(커밋 `5a98a92285`, push)이 각 세션의 claim 아래 수행했으며 epoch 1 문장은 그 시점 기록이다.
+- check set(epoch 1): `cargo test`, `cargo clippy`, `cargo fmt`, Python 전체 unittest, Git 작업 tree diff 검사, fresh clone 검사는 epoch 1 세션에서 not_run이었다. 문서 PR·독립 감사·병합도 그 시점에는 미실행이었다. 이후 epoch 3의 체크셋·fresh-clone 실측(exit 0)과 PR(#2370)·독립 감사 진행은 각 세션 기록을 따른다. 출처·문서 검사와 전체 check set을 혼동하지 않는다는 원칙은 유지된다.
+- 디스크(epoch 1): 착수 때 약 5.9GiB, 후속 조회 약 9.1GiB. epoch 1 세션에서 정리·빌드·설치를 하지 않았다.
+- 역할 정정(epoch 1 이력): `adk-role-20261110-0957`을 epoch 1 세션이 접수했다. epoch 2의 인수(리더 handoff)와 epoch 3·4의 재검증·수리가 그 뒤를 이었으며, "이 초안이 있다고 AC-4를 완료 처리한다"는 epoch 1 문장은 그 시점 기준이고 지금은 본 PR(#2370)이 AC-4 산출물이다.
 
 ## 7. 출처 원장
 
@@ -110,7 +115,10 @@ SHA-256은 HTTP body 원문(수신한 decoded bytes) 기준이다. 시각은 UTC
 | S09 | [changelog-full](https://learn.chatgpt.com/docs/changelog) | 2026-11-10T00:58:58.802768+00:00 | 200 · 4771489 | `5ca7955b2fb4b5fc80be87488ccc4a83fc262367a3fb92a4f9d1a5c85aa2e13b` |
 | S10 | [mcp-current](https://learn.chatgpt.com/docs/extend/mcp.md) | 2026-11-10T00:57:42.911943+00:00 | 200 · 31613 | `faf9407740483f7ee27ac4d0db08a9d15510b3d241251edc9d00cf7b35c29e3b` |
 | S11 | [mcp-server-removal](https://learn.chatgpt.com/docs/mcp-server.md) | 2026-11-10T00:57:42.912329+00:00 | 200 · 1239 | `9fe223993523b4e6d991fd229888ecb1a770a3df3aa7bea946ae6674f8af32da` |
+| S12 | [desktop slash-commands](https://learn.chatgpt.com/docs/reference/slash-commands.md) | 2026-11-10T08:08:36Z | 200 · 5012 | `31116b5621fa26a4fe944a92517cab42941ca18f68495f04b1f19370571b7c07` (epoch 4 보강: Desktop `/status` 근거 — 감사 6762170355의 F1 수리로 추가) |
 <!-- sources-table:end -->
+
+S09 재현 불일치 주석(epoch 4): S09의 changelog는 살아있는 HTML 응답이라 byte 수가 응답마다 달라진다. epoch 1 기록 `5ca7955b…`(4,771,489 bytes)은 그 이후 재확보에서 `443bf502…`(4,771,490 bytes)로 재현되지 않았다(+1바이트 동적 요소 차이; 위치는 미특정). 근거로 든 두 항목 — "Add an experimental UI tree renderer for the status line"과 eligible-workspaces credits 문장 — 은 재확보 원문에서 그대로 확인됐다. 상세 대조는 `codex-statusline-verification-2026-11-10.md` §1과 독립 감사 `6762170355`의 재수신 기록이 같은 값을 보고한다.
 
 비교 사본: [#2331 고정 문서](https://github.com/modu-ai/moai-adk/blob/01e123e6c374386f952277103673bee6a05a3ad0/docs/design-review/statusline-rust-stage1-2026-11-10.md), 이번에 받은 1–160행 사본 SHA-256 `849376c3d4b79582c27bb2787ab3707be5e5a8321e9f1ab738f4202492737976`. 전체 원본 파일 해시라고 주장하지 않는다.
 
