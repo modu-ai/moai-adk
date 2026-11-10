@@ -415,7 +415,6 @@ fn f5d_other_language_failures_are_classified() {
 /// F6: scope overlap sees case variants and `..` segments of the same path; the shared
 /// interface list is matched the same way.
 #[test]
-#[ignore = "#2392 repro F6: RED until scope overlap sees case and dot-dot variants"]
 fn f6_scope_overlap_sees_case_and_dotdot_variants() {
     assert!(
         overlap("Src/main.rs", "src/main.rs"),
