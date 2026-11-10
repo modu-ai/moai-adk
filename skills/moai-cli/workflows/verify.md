@@ -18,7 +18,7 @@ A receipt (returned on stdout by the internal `run-verify` operation; not stored
 
 ## Exceptions and Permissions
 
-A command that was not run is not_run. A missing required guard is blocked before anything runs, and exit code 0 alone does not satisfy every AC.
+A command that was not run is not_run. A missing required guard is blocked before anything runs, and exit code 0 alone does not satisfy every AC. A test-name filter applies to every target named in the same `cargo test` call, so filter one target per call; a result that ran zero tests (`0 passed`) is not_run, never a pass.
 
 ## Completion Check
 
