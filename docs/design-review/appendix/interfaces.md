@@ -62,6 +62,8 @@
 - `hooks-plan`
 - `identity`
 - `install-inspect`
+- `layout-apply`
+- `layout-plan`
 - `leader-tick`
 - `package-inspect`
 - `package-resolve`

@@ -279,8 +279,15 @@ fn receipt_id_ok(s: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
+/// The receipt store directory, honouring the P09 opt-in home layout (#2175): once
+/// `layout.json` is switched in the home project directory, receipts resolve there;
+/// otherwise the project-side store stays authoritative (read-compatible fallback).
+fn receipts_dir(root: &Path) -> Result<PathBuf> {
+    Ok(crate::layout::switched_dir(root, "receipts").unwrap_or_else(|| root.join(RECEIPTS_DIR)))
+}
+
 pub fn receipt_path(root: &Path, request_id: &str) -> Result<PathBuf> {
-    let dir = root.join(RECEIPTS_DIR);
+    let dir = receipts_dir(root)?;
     match fs::symlink_metadata(&dir) {
         Ok(m) if m.file_type().is_symlink() => {
             return Err("receipt directory is a symlink; refused".into())
@@ -321,7 +328,7 @@ fn identity_fields(root: &Path) -> (Option<String>, Option<String>) {
 /// (REQ-01B-08). Stored beside the receipt under `<request-id>.before/`, same
 /// directory policy and publish procedure as the receipt itself.
 pub fn save_before_bytes(root: &Path, request_id: &str, rel: &str, bytes: &[u8]) -> Result<()> {
-    let dir = root.join(RECEIPTS_DIR).join(format!("{request_id}.before"));
+    let dir = receipts_dir(root)?.join(format!("{request_id}.before"));
     match fs::symlink_metadata(&dir) {
         Ok(m) if m.file_type().is_symlink() => {
             return Err("receipt backup directory is a symlink; refused".into())
@@ -338,7 +345,7 @@ pub fn save_before_bytes(root: &Path, request_id: &str, rel: &str, bytes: &[u8])
 }
 
 fn before_bytes_path(root: &Path, request_id: &str, rel: &str) -> Result<PathBuf> {
-    let dir = root.join(RECEIPTS_DIR).join(format!("{request_id}.before"));
+    let dir = receipts_dir(root)?.join(format!("{request_id}.before"));
     match fs::symlink_metadata(&dir) {
         Ok(m) if m.file_type().is_symlink() => {
             return Err("receipt backup directory is a symlink; refused".into())
