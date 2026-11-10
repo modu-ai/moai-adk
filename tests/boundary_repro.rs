@@ -241,7 +241,6 @@ fn f1b_preserve_without_phase_does_not_skip_the_baseline_gate() {
 
 /// F2: a self-reported receipt is not evidence, so it cannot settle a required step.
 #[test]
-#[ignore = "#2392 repro F2: RED until remaining_evidence ignores self-reports"]
 fn f2_remaining_evidence_ignores_self_reports() {
     let required: Vec<String> = vec!["red".into(), "green".into(), "regression".into()];
     // Oracle edit (2026-11-10, before the fix): the control moved from a passed `red`
@@ -263,7 +262,6 @@ fn f2_remaining_evidence_ignores_self_reports() {
 /// step even though its result is `failed`; a failure that is not an assertion failure
 /// (compile, network, nothing selected — `red_confirmed: false`) is not (the boundary).
 #[test]
-#[ignore = "#2392 repro F2b: RED until a confirmed RED settles the red step"]
 fn f2b_confirmed_red_settles_the_red_step() {
     let required: Vec<String> = vec!["red".into(), "green".into(), "regression".into()];
     let mut red = receipt(ProducerKind::RunnerReceipt, "red", Summary::Failed);

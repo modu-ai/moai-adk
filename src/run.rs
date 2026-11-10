@@ -317,14 +317,25 @@ pub fn budget_exhausted(budget: Option<&Budget>, attempts: &[Receipt]) -> bool {
 }
 
 /// Required evidence the attempts have not produced yet: what is left to report at a stop.
+///
+/// Only a receipt this runner produced counts (a self-report is never evidence). The RED step
+/// of `tdd` / `bugfix` (`red`, `repro-fail`) is settled by an intended assertion failure —
+/// that step's receipt with `red_confirmed: Some(true)` — and not by a pass; a compile,
+/// network or no-selection failure leaves it open (#2392, design boundary table row 2). Every
+/// other step is settled by a passed receipt of that step.
 pub fn remaining_evidence(required: &[String], attempts: &[Receipt]) -> Vec<String> {
+    let settles = |r: &Receipt, step: &str| {
+        r.producer.kind == ProducerKind::RunnerReceipt
+            && r.phase.as_deref() == Some(step)
+            && if matches!(step, "red" | "repro-fail") {
+                r.red_confirmed == Some(true)
+            } else {
+                r.result == Summary::Passed
+            }
+    };
     required
         .iter()
-        .filter(|e| {
-            !attempts
-                .iter()
-                .any(|r| r.phase.as_deref() == Some(e.as_str()) && r.result == Summary::Passed)
-        })
+        .filter(|e| !attempts.iter().any(|r| settles(r, e.as_str())))
         .cloned()
         .collect()
 }
