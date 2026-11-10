@@ -54,6 +54,19 @@ enum VersionProbe {
     TimedOut,
 }
 
+/// The leader has not been reaped at any call site, keeping its group id reserved.
+fn stop_version_probe(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    let _ = Command::new("kill")
+        .args(["-KILL", "--", &format!("-{}", child.id())])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 /// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
 /// its own process group; on timeout the whole group is killed, so nothing it started
 /// outlives the doctor.
@@ -81,34 +94,33 @@ fn claude_version() -> VersionProbe {
         let _ = tx.send(buf);
     });
     let deadline = Instant::now() + VERSION_TIMEOUT;
+    // Wait for stdout before reaping the leader: a launcher may exit while a
+    // descendant still holds the pipe, and its process group must remain reserved.
+    let out = match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(out) => out,
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            stop_version_probe(&mut child);
+            return VersionProbe::TimedOut;
+        }
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            stop_version_probe(&mut child);
+            return VersionProbe::NoVersion;
+        }
+    };
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break Some(status),
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
             Ok(None) => break None,
             Err(_) => {
-                let _ = child.kill();
-                let _ = child.wait();
+                stop_version_probe(&mut child);
                 return VersionProbe::NoVersion;
             }
         }
     };
     let Some(status) = status else {
-        // Kill the group while its leader is still unreaped, so the group id cannot have
-        // been reused, then reap the leader.
-        #[cfg(unix)]
-        let _ = Command::new("kill")
-            .args(["-KILL", "--", &format!("-{}", child.id())])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-        let _ = child.kill();
-        let _ = child.wait();
+        stop_version_probe(&mut child);
         return VersionProbe::TimedOut;
-    };
-    let Ok(out) = rx.recv_timeout(Duration::from_millis(500)) else {
-        return VersionProbe::NoVersion;
     };
     if !status.success() || out.len() > VERSION_OUTPUT_LIMIT {
         return VersionProbe::NoVersion;
