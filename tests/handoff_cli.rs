@@ -249,10 +249,93 @@ fn liveness_reads_pid_and_start_time() {
     let (unknown, ev) = moai_cli::handoff::probe_liveness(Some(pid), None);
     assert_eq!(unknown, "indeterminate");
     assert!(ev["reason"] == "no recorded start time");
-    // An absent pid is dead, not unknown.
-    let (gone, _) = moai_cli::handoff::probe_liveness(Some(999_999_999), Some("x"));
-    assert_eq!(gone, "dead");
+    // An absent pid is dead, not unknown. The pid belongs to a process that has exited
+    // (#2349: an out-of-range pid makes `ps` print an error, which is indeterminate).
+    let mut exited = Command::new("/usr/bin/true").spawn().unwrap();
+    let exited_pid = exited.id();
+    exited.wait().unwrap();
+    let (gone, ev) = moai_cli::handoff::probe_liveness(Some(exited_pid), Some("x"));
+    assert_eq!(gone, "dead", "{ev}");
 
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
+/// A directory holding a fake `ps` with the given script body.
+fn fake_ps(body: &str) -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let ps = dir.path().join("ps");
+    common::write_executable(&ps, &format!("#!/bin/sh\n{body}\n"));
+    (dir, ps)
+}
+
+/// #2349 (f): only `ps`'s own "no such process" answer (exit 1, no output, no error text)
+/// means dead. Any other failure says nothing about the owner and is indeterminate.
+#[test]
+fn liveness_ps_failure_is_indeterminate_not_dead() {
+    let (_d1, denied) = fake_ps("echo 'ps: permission denied' >&2\nexit 2");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&denied, Some(4242), Some("x"));
+    assert_eq!(verdict, "indeterminate", "{ev}");
+    assert_eq!(ev["exit_code"], 2);
+    assert!(ev["reason"].as_str().unwrap().starts_with("ps failed"));
+
+    let (_d2, err1) = fake_ps("echo 'ps: sysctl failed' >&2\nexit 1");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&err1, Some(4242), Some("x"));
+    assert_eq!(verdict, "indeterminate", "exit 1 with error text: {ev}");
+
+    let (_d3, other) = fake_ps("exit 3");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&other, Some(4242), Some("x"));
+    assert_eq!(verdict, "indeterminate", "silent exit 3: {ev}");
+
+    let (_d4, absent) = fake_ps("exit 1");
+    let (verdict, ev) = moai_cli::handoff::probe_liveness_with(&absent, Some(4242), Some("x"));
+    assert_eq!(verdict, "dead", "{ev}");
+    assert_eq!(ev["reason"], "no such process");
+}
+
+/// #2349 (f) end to end: a failing `ps` must not let `claim-handoff` take over a live
+/// owner without `--force-explicit`; the owner process keeps running.
+#[test]
+fn claim_handoff_with_failing_ps_stays_pending() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let (owner, mut child, host) = live_sleep_owner();
+    let record = seed_record(&repo, 28, 1, owner, vec![]);
+    let key = record.task_key.clone();
+    {
+        let journal = journal_of(&repo);
+        journal.commit("acquire", &record).unwrap();
+    }
+    let (bin, _ps) = fake_ps("echo 'ps: permission denied' >&2\nexit 2");
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .args([
+            "claim-handoff",
+            ".",
+            "--task",
+            &key,
+            "--from-epoch",
+            "1",
+            "--reason",
+            "probe with a failing ps",
+            "--host-id",
+            &host,
+        ])
+        .current_dir(&repo)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.path().display()))
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let v = envelope(&out);
+    assert_eq!(v["result"]["outcome"], "handoff_pending", "{v}");
+    assert_eq!(v["result"]["liveness"], "indeterminate");
+    assert_eq!(v["result"]["verdict"], "blocked");
+    assert!(
+        child.try_wait().unwrap().is_none(),
+        "the owner process is still running"
+    );
     child.kill().unwrap();
     let _ = child.wait();
 }
