@@ -206,9 +206,16 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
         self.assertNotIn("Reuse the existing target directory instead of creating a new one", text)
         # Cleaning removes cargo output only; `target/` and lane files stay (pre-audit B1).
-        self.assertIn("removes only cargo's output folders (`debug`, `release`, `<target triple>`)", text)
-        self.assertIn("never removes `target/` itself or the lane files under it", text)
+        # The leader's canonical wording, Issue #2385 comment 6777290466, points 1-4.
+        self.assertIn("Issue #2385 comment 6777290466", text)
+        self.assertIn("removes only the cargo output it made itself", text)
+        self.assertIn("the `debug`, `release` and `<target triple>` folders", text)
+        self.assertIn("never removes `target/` itself or the notes, evidence and scripts under `target/<name>/`", text)
+        self.assertIn("never touches another lane's worktree", text)
+        self.assertIn("a script the leader writes after checking the list and the operator runs, never by a lane", text)
+        self.assertIn("a worktree itself is removed only after a separate confirmation", text)
         self.assertNotIn("the leader removes them after checking the list", text)
+        self.assertNotIn("The leader cleans the build folders of merged work", text)
         self.assertNotIn("A lane does not delete build folders", text)
 
     def test_other_places_reference_without_restating(self):
