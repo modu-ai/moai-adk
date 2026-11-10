@@ -1,6 +1,7 @@
 //! Issue #2359: without `ANTHROPIC_AUTH_TOKEN` in the environment, `glm` takes the token from
-//! `~/.moai-cli/.env.glm`, then `~/.moai/.env.glm` (the Go tool's store, read only). The value
-//! reaches the host process only and never appears in the launcher's own output.
+//! `~/.moai/.env.glm` (the global store shared with the Go tool), then `~/.moai-cli/.env.glm`.
+//! Both are read only. The value reaches the host process only and never appears in the
+//! launcher's own output.
 use serde_json::{json, Value};
 use std::{fs, path::Path, process::Command};
 
@@ -128,12 +129,62 @@ fn an_unreadable_or_malformed_key_file_is_blocked_without_a_panic_or_an_echo() {
 
 #[cfg(unix)]
 #[test]
-fn an_empty_rust_home_file_falls_through_to_the_go_one() {
+fn an_empty_global_file_falls_through_to_the_rust_home_one() {
     let h = home(&[
-        (".moai-cli/.env.glm", "GLM_API_KEY=\n"),
-        (".moai/.env.glm", "GLM_API_KEY=from-go-home\n"),
+        (".moai/.env.glm", "GLM_API_KEY=\n"),
+        (".moai-cli/.env.glm", "GLM_API_KEY=from-rust-home\n"),
     ]);
-    assert_eq!(host_token(h.path(), None), "from-go-home");
+    assert_eq!(host_token(h.path(), None), "from-rust-home");
+}
+
+/// A FIFO at the key path has no writer: opening it would block for ever. The launcher must
+/// skip it and end `blocked` at once.
+#[cfg(unix)]
+#[test]
+fn a_fifo_at_the_key_path_does_not_hang_the_launcher() {
+    let h = tempfile::tempdir().unwrap();
+    fs::create_dir(h.path().join(".moai")).unwrap();
+    let made = Command::new("mkfifo")
+        .arg(h.path().join(".moai/.env.glm"))
+        .status()
+        .unwrap();
+    assert!(made.success());
+    let mut child = launcher(h.path(), None)
+        .args(["glm", "-a", "--dry-run"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let started = std::time::Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if started.elapsed() > std::time::Duration::from_secs(20) {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("the launcher hung on a FIFO key file");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    };
+    assert_eq!(status.code(), Some(1));
+}
+
+/// The size limit is 65536 bytes: a file of exactly that size is read, one byte more is not.
+#[test]
+fn the_key_file_size_limit_is_65536_bytes() {
+    let line = format!("GLM_API_KEY={TOKEN}\n");
+    for (size, code) in [(65536usize, 0), (65537usize, 1)] {
+        let mut text = line.clone();
+        text.push('#');
+        text.push_str(&"x".repeat(size - line.len() - 2));
+        text.push('\n');
+        assert_eq!(text.len(), size);
+        let h = home(&[(".moai/.env.glm", &text)]);
+        let (got, _, out) = dry(h.path(), None);
+        assert_eq!(got, code, "size {size}: {out}");
+        assert!(!out.contains(TOKEN));
+    }
 }
 
 #[test]
@@ -147,12 +198,12 @@ fn the_variable_wins_and_the_file_is_not_reported() {
 
 #[cfg(unix)]
 #[test]
-fn the_rust_home_file_is_read_before_the_go_one() {
+fn the_global_file_is_read_before_the_rust_home_one() {
     let h = home(&[
         (".moai-cli/.env.glm", "GLM_API_KEY=from-rust-home\n"),
-        (".moai/.env.glm", "GLM_API_KEY=from-go-home\n"),
+        (".moai/.env.glm", "GLM_API_KEY=from-global\n"),
     ]);
-    assert_eq!(host_token(h.path(), None), "from-rust-home");
+    assert_eq!(host_token(h.path(), None), "from-global");
 }
 
 /// Starts a stand-in `claude` that records the token it was given, and returns that record.

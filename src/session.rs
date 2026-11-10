@@ -39,17 +39,26 @@ pub const GLM_ENV: [(&str, &str); 2] = [
 /// Taken from the caller's environment, else from a key file (#2359). The value is passed to
 /// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
-/// Key files under HOME, read in this order when the variable is absent. The second is the Go
-/// tool's store: it is read, never created or changed.
-pub const GLM_KEY_FILES: [&str; 2] = [".moai-cli/.env.glm", ".moai/.env.glm"];
+/// Key files under HOME, read in this order when the variable is absent. The first is the
+/// global store shared with the Go tool (user decision 2026-11-10). Both are read, never
+/// created or changed.
+pub const GLM_KEY_FILES: [&str; 2] = [".moai/.env.glm", ".moai-cli/.env.glm"];
 /// Names a key file may use for the token.
 const GLM_KEY_NAMES: [&str; 2] = [GLM_TOKEN_VAR, "GLM_API_KEY"];
+/// Largest key file that is read; a bigger one is skipped.
+const GLM_KEY_FILE_MAX: u64 = 65536;
 
-/// The token from the first key file that holds a non-empty one.
+/// The token from the first key file that holds a non-empty one. Only a regular file within
+/// the size limit is opened, so a FIFO or a device at the path cannot block the launcher.
 fn glm_file_token() -> Option<String> {
     let home = std::path::PathBuf::from(std::env::var_os("HOME")?);
     GLM_KEY_FILES.iter().find_map(|file| {
-        let text = std::fs::read_to_string(home.join(file)).ok()?;
+        let path = home.join(file);
+        let meta = std::fs::metadata(&path).ok()?;
+        if !meta.is_file() || meta.len() > GLM_KEY_FILE_MAX {
+            return None;
+        }
+        let text = std::fs::read_to_string(path).ok()?;
         text.lines().find_map(|line| {
             let line = line.trim();
             let line = line.strip_prefix("export ").unwrap_or(line);
