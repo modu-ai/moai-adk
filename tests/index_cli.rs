@@ -210,9 +210,137 @@ fn gen1_base(project: &Path, gen: &str) -> String {
     v["base_commit"].as_str().unwrap().to_string()
 }
 
+/// Audit F1: exercise the public build path across a whole-second boundary. A
+/// timestamp mixed into the generation key must fail even at second precision.
+#[test]
+fn identical_rebuild_across_seconds_keeps_generation_and_manifest() {
+    let (_tmp, project) = setup_project();
+    let first = build(&project);
+    assert!(first.status.success());
+    let first = envelope(&first)["result"].clone();
+    let generation = first["generation_id"].as_str().unwrap();
+    let manifest = project
+        .join(".moai-cli/index/generations")
+        .join(generation)
+        .join("manifest.json");
+    let before = fs::read(&manifest).unwrap();
+
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+
+    let second = build(&project);
+    assert!(second.status.success());
+    let second = envelope(&second)["result"].clone();
+    assert_eq!(second["generation_id"], first["generation_id"]);
+    assert_eq!(second["action"], json!("unchanged"));
+    assert_eq!(pointer_gen(&project).as_deref(), Some(generation));
+    assert_eq!(fs::read(manifest).unwrap(), before);
+    assert_eq!(query(&project)["state"], json!("fresh"));
+}
+
+/// A pointer is one generation name, never a path. An actual external manifest
+/// makes traversal observable instead of relying on a missing target to reject it.
+#[test]
+fn pointer_generation_id_is_validated_before_path_resolution() {
+    let (tmp, project) = setup_project();
+    let first = build(&project);
+    assert!(first.status.success());
+    let generation = pointer_gen(&project).unwrap();
+    let manifest = project
+        .join(".moai-cli/index/generations")
+        .join(&generation)
+        .join("manifest.json");
+    let original: Value = serde_json::from_slice(&fs::read(manifest).unwrap()).unwrap();
+    let outside = tmp.path().join("external-generation");
+    fs::create_dir(&outside).unwrap();
+    let ids = [
+        "../../../../external-generation".to_string(),
+        outside.to_str().unwrap().to_string(),
+        "gen-0123456789abcdeF".to_string(),
+        "gen-0123456789abcde".to_string(),
+        "gen-0123456789abcdef0".to_string(),
+        "gen-0123456789abcdeg".to_string(),
+    ];
+    for id in ids {
+        let mut foreign = original.clone();
+        foreign["generation_id"] = json!(id);
+        let bytes = serde_json::to_vec(&foreign).unwrap();
+        fs::write(outside.join("manifest.json"), &bytes).unwrap();
+        let pointer =
+            serde_json::to_vec(&json!({"schema_version": 1, "generation_id": id})).unwrap();
+        fs::write(project.join(".moai-cli/index/current.json"), &pointer).unwrap();
+        let result = query(&project);
+        assert_eq!(result["state"], json!("unavailable"), "{id}");
+        assert_eq!(result["reason"], json!("index pointer unreadable"), "{id}");
+        assert_eq!(result["generation_id"], Value::Null);
+        assert_eq!(result["writes"], json!(false));
+        assert_eq!(fs::read(outside.join("manifest.json")).unwrap(), bytes);
+        assert_eq!(
+            fs::read(project.join(".moai-cli/index/current.json")).unwrap(),
+            pointer
+        );
+    }
+}
+
+/// Reuse is a successful build only when the existing immutable manifest still
+/// decodes and describes this snapshot. Refusal keeps the other published generation.
+#[test]
+fn damaged_reusable_manifest_keeps_previous_pointer_and_marks_partial() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    let old = pointer_gen(&project).unwrap();
+    let old_manifest = project
+        .join(".moai-cli/index/generations")
+        .join(&old)
+        .join("manifest.json");
+    let before = fs::read(&old_manifest).unwrap();
+    let original: Value = serde_json::from_slice(&before).unwrap();
+    fs::write(project.join("b.txt"), b"beta").unwrap();
+    git(&project, &["add", "b.txt"]);
+    assert!(build(&project).status.success());
+    let published = pointer_gen(&project).unwrap();
+    assert_ne!(old, published);
+    git(&project, &["rm", "--cached", "b.txt"]);
+    fs::remove_file(project.join("b.txt")).unwrap();
+
+    let mut damaged = vec![b"{truncated".to_vec()];
+    for (field, value) in [
+        ("schema_version", json!(2)),
+        ("generation_id", json!("gen-0000000000000000")),
+        ("base_commit", json!("wrong-base")),
+        ("files", json!([])),
+    ] {
+        let mut manifest = original.clone();
+        manifest[field] = value;
+        damaged.push(serde_json::to_vec(&manifest).unwrap());
+    }
+    for bytes in damaged {
+        fs::write(&old_manifest, &bytes).unwrap();
+        let attempt = build(&project);
+        assert!(
+            !attempt.status.success(),
+            "damaged manifest must not be reused"
+        );
+        assert!(envelope(&attempt)["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("index build failed; previous generation kept"));
+        assert_eq!(pointer_gen(&project).as_deref(), Some(published.as_str()));
+        assert_eq!(query(&project)["state"], json!("partial"));
+        assert_eq!(fs::read(&old_manifest).unwrap(), bytes);
+    }
+    fs::write(&old_manifest, &before).unwrap();
+    let repaired = build(&project);
+    assert!(repaired.status.success());
+    assert_eq!(envelope(&repaired)["result"]["action"], json!("unchanged"));
+    assert_eq!(pointer_gen(&project).as_deref(), Some(old.as_str()));
+    assert_eq!(query(&project)["state"], json!("fresh"));
+}
+
 /// REQ-C6-01: a build that cannot finish keeps the previous generation (the pointer is
 /// never moved) and marks the attempt, so queries report `partial` with the reason;
 /// the next successful build clears the marker.
+/// The unreadable-file setup uses Unix permission bits; Windows runtime is not measured.
+#[cfg(unix)]
 #[test]
 fn failed_build_keeps_previous_generation_and_marks_partial() {
     let (_tmp, project) = setup_project();

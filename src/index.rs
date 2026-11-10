@@ -3,7 +3,7 @@
 //! pointer swap of `.moai-cli/index/current.json` (temp write + rename, so a reader sees
 //! the old or the new pointer, never a partial one — AC-2: mixed generations 0).
 //!
-//! Design basis (design snapshot §"Cache 수명과 concurrent 쓰기", gap-analysis row 10):
+//! Design basis (design snapshot cache lifetime/concurrent writes, gap-analysis row 10):
 //! immutable shards keyed by content digest; a partial update builds a new generation
 //! and publishes it through an atomic pointer; an interrupted build stays behind as an
 //! orphan candidate without a completion mark; cache loss is a performance loss only —
@@ -317,7 +317,13 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
                 return Err(format!("index generation staging write failed: {e}"));
             }
         } else {
-            // Same content was already built: the immutable directory is reused as-is.
+            // Reuse is successful only when the immutable manifest still describes
+            // this snapshot. Never publish a damaged cache or overwrite it in place.
+            let stored = load_manifest(&root, &gen_id)
+                .ok_or("index generation manifest invalid; refusing reuse")?;
+            if stored.base_commit != base_commit || stored.files != files {
+                return Err("index generation manifest invalid; refusing reuse".into());
+            }
             action = "unchanged";
         }
         swap_pointer(&root, &gen_id)?;
@@ -369,13 +375,26 @@ fn read_pointer(project: &Path) -> Result<Option<String>> {
     Ok(v["generation_id"]
         .as_str()
         .map(str::to_string)
-        .filter(|s| !s.is_empty()))
+        .filter(|s| generation_id_valid(s)))
+}
+
+/// A generation name is exactly one canonical component, never a caller-supplied path.
+fn generation_id_valid(id: &str) -> bool {
+    id.strip_prefix("gen-").is_some_and(|hex| {
+        hex.len() == 16
+            && hex
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    })
 }
 
 fn load_manifest(project: &Path, gen_id: &str) -> Option<IndexManifest> {
     let bytes = fs::read(generations_dir(project).join(gen_id).join("manifest.json")).ok()?;
     let m: IndexManifest = serde_json::from_slice(&bytes).ok()?;
-    (m.files.len() <= MAX_MANIFEST_FILES).then_some(m)
+    (m.schema_version == SCHEMA_VERSION
+        && m.generation_id == gen_id
+        && m.files.len() <= MAX_MANIFEST_FILES)
+        .then_some(m)
 }
 
 /// Change detection (AC-1): additions, deletions, modifications and untracked new files
