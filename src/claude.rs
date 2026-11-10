@@ -886,7 +886,7 @@ pub fn projection(package: &Path, skills_root: &Path, added: &Map<String, Value>
             "frontmatter_added": recorded,
             "supporting_files": "byte-identical copies of the package",
         },
-        "target": text(&skills_root.join("moai"))?,
+        "target": text(&skills_root.join(crate::update::SKILL_DIR))?,
         "reload_skills_required": reload,
         "files_created": false,
         "host_loaded": "not_run",
@@ -899,7 +899,7 @@ mod tests {
     use super::*;
 
     fn package() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
     }
     fn added(pairs: &[(&str, Value)]) -> Map<String, Value> {
         pairs
