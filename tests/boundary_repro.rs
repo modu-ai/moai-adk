@@ -244,17 +244,19 @@ fn f1b_preserve_without_phase_does_not_skip_the_baseline_gate() {
 #[ignore = "#2392 repro F2: RED until remaining_evidence ignores self-reports"]
 fn f2_remaining_evidence_ignores_self_reports() {
     let required: Vec<String> = vec!["red".into(), "green".into(), "regression".into()];
+    // Oracle edit (2026-11-10, before the fix): the control moved from a passed `red`
+    // receipt to a passed `green` one, because a passed run is never RED (F2b).
     let attempts = vec![
-        receipt(ProducerKind::RunnerReceipt, "red", Summary::Passed),
-        receipt(ProducerKind::SelfReport, "green", Summary::Passed),
+        receipt(ProducerKind::RunnerReceipt, "green", Summary::Passed),
+        receipt(ProducerKind::SelfReport, "regression", Summary::Passed),
     ];
     let left = remaining_evidence(&required, &attempts);
-    assert!(
-        left.contains(&"green".to_string()),
-        "a self-reported receipt satisfied required evidence 'green': left {left:?}"
+    assert_eq!(
+        left,
+        ["red", "regression"],
+        "a self-reported receipt satisfied required evidence 'regression', or the runner's \
+         passed 'green' did not settle its step"
     );
-    // Boundary: the runner's own receipt does settle its step.
-    assert!(!left.contains(&"red".to_string()), "{left:?}");
 }
 
 /// F2b (design table row 2): an intended assertion RED is methodology evidence for the `red`
@@ -266,16 +268,31 @@ fn f2b_confirmed_red_settles_the_red_step() {
     let required: Vec<String> = vec!["red".into(), "green".into(), "regression".into()];
     let mut red = receipt(ProducerKind::RunnerReceipt, "red", Summary::Failed);
     red.red_confirmed = Some(true);
-    let left = remaining_evidence(&required, &[red.clone()]);
-    assert!(
-        !left.contains(&"red".to_string()),
-        "a confirmed assertion RED did not count as red-step evidence: left {left:?}"
+    assert_eq!(
+        remaining_evidence(&required, &[red.clone()]),
+        ["green", "regression"],
+        "a confirmed assertion RED did not count as red-step evidence"
     );
     red.red_confirmed = Some(false);
-    let left = remaining_evidence(&required, &[red]);
-    assert!(
-        left.contains(&"red".to_string()),
-        "an unconfirmed failure counted as RED: left {left:?}"
+    assert_eq!(
+        remaining_evidence(&required, &[red.clone()]),
+        ["red", "green", "regression"],
+        "an unconfirmed failure counted as RED"
+    );
+    // A passed run of the red step is not RED either.
+    let passed_red = receipt(ProducerKind::RunnerReceipt, "red", Summary::Passed);
+    assert_eq!(
+        remaining_evidence(&required, &[passed_red]),
+        ["red", "green", "regression"],
+        "a passed red-step run counted as RED"
+    );
+    // A self-reported confirmed RED is still not evidence.
+    let mut self_red = receipt(ProducerKind::SelfReport, "red", Summary::Failed);
+    self_red.red_confirmed = Some(true);
+    assert_eq!(
+        remaining_evidence(&required, &[self_red]),
+        ["red", "green", "regression"],
+        "a self-reported RED counted as evidence"
     );
 }
 
