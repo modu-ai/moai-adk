@@ -26,25 +26,139 @@ fn digest<T: Serialize>(value: &T) -> Result<String> {
     ))
 }
 
-// Inspect decoded JSON strings as well as YAML/TOML-like text. This is a
-// conservative exclusion rule, not a credential discovery or declassification API.
-fn generic_token_content(bytes: &[u8]) -> bool {
-    fn token_word(text: &str) -> bool {
-        text.split(|c: char| !c.is_ascii_alphanumeric())
-            .any(|word| word.eq_ignore_ascii_case("token"))
+// One policy for raw text AND every parser-decoded key/string, recursively.
+// Ownership hashes prove identity, never clearance to copy credentials.
+fn sensitive_text(text: &str) -> bool {
+    let normalized: String = text
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .flat_map(char::to_lowercase)
+        .collect();
+    text.split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|word| {
+            [
+                "credential",
+                "credentials",
+                "secret",
+                "secrets",
+                "token",
+                "password",
+                "passwd",
+                "apikey",
+                "privatekey",
+                "authorization",
+                "bearer",
+            ]
+            .iter()
+            .any(|s| word.eq_ignore_ascii_case(s))
+        })
+        || [
+            "apikey",
+            "privatekey",
+            "accesstoken",
+            "authtoken",
+            "refreshtoken",
+            "clientsecret",
+            "apitoken",
+            "sessiontoken",
+        ]
+        .iter()
+        .any(|s| normalized.contains(s))
+}
+
+fn json_sensitive(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Object(map) => map
+            .iter()
+            .any(|(k, v)| sensitive_text(k) || json_sensitive(v)),
+        serde_json::Value::Array(values) => values.iter().any(json_sensitive),
+        serde_json::Value::String(s) => sensitive_text(s),
+        _ => false,
     }
-    fn json_token(value: &serde_json::Value) -> bool {
-        match value {
-            serde_json::Value::Object(map) => {
-                map.iter().any(|(k, v)| token_word(k) || json_token(v))
+}
+
+fn toml_value_sensitive(value: &toml_edit::Value) -> bool {
+    match value {
+        toml_edit::Value::String(s) => sensitive_text(s.value()),
+        toml_edit::Value::Array(values) => values.iter().any(toml_value_sensitive),
+        toml_edit::Value::InlineTable(table) => table
+            .iter()
+            .any(|(k, v)| sensitive_text(k) || toml_value_sensitive(v)),
+        _ => false,
+    }
+}
+
+fn toml_table_sensitive(table: &toml_edit::Table) -> bool {
+    table.iter().any(|(key, item)| {
+        sensitive_text(key)
+            || match item {
+                toml_edit::Item::None => false,
+                toml_edit::Item::Value(value) => toml_value_sensitive(value),
+                toml_edit::Item::Table(table) => toml_table_sensitive(table),
+                toml_edit::Item::ArrayOfTables(tables) => tables.iter().any(toml_table_sensitive),
             }
-            serde_json::Value::Array(values) => values.iter().any(json_token),
-            serde_json::Value::String(s) => token_word(s),
-            _ => false,
-        }
+    })
+}
+
+// The existing dependencies provide complete JSON/TOML decoding. YAML admission
+// is intentionally limited to a flat scalar map: tags, aliases, nested/multiline
+// values and non-JSON escapes are refused rather than guessed. Plain SPEC text
+// may pass the same policy, but ambiguous escape sequences are never copied.
+fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
+    let text = std::str::from_utf8(bytes).map_err(|_| "text source required")?;
+    if sensitive_text(text) {
+        return Ok(true);
     }
-    token_word(&String::from_utf8_lossy(bytes))
-        || serde_json::from_slice(bytes).is_ok_and(|value| json_token(&value))
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(text) {
+        return Ok(json_sensitive(&value));
+    }
+    if let Ok(doc) = text.parse::<toml_edit::DocumentMut>() {
+        return Ok(toml_table_sensitive(doc.as_table()));
+    }
+    if text.trim_start().starts_with(['{', '[']) || text.contains('=') {
+        return Err("unclassifiable JSON/TOML; nothing copied".into());
+    }
+    fn scalar(s: &str) -> Result<String> {
+        let s = s.trim();
+        if s.is_empty() {
+            return Err("nested or missing YAML scalar refused".into());
+        }
+        if s.starts_with('"') {
+            return serde_json::from_str::<String>(s)
+                .map_err(|_| "unsupported YAML escape or scalar".into());
+        }
+        if s.starts_with('\'') && s.ends_with('\'') && s.len() >= 2 {
+            return Ok(s[1..s.len() - 1].replace("''", "'"));
+        }
+        if s.contains(['\\', '"', '\'', '{', '}', '[', ']', '&', '*', '!', '|', '>']) {
+            return Err("unsupported YAML syntax; nothing copied".into());
+        }
+        Ok(s.to_owned())
+    }
+    if is_spec {
+        if text.contains('\\') {
+            return Err("unclassified SPEC escape; nothing copied".into());
+        }
+        return Ok(false);
+    }
+    let mut entries = 0;
+    for line in text
+        .lines()
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && !s.starts_with('#'))
+    {
+        let (key, value) = line
+            .split_once(':')
+            .ok_or("unsupported config format; nothing copied")?;
+        if sensitive_text(&scalar(key)?) || sensitive_text(&scalar(value)?) {
+            return Ok(true);
+        }
+        entries += 1;
+    }
+    if entries == 0 {
+        return Err("empty or unclassified config; nothing copied".into());
+    }
+    Ok(false)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -231,7 +345,7 @@ impl SyntheticHome {
                 Some(h) if h == &source_sha256 => "owned",
                 Some(_) => "modified",
             };
-            let action = if generic_token_content(&src) {
+            let action = if sensitive_content(&src, s.source.starts_with(".moai/specs/"))? {
                 "excluded_secret"
             } else if ownership != "owned" {
                 "preserved"

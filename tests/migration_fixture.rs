@@ -7,6 +7,195 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
+fn decoded_policy_covers_nested_keys_values_arrays_and_tables() {
+    for (bytes, name) in [
+        (
+            br#"{"nested":[{"\u0063redentials":{"value":"synthetic"}}]}"#.as_slice(),
+            "config.json",
+        ),
+        (br#"{"ordinary":["\u0073ecrets"]}"#, "config.json"),
+        (
+            br#"[nested]
+"\u0061pi_key" = "synthetic""#,
+            "config.toml",
+        ),
+        (
+            br#"[[nested]]
+value = "\u0073ecrets""#,
+            "config.toml",
+        ),
+        (
+            br#"nested = [{"\u0063redentials" = "synthetic"}]"#,
+            "config.toml",
+        ),
+        (br#""\u0061pi_key": "synthetic""#, "config.yml"),
+        (br#"ordinary: "\u0073ecrets""#, "config.yml"),
+    ] {
+        excluded(bytes, name);
+    }
+}
+
+#[test]
+fn unclassifiable_formats_are_rejected_before_any_copy() {
+    for (bytes, name) in [
+        (br#"{"language":"ko",}"#.as_slice(), "config.json"),
+        (br#""\q" = "synthetic""#, "config.toml"),
+        (br#""\x61pi_key": "synthetic""#, "config.yml"),
+        (b"nested:\n  language: ko", "config.yml"),
+        (b"language: &alias ko", "config.yml"),
+        (b"opaque input", "config.unknown"),
+    ] {
+        let (d, h, s) = independent_fixture(bytes, name);
+        let before = moai_cli::tree_digest(d.path(), &[]).unwrap();
+        assert!(h.plan(&[Host::Claude], Mode::Default, &[s]).is_err());
+        assert_eq!(before, moai_cli::tree_digest(d.path(), &[]).unwrap());
+    }
+}
+
+#[test]
+fn ordinary_settings_remain_migratable_in_each_supported_format() {
+    for (bytes, name) in [
+        (
+            br#"{"language":"ko","max_tokens":4096,"tokenizer":"default"}"#.as_slice(),
+            "config.json",
+        ),
+        (
+            b"language = \"ko\"\nmax_tokens = 4096\ntokenizer = \"default\"",
+            "config.toml",
+        ),
+        (
+            b"language: ko\nmax_tokens: 4096\ntokenizer: default",
+            "config.yml",
+        ),
+    ] {
+        let (d, h, s) = independent_fixture(bytes, name);
+        let target = s.target.clone();
+        let source = s.source.clone();
+        let p = h.plan(&[Host::Claude], Mode::Default, &[s]).unwrap();
+        assert_eq!(p.entries[0].action, "create");
+        h.apply(&p, &p.digest).unwrap();
+        assert_eq!(fs::read(d.path().join(target)).unwrap(), bytes);
+        assert_eq!(fs::read(d.path().join(source)).unwrap(), bytes);
+    }
+}
+
+fn independent_fixture(bytes: &[u8], name: &str) -> (tempfile::TempDir, SyntheticHome, Selection) {
+    let d = tempfile::tempdir().unwrap();
+    fs::create_dir_all(d.path().join(".moai/config")).unwrap();
+    let source = format!(".moai/config/{name}");
+    fs::write(d.path().join(&source), bytes).unwrap();
+    let h = SyntheticHome::new(d.path()).unwrap();
+    let s = Selection {
+        source,
+        target: ".moai-cli/imports/config.json".into(),
+        recorded_sha256: Some(hash(bytes)),
+        project_current: None,
+    };
+    (d, h, s)
+}
+fn excluded(bytes: &[u8], name: &str) {
+    let (d, h, s) = independent_fixture(bytes, name);
+    let before = moai_cli::tree_digest(d.path(), &[]).unwrap();
+    let p = h.plan(&[Host::Glm], Mode::Default, &[s]);
+    if let Ok(p) = p {
+        let result = h.apply(&p, &p.digest);
+        assert!(
+            result.is_err(),
+            "credential copied: import={} backup={}",
+            d.path().join(".moai-cli/imports/config.json").exists(),
+            d.path().join(".moai-go-backup").exists()
+        );
+    }
+    assert_eq!(
+        before,
+        moai_cli::tree_digest(d.path(), &[]).unwrap(),
+        "excluded input caused writes"
+    );
+}
+#[test]
+fn raw_token_excluded() {
+    excluded(b"token: synthetic-audit-value", "config.yml");
+}
+#[test]
+fn escaped_token_excluded() {
+    excluded(br#"{"\u0074oken":"synthetic-audit-value"}"#, "config.json");
+}
+#[test]
+fn env_path_excluded() {
+    excluded(b"UNRELATED=synthetic-audit-value", ".env.glm");
+}
+#[test]
+fn credentials_path_excluded() {
+    excluded(b"synthetic-audit-value", "credentials.json");
+}
+#[test]
+fn secrets_path_excluded() {
+    excluded(b"synthetic-audit-value", "secrets.json");
+}
+#[test]
+fn env_content_excluded() {
+    excluded(b"ANTHROPIC_AUTH_TOKEN=synthetic-audit-value", "config.env");
+}
+#[test]
+fn raw_secrets_content_excluded() {
+    excluded(
+        br#"{"secrets":{"x":"synthetic-audit-value"}}"#,
+        "config.json",
+    );
+}
+#[test]
+fn credentials_content_excluded() {
+    excluded(
+        br#"{"credentials":{"username":"synthetic-user","value":"synthetic-audit-value"}}"#,
+        "config.json",
+    );
+}
+#[test]
+fn escaped_api_key_excluded() {
+    let b = br#"{"\u0061pi_key":"synthetic-audit-value"}"#;
+    assert!(serde_json::from_slice::<serde_json::Value>(b)
+        .unwrap()
+        .get("api_key")
+        .is_some());
+    excluded(b, "config.json");
+}
+#[test]
+fn escaped_secrets_excluded() {
+    let b = br#"{"\u0073ecrets":{"x":"synthetic-audit-value"}}"#;
+    assert!(serde_json::from_slice::<serde_json::Value>(b)
+        .unwrap()
+        .get("secrets")
+        .is_some());
+    excluded(b, "config.json");
+}
+#[test]
+fn quoted_toml_token_excluded() {
+    let b = br#""\u0074oken" = "synthetic-audit-value""#;
+    assert!(std::str::from_utf8(b)
+        .unwrap()
+        .parse::<toml_edit::DocumentMut>()
+        .unwrap()
+        .get("token")
+        .is_some());
+    excluded(b, "config.toml");
+}
+#[test]
+fn ordinary_config_import_and_preexisting_copy_are_safe() {
+    let (d, h, s) = independent_fixture(b"language: ko", "language.yml");
+    fs::create_dir_all(d.path().join(".moai-cli/imports")).unwrap();
+    fs::write(d.path().join(&s.target), b"language: ko").unwrap();
+    let p = h
+        .plan(&[Host::Claude], Mode::Default, std::slice::from_ref(&s))
+        .unwrap();
+    assert_eq!(p.entries[0].action, "unchanged");
+    let r = h.apply(&p, &p.digest).unwrap();
+    let rp = h.recovery_plan(&r).unwrap();
+    assert_eq!(rp.actions, vec!["preserved"]);
+    h.recover(&rp, &rp.digest).unwrap();
+    assert_eq!(fs::read(d.path().join(&s.target)).unwrap(), b"language: ko");
+}
+
+#[test]
 fn excluded_token_variants_never_reach_backup_or_import() {
     for bytes in [
         b"token = 'synthetic-value'".as_slice(),
