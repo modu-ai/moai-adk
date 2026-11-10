@@ -387,6 +387,23 @@ pub(crate) fn long_opt(arg: &str, wanted: &str, all: &[&str]) -> bool {
     hits.next() == Some(&wanted) && hits.next().is_none()
 }
 
+/// Whether `arg` is a force option of `git push`: one git 2.54 reads as `--force`,
+/// `--force-with-lease` or `--force-if-includes`, or any prefix of those from `--forc` on.
+/// git 2.54 refuses `--forc` and `--force-` as ambiguous, but a git without
+/// `--force-if-includes` (before 2.30) takes `--force-` for `--force-with-lease`, so the
+/// guards treat the whole family as force (#2417 audit 6778052342, non-blocking note).
+pub(crate) fn push_force_option(arg: &str) -> bool {
+    const FAMILY: [&str; 3] = ["force", "force-with-lease", "force-if-includes"];
+    if FAMILY.iter().any(|w| long_opt(arg, w, PUSH_LONG)) {
+        return true;
+    }
+    let name = arg
+        .strip_prefix("--")
+        .and_then(|b| b.split('=').next())
+        .unwrap_or("");
+    name.len() >= 4 && name.starts_with("forc") && FAMILY.iter().any(|w| w.starts_with(name))
+}
+
 /// The words that are not options or option values: for `git push`, the remote then the
 /// refspecs. `-o` and the long options below take the next word as their value.
 fn push_positionals(rest: &[String]) -> Vec<&String> {
@@ -422,12 +439,8 @@ fn branch_of_refspec(spec: &str) -> &str {
 }
 
 fn force_push_to_protected(rest: &[String]) -> bool {
-    let force_flag = short_letters(rest, &['o']).contains(&'f')
-        || rest.iter().any(|a| {
-            ["force", "force-with-lease", "force-if-includes"]
-                .iter()
-                .any(|w| long_opt(a, w, PUSH_LONG))
-        });
+    let force_flag =
+        short_letters(rest, &['o']).contains(&'f') || rest.iter().any(|a| push_force_option(a));
     // The first positional word is the remote; the others are refspecs.
     push_positionals(rest).iter().skip(1).any(|spec| {
         let forced = force_flag || spec.starts_with('+');
@@ -733,6 +746,9 @@ mod tests {
             "git push --force-w=main:abc origin main",
             "git push --force-w origin feature:main",
             "git push --force-i origin main",
+            "git push --forc origin main",
+            "git push --force- origin main",
+            "git push --force-wit=main:abc origin main",
         ] {
             assert_eq!(bash_guard(cmd), Some(FORCE_PUSH), "{cmd}");
         }
@@ -744,9 +760,8 @@ mod tests {
             assert_eq!(bash_guard(cmd), Some(BRANCH_DELETE), "{cmd}");
         }
         for cmd in [
-            // Ambiguous for git (it refuses the command), so not the force option.
-            "git push --forc origin main",
-            "git push --force- origin main",
+            // Ambiguous for git 2.54 (it refuses them), not for an older git (see
+            // `push_force_option`).
             "git branch --d --f main",
             "git branch --delete --fo main",
             // Another option's prefix or a negation.
@@ -771,7 +786,14 @@ mod tests {
     fn option_lists_match_the_installed_git() {
         // The lists were measured with git 2.54; another version may differ in options that
         // do not matter here, so only that version is compared.
-        let Ok(version) = std::process::Command::new("git").arg("--version").output() else {
+        // Every git spawn runs with a scrubbed environment (#2337, tests/git_env_scrub.rs).
+        let git = |args: &[&str]| {
+            let mut cmd = std::process::Command::new("git");
+            cmd.args(args);
+            crate::identity::scrub_git_env(&mut cmd);
+            cmd.output()
+        };
+        let Ok(version) = git(&["--version"]) else {
             eprintln!("skipped: git not found");
             return;
         };
@@ -780,12 +802,7 @@ mod tests {
             return;
         }
         for (cmd, ours) in [("push", PUSH_LONG), ("branch", BRANCH_LONG)] {
-            let Ok(out) = std::process::Command::new("git")
-                .args([cmd, "--git-completion-helper-all"])
-                .env("GIT_CONFIG_NOSYSTEM", "1")
-                .env("GIT_CONFIG_GLOBAL", "/dev/null")
-                .output()
-            else {
+            let Ok(out) = git(&[cmd, "--git-completion-helper-all"]) else {
                 eprintln!("skipped: git not found");
                 return;
             };
