@@ -606,15 +606,42 @@ pub fn is_commit_or_push(command: &str) -> bool {
     runs_git(command, &["commit", "push"])
 }
 
-/// The Issue number of a lane branch `issue/<n>-<key>` (or `issue/<n>`).
-pub fn issue_from_branch(branch: &str) -> Option<i64> {
-    let rest = branch.strip_prefix("issue/")?;
+/// How a branch name reads as a lane branch (#2336).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LaneBranch {
+    /// `issue/<n>` or `issue/<n>-<key>`: the Issue number comes first.
+    Issue(i64),
+    /// Not under `issue/`: not a lane branch.
+    NotLane,
+    /// Under `issue/` but without a leading Issue number — a letter-led key, a leading zero
+    /// (`issue/06-C-2007-e1`, the old `worktree-plan` shape), or digits running into text.
+    Unparseable,
+}
+
+/// Classifies a branch name. Every lane branch and every branch `worktree-plan` names put the
+/// Issue number first (`issue/<n>-<key>`, `<prefix>/<n>-<key>-e<epoch>`); an Issue number has
+/// no leading zero, so `issue/06-…` is a key, not Issue 6.
+pub fn lane_branch(branch: &str) -> LaneBranch {
+    let Some(rest) = branch.strip_prefix("issue/") else {
+        return LaneBranch::NotLane;
+    };
     let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
     let tail = &rest[digits.len()..];
-    if digits.is_empty() || !(tail.is_empty() || tail.starts_with('-')) {
-        return None;
+    if digits.is_empty() || digits.starts_with('0') || !(tail.is_empty() || tail.starts_with('-')) {
+        return LaneBranch::Unparseable;
     }
-    digits.parse().ok().filter(|n| *n > 0)
+    match digits.parse() {
+        Ok(n) => LaneBranch::Issue(n),
+        Err(_) => LaneBranch::Unparseable,
+    }
+}
+
+/// The Issue number of a lane branch `issue/<n>-<key>` (or `issue/<n>`).
+pub fn issue_from_branch(branch: &str) -> Option<i64> {
+    match lane_branch(branch) {
+        LaneBranch::Issue(n) => Some(n),
+        LaneBranch::NotLane | LaneBranch::Unparseable => None,
+    }
 }
 
 /// Owner and repository of a GitHub remote URL: `https://github.com/o/r(.git)`,
@@ -741,8 +768,23 @@ pub fn hook_cli<T: Transport, C: Clock>(
     let Some(branch) = git_out(&cwd, &["symbolic-ref", "--short", "-q", "HEAD"]) else {
         return allow("no claim record and no branch (detached HEAD); not a lane worktree");
     };
-    let Some(issue) = issue_from_branch(&branch) else {
-        return allow("no claim record and the branch is not issue/<n>; not a lane worktree");
+    let issue = match lane_branch(&branch) {
+        LaneBranch::Issue(n) => n,
+        LaneBranch::NotLane => {
+            return allow("no claim record and the branch is not issue/<n>; not a lane worktree")
+        }
+        // Still allowed: fail-open versus fail-closed is decision D5 (HOLD). The verdict
+        // only makes the unread branch visible instead of passing it as "not a lane".
+        LaneBranch::Unparseable => {
+            return Ok(json!({
+                "allowed": true,
+                "branch": "unparseable",
+                "reason": format!(
+                    "no claim record and the lane branch {branch} has no leading Issue number \
+                     (issue/<n>-<key>); not guarded (fail-open, decision D5 HOLD)"
+                ),
+            }))
+        }
     };
     let uncertain = |why: String| -> Result<Value> {
         Err(format!(

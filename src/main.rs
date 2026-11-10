@@ -332,8 +332,9 @@ enum Command {
         total_cap: u64,
     },
     /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
-    /// tip containment, changed-since-audit, claim lines, CI status, head stability.
-    /// Status posting and merging stay with the leader flow.
+    /// tip containment (behind_by 0), changed-since-audit, claim lines, required check
+    /// runs' conclusions, head stability. Status posting and merging stay with the
+    /// leader flow.
     FlowGateVerdict {
         /// GitHub owner.
         #[arg(long)]
@@ -350,6 +351,11 @@ enum Command {
         /// The base ref the tip is read from (e.g. v2026.11.0).
         #[arg(long = "base-ref", default_value = "v2026.11.0")]
         base_ref: String,
+        /// Comma-separated required check-run names (#2335). The verdict reads these
+        /// runs' conclusions; unrelated checks and the combined commit status are
+        /// excluded from the judgment.
+        #[arg(long = "required-checks", default_value = "rc-ci")]
+        required_checks: String,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
@@ -776,6 +782,23 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
 }
+/// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
+/// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
+/// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
+/// (`update::WALK_BYTES`); the plan is never trusted for its size, since every apply checks
+/// it against `--plan-digest`.
+const PLAN_INPUT_LIMIT: usize = 16 * 1024 * 1024;
+fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
+    let mut bytes = Vec::new();
+    io::stdin()
+        .take(PLAN_INPUT_LIMIT as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "stdin read failed")?;
+    if bytes.len() > PLAN_INPUT_LIMIT {
+        return Err("plan input exceeds 16 MiB".into());
+    }
+    serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+}
 /// Maps the launcher's host word to the session host.
 fn host_of(word: &str) -> Result<&'static str, String> {
     match word {
@@ -1042,7 +1065,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => apply(
             &project,
-            input::<Plan>()?,
+            plan_input::<Plan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1061,7 +1084,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => agents_apply(
             &project,
-            input::<AgentsPlan>()?,
+            plan_input::<AgentsPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1164,14 +1187,28 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaimVerify { project, hook } => {
-            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
             let clock = moai_cli::forge::policy::SystemClock;
             if hook {
                 // Host hook stdin can carry large tool input; read a bounded prefix.
                 let mut bytes = Vec::new();
                 let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+                // #2348: a command the guard does not check never reaches the transport
+                // setup, so a bad `MOAI_FORGE_GH_BIN` cannot turn every Bash call into a
+                // refusal. `hook_cli` repeats this check and stays the single decision.
+                let input: serde_json::Value =
+                    serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+                let command = input["tool_input"]["command"].as_str().unwrap_or("");
+                if input["tool_name"] != "Bash"
+                    || !moai_cli::claim_verify::is_commit_or_push(command)
+                {
+                    return Ok(serde_json::json!({
+                        "allowed": true, "reason": "not a git commit or push"
+                    }));
+                }
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
                 moai_cli::claim_verify::hook_cli(&project, &bytes, &transport, &clock)
             } else {
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
                 let request = input::<moai_cli::claim_verify::VerifyRequest>()?;
                 moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
             }
@@ -1280,6 +1317,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             pr,
             audit_head,
             base_ref,
+            required_checks,
         } => {
             let transport = moai_cli::forge::transport::GhTransport::from_env()?;
             let clock = moai_cli::forge::policy::SystemClock;
@@ -1289,12 +1327,28 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 Default::default(),
                 Default::default(),
             );
-            moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
+            let checks: Vec<String> = required_checks
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
+            moai_cli::flow::gate_verdict(
+                &client,
+                &owner,
+                &repo,
+                pr,
+                &audit_head,
+                &base_ref,
+                &checks,
+            )
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan { project, host } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            moai_cli::hooks::plan(&project, &host, home.as_deref())
+            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
+            merge_binary_state(&mut out);
+            Ok(out)
         }
         Command::HooksApply {
             project,
@@ -1303,13 +1357,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            moai_cli::hooks::apply(
+            let mut out = moai_cli::hooks::apply(
                 &project,
                 &host,
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
-            )
+            )?;
+            merge_binary_state(&mut out);
+            Ok(out)
         }
         Command::HookReceipt { host } => {
             // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
@@ -1527,7 +1583,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
-            let plan = input::<moai_cli::update::UpdatePlan>()?;
+            let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
             moai_cli::update::apply_update(
                 &home,
                 &staged,
@@ -1545,7 +1601,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             plan_digest,
             permission_reference,
         } => {
-            let plan = input::<moai_cli::recovery::RecoveryPlan>()?;
+            let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
         Command::PlanAdmit { project } => {
@@ -1610,7 +1666,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             moai_cli::sources::sources_apply(
                 &project,
                 &home,
-                input::<moai_cli::sources::SourcePlan>()?,
+                plan_input::<moai_cli::sources::SourcePlan>()?,
                 &plan_digest,
                 &permission_reference,
             )
@@ -1653,7 +1709,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => moai_cli::github_templates::github_apply(
             &project,
-            input::<moai_cli::github_templates::GithubPlan>()?,
+            plan_input::<moai_cli::github_templates::GithubPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1670,7 +1726,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             permission_reference,
         } => moai_cli::generation::generation_apply(
             &project,
-            input::<moai_cli::generation::GenerationPlan>()?,
+            plan_input::<moai_cli::generation::GenerationPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1717,9 +1773,46 @@ fn usage_error(e: clap::Error) -> ExitCode {
     ExitCode::from(2)
 }
 
+/// True when the command line is a generated host hook (#2348): `hook-receipt` or any word
+/// run with `--hook`. Read from the raw arguments so a command line that fails to parse is
+/// still handled as a hook. Both hosts read a hook's stdout as hook output and its exit 2 as
+/// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
+fn hook_mode_argv(args: &[String]) -> bool {
+    args.get(1).is_some_and(|w| w == "hook-receipt") || args.iter().skip(1).any(|a| a == "--hook")
+}
+
+/// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
+/// hooks-plan / hooks-apply result.
+fn merge_binary_state(out: &mut serde_json::Value) {
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    if let (Some(out), serde_json::Value::Object(state)) = (
+        out.as_object_mut(),
+        moai_cli::hooks::binary_state(&path_env),
+    ) {
+        out.extend(state);
+    }
+}
+
+/// Exit code of a hook-mode error that is not the guard's refusal: 1, which both hosts treat
+/// as a non-blocking hook error; the reason goes to stderr.
+const HOOK_NON_BLOCKING_ERROR: u8 = 1;
+
 fn main() -> ExitCode {
+    let argv: Vec<String> = std::env::args().collect();
+    let hook_mode = hook_mode_argv(&argv);
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
+        Err(e) if hook_mode => {
+            if matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
+                e.exit()
+            }
+            let rendered = e.render().to_string();
+            eprintln!(
+                "moai-cli hook: {}",
+                rendered.lines().next().unwrap_or("invalid command line")
+            );
+            return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
+        }
         Err(e) => return usage_error(e),
     };
     let op = cli.command.as_ref().and_then(operation);
@@ -1735,12 +1828,18 @@ fn main() -> ExitCode {
             }
         };
     };
-    // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs).
-    let hook_mode = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
+    // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
+    // guard's refusal is the one error that may block. A receipt hook never blocks.
+    let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
     match run_internal(cli.command.expect("internal operation")) {
+        Ok(_) if hook_mode => ExitCode::SUCCESS,
         Ok(result) => {
             println!("{}", contract::success(op, result));
             ExitCode::SUCCESS
+        }
+        Err(message) if hook_mode => {
+            eprintln!("{message}");
+            ExitCode::from(if guard { 2 } else { HOOK_NON_BLOCKING_ERROR })
         }
         Err(message) => {
             println!(
@@ -1748,7 +1847,7 @@ fn main() -> ExitCode {
                 contract::failure(op, contract::classify(&message), &message)
             );
             eprintln!("{message}");
-            ExitCode::from(if hook_mode { 2 } else { 1 })
+            ExitCode::from(1)
         }
     }
 }

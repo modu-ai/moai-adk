@@ -322,8 +322,9 @@ fn valid_prefix(p: &str) -> bool {
 }
 
 // @MX:DEBT: [AUTO] the branch prefix is a required input with no default (HOLD, leader 2026-11-08)
-// @MX:CEILING: REQ-06C-01 layout `<prefix>/<logical_key>-<issue>-e<epoch>`; it differs from the
-//   lanes' `issue/<n>-<key>` and from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
+// @MX:CEILING: REQ-06C-01 layout `<prefix>/<issue>-<logical_key>-e<epoch>` (Issue first since
+//   #2336, like the lanes' `issue/<n>-<key>`, so `claim_verify::lane_branch` reads the same
+//   Issue); it still differs from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
 pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>) -> Result<Value> {
@@ -334,7 +335,7 @@ pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>
         return Err("invalid record: base_revision must be 40 lowercase hex".into());
     }
     let issue = rec.task_ref.issue_number;
-    let branch = format!("{prefix}/{}-{issue}-e{}", rec.logical_key, rec.epoch);
+    let branch = format!("{prefix}/{issue}-{}-e{}", rec.logical_key, rec.epoch);
     if !git_ok(project, &["check-ref-format", "--branch", &branch])? {
         return Err(format!("invalid branch name {branch}"));
     }

@@ -509,7 +509,7 @@ fn is_executable(path: &Path) -> bool {
 
 /// First PATH entry holding an executable `<name>` (shell order); on Windows the
 /// `.exe` spelling is tried after the bare name.
-fn resolve_on_path(path_env: &str, name: &str) -> Option<PathBuf> {
+pub(crate) fn resolve_on_path(path_env: &str, name: &str) -> Option<PathBuf> {
     for dir in std::env::split_paths(path_env) {
         if dir.as_os_str().is_empty() {
             continue;
