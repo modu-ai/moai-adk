@@ -281,6 +281,68 @@ fn live_foreign_claim_is_skipped_and_posts_nothing() {
     assert_eq!(t.remaining(), 0);
 }
 
+/// #2344 AC-1/AC-3(a): once the lane has handed its card to the gate (`pr_ready`, written
+/// by pr-confirm), the next queue-next skips that card even though its Issue is still open
+/// until the merge, and claims the free one. The handed-off record is left exactly as it
+/// was: still `pr_ready` (so handoff, worktree and scope-check keep treating it as active)
+/// and still visible to claim-show, never `cancelled`.
+#[test]
+fn own_pr_ready_card_is_skipped_and_the_free_card_is_claimed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+
+    // Round 1: claim #7.
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.extend(attempt(7, 500, vec![claim(500, "session-a")]));
+    let (first, t1) = run(&root, "session-a", ex);
+    assert_eq!(first["outcome"], json!("claimed"), "{first}");
+    assert_eq!(first["issue"], json!(7));
+    assert_eq!(t1.remaining(), 0);
+
+    // Hand-off: the same change pr-confirm makes (pr_link.rs: `r.state = "pr_ready"`).
+    {
+        let journal = locked(&root);
+        let mut rec = journal
+            .read_events()
+            .unwrap()
+            .last()
+            .unwrap()
+            .record
+            .clone();
+        rec.state = "pr_ready".into();
+        journal.commit("pr_ready", &rec).unwrap();
+    }
+
+    // Round 2: #7 is still open (not merged yet), #8 is free. Every request the run makes
+    // is recorded, so a read or POST for #7 beyond the open-issue list fails the test.
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.extend(attempt(8, 600, vec![claim(600, "session-a")]));
+    let (second, t2) = run(&root, "session-a", ex);
+    assert_eq!(second["outcome"], json!("claimed"), "{second}");
+    assert_eq!(second["issue"], json!(8), "{second}");
+    assert_eq!(
+        second["skipped"],
+        json!([{"issue": 7, "reason": "handed_off", "state": "pr_ready", "epoch": 1}]),
+        "{second}"
+    );
+    assert_eq!(t2.remaining(), 0);
+
+    // AC-3(a): the #7 record is unchanged and still shown.
+    let key7 = task_key(&TaskRef::new(
+        "github",
+        "github.com",
+        "acme",
+        "widgets",
+        101,
+        7000,
+        7,
+    ));
+    let shown = moai_cli::claim::show(&root, &key7).unwrap();
+    assert_eq!(shown["outcome"], json!("held"), "{shown}");
+    assert_eq!(shown["record"]["state"], json!("pr_ready"), "{shown}");
+    assert_eq!(shown["record"]["comment_id"], json!(500), "{shown}");
+}
+
 /// No candidate left: `idle`, nothing posted.
 #[test]
 fn no_candidate_is_idle_and_posts_nothing() {
