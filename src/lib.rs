@@ -12,6 +12,7 @@ pub mod claude;
 pub mod context;
 pub mod contract;
 pub mod decision;
+pub mod decision_log;
 pub mod flow;
 pub mod forge;
 pub mod generation;
