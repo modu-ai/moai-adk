@@ -1,8 +1,11 @@
 //! tool-preflight guards, #2391 stage 5: the minimal set that keeps everyday development safe
 //! without the Go hooks (Issue #2391 classification 6771810987, corrected in 6772429210).
 //!
-//! Every rule is a deny with no override, so each one is limited to damage that cannot be undone
-//! and is pinned by allowed look-alikes in its tests. The reasons are fixed strings; the command
+//! Every rule below is a deny with no override, so each one is limited to damage that cannot be
+//! undone and is pinned by allowed look-alikes in its tests. Stage 6 adds a separate
+//! confirmation class ([`bash_confirm`], decision B2 = A): `git reset --hard`, a forced
+//! `git clean` and a force push to another branch are asked about on Claude Code and refused
+//! on Codex (which cannot ask); a deny anywhere on the line always wins over a confirmation. The reasons are fixed strings; the command
 //! text, paths and file contents are never echoed.
 //!
 //! - A1 `rm` aimed at `/`, the home directory, a top-level directory, a bare `*`/`.`/`..`, or a
@@ -226,6 +229,61 @@ fn git_guard(args: &[String]) -> Option<&'static str> {
     None
 }
 
+const CONFIRM_RESET: &str =
+    "MoAI tool-preflight: `git reset --hard` discards uncommitted changes; confirm it.";
+const CONFIRM_CLEAN: &str =
+    "MoAI tool-preflight: a forced `git clean` deletes untracked files; confirm it.";
+const CONFIRM_FORCE_PUSH: &str =
+    "MoAI tool-preflight: a force push rewrites the remote branch; confirm it.";
+
+/// The confirmation class (decision B2 = A, Issue #2389 c6774899518 row 25): commands that
+/// discard work but are ordinary in development, so they are asked about (Claude) rather than
+/// refused. Read with the same parser, aliases, short-option clusters and long-option prefix
+/// rule ([`long_opt`]) as the deny guards.
+/// Only consulted when no deny applies to the line.
+pub fn bash_confirm(command: &str) -> Option<&'static str> {
+    for (name, args) in crate::claim_verify::shell_commands(command) {
+        if name != "git" {
+            continue;
+        }
+        for sub in crate::claim_verify::git_subcommands(&args) {
+            let rest = &sub.rest;
+            let reason = match sub.verb.as_str() {
+                // `--hard` or a prefix git takes for it (`--h` too: no other reset option
+                // starts with `h`; measured with git 2.54.0).
+                "reset" => rest
+                    .iter()
+                    .take_while(|a| *a != "--")
+                    .any(|a| long_opt(a, "hard", RESET_LONG))
+                    .then_some(CONFIRM_RESET),
+                "clean" => {
+                    let letters = short_letters(rest, &['e']);
+                    let has = |w: &str| rest.iter().any(|a| long_opt(a, w, CLEAN_LONG));
+                    let forced = letters.contains(&'f') || has("force");
+                    let dry = letters.contains(&'n') || has("dry-run");
+                    (forced && !dry).then_some(CONFIRM_CLEAN)
+                }
+                // A force push that the deny guard did not refuse: another branch, or no
+                // refspec at all (the current branch is not read here).
+                "push" => {
+                    let forced_flag = short_letters(rest, &['o']).contains(&'f')
+                        || rest.iter().any(|a| push_force_option(a));
+                    let plus = push_positionals(rest)
+                        .iter()
+                        .skip(1)
+                        .any(|s| s.starts_with('+'));
+                    (forced_flag || plus).then_some(CONFIRM_FORCE_PUSH)
+                }
+                _ => None,
+            };
+            if reason.is_some() {
+                return reason;
+            }
+        }
+    }
+    None
+}
+
 /// The option letters of every short-option cluster (`-vf` → v, f) up to `--`. A letter in
 /// `value_opts` takes the rest of its cluster, or the next word when it ends the cluster, as
 /// its value (pre-audit H5-B3: git aggregates short options).
@@ -367,6 +425,43 @@ pub(crate) const BRANCH_LONG: &[&str] = &[
     "verbose",
     "with",
     "without",
+];
+
+pub(crate) const CLEAN_LONG: &[&str] = &[
+    "dry-run",
+    "exclude",
+    "force",
+    "interactive",
+    "no-dry-run",
+    "no-force",
+    "no-interactive",
+    "no-quiet",
+    "quiet",
+];
+pub(crate) const RESET_LONG: &[&str] = &[
+    "auto-advance",
+    "hard",
+    "intent-to-add",
+    "inter-hunk-context",
+    "keep",
+    "merge",
+    "mixed",
+    "no-auto-advance",
+    "no-intent-to-add",
+    "no-patch",
+    "no-pathspec-file-nul",
+    "no-pathspec-from-file",
+    "no-quiet",
+    "no-recurse-submodules",
+    "no-refresh",
+    "patch",
+    "pathspec-file-nul",
+    "pathspec-from-file",
+    "quiet",
+    "recurse-submodules",
+    "refresh",
+    "soft",
+    "unified",
 ];
 
 /// Whether `arg` selects the long option `wanted` among a subcommand's long options `all`,
@@ -801,7 +896,12 @@ mod tests {
             eprintln!("skipped: the lists were measured with git 2.54");
             return;
         }
-        for (cmd, ours) in [("push", PUSH_LONG), ("branch", BRANCH_LONG)] {
+        for (cmd, ours) in [
+            ("push", PUSH_LONG),
+            ("branch", BRANCH_LONG),
+            ("clean", CLEAN_LONG),
+            ("reset", RESET_LONG),
+        ] {
             let Ok(out) = git(&[cmd, "--git-completion-helper-all"]) else {
                 eprintln!("skipped: git not found");
                 return;
@@ -982,6 +1082,63 @@ mod tests {
         ] {
             assert_eq!(bash_guard(&cmd), want, "{cmd}");
         }
+    }
+
+    /// Decision B2 = A: the confirmation class, with its look-alikes. Strings only.
+    #[test]
+    fn the_confirmation_class_is_read_like_git_reads_it() {
+        for (cmd, want) in [
+            ("git reset --hard", Some(CONFIRM_RESET)),
+            ("git reset --hard HEAD~1", Some(CONFIRM_RESET)),
+            ("git reset --ha", Some(CONFIRM_RESET)),
+            ("git -c 'alias.rh=reset --hard' rh", Some(CONFIRM_RESET)),
+            ("git reset --soft HEAD~1", None),
+            ("git reset HEAD a.txt", None),
+            // git takes `--h` for `--hard` (measured, git 2.54.0).
+            ("git reset --h", Some(CONFIRM_RESET)),
+            ("git reset --so HEAD~1", None),
+            ("git reset -- --hard", None),
+            ("git clean -fd", Some(CONFIRM_CLEAN)),
+            ("git clean -fdx", Some(CONFIRM_CLEAN)),
+            ("git clean --force", Some(CONFIRM_CLEAN)),
+            ("git clean -f -e f", Some(CONFIRM_CLEAN)),
+            ("git clean --f", Some(CONFIRM_CLEAN)),
+            ("git clean --fo -d", Some(CONFIRM_CLEAN)),
+            ("git clean --forc", Some(CONFIRM_CLEAN)),
+            ("git clean --f --dry", None),
+            ("git clean --h", None),
+            ("git clean -n", None),
+            ("git clean -fn", None),
+            ("git clean -fd --dry-run", None),
+            ("git clean -ef", None),
+            ("git push --force origin feature", Some(CONFIRM_FORCE_PUSH)),
+            ("git push -f", Some(CONFIRM_FORCE_PUSH)),
+            ("git push origin +feature", Some(CONFIRM_FORCE_PUSH)),
+            ("git push --force-with-lease", Some(CONFIRM_FORCE_PUSH)),
+            (
+                "git push --force-w origin feature",
+                Some(CONFIRM_FORCE_PUSH),
+            ),
+            (
+                "git push --force-wi=feature:abc origin feature",
+                Some(CONFIRM_FORCE_PUSH),
+            ),
+            (
+                "git push --force-i origin feature",
+                Some(CONFIRM_FORCE_PUSH),
+            ),
+            // Ambiguous for git 2.54, the force family for an older git (`push_force_option`).
+            ("git push --forc origin feature", Some(CONFIRM_FORCE_PUSH)),
+            ("git push --force- origin feature", Some(CONFIRM_FORCE_PUSH)),
+            ("git push origin feature", None),
+            ("git push -o f origin feature", None),
+            ("git log --hard", None),
+            ("echo git reset --hard", None),
+        ] {
+            assert_eq!(bash_confirm(cmd), want, "{cmd}");
+        }
+        // Protected branches stay a deny, not a question.
+        assert_eq!(bash_guard("git push --force origin main"), Some(FORCE_PUSH));
     }
 
     #[test]
