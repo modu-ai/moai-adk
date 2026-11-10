@@ -234,6 +234,16 @@ pub fn independence(r: &Reviewer) -> Independence {
     }
 }
 
+/// Severities that do not hold admission; any other value — `critical`, `high`, or a word this
+/// table does not know — does (#2392 decision 6774899518 row 17 = A). Case-insensitive.
+const OPEN_SEVERITIES: [&str; 3] = ["medium", "low", "info"];
+
+/// Whether an open finding of this severity holds admission.
+pub fn blocking_severity(severity: &str) -> bool {
+    let s = severity.trim().to_ascii_lowercase();
+    !OPEN_SEVERITIES.contains(&s.as_str())
+}
+
 /// The PR's `head.sha` against the audited commit; a failed lookup is `unknown`.
 pub fn pr_binding(commit: &str, pr: Option<&Value>, lookup_failed: bool) -> PrBinding {
     if lookup_failed {
@@ -520,6 +530,13 @@ pub fn reduce(input: &AuditInput, observed: &Observed, outcome: &RunOutcome, now
     } else if !evidence_ok {
         reasons.push("must-pass-not-met");
         (worst(), Admission::Rejected)
+    } else if input
+        .findings
+        .iter()
+        .any(|f| blocking_severity(&f.severity))
+    {
+        reasons.push("blocking-finding-open");
+        (Status::Unknown, Admission::Held)
     } else {
         (Status::Passed, Admission::Admitted)
     };

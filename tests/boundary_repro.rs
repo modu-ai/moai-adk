@@ -313,7 +313,6 @@ fn f2b_confirmed_red_settles_the_red_step() {
 /// F4: green checks do not admit a candidate while a blocking finding is still open; a
 /// low finding does not block (the boundary).
 #[test]
-#[ignore = "#2392 repro F4: RED until an open critical finding blocks admission"]
 fn f4_open_critical_finding_blocks_admission() {
     let Some(dir) = project() else { return };
     let mut input = audit_input(dir.path(), &["true"]);
