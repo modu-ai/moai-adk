@@ -147,6 +147,9 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
     };
+    if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
+        record_deny(&input, cwd, now_unix_ms, host);
+    }
     match host {
         Host::Claude => render_claude(event, verdict),
         Host::Codex => render_codex(event, verdict),
@@ -168,6 +171,40 @@ impl Host {
             _ => None,
         }
     }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Host::Claude => "claude",
+            Host::Codex => "codex",
+        }
+    }
+}
+
+/// A short key for the host's `tool_use_id` (sha256, first 16 hex digits), so a deny and the
+/// observation of the same call can be matched without logging the raw id.
+fn call_key(input: &Value) -> Value {
+    match input["tool_use_id"].as_str() {
+        Some(id) if !id.is_empty() => {
+            let d = crate::digest(id.as_bytes());
+            json!(d.trim_start_matches("sha256:")[..16].to_string())
+        }
+        _ => Value::Null,
+    }
+}
+
+/// A tool-preflight deny leaves one `deny` line (session, call key, host, time) in the engine
+/// log when `.moai-cli/` exists — the evidence `hooks::status` reads as `action_blocked` when
+/// no observation of the same call follows. Best effort, never changes the answer.
+fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
+    let line = json!({
+        "schema_version": 1,
+        "kind": "deny",
+        "host": host.name(),
+        "session": session_key(input),
+        "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
 /// Codex rendering of a verdict, from the Codex hooks page only
@@ -338,17 +375,21 @@ fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     else {
         return Verdict::Allow;
     };
+    // Cost: the token check reads only the command text, while the local-record lookup spawns
+    // two `git rev-parse` calls to find the journal. Both outcomes allow, so the cheap check
+    // goes first and a commit that carries its token never pays for the lookup.
+    let gap = match crate::claim_verify::commit_claim_id(command, issue) {
+        Ok(_) => return Verdict::Allow,
+        Err(gap) => gap,
+    };
     if crate::claim_verify::has_local_record(cwd, &dir) {
         return Verdict::Allow;
     }
-    match crate::claim_verify::commit_claim_id(command, issue) {
-        Ok(_) => Verdict::Allow,
-        Err(gap) => Verdict::Deny(format!(
-            "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
-             message.",
-            gap.reason(issue)
-        )),
-    }
+    Verdict::Deny(format!(
+        "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
+         message.",
+        gap.reason(issue)
+    ))
 }
 
 /// The log both stage-2 duties share, under `<cwd>/.moai-cli/receipts/`: tool-observe appends
@@ -458,6 +499,12 @@ fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
 }
 
 fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
+    // Cost (audit #2400 N3): a project without a real `.moai-cli/` directory records nothing,
+    // so return before spawning `git` for the HEAD commit.
+    match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
+        Ok(m) if m.is_dir() => {}
+        _ => return Verdict::Allow,
+    }
     let tool = input["tool_name"].as_str().unwrap_or("");
     let tool_ok = !tool.is_empty()
         && tool.len() <= 64
@@ -474,7 +521,9 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
     let line = json!({
         "schema_version": 1,
         "kind": "observe",
+        "host": host.name(),
         "session": session_key(input),
+        "call": call_key(input),
         "tool": if tool_ok { json!(tool) } else { json!("unrecorded") },
         "class": class,
         "path": target_path(input, cwd),

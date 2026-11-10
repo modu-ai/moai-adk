@@ -6,6 +6,7 @@ pub mod audit;
 pub mod banner;
 pub mod baseline;
 pub mod claim;
+pub mod claim_cache;
 pub mod claim_verify;
 pub mod claude;
 pub mod context;

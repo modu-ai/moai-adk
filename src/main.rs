@@ -1494,6 +1494,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out);
+            // Outside the plan digest: the #2391 hook state from local evidence, read only.
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            out["hook_status"] =
+                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
         Command::HooksApply {
