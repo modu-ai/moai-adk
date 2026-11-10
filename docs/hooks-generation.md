@@ -55,8 +55,9 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - `hooks-plan`·`hooks-apply`는 자기 PATH에서 `moai-cli`를 찾았는지 `hook_binary.state`(`resolved` / `binary_unresolved`)로 보고한다. 못 찾으면 `hooks_active: false`, 찾아도 호스트 영수증이 있기 전에는 `hooks_active: "not_run"`이다. 호스트 훅 프로세스의 PATH는 셸과 다를 수 있으므로 `resolved`는 "이 PATH에서 찾았다"는 뜻일 뿐이다.
 - 훅 모드 출력과 종료 코드(#2348):
   - `hook-receipt`와 `claim-verify --hook`은 성공(exit 0)할 때 stdout에 아무것도 쓰지 않는다. 두 호스트 모두 stdout의 JSON 객체를 훅 출력으로 읽기 때문이다. 다른 호출은 envelope를 그대로 쓴다.
-  - exit 2(차단)는 guard의 거부 하나뿐이다. 사용법 오류(알 수 없는 플래그·단어)와 설정 오류는 exit 1(비차단 오류)이고, 사유는 stderr에 쓴다.
+  - exit 2(차단)는 guard의 거부 하나뿐이다. 사용법 오류(알 수 없는 플래그·단어)와 `hook-receipt`의 오류는 exit 1(비차단 오류)이고, 사유는 stderr에 쓴다.
   - guard가 검사하지 않는 명령(커밋·push가 아님)은 transport 설정을 만들지 않는다. 그래서 잘못된 `MOAI_FORGE_GH_BIN`이 모든 Bash 호출을 막지 않는다.
+  - guard가 검사하는 명령(커밋·push)에서 판정을 내리지 못하면 — 잘못된 `MOAI_FORGE_GH_BIN` 같은 설정 오류나 조회 실패 포함 — guard의 거부로 보고 exit 2로 막는다(fail-closed). 검증하지 못한 커밋을 통과시키지 않기 위해서다. 이 경우를 비차단으로 바꿀지는 guard 정책 결정(D5)에 속하며, 그 전까지 현행을 유지한다.
   - 남은 한계: 이미 배포된 옛 `moai-cli`가 PATH에 있으면, 그 바이너리가 모르는 단어·플래그로 exit 2를 낼 수 있다. 이 동작은 이 저장소의 새 바이너리로는 바꿀 수 없다.
 - Codex 파일에는 선택적 top-level `description`을 넣는다("optional top-level metadata... It doesn't change which hooks run").
 

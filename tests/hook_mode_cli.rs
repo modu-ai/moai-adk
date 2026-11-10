@@ -1,8 +1,10 @@
 //! #2348: hook-mode output and exit codes. A generated hook runs `moai-cli hook-receipt` or
 //! `moai-cli claim-verify . --hook`; both hosts read the handler's stdout as hook output and
 //! read exit 2 as "block". In hook mode stdout stays empty and only a guard refusal exits 2;
-//! usage, configuration and internal errors exit 1 (a non-blocking hook error) with the reason
-//! on stderr. Every case runs the real binary in a temporary project and HOME.
+//! usage errors and receipt errors exit 1 (a non-blocking hook error) with the reason on
+//! stderr, and a command the guard does not check never reads the transport setting. A
+//! guarded command the guard cannot verify is a refusal (fail-closed). Every case runs the
+//! real binary in a temporary project and HOME.
 #![cfg(unix)]
 mod common;
 
@@ -187,6 +189,20 @@ fn hook_mode_transport_setting_only_matters_to_a_guarded_command() {
     assert_eq!(r.code, 2, "{}", r.stderr);
     assert_eq!(r.stdout, "");
     assert!(r.stderr.contains("claim verify: uncertain"), "{}", r.stderr);
+
+    // A guarded command with a bad transport setting cannot be verified, so the guard refuses
+    // it (fail-closed, exit 2) rather than letting an unverified commit through. Whether a
+    // configuration error on a guarded command should block is the guard policy decision (D5,
+    // HOLD); this pins the current behaviour so a change to it is deliberate.
+    let r = run(
+        &["claim-verify", ".", "--hook"],
+        &root,
+        &pre_tool_use("git commit -m work", &root),
+        &bad,
+    );
+    assert_eq!(r.code, 2, "{}", r.stderr);
+    assert_eq!(r.stdout, "");
+    assert!(r.stderr.contains("MOAI_FORGE_GH_BIN"), "{}", r.stderr);
 }
 
 /// AC-3: hooks-plan and hooks-apply report whether the generated command resolves on the PATH
