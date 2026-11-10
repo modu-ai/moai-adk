@@ -284,6 +284,22 @@ fn f2b_confirmed_red_settles_the_red_step() {
         ["red", "green", "regression"],
         "a passed red-step run counted as RED"
     );
+    // The bugfix flow's RED step is `repro-fail`: a passed run leaves it open, a confirmed
+    // assertion RED settles it (#2392 pre-audit B1).
+    let bugfix: Vec<String> = vec!["repro-fail".into(), "fixed".into(), "regression".into()];
+    let passed_repro = receipt(ProducerKind::RunnerReceipt, "repro-fail", Summary::Passed);
+    assert_eq!(
+        remaining_evidence(&bugfix, &[passed_repro]),
+        ["repro-fail", "fixed", "regression"],
+        "a passed repro-fail run counted as RED"
+    );
+    let mut confirmed_repro = receipt(ProducerKind::RunnerReceipt, "repro-fail", Summary::Failed);
+    confirmed_repro.red_confirmed = Some(true);
+    assert_eq!(
+        remaining_evidence(&bugfix, &[confirmed_repro]),
+        ["fixed", "regression"],
+        "a confirmed repro-fail RED did not settle its step"
+    );
     // A self-reported confirmed RED is still not evidence.
     let mut self_red = receipt(ProducerKind::SelfReport, "red", Summary::Failed);
     self_red.red_confirmed = Some(true);
