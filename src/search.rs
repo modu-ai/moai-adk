@@ -1065,8 +1065,9 @@ mod tests {
         };
         let (hits, _, _) = structural(dir.path(), &files, &lits(&["req:R"]), &map, &graph, b);
         assert_eq!(recheck(dir.path(), &hits), ["fresh", "fresh"]);
-        // Edited between collection and return.
-        fs::write(dir.path().join("t.rs"), "#[test]\nfn req_r() { }\n").unwrap();
+        // Edited between collection and return — the cited line 2 keeps its bytes, only
+        // line 1 changes, so only the whole-file anchor catches it.
+        fs::write(dir.path().join("t.rs"), "#[test] \nfn req_r() {}\n").unwrap();
         assert_eq!(recheck(dir.path(), &hits), ["fresh", "stale"]);
         // Edited before collection: a.rs line 1 is unchanged but the file is not the
         // indexed one, so the span is not vouched for.
