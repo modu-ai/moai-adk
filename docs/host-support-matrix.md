@@ -103,4 +103,4 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 ## 론처 (`moai-cli` 세션 진입, #2164)
 
-호스트 세션은 역할 없이 엽니다: `moai-cli cc|glm|codex`는 평범한 host 세션이고(#2053), MoAI 역할은 세션 안에서 `/moai --mode leader|agent`로 정합니다. 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 deprecated입니다 — 사용하면 `deprecated: use `/moai --mode leader|agent` inside the session` 경고를 stderr에 출력하고 notes에 적지만, 조합되는 명령·기본값은 기존과 동작합니다(제거는 후속 카드). `--name`은 여전히 독립 옵션입니다. 상태: `deprecated`(동작 실측, 제거 not_run).
+호스트 세션은 역할 없이 엽니다: `moai-cli cc|glm|codex`는 평범한 host 세션이고(#2053), MoAI 역할은 세션 안에서 `/moai-cli --leader-mode`·`/moai-cli --agent-mode`로 정합니다(호환 별칭 `--mode leader|agent`, #2286). 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)과 전체 권한을 붙이는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). #2164의 deprecated 경고는 없앴고, 역할 없는 세션에는 권한 플래그를 붙이지 않습니다. `--name`은 여전히 독립 옵션입니다. 상태: 유지(`--dry-run`과 시험으로 확인, 실제 host 실행 not_run).
