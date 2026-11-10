@@ -26,7 +26,13 @@ struct Run {
 
 /// Runs `program args` in `cwd` with `stdin`. The child may exit before reading all of its
 /// stdin; a BrokenPipe on the write is that race, not a failure (#2348).
-fn run_program(program: &Path, args: &[&str], cwd: &Path, stdin: &[u8], env: &[(&str, &str)]) -> std::io::Result<Run> {
+fn run_program(
+    program: &Path,
+    args: &[&str],
+    cwd: &Path,
+    stdin: &[u8],
+    env: &[(&str, &str)],
+) -> std::io::Result<Run> {
     let mut cmd = Command::new(program);
     cmd.args(args)
         .current_dir(cwd)
@@ -72,7 +78,11 @@ fn git(cwd: &Path, args: &[&str]) -> String {
         .env("HOME", cwd.join("home"))
         .output()
         .unwrap();
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
@@ -108,7 +118,14 @@ fn assert_deny(r: &Run) -> String {
     let h = out["hookSpecificOutput"].as_object().unwrap();
     let mut keys: Vec<&String> = h.keys().collect();
     keys.sort();
-    assert_eq!(keys, vec!["hookEventName", "permissionDecision", "permissionDecisionReason"]);
+    assert_eq!(
+        keys,
+        vec![
+            "hookEventName",
+            "permissionDecision",
+            "permissionDecisionReason"
+        ]
+    );
     assert_eq!(h["hookEventName"], "PreToolUse");
     assert_eq!(h["permissionDecision"], "deny");
     h["permissionDecisionReason"].as_str().unwrap().to_string()
@@ -119,42 +136,84 @@ fn assert_allow(r: &Run) {
 }
 
 fn assert_engine_error(r: &Run) {
-    assert_eq!((r.code, r.stdout.as_str()), (1, ""), "engine error exits 1, empty stdout");
+    assert_eq!(
+        (r.code, r.stdout.as_str()),
+        (1, ""),
+        "engine error exits 1, empty stdout"
+    );
     assert!(r.stderr.contains("engine error"), "{}", r.stderr);
 }
 
 #[test]
 fn commit_without_claim_token_on_lane_branch_is_denied_without_echoing_the_command() {
     let (_d, root) = repo("issue/77-fixture-key");
-    let r = dispatch("tool-preflight", &root, &pre_tool("git commit -m 'SECRETWORD change'", &root), &[]);
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git commit -m 'SECRETWORD change'", &root),
+        &[],
+    );
     let reason = assert_deny(&r);
     assert!(reason.contains("Moai-Claim: 77#"), "{reason}");
-    assert!(!reason.contains("SECRETWORD") && !reason.contains("fixture-key"), "{reason}");
+    assert!(
+        !reason.contains("SECRETWORD") && !reason.contains("fixture-key"),
+        "{reason}"
+    );
 }
 
 #[test]
 fn commit_naming_another_issue_is_denied() {
     let (_d, root) = repo("issue/77-k");
-    let r = dispatch("tool-preflight", &root, &pre_tool("git commit -m 'x\n\nMoai-Claim: 78#5'", &root), &[]);
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git commit -m 'x\n\nMoai-Claim: 78#5'", &root),
+        &[],
+    );
     assert!(assert_deny(&r).contains("another Issue"));
 }
 
 #[test]
 fn commit_with_the_branch_token_is_allowed() {
     let (_d, root) = repo("issue/77-k");
-    assert_allow(&dispatch("tool-preflight", &root, &pre_tool("git commit -m 'x\n\nMoai-Claim: 77#5'", &root), &[]));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git commit -m 'x\n\nMoai-Claim: 77#5'", &root),
+        &[],
+    ));
 }
 
 #[test]
 fn non_lane_branch_non_commit_and_non_bash_are_allowed() {
     let (_d, root) = repo("main");
-    assert_allow(&dispatch("tool-preflight", &root, &pre_tool("git commit -m x", &root), &[]));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git commit -m x", &root),
+        &[],
+    ));
     let (_d2, lane) = repo("issue/77-k");
-    assert_allow(&dispatch("tool-preflight", &lane, &pre_tool("git status", &lane), &[]));
-    assert_allow(&dispatch("tool-preflight", &lane, &pre_tool("echo git commit -m x", &lane), &[]));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        &pre_tool("git status", &lane),
+        &[],
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        &pre_tool("echo git commit -m x", &lane),
+        &[],
+    ));
     let write = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
                        "tool_input": {"file_path": "a.txt", "content": "git commit"}, "cwd": lane});
-    assert_allow(&dispatch("tool-preflight", &lane, write.to_string().as_bytes(), &[]));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        write.to_string().as_bytes(),
+        &[],
+    ));
 }
 
 #[test]
@@ -163,7 +222,12 @@ fn unknown_input_fields_are_ignored() {
     let mut v: Value = serde_json::from_slice(&pre_tool("git commit -m x", &root)).unwrap();
     v["permission_mode"] = json!("default");
     v["future_field"] = json!({"nested": [1, 2]});
-    assert_deny(&dispatch("tool-preflight", &root, v.to_string().as_bytes(), &[]));
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        v.to_string().as_bytes(),
+        &[],
+    ));
 }
 
 #[test]
@@ -176,12 +240,24 @@ fn engine_errors_exit_1_with_empty_stdout() {
     // The event name in the input must match the requested duty.
     let stop = json!({"hook_event_name": "Stop", "tool_name": "Bash",
                       "tool_input": {"command": "git commit -m x"}});
-    assert_engine_error(&dispatch("tool-preflight", &root, stop.to_string().as_bytes(), &[]));
+    assert_engine_error(&dispatch(
+        "tool-preflight",
+        &root,
+        stop.to_string().as_bytes(),
+        &[],
+    ));
     assert_engine_error(&dispatch("tool-observe", &root, &good, &[]));
     assert_engine_error(&dispatch("turn-validation", &root, &good, &[]));
     assert_engine_error(&dispatch("no-such-duty", &root, &good, &[]));
     for host in ["codex", "other"] {
-        let r = run_program(Path::new(BIN), &["hook-dispatch", "--host", host, "--event", "tool-preflight"], &root, &good, &[]).unwrap();
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
+            &root,
+            &good,
+            &[],
+        )
+        .unwrap();
         assert_engine_error(&r);
     }
 }
@@ -189,9 +265,17 @@ fn engine_errors_exit_1_with_empty_stdout() {
 #[test]
 fn a_bad_command_line_is_a_non_blocking_error_never_exit_2() {
     let (_d, root) = repo("issue/77-k");
-    for args in [&["hook-dispatch", "--host", "claude"][..], &["hook-dispatch", "--bogus"][..]] {
+    for args in [
+        &["hook-dispatch", "--host", "claude"][..],
+        &["hook-dispatch", "--bogus"][..],
+    ] {
         let r = run_program(Path::new(BIN), args, &root, b"{}", &[]).unwrap();
-        assert_eq!((r.code, r.stdout.as_str()), (1, ""), "{args:?}: {}", r.stderr);
+        assert_eq!(
+            (r.code, r.stdout.as_str()),
+            (1, ""),
+            "{args:?}: {}",
+            r.stderr
+        );
     }
 }
 
@@ -203,14 +287,20 @@ fn session_check_adds_fixed_vocabulary_context() {
     assert_eq!(r.code, 0, "{}", r.stderr);
     let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
     assert_eq!(v["hookSpecificOutput"]["hookEventName"], "SessionStart");
-    let ctx = v["hookSpecificOutput"]["additionalContext"].as_str().unwrap();
+    let ctx = v["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap();
     assert!(ctx.contains("lane branch: Issue #77"), "{ctx}");
     assert!(ctx.contains("state directory .moai-cli: absent"), "{ctx}");
     assert!(ctx.contains("local claim record: absent"), "{ctx}");
     assert!(!ctx.contains("secret-key-name"), "{ctx}");
     fs::create_dir(root.join(".moai-cli")).unwrap();
     let r = dispatch("session-check", &root, start, &[]);
-    assert!(r.stdout.contains("state directory .moai-cli: present"), "{}", r.stdout);
+    assert!(
+        r.stdout.contains("state directory .moai-cli: present"),
+        "{}",
+        r.stdout
+    );
 }
 
 /// No path reaches the forge: a fake `gh` that would leave a marker is never run.
@@ -219,11 +309,19 @@ fn no_network_on_any_path() {
     let (_d, root) = repo("issue/77-k");
     let marker = root.join("home/gh-called");
     let fake = root.join("home/fake-gh");
-    common::write_executable(&fake, &format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()));
+    common::write_executable(
+        &fake,
+        &format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+    );
     let env = [("MOAI_FORGE_GH_BIN", fake.to_str().unwrap())];
     let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
     dispatch("session-check", &root, start, &env);
-    for cmd in ["git commit -m x", "git commit -m 'x Moai-Claim: 77#5'", "git push", "ls"] {
+    for cmd in [
+        "git commit -m x",
+        "git commit -m 'x Moai-Claim: 77#5'",
+        "git push",
+        "ls",
+    ] {
         dispatch("tool-preflight", &root, &pre_tool(cmd, &root), &env);
     }
     dispatch("tool-preflight", &root, b"{oops", &env);
@@ -233,7 +331,19 @@ fn no_network_on_any_path() {
 /// A host following the documented rules: runs the hook, then runs the tool command only when
 /// the hook did not block. Returns whether the tool ran.
 fn host_runs_tool(hook: &Path, root: &Path, command: &str) -> bool {
-    let proceed = match run_program(hook, &["hook-dispatch", "--host", "claude", "--event", "tool-preflight"], root, &pre_tool(command, root), &[]) {
+    let proceed = match run_program(
+        hook,
+        &[
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ],
+        root,
+        &pre_tool(command, root),
+        &[],
+    ) {
         // Failed to start: a non-blocking error.
         Err(_) => true,
         Ok(r) if r.code == 2 => false,
@@ -266,10 +376,22 @@ fn denied_commit_leaves_no_commit_and_the_allowed_control_does() {
     fs::write(root.join("a.txt"), "b\n").unwrap();
     git(&root, &["add", "a.txt"]);
     let before = commit_count(&root);
-    assert!(!host_runs_tool(Path::new(BIN), &root, "git commit -q -m 'no token'"));
+    assert!(!host_runs_tool(
+        Path::new(BIN),
+        &root,
+        "git commit -q -m 'no token'"
+    ));
     assert_eq!(commit_count(&root), before, "side effect despite deny");
-    assert!(host_runs_tool(Path::new(BIN), &root, "git commit -q -m 'ok\n\nMoai-Claim: 77#5'"));
-    assert_eq!(commit_count(&root), before + 1, "allowed control must commit");
+    assert!(host_runs_tool(
+        Path::new(BIN),
+        &root,
+        "git commit -q -m 'ok\n\nMoai-Claim: 77#5'"
+    ));
+    assert_eq!(
+        commit_count(&root),
+        before + 1,
+        "allowed control must commit"
+    );
 }
 
 #[test]
@@ -281,6 +403,10 @@ fn a_missing_binary_is_non_blocking_by_the_host_rules() {
     fs::write(root.join("a.txt"), "c\n").unwrap();
     git(&root, &["add", "a.txt"]);
     let before = commit_count(&root);
-    assert!(host_runs_tool(&root.join("home/no-such-moai-cli"), &root, "git commit -q -m 'no token'"));
+    assert!(host_runs_tool(
+        &root.join("home/no-such-moai-cli"),
+        &root,
+        "git commit -q -m 'no token'"
+    ));
     assert_eq!(commit_count(&root), before + 1);
 }
