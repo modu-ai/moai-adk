@@ -34,6 +34,9 @@ pub const VAULT_DIR: &str = "vault";
 pub const CONFIG_FILE: &str = "config";
 /// Largest entry file that is read (the launcher's key file bound, #2359).
 pub const VALUE_FILE_MAX: u64 = 65_536;
+/// Largest value `key-set` stores: the entry is the value plus a newline, so a stored value
+/// is always within [`VALUE_FILE_MAX`] when read back (pre-audit B1, Issue #2393).
+pub const VALUE_MAX: usize = 65_535;
 
 /// A refusal with a fixed, machine-readable code (design §3.3) and the next action.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -159,27 +162,51 @@ fn os_store_unavailable(backend: Backend) -> Blocked {
 #[cfg(unix)]
 fn unix_unsafe(meta: &fs::Metadata, home: &Path, path: &Path, dir: bool) -> Option<Blocked> {
     use std::os::unix::fs::MetadataExt;
-    let owner = fs::metadata(home).ok()?.uid();
     let shown = path.display();
-    if meta.uid() != owner {
+    let Ok(home_meta) = fs::metadata(home) else {
+        // Without HOME's owner nothing can be checked: refuse rather than call it safe.
         return Some(Blocked::new(
+            "key_file_unsafe",
+            format!("cannot read HOME to check the owner of {shown}"),
+            "check that HOME points at your home folder",
+        ));
+    };
+    match owner_mode_problem(meta.uid(), meta.mode(), home_meta.uid()) {
+        None => None,
+        Some(OwnerModeProblem::Owner) => Some(Blocked::new(
             "key_file_unsafe",
             format!("{shown} is not owned by the owner of HOME"),
             format!(
                 "chown the {} to your user",
                 if dir { "folder" } else { "file" }
             ),
-        ));
+        )),
+        Some(OwnerModeProblem::Mode) => {
+            let fix = if dir { "700" } else { "600" };
+            Some(Blocked::new(
+                "key_file_unsafe",
+                format!("{shown} is readable or writable by other users"),
+                format!("chmod {fix} {shown}"),
+            ))
+        }
     }
-    if meta.mode() & 0o077 != 0 {
-        let fix = if dir { "700" } else { "600" };
-        return Some(Blocked::new(
-            "key_file_unsafe",
-            format!("{shown} is readable or writable by other users"),
-            format!("chmod {fix} {shown}"),
-        ));
+}
+
+/// What is wrong with an entry's owner and mode, if anything (pure, so the owner rule can be
+/// tested without a second user — pre-audit N1).
+#[cfg_attr(not(unix), allow(dead_code))]
+#[derive(Debug, PartialEq, Eq)]
+enum OwnerModeProblem {
+    Owner,
+    Mode,
+}
+
+#[cfg_attr(not(unix), allow(dead_code))]
+fn owner_mode_problem(uid: u32, mode: u32, home_uid: u32) -> Option<OwnerModeProblem> {
+    if uid != home_uid {
+        return Some(OwnerModeProblem::Owner);
     }
-    None
+    (mode & 0o077 != 0).then_some(OwnerModeProblem::Mode)
 }
 
 #[cfg(not(unix))]
@@ -197,7 +224,7 @@ fn check_vault_dir(home: &Path) -> std::result::Result<bool, Blocked> {
         Ok(m) if !m.is_dir() => Err(Blocked::new(
             "key_file_unsafe",
             format!("{} is not a real folder", dir.display()),
-            "move it away; the vault folder is created on the next key set",
+            "move it away; the vault folder is created on the next key-set",
         )),
         Ok(m) => match unix_unsafe(&m, home, &dir, true) {
             Some(b) => Err(b),
@@ -243,7 +270,7 @@ pub fn read_file_entry(
             return Err(Blocked::new(
                 "key_file_unsafe",
                 format!("{} is not a readable regular file", path.display()),
-                format!("remove it and run: moai-cli key set {provider}"),
+                format!("remove it and run: moai-cli key-set {provider}"),
             ));
         }
     };
@@ -251,14 +278,14 @@ pub fn read_file_entry(
         Blocked::new(
             "key_file_unsafe",
             format!("{} metadata is unreadable", path.display()),
-            format!("remove it and run: moai-cli key set {provider}"),
+            format!("remove it and run: moai-cli key-set {provider}"),
         )
     })?;
     if !meta.is_file() {
         return Err(Blocked::new(
             "key_file_unsafe",
             format!("{} is not a regular file", path.display()),
-            format!("remove it and run: moai-cli key set {provider}"),
+            format!("remove it and run: moai-cli key-set {provider}"),
         ));
     }
     if let Some(b) = unix_unsafe(&meta, home, &path, false) {
@@ -268,7 +295,7 @@ pub fn read_file_entry(
         return Err(Blocked::new(
             "key_file_unsafe",
             format!("{} is larger than 64 KiB", path.display()),
-            format!("run: moai-cli key set {provider}"),
+            format!("run: moai-cli key-set {provider}"),
         ));
     }
     let mut text = String::new();
@@ -278,7 +305,7 @@ pub fn read_file_entry(
             Blocked::new(
                 "key_file_unsafe",
                 format!("{} is not readable text", path.display()),
-                format!("run: moai-cli key set {provider}"),
+                format!("run: moai-cli key-set {provider}"),
             )
         })?;
     match usable_value(&text) {
@@ -286,7 +313,7 @@ pub fn read_file_entry(
         None => Err(Blocked::new(
             "key_absent",
             format!("{} holds no usable value", path.display()),
-            format!("run: moai-cli key set {provider} (value on stdin)"),
+            format!("run: moai-cli key-set {provider} (value on stdin)"),
         )),
     }
 }
@@ -346,9 +373,13 @@ pub fn read_value(mut input: impl Read) -> Result<String> {
         return Err("the value exceeds 64 KiB".into());
     }
     let text = String::from_utf8(bytes).map_err(|_| "the value is not UTF-8 text")?;
-    usable_value(&text).ok_or_else(|| {
+    let value = usable_value(&text).ok_or_else(|| {
         "no usable value on stdin (empty, whitespace only, or a control character)".to_string()
-    })
+    })?;
+    if value.len() > VALUE_MAX {
+        return Err("the value exceeds 65,535 bytes".into());
+    }
+    Ok(value)
 }
 
 /// Creates the vault folder `0700` when absent (its parent too), and checks an existing one.
@@ -381,6 +412,9 @@ pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
         return Err(format!("{}: {}", b.code, b.reason));
     }
     let value = usable_value(value).ok_or("no usable value")?;
+    if value.len() > VALUE_MAX {
+        return Err("the value exceeds 65,535 bytes".into());
+    }
     let dir = ensure_vault_dir(home)?;
     let entry = entry_path(home, provider);
     // Refuse to replace something that is not a regular file (a symlink is not followed by
@@ -763,11 +797,52 @@ mod tests {
 
     #[test]
     fn stdin_values_are_bounded_at_64_kib() {
-        // 65_536 bytes of value is the largest accepted; one more is refused.
-        assert!(read_value(&vec![b'k'; 65_536][..]).is_ok());
+        // A value of 65_535 bytes is the largest accepted (with its newline the entry is
+        // 65_536 bytes, the read limit); 65_536 is refused (pre-audit B1). Literal bounds.
+        assert!(read_value(&vec![b'k'; 65_535][..]).is_ok());
+        let mut with_newline = vec![b'k'; 65_535];
+        with_newline.push(b'\n');
+        assert!(read_value(&with_newline[..]).is_ok());
+        assert!(read_value(&vec![b'k'; 65_536][..]).is_err());
         assert!(read_value(&vec![b'k'; 65_537][..]).is_err());
         assert!(read_value(&b"\xff\xfe"[..]).is_err());
         assert!(read_value(&b"   \n"[..]).is_err());
+    }
+
+    /// The owner rule without a second user (pre-audit N1): another owner is refused even
+    /// with private bits; the owner with any group/other bit is refused; 0600/0400 pass.
+    #[test]
+    fn owner_and_mode_rule() {
+        assert_eq!(owner_mode_problem(501, 0o600, 501), None);
+        assert_eq!(owner_mode_problem(501, 0o400, 501), None);
+        assert_eq!(
+            owner_mode_problem(0, 0o600, 501),
+            Some(OwnerModeProblem::Owner)
+        );
+        assert_eq!(
+            owner_mode_problem(502, 0o600, 501),
+            Some(OwnerModeProblem::Owner)
+        );
+        for bits in [0o640, 0o604, 0o610, 0o601] {
+            assert_eq!(
+                owner_mode_problem(501, bits, 501),
+                Some(OwnerModeProblem::Mode),
+                "{bits:o}"
+            );
+        }
+    }
+
+    /// A HOME that cannot be read makes every entry unsafe instead of skipping the checks
+    /// (pre-audit N2).
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_home_blocks() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let file = dir.path().join("f");
+        fs::write(&file, "x").unwrap();
+        let meta = fs::metadata(&file).unwrap();
+        let b = unix_unsafe(&meta, &dir.path().join("missing-home"), &file, false).unwrap();
+        assert_eq!(b.code, "key_file_unsafe");
     }
 
     /// `read` (the launcher's entry point, stage 2) follows the selected backend and never
