@@ -575,33 +575,82 @@ fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
     }
     // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
     // names the word as an argument of a read command, not as the command (#2399 review).
-    git_subcommand(args).is_some_and(|w| verbs.contains(&w) || aliases.contains(&w))
+    git_subcommand_candidates(args)
+        .iter()
+        .any(|w| verbs.contains(w) || aliases.contains(w))
 }
 
-/// Global `git` options that take their value as the next word (git(1) OPTIONS); every other
-/// leading `-…` word is a flag on its own (`--no-pager`, `-p`) or carries `=value`.
+/// git(1) OPTIONS (git 2.54.0, read 2026-11-10) that take their value as the next word.
 const GIT_GLOBAL_OPTIONS_WITH_VALUE: &[&str] = &[
     "-C",
     "-c",
+    "--config-env",
     "--git-dir",
     "--work-tree",
     "--namespace",
-    "--config-env",
-    "--super-prefix",
+    "--list-cmds",
+    "--attr-source",
 ];
 
-/// The subcommand of a `git` argument list: the first word after the global options.
-fn git_subcommand(args: &[String]) -> Option<&str> {
-    let mut iter = args.iter();
-    while let Some(word) = iter.next() {
-        let w = word.as_str();
+/// git(1) OPTIONS (git 2.54.0) that never take a separate value word. `--exec-path` takes its
+/// value only as `--exec-path=<path>`.
+const GIT_GLOBAL_FLAGS: &[&str] = &[
+    "-v",
+    "--version",
+    "-h",
+    "--help",
+    "--exec-path",
+    "--html-path",
+    "--man-path",
+    "--info-path",
+    "-p",
+    "--paginate",
+    "-P",
+    "--no-pager",
+    "--bare",
+    "--no-replace-objects",
+    "--no-lazy-fetch",
+    "--no-optional-locks",
+    "--no-advice",
+    "--literal-pathspecs",
+    "--glob-pathspecs",
+    "--noglob-pathspecs",
+    "--icase-pathspecs",
+];
+
+/// The words that may be a `git` argument list's subcommand. Known value options skip their
+/// value and known flags stand alone; the first other word is the subcommand. An option this
+/// list does not know (a newer git, a typo) may or may not take the next word as its value,
+/// so both that word and the subcommand found after it are candidates: the guard errs toward
+/// seeing a commit or push rather than missing one (#2399 audit B5, `--attr-source`). A second
+/// unknown option ends the scan, so the arguments of a subcommand that was already a
+/// candidate (`git --new log --grep commit`) are not read as a subcommand.
+fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut seen_unknown = false;
+    let mut i = 0;
+    while i < args.len() {
+        let w = args[i].as_str();
         if GIT_GLOBAL_OPTIONS_WITH_VALUE.contains(&w) {
-            iter.next();
+            i += 2;
         } else if !w.starts_with('-') {
-            return Some(w);
+            out.push(w);
+            return out;
+        } else if GIT_GLOBAL_FLAGS.contains(&w) || w.contains('=') || w.starts_with("-c") {
+            // `--opt=value` and the attached `-c<name>=<value>` form carry their own value.
+            i += 1;
+        } else if seen_unknown {
+            return out;
+        } else {
+            // Unknown option: its next word is either its value or the subcommand.
+            seen_unknown = true;
+            if let Some(next) = args.get(i + 1).filter(|n| !n.starts_with('-')) {
+                out.push(next.as_str());
+            }
+            i += 2;
         }
     }
-    None
+    out
 }
 
 /// True when one segment of a shell command line runs `git <verb>`. The segment's command is
