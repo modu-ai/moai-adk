@@ -2,11 +2,11 @@
 //! docs/design-review/statusline-rust-stage1-2026-11-10.md §1) plus the extra fields the
 //! Go statusline reads (`tasks[]`, `cost.total_usd`, `context_window.used/total`).
 //!
-//! Decoding follows Go `encoding/json` into the Go `StdinData` shape (#2350): every field
-//! is optional and `null` reads as absent; a value of the wrong type fails the whole
-//! payload, which then degrades to "no input" rather than an error; only the first JSON
-//! value of the stream is read. Known difference: Go matches keys case-insensitively,
-//! this decoder matches them exactly.
+//! Decoding follows Go `encoding/json` into the Go `StdinData` shape (#2350): duplicate and
+//! case-folded keys, `null` and numbers are resolved by `godecode` first (Go's rules there);
+//! a value of the wrong type fails the whole payload, which then degrades to "no input"
+//! rather than an error; only the first JSON value of the stream is read. Known difference:
+//! a task's raw `effort` deeper than 128 levels fails the payload (Go keeps it).
 
 use std::borrow::Cow;
 
@@ -214,20 +214,9 @@ pub struct SubagentTask {
 pub fn parse(bytes: &[u8]) -> Option<Input> {
     let text = go_lossy_utf8(bytes);
     let text = replace_unpaired_surrogates(&text);
-    // Go decodes into a struct, which rejects a top-level array; serde's derived struct
-    // visitor would accept one, so anything but an object or `null` is refused up front.
-    match text.bytes().find(|b| !b.is_ascii_whitespace()) {
-        Some(b'{') => serde_json::Deserializer::from_str(&text)
-            .into_iter::<Input>()
-            .next()?
-            .ok(),
-        Some(b'n') => serde_json::Deserializer::from_str(&text)
-            .into_iter::<Option<Input>>()
-            .next()?
-            .ok()
-            .map(Option::unwrap_or_default),
-        _ => None,
-    }
+    // Go's decoder semantics (duplicate keys, case-folded keys, `null`, number parsing) are
+    // applied first; the serde types then read a value with each field set at most once.
+    serde_json::from_value(super::godecode::decode(&text)?).ok()
 }
 
 /// UTF-8 decoding as Go's `encoding/json` does it inside strings: every byte of an invalid

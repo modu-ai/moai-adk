@@ -11,6 +11,7 @@
 
 pub mod color;
 pub mod config;
+pub mod godecode;
 pub mod input;
 pub mod render;
 pub mod segments;

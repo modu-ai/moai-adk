@@ -28,5 +28,5 @@ fn statusline_matches_every_go_golden() {
     );
     // A run that compared nothing must not pass: every case and variant reports `ok`.
     let ok = stdout.lines().filter(|l| l.starts_with("ok ")).count();
-    assert_eq!(ok, 57, "{stdout}");
+    assert_eq!(ok, 66, "{stdout}");
 }
