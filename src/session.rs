@@ -103,17 +103,52 @@ fn usable_token(value: &str) -> Option<String> {
     (!value.is_empty() && !value.chars().any(char::is_control)).then(|| value.to_string())
 }
 
-/// The token and whether it came from a key file: the variable when it holds a usable value,
-/// else the first key file that does. An empty or whitespace-only variable does not hide a
-/// key file.
-fn glm_token() -> Option<(String, bool)> {
+/// Where the GLM token came from, by name only (never the value).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum KeySource {
+    Env,
+    Vault(crate::key_vault::Backend),
+    LegacyFile,
+}
+
+impl KeySource {
+    fn name(self) -> &'static str {
+        match self {
+            KeySource::Env => "env:ANTHROPIC_AUTH_TOKEN",
+            KeySource::Vault(_) => "vault:glm",
+            KeySource::LegacyFile => "legacy_key_file",
+        }
+    }
+}
+
+/// The token and its source, in this order (#2393 S2, leader decision on the Issue):
+/// 1. the variable, when it holds a usable value (an empty or blank one does not hide the rest);
+/// 2. the vault's `glm` entry through the selected backend (`~/.moai-cli/config`, file by
+///    default) — a vault that is present but unsafe, or a backend that cannot answer, stops
+///    the launch with its code instead of falling through, so a broken store is not bypassed;
+/// 3. only when the vault holds no entry, the legacy key files (read only, as before #2393),
+///    so a user who has not moved the key yet keeps working and the Go tool's file is kept.
+fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked> {
     let from_env = std::env::var(GLM_TOKEN_VAR)
         .ok()
         .and_then(|v| usable_token(&v));
-    match from_env {
-        Some(token) => Some((token, false)),
-        None => glm_file_token().map(|token| (token, true)),
+    if let Some(token) = from_env {
+        return Ok(Some((token, KeySource::Env)));
     }
+    if let Ok(home) = crate::key_vault::home() {
+        if let Some(token) = crate::key_vault::read(&home, "glm")? {
+            let backend =
+                crate::key_vault::backend(&home).unwrap_or(crate::key_vault::Backend::File);
+            return Ok(Some((token, KeySource::Vault(backend))));
+        }
+    }
+    Ok(glm_file_token().map(|token| (token, KeySource::LegacyFile)))
+}
+
+/// The launcher's one-line refusal for a vault that cannot give the key: code, reason and the
+/// next action, never the value.
+fn blocked_line(b: &crate::key_vault::Blocked) -> String {
+    format!("blocked: {}: {} (next: {})", b.code, b.reason, b.next)
 }
 const MAX_PROMPT: usize = 4096;
 
@@ -458,18 +493,26 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         }
     }
     let mut env_keys: Vec<&str> = Vec::new();
+    let mut key_source: Option<&str> = None;
     let argv = match r.host.as_str() {
         "codex" => codex_argv(r, &mut notes)?,
         "glm" => {
             match glm_token() {
-                None => {
+                Err(b) => return Err(blocked_line(&b)),
+                Ok(None) => {
                     return Err(format!(
-                        "blocked: {GLM_TOKEN_VAR} is not set or is empty in this environment and no key file holds one (set it in your shell, or put GLM_API_KEY=<key> in ~/{}; ~/{} is read too; the launcher never prints or stores the value)",
+                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment, the vault holds no glm key and no key file holds one (store it with `moai-cli key-set glm` reading the value from stdin, or set the variable; the legacy ~/{} and ~/{} are still read; the launcher never prints or stores the value)",
                         GLM_KEY_FILES[0], GLM_KEY_FILES[1]
                     ));
                 }
-                Some((_, true)) => notes.push("ANTHROPIC_AUTH_TOKEN comes from a key file under HOME; it is passed to the host process only"),
-                Some((_, false)) => {}
+                Ok(Some((_, source))) => {
+                    key_source = Some(source.name());
+                    match source {
+                        KeySource::LegacyFile => notes.push("ANTHROPIC_AUTH_TOKEN comes from a legacy key file under HOME (read only); `moai-cli key-set glm` moves it into the vault; it is passed to the host process only"),
+                        KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only"),
+                        KeySource::Env => {}
+                    }
+                }
             }
             let mut plain = r.clone();
             if plain.advisor.take().is_some() {
@@ -485,7 +528,8 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
     };
     Ok(
         json!({"host": r.host, "role": r.role, "name": r.name, "argv": argv,
-        "env_keys": env_keys, "notes": notes, "host_loaded": false, "executed": false}),
+        "env_keys": env_keys, "key_source": key_source, "notes": notes, "host_loaded": false,
+        "executed": false}),
     )
 }
 
@@ -502,7 +546,9 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
         command.envs(GLM_ENV);
         // The same rule as `compose`: both names carry the trimmed token, so an empty variable
         // is replaced by the key file value and never reaches the host.
-        let (token, _) = glm_token().ok_or("blocked: the key changed")?;
+        let (token, _) = glm_token()
+            .map_err(|b| blocked_line(&b))?
+            .ok_or("blocked: the key changed")?;
         command.env(GLM_TOKEN_VAR, &token);
         command.env(GLM_MCP_KEY_VAR, &token);
     }
