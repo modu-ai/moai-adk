@@ -348,15 +348,23 @@ fn log_paths_outside_the_repository_or_untracked_are_refused() {
     // Staged but never committed: in the index, absent from HEAD.
     fs::write(tmp.path().join("docs/staged.md"), standard_log()).unwrap();
     git(tmp.path(), &["add", "docs/staged.md"]);
+    // `std::os::unix` exists only on Unix; the symlink case is Unix-only so that the
+    // Windows `--all-targets` build still compiles this test.
+    #[cfg(unix)]
     std::os::unix::fs::symlink(LOG, tmp.path().join("docs/link.md")).unwrap();
-    for (path, needle) in [
+    let symlink_case: &[(&str, &str)] = if cfg!(unix) {
+        &[("docs/link.md", "symlink")]
+    } else {
+        &[]
+    };
+    let cases = [
         ("../outside.md", "relative path inside the repository"),
         ("/etc/hosts", "relative path inside the repository"),
-        ("docs/link.md", "symlink"),
         ("docs/untracked.md", "not tracked"),
         ("docs/staged.md", "not tracked"),
         ("docs/missing.md", "not tracked"),
-    ] {
+    ];
+    for &(path, needle) in cases.iter().chain(symlink_case) {
         let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
             .arg("decision-append")
             .arg(tmp.path())
