@@ -22,7 +22,7 @@ Source: https://code.claude.com/docs/en/memory
 
 | Input | Rule |
 | --- | --- |
-| `claude --version` | Direct reading needs 2.1.277 or later; below it the status is `unsupported_version`, with no version it is `unknown` |
+| `claude --version` | Direct reading needs 2.1.277 or later; below it the status is `unsupported_version`, with no version it is `unknown`. The probe bounds process completion and inherited stdout at one 5 s deadline, even if the launcher exits first. Unix cleanup invokes the trusted `/bin/kill` before reaping the group leader, independent of `PATH`. Its exit status determines whether the timeout reason reports a SIGKILL acknowledgment or unconfirmed group termination; non-Unix cleanup is unconfirmed. A timeout is `unknown`, never a host-loading success (#2349) |
 | `AGENTS.md`, `.claude/AGENTS.md` in `PROJECT` or above | None found: `unknown` |
 | `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` in `PROJECT` or above | Any one suppresses direct reading under the default setting. The user's own `~/.claude/CLAUDE.md` is excluded even when `PROJECT` lies under `HOME` (a `CLAUDE.md` in `HOME` itself still counts); managed CLAUDE files and `.claude/rules/` do not suppress either |
 | `@...AGENTS.md` in one of those files, outside code fences and inline code spans (text between backticks, or after an unclosed one, is skipped) | The content still loads through the import: `loaded`, `load_path: import` |
