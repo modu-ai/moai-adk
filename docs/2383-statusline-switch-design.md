@@ -114,7 +114,7 @@ exit 0
 +++ b/.moai/status_line.sh   (after — moai-cli 우선 + Go 절대 폴백)
 @@ -9,7 +9,7 @@
  if [ -f "$HOME/.moai/.env.glm" ]; then
- 	source "$HOME/.moai/.env.glm" </dev/null
+     source "$HOME/.moai/.env.glm" </dev/null
  fi
 -
 -if command -v moai &> /dev/null; then
@@ -147,7 +147,7 @@ exit 0
 +if [ -x "/Users/goos/go/bin/moai" ]; then
 +	exec "/Users/goos/go/bin/moai" statusline
 +fi
- 
+
  # Not found - exit silently (Claude Code handles missing statusline gracefully)
  exit 0
 ```
