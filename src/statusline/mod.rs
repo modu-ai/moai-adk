@@ -68,4 +68,9 @@ mod tests {
         assert_eq!(read_capped(&vec![b' '; 4_194_305][..]).len(), 4_194_304);
         assert_eq!(read_capped(&vec![b' '; 4_194_303][..]).len(), 4_194_303);
     }
+
+    #[test]
+    fn render_budget_is_go_800ms() {
+        assert_eq!(RENDER_BUDGET, Duration::from_millis(800));
+    }
 }

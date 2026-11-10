@@ -465,12 +465,41 @@ mod tests {
         assert_eq!(handoff_stage(&m(180_000, 200_000), 20), HandoffStage::Hard);
     }
 
+    /// Literal N / N+1 edges for every handoff limit (#2350).
+    #[test]
+    fn handoff_limits_at_their_edges() {
+        let m = |used, size| Memory {
+            tokens_used: used,
+            token_budget: 1,
+            context_window_size: size,
+            available: true,
+        };
+        // Large-window cutoff 500_000: 50 % is soft only from 500_000 up.
+        assert_eq!(handoff_stage(&m(250_000, 499_999), 85), HandoffStage::None);
+        assert_eq!(handoff_stage(&m(250_000, 500_000), 85), HandoffStage::Soft);
+        // Soft 50 % on a large window, 90 % on a standard one.
+        assert_eq!(
+            handoff_stage(&m(499_999, 1_000_000), 85),
+            HandoffStage::None
+        );
+        assert_eq!(handoff_stage(&m(179_999, 200_000), 85), HandoffStage::None);
+        // Hard ceiling = auto-compact + 10: 84 -> 94 %.
+        assert_eq!(handoff_stage(&m(187_999, 200_000), 84), HandoffStage::Soft);
+        assert_eq!(handoff_stage(&m(188_000, 200_000), 84), HandoffStage::Hard);
+        // Capped at 95 %: 85 and 86 both give 95 %.
+        assert_eq!(handoff_stage(&m(189_999, 200_000), 85), HandoffStage::Soft);
+        assert_eq!(handoff_stage(&m(190_000, 200_000), 85), HandoffStage::Hard);
+        assert_eq!(handoff_stage(&m(189_999, 200_000), 86), HandoffStage::Soft);
+        assert_eq!(handoff_stage(&m(190_000, 200_000), 86), HandoffStage::Hard);
+    }
+
     #[test]
     fn auto_compact_override_is_bounded() {
         assert_eq!(auto_compact_threshold(None), 85);
         assert_eq!(auto_compact_threshold(Some("70")), 70);
         assert_eq!(auto_compact_threshold(Some("100")), 100);
         assert_eq!(auto_compact_threshold(Some("101")), 85);
+        assert_eq!(auto_compact_threshold(Some("1")), 1);
         assert_eq!(auto_compact_threshold(Some("0")), 85);
         assert_eq!(auto_compact_threshold(Some("x")), 85);
     }

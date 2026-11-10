@@ -589,6 +589,17 @@ fn collect_git(dir: &Path, ctx: &Context) -> Option<GitStatus> {
     Some(status)
 }
 
+/// Most bytes of one git call's stdout the render reads; the rest is dropped.
+pub const GIT_OUTPUT_CAP: u64 = 1024 * 1024;
+
+fn read_git_output(stdout: impl Read) -> std::io::Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    stdout
+        .take(GIT_OUTPUT_CAP)
+        .read_to_end(&mut buf)
+        .map(|_| buf)
+}
+
 /// One read-only git call, its environment scrubbed like every other git runner in the
 /// crate, stopped at the render deadline.
 fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
@@ -602,10 +613,7 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
     cmd.env("GIT_TERMINAL_PROMPT", "0");
     let mut child = cmd.spawn().ok()?;
     let stdout = child.stdout.take()?;
-    let reader = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        stdout.take(1 << 20).read_to_end(&mut buf).map(|_| buf)
-    });
+    let reader = std::thread::spawn(move || read_git_output(stdout));
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -850,5 +858,28 @@ mod tests {
         let canon = std::fs::canonicalize(&main).unwrap();
         assert_eq!(main_checkout_of(&wt.join("sub")), Some(canon.clone()));
         assert_eq!(main_checkout_of(&main), Some(canon));
+    }
+
+    #[test]
+    fn git_output_is_read_up_to_exactly_one_mebibyte() {
+        let read = |n: usize| read_git_output(&vec![b'x'; n][..]).unwrap().len();
+        assert_eq!(read(1_048_575), 1_048_575);
+        assert_eq!(read(1_048_576), 1_048_576);
+        assert_eq!(read(1_048_577), 1_048_576);
+    }
+
+    #[test]
+    fn git_is_stopped_at_the_render_deadline() {
+        let tmp = tempfile::tempdir().unwrap();
+        let init = Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(tmp.path())
+            .status()
+            .unwrap();
+        assert!(init.success());
+        let mut ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        assert!(run_git(tmp.path(), &["status", "--porcelain"], &ctx).is_some());
+        ctx.deadline = Some(Instant::now());
+        assert_eq!(run_git(tmp.path(), &["status", "--porcelain"], &ctx), None);
     }
 }
