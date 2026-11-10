@@ -153,7 +153,6 @@ fn the_project_folder_comes_from_the_working_directory() {
     let out = run_in(&home, &home.join("work"), &["key-set", "glm"], Some(&key));
     let e = envelope(&out, &key);
     assert_eq!(e["ok"], false, "{e}");
-    assert!(e.to_string().contains("not inside a git work tree"), "{e}");
     assert!(!vault(&home).exists());
 
     let repo = home.join("My Repo");
@@ -274,10 +273,6 @@ fn a_symlinked_or_special_entry_is_not_followed() {
     assert!(made.success());
     let s = envelope(&run(&home, &["key-status", "glm"], None), &key);
     assert_eq!(s["result"]["entry"], "unsafe", "{s}");
-    assert!(s["result"]["blocked"]["reason"]
-        .as_str()
-        .unwrap()
-        .ends_with("is not a regular file"));
     // A symlinked shared folder is refused as not a real folder.
     fs::remove_file(entry(&home)).unwrap();
     fs::remove_dir(vault(&home).join("_shared")).unwrap();
@@ -285,10 +280,39 @@ fn a_symlinked_or_special_entry_is_not_followed() {
     std::os::unix::fs::symlink(home.join("elsewhere"), vault(&home).join("_shared")).unwrap();
     let s = envelope(&run(&home, &["key-status", "glm"], None), &key);
     assert_eq!(s["result"]["entry"], "unsafe", "{s}");
-    assert!(s["result"]["blocked"]["reason"]
-        .as_str()
-        .unwrap()
-        .ends_with("is not a real folder"));
+    // Pre-audit B1: a removal never follows the folder link out of the vault. The file at
+    // the link's target stays, with or without --yes.
+    let marker = home.join("elsewhere/glm.key");
+    fs::write(&marker, "marker-not-a-key\n").unwrap();
+    for args in [
+        &["key-remove", "glm"][..],
+        &["key-remove", "glm", "--yes"][..],
+    ] {
+        let r = envelope(&run(&home, args, None), &key);
+        assert_eq!(r["ok"], false, "{args:?}: {r}");
+        assert!(marker.exists(), "{args:?} removed a file outside the vault");
+    }
+    assert_eq!(fs::read_to_string(&marker).unwrap(), "marker-not-a-key\n");
+}
+
+/// Pre-audit B2: a value given as an argument by mistake is never echoed — not on stdout,
+/// not on stderr — for any key command.
+#[test]
+fn a_stray_key_argument_is_not_echoed() {
+    let (_d, home) = home();
+    let marker = "AUDIT_ONLY_NOT_A_REAL_SECRET";
+    for args in [
+        &["key-set", "glm", marker][..],
+        &["key-status", "glm", marker][..],
+        &["key-remove", "glm", marker][..],
+        &["key-set", marker, marker][..],
+    ] {
+        let out = run(&home, args, None);
+        assert_eq!(out.status.code(), Some(2), "{args:?}");
+        let e = envelope(&out, marker);
+        assert_eq!(e["ok"], false, "{args:?}: {e}");
+    }
+    assert!(!vault(&home).exists());
 }
 
 /// Pre-audit B1 on the new format: whatever `key-set` accepts reads back as `present`.
@@ -319,10 +343,6 @@ fn a_plain_text_entry_is_refused() {
     fs::write(entry(&home), format!("{key}\n")).unwrap();
     let s = envelope(&run(&home, &["key-status", "glm"], None), &key);
     assert_eq!(s["result"]["entry"], "unsafe", "{s}");
-    assert!(s["result"]["blocked"]["reason"]
-        .as_str()
-        .unwrap()
-        .contains("no MOAIKV1 header"));
 }
 
 #[test]

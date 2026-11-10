@@ -1971,8 +1971,14 @@ fn usage_error(e: clap::Error) -> ExitCode {
         }
         _ => "invalid command line; see --help",
     };
-    let rendered = e.render().to_string();
-    eprintln!("{}", rendered.lines().next().unwrap_or(message));
+    // A key command's stray argument may be a key typed in the wrong place (#2393 S1 B2), so
+    // its stderr carries only the fixed text, never clap's line that quotes the argument.
+    if op.starts_with("key.") {
+        eprintln!("{message}");
+    } else {
+        let rendered = e.render().to_string();
+        eprintln!("{}", rendered.lines().next().unwrap_or(message));
+    }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
     ExitCode::from(2)
 }
