@@ -521,3 +521,138 @@ fn review_external_symlink_never_supplies_verification_evidence() {
     fs::write(&external, "def test_req_external_99():\n    pass\n").unwrap();
     assert_eq!(extract(&root, &head, OBSERVED_AT).unwrap(), before);
 }
+
+#[test]
+fn review_prefixed_raw_literals_hide_decoys_and_preserve_following_tests() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().join("repo");
+    fs::create_dir(&root).unwrap();
+    git(&root, &["init", "-q", "-b", "main"]);
+    write(
+        &root,
+        "tests/prefixed.rs",
+        br####"const BYTES: &[u8] = br#"odd " quote
+#[test]
+fn req_bait_01() {}
+"#;
+#[test]
+fn req_lit_01() {}
+const MANY: &[u8] = br##"not a terminator: "#
+#[test]
+fn req_bait_02() {}
+"##;
+#[test]
+fn req_lit_02() {}
+const PATH: &[u8] = br"C:\";
+#[test]
+fn req_lit_03() {}
+const TAIL: &str = "tail";
+const OTHER_PATH: &[u8] = br"C:\";
+const QUOTED: &str = "
+#[test]
+fn req_bait_03() {}
+";
+#[test]
+fn req_lit_04() {}
+const C_RAW: &std::ffi::CStr = cr#"odd " quote
+#[test]
+fn req_bait_04() {}
+"#;
+#[test]
+fn req_lit_05() {}
+const C_PATH: &std::ffi::CStr = cr"C:\";
+#[test]
+fn req_lit_06() {}
+const END: &str = "end";
+"####,
+    );
+    let head = commit(&root, "fixture: prefixed raw literal boundaries");
+    let doc = extract(&root, &head, OBSERVED_AT).unwrap();
+    let expected: BTreeSet<_> = (1..=6)
+        .map(|n| {
+            t(
+                "verifies",
+                &format!("test:tests/prefixed.rs::req_lit_{n:02}"),
+                &format!("req:REQ-LIT-{n:02}"),
+            )
+        })
+        .collect();
+    assert_eq!(
+        edge_set(&doc),
+        expected,
+        "precision and recall at literal boundaries"
+    );
+    let missing: BTreeSet<_> = (1..=6)
+        .map(|n| format!("req_without_code req:REQ-LIT-{n:02}"))
+        .collect();
+    assert_eq!(missing_set(&doc), missing);
+}
+
+#[test]
+fn review_ordinary_rust_strings_hide_decoys_but_not_following_tests() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().join("repo");
+    fs::create_dir(&root).unwrap();
+    git(&root, &["init", "-q", "-b", "main"]);
+    write(
+        &root,
+        "tests/quoted.rs",
+        br####"const NOTE: &str = "escaped quote: \"
+#[test]
+fn req_bait_10() {}
+";
+#[test]
+fn req_quote_01() {}
+const BYTES: &[u8] = b"escaped quote: \"
+#[test]
+fn req_bait_11() {}
+";
+#[test]
+fn req_quote_02() {}
+const C_TEXT: &std::ffi::CStr = c"escaped quote: \"
+#[test]
+fn req_bait_12() {}
+";
+#[test]
+fn req_quote_03() {}
+"####,
+    );
+    let head = commit(&root, "fixture: ordinary literal boundaries");
+    let doc = extract(&root, &head, OBSERVED_AT).unwrap();
+    let expected: BTreeSet<_> = (1..=3)
+        .map(|n| {
+            t(
+                "verifies",
+                &format!("test:tests/quoted.rs::req_quote_{n:02}"),
+                &format!("req:REQ-QUOTE-{n:02}"),
+            )
+        })
+        .collect();
+    assert_eq!(
+        edge_set(&doc),
+        expected,
+        "ordinary strings cannot supply tests"
+    );
+    let missing: BTreeSet<_> = (1..=3)
+        .map(|n| format!("req_without_code req:REQ-QUOTE-{n:02}"))
+        .collect();
+    assert_eq!(missing_set(&doc), missing);
+}
+
+#[test]
+fn review_fixture_literal_payloads_do_not_verify_this_repository() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let head = git(root, &["rev-parse", "HEAD"]);
+    let doc = extract(root, &head, OBSERVED_AT).unwrap();
+    let fixture_edges: BTreeSet<_> = edge_set(&doc)
+        .into_iter()
+        .filter(|(kind, source, _)| {
+            kind == "verifies" && source.starts_with("test:tests/spec_links_fixture.rs::")
+        })
+        .collect();
+    assert_eq!(
+        fixture_edges,
+        BTreeSet::new(),
+        "fixture payloads are not real tests"
+    );
+}

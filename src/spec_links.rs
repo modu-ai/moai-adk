@@ -187,13 +187,22 @@ impl<'a> Iterator for CodeTokens<'a> {
                 self.advance(end);
                 continue;
             }
-            if self.rust && b[start] == b'r' {
-                let mut quote = start + 1;
+            // Byte/C prefixes do not turn raw contents into escaped ordinary strings.
+            let literal_start = if self.rust
+                && matches!(b[start], b'b' | b'c')
+                && matches!(b.get(start + 1), Some(b'r' | b'"'))
+            {
+                start + 1
+            } else {
+                start
+            };
+            if self.rust && b[literal_start] == b'r' {
+                let mut quote = literal_start + 1;
                 while b.get(quote) == Some(&b'#') {
                     quote += 1;
                 }
                 if b.get(quote) == Some(&b'"') {
-                    let hashes = quote - start - 1;
+                    let hashes = quote - literal_start - 1;
                     let mut end = quote + 1;
                     while end < b.len() {
                         if b[end] == b'"'
@@ -209,13 +218,13 @@ impl<'a> Iterator for CodeTokens<'a> {
                     continue;
                 }
             }
-            if b[start] == b'"' || (!self.rust && b[start] == b'\'') {
+            if b[literal_start] == b'"' || (!self.rust && b[start] == b'\'') {
                 let width = if !self.rust && b[start..].starts_with(&[b[start]; 3]) {
                     3
                 } else {
                     1
                 };
-                self.advance(self.quoted_end(start, width));
+                self.advance(self.quoted_end(literal_start, width));
                 continue;
             }
             if self.rust && b[start] == b'\'' {
