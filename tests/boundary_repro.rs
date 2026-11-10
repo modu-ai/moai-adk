@@ -338,12 +338,33 @@ fn f4_open_critical_finding_blocks_admission() {
         absent["admission"], "admitted",
         "green tests with no opinion admitted an open critical finding: {absent}"
     );
-    input.findings[0].severity = "low".into();
-    let low = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
-    assert_eq!(
-        low["admission"], "admitted",
-        "a low finding must not block: {low}"
-    );
+    // Oracle edit (2026-11-10, before the fix, decision 6774899518 row 17 = A): the result is
+    // exactly `held` with reason `blocking-finding-open` for critical, high and any unknown
+    // severity; medium, low and info do not block (case-insensitive).
+    for blocking in ["critical", "high", "HIGH", "major", ""] {
+        input.findings[0].severity = blocking.into();
+        let out = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+        assert_eq!(out["admission"], "held", "{blocking:?}: {out}");
+        assert_eq!(out["reasons"], json!(["blocking-finding-open"]), "{out}");
+    }
+    for open in ["medium", "Medium", "low", "info"] {
+        input.findings[0].severity = open.into();
+        let out = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+        assert_eq!(
+            out["admission"], "admitted",
+            "{open:?} must not block: {out}"
+        );
+    }
+    // A failing required check still rejects first.
+    let mut failing = audit_input(dir.path(), &["false"]);
+    failing.findings = vec![Finding {
+        rule_id: "X-1".into(),
+        severity: "critical".into(),
+        message: "unresolved".into(),
+    }];
+    let out = serde_json::to_value(audit(dir.path(), &failing).unwrap()).unwrap();
+    assert_eq!(out["admission"], "rejected", "{out}");
+    assert_eq!(out["reasons"], json!(["must-pass-not-met"]), "{out}");
 }
 
 /// F5a: a quoted argument is one argv word; it is never split.
