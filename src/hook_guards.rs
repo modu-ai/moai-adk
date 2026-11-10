@@ -93,21 +93,12 @@ fn is_device_target(path: &str) -> bool {
         )
 }
 
+/// Every argument is checked as a possible target: no dangerous target starts with `-`, so
+/// option words (and `--`) can never match and need no separate parsing.
 fn rm_guard(args: &[String]) -> Option<&'static str> {
-    let mut options_done = false;
-    for a in args {
-        if !options_done && a == "--" {
-            options_done = true;
-            continue;
-        }
-        if !options_done && a.starts_with('-') && a.len() > 1 {
-            continue;
-        }
-        if is_dangerous_rm_target(a) {
-            return Some(RM_TARGET);
-        }
-    }
-    None
+    args.iter()
+        .any(|a| is_dangerous_rm_target(a))
+        .then_some(RM_TARGET)
 }
 
 fn is_dangerous_rm_target(target: &str) -> bool {
@@ -415,6 +406,8 @@ mod tests {
             "git push --force origin feature",
             "git push -f origin issue/1-x",
             "git push --force origin v2026.11.0",
+            // The first word is the remote, even when it is spelled like a protected branch.
+            "git push --force master feature",
             "git branch -d main",
             "git branch -D feature",
             "git log --force main",
