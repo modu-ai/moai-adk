@@ -346,7 +346,7 @@ fn f1c_stored_baseline_unlocks_after_and_nothing_else_does() {
         assert_eq!(out.reasons, [reason], "{:?}", out.reasons);
     }
 
-    // A stored baseline that failed binds by digest but not by content.
+    // A stored baseline that failed binds by digest but not by content (its spec differs too).
     let failed = serde_json::to_value(
         run_verify(
             p,
@@ -377,7 +377,10 @@ fn f1c_stored_baseline_unlocks_after_and_nothing_else_does() {
     // Each bound field on its own: the file is rewritten as `F<n>.json` with the attempt id
     // set to that name (so only the edited field differs) and referenced by its own digest.
     let original: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
-    let edits: [(&str, Value); 7] = [
+    // `result` gets its own row: the failed run above also differs in its spec digest, so it
+    // alone did not pin the passed requirement (mutation D1-passed survived).
+    let edits: [(&str, Value); 8] = [
+        ("result", json!("failed")),
         ("producer", json!({"kind": "self-report"})),
         ("task_id", json!("T2")),
         ("spec_digest", json!(format!("sha256:{}", "1".repeat(64)))),
