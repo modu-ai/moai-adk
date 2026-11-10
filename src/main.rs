@@ -203,6 +203,23 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
+    /// Remove a provider's key from the vault (#2393). Without `--yes` it only reports what
+    /// would be removed. A legacy key file is never touched.
+    KeyRemove {
+        provider: String,
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Store a provider's key in the vault (#2393). The value is read from stdin only (never
+    /// argv); an interactive terminal is refused. The answer never contains the value.
+    KeySet {
+        provider: String,
+    },
+    /// The vault backend and whether a provider's entry exists and is safe (#2393). Never
+    /// the value, its length or a fingerprint.
+    KeyStatus {
+        provider: String,
+    },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
     LayoutPlan {
@@ -975,6 +992,9 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
+        KeyRemove { .. } => "key.remove",
+        KeySet { .. } => "key.set",
+        KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
@@ -1411,6 +1431,27 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::KeyRemove { provider, yes } => {
+            moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &provider, yes)
+                .map_err(Into::into)
+        }
+        Command::KeySet { provider } => {
+            use std::io::IsTerminal;
+            if io::stdin().is_terminal() {
+                return Err(
+                    "key-set reads the value from stdin and refuses a terminal (the \
+                            value would be echoed); pipe it in instead"
+                        .into(),
+                );
+            }
+            let value = moai_cli::key_vault::read_value(io::stdin())?;
+            moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &provider, &value)
+                .map_err(Into::into)
+        }
+        Command::KeyStatus { provider } => {
+            moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &provider)
+                .map_err(Into::into)
+        }
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency

@@ -65,6 +65,9 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `key-remove`
+- `key-set`
+- `key-status`
 - `lane-handoff-check`
 - `lane-status`
 - `layout-apply`

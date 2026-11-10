@@ -23,6 +23,7 @@ pub mod hosts;
 pub mod identity;
 pub mod index;
 pub mod install;
+pub mod key_vault;
 pub mod lane_handoff;
 pub mod lane_status;
 pub mod layout;
