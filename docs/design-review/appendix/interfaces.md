@@ -57,6 +57,7 @@
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `hook-dispatch`
 - `hook-receipt`
 - `hooks-apply`
 - `hooks-plan`
@@ -89,8 +90,6 @@
 - `skill-source-apply`
 - `skill-source-plan`
 - `snapshot-describe`
-- `todo-promote-apply`
-- `todo-promote-preview`
 - `update-apply`
 - `update-plan`
 - `worktree-apply`

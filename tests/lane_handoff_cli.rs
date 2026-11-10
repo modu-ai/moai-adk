@@ -23,7 +23,7 @@ struct FixtureRepo {
 }
 
 fn git(repo: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = common::git::command()
         .arg("-C")
         .arg(repo)
         .args(args)
