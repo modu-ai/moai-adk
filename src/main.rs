@@ -229,6 +229,11 @@ enum Command {
     LaneHandoffCheck {
         project: PathBuf,
     },
+    /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
+    /// named Issues, their open PRs and the local worktrees; writes nothing.
+    LaneStatus {
+        project: PathBuf,
+    },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -934,6 +939,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         Identity { .. } => "identity",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
+        LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1001,9 +1007,14 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         return match (cli.leader, cli.agent) {
             (true, _) => launch("claude", Some(true), cli.launch, None),
             (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
-            (false, None) => Err(
-                "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
-            ),
+            (false, None) => {
+                // Bare no-argument run: the banner rides stdout for humans only
+                // (Issue #2363); the usage error contract below is unchanged.
+                moai_cli::banner::maybe_print_banner();
+                Err(
+                    "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
+                )
+            }
         };
     };
     match command {
@@ -1370,6 +1381,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             }
             Ok(report)
         }
+        Command::LaneStatus { project } => moai_cli::lane_status::status_cli(
+            &project,
+            input::<moai_cli::lane_status::LaneStatusRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -1785,6 +1802,12 @@ fn usage_error(e: clap::Error) -> ExitCode {
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {
+        // Root help carries the logo above clap's help body (Issue #2363);
+        // subcommand help and version stay logo-free.
+        if matches!(e.kind(), ErrorKind::DisplayHelp) {
+            let rest: Vec<String> = std::env::args().skip(1).collect();
+            moai_cli::banner::maybe_print_logo_for(&rest);
+        }
         e.exit()
     };
     let message = match e.kind() {
