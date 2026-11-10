@@ -10,7 +10,9 @@
 //!
 //! The body ends with an operation marker in the form `forge::outbox::parse_op_markers`
 //! reads (`<!-- moai-op pr_create:<repository_id>:<task_key>:<epoch> -->`, r33), the lookup
-//! key for 06-B's reconcile (REQ-06C-09). [`render_and_record`] records the matching 06-B
+//! key for 06-B's reconcile (REQ-06C-09). A further PR under the same epoch is rendered with
+//! `--pr-seq N` (N >= 2) and gets the local id `<task_key>-<N>`, its own operation and
+//! marker (#2329); the first PR's marker is unchanged. [`render_and_record`] records the matching 06-B
 //! `effect-intend{kind: pr_create}` (same operation, project, local id and attempt, so
 //! `parse_op_markers` reads both markers as one operation) when the record came from the
 //! journal. Rendering is not opening: the record moves to `pr_ready` only at the PR's ACK
@@ -47,6 +49,9 @@ pub struct RenderInput<'a> {
     pub gaps: &'a [String],
     /// `(status, path)` from `git diff --name-status <base>...<candidate>`.
     pub changes: &'a [(String, String)],
+    /// Which PR of this claim epoch the body is for (#2329): 1 keeps the original marker,
+    /// N >= 2 gives a further PR under the same epoch its own operation and marker.
+    pub pr_seq: u32,
 }
 
 /// Closing keywords found in `text`, as ASCII words (any case).
@@ -61,10 +66,24 @@ fn cell(s: &str) -> String {
     s.replace('|', "\\|").replace('\n', " ")
 }
 
-pub fn operation_id(rec: &ClaimRecord) -> String {
+/// The marker's local id (#2329): the task key for the epoch's first PR — byte-identical to
+/// the marker written before the sequence existed — and `<task_key>-<n>` for the n-th PR.
+/// It stays one part of the four-part marker, so every existing reader parses it unchanged
+/// and compares it as a distinct operation.
+pub fn local_id(rec: &ClaimRecord, pr_seq: u32) -> String {
+    if pr_seq <= 1 {
+        rec.task_key.clone()
+    } else {
+        format!("{}-{pr_seq}", rec.task_key)
+    }
+}
+
+pub fn operation_id(rec: &ClaimRecord, pr_seq: u32) -> String {
     format!(
         "pr_create:{}:{}:{}",
-        rec.task_ref.repository_id, rec.task_key, rec.epoch
+        rec.task_ref.repository_id,
+        local_id(rec, pr_seq),
+        rec.epoch
     )
 }
 
@@ -140,7 +159,7 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
     let review = input
         .review_link
         .unwrap_or("<대기: 독립 review 판정 뒤 채운다>");
-    let op = operation_id(rec);
+    let op = operation_id(rec, input.pr_seq);
     let marker = format!("<!-- moai-op {op} -->");
 
     let body = format!(
@@ -218,16 +237,19 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
 
 /// The intent payload: what is being created, not the body text, so a re-render after a
 /// new commit is the same intent (06-B rejects a different payload under one key).
-fn intent_payload(rec: &ClaimRecord, base_branch: &str) -> Vec<u8> {
-    json!({
+fn intent_payload(rec: &ClaimRecord, base_branch: &str, pr_seq: u32) -> Vec<u8> {
+    let mut payload = json!({
         "operation": "pr_create",
         "task_key": rec.task_key,
         "epoch": rec.epoch,
         "issue_number": rec.task_ref.issue_number,
         "base_branch": base_branch,
-    })
-    .to_string()
-    .into_bytes()
+    });
+    // The first PR's payload (and so its intent digest) stays what it was before #2329.
+    if pr_seq > 1 {
+        payload["pr_seq"] = json!(pr_seq);
+    }
+    payload.to_string().into_bytes()
 }
 
 /// [`render`] plus the record write (REQ-06C-09): the 06-B `pr_create` intent only; the
@@ -259,10 +281,10 @@ pub fn render_and_record<C: Clock>(
         rec.epoch,
         "pr_create",
         &rec.task_ref.repository_id.to_string(),
-        &rec.task_key,
+        &local_id(rec, input.pr_seq),
         epoch,
         "pr_create",
-        &intent_payload(rec, input.base_branch),
+        &intent_payload(rec, input.base_branch, input.pr_seq),
         clock,
     )?;
     out["effect_intent"] = json!({
@@ -307,6 +329,20 @@ pub fn confirm_and_record<C: Clock>(
         .ok_or_else(|| {
             format!("unknown operation_id {operation_id}; no pr_create was intended under it")
         })?;
+    // #2329: an operation names one PR. An ACK for a different PR under an operation that is
+    // already confirmed is a conflict — taking it as is would drop the second PR silently.
+    if let (Some(recorded), false) = (
+        effect["response_id"].as_str().filter(|r| !r.is_empty()),
+        response_id.is_empty(),
+    ) {
+        if effect["state"] == "confirmed" && recorded != response_id {
+            return Err(format!(
+                "conflict in claim journal: operation {operation_id} is already confirmed as \
+                 response {recorded}, not {response_id}; a further PR under the same epoch \
+                 needs its own operation (pr-body-render --pr-seq N)"
+            ));
+        }
+    }
     let confirm = if effect["state"] == "intended" {
         crate::handoff::effect_confirm(
             &journal,
