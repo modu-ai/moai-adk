@@ -3093,6 +3093,47 @@ fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
     assert_fixture_process_stopped(pid.trim());
 }
 
+#[cfg(unix)]
+#[test]
+fn claude_doctor_cleans_groups_without_trusting_path_kill() {
+    for shadow_kill in [false, true] {
+        let home = TempDir::new().unwrap();
+        let bin = TempDir::new().unwrap();
+        let pidfile = bin.path().join("child.pid");
+        common::write_executable(
+            &bin.path().join("claude"),
+            &format!(
+                "#!/bin/sh\n/bin/sleep 25 &\necho $! > '{}'\nwait\n",
+                pidfile.display()
+            ),
+        );
+        if shadow_kill {
+            common::write_executable(&bin.path().join("kill"), "#!/bin/sh\nexit 1\n");
+        }
+        let project = TempDir::new().unwrap();
+        write_file(project.path(), "AGENTS.md", b"# rules\n");
+        let started = std::time::Instant::now();
+        let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            .args(["claude-doctor", project.path().to_str().unwrap()])
+            .env("HOME", home.path())
+            .env("PATH", bin.path())
+            .output()
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(out.status.success(), "{:?}", out.stderr);
+        let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let result = &envelope["result"];
+        assert_eq!(result["agents_md_status"], json!("unknown"));
+        assert_eq!(result["claude_version"], json!(null));
+        assert!(
+            elapsed < std::time::Duration::from_secs(9),
+            "the documented five-second probe took {elapsed:?}"
+        );
+        let pid = fs::read_to_string(pidfile).unwrap();
+        assert_fixture_process_stopped(pid.trim());
+    }
+}
+
 /// HA-03-CLAUDE: the four AGENTS/CLAUDE combinations, judged without writing anything.
 #[test]
 fn claude_doctor_agents_loading_combinations() {

@@ -46,30 +46,43 @@ fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
 
 /// How long `claude --version` may run before the probe gives up (#2349).
 const VERSION_TIMEOUT: Duration = Duration::from_secs(5);
+const VERSION_GROUP_KILLER: &str = "/bin/kill";
 
 /// Outcome of the `claude --version` probe.
 enum VersionProbe {
     Found((u32, u32, u32)),
     NoVersion,
-    TimedOut,
+    TimedOut { group_signal_sent: bool },
 }
 
 /// The leader has not been reaped at any call site, keeping its group id reserved.
-fn stop_version_probe(child: &mut std::process::Child) {
+fn stop_version_probe(child: &mut std::process::Child, _group_kill_program: &Path) -> bool {
     #[cfg(unix)]
-    let _ = Command::new("kill")
+    let group_signal_sent = Command::new(_group_kill_program)
         .args(["-KILL", "--", &format!("-{}", child.id())])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status();
+        .status()
+        .is_ok_and(|status| status.success());
+    #[cfg(not(unix))]
+    let group_signal_sent = false;
     let _ = child.kill();
     let _ = child.wait();
+    group_signal_sent
+}
+
+fn timeout_reason(group_signal_sent: bool) -> &'static str {
+    if group_signal_sent {
+        "claude --version timed out after 5 s; process-group SIGKILL was acknowledged"
+    } else {
+        "claude --version timed out after 5 s; process-group termination was not confirmed"
+    }
 }
 
 /// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
-/// its own process group; on timeout the whole group is killed, so nothing it started
-/// outlives the doctor.
+/// its own process group; timeout cleanup signals the group before reaping its
+/// leader and reports whether the system signal command acknowledged the request.
 fn claude_version() -> VersionProbe {
     let mut cmd = Command::new("claude");
     cmd.arg("--version")
@@ -99,11 +112,11 @@ fn claude_version() -> VersionProbe {
     let out = match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
         Ok(out) => out,
         Err(mpsc::RecvTimeoutError::Timeout) => {
-            stop_version_probe(&mut child);
-            return VersionProbe::TimedOut;
+            let group_signal_sent = stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
+            return VersionProbe::TimedOut { group_signal_sent };
         }
         Err(mpsc::RecvTimeoutError::Disconnected) => {
-            stop_version_probe(&mut child);
+            stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
             return VersionProbe::NoVersion;
         }
     };
@@ -113,14 +126,14 @@ fn claude_version() -> VersionProbe {
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
             Ok(None) => break None,
             Err(_) => {
-                stop_version_probe(&mut child);
+                stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
                 return VersionProbe::NoVersion;
             }
         }
     };
     let Some(status) = status else {
-        stop_version_probe(&mut child);
-        return VersionProbe::TimedOut;
+        let group_signal_sent = stop_version_probe(&mut child, Path::new(VERSION_GROUP_KILLER));
+        return VersionProbe::TimedOut { group_signal_sent };
     };
     if !status.success() || out.len() > VERSION_OUTPUT_LIMIT {
         return VersionProbe::NoVersion;
@@ -238,7 +251,7 @@ pub fn doctor(project: &Path) -> Result<Value> {
     let probe = claude_version();
     let version = match probe {
         VersionProbe::Found(v) => Some(v),
-        VersionProbe::NoVersion | VersionProbe::TimedOut => None,
+        VersionProbe::NoVersion | VersionProbe::TimedOut { .. } => None,
     };
     let mut out = json!({
         "agents_md_status": "unknown",
@@ -262,10 +275,9 @@ pub fn doctor(project: &Path) -> Result<Value> {
         out["reason"] = json!(reason);
     };
     let Some(version) = version else {
-        let reason = if matches!(probe, VersionProbe::TimedOut) {
-            "claude --version timed out after 5 s; its process group was killed"
-        } else {
-            "claude --version gave no version"
+        let reason = match probe {
+            VersionProbe::TimedOut { group_signal_sent } => timeout_reason(group_signal_sent),
+            _ => "claude --version gave no version",
         };
         set(&mut out, "unknown", reason);
         return Ok(out);
@@ -1374,5 +1386,28 @@ mod tests {
             assert_eq!(parse_version(bad), None, "{bad}");
         }
         assert!(MIN_AGENTS_VERSION <= (2, 1, 277) && (2, 1, 276) < MIN_AGENTS_VERSION);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn version_cleanup_does_not_acknowledge_a_failed_group_signal() {
+        let tmp = tempfile::tempdir().unwrap();
+        for program in [
+            tmp.path().join("missing-kill"),
+            PathBuf::from("/usr/bin/false"),
+        ] {
+            let mut cmd = Command::new("/bin/sleep");
+            cmd.arg("25")
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+            std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+            let mut child = cmd.spawn().unwrap();
+            assert!(!stop_version_probe(&mut child, &program));
+            assert!(
+                child.try_wait().unwrap().is_some(),
+                "the leader must be reaped"
+            );
+        }
     }
 }
