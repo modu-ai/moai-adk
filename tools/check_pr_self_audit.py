@@ -22,8 +22,9 @@ verify.md, section "Check-run rules"):
 
 Each `ci:` line in the section is checked. A citation must carry the keyed
 field `run=` with one or more digits and the keyed field `head=` with exactly
-40 lowercase hex characters (39 or 41 fail); otherwise it must start with
-`not_run` followed by a reason. A body with no `ci:` line is still accepted,
+40 lowercase hex characters, each as a whole whitespace-separated token (39 or
+41 hex, or a suffix such as `-dirty`, fail); otherwise it must start with
+`not_run` followed by a reason containing a letter or digit. A body with no `ci:` line is still accepted,
 because citing CI is allowed only for merge-only deltas. This checker reads
 text only: it cannot tell whether the run exists or whether its head equals
 the PR head; the auditor reads the run back with `gh api`. The independent audit stays in
@@ -45,11 +46,13 @@ from pathlib import Path
 SECTION = "## self-audit"
 TAGS = ("mutation", "clone", "host", "receipt")
 CI_TAG = "ci:"
-# Keyed fields, bounded on both sides so `rerun=7` or a 41-hex string never
-# passes as `run=` or `head=`.
-CI_RUN = re.compile(r"(?<![\w-])run=\d+(?![\w-])")
-CI_HEAD = re.compile(r"(?<![\w-])head=[0-9a-f]{40}(?![0-9A-Za-z])")
-CI_NOT_RUN = re.compile(r"^not_run\b\s*\S")
+# Keyed fields are whole whitespace-separated tokens: whitespace (or the line
+# edge) on both sides, so `rerun=7`, `.run=7`, a 41-hex string or a suffix such
+# as `<40hex>-dirty` never passes as `run=` or `head=`.
+CI_RUN = re.compile(r"(?<!\S)run=\d+(?!\S)")
+CI_HEAD = re.compile(r"(?<!\S)head=[0-9a-f]{40}(?!\S)")
+# `not_run` followed by a reason that has at least one letter or digit.
+CI_NOT_RUN = re.compile(r"^not_run\b(?=.*\w)")
 
 
 def fail(missing):

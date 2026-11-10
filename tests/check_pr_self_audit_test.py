@@ -142,6 +142,40 @@ class CiCitationLineTest(unittest.TestCase):
     def test_not_run_without_reason_blocked(self):
         self.assert_blocked(with_ci("- ci: not_run"), "ci:run")
 
+    # Audit #2395 F1/N1/N2: suffixes and prefixes that are not whitespace must not pass.
+    def test_head_40_hex_then_dash_suffix_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42 head=" + HEAD40 + "-dirty"), "ci:head")
+
+    def test_head_40_hex_then_underscore_suffix_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42 head=" + HEAD40 + "_x"), "ci:head")
+
+    def test_head_40_hex_then_dot_suffix_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42 head=" + HEAD40 + ".x"), "ci:head")
+
+    def test_head_40_hex_then_non_hex_letter_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42 head=" + HEAD40 + "g"), "ci:head")
+
+    def test_head_40_hex_at_line_end_passes(self):
+        self.assert_pass(with_ci("- ci: rc-ci run=42 head=72331be4fda1786c32c3189a6faa4a817324a200"))
+
+    def test_head_40_hex_then_space_passes(self):
+        self.assert_pass(with_ci("- ci: rc-ci run=42 head=72331be4fda1786c32c3189a6faa4a817324a200 conclusion=success"))
+
+    def test_head_with_dot_prefix_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42 x.head=" + HEAD40), "ci:head")
+
+    def test_run_with_dot_prefix_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci .run=42 head=" + HEAD40), "ci:run")
+
+    def test_run_with_suffix_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42.5 head=" + HEAD40), "ci:run")
+
+    def test_not_run_with_punctuation_only_blocked(self):
+        self.assert_blocked(with_ci("- ci: not_run:"), "ci:run")
+
+    def test_not_run_with_one_word_reason_passes(self):
+        self.assert_pass(with_ci("- ci: not_run conflict"))
+
     def test_every_ci_line_is_checked(self):
         good = "- ci: rc-ci run=42821157127 head=" + HEAD40
         bad = "- ci: rc-ci run=42821157128"
