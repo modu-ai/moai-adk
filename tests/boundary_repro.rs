@@ -11,7 +11,7 @@ use moai_cli::run::{
 };
 use moai_cli::scope::overlap;
 use moai_cli::spec::{approve, SortedKeys, SpecDocument};
-use moai_cli::verify::{parse_argv, run_check, CheckResult, Toolchain};
+use moai_cli::verify::{classify, parse_argv, run_check, CheckResult, FailureClass, Toolchain};
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -356,6 +356,44 @@ fn f5b_zero_tests_is_not_a_pass() {
         one.result,
         CheckResult::Passed,
         "one test that ran must pass"
+    );
+}
+
+/// F5d (design table row 5, "다른 언어 오류"): a pytest assertion failure is a test failure,
+/// so a Python RED can be confirmed; a Python import error is an environment failure, so it
+/// is never counted as RED. The cargo cases are the control and already hold today.
+#[test]
+#[ignore = "#2392 repro F5d: RED until failure classes are read beyond cargo output"]
+fn f5d_other_language_failures_are_classified() {
+    let pytest_assert = "E       assert 1 == 2\n\
+                         FAILED tests/test_x.py::test_a - assert 1 == 2\n\
+                         ==== 1 failed in 0.01s ====\n";
+    let pytest_import = "ImportError while importing test module 'tests/test_x.py'.\n\
+                         E   ModuleNotFoundError: No module named 'missing'\n\
+                         ==== 1 error in 0.02s ====\n";
+    // Control: the cargo spellings are classified today.
+    assert_eq!(
+        classify(
+            None,
+            false,
+            false,
+            "test result: FAILED. 0 passed; 1 failed"
+        ),
+        Some(FailureClass::TestFailure)
+    );
+    assert_eq!(
+        classify(None, false, false, "error[E0425]: cannot find value"),
+        Some(FailureClass::EnvironmentFailure)
+    );
+    assert_eq!(
+        classify(None, false, false, pytest_assert),
+        Some(FailureClass::TestFailure),
+        "a pytest assertion failure was not classified as a test failure"
+    );
+    assert_eq!(
+        classify(None, false, false, pytest_import),
+        Some(FailureClass::EnvironmentFailure),
+        "a Python import error was not classified as an environment failure"
     );
 }
 
