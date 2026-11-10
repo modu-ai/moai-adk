@@ -197,7 +197,8 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         text = self.read("skills/moai-cli/workflows/verify.md")
         self.assertEqual(text.count("\n## Check-run rules\n"), 1)
         self.assertIn(CI_FORMAT, text)
-        for case in ("Author: new or changed code", "Repair lane: the repair changes code",
+        for case in ("Author: new or changed code", "Author: a language or suite the change does not touch",
+                     "Repair lane: the repair changes code",
                      "Auditor: the audited head changes code", "Delta auditor: merge-only delta"):
             self.assertIn(case, text)
 

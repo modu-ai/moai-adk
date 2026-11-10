@@ -22,7 +22,8 @@ This section is the single source for who runs which check locally and when an e
 
 | Role and change | Run locally | May cite CI for the full Rust suite |
 | --- | --- | --- |
-| Author: new or changed code | the full check set on the exact tree | no; a CI run is extra evidence, never a replacement |
+| Author: new or changed code | the full check set of every language and suite the change touches, on the exact tree | no for what the change touches; a CI run there is extra evidence, never a replacement |
+| Author: a language or suite the change does not touch (for example the Rust suite of a PR that changes only Python and documents) | nothing for that suite | yes, under the citation conditions; the local run of that suite is recorded as `not_run` |
 | Repair lane: the repair changes code | the full check set on the repair head | no |
 | Auditor: the audited head changes code | tests that exercise the diff, mutations, behavioural probes, fresh-clone reproduction, and the full check set | no |
 | Delta auditor: merge-only delta (the merge-tree result equals the pushed tree and the lane changed nothing itself) | only the tests that target the files the merge brought in | yes, under the citation conditions; the local full suite is recorded as `not_run` |
@@ -33,7 +34,7 @@ Citation conditions — all must hold, or the CI result is not cited:
 2. Every required job of that run is `completed` with conclusion `success` (in this repository: the four `rc-ci / <target>` jobs, the `rc-ci` aggregate and `windows-build`; take the names from the workflow file, not from memory).
 3. The run id is written in the verdict and in the PR's `## Self-Audit` section as one line: `ci: rc-ci run=<run id> head=<40-hex head SHA>`. `tools/check_pr_self_audit.py` rejects a `ci:` line without both keyed fields; it cannot see GitHub, so the auditor still reads the run back.
 
-A CI result is never cited when the repair changed code, when no run exists for the head (a `pull_request` run does not start while the PR has a merge conflict; write `ci: not_run` with the reason), or for checks CI does not perform (mutations, behavioural probes, fresh-clone reproduction). Citing never relaxes a gate: the independent audit, `rc-ci` and `windows-build` success, and exact head and base equality stay required.
+A CI result is never cited for a language or suite the change touches, when the repair changed code in it, when no run exists for the head (a `pull_request` run does not start while the PR has a merge conflict; write `ci: not_run` with the reason), or for checks CI does not perform (mutations, behavioural probes, fresh-clone reproduction). Citing never relaxes a gate: the independent audit, `rc-ci` and `windows-build` success, and exact head and base equality stay required.
 
 Heavy checks are serialised: on one machine, at most one full build or full test run executes at a time. Before starting one, check that no other is running; if one is, wait with a bounded poll and record the wait instead of starting a second. Reuse the existing target directory instead of creating a new one, and record free disk space before the run. Numeric load and disk thresholds are not decided yet (HOLD); until they are, a lane reports high load or low disk to the leader instead of choosing a threshold itself.
 
