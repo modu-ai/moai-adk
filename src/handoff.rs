@@ -75,13 +75,25 @@ fn next_epoch(events: &[JournalEvent], key: &str) -> u64 {
 /// existence and start time under `LC_ALL=C`; a differing start time means the pid was
 /// reused by another process. No `kill`, no crate, no reading of any other host.
 pub fn probe_liveness(pid: Option<u32>, expected_start: Option<&str>) -> (String, Value) {
+    probe_liveness_with(Path::new("ps"), pid, expected_start)
+}
+
+/// [`probe_liveness`] with the `ps` program named (a bare name is looked up on PATH).
+/// Only `ps`'s own "no such process" answer — exit 1 with no output and no error text —
+/// means dead; any other failure is indeterminate, so it can never let a handoff skip
+/// `--force-explicit` for an owner that may still be running (#2349).
+pub fn probe_liveness_with(
+    ps: &Path,
+    pid: Option<u32>,
+    expected_start: Option<&str>,
+) -> (String, Value) {
     let Some(pid) = pid else {
         return (
             "indeterminate".into(),
             json!({"reason": "no pid recorded", "pid": Value::Null}),
         );
     };
-    let out = Command::new("ps")
+    let out = Command::new(ps)
         .args(["-p", &pid.to_string(), "-o", "lstart="])
         .env("LC_ALL", "C")
         .stdin(Stdio::null())
@@ -94,9 +106,22 @@ pub fn probe_liveness(pid: Option<u32>, expected_start: Option<&str>) -> (String
         );
     };
     if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        let silent = out.stdout.iter().all(u8::is_ascii_whitespace) && stderr.is_empty();
+        if out.status.code() == Some(1) && silent {
+            return (
+                "dead".into(),
+                json!({"pid": pid, "reason": "no such process"}),
+            );
+        }
         return (
-            "dead".into(),
-            json!({"pid": pid, "reason": "no such process"}),
+            "indeterminate".into(),
+            json!({
+                "pid": pid,
+                "reason": "ps failed",
+                "exit_code": out.status.code(),
+                "stderr": stderr.chars().take(200).collect::<String>(),
+            }),
         );
     }
     let start = String::from_utf8_lossy(&out.stdout).trim().to_string();

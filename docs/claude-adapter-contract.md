@@ -22,7 +22,7 @@ Source: https://code.claude.com/docs/en/memory
 
 | Input | Rule |
 | --- | --- |
-| `claude --version` | Direct reading needs 2.1.277 or later; below it the status is `unsupported_version`, with no version it is `unknown` |
+| `claude --version` | Direct reading needs 2.1.277 or later; below it the status is `unsupported_version`, with no version it is `unknown`. The probe is bounded at 5 s in its own process group; on timeout the group is killed and the status is `unknown` with a `timed out` reason (#2349) |
 | `AGENTS.md`, `.claude/AGENTS.md` in `PROJECT` or above | None found: `unknown` |
 | `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` in `PROJECT` or above | Any one suppresses direct reading under the default setting. The user's own `~/.claude/CLAUDE.md` is excluded even when `PROJECT` lies under `HOME` (a `CLAUDE.md` in `HOME` itself still counts); managed CLAUDE files and `.claude/rules/` do not suppress either |
 | `@...AGENTS.md` in one of those files, outside code fences and inline code spans (text between backticks, or after an unclosed one, is skipped) | The content still loads through the import: `loaded`, `load_path: import` |

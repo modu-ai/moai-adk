@@ -2921,6 +2921,56 @@ fn doctor(
     (out, v)
 }
 
+/// #2349 (e): a `claude` that never answers `--version` is bounded. The doctor returns
+/// `unknown` with a timeout reason, and the process group ends with it — the hanging
+/// script's own child is gone too.
+#[test]
+fn claude_doctor_bounds_a_hanging_claude() {
+    let home = TempDir::new().unwrap();
+    let bin = TempDir::new().unwrap();
+    let pidfile = bin.path().join("child.pid");
+    common::write_executable(
+        &bin.path().join("claude"),
+        &format!(
+            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            pidfile.display()
+        ),
+    );
+    let project = TempDir::new().unwrap();
+    write_file(project.path(), "AGENTS.md", b"# rules\n");
+    let started = std::time::Instant::now();
+    let (out, v) = doctor(project.path(), home.path(), &bin);
+    let elapsed = started.elapsed();
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert!(
+        elapsed < std::time::Duration::from_secs(12),
+        "doctor waited {elapsed:?} for a hanging claude"
+    );
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    assert_eq!(v["claude_version"], json!(null));
+    assert!(
+        v["reason"].as_str().unwrap().contains("timed out"),
+        "{}",
+        v["reason"]
+    );
+    let pid = fs::read_to_string(&pidfile).unwrap().trim().to_string();
+    let mut gone = false;
+    for _ in 0..40 {
+        let alive = Command::new("kill")
+            .args(["-0", &pid])
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success();
+        if !alive {
+            gone = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(gone, "the hanging claude's child {pid} outlived the doctor");
+}
+
 /// HA-03-CLAUDE: the four AGENTS/CLAUDE combinations, judged without writing anything.
 #[test]
 fn claude_doctor_agents_loading_combinations() {

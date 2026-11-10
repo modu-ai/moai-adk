@@ -22,6 +22,8 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::mpsc,
+    time::{Duration, Instant},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -42,18 +44,79 @@ fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
     parts.next().is_none().then_some(v)
 }
 
-/// `claude --version` with a fixed argv; `None` when claude is absent or prints no version.
-fn claude_version() -> Option<(u32, u32, u32)> {
-    let out = Command::new("claude")
-        .arg("--version")
+/// How long `claude --version` may run before the probe gives up (#2349).
+const VERSION_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Outcome of the `claude --version` probe.
+enum VersionProbe {
+    Found((u32, u32, u32)),
+    NoVersion,
+    TimedOut,
+}
+
+/// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
+/// its own process group; on timeout the whole group is killed, so nothing it started
+/// outlives the doctor.
+fn claude_version() -> VersionProbe {
+    let mut cmd = Command::new("claude");
+    cmd.arg("--version")
         .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if !out.status.success() || out.stdout.len() > VERSION_OUTPUT_LIMIT {
-        return None;
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let Ok(mut child) = cmd.spawn() else {
+        return VersionProbe::NoVersion;
+    };
+    let stdout = child.stdout.take();
+    let (tx, rx) = mpsc::channel();
+    // Read on its own thread so the wait below stays bounded.
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(pipe) = stdout {
+            let _ = pipe
+                .take(VERSION_OUTPUT_LIMIT as u64 + 1)
+                .read_to_end(&mut buf);
+        }
+        let _ = tx.send(buf);
+    });
+    let deadline = Instant::now() + VERSION_TIMEOUT;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
+            Ok(None) => break None,
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return VersionProbe::NoVersion;
+            }
+        }
+    };
+    let Some(status) = status else {
+        // Kill the group while its leader is still unreaped, so the group id cannot have
+        // been reused, then reap the leader.
+        #[cfg(unix)]
+        let _ = Command::new("kill")
+            .args(["-KILL", "--", &format!("-{}", child.id())])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        let _ = child.kill();
+        let _ = child.wait();
+        return VersionProbe::TimedOut;
+    };
+    let Ok(out) = rx.recv_timeout(Duration::from_millis(500)) else {
+        return VersionProbe::NoVersion;
+    };
+    if !status.success() || out.len() > VERSION_OUTPUT_LIMIT {
+        return VersionProbe::NoVersion;
     }
-    parse_version(std::str::from_utf8(&out.stdout).ok()?)
+    match std::str::from_utf8(&out).ok().and_then(parse_version) {
+        Some(v) => VersionProbe::Found(v),
+        None => VersionProbe::NoVersion,
+    }
 }
 
 fn read_bounded(path: &Path) -> Option<Vec<u8>> {
@@ -160,7 +223,11 @@ pub fn doctor(project: &Path) -> Result<Value> {
         .filter(|p| imports_agents(p))
         .cloned()
         .collect();
-    let version = claude_version();
+    let probe = claude_version();
+    let version = match probe {
+        VersionProbe::Found(v) => Some(v),
+        VersionProbe::NoVersion | VersionProbe::TimedOut => None,
+    };
     let mut out = json!({
         "agents_md_status": "unknown",
         "reason": null,
@@ -183,7 +250,12 @@ pub fn doctor(project: &Path) -> Result<Value> {
         out["reason"] = json!(reason);
     };
     let Some(version) = version else {
-        set(&mut out, "unknown", "claude --version gave no version");
+        let reason = if matches!(probe, VersionProbe::TimedOut) {
+            "claude --version timed out after 5 s; its process group was killed"
+        } else {
+            "claude --version gave no version"
+        };
+        set(&mut out, "unknown", reason);
         return Ok(out);
     };
     if version < MIN_AGENTS_VERSION {
