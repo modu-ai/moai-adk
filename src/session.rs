@@ -64,12 +64,10 @@ pub const GLM_MCP_KEY_VAR: &str = "Z_AI_API_KEY";
 /// Taken from the caller's environment, else from a key file (#2359). The value is passed to
 /// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
-/// Key files under HOME, read in this order when the variable is absent. The first is the
-/// global store shared with the Go tool (user decision 2026-11-10). Both are read, never
-/// created or changed.
-pub const GLM_KEY_FILES: [&str; 2] = [".moai/.env.glm", ".moai-cli/.env.glm"];
-/// Names a key file may use for the token.
-const GLM_KEY_NAMES: [&str; 2] = [GLM_TOKEN_VAR, "GLM_API_KEY"];
+/// Legacy key files under HOME, read in this order when the variable is absent and the vault
+/// holds no entry (#2393 S2). The first is the global store shared with the Go tool (user
+/// decision 2026-11-10). Both are read, never created or changed. One list with the import.
+pub const GLM_KEY_FILES: [&str; 2] = crate::key_vault::LEGACY_GLM_FILES;
 /// Largest key file that is read; a bigger one is skipped.
 const GLM_KEY_FILE_MAX: u64 = 65536;
 
@@ -84,15 +82,8 @@ fn glm_file_token() -> Option<String> {
             return None;
         }
         let text = std::fs::read_to_string(path).ok()?;
-        text.lines().find_map(|line| {
-            let line = line.trim();
-            let line = line.strip_prefix("export ").unwrap_or(line);
-            let (key, value) = line.split_once('=')?;
-            if !GLM_KEY_NAMES.contains(&key.trim()) {
-                return None;
-            }
-            usable_token(value.trim().trim_matches(|c| c == '"' || c == '\''))
-        })
+        // One parser for the launcher and `key-import-*` (#2393 S3).
+        crate::key_vault::legacy_token_in(&text)
     })
 }
 

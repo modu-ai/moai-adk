@@ -203,6 +203,20 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
+    /// Copy a legacy key file's key into the vault (#2393 S3): only with the preview's
+    /// digest and a permission reference; the read-back must match; the legacy file is kept.
+    KeyImportApply {
+        provider: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Preview of moving a legacy key file into the vault (#2393 S3): which file, which
+    /// destination, never the value. Writes nothing.
+    KeyImportPlan {
+        provider: String,
+    },
     /// Remove a provider's key from the vault (#2393). Without `--yes` it only reports what
     /// would be removed. A legacy key file is never touched.
     KeyRemove {
@@ -992,6 +1006,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
+        KeyImportApply { .. } => "key.import_apply",
+        KeyImportPlan { .. } => "key.import_plan",
         KeyRemove { .. } => "key.remove",
         KeySet { .. } => "key.set",
         KeyStatus { .. } => "key.status",
@@ -1431,6 +1447,19 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::KeyImportApply {
+            provider,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::key_vault::import_apply(
+            &moai_cli::key_vault::home()?,
+            &provider,
+            &plan_digest,
+            &permission_reference,
+        ),
+        Command::KeyImportPlan { provider } => {
+            moai_cli::key_vault::import_plan(&moai_cli::key_vault::home()?, &provider)
+        }
         Command::KeyRemove { provider, yes } => {
             moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &provider, yes)
         }

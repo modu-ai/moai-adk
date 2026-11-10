@@ -464,6 +464,271 @@ pub fn remove(home: &Path, provider: &str, confirmed: bool) -> Result<Value> {
     }))
 }
 
+// ---- stage 3: moving a legacy key file into the vault (design §4) ----
+
+/// The legacy GLM key files under HOME, in the launcher's order (#2359). Read only; the
+/// import never changes, renames or removes them (Q7: after the Go tool is gone, #2383).
+pub const LEGACY_GLM_FILES: [&str; 2] = [".moai/.env.glm", ".moai-cli/.env.glm"];
+/// Names a legacy key file may use for the token.
+pub const LEGACY_KEY_NAMES: [&str; 2] = ["ANTHROPIC_AUTH_TOKEN", "GLM_API_KEY"];
+
+/// The token in a legacy key file's text: the first `NAME=value` line for an accepted name,
+/// with an `export ` prefix and surrounding quotes removed. Shared by the launcher (#2359) and
+/// the import, so both read a file the same way.
+pub fn legacy_token_in(text: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let line = line.trim();
+        let line = line.strip_prefix("export ").unwrap_or(line);
+        let (key, value) = line.split_once('=')?;
+        if !LEGACY_KEY_NAMES.contains(&key.trim()) {
+            return None;
+        }
+        usable_value(value.trim().trim_matches(|c| c == '"' || c == '\''))
+    })
+}
+
+/// One legacy source as the import sees it: its facts and, when readable, its token. The
+/// token never leaves this module's import functions.
+struct LegacySource {
+    path: PathBuf,
+    facts: Value,
+    /// Metadata that changes when the file is replaced or rewritten; part of the digest.
+    identity: Value,
+    token: Option<String>,
+}
+
+fn legacy_source(home: &Path, rel: &str) -> LegacySource {
+    let path = home.join(rel);
+    let mut facts = json!({"path": path.to_string_lossy(), "exists": false});
+    let mut identity = Value::Null;
+    let mut token = None;
+    if fs::symlink_metadata(&path).is_ok() {
+        facts["exists"] = json!(true);
+        if let Ok(file) = open_entry(&path) {
+            if let Ok(meta) = file.metadata() {
+                let regular = meta.is_file();
+                let size_ok = meta.len() <= VALUE_FILE_MAX;
+                facts["regular_file"] = json!(regular);
+                facts["size_ok"] = json!(size_ok);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    facts["private"] = json!(meta.mode() & 0o077 == 0);
+                    identity = json!([
+                        meta.dev(),
+                        meta.ino(),
+                        meta.len(),
+                        meta.mtime(),
+                        meta.mtime_nsec()
+                    ]);
+                }
+                #[cfg(not(unix))]
+                {
+                    identity = json!([meta.len(), format!("{:?}", meta.modified().ok())]);
+                }
+                if regular && size_ok {
+                    let mut text = String::new();
+                    if file.take(VALUE_FILE_MAX).read_to_string(&mut text).is_ok() {
+                        token = legacy_token_in(&text);
+                    }
+                }
+            }
+        } else {
+            // A symlink (not followed) or an unopenable path.
+            facts["regular_file"] = json!(false);
+        }
+        facts["has_key"] = json!(token.is_some());
+    }
+    LegacySource {
+        path,
+        facts,
+        identity,
+        token,
+    }
+}
+
+/// The import plan and the source it would read (internal: carries the token).
+fn import_plan_inner(home: &Path, provider: &str) -> Result<(Value, Option<LegacySource>)> {
+    check_provider(provider)?;
+    if provider != "glm" {
+        return Err("only the glm key has legacy files to import".into());
+    }
+    let backend = backend(home)?;
+    let sources: Vec<LegacySource> = LEGACY_GLM_FILES
+        .iter()
+        .map(|rel| legacy_source(home, rel))
+        .collect();
+    let dest = entry_path(home, provider);
+    let entry = match backend {
+        Backend::File => match read_file_entry(home, provider) {
+            Ok(Some(_)) => "present",
+            Ok(None) => "absent",
+            Err(b) if b.code == "key_absent" => "empty",
+            Err(_) => "unsafe",
+        },
+        _ => "unknown",
+    };
+    let chosen = sources.iter().position(|s| s.token.is_some());
+    let (action, reason) = match (backend, entry, chosen) {
+        (Backend::Keyring | Backend::Auto, _, _) => (
+            "blocked",
+            "key_store_unavailable: the OS store backend is not available in this build",
+        ),
+        (_, "present", _) => (
+            "already_in_vault",
+            "the vault already holds a glm key; nothing is imported",
+        ),
+        (_, "unsafe" | "empty", _) => (
+            "blocked",
+            "key_file_unsafe: the vault entry exists but is unusable; fix or remove it first",
+        ),
+        (_, _, None) => ("nothing_to_import", "no legacy file holds a usable key"),
+        _ => (
+            "import",
+            "copy the key from the chosen legacy file into the vault",
+        ),
+    };
+    let chosen_path = chosen.map(|i| sources[i].path.to_string_lossy().into_owned());
+    let digest_input = json!({
+        "schema_version": 1,
+        "provider": provider,
+        "backend": backend.name(),
+        "action": action,
+        "source": chosen_path,
+        "source_identity": chosen.map(|i| sources[i].identity.clone()),
+        "destination": dest.to_string_lossy(),
+        "destination_entry": entry,
+    });
+    let digest = crate::digest(digest_input.to_string().as_bytes());
+    let plan = json!({
+        "provider": provider,
+        "backend": backend.name(),
+        "action": action,
+        "reason": reason,
+        "sources": sources.iter().map(|s| s.facts.clone()).collect::<Vec<_>>(),
+        "source": chosen_path,
+        "destination": {"path": dest.to_string_lossy(), "entry": entry},
+        "original_kept": true,
+        "plan_digest": digest,
+        "value_shown": false,
+        "writes": false,
+    });
+    let source = chosen.map(|i| sources.into_iter().nth(i).unwrap());
+    Ok((plan, source))
+}
+
+/// `key-import-plan`: what would be copied from where to where. Reads the legacy files to
+/// know whether they hold a key, writes nothing, and never shows the value.
+pub fn import_plan(home: &Path, provider: &str) -> Result<Value> {
+    Ok(import_plan_inner(home, provider)?.0)
+}
+
+/// `key-import-apply`: re-plans, refuses unless the digest matches (the files did not change
+/// since the preview) and a permission reference is given, copies the key into the vault,
+/// reads it back and compares, then records a receipt with paths, time, backend and the
+/// comparison result only. The legacy file is left exactly as it was.
+pub fn import_apply(
+    home: &Path,
+    provider: &str,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<Value> {
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
+    let (plan, source) = import_plan_inner(home, provider)?;
+    if plan["plan_digest"] != json!(plan_digest) {
+        return Err(
+            "plan digest mismatch: the files changed since the preview; run key-import-plan again"
+                .into(),
+        );
+    }
+    if plan["action"] != json!("import") {
+        return Err(format!(
+            "nothing to apply: {}",
+            plan["reason"].as_str().unwrap_or("")
+        ));
+    }
+    let source = source.ok_or("the chosen source vanished")?;
+    let token = source
+        .token
+        .as_deref()
+        .ok_or("the chosen source holds no key")?;
+    set(home, provider, token)?;
+    let matched = matches!(read_file_entry(home, provider), Ok(Some(v)) if v == token);
+    let unix_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let receipt = json!({
+        "schema_version": 1,
+        "operation": "key.import_apply",
+        "provider": provider,
+        "backend": plan["backend"],
+        "source": source.path.to_string_lossy(),
+        "destination": plan["destination"]["path"],
+        "matched": matched,
+        "original_kept": true,
+        "permission_reference": permission,
+        "unix_ms": unix_ms,
+    });
+    let receipt_path = write_home_receipt(
+        home,
+        &format!("key-import-{unix_ms}-{}", std::process::id()),
+        &receipt,
+    )?;
+    if !matched {
+        return Err(format!(
+            "the vault read-back did not match; receipt {}",
+            receipt_path.display()
+        ));
+    }
+    Ok(json!({
+        "provider": provider,
+        "backend": plan["backend"],
+        "source": source.path.to_string_lossy(),
+        "destination": plan["destination"]["path"],
+        "matched": true,
+        "original_kept": true,
+        "receipt": receipt_path.to_string_lossy(),
+        "value_shown": false,
+    }))
+}
+
+/// Writes one receipt file under `~/.moai-cli/receipts/` (folder `0700`, file `0600`, never
+/// replaced). It holds no value.
+fn write_home_receipt(home: &Path, name: &str, receipt: &Value) -> Result<PathBuf> {
+    let dir = state_dir(home).join("receipts");
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder
+        .create(&dir)
+        .map_err(|_| format!("cannot create {}", dir.display()))?;
+    let path = dir.join(format!("{name}.json"));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+    }
+    let mut f = options
+        .open(&path)
+        .map_err(|_| format!("cannot write {}", path.display()))?;
+    f.write_all(receipt.to_string().as_bytes())
+        .and_then(|_| f.write_all(b"\n"))
+        .map_err(|_| format!("cannot write {}", path.display()))?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
