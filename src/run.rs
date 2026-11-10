@@ -538,6 +538,9 @@ pub fn cost_report(req: CostRequest) -> Result<Value> {
             "self-report": producer_group(&self_report, ProducerKind::SelfReport),
         },
         "per_receipt": per_receipt,
+        // Every receipt here arrived as caller JSON, so its `producer.kind` is what the caller
+        // declared; the groups keep #2191's aggregation (#2392 decision 6774899518 row 16 = B).
+        "producer_declared_by": PRODUCER_DECLARED_BY,
         "tokens": {
             "basis": "absent",
             "note": "receipts carry no token source; nothing is estimated"
@@ -547,6 +550,9 @@ pub fn cost_report(req: CostRequest) -> Result<Value> {
         "writes": "none"
     }))
 }
+
+/// Who stated a cost-report receipt's `producer.kind`: the caller, never re-verified here.
+const PRODUCER_DECLARED_BY: &str = "caller";
 
 /// Evidence basis of a receipt's own numbers: measured by the runner, or claimed
 /// by a self-report.
@@ -583,6 +589,7 @@ fn receipt_row(r: &Receipt) -> Value {
         "task_id": r.task_id,
         "attempt_id": r.attempt_id,
         "producer_kind": r.producer.kind,
+        "producer_declared_by": PRODUCER_DECLARED_BY,
         "basis": producer_basis(r.producer.kind),
         "checks_total": r.checks.len(),
         "duration_ms": if missing == 0 { json!(duration as u64) } else { json!(null) },

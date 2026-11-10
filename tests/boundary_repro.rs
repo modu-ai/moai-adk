@@ -189,7 +189,6 @@ fn find<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
 /// F1a: a receipt that arrives as JSON on the CLI only claims to be a runner receipt; the
 /// cost report must not file it under the runner's `measured` group.
 #[test]
-#[ignore = "#2392 repro F1a: RED until cost-report marks the producer as caller-declared"]
 fn f1a_cost_report_does_not_trust_a_declared_runner_receipt() {
     let forged = serde_json::to_value(receipt(
         ProducerKind::RunnerReceipt,
