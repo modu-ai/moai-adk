@@ -10,7 +10,6 @@ mod common;
 
 use serde_json::{json, Value};
 use std::fs;
-use std::io::Write as _;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
@@ -35,7 +34,8 @@ fn run(args: &[&str], cwd: &Path, stdin: &[u8], env: &[(&str, &str)]) -> Run {
         cmd.env(k, v);
     }
     let mut child = cmd.spawn().unwrap();
-    child.stdin.take().unwrap().write_all(stdin).unwrap();
+    // A usage error exits before reading stdin; a broken pipe here is not a failure.
+    common::feed_stdin(&mut child, stdin);
     let out: Output = child.wait_with_output().unwrap();
     Run {
         code: out.status.code().unwrap(),
