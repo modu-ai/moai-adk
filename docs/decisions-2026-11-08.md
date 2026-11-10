@@ -1,6 +1,6 @@
 # 사용자 결정 기록 (2026-11-08)
 
-리더 세션의 `AskUserQuestion` 응답으로 확정된 결정. 각 항목은 해당 Issue 본문의 "사용자 결정" 절과 `.moai-cli/manifests/github-issues.json`의 `user_decisions`에 같은 내용으로 기록된다. 설계 문서(P04~P15)의 미결 중 여기 적힌 범위만 결정되었고, 나머지는 HOLD다.
+리더 세션의 `AskUserQuestion` 응답으로 확정된 결정과 사용자 직접 지시를 기록한다. 단, 비고 칸에 "임시 결정(리더 RC1; 사용자 확인 권장)"·"작성자 미확인"·"리더 기록"·"리더 제안"이 적힌 행은 사용자 확정이 아니라 리더 잠정 판단이며, 사용자 확인 전까지 그 범위 안에서만 유효하다. 각 항목은 해당 Issue 본문의 "사용자 결정" 절과 `.moai-cli/manifests/github-issues.json`의 `user_decisions`에 같은 내용으로 기록된다. 설계 문서(P04~P15)의 미결 중 여기 적힌 범위만 결정되었고, 나머지는 HOLD다.
 
 | 시각(KST) | 주제 | 결정 | 적용 Issue | 비고 |
 | --- | --- | --- | --- | --- |
@@ -144,4 +144,4 @@
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD → 00:5x(11-09) lease 4h·heartbeat 없음으로 결정 · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
-P12에서 아직 HOLD인 것: OS/arch matrix, locale, release matrix. P04는 04:54(11-09)에 첫 RC 인증 조합만 결정(프로젝트 단위 skill 복사 범위는 HOLD 유지), P05(package 경계·bridge 범위 나머지), P06, P08~P11, P14, P15는 HOLD 유지.
+P12: CI OS matrix는 01:1x(11-09) 배포 잔여 행에서 결정(macOS arm64·x86_64 + Linux x86_64·arm64, Windows는 빌드+self-replace만). 아직 HOLD인 것: Linux·x86_64를 **배포 산출물**로 낼지(CI 시험만인지), locale, release matrix. P04는 04:54(11-09)에 첫 RC 인증 조합만 결정(프로젝트 단위 skill 복사 범위는 HOLD 유지). P08은 00:5x(11-09)에 lease 4h·heartbeat 없음·수동 인계(리더 epoch+1)까지 결정, heartbeat 수치와 takeover 승인 절차만 HOLD. P10은 01:1x(11-09)에 조사 카드 + native 판단 유지까지 잠정 결정(backend 구현은 조사 결과 대기). P11은 01:1x(11-09)에 budget 기본값(retry 3·256 KiB·90일·비용 상한 미설정) 결정. P05(package 경계·bridge 범위 나머지), P06(개정), P09, P14, P15(ZCode 헤드리스 외)는 HOLD 유지. (2026-11-10 정정 — 설계 전수조사 1.2, agent-9 사실 확인)

@@ -262,7 +262,7 @@ pub fn render_and_record<C: Clock>(
     receipts: &[Receipt],
     input: &RenderInput,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = if from_journal {
         Some(open_locked_journal(project)?)
     } else {
@@ -312,7 +312,7 @@ pub fn confirm_and_record<C: Clock>(
     response_id: &str,
     observed_state: &str,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_locked_journal(project)?;
     let current = journal
         .read_events()?
@@ -340,7 +340,8 @@ pub fn confirm_and_record<C: Clock>(
                 "conflict in claim journal: operation {operation_id} is already confirmed as \
                  response {recorded}, not {response_id}; a further PR under the same epoch \
                  needs its own operation (pr-body-render --pr-seq N)"
-            ));
+            )
+            .into());
         }
     }
     let confirm = if effect["state"] == "intended" {

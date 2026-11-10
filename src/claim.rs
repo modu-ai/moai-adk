@@ -32,6 +32,7 @@
 //! HOLD (reported, never decided here): the heartbeat numbers (P08/P11); the journal location
 //! is an interim derivation under the git common dir until P09/01-B fixes the state-root
 //! map; takeover after expiry is 06-B's operator procedure.
+use crate::contract::{Kind, OpError};
 use crate::digest;
 use crate::forge::policy::{format_utc, next_link, parse_utc, Clock};
 use crate::forge::transport::{HttpRequest, Transport};
@@ -78,6 +79,11 @@ pub fn journal_root(project: &Path) -> Result<PathBuf> {
             "claim journal requires a git repository; identity_status was {}",
             id["identity_status"].as_str().unwrap_or("unknown")
         ));
+    }
+    // #2175: the P09 opt-in home layout switches the journal store to
+    // ~/.moai-cli/projects/<id>/claims once layout.json is in place.
+    if let Some(home) = crate::layout::switched_dir(project, "claims") {
+        return Ok(home);
     }
     let common = id["clone_anchor"]
         .as_str()
@@ -1363,6 +1369,12 @@ pub fn verify_claim_token(
 
 // ---- CLI entries (`main` wraps the results in the 01-C envelope) ----
 
+/// The one journal lock-busy answer (Issue #2345): every journal-writing operation returns
+/// this message with the explicit `unavailable` kind, retryable, exit 1, when another
+/// process holds the lock. The tool never waits (REQ-06A-05); the waiting policy stays the
+/// caller's, so the message names the retry rule (a bounded wait within the caller's cap).
+pub const JOURNAL_LOCK_BUSY: &str = "journal busy: the claim journal lock is unavailable (another process holds it); the caller may retry the same command after a bounded wait, within its own cap (REQ-06A-05)";
+
 /// CLI acquire: identity + worktree, journal open + try_lock (busy never waits), then
 /// [`acquire`]. The transport and clock come from the caller like `forge_read_cli`.
 pub fn acquire_cli<T: Transport, C: Clock>(
@@ -1370,20 +1382,14 @@ pub fn acquire_cli<T: Transport, C: Clock>(
     req: ClaimRequest,
     transport: &T,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, OpError> {
     let root = journal_root(project)?;
     let id = identity::identity(project)?;
     let worktree = worktree_id(&id)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Ok(json!({
-            "outcome": "busy",
-            "record": Value::Null,
-            "foreign_owner": Value::Null,
-            "coordination_scope": "single-host",
-            "cross_host_atomic": false,
-            "notes": ["another process holds the journal lock; retry policy is the caller's (REQ-06A-05)"],
-        }));
+        // #2345: the kind is set here, at the raise site — classify() never guesses it.
+        return Err(OpError::new(Kind::Unavailable, JOURNAL_LOCK_BUSY));
     }
     let client = Client::new(transport, clock, Default::default(), Default::default());
     let out = acquire(&journal, &req, worktree, &client, clock)?;
@@ -1401,18 +1407,11 @@ pub fn release_cli<C: Clock>(
     epoch: u64,
     reason: &str,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, OpError> {
     let root = journal_root(project)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Ok(json!({
-            "outcome": "busy",
-            "record": Value::Null,
-            "foreign_owner": Value::Null,
-            "coordination_scope": "single-host",
-            "cross_host_atomic": false,
-            "notes": ["another process holds the journal lock; retry policy is the caller's (REQ-06A-05)"],
-        }));
+        return Err(OpError::new(Kind::Unavailable, JOURNAL_LOCK_BUSY));
     }
     let out = release(&journal, key, epoch, reason, clock)?;
     Ok(out.to_json())
