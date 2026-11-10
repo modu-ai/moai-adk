@@ -606,6 +606,60 @@ pub fn is_commit_or_push(command: &str) -> bool {
     runs_git(command, &["commit", "push"])
 }
 
+/// True when a shell command line runs `git commit` in any of its segments.
+pub fn is_commit(command: &str) -> bool {
+    runs_git(command, &["commit"])
+}
+
+/// Why a commit command line on a lane branch carries no usable claim token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommitTokenGap {
+    /// Tokens are present, but none names the branch's Issue.
+    OtherIssue,
+    /// No `Moai-Claim:` token at all.
+    Missing,
+}
+
+impl CommitTokenGap {
+    /// The refusal reason. Built from fixed text and the branch's Issue number only, so it
+    /// never echoes the command line.
+    pub fn reason(self, issue: i64) -> String {
+        match self {
+            CommitTokenGap::OtherIssue => {
+                format!("the commit message names another Issue than the branch's #{issue}")
+            }
+            CommitTokenGap::Missing => format!(
+                "the commit message carries no `Moai-Claim: {issue}#<id>` (a message from \
+                 -F or an editor is not read)"
+            ),
+        }
+    }
+}
+
+/// The claim comment id a commit command line names for `issue` (the highest when several),
+/// read from the command text without any forge call. The single decider for the local part
+/// of the commit guard: `hook_cli` and the hook engine's tool-preflight both use it (#2391).
+pub fn commit_claim_id(command: &str, issue: i64) -> std::result::Result<i64, CommitTokenGap> {
+    let tokens = claim_tokens(command);
+    match tokens.iter().filter(|t| t.0 == issue).map(|t| t.1).max() {
+        Some(id) => Ok(id),
+        None if !tokens.is_empty() => Err(CommitTokenGap::OtherIssue),
+        None => Err(CommitTokenGap::Missing),
+    }
+}
+
+/// The current branch of the worktree at `cwd`, or `None` on a detached HEAD or outside git.
+pub fn current_branch(cwd: &Path) -> Option<String> {
+    git_out(cwd, &["symbolic-ref", "--short", "-q", "HEAD"])
+}
+
+/// True when this clone's local claim journal has an active record whose worktree contains
+/// `cwd` (local read only; the record path of `hook_cli` then decides with the forge).
+pub fn has_local_record(project: &Path, cwd: &Path) -> bool {
+    let records = crate::worktree::active_records(project).unwrap_or_default();
+    record_for(records, cwd).is_some()
+}
+
 /// How a branch name reads as a lane branch (#2336).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LaneBranch {
@@ -765,7 +819,7 @@ pub fn hook_cli<T: Transport, C: Clock>(
     }
     // No record (the claim was posted for the lane, not by `claim-acquire`): a lane branch
     // `issue/<n>-…` is still guarded, from the branch name and the `Moai-Claim` token.
-    let Some(branch) = git_out(&cwd, &["symbolic-ref", "--short", "-q", "HEAD"]) else {
+    let Some(branch) = current_branch(&cwd) else {
         return allow("no claim record and no branch (detached HEAD); not a lane worktree");
     };
     let issue = match lane_branch(&branch) {
@@ -799,20 +853,9 @@ pub fn hook_cli<T: Transport, C: Clock>(
     };
     let comment_id = if runs_git(command, &["commit"]) {
         // The commit being written: its message, as typed in the command line.
-        let tokens = claim_tokens(command);
-        match tokens.iter().filter(|t| t.0 == issue).map(|t| t.1).max() {
-            Some(id) => id,
-            None if !tokens.is_empty() => {
-                return uncertain(format!(
-                    "the commit message names another Issue than the branch's #{issue}"
-                ))
-            }
-            None => {
-                return uncertain(format!(
-                    "the commit message carries no `Moai-Claim: {issue}#<id>` (a message from \
-                     -F or an editor is not read)"
-                ))
-            }
+        match commit_claim_id(command, issue) {
+            Ok(id) => id,
+            Err(gap) => return uncertain(gap.reason(issue)),
         }
     } else {
         // A push: the highest claim comment id among this Issue's tokens on the branch's
