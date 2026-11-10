@@ -203,22 +203,33 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
-    /// Remove a provider's key from the vault (#2393). Without `--yes` it only reports what
-    /// would be removed. A legacy key file is never touched.
+    /// Remove a provider's key from the vault (#2393): the current project's entry, or the
+    /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
+    /// machine key and any legacy key file are never touched.
     KeyRemove {
         provider: String,
         #[arg(long)]
         yes: bool,
+        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
+        #[arg(long)]
+        shared: bool,
     },
-    /// Store a provider's key in the vault (#2393). The value is read from stdin only (never
-    /// argv); an interactive terminal is refused. The answer never contains the value.
+    /// Store a provider's key, encrypted, in the vault (#2393): for the current project, or
+    /// for every project with `--shared`. The value is read from stdin only (never argv); an
+    /// interactive terminal is refused. The answer never contains the value.
     KeySet {
         provider: String,
+        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
+        #[arg(long)]
+        shared: bool,
     },
-    /// The vault backend and whether a provider's entry exists and is safe (#2393). Never
-    /// the value, its length or a fingerprint.
+    /// Whether a provider's entry (current project, or `--shared`) exists, is safe and
+    /// decrypts (#2393). Never the value, its length or a fingerprint.
     KeyStatus {
         provider: String,
+        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
+        #[arg(long)]
+        shared: bool,
     },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
@@ -1431,10 +1442,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
-        Command::KeyRemove { provider, yes } => {
-            moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &provider, yes)
+        Command::KeyRemove {
+            provider,
+            yes,
+            shared,
+        } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &scope, &provider, yes)
         }
-        Command::KeySet { provider } => {
+        Command::KeySet { provider, shared } => {
             use std::io::IsTerminal;
             if io::stdin().is_terminal() {
                 return Err(
@@ -1443,11 +1459,13 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         .into(),
                 );
             }
+            let scope = moai_cli::key_vault::scope_here(shared)?;
             let value = moai_cli::key_vault::read_value(io::stdin())?;
-            moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &provider, &value)
+            moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &scope, &provider, &value)
         }
-        Command::KeyStatus { provider } => {
-            moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &provider)
+        Command::KeyStatus { provider, shared } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &scope, &provider)
         }
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
