@@ -89,7 +89,7 @@ def probe_skill(marker: str) -> str:
 def build_fixture(kind: str, host: str, project: Path, repo: Path, markers: dict) -> None:
     """Writes the item's temporary project. markers gets the expected/forbidden values."""
     skills = ".claude/skills" if host == "claude" else ".agents/skills"
-    shutil.copytree(repo / "skills/moai", project / skills / "moai-cli")
+    shutil.copytree(repo / "skills/moai", project / skills / "moai")
     if kind in ("agents", "agents_shadowed", "agents_override"):
         markers["expect"] = "mp-" + secrets.token_hex(8)
         write(project / "AGENTS.md", agents_text(markers["expect"]))
