@@ -465,7 +465,8 @@ mod tests {
         // test:t -verifies-> req:R ; file:b -references_requirement-> req:Q
         let map = json!({
             "nodes": [node("file:a", "file", Some("a")), node("tag:a#L1", "tag", Some("a")),
-                      node("file:b", "file", Some("b")), node("file:c/d", "file", Some("c/d"))],
+                      node("file:b", "file", Some("b")), node("file:c/d", "file", Some("c/d")),
+                      node("file:cd", "file", Some("cd"))],
             "edges": [edge("e1", "annotated_by", "file:a", "tag:a#L1")],
             "missing": [{"kind": "tag_scan_skipped", "path": "b", "reason": "x"}],
         });
@@ -530,7 +531,7 @@ mod tests {
             prefixes: vec!["c/".into()],
         };
         let (doc, omitted, total) = select_map(&m, &q, 10);
-        assert_eq!(total, 3);
+        assert_eq!(total, 4);
         assert_eq!(ids(&doc), ["file:a", "tag:a#L1", "file:c/d"]);
         assert_eq!(array(&doc, "edges").count(), 1);
         assert_eq!(
@@ -549,7 +550,13 @@ mod tests {
         assert_eq!(ids(&doc), ["file:c/d"]);
         let (doc, omitted, _) = select_map(&m, &MapQuery::default(), 2);
         assert_eq!(ids(&doc), ["file:a", "tag:a#L1", "file:b"]);
-        assert_eq!(omitted, [json!({"path": "c/d", "reason": "max_files"})]);
+        assert_eq!(
+            omitted,
+            [
+                json!({"path": "c/d", "reason": "max_files"}),
+                json!({"path": "cd", "reason": "max_files"})
+            ]
+        );
         assert_eq!(doc["missing"][0]["path"], "b");
     }
 
