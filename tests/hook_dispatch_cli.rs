@@ -1289,3 +1289,101 @@ fn a_deny_on_the_same_line_wins_over_a_confirmation() {
     );
     assert_eq!(decision(&r).0, "ask");
 }
+
+// ---- stage 7: opt-in rules from ~/.moai-cli/config (B3, B9) ----
+
+fn config(home: &Path, text: &str) {
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    fs::write(home.join(".moai-cli/config"), text).unwrap();
+}
+
+fn write_input(path: &Path, cwd: &Path) -> Vec<u8> {
+    json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+           "tool_input": {"file_path": path, "content": "x"}, "cwd": cwd})
+    .to_string()
+    .into_bytes()
+}
+
+/// B9 is off without a config (and with a broken one), and refuses a write outside the
+/// project once `[hooks.outside_project_writes]` turns it on; an `allow` folder passes.
+#[test]
+fn outside_project_writes_follow_the_config() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(
+        &home,
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\n",
+    );
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(
+        &home,
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n",
+    );
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(reason.contains("outside the project"), "{reason}");
+    let reason = assert_deny(&codex("tool-preflight", &root, &input));
+    assert!(reason.is_empty() || reason.contains("MoAI"), "{reason}");
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &write_input(&root.join("src.rs"), &root),
+        &env,
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &write_input(&home.join(".claude/settings.json"), &root),
+        &env,
+    ));
+    assert!(!outside.exists(), "a hook never writes the file");
+}
+
+/// B3 is off unless the repo is listed; then a switch in a primary checkout with a linked
+/// worktree is refused, and an `allow_commands` line passes.
+#[test]
+fn a_listed_shared_primary_checkout_is_protected() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let lane_dir = format!("../{}-b3-lane", root.file_name().unwrap().to_string_lossy());
+    git(&root, &["worktree", "add", "-q", "-b", "lane", &lane_dir]);
+    let env = [("HOME", home.to_str().unwrap())];
+    let switch = pre_tool("git switch lane", &root);
+    assert_allow(&dispatch("tool-preflight", &root, &switch, &env));
+    config(
+        &home,
+        &format!(
+            "[hooks.primary_checkout]\nenabled = true\nrepos = [\"{}\"]\nallow_commands = [\"git switch main\"]\n",
+            root.display()
+        ),
+    );
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &switch, &env));
+    assert!(reason.contains("primary checkout"), "{reason}");
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git switch main", &root),
+        &env,
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git status", &root),
+        &env,
+    ));
+    // The linked worktree itself is not the primary checkout.
+    let lane = std::fs::canonicalize(root.join(&lane_dir)).unwrap();
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        &pre_tool("git switch main", &lane),
+        &env,
+    ));
+    git(&root, &["worktree", "remove", "--force", &lane_dir]);
+}
