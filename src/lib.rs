@@ -6,21 +6,25 @@ pub mod audit;
 pub mod banner;
 pub mod baseline;
 pub mod claim;
+pub mod claim_cache;
 pub mod claim_verify;
 pub mod claude;
 pub mod context;
 pub mod contract;
 pub mod decision;
+pub mod decision_log;
 pub mod flow;
 pub mod forge;
 pub mod generation;
 pub mod github_templates;
 pub mod handoff;
 pub mod hook_engine;
+pub mod hook_guards;
 pub mod hooks;
 pub mod hosts;
 pub mod identity;
 pub mod index;
+pub mod index_records;
 pub mod install;
 pub mod lane_handoff;
 pub mod lane_status;
@@ -37,6 +41,7 @@ pub mod recovery;
 pub mod redact;
 pub mod run;
 pub mod scope;
+pub mod search;
 pub mod self_update;
 pub mod session;
 pub mod sources;
@@ -73,8 +78,8 @@ pub fn digest(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
 }
 /// Credential-shaped substrings of the conservative profile filter, lower-cased. Shared with
-/// the 07-B promotion gate (`forge::promote`) so both refuse the same shapes; this is not a
-/// general secret detector (the common redaction module belongs to 03-B #1996).
+/// the common redaction module (`crate::redact`, 03-B #1996) so both refuse the same shapes;
+/// this is not a general secret detector.
 pub(crate) const SECRET_SHAPES: [&str; 7] = [
     "sk-",
     "ghp_",
