@@ -356,3 +356,89 @@ pub fn search(project: &Path, req: &SearchRequest) -> Result<Value> {
         "writes": false,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hit(path: &str, line: usize) -> Hit {
+        Hit {
+            path: path.into(),
+            grade: "lexical",
+            start_line: line,
+            end_line: line,
+            span_sha256: String::new(),
+            file_sha256: String::new(),
+            reason: String::new(),
+        }
+    }
+
+    #[test]
+    fn max_files_keeps_exactly_n_distinct_files() {
+        let hits = vec![hit("a", 1), hit("b", 1), hit("c", 1), hit("a", 2)];
+        // N = 2: a and b kept (a twice), c is the N+1th file and is omitted.
+        let (kept, omitted) = cap(hits.clone(), 2, 20);
+        let paths: Vec<&str> = kept.iter().map(|h| h.path.as_str()).collect();
+        assert_eq!(paths, ["a", "b", "a"]);
+        assert_eq!(omitted.len(), 1);
+        assert_eq!(omitted[0]["path"], "c");
+        assert_eq!(omitted[0]["reason"], "max_files");
+        // N = 3: nothing is cut.
+        assert_eq!(cap(hits, 3, 20).1.len(), 0);
+    }
+
+    #[test]
+    fn max_spans_per_file_keeps_exactly_n_spans() {
+        let hits = vec![hit("a", 1), hit("a", 2), hit("a", 3)];
+        let (kept, omitted) = cap(hits.clone(), 200, 2);
+        assert_eq!(kept.len(), 2);
+        assert_eq!(omitted.len(), 1);
+        assert_eq!(omitted[0]["start_line"], 3);
+        assert_eq!(omitted[0]["reason"], "max_spans_per_file");
+        assert_eq!(cap(hits, 200, 3).1.len(), 0);
+    }
+
+    #[test]
+    fn lines_and_spans_are_byte_exact() {
+        let text = b"alpha\nbeta gamma\ngamma\n";
+        assert_eq!(matching_lines(text, b"gamma"), [2, 3]);
+        assert_eq!(matching_lines(text, b"Gamma"), Vec::<usize>::new());
+        assert_eq!(span_bytes(text, 2, 2), b"beta gamma\n");
+        assert_eq!(span_bytes(b"x\nlast", 2, 2), b"last");
+    }
+
+    #[test]
+    fn a_span_changed_after_collection_is_stale() {
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join("f.txt"), "keep\nneedle here\n").unwrap();
+        let query = Query {
+            paths: vec![],
+            literals: vec!["needle".into()],
+        };
+        let (hits, _) = collect(dir.path(), &["f.txt".into()], &query);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(recheck(dir.path(), &hits), ["fresh"]);
+        // The file changes between collection and return.
+        fs::write(dir.path().join("f.txt"), "keep\nneedle moved\n").unwrap();
+        assert_eq!(recheck(dir.path(), &hits), ["stale"]);
+        fs::remove_file(dir.path().join("f.txt")).unwrap();
+        assert_eq!(recheck(dir.path(), &hits), ["stale"]);
+    }
+
+    #[test]
+    fn exact_paths_come_before_lexical_matches() {
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join("a.txt"), "needle\n").unwrap();
+        fs::write(dir.path().join("z.txt"), "other\n").unwrap();
+        let query = Query {
+            paths: vec!["z.txt".into()],
+            literals: vec!["needle".into()],
+        };
+        let (hits, _) = collect(dir.path(), &["a.txt".into(), "z.txt".into()], &query);
+        // z.txt sorts after a.txt, yet the exact path is first (REQ-C7-01).
+        assert_eq!(hits[0].path, "z.txt");
+        assert_eq!(hits[0].grade, "exact");
+        assert_eq!(hits[1].path, "a.txt");
+        assert_eq!(hits[1].grade, "lexical");
+    }
+}
