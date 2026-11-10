@@ -257,6 +257,28 @@ fn f2_remaining_evidence_ignores_self_reports() {
     assert!(!left.contains(&"red".to_string()), "{left:?}");
 }
 
+/// F2b (design table row 2): an intended assertion RED is methodology evidence for the `red`
+/// step even though its result is `failed`; a failure that is not an assertion failure
+/// (compile, network, nothing selected — `red_confirmed: false`) is not (the boundary).
+#[test]
+#[ignore = "#2392 repro F2b: RED until a confirmed RED settles the red step"]
+fn f2b_confirmed_red_settles_the_red_step() {
+    let required: Vec<String> = vec!["red".into(), "green".into(), "regression".into()];
+    let mut red = receipt(ProducerKind::RunnerReceipt, "red", Summary::Failed);
+    red.red_confirmed = Some(true);
+    let left = remaining_evidence(&required, &[red.clone()]);
+    assert!(
+        !left.contains(&"red".to_string()),
+        "a confirmed assertion RED did not count as red-step evidence: left {left:?}"
+    );
+    red.red_confirmed = Some(false);
+    let left = remaining_evidence(&required, &[red]);
+    assert!(
+        left.contains(&"red".to_string()),
+        "an unconfirmed failure counted as RED: left {left:?}"
+    );
+}
+
 /// F4: green checks do not admit a candidate while a blocking finding is still open; a
 /// low finding does not block (the boundary).
 #[test]
@@ -277,6 +299,13 @@ fn f4_open_critical_finding_blocks_admission() {
     assert_ne!(
         verdict["admission"], "admitted",
         "green tests admitted a candidate with an open critical finding: {verdict}"
+    );
+    // The design table names the absent-opinion case too.
+    input.opinion = None;
+    let absent = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+    assert_ne!(
+        absent["admission"], "admitted",
+        "green tests with no opinion admitted an open critical finding: {absent}"
     );
     input.findings[0].severity = "low".into();
     let low = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
