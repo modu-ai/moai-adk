@@ -58,7 +58,7 @@ struct Cli {
 /// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm|codex -l|-a` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
-    /// Session name (default `leader` for -l, `agent-1` for -a).
+    /// Session name (default `leader` for -l, the project's next `agent-N` for -a; none without a role).
     #[arg(long)]
     name: Option<String>,
     /// Main model (Claude hosts default `opus`; codex uses its own default unless set).
@@ -70,7 +70,9 @@ struct LaunchOpts {
     /// Do not pass `--advisor fable` (Claude Code host).
     #[arg(long)]
     no_advisor: bool,
-    /// Keep permission prompts: do not pass `--dangerously-skip-permissions`.
+    /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts) and the
+    /// `workspace-write` / `on-request` sandbox on codex. Without it a -l|-a session has full access;
+    /// a session without a role never gets a permission flag.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
@@ -217,6 +219,19 @@ enum Command {
     /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
     /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
     LeaderTick {
+        project: PathBuf,
+    },
+    /// Lane handoff gate (rc.2 A10 #2264): typed JSON request on stdin; read-only
+    /// verification that the worktree is safe to exit — status clean, HEAD ==
+    /// observed remote == PR head, claim trailers on lane-authored non-merge commits, leader report
+    /// record present, no publish_unknown outbox effects. A failed status blocks
+    /// the exit (kind blocked, exit 1) with a preservation note.
+    LaneHandoffCheck {
+        project: PathBuf,
+    },
+    /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
+    /// named Issues, their open PRs and the local worktrees; writes nothing.
+    LaneStatus {
         project: PathBuf,
     },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
@@ -401,7 +416,7 @@ enum Command {
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
-        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
+        /// Absolute skill directory named `moai-cli`, e.g. ~/.agents/skills/moai-cli (no default).
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -411,7 +426,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
         #[arg(long)]
@@ -427,7 +442,7 @@ enum Command {
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
         package: PathBuf,
-        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        /// Absolute skill directory named `moai-cli`; the same target the plan was made for.
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -437,7 +452,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
+        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
         default_prompt: String,
         #[arg(long)]
         allow_implicit_invocation: Option<bool>,
@@ -754,7 +769,7 @@ enum Command {
     },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
-    /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
+    /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
     Glm(HostLaunch),
     /// Codex CLI session launcher: `codex -l|-a`.
     Codex(HostLaunch),
@@ -828,68 +843,57 @@ fn launch(
     o: LaunchOpts,
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
+    // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
+    // `-a` is `agent-N` from the project's counter; both start with full access.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
-    // REQ-A5-01 (#2164): `-l|-a` is deprecated — warn on stderr and record a note,
-    // keeping the composed behavior unchanged until the removal card lands.
-    if leader.is_some() {
-        eprintln!("deprecated: use `/moai --mode leader|agent` inside the session");
-    }
-    let name_given = o.name.is_some();
-    // A role brings its default name; a plain session gets none.
+    // `-a` without `--name` is numbered; `--name` takes no number.
+    let numbered = leader == Some(false) && o.name.is_none();
     let name = o
         .name
-        .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
-    // #2244 (REQ-I7-01): a role session would get the interim permission skip; a project
-    // whose `.claude/settings.json` has a `permissions` key owns its permissions instead.
-    let wants_skip = role.is_some() && host != "codex" && !o.permissions;
-    let key = if wants_skip {
-        std::env::current_dir()
-            .map(|d| moai_cli::session::permissions_key(&d))
-            .unwrap_or(moai_cli::session::PermissionsKey::Unreadable)
-    } else {
-        moai_cli::session::PermissionsKey::Absent
-    };
-    let key_note = match key {
-        moai_cli::session::PermissionsKey::Present => {
-            let msg = "permissions key found in .claude/settings.json: --dangerously-skip-permissions omitted (#2244)";
-            eprintln!("{msg}");
-            Some(msg)
-        }
-        moai_cli::session::PermissionsKey::Unreadable => Some(
-            ".claude/settings.json unreadable: permissions key not detected; the interim skip default applies",
-        ),
-        moai_cli::session::PermissionsKey::Absent => None,
-    };
-    let request = SessionRequest {
+        .or_else(|| (leader == Some(true)).then(|| "leader".into()));
+    let mut request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
         name,
         model: o.model,
         effort: o.effort,
         // Claude defaults (user decision 2026-11-08, HOLD-L1 = A, #2053): roleless `cc`
-        // takes the launcher defaults (advisor fable, model, effort) too. The permission
-        // skip stays `-l|-a` only — a roleless session gets none.
+        // takes the launcher defaults (advisor fable, model, effort) too.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        skip_permissions: wants_skip && key != moai_cli::session::PermissionsKey::Present,
+        // A role session starts with full access unless `--permissions` is given; a roleless
+        // one gets no permission flag (user decision 2026-11-10, #2359; replaces #2244).
+        skip_permissions: full_access(role.is_some(), o.permissions),
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
+    let mut number_note = None;
+    if numbered {
+        let here = std::env::current_dir()
+            .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
+        let dir = moai_cli::session::agent_seq_dir(&here)?;
+        let n = if o.dry_run {
+            number_note = Some(format!(
+                "agent-N preview: --dry-run takes no number (store {})",
+                dir.display()
+            ));
+            peek_agent_number(&here)?
+        } else {
+            // Compose first, so a launch that is refused anyway (a blocked glm, an invalid
+            // option) takes no number.
+            request.name = Some("agent-0".into());
+            moai_cli::session::compose(&request)?;
+            let n = take_agent_number(&here)?;
+            number_note = Some(format!("agent number {n} taken (store {})", dir.display()));
+            n
+        };
+        request.name = Some(format!("agent-{n}"));
+    }
     let mut v = session_launch(&request, o.dry_run)?;
-    if let (Some(msg), Some(notes)) = (key_note, v["notes"].as_array_mut()) {
-        notes.push(msg.into());
-    }
-    if leader.is_some() {
-        if let Some(notes) = v["notes"].as_array_mut() {
-            notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
-        }
-    }
-    if leader == Some(false) && !name_given {
-        // HOLD (00-F): automatic agent numbering is undecided; RC1 uses a fixed default.
-        if let Some(notes) = v["notes"].as_array_mut() {
-            notes.push("agent name defaulted to agent-1 (automatic numbering is HOLD); pass --name agent-<n>".into());
-        }
+    if let (Some(note), Some(notes)) = (number_note, v["notes"].as_array_mut()) {
+        notes.push(note.into());
     }
     Ok(v)
 }
@@ -946,6 +950,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
         InstallInspect { .. } => "install.inspect",
+        LaneHandoffCheck { .. } => "lane_handoff.check",
+        LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1013,9 +1019,14 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         return match (cli.leader, cli.agent) {
             (true, _) => launch("claude", Some(true), cli.launch, None),
             (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
-            (false, None) => Err(
-                "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
-            ),
+            (false, None) => {
+                // Bare no-argument run: the banner rides stdout for humans only
+                // (Issue #2363); the usage error contract below is unchanged.
+                moai_cli::banner::maybe_print_banner();
+                Err(
+                    "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
+                )
+            }
         };
     };
     match command {
@@ -1365,6 +1376,29 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::LaneHandoffCheck { project } => {
+            let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
+            // The CLI positional project wins over any stdin value (consistency
+            // with every other project-taking op).
+            request.project = project.clone();
+
+            let report = moai_cli::lane_handoff::handoff_check(&request)?;
+            if report["status"] == serde_json::json!("failed") {
+                eprintln!(
+                    "{}",
+                    serde_json::to_string_pretty(&report).unwrap_or_default()
+                );
+                return Err(moai_cli::lane_handoff::blocked_message(&report)
+                    .unwrap_or_else(|| "lane handoff blocked".into()));
+            }
+            Ok(report)
+        }
+        Command::LaneStatus { project } => moai_cli::lane_status::status_cli(
+            &project,
+            input::<moai_cli::lane_status::LaneStatusRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -1780,6 +1814,12 @@ fn usage_error(e: clap::Error) -> ExitCode {
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {
+        // Root help carries the logo above clap's help body (Issue #2363);
+        // subcommand help and version stay logo-free.
+        if matches!(e.kind(), ErrorKind::DisplayHelp) {
+            let rest: Vec<String> = std::env::args().skip(1).collect();
+            moai_cli::banner::maybe_print_logo_for(&rest);
+        }
         e.exit()
     };
     let message = match e.kind() {

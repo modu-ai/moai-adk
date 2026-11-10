@@ -174,11 +174,11 @@ fn fixture() -> Fixture {
 
 impl Fixture {
     fn claude(&self) -> PathBuf {
-        self.home.join(".claude/skills/moai")
+        self.home.join(".claude/skills/moai-cli")
     }
 
     fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai")
+        self.home.join(".agents/skills/moai-cli")
     }
 
     fn hosts_dir(&self) -> PathBuf {
@@ -189,7 +189,7 @@ impl Fixture {
             .filter(|p| p.is_dir())
             .collect();
         assert_eq!(dirs.len(), 1);
-        dirs[0].join("hosts")
+        dirs[0].join("hosts/moai-cli")
     }
 
     fn receipt(&self, host: &str) -> Value {
@@ -488,6 +488,50 @@ fn e2e_never_writes_outside_temp_home() {
 #[test]
 fn e2e_clean_clone_carries_portable_read_plan_assets() {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let dest = TempDir::new().unwrap();
+    let clone = dest.path().join("clean");
+    clone_checkout(&manifest, &clone);
+
+    // The portable assets are all plain files in the clone — no binary, no state dir.
+    let skill = clone.join("skills/moai-cli");
+    let skill_md = fs::read_to_string(skill.join("SKILL.md")).unwrap();
+    assert!(
+        skill_md.starts_with("---\nname: moai-cli\ndescription: "),
+        "SKILL.md frontmatter must name the skill: {skill_md}"
+    );
+    let routes: Value =
+        serde_json::from_slice(&fs::read(skill.join("references/routes.json")).unwrap()).unwrap();
+    // READ and PLAN are the routes AC-08C-8 needs without a binary: the routes file
+    // itself declares requires_binary=false for them, and the clone carries the
+    // workflow files they reference.
+    for route in ["READ", "PLAN"] {
+        let r = &routes["routes"][route];
+        assert!(
+            r["requires_binary"] == json!(false),
+            "{route} must be a no-binary route: {r}"
+        );
+        let rel = r["reference"].as_str().unwrap();
+        let resolved = skill.join("references").join(rel);
+        assert!(
+            resolved.is_file(),
+            "{route} references {rel} but the clean clone lacks it"
+        );
+    }
+    // Every other referenced workflow file must exist in the clone too.
+    let refs = &routes["routes"];
+    for (name, r) in refs.as_object().unwrap() {
+        let rel = r["reference"].as_str().unwrap();
+        let resolved = skill.join("references").join(rel);
+        assert!(
+            resolved.is_file(),
+            "route {name} references {rel} but the clean clone lacks it"
+        );
+    }
+    // The clone carries no installed user state (only repo content such as the
+    // tracked .moai-cli manifests): nothing under the clone references a real HOME.
+}
+
+fn clone_checkout(manifest: &Path, clone: &Path) {
     let discovery = Command::new("git")
         .args([
             "-C",
@@ -521,14 +565,29 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     } else {
         manifest.join(gitdir)
     };
-    let dest = TempDir::new().unwrap();
-    let clone = dest.path().join("clean");
+    // Pin this checkout's commit: a linked worktree may differ from the common-dir
+    // default branch, and CI checks out a detached merge commit with no branch name.
+    let revision = {
+        let out = Command::new("git")
+            .args([
+                "-C",
+                manifest.to_str().unwrap(),
+                "rev-parse",
+                "--verify",
+                "HEAD^{commit}",
+            ])
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "cannot resolve the tested commit");
+        String::from_utf8(out.stdout).unwrap().trim().to_string()
+    };
+    // A local copy includes the detached worktree's object even if no branch names
+    // it. Do not use a shallow transport clone, which only fetches advertised refs.
     let out = Command::new("git")
         .args([
             "clone",
             "--no-hardlinks",
-            "--depth",
-            "1",
+            "--no-checkout",
             gitdir.to_str().unwrap(),
             clone.to_str().unwrap(),
         ])
@@ -539,42 +598,87 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-
-    // The portable assets are all plain files in the clone — no binary, no state dir.
-    let skill = clone.join("skills/moai");
-    let skill_md = fs::read_to_string(skill.join("SKILL.md")).unwrap();
+    let checkout = Command::new("git")
+        .arg("-C")
+        .arg(clone)
+        .args(["checkout", "--detach", &revision])
+        .output()
+        .unwrap();
     assert!(
-        skill_md.starts_with("---\nname: moai\ndescription: "),
-        "SKILL.md frontmatter must name the skill: {skill_md}"
+        checkout.status.success(),
+        "{}",
+        String::from_utf8_lossy(&checkout.stderr)
     );
-    let routes: Value =
-        serde_json::from_slice(&fs::read(skill.join("references/routes.json")).unwrap()).unwrap();
-    // READ and PLAN are the routes AC-08C-8 needs without a binary: the routes file
-    // itself declares requires_binary=false for them, and the clone carries the
-    // workflow files they reference.
-    for route in ["READ", "PLAN"] {
-        let r = &routes["routes"][route];
+}
+
+/// The clone must select the tested revision even when the common-dir HEAD differs.
+#[test]
+fn e2e_clean_clone_keeps_exact_attached_and_detached_revision() {
+    fn git(root: &Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args([
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.hooksPath=/dev/null",
+            ])
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .output()
+            .unwrap();
         assert!(
-            r["requires_binary"] == json!(false),
-            "{route} must be a no-binary route: {r}"
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
         );
-        let rel = r["reference"].as_str().unwrap();
-        let resolved = skill.join("references").join(rel);
-        assert!(
-            resolved.is_file(),
-            "{route} references {rel} but the clean clone lacks it"
-        );
+        String::from_utf8(out.stdout).unwrap().trim().to_string()
     }
-    // Every other referenced workflow file must exist in the clone too.
-    let refs = &routes["routes"];
-    for (name, r) in refs.as_object().unwrap() {
-        let rel = r["reference"].as_str().unwrap();
-        let resolved = skill.join("references").join(rel);
-        assert!(
-            resolved.is_file(),
-            "route {name} references {rel} but the clean clone lacks it"
-        );
-    }
-    // The clone carries no installed user state (only repo content such as the
-    // tracked .moai-cli manifests): nothing under the clone references a real HOME.
+    let temp = TempDir::new().unwrap();
+    let source = temp.path().join("source");
+    fs::create_dir(&source).unwrap();
+    git(&source, &["init", "--initial-branch=default"]);
+    fs::write(source.join("asset"), "default").unwrap();
+    git(&source, &["add", "asset"]);
+    git(&source, &["commit", "-m", "default assets"]);
+    let lane = temp.path().join("lane");
+    git(
+        &source,
+        &["worktree", "add", "-b", "lane", lane.to_str().unwrap()],
+    );
+    fs::write(lane.join("asset"), "attached lane").unwrap();
+    git(&lane, &["add", "asset"]);
+    git(&lane, &["commit", "-m", "lane assets"]);
+    let attached = temp.path().join("attached-clone");
+    clone_checkout(&lane, &attached);
+    assert_eq!(
+        git(&attached, &["rev-parse", "HEAD"]),
+        git(&lane, &["rev-parse", "HEAD"])
+    );
+    assert_eq!(
+        fs::read_to_string(attached.join("asset")).unwrap(),
+        "attached lane"
+    );
+
+    git(&lane, &["checkout", "--detach"]);
+    fs::write(lane.join("asset"), "detached merge assets").unwrap();
+    git(&lane, &["add", "asset"]);
+    git(&lane, &["commit", "-m", "detached assets"]);
+    let detached = temp.path().join("detached-clone");
+    clone_checkout(&lane, &detached);
+    assert_eq!(
+        git(&detached, &["rev-parse", "HEAD"]),
+        git(&lane, &["rev-parse", "HEAD"])
+    );
+    assert_eq!(
+        fs::read_to_string(detached.join("asset")).unwrap(),
+        "detached merge assets"
+    );
+    assert_eq!(fs::read_to_string(source.join("asset")).unwrap(), "default");
 }

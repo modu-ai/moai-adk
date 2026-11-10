@@ -1,8 +1,8 @@
-//! Project-unit `moai` skill copy (Issue #2242, EP-I / P04 HOLD).
+//! Project-unit `moai-cli` skill copy (Issue #2242, EP-I / P04 HOLD).
 //!
-//! 04-B `update.rs` copies the `moai` skill package into the HOME skill
-//! folders only; project-level copies (`.claude/skills/moai`,
-//! `.agents/skills/moai` inside a project) are the P04 HOLD. This module
+//! 04-B `update.rs` copies the `moai-cli` skill package into the HOME skill
+//! folders only; project-level copies (`.claude/skills/moai-cli`,
+//! `.agents/skills/moai-cli` inside a project) are the P04 HOLD. This module
 //! designs and exercises plan/apply/revert for those project copies with two
 //! hard limits:
 //!
@@ -70,7 +70,7 @@ pub struct ProjectSkillRequest {
     pub home: Option<PathBuf>,
     /// claude | codex — which host folders to plan or copy.
     pub hosts: Vec<String>,
-    /// Staged `moai` skill package source directory (caller-owned).
+    /// Staged `moai-cli` skill package source directory (caller-owned).
     pub source_dir: PathBuf,
 }
 
@@ -78,7 +78,7 @@ pub struct ProjectSkillRequest {
 #[derive(Clone, Debug, Serialize)]
 pub struct ProjectSkillEntry {
     pub host: String,
-    /// Project skill folder, e.g. `.claude/skills/moai`.
+    /// Project skill folder, e.g. `.claude/skills/moai-cli`.
     pub path: String,
     /// create | unchanged | replace
     pub action: String,
@@ -103,7 +103,7 @@ pub struct ProjectSkillPlan {
 }
 
 fn project_skill_dir(root: &Path, host: &str) -> Result<PathBuf> {
-    Ok(root.join(host_folder(host)?).join("moai"))
+    Ok(root.join(host_folder(host)?).join(crate::update::SKILL_DIR))
 }
 
 fn validate(req: &ProjectSkillRequest) -> Result<()> {
@@ -122,7 +122,7 @@ fn validate(req: &ProjectSkillRequest) -> Result<()> {
     Ok(())
 }
 
-/// Digest of an installed `moai` skill directory (None when absent). The
+/// Digest of an installed `moai-cli` skill directory (None when absent). The
 /// staged-package digest rules apply, so both sides of the comparison use
 /// the same algorithm.
 fn installed_digest(dir: &Path) -> Result<Option<String>> {
@@ -164,7 +164,7 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
         }
         entries.push(ProjectSkillEntry {
             host: host.clone(),
-            path: format!("{folder}/moai"),
+            path: format!("{folder}/{}", crate::update::SKILL_DIR),
             action: action.into(),
             source_sha256: staged.digest.clone(),
             current_sha256: project_digest,
@@ -360,7 +360,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
             "unchanged" => {
                 applied.push(AppliedCopy {
                     host: entry.host.clone(),
-                    path: format!("{folder}/moai"),
+                    path: format!("{folder}/{}", crate::update::SKILL_DIR),
                     action: "unchanged".into(),
                     before_sha256: entry.current_sha256.clone(),
                     after_sha256: Some(staged.digest.clone()),
@@ -372,7 +372,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                 Ok(count) => {
                     applied.push(AppliedCopy {
                         host: entry.host.clone(),
-                        path: format!("{folder}/moai"),
+                        path: format!("{folder}/{}", crate::update::SKILL_DIR),
                         action: "create".into(),
                         before_sha256: None,
                         after_sha256: Some(staged.digest.clone()),
@@ -383,7 +383,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                 Err(e) => {
                     applied.push(AppliedCopy {
                         host: entry.host.clone(),
-                        path: format!("{folder}/moai"),
+                        path: format!("{folder}/{}", crate::update::SKILL_DIR),
                         action: "create".into(),
                         before_sha256: None,
                         after_sha256: None,
@@ -419,7 +419,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                     Ok(count) => {
                         applied.push(AppliedCopy {
                             host: entry.host.clone(),
-                            path: format!("{folder}/moai"),
+                            path: format!("{folder}/{}", crate::update::SKILL_DIR),
                             action: "replace".into(),
                             before_sha256: entry.current_sha256.clone(),
                             after_sha256: Some(staged.digest.clone()),
@@ -540,7 +540,7 @@ mod tests {
         fs::create_dir_all(dir.join("references")).unwrap();
         fs::write(
             dir.join("SKILL.md"),
-            b"---\nname: moai\ndescription: fixture\n---\n",
+            b"---\nname: moai-cli\ndescription: fixture\n---\n",
         )
         .unwrap();
         fs::write(dir.join("references/a.md"), b"a").unwrap();
@@ -563,7 +563,7 @@ mod tests {
         let err = project_skill_apply(&req).unwrap_err();
         assert_eq!(err, opt_in_error());
         assert!(
-            !project.path().join(".claude/skills/moai").exists(),
+            !project.path().join(".claude/skills/moai-cli").exists(),
             "nothing may be written without opt-in"
         );
 
@@ -574,14 +574,17 @@ mod tests {
         assert_eq!(plan.entries[0].action, "create");
         let receipt = project_skill_apply(&opted).unwrap();
         assert_eq!(receipt.status, "complete");
-        assert!(project.path().join(".claude/skills/moai/SKILL.md").exists());
+        assert!(project
+            .path()
+            .join(".claude/skills/moai-cli/SKILL.md")
+            .exists());
 
         // Replace with changed source, then revert restores the first copy.
         let source2 = tempfile::TempDir::new().unwrap();
         write_source(source2.path());
         fs::write(
             source2.path().join("SKILL.md"),
-            b"---\nname: moai\ndescription: v2\n---\n",
+            b"---\nname: moai-cli\ndescription: v2\n---\n",
         )
         .unwrap();
         let req2 = request(project.path(), Some(home.path()), source2.path(), true);
@@ -590,7 +593,7 @@ mod tests {
         let applied2 = project_skill_apply(&req2).unwrap();
         assert_eq!(applied2.status, "complete");
         let replaced =
-            fs::read_to_string(project.path().join(".claude/skills/moai/SKILL.md")).unwrap();
+            fs::read_to_string(project.path().join(".claude/skills/moai-cli/SKILL.md")).unwrap();
         assert!(replaced.contains("v2"));
 
         let revert_req = ProjectSkillRevertRequest {
@@ -601,8 +604,43 @@ mod tests {
         let reverted = project_skill_revert(&revert_req).unwrap();
         assert_eq!(reverted["state"], json!("reverted"));
         let restored =
-            fs::read_to_string(project.path().join(".claude/skills/moai/SKILL.md")).unwrap();
+            fs::read_to_string(project.path().join(".claude/skills/moai-cli/SKILL.md")).unwrap();
         assert!(restored.contains("fixture"));
+    }
+
+    #[test]
+    fn renamed_project_copy_preserves_go_skills_in_both_scopes() {
+        let project = tempfile::TempDir::new().unwrap();
+        let home = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let mut go_trees = Vec::new();
+        for root in [project.path(), home.path()] {
+            for host in [".claude/skills", ".agents/skills"] {
+                let go = root.join(host).join("moai");
+                fs::create_dir_all(&go).unwrap();
+                fs::write(go.join("SKILL.md"), b"personal Go skill\n").unwrap();
+                let before = crate::tree_digest(&go, &[]).unwrap();
+                go_trees.push((go, before));
+            }
+        }
+        let mut req = request(project.path(), Some(home.path()), source.path(), true);
+        req.hosts = vec!["claude".into(), "codex".into()];
+        let plan = project_skill_plan(&req).unwrap();
+        assert!(plan.entries.iter().all(|e| e.path.ends_with("/moai-cli")));
+        assert!(plan.entries.iter().all(|e| e.action == "create"));
+        assert!(plan.entries.iter().all(|e| !e.duplicated_with_home));
+        assert_eq!(project_skill_apply(&req).unwrap().status, "complete");
+        for host in [".claude/skills", ".agents/skills"] {
+            assert!(project
+                .path()
+                .join(host)
+                .join("moai-cli/SKILL.md")
+                .is_file());
+        }
+        for (go, before) in go_trees {
+            assert_eq!(crate::tree_digest(&go, &[]).unwrap(), before);
+        }
     }
 
     #[test]

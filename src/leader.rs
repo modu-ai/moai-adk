@@ -91,7 +91,7 @@ fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Re
 }
 
 /// The first `Refs #<n>` in a PR body.
-fn refs_issue(body: &str) -> Option<i64> {
+pub(crate) fn refs_issue(body: &str) -> Option<i64> {
     let i = body.find("Refs #")?;
     let digits: String = body[i + 6..]
         .chars()
