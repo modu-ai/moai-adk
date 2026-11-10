@@ -254,10 +254,143 @@ fn short_letters(rest: &[String], value_opts: &[char]) -> Vec<char> {
     out
 }
 
+/// git's long options per subcommand, from `git <cmd> --git-completion-helper-all` (git
+/// 2.54.0), without `--` and `=`. git accepts any prefix of a long option that no other one
+/// shares, so a guard must read `--force-w` as `--force-with-lease` (re-audit observation
+/// 6777666763) and `--dele --forc` as `--delete --force`.
+pub(crate) const PUSH_LONG: &[&str] = &[
+    "all",
+    "atomic",
+    "branches",
+    "delete",
+    "dry-run",
+    "exec",
+    "follow-tags",
+    "force",
+    "force-if-includes",
+    "force-with-lease",
+    "ipv4",
+    "ipv6",
+    "mirror",
+    "no-all",
+    "no-atomic",
+    "no-branches",
+    "no-delete",
+    "no-dry-run",
+    "no-exec",
+    "no-follow-tags",
+    "no-force",
+    "no-force-if-includes",
+    "no-force-with-lease",
+    "no-mirror",
+    "no-porcelain",
+    "no-progress",
+    "no-prune",
+    "no-push-option",
+    "no-quiet",
+    "no-receive-pack",
+    "no-recurse-submodules",
+    "no-repo",
+    "no-set-upstream",
+    "no-signed",
+    "no-tags",
+    "no-thin",
+    "no-verbose",
+    "no-verify",
+    "porcelain",
+    "progress",
+    "prune",
+    "push-option",
+    "quiet",
+    "receive-pack",
+    "recurse-submodules",
+    "repo",
+    "set-upstream",
+    "signed",
+    "tags",
+    "thin",
+    "verbose",
+    "verify",
+];
+pub(crate) const BRANCH_LONG: &[&str] = &[
+    "abbrev",
+    "all",
+    "color",
+    "column",
+    "contains",
+    "copy",
+    "create-reflog",
+    "delete",
+    "edit-description",
+    "force",
+    "format",
+    "ignore-case",
+    "list",
+    "merged",
+    "move",
+    "no-abbrev",
+    "no-color",
+    "no-column",
+    "no-contains",
+    "no-copy",
+    "no-create-reflog",
+    "no-delete",
+    "no-edit-description",
+    "no-force",
+    "no-format",
+    "no-ignore-case",
+    "no-list",
+    "no-merged",
+    "no-move",
+    "no-omit-empty",
+    "no-points-at",
+    "no-quiet",
+    "no-recurse-submodules",
+    "no-set-upstream",
+    "no-set-upstream-to",
+    "no-show-current",
+    "no-sort",
+    "no-track",
+    "no-unset-upstream",
+    "no-verbose",
+    "omit-empty",
+    "points-at",
+    "quiet",
+    "recurse-submodules",
+    "remotes",
+    "set-upstream",
+    "set-upstream-to",
+    "show-current",
+    "sort",
+    "track",
+    "unset-upstream",
+    "verbose",
+    "with",
+    "without",
+];
+
+/// Whether `arg` selects the long option `wanted` among a subcommand's long options `all`,
+/// as git's parse-options reads it: the exact name, or a prefix that no other option in
+/// `all` (negations included) shares. `--name=value` is read by its name.
+pub(crate) fn long_opt(arg: &str, wanted: &str, all: &[&str]) -> bool {
+    let Some(body) = arg.strip_prefix("--") else {
+        return false;
+    };
+    let name = body.split('=').next().unwrap_or("");
+    if name.is_empty() {
+        return false;
+    }
+    if name == wanted {
+        return true;
+    }
+    let mut hits = all.iter().filter(|o| o.starts_with(name));
+    hits.next() == Some(&wanted) && hits.next().is_none()
+}
+
 /// The words that are not options or option values: for `git push`, the remote then the
 /// refspecs. `-o` and the long options below take the next word as their value.
 fn push_positionals(rest: &[String]) -> Vec<&String> {
-    const LONG_VALUE: &[&str] = &["--push-option", "--repo", "--receive-pack", "--exec"];
+    const LONG_VALUE: &[&str] = &["push-option", "repo", "receive-pack", "exec"];
     let mut out = Vec::new();
     let mut skip_next = false;
     let mut options_done = false;
@@ -271,7 +404,7 @@ fn push_positionals(rest: &[String]) -> Vec<&String> {
             continue;
         }
         if !options_done && a.starts_with('-') && a.len() > 1 {
-            skip_next = LONG_VALUE.contains(&a.as_str())
+            skip_next = (!a.contains('=') && LONG_VALUE.iter().any(|w| long_opt(a, w, PUSH_LONG)))
                 || (!a.starts_with("--")
                     && a.ends_with('o')
                     && a[1..].find('o') == Some(a.len() - 2));
@@ -291,7 +424,9 @@ fn branch_of_refspec(spec: &str) -> &str {
 fn force_push_to_protected(rest: &[String]) -> bool {
     let force_flag = short_letters(rest, &['o']).contains(&'f')
         || rest.iter().any(|a| {
-            a == "--force" || a.starts_with("--force-with-lease") || a == "--force-if-includes"
+            ["force", "force-with-lease", "force-if-includes"]
+                .iter()
+                .any(|w| long_opt(a, w, PUSH_LONG))
         });
     // The first positional word is the remote; the others are refspecs.
     push_positionals(rest).iter().skip(1).any(|spec| {
@@ -302,10 +437,9 @@ fn force_push_to_protected(rest: &[String]) -> bool {
 
 fn force_delete_protected(rest: &[String]) -> bool {
     let letters = short_letters(rest, &['u']);
-    let has = |s: &str| rest.iter().any(|a| a == s);
+    let has = |w: &str| rest.iter().any(|a| long_opt(a, w, BRANCH_LONG));
     let force_delete = letters.contains(&'D')
-        || ((letters.contains(&'d') || has("--delete"))
-            && (letters.contains(&'f') || has("--force")));
+        || ((letters.contains(&'d') || has("delete")) && (letters.contains(&'f') || has("force")));
     force_delete
         && rest
             .iter()
@@ -585,6 +719,88 @@ mod tests {
             "git log --force main",
         ] {
             assert_eq!(bash_guard(cmd), None, "{cmd}");
+        }
+    }
+
+    /// Re-audit observation 6777666763: git takes a unique prefix of a long option (measured
+    /// with git 2.54.0: `push --force-w` overwrites, `branch --dele --forc` deletes, `--forc`
+    /// and `--force-` are ambiguous for push, `branch --f` is ambiguous with `--format`).
+    #[test]
+    fn long_option_prefixes_are_read_like_git_reads_them() {
+        for cmd in [
+            "git push --force-w origin main",
+            "git push --force-wi origin main",
+            "git push --force-w=main:abc origin main",
+            "git push --force-w origin feature:main",
+            "git push --force-i origin main",
+        ] {
+            assert_eq!(bash_guard(cmd), Some(FORCE_PUSH), "{cmd}");
+        }
+        for cmd in [
+            "git branch --dele --forc main",
+            "git branch --d --force master",
+            "git branch --delete --forc main",
+        ] {
+            assert_eq!(bash_guard(cmd), Some(BRANCH_DELETE), "{cmd}");
+        }
+        for cmd in [
+            // Ambiguous for git (it refuses the command), so not the force option.
+            "git push --forc origin main",
+            "git push --force- origin main",
+            "git branch --d --f main",
+            "git branch --delete --fo main",
+            // Another option's prefix or a negation.
+            "git push --fo origin main",
+            "git push --no-force origin main",
+            "git branch --d main",
+        ] {
+            assert_eq!(bash_guard(cmd), None, "{cmd}");
+        }
+        // A value option's prefix takes the next word: in `--push-o x main`, `x` is the
+        // option's value and `main` is the remote, so no refspec names a protected branch.
+        assert_eq!(bash_guard("git push --force --push-o x main"), None);
+        assert!(long_opt("--force-w", "force-with-lease", PUSH_LONG));
+        assert!(!long_opt("--force", "force-with-lease", PUSH_LONG));
+        assert!(!long_opt("-f", "force", PUSH_LONG));
+        assert!(!long_opt("--", "force", PUSH_LONG));
+    }
+
+    /// The option lists are git's own (`--git-completion-helper-all`); when the installed git
+    /// answers, its list must equal ours, so a new git option that changes a prefix shows here.
+    #[test]
+    fn option_lists_match_the_installed_git() {
+        // The lists were measured with git 2.54; another version may differ in options that
+        // do not matter here, so only that version is compared.
+        let Ok(version) = std::process::Command::new("git").arg("--version").output() else {
+            eprintln!("skipped: git not found");
+            return;
+        };
+        if !String::from_utf8_lossy(&version.stdout).starts_with("git version 2.54.") {
+            eprintln!("skipped: the lists were measured with git 2.54");
+            return;
+        }
+        for (cmd, ours) in [("push", PUSH_LONG), ("branch", BRANCH_LONG)] {
+            let Ok(out) = std::process::Command::new("git")
+                .args([cmd, "--git-completion-helper-all"])
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .output()
+            else {
+                eprintln!("skipped: git not found");
+                return;
+            };
+            let text = String::from_utf8_lossy(&out.stdout);
+            let mut theirs: Vec<&str> = text
+                .split_whitespace()
+                .filter_map(|w| w.strip_prefix("--"))
+                .map(|w| w.trim_end_matches('='))
+                .filter(|w| !w.is_empty())
+                .collect();
+            theirs.sort_unstable();
+            theirs.dedup();
+            let mut ours = ours.to_vec();
+            ours.sort_unstable();
+            assert_eq!(theirs, ours, "git {cmd}");
         }
     }
 
