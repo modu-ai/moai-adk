@@ -6,7 +6,8 @@ verifies the committed baseline.json still matches: same task ids, same hit
 sets, same thresholds. A mismatch means the corpus moved or a threshold was
 loosened without re-running the baseline.
 
-Exit codes: 0 consistent, 1 inconsistent, 2 usage.
+Search errors are fatal, including partial output with rg exit status 2.
+Exit codes: 0 consistent, 1 inconsistent or search failure, 2 usage.
 """
 
 from __future__ import annotations
@@ -42,6 +43,10 @@ def hit_files(pattern: str) -> list[str]:
         capture_output=True,
         text=True,
     )
+    if out.returncode not in (0, 1):
+        raise RuntimeError(
+            f"rg search failed (exit {out.returncode}): {out.stderr.strip()}"
+        )
     return sorted({line for line in out.stdout.splitlines() if line.strip()})
 
 

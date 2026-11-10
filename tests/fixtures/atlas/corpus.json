@@ -108,14 +108,10 @@
    ],
    "ground_truth": {
     "files": [
-     "src/claim_verify.rs",
-     "src/contract.rs",
-     "src/verify.rs",
-     "src/parity.rs",
-     "src/recovery.rs"
+     "src/contract.rs"
     ]
    },
-   "source": "01-C envelope contract; src/contract.rs RULES; each module classifies its own messages (five definitions)",
+   "source": "01-C envelope contract; reviewer scope: src/contract.rs::classify and RULES classify envelope errors, unlike unrelated claim/file classifiers",
    "id": "T-007"
   },
   {
@@ -201,7 +197,7 @@
   {
    "kind": "retrieval",
    "query": "flow 게이트의 CI status 조회는 어디서 하는가",
-   "pattern": "fetch_commit_status",
+   "pattern": "check: \"ci_status\"",
    "roots": [
     "src"
    ],
@@ -718,7 +714,7 @@
    "query": "FRESHNESS fixture case F-01: add",
    "suite_ref": "F-01",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -728,7 +724,7 @@
    "query": "FRESHNESS fixture case F-02: delete",
    "suite_ref": "F-02",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -738,7 +734,7 @@
    "query": "FRESHNESS fixture case F-03: modify",
    "suite_ref": "F-03",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -748,7 +744,7 @@
    "query": "FRESHNESS fixture case F-04: untracked new file",
    "suite_ref": "F-04",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -758,7 +754,7 @@
    "query": "FRESHNESS fixture case F-05: branch switch",
    "suite_ref": "F-05",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -768,7 +764,7 @@
    "query": "FRESHNESS fixture case F-06: rename",
    "suite_ref": "F-06",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -778,7 +774,7 @@
    "query": "FRESHNESS fixture case F-07: two worktrees of one repository",
    "suite_ref": "F-07",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "stale"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   },
@@ -788,7 +784,7 @@
    "query": "FRESHNESS fixture case F-08: scan failure removes an edge while the file remains",
    "suite_ref": "F-08",
    "ground_truth": {
-    "expected_state": "per the FRESHNESS suite case definition"
+    "expected_state": "partial"
    },
    "source": "Core Brain P0 fixture list (survey s03-corebrain-12 quoting L4362: 신규 파일·삭제·rename·checkout·두 worktree·parser 실패); #2326 tests/index_cli.rs freshness_suite"
   }

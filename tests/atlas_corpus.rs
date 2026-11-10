@@ -1,8 +1,7 @@
 //! Fixture-format tests for the C10a eval corpus and the three suite
 //! definitions (Issue #2346). REQ-C10-01: every task records its ground truth
-//! and its source. AC-3: the FRESHNESS suite is the authority and reconciles
-//! with PR #2326's own freshness fixture (five covered cases are marked, three
-//! extensions are recorded as gaps).
+//! and its source. AC-3: FRESHNESS defines concrete expected observations;
+//! these format checks do not execute C6 or C10b freshness behavior.
 //!
 //! These tests run against the committed fixtures only — no network, no `gh`.
 
@@ -71,7 +70,7 @@ fn corpus_has_at_least_thirty_tasks_with_ground_truth_and_source() {
 }
 
 #[test]
-fn three_suites_are_defined_and_the_freshness_suite_reconciles_with_c6() {
+fn three_suites_resolve_tasks_and_concrete_freshness_outcomes() {
     let suites = fixture("suites.json");
     assert_eq!(suites["schema_version"], 1);
     let suites = suites["suites"].as_array().expect("suites array");
@@ -83,30 +82,7 @@ fn three_suites_are_defined_and_the_freshness_suite_reconciles_with_c6() {
     assert!(ids.contains(&"GRAPH"), "GRAPH suite required");
     assert!(ids.contains(&"RETRIEVAL"), "RETRIEVAL suite required");
 
-    let freshness = suites.iter().find(|s| s["id"] == "FRESHNESS").unwrap();
-    let cases = freshness["cases"].as_array().expect("FRESHNESS cases");
-    // The five cases PR #2326 already covers must be marked, so the authority
-    // boundary (AC-3) stays visible.
-    let covered = cases
-        .iter()
-        .filter(|c| c["c6_status"] == "covered by PR #2326")
-        .count();
-    assert!(
-        covered >= 5,
-        "the five C6-covered cases must be marked c6_status"
-    );
-    // The design's P0 list adds three cases C6 does not have (rename, two
-    // worktrees, scan failure) — recorded as the recorded gaps.
-    let gaps = cases
-        .iter()
-        .filter(|c| c["c6_status"] == "gap: not implemented in C6")
-        .count();
-    assert!(
-        gaps >= 3,
-        "rename / two-worktrees / scan-failure must be recorded"
-    );
-
-    // Every non-freshness suite case must reference a corpus task that exists.
+    // Every suite case must resolve to its corpus task, including freshness.
     let corpus = fixture("corpus.json");
     let task_ids: BTreeSet<String> = corpus["tasks"]
         .as_array()
@@ -115,9 +91,6 @@ fn three_suites_are_defined_and_the_freshness_suite_reconciles_with_c6() {
         .map(|t| t["id"].as_str().expect("task id").to_string())
         .collect();
     for suite in suites {
-        if suite["id"] == "FRESHNESS" {
-            continue;
-        }
         let cases = suite["cases"].as_array().expect("suite cases");
         assert!(!cases.is_empty(), "{} has no cases", suite["id"]);
         for case in cases {
@@ -127,23 +100,69 @@ fn three_suites_are_defined_and_the_freshness_suite_reconciles_with_c6() {
                 "{} references unknown corpus task {task_ref}",
                 suite["id"]
             );
+            if suite["id"] == "FRESHNESS" {
+                let case_id = case["case_id"].as_str().expect("freshness case id");
+                case["setup"].as_object().expect("concrete freshness setup");
+                case["mutation"]
+                    .as_object()
+                    .expect("concrete freshness mutation");
+                let expected = case["expected"]
+                    .as_object()
+                    .expect("freshness expected outcomes");
+                let state = expected["state"]
+                    .as_str()
+                    .expect("expected freshness state");
+                assert!(
+                    ["fresh", "stale", "partial", "unavailable"].contains(&state),
+                    "{case_id}: unsupported freshness state"
+                );
+                assert_eq!(
+                    expected["generation_unchanged"], true,
+                    "{case_id}: read-only query"
+                );
+                if state == "stale" {
+                    let changes = expected["changes"].as_object().expect("observable changes");
+                    assert!(
+                        changes.values().any(|v| v.as_bool() == Some(true)
+                            || v.as_array().is_some_and(|paths| !paths.is_empty())),
+                        "{case_id}: stale needs an observable changed path or commit"
+                    );
+                } else if state == "partial" {
+                    assert_eq!(expected["file_exists"], true);
+                    assert_eq!(expected["edge_state"], "unavailable");
+                    assert_eq!(expected["deleted_files"], serde_json::json!([]));
+                }
+                if case["mutation"]["operation"] == "modify_worktree" {
+                    assert_eq!(expected["other_worktree"]["state"], "fresh");
+                    assert_eq!(expected["other_worktree"]["generation_unchanged"], true);
+                    assert_ne!(
+                        case["mutation"]["worktree"],
+                        expected["other_worktree"]["worktree"]
+                    );
+                }
+                let task = corpus["tasks"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|task| task["id"] == task_ref)
+                    .unwrap();
+                assert_eq!(task["kind"], "freshness");
+                assert_eq!(task["suite_ref"], case_id);
+                assert_eq!(task["ground_truth"]["expected_state"], expected["state"]);
+            }
         }
     }
-    // Every retrieval and graph task is referenced by its suite, so nothing in
-    // the corpus is orphaned from the suites that will run it.
+    // No corpus task may be orphaned from the suite that will run it.
     let referenced: BTreeSet<String> = suites
         .iter()
         .flat_map(|s| s["cases"].as_array().cloned().unwrap_or_default())
         .filter_map(|c| c["task_ref"].as_str().map(str::to_string))
         .collect();
     for task in corpus["tasks"].as_array().unwrap() {
-        let kind = task["kind"].as_str().unwrap();
-        if kind != "freshness" {
-            let id = task["id"].as_str().unwrap();
-            assert!(
-                referenced.contains(id),
-                "{id} is not referenced by any suite"
-            );
-        }
+        let id = task["id"].as_str().unwrap();
+        assert!(
+            referenced.contains(id),
+            "{id} is not referenced by any suite"
+        );
     }
 }

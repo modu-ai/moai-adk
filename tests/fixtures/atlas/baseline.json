@@ -1,5 +1,5 @@
 {
- "corpus_sha256": "d46c4c625d835ef5f130431d13b47c0a77a897f84422185c1f190b5a2e867916",
+ "corpus_sha256": "4861f097eca14bc47e21c5d329d3e44abcea209866accdcf936d1fe4266f8ab6",
  "rg_version": "ripgrep 15.1.0",
  "schema_version": 1,
  "tasks": [
@@ -184,7 +184,7 @@
     "src/verify.rs"
    ],
    "id": "T-007",
-   "precision": 1.0,
+   "precision": 0.2,
    "recall": 1.0
   },
   {
@@ -432,7 +432,7 @@
   }
  ],
  "thresholds": {
-  "precision_mean": 0.9805,
+  "precision_mean": 0.961,
   "precision_min": 0.2,
   "recall_mean": 1.0,
   "recall_min": 1.0

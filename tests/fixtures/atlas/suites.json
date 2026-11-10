@@ -167,7 +167,7 @@
     },
     {
      "task_ref": "G-006",
-     "scenario": "src/leader.rs references src/profile.rs (LeaderSettings)"
+     "scenario": "src/claim_verify.rs references the handoff protocol (moai-claim-handoff)"
     },
     {
      "task_ref": "G-007",
@@ -196,49 +196,109 @@
      "case_id": "F-01",
      "scenario": "add",
      "c6_status": "covered by PR #2326",
-     "task_ref": "TF-01"
+     "task_ref": "TF-01",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
+     "mutation": {"operation": "add_tracked", "path": "b.txt", "contents": "beta"},
+     "expected": {
+      "state": "stale",
+      "changes": {"added": ["b.txt"], "deleted": [], "modified": []},
+      "generation_unchanged": true
+     }
     },
     {
      "case_id": "F-02",
      "scenario": "delete",
      "c6_status": "covered by PR #2326",
-     "task_ref": "TF-02"
+     "task_ref": "TF-02",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
+     "mutation": {"operation": "delete_without_git_rm", "path": "a.txt"},
+     "expected": {
+      "state": "stale",
+      "changes": {"added": [], "deleted": ["a.txt"], "modified": []},
+      "generation_unchanged": true
+     }
     },
     {
      "case_id": "F-03",
      "scenario": "modify",
      "c6_status": "covered by PR #2326",
-     "task_ref": "TF-03"
+     "task_ref": "TF-03",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
+     "mutation": {"operation": "modify", "path": "a.txt", "contents": "changed"},
+     "expected": {
+      "state": "stale",
+      "changes": {"added": [], "deleted": [], "modified": ["a.txt"]},
+      "generation_unchanged": true
+     }
     },
     {
      "case_id": "F-04",
      "scenario": "untracked new file",
      "c6_status": "covered by PR #2326",
-     "task_ref": "TF-04"
+     "task_ref": "TF-04",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
+     "mutation": {"operation": "add_untracked", "path": "scratch.txt", "contents": "scratch"},
+     "expected": {
+      "state": "stale",
+      "changes": {"untracked": ["scratch.txt"], "deleted": [], "modified": []},
+      "generation_unchanged": true
+     }
     },
     {
      "case_id": "F-05",
      "scenario": "branch switch",
      "c6_status": "covered by PR #2326",
-     "task_ref": "TF-05"
+     "task_ref": "TF-05",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
+     "mutation": {"operation": "checkout_new_commit", "branch": "other", "same_files": true},
+     "expected": {
+      "state": "stale",
+      "changes": {"branch_switched": true, "added": [], "deleted": [], "modified": []},
+      "generation_unchanged": true
+     }
     },
     {
      "case_id": "F-06",
      "scenario": "rename",
-     "c6_status": "gap: not implemented in C6",
-     "task_ref": "TF-06"
+     "c6_status": "not_run: C6 integration fixture pending",
+     "task_ref": "TF-06",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
+     "mutation": {"operation": "git_mv", "from": "a.txt", "to": "renamed.txt"},
+     "expected": {
+      "state": "stale",
+      "changes": {"added": ["renamed.txt"], "deleted": ["a.txt"], "modified": []},
+      "generation_unchanged": true
+     }
     },
     {
      "case_id": "F-07",
      "scenario": "two worktrees of one repository",
-     "c6_status": "gap: not implemented in C6",
-     "task_ref": "TF-07"
+     "c6_status": "not_run: C6 integration fixture pending",
+     "task_ref": "TF-07",
+     "setup": {"tracked_files": {"a.txt": "alpha"}, "worktrees": ["first", "second"], "build_index": true},
+     "mutation": {"operation": "modify_worktree", "worktree": "first", "path": "a.txt", "contents": "changed"},
+     "expected": {
+      "state": "stale",
+      "changes": {"modified": ["a.txt"]},
+      "generation_unchanged": true,
+      "other_worktree": {"worktree": "second", "state": "fresh", "changes": {"modified": []}, "generation_unchanged": true},
+      "cache_scope": "per_worktree"
+     }
     },
     {
      "case_id": "F-08",
      "scenario": "scan failure removes an edge while the file remains",
-     "c6_status": "gap: not implemented in C6",
-     "task_ref": "TF-08"
+     "c6_status": "not_run: C6 integration fixture pending",
+     "task_ref": "TF-08",
+     "setup": {"tracked_files": {"a.rs": "fn caller() { callee(); }\n"}, "build_index": true},
+     "mutation": {"operation": "fail_scan", "path": "a.rs", "file_removed": false},
+     "expected": {
+      "state": "partial",
+      "file_exists": true,
+      "deleted_files": [],
+      "edge_state": "unavailable",
+      "generation_unchanged": true
+     }
     }
    ]
   }
