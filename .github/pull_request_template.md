@@ -12,6 +12,7 @@ Refs #<Issue 번호>
 
 - 대상 Issue: #<n> (<논리 키, 예: 00-E>)
 - claim 토큰: `Moai-Claim: <n>#<claim 댓글 id>`
+- merge train: `<순번 또는 끼워 넣기(문서 전용)>` · base 병합은 자기 차례에 1회만 (#2388)
 - base: `v2026.11.0` @ `<base 40자 SHA>`
 - candidate head: `<head 40자 SHA>` (exact SHA, 독립 review가 본 SHA와 같아야 한다)
 - SPEC: `<SPEC id>` · revision `<revision>` · digest `<digest 또는 null>`
@@ -39,6 +40,7 @@ Refs #<Issue 번호>
 
 - 판정: <PASS / FAIL> · 검토 세션: <세션 이름> · 본 SHA: `<40자 SHA>`
 - 판정 댓글 링크: <https://github.com/modu-ai/moai-adk/issues/<n>#issuecomment-...>
+- 재감사라면: 수리 확인 범위 <항목> · 새 지적 분류 <차단 / 후속 Issue #<n>> · 3회째 FAIL이면 범위 분할 상신 (#2388)
 
 ## not_run / blocked
 
