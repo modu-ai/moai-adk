@@ -2,6 +2,7 @@
 //! `archive-restore` round through the real binary, checking the envelope (operation,
 //! ok, kind). The binary uses the real clock, so the fixture commit is dated far back.
 
+mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 use tempfile::TempDir;
@@ -10,27 +11,20 @@ use tempfile::TempDir;
 const OLD_SECS: u64 = 1_735_689_600;
 
 fn git(dir: &Path, args: &[&str]) {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args([
+    let full = [
+        [
             "-c",
             "user.name=fixture",
             "-c",
             "user.email=fixture@example.invalid",
             "-c",
             "commit.gpgsign=false",
-        ])
-        .args(args)
-        .env("GIT_AUTHOR_DATE", format!("{OLD_SECS} +0000"))
-        .env("GIT_COMMITTER_DATE", format!("{OLD_SECS} +0000"))
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+        ]
+        .as_slice(),
+        args,
+    ]
+    .concat();
+    common::git::git_pinned(dir, &full, Some(&OLD_SECS.to_string()));
 }
 
 fn cli(args: &[&str]) -> (i32, Value) {

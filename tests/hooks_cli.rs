@@ -155,18 +155,12 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
     let dir = project();
     let root = fs::canonicalize(dir.path()).unwrap();
     let git = |args: &[&str]| {
-        let out = Command::new("git")
-            .args(args)
-            .current_dir(&root)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .env("GIT_AUTHOR_NAME", "t")
-            .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
-            .env("GIT_COMMITTER_NAME", "t")
-            .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
-            .output()
-            .unwrap();
-        assert!(out.status.success(), "git {args:?}");
+        let full = [
+            ["-c", "user.name=t", "-c", "user.email=t@example.invalid"].as_slice(),
+            args,
+        ]
+        .concat();
+        common::git::git_ok(&root, &full);
     };
     git(&["init", "-q", "-b", "main"]);
     git(&["commit", "-q", "--allow-empty", "-m", "base"]);

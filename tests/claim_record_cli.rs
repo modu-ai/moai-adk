@@ -18,16 +18,12 @@ const KEY_A: &str = "aaaaaaaaaaaaaaaa";
 const KEY_B: &str = "bbbbbbbbbbbbbbbb";
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
-        .args(["-c", "user.email=t@example.invalid", "-c", "user.name=t"])
-        .args(args)
-        .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .output()
-        .unwrap();
-    assert!(out.status.success(), "git {args:?}");
-    String::from_utf8(out.stdout).unwrap().trim().to_string()
+    let full = [
+        ["-c", "user.name=t", "-c", "user.email=t@example.invalid"].as_slice(),
+        args,
+    ]
+    .concat();
+    common::git::git(dir, &full)
 }
 
 fn make_repo(dir: &Path) -> String {

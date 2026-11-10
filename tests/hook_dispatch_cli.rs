@@ -67,12 +67,12 @@ fn dispatch(event: &str, cwd: &Path, stdin: &[u8], env: &[(&str, &str)]) -> Run 
     .unwrap()
 }
 
+/// Fixture git through the shared runner (#2352: gc/maintenance off, no global config), with
+/// the fixture's own HOME.
 fn git(cwd: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = common::git::command()
         .args(args)
         .current_dir(cwd)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("HOME", cwd.join("home"))
         .output()
         .unwrap();
