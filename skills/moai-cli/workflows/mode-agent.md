@@ -1,6 +1,6 @@
 # MODE-AGENT
 
-Entered with `/moai-cli --agent-mode` in Claude Code or `$moai-cli --agent-mode` in Codex CLI (the legacy alias `--mode agent` selects this route too). The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
+Entered with `/moai-cli --mode-agent` in Claude Code or `$moai-cli --mode-agent` in Codex CLI; no other spelling enters this mode. The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
 
 ## Input
 

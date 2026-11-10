@@ -2489,8 +2489,8 @@ mod skill_package {
         let body = mode_workflow("MODE-LEADER");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
         assert!(
-            skill.contains("`--leader-mode`") && skill.contains("`--autonomy full|semi`"),
-            "the canonical leader flag is --leader-mode (#2286): {skill}"
+            skill.contains("`--mode-leader`") && skill.contains("`--autonomy full|semi`"),
+            "the canonical leader flag is --mode-leader (#2286): {skill}"
         );
         // REQ-A1-01: the loaded mode ignores the other mode's instructions.
         assert!(body.contains("ignore instructions for any other mode"));
@@ -2505,12 +2505,12 @@ mod skill_package {
         let body = mode_workflow("MODE-AGENT");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
         assert!(
-            skill.contains("`--agent-mode`") && skill.contains("`$moai-cli --agent-mode …`"),
-            "the canonical agent flag is --agent-mode (#2286): {skill}"
+            skill.contains("`--mode-agent`") && skill.contains("`$moai-cli --mode-agent …`"),
+            "the canonical agent flag is --mode-agent (#2286): {skill}"
         );
         assert!(body.contains("ignore instructions for any other mode"));
         assert!(
-            body.contains("`$moai-cli --agent-mode`"),
+            body.contains("`$moai-cli --mode-agent`"),
             "Codex may enter agent mode"
         );
         cites_spec_sections_only(&body, "MODE-AGENT");
@@ -2531,25 +2531,42 @@ mod skill_package {
             "{first}"
         );
         assert!(
-            first.contains("`$moai-cli --agent-mode`"),
+            first.contains("`$moai-cli --mode-agent`"),
             "the refusal points to agent mode"
         );
     }
 
-    /// AC-2 (#2286): the routing line must send each spelled flag to its route and
-    /// keep `--mode agent|leader` working as a legacy alias; the routes file must
-    /// carry both MODE routes for those picks to resolve.
+    /// AC-2 (#2286, user decision 2026-11-10): the routing line sends exactly the two
+    /// spellings `--mode-agent` and `--mode-leader` to their routes; the earlier
+    /// spellings (`--agent-mode`, `--leader-mode`, `--mode agent|leader`) appear nowhere in
+    /// the package. The routes file must carry both MODE routes for those picks to resolve.
     #[test]
     fn mode_routing_flags_map_to_routes() {
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
         assert!(
-            skill.contains("`--agent-mode` or `--leader-mode`"),
+            skill.contains("`--mode-agent` or `--mode-leader`"),
             "SKILL.md must route the canonical flags: {skill}"
         );
-        assert!(
-            skill.contains("`--mode agent|leader`"),
-            "SKILL.md must keep the --mode legacy alias: {skill}"
-        );
+        let package = [
+            "SKILL.md",
+            "workflows/mode-agent.md",
+            "workflows/mode-leader.md",
+        ]
+        .iter()
+        .map(|p| fs::read_to_string(root().join(p)).unwrap())
+        .collect::<Vec<_>>()
+        .join("\n");
+        for retired in [
+            "--agent-mode",
+            "--leader-mode",
+            "--mode agent",
+            "--mode leader",
+        ] {
+            assert!(
+                !package.contains(retired),
+                "retired mode spelling {retired} is still in the package"
+            );
+        }
         // The canonical picks and the alias must pick the same routes.
         assert!(
             skill.contains("pick the MODE-AGENT or MODE-LEADER route")

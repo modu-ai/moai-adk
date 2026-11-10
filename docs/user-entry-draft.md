@@ -34,7 +34,7 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 ### 호스트 세션과 역할
 
-호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai-cli --leader-mode`·`/moai-cli --agent-mode`로 MoAI 역할을 정합니다(호환 별칭 `--mode leader|agent`). 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)을 붙이고 전체 권한으로 여는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). #2164의 deprecated 경고는 없앴습니다.
+호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai-cli --mode-leader`·`/moai-cli --mode-agent`로 MoAI 역할을 정합니다(모드 표기는 이 두 개뿐, 사용자 결정 2026-11-10). 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)을 붙이고 전체 권한으로 여는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). #2164의 deprecated 경고는 없앴습니다.
 
 ### 수동 명령 (명시적 fallback)
 
