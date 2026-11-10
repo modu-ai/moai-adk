@@ -541,6 +541,11 @@ mod tests {
         // An exact match is preferred: `model` then `Model` both land on `model`.
         let v = decode(r#"{"Model": "first", "model": "second"}"#).unwrap();
         assert_eq!(v["model"]["id"], json!("second"));
+        // Go folds the long s and the Kelvin sign onto ASCII letters.
+        let long_s = decode("{\"\u{017F}ession_id\": \"s\"}").unwrap();
+        assert_eq!(long_s["session_id"], json!("s"));
+        let kelvin = decode("{\"thin\u{212A}ing\": {\"enabled\": true}}").unwrap();
+        assert_eq!(kelvin["thinking"], json!({"enabled": true}));
         // Non-ASCII letters that do not fold to ASCII do not match.
         assert_eq!(decode(r#"{"modél": "x"}"#).unwrap().get("model"), None);
     }
