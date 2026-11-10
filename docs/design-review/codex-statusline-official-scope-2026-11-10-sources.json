@@ -1,0 +1,151 @@
+[
+  {
+    "id": "commands",
+    "url": "https://learn.chatgpt.com/docs/developer-commands.md",
+    "final_url": "https://learn.chatgpt.com/docs/developer-commands.md",
+    "checked_at": "2026-11-10T00:55:13.246053+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 64320,
+    "sha256": "d65c47d1e7095474508d4d1f3ac83e67c23985bcc442d36223bb77e2c5458181",
+    "file": "commands.md"
+  },
+  {
+    "id": "config-reference",
+    "url": "https://learn.chatgpt.com/docs/config-file/config-reference.md",
+    "final_url": "https://learn.chatgpt.com/docs/config-file/config-reference.md",
+    "checked_at": "2026-11-10T00:55:13.247149+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 153298,
+    "sha256": "78b5f4af406fa8ab57dce0267a14c62954cdfeb4543d4b18f938ad76a70c7e96",
+    "file": "config-reference.md"
+  },
+  {
+    "id": "config-advanced",
+    "url": "https://learn.chatgpt.com/docs/config-file/config-advanced.md",
+    "final_url": "https://learn.chatgpt.com/docs/config-file/config-advanced.md",
+    "checked_at": "2026-11-10T00:55:13.248020+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 56830,
+    "sha256": "ce85d4b5fd1604b8d9da8c82bb2ddba4acd5e9ebca0fc9c5f7fd4ce6a1b5bcaf",
+    "file": "config-advanced.md"
+  },
+  {
+    "id": "hooks",
+    "url": "https://learn.chatgpt.com/docs/hooks.md",
+    "final_url": "https://learn.chatgpt.com/docs/hooks.md",
+    "checked_at": "2026-11-10T00:55:13.321424+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 48400,
+    "sha256": "a50c60b697d8df62e2f907adbb18b2f5a1a25cd3360e7b843cde25f18ab6d782",
+    "file": "hooks.md"
+  },
+  {
+    "id": "app-server",
+    "url": "https://learn.chatgpt.com/docs/app-server.md",
+    "final_url": "https://learn.chatgpt.com/docs/app-server.md",
+    "checked_at": "2026-11-10T00:55:13.342589+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 106105,
+    "sha256": "b9e75507755ba0be2ebc615ca1f4399a54a386125f3935f615405ea93efe77f2",
+    "file": "app-server.md"
+  },
+  {
+    "id": "desktop-settings",
+    "url": "https://learn.chatgpt.com/docs/reference/settings.md",
+    "final_url": "https://learn.chatgpt.com/docs/reference/settings.md",
+    "checked_at": "2026-11-10T00:56:04.900595+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 5007,
+    "sha256": "b66dc62c6718eb2e48aaaaf76f98b1e3ebd2ef5f8bb5979e2f8a2f6fb4e973e0",
+    "file": "desktop-settings.md"
+  },
+  {
+    "id": "desktop-commands",
+    "url": "https://learn.chatgpt.com/docs/app/commands.md",
+    "final_url": "https://learn.chatgpt.com/docs/app/commands.md",
+    "checked_at": "2026-11-10T00:56:04.903955+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 26950,
+    "sha256": "c5e9b64bb8424a75df6f1e0437d9a2f068a8f39dcdaa28f3cdbdac1130267233",
+    "file": "desktop-commands.md"
+  },
+  {
+    "id": "config-sample",
+    "url": "https://learn.chatgpt.com/docs/config-file/config-sample.md",
+    "final_url": "https://learn.chatgpt.com/docs/config-file/config-sample.md",
+    "checked_at": "2026-11-10T00:56:04.904695+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 36506,
+    "sha256": "f5200b38f5d7ff485c3fe9f54995f1c1876d2a1ac8e38424919a1ade6dab8664",
+    "file": "config-sample.md"
+  },
+  {
+    "id": "changelog",
+    "url": "https://learn.chatgpt.com/docs/changelog.md",
+    "checked_at": "2026-11-10T00:56:04.905043+00:00",
+    "status": "not_verified",
+    "reason": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "mcp",
+    "url": "https://learn.chatgpt.com/docs/mcp.md",
+    "checked_at": "2026-11-10T00:56:04.906223+00:00",
+    "status": "not_verified",
+    "reason": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "changelog-html",
+    "url": "https://learn.chatgpt.com/docs/changelog",
+    "final_url": "https://learn.chatgpt.com/docs/changelog",
+    "checked_at": "2026-11-10T00:57:42.910588+00:00",
+    "status": "partial_response",
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 3000000,
+    "sha256": "df7ac5ef4410e22d65a88948971aaf5427086abf9e6be090459f2e32fb87904a",
+    "file": "changelog-html.html",
+    "hash_scope": "first 3000000 bytes only; not a complete response hash",
+    "reason": "Initial read hit the byte cap; excluded from complete-source evidence."
+  },
+  {
+    "id": "mcp-current",
+    "url": "https://learn.chatgpt.com/docs/extend/mcp.md",
+    "final_url": "https://learn.chatgpt.com/docs/extend/mcp.md",
+    "checked_at": "2026-11-10T00:57:42.911943+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 31613,
+    "sha256": "faf9407740483f7ee27ac4d0db08a9d15510b3d241251edc9d00cf7b35c29e3b",
+    "file": "mcp-current.md"
+  },
+  {
+    "id": "mcp-server-removal",
+    "url": "https://learn.chatgpt.com/docs/mcp-server.md",
+    "final_url": "https://learn.chatgpt.com/docs/mcp-server.md",
+    "checked_at": "2026-11-10T00:57:42.912329+00:00",
+    "status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "bytes": 1239,
+    "sha256": "9fe223993523b4e6d991fd229888ecb1a770a3df3aa7bea946ae6674f8af32da",
+    "file": "mcp-server-removal.md"
+  },
+  {
+    "id": "changelog-full",
+    "url": "https://learn.chatgpt.com/docs/changelog",
+    "final_url": "https://learn.chatgpt.com/docs/changelog",
+    "checked_at": "2026-11-10T00:58:58.802768+00:00",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 4771489,
+    "sha256": "5ca7955b2fb4b5fc80be87488ccc4a83fc262367a3fb92a4f9d1a5c85aa2e13b",
+    "file": "changelog-full.html",
+    "hash_scope": "complete decoded response body"
+  }
+]
