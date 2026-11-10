@@ -18,6 +18,20 @@ struct Fixture {
     home: PathBuf,
     fake_gh: PathBuf,
     calls: PathBuf,
+    /// The only `PATH` entry of every run: holds `git` and nothing else, so "no gh" does not
+    /// depend on what the host has installed (#2415 audit B1: Ubuntu runners ship `gh`).
+    bin: PathBuf,
+}
+
+/// The absolute path of `name` on the test process's own `PATH`.
+fn which(name: &str) -> PathBuf {
+    std::env::var_os("PATH")
+        .and_then(|paths| {
+            std::env::split_paths(&paths)
+                .map(|d| d.join(name))
+                .find(|p| p.is_file())
+        })
+        .unwrap_or_else(|| panic!("{name} not found on PATH"))
 }
 
 fn fixture() -> Fixture {
@@ -38,12 +52,16 @@ fn fixture() -> Fixture {
             calls.display()
         ),
     );
+    let bin = base.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    std::os::unix::fs::symlink(which("git"), bin.join("git")).unwrap();
     Fixture {
         _dir: dir,
         project,
         home,
         fake_gh,
         calls,
+        bin,
     }
 }
 
@@ -74,7 +92,7 @@ fn forge_read(fx: &Fixture, request: &str, gh: Option<&Path>) -> (i32, Value) {
         .arg(&fx.project)
         .current_dir(&fx.project)
         .env_clear()
-        .env("PATH", "/usr/bin:/bin")
+        .env("PATH", &fx.bin)
         .env("HOME", &fx.home)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -103,8 +121,12 @@ fn forge_read_without_a_forge_creates_nothing_and_answers_transport() {
     assert_eq!(v["error"]["retryable"], true, "{v}");
     assert_eq!(fs::read_to_string(&fx.calls).unwrap().lines().count(), 1);
 
-    // gh absent from PATH (/usr/bin and /bin hold no gh on the test hosts).
-    assert!(!Path::new("/usr/bin/gh").exists() && !Path::new("/bin/gh").exists());
+    // gh absent from PATH: the fixture's only PATH folder holds git and no gh.
+    let names: Vec<String> = fs::read_dir(&fx.bin)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["git"]);
     let (code, v) = forge_read(&fx, repo, None);
     assert_eq!(code, 1, "{v}");
     assert_eq!(v["error"]["kind"], "transport", "{v}");
