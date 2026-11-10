@@ -1168,9 +1168,16 @@ mod tests {
 
     #[test]
     fn racing_publication_reuses_only_an_identical_winner() {
-        // A winner is reusable only with the same base, files and intact views: a
-        // different base, a missing records reference, or a tampered view refuses it.
-        for case in ["matching", "other_base", "no_records", "tampered_view"] {
+        // A winner is reusable only with the same base, files and views: a different
+        // base, a missing or different records reference (its own views intact), or a
+        // tampered view refuses it.
+        for case in [
+            "matching",
+            "other_base",
+            "no_records",
+            "other_records",
+            "tampered_view",
+        ] {
             let matching = case == "matching";
             let tmp = tempfile::tempdir().unwrap();
             let gen_id = content_id("base", &[]);
@@ -1207,6 +1214,11 @@ mod tests {
             match case {
                 "other_base" => stored.base_commit = "other".into(),
                 "no_records" => stored.records = None,
+                "other_records" => {
+                    if let Some(r) = stored.records.as_mut() {
+                        r.observed_at = "2026-11-11T00:00:00Z".into();
+                    }
+                }
                 "tampered_view" => winner_map.extend_from_slice(b"{}\n"),
                 _ => {}
             }
