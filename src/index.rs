@@ -76,19 +76,33 @@ pub struct BuildFailure {
 
 fn git(dir: &Path) -> Command {
     let mut cmd = Command::new("git");
+    cmd.arg("--literal-pathspecs");
     cmd.arg("--no-optional-locks").arg("-C").arg(dir);
     crate::identity::scrub_git_env(&mut cmd);
     cmd.env("GIT_OPTIONAL_LOCKS", "0").stdin(Stdio::null());
     cmd
 }
 
-fn git_out(dir: &Path, args: &[&str]) -> Option<Vec<u8>> {
-    let out = git(dir).args(args).stderr(Stdio::null()).output().ok()?;
-    (out.status.success() && out.stdout.len() <= GIT_OUTPUT_LIMIT).then_some(out.stdout)
+fn git_out(dir: &Path, args: &[&str]) -> Result<Vec<u8>> {
+    let out = git(dir)
+        .args(args)
+        .stderr(Stdio::null())
+        .output()
+        .map_err(|_| "index source unavailable: git could not start")?;
+    if !out.status.success() {
+        return Err(format!("index source unavailable: git {} failed", args[0]));
+    }
+    if out.stdout.len() > GIT_OUTPUT_LIMIT {
+        return Err(format!(
+            "index source unavailable: git {} output limit exceeded ({GIT_OUTPUT_LIMIT} bytes)",
+            args[0]
+        ));
+    }
+    Ok(out.stdout)
 }
 
 fn git_line(dir: &Path, args: &[&str]) -> Option<String> {
-    let s = String::from_utf8(git_out(dir, args)?).ok()?;
+    let s = String::from_utf8(git_out(dir, args).ok()?).ok()?;
     Some(s.trim_end_matches('\n').to_string()).filter(|s| !s.is_empty() && !s.contains('\n'))
 }
 
@@ -134,8 +148,7 @@ fn failure_marker_path(project: &Path) -> PathBuf {
 /// would flip the pointer it just wrote into a "modification". Symlinks are digested by
 /// their target text (the same rule the 07-D snapshot uses).
 fn scan(project: &Path) -> Result<(String, Vec<IndexedFile>)> {
-    let raw = git_out(project, &["ls-files", "-z"])
-        .ok_or("index source unavailable: git ls-files failed")?;
+    let raw = git_out(project, &["ls-files", "-z"])?;
     let mut paths: Vec<String> = raw
         .split(|b| *b == 0)
         .filter(|e| !e.is_empty())
@@ -154,6 +167,30 @@ fn scan(project: &Path) -> Result<(String, Vec<IndexedFile>)> {
     let mut files = Vec::new();
     for p in &paths {
         let full = project.join(p);
+        // Preserve leaf symlinks, but never follow an ancestor outside the source scope.
+        let mut linked_parent = false;
+        for parent in full
+            .ancestors()
+            .skip(1)
+            .take_while(|parent| parent.starts_with(project) && *parent != project)
+        {
+            match fs::symlink_metadata(parent) {
+                Ok(meta) if meta.file_type().is_symlink() => {
+                    linked_parent = true;
+                    break;
+                }
+                Ok(_) => (),
+                Err(e) if e.kind() == io::ErrorKind::NotFound => (),
+                Err(_) => {
+                    return Err(format!(
+                        "index source unavailable: {p} parent metadata unreadable"
+                    ))
+                }
+            }
+        }
+        if linked_parent {
+            continue;
+        }
         let meta = match fs::symlink_metadata(&full) {
             Ok(meta) => meta,
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
@@ -168,11 +205,19 @@ fn scan(project: &Path) -> Result<(String, Vec<IndexedFile>)> {
             (format!("symlink-sha256:{d:x}"), t.len() as u64)
         } else if meta.is_file() {
             file_sha(&full).ok_or_else(|| format!("index source unavailable: {p} read failed"))?
-        } else {
-            // A tracked directory entry is a gitlink (submodule); its commit is the state.
+        } else if meta.is_dir() {
+            // Only an actual gitlink is a submodule, not a file replaced by a directory.
+            let entry = git_out(project, &["ls-files", "--stage", "-z", "--", p])?;
+            if !entry.starts_with(b"160000 ") {
+                continue;
+            }
             let head = git_line(&full, &["rev-parse", "--verify", "HEAD^{commit}"])
                 .ok_or_else(|| format!("index source unavailable: {p} submodule unreadable"))?;
             (format!("commit:{head}"), 0)
+        } else {
+            return Err(format!(
+                "index source unavailable: {p} unsupported file type"
+            ));
         };
         files.push(IndexedFile {
             path: p.clone(),
@@ -195,8 +240,7 @@ fn untracked(project: &Path) -> Result<Vec<String>> {
             "--untracked-files=all",
             "--no-renames",
         ],
-    )
-    .ok_or("index source unavailable: git status failed")?;
+    )?;
     let mut out = Vec::new();
     for e in raw.split(|b| *b == 0) {
         if e.len() > 3 && e.starts_with(b"?? ") {
@@ -211,7 +255,11 @@ fn untracked(project: &Path) -> Result<Vec<String>> {
         }
     }
     out.sort();
-    out.truncate(MAX_FILES);
+    if out.len() > MAX_FILES {
+        return Err(format!(
+            "index source unavailable: untracked file limit exceeded ({MAX_FILES})"
+        ));
+    }
     Ok(out)
 }
 
@@ -528,17 +576,15 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
     if let Ok(bytes) = fs::read(failure_marker_path(&root)) {
         if let Ok(marker) = serde_json::from_slice::<BuildFailure>(&bytes) {
             let pointer = read_pointer(&root)?;
-            let changes = match scan(&root) {
-                Ok((base_commit, files)) => {
-                    let new_files = untracked(&root).unwrap_or_default();
+            let changes = scan(&root)
+                .and_then(|(base, files)| untracked(&root).map(|new| (base, files, new)))
+                .ok()
+                .and_then(|(base, files, new)| {
                     pointer
                         .as_deref()
                         .and_then(|g| load_manifest(&root, g))
-                        .map(|m| changes_vs(&m, &base_commit, &files, &new_files))
-                }
-                // The source is broken; the partial state is still the answer.
-                Err(_) => None,
-            };
+                        .map(|m| changes_vs(&m, &base, &files, &new))
+                });
             return Ok(json!({
                 "protocol_version": SCHEMA_VERSION,
                 "schema_version": SCHEMA_VERSION,

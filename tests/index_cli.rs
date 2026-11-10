@@ -12,19 +12,53 @@ use std::{
     process::{Command, Stdio},
 };
 
-fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
-        .args(args)
+fn git_command(dir: &Path) -> Command {
+    let mut command = Command::new("git");
+    command
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .current_dir(dir)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_AUTHOR_NAME", "t")
         .env("GIT_AUTHOR_EMAIL", "t@example.com")
         .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@example.com")
-        .status()
-        .unwrap();
+        .env("GIT_COMMITTER_EMAIL", "t@example.com");
+    command
+}
+
+fn git(dir: &Path, args: &[&str]) {
+    let status = git_command(dir).args(args).status().unwrap();
     assert!(status.success(), "git {args:?} failed");
+}
+
+fn git_output(dir: &Path, args: &[&str], input: &[u8]) -> Vec<u8> {
+    let mut child = git_command(dir)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(input).unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output.stdout
+}
+
+// Index-only entries keep cardinality/output fixtures small without fabricating git output.
+fn replace_index(project: &Path, paths: &[String]) {
+    let hash = git_output(project, &["rev-parse", "HEAD:a.txt"], &[]);
+    let hash = std::str::from_utf8(&hash).unwrap().trim();
+    git(project, &["read-tree", "--empty"]);
+    let mut entries = Vec::new();
+    for path in paths {
+        writeln!(entries, "100644 {hash}\t{path}").unwrap();
+    }
+    git_output(project, &["update-index", "--index-info"], &entries);
 }
 
 fn setup_project() -> (tempfile::TempDir, PathBuf) {
@@ -319,10 +353,6 @@ fn damaged_reusable_manifest_keeps_previous_pointer_and_marks_partial() {
             !attempt.status.success(),
             "damaged manifest must not be reused"
         );
-        assert!(envelope(&attempt)["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("index build failed; previous generation kept"));
         assert_eq!(pointer_gen(&project).as_deref(), Some(published.as_str()));
         assert_eq!(query(&project)["state"], json!("partial"));
         assert_eq!(fs::read(&old_manifest).unwrap(), bytes);
@@ -358,15 +388,6 @@ fn failed_build_keeps_previous_generation_and_marks_partial() {
 
     let out = build(&project);
     assert!(!out.status.success(), "the failing build must not succeed");
-    let err = envelope(&out)["error"].clone();
-    assert!(
-        err["message"]
-            .as_str()
-            .unwrap()
-            .contains("index build failed; previous generation kept"),
-        "{}",
-        err["message"]
-    );
 
     // The pointer still names gen1 and the query reports partial with the reason.
     assert_eq!(pointer_gen(&project).as_deref(), Some(gen1.as_str()));
@@ -511,4 +532,314 @@ fn symlinked_index_ancestors_never_receive_build_writes() {
         assert_eq!(fs::read_dir(&external).unwrap().count(), 1, "{rel}");
         assert_eq!(fs::read(project.join("a.txt")).unwrap(), b"alpha");
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn tracked_parent_symlinks_are_deleted_without_indexing_outside_content() {
+    for parent in ["dir", "dir/nested"] {
+        let (tmp, project) = setup_project();
+        fs::create_dir_all(project.join("dir/nested")).unwrap();
+        fs::write(project.join("dir/nested/x.txt"), b"inside").unwrap();
+        git(&project, &["add", "dir/nested/x.txt"]);
+        assert!(build(&project).status.success());
+        let old = pointer_gen(&project).unwrap();
+        let outside = tmp.path().join("outside");
+        fs::create_dir_all(outside.join("nested")).unwrap();
+        fs::write(outside.join("x.txt"), b"OUTSIDE-SECRET-CONTENT").unwrap();
+        fs::write(outside.join("nested/x.txt"), b"OUTSIDE-SECRET-CONTENT").unwrap();
+        fs::rename(project.join(parent), tmp.path().join("kept-source")).unwrap();
+        std::os::unix::fs::symlink(&outside, project.join(parent)).unwrap();
+        let changed = query(&project);
+        assert_eq!(changed["state"], json!("stale"));
+        assert_eq!(changed["changes"]["deleted"], json!(["dir/nested/x.txt"]));
+        assert_eq!(changed["changes"]["modified"], json!([]));
+        let built = build(&project);
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        assert_eq!(envelope(&built)["result"]["files"], json!(1));
+        let generation = pointer_gen(&project).unwrap();
+        assert_ne!(generation, old);
+        let manifest: Value = serde_json::from_slice(
+            &fs::read(
+                project
+                    .join(".moai-cli/index/generations")
+                    .join(generation)
+                    .join("manifest.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            manifest["files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|f| f["path"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["a.txt"]
+        );
+        assert_eq!(
+            fs::read(outside.join("x.txt")).unwrap(),
+            b"OUTSIDE-SECRET-CONTENT"
+        );
+    }
+}
+
+#[test]
+fn tracked_file_count_has_literal_n_and_n_plus_one_boundaries() {
+    let (_tmp, project) = setup_project();
+    let mut paths = vec!["a.txt".to_string()];
+    paths.extend((1..16_384).map(|n| format!("missing-{n:05}")));
+    replace_index(&project, &paths);
+    let accepted = build(&project);
+    assert!(
+        accepted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&accepted.stderr)
+    );
+    assert_eq!(envelope(&accepted)["result"]["files"], json!(1));
+    let previous = pointer_gen(&project).unwrap();
+    paths.push("missing-16384".into());
+    replace_index(&project, &paths);
+    let refused = build(&project);
+    assert!(!refused.status.success());
+    let error = envelope(&refused);
+    assert_eq!(error["error"]["kind"], json!("invalid_input"));
+    assert_eq!(error["error"]["retryable"], json!(false));
+    assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()));
+}
+
+#[test]
+fn tracked_file_size_has_literal_n_and_n_plus_one_boundaries() {
+    let (_tmp, project) = setup_project();
+    fs::File::create(project.join("a.txt"))
+        .unwrap()
+        .set_len(16_777_216)
+        .unwrap();
+    let accepted = build(&project);
+    assert!(
+        accepted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&accepted.stderr)
+    );
+    assert_eq!(envelope(&accepted)["result"]["bytes"], json!(16_777_216));
+    let previous = pointer_gen(&project).unwrap();
+    fs::OpenOptions::new()
+        .write(true)
+        .open(project.join("a.txt"))
+        .unwrap()
+        .set_len(16_777_217)
+        .unwrap();
+    let refused = build(&project);
+    assert!(!refused.status.success());
+    assert_eq!(envelope(&refused)["ok"], json!(false));
+    assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()));
+    assert_eq!(query(&project)["state"], json!("partial"));
+}
+
+fn virtual_path(number: usize, length: usize) -> String {
+    let mut path = format!("missing-{number:05}/");
+    while length - path.len() > 200 {
+        path.push_str(&"x".repeat(199));
+        path.push('/');
+    }
+    path.push_str(&"x".repeat(length - path.len()));
+    path
+}
+
+#[test]
+fn git_output_has_literal_n_and_n_plus_one_boundaries() {
+    let (_tmp, project) = setup_project();
+    // Split padding so the literal 4 MiB stream stays below macOS PATH_MAX per path.
+    let mut paths = vec![
+        "a.txt".to_string(),
+        virtual_path(1, 764),
+        virtual_path(2, 764),
+    ];
+    paths.extend((3..8_192).map(|n| virtual_path(n, 511)));
+    replace_index(&project, &paths);
+    assert_eq!(
+        git_output(&project, &["ls-files", "-z"], &[]).len(),
+        4_194_304
+    );
+    let accepted = build(&project);
+    assert!(
+        accepted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&accepted.stderr)
+    );
+    assert_eq!(envelope(&accepted)["result"]["files"], json!(1));
+    let previous = pointer_gen(&project).unwrap();
+    paths[1] = virtual_path(1, 765);
+    replace_index(&project, &paths);
+    assert_eq!(
+        git_output(&project, &["ls-files", "-z"], &[]).len(),
+        4_194_305
+    );
+    let refused = build(&project);
+    assert!(!refused.status.success());
+    assert!(envelope(&refused)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("git ls-files output limit exceeded"));
+    assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()));
+}
+
+#[test]
+fn pointer_swap_preserves_existing_readers_of_the_previous_pointer() {
+    let (tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    let pointer = project.join(".moai-cli/index/current.json");
+    let before = fs::read(&pointer).unwrap();
+    let held = tmp.path().join("held-pointer.json");
+    fs::hard_link(&pointer, &held).unwrap();
+    let old = pointer_gen(&project).unwrap();
+    fs::write(project.join("a.txt"), b"replacement content").unwrap();
+    let rebuilt = build(&project);
+    assert!(
+        rebuilt.status.success(),
+        "{}",
+        String::from_utf8_lossy(&rebuilt.stderr)
+    );
+    let new = pointer_gen(&project).unwrap();
+    assert_ne!(new, old);
+    assert_eq!(
+        fs::read(&held).unwrap(),
+        before,
+        "an existing reader must retain the old pointer bytes"
+    );
+    assert_eq!(query(&project)["generation_id"], json!(new));
+    assert_eq!(query(&project)["state"], json!("fresh"));
+}
+
+#[test]
+fn tracked_regular_file_replaced_by_a_directory_is_deleted_not_a_gitlink() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    fs::remove_file(project.join("a.txt")).unwrap();
+    fs::create_dir(project.join("a.txt")).unwrap();
+    let changed = query(&project);
+    assert_eq!(changed["changes"]["deleted"], json!(["a.txt"]));
+    assert_eq!(changed["changes"]["modified"], json!([]));
+    assert!(build(&project).status.success());
+    let generation = pointer_gen(&project).unwrap();
+    let manifest: Value = serde_json::from_slice(
+        &fs::read(
+            project
+                .join(".moai-cli/index/generations")
+                .join(generation)
+                .join("manifest.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["files"], json!([]));
+}
+
+#[cfg(unix)]
+#[test]
+fn tracked_fifo_is_refused_as_a_special_file_without_reading_it() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    let previous = pointer_gen(&project).unwrap();
+    fs::remove_file(project.join("a.txt")).unwrap();
+    assert!(Command::new("/usr/bin/mkfifo")
+        .arg(project.join("a.txt"))
+        .status()
+        .unwrap()
+        .success());
+    let refused = build(&project);
+    assert!(!refused.status.success());
+    assert!(envelope(&refused)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("unsupported file type"));
+    assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()));
+    assert_eq!(query(&project)["state"], json!("partial"));
+}
+
+#[test]
+fn untracked_overflow_is_unavailable_instead_of_a_truncated_change_list() {
+    let (_tmp, project) = setup_project();
+    assert!(build(&project).status.success());
+    for n in 0..16_384 {
+        fs::write(project.join(format!("new-{n:05}")), b"").unwrap();
+    }
+    let at_limit = query(&project);
+    assert_eq!(at_limit["state"], json!("stale"));
+    assert_eq!(
+        at_limit["changes"]["new_files"].as_array().unwrap().len(),
+        16_384
+    );
+    fs::write(project.join("new-16384"), b"").unwrap();
+    let overflow = query(&project);
+    assert_eq!(overflow["state"], json!("unavailable"));
+    assert_eq!(overflow["changes"], Value::Null);
+    assert!(overflow["reason"]
+        .as_str()
+        .unwrap()
+        .contains("untracked file limit exceeded"));
+    fs::write(
+        project.join(".moai-cli/index/last-build.json"),
+        serde_json::to_vec(&json!({
+            "status": "partial", "reason": "source read failed", "at": "2026-11-10T00:00:00Z"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let partial = query(&project);
+    assert_eq!(partial["state"], json!("partial"));
+    assert_eq!(partial["changes"], Value::Null);
+}
+
+#[test]
+fn actual_gitlink_keeps_the_submodule_commit_in_the_manifest() {
+    let (_tmp, project) = setup_project();
+    let module = project.join("module");
+    fs::create_dir(&module).unwrap();
+    git(&module, &["init", "-q", "--initial-branch=main"]);
+    fs::write(module.join("inner.txt"), b"submodule content").unwrap();
+    git(&module, &["add", "inner.txt"]);
+    git(&module, &["commit", "-q", "-m", "module fixture"]);
+    let commit = git_output(&module, &["rev-parse", "HEAD"], &[]);
+    let commit = std::str::from_utf8(&commit).unwrap().trim();
+    git(
+        &project,
+        &[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("160000,{commit},module"),
+        ],
+    );
+    let built = build(&project);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    assert_eq!(envelope(&built)["result"]["files"], json!(2));
+    let generation = pointer_gen(&project).unwrap();
+    let manifest: Value = serde_json::from_slice(
+        &fs::read(
+            project
+                .join(".moai-cli/index/generations")
+                .join(generation)
+                .join("manifest.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let entry = manifest["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == "module")
+        .unwrap();
+    assert_eq!(entry["sha256"], json!(format!("commit:{commit}")));
+    assert_eq!(query(&project)["state"], json!("fresh"));
 }

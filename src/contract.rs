@@ -180,6 +180,8 @@ const RULES: &[(&str, Kind)] = &[
     ("malformed ls-", Kind::Io),
     ("read failed", Kind::Io),
     ("write failed", Kind::Io),
+    // C6 tracked-file count is an input refusal even inside the build wrapper.
+    ("index file limit exceeded", Kind::InvalidInput),
     // incremental index (rc.2 C6 #2182): a failed build is plain I/O trouble; the
     // previous generation is kept and the query state turns partial.
     ("index build failed", Kind::Io),

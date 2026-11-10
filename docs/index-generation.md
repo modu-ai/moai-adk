@@ -9,6 +9,11 @@
 - 심볼릭 링크는 `symlink-sha256:` 이름공간으로 target 문자열을 기록한다. 일반 파일의 `sha256:`와 구분되므로 같은 바이트 길이·문자열이어도 파일→링크 전환은 `modified`가 되고 generation이 바뀐다. 이전 generation은 수정하지 않는다.
 - 모든 빌드 쓰기는 기존 `apply::target`의 대상·상위 symlink 거부 규칙을 따른다. 실패 표식도 예외가 아니며, 안전하지 않은 표식/상위 경로를 통해 소스나 외부 파일을 덮어쓰지 않는다. 새 staging 파일은 `create_new`로 생성한다.
 - 동일 내용의 동시 게시가 rename에서 경합하면 먼저 게시된 manifest의 schema·ID·base·전체 파일 표를 검증한 뒤 `unchanged`로 재사용한다. 다른 내용이나 손상된 winner는 실패로 남긴다. 이번 staging은 orphan으로 보존하며 자동 삭제하지 않는다.
+- 읽기에서도 최종 파일의 모든 상위 구성 요소를 `symlink_metadata`로 검사한다. 상위 symlink 뒤에 있는 추적 파일은 외부 내용을 열거나 digest를 기록하지 않고 `deleted`로 처리한다. 최종 구성 요소 자체가 symlink인 경우의 target 문자열 digest는 그대로 지원한다.
+- 추적 파일이 일반 디렉터리로 바뀌면 삭제로 처리한다. Git index의 mode가 `160000`인 항목만 submodule commit으로 기록하며, FIFO 등 지원하지 않는 특수 파일은 열지 않고 실제 원인으로 실패한다.
+- 경계는 추적 파일 16,384개, 개별 파일 16,777,216 bytes, Git stdout 4,194,304 bytes다. 각 N은 허용하고 N+1은 거부한다. 추적 파일 수 초과는 `invalid_input`·`retryable: false`이며, Git stdout 초과는 command 실패가 아니라 output limit 원인으로 보고한다.
+- untracked 목록도 16,384개를 넘으면 조용히 자르지 않는다. 일반 질의는 `unavailable`·`changes: null`, 기존 실패 표식이 있는 질의는 `partial`을 유지하되 알 수 없는 변경 목록을 빈 배열로 대신하지 않는다.
+- 원자 포인터 회귀는 기존 포인터의 hard link가 이전 바이트를 유지하고 새 경로가 새 generation을 가리키는지 확인한다. 제자리 덮어쓰기와 copy-overwrite는 이 reader 보존 계약을 위반한다.
 
 시험: `tests/index_cli.rs`의 `identical_rebuild_across_seconds_keeps_generation_and_manifest`, `pointer_generation_id_is_validated_before_path_resolution`, `damaged_reusable_manifest_keeps_previous_pointer_and_marks_partial`. 기존 freshness·원자 포인터 시험도 유지한다.
 
