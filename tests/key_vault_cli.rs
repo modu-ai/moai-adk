@@ -238,18 +238,27 @@ fn the_config_selects_the_backend_and_os_stores_are_not_available_yet() {
         let s = envelope(&run(&home, &["key-status", "glm"], None), "x-never");
         assert_eq!(s["result"]["backend"], backend, "{text:?}: {s}");
     }
-    for name in ["keyring", "auto"] {
-        fs::write(&config, format!("key_store = \"{name}\"\n")).unwrap();
-        let s = envelope(&run(&home, &["key-status", "glm"], None), "x-never");
-        assert_eq!(s["result"]["backend"], name);
-        assert_eq!(
-            s["result"]["blocked"]["code"], "key_store_unavailable",
-            "{s}"
-        );
-        let set = envelope(&run(&home, &["key-set", "glm"], Some("v-never")), "v-never");
-        assert_eq!(set["ok"], false, "no silent file fallback: {set}");
-        assert!(!entry(&home).exists());
-    }
+    // No OS store is linked in this build (#2393 S4): `keyring` blocks with no file fallback;
+    // `auto` falls back to the file because the store is unavailable (design §3.1).
+    fs::write(&config, "key_store = \"keyring\"\n").unwrap();
+    let s = envelope(&run(&home, &["key-status", "glm"], None), "x-never");
+    assert_eq!(s["result"]["backend"], "keyring");
+    assert_eq!(
+        s["result"]["blocked"]["code"], "key_store_unavailable",
+        "{s}"
+    );
+    let set = envelope(&run(&home, &["key-set", "glm"], Some("v-never")), "v-never");
+    assert_eq!(set["ok"], false, "no silent file fallback: {set}");
+    assert!(!entry(&home).exists());
+    fs::write(&config, "key_store = \"auto\"\n").unwrap();
+    let key = "moai-test-auto-key";
+    let set = envelope(&run(&home, &["key-set", "glm"], Some(key)), key);
+    assert_eq!(set["ok"], true, "{set}");
+    assert_eq!(set["result"]["backend"], "auto");
+    assert!(entry(&home).exists());
+    let s = envelope(&run(&home, &["key-status", "glm"], None), key);
+    assert_eq!(s["result"]["entry"], "present", "{s}");
+    fs::remove_file(entry(&home)).unwrap();
     for bad in [
         "key_store = \"files\"\n",
         "key_store = 1\n",

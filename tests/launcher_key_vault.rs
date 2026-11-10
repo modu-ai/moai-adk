@@ -179,17 +179,22 @@ fn an_unusable_vault_stops_the_launch_instead_of_falling_back() {
 
 #[test]
 fn an_os_store_backend_that_cannot_answer_blocks_without_a_file_fallback() {
-    for name in ["keyring", "auto"] {
-        let h = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), true);
-        fs::write(
-            h.path().join(".moai-cli/config"),
-            format!("key_store = \"{name}\"\n"),
-        )
-        .unwrap();
-        let (code, _, text) = dry(h.path(), None);
-        assert_ne!(code, 0, "{name}: {text}");
-        assert!(text.contains("blocked: key_store_unavailable"), "{text}");
-    }
+    // `keyring` with no OS store in this build: blocked, the legacy file is not used.
+    let h = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), true);
+    fs::write(
+        h.path().join(".moai-cli/config"),
+        "key_store = \"keyring\"\n",
+    )
+    .unwrap();
+    let (code, _, text) = dry(h.path(), None);
+    assert_ne!(code, 0, "{text}");
+    assert!(text.contains("blocked: key_store_unavailable"), "{text}");
+    // `auto` with the store unavailable uses the vault file (design §3.1), not the legacy file.
+    let h = home(Some((&format!("{VAULT_KEY}\n"), 0o600)), true);
+    fs::write(h.path().join(".moai-cli/config"), "key_store = \"auto\"\n").unwrap();
+    let (code, v, text) = dry(h.path(), None);
+    assert_eq!(code, 0, "{text}");
+    assert_eq!(v["key_source"], "vault:glm");
     // The variable still wins, so a user is never locked out by the config.
     let h = home(None, false);
     fs::create_dir_all(h.path().join(".moai-cli")).unwrap();

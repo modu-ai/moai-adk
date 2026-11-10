@@ -291,8 +291,86 @@ pub fn read_file_entry(
     }
 }
 
-/// The selected backend's value for `provider` (what the launcher will read, stage 2).
-pub fn read(home: &Path, provider: &str) -> std::result::Result<Option<String>, Blocked> {
+// ---- stage 4: the OS-store seam (design §3.1, §3.3) ----
+
+/// OS store service name for every entry (decision row 29); the account is the provider.
+pub const OS_SERVICE: &str = "moai-cli";
+/// Upper bound on one OS store call (design §3.3: a store that never answers, such as a
+/// D-Bus service, must not hang the launcher).
+pub const OS_CALL_TIMEOUT_MS: u64 = 3_000;
+
+/// Why an OS store could not answer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OsStoreError {
+    /// The store exists but is locked or would need a confirmation window.
+    Locked,
+    /// No store here (unsupported platform, no logon session, no service), with the reason.
+    Unavailable(String),
+}
+
+/// One OS credential store. Every call must answer without showing a window: a store that
+/// would need one reports [`OsStoreError::Locked`] instead.
+pub trait OsStore: Send + Sync {
+    fn get(
+        &self,
+        service: &str,
+        account: &str,
+    ) -> std::result::Result<Option<String>, OsStoreError>;
+}
+
+/// The store of this build. No platform store is linked yet (stage 4 dependency decision
+/// pending on Issue #2393): every call is unavailable, so `keyring` blocks and `auto` uses
+/// the file.
+pub struct PlatformStore;
+
+impl OsStore for PlatformStore {
+    fn get(&self, _: &str, _: &str) -> std::result::Result<Option<String>, OsStoreError> {
+        Err(OsStoreError::Unavailable(
+            "no OS store backend is linked in this build".into(),
+        ))
+    }
+}
+
+/// Runs one store call with [`OS_CALL_TIMEOUT_MS`]; a call that does not answer in time is
+/// unavailable (the worker thread is left to finish on its own; it holds no lock of ours).
+fn bounded_get(
+    store: std::sync::Arc<dyn OsStore>,
+    account: &str,
+    timeout: std::time::Duration,
+) -> std::result::Result<Option<String>, OsStoreError> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let account = account.to_string();
+    std::thread::spawn(move || {
+        let _ = tx.send(store.get(OS_SERVICE, &account));
+    });
+    rx.recv_timeout(timeout).unwrap_or_else(|_| {
+        Err(OsStoreError::Unavailable(format!(
+            "the OS store did not answer within {} ms",
+            timeout.as_millis()
+        )))
+    })
+}
+
+fn locked_blocked() -> Blocked {
+    Blocked::new(
+        "key_store_locked",
+        "the OS key store is locked or would need a confirmation window",
+        "unlock the store yourself, or set key_store = \"file\" in ~/.moai-cli/config",
+    )
+}
+
+/// [`read`] with an explicit OS store and timeout (the test seam). Design §3.1:
+/// - `file`: the vault file only;
+/// - `keyring`: the OS store only — locked → `key_store_locked`, unavailable or no answer →
+///   `key_store_unavailable`; never the file;
+/// - `auto`: the OS store; only when it is *unavailable* the file. A locked store blocks
+///   instead of falling back, so a locked store is not bypassed by a plain-text file.
+pub fn read_with(
+    home: &Path,
+    provider: &str,
+    store: std::sync::Arc<dyn OsStore>,
+    timeout: std::time::Duration,
+) -> std::result::Result<Option<String>, Blocked> {
     check_provider(provider)
         .map_err(|e| Blocked::new("key_absent", e, "use a valid provider name"))?;
     let backend = backend(home).map_err(|e| {
@@ -302,10 +380,57 @@ pub fn read(home: &Path, provider: &str) -> std::result::Result<Option<String>, 
             "fix key_store in ~/.moai-cli/config",
         )
     })?;
-    match backend {
-        Backend::File => read_file_entry(home, provider),
-        other => Err(os_store_unavailable(other)),
+    if backend == Backend::File {
+        return read_file_entry(home, provider);
     }
+    match bounded_get(store, provider, timeout) {
+        Ok(Some(v)) => usable_value(&v).map(Some).ok_or_else(|| {
+            Blocked::new(
+                "key_absent",
+                "the OS store entry holds no usable value",
+                format!("store the key again with moai-cli key-set {provider}"),
+            )
+        }),
+        Ok(None) => Ok(None),
+        Err(OsStoreError::Locked) => Err(locked_blocked()),
+        Err(OsStoreError::Unavailable(reason)) => match backend {
+            Backend::Auto => read_file_entry(home, provider),
+            _ => Err(Blocked::new(
+                "key_store_unavailable",
+                reason,
+                "set key_store = \"file\" (or \"auto\") in ~/.moai-cli/config",
+            )),
+        },
+    }
+}
+
+/// Whether `backend` resolves to the vault file with this build's store: `file`, or `auto`
+/// when the OS store is unavailable. `Err` carries the refusal for `keyring` (and for `auto`
+/// with a locked store), so `status`, `set` and `remove` follow the same rule as [`read`].
+fn uses_file(backend: Backend, provider: &str) -> std::result::Result<bool, Blocked> {
+    if backend == Backend::File {
+        return Ok(true);
+    }
+    match bounded_get(
+        std::sync::Arc::new(PlatformStore),
+        provider,
+        std::time::Duration::from_millis(OS_CALL_TIMEOUT_MS),
+    ) {
+        Err(OsStoreError::Unavailable(_)) if backend == Backend::Auto => Ok(true),
+        Err(OsStoreError::Locked) => Err(locked_blocked()),
+        // Writing to an OS store is not implemented in this build.
+        _ => Err(os_store_unavailable(backend)),
+    }
+}
+
+/// The selected backend's value for `provider` (what the launcher reads, stage 2).
+pub fn read(home: &Path, provider: &str) -> std::result::Result<Option<String>, Blocked> {
+    read_with(
+        home,
+        provider,
+        std::sync::Arc::new(PlatformStore),
+        std::time::Duration::from_millis(OS_CALL_TIMEOUT_MS),
+    )
 }
 
 /// `key status`: the backend and whether an entry exists and passes the safety rules. Never
@@ -314,14 +439,15 @@ pub fn status(home: &Path, provider: &str) -> Result<Value> {
     check_provider(provider)?;
     let backend = backend(home)?;
     let path = entry_path(home, provider);
-    let (entry, blocked) = match backend {
-        Backend::File => match read_file_entry(home, provider) {
+    let (entry, blocked) = match uses_file(backend, provider) {
+        Ok(true) => match read_file_entry(home, provider) {
             Ok(Some(_)) => ("present", None),
             Ok(None) => ("absent", None),
             Err(b) if b.code == "key_absent" => ("empty", Some(b)),
             Err(b) => ("unsafe", Some(b)),
         },
-        other => ("unknown", Some(os_store_unavailable(other))),
+        Ok(false) => ("unknown", Some(os_store_unavailable(backend))),
+        Err(b) => ("unknown", Some(b)),
     };
     Ok(json!({
         "provider": provider,
@@ -376,8 +502,7 @@ fn ensure_vault_dir(home: &Path) -> Result<PathBuf> {
 pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
     check_provider(provider)?;
     let backend = backend(home)?;
-    if backend != Backend::File {
-        let b = os_store_unavailable(backend);
+    if let Err(b) = uses_file(backend, provider) {
         return Err(format!("{}: {}", b.code, b.reason));
     }
     let value = usable_value(value).ok_or("no usable value")?;
@@ -433,8 +558,7 @@ pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
 pub fn remove(home: &Path, provider: &str, confirmed: bool) -> Result<Value> {
     check_provider(provider)?;
     let backend = backend(home)?;
-    if backend != Backend::File {
-        let b = os_store_unavailable(backend);
+    if let Err(b) = uses_file(backend, provider) {
         return Err(format!("{}: {}", b.code, b.reason));
     }
     let entry = entry_path(home, provider);
@@ -559,18 +683,19 @@ fn import_plan_inner(home: &Path, provider: &str) -> Result<(Value, Option<Legac
         .map(|rel| legacy_source(home, rel))
         .collect();
     let dest = entry_path(home, provider);
-    let entry = match backend {
-        Backend::File => match read_file_entry(home, provider) {
+    let file_ok = matches!(uses_file(backend, provider), Ok(true));
+    let entry = match file_ok {
+        true => match read_file_entry(home, provider) {
             Ok(Some(_)) => "present",
             Ok(None) => "absent",
             Err(b) if b.code == "key_absent" => "empty",
             Err(_) => "unsafe",
         },
-        _ => "unknown",
+        false => "unknown",
     };
     let chosen = sources.iter().position(|s| s.token.is_some());
-    let (action, reason) = match (backend, entry, chosen) {
-        (Backend::Keyring | Backend::Auto, _, _) => (
+    let (action, reason) = match (file_ok, entry, chosen) {
+        (false, _, _) => (
             "blocked",
             "key_store_unavailable: the OS store backend is not available in this build",
         ),
@@ -780,17 +905,133 @@ mod tests {
         set(home, "glm", &value).unwrap();
         assert_eq!(read(home, "glm").unwrap().as_deref(), Some(value.as_str()));
         assert_eq!(read(home, "other").unwrap(), None);
-        for name in ["keyring", "auto"] {
-            fs::write(
-                home.join(".moai-cli/config"),
-                format!("key_store = \"{name}\"\n"),
-            )
-            .unwrap();
-            let err = read(home, "glm").unwrap_err();
-            assert_eq!(err.code, "key_store_unavailable", "{name}");
-            assert!(!err.reason.contains(&value) && !err.next.contains(&value));
-        }
+        // No OS store is linked in this build: `keyring` blocks, `auto` uses the file.
+        fs::write(home.join(".moai-cli/config"), "key_store = \"keyring\"\n").unwrap();
+        let err = read(home, "glm").unwrap_err();
+        assert_eq!(err.code, "key_store_unavailable");
+        assert!(!err.reason.contains(&value) && !err.next.contains(&value));
+        fs::write(home.join(".moai-cli/config"), "key_store = \"auto\"\n").unwrap();
+        assert_eq!(read(home, "glm").unwrap().as_deref(), Some(value.as_str()));
         fs::write(home.join(".moai-cli/config"), "key_store = \"vault\"\n").unwrap();
         assert_eq!(read(home, "glm").unwrap_err().code, "key_store_unavailable");
+    }
+
+    /// A fake OS store; nothing here touches a real key store.
+    struct Fake(std::result::Result<Option<String>, OsStoreError>, u64);
+
+    impl OsStore for Fake {
+        fn get(
+            &self,
+            service: &str,
+            account: &str,
+        ) -> std::result::Result<Option<String>, OsStoreError> {
+            assert_eq!((service, account), (OS_SERVICE, "glm"));
+            std::thread::sleep(std::time::Duration::from_millis(self.1));
+            self.0.clone()
+        }
+    }
+
+    fn read_fake(
+        home: &Path,
+        answer: std::result::Result<Option<String>, OsStoreError>,
+        delay_ms: u64,
+    ) -> std::result::Result<Option<String>, Blocked> {
+        read_with(
+            home,
+            "glm",
+            std::sync::Arc::new(Fake(answer, delay_ms)),
+            std::time::Duration::from_millis(200),
+        )
+    }
+
+    /// Design §3.1/§3.3 with a fake store: `keyring` never uses the file; `auto` uses it only
+    /// when the store is unavailable (a locked store blocks); a store that does not answer in
+    /// time is unavailable; no answer carries the value.
+    #[test]
+    fn os_store_backends_follow_the_design_rules() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        let file_value = format!("moai-test-file-{}", std::process::id());
+        let os_value = format!("moai-test-os-{}", std::process::id());
+        set(home, "glm", &file_value).unwrap();
+        let unavailable = || Err(OsStoreError::Unavailable("none here".into()));
+        for (backend, answer, delay, want) in [
+            (
+                "keyring",
+                Ok(Some(os_value.clone())),
+                0,
+                Ok(Some(os_value.clone())),
+            ),
+            ("keyring", Ok(None), 0, Ok(None)),
+            (
+                "keyring",
+                Err(OsStoreError::Locked),
+                0,
+                Err("key_store_locked"),
+            ),
+            ("keyring", unavailable(), 0, Err("key_store_unavailable")),
+            (
+                "keyring",
+                Ok(Some(os_value.clone())),
+                1_000,
+                Err("key_store_unavailable"),
+            ),
+            ("keyring", Ok(Some("  \n".into())), 0, Err("key_absent")),
+            (
+                "auto",
+                Ok(Some(os_value.clone())),
+                0,
+                Ok(Some(os_value.clone())),
+            ),
+            (
+                "auto",
+                Err(OsStoreError::Locked),
+                0,
+                Err("key_store_locked"),
+            ),
+            ("auto", unavailable(), 0, Ok(Some(file_value.clone()))),
+            (
+                "auto",
+                Ok(Some(os_value.clone())),
+                1_000,
+                Ok(Some(file_value.clone())),
+            ),
+        ] {
+            fs::write(
+                home.join(".moai-cli/config"),
+                format!("key_store = \"{backend}\"\n"),
+            )
+            .unwrap();
+            let got = read_fake(home, answer, delay);
+            match (want, got) {
+                (Ok(w), Ok(g)) => assert_eq!(g, w, "{backend}"),
+                (Err(code), Err(b)) => {
+                    assert_eq!(b.code, code, "{backend}");
+                    for v in [&file_value, &os_value] {
+                        assert!(!b.reason.contains(v.as_str()) && !b.next.contains(v.as_str()));
+                    }
+                }
+                (w, g) => panic!("{backend}: want {w:?}, got {g:?}"),
+            }
+        }
+    }
+
+    /// The timeout bound is the literal 200 ms of the test seam: 150 ms answers, 300 ms does not.
+    #[test]
+    fn the_os_call_bound_is_kept_on_both_sides() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        fs::create_dir_all(home.join(".moai-cli")).unwrap();
+        fs::write(home.join(".moai-cli/config"), "key_store = \"keyring\"\n").unwrap();
+        let v = "moai-test-os-bound".to_string();
+        assert_eq!(
+            read_fake(home, Ok(Some(v.clone())), 150).unwrap(),
+            Some(v.clone())
+        );
+        assert_eq!(
+            read_fake(home, Ok(Some(v)), 300).unwrap_err().code,
+            "key_store_unavailable"
+        );
+        assert_eq!(OS_CALL_TIMEOUT_MS, 3_000);
     }
 }
