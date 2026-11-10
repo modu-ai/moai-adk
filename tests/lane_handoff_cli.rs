@@ -4,6 +4,7 @@
 //! mutated request fields to observe every failure path. No real host is used:
 //! the remote head and PR record are injected observations.
 
+use moai_cli::forge::outbox::{OutboxEntry, OutboxState, Phase};
 use serde_json::{json, Value};
 use std::{
     io::Write,
@@ -423,9 +424,19 @@ fn unparsable_outbox_entry_counts_as_uncertain() {
     std::fs::remove_file(outbox.join("broken.json")).unwrap();
     // A `publishing` entry (sent, outcome unrecorded) blocks the same way —
     // Codex review r4509909048.
+    let mut entry = OutboxEntry::new("publishing", "fixture marker");
+    entry
+        .advance(
+            OutboxState::Publishing,
+            Phase {
+                at: "2026-11-10T00:00:00Z".into(),
+                detail: Value::Null,
+            },
+        )
+        .unwrap();
     std::fs::write(
         outbox.join("publishing.json"),
-        b"{\"state\": \"publishing\"}",
+        serde_json::to_vec(&entry).unwrap(),
     )
     .unwrap();
     let (code, _, _) = run_check(&r, &repo.root);
@@ -578,4 +589,90 @@ fn outbox_inspection_error_blocks_an_otherwise_valid_handoff() {
     let (code, envelope, stderr) = run_check(&request, &repo.root);
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(envelope["result"]["status"], json!("passed"));
+}
+
+#[test]
+fn inherited_git_work_tree_cannot_hide_actual_dirty_files() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let mut request = base_request(&repo.root, &repo.head);
+    request["leader_report_path"] = json!(report);
+    let shadow = parent.path().join("clean-shadow");
+    std::fs::create_dir(&shadow).unwrap();
+    for name in ["f.txt", ".gitignore"] {
+        std::fs::copy(repo.root.join(name), shadow.join(name)).unwrap();
+    }
+    std::fs::write(repo.root.join("f.txt"), "uncommitted user work\n").unwrap();
+    let before = tree_state(&repo.root);
+    let mut child = Command::new(EXE)
+        .arg("lane-handoff-check")
+        .arg(&repo.root)
+        .env("GIT_WORK_TREE", shadow)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(request.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(!out.status.success());
+    assert_eq!(envelope["error"]["kind"], "blocked");
+    let result = failure_report(&String::from_utf8_lossy(&out.stderr));
+    assert_eq!(result["failed_checks"], json!(["status_clean"]));
+    assert_eq!(tree_state(&repo.root), before);
+}
+
+#[test]
+fn invalid_outbox_schema_or_state_blocks_but_confirmed_entry_is_safe() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let mut request = base_request(&repo.root, &repo.head);
+    request["leader_report_path"] = json!(report);
+    let dir = repo.root.join(".moai-cli/forge/outbox");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("report-p-t-1.json");
+    let mut entry = OutboxEntry::new("report-p-t-1", "<!-- moai:op report:p:t:1 -->");
+    for state in [OutboxState::Publishing, OutboxState::Confirmed] {
+        entry
+            .advance(
+                state,
+                Phase {
+                    at: "2026-11-10T00:00:00Z".into(),
+                    detail: Value::Null,
+                },
+            )
+            .unwrap();
+    }
+    let mut unknown_state = serde_json::to_value(&entry).unwrap();
+    unknown_state["state"] = json!("unexpected");
+    let mut unknown_schema = serde_json::to_value(&entry).unwrap();
+    unknown_schema["schema_version"] = json!(2);
+    for invalid in [
+        json!({}),
+        json!({"state": "confirmed"}),
+        unknown_state,
+        unknown_schema,
+    ] {
+        let bytes = serde_json::to_vec(&invalid).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let (code, envelope, stderr) = run_check(&request, &repo.root);
+        assert_ne!(code, 0);
+        assert_eq!(envelope["error"]["kind"], "blocked");
+        let result = failure_report(&stderr);
+        assert_eq!(result["failed_checks"], json!(["no_uncertain_effects"]));
+        assert_eq!(result["uncertain_effects"], 1);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+    std::fs::write(&path, serde_json::to_vec(&entry).unwrap()).unwrap();
+    let (code, envelope, stderr) = run_check(&request, &repo.root);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(envelope["result"]["uncertain_effects"], 0);
 }

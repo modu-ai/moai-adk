@@ -19,12 +19,13 @@
 //!    only mechanically verified paths are enforced).
 //! 6. `no_uncertain_effects` — no forge outbox entry is left in `publish_unknown`
 //!    (EXIT-01: uncertain external effects block exit). Only a missing outbox is
-//!    empty; directory/entry inspection and decoding errors count as uncertain.
+//!    empty; directory/entry inspection and invalid schema/state count as uncertain.
 //!
 //! Any failed check blocks exit: the operation surfaces
 //! `lane handoff blocked: <failed names>` (kind `blocked`, exit != 0) with
 //! per-check rows on stderr and a preservation note. Nothing here writes.
 
+use crate::forge::outbox::{OutboxEntry, OutboxState};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
@@ -66,10 +67,14 @@ pub struct PrRecord {
 }
 
 fn git(project: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
+    let mut command = Command::new("git");
+    command
+        .arg("--no-optional-locks")
         .arg("-C")
         .arg(project)
-        .args(args)
+        .args(args);
+    crate::identity::scrub_git_env(&mut command);
+    let out = command
         .output()
         .map_err(|_| "git unavailable".to_string())?;
     if !out.status.success() {
@@ -123,11 +128,12 @@ fn uncertain_effects(project: &Path) -> Result<u64> {
         // outcome, and `forge::report::pending` treats both states as unknown.
         let state = fs::read(&path)
             .ok()
-            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-            .map(|v| v["state"].clone());
+            .and_then(|b| serde_json::from_slice::<OutboxEntry>(&b).ok())
+            .filter(|entry| entry.schema_version == 1)
+            .map(|entry| entry.state);
         let is_uncertain = match state {
-            Some(v) => v == json!("publish_unknown") || v == json!("publishing"),
-            // Unreadable/parsable ⇒ unknown state ⇒ uncertain.
+            Some(v) => matches!(v, OutboxState::PublishUnknown | OutboxState::Publishing),
+            // Unreadable or invalid schema/state ⇒ uncertain.
             None => true,
         };
         if is_uncertain {

@@ -637,3 +637,9 @@ Fixtures: `tests/archive_move_fixture_test.rs` (success fixture with hash, readb
 | PRIVACY | `privacy_06_operations_need_no_network` | plan, apply, search and restore succeed under `sandbox-exec` with `(deny network*)`, and plan reports `network: disabled` — macOS only; on Linux the case does not compile and is not_run, never passed | passed (macOS) | passed (macOS) |
 
 The two cases that failed at 3736fca3c were the #2295 audit findings F1 and N1, reproduced independently. The D2 repair went to another lane (leader decision 2026-11-09) and this card does not change `src/archive.rs`. With the repaired D2 merged (b51bfc1be) all 13 cases pass. The two result columns were measured before #2307 strengthened `privacy_01` and `privacy_04`; with those additions the suite passes 13/13 on the #2307 head (311351b5d plus the test change), and the mutation evidence for the additions is in the #2307 PR.
+
+## Lane handoff Git and outbox isolation (A10 #2264)
+
+`lane-handoff-check` runs Git with the existing `identity::scrub_git_env` policy, so inherited repository/worktree/config overrides cannot redirect the check away from the requested project. Optional Git index locks are disabled. This follows the [official Git hook environment guidance](https://git-scm.com/docs/githooks#_description) (checked 2026-11-10 with Git 2.54.0); it changes only child-process environments, not the caller's environment or host permissions.
+
+Outbox JSON must decode as a schema-1 `forge::outbox::OutboxEntry`, including its typed `OutboxState`. Missing fields, unknown states or schema versions, read/parse errors, `publishing` and `publish_unknown` block exit. A valid confirmed entry remains safe. Only a missing outbox counts as empty; the earlier directory/entry inspection fail-closed behavior is preserved. Regression fixtures exercise both the dirty-project/clean-shadow environment attack and malformed records, with a valid confirmed entry as the positive boundary.
