@@ -144,9 +144,12 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     let verdict = match event {
         Event::SessionCheck => session_check(cwd),
         Event::ToolPreflight => tool_preflight(&input, cwd),
-        Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms),
+        Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
     };
+    if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
+        record_deny(&input, cwd, now_unix_ms, host);
+    }
     match host {
         Host::Claude => render_claude(event, verdict),
         Host::Codex => render_codex(event, verdict),
@@ -168,6 +171,40 @@ impl Host {
             _ => None,
         }
     }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Host::Claude => "claude",
+            Host::Codex => "codex",
+        }
+    }
+}
+
+/// A short key for the host's `tool_use_id` (sha256, first 16 hex digits), so a deny and the
+/// observation of the same call can be matched without logging the raw id.
+fn call_key(input: &Value) -> Value {
+    match input["tool_use_id"].as_str() {
+        Some(id) if !id.is_empty() => {
+            let d = crate::digest(id.as_bytes());
+            json!(d.trim_start_matches("sha256:")[..16].to_string())
+        }
+        _ => Value::Null,
+    }
+}
+
+/// A tool-preflight deny leaves one `deny` line (session, call key, host, time) in the engine
+/// log when `.moai-cli/` exists — the evidence `hooks::status` reads as `action_blocked` when
+/// no observation of the same call follows. Best effort, never changes the answer.
+fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
+    let line = json!({
+        "schema_version": 1,
+        "kind": "deny",
+        "host": host.name(),
+        "session": session_key(input),
+        "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
 /// Codex rendering of a verdict, from the Codex hooks page only
@@ -431,7 +468,7 @@ fn target_path(input: &Value, cwd: &Path) -> Value {
 /// tool name and class, target path, outcome, the `HEAD` commit and the time. It never blocks
 /// and never stores `tool_input` content, `tool_response` or messages. Marking earlier evidence
 /// stale waits for a persisted verification receipt (#2392; leader decision, Issue #2391).
-fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
+fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
     // Cost (audit #2400 N3): a project without a real `.moai-cli/` directory records nothing,
     // so return before spawning `git` for the HEAD commit.
     match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
@@ -458,7 +495,9 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128) -> Verdict {
     let line = json!({
         "schema_version": 1,
         "kind": "observe",
+        "host": host.name(),
         "session": session_key(input),
+        "call": call_key(input),
         "tool": if tool_ok { json!(tool) } else { json!("unrecorded") },
         "class": class,
         "path": target_path(input, cwd),
@@ -652,7 +691,10 @@ mod tests {
         );
         let post = json!({"hook_event_name": "PostToolUse", "session_id": "sess-A",
                           "tool_name": "Read", "tool_input": {"file_path": "a"}});
-        assert_eq!(tool_observe(&post, p.path(), 4), Verdict::Allow);
+        assert_eq!(
+            tool_observe(&post, p.path(), 4, Host::Claude),
+            Verdict::Allow
+        );
         assert!(matches!(
             turn_validation_with(FAKE, &stop(false), p.path(), 5),
             Verdict::Deny(_)

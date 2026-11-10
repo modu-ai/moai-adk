@@ -366,6 +366,96 @@ pub fn apply(
     Ok(out)
 }
 
+/// Where each host keeps the project hook definitions MoAI generates.
+fn host_config_path(host: &str) -> &'static str {
+    if host == "claude" {
+        ".claude/settings.json"
+    } else {
+        CODEX_FILE
+    }
+}
+
+/// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
+/// a missing, oversized or non-regular log reads as empty).
+fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
+    let path = root
+        .join(crate::PROJECT_STATE_DIR)
+        .join("receipts")
+        .join(file);
+    match fs::symlink_metadata(&path) {
+        Ok(m) if m.is_file() && m.len() <= RECEIPT_LOG_LIMIT => {}
+        _ => return Vec::new(),
+    }
+    fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
+/// The hook state vocabulary of Issue #2391, each from evidence that exists locally, read only:
+/// - `installed`: the hook binary resolves on `path_env`.
+/// - `configured`: `yes` when the host file's `hooks` equal the generated hook set, `no` when
+///   the file is absent, `drifted` when it exists with other hooks (or does not parse).
+/// - `trusted`: always `unknown`. Claude Code checks workspace trust before running any hook
+///   from a settings file, and Codex records trust against each hook's hash, but neither page
+///   says where that is stored (read 2026-11-10), so it is never read here; `fired` is the
+///   only evidence that a host ran the hooks.
+/// - `fired`: a receipt or engine line from this host stamped at or after the host file's
+///   last modification (a changed definition makes older lines stale).
+/// - `action_blocked`: since then, an engine `deny` line from this host whose call key never
+///   appears on an `observe` line — the denied tool did not run.
+/// - `verified`: `fired` and `action_blocked` both hold — a real host ran the guard and a
+///   denied call stayed denied. Only a real host session can produce it.
+pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -> Result<Value> {
+    check_host(host)?;
+    let root = project_root(project, home)?;
+    // Compared directly, not through the plan: the Claude settings plan preserves a user's
+    // edit to an owned key and then reports `unchanged`, which is not "configured as generated".
+    let generated = Value::Object(hooks_object(host)?);
+    let configured = match crate::claude::read_existing(&root.join(host_config_path(host)))? {
+        None => "no",
+        Some(bytes) => match serde_json::from_slice::<Value>(&bytes) {
+            Ok(v) if v["hooks"] == generated => "yes",
+            _ => "drifted",
+        },
+    };
+    let config_ms = fs::metadata(root.join(host_config_path(host)))
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64);
+    let since = |line: &Value| {
+        line["host"] == json!(host)
+            && config_ms.is_some_and(|c| line["unix_ms"].as_u64().is_some_and(|t| t >= c))
+    };
+    let receipts = receipt_lines(&root, "hooks.jsonl");
+    let engine = receipt_lines(&root, crate::hook_engine::ENGINE_LOG);
+    let fired = receipts.iter().chain(engine.iter()).any(since);
+    let observed: Vec<&Value> = engine
+        .iter()
+        .filter(|l| l["kind"] == json!("observe") && !l["call"].is_null())
+        .map(|l| &l["call"])
+        .collect();
+    let action_blocked = engine.iter().any(|l| {
+        l["kind"] == json!("deny")
+            && since(l)
+            && !l["call"].is_null()
+            && !observed.contains(&&l["call"])
+    });
+    let installed = crate::install::resolve_on_path(path_env, HOOK_BINARY).is_some();
+    Ok(json!({
+        "host": host,
+        "installed": installed,
+        "configured": configured,
+        "trusted": "unknown",
+        "fired": fired,
+        "action_blocked": action_blocked,
+        "verified": fired && action_blocked,
+        "config_path": host_config_path(host),
+    }))
+}
+
 /// Size bound for a hook receipt log; past it lines are not appended (never truncated).
 pub const RECEIPT_LOG_LIMIT: u64 = 4 * 1024 * 1024;
 
