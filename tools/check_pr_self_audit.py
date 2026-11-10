@@ -16,6 +16,18 @@ line that does not report FAILED exits 1. The independent audit stays in
 place — this tool only pulls the audit evidence forward, before the PR is
 opened.
 
+Zero-selected evidence (Issue #2403, item 5). In the section and in every
+markdown table row of the body:
+
+  - a line that reports `0 passed` (a run that selected no test) must also say
+    `not_run` on the same line; otherwise it is blocked as zero-selected;
+  - a `cargo test` command that passes a test-name filter must select exactly
+    one target (`--lib`, `--bin X`, `--test X`, ...), because cargo applies the
+    filter to every target of the call; a filtered call with two or more
+    targets, or with none (cargo then runs several by default), is blocked as
+    filter-multi-target. Only commands written in a code span (`...`) are
+    read; prose that mentions cargo test is not a command.
+
 Usage:
   python3 -I tools/check_pr_self_audit.py --file BODY.md
   python3 -I tools/check_pr_self_audit.py < BODY.md
@@ -24,6 +36,7 @@ Exit codes: 0 = section complete, 1 = section/items missing or unmeasured,
 2 = usage.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -41,9 +54,87 @@ def strip_marker(line: str) -> str:
     return line.strip().lstrip("-*").strip().lower()
 
 
+# `0 passed` as a whole count: not preceded by another digit, so `10 passed`
+# and `20 passed` are not zero.
+ZERO_PASSED = re.compile(r"(?<![0-9])0 passed\b")
+# cargo test options that take a value as the next token (the value is not a
+# test-name filter).
+CARGO_VALUE_OPTS = {
+    "--test", "--bin", "--example", "--bench", "-p", "--package", "-F",
+    "--features", "--manifest-path", "--target", "--target-dir", "-j",
+    "--jobs", "--profile", "--color", "--message-format", "--config", "-Z",
+    "--exclude",
+}
+# Target selectors and how many targets each selects.
+CARGO_TARGETS_ONE = {"--lib", "--doc", "--test", "--bin", "--example", "--bench"}
+CARGO_TARGETS_MANY = {"--tests", "--bins", "--examples", "--benches", "--all-targets"}
+# Test-harness options after `--` that take a value as the next token.
+HARNESS_VALUE_OPTS = {"--skip", "--test-threads", "--format", "--color", "-Z", "--logfile", "--report-time"}
+
+
+def cargo_test_commands(line: str):
+    """The token lists of the `cargo test` commands written in code spans on one
+    line: each runs from `test` to the end of its span or a shell separator.
+    Prose such as "cargo test 671 passed" outside a code span is not a command."""
+    out = []
+    for span in re.findall(r"`([^`]+)`", line):
+        for m in re.finditer(r"(?<![\w-])cargo\s+(?:\+\S+\s+)?test\b", span):
+            rest = span[m.end():]
+            end = re.search(r";|\|\||&&|\||\)", rest)
+            out.append(rest[: end.start()] if end else rest)
+    return [seg.split() for seg in out]
+
+
+def filtered_target_count(tokens):
+    """(has a name filter, number of targets selected; None = cargo's default
+    set, which is more than one)."""
+    has_filter = False
+    targets = 0
+    many = False
+    after_dashdash = False
+    skip_next = False
+    for tok in tokens:
+        if skip_next:
+            skip_next = False
+            continue
+        if after_dashdash:
+            if tok in HARNESS_VALUE_OPTS:
+                skip_next = True
+            elif not tok.startswith("-"):
+                has_filter = True
+            continue
+        if tok == "--":
+            after_dashdash = True
+            continue
+        name = tok.split("=", 1)[0]
+        if name in CARGO_TARGETS_ONE:
+            targets += 1
+        elif name in CARGO_TARGETS_MANY:
+            many = True
+        if name in CARGO_VALUE_OPTS and "=" not in tok:
+            skip_next = True
+        elif not tok.startswith("-"):
+            has_filter = True
+    if many:
+        return has_filter, 2
+    return has_filter, (targets if targets else None)
+
+
+def check_zero_selected(section, lines) -> None:
+    """Block zero-selected test evidence in the section and in table rows."""
+    scope = list(section) + [ln for ln in lines if ln.lstrip().startswith("|")]
+    for line in scope:
+        if ZERO_PASSED.search(line) and "not_run" not in line:
+            fail(["zero-selected"])
+        for tokens in cargo_test_commands(line):
+            has_filter, count = filtered_target_count(tokens)
+            if has_filter and (count is None or count > 1):
+                fail(["filter-multi-target"])
+
+
 def check(body: str) -> None:
     lines = body.splitlines()
-    starts = [i for i, l in enumerate(lines) if l.strip().lower() == SECTION]
+    starts = [i for i, ln in enumerate(lines) if ln.strip().lower() == SECTION]
     if not starts:
         fail([SECTION])
     start = starts[0]
@@ -55,14 +146,15 @@ def check(body: str) -> None:
         section.append(line)
     missing = []
     for tag in TAGS:
-        hit = [l for l in section if strip_marker(l).startswith(tag + ":")]
+        hit = [ln for ln in section if strip_marker(ln).startswith(tag + ":")]
         if not hit or not hit[0].split(":", 1)[1].strip():
             missing.append(tag)
     if missing:
         fail(missing)
+    check_zero_selected(section, lines)
     # The mutation line must report the mutation actually failing a check
     # (measured, not asserted): the word FAILED must appear on it.
-    mut = [l for l in section if strip_marker(l).startswith("mutation:")][0]
+    mut = [ln for ln in section if strip_marker(ln).startswith("mutation:")][0]
     if "failed" not in mut.lower():
         fail(["mutation:FAILED"])
     print("self-audit: pass (mutation/clone/host/receipt measured)")
