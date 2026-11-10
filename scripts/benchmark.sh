@@ -25,10 +25,10 @@ BIN="${CARGO_TARGET_DIR:-target}/debug/moai-cli"
 FIXTURE="$(mktemp -d /tmp/moai-bench-fixture.XXXXXX)"
 export FIXTURE
 
-mkdir -p "$FIXTURE/skills/moai-cli/workflows" "$FIXTURE/.moai-cli"
+mkdir -p "$FIXTURE/skills/moai/workflows" "$FIXTURE/.moai-cli"
 printf '%s\n' '{"schema_version":2,"project_id":"bench","purpose":"Benchmark fixture","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"bench-1"}' \
     > "$FIXTURE/.moai-cli/project.yaml"
-printf '%s\n' '{"protocol_version":1,"language":"en","workflow_reference":"skills/moai-cli/workflows","local_file":"none","workflow_id":"bench-flow","native_roles":[],"skill_projections":[]}' \
+printf '%s\n' '{"protocol_version":1,"language":"en","workflow_reference":"skills/moai/workflows","local_file":"none","workflow_id":"bench-flow","native_roles":[],"skill_projections":[]}' \
     > "$FIXTURE/generation-request.json"
 printf '%s\n' '{"schema_version":2,"project_id":"bench","purpose":"Benchmark fixture","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"]}' \
     > "$FIXTURE/project-request.json"
@@ -94,8 +94,8 @@ run_time_ops() {
     echo "$(bench_op_time "$FIXTURE/project-request.json" "$FIXTURE" project-plan "$FIXTURE")"
     label="generation-plan (fixture)"
     echo "$(bench_op_time "$FIXTURE/generation-request.json" "$FIXTURE" generation-plan "$FIXTURE")"
-    label="package-inspect (skills/moai-cli)"
-    echo "$(bench_op_time "-" "$REPO" package-inspect "$REPO/skills/moai-cli")"
+    label="package-inspect (skills/moai)"
+    echo "$(bench_op_time "-" "$REPO" package-inspect "$REPO/skills/moai")"
 }
 
 run_rss_ops() {
@@ -103,18 +103,18 @@ run_rss_ops() {
     echo "$(bench_op_rss "$FIXTURE/project-request.json" "$FIXTURE" project-plan "$FIXTURE")"
     label="generation-plan (fixture)"
     echo "$(bench_op_rss "$FIXTURE/generation-request.json" "$FIXTURE" generation-plan "$FIXTURE")"
-    label="package-inspect (skills/moai-cli)"
-    echo "$(bench_op_rss "-" "$REPO" package-inspect "$REPO/skills/moai-cli")"
+    label="package-inspect (skills/moai)"
+    echo "$(bench_op_rss "-" "$REPO" package-inspect "$REPO/skills/moai")"
 }
 
 # Index bytes/LOC over tracked files (git ls-files): the whole repository and
-# the skills/moai-cli package. Deterministic at a fixed commit — no timing involved.
+# the skills/moai package. Deterministic at a fixed commit — no timing involved.
 run_loc_ops() {
     label="저장소 전체 (tracked files)"
     row="$(bench_loc "")"
     echo "$row"
-    label="skills/moai-cli 패키지"
-    row="$(bench_loc "skills/moai-cli")"
+    label="skills/moai 패키지"
+    row="$(bench_loc "skills/moai")"
     echo "$row"
 }
 

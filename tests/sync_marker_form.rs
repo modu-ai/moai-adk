@@ -20,7 +20,7 @@ fn sync_workflow_marker_template_matches_06c() {
         read("src/pr_link.rs").contains(TEMPLATE_06C),
         "src/pr_link.rs no longer documents the 06-C template"
     );
-    let sync = read("skills/moai-cli/workflows/sync.md");
+    let sync = read("skills/moai/workflows/sync.md");
     assert!(
         sync.contains(TEMPLATE_06C),
         "sync.md must show the 06-C PR marker template"
@@ -33,7 +33,7 @@ fn sync_workflow_marker_template_matches_06c() {
 
 #[test]
 fn sync_workflow_marker_examples_use_a_numeric_repository_id() {
-    let sync = read("skills/moai-cli/workflows/sync.md");
+    let sync = read("skills/moai/workflows/sync.md");
     let examples = parse_op_markers(&sync);
     assert!(
         !examples.is_empty(),
