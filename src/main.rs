@@ -1210,13 +1210,25 @@ fn run_internal(
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
+            // #2404: the PR state of overlapping handed-off claims, read before the journal
+            // lock; no overlap with a `pr_ready` record makes no forge call.
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            let client = moai_cli::forge::Client::new(
+                &transport,
+                &clock,
+                Default::default(),
+                Default::default(),
+            );
+            let handed_off = moai_cli::scope::handed_off_status(&mine, &others, &client);
             moai_cli::scope::check_and_record(
                 &project,
                 &mine,
                 source.task.is_some(),
                 &others,
                 integration_order.as_deref(),
-                &moai_cli::forge::policy::SystemClock,
+                &handed_off,
+                &clock,
             )
         }
         Command::PrConfirm {
