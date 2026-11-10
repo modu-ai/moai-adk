@@ -204,10 +204,11 @@ fn scan_file(path: &Path) -> Result<Value> {
             "args": p.args,
             "line": line,
             "raw": raw,
+            "raw_untrusted": true,
             "parser_version": PARSER_VERSION,
         })).collect::<Vec<_>>(),
         "invalid": invalid.into_iter().map(|(line, raw, reason)| json!({
-            "line": line, "raw": raw, "reason": reason,
+            "line": line, "raw": raw, "raw_untrusted": true, "reason": reason,
         })).collect::<Vec<_>>(),
     }))
 }

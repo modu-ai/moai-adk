@@ -41,12 +41,18 @@ type Result<T> = std::result::Result<T, String>;
 pub const RECORD_UPDATE_OWNER: &str =
     "06-C via 06-B Journal::commit when the record came from --task; not written for --record";
 
-/// The journal of `project`, opened for writing and locked; a held lock is a conflict at
-/// once (06-A busy-never-waits, REQ-06A-05).
-pub fn open_locked_journal(project: &Path) -> Result<Journal> {
+/// The journal of `project`, opened for writing and locked; a held lock is the one
+/// journal lock-busy answer — the explicit `unavailable` kind, retryable (06-A
+/// busy-never-waits, REQ-06A-05; #2345 sets the kind at this raise site).
+pub fn open_locked_journal(
+    project: &Path,
+) -> std::result::Result<Journal, crate::contract::OpError> {
     let journal = Journal::open(&claim::journal_root(project)?)?;
     if !journal.try_lock()? {
-        return Err("conflict in claim journal: another process holds the journal lock".into());
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     Ok(journal)
 }
@@ -105,7 +111,7 @@ pub fn apply_and_record<C: Clock>(
     path: Option<&Path>,
     plan_digest: &str,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = if from_journal {
         Some(open_locked_journal(project)?)
     } else {
@@ -137,7 +143,9 @@ pub fn not_written() -> Value {
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
         .args(args)
         .current_dir(dir)
         .output()
@@ -153,8 +161,9 @@ fn git(dir: &Path, args: &[&str]) -> Result<String> {
 }
 
 fn git_ok(dir: &Path, args: &[&str]) -> Result<bool> {
-    Command::new("git")
-        .args(args)
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.args(args)
         .current_dir(dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())

@@ -145,12 +145,12 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "18507b074c1c22986515a75b9fe543d707a3c949556fbd9002de6d13d3ecab3a",
+      "sha256": "a444bf6109d903ec5ec141f6d5c76c92b35627d919efd6d60776e6d7c9dc318f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. Step 8 now names the tested goal-block generator (tools/gen_goal_block.py, agent kind) — #2334."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. Step 8 now names the tested goal-block generator (tools/gen_goal_block.py, agent kind) — #2334. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344."
       }
     }
   }

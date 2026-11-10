@@ -183,7 +183,7 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
     records: &[ClaimRecord],
     integration_order: Option<&str>,
     clock: &C,
-) -> std::result::Result<Value, String> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     use crate::worktree::{commit_update, not_written, open_locked_journal};
     let mut out = check(mine, records, integration_order);
     let effect = match out["decision"].as_str() {
