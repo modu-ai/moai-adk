@@ -577,3 +577,294 @@ fn a_local_claim_record_hands_the_commit_to_the_claim_guard() {
         &[],
     ));
 }
+
+// ---- stage 2: tool-observe and turn-validation ----
+
+fn engine_log(root: &Path) -> PathBuf {
+    root.join(".moai-cli/receipts/hook-engine.jsonl")
+}
+
+fn post_tool(event: &str, tool: &str, file_path: &str, response: &str) -> Vec<u8> {
+    json!({"session_id": "raw-session-id-123", "hook_event_name": event, "tool_name": tool,
+           "tool_use_id": "t1", "tool_input": {"file_path": file_path, "content": "CONTENTMARK"},
+           "tool_response": {"output": response}})
+    .to_string()
+    .into_bytes()
+}
+
+#[test]
+fn tool_observe_records_a_bounded_line_and_never_answers() {
+    let (_d, root) = repo("issue/77-k");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let head = git(&root, &["rev-parse", "HEAD"]);
+    let abs = root.join("src/x.rs");
+    let r = dispatch(
+        "tool-observe",
+        &root,
+        &post_tool(
+            "PostToolUse",
+            "Write",
+            abs.to_str().unwrap(),
+            "RESPONSEMARK",
+        ),
+        &[],
+    );
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    let r = dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("PostToolUseFailure", "Edit", "/etc/hosts", "x"),
+        &[],
+    );
+    assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    let lines: Vec<Value> = text
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 2, "{text}");
+    assert_eq!(lines[0]["kind"], "observe");
+    assert_eq!(lines[0]["tool"], "Write");
+    assert_eq!(lines[0]["class"], "write");
+    assert_eq!(lines[0]["path"], "src/x.rs");
+    assert_eq!(lines[0]["outcome"], "success");
+    assert_eq!(lines[0]["head"], json!(head));
+    assert_eq!(lines[1]["path"], "outside");
+    assert_eq!(lines[1]["outcome"], "failure");
+    for mark in [
+        "RESPONSEMARK",
+        "CONTENTMARK",
+        "raw-session-id-123",
+        "/etc/hosts",
+    ] {
+        assert!(!text.contains(mark), "{mark} leaked: {text}");
+    }
+}
+
+#[test]
+fn tool_observe_without_state_dir_or_with_bad_input_is_a_quiet_skip() {
+    let (_d, root) = repo("main");
+    let ok = post_tool("PostToolUse", "Read", "a.txt", "x");
+    let r = dispatch("tool-observe", &root, &ok, &[]);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    assert!(
+        !root.join(".moai-cli").exists(),
+        "never creates the state dir"
+    );
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    // A tool result past the 4 MiB stdin bound is cut off: quiet skip, nothing recorded.
+    let big = post_tool("PostToolUse", "Bash", "a.txt", &"y".repeat(5 * 1024 * 1024));
+    let r = dispatch("tool-observe", &root, &big, &[]);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    let r = dispatch("tool-observe", &root, b"{oops", &[]);
+    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    assert!(!engine_log(&root).exists());
+    // A wrong event name is a configuration error: engine error, still non-blocking.
+    assert_engine_error(&dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("Stop", "Read", "a.txt", "x"),
+        &[],
+    ));
+}
+
+#[test]
+fn tool_observe_refuses_a_symlinked_receipts_dir() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let elsewhere = root.join("home/elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, root.join(".moai-cli/receipts")).unwrap();
+    let r = dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("PostToolUse", "Read", "a.txt", "x"),
+        &[],
+    );
+    assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+    assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
+}
+
+#[test]
+fn turn_validation_ships_with_no_rule_and_never_blocks() {
+    let (_d, root) = repo("issue/77-k");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    for active in [false, true] {
+        let stop = json!({"hook_event_name": "Stop", "session_id": "s",
+                          "stop_hook_active": active, "last_assistant_message": "MSGMARK"});
+        let r = dispatch("turn-validation", &root, stop.to_string().as_bytes(), &[]);
+        assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
+    }
+    assert!(!engine_log(&root).exists(), "no rule, nothing written");
+    assert_engine_error(&dispatch("turn-validation", &root, b"{oops", &[]));
+    let wrong = json!({"hook_event_name": "PreToolUse"});
+    assert_engine_error(&dispatch(
+        "turn-validation",
+        &root,
+        wrong.to_string().as_bytes(),
+        &[],
+    ));
+}
+
+#[test]
+fn stage_two_duties_never_call_the_forge() {
+    let (_d, root) = repo("issue/77-k");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let marker = root.join("home/gh-called");
+    let fake = root.join("home/fake-gh");
+    common::write_executable(
+        &fake,
+        &format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+    );
+    let env = [("MOAI_FORGE_GH_BIN", fake.to_str().unwrap())];
+    dispatch(
+        "tool-observe",
+        &root,
+        &post_tool("PostToolUse", "Bash", "a.txt", "x"),
+        &env,
+    );
+    let stop = br#"{"hook_event_name":"Stop","session_id":"s","stop_hook_active":false}"#;
+    dispatch("turn-validation", &root, stop, &env);
+    assert!(!marker.exists());
+}
+
+// ---- audit #2400 (6770591310) B1-B2 and the canonical-cwd question ----
+
+/// A receipt log of exactly `len` bytes (one padding line, newline-terminated).
+fn log_of_len(path: &Path, len: usize) {
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let mut bytes = vec![b'x'; len - 1];
+    bytes.push(b'\n');
+    fs::write(path, bytes).unwrap();
+    assert_eq!(fs::metadata(path).unwrap().len(), len as u64);
+}
+
+/// B1: the shared append path takes a line while the log is below 4,194,304 bytes and
+/// refuses at exactly 4,194,304 — for the engine log and for `hook-receipt`'s log alike.
+#[test]
+fn receipt_logs_append_below_4194304_bytes_and_refuse_at_exactly_4194304() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let engine = engine_log(&root);
+    let post = post_tool("PostToolUse", "Read", "a.txt", "x");
+    log_of_len(&engine, 4_194_303);
+    dispatch("tool-observe", &root, &post, &[]);
+    assert!(
+        fs::metadata(&engine).unwrap().len() > 4_194_303,
+        "4,194,303 bytes: appended"
+    );
+    log_of_len(&engine, 4_194_304);
+    dispatch("tool-observe", &root, &post, &[]);
+    assert_eq!(
+        fs::metadata(&engine).unwrap().len(),
+        4_194_304,
+        "4,194,304 bytes: refused"
+    );
+    let receipts = root.join(".moai-cli/receipts/hooks.jsonl");
+    let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
+    let receipt = |root: &Path| {
+        run_program(
+            Path::new(BIN),
+            &["hook-receipt", "--host", "claude"],
+            root,
+            start,
+            &[],
+        )
+        .unwrap()
+    };
+    log_of_len(&receipts, 4_194_303);
+    assert_eq!(receipt(&root).code, 0);
+    assert!(fs::metadata(&receipts).unwrap().len() > 4_194_303);
+    log_of_len(&receipts, 4_194_304);
+    assert_eq!(receipt(&root).code, 0);
+    assert_eq!(fs::metadata(&receipts).unwrap().len(), 4_194_304);
+}
+
+/// B2: a secret-shaped target path is never logged, and a relative path that climbs out of
+/// the session directory is logged as `outside`, not as written.
+#[test]
+fn tool_observe_never_logs_secret_shaped_or_escaping_paths() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let cases = [
+        ("notes/ghp_SECRETVALUE123.txt", "unrecorded"),
+        ("cfg/token=SECRETVALUE456", "unrecorded"),
+        ("../x", "outside"),
+        ("a/../../x", "outside"),
+        ("./src/ok.rs", "./src/ok.rs"),
+    ];
+    for (path, _) in cases {
+        let r = dispatch(
+            "tool-observe",
+            &root,
+            &post_tool("PostToolUse", "Edit", path, "x"),
+            &[],
+        );
+        assert_eq!((r.code, r.stdout.as_str()), (0, ""));
+    }
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    let logged: Vec<Value> = text
+        .lines()
+        .map(|l| serde_json::from_str::<Value>(l).unwrap()["path"].clone())
+        .collect();
+    let expected: Vec<Value> = cases.iter().map(|(_, want)| json!(want)).collect();
+    assert_eq!(logged, expected);
+    for leak in ["SECRETVALUE", "../x"] {
+        assert!(!text.contains(leak), "{leak} leaked: {text}");
+    }
+}
+
+/// The engine canonicalizes the hook process's working directory before any duty (stage 2,
+/// applied to the stage-1 duties too, deliberately): a session started through a symlinked
+/// path still finds its local claim record, as `claim-verify --hook` does.
+#[test]
+fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
+    let (_d, root) = repo("issue/77-k");
+    let base = git(&root, &["rev-parse", "HEAD"]);
+    let record = ClaimRecord {
+        schema_version: 1,
+        task_ref: TaskRef::new("github", "github.com", "acme", "widgets", 1, 70, 77),
+        task_key: "0123456789abcdef".into(),
+        logical_key: "CW".into(),
+        owner: Owner::new("session", "agent-fixture"),
+        assignee: None,
+        provider_session: None,
+        integration_owner: None,
+        attempt: None,
+        epoch: 1,
+        base_revision: base,
+        worktree: WorktreeId::new(
+            root.join(".git").display().to_string(),
+            root.join(".git").display().to_string(),
+            root.display().to_string(),
+            "b".repeat(40),
+        ),
+        write_scope: vec!["a.txt".into()],
+        spec_ref: SpecRef {
+            id: "SPEC-CW".into(),
+            revision: "r1".into(),
+            digest: None,
+        },
+        comment_id: Some(5),
+        claim_token: Some("Moai-Claim: 77#5".into()),
+        lease_until: Some("2026-11-10T23:00:00Z".into()),
+        state: "assigned".into(),
+        effects: vec![],
+        last_observed_at: "2026-11-10T12:00:00Z".into(),
+    };
+    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
+    assert!(journal.try_lock().unwrap());
+    journal.commit("acquire", &record).unwrap();
+    drop(journal);
+    let link_dir = tempfile::TempDir::new().unwrap();
+    let link = link_dir.path().join("via-link");
+    std::os::unix::fs::symlink(&root, &link).unwrap();
+    fs::create_dir_all(link.join("home")).unwrap();
+    let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
+    let r = dispatch("session-check", &link, start, &[]);
+    assert!(
+        r.stdout.contains("local claim record: present"),
+        "{}",
+        r.stdout
+    );
+}
