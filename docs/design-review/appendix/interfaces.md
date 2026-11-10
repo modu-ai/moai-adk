@@ -27,6 +27,7 @@
 - `archive-restore`
 - `archive-search`
 - `atlas-tag-scan`
+- `audit-clone-plan`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
