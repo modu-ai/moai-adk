@@ -189,7 +189,7 @@ fn find<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
 /// F1a: a receipt that arrives as JSON on the CLI only claims to be a runner receipt; the
 /// cost report must not file it under the runner's `measured` group.
 #[test]
-#[ignore = "#2392 repro F1a: RED until cost-report stops trusting a declared producer"]
+#[ignore = "#2392 repro F1a: RED until cost-report marks the producer as caller-declared"]
 fn f1a_cost_report_does_not_trust_a_declared_runner_receipt() {
     let forged = serde_json::to_value(receipt(
         ProducerKind::RunnerReceipt,
@@ -216,10 +216,20 @@ fn f1a_cost_report_does_not_trust_a_declared_runner_receipt() {
         .unwrap();
     let out = child.wait_with_output().unwrap();
     let body: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    // Oracle edit (2026-11-10, before the fix, decision 6774899518 row 16 = B): the
+    // aggregation stays as #2191 accepted it (the declared runner group is kept), and the
+    // output says that the producer kind was declared by the caller, at the top and per row.
     let by = find(&body, "by_producer").cloned().unwrap_or(Value::Null);
-    assert!(
-        by["runner-receipt"].is_null(),
-        "cost-report counted a caller-declared runner receipt as measured: {body}"
+    assert_eq!(by["runner-receipt"]["receipts"], json!(1), "{body}");
+    assert_eq!(
+        body["result"]["producer_declared_by"],
+        json!("caller"),
+        "cost-report did not say the producer kind is caller-declared: {body}"
+    );
+    assert_eq!(
+        body["result"]["per_receipt"][0]["producer_declared_by"],
+        json!("caller"),
+        "{body}"
     );
 }
 
