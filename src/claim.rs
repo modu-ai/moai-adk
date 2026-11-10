@@ -1191,7 +1191,7 @@ pub fn acquire<T: Transport, C: Clock>(
     append_event(&journal.dir, "acquire", &record)?;
     write_record_file(&journal.dir, &record)?;
     let mut notes = vec![
-        "the journal lock is advisory: processes that bypass moai-cli are not serialized".into(),
+        "the journal lock is advisory: processes that bypass MoAI are not serialized".into(),
         fs_kind_note(&journal.dir),
     ];
     if adopted {
