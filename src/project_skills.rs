@@ -80,8 +80,11 @@ pub struct ProjectSkillEntry {
     pub host: String,
     /// Project skill folder, e.g. `.claude/skills/moai`.
     pub path: String,
-    /// create | unchanged | replace
+    /// create | unchanged | replace | blocked
     pub action: String,
+    /// Why the copy is `blocked` (decision row 22, #2286); omitted otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_reason: Option<String>,
     /// Staged package digest.
     pub source_sha256: String,
     /// Current project copy digest (None when absent).
@@ -166,6 +169,7 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
             host: host.clone(),
             path: format!("{folder}/{}", crate::update::SKILL_DIR),
             action: action.into(),
+            blocked_reason: None,
             source_sha256: staged.digest.clone(),
             current_sha256: project_digest,
             home_sha256,
@@ -574,10 +578,7 @@ mod tests {
         assert_eq!(plan.entries[0].action, "create");
         let receipt = project_skill_apply(&opted).unwrap();
         assert_eq!(receipt.status, "complete");
-        assert!(project
-            .path()
-            .join(".claude/skills/moai/SKILL.md")
-            .exists());
+        assert!(project.path().join(".claude/skills/moai/SKILL.md").exists());
 
         // Replace with changed source, then revert restores the first copy.
         let source2 = tempfile::TempDir::new().unwrap();
