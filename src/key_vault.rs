@@ -1,26 +1,31 @@
-//! API key vault, stage 1: the file backend and `key status | set | remove` (Issue #2393;
-//! design `docs/key-vault-design-2026-11-10.md` §3; user decision #2389 c6774899518 — OS
-//! store and file both supported, file by default).
+//! API key vault (Issue #2393): encrypted files under `~/.moai-cli/vault/`, and
+//! `key-status | key-set | key-remove` (user decisions, Issue #2393 comments 6777274025 and
+//! 6778671862: no OS key store; one encrypted file format on every OS).
 //!
-//! An entry is `~/.moai-cli/vault/<provider>.key`: one line, the value only. The backend comes
-//! from `key_store` in `~/.moai-cli/config` (TOML): `file` (also when the file or the key is
-//! absent), `keyring` or `auto`. The OS-store backends arrive in a later stage with their
-//! dependency review; until then they answer `key_store_unavailable`.
+//! Layout:
+//! - `~/.moai-cli/vault/.master.key`: 32 random bytes made by the first `key-set`, the key
+//!   that encrypts every entry (choice A of 6777331104);
+//! - `~/.moai-cli/vault/<folder>/<provider>.key`: one entry, where `<folder>` is
+//!   `<name>-<first 8 hex of clone_id>` for a project (see [`folder_name`]) or `_shared`;
+//! - an entry is `MOAIKV1\n`, a 24-byte random nonce, then the XChaCha20-Poly1305 ciphertext
+//!   and tag of the value. The associated data names the folder and the provider, so an entry
+//!   copied to another folder or provider name does not decrypt.
 //!
-//! Safety rules of the file backend (design §3.2), checked on the opened handle so a path
-//! swapped between check and read is not followed:
-//! - the entry is opened without following a symlink and must be a regular file;
-//! - on Unix its owner must be the owner of `HOME`, and it may carry no group or other
-//!   permission bits; the vault folder may carry none either (the answer names the `chmod`
-//!   fix, never the value);
-//! - at most [`VALUE_FILE_MAX`] bytes are read (a bigger file is refused, not truncated);
-//! - a write goes to a new `0600` file in the vault folder (created `0700`), then is renamed
-//!   over the entry, so a reader sees the old value or the new one.
+//! What this protects and what it does not: an entry copied, synced, pasted or backed up
+//! without `.master.key` cannot be read. A program running as the same user can read both
+//! files, so it is not kept out (the decision records this limit).
+//!
+//! Safety rules, checked on the opened handle so a path swapped between check and read is
+//! not followed: no symlink, a regular file; on Unix the owner is the owner of `HOME` and no
+//! group or other permission bits on the files and folders; bounded sizes. A write goes to a
+//! new `0600` file in the same folder, then is renamed over the entry.
 //!
 //! No value, length or fingerprint ever appears in an answer, error or log. A value comes in
 //! on stdin only (never argv), and an interactive terminal is refused: nothing here can turn
 //! echo off without a terminal library, so the value would be shown while typed.
 
+use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, OsRng, Payload};
+use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::{Read, Write};
@@ -28,15 +33,23 @@ use std::path::{Path, PathBuf};
 
 type Result<T> = std::result::Result<T, String>;
 
-/// Folder of the file backend under the home state directory.
+/// Folder of the vault under the home state directory.
 pub const VAULT_DIR: &str = "vault";
-/// The config file under the home state directory that may name the backend.
-pub const CONFIG_FILE: &str = "config";
-/// Largest entry file that is read (the launcher's key file bound, #2359).
+/// The machine key file inside the vault folder.
+pub const MASTER_KEY_FILE: &str = ".master.key";
+/// The folder for keys shared by every project.
+pub const SHARED_DIR: &str = "_shared";
+/// Largest stdin value read (and the legacy key file bound of #2359).
 pub const VALUE_FILE_MAX: u64 = 65_536;
-/// Largest value `key-set` stores: the entry is the value plus a newline, so a stored value
-/// is always within [`VALUE_FILE_MAX`] when read back (pre-audit B1, Issue #2393).
+/// Largest value `key-set` stores (pre-audit B1: whatever is stored reads back).
 pub const VALUE_MAX: usize = 65_535;
+const MAGIC: &[u8] = b"MOAIKV1\n";
+const NONCE_LEN: usize = 24;
+const TAG_LEN: usize = 16;
+const MASTER_LEN: usize = 32;
+/// Largest entry file read: the header, the nonce, the largest value and the tag
+/// (8 + 24 + 65,535 + 16 = 65,583 bytes).
+pub const ENTRY_FILE_MAX: u64 = (MAGIC.len() + NONCE_LEN + VALUE_MAX + TAG_LEN) as u64;
 
 /// A refusal with a fixed, machine-readable code (design §3.3) and the next action.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,20 +85,33 @@ impl Blocked {
     }
 }
 
-/// The selected backend.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Backend {
-    File,
-    Keyring,
-    Auto,
+/// Where an entry lives: a project's folder or the shared one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Scope {
+    Project(String),
+    Shared,
 }
 
-impl Backend {
-    pub fn name(self) -> &'static str {
+impl Scope {
+    pub fn folder(&self) -> &str {
         match self {
-            Backend::File => "file",
-            Backend::Keyring => "keyring",
-            Backend::Auto => "auto",
+            Scope::Project(f) => f,
+            Scope::Shared => SHARED_DIR,
+        }
+    }
+
+    /// The `key-set` flag that selects this scope, for the next-action hints.
+    fn flag(&self) -> &'static str {
+        match self {
+            Scope::Project(_) => "",
+            Scope::Shared => " --shared",
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Scope::Project(_) => "project",
+            Scope::Shared => "shared",
         }
     }
 }
@@ -118,6 +144,91 @@ pub fn home() -> Result<PathBuf> {
         .ok_or_else(|| "HOME is not set".to_string())
 }
 
+/// The project folder name (decision 2 of 6778671862, choice 4 of 6777331104):
+/// `<name>-<first 8 hex of clone_id>`. `<name>` is the profile's `project_id` when there is
+/// one, else the primary worktree's folder name; it is lowercased, every character other than
+/// `a-z`, `0-9` and `-` becomes `-`, runs of `-` collapse, `-` is trimmed at both ends, it is
+/// cut to 40 characters, and an empty result becomes `project`. The result can never be
+/// empty, start with `.`, hold `/`, or be `..` or `_shared`.
+pub fn folder_name(project_id: Option<&str>, primary_dir: &str, clone_hex: &str) -> String {
+    let raw = project_id
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or(primary_dir);
+    let mut name = String::new();
+    for ch in raw.chars().flat_map(char::to_lowercase) {
+        let c = if ch.is_ascii_lowercase() || ch.is_ascii_digit() {
+            ch
+        } else {
+            '-'
+        };
+        if c == '-' && (name.is_empty() || name.ends_with('-')) {
+            continue;
+        }
+        name.push(c);
+    }
+    let mut name: String = name.trim_end_matches('-').chars().take(40).collect();
+    while name.ends_with('-') {
+        name.pop();
+    }
+    if name.is_empty() {
+        name = "project".into();
+    }
+    let hex: String = clone_hex
+        .chars()
+        .filter(char::is_ascii_hexdigit)
+        .take(8)
+        .collect::<String>()
+        .to_ascii_lowercase();
+    format!("{name}-{hex}")
+}
+
+/// The project scope of `dir` from the workspace identity (`identity`), or `None` outside a
+/// git work tree. No git command is started here beyond the identity's own.
+pub fn project_scope(dir: &Path) -> Result<Option<Scope>> {
+    let id = crate::identity::identity(dir)?;
+    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
+        return Ok(None);
+    }
+    let clone = id["clone_id"].as_str().unwrap_or("");
+    let clone_hex = clone.strip_prefix("sha256:").unwrap_or(clone);
+    if clone_hex.len() < 8 {
+        return Err("the workspace identity has no clone id".into());
+    }
+    // The primary worktree is the folder that holds the common git directory.
+    let anchor = Path::new(id["clone_anchor"].as_str().unwrap_or(""));
+    let primary = if anchor.file_name().is_some_and(|n| n == ".git") {
+        anchor.parent().unwrap_or(anchor)
+    } else {
+        anchor
+    };
+    let primary_name = primary
+        .file_name()
+        .map(|n| n.to_string_lossy().trim_end_matches(".git").to_string())
+        .unwrap_or_default();
+    Ok(Some(Scope::Project(folder_name(
+        id["project_id"].as_str(),
+        &primary_name,
+        clone_hex,
+    ))))
+}
+
+/// The scope a `key-*` command works on: `--shared`, else the project of `dir`. Outside a
+/// git work tree only `--shared` is possible.
+pub fn scope_for(dir: &Path, shared: bool) -> Result<Scope> {
+    if shared {
+        return Ok(Scope::Shared);
+    }
+    project_scope(dir)?.ok_or_else(|| {
+        "not inside a git work tree: run it in the project, or use --shared for a key every project uses".to_string()
+    })
+}
+
+/// [`scope_for`] the current directory.
+pub fn scope_here(shared: bool) -> Result<Scope> {
+    let dir = std::env::current_dir().map_err(|_| "the current directory is unreadable")?;
+    scope_for(&dir, shared)
+}
+
 fn state_dir(home: &Path) -> PathBuf {
     home.join(crate::HOME_STATE_DIR)
 }
@@ -126,51 +237,19 @@ fn vault_dir(home: &Path) -> PathBuf {
     state_dir(home).join(VAULT_DIR)
 }
 
-fn entry_path(home: &Path, provider: &str) -> PathBuf {
-    vault_dir(home).join(format!("{provider}.key"))
+fn master_path(home: &Path) -> PathBuf {
+    vault_dir(home).join(MASTER_KEY_FILE)
 }
 
-/// The backend named by `key_store` in the config; `file` when the config or the key is
-/// absent. An unreadable config, a non-string value or an unknown name is an error rather
-/// than a silent default, so a typo cannot select a weaker store than intended.
-pub fn backend(home: &Path) -> Result<Backend> {
-    let path = state_dir(home).join(CONFIG_FILE);
-    let text = match fs::symlink_metadata(&path) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Backend::File),
-        Err(_) => return Err("~/.moai-cli/config is unreadable".into()),
-        Ok(m) if !m.is_file() || m.len() > VALUE_FILE_MAX => {
-            return Err("~/.moai-cli/config is not a regular file within 64 KiB".into())
-        }
-        Ok(_) => fs::read_to_string(&path).map_err(|_| "~/.moai-cli/config is unreadable")?,
-    };
-    let doc: toml_edit::DocumentMut = text
-        .parse()
-        .map_err(|_| "~/.moai-cli/config is not valid TOML")?;
-    match doc.get("key_store") {
-        None => Ok(Backend::File),
-        Some(item) => match item.as_str() {
-            Some("file") => Ok(Backend::File),
-            Some("keyring") => Ok(Backend::Keyring),
-            Some("auto") => Ok(Backend::Auto),
-            _ => Err(
-                "key_store in ~/.moai-cli/config must be \"file\", \"keyring\" or \"auto\"".into(),
-            ),
-        },
-    }
+fn scope_dir(home: &Path, scope: &Scope) -> PathBuf {
+    vault_dir(home).join(scope.folder())
 }
 
-fn os_store_unavailable(backend: Backend) -> Blocked {
-    Blocked::new(
-        "key_store_unavailable",
-        format!(
-            "key_store = \"{}\" needs the OS store backend, which is not available in this build",
-            backend.name()
-        ),
-        "set key_store = \"file\" in ~/.moai-cli/config, or wait for the OS store backend",
-    )
+pub fn entry_path(home: &Path, scope: &Scope, provider: &str) -> PathBuf {
+    scope_dir(home, scope).join(format!("{provider}.key"))
 }
 
-/// The Unix permission and owner rule for one opened object. `what` names it in the answer.
+/// The Unix permission and owner rule for one opened object.
 #[cfg(unix)]
 fn unix_unsafe(meta: &fs::Metadata, home: &Path, path: &Path, dir: bool) -> Option<Blocked> {
     use std::os::unix::fs::MetadataExt;
@@ -204,7 +283,7 @@ fn unix_unsafe(meta: &fs::Metadata, home: &Path, path: &Path, dir: bool) -> Opti
     }
 }
 
-/// What is wrong with an entry's owner and mode, if anything (pure, so the owner rule can be
+/// What is wrong with an object's owner and mode, if anything (pure, so the owner rule can be
 /// tested without a second user — pre-audit N1).
 #[cfg_attr(not(unix), allow(dead_code))]
 #[derive(Debug, PartialEq, Eq)]
@@ -227,26 +306,25 @@ fn unix_unsafe(_: &fs::Metadata, _: &Path, _: &Path, _: bool) -> Option<Blocked>
     None
 }
 
-/// The vault folder's state: absent is fine (nothing stored yet), anything but a private
+/// A vault folder's state: absent is fine (nothing stored there yet), anything but a private
 /// real directory is unsafe.
-fn check_vault_dir(home: &Path) -> std::result::Result<bool, Blocked> {
-    let dir = vault_dir(home);
-    match fs::symlink_metadata(&dir) {
+fn check_dir(home: &Path, dir: &Path) -> std::result::Result<bool, Blocked> {
+    match fs::symlink_metadata(dir) {
         Err(_) => Ok(false),
         Ok(m) if !m.is_dir() => Err(Blocked::new(
             "key_file_unsafe",
             format!("{} is not a real folder", dir.display()),
-            "move it away; the vault folder is created on the next key-set",
+            "move it away; the folder is created on the next key-set",
         )),
-        Ok(m) => match unix_unsafe(&m, home, &dir, true) {
+        Ok(m) => match unix_unsafe(&m, home, dir, true) {
             Some(b) => Err(b),
             None => Ok(true),
         },
     }
 }
 
-/// Opens an entry for reading without following a symlink (and without blocking on a FIFO).
-fn open_entry(path: &Path) -> std::io::Result<fs::File> {
+/// Opens a file for reading without following a symlink (and without blocking on a FIFO).
+fn open_nofollow(path: &Path) -> std::io::Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
@@ -257,6 +335,49 @@ fn open_entry(path: &Path) -> std::io::Result<fs::File> {
     options.open(path)
 }
 
+/// The bytes of a private file of at most `max` bytes: `Ok(None)` when it does not exist,
+/// `Err` when it breaks a safety rule. `hint` is the next action named in a refusal.
+fn read_private(
+    home: &Path,
+    path: &Path,
+    max: u64,
+    hint: &str,
+) -> std::result::Result<Option<Vec<u8>>, Blocked> {
+    let unsafe_file = |why: &str| {
+        Blocked::new(
+            "key_file_unsafe",
+            format!("{} {why}", path.display()),
+            hint.to_string(),
+        )
+    };
+    let file = match open_nofollow(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        // A symlink (O_NOFOLLOW) or an unopenable file.
+        Err(_) => return Err(unsafe_file("is not a readable regular file")),
+    };
+    let meta = file
+        .metadata()
+        .map_err(|_| unsafe_file("metadata is unreadable"))?;
+    if !meta.is_file() {
+        return Err(unsafe_file("is not a regular file"));
+    }
+    if let Some(b) = unix_unsafe(&meta, home, path, false) {
+        return Err(b);
+    }
+    if meta.len() > max {
+        return Err(unsafe_file(&format!("is larger than {max} bytes")));
+    }
+    let mut bytes = Vec::new();
+    file.take(max + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| unsafe_file("is unreadable"))?;
+    if bytes.len() as u64 > max {
+        return Err(unsafe_file(&format!("is larger than {max} bytes")));
+    }
+    Ok(Some(bytes))
+}
+
 /// The one rule for a value (shared with the launcher, #2359 AC4): surrounding whitespace
 /// is dropped; empty, whitespace-only or control-character values are no value.
 pub fn usable_value(value: &str) -> Option<String> {
@@ -264,116 +385,220 @@ pub fn usable_value(value: &str) -> Option<String> {
     (!value.is_empty() && !value.chars().any(char::is_control)).then(|| value.to_string())
 }
 
-/// The file backend's value for `provider`: `Ok(None)` when no entry exists, `Err` when the
-/// store or the entry breaks a safety rule or holds no usable value.
-pub fn read_file_entry(
-    home: &Path,
-    provider: &str,
-) -> std::result::Result<Option<String>, Blocked> {
-    if !check_vault_dir(home)? {
-        return Ok(None);
-    }
-    let path = entry_path(home, provider);
-    let file = match open_entry(&path) {
-        Ok(f) => f,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => {
-            // A symlink (O_NOFOLLOW) or an unopenable entry.
-            return Err(Blocked::new(
-                "key_file_unsafe",
-                format!("{} is not a readable regular file", path.display()),
-                format!("remove it and run: moai-cli key-set {provider}"),
-            ));
-        }
-    };
-    let meta = file.metadata().map_err(|_| {
-        Blocked::new(
-            "key_file_unsafe",
-            format!("{} metadata is unreadable", path.display()),
-            format!("remove it and run: moai-cli key-set {provider}"),
-        )
-    })?;
-    if !meta.is_file() {
-        return Err(Blocked::new(
-            "key_file_unsafe",
-            format!("{} is not a regular file", path.display()),
-            format!("remove it and run: moai-cli key-set {provider}"),
-        ));
-    }
-    if let Some(b) = unix_unsafe(&meta, home, &path, false) {
-        return Err(b);
-    }
-    if meta.len() > VALUE_FILE_MAX {
-        return Err(Blocked::new(
-            "key_file_unsafe",
-            format!("{} is larger than 64 KiB", path.display()),
-            format!("run: moai-cli key-set {provider}"),
-        ));
-    }
-    let mut text = String::new();
-    file.take(VALUE_FILE_MAX + 1)
-        .read_to_string(&mut text)
-        .map_err(|_| {
+/// The associated data of an entry: the format, the folder and the provider.
+fn aad(folder: &str, provider: &str) -> Vec<u8> {
+    format!("moai-cli vault v1|{folder}|{provider}").into_bytes()
+}
+
+/// The machine key, when present and valid. A file of another length is unsafe.
+fn load_master(home: &Path) -> std::result::Result<Option<[u8; MASTER_LEN]>, Blocked> {
+    let path = master_path(home);
+    let hint = "restore the vault's .master.key from your backup; without it the stored keys cannot be read";
+    match read_private(home, &path, MASTER_LEN as u64, hint)? {
+        None => Ok(None),
+        Some(bytes) => bytes.try_into().map(Some).map_err(|_| {
             Blocked::new(
                 "key_file_unsafe",
-                format!("{} is not readable text", path.display()),
-                format!("run: moai-cli key-set {provider}"),
+                format!("{} is not a {MASTER_LEN}-byte key", path.display()),
+                hint,
             )
+        }),
+    }
+}
+
+/// Every `*.key` entry under the vault folder, one folder deep.
+fn has_entries(home: &Path) -> bool {
+    let Ok(dirs) = fs::read_dir(vault_dir(home)) else {
+        return false;
+    };
+    dirs.flatten().any(|d| {
+        fs::read_dir(d.path()).is_ok_and(|mut files| {
+            files.any(|f| f.is_ok_and(|f| f.path().extension().is_some_and(|e| e == "key")))
+        })
+    })
+}
+
+/// The machine key for a write: the existing one, else a new random one made with
+/// `create_new` (so two concurrent first writes never make two keys). When entries exist but
+/// the key does not, nothing is made: a new key could never read those entries.
+fn ensure_master(home: &Path) -> Result<[u8; MASTER_LEN]> {
+    let to_text = |b: Blocked| format!("{}: {}", b.code, b.reason);
+    if let Some(key) = load_master(home).map_err(to_text)? {
+        return Ok(key);
+    }
+    if has_entries(home) {
+        return Err(format!(
+            "key_file_unsafe: the vault holds entries but {} is missing; restore it, or remove the entries before storing a new key",
+            master_path(home).display()
+        ));
+    }
+    let key = XChaCha20Poly1305::generate_key(&mut OsRng);
+    let path = master_path(home);
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+    }
+    match options.open(&path) {
+        Ok(mut f) => {
+            let written = f.write_all(&key).and_then(|_| f.sync_all());
+            if written.is_err() {
+                let _ = fs::remove_file(&path);
+                return Err(format!("cannot write {}", path.display()));
+            }
+        }
+        // Another writer made it first: use that one.
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(_) => return Err(format!("cannot create {}", path.display())),
+    }
+    load_master(home)
+        .map_err(to_text)?
+        .ok_or_else(|| format!("{} vanished while it was made", path.display()))
+}
+
+/// Encrypts `value` for `folder`/`provider` with a fresh random nonce.
+fn seal(key: &[u8; MASTER_LEN], folder: &str, provider: &str, value: &str) -> Result<Vec<u8>> {
+    let cipher = XChaCha20Poly1305::new_from_slice(key).map_err(|_| "bad machine key length")?;
+    let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
+    let aad = aad(folder, provider);
+    let sealed = cipher
+        .encrypt(
+            &nonce,
+            Payload {
+                msg: value.as_bytes(),
+                aad: &aad,
+            },
+        )
+        .map_err(|_| "encryption failed")?;
+    let mut out = Vec::with_capacity(MAGIC.len() + NONCE_LEN + sealed.len());
+    out.extend_from_slice(MAGIC);
+    out.extend_from_slice(&nonce);
+    out.extend_from_slice(&sealed);
+    Ok(out)
+}
+
+/// Decrypts an entry. Anything without the header, too short, altered, moved to another
+/// folder or provider, or encrypted with another key is refused without a value.
+fn open_sealed(
+    key: &[u8; MASTER_LEN],
+    folder: &str,
+    provider: &str,
+    bytes: &[u8],
+    path: &Path,
+    hint: &str,
+) -> std::result::Result<String, Blocked> {
+    let refuse = |why: &str| {
+        Blocked::new(
+            "key_file_unsafe",
+            format!("{} {why}", path.display()),
+            hint.to_string(),
+        )
+    };
+    let Some(rest) = bytes.strip_prefix(MAGIC) else {
+        return Err(refuse("is not a moai-cli vault entry (no MOAIKV1 header)"));
+    };
+    if rest.len() < NONCE_LEN + TAG_LEN {
+        return Err(refuse("is too short to be a vault entry"));
+    }
+    let (nonce, sealed) = rest.split_at(NONCE_LEN);
+    let cipher = XChaCha20Poly1305::new_from_slice(key).map_err(|_| refuse("cannot be read"))?;
+    let aad = aad(folder, provider);
+    let plain = cipher
+        .decrypt(
+            XNonce::from_slice(nonce),
+            Payload {
+                msg: sealed,
+                aad: &aad,
+            },
+        )
+        .map_err(|_| {
+            refuse("cannot be decrypted with this machine's key (altered, moved or made with another key)")
         })?;
-    match usable_value(&text) {
-        Some(v) => Ok(Some(v)),
-        None => Err(Blocked::new(
+    let text = String::from_utf8(plain).map_err(|_| refuse("does not hold text"))?;
+    usable_value(&text).ok_or_else(|| {
+        Blocked::new(
             "key_absent",
             format!("{} holds no usable value", path.display()),
-            format!("run: moai-cli key-set {provider} (value on stdin)"),
-        )),
-    }
+            hint.to_string(),
+        )
+    })
 }
 
-/// The selected backend's value for `provider` (what the launcher will read, stage 2).
-pub fn read(home: &Path, provider: &str) -> std::result::Result<Option<String>, Blocked> {
+/// The value of one scope's entry: `Ok(None)` when no entry exists, `Err` when the vault, the
+/// entry or the machine key breaks a rule, or the entry does not decrypt.
+pub fn read_entry(
+    home: &Path,
+    scope: &Scope,
+    provider: &str,
+) -> std::result::Result<Option<String>, Blocked> {
     check_provider(provider)
         .map_err(|e| Blocked::new("key_absent", e, "use a valid provider name"))?;
-    let backend = backend(home).map_err(|e| {
-        Blocked::new(
-            "key_store_unavailable",
-            e,
-            "fix key_store in ~/.moai-cli/config",
-        )
-    })?;
-    match backend {
-        Backend::File => read_file_entry(home, provider),
-        other => Err(os_store_unavailable(other)),
+    if !check_dir(home, &vault_dir(home))? || !check_dir(home, &scope_dir(home, scope))? {
+        return Ok(None);
     }
+    let path = entry_path(home, scope, provider);
+    let hint = format!(
+        "remove it and run: moai-cli key-set {provider}{} (value on stdin)",
+        scope.flag()
+    );
+    let Some(bytes) = read_private(home, &path, ENTRY_FILE_MAX, &hint)? else {
+        return Ok(None);
+    };
+    let Some(key) = load_master(home)? else {
+        return Err(Blocked::new(
+            "key_file_unsafe",
+            format!(
+                "{} exists but {} is missing",
+                path.display(),
+                master_path(home).display()
+            ),
+            "restore the vault's .master.key from your backup, or remove the entry and store the key again",
+        ));
+    };
+    open_sealed(&key, scope.folder(), provider, &bytes, &path, &hint).map(Some)
 }
 
-/// `key status`: the backend and whether an entry exists and passes the safety rules. Never
-/// the value, its length or a fingerprint.
-pub fn status(home: &Path, provider: &str) -> Result<Value> {
+/// The launcher's read (decision 4 of 6778671862): the project's entry, then the shared one.
+/// A project entry that exists but breaks a rule stops here; only an absent one falls
+/// through to the shared folder.
+pub fn read(
+    home: &Path,
+    project: Option<&Scope>,
+    provider: &str,
+) -> std::result::Result<Option<(String, Scope)>, Blocked> {
+    if let Some(scope) = project {
+        if let Some(value) = read_entry(home, scope, provider)? {
+            return Ok(Some((value, scope.clone())));
+        }
+    }
+    Ok(read_entry(home, &Scope::Shared, provider)?.map(|v| (v, Scope::Shared)))
+}
+
+/// `key-status`: whether the scope's entry exists, passes the safety rules and decrypts.
+/// Never the value, its length or a fingerprint.
+pub fn status(home: &Path, scope: &Scope, provider: &str) -> Result<Value> {
     check_provider(provider)?;
-    let backend = backend(home)?;
-    let path = entry_path(home, provider);
-    let (entry, blocked) = match backend {
-        Backend::File => match read_file_entry(home, provider) {
-            Ok(Some(_)) => ("present", None),
-            Ok(None) => ("absent", None),
-            Err(b) if b.code == "key_absent" => ("empty", Some(b)),
-            Err(b) => ("unsafe", Some(b)),
-        },
-        other => ("unknown", Some(os_store_unavailable(other))),
+    let (entry, blocked) = match read_entry(home, scope, provider) {
+        Ok(Some(_)) => ("present", None),
+        Ok(None) => ("absent", None),
+        Err(b) if b.code == "key_absent" => ("empty", Some(b)),
+        Err(b) => ("unsafe", Some(b)),
     };
     Ok(json!({
         "provider": provider,
-        "backend": backend.name(),
+        "scope": scope.name(),
+        "folder": scope.folder(),
         "entry": entry,
-        "path": path.to_string_lossy(),
+        "path": entry_path(home, scope, provider).to_string_lossy(),
         "blocked": blocked.map(|b| b.to_json()),
         "value_shown": false,
     }))
 }
 
-/// Reads the value for `key set` from `input`: at most [`VALUE_FILE_MAX`] bytes, one usable
-/// value. The caller refuses an interactive terminal before calling this.
+/// Reads the value for `key-set` from `input`: at most [`VALUE_FILE_MAX`] bytes, one usable
+/// value of at most [`VALUE_MAX`] bytes. The caller refuses an interactive terminal first.
 pub fn read_value(mut input: impl Read) -> Result<String> {
     let mut bytes = Vec::new();
     input
@@ -394,11 +619,11 @@ pub fn read_value(mut input: impl Read) -> Result<String> {
     Ok(value)
 }
 
-/// Creates the vault folder `0700` when absent (its parent too), and checks an existing one.
-fn ensure_vault_dir(home: &Path) -> Result<PathBuf> {
-    let dir = vault_dir(home);
-    if check_vault_dir(home).map_err(|b| format!("{}: {}", b.code, b.reason))? {
-        return Ok(dir);
+/// Creates a vault folder `0700` when absent (its parents too), and checks an existing one.
+fn ensure_dir(home: &Path, dir: &Path) -> Result<()> {
+    let to_text = |b: Blocked| format!("{}: {}", b.code, b.reason);
+    if check_dir(home, dir).map_err(to_text)? {
+        return Ok(());
     }
     let mut builder = fs::DirBuilder::new();
     builder.recursive(true);
@@ -408,27 +633,27 @@ fn ensure_vault_dir(home: &Path) -> Result<PathBuf> {
         builder.mode(0o700);
     }
     builder
-        .create(&dir)
+        .create(dir)
         .map_err(|_| format!("cannot create {}", dir.display()))?;
-    check_vault_dir(home).map_err(|b| format!("{}: {}", b.code, b.reason))?;
-    Ok(dir)
+    check_dir(home, dir).map_err(to_text)?;
+    Ok(())
 }
 
-/// `key set` (file backend): writes `value` to a new `0600` file in the vault folder, then
-/// renames it over the entry. Answers without the value.
-pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
+/// `key-set`: encrypts `value` and writes it to a new `0600` file in the scope's folder, then
+/// renames it over the entry. Makes the machine key on the first write. Answers without the
+/// value.
+pub fn set(home: &Path, scope: &Scope, provider: &str, value: &str) -> Result<Value> {
     check_provider(provider)?;
-    let backend = backend(home)?;
-    if backend != Backend::File {
-        let b = os_store_unavailable(backend);
-        return Err(format!("{}: {}", b.code, b.reason));
-    }
     let value = usable_value(value).ok_or("no usable value")?;
     if value.len() > VALUE_MAX {
         return Err("the value exceeds 65,535 bytes".into());
     }
-    let dir = ensure_vault_dir(home)?;
-    let entry = entry_path(home, provider);
+    let vault = vault_dir(home);
+    ensure_dir(home, &vault)?;
+    let key = ensure_master(home)?;
+    let dir = scope_dir(home, scope);
+    ensure_dir(home, &dir)?;
+    let entry = entry_path(home, scope, provider);
     // Refuse to replace something that is not a regular file (a symlink is not followed by
     // rename, but replacing a folder or a device would hide it).
     if let Ok(m) = fs::symlink_metadata(&entry) {
@@ -439,6 +664,7 @@ pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
             ));
         }
     }
+    let sealed = seal(&key, scope.folder(), provider, &value)?;
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -456,8 +682,7 @@ pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
     }
     let written = (|| -> std::io::Result<()> {
         let mut f = options.open(&tmp)?;
-        f.write_all(value.as_bytes())?;
-        f.write_all(b"\n")?;
+        f.write_all(&sealed)?;
         f.sync_all()?;
         fs::rename(&tmp, &entry)
     })();
@@ -467,28 +692,26 @@ pub fn set(home: &Path, provider: &str, value: &str) -> Result<Value> {
     }
     Ok(json!({
         "provider": provider,
-        "backend": backend.name(),
+        "scope": scope.name(),
+        "folder": scope.folder(),
         "path": entry.to_string_lossy(),
         "written": true,
+        "encrypted": true,
         "value_shown": false,
     }))
 }
 
-/// `key remove` (file backend): removes the entry file only, after the caller's
-/// confirmation (`--yes`). No other file is touched (a legacy key file stays as it is).
-pub fn remove(home: &Path, provider: &str, confirmed: bool) -> Result<Value> {
+/// `key-remove`: removes the scope's entry file only, after the caller's confirmation
+/// (`--yes`). The machine key and every other file stay (a legacy key file too).
+pub fn remove(home: &Path, scope: &Scope, provider: &str, confirmed: bool) -> Result<Value> {
     check_provider(provider)?;
-    let backend = backend(home)?;
-    if backend != Backend::File {
-        let b = os_store_unavailable(backend);
-        return Err(format!("{}: {}", b.code, b.reason));
-    }
-    let entry = entry_path(home, provider);
+    let entry = entry_path(home, scope, provider);
     let exists = fs::symlink_metadata(&entry).is_ok();
     if !confirmed {
         return Ok(json!({
             "provider": provider,
-            "backend": backend.name(),
+            "scope": scope.name(),
+            "folder": scope.folder(),
             "path": entry.to_string_lossy(),
             "exists": exists,
             "removed": false,
@@ -503,7 +726,8 @@ pub fn remove(home: &Path, provider: &str, confirmed: bool) -> Result<Value> {
     };
     Ok(json!({
         "provider": provider,
-        "backend": backend.name(),
+        "scope": scope.name(),
+        "folder": scope.folder(),
         "path": entry.to_string_lossy(),
         "exists": exists,
         "removed": removed,
@@ -534,6 +758,44 @@ mod tests {
         }
     }
 
+    /// Decision 2 of 6778671862: `<name>-<8 hex>`. User text becomes a path component, so
+    /// every unsafe shape is pinned by a literal.
+    #[test]
+    fn folder_names_are_safe_path_components() {
+        let hex = "0123abcdef99";
+        for (id, dir, want) in [
+            (Some("moai-adk"), "x", "moai-adk-0123abcd"),
+            (None, "MoAI ADK", "moai-adk-0123abcd"),
+            (Some("  "), "repo", "repo-0123abcd"),
+            (Some("../../etc"), "x", "etc-0123abcd"),
+            (Some("a/b"), "x", "a-b-0123abcd"),
+            (Some(".hidden"), "x", "hidden-0123abcd"),
+            (Some(".."), "x", "project-0123abcd"),
+            (Some("_shared"), "x", "shared-0123abcd"),
+            (None, "", "project-0123abcd"),
+            (Some("한글"), "x", "project-0123abcd"),
+            (Some("A--B__C"), "x", "a-b-c-0123abcd"),
+        ] {
+            assert_eq!(folder_name(id, dir, hex), want, "{id:?} {dir:?}");
+        }
+        let long = "a".repeat(60);
+        let got = folder_name(Some(&long), "x", hex);
+        assert_eq!(got, format!("{}-0123abcd", "a".repeat(40)));
+        // A name cut inside a run of '-' never ends with '-' before the hex.
+        let edge = format!("{}-b", "a".repeat(39));
+        assert_eq!(
+            folder_name(Some(&edge), "x", hex),
+            format!("{}-0123abcd", "a".repeat(39))
+        );
+        for (id, dir) in [(Some("x/../y"), ""), (None, "."), (None, "/")] {
+            let f = folder_name(id, dir, hex);
+            assert!(
+                !f.contains('/') && !f.starts_with('.') && f != SHARED_DIR,
+                "{f}"
+            );
+        }
+    }
+
     #[test]
     fn a_value_is_trimmed_and_control_characters_refuse_it() {
         assert_eq!(usable_value("  k-1  \n").as_deref(), Some("k-1"));
@@ -543,9 +805,8 @@ mod tests {
     }
 
     #[test]
-    fn stdin_values_are_bounded_at_64_kib() {
-        // A value of 65_535 bytes is the largest accepted (with its newline the entry is
-        // 65_536 bytes, the read limit); 65_536 is refused (pre-audit B1). Literal bounds.
+    fn stdin_values_are_bounded() {
+        // 65,535 bytes is the largest value; 65,536 is refused. Literal bounds.
         assert!(read_value(&vec![b'k'; 65_535][..]).is_ok());
         let mut with_newline = vec![b'k'; 65_535];
         with_newline.push(b'\n');
@@ -554,10 +815,10 @@ mod tests {
         assert!(read_value(&vec![b'k'; 65_537][..]).is_err());
         assert!(read_value(&b"\xff\xfe"[..]).is_err());
         assert!(read_value(&b"   \n"[..]).is_err());
+        assert_eq!(ENTRY_FILE_MAX, 65_583);
     }
 
-    /// The owner rule without a second user (pre-audit N1): another owner is refused even
-    /// with private bits; the owner with any group/other bit is refused; 0600/0400 pass.
+    /// The owner rule without a second user (pre-audit N1).
     #[test]
     fn owner_and_mode_rule() {
         assert_eq!(owner_mode_problem(501, 0o600, 501), None);
@@ -579,8 +840,7 @@ mod tests {
         }
     }
 
-    /// A HOME that cannot be read makes every entry unsafe instead of skipping the checks
-    /// (pre-audit N2).
+    /// A HOME that cannot be read makes every file unsafe instead of skipping the checks.
     #[cfg(unix)]
     #[test]
     fn an_unreadable_home_blocks() {
@@ -592,27 +852,150 @@ mod tests {
         assert_eq!(b.code, "key_file_unsafe");
     }
 
-    /// `read` (the launcher's entry point, stage 2) follows the selected backend and never
-    /// falls back to the file when an OS store is selected.
+    fn sealed_entry(home: &Path, scope: &Scope, value: &str) -> PathBuf {
+        set(home, scope, "glm", value).unwrap();
+        entry_path(home, scope, "glm")
+    }
+
+    /// The format: header, fresh nonce per write, AAD bound to folder and provider, tag
+    /// checked, and no value in any refusal.
     #[test]
-    fn read_follows_the_backend_and_does_not_fall_back() {
+    fn entries_are_sealed_and_bound_to_their_place() {
         let dir = tempfile::TempDir::new().unwrap();
         let home = dir.path();
         let value = format!("moai-test-key-{}", std::process::id());
-        set(home, "glm", &value).unwrap();
-        assert_eq!(read(home, "glm").unwrap().as_deref(), Some(value.as_str()));
-        assert_eq!(read(home, "other").unwrap(), None);
-        for name in ["keyring", "auto"] {
-            fs::write(
-                home.join(".moai-cli/config"),
-                format!("key_store = \"{name}\"\n"),
-            )
-            .unwrap();
-            let err = read(home, "glm").unwrap_err();
-            assert_eq!(err.code, "key_store_unavailable", "{name}");
-            assert!(!err.reason.contains(&value) && !err.next.contains(&value));
+        let p = Scope::Project("demo-0123abcd".into());
+        let path = sealed_entry(home, &p, &value);
+        let bytes = fs::read(&path).unwrap();
+        assert!(bytes.starts_with(b"MOAIKV1\n"));
+        assert_eq!(bytes.len(), 8 + 24 + value.len() + 16);
+        assert!(!bytes.windows(value.len()).any(|w| w == value.as_bytes()));
+        assert_eq!(
+            read_entry(home, &p, "glm").unwrap().as_deref(),
+            Some(value.as_str())
+        );
+        // A second write of the same value uses a new nonce.
+        set(home, &p, "glm", &value).unwrap();
+        assert_ne!(fs::read(&path).unwrap(), bytes);
+        let check = |b: Blocked| {
+            assert_eq!(b.code, "key_file_unsafe");
+            assert!(!b.reason.contains(&value) && !b.next.contains(&value));
+        };
+        // One flipped byte in the nonce, the ciphertext or the tag: refused.
+        for at in [8, 8 + 24, bytes.len() - 1] {
+            let mut bad = bytes.clone();
+            bad[at] ^= 1;
+            fs::write(&path, &bad).unwrap();
+            let b = read_entry(home, &p, "glm").unwrap_err();
+            assert!(
+                b.reason.contains("cannot be decrypted"),
+                "{at}: {}",
+                b.reason
+            );
+            check(b);
         }
-        fs::write(home.join(".moai-cli/config"), "key_store = \"vault\"\n").unwrap();
-        assert_eq!(read(home, "glm").unwrap_err().code, "key_store_unavailable");
+        // No header (a plain-text file from before the format): refused, not used.
+        fs::write(&path, format!("{value}\n")).unwrap();
+        let b = read_entry(home, &p, "glm").unwrap_err();
+        assert!(b.reason.contains("no MOAIKV1 header"), "{}", b.reason);
+        check(b);
+        // Copied to the shared folder or to another provider name: does not decrypt.
+        fs::write(&path, &bytes).unwrap();
+        // A private shared folder, so only the associated data can refuse the copy.
+        ensure_dir(home, &scope_dir(home, &Scope::Shared)).unwrap();
+        fs::copy(&path, entry_path(home, &Scope::Shared, "glm")).unwrap();
+        let b = read_entry(home, &Scope::Shared, "glm").unwrap_err();
+        assert!(b.reason.contains("cannot be decrypted"), "{}", b.reason);
+        check(b);
+        fs::copy(&path, entry_path(home, &p, "zai")).unwrap();
+        let b = read_entry(home, &p, "zai").unwrap_err();
+        assert!(b.reason.contains("cannot be decrypted"), "{}", b.reason);
+        check(b);
+        // Another machine key: does not decrypt.
+        fs::write(master_path(home), [7u8; 32]).unwrap();
+        let b = read_entry(home, &p, "glm").unwrap_err();
+        assert!(b.reason.contains("cannot be decrypted"), "{}", b.reason);
+        check(b);
+    }
+
+    /// The machine key: made once, 32 bytes, never replaced while entries exist.
+    #[test]
+    fn the_machine_key_is_made_once_and_never_silently_replaced() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        sealed_entry(home, &Scope::Shared, "moai-test-a");
+        let master = fs::read(master_path(home)).unwrap();
+        assert_eq!(master.len(), 32);
+        sealed_entry(home, &Scope::Shared, "moai-test-b");
+        assert_eq!(fs::read(master_path(home)).unwrap(), master);
+        // Lost key with entries left: no new key, the write is refused, the read too.
+        fs::remove_file(master_path(home)).unwrap();
+        let err = set(home, &Scope::Shared, "glm", "moai-test-c").unwrap_err();
+        assert!(err.contains("missing"), "{err}");
+        assert!(!master_path(home).exists());
+        let b = read_entry(home, &Scope::Shared, "glm").unwrap_err();
+        assert_eq!(b.code, "key_file_unsafe");
+        // A private key file of another length: unsafe for its length (31 and 33 bytes; 32 is
+        // the only length). Mode 0600 so only the length can refuse it.
+        for (len, why) in [
+            (31usize, "is not a 32-byte key"),
+            (33, "is larger than 32 bytes"),
+        ] {
+            fs::write(master_path(home), vec![1u8; len]).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                fs::set_permissions(master_path(home), fs::Permissions::from_mode(0o600)).unwrap();
+            }
+            let b = load_master(home).unwrap_err();
+            assert_eq!(b.code, "key_file_unsafe", "{len}");
+            assert!(b.reason.ends_with(why), "{len}: {}", b.reason);
+        }
+        fs::write(master_path(home), [1u8; 32]).unwrap();
+        assert_eq!(load_master(home).unwrap(), Some([1u8; 32]));
+    }
+
+    /// Decision 4: the project's entry first, the shared one only when the project has none;
+    /// a broken project entry does not fall through.
+    #[test]
+    fn the_project_comes_before_the_shared_folder() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        let p = Scope::Project("demo-0123abcd".into());
+        assert_eq!(read(home, Some(&p), "glm").unwrap(), None);
+        sealed_entry(home, &Scope::Shared, "moai-test-shared");
+        let (v, s) = read(home, Some(&p), "glm").unwrap().unwrap();
+        assert_eq!((v.as_str(), s), ("moai-test-shared", Scope::Shared));
+        assert_eq!(read(home, None, "glm").unwrap().unwrap().1, Scope::Shared);
+        sealed_entry(home, &p, "moai-test-project");
+        let (v, s) = read(home, Some(&p), "glm").unwrap().unwrap();
+        assert_eq!((v.as_str(), s), ("moai-test-project", p.clone()));
+        fs::write(entry_path(home, &p, "glm"), b"MOAIKV1\nbroken").unwrap();
+        assert_eq!(
+            read(home, Some(&p), "glm").unwrap_err().code,
+            "key_file_unsafe"
+        );
+    }
+
+    /// The entry bound: an entry of exactly the largest size is read; one byte more is not.
+    #[test]
+    fn the_entry_file_bound_is_65583_bytes() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        let max = "k".repeat(65_535);
+        let path = sealed_entry(home, &Scope::Shared, &max);
+        assert_eq!(fs::metadata(&path).unwrap().len(), 65_583);
+        assert_eq!(
+            read_entry(home, &Scope::Shared, "glm")
+                .unwrap()
+                .unwrap()
+                .len(),
+            65_535
+        );
+        let mut bytes = fs::read(&path).unwrap();
+        bytes.push(0);
+        fs::write(&path, &bytes).unwrap();
+        let b = read_entry(home, &Scope::Shared, "glm").unwrap_err();
+        assert!(b.reason.contains("larger than 65583 bytes"), "{}", b.reason);
     }
 }
