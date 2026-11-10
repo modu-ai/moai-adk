@@ -99,11 +99,16 @@ fn fixture() -> Fixture {
 }
 
 fn plan(fx: &Fixture, now: Option<u64>) -> Value {
+    plan_from(fx, &fx.root, now)
+}
+
+/// The plan run with `cwd` as the process's working directory.
+fn plan_from(fx: &Fixture, cwd: &Path, now: Option<u64>) -> Value {
     let mut cmd = Command::new(BIN);
     cmd.args(["worktree-gc-plan"])
         .arg(&fx.root)
         .args(["--integration-ref", "integ"])
-        .current_dir(&fx.root)
+        .current_dir(cwd)
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null");
@@ -206,6 +211,46 @@ fn a_recent_change_keeps_every_worktree() {
     assert!(reasons(a).contains(&"recent_change".to_string()), "{a}");
     assert_eq!(r["totals"]["remove"], 0);
     assert_eq!(r["totals"]["trim"], 0);
+}
+
+/// Pre-audit FAIL 6777336338 B1 (X1): a worktree under `.claude/worktrees/` is preserved
+/// state (Q8) — merged, clean and holding only cargo output, it is still `skip` with
+/// `preserved_location` as its only reason.
+#[test]
+fn a_worktree_under_claude_worktrees_is_preserved() {
+    let fx = fixture();
+    let g = fx.root.join(".claude/worktrees/g");
+    git(
+        &fx.root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/1-g",
+            g.to_str().unwrap(),
+        ],
+    );
+    cargo_output(&g);
+    let r = plan(&fx, Some(later()));
+    let e = entry(&r, ".claude/worktrees/g");
+    assert_eq!(e["action"], "skip", "{e}");
+    assert_eq!(reasons(e), ["preserved_location"]);
+}
+
+/// Pre-audit FAIL 6777336338 B1 (X2): the worktree the plan runs in is never a candidate.
+/// The plan's own process also has its working directory there, so `process_in_use` holds
+/// too; `current_directory` must be named on its own.
+#[test]
+fn the_worktree_the_plan_runs_in_is_kept() {
+    let fx = fixture();
+    let a = fx.root.join(".moai-cli/worktrees/a");
+    let r = plan_from(&fx, &a, Some(later()));
+    let e = entry(&r, ".moai-cli/worktrees/a");
+    assert_eq!(e["action"], "skip", "{e}");
+    assert!(reasons(e).contains(&"current_directory".to_string()), "{e}");
+    // The primary is not the current directory here even though `a` is nested in it.
+    assert!(!reasons(entry(&r, ".")).contains(&"current_directory".to_string()));
 }
 
 #[test]
