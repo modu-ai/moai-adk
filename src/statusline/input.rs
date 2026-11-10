@@ -353,6 +353,10 @@ mod tests {
         assert_eq!(name(br#"{"model":"\udc00\udfff"}"#), "\u{FFFD}\u{FFFD}");
         assert_eq!(name(br#"{"model":"\udbff\udfff"}"#), "\u{10FFFF}");
         assert_eq!(name(br#"{"model":"\ud800\ue000"}"#), "\u{FFFD}\u{E000}");
+        // Pair start edge: D800+DC00 is the first valid pair (U+10000); D7FF is not a
+        // high surrogate, so the DC00 after it stands alone.
+        assert_eq!(name(br#"{"model":"\ud800\udc00"}"#), "\u{10000}");
+        assert_eq!(name(br#"{"model":"\ud7ff\udc00"}"#), "\u{D7FF}\u{FFFD}");
         let s = parse(br#"{"session_name":"my-se\udc00ssion","session_id":"x"}"#).unwrap();
         assert_eq!(s.session_name.as_deref(), Some("my-se\u{FFFD}ssion"));
         assert_eq!(s.session_id.as_deref(), Some("x"));
