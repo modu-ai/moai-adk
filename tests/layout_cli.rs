@@ -516,3 +516,195 @@ fn layout_apply_refuses_while_the_claim_journal_is_busy() {
     );
     assert_eq!(envelope(&out)["result"]["switched"], json!(true));
 }
+
+#[test]
+fn outbox_reads_follow_the_active_store_without_creating_directories() {
+    use moai_cli::forge::outbox::{self, OutboxEntry, OutboxState, Phase};
+
+    const CHILD_ROOT: &str = "MOAI_P09_OUTBOX_CHILD_ROOT";
+    if let Some(root) = std::env::var_os(CHILD_ROOT) {
+        let root = PathBuf::from(root).canonicalize().unwrap();
+        assert!(root.starts_with(std::env::temp_dir().canonicalize().unwrap()));
+        assert!(root
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("moai-layout-outbox-"));
+        let project = root.join("project");
+        let home = root.join("home");
+        assert_eq!(
+            PathBuf::from(std::env::var_os("HOME").unwrap())
+                .canonicalize()
+                .unwrap(),
+            home.canonicalize().unwrap()
+        );
+        let home_project = home.join(".moai-cli/projects/widgets");
+        let store = home_project.join("forge/outbox");
+        fs::remove_dir_all(&store).unwrap();
+        assert!(outbox::load(&project, "p09-history").unwrap().is_none());
+        assert!(
+            !store.exists(),
+            "an absent read must not create the active store"
+        );
+
+        let mut updated = OutboxEntry::new("p09-history", "p09-marker");
+        updated
+            .advance(
+                OutboxState::Blocked,
+                Phase {
+                    at: "2026-11-10T00:00:00Z".into(),
+                    detail: json!({"source": "home"}),
+                },
+            )
+            .unwrap();
+        outbox::save(&project, &updated).unwrap();
+        let loaded = outbox::load(&project, "p09-history").unwrap();
+        assert_eq!(loaded.as_ref(), Some(&updated));
+        fs::remove_file(home_project.join("layout.json")).unwrap();
+        let reverted = outbox::load(&project, "p09-history").unwrap().unwrap();
+        assert_eq!(reverted.state, OutboxState::Proposed);
+        assert!(
+            reverted.intent.is_none(),
+            "the frozen project history is unchanged"
+        );
+        fs::write(
+            root.join("outbox-result.json"),
+            serde_json::to_vec(&loaded).unwrap(),
+        )
+        .unwrap();
+        return;
+    }
+
+    let tmp = tempfile::Builder::new()
+        .prefix("moai-layout-outbox-")
+        .tempdir()
+        .unwrap();
+    let home = tmp.path().join("home");
+    let (project, _) = setup_project(&home);
+    let legacy = OutboxEntry::new("p09-history", "p09-marker");
+    let legacy_bytes = serde_json::to_vec(&legacy).unwrap();
+    fs::write(
+        project.join(".moai-cli/forge/outbox/p09-history.json"),
+        &legacy_bytes,
+    )
+    .unwrap();
+    let preview = cli(&project, &home, &["layout-plan", "."], None);
+    assert!(
+        preview.status.success(),
+        "{}",
+        String::from_utf8_lossy(&preview.stderr)
+    );
+    let digest = envelope(&preview)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let applied = cli(
+        &project,
+        &home,
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:outbox-home",
+        ],
+        None,
+    );
+    assert!(
+        applied.status.success(),
+        "{}",
+        String::from_utf8_lossy(&applied.stderr)
+    );
+    let thread = std::thread::current();
+    let child = Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", thread.name().unwrap(), "--nocapture"])
+        .env(CHILD_ROOT, tmp.path())
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+    assert!(
+        child.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&child.stdout),
+        String::from_utf8_lossy(&child.stderr)
+    );
+    let loaded: Value =
+        serde_json::from_slice(&fs::read(tmp.path().join("outbox-result.json")).unwrap()).unwrap();
+    assert_eq!(loaded["state"], json!("blocked"));
+    assert_eq!(loaded["intent"]["detail"]["source"], json!("home"));
+    assert_eq!(
+        fs::read(project.join(".moai-cli/forge/outbox/p09-history.json")).unwrap(),
+        legacy_bytes
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn source_inspection_errors_are_aggregated_before_any_switch() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let (project, _) = setup_project(&home);
+    let stores = [
+        project.join(".moai-cli/receipts"),
+        project.join(".moai-cli/forge/outbox"),
+    ];
+    let files = [stores[0].join("req-1.json"), stores[1].join("op-1.json")];
+    for paths in [&stores, &files] {
+        let original_permissions = [
+            fs::metadata(&paths[0]).unwrap().permissions(),
+            fs::metadata(&paths[1]).unwrap().permissions(),
+        ];
+        for path in paths {
+            fs::set_permissions(path, fs::Permissions::from_mode(0o000)).unwrap();
+        }
+        let preview = cli(&project, &home, &["layout-plan", "."], None);
+        let applied = cli(
+            &project,
+            &home,
+            &[
+                "layout-apply",
+                ".",
+                "--plan-digest",
+                "unconfirmed",
+                "--permission-reference",
+                "test:unreadable",
+            ],
+            None,
+        );
+        for (path, permissions) in paths.iter().zip(original_permissions) {
+            fs::set_permissions(path, permissions).unwrap();
+        }
+        for output in [&preview, &applied] {
+            assert!(
+                !output.status.success(),
+                "an unreadable source cannot be confirmed"
+            );
+            let failure = envelope(output);
+            assert_eq!(
+                failure["error"]["kind"],
+                json!(moai_cli::contract::Kind::Io.as_str())
+            );
+            let message = failure["error"]["message"].as_str().unwrap();
+            assert!(
+                message.contains("receipts") && message.contains("outbox"),
+                "{message}"
+            );
+            assert!(
+                !message.contains(tmp.path().to_str().unwrap()),
+                "private paths must not escape"
+            );
+        }
+    }
+    assert!(!home.join(".moai-cli/projects").exists());
+    assert_eq!(
+        fs::read(project.join(".moai-cli/receipts/req-1.json")).unwrap(),
+        b"{\"r\":1}"
+    );
+    assert_eq!(
+        fs::read(project.join(".moai-cli/forge/outbox/op-1.json")).unwrap(),
+        b"{\"o\":1}"
+    );
+}

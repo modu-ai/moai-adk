@@ -83,23 +83,35 @@ pub struct LayoutPlan {
 
 /// The claim journal's project-side root lives on the git common dir, not the project
 /// root. Resolves per clone; absent for a non-repository or common-dir-less input.
-fn claims_legacy_dir(project: &Path) -> Option<PathBuf> {
-    let id = crate::identity::identity(project).ok()?;
-    let common = id["clone_anchor"].as_str()?;
-    let dir = Path::new(common).join(".moai-cli").join("claims");
-    dir.is_dir().then_some(dir)
+fn claims_legacy_dir(project: &Path) -> Result<Option<PathBuf>> {
+    let id = crate::identity::identity(project)?;
+    let Some(common) = id["clone_anchor"].as_str() else {
+        return Ok(None);
+    };
+    source_dir(Path::new(common).join(".moai-cli").join("claims"))
 }
 
-fn legacy_dir(project: &Path, kind: &str) -> Option<PathBuf> {
-    let rel = KINDS
+fn source_dir(dir: PathBuf) -> Result<Option<PathBuf>> {
+    match std::fs::metadata(&dir) {
+        Ok(meta) if meta.is_dir() => Ok(Some(dir)),
+        Ok(_) => Err("source is not a directory".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err("source metadata unavailable".into()),
+    }
+}
+
+fn legacy_dir(project: &Path, kind: &str) -> Result<Option<PathBuf>> {
+    let Some(rel) = KINDS
         .iter()
         .find(|(k, _, _)| *k == kind)
-        .map(|(_, legacy, _)| *legacy)?;
+        .map(|(_, legacy, _)| *legacy)
+    else {
+        return Ok(None);
+    };
     if kind == "claims" {
         return claims_legacy_dir(project);
     }
-    let dir = project.join(rel);
-    dir.is_dir().then_some(dir)
+    source_dir(project.join(rel))
 }
 
 fn home_dir(home_root: &Path, project_id: &str, kind: &str) -> PathBuf {
@@ -111,31 +123,47 @@ fn home_dir(home_root: &Path, project_id: &str, kind: &str) -> PathBuf {
     home_root.join("projects").join(project_id).join(sub)
 }
 
-fn measure_fb(root: &Path, excludes: &[&str]) -> (u64, u64) {
-    let (mut files, mut bytes) = (0u64, 0u64);
+fn measure_fb(root: &Path, excludes: &[&str]) -> (u64, u64, u64) {
+    let (mut files, mut bytes, mut errors) = (0u64, 0u64, 0u64);
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&dir) else {
-            continue;
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(_) => {
+                errors += 1;
+                continue;
+            }
         };
-        for e in entries.flatten() {
-            let p = e.path();
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(_) => {
+                    errors += 1;
+                    continue;
+                }
+            };
+            let p = entry.path();
             let rel = p
                 .strip_prefix(root)
-                .map(|r| r.to_string_lossy().into_owned())
+                .map(|r| r.to_string_lossy())
                 .unwrap_or_default();
-            if excluded(rel.as_str(), excludes) {
+            if excluded(rel.as_ref(), excludes) {
                 continue;
             }
             if p.is_dir() {
                 stack.push(p);
-            } else if let Ok(m) = e.metadata() {
-                files += 1;
-                bytes += m.len();
+            } else {
+                match entry.metadata() {
+                    Ok(meta) => {
+                        files += 1;
+                        bytes += meta.len();
+                    }
+                    Err(_) => errors += 1,
+                }
             }
         }
     }
-    (files, bytes)
+    (files, bytes, errors)
 }
 
 /// The journal's `.lock` is a serialization handle, not store data: it moves neither in
@@ -153,19 +181,29 @@ fn kind_excludes(kind: &str) -> &'static [&'static str] {
     }
 }
 
-fn entry_for(project: &Path, home_root: &Path, kind: &str, project_id: &str) -> LayoutEntry {
+fn entry_for(
+    project: &Path,
+    home_root: &Path,
+    kind: &str,
+    project_id: &str,
+) -> Result<LayoutEntry> {
     let target = home_dir(home_root, project_id, kind);
     let excludes = kind_excludes(kind);
-    match legacy_dir(project, kind) {
+    Ok(match legacy_dir(project, kind)? {
         Some(source) => {
-            let (files, bytes) = measure_fb(&source, excludes);
+            let (files, bytes, errors) = measure_fb(&source, excludes);
+            if errors != 0 {
+                return Err(format!("{errors} entry inspection errors"));
+            }
+            let source_digest = crate::tree_digest(&source, excludes)
+                .map_err(|_| "source digest unavailable".to_string())?;
             LayoutEntry {
                 kind: kind.to_string(),
                 source: source.to_string_lossy().into_owned(),
                 target: target.to_string_lossy().into_owned(),
                 files,
                 bytes,
-                source_digest: crate::tree_digest(&source, excludes).unwrap_or_default(),
+                source_digest,
             }
         }
         None => LayoutEntry {
@@ -176,21 +214,31 @@ fn entry_for(project: &Path, home_root: &Path, kind: &str, project_id: &str) -> 
             bytes: 0,
             source_digest: String::new(),
         },
-    }
+    })
 }
 
 /// Measures the three stores and binds the plan. Writes nothing.
 pub fn plan(project: &Path, home_root: &Path) -> Result<LayoutPlan> {
     let project_id = identity_of(project)?;
-    let mut entries: Vec<LayoutEntry> = KINDS
-        .iter()
-        .map(|(k, _, _)| entry_for(project, home_root, k, &project_id))
-        .collect();
+    let mut entries = Vec::with_capacity(KINDS.len());
+    let mut errors = Vec::new();
+    for (kind, _, _) in KINDS {
+        match entry_for(project, home_root, kind, &project_id) {
+            Ok(entry) => entries.push(entry),
+            Err(error) => errors.push(format!("{kind}: {error}")),
+        }
+    }
+    if !errors.is_empty() {
+        return Err(format!(
+            "layout source unreadable: {}; nothing applied",
+            errors.join("; ")
+        ));
+    }
     entries.sort_by(|a, b| a.kind.cmp(&b.kind));
     let canonical = serde_json::to_vec(&entries).map_err(|_| "encode failed".to_string())?;
     Ok(LayoutPlan {
         schema_version: SCHEMA_VERSION,
-        project_id: project_id.clone(),
+        project_id,
         home_root: home_root.to_string_lossy().into_owned(),
         plan_digest: crate::digest(&canonical),
         entries,
@@ -202,6 +250,29 @@ fn identity_of(project: &Path) -> Result<String> {
     Ok(profile.project_id)
 }
 
+fn check_destinations(project: &Path, home_root: &Path) -> Result<()> {
+    let project_id = identity_of(project)?;
+    let home_project = home_root.join("projects").join(&project_id);
+    if home_project.join("layout.json").is_file() {
+        return Err(
+            "conflict in home layout: already switched; remove the home layout.json marker to revert first"
+                .into(),
+        );
+    }
+    for (kind, _, subdir) in KINDS {
+        match std::fs::symlink_metadata(home_project.join(subdir)) {
+            Ok(_) => {
+                return Err(format!(
+                    "conflict in home layout: home target for {kind} already exists; refusing overwrite; remove or merge it first; nothing applied"
+                ));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => return Err("home layout target unavailable".into()),
+        }
+    }
+    Ok(())
+}
+
 /// Copies one source tree to its target without touching the source, then verifies the
 /// copy reproduces the source digest (REQ-B8-01: copy + verify). The entry's excludes (the
 /// journal `.lock`) are skipped in both the walk and the verify, matching the plan.
@@ -209,7 +280,12 @@ fn copy_verified(entry: &LayoutEntry) -> Result<()> {
     let source = Path::new(&entry.source);
     let target = Path::new(&entry.target);
     let excludes = kind_excludes(&entry.kind);
-    std::fs::create_dir_all(target).map_err(|_| "home layout target unavailable".to_string())?;
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|_| "home layout target unavailable".to_string())?;
+    }
+    // Reserve this target exclusively: a concurrent creator never becomes our copy.
+    std::fs::create_dir(target).map_err(|_| "home layout target unavailable".to_string())?;
     let mut stack = vec![source.to_path_buf()];
     while let Some(dir) = stack.pop() {
         for e in std::fs::read_dir(&dir).map_err(|_| "layout source unreadable".to_string())? {
@@ -273,21 +349,7 @@ pub fn apply_at(
     {
         return Err("permission reference required".into());
     }
-    if active_home(project, home_root).is_some() {
-        return Err(
-            "conflict in home layout: already switched; remove the home layout.json marker to revert first"
-                .into(),
-        );
-    }
-    let project_id = identity_of(project)?;
-    // Repair (a), checked for every kind before the first write.
-    for (kind, _, _) in KINDS {
-        if home_dir(home_root, &project_id, kind).exists() {
-            return Err(format!(
-                "conflict in home layout: home target for {kind} already exists; refusing overwrite; remove or merge it first; nothing applied"
-            ));
-        }
-    }
+    check_destinations(project, home_root)?;
     // The journal lock spans plan→copy→switch so the window closes for claimants.
     let claims_root = crate::claim::journal_root(project)?;
     let journal_lock = crate::claim::Journal::open(&claims_root)?;
@@ -297,6 +359,17 @@ pub fn apply_at(
                 .into(),
         );
     }
+    apply_locked(project, home_root, confirmed, &journal_lock)
+}
+
+fn apply_locked(
+    project: &Path,
+    home_root: &Path,
+    confirmed: &str,
+    _journal_lock: &crate::claim::Journal,
+) -> Result<Value> {
+    // The fast preflight is not authoritative across lock acquisition.
+    check_destinations(project, home_root)?;
     let fresh = plan(project, home_root)?;
     if fresh.plan_digest != confirmed {
         return Err("stale or altered plan; re-preview required".into());
@@ -427,5 +500,69 @@ mod tests {
             !home_root.join("projects").exists(),
             "a refused apply writes nothing"
         );
+    }
+
+    #[test]
+    fn migration_rechecks_destinations_inside_the_locked_section() {
+        for switched in [false, true] {
+            let tmp = tempfile::tempdir().unwrap();
+            let project = fixture_project(tmp.path());
+            let home_root = tmp.path().join("home");
+            let confirmed = plan(&project, &home_root).unwrap().plan_digest;
+            check_destinations(&project, &home_root).unwrap();
+            let journal = crate::claim::Journal::open(&tmp.path().join("journal")).unwrap();
+            assert!(journal.try_lock().unwrap());
+            let target = home_dir(&home_root, "widgets", "receipts");
+            fs::create_dir_all(&target).unwrap();
+            fs::write(target.join("newer.json"), b"newer home data").unwrap();
+            let marker = home_root.join("projects/widgets/layout.json");
+            if switched {
+                fs::write(&marker, b"committed pointer").unwrap();
+            }
+            let error = apply_locked(&project, &home_root, &confirmed, &journal).unwrap_err();
+            assert!(
+                error.contains(if switched {
+                    "already switched"
+                } else {
+                    "already exists"
+                }),
+                "{error}"
+            );
+            assert_eq!(
+                fs::read(target.join("newer.json")).unwrap(),
+                b"newer home data"
+            );
+            if switched {
+                assert_eq!(fs::read(&marker).unwrap(), b"committed pointer");
+            } else {
+                assert!(!marker.exists());
+            }
+        }
+    }
+
+    #[test]
+    fn copying_refuses_a_target_created_after_the_preflight() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = fixture_project(tmp.path());
+        let source = project.join(".moai-cli/receipts");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("old.json"), b"old project data").unwrap();
+        let home_root = tmp.path().join("home");
+        let entry = entry_for(&project, &home_root, "receipts", "widgets").unwrap();
+        check_destinations(&project, &home_root).unwrap();
+        let target = Path::new(&entry.target);
+        fs::create_dir_all(target).unwrap();
+        fs::write(target.join("newer.json"), b"only home copy").unwrap();
+        assert!(copy_verified(&entry).is_err());
+        assert_eq!(
+            fs::read(target.join("newer.json")).unwrap(),
+            b"only home copy"
+        );
+        assert!(!target.join("old.json").exists());
+        assert_eq!(
+            fs::read(source.join("old.json")).unwrap(),
+            b"old project data"
+        );
+        assert!(!home_root.join("projects/widgets/layout.json").exists());
     }
 }

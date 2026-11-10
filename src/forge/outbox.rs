@@ -196,13 +196,18 @@ pub fn op_id(
     Ok(format!("{operation}-{project_id}-{local_id}-{attempt}"))
 }
 
-fn outbox_dir(project: &Path) -> Result<PathBuf, ForgeError> {
+fn outbox_dir(project: &Path, create: bool) -> Result<PathBuf, ForgeError> {
     // #2175: the P09 opt-in home layout switches the outbox store to
     // ~/.moai-cli/projects/<id>/forge/outbox once layout.json is in place.
     if let Some(home) = crate::layout::switched_dir(project, "forge/outbox") {
-        std::fs::create_dir_all(&home)
-            .map_err(|_| ForgeError::io("outbox directory unavailable"))?;
+        if create {
+            std::fs::create_dir_all(&home)
+                .map_err(|_| ForgeError::io("outbox directory unavailable"))?;
+        }
         return Ok(home);
+    }
+    if !create {
+        return Ok(project.join(crate::PROJECT_STATE_DIR).join("forge/outbox"));
     }
     let mut dir = project.to_path_buf();
     for part in [crate::PROJECT_STATE_DIR, "forge", "outbox"] {
@@ -223,10 +228,7 @@ fn outbox_dir(project: &Path) -> Result<PathBuf, ForgeError> {
 }
 
 pub fn load(project: &Path, op_id: &str) -> Result<Option<OutboxEntry>, ForgeError> {
-    let path = project
-        .join(crate::PROJECT_STATE_DIR)
-        .join("forge/outbox")
-        .join(format!("{op_id}.json"));
+    let path = outbox_dir(project, false)?.join(format!("{op_id}.json"));
     match fs::read(&path) {
         Ok(bytes) => serde_json::from_slice(&bytes)
             .map(Some)
@@ -238,7 +240,7 @@ pub fn load(project: &Path, op_id: &str) -> Result<Option<OutboxEntry>, ForgeErr
 
 /// Temporary file + rename in the outbox directory.
 pub fn save(project: &Path, entry: &OutboxEntry) -> Result<(), ForgeError> {
-    let dir = outbox_dir(project)?;
+    let dir = outbox_dir(project, true)?;
     let path = dir.join(format!("{}.json", entry.op_id));
     let tmp = dir.join(format!(".{}.json.tmp-{}", entry.op_id, std::process::id()));
     let bytes = serde_json::to_vec_pretty(entry)
