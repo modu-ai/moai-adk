@@ -74,8 +74,8 @@ pub fn digest(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
 }
 /// Credential-shaped substrings of the conservative profile filter, lower-cased. Shared with
-/// the 07-B promotion gate (`forge::promote`) so both refuse the same shapes; this is not a
-/// general secret detector (the common redaction module belongs to 03-B #1996).
+/// the common redaction module (`crate::redact`, 03-B #1996) so both refuse the same shapes;
+/// this is not a general secret detector.
 pub(crate) const SECRET_SHAPES: [&str; 7] = [
     "sk-",
     "ghp_",
