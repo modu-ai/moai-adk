@@ -248,6 +248,7 @@ name = "moai-cli"
 version = "2026.11.0-rc.1"
 dependencies = [
  "clap",
+ "self-replace",
  "serde",
  "serde_json",
  "sha2",
@@ -301,6 +302,17 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
+ "windows-sys",
+]
+
+[[package]]
+name = "self-replace"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "609c5606d9d357b26e4ee1a7a01beac396628d0fa01ebbade2a09cefb88e65af"
+dependencies = [
+ "fastrand",
+ "tempfile",
  "windows-sys",
 ]
 

@@ -1122,6 +1122,7 @@ mod tests {
     /// before bytes; the fixed path records the file row (published=false, the
     /// error, the before digest) and calls receipt_failure, whose save attempt
     /// names the gap even though the directory refuses the file.
+    #[cfg(unix)]
     #[test]
     fn file_backup_failure_names_the_receipt_gap() {
         use std::os::unix::fs::PermissionsExt;
