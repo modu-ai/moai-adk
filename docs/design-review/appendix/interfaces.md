@@ -61,6 +61,8 @@
 - `hooks-apply`
 - `hooks-plan`
 - `identity`
+- `index-build`
+- `index-query`
 - `install-inspect`
 - `lane-handoff-check`
 - `lane-status`

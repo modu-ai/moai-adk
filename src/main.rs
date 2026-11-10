@@ -191,6 +191,18 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
+    /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
+    /// build keeps the previous generation and marks partial (REQ-C6-01).
+    IndexBuild {
+        project: PathBuf,
+    },
+    /// Query the incremental index (C6 #2182): read-only — resolves the published
+    /// generation and reports one of fresh/stale/partial/unavailable with the detected
+    /// changes (additions, deletions, modifications, untracked new files, branch switch).
+    IndexQuery {
+        project: PathBuf,
+    },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
     LayoutPlan {
@@ -949,6 +961,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
+        IndexBuild { .. } => "index.build",
+        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
@@ -1376,6 +1390,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
+            &project,
+            &input::<moai_cli::index::IndexBuildRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
+            &project,
+            &input::<moai_cli::index::IndexQueryRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency

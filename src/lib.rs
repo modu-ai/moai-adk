@@ -19,6 +19,7 @@ pub mod handoff;
 pub mod hooks;
 pub mod hosts;
 pub mod identity;
+pub mod index;
 pub mod install;
 pub mod lane_handoff;
 pub mod lane_status;
