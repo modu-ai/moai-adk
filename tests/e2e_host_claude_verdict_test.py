@@ -11,7 +11,9 @@ Each case pins one receipt state, so a weakened verdict line flips a case and fa
   passed.
 - AC-08C-3: a plain answer with no skill tool calls -> failed; `is_error: true` ->
   failed; tool calls naming the fixture's references/routes.json and
-  workflows/setup.md plus a clean result -> passed.
+  workflows/setup.md plus a clean result -> passed; the same trace and clean result
+  with exit 1 -> failed (#2291, pins the `[ "$RC3" -eq 0 ]` condition).
+- Both -p runs read stdin from /dev/null (#2291); the fake logs what fd 0 is.
 
 The script runs from a directory outside the repository with a relative receipt
 directory, which also covers the "runs outside the checkout" repair (F4).
@@ -45,6 +47,8 @@ fmt = args[args.index("--output-format") + 1]
 if fmt == "stream-json" and "--verbose" not in args:
     sys.stderr.write("Error: When using --print, --output-format=stream-json requires --verbose\n")
     sys.exit(1)
+with open(cfg["log"], "a") as fh:
+    fh.write("stdin=devnull\n" if os.path.samestat(os.fstat(0), os.stat(os.devnull)) else "stdin=other\n")
 cwd = pathlib.Path.cwd()
 def emit(obj):
     print(json.dumps(obj))
@@ -61,9 +65,11 @@ if mode == "plain":
 elif mode == "error":
     tool(skills / "references" / "routes.json"); tool(skills / "workflows" / "setup.md")
     emit({"type": "result", "is_error": True, "result": "failed", "session_id": "s1"})
-elif mode == "skill":
+elif mode in ("skill", "skill-rc1"):
     tool(skills / "references" / "routes.json"); tool(skills / "workflows" / "setup.md")
     emit({"type": "result", "is_error": False, "result": "SETUP preview", "session_id": "s1"})
+    if mode == "skill-rc1":
+        sys.exit(1)
 elif mode == "empty":
     emit({"type": "result", "is_error": False, "result": "done", "permission_denials": []})
 elif mode in ("denials", "denials-write"):
@@ -101,9 +107,10 @@ class HostClaudeVerdictTest(unittest.TestCase):
             json.dump({"ac3": ac3, "ac6": ac6, "log": log}, fh)
         env = dict(os.environ, PATH=self.bin + os.pathsep + os.environ["PATH"],
                    ANTHROPIC_API_KEY=FAKE_CREDENTIAL)
-        # Relative receipt dir, run from outside the repository (F4).
+        # Relative receipt dir, run from outside the repository (F4). The script gets a
+        # pipe as stdin, so the fake sees /dev/null only through the script's own redirect.
         out = subprocess.run(["bash", CLAUDE_SH, "r"], cwd=self.outside, env=env,
-                             capture_output=True, text=True, timeout=120)
+                             input="", capture_output=True, text=True, timeout=120)
         self.assertEqual(out.returncode, 0, out.stderr)
         with open(os.path.join(receipts, "receipts.jsonl"), encoding="utf-8") as fh:
             rows = [json.loads(line) for line in fh if line.strip()]
@@ -119,6 +126,8 @@ class HostClaudeVerdictTest(unittest.TestCase):
         with open(log, encoding="utf-8") as fh:
             calls = fh.read()
         self.assertEqual(calls.count("--output-format stream-json --verbose"), 2, calls)
+        # Both -p runs read stdin from /dev/null (#2291); the two non -p calls do not care.
+        self.assertEqual(calls.count("stdin=devnull"), 2, calls)
         return {ac: r["result"] for ac, r in by_ac.items()}
 
     def test_ac6_no_output_and_plain_ac3_answer_fail(self):
@@ -140,6 +149,12 @@ class HostClaudeVerdictTest(unittest.TestCase):
     def test_skill_route_and_recorded_denials_pass(self):
         got = self.run_case(ac3="skill", ac6="denials")
         self.assertEqual(got["AC-08C-3"], "passed")
+        self.assertEqual(got["AC-08C-6"], "passed")
+
+    def test_ac3_nonzero_exit_fails_despite_a_clean_result_and_route_calls(self):
+        # #2291: the `[ "$RC3" -eq 0 ]` condition is the only thing that fails this run.
+        got = self.run_case(ac3="skill-rc1", ac6="denials")
+        self.assertEqual(got["AC-08C-3"], "failed")
         self.assertEqual(got["AC-08C-6"], "passed")
 
     def test_ac3_without_tool_calls_fails_even_when_the_run_is_clean(self):

@@ -140,6 +140,7 @@ fn entry<'a>(receipt: &'a Value, path: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("no entry for {path} in {}", receipt["request_id"]))
 }
 
+#[cfg(unix)]
 fn temp_files_left(root: &Path) -> Vec<PathBuf> {
     fn walk(dir: &Path, found: &mut Vec<PathBuf>) {
         for e in fs::read_dir(dir).unwrap() {
@@ -219,6 +220,7 @@ fn receipt_records_per_file_results() {
     }
 }
 
+#[cfg(unix)]
 #[test]
 fn apply_receipt_records_partial_apply_and_leaves_no_temp() {
     // AC-01B-2/AC-01B-3: a forced failure mid-apply keeps the published files, records

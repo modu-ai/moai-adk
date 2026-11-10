@@ -1143,16 +1143,19 @@ mod tests {
             crate::contract::classify(&err),
             crate::contract::Kind::PermissionReferenceMissing
         );
-        let outside = tempfile::TempDir::new().unwrap();
-        fs::write(outside.path().join("s.json"), "{}").unwrap();
-        fs::create_dir(p.path().join(".claude")).unwrap();
-        std::os::unix::fs::symlink(outside.path().join("s.json"), p.path().join(SETTINGS_FILE))
-            .unwrap();
-        assert!(settings_plan(p.path(), &style).is_err());
-        assert_eq!(
-            fs::read_to_string(outside.path().join("s.json")).unwrap(),
-            "{}"
-        );
+        #[cfg(unix)]
+        {
+            let outside = tempfile::TempDir::new().unwrap();
+            fs::write(outside.path().join("s.json"), "{}").unwrap();
+            fs::create_dir(p.path().join(".claude")).unwrap();
+            std::os::unix::fs::symlink(outside.path().join("s.json"), p.path().join(SETTINGS_FILE))
+                .unwrap();
+            assert!(settings_plan(p.path(), &style).is_err());
+            assert_eq!(
+                fs::read_to_string(outside.path().join("s.json")).unwrap(),
+                "{}"
+            );
+        }
         assert!(!p.path().join(".moai-cli").exists());
     }
 
