@@ -4,6 +4,7 @@
 //! `codex` — and `--permissions` keeps the prompts. A roleless session gets no permission flag
 //! at all, so the host's own settings choose its mode. Every case is `--dry-run` in a temporary
 //! git project (the `-a` name preview reads that project's counter); no host is started.
+mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
@@ -33,7 +34,7 @@ fn dry(dir: &Path, args: &[&str]) -> (i32, Vec<String>, String, String) {
 
 fn project(settings: Option<&str>) -> tempfile::TempDir {
     let p = tempfile::tempdir().unwrap();
-    let init = Command::new("git")
+    let init = common::git::command()
         .args(["init", "-q"])
         .current_dir(p.path())
         .status()
