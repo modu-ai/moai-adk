@@ -1,0 +1,1 @@
+{"model": {"display_name": "Opus"}, "session_id": "fixture-a04", "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"}, "context_window": {"context_window_size": 200000, "used_percentage": 93, "remaining_percentage": 7, "current_usage": {"input_tokens": 180000, "output_tokens": 500, "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 3000}}}
