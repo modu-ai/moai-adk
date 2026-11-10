@@ -360,27 +360,21 @@ pub fn next_cli<T: Transport, C: Clock>(
     req: QueueRequest,
     transport: &T,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let root = journal_root(project)?;
     let id = identity::identity(project)?;
     let worktree = worktree_id(&id)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Ok(json!({
-            "outcome": "busy",
-            "issue": Value::Null,
-            "record": Value::Null,
-            "foreign_owner": Value::Null,
-            "coordination_scope": "single-host",
-            "cross_host_atomic": false,
-            "lost_to": [],
-            "skipped": [],
-            "projection": Value::Null,
-            "notes": ["another process holds the journal lock; retry policy is the caller's (REQ-06A-05)"],
-        }));
+        // #2345: the same journal lock-busy answer as every other journal-writing op,
+        // with the kind set at the raise site.
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    next(&journal, &req, worktree, &client, clock)
+    Ok(next(&journal, &req, worktree, &client, clock)?)
 }
 
 #[cfg(test)]

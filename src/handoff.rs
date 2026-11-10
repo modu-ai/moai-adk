@@ -933,11 +933,16 @@ pub fn markers_in(body: &str) -> Vec<crate::forge::outbox::OpMarker> {
 
 // ---- CLI entries (`main` wraps the results in the 01-C envelope) ----
 
-fn open_journal(project: &Path) -> Result<Journal> {
+fn open_journal(project: &Path) -> std::result::Result<Journal, crate::contract::OpError> {
     let root = crate::claim::journal_root(project)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Err("conflict in claim journal: another process holds the journal lock; the waiting policy is the caller's (REQ-06A-05)".into());
+        // #2345: the same journal lock-busy answer as every other journal-writing op,
+        // with the kind set at the raise site, never classified from the message.
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     Ok(journal)
 }
@@ -950,9 +955,9 @@ pub fn claim_handoff_cli<C: Clock>(
     force_explicit: bool,
     host_id: Option<&str>,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    claim_handoff(
+    Ok(claim_handoff(
         &journal,
         key,
         from_epoch,
@@ -960,7 +965,7 @@ pub fn claim_handoff_cli<C: Clock>(
         force_explicit,
         host_id,
         clock,
-    )
+    )?)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -975,11 +980,11 @@ pub fn effect_intend_cli<C: Clock>(
     kind: &str,
     payload: &[u8],
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    effect_intend(
+    Ok(effect_intend(
         &journal, key, epoch, operation, project_id, local_id, attempt, kind, payload, clock,
-    )
+    )?)
 }
 
 pub fn effect_confirm_cli<C: Clock>(
@@ -989,16 +994,16 @@ pub fn effect_confirm_cli<C: Clock>(
     response_id: &str,
     observed_state: &str,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    effect_confirm(
+    Ok(effect_confirm(
         &journal,
         key,
         operation_id,
         response_id,
         observed_state,
         clock,
-    )
+    )?)
 }
 
 pub fn effects_reconcile_cli<T: Transport, C: Clock>(
@@ -1007,9 +1012,15 @@ pub fn effects_reconcile_cli<T: Transport, C: Clock>(
     remote_probe: Option<&str>,
     transport: &T,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    effects_reconcile(&journal, key, remote_probe, transport, clock)
+    Ok(effects_reconcile(
+        &journal,
+        key,
+        remote_probe,
+        transport,
+        clock,
+    )?)
 }
 
 #[cfg(test)]
