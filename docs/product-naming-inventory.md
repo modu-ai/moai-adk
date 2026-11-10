@@ -13,6 +13,9 @@
   - `skills/moai/…` 5개는 PR #2297이 `skills/moai-cli/…`로 옮겼다.
   - 행과 매치 수는 측정 트리의 값이라 그대로 두고, 각 행의 마지막 칸에 현재 상태를 적었다.
   - 측정은 두 방법으로 했다(Python 파싱, `grep`+`test -e`). 결과가 같았다.
+- 재점검(#2405, 2026-11-10, tip `33bfb5e3ca` 병합 뒤): **8행**이 없는 경로를 가리킨다. 위 6행에 2행이 더해졌다.
+  - `tests/todo_promotion_cli.rs`와 `tests/promote_digest_order.rs`는 PR #2406(`b0c590c7c9`, 로컬 TODO 승격 코드 제거)에서 삭제됐다.
+  - 처리 방식은 위와 같다. 측정은 같은 두 방법으로 했고 결과가 같았다.
 
 ## 요약 (측정 트리 기준)
 
@@ -105,7 +108,7 @@
 | `docs/design-review/fixes/plan-43faf222.md` | 9 | RECORDS |
 | `docs/design-review/fixes/group3-83f162ef.md` | 9 | RECORDS |
 | `docs/design-review/appendix/paths.md` | 9 | RECORDS |
-| `tests/todo_promotion_cli.rs` | 8 | TESTS |
+| `tests/todo_promotion_cli.rs` | 8 | TESTS — 측정 뒤 삭제됨(`b0c590c7c9`, PR #2406 로컬 TODO 승격 제거; #2405 확인) |
 | `tests/lane_handoff_cli.rs` | 8 | TESTS |
 | `docs/design-review/autonomy-modes-spec.md` | 8 | RECORDS |
 | `tools/host_live_harness.py` | 7 | SCRIPTSTOOLS |
@@ -200,7 +203,7 @@
 | `.gitignore` | 2 | OTHER |
 | `tests/sync_marker_form.rs` | 1 | TESTS |
 | `tests/support_matrix_test.py` | 1 | TESTS |
-| `tests/promote_digest_order.rs` | 1 | TESTS |
+| `tests/promote_digest_order.rs` | 1 | TESTS — 측정 뒤 삭제됨(`b0c590c7c9`, PR #2406 로컬 TODO 승격 제거; #2405 확인) |
 | `tests/plan_input_limit_cli.rs` | 1 | TESTS |
 | `tests/parity_cli.rs` | 1 | TESTS |
 | `tests/ontology_schema.rs` | 1 | TESTS |
