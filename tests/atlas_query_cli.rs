@@ -104,10 +104,12 @@ fn tree(root: &Path) -> BTreeMap<String, String> {
                 out.insert(rel, "dir".into());
                 stack.push(path);
             } else {
-                out.insert(
-                    rel,
-                    format!("{:x}", Sha256::digest(fs::read(&path).unwrap())),
-                );
+                // An unreadable file (the partial-build fixture) is compared by size.
+                let digest = match fs::read(&path) {
+                    Ok(bytes) => format!("{:x}", Sha256::digest(bytes)),
+                    Err(_) => format!("unreadable:{}", meta.len()),
+                };
+                out.insert(rel, digest);
             }
         }
     }
@@ -273,6 +275,54 @@ fn a_stale_index_passes_through_with_its_records() {
     assert!(ids(&r["map"]).contains(&"tag:src/lib.rs#L1".to_string()));
 }
 
+#[cfg(unix)]
+fn unreadable(path: &Path, yes: bool) {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perm = fs::metadata(path).unwrap().permissions();
+    perm.set_mode(if yes { 0o000 } else { 0o644 });
+    fs::set_permissions(path, perm).unwrap();
+}
+
+/// A failed build after a good one leaves the pointer: `partial` passes through with the
+/// previous generation's records. A failed first build has no pointer: `unavailable`.
+#[cfg(unix)]
+#[test]
+fn partial_passes_through_with_a_pointer_and_is_unavailable_without_one() {
+    let p = project();
+    build(p.path());
+    let victim = p.path().join("src/other.rs");
+    unreadable(&victim, true);
+    let (code, _) = run(p.path(), "index-build", &json!({"protocol_version": 1}));
+    assert_ne!(code, 0, "the failing build must not succeed");
+    let (code, r) = read_only(
+        p.path(),
+        "atlas-map",
+        &json!({"protocol_version": 1, "query": {"paths": ["src/lib.rs"]}}),
+    );
+    assert_eq!(code, 0, "{r}");
+    assert_eq!(r["state"], "partial");
+    assert!(ids(&r["map"]).contains(&"tag:src/lib.rs#L1".to_string()));
+    let (_, g) = read_only(
+        p.path(),
+        "atlas-graph",
+        &json!({"protocol_version": 1, "query": {"start": ["req:REQ-C9-01"]}}),
+    );
+    assert_eq!(g["state"], "partial");
+    assert!(ids(&g["graph"]).contains(&"file:src/lib.rs".to_string()));
+    unreadable(&victim, false);
+
+    let q = project();
+    let victim = q.path().join("src/other.rs");
+    unreadable(&victim, true);
+    let (code, _) = run(q.path(), "index-build", &json!({"protocol_version": 1}));
+    assert_ne!(code, 0);
+    let (code, r) = read_only(q.path(), "atlas-map", &json!({"protocol_version": 1}));
+    assert_eq!(code, 0, "{r}");
+    assert_eq!(r["state"], "unavailable");
+    assert!(r.get("map").is_none());
+    unreadable(&victim, false);
+}
+
 #[test]
 fn refusals_exit_nonzero_and_limits_have_literal_boundaries() {
     let p = project();
@@ -319,6 +369,52 @@ fn refusals_exit_nonzero_and_limits_have_literal_boundaries() {
     for (op, input) in accepted {
         let (code, r) = read_only(p.path(), op, &input);
         assert_eq!(code, 0, "{op} {input}: {r}");
+    }
+    // MAX_TERMS (64) and the 512-byte start id, literal N and N+1.
+    let terms = |n: usize| -> Vec<String> { (0..n).map(|i| format!("p{i}.rs")).collect() };
+    let starts = |n: usize| -> Vec<String> { (0..n).map(|i| format!("file:p{i}.rs")).collect() };
+    let id_of = |len: usize| format!("file:{}", "x".repeat(len - 5));
+    assert_eq!(id_of(512).len(), 512);
+    let boundaries = [
+        (
+            "atlas-map",
+            json!({"protocol_version": 1, "query": {"paths": terms(64)}}),
+            true,
+        ),
+        (
+            "atlas-map",
+            json!({"protocol_version": 1, "query": {"paths": terms(65)}}),
+            false,
+        ),
+        (
+            "atlas-map",
+            json!({"protocol_version": 1, "query": {"paths": terms(32), "prefixes": terms(33)}}),
+            false,
+        ),
+        (
+            "atlas-graph",
+            json!({"protocol_version": 1, "query": {"start": starts(64)}}),
+            true,
+        ),
+        (
+            "atlas-graph",
+            json!({"protocol_version": 1, "query": {"start": starts(65)}}),
+            false,
+        ),
+        (
+            "atlas-graph",
+            json!({"protocol_version": 1, "query": {"start": [id_of(512)]}}),
+            true,
+        ),
+        (
+            "atlas-graph",
+            json!({"protocol_version": 1, "query": {"start": [id_of(513)]}}),
+            false,
+        ),
+    ];
+    for (op, input, accepted) in boundaries {
+        let (code, r) = read_only(p.path(), op, &input);
+        assert_eq!(code == 0, accepted, "{op}: {r}");
     }
     // max_files 1 keeps one file and names the rest.
     let (_, r) = read_only(
@@ -380,6 +476,12 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         );
         assert_eq!(r["state"], "fresh", "{id}");
         validate_document(&r["graph"]).unwrap();
+        // The start file is in the generation: a miss below is a missing relation,
+        // not an unknown start.
+        assert_eq!(
+            r["distance"][&from], 0,
+            "{id}: {from} not in the generation"
+        );
         cases += 1;
         if r["distance"].get(&to).is_some() {
             found += 1;
