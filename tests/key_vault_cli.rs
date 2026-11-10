@@ -183,13 +183,28 @@ fn a_symlinked_or_special_entry_is_not_followed() {
     assert_eq!(s["result"]["entry"], "unsafe", "{s}");
     let out = envelope(&run(&home, &["key-set", "glm"], Some(&key)), &key);
     assert_eq!(out["ok"], false, "a folder is not replaced: {out}");
-    // A symlinked vault folder.
+    // A FIFO in place of the entry: opened without blocking, refused as not a regular file
+    // (reading it would give an empty value, not an unsafe one).
     fs::remove_dir(entry(&home)).unwrap();
+    let made = Command::new("mkfifo").arg(entry(&home)).status().unwrap();
+    assert!(made.success());
+    let s = envelope(&run(&home, &["key-status", "glm"], None), &key);
+    assert_eq!(s["result"]["entry"], "unsafe", "{s}");
+    assert!(s["result"]["blocked"]["reason"]
+        .as_str()
+        .unwrap()
+        .ends_with("is not a regular file"));
+    // A symlinked vault folder is refused as not a real folder (not only by its mode bits).
+    fs::remove_file(entry(&home)).unwrap();
     fs::remove_dir(home.join(".moai-cli/vault")).unwrap();
     fs::create_dir(home.join("elsewhere")).unwrap();
     std::os::unix::fs::symlink(home.join("elsewhere"), home.join(".moai-cli/vault")).unwrap();
     let s = envelope(&run(&home, &["key-status", "glm"], None), &key);
     assert_eq!(s["result"]["entry"], "unsafe", "{s}");
+    assert!(s["result"]["blocked"]["reason"]
+        .as_str()
+        .unwrap()
+        .ends_with("is not a real folder"));
 }
 
 #[test]

@@ -504,4 +504,28 @@ mod tests {
         assert!(read_value(&b"\xff\xfe"[..]).is_err());
         assert!(read_value(&b"   \n"[..]).is_err());
     }
+
+    /// `read` (the launcher's entry point, stage 2) follows the selected backend and never
+    /// falls back to the file when an OS store is selected.
+    #[test]
+    fn read_follows_the_backend_and_does_not_fall_back() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        let value = format!("moai-test-key-{}", std::process::id());
+        set(home, "glm", &value).unwrap();
+        assert_eq!(read(home, "glm").unwrap().as_deref(), Some(value.as_str()));
+        assert_eq!(read(home, "other").unwrap(), None);
+        for name in ["keyring", "auto"] {
+            fs::write(
+                home.join(".moai-cli/config"),
+                format!("key_store = \"{name}\"\n"),
+            )
+            .unwrap();
+            let err = read(home, "glm").unwrap_err();
+            assert_eq!(err.code, "key_store_unavailable", "{name}");
+            assert!(!err.reason.contains(&value) && !err.next.contains(&value));
+        }
+        fs::write(home.join(".moai-cli/config"), "key_store = \"vault\"\n").unwrap();
+        assert_eq!(read(home, "glm").unwrap_err().code, "key_store_unavailable");
+    }
 }
