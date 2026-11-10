@@ -6,8 +6,8 @@
 use moai_cli::audit::{audit, observe, AuditInput, Candidate, Finding, Opinion, Reviewer};
 use moai_cli::plan::{admit, AdmissionRequest, Approval, Decision, Task};
 use moai_cli::run::{
-    remaining_evidence, run, Method, PinnedRef, Producer, ProducerKind, Receipt, ResolvedMethod,
-    RunRequest, Summary, VerificationRequest,
+    remaining_evidence, run, run_verify, BaselineRef, Method, PinnedRef, Producer, ProducerKind,
+    Receipt, ResolvedMethod, RunRequest, Summary, VerificationRequest,
 };
 use moai_cli::scope::overlap;
 use moai_cli::spec::{approve, SortedKeys, SpecDocument};
@@ -115,6 +115,7 @@ fn run_request(commands: &[&str], refs: &[usize], revision: &str, strategy: &str
             timeout_ms: 30_000,
         },
         baseline: None,
+        baseline_ref: None,
         diff_paths: vec![],
     }
 }
@@ -232,19 +233,247 @@ fn f1a_cost_report_does_not_trust_a_declared_runner_receipt() {
     );
 }
 
-/// F1b: under `preserve`, leaving the phase out must not skip the trusted-baseline gate.
+/// F1b: under `preserve`, a run without a phase is the baseline step; it can never stand in
+/// for a later step, so it cannot skip the trusted-baseline gate.
+///
+/// Oracle edit (2026-11-10, before the fix, decision 6774899518 row 13, F1b = B "a missing
+/// phase is the baseline"): blocking the run is no longer the expectation; it runs, its
+/// receipt is the `baseline` step, and that receipt settles `baseline` only.
 #[test]
-#[ignore = "#2392 repro F1b: RED until a preserve run without a phase is gated"]
 fn f1b_preserve_without_phase_does_not_skip_the_baseline_gate() {
     let Some(dir) = project() else { return };
     let rev = observe(dir.path()).unwrap().commit;
     let req = run_request(&["true"], &[0], &rev, "preserve");
     let out = run(dir.path(), &req, &rev).unwrap();
+    assert_eq!(out.decision, Decision::Ready, "{:?}", out.reasons);
+    let receipt = out.receipt.unwrap();
+    assert_eq!(receipt.phase.as_deref(), Some("baseline"));
+    let required: Vec<String> = vec!["baseline".into(), "after".into(), "intent-diff".into()];
     assert_eq!(
-        out.decision,
-        Decision::Blocked,
-        "preserve run without a phase skipped the baseline gate: {:?}",
-        out.reasons
+        remaining_evidence(&required, &[receipt]),
+        ["after", "intent-diff"],
+        "a phase-less preserve run settled more than the baseline step"
+    );
+}
+
+/// A preserve request for one step, with an optional stored-baseline reference.
+fn preserve_request(
+    commands: &[&str],
+    rev: &str,
+    phase: &str,
+    attempt: &str,
+    baseline_ref: Option<BaselineRef>,
+) -> RunRequest {
+    let mut req = run_request(commands, &[0], rev, "preserve");
+    req.phase = Some(phase.into());
+    req.attempt_id = attempt.into();
+    req.baseline_ref = baseline_ref;
+    req
+}
+
+/// F1c / D1 (decision 6774899518 row 13 = A): `run-verify` stores the baseline receipt it
+/// produced under the git common dir and reports its digest; a later step names it by attempt
+/// id and digest, and the runner reads the file again, checks the digest and what the receipt
+/// says (runner, preserve, baseline, passed, same task and spec). Nothing else unlocks it.
+#[test]
+fn f1c_stored_baseline_unlocks_after_and_nothing_else_does() {
+    let Some(dir) = project() else { return };
+    let p = dir.path();
+    let seen = observe(p).unwrap();
+    let rev = seen.commit.clone();
+    let store = p.join(".git/.moai-cli/receipts/run");
+
+    // The baseline run stores its receipt outside the tree: the candidate digest is unchanged.
+    let base = run_verify(
+        p,
+        &preserve_request(&["true"], &rev, "baseline", "B1", None),
+        &rev,
+    )
+    .unwrap();
+    let stored = serde_json::to_value(&base).unwrap();
+    assert_eq!(stored["baseline_store"]["stored"], json!(true), "{stored}");
+    let digest = stored["baseline_store"]["digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let file = store.join("B1.json");
+    assert_eq!(moai_cli::digest(&fs::read(&file).unwrap()), digest);
+    assert_eq!(observe(p).unwrap().tree_digest, seen.tree_digest);
+
+    let good = BaselineRef {
+        attempt_id: "B1".into(),
+        digest: digest.clone(),
+    };
+    let after = run(
+        p,
+        &preserve_request(&["true"], &rev, "after", "A2", Some(good.clone())),
+        &rev,
+    )
+    .unwrap();
+    assert_eq!(after.decision, Decision::Ready, "{:?}", after.reasons);
+
+    // A wrong digest, a missing file and an unsafe attempt id are refused.
+    for (bad, reason) in [
+        (
+            BaselineRef {
+                attempt_id: "B1".into(),
+                digest: format!("sha256:{}", "0".repeat(64)),
+            },
+            "baseline-digest-mismatch",
+        ),
+        (
+            BaselineRef {
+                attempt_id: "B9".into(),
+                digest: digest.clone(),
+            },
+            "baseline-missing",
+        ),
+        (
+            BaselineRef {
+                attempt_id: "../B1".into(),
+                digest: digest.clone(),
+            },
+            "baseline-untrusted",
+        ),
+    ] {
+        let out = run(
+            p,
+            &preserve_request(&["true"], &rev, "after", "A3", Some(bad)),
+            &rev,
+        )
+        .unwrap();
+        assert_eq!(out.decision, Decision::Blocked);
+        assert_eq!(out.reasons, [reason], "{:?}", out.reasons);
+    }
+
+    // A stored baseline that failed binds by digest but not by content.
+    let failed = serde_json::to_value(
+        run_verify(
+            p,
+            &preserve_request(&["false"], &rev, "baseline", "B2", None),
+            &rev,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let failed_ref = BaselineRef {
+        attempt_id: "B2".into(),
+        digest: failed["baseline_store"]["digest"].as_str().unwrap().into(),
+    };
+    let out = run(
+        p,
+        &preserve_request(&["true"], &rev, "after", "A4", Some(failed_ref)),
+        &rev,
+    )
+    .unwrap();
+    assert_eq!(
+        out.reasons,
+        ["baseline-untrusted"],
+        "a failed baseline unlocked after"
+    );
+
+    // A file rewritten in place with a matching reference must still say what a runner
+    // baseline says: a self-report with its digest is refused.
+    // Each bound field on its own: the file is rewritten as `F<n>.json` with the attempt id
+    // set to that name (so only the edited field differs) and referenced by its own digest.
+    let original: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
+    let edits: [(&str, Value); 7] = [
+        ("producer", json!({"kind": "self-report"})),
+        ("task_id", json!("T2")),
+        ("spec_digest", json!(format!("sha256:{}", "1".repeat(64)))),
+        ("plan_digest", json!(format!("sha256:{}", "2".repeat(64)))),
+        ("phase", json!("after")),
+        ("attempt_id", json!("other")),
+        (
+            "method",
+            json!({"change_strategy": "tdd", "domain_modeling": "not-required", "legacy_mode": null}),
+        ),
+    ];
+    // Control: the same rewrite with no field edited unlocks, so each refusal below is the
+    // edited field's doing.
+    for (n, edit) in std::iter::once(None)
+        .chain(edits.iter().map(Some))
+        .enumerate()
+    {
+        let name = format!("F{n}");
+        let mut forged = original.clone();
+        forged["attempt_id"] = json!(name);
+        if let Some((field, value)) = edit {
+            forged[*field] = value.clone();
+        }
+        let bytes = serde_json::to_vec(&forged).unwrap();
+        fs::write(store.join(format!("{name}.json")), &bytes).unwrap();
+        let forged_ref = BaselineRef {
+            attempt_id: name.clone(),
+            digest: moai_cli::digest(&bytes),
+        };
+        let out = run(
+            p,
+            &preserve_request(&["true"], &rev, "after", "A5", Some(forged_ref)),
+            &rev,
+        )
+        .unwrap();
+        match edit {
+            None => assert_eq!(out.decision, Decision::Ready, "control: {:?}", out.reasons),
+            Some((field, _)) => assert_eq!(out.reasons, ["baseline-untrusted"], "{field}"),
+        }
+    }
+
+    // A second baseline under the same attempt id does not replace the first.
+    let again = serde_json::to_value(
+        run_verify(
+            p,
+            &preserve_request(&["false"], &rev, "baseline", "B1", None),
+            &rev,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(again["baseline_store"]["stored"], json!(false), "{again}");
+    assert_eq!(moai_cli::digest(&fs::read(&file).unwrap()), digest);
+
+    // An unsafe attempt id is not written anywhere.
+    let unsafe_id = serde_json::to_value(
+        run_verify(
+            p,
+            &preserve_request(&["true"], &rev, "baseline", "../x", None),
+            &rev,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        unsafe_id["baseline_store"]["stored"],
+        json!(false),
+        "{unsafe_id}"
+    );
+    assert!(!store.parent().unwrap().join("x").exists());
+
+    // A step that is not the baseline, and a non-preserve run, store nothing.
+    let none = serde_json::to_value(
+        run_verify(
+            p,
+            &preserve_request(&["true"], &rev, "after", "A6", Some(good)),
+            &rev,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(none["baseline_store"].is_null(), "{none}");
+    assert!(!store.join("A6.json").exists());
+}
+
+/// D1: the auditor's run writes nothing, even for a phase-less `preserve` request (which is a
+/// baseline step after F1b).
+#[test]
+fn d1_audit_writes_no_baseline_receipt() {
+    let Some(dir) = project() else { return };
+    let mut input = audit_input(dir.path(), &["true"]);
+    input.run.method.change_strategy = Some("preserve".into());
+    let _ = audit(dir.path(), &input).unwrap();
+    assert!(
+        !dir.path().join(".git/.moai-cli").exists(),
+        "audit-reduce wrote under the git common dir"
     );
 }
 
