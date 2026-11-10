@@ -7,7 +7,7 @@
 //! | source | grammar | edge |
 //! | --- | --- | --- |
 //! | tag in a tracked code file | C2 grammar v1, kind `REQ` in either namespace (`@MOAI:REQ REQ-C5-01`, `@MX:REQ …`); args split on whitespace and commas | `file:<path>` → `references_requirement` → `req:<id>` |
-//! | test name | a Rust fn whose attribute block carries `#[test]` or `#[tokio::test]`, or a Python `def test_…`; the name carries `req_<segs>_<digits>` (`req_08c_01` → `REQ-08C-01`) | `test:<path>::<fn>` → `verifies` → `req:<id>` |
+//! | test declaration outside comments/literals | a Rust fn whose complete attribute block carries `#[test]` or `#[tokio::test]`, or a Python `def test_…`; the leaf name carries `req_<segs>_<digits>` | `test:<path>::<module-or-class-scope>::<fn>` → `verifies` → `req:<id>` (top-level names have no scope prefix) |
 //! | commit protocol line | exact raw-body lines in each commit reachable from HEAD: `Moai-Claim: <issue>#<id>` or `Refs: #<issue>` (ASCII decimal ids) | `commit:<sha>` → `mentions_issue` → `issue:<n>` |
 //!
 //! The REQ ↔ code ↔ test triangle closes through the requirement node; no
@@ -94,59 +94,343 @@ pub fn req_ids_in_test_name(name: &str) -> Vec<String> {
     out
 }
 
-/// Rust and Python test functions in one file: (line, name).
-fn test_functions(path: &str, text: &str) -> Vec<(usize, String)> {
-    let lines: Vec<&str> = text.lines().collect();
-    let mut out = Vec::new();
-    for (i, line) in lines.iter().enumerate() {
-        let t = line.trim_start();
-        if path.ends_with(".py") {
-            if let Some(rest) = t.strip_prefix("def ") {
-                let name: String = rest
+#[derive(Clone, Copy)]
+struct CodeToken<'a> {
+    text: &'a str,
+    line: usize,
+    column: usize,
+}
+
+/// A borrowed token stream; literals and comments never become declarations.
+struct CodeTokens<'a> {
+    text: &'a str,
+    rust: bool,
+    pos: usize,
+    line: usize,
+    column: usize,
+}
+
+impl<'a> CodeTokens<'a> {
+    fn new(text: &'a str, rust: bool) -> Self {
+        Self {
+            text,
+            rust,
+            pos: 0,
+            line: 1,
+            column: 0,
+        }
+    }
+
+    fn advance(&mut self, end: usize) {
+        for b in self.text.as_bytes()[self.pos..end].iter().copied() {
+            match b {
+                b'\n' => {
+                    self.line += 1;
+                    self.column = 0;
+                }
+                b'\t' => self.column += 8 - self.column % 8,
+                _ => self.column += 1,
+            }
+        }
+        self.pos = end;
+    }
+
+    fn quoted_end(&self, start: usize, width: usize) -> usize {
+        let b = self.text.as_bytes();
+        let mut end = start + width;
+        while end < b.len() {
+            if b[end] == b'\\' {
+                end = (end + 2).min(b.len());
+            } else if b[end..].starts_with(&b[start..start + width]) {
+                return end + width;
+            } else {
+                end += 1;
+            }
+        }
+        b.len()
+    }
+}
+
+impl<'a> Iterator for CodeTokens<'a> {
+    type Item = CodeToken<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let b = self.text.as_bytes();
+        while self.pos < b.len() {
+            let start = self.pos;
+            if b[start].is_ascii_whitespace() {
+                self.advance(start + 1);
+                continue;
+            }
+            if (!self.rust && b[start] == b'#') || (self.rust && b[start..].starts_with(b"//")) {
+                let end = b[start..]
+                    .iter()
+                    .position(|v| *v == b'\n')
+                    .map_or(b.len(), |n| start + n);
+                self.advance(end);
+                continue;
+            }
+            if self.rust && b[start..].starts_with(b"/*") {
+                let mut end = start + 2;
+                let mut depth = 1;
+                while end < b.len() && depth > 0 {
+                    if b[end..].starts_with(b"/*") {
+                        depth += 1;
+                        end += 2;
+                    } else if b[end..].starts_with(b"*/") {
+                        depth -= 1;
+                        end += 2;
+                    } else {
+                        end += 1;
+                    }
+                }
+                self.advance(end);
+                continue;
+            }
+            if self.rust && b[start] == b'r' {
+                let mut quote = start + 1;
+                while b.get(quote) == Some(&b'#') {
+                    quote += 1;
+                }
+                if b.get(quote) == Some(&b'"') {
+                    let hashes = quote - start - 1;
+                    let mut end = quote + 1;
+                    while end < b.len() {
+                        if b[end] == b'"'
+                            && b.get(end + 1..end + 1 + hashes)
+                                .is_some_and(|s| s.iter().all(|v| *v == b'#'))
+                        {
+                            end += 1 + hashes;
+                            break;
+                        }
+                        end += 1;
+                    }
+                    self.advance(end);
+                    continue;
+                }
+            }
+            if b[start] == b'"' || (!self.rust && b[start] == b'\'') {
+                let width = if !self.rust && b[start..].starts_with(&[b[start]; 3]) {
+                    3
+                } else {
+                    1
+                };
+                self.advance(self.quoted_end(start, width));
+                continue;
+            }
+            if self.rust && b[start] == b'\'' {
+                let mut end = start + 1;
+                if b.get(end) == Some(&b'\\') {
+                    end += 2;
+                    while end < b.len() && b[end] != b'\'' && b[end] != b'\n' {
+                        end += 1;
+                    }
+                } else if let Some(c) = self.text[end..].chars().next() {
+                    end += c.len_utf8();
+                }
+                if b.get(end) == Some(&b'\'') {
+                    self.advance(end + 1);
+                    continue;
+                }
+            }
+            let name_start = if self.rust
+                && b[start..].starts_with(b"r#")
+                && self.text[start + 2..]
                     .chars()
-                    .take_while(|c| c.is_alphanumeric() || *c == '_')
-                    .collect();
-                if name.starts_with("test") {
-                    out.push((i + 1, name));
-                }
-            }
-            continue;
+                    .next()
+                    .is_some_and(|c| c.is_alphabetic() || c == '_')
+            {
+                start + 2
+            } else {
+                start
+            };
+            let first = self.text[name_start..].chars().next()?;
+            let end = if first.is_alphanumeric() || first == '_' {
+                self.text[name_start..]
+                    .char_indices()
+                    .find(|(_, c)| !c.is_alphanumeric() && *c != '_')
+                    .map_or(b.len(), |(n, _)| name_start + n)
+            } else {
+                start + first.len_utf8()
+            };
+            let token = CodeToken {
+                text: &self.text[name_start..end],
+                line: self.line,
+                column: self.column,
+            };
+            self.advance(end);
+            return Some(token);
         }
-        let Some(name) = rust_fn_name(t) else {
-            continue;
-        };
-        // The attribute block directly above: attributes, doc and line comments.
-        let mut j = i;
-        let mut is_test = false;
-        while j > 0 {
-            j -= 1;
-            let a = lines[j].trim();
-            if a.starts_with("#[") {
-                if a == "#[test]" || a.starts_with("#[tokio::test") {
-                    is_test = true;
-                }
-            } else if !a.starts_with("//") {
-                break;
-            }
+        None
+    }
+}
+
+fn scoped_name(scopes: &[(usize, &str)], name: &str) -> String {
+    let mut out =
+        String::with_capacity(name.len() + scopes.iter().map(|(_, s)| s.len() + 2).sum::<usize>());
+    for (_, scope) in scopes {
+        out.push_str(scope);
+        out.push_str("::");
+    }
+    out.push_str(name);
+    out
+}
+
+fn skip_token_group<'a>(tokens: &mut impl Iterator<Item = CodeToken<'a>>) {
+    let mut depth = 1usize;
+    for token in tokens.by_ref() {
+        match token.text {
+            "(" | "[" | "{" => depth += 1,
+            ")" | "]" | "}" => depth -= 1,
+            _ => {}
         }
-        if is_test {
-            out.push((i + 1, name));
+        if depth == 0 {
+            break;
+        }
+    }
+}
+
+fn rust_tests(text: &str) -> Vec<(usize, String)> {
+    let mut tokens = CodeTokens::new(text, true).peekable();
+    let mut scopes = Vec::new();
+    let mut depth = 0usize;
+    let mut module = None;
+    let mut is_test = false;
+    let mut out = Vec::new();
+    while let Some(token) = tokens.next() {
+        match token.text {
+            "#" if tokens.peek().is_some_and(|t| t.text == "[") => {
+                tokens.next();
+                let mut balance = 1;
+                let mut prefix = [None; 6];
+                for (n, t) in tokens.by_ref().enumerate() {
+                    if n < prefix.len() {
+                        prefix[n] = Some(t.text);
+                    }
+                    match t.text {
+                        "[" => balance += 1,
+                        "]" => balance -= 1,
+                        _ => {}
+                    }
+                    if balance == 0 {
+                        break;
+                    }
+                }
+                is_test |= prefix[..2] == [Some("test"), Some("]")]
+                    || (prefix[..4] == [Some("tokio"), Some(":"), Some(":"), Some("test")]
+                        && matches!(prefix[4], Some("(" | "]")));
+            }
+            "macro_rules" if tokens.peek().is_some_and(|t| t.text == "!") => {
+                tokens.next();
+                tokens.next();
+                if tokens
+                    .next()
+                    .is_some_and(|t| matches!(t.text, "(" | "[" | "{"))
+                {
+                    skip_token_group(&mut tokens);
+                }
+                is_test = false;
+            }
+            "!" if tokens
+                .peek()
+                .is_some_and(|t| matches!(t.text, "(" | "[" | "{")) =>
+            {
+                tokens.next();
+                skip_token_group(&mut tokens);
+                is_test = false;
+            }
+            "mod" => {
+                is_test = false;
+                module = tokens.next().map(|t| t.text);
+            }
+            "fn" => {
+                if let Some(name) = tokens.next() {
+                    if is_test {
+                        out.push((token.line, scoped_name(&scopes, name.text)));
+                    }
+                }
+                is_test = false;
+            }
+            "{" => {
+                depth += 1;
+                if let Some(name) = module.take() {
+                    scopes.push((depth, name));
+                }
+                is_test = false;
+            }
+            "}" => {
+                depth = depth.saturating_sub(1);
+                while scopes.last().is_some_and(|(d, _)| *d > depth) {
+                    scopes.pop();
+                }
+                is_test = false;
+            }
+            ";" | "struct" | "enum" | "impl" | "trait" | "const" | "static" | "use" | "type" => {
+                module = None;
+                is_test = false;
+            }
+            _ => {}
         }
     }
     out
 }
 
-fn rust_fn_name(t: &str) -> Option<String> {
-    let mut s = t;
-    for prefix in ["pub(crate) ", "pub ", "async ", "unsafe "] {
-        s = s.strip_prefix(prefix).unwrap_or(s);
+fn python_tests(text: &str) -> Vec<(usize, String)> {
+    let mut tokens = CodeTokens::new(text, false);
+    let mut scopes = Vec::new();
+    let mut last_line = 0;
+    let mut brackets = 0usize;
+    let mut async_line = None;
+    let mut async_indent = 0;
+    let mut out = Vec::new();
+    while let Some(token) = tokens.next() {
+        let first = token.line != last_line && brackets == 0;
+        if first {
+            while scopes
+                .last()
+                .is_some_and(|(indent, _)| *indent >= token.column)
+            {
+                scopes.pop();
+            }
+            async_line = None;
+        }
+        last_line = token.line;
+        if first && token.text == "async" {
+            async_line = Some(token.line);
+            async_indent = token.column;
+        } else if (first || async_line == Some(token.line)) && matches!(token.text, "class" | "def")
+        {
+            if let Some(name) = tokens.next() {
+                if token.text == "def" && name.text.starts_with("test") {
+                    out.push((token.line, scoped_name(&scopes, name.text)));
+                }
+                let indent = if async_line == Some(token.line) {
+                    async_indent
+                } else {
+                    token.column
+                };
+                scopes.push((indent, name.text));
+            }
+            async_line = None;
+        }
+        match token.text {
+            "(" | "[" | "{" => brackets += 1,
+            ")" | "]" | "}" => brackets = brackets.saturating_sub(1),
+            _ => {}
+        }
     }
-    let rest = s.strip_prefix("fn ")?;
-    let name: String = rest
-        .chars()
-        .take_while(|c| c.is_alphanumeric() || *c == '_')
-        .collect();
-    (!name.is_empty()).then_some(name)
+    out
+}
+
+/// Explicit declarations only; names include their enclosing module/class scope.
+fn test_functions(path: &str, text: &str) -> Vec<(usize, String)> {
+    if path.ends_with(".py") {
+        python_tests(text)
+    } else if path.ends_with(".rs") {
+        rust_tests(text)
+    } else {
+        Vec::new()
+    }
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<String> {
@@ -253,6 +537,13 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
             continue;
         }
         let full = root.join(path);
+        if !fs::symlink_metadata(&full).is_ok_and(|m| m.is_file()) {
+            b.miss(
+                "unreadable_file",
+                json!({"path": path, "reason": "not a regular file"}),
+            );
+            continue;
+        }
         let Ok(bytes) = fs::read(&full) else {
             b.miss(
                 "unreadable_file",
@@ -316,14 +607,15 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
         }
 
         for (line, name) in test_functions(path, &text) {
-            let ids = req_ids_in_test_name(&name);
+            let leaf = name.rsplit("::").next().unwrap_or(&name);
+            let ids = req_ids_in_test_name(leaf);
             let test_id = format!("test:{path}::{name}");
             for id in ids {
                 b.node(
                     &test_id,
                     "test",
                     &file_digest,
-                    &[("path", path), ("name", &name)],
+                    &[("path", path), ("name", leaf)],
                 );
                 b.requirement(&id);
                 b.edge("verifies", &test_id, &format!("req:{id}"), evidence(line));

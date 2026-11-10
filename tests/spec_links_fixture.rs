@@ -430,3 +430,94 @@ fn protocol_body_lines_refuse_near_matches_and_merge_duplicate_evidence() {
             && row["issue"] == "929"));
     assert_eq!(doc["basis_inferred"], 0);
 }
+
+#[test]
+fn review_test_declarations_are_lexical_scoped_and_keep_attribute_blocks() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().join("repo");
+    fs::create_dir(&root).unwrap();
+    git(&root, &["init", "-q", "-b", "main"]);
+    write(
+        &root,
+        "tests/scoped.rs",
+        br####"const EXAMPLE: &str = r###"
+#[test]
+fn req_decoy_01() {}
+"###;
+/* outer /* nested */ #[test]
+fn req_decoy_02() {}
+*/
+macro_rules! example {
+    () => { #[test] fn req_decoy_04() {} };
+}
+// An in-progress file may carry an incomplete raw-identifier prefix.
+r##
+mod first {
+    #[test]
+    #[cfg_attr(
+        any(),
+        ignore
+    )]
+
+    fn req_real_01() {}
+}
+mod second {
+    #[tokio::test]
+    async fn req_real_01() {}
+}
+"####,
+    );
+    write(
+        &root,
+        "tests/scoped_test.py",
+        b"EXAMPLE = '''\ndef test_req_decoy_03():\n    pass\n'''\nclass First:\n    def test_req_real_02(self):\n        pass\nclass Second:\n    def test_req_real_02(self):\n        pass\n",
+    );
+    let head = commit(&root, "fixture: scoped declarations");
+    let doc = extract(&root, &head, OBSERVED_AT).unwrap();
+    let expected = BTreeSet::from([
+        t(
+            "verifies",
+            "test:tests/scoped.rs::first::req_real_01",
+            "req:REQ-REAL-01",
+        ),
+        t(
+            "verifies",
+            "test:tests/scoped.rs::second::req_real_01",
+            "req:REQ-REAL-01",
+        ),
+        t(
+            "verifies",
+            "test:tests/scoped_test.py::First::test_req_real_02",
+            "req:REQ-REAL-02",
+        ),
+        t(
+            "verifies",
+            "test:tests/scoped_test.py::Second::test_req_real_02",
+            "req:REQ-REAL-02",
+        ),
+    ]);
+    assert_eq!(edge_set(&doc), expected);
+}
+
+#[cfg(unix)]
+#[test]
+fn review_external_symlink_never_supplies_verification_evidence() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().join("repo");
+    fs::create_dir(&root).unwrap();
+    git(&root, &["init", "-q", "-b", "main"]);
+    fs::create_dir(root.join("tests")).unwrap();
+    let external = dir.path().join("external.py");
+    fs::write(&external, "def test_req_external_01():\n    pass\n").unwrap();
+    std::os::unix::fs::symlink(&external, root.join("tests/link_test.py")).unwrap();
+    let head = commit(&root, "fixture: tracked external symlink");
+    let before = extract(&root, &head, OBSERVED_AT).unwrap();
+    assert_eq!(edge_set(&before), BTreeSet::new());
+    assert!(before["missing"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|row| { row["kind"] == "unreadable_file" && row["path"] == "tests/link_test.py" }));
+    fs::write(&external, "def test_req_external_99():\n    pass\n").unwrap();
+    assert_eq!(extract(&root, &head, OBSERVED_AT).unwrap(), before);
+}

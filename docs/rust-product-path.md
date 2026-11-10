@@ -636,3 +636,9 @@ Fixtures: `tests/archive_move_fixture_test.rs` (success fixture with hash, readb
 | PRIVACY | `privacy_06_operations_need_no_network` | plan, apply, search and restore succeed under `sandbox-exec` with `(deny network*)`, and plan reports `network: disabled` — macOS only; on Linux the case does not compile and is not_run, never passed | passed (macOS) | passed (macOS) |
 
 The two cases that failed at 3736fca3c were the #2295 audit findings F1 and N1, reproduced independently. The D2 repair went to another lane (leader decision 2026-11-09) and this card does not change `src/archive.rs`. With the repaired D2 merged (b51bfc1be) all 13 cases pass. The two result columns were measured before #2307 strengthened `privacy_01` and `privacy_04`; with those additions the suite passes 13/13 on the #2307 head (311351b5d plus the test change), and the mutation evidence for the additions is in the #2307 PR.
+
+## Explicit SPEC links (C5 #2181, library only)
+
+`moai_cli::spec_links::extract` emits C4 records from explicit tags, test declarations and commit protocol lines; it adds no CLI operation and never infers file-to-test links. Test discovery skips Rust/Python comments and string literals, keeps complete Rust attribute blocks across blank lines, and qualifies test identities with their enclosing Rust modules or Python classes/functions. Requirement IDs come only from the leaf test name, not its enclosing scope. Evidence retains the original source line and content digest. Macro-generated Rust tests are not expanded.
+
+Only regular tracked source files supply evidence. A tracked symlink is reported as `unreadable_file` before its contents are read; changing its external target cannot change extracted links. The existing raw commit-body rules (`Moai-Claim: <issue>#<id>` and `Refs: #<issue>` as exact decimal-ID lines) are unchanged.
