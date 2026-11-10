@@ -79,5 +79,106 @@ class CheckPrSelfAuditTest(unittest.TestCase):
         self.assertEqual(out.returncode, 2)
 
 
+HEAD40 = "72331be4fda1786c32c3189a6faa4a817324a200"
+
+
+def with_ci(line):
+    """FULL with one extra line inside the Self-Audit section."""
+    return FULL.replace("\n## Notes", line + "\n\n## Notes")
+
+
+class CiCitationLineTest(unittest.TestCase):
+    """#2385: a `ci:` line needs keyed `run=<digits>` and `head=<40 lowercase hex>`."""
+
+    def run_tool(self, text):
+        return subprocess.run(["python3", "-I", str(TOOL)], input=text, text=True, capture_output=True)
+
+    def assert_pass(self, text):
+        out = self.run_tool(text)
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+
+    def assert_blocked(self, text, token):
+        out = self.run_tool(text)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn(token, out.stdout)
+
+    def test_no_ci_line_still_passes(self):
+        self.assert_pass(FULL)
+
+    def test_full_citation_passes(self):
+        self.assert_pass(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40))
+
+    def test_head_39_hex_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40[:39]), "ci:head")
+
+    def test_head_40_hex_passes(self):
+        self.assert_pass(with_ci("- ci: rc-ci run=1 head=" + "a" * 40))
+
+    def test_head_41_hex_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40 + "0"), "ci:head")
+
+    def test_uppercase_head_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40.upper()), "ci:head")
+
+    def test_empty_run_id_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run= head=" + HEAD40), "ci:run")
+
+    def test_one_digit_run_id_passes(self):
+        self.assert_pass(with_ci("- ci: rc-ci run=7 head=" + HEAD40))
+
+    def test_unkeyed_run_id_blocked(self):
+        # A bare number (or the digits inside the SHA) is not a run id.
+        self.assert_blocked(with_ci("- ci: rc-ci 42821157127 head=" + HEAD40), "ci:run")
+
+    def test_prefixed_run_key_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci rerun=42821157127 head=" + HEAD40), "ci:run")
+
+    def test_missing_head_blocked(self):
+        self.assert_blocked(with_ci("- ci: rc-ci run=42821157127 " + HEAD40), "ci:head")
+
+    def test_not_run_with_reason_passes(self):
+        self.assert_pass(with_ci("- ci: not_run (merge conflict, pull_request run did not start)"))
+
+    def test_not_run_without_reason_blocked(self):
+        self.assert_blocked(with_ci("- ci: not_run"), "ci:run")
+
+    def test_every_ci_line_is_checked(self):
+        good = "- ci: rc-ci run=42821157127 head=" + HEAD40
+        bad = "- ci: rc-ci run=42821157128"
+        self.assert_blocked(with_ci(good + "\n" + bad), "ci:head")
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+CI_FORMAT = "ci: rc-ci run=<run id> head=<40-hex head SHA>"
+
+
+class CheckRunRulesSingleSourceTest(unittest.TestCase):
+    """#2385 AC-1: the rule table lives once in the VERIFY workflow; the other
+    places point to it and repeat the same `ci:` line format."""
+
+    def read(self, rel):
+        return (ROOT / rel).read_text(encoding="utf-8")
+
+    def test_verify_holds_the_rules_once(self):
+        text = self.read("skills/moai-cli/workflows/verify.md")
+        self.assertEqual(text.count("\n## Check-run rules\n"), 1)
+        self.assertIn(CI_FORMAT, text)
+        for case in ("Author: new or changed code", "Repair lane: the repair changes code",
+                     "Auditor: the audited head changes code", "Delta auditor: merge-only delta"):
+            self.assertIn(case, text)
+
+    def test_other_places_reference_without_restating(self):
+        for rel in ("skills/moai-cli/workflows/audit.md", "skills/moai-cli/workflows/sync.md",
+                    ".github/pull_request_template.md"):
+            with self.subTest(path=rel):
+                text = self.read(rel)
+                self.assertIn("Check-run rules", text)
+                self.assertNotIn("| Role and change |", text)
+
+    def test_pr_form_and_checker_use_the_same_ci_format(self):
+        self.assertIn(CI_FORMAT, self.read(".github/pull_request_template.md"))
+        self.assertIn("ci: rc-ci run=<run id> head=<40-hex head SHA>", self.read("tools/check_pr_self_audit.py"))
+
+
 if __name__ == "__main__":
     unittest.main()
