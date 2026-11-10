@@ -35,6 +35,7 @@ pub mod self_update;
 pub mod session;
 pub mod sources;
 pub mod spec;
+pub mod statusline;
 pub mod update;
 pub mod verify;
 pub mod worktree;

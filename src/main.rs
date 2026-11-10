@@ -495,6 +495,10 @@ enum Command {
     AtlasTagScan {
         path: PathBuf,
     },
+    /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
+    /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
+    /// command's stdout as is. Always exits 0.
+    Statusline,
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -853,7 +857,8 @@ fn launch(
 fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } => return None,
+        // Not envelope operations: the launchers, and the raw-text statusline (#2350).
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline => return None,
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
@@ -1700,6 +1705,10 @@ fn main() -> ExitCode {
         Ok(cli) => cli,
         Err(e) => return usage_error(e),
     };
+    if matches!(cli.command, Some(Command::Statusline)) {
+        print!("{}", moai_cli::statusline::run());
+        return ExitCode::SUCCESS;
+    }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {

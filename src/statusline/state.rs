@@ -1,0 +1,728 @@
+//! Everything the statusline reads outside stdin: environment, the Go configuration and
+//! state files, and local git. Read-only (#2350): the Go statusline also writes
+//! `$HOME/.moai/state/last-model.txt` and `<anchor>/.moai/state/context-usage/*.json`;
+//! this port writes nothing, so the Go state stays untouched until a later card decides
+//! who owns those records.
+//!
+//! The only subprocess is `git`, and only when a `.git` entry is found above the
+//! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
+//! deadline. No network, no detached refresh child, no self re-invocation.
+
+use super::config::{self, Node};
+use super::input::{self, Input};
+use super::segments::{self, ContextReading, GitStatus, Memory};
+use serde::Deserialize;
+use std::collections::{BTreeMap, HashMap};
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
+
+/// The process environment, captured once so collection is testable.
+#[derive(Debug, Clone, Default)]
+pub struct Context {
+    vars: HashMap<String, String>,
+    pub cwd: Option<PathBuf>,
+    pub now_ms: i64,
+    /// When the render must be finished; git is stopped at this point.
+    pub deadline: Option<Instant>,
+}
+
+impl Context {
+    pub fn from_process(budget: Duration) -> Context {
+        Context {
+            vars: std::env::vars().collect(),
+            cwd: std::env::current_dir().ok(),
+            now_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis() as i64),
+            deadline: Some(Instant::now() + budget),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn for_test(vars: &[(&str, &str)], cwd: Option<&Path>, now_ms: i64) -> Context {
+        Context {
+            vars: vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            cwd: cwd.map(Path::to_path_buf),
+            now_ms,
+            deadline: None,
+        }
+    }
+
+    /// A variable as Go's `os.Getenv(k) != ""` sees it: unset and empty are both `None`.
+    pub fn var(&self, key: &str) -> Option<&str> {
+        self.vars.get(key).map(String::as_str).filter(|v| !v.is_empty())
+    }
+
+    fn home(&self) -> Option<PathBuf> {
+        self.var("HOME").map(PathBuf::from)
+    }
+
+    /// `paths.MoaiHome`: an absolute `MOAI_HOME`, else `$HOME/.moai`.
+    fn moai_home(&self) -> Option<PathBuf> {
+        match self.var("MOAI_HOME").map(PathBuf::from) {
+            Some(p) if p.is_absolute() => Some(p),
+            _ => self.home().map(|h| h.join(".moai")),
+        }
+    }
+
+    pub fn no_color(&self) -> bool {
+        self.var("NO_COLOR").is_some() || self.var("MOAI_NO_COLOR").is_some()
+    }
+}
+
+/// Everything one render needs (Go `StatusData`, the fields this port renders).
+#[derive(Debug, Default)]
+pub struct Status {
+    pub model: String,
+    pub session_ms: i64,
+    pub memory: Memory,
+    pub auto_compact: i64,
+    pub version: Option<Version>,
+    pub claude_version: String,
+    pub output_style: String,
+    pub directory: String,
+    pub session_name: String,
+    pub agent_name: String,
+    /// `Some` when `effort` is present, even with an empty level.
+    pub effort: Option<String>,
+    pub thinking: Option<bool>,
+    /// (cache read, cache creation) from `current_usage`.
+    pub cache: Option<(i64, i64)>,
+    pub five_hour: Option<input::RateWindow>,
+    pub seven_day: Option<input::RateWindow>,
+    pub git: Option<GitStatus>,
+    pub repo: Option<(String, String)>,
+    pub github: GitHubCounts,
+    pub task: String,
+    pub pr: Option<(i64, String)>,
+    pub goal_armed: bool,
+    pub now_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Version {
+    pub current: String,
+    pub latest: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct GitHubCounts {
+    pub available: bool,
+    pub suppressed: bool,
+    pub open_issues: i64,
+    pub open_prs: i64,
+}
+
+/// `statusline.yaml` as the Go CLI reads it: theme and the segments map.
+#[derive(Debug, Default, Clone)]
+pub struct DisplayConfig {
+    pub theme: String,
+    pub segments: BTreeMap<String, bool>,
+}
+
+/// Version this binary reports in the `🗿` segment.
+pub const BINARY_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
+    let project_root = find_project_root(ctx);
+    let anchor = input.and_then(|i| resolve_anchor(i));
+    let auto_compact = segments::auto_compact_threshold(ctx.var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"));
+    let mut status = Status {
+        model: collect_model(input, ctx),
+        auto_compact,
+        version: Some(collect_version(ctx, BINARY_VERSION)),
+        task: collect_task(ctx),
+        now_ms: ctx.now_ms,
+        ..Default::default()
+    };
+    let git_dir = project_root.clone().or_else(|| ctx.cwd.clone());
+    status.git = git_dir.and_then(|d| collect_git(&d, ctx));
+    let Some(input) = input else {
+        return status;
+    };
+    status.session_ms = input.cost.as_ref().and_then(|c| c.total_duration_ms).unwrap_or(0);
+    status.memory = collect_memory(input, ctx, auto_compact);
+    status.directory = directory_name(input, ctx);
+    status.session_name = input::text(&input.session_name).to_string();
+    status.agent_name = input.agent.as_ref().map_or("", |a| input::text(&a.name)).to_string();
+    status.output_style = input.output_style.as_ref().map_or("", |s| input::text(&s.name)).to_string();
+    status.claude_version = input::text(&input.version).to_string();
+    status.effort = input.effort.as_ref().map(|e| input::text(&e.level).to_string());
+    status.thinking = input.thinking.as_ref().map(|t| t.enabled.unwrap_or(false));
+    status.cache = input
+        .context_window
+        .as_ref()
+        .and_then(|cw| cw.current_usage.as_ref())
+        .map(|u| (u.cache_read_input_tokens.unwrap_or(0), u.cache_creation_input_tokens.unwrap_or(0)));
+    if let Some(limits) = &input.rate_limits {
+        status.five_hour = limits.five_hour;
+        status.seven_day = limits.seven_day;
+    }
+    status.pr = input
+        .pr
+        .as_ref()
+        .map(|p| (p.number.unwrap_or(0), input::text(&p.review_state).to_string()));
+    status.repo = input
+        .workspace
+        .as_ref()
+        .and_then(|w| w.repo.as_ref())
+        .map(|r| (input::text(&r.owner).to_string(), input::text(&r.name).to_string()));
+    if let Some(anchor) = &anchor {
+        status.github = github_counts(anchor);
+        status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
+    }
+    status
+}
+
+/// The configuration root: the state anchor, else the cwd project root (cli/statusline.go).
+pub fn display_config(input: Option<&Input>, ctx: &Context) -> DisplayConfig {
+    let root = input.and_then(resolve_anchor).or_else(|| find_project_root(ctx));
+    root.map(|r| read_display_config(&r.join(".moai/config/sections/statusline.yaml")))
+        .unwrap_or_default()
+}
+
+fn read_display_config(path: &Path) -> DisplayConfig {
+    let Some(doc) = config::read(path) else {
+        return DisplayConfig::default();
+    };
+    let theme = match doc.get(&["statusline", "theme"]) {
+        None => String::new(),
+        Some(Node::Scalar(s)) => s.clone(),
+        Some(Node::Map(_)) => return DisplayConfig::default(),
+    };
+    let mut segments = BTreeMap::new();
+    match doc.get(&["statusline", "segments"]) {
+        None => {}
+        Some(Node::Scalar(s)) if s.is_empty() || s == "null" || s == "~" => {}
+        Some(Node::Scalar(_)) => return DisplayConfig::default(),
+        Some(Node::Map(map)) => {
+            for (key, value) in map {
+                let Node::Scalar(v) = value else {
+                    return DisplayConfig::default();
+                };
+                let Some(b) = config::boolean(v) else {
+                    return DisplayConfig::default();
+                };
+                segments.insert(key.clone(), b);
+            }
+        }
+    }
+    DisplayConfig { theme, segments }
+}
+
+/// `findProjectRoot` (cli/glm.go): walk up from the cwd to a directory holding `.moai`,
+/// stopping at HOME.
+fn find_project_root(ctx: &Context) -> Option<PathBuf> {
+    let mut dir = ctx.cwd.clone()?;
+    if let Ok(resolved) = std::fs::canonicalize(&dir) {
+        dir = resolved;
+    }
+    let home = ctx.home().map(|h| std::fs::canonicalize(&h).unwrap_or(h));
+    loop {
+        if home.as_deref() == Some(dir.as_path()) {
+            return None;
+        }
+        if dir.join(".moai").exists() {
+            return Some(dir);
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
+/// `stateanchor.Resolve`: an existing absolute `workspace.project_dir`, else
+/// `worktree.original_cwd`, else the main checkout of the git repository holding
+/// `workspace.current_dir` / `cwd`, found on disk instead of by running git.
+pub fn resolve_anchor(input: &Input) -> Option<PathBuf> {
+    let candidate = |p: &str| {
+        let path = PathBuf::from(p);
+        (!p.is_empty() && path.is_absolute() && path.is_dir()).then_some(path)
+    };
+    let ws = input.workspace.as_ref();
+    if let Some(p) = ws.and_then(|w| candidate(input::text(&w.project_dir))) {
+        return Some(p);
+    }
+    if let Some(p) = input.worktree.as_ref().and_then(|w| candidate(input::text(&w.original_cwd))) {
+        return Some(p);
+    }
+    let dir = ws.map_or("", |w| input::text(&w.current_dir));
+    let dir = if dir.is_empty() { input::text(&input.cwd) } else { dir };
+    if dir.is_empty() {
+        return None;
+    }
+    main_checkout_of(Path::new(dir))
+}
+
+/// The parent of the git common directory for `dir`: `.git` as a directory, or a `.git`
+/// file naming a worktree git dir whose `commondir` points back to the main repository.
+fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
+    let dir = std::fs::canonicalize(dir).ok()?;
+    let (top, dot_git) = find_dot_git(&dir)?;
+    if dot_git.is_dir() {
+        return Some(top);
+    }
+    let text = std::fs::read_to_string(&dot_git).ok()?;
+    let git_dir = PathBuf::from(text.trim().strip_prefix("gitdir:")?.trim());
+    let git_dir = if git_dir.is_absolute() { git_dir } else { top.join(git_dir) };
+    let common = match std::fs::read_to_string(git_dir.join("commondir")) {
+        Ok(c) => {
+            let c = PathBuf::from(c.trim());
+            if c.is_absolute() { c } else { git_dir.join(c) }
+        }
+        Err(_) => git_dir,
+    };
+    std::fs::canonicalize(common).ok()?.parent().map(Path::to_path_buf)
+}
+
+fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
+    let mut dir = start.to_path_buf();
+    loop {
+        let candidate = dir.join(".git");
+        if candidate.exists() {
+            return Some((dir, candidate));
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
+// ---- model ----
+
+/// `CollectMetrics` model resolution: display name, shortened id or name, then the
+/// `MOAI_LAST_MODEL` / `$HOME/.moai/state/last-model.txt` fallback, then the GLM mapping.
+fn collect_model(input: Option<&Input>, ctx: &Context) -> String {
+    let mut name = String::new();
+    if let Some(m) = input.and_then(|i| i.model.as_ref()) {
+        name = if !m.display_name.is_empty() {
+            m.display_name.clone()
+        } else if !m.id.is_empty() {
+            segments::shorten_model_name(&m.id)
+        } else {
+            segments::shorten_model_name(&m.name)
+        };
+    }
+    if name.is_empty() {
+        name = if let Some(env) = ctx.var("MOAI_LAST_MODEL") {
+            segments::shorten_model_name(env)
+        } else {
+            ctx.home()
+                .and_then(|h| std::fs::read_to_string(h.join(".moai/state/last-model.txt")).ok())
+                .map(|s| s.trim().to_string())
+                .unwrap_or_default()
+        };
+    }
+    resolve_glm_model_name(&name, ctx)
+}
+
+/// `resolveGLMModelName`: a Claude slot name maps to the GLM model configured for it.
+fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
+    if display.is_empty() {
+        return String::new();
+    }
+    let cleaned = display.strip_suffix("[1m]").unwrap_or(display).trim();
+    let lower = cleaned.to_lowercase();
+    let key = if lower.contains("opus") {
+        "ANTHROPIC_DEFAULT_OPUS_MODEL"
+    } else if lower.contains("sonnet") {
+        "ANTHROPIC_DEFAULT_SONNET_MODEL"
+    } else if lower.contains("haiku") {
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+    } else if !lower.starts_with("claude") {
+        return cleaned.to_string();
+    } else {
+        return display.to_string();
+    };
+    match ctx.var(key) {
+        Some(glm) if !glm.starts_with("claude-") => glm.to_string(),
+        _ => display.to_string(),
+    }
+}
+
+// ---- context window ----
+
+fn collect_memory(input: &Input, ctx: &Context, auto_compact: i64) -> Memory {
+    let reading = input.context_window.as_ref().map(|cw| ContextReading {
+        used_percentage: cw.used_percentage,
+        context_window_size: cw.context_window_size.unwrap_or(0),
+        used: cw.used.unwrap_or(0),
+        total: cw.total.unwrap_or(0),
+        current_usage_tokens: cw.current_usage.as_ref().map(|u| {
+            u.input_tokens.unwrap_or(0)
+                + u.cache_creation_input_tokens.unwrap_or(0)
+                + u.cache_read_input_tokens.unwrap_or(0)
+        }),
+    });
+    let size_override = if reading.is_some() { context_window_override(ctx) } else { 0 };
+    segments::collect_memory(reading, size_override, auto_compact)
+}
+
+/// Built-in GLM context windows (memory.go `glmContextWindows`).
+const GLM_CONTEXT_WINDOWS: [(&str, i64); 2] = [("glm-5.3-flash", 1_000_000), ("glm-5.3", 1_000_000)];
+const GLM_ENV_SLOTS: [&str; 3] = [
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+];
+
+/// `resolveContextWindowOverride`: `MOAI_STATUSLINE_CONTEXT_SIZE`, then `llm.yaml`
+/// `llm.glm.context_windows`, then the built-in table, for non-Claude slot models.
+fn context_window_override(ctx: &Context) -> i64 {
+    if let Some(n) = ctx.var("MOAI_STATUSLINE_CONTEXT_SIZE").and_then(|v| v.parse::<i64>().ok()) {
+        if n > 0 {
+            return n;
+        }
+    }
+    let slots: Vec<String> = GLM_ENV_SLOTS
+        .iter()
+        .filter_map(|k| ctx.vars.get(*k))
+        .map(|v| v.trim().to_lowercase())
+        .filter(|v| !v.is_empty() && !v.starts_with("claude"))
+        .collect();
+    let user = llm_context_windows(ctx);
+    for table in [user.as_slice(), &GLM_CONTEXT_WINDOWS.map(|(k, v)| (k.to_string(), v))[..]] {
+        for model in &slots {
+            if let Some(size) = match_context_window(model, table) {
+                return size;
+            }
+        }
+    }
+    0
+}
+
+fn match_context_window(model: &str, table: &[(String, i64)]) -> Option<i64> {
+    table
+        .iter()
+        .filter(|(name, _)| model.contains(&name.to_lowercase()))
+        .max_by_key(|(name, _)| name.len())
+        .map(|(_, size)| *size)
+        .filter(|size| *size > 0)
+}
+
+/// `readLLMYAMLContextWindows`: the nearest `llm.yaml` above the cwd decides.
+fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
+    let Some(mut dir) = ctx.cwd.clone() else {
+        return Vec::new();
+    };
+    loop {
+        let path = dir.join(".moai/config/sections/llm.yaml");
+        if path.exists() {
+            let Some(Node::Map(map)) = config::read(&path)
+                .as_ref()
+                .and_then(|d| d.get(&["llm", "glm", "context_windows"]).cloned())
+            else {
+                return Vec::new();
+            };
+            let mut out = Vec::new();
+            for (k, v) in map {
+                match v {
+                    Node::Scalar(s) => match s.parse::<i64>() {
+                        Ok(n) => out.push((k, n)),
+                        Err(_) => return Vec::new(),
+                    },
+                    Node::Map(_) => return Vec::new(),
+                }
+            }
+            return out;
+        }
+        if !dir.pop() {
+            return Vec::new();
+        }
+    }
+}
+
+// ---- version ----
+
+/// `VersionCollector.CheckUpdate`: the nearest `system.yaml` above the cwd names the
+/// template version; a different binary version is shown as the update target.
+fn collect_version(ctx: &Context, binary: &str) -> Version {
+    let trim = |v: &str| v.strip_prefix('v').unwrap_or(v).to_string();
+    let bv = trim(binary);
+    let Some(template) = template_version(ctx) else {
+        return Version { current: bv, latest: None };
+    };
+    let tv = trim(&template);
+    let latest = (!bv.is_empty() && !tv.is_empty() && bv != tv).then_some(bv);
+    Version { current: tv, latest }
+}
+
+fn template_version(ctx: &Context) -> Option<String> {
+    let mut dir = ctx.cwd.clone()?;
+    loop {
+        let path = dir.join(".moai/config/sections/system.yaml");
+        if path.exists() {
+            let doc = config::read(&path)?;
+            let pick = |key| doc.scalar(&["moai", key]).filter(|v| !v.is_empty()).map(str::to_string);
+            return pick("template_version").or_else(|| pick("version"));
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
+// ---- directory ----
+
+/// `extractProjectDirectory`: project dir, current dir, legacy cwd, then the process cwd.
+fn directory_name(input: &Input, ctx: &Context) -> String {
+    let ws = input.workspace.as_ref();
+    for candidate in [
+        ws.map_or("", |w| input::text(&w.project_dir)),
+        ws.map_or("", |w| input::text(&w.current_dir)),
+        input::text(&input.cwd),
+    ] {
+        if !candidate.is_empty() {
+            return go_base(candidate);
+        }
+    }
+    ctx.cwd.as_deref().map_or(String::new(), |p| go_base(&p.to_string_lossy()))
+}
+
+/// Go `filepath.Base`: trailing separators dropped, `/` stays `/`, empty is `.`.
+fn go_base(path: &str) -> String {
+    if path.is_empty() {
+        return ".".into();
+    }
+    let trimmed = path.trim_end_matches('/');
+    if trimmed.is_empty() {
+        return "/".into();
+    }
+    trimmed.rsplit('/').next().unwrap_or(trimmed).to_string()
+}
+
+// ---- git ----
+
+fn collect_git(dir: &Path, ctx: &Context) -> Option<GitStatus> {
+    // No repository above `dir`: nothing to ask git, so no process is started.
+    find_dot_git(&std::fs::canonicalize(dir).ok()?)?;
+    let out = run_git(dir, &["--no-optional-locks", "status", "--porcelain", "--branch"], ctx)?;
+    let mut status = segments::parse_porcelain(&out);
+    if status.branch.is_empty() {
+        status.branch = run_git(dir, &["symbolic-ref", "--short", "HEAD"], ctx)
+            .map(|b| b.trim().to_string())
+            .unwrap_or_default();
+    }
+    Some(status)
+}
+
+/// One read-only git call, its environment scrubbed like every other git runner in the
+/// crate, stopped at the render deadline.
+fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
+    let mut cmd = Command::new("git");
+    cmd.args(args)
+        .current_dir(dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
+    let mut child = cmd.spawn().ok()?;
+    let mut stdout = child.stdout.take()?;
+    let reader = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        stdout.take(1 << 20).read_to_end(&mut buf).map(|_| buf)
+    });
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let out = reader.join().ok()?.ok()?;
+                return status.success().then(|| String::from_utf8_lossy(&out).into_owned());
+            }
+            Ok(None) if ctx.deadline.is_some_and(|d| Instant::now() >= d) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(2)),
+            Err(_) => return None,
+        }
+    }
+}
+
+// ---- local state files ----
+
+/// `taskCollector.read`: `<MOAI_HOME>/state/last-session-state.json` `active_task`.
+fn collect_task(ctx: &Context) -> String {
+    #[derive(Deserialize, Default)]
+    #[serde(default)]
+    struct Active {
+        command: Option<String>,
+        spec_id: Option<String>,
+        stage: Option<String>,
+    }
+    #[derive(Deserialize, Default)]
+    #[serde(default)]
+    #[allow(dead_code)]
+    struct SessionState {
+        last_updated: Option<String>,
+        current_branch: Option<String>,
+        uncommitted_changes: Option<String>,
+        uncommitted_files: Option<i64>,
+        specs_in_progress: Option<Vec<String>>,
+        active_task: Option<Active>,
+    }
+    let Some(path) = ctx.moai_home().map(|h| h.join("state/last-session-state.json")) else {
+        return String::new();
+    };
+    let Some(state) = std::fs::read(path)
+        .ok()
+        .and_then(|b| serde_json::from_slice::<SessionState>(&b).ok())
+    else {
+        return String::new();
+    };
+    let Some(task) = state.active_task else {
+        return String::new();
+    };
+    let command = input::text(&task.command);
+    if command.is_empty() {
+        return String::new();
+    }
+    let mut out = format!("[{command}");
+    if let Some(spec) = task.spec_id.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!(" {spec}"));
+    }
+    if let Some(stage) = task.stage.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!("-{stage}"));
+    }
+    out.push(']');
+    out
+}
+
+/// `resolveGoalArmed`: `<anchor>/.moai/state/goal/<session_id>.json` has `status: armed`.
+/// A session id carrying a path separator is refused rather than joined.
+fn goal_armed(anchor: &Path, session_id: &str) -> bool {
+    if session_id.is_empty() || session_id.contains(['/', '\\']) || session_id == ".." {
+        return false;
+    }
+    #[derive(Deserialize, Default)]
+    #[serde(default)]
+    struct Goal {
+        status: Option<String>,
+    }
+    let path = anchor.join(".moai/state/goal").join(format!("{session_id}.json"));
+    std::fs::read(path)
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Goal>(&b).ok())
+        .is_some_and(|g| g.status.as_deref() == Some("armed"))
+}
+
+/// `resolveGitHubCounts`: the cache only, never the network; an explicit
+/// `statusline.forge` naming no forge suppresses the pair.
+fn github_counts(anchor: &Path) -> GitHubCounts {
+    #[derive(Deserialize, Default)]
+    #[serde(default)]
+    struct Cache {
+        open_issues: Option<i64>,
+        open_prs: Option<i64>,
+        suppressed: Option<bool>,
+        #[allow(dead_code)]
+        fetched_at: Option<i64>,
+    }
+    let mut counts = std::fs::read(anchor.join(".moai/state/github/counts.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Cache>(&b).ok())
+        .map_or(GitHubCounts::default(), |c| GitHubCounts {
+            available: true,
+            suppressed: c.suppressed.unwrap_or(false),
+            open_issues: c.open_issues.unwrap_or(0),
+            open_prs: c.open_prs.unwrap_or(0),
+        });
+    let forge = [".moai/statusline.local.yaml", ".moai/config/sections/statusline.yaml"]
+        .iter()
+        .filter_map(|rel| config::read(&anchor.join(rel)))
+        .filter_map(|doc| doc.scalar(&["statusline", "forge"]).map(|s| s.trim().to_string()))
+        .find(|v| !v.is_empty());
+    if let Some(forge) = forge {
+        if !matches!(forge.to_lowercase().as_str(), "github" | "gitlab") {
+            counts.suppressed = true;
+        }
+    }
+    counts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn go_base_matches_filepath_base() {
+        assert_eq!(go_base("/a/b/demo-project"), "demo-project");
+        assert_eq!(go_base("/a/b/"), "b");
+        assert_eq!(go_base("/"), "/");
+        assert_eq!(go_base(""), ".");
+    }
+
+    #[test]
+    fn glm_names_map_only_non_claude_slot_models() {
+        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3")], None, 0);
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.3");
+        assert_eq!(resolve_glm_model_name("Sonnet", &ctx), "Sonnet");
+        assert_eq!(resolve_glm_model_name("gpt-x[1m]", &ctx), "gpt-x");
+        let claude = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None, 0);
+        assert_eq!(resolve_glm_model_name("Opus", &claude), "Opus");
+    }
+
+    #[test]
+    fn context_override_prefers_env_then_longest_builtin_match() {
+        let env = Context::for_test(&[("MOAI_STATUSLINE_CONTEXT_SIZE", "128000")], None, 0);
+        assert_eq!(context_window_override(&env), 128_000);
+        let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")], None, 0);
+        assert_eq!(context_window_override(&glm), 1_000_000);
+        assert_eq!(context_window_override(&Context::for_test(&[], None, 0)), 0);
+    }
+
+    #[test]
+    fn version_compares_template_with_binary() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        assert_eq!(collect_version(&ctx, "v3.2.1"), Version { current: "3.2.1".into(), latest: None });
+        let sections = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&sections).unwrap();
+        std::fs::write(sections.join("system.yaml"), "moai:\n  template_version: v2.0.0\n").unwrap();
+        assert_eq!(
+            collect_version(&ctx, "3.2.1"),
+            Version { current: "2.0.0".into(), latest: Some("3.2.1".into()) }
+        );
+        std::fs::write(sections.join("system.yaml"), "moai:\n  version: 3.2.1\n").unwrap();
+        assert_eq!(collect_version(&ctx, "v3.2.1").latest, None);
+    }
+
+    #[test]
+    fn goal_and_forge_reads() {
+        let tmp = tempfile::tempdir().unwrap();
+        let goal = tmp.path().join(".moai/state/goal");
+        std::fs::create_dir_all(&goal).unwrap();
+        std::fs::write(goal.join("s1.json"), r#"{"status":"armed"}"#).unwrap();
+        assert!(goal_armed(tmp.path(), "s1"));
+        assert!(!goal_armed(tmp.path(), "s2"));
+        assert!(!goal_armed(tmp.path(), "../goal/s1"));
+        assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
+        let gh = tmp.path().join(".moai/state/github");
+        std::fs::create_dir_all(&gh).unwrap();
+        std::fs::write(gh.join("counts.json"), r#"{"open_issues":7,"open_prs":3,"fetched_at":1}"#).unwrap();
+        let c = github_counts(tmp.path());
+        assert_eq!((c.available, c.open_issues, c.open_prs, c.suppressed), (true, 7, 3, false));
+        let sections = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&sections).unwrap();
+        std::fs::write(sections.join("statusline.yaml"), "statusline:\n  forge: none\n").unwrap();
+        assert!(github_counts(tmp.path()).suppressed);
+    }
+
+    #[test]
+    fn anchor_follows_a_linked_worktree_to_the_main_checkout() {
+        let tmp = tempfile::tempdir().unwrap();
+        let main = tmp.path().join("main");
+        let gitdir = main.join(".git/worktrees/wt");
+        std::fs::create_dir_all(&gitdir).unwrap();
+        std::fs::write(gitdir.join("commondir"), "../..\n").unwrap();
+        let wt = tmp.path().join("wt");
+        std::fs::create_dir_all(wt.join("sub")).unwrap();
+        std::fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
+        let canon = std::fs::canonicalize(&main).unwrap();
+        assert_eq!(main_checkout_of(&wt.join("sub")), Some(canon.clone()));
+        assert_eq!(main_checkout_of(&main), Some(canon));
+    }
+}
