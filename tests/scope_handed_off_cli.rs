@@ -240,6 +240,41 @@ fn only_overlapping_pr_ready_claims_are_looked_up() {
     assert_eq!(calls, 0);
 }
 
+/// Audit B1 (6774380195): a GitHub Enterprise claim must not be looked up on github.com, where
+/// the same owner/repo/number could be an unrelated closed PR.
+#[test]
+fn a_github_claim_on_another_host_is_uncertain_without_a_lookup() {
+    let mut other = record(KEY_B, 2, "pr_ready", vec![pr_create("12", "confirmed")]);
+    other["task_ref"]["host"] = json!("ghe.example.com");
+    let (r, calls) = decide(other);
+    assert_eq!(r["decision"], "blocked");
+    assert_eq!(r["conflicts"][0]["pr_status"]["pr_state"], "uncertain");
+    assert_eq!(r["skipped_ended"], json!([]));
+    assert_eq!(calls, 0);
+}
+
+/// With no overlapping handed-off claim the forge is not touched at all, not even to build the
+/// transport: a broken `MOAI_FORGE_GH_BIN` cannot fail the check.
+#[test]
+fn no_handed_off_overlap_needs_no_forge_setup() {
+    let (_t, root) = repo();
+    seed(&root, record(KEY_B, 2, "running", vec![]));
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .args(["scope-check"])
+        .arg(&root)
+        .args(["--task", KEY_A])
+        .current_dir(&root)
+        .env("HOME", root.join("home"))
+        .env("MOAI_FORGE_GH_BIN", "relative/not-a-file")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .unwrap();
+    let env: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(env["ok"], true, "{env}");
+    assert_eq!(env["result"]["decision"], "blocked");
+}
+
 #[test]
 fn a_non_github_claim_is_uncertain_without_a_lookup() {
     let mut other = record(KEY_B, 2, "pr_ready", vec![pr_create("12", "confirmed")]);

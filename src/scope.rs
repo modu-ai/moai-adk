@@ -179,6 +179,11 @@ pub fn pr_status<T: crate::forge::transport::Transport, C: crate::forge::policy:
     json!({"ended": all_closed, "pr_state": if all_closed { "closed" } else { "open" }, "prs": prs})
 }
 
+/// True when some `pr_ready` claim overlaps `mine` — the only case that needs the forge.
+pub fn needs_pr_status(mine: &ClaimRecord, records: &[ClaimRecord]) -> bool {
+    !handed_off_overlaps(mine, records).is_empty()
+}
+
 /// [`pr_status`] for every handed-off record that overlaps `mine`, keyed by task key. No
 /// overlap with a `pr_ready` record means no forge call at all. Read before the journal lock.
 pub fn handed_off_status<T: crate::forge::transport::Transport, C: crate::forge::policy::Clock>(
