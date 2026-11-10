@@ -3,8 +3,8 @@
 //! ruleset changes stay with the leader flow (decision 06:02, 2026-11-09).
 //!
 //! GitHub is read through the injected forge transport; tests replay recorded JSON.
-//! gh call count is minimised: the open-PR list, the PR, the commit list and the two
-//! compare calls are the only reads a verdict performs.
+//! gh call count is minimised: the open-PR list, the PR, the commit list, the two
+//! compare calls and the head's check runs are the only reads a verdict performs.
 use crate::forge::transport::Transport;
 use crate::forge::Client;
 use serde_json::{json, Value};
@@ -173,17 +173,68 @@ fn fetch_pr_commits<T: Transport, C: crate::forge::policy::Clock>(
     Ok(out)
 }
 
-fn fetch_commit_status<T: Transport, C: crate::forge::policy::Clock>(
+/// The head's check runs (`commits/<sha>/check-runs`), paginated with the same 10-page
+/// cap as the other list reads. This is the CI judgment source (#2335): rc-ci reports
+/// as a check run and never lands in the combined commit status, whose `state` also
+/// carries unrelated contexts (a Vercel deployment failure poisoned PR #2333's
+/// combined status while rc-ci was green). The combined status endpoint is no longer
+/// read at all.
+fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
     repo: &str,
     sha: &str,
-) -> Result<String> {
-    let resp = client.get(&api(owner, repo, &format!("commits/{sha}/status")), None)?;
-    resp.body
-        .as_ref()
-        .and_then(|b| b["state"].as_str().map(str::to_string))
-        .ok_or_else(|| "commit status response carried no state".to_string())
+) -> Result<Vec<Value>> {
+    let mut out = Vec::new();
+    let mut url = Some(api(
+        owner,
+        repo,
+        &format!("commits/{sha}/check-runs?per_page=100"),
+    ));
+    let mut pages = 0;
+    while let Some(u) = url {
+        pages += 1;
+        if pages > 10 {
+            return Err("flow check runs page limit exceeded (10)".to_string());
+        }
+        let resp = client.get(&u, None)?;
+        let arr = resp
+            .body
+            .as_ref()
+            .and_then(|b| b["check_runs"].as_array())
+            .cloned()
+            .unwrap_or_default();
+        out.extend(arr);
+        url = resp
+            .header("link")
+            .and_then(|l| crate::forge::policy::next_link(Some(l)));
+    }
+    Ok(out)
+}
+
+/// The CI judgment over the required check runs: every required name must exist on the
+/// head and have concluded `success`; anything pending, failed, or missing fails the
+/// check by name. Unrelated check runs are ignored by construction — only the
+/// configured required list is consulted (default: `rc-ci`).
+fn required_ci_judgment(runs: &[Value], required: &[String]) -> (bool, String) {
+    for name in required {
+        let Some(r) = runs
+            .iter()
+            .find(|r| r["name"].as_str() == Some(name.as_str()))
+        else {
+            return (false, format!("{name} check run not found"));
+        };
+        let status = r["status"].as_str().unwrap_or_default();
+        let conclusion = r["conclusion"].as_str().unwrap_or_default();
+        if conclusion == "success" {
+            continue;
+        }
+        if conclusion.is_empty() {
+            return (false, format!("{name}: {status}, pending"));
+        }
+        return (false, format!("{name}: {conclusion}"));
+    }
+    (true, format!("{}: success", required.join(", ")))
 }
 
 // ---- WIP cap (assignment-refusal signal; the refusal itself is the leader's act) ----
@@ -259,9 +310,10 @@ pub struct GateCheck {
 
 /// The integration gate verdict (verdict only — status posting and merging stay on
 /// the leader path). Checks:
-/// tip containment (behind = update-branch needed), files changed since the audited
-/// head (advisory count), claim lines on lane-authored non-merge commits, the PR
-/// body claim line, the CI commit status, and a head re-read.
+/// tip containment (behind_by 0 — a diverged branch fails even with ahead_by > 0),
+/// files changed since the audited head (advisory count), claim lines on lane-authored
+/// non-merge commits, the PR body claim line, the required check runs' conclusions
+/// (#2335: the combined commit status is not consulted), and a head re-read.
 pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
@@ -269,6 +321,7 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
     number: i64,
     audit_head: &str,
     base_ref: &str,
+    required_checks: &[String],
 ) -> Result<Value> {
     let pr = fetch_pr(client, owner, repo, number)?;
     let head = pr["head"]["sha"]
@@ -278,12 +331,14 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
     let body = pr["body"].as_str().unwrap_or_default().to_string();
 
     let tip = fetch_base_tip(client, owner, repo, base_ref)?;
-    let (ahead_by, _behind, _files) = fetch_compare(client, owner, repo, &tip, &head)?;
-    let tip_contained = ahead_by > 0 || tip == head;
+    // #2335: containment requires the tip to be fully merged — behind_by > 0 means the
+    // branch diverged and the tip's commits are missing, whatever ahead_by says.
+    let (ahead_by, behind_by, _files) = fetch_compare(client, owner, repo, &tip, &head)?;
+    let tip_contained = behind_by == 0 && (ahead_by > 0 || tip == head);
     let checks0 = GateCheck {
         check: "tip_contained",
         pass: tip_contained,
-        detail: format!("tip {tip} ahead_by {ahead_by}"),
+        detail: format!("tip {tip} ahead_by {ahead_by} behind_by {behind_by}"),
     };
 
     let changed_since_audit = head != audit_head;
@@ -335,17 +390,17 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
         },
     };
 
-    let (ci_state, ci_ok) = fetch_commit_status(client, owner, repo, &head)
-        .map(|s| {
-            let ok = s == "success";
-            (s.clone(), ok)
-        })
-        .unwrap_or_else(|_e| ("unknown".into(), false));
-    let _ = ci_ok;
+    // #2335: CI is judged from the required check runs' conclusions — the combined
+    // commit status is neither consulted nor able to mask or poison the result. A read
+    // failure of the check-runs endpoint itself is `unknown`, never a pass.
+    let (ci_ok, ci_detail) = match fetch_check_runs(client, owner, repo, &head) {
+        Ok(runs) => required_ci_judgment(&runs, required_checks),
+        Err(_e) => (false, "check runs unavailable".to_string()),
+    };
     let checks4 = GateCheck {
         check: "ci_status",
-        pass: ci_state == "success",
-        detail: format!("commit status: {ci_state}"),
+        pass: ci_ok,
+        detail: format!("required check runs: {ci_detail}"),
     };
 
     let pr_again = fetch_pr(client, owner, repo, number)?;

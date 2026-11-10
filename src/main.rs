@@ -318,8 +318,9 @@ enum Command {
         total_cap: u64,
     },
     /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
-    /// tip containment, changed-since-audit, claim lines, CI status, head stability.
-    /// Status posting and merging stay with the leader flow.
+    /// tip containment (behind_by 0), changed-since-audit, claim lines, required check
+    /// runs' conclusions, head stability. Status posting and merging stay with the
+    /// leader flow.
     FlowGateVerdict {
         /// GitHub owner.
         #[arg(long)]
@@ -336,6 +337,11 @@ enum Command {
         /// The base ref the tip is read from (e.g. v2026.11.0).
         #[arg(long = "base-ref", default_value = "v2026.11.0")]
         base_ref: String,
+        /// Comma-separated required check-run names (#2335). The verdict reads these
+        /// runs' conclusions; unrelated checks and the combined commit status are
+        /// excluded from the judgment.
+        #[arg(long = "required-checks", default_value = "rc-ci")]
+        required_checks: String,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
@@ -1254,6 +1260,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             pr,
             audit_head,
             base_ref,
+            required_checks,
         } => {
             let transport = moai_cli::forge::transport::GhTransport::from_env()?;
             let clock = moai_cli::forge::policy::SystemClock;
@@ -1263,7 +1270,21 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 Default::default(),
                 Default::default(),
             );
-            moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
+            let checks: Vec<String> = required_checks
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
+            moai_cli::flow::gate_verdict(
+                &client,
+                &owner,
+                &repo,
+                pr,
+                &audit_head,
+                &base_ref,
+                &checks,
+            )
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan { project, host } => {

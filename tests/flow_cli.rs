@@ -32,6 +32,7 @@ case "$*" in
   *pulls/9*) printf '%s' "$FLOW_PR";;
   *pulls?state=open*) printf '%s' "$FLOW_OPEN_PRS";;
   *compare/*) printf '%s' "$FLOW_COMPARE";;
+  *commits/*/check-runs*) printf '%s' "$FLOW_CHECK_RUNS";;
   *commits/*/status*) printf '%s' "$FLOW_STATUS";;
   *) printf '%s' "$FLOW_TIP";;
 esac
@@ -49,6 +50,7 @@ case "$*" in
   *pulls/9*) if [ "$n" -ge 2 ]; then printf '%s' "$FLOW_PR2"; else printf '%s' "$FLOW_PR"; fi;;
   *pulls?state=open*) printf '%s' "$FLOW_OPEN_PRS";;
   *compare/*) printf '%s' "$FLOW_COMPARE";;
+  *commits/*/check-runs*) printf '%s' "$FLOW_CHECK_RUNS";;
   *commits/*/status*) printf '%s' "$FLOW_STATUS";;
   *) printf '%s' "$FLOW_TIP";;
 esac
@@ -128,6 +130,35 @@ fn compare_body(ahead: u64, behind: u64, files: &[&str]) -> String {
 
 fn status_body(state: &str) -> String {
     json!({"state": state}).to_string()
+}
+
+/// The `commits/<sha>/check-runs` payload: an aggregate list the CI judgment reads
+/// after the #2335 fix (a combined-status `state` is no longer the source).
+fn check_runs_body(runs: &[Value]) -> String {
+    json!({"total_count": runs.len(), "check_runs": runs}).to_string()
+}
+
+fn check_run(name: &str, status: &str, conclusion: &str) -> Value {
+    json!({
+        "name": name,
+        "status": status,
+        "conclusion": if conclusion.is_empty() { Value::Null } else { json!(conclusion) },
+    })
+}
+
+/// rc-ci succeeded; an unrelated deployment check failed and the combined commit
+/// status is poisoned to `failure` (the measured shape of PR #2333, 23:52Z).
+fn poisoned_combined_ok_checks() -> [(String, String); 2] {
+    [
+        (
+            "FLOW_CHECK_RUNS".into(),
+            http200(&check_runs_body(&[
+                check_run("rc-ci", "completed", "success"),
+                check_run("vercel", "completed", "failure"),
+            ])),
+        ),
+        ("FLOW_STATUS".into(), http200(&status_body("failure"))),
+    ]
 }
 
 const OWNER_ARGS: [&str; 4] = ["--owner", "acme", "--repo", "widgets"];
@@ -248,6 +279,14 @@ fn gate_verdict_ok_with_merge_commit_exempt() {
         ("FLOW_COMMITS", http200(&commit_list(true))),
         ("FLOW_TIP", http200(&tip_body())),
         ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
         ("FLOW_STATUS", http200(&status_body("success"))),
     ];
     let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
@@ -278,6 +317,14 @@ fn gate_verdict_behind_tip_reports_behind() {
         ("FLOW_COMMITS", http200(&commit_list(true))),
         ("FLOW_TIP", http200(&tip_body())),
         ("FLOW_COMPARE", http200(&compare_body(0, 1, &["src/x.rs"]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
         ("FLOW_STATUS", http200(&status_body("success"))),
     ];
     let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
@@ -301,6 +348,14 @@ fn gate_verdict_changed_since_audit_reports_files() {
             "FLOW_COMPARE",
             http200(&compare_body(1, 0, &["src/flow.rs"])),
         ),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
         ("FLOW_STATUS", http200(&status_body("success"))),
     ];
     let (v, _) = run_gate(&gh, &envs, "audit-9f8e7d6c");
@@ -323,6 +378,14 @@ fn gate_verdict_claim_less_lane_commit_blocks() {
         ("FLOW_COMMITS", http200(&commit_list(false))),
         ("FLOW_TIP", http200(&tip_body())),
         ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
         ("FLOW_STATUS", http200(&status_body("success"))),
     ];
     let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
@@ -348,6 +411,14 @@ fn gate_verdict_missing_body_claim_blocks() {
         ("FLOW_COMMITS", http200(&commit_list(true))),
         ("FLOW_TIP", http200(&tip_body())),
         ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
         ("FLOW_STATUS", http200(&status_body("success"))),
     ];
     let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
@@ -355,7 +426,9 @@ fn gate_verdict_missing_body_claim_blocks() {
     assert!(reasons_of(&v).iter().any(|r| r.contains("pr_body_claim")));
 }
 
-/// AC-3: CI failing on the head blocks.
+/// AC-3: CI failing on the head blocks. The combined status here is `success` while
+/// the required `rc-ci` check run concluded `failure` — the judgment must read the
+/// check run, so the combined state cannot mask it (the inverse of #2333's poisoning).
 #[test]
 fn gate_verdict_failing_ci_blocks() {
     let tmp = TempDir::new().unwrap();
@@ -365,11 +438,183 @@ fn gate_verdict_failing_ci_blocks() {
         ("FLOW_COMMITS", http200(&commit_list(true))),
         ("FLOW_TIP", http200(&tip_body())),
         ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
-        ("FLOW_STATUS", http200(&status_body("failure"))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[
+                check_run("rc-ci", "completed", "failure"),
+                check_run("vercel", "completed", "success"),
+            ])),
+        ),
+        ("FLOW_STATUS", http200(&status_body("success"))),
     ];
     let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
     assert_eq!(v["verdict"], json!("blocked"), "{}", v);
     assert!(reasons_of(&v).iter().any(|r| r.contains("ci_status")));
+}
+
+/// #2335 RED-1: an unrelated failure poisons the combined commit status (Vercel), but
+/// the required `rc-ci` check run succeeded — the verdict must be `ok`. The judgment
+/// reads the check run, never the combined state.
+#[test]
+fn gate_verdict_ignores_poisoned_combined_status() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut envs: Vec<(String, String)> = vec![
+        ("FLOW_PR".into(), http200(&pr_body(true))),
+        ("FLOW_COMMITS".into(), http200(&commit_list(true))),
+        ("FLOW_TIP".into(), http200(&tip_body())),
+        ("FLOW_COMPARE".into(), http200(&compare_body(3, 0, &[]))),
+    ];
+    envs.extend(poisoned_combined_ok_checks());
+    let refs: Vec<(&str, String)> = envs.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
+    let (v, _) = run_gate(&gh, &refs, "pr-5a4b3c2d");
+    assert_eq!(v["verdict"], json!("ok"), "{}", v);
+    let ci = v["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check"] == json!("ci_status"))
+        .unwrap()
+        .clone();
+    assert_eq!(ci["pass"], json!(true));
+    assert!(
+        ci["detail"].as_str().unwrap().contains("rc-ci"),
+        "{}",
+        ci["detail"]
+    );
+}
+
+/// #2335 RED-2: the branch diverged from the tip (ahead_by 3, behind_by 1) — the tip
+/// is NOT contained even though ahead_by > 0; the behind count must fail the check.
+#[test]
+fn gate_verdict_diverged_from_tip_blocks() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 1, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+        ("FLOW_STATUS", http200(&status_body("success"))),
+    ];
+    let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert_eq!(v["verdict"], json!("blocked"), "{}", v);
+    let rs = reasons_of(&v);
+    assert!(rs.iter().any(|r| r.contains("tip_contained")), "{}", v);
+    assert!(
+        rs.iter().any(|r| r.contains("behind_by 1")),
+        "the reason must name the behind count: {:?}",
+        rs
+    );
+}
+
+/// #2335: a required check run that has not concluded yet (in_progress) blocks — the
+/// gate cannot pass on CI that has not finished.
+#[test]
+fn gate_verdict_pending_ci_blocks() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run("rc-ci", "in_progress", "")])),
+        ),
+        ("FLOW_STATUS", http200(&status_body("success"))),
+    ];
+    let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert_eq!(v["verdict"], json!("blocked"), "{}", v);
+    let rs = reasons_of(&v);
+    assert!(rs.iter().any(|r| r.contains("ci_status")), "{}", v);
+    assert!(rs.iter().any(|r| r.contains("pending")), "{:?}", rs);
+}
+
+/// #2335: a required check run that does not exist on the head blocks by name — an
+/// unrelated check (`vercel`) present on the same list is ignored.
+#[test]
+fn gate_verdict_missing_required_check_blocks() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "vercel",
+                "completed",
+                "success",
+            )])),
+        ),
+        ("FLOW_STATUS", http200(&status_body("success"))),
+    ];
+    let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert_eq!(v["verdict"], json!("blocked"), "{}", v);
+    let rs = reasons_of(&v);
+    assert!(
+        rs.iter()
+            .any(|r| r.contains("rc-ci") && r.contains("not found")),
+        "{:?}",
+        rs
+    );
+}
+
+/// #2335: the required-check list is configurable — two required names pass only when
+/// both check runs succeeded, and one failure blocks by name.
+#[test]
+fn gate_verdict_required_checks_list_is_configurable() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let gate = |runs: &[Value]| {
+        let envs = [
+            ("FLOW_PR", http200(&pr_body(true))),
+            ("FLOW_COMMITS", http200(&commit_list(true))),
+            ("FLOW_TIP", http200(&tip_body())),
+            ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+            ("FLOW_CHECK_RUNS", http200(&check_runs_body(runs))),
+            ("FLOW_STATUS", http200(&status_body("success"))),
+        ];
+        let mut owned = gate_args("pr-5a4b3c2d");
+        owned.push("--required-checks".into());
+        owned.push("rc-ci,docs-check".into());
+        let args: Vec<&str> = owned.iter().map(|s| s.as_str()).collect();
+        run_flow(&gh, &envs, &args)
+    };
+    // Both required checks succeeded → ok.
+    let (v, out) = gate(&[
+        check_run("rc-ci", "completed", "success"),
+        check_run("docs-check", "completed", "success"),
+        check_run("vercel", "completed", "failure"),
+    ]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["verdict"], json!("ok"), "{}", v);
+    // One required check failed → blocked, the unrelated one is not named.
+    let (v, _) = gate(&[
+        check_run("rc-ci", "completed", "success"),
+        check_run("docs-check", "completed", "failure"),
+        check_run("vercel", "completed", "failure"),
+    ]);
+    assert_eq!(v["verdict"], json!("blocked"), "{}", v);
+    let rs = reasons_of(&v);
+    assert!(rs.iter().any(|r| r.contains("docs-check")), "{:?}", rs);
+    assert!(!rs.iter().any(|r| r.contains("vercel")));
 }
 
 /// AC-3: the head moved between the two PR reads — head_recheck fails (the audit
@@ -391,6 +636,14 @@ fn gate_verdict_head_moved_between_reads_blocks() {
         ("FLOW_COMMITS", http200(&commit_list(true))),
         ("FLOW_TIP", http200(&tip_body())),
         ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
         ("FLOW_STATUS", http200(&status_body("success"))),
         ("FLOW_COUNT_FILE", count.to_str().unwrap().to_string()),
     ];

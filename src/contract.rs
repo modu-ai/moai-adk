@@ -288,6 +288,9 @@ mod tests {
             ("queue issue page limit exceeded (50)", InvalidInput),
             // leader-tick and the profile `leader` key (rc.2 A3 #2162)
             ("leader tick page limit exceeded (50)", InvalidInput),
+            // flow gate verdict (#2279, #2335): the check-runs page cap is the only new
+            // envelope-error phrase; "check runs unavailable" is a detail string, not an error.
+            ("flow check runs page limit exceeded (10)", InvalidInput),
             ("leader tick base_branch must be a plain branch name", InvalidInput),
             ("leader pr_check_interval_secs must be a positive number", InvalidInput),
             ("leader tick state directory unavailable", Io),
