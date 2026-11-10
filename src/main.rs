@@ -514,6 +514,18 @@ enum Command {
         #[arg(long)]
         plan_digest: String,
     },
+    /// Code Map query (C9 #2185): read-only — the published generation's map records
+    /// (file and tag nodes, `annotated_by` edges, missing coverage) of the requested paths
+    /// or directory prefixes; `unavailable` when no index records can be read.
+    AtlasMap {
+        project: PathBuf,
+    },
+    /// Code Graph query (C9 #2185): read-only — a bounded-hop walk over the same
+    /// generation's map and graph records from the given node ids; `unavailable` when no
+    /// index records can be read.
+    AtlasGraph {
+        project: PathBuf,
+    },
     /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
     /// matches over the published index generation (or the tracked files), each result with
     /// a source citation; the typed-edge step is reported unavailable (#2408).
@@ -989,6 +1001,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
         Search { .. } => "search.query",
+        AtlasMap { .. } => "atlas.map",
+        AtlasGraph { .. } => "atlas.graph",
         SkillReadReceipt { .. } => "skill_source.read_receipt",
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
@@ -1194,6 +1208,18 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::AtlasMap { project } => serde_json::to_value(moai_cli::atlas_query::atlas_map(
+            &project,
+            &input::<moai_cli::atlas_query::MapRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::AtlasGraph { project } => {
+            serde_json::to_value(moai_cli::atlas_query::atlas_graph(
+                &project,
+                &input::<moai_cli::atlas_query::GraphRequest>()?,
+            )?)
+            .map_err(|_| "encode failed".into())
+        }
         Command::Search { project } => serde_json::to_value(moai_cli::search::search(
             &project,
             &input::<moai_cli::search::SearchRequest>()?,
