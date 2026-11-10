@@ -346,17 +346,47 @@ fn f4_open_critical_finding_blocks_admission() {
     );
 }
 
-/// F5a: a quoted argument is one argv word, or the command is refused; it is never split.
+/// F5a: a quoted argument is one argv word; it is never split.
+///
+/// Oracle edit (2026-11-10, before the fix, decision 6774899518 row 18 = B "simple quotes
+/// only"): refusing quoted commands is no longer accepted, because the SYNC check list itself
+/// runs `-p '*_test.py'`. Single and double quotes group words and are removed; an unterminated
+/// quote is refused; the executable rules apply to the unquoted first word.
 #[test]
-#[ignore = "#2392 repro F5a: RED until argv keeps quoted arguments or refuses quoting"]
+#[ignore = "#2392 repro F5a: RED until argv keeps quoted arguments"]
 fn f5a_quoted_argument_is_not_split_on_whitespace() {
-    match parse_argv("echo \"a b\"") {
-        Err(_) => {}
-        Ok(argv) => assert_eq!(
-            argv,
-            vec!["echo".to_string(), "a b".to_string()],
-            "quoted argument was split on whitespace"
-        ),
+    let words = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+    assert_eq!(
+        parse_argv("echo \"a b\"").unwrap(),
+        words(&["echo", "a b"]),
+        "double-quoted argument was split on whitespace"
+    );
+    assert_eq!(
+        parse_argv("python3 -m unittest discover -s tests -p '*_test.py'").unwrap(),
+        words(&[
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "*_test.py"
+        ]),
+        "single quotes were passed through into the argv word"
+    );
+    assert_eq!(
+        parse_argv("printf '' x").unwrap(),
+        words(&["printf", "", "x"]),
+        "an empty quoted argument was dropped"
+    );
+    assert_eq!(
+        parse_argv("echo 'it''s' \"a'b\"").unwrap(),
+        words(&["echo", "its", "a'b"]),
+        "adjacent quoted parts must join and the other quote is literal inside quotes"
+    );
+    for bad in ["echo 'open", "echo \"open", "'./run.sh'", "\"A=1\" cargo", "'-x' cargo"] {
+        assert!(parse_argv(bad).is_err(), "accepted {bad:?}");
     }
 }
 
