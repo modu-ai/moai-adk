@@ -542,7 +542,7 @@ fn shell_script(args: &[String]) -> Option<&str> {
     None
 }
 
-/// True when `git`'s arguments name one of `verbs`, directly or through an alias defined on
+/// True when `git`'s subcommand is one of `verbs`, directly or through an alias defined on
 /// the same command line (`git -c alias.ci=commit ci`). An alias defined in git config is not
 /// visible here.
 fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
@@ -573,8 +573,35 @@ fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
         }
         i += 1;
     }
-    args.iter()
-        .any(|w| verbs.contains(&w.as_str()) || aliases.contains(&w.as_str()))
+    // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
+    // names the word as an argument of a read command, not as the command (#2399 review).
+    git_subcommand(args).is_some_and(|w| verbs.contains(&w) || aliases.contains(&w))
+}
+
+/// Global `git` options that take their value as the next word (git(1) OPTIONS); every other
+/// leading `-…` word is a flag on its own (`--no-pager`, `-p`) or carries `=value`.
+const GIT_GLOBAL_OPTIONS_WITH_VALUE: &[&str] = &[
+    "-C",
+    "-c",
+    "--git-dir",
+    "--work-tree",
+    "--namespace",
+    "--config-env",
+    "--super-prefix",
+];
+
+/// The subcommand of a `git` argument list: the first word after the global options.
+fn git_subcommand(args: &[String]) -> Option<&str> {
+    let mut iter = args.iter();
+    while let Some(word) = iter.next() {
+        let w = word.as_str();
+        if GIT_GLOBAL_OPTIONS_WITH_VALUE.contains(&w) {
+            iter.next();
+        } else if !w.starts_with('-') {
+            return Some(w);
+        }
+    }
+    None
 }
 
 /// True when one segment of a shell command line runs `git <verb>`. The segment's command is
