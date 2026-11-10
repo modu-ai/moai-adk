@@ -191,6 +191,18 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
+    /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
+    /// build keeps the previous generation and marks partial (REQ-C6-01).
+    IndexBuild {
+        project: PathBuf,
+    },
+    /// Query the incremental index (C6 #2182): read-only — resolves the published
+    /// generation and reports one of fresh/stale/partial/unavailable with the detected
+    /// changes (additions, deletions, modifications, untracked new files, branch switch).
+    IndexQuery {
+        project: PathBuf,
+    },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
     LayoutPlan {
@@ -412,6 +424,16 @@ enum Command {
     HookReceipt {
         #[arg(long)]
         host: String,
+    },
+    /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
+    /// answer; reads the host's hook JSON on stdin, no network.
+    HookDispatch {
+        /// `claude` (stage 1; `codex` answers as an engine error until stage 2).
+        #[arg(long)]
+        host: String,
+        /// `session-check` or `tool-preflight` (stage 1).
+        #[arg(long)]
+        event: String,
     },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
@@ -945,10 +967,13 @@ fn operation(command: &Command) -> Option<&'static str> {
         GenerationPlan { .. } => "generation.plan",
         GithubApply { .. } => "github.apply",
         GithubPlan { .. } => "github.plan",
+        HookDispatch { .. } => "hook.dispatch",
         HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
+        IndexBuild { .. } => "index.build",
+        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
@@ -1376,6 +1401,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
+            &project,
+            &input::<moai_cli::index::IndexBuildRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
+            &project,
+            &input::<moai_cli::index::IndexQueryRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1511,6 +1546,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )?;
             merge_binary_state(&mut out);
             Ok(out)
+        }
+        // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
+        Command::HookDispatch { .. } => {
+            Err("hook-dispatch is answered before internal dispatch".into())
         }
         Command::HookReceipt { host } => {
             // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
@@ -1841,7 +1880,33 @@ fn usage_error(e: clap::Error) -> ExitCode {
 /// still handled as a hook. Both hosts read a hook's stdout as hook output and its exit 2 as
 /// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
 fn hook_mode_argv(args: &[String]) -> bool {
-    args.get(1).is_some_and(|w| w == "hook-receipt") || args.iter().skip(1).any(|a| a == "--hook")
+    args.get(1)
+        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch")
+        || args.iter().skip(1).any(|a| a == "--hook")
+}
+
+/// `hook-dispatch` (#2391): prints exactly the host's native answer — no contract envelope —
+/// and exits with the engine's code (0 allow/deny/context, 1 engine error).
+fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
+    let mut bytes = Vec::new();
+    let _ = io::stdin()
+        .take(moai_cli::hook_engine::STDIN_LIMIT)
+        .read_to_end(&mut bytes);
+    let answer = match std::env::current_dir() {
+        Ok(cwd) => moai_cli::hook_engine::dispatch(host, event, &bytes, &cwd),
+        Err(_) => moai_cli::hook_engine::Answer {
+            stdout: String::new(),
+            stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
+            exit: moai_cli::hook_engine::ENGINE_ERROR_EXIT,
+        },
+    };
+    if !answer.stdout.is_empty() {
+        println!("{}", answer.stdout);
+    }
+    if !answer.stderr.is_empty() {
+        eprintln!("{}", answer.stderr);
+    }
+    ExitCode::from(answer.exit)
 }
 
 /// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
@@ -1898,6 +1963,9 @@ fn main() -> ExitCode {
             }
         };
     };
+    if let Some(Command::HookDispatch { host, event }) = &cli.command {
+        return hook_dispatch_main(host, event);
+    }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
     let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
