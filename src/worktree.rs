@@ -143,7 +143,9 @@ pub fn not_written() -> Value {
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
         .args(args)
         .current_dir(dir)
         .output()
@@ -159,8 +161,9 @@ fn git(dir: &Path, args: &[&str]) -> Result<String> {
 }
 
 fn git_ok(dir: &Path, args: &[&str]) -> Result<bool> {
-    Command::new("git")
-        .args(args)
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.args(args)
         .current_dir(dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())

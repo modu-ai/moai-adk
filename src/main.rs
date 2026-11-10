@@ -782,6 +782,23 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
 }
+/// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
+/// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
+/// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
+/// (`update::WALK_BYTES`); the plan is never trusted for its size, since every apply checks
+/// it against `--plan-digest`.
+const PLAN_INPUT_LIMIT: usize = 16 * 1024 * 1024;
+fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
+    let mut bytes = Vec::new();
+    io::stdin()
+        .take(PLAN_INPUT_LIMIT as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "stdin read failed")?;
+    if bytes.len() > PLAN_INPUT_LIMIT {
+        return Err("plan input exceeds 16 MiB".into());
+    }
+    serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+}
 /// Maps the launcher's host word to the session host.
 fn host_of(word: &str) -> Result<&'static str, String> {
     match word {
@@ -1233,7 +1250,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
         } => apply(
             &project,
-            input::<Plan>()?,
+            plan_input::<Plan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1252,7 +1269,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
         } => agents_apply(
             &project,
-            input::<AgentsPlan>()?,
+            plan_input::<AgentsPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1577,7 +1594,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
-            let plan = input::<moai_cli::update::UpdatePlan>()?;
+            let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
             moai_cli::update::apply_update(
                 &home,
                 &staged,
@@ -1595,7 +1612,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             plan_digest,
             permission_reference,
         } => {
-            let plan = input::<moai_cli::recovery::RecoveryPlan>()?;
+            let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
         Command::PlanAdmit { project } => {
@@ -1660,7 +1677,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             moai_cli::sources::sources_apply(
                 &project,
                 &home,
-                input::<moai_cli::sources::SourcePlan>()?,
+                plan_input::<moai_cli::sources::SourcePlan>()?,
                 &plan_digest,
                 &permission_reference,
             )
@@ -1703,7 +1720,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
         } => moai_cli::github_templates::github_apply(
             &project,
-            input::<moai_cli::github_templates::GithubPlan>()?,
+            plan_input::<moai_cli::github_templates::GithubPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
@@ -1720,7 +1737,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
         } => moai_cli::generation::generation_apply(
             &project,
-            input::<moai_cli::generation::GenerationPlan>()?,
+            plan_input::<moai_cli::generation::GenerationPlan>()?,
             &plan_digest,
             &permission_reference,
         ),
