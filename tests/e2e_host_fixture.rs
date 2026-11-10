@@ -12,6 +12,8 @@
 
 #![cfg(unix)]
 
+mod common;
+
 use moai_cli::tree_digest;
 use serde_json::{json, Value};
 use std::{
@@ -464,12 +466,7 @@ fn e2e_never_writes_outside_temp_home() {
         .spawn()
         .unwrap();
     let mut child = out;
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(plan.to_string().as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, plan.to_string().as_bytes());
     let out = child.wait_with_output().unwrap();
     assert!(
         out.status.success(),
@@ -532,7 +529,7 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
 }
 
 fn clone_checkout(manifest: &Path, clone: &Path) {
-    let discovery = Command::new("git")
+    let discovery = common::git::command()
         .args([
             "-C",
             manifest.to_str().unwrap(),
@@ -568,7 +565,7 @@ fn clone_checkout(manifest: &Path, clone: &Path) {
     // Pin this checkout's commit: a linked worktree may differ from the common-dir
     // default branch, and CI checks out a detached merge commit with no branch name.
     let revision = {
-        let out = Command::new("git")
+        let out = common::git::command()
             .args([
                 "-C",
                 manifest.to_str().unwrap(),
@@ -583,7 +580,7 @@ fn clone_checkout(manifest: &Path, clone: &Path) {
     };
     // A local copy includes the detached worktree's object even if no branch names
     // it. Do not use a shallow transport clone, which only fetches advertised refs.
-    let out = Command::new("git")
+    let out = common::git::command()
         .args([
             "clone",
             "--no-hardlinks",
@@ -598,7 +595,7 @@ fn clone_checkout(manifest: &Path, clone: &Path) {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let checkout = Command::new("git")
+    let checkout = common::git::command()
         .arg("-C")
         .arg(clone)
         .args(["checkout", "--detach", &revision])
@@ -615,7 +612,7 @@ fn clone_checkout(manifest: &Path, clone: &Path) {
 #[test]
 fn e2e_clean_clone_keeps_exact_attached_and_detached_revision() {
     fn git(root: &Path, args: &[&str]) -> String {
-        let out = Command::new("git")
+        let out = common::git::command()
             .arg("-C")
             .arg(root)
             .args([

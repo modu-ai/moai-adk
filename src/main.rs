@@ -173,23 +173,21 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
-    /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
-    TodoPromotePreview {
-        project: PathBuf,
-    },
-    /// Promote the previewed TODOs: refuses a different `--preview-digest`, records an outbox
-    /// intent before each create and `published` only after a confirming GET.
-    TodoPromoteApply {
-        project: PathBuf,
-        #[arg(long)]
-        preview_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
+    },
+    /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
+    /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
+    /// build keeps the previous generation and marks partial (REQ-C6-01).
+    IndexBuild {
+        project: PathBuf,
+    },
+    /// Query the incremental index (C6 #2182): read-only — resolves the published
+    /// generation and reports one of fresh/stale/partial/unavailable with the detected
+    /// changes (additions, deletions, modifications, untracked new files, branch switch).
+    IndexQuery {
+        project: PathBuf,
     },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
@@ -413,6 +411,16 @@ enum Command {
         #[arg(long)]
         host: String,
     },
+    /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
+    /// answer; reads the host's hook JSON on stdin, no network.
+    HookDispatch {
+        /// `claude` or `codex`.
+        #[arg(long)]
+        host: String,
+        /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.
+        #[arg(long)]
+        event: String,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -529,6 +537,17 @@ enum Command {
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan {
         path: PathBuf,
+    },
+    /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
+    /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
+    /// command's stdout as is. Always exits 0.
+    Statusline {
+        /// Test seam (#2350 leader decision): the render budget in milliseconds instead of
+        /// the Go 800 ms. Hidden; Claude Code runs `statusline` without options. The golden
+        /// test passes a large value so a git call slowed by machine load still lands; `0`
+        /// is an already expired budget (no git call is started).
+        #[arg(long, hide = true, value_name = "MS")]
+        render_budget_ms: Option<u64>,
     },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
@@ -894,7 +913,8 @@ fn launch(
 fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } => return None,
+        // Not envelope operations: the launchers, and the raw-text statusline (#2350).
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
@@ -933,10 +953,13 @@ fn operation(command: &Command) -> Option<&'static str> {
         GenerationPlan { .. } => "generation.plan",
         GithubApply { .. } => "github.apply",
         GithubPlan { .. } => "github.plan",
+        HookDispatch { .. } => "hook.dispatch",
         HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
+        IndexBuild { .. } => "index.build",
+        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
@@ -963,8 +986,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
         SnapshotDescribe { .. } => "snapshot.describe",
-        TodoPromoteApply { .. } => "todo.promote.apply",
-        TodoPromotePreview { .. } => "todo.promote.plan",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
@@ -1336,24 +1357,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::TodoPromoteApply {
-            project,
-            preview_digest,
-            permission_reference,
-        } => moai_cli::forge::promote::apply_cli(
-            &project,
-            input::<moai_cli::forge::promote::PromoteRequest>()?,
-            &preview_digest,
-            &permission_reference,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -1364,6 +1367,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
+            &project,
+            &input::<moai_cli::index::IndexBuildRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
+            &project,
+            &input::<moai_cli::index::IndexQueryRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1481,6 +1494,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out);
+            // Outside the plan digest: the #2391 hook state from local evidence, read only.
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            out["hook_status"] =
+                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
         Command::HooksApply {
@@ -1499,6 +1516,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )?;
             merge_binary_state(&mut out);
             Ok(out)
+        }
+        // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
+        Command::HookDispatch { .. } => {
+            Err("hook-dispatch is answered before internal dispatch".into())
         }
         Command::HookReceipt { host } => {
             // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
@@ -1829,7 +1850,38 @@ fn usage_error(e: clap::Error) -> ExitCode {
 /// still handled as a hook. Both hosts read a hook's stdout as hook output and its exit 2 as
 /// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
 fn hook_mode_argv(args: &[String]) -> bool {
-    args.get(1).is_some_and(|w| w == "hook-receipt") || args.iter().skip(1).any(|a| a == "--hook")
+    args.get(1)
+        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch")
+        || args.iter().skip(1).any(|a| a == "--hook")
+}
+
+/// `hook-dispatch` (#2391): prints exactly the host's native answer — no contract envelope —
+/// and exits with the engine's code (0 allow/deny/context, 1 engine error).
+fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
+    let mut bytes = Vec::new();
+    let _ = io::stdin()
+        .take(moai_cli::hook_engine::STDIN_LIMIT)
+        .read_to_end(&mut bytes);
+    let answer = match std::env::current_dir() {
+        Ok(cwd) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            moai_cli::hook_engine::dispatch(host, event, &bytes, &cwd, now)
+        }
+        Err(_) => moai_cli::hook_engine::Answer {
+            stdout: String::new(),
+            stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
+            exit: moai_cli::hook_engine::ENGINE_ERROR_EXIT,
+        },
+    };
+    if !answer.stdout.is_empty() {
+        println!("{}", answer.stdout);
+    }
+    if !answer.stderr.is_empty() {
+        eprintln!("{}", answer.stderr);
+    }
+    ExitCode::from(answer.exit)
 }
 
 /// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
@@ -1866,6 +1918,13 @@ fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
+    if let Some(Command::Statusline { render_budget_ms }) = cli.command {
+        let budget = render_budget_ms
+            .map(std::time::Duration::from_millis)
+            .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
+        print!("{}", moai_cli::statusline::run(budget));
+        return ExitCode::SUCCESS;
+    }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {
@@ -1879,6 +1938,9 @@ fn main() -> ExitCode {
             }
         };
     };
+    if let Some(Command::HookDispatch { host, event }) = &cli.command {
+        return hook_dispatch_main(host, event);
+    }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
     let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
@@ -1907,6 +1969,8 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+    /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
+    const RAW_OUTPUT: [&str; 1] = ["statusline"];
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -1925,6 +1989,10 @@ mod tests {
                 assert_eq!(op, None, "{word} is a launcher");
                 continue;
             }
+            if RAW_OUTPUT.contains(&word) {
+                assert_eq!(op, None, "{word} prints raw text, not the envelope");
+                continue;
+            }
             let op = op.unwrap_or_else(|| panic!("{word} maps to no operation"));
             if let Some(other) = seen.insert(op, word) {
                 panic!("{word} and {other} share {op}");
@@ -1935,7 +2003,7 @@ mod tests {
             .get_subcommands()
             .filter(|s| s.get_name() != "help")
             .count();
-        assert_eq!(seen.len() + LAUNCHERS.len(), words);
+        assert_eq!(seen.len() + LAUNCHERS.len() + RAW_OUTPUT.len(), words);
         if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
             let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
             pairs.sort();
@@ -2045,6 +2113,25 @@ mod operations_doc {
         if let Err(problems) = compare(&code_words(&cli), DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
+    }
+
+    /// #2350: `statusline` prints raw text, so it is a subcommand outside OPERATIONS and the
+    /// document names it as the one envelope exception.
+    #[test]
+    fn statusline_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli.get_subcommands().any(|s| s.get_name() == "statusline"));
+        assert_eq!(operation_of("statusline"), None);
+        assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "statusline"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `statusline`(#2350)"));
+        // The render-budget test seam is documented and hidden from help.
+        assert!(DOC.contains("`--render-budget-ms`"));
+        let sub = cli.find_subcommand("statusline").unwrap();
+        let seam = sub
+            .get_arguments()
+            .find(|a| a.get_long() == Some("render-budget-ms"))
+            .unwrap();
+        assert!(seam.is_hide_set());
     }
 
     fn render(words: &[&str]) -> String {

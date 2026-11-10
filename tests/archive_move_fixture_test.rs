@@ -3,6 +3,7 @@
 //! remove the source; any mismatch cancels the move and keeps the original); AC-2:
 //! the restore round trip; plus the non-vector archive search and its limits.
 
+mod common;
 use moai_cli::archive::{
     apply, apply_with_before_remove, copy_verified_with, manifest, plan, restore, search,
 };
@@ -10,7 +11,6 @@ use serde_json::Value;
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tempfile::TempDir;
@@ -26,28 +26,20 @@ fn now() -> SystemTime {
 }
 
 fn git(dir: &Path, args: &[&str], date: Option<String>) {
-    let mut cmd = Command::new("git");
-    cmd.arg("-C")
-        .arg(dir)
-        .args([
+    let full = [
+        [
             "-c",
             "user.name=fixture",
             "-c",
             "user.email=fixture@example.invalid",
             "-c",
             "commit.gpgsign=false",
-        ])
-        .args(args);
-    if let Some(d) = date {
-        cmd.env("GIT_AUTHOR_DATE", format!("{d} +0000"))
-            .env("GIT_COMMITTER_DATE", format!("{d} +0000"));
-    }
-    let out = cmd.output().unwrap();
-    assert!(
-        out.status.success(),
-        "git {args:?} failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+        ]
+        .as_slice(),
+        args,
+    ]
+    .concat();
+    common::git::git_pinned(dir, &full, date.as_deref());
 }
 
 fn write_spec(project: &Path, id: &str, front: &str, body: &str) {

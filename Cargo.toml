@@ -17,6 +17,14 @@ toml_edit = "=0.25.3"
 # Replacing the running binary, Windows included (Issue #2195, decision 16:1x(11-08)).
 # Apache-2.0; MSRV 1.63. windows-sys and fastrand are pulled only on Windows targets.
 self-replace = "=1.5.1"
+# C6 F3: directory-handle-relative no-follow reads on Unix and Windows; see
+# docs/index-generation.md for the source, checksums and dependency rationale.
+cap-std = "=4.0.3"
+cap-fs-ext = "=4.0.3"
+
+[target.'cfg(unix)'.dependencies]
+# Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.
+libc = "=0.2.189"
 
 [dev-dependencies]
 tempfile = "=3.27.0"

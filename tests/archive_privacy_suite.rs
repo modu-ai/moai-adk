@@ -9,6 +9,7 @@
 //! archive state file; document and directory-name payloads never execute; file
 //! permission bits survive; the operations need no network.
 
+mod common;
 use moai_cli::archive::{apply, copy_verified_with, manifest, plan, restore, search};
 use serde_json::Value;
 use std::{
@@ -33,27 +34,20 @@ fn now() -> SystemTime {
 }
 
 fn git(dir: &Path, args: &[&str]) {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args([
+    let full = [
+        [
             "-c",
             "user.name=fixture",
             "-c",
             "user.email=fixture@example.invalid",
             "-c",
             "commit.gpgsign=false",
-        ])
-        .args(args)
-        .env("GIT_AUTHOR_DATE", format!("{OLD_SECS} +0000"))
-        .env("GIT_COMMITTER_DATE", format!("{OLD_SECS} +0000"))
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "git {args:?}: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+        ]
+        .as_slice(),
+        args,
+    ]
+    .concat();
+    common::git::git_pinned(dir, &full, Some(&OLD_SECS.to_string()));
 }
 
 fn write_spec(project: &Path, id: &str, front: &str, body: &str) -> PathBuf {

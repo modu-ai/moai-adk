@@ -1,6 +1,8 @@
 //! rc.2 I1 #2238: host hook generation and the hook-receipt handler. Every case runs in a
 //! temporary project and a temporary HOME; no real home and no host session is touched.
 
+mod common;
+
 use moai_cli::contract::{classify, Kind};
 use moai_cli::hooks;
 use serde_json::{json, Value};
@@ -150,22 +152,15 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
 #[cfg(unix)]
 #[test]
 fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
-    use std::io::Write as _;
     let dir = project();
     let root = fs::canonicalize(dir.path()).unwrap();
     let git = |args: &[&str]| {
-        let out = Command::new("git")
-            .args(args)
-            .current_dir(&root)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .env("GIT_AUTHOR_NAME", "t")
-            .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
-            .env("GIT_COMMITTER_NAME", "t")
-            .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
-            .output()
-            .unwrap();
-        assert!(out.status.success(), "git {args:?}");
+        let full = [
+            ["-c", "user.name=t", "-c", "user.email=t@example.invalid"].as_slice(),
+            args,
+        ]
+        .concat();
+        common::git::git_ok(&root, &full);
     };
     git(&["init", "-q", "-b", "main"]);
     git(&["commit", "-q", "--allow-empty", "-m", "base"]);
@@ -200,12 +195,7 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
                 .unwrap();
             let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                                "tool_input": {"command": tool_command}, "cwd": root});
-            child
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(input.to_string().as_bytes())
-                .unwrap();
+            common::feed_stdin(&mut child, input.to_string().as_bytes());
             child.wait_with_output().unwrap()
         };
         let blocked = run("git commit -m work");
@@ -466,7 +456,6 @@ fn receipt_refuses_symlinked_log() {
 }
 
 fn cli(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, Value) {
-    use std::io::Write as _;
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args(args)
         .current_dir(cwd)
@@ -476,7 +465,7 @@ fn cli(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, Value) {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(stdin).unwrap();
+    common::feed_stdin(&mut child, stdin);
     let out = child.wait_with_output().unwrap();
     (
         out.status.code().unwrap(),
@@ -560,7 +549,6 @@ fn cli_round_trip_in_isolated_home() {
 }
 
 fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String) {
-    use std::io::Write as _;
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args(args)
         .current_dir(cwd)
@@ -570,7 +558,7 @@ fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(stdin).unwrap();
+    common::feed_stdin(&mut child, stdin);
     let out = child.wait_with_output().unwrap();
     (
         out.status.code().unwrap(),
