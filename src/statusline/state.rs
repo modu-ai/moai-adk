@@ -611,6 +611,8 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
     if ctx.deadline.is_some_and(|d| Instant::now() >= d) {
         return None;
     }
+    #[cfg(test)]
+    tests::GIT_SPAWNS.with(|n| n.set(n.get() + 1));
     let mut cmd = Command::new(&ctx.git_program);
     cmd.args(args)
         .current_dir(dir)
@@ -756,6 +758,11 @@ fn github_counts(anchor: &Path) -> GitHubCounts {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    thread_local! {
+        /// `run_git` spawn attempts on this test thread.
+        pub(super) static GIT_SPAWNS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
 
     #[test]
     fn go_base_matches_filepath_base() {
@@ -930,9 +937,15 @@ mod tests {
         );
         assert_eq!(calls(), 1);
 
-        // An expired deadline: nothing is started and the git status is absent.
+        // An expired deadline: nothing is started and the git status is absent. The
+        // wrapper log cannot show this (a started child is killed before it writes), so the
+        // spawn attempts of this thread are counted.
         ctx.deadline = Some(Instant::now());
+        let before = GIT_SPAWNS.with(|n| n.get());
         assert!(collect_git(&repo, &ctx).is_none());
-        assert_eq!(calls(), 1);
+        assert_eq!(GIT_SPAWNS.with(|n| n.get()), before);
+        ctx.deadline = None;
+        assert!(collect_git(&repo, &ctx).is_some());
+        assert_eq!(GIT_SPAWNS.with(|n| n.get()), before + 1);
     }
 }
