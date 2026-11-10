@@ -682,6 +682,9 @@ mod tests {
                 "git push -o ci.skip -f origin main".to_string(),
                 Some(FORCE_PUSH),
             ),
+            // An option value is not the remote: here `main` is the remote, with no refspec.
+            ("git push -f --push-option x main".to_string(), None),
+            ("git push -f -o x main".to_string(), None),
             // `-u` takes a value for `git branch`.
             ("git branch -uf origin/x -d main".to_string(), None),
             // B4: quoted punctuation is data.
