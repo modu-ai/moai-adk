@@ -2,6 +2,7 @@
 //! no session name and, since #2359 (user decision 2026-11-10, comment 6760976883), no
 //! permission flag at all — the host starts in the mode its own settings choose. Every case
 //! uses `--dry-run` in a temporary git project; no host is started (AC-4 stays not_run).
+mod common;
 use serde_json::{json, Value};
 use std::process::Command;
 
@@ -10,7 +11,7 @@ use std::process::Command;
 /// GLM token.
 fn dry(args: &[&str], token: Option<&str>) -> (i32, Value, String) {
     let project = tempfile::tempdir().unwrap();
-    let init = Command::new("git")
+    let init = common::git::command()
         .args(["init", "-q"])
         .current_dir(project.path())
         .status()

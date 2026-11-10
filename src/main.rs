@@ -191,6 +191,18 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
+    /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
+    /// build keeps the previous generation and marks partial (REQ-C6-01).
+    IndexBuild {
+        project: PathBuf,
+    },
+    /// Query the incremental index (C6 #2182): read-only — resolves the published
+    /// generation and reports one of fresh/stale/partial/unavailable with the detected
+    /// changes (additions, deletions, modifications, untracked new files, branch switch).
+    IndexQuery {
+        project: PathBuf,
+    },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
     LayoutPlan {
@@ -539,6 +551,17 @@ enum Command {
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan {
         path: PathBuf,
+    },
+    /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
+    /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
+    /// command's stdout as is. Always exits 0.
+    Statusline {
+        /// Test seam (#2350 leader decision): the render budget in milliseconds instead of
+        /// the Go 800 ms. Hidden; Claude Code runs `statusline` without options. The golden
+        /// test passes a large value so a git call slowed by machine load still lands; `0`
+        /// is an already expired budget (no git call is started).
+        #[arg(long, hide = true, value_name = "MS")]
+        render_budget_ms: Option<u64>,
     },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
@@ -904,7 +927,8 @@ fn launch(
 fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } => return None,
+        // Not envelope operations: the launchers, and the raw-text statusline (#2350).
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
@@ -948,6 +972,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         Identity { .. } => "identity",
+        IndexBuild { .. } => "index.build",
+        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
@@ -1375,6 +1401,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
+            &project,
+            &input::<moai_cli::index::IndexBuildRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
+            &project,
+            &input::<moai_cli::index::IndexQueryRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1912,6 +1948,13 @@ fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
+    if let Some(Command::Statusline { render_budget_ms }) = cli.command {
+        let budget = render_budget_ms
+            .map(std::time::Duration::from_millis)
+            .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
+        print!("{}", moai_cli::statusline::run(budget));
+        return ExitCode::SUCCESS;
+    }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {
@@ -1956,6 +1999,8 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+    /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
+    const RAW_OUTPUT: [&str; 1] = ["statusline"];
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -1974,6 +2019,10 @@ mod tests {
                 assert_eq!(op, None, "{word} is a launcher");
                 continue;
             }
+            if RAW_OUTPUT.contains(&word) {
+                assert_eq!(op, None, "{word} prints raw text, not the envelope");
+                continue;
+            }
             let op = op.unwrap_or_else(|| panic!("{word} maps to no operation"));
             if let Some(other) = seen.insert(op, word) {
                 panic!("{word} and {other} share {op}");
@@ -1984,7 +2033,7 @@ mod tests {
             .get_subcommands()
             .filter(|s| s.get_name() != "help")
             .count();
-        assert_eq!(seen.len() + LAUNCHERS.len(), words);
+        assert_eq!(seen.len() + LAUNCHERS.len() + RAW_OUTPUT.len(), words);
         if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
             let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
             pairs.sort();
@@ -2094,6 +2143,25 @@ mod operations_doc {
         if let Err(problems) = compare(&code_words(&cli), DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
+    }
+
+    /// #2350: `statusline` prints raw text, so it is a subcommand outside OPERATIONS and the
+    /// document names it as the one envelope exception.
+    #[test]
+    fn statusline_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli.get_subcommands().any(|s| s.get_name() == "statusline"));
+        assert_eq!(operation_of("statusline"), None);
+        assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "statusline"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `statusline`(#2350)"));
+        // The render-budget test seam is documented and hidden from help.
+        assert!(DOC.contains("`--render-budget-ms`"));
+        let sub = cli.find_subcommand("statusline").unwrap();
+        let seam = sub
+            .get_arguments()
+            .find(|a| a.get_long() == Some("render-budget-ms"))
+            .unwrap();
+        assert!(seam.is_hide_set());
     }
 
     fn render(words: &[&str]) -> String {
