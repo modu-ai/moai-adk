@@ -75,13 +75,25 @@ fn next_epoch(events: &[JournalEvent], key: &str) -> u64 {
 /// existence and start time under `LC_ALL=C`; a differing start time means the pid was
 /// reused by another process. No `kill`, no crate, no reading of any other host.
 pub fn probe_liveness(pid: Option<u32>, expected_start: Option<&str>) -> (String, Value) {
+    probe_liveness_with(Path::new("ps"), pid, expected_start)
+}
+
+/// [`probe_liveness`] with the `ps` program named (a bare name is looked up on PATH).
+/// Only `ps`'s own "no such process" answer — exit 1 with no output and no error text —
+/// means dead; any other failure is indeterminate, so it can never let a handoff skip
+/// `--force-explicit` for an owner that may still be running (#2349).
+pub fn probe_liveness_with(
+    ps: &Path,
+    pid: Option<u32>,
+    expected_start: Option<&str>,
+) -> (String, Value) {
     let Some(pid) = pid else {
         return (
             "indeterminate".into(),
             json!({"reason": "no pid recorded", "pid": Value::Null}),
         );
     };
-    let out = Command::new("ps")
+    let out = Command::new(ps)
         .args(["-p", &pid.to_string(), "-o", "lstart="])
         .env("LC_ALL", "C")
         .stdin(Stdio::null())
@@ -94,9 +106,22 @@ pub fn probe_liveness(pid: Option<u32>, expected_start: Option<&str>) -> (String
         );
     };
     if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        let silent = out.stdout.iter().all(u8::is_ascii_whitespace) && stderr.is_empty();
+        if out.status.code() == Some(1) && silent {
+            return (
+                "dead".into(),
+                json!({"pid": pid, "reason": "no such process"}),
+            );
+        }
         return (
-            "dead".into(),
-            json!({"pid": pid, "reason": "no such process"}),
+            "indeterminate".into(),
+            json!({
+                "pid": pid,
+                "reason": "ps failed",
+                "exit_code": out.status.code(),
+                "stderr": stderr.chars().take(200).collect::<String>(),
+            }),
         );
     }
     let start = String::from_utf8_lossy(&out.stdout).trim().to_string();
@@ -933,11 +958,16 @@ pub fn markers_in(body: &str) -> Vec<crate::forge::outbox::OpMarker> {
 
 // ---- CLI entries (`main` wraps the results in the 01-C envelope) ----
 
-fn open_journal(project: &Path) -> Result<Journal> {
+fn open_journal(project: &Path) -> std::result::Result<Journal, crate::contract::OpError> {
     let root = crate::claim::journal_root(project)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
-        return Err("conflict in claim journal: another process holds the journal lock; the waiting policy is the caller's (REQ-06A-05)".into());
+        // #2345: the same journal lock-busy answer as every other journal-writing op,
+        // with the kind set at the raise site, never classified from the message.
+        return Err(crate::contract::OpError::new(
+            crate::contract::Kind::Unavailable,
+            crate::claim::JOURNAL_LOCK_BUSY,
+        ));
     }
     Ok(journal)
 }
@@ -950,9 +980,9 @@ pub fn claim_handoff_cli<C: Clock>(
     force_explicit: bool,
     host_id: Option<&str>,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    claim_handoff(
+    Ok(claim_handoff(
         &journal,
         key,
         from_epoch,
@@ -960,7 +990,7 @@ pub fn claim_handoff_cli<C: Clock>(
         force_explicit,
         host_id,
         clock,
-    )
+    )?)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -975,11 +1005,11 @@ pub fn effect_intend_cli<C: Clock>(
     kind: &str,
     payload: &[u8],
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    effect_intend(
+    Ok(effect_intend(
         &journal, key, epoch, operation, project_id, local_id, attempt, kind, payload, clock,
-    )
+    )?)
 }
 
 pub fn effect_confirm_cli<C: Clock>(
@@ -989,16 +1019,16 @@ pub fn effect_confirm_cli<C: Clock>(
     response_id: &str,
     observed_state: &str,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    effect_confirm(
+    Ok(effect_confirm(
         &journal,
         key,
         operation_id,
         response_id,
         observed_state,
         clock,
-    )
+    )?)
 }
 
 pub fn effects_reconcile_cli<T: Transport, C: Clock>(
@@ -1007,9 +1037,15 @@ pub fn effects_reconcile_cli<T: Transport, C: Clock>(
     remote_probe: Option<&str>,
     transport: &T,
     clock: &C,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = open_journal(project)?;
-    effects_reconcile(&journal, key, remote_probe, transport, clock)
+    Ok(effects_reconcile(
+        &journal,
+        key,
+        remote_probe,
+        transport,
+        clock,
+    )?)
 }
 
 #[cfg(test)]

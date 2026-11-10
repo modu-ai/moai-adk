@@ -129,7 +129,7 @@ fn worktree_apply_records_the_checked_out_branch() {
     assert_eq!(r["decision"], "created");
     let path = PathBuf::from(r["path"].as_str().unwrap());
     let checked_out = git(&path, &["rev-parse", "--abbrev-ref", "HEAD"]);
-    assert_eq!(checked_out, "lane/06-C-7-e1");
+    assert_eq!(checked_out, "lane/7-06-C-e1");
     assert_eq!(r["identity"]["branch"], checked_out);
     assert_eq!(
         r["record_update_request"]["worktree"]["branch"],
