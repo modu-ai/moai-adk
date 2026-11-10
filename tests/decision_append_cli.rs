@@ -285,12 +285,16 @@ fn a_last_row_without_a_line_terminator_is_refused() {
 fn log_paths_outside_the_repository_or_untracked_are_refused() {
     let (tmp, head) = repo_with(&standard_log());
     fs::write(tmp.path().join("docs/untracked.md"), standard_log()).unwrap();
+    // Staged but never committed: in the index, absent from HEAD.
+    fs::write(tmp.path().join("docs/staged.md"), standard_log()).unwrap();
+    git(tmp.path(), &["add", "docs/staged.md"]);
     std::os::unix::fs::symlink(LOG, tmp.path().join("docs/link.md")).unwrap();
     for (path, needle) in [
         ("../outside.md", "relative path inside the repository"),
         ("/etc/hosts", "relative path inside the repository"),
         ("docs/link.md", "symlink"),
         ("docs/untracked.md", "not tracked"),
+        ("docs/staged.md", "not tracked"),
         ("docs/missing.md", "not tracked"),
     ] {
         let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))

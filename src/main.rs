@@ -744,7 +744,9 @@ enum Command {
     },
     /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
     /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
-    /// rows are never edited or removed. Preview by default; `--apply` writes.
+    /// rows are never edited or removed. Preview by default; `--apply` writes. Rows go to the
+    /// end of the table, so read the log by its time column, not by row order. The remote is
+    /// not checked (`remote_checked: false`): fetch the tip first and pass it as `base`.
     DecisionAppend {
         project: PathBuf,
         /// Repository-relative path of the log, e.g. `docs/decisions-2026-11-08.md`.

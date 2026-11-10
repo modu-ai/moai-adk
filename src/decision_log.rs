@@ -222,12 +222,10 @@ pub fn append(
             "decision append blocked: HEAD is not the given base (HEAD {head}); fetch the tip and work from a worktree at it"
         ));
     }
-    let (tracked, _) = git(&root, &["ls-files", "--error-unmatch", "--", log_str])?;
-    if !tracked {
-        return Err("decision append refused: --log is not tracked at HEAD".into());
-    }
-    let (ok, old) = git(&root, &["show", &format!("HEAD:{log_str}")])?;
-    if !ok {
+    // The HEAD blob is the only source: a path absent from HEAD (untracked, or only staged)
+    // has no blob and is refused here.
+    let (in_head, old) = git(&root, &["show", &format!("HEAD:{log_str}")])?;
+    if !in_head {
         return Err("decision append refused: --log is not tracked at HEAD".into());
     }
     let disk = fs::read(root.join(log)).map_err(|_| "decision append log unreadable")?;
