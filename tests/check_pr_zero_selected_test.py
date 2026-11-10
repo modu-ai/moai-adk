@@ -95,6 +95,13 @@ class ZeroSelectedTest(unittest.TestCase):
             body("- check: `cargo test --all-targets name` exit 0\n"), "filter-multi-target"
         )
 
+    def test_one_target_plus_a_many_selector_is_blocked(self):
+        # `--tests` selects every integration target, so with `--lib` the filter
+        # reaches more than one target even though only one single selector is named.
+        self.assert_blocked(
+            body("- check: `cargo test --lib --tests name` exit 0\n"), "filter-multi-target"
+        )
+
     def test_filter_after_dashdash_counts(self):
         self.assert_blocked(
             body("- check: `cargo test --lib --test x -- name --exact` exit 0\n"),
