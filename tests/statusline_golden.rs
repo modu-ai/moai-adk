@@ -6,6 +6,12 @@
 //! here verbatim against the binary this build produced. Unix only: the harness builds its
 //! fixtures with POSIX paths and `/usr/bin` git; Windows CI compiles this file without
 //! running it.
+//!
+//! Wall-clock independence (#2350 leader decision): the product's 800 ms render budget drops
+//! the git segment when git is slow, which a loaded machine makes happen at random (18 of 20
+//! runs under a concurrent cargo build, re-audit 6765987319). The goldens describe the render
+//! within budget, so this test passes the hidden seam `--render-budget-ms 3600000`; the
+//! over-budget path is pinned on its own in `tests/statusline_git_env.rs`.
 
 #[cfg(unix)]
 #[test]
@@ -14,7 +20,7 @@ fn statusline_matches_every_go_golden() {
     let out = std::process::Command::new("python3")
         .args(["-I", "tools/statusline_golden.py", "--bin"])
         .arg(env!("CARGO_BIN_EXE_moai-cli"))
-        .args(["--argv", "statusline", "--check"])
+        .args(["--argv", "statusline --render-budget-ms 3600000", "--check"])
         .current_dir(root)
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .output()

@@ -29,14 +29,15 @@ fn git(dir: &Path, args: &[&str]) {
     assert!(status.success(), "git {args:?}");
 }
 
-/// One plain render with `stdin` naming `project`, the extra variables set on the process.
-fn render(home: &Path, project: &Path, extra: &[(&str, &Path)]) -> String {
+/// One plain render with `stdin` naming `project`; `budget_ms` is the hidden render-budget
+/// seam (a large value keeps this independent of machine load).
+fn render(home: &Path, project: &Path, extra: &[(&str, &Path)], budget_ms: u64) -> String {
     let stdin = format!(
         r#"{{"model":{{"display_name":"Opus"}},"workspace":{{"current_dir":"{0}","project_dir":"{0}"}}}}"#,
         project.display()
     );
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    cmd.arg("statusline")
+    cmd.args(["statusline", "--render-budget-ms", &budget_ms.to_string()])
         .current_dir(project)
         .env_clear()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
@@ -86,7 +87,7 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u1.txt"), "u\n").unwrap();
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
-    let clean = render(&home, &project, &[]);
+    let clean = render(&home, &project, &[], WITHIN);
     assert!(clean.contains("🅱️ main"), "{clean}");
     assert!(clean.contains("💾 +0 M0 ?0"), "{clean}");
 
@@ -100,7 +101,38 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
             ("GIT_WORK_TREE", other.as_path()),
             ("GIT_INDEX_FILE", index.as_path()),
         ],
+        WITHIN,
     );
     assert_eq!(contaminated, clean);
     assert!(!contaminated.contains("intruder"), "{contaminated}");
+}
+
+/// A budget no git call can miss under any load.
+const WITHIN: u64 = 3_600_000;
+
+/// The over-budget path, deterministically: with an already expired budget no git is
+/// started and the line ends at the directory, the same line a slow git gives under the
+/// product's 800 ms budget. Without the seam (budget ignored) git would run and this fails.
+#[test]
+fn an_expired_render_budget_drops_the_git_segment() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let home = root.join("home");
+    fs::create_dir_all(home.join(".moai")).unwrap();
+    let project = root.join("project");
+    fs::create_dir(&project).unwrap();
+    git(&project, &["init", "-q", "-b", "main"]);
+
+    let within = render(&home, &project, &[], WITHIN);
+    assert!(within.contains("🅱️ main"), "{within}");
+    for _ in 0..5 {
+        let over = render(&home, &project, &[], 0);
+        assert!(!over.contains("🅱️") && !over.contains("💾"), "{over}");
+        assert!(over.contains("📁 project"), "{over}");
+        assert_eq!(
+            over,
+            within.replace(" | 🅱️ main | 💾 +0 M0 ?0", ""),
+            "{over}"
+        );
+    }
 }

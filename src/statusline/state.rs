@@ -607,6 +607,10 @@ fn read_git_output(stdout: impl Read) -> std::io::Result<Vec<u8>> {
 /// One read-only git call, its environment scrubbed like every other git runner in the
 /// crate, stopped at the render deadline.
 fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
+    // Past the deadline no git is started (Go: a command on an expired context never starts).
+    if ctx.deadline.is_some_and(|d| Instant::now() >= d) {
+        return None;
+    }
     let mut cmd = Command::new(&ctx.git_program);
     cmd.args(args)
         .current_dir(dir)
@@ -924,6 +928,11 @@ mod tests {
             collect_git(&repo, &ctx).map(|s| s.branch),
             Some("main".into())
         );
+        assert_eq!(calls(), 1);
+
+        // An expired deadline: nothing is started and the git status is absent.
+        ctx.deadline = Some(Instant::now());
+        assert!(collect_git(&repo, &ctx).is_none());
         assert_eq!(calls(), 1);
     }
 }

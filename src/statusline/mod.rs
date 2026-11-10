@@ -48,15 +48,16 @@ fn read_capped(reader: impl std::io::Read) -> Vec<u8> {
     buf
 }
 
-/// The CLI entry: stdin is read only when it is not a terminal (a pipe or a file).
-pub fn run() -> String {
+/// The CLI entry: stdin is read only when it is not a terminal (a pipe or a file). `budget`
+/// is [`RENDER_BUDGET`] except under the hidden test seam `--render-budget-ms`.
+pub fn run(budget: Duration) -> String {
     use std::io::IsTerminal;
     let stdin = if std::io::stdin().is_terminal() {
         Vec::new()
     } else {
         read_capped(std::io::stdin())
     };
-    render(&stdin, &state::Context::from_process(RENDER_BUDGET))
+    render(&stdin, &state::Context::from_process(budget))
 }
 
 #[cfg(test)]

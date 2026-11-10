@@ -518,7 +518,14 @@ enum Command {
     /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
     /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
     /// command's stdout as is. Always exits 0.
-    Statusline,
+    Statusline {
+        /// Test seam (#2350 leader decision): the render budget in milliseconds instead of
+        /// the Go 800 ms. Hidden; Claude Code runs `statusline` without options. The golden
+        /// test passes a large value so a git call slowed by machine load still lands; `0`
+        /// is an already expired budget (no git call is started).
+        #[arg(long, hide = true, value_name = "MS")]
+        render_budget_ms: Option<u64>,
+    },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -895,7 +902,7 @@ fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
         // Not envelope operations: the launchers, and the raw-text statusline (#2350).
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline => return None,
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
@@ -1831,8 +1838,11 @@ fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
-    if matches!(cli.command, Some(Command::Statusline)) {
-        print!("{}", moai_cli::statusline::run());
+    if let Some(Command::Statusline { render_budget_ms }) = cli.command {
+        let budget = render_budget_ms
+            .map(std::time::Duration::from_millis)
+            .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
+        print!("{}", moai_cli::statusline::run(budget));
         return ExitCode::SUCCESS;
     }
     let op = cli.command.as_ref().and_then(operation);
@@ -2031,6 +2041,14 @@ mod operations_doc {
         assert_eq!(operation_of("statusline"), None);
         assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "statusline"));
         assert!(DOC.contains("envelope 예외 하위 명령: `statusline`(#2350)"));
+        // The render-budget test seam is documented and hidden from help.
+        assert!(DOC.contains("`--render-budget-ms`"));
+        let sub = cli.find_subcommand("statusline").unwrap();
+        let seam = sub
+            .get_arguments()
+            .find(|a| a.get_long() == Some("render-budget-ms"))
+            .unwrap();
+        assert!(seam.is_hide_set());
     }
 
     fn render(words: &[&str]) -> String {
