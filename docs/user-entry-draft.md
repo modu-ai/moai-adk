@@ -34,7 +34,7 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 ### 호스트 세션과 역할
 
-호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai --mode leader|agent`로 MoAI 역할을 정합니다. 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 deprecated입니다: 사용하면 경고가 뜨고 기존처럼 동작하지만, 새 세션은 역할 없이 열고 `/moai --mode`를 쓰는 것을 권합니다.
+호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai --mode leader|agent`로 MoAI 역할을 정합니다. 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)을 붙이고 전체 권한으로 여는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). #2164의 deprecated 경고는 없앴습니다.
 
 ### 수동 명령 (명시적 fallback)
 
@@ -46,31 +46,33 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 ## 세션 론처 (저장소 개발용, 현행 — DR-08 #2145)
 
-`-l|-a` 형태는 #2164부터 deprecated입니다(위의 호스트 세션과 역할 참조) — 경고가 출력되고 동작은 유지됩니다. 아래 표는 오늘 기준 동작을 기록합니다.
+`-l|-a`는 세션 이름과 전체 권한을 붙이는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). 아래 표는 오늘 기준 동작을 기록합니다.
 
-`moai-cli`는 저장소 개발 세션을 띄우는 론처를 갖고 있다. 사용자 진입(`/moai`·`$moai`)과는 별개인 개발 도구다. 아래 표는 `src/main.rs`의 `Cli`(45–56행), `LaunchOpts`(58–79행), `HostLaunch`(81–96행), `Command::Cc|Glm|Codex`(519–524행)와 `src/session.rs` 머리말(1–19행)을 기준으로, 2026-11-09에 base `604792666`의 빌드로 `--dry-run`을 실행해 확인했다.
+`moai-cli`는 저장소 개발 세션을 띄우는 론처를 갖고 있다. 사용자 진입(`/moai`·`$moai`)과는 별개인 개발 도구다. 아래 표는 `src/main.rs`의 `Cli`(45–56행), `LaunchOpts`(58–79행), `HostLaunch`(81–96행), `Command::Cc|Glm|Codex`(519–524행)와 `src/session.rs` 머리말을 기준으로 한다. 2026-11-09에 base `604792666` 빌드로 처음 확인했고, 권한·이름 규칙은 2026-11-10 #2359 빌드의 `--dry-run`과 시험으로 다시 확인했다.
 
 | 형태 | 동작 |
 | --- | --- |
-| `moai-cli cc\|glm\|codex` (역할 없음) | 평범한 host 세션. 역할·세션 이름을 붙이지 않고 `--dangerously-skip-permissions`도 붙이지 않는다(#2053). Claude 계열은 `--model opus --effort medium --advisor fable` 기본값을 쓴다. |
-| `moai-cli cc\|glm\|codex -l` (`--leader`) | 리더 세션. 이름 `leader`. |
-| `moai-cli cc\|glm\|codex -a` (`--agent`) | 에이전트 세션. 이름은 `--name`, 없으면 `agent-1`과 안내 note(자동 번호는 HOLD). |
+| `moai-cli cc\|glm\|codex` (역할 없음) | 평범한 host 세션. 역할·세션 이름을 붙이지 않는다(#2053). 권한 관련 플래그도 붙이지 않아, Claude Code는 사용자·프로젝트 설정의 모드로, codex는 `~/.codex/config.toml`의 샌드박스·승인 설정으로 시작한다(#2359). Claude 계열은 `--model opus --effort medium --advisor fable` 기본값을 쓴다. |
+| `moai-cli cc\|glm\|codex -l` (`--leader`) | 리더 세션. 이름 `leader`, 전체 권한. |
+| `moai-cli cc\|glm\|codex -a` (`--agent`) | 에이전트 세션, 전체 권한. 이름은 `--name`, 없으면 프로젝트 번호에서 `agent-N`(아래). |
 | `moai-cli -l` / `moai-cli -a [cc\|glm\|codex]` | 위와 같은 요청의 짧은 형태. 기본 host는 `cc`. |
 | `--name N` | 세션 이름. |
 | `--model M` | 주 모델. Claude 계열 기본 `opus`, codex는 지정했을 때만 `-m M`. |
 | `--effort E` | Claude effort(`low\|medium\|high\|xhigh\|max\|ultracode`), 기본 `medium`. |
 | `--no-advisor` | `--advisor fable`을 붙이지 않는다(Claude 계열). |
-| `--permissions` | `-l\|-a`에서 `--dangerously-skip-permissions`를 붙이지 않는다(권한 확인 유지). |
+| `--permissions` | 역할 세션을 확인 모드로 연다. Claude 계열은 `--dangerously-skip-permissions`를 붙이지 않고, codex는 `-s workspace-write -a on-request`로 띄운다. 역할 없는 세션에서는 바뀌는 것이 없다. |
 | `--dry-run` | host를 띄우지 않고 조립한 명령을 JSON으로 출력한다. |
 | `[PROMPT]` | 첫 프롬프트 텍스트(codex만). |
 
 host별 argv:
 
-- `cc`: `claude --name <name> --model opus --effort medium --advisor fable --dangerously-skip-permissions` (`-l|-a`의 기본).
-- `glm`: `cc`와 같은 Claude Code argv에, 환경 변수 `ANTHROPIC_BASE_URL`·`API_TIMEOUT_MS`를 더해 z.ai로 보낸다. `ANTHROPIC_AUTH_TOKEN`이 셸에 있어야 하며, 론처는 있는지만 확인하고 값은 출력·저장하지 않는다. 없으면 `blocked:` 메시지와 exit 1로 끝난다.
-- `codex`: `codex -s workspace-write -a on-request [-m <model>] [PROMPT]`. Codex에는 세션 이름 플래그가 없어 이름은 첫 프롬프트(`MoAI session name: <name>`)로 전한다. Codex 세션에는 RC1의 세션 간 메시지 채널(ListAgents·SendMessage)이 없다. advisor와 permission skip은 Claude 계열에만 붙는다.
+- `cc`: `claude --name <name> --model opus --effort medium --advisor fable --dangerously-skip-permissions` (`-l|-a`). 역할 없는 형태는 `claude --model opus --effort medium --advisor fable`로, 이름과 권한 플래그가 없다.
+- `glm`: `cc`와 같은 Claude Code argv에, Go 도구와 같은 환경 변수 묶음(`ANTHROPIC_BASE_URL`·`API_TIMEOUT_MS`, 모델 별칭 `ANTHROPIC_DEFAULT_*_MODEL`(opus·sonnet·fable은 `glm-5.3`, haiku는 `glm-5.3-flash`), 1M 컨텍스트 선언 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`·`CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`, z.ai MCP용 `Z_AI_API_KEY`)을 더해 z.ai로 보낸다. 토큰은 셸의 `ANTHROPIC_AUTH_TOKEN`을 쓰고, 없으면 키 파일 `~/.moai/.env.glm`(Go 도구와 함께 쓰는 전역 저장소), 이어서 `~/.moai-cli/.env.glm`에서(둘 다 읽기만 하며, 65536바이트 이하의 일반 파일일 때만 연다) `ANTHROPIC_AUTH_TOKEN=` 또는 `GLM_API_KEY=` 줄을 찾아 host 프로세스에만 넘긴다(#2359). 론처는 값을 출력·저장하지 않고 키 파일을 만들거나 고치지 않는다. 어디에도 없으면 `blocked:` 메시지와 exit 1로 끝난다.
+- `codex`: 역할 세션은 `codex -s danger-full-access -a never [-m <model>] [PROMPT]`(`--permissions`면 `-s workspace-write -a on-request`), 역할 없는 세션은 `codex [-m <model>] [PROMPT]`로 `-s`·`-a`를 붙이지 않는다. Codex에는 세션 이름 플래그가 없어 이름은 첫 프롬프트(`MoAI session name: <name>`)로 전한다. Codex 세션에는 RC1의 세션 간 메시지 채널(ListAgents·SendMessage)이 없다. advisor는 Claude 계열에만 붙는다.
 
-`-l|-a`에 `--dangerously-skip-permissions`를 기본으로 붙이는 것은 결정 기록(`docs/decisions-2026-11-08.md` 18:0x "임시 기본, 추후 설정에서 선택")과 일치한다. 20:3x·20:5x 결정은 역할 없는 경로와 실측에 새 bypass를 더하지 않는다는 것이고, 실물도 역할 없는 경로에는 붙이지 않으며 `--permissions`로 끌 수 있다. 다만 이 체크아웃의 `.claude/settings.local.json`이 `bypassPermissions`이면 론처 플래그와 관계없이 권한 확인이 생략된다(결정 기록 20:3x 훅 범위 확인).
+권한과 이름 규칙은 사용자 결정 2026-11-10, Issue #2359 댓글 6760976883을 따른다. 같은 날의 앞선 두 결정(역할 없는 세션도 전체 권한, `-l|-a` 제거)은 이 결정으로 대체되었다. `-l|-a` 세션은 host와 프로젝트 `.claude/settings.json`의 `permissions` 키에 관계없이 전체 권한으로 시작하고(#2244 규칙 대체), `--permissions`를 주면 확인 모드로 뜬다. 역할 없는 세션에는 권한 플래그를 붙이지 않는다. codex에서는 이 차이가 중요하다. Codex는 CLI 플래그를 `~/.codex/config.toml`보다 우선하므로, 역할 세션은 사용자 설정과 관계없이 묻지 않도록 플래그를 명시하고, 역할 없는 세션은 플래그를 빼서 사용자 설정을 따르게 한다(전에는 `-s workspace-write -a on-request`를 강제로 붙여 사용자 설정을 덮어썼다). 역할 세션의 기본값은 `session::FULL_ACCESS_DEFAULT` 한 곳에 두었고, 설정에서 고르는 기능은 후속 작업이다(설정 키는 아직 없다). 옛 `session` 하위 명령(Claude 전용)은 바뀌지 않았다.
+
+`agent-N` 번호(#2361 해결): `-a`에 `--name`이 없으면 프로젝트(한 clone과 그 worktree 전체)마다 하나인 번호에서 다음 값을 받는다. host가 달라도 번호를 함께 쓰고, 번호는 계속 늘어나기만 하며 끝난 세션의 번호도 다시 쓰지 않는다. 저장 위치는 `<clone의 공통 git 디렉터리>/.moai-cli/sessions/agent-seq`(마지막으로 준 번호 한 줄)로, claim journal 옆이라 모든 worktree가 같은 파일을 보고 git에는 나타나지 않는다. 옆의 `.lock`을 잡은 채 읽고 1을 더해 쓰므로, 동시에 여러 개를 띄워도 같은 번호가 두 번 나오지 않는다(나중 실행은 기다린다). `--dry-run`은 다음 번호를 보여 주기만 하고 쓰지 않으며, `--name`과 `-l`은 번호를 쓰지 않는다. 막힐 실행(토큰 없는 `glm` 등)도 번호를 쓰지 않는다. git 저장소 밖이거나 저장 파일이 숫자 한 줄이 아니거나 일반 파일이 아니면(FIFO는 열지 않는다) 오류로 끝나며 `agent-1`로 돌아가지 않는다. 이때는 `--name`으로 이름을 주면 된다.
 
 ## 채택 시 확인 항목
 
