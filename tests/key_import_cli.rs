@@ -49,7 +49,9 @@ fn envelope(out: &Output) -> Value {
 }
 
 /// Every file under HOME: path → (bytes, mtime).
-fn snapshot(home: &Path) -> BTreeMap<String, (Vec<u8>, std::time::SystemTime)> {
+/// Every file under HOME: path → (bytes, mtime, mode). The mode is part of "unchanged"
+/// (pre-audit N1: the legacy file's permissions are not touched either).
+fn snapshot(home: &Path) -> BTreeMap<String, (Vec<u8>, std::time::SystemTime, u32)> {
     let mut out = BTreeMap::new();
     let mut stack = vec![home.to_path_buf()];
     while let Some(p) = stack.pop() {
@@ -61,11 +63,56 @@ fn snapshot(home: &Path) -> BTreeMap<String, (Vec<u8>, std::time::SystemTime)> {
         } else {
             out.insert(
                 p.to_string_lossy().into_owned(),
-                (fs::read(&p).unwrap_or_default(), m.modified().unwrap()),
+                (
+                    fs::read(&p).unwrap_or_default(),
+                    m.modified().unwrap(),
+                    m.permissions().mode(),
+                ),
             );
         }
     }
     out
+}
+
+/// Pre-audit B1/B2 (S3): the permission reference is 1–128 bytes without control
+/// characters. 128 passes, 129 is refused, a control character is refused; nothing is
+/// written by a refusal. Literal sizes.
+#[test]
+fn the_permission_reference_bounds_are_kept() {
+    for (reference, ok) in [
+        ("r".repeat(128), true),
+        ("r".repeat(129), false),
+        ("ok\u{7}bell".to_string(), false),
+        ("two\nlines".to_string(), false),
+    ] {
+        let (_d, h) = home(Some(&format!("GLM_API_KEY={KEY}\n")), None);
+        let p = plan(&h);
+        let a = apply(&h, p["plan_digest"].as_str().unwrap(), &reference);
+        assert_eq!(a["ok"], ok, "{} bytes: {a}", reference.len());
+        assert_eq!(h.join(".moai-cli/vault/glm.key").exists(), ok);
+    }
+}
+
+/// Pre-audit B3 (S3): a legacy file of exactly 65,536 bytes is read; 65,537 is not
+/// (`size_ok: false`, no key, nothing to import). Literal sizes.
+#[test]
+fn a_legacy_file_is_read_up_to_64_kib() {
+    let line = format!("GLM_API_KEY={KEY}\n");
+    let mut body = line.clone().into_bytes();
+    body.resize(65_536, b'#');
+    let (_d, h) = home(None, None);
+    fs::create_dir_all(h.join(".moai")).unwrap();
+    fs::write(h.join(".moai/.env.glm"), &body).unwrap();
+    let p = plan(&h);
+    assert_eq!(p["sources"][0]["size_ok"], true, "{p}");
+    assert_eq!(p["sources"][0]["has_key"], true);
+    assert_eq!(p["action"], "import");
+    body.push(b'#');
+    fs::write(h.join(".moai/.env.glm"), &body).unwrap();
+    let p = plan(&h);
+    assert_eq!(p["sources"][0]["size_ok"], false, "{p}");
+    assert_eq!(p["sources"][0]["has_key"], false);
+    assert_eq!(p["action"], "nothing_to_import");
 }
 
 fn plan(home: &Path) -> Value {

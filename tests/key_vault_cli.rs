@@ -207,6 +207,25 @@ fn a_symlinked_or_special_entry_is_not_followed() {
         .ends_with("is not a real folder"));
 }
 
+/// Pre-audit B1: whatever `key-set` accepts reads back as `present`. 65,535 bytes of value
+/// (a 65,536-byte entry with its newline) round-trips; 65,536 bytes is refused and nothing
+/// is written. Literal sizes.
+#[test]
+fn every_value_key_set_accepts_reads_back() {
+    let (_d, home) = home();
+    let max = "k".repeat(65_535);
+    let set = envelope(&run(&home, &["key-set", "glm"], Some(&max)), &max);
+    assert_eq!(set["ok"], true, "{set}");
+    assert_eq!(fs::metadata(entry(&home)).unwrap().len(), 65_536);
+    let s = envelope(&run(&home, &["key-status", "glm"], None), &max);
+    assert_eq!(s["result"]["entry"], "present", "{s}");
+    fs::remove_file(entry(&home)).unwrap();
+    let over = "k".repeat(65_536);
+    let set = envelope(&run(&home, &["key-set", "glm"], Some(&over)), &over);
+    assert_eq!(set["ok"], false, "{set}");
+    assert!(!entry(&home).exists());
+}
+
 #[test]
 fn an_entry_is_read_up_to_64_kib() {
     let (_d, home) = home();
