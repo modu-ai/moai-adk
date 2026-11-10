@@ -199,8 +199,12 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         self.assertIn(CI_FORMAT, text)
         for case in ("Author: new or changed code", "Author: a language or suite the change does not touch",
                      "Repair lane: the repair changes code",
-                     "Auditor: the audited head changes code", "Delta auditor: merge-only delta"):
+                     "Auditor: the audited head changes code", "Delta auditor: merge-only delta",
+                     "Author: a skill package file changes"):
             self.assertIn(case, text)
+        # One build folder per worktree, and lanes report instead of deleting (#2385 follow-up).
+        self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
+        self.assertNotIn("Reuse the existing target directory instead of creating a new one", text)
 
     def test_other_places_reference_without_restating(self):
         for rel in ("skills/moai-cli/workflows/audit.md", "skills/moai-cli/workflows/sync.md",

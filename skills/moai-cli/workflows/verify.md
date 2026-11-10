@@ -27,6 +27,7 @@ This section is the single source for who runs which check locally and when an e
 | Repair lane: the repair changes code | the full check set on the repair head | no |
 | Auditor: the audited head changes code | tests that exercise the diff, mutations, behavioural probes, fresh-clone reproduction, and the full check set | no |
 | Delta auditor: merge-only delta (the merge-tree result equals the pushed tree and the lane changed nothing itself) | only the tests that target the files the merge brought in | yes, under the citation conditions; the local full suite is recorded as `not_run` |
+| Author: a skill package file changes | the file's sha256 entry updated in the package's source manifest in the same commit, then `cargo test --offline --locked --test product_cli skill_package::` (the package's manifest and route checks) | no for the package tests; the rest of the Rust suite follows the rows above |
 
 Citation conditions — all must hold, or the CI result is not cited:
 
@@ -36,7 +37,7 @@ Citation conditions — all must hold, or the CI result is not cited:
 
 A CI result is never cited for a language or suite the change touches, when the repair changed code in it, when no run exists for the head (a `pull_request` run does not start while the PR has a merge conflict; write `ci: not_run` with the reason), or for checks CI does not perform (mutations, behavioural probes, fresh-clone reproduction). Citing never relaxes a gate: the independent audit, `rc-ci` and `windows-build` success, and exact head and base equality stay required.
 
-Heavy checks are serialised: on one machine, at most one full build or full test run executes at a time. Before starting one, check that no other is running; if one is, wait with a bounded poll and record the wait instead of starting a second. Reuse the existing target directory instead of creating a new one, and record free disk space before the run. Numeric load and disk thresholds are not decided yet (HOLD); until they are, a lane reports high load or low disk to the leader instead of choosing a threshold itself.
+Heavy checks are serialised: on one machine, at most one full build or full test run executes at a time. Before starting one, check that no other is running; if one is, wait with a bounded poll and record the wait instead of starting a second. Use one build folder per worktree and never share `CARGO_TARGET_DIR` between worktrees (a shared folder once ran another tree's binary without a rebuild): reuse the worktree's own folder, confirm the `Compiling` line names this worktree, and record free disk space before the run. A lane does not delete build folders; when its work is merged or its verdict is posted it reports the folders it no longer uses, and the leader removes them after checking the list (user decision, Issue #2389 comment 6774899518 item 2). Numeric load and disk thresholds are not decided yet (HOLD); until they are, a lane reports high load or low disk to the leader instead of choosing a threshold itself.
 
 A test must not depend on wall-clock time. When an assertion depends on elapsed time or a time budget, inject the clock or the budget (a seam such as a `--render-budget-ms` style flag or a clock parameter) and fix it in the test. Auditors treat a direct wall-clock budget in a test assertion as a finding.
 
