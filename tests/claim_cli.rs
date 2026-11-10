@@ -996,8 +996,10 @@ fn claim_concurrent_exclusive() {
     let lease = format_utc(now_utc() + 3600);
     let req = cli_req(&lease, "agent-x");
 
-    // AC-06A-1: N >= 8 parallel claim attempts, each retrying `busy` (the caller-side
-    // waiting policy — the product itself never waits, REQ-06A-05).
+    // AC-06A-1: N >= 8 parallel claim attempts, each retrying the journal lock-busy
+    // answer (the caller-side waiting policy — the product itself never waits,
+    // REQ-06A-05). #2345: a held lock answers the failure envelope — kind `unavailable`,
+    // retryable true, exit 1 — the same answer as every other journal-writing op.
     let n = 8u32;
     let outcomes: Vec<Value> = thread::scope(|s| {
         let handles: Vec<_> = (0..n)
@@ -1012,16 +1014,20 @@ fn claim_concurrent_exclusive() {
                             &gh,
                             &claim_body("agent-x", &lease),
                         );
+                        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+                        if v["error"]["kind"] == json!("unavailable") {
+                            assert_eq!(v["ok"], json!(false));
+                            assert_eq!(v["error"]["retryable"], json!(true));
+                            assert!(!out.status.success());
+                            thread::sleep(Duration::from_millis(5));
+                            continue;
+                        }
                         assert!(
                             out.status.success(),
                             "{}",
                             String::from_utf8_lossy(&out.stderr)
                         );
-                        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-                        if v["result"]["outcome"] != json!("busy") {
-                            return v;
-                        }
-                        thread::sleep(Duration::from_millis(5));
+                        return v;
                     }
                     panic!("the journal stayed busy for 300 attempts");
                 })
