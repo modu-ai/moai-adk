@@ -68,10 +68,49 @@ pub struct CheckRun {
     pub output_complete: Option<bool>,
 }
 
+/// Splits on ASCII whitespace; single and double quotes group words and are removed, the other
+/// quote is literal inside them, and adjacent parts join into one word. No escapes, no
+/// expansion. An unterminated quote is refused (#2392 decision 6774899518 row 18: simple
+/// quotes now, a structured argv input later).
+fn split_words(command: &str) -> Result<Vec<String>> {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut in_word = false;
+    let mut quote: Option<char> = None;
+    for ch in command.chars() {
+        match quote {
+            Some(q) if ch == q => quote = None,
+            Some(_) => word.push(ch),
+            None if ch == '\'' || ch == '"' => {
+                quote = Some(ch);
+                in_word = true;
+            }
+            None if ch.is_ascii_whitespace() => {
+                if in_word {
+                    words.push(std::mem::take(&mut word));
+                    in_word = false;
+                }
+            }
+            None => {
+                word.push(ch);
+                in_word = true;
+            }
+        }
+    }
+    if quote.is_some() {
+        return Err("command not runnable: unterminated quote".into());
+    }
+    if in_word {
+        words.push(word);
+    }
+    Ok(words)
+}
+
 /// Splits a snapshot command into argv. No shell: a leading `VAR=value`, an option before the
-/// executable, and an executable with a path separator are refused (#2003 leader decision I1).
+/// executable, and an executable with a path separator are refused (#2003 leader decision I1),
+/// judged on the executable word after quote removal.
 pub fn parse_argv(command: &str) -> Result<Vec<String>> {
-    let argv: Vec<String> = command.split_ascii_whitespace().map(String::from).collect();
+    let argv = split_words(command)?;
     let Some(exe) = argv.first() else {
         return Err("command not runnable: empty".into());
     };

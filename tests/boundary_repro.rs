@@ -353,7 +353,7 @@ fn f4_open_critical_finding_blocks_admission() {
 /// runs `-p '*_test.py'`. Single and double quotes group words and are removed; an unterminated
 /// quote is refused; the executable rules apply to the unquoted first word.
 #[test]
-#[ignore = "#2392 repro F5a: RED until argv keeps quoted arguments"]
+
 fn f5a_quoted_argument_is_not_split_on_whitespace() {
     let words = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
     assert_eq!(
@@ -385,7 +385,13 @@ fn f5a_quoted_argument_is_not_split_on_whitespace() {
         words(&["echo", "its", "a'b"]),
         "adjacent quoted parts must join and the other quote is literal inside quotes"
     );
-    for bad in ["echo 'open", "echo \"open", "'./run.sh'", "\"A=1\" cargo", "'-x' cargo"] {
+    for bad in [
+        "echo 'open",
+        "echo \"open",
+        "'./run.sh'",
+        "\"A=1\" cargo",
+        "'-x' cargo",
+    ] {
         assert!(parse_argv(bad).is_err(), "accepted {bad:?}");
     }
 }
