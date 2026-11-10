@@ -210,7 +210,7 @@ fn expand_home(home: &Path, stored: &str) -> PathBuf {
     }
 }
 
-fn sha256_file(path: &Path) -> Result<String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String> {
     let meta = fs::metadata(path).map_err(|_| "binary metadata unavailable")?;
     if !meta.is_file() {
         return Err("binary path is not a regular file".into());
