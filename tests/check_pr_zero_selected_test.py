@@ -119,6 +119,41 @@ class ZeroSelectedTest(unittest.TestCase):
             body("- check: `cargo test -p moai-cli --features x --test a -- --skip slow --test-threads 1` exit 0\n")
         )
 
+    def test_quoted_option_values_are_not_filters(self):
+        for value in ['"slow test"', "'slow test'", '"slow || test)"']:
+            with self.subTest(value=value):
+                self.assert_pass(
+                    body(f"- check: `cargo test --lib --test cli_a -- --skip {value}` exit 0\n")
+                )
+        self.assert_pass(
+            body('- check: `cargo test --features "fast slow" --lib --test cli_a` exit 0\n')
+        )
+
+    def test_filter_with_quoted_skip_still_blocks_multiple_targets(self):
+        self.assert_blocked(
+            body('- check: `cargo test --lib --test cli_a needle -- --skip "slow test"` exit 0\n'),
+            "filter-multi-target",
+        )
+
+    def test_filter_with_target_glob_is_blocked(self):
+        for selector in [
+            "--test 'cli_*'",
+            "--test='cli_*'",
+            "--bin 'app_?'",
+            "--example 'demo_[ab]'",
+            "--bench=bench_*",
+        ]:
+            with self.subTest(selector=selector):
+                self.assert_blocked(
+                    body(f"- check: `cargo test --offline --locked {selector} needle` exit 0\n"),
+                    "filter-multi-target",
+                )
+
+    def test_target_glob_without_a_filter_passes(self):
+        self.assert_pass(
+            body('- check: `cargo test --test "cli_*" -- --skip "slow test"` exit 0\n')
+        )
+
     def test_equals_form_option_value_is_not_a_filter(self):
         self.assert_pass(body("- check: `cargo test --target-dir=/t --test a` exit 0\n"))
 

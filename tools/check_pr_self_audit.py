@@ -27,6 +27,10 @@ markdown table row of the body:
     targets, or with none (cargo then runs several by default), is blocked as
     filter-multi-target. Only commands written in a code span (`...`) are
     read; prose that mentions cargo test is not a command.
+    Quoted option values remain single POSIX shell words. Named target glob
+    patterns (`*`, `?`, `[]`) may select several targets, including in `--test=X`
+    form, so they cannot establish single-target filtered evidence. No Cargo
+    command or GitHub request is executed by this checker.
 
 Usage:
   python3 -I tools/check_pr_self_audit.py --file BODY.md
@@ -37,6 +41,7 @@ Exit codes: 0 = section complete, 1 = section/items missing or unmeasured,
 """
 
 import re
+import shlex
 import sys
 from pathlib import Path
 
@@ -78,11 +83,36 @@ def cargo_test_commands(line: str):
     Prose such as "cargo test 671 passed" outside a code span is not a command."""
     out = []
     for span in re.findall(r"`([^`]+)`", line):
-        for m in re.finditer(r"(?<![\w-])cargo\s+(?:\+\S+\s+)?test\b", span):
-            rest = span[m.end():]
-            end = re.search(r";|\|\||&&|\||\)", rest)
-            out.append(rest[: end.start()] if end else rest)
-    return [seg.split() for seg in out]
+        if not re.search(r"\bcargo\b", span):
+            continue
+        lexer = shlex.shlex(span, posix=True, punctuation_chars=";&|()")
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        words = list(lexer)
+        i = 0
+        while i < len(words):
+            if words[i] != "cargo":
+                i += 1
+                continue
+            test = i + 1
+            if test < len(words) and words[test].startswith("+"):
+                test += 1
+            if test == len(words) or words[test] != "test":
+                i += 1
+                continue
+            end = test + 1
+            expects_value = False
+            while end < len(words):
+                token = words[end]
+                if not expects_value and token in {";", "||", "&&", "|", ")"}:
+                    break
+                expects_value = not expects_value and (
+                    token in CARGO_VALUE_OPTS or token in HARNESS_VALUE_OPTS
+                )
+                end += 1
+            out.append(words[test + 1:end])
+            i = end
+    return out
 
 
 def filtered_target_count(tokens):
@@ -92,14 +122,16 @@ def filtered_target_count(tokens):
     targets = 0
     many = False
     after_dashdash = False
-    skip_next = False
+    skip_next = None
     for tok in tokens:
         if skip_next:
-            skip_next = False
+            if skip_next in CARGO_TARGETS_ONE and any(c in tok for c in "*?["):
+                many = True
+            skip_next = None
             continue
         if after_dashdash:
             if tok in HARNESS_VALUE_OPTS:
-                skip_next = True
+                skip_next = tok
             elif not tok.startswith("-"):
                 has_filter = True
             continue
@@ -109,10 +141,12 @@ def filtered_target_count(tokens):
         name = tok.split("=", 1)[0]
         if name in CARGO_TARGETS_ONE:
             targets += 1
+            if "=" in tok and any(c in tok.split("=", 1)[1] for c in "*?["):
+                many = True
         elif name in CARGO_TARGETS_MANY:
             many = True
         if name in CARGO_VALUE_OPTS and "=" not in tok:
-            skip_next = True
+            skip_next = name
         elif not tok.startswith("-"):
             has_filter = True
     if many:
