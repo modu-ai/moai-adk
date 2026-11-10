@@ -38,8 +38,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.db
-*.sqlite
-*.sqlite3
 *.rdb
 *.dbm
 

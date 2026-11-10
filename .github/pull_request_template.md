@@ -12,6 +12,7 @@ Refs #<Issue 번호>
 
 - 대상 Issue: #<n> (<논리 키, 예: 00-E>)
 - claim 토큰: `Moai-Claim: <n>#<claim 댓글 id>`
+- merge train: `<순번 또는 끼워 넣기(문서 전용)>` · base 병합은 자기 차례에 1회만 · 미리 쌓기라면 앞 PR #<n>의 감사된 head `<40자 SHA>` (#2388)
 - base: `v2026.11.0` @ `<base 40자 SHA>`
 - candidate head: `<head 40자 SHA>` (exact SHA, 독립 review가 본 SHA와 같아야 한다)
 - SPEC: `<SPEC id>` · revision `<revision>` · digest `<digest 또는 null>`
@@ -35,10 +36,13 @@ Refs #<Issue 번호>
 
 실행하지 않은 명령은 표에서 빼지 말고 exit 칸에 `not_run`과 이유를 적는다.
 
+로컬에서 무엇을 돌리고 언제 정확 head의 CI 결과를 인용할 수 있는지는 `skills/moai-cli/workflows/verify.md`의 "Check-run rules" 절을 따른다(#2385). CI를 인용하면 `## Self-Audit` 절에 `ci: rc-ci run=<run id> head=<40-hex head SHA>` 한 줄을 적고, 실행된 run이 없으면 `ci: not_run`과 이유를 적는다. 검사 도구 `python3 -I tools/check_pr_self_audit.py`가 이 줄의 형식을 확인한다.
+
 ## 독립 review
 
 - 판정: <PASS / FAIL> · 검토 세션: <세션 이름> · 본 SHA: `<40자 SHA>`
 - 판정 댓글 링크: <https://github.com/modu-ai/moai-adk/issues/<n>#issuecomment-...>
+- 재감사라면: 수리 확인 범위 <항목> · 새 지적 분류 <차단 / 후속 Issue #<n>> · 3회째 FAIL이면 범위 분할 상신 (#2388)
 
 ## not_run / blocked
 
