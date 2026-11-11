@@ -1,0 +1,503 @@
+{
+  "report": {
+    "schema_version": 2,
+    "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+    "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+    "source_commit": "98dab71433617ba179c164be8b7ca169e62fe7dc",
+    "source_tree_sha1": "80b40d51b10db15ee732956aedc421f71d0e3301",
+    "tasks": [
+      {
+        "id": "T-001",
+        "hits": [
+          "src/forge/outbox.rs",
+          "src/forge/promote.rs",
+          "src/handoff.rs",
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 3265,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-002",
+        "hits": [
+          "src/claim.rs",
+          "src/handoff.rs",
+          "src/queue.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 3240,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-003",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1583,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-004",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1865,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-005",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1025,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-006",
+        "hits": [
+          "src/atlas_tag.rs",
+          "src/main.rs"
+        ],
+        "response_bytes": 1024,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-007",
+        "hits": [
+          "src/claim_verify.rs",
+          "src/contract.rs",
+          "src/parity.rs",
+          "src/recovery.rs",
+          "src/verify.rs"
+        ],
+        "response_bytes": 1861,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-008",
+        "hits": [
+          "src/agents.rs",
+          "src/archive.rs",
+          "src/claude.rs",
+          "src/contract.rs",
+          "src/forge/promote.rs",
+          "src/generation.rs",
+          "src/github_templates.rs",
+          "src/hooks.rs",
+          "src/hosts/codex.rs",
+          "src/hosts/codex_config.rs",
+          "src/profile.rs",
+          "src/recovery.rs",
+          "src/sources.rs",
+          "src/update.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 6077,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-009",
+        "hits": [
+          "src/forge/promote.rs",
+          "src/forge/report.rs",
+          "src/install.rs",
+          "src/lib.rs",
+          "src/profile.rs",
+          "src/redact.rs",
+          "src/sources.rs"
+        ],
+        "response_bytes": 3797,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-010",
+        "hits": [
+          "src/profile.rs"
+        ],
+        "response_bytes": 2414,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-011",
+        "hits": [
+          "src/profile.rs"
+        ],
+        "response_bytes": 1858,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-012",
+        "hits": [
+          "src/flow.rs"
+        ],
+        "response_bytes": 741,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-013",
+        "hits": [
+          "src/claim_verify.rs"
+        ],
+        "response_bytes": 1029,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-014",
+        "hits": [
+          "src/recovery.rs",
+          "src/self_update.rs",
+          "src/update.rs"
+        ],
+        "response_bytes": 5506,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-015",
+        "hits": [
+          "src/contract.rs",
+          "src/leader.rs",
+          "src/profile.rs"
+        ],
+        "response_bytes": 3529,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-016",
+        "hits": [
+          "src/audit.rs",
+          "src/baseline.rs",
+          "src/lib.rs",
+          "src/run.rs",
+          "src/sources.rs"
+        ],
+        "response_bytes": 7679,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-017",
+        "hits": [
+          "src/main.rs",
+          "src/recovery.rs"
+        ],
+        "response_bytes": 1303,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-018",
+        "hits": [
+          "src/main.rs",
+          "src/session.rs"
+        ],
+        "response_bytes": 1297,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-019",
+        "hits": [
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 1023,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-020",
+        "hits": [
+          "src/archive.rs"
+        ],
+        "response_bytes": 1023,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-021",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1025,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-022",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 745,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-023",
+        "hits": [
+          "src/claim.rs",
+          "src/handoff.rs",
+          "src/queue.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 2693,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-024",
+        "hits": [
+          "src/hosts/codex.rs",
+          "src/main.rs"
+        ],
+        "response_bytes": 2149,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-025",
+        "hits": [
+          "src/flow.rs"
+        ],
+        "response_bytes": 2397,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-026",
+        "hits": [
+          "src/context/mod.rs"
+        ],
+        "response_bytes": 748,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-027",
+        "hits": [
+          "src/main.rs"
+        ],
+        "response_bytes": 1021,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-028",
+        "hits": [
+          "src/forge/promote.rs",
+          "src/forge/transport.rs",
+          "src/redact.rs"
+        ],
+        "response_bytes": 1311,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-029",
+        "hits": [
+          "src/claim.rs",
+          "src/lib.rs",
+          "src/main.rs",
+          "src/queue.rs"
+        ],
+        "response_bytes": 3232,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-030",
+        "hits": [
+          "src/run.rs"
+        ],
+        "response_bytes": 740,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-031",
+        "hits": [
+          "src/sources.rs"
+        ],
+        "response_bytes": 1302,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-032",
+        "hits": [
+          "src/contract.rs",
+          "src/install.rs",
+          "src/main.rs",
+          "src/recovery.rs",
+          "src/update.rs"
+        ],
+        "response_bytes": 4918,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "T-033",
+        "hits": [],
+        "response_bytes": 466,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-001",
+        "hits": [
+          "src/archive.rs",
+          "src/context/mod.rs",
+          "src/github_templates.rs"
+        ],
+        "response_bytes": 1313,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-002",
+        "hits": [
+          "src/forge/outbox.rs",
+          "src/forge/promote.rs",
+          "src/handoff.rs",
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 3265,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-003",
+        "hits": [
+          "src/forge/outbox.rs",
+          "src/forge/promote.rs",
+          "src/handoff.rs",
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 3265,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-004",
+        "hits": [
+          "src/apply.rs",
+          "src/archive.rs",
+          "src/audit.rs",
+          "src/baseline.rs",
+          "src/claim.rs",
+          "src/claude.rs",
+          "src/decision.rs",
+          "src/forge/promote.rs",
+          "src/forge/report.rs",
+          "src/forge/write.rs",
+          "src/github_templates.rs",
+          "src/hooks.rs",
+          "src/hosts/codex_config.rs",
+          "src/install.rs",
+          "src/plan.rs",
+          "src/pr_link.rs",
+          "src/recovery.rs",
+          "src/run.rs",
+          "src/self_update.rs",
+          "src/spec.rs",
+          "src/update.rs",
+          "src/verify.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 22086,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-005",
+        "hits": [
+          "src/audit.rs",
+          "src/baseline.rs",
+          "src/lib.rs",
+          "src/run.rs",
+          "src/sources.rs"
+        ],
+        "response_bytes": 7679,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-006",
+        "hits": [
+          "src/claim_verify.rs"
+        ],
+        "response_bytes": 1029,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-007",
+        "hits": [
+          "src/claim.rs",
+          "src/claim_verify.rs",
+          "src/flow.rs",
+          "src/handoff.rs",
+          "src/leader.rs",
+          "src/main.rs",
+          "src/queue.rs"
+        ],
+        "response_bytes": 6013,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-008",
+        "hits": [
+          "src/atlas_tag.rs",
+          "src/main.rs"
+        ],
+        "response_bytes": 1024,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-009",
+        "hits": [
+          "src/contract.rs",
+          "src/install.rs",
+          "src/main.rs",
+          "src/recovery.rs",
+          "src/update.rs"
+        ],
+        "response_bytes": 4918,
+        "raw_context": {},
+        "selection": null
+      }
+    ]
+  },
+  "judge": {
+    "schema_version": 2,
+    "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+    "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+    "passed": true,
+    "metrics": {
+      "retrieval_precision_mean": 0.9212,
+      "retrieval_recall_mean": 0.9697,
+      "graph_relation_file_coverage_mean": 1.0
+    },
+    "thresholds": {
+      "graph_relation_file_coverage_mean": 1.0,
+      "retrieval_precision_mean": 0.9212,
+      "retrieval_recall_mean": 0.9697
+    },
+    "failed_metrics": []
+  }
+}
