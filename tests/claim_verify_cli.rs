@@ -1299,7 +1299,7 @@ fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
     assert_eq!(run("cargo test").status.code(), Some(0));
 }
 
-/// AC-2 (workflow text): the `--mode agent` workflow names the boundary before commit and
+/// AC-2 (workflow text): the MODE-AGENT workflow names the boundary before commit and
 /// push, and the guard that enforces it; the binary test above is the mechanical half.
 #[test]
 fn mode_agent_workflow_names_claim_verify_before_writes() {

@@ -43,6 +43,14 @@
 
 보고서와 다른 점: 보고서 §10.4는 ⑤에서 "진 쪽은 로컬 기록을 `lost`로 닫는다"고 적었다. RC1에서 진 쪽은 journal에 **아무것도 쓰지 않는다**(`src/claim.rs:906-911` "no journal record was written"). 상태 목록 `ACTIVE_STATES`(`src/claim.rs:50-59`)에도 `lost`가 없다. 이 SPEC은 RC1 동작을 따른다.
 
+### 현재 선택 경계: 지정 handoff (#2390 S4a)
+
+`queue-next`는 유효한 `moai-claim-handoff: comment=<id> to=<session>`의 수신자를 세션 id의 **정확한 문자열 일치**로 구분한다. 지정되지 않은 세션은 그 카드를 `skipped`의 `reason: handed_to_other`로 남기고 다음 후보로 간다. 로컬 journal에 활성 기록이 있어도 새 원격 handoff를 우회하지 못한다. `pr_ready` 카드의 기존 건너뛰기는 유지한다.
+
+handoff는 소유권 부여가 아니다. 지정된 세션도 claim 게시와 재조회·승자 판정을 거쳐야 한다. 일반 release는 누구나 다시 고를 수 있게 하며, 수신자가 새 claim 뒤 release한 과거 handoff가 카드를 영구히 예약하지 않는다. lease 만료만으로는 이전하지 않는다. 원격 댓글의 eventual consistency와 `cross_host_atomic: false` 한계는 그대로다.
+
+이 경계는 기존 댓글을 읽는 후보 선택만 다룬다. 메시지 저장 위치·ACK 경보 시간·host wake 연동·구조화된 resume/checkpoint는 구현하거나 결정하지 않는다.
+
 ## 4. 동시성 논증
 
 중재 수단은 **Issue 댓글 id**다. 로컬 파일이나 label은 중재 수단이 될 수 없다.

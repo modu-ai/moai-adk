@@ -299,3 +299,24 @@ reachable from origin/v2026.11.0: objects=6564 disk_bytes=5187826; under .moai-c
 git ls-remote --heads origin: 19; local refs/remotes/pr/*: 1828; local branches 224
 df: 99% used, 52041808 KiB available
 ```
+
+## 9. 1단계 뒤 실측 보강 (2026-11-10T17:38Z, WT-1 `worktree-report`)
+
+1단계 설계(§1, 10:19Z 측정) 뒤 같은 날 레인 운영에서 생긴 사실이다. 결정안(§4)은 바꾸지 않고, D3·D4·D7의 근거로만 덧붙인다.
+
+- **측정 방법**: WT-1 `moai-cli worktree-report <primary> --budget-ms 180000`(읽기 전용, 할당 블록·inode 한 번, git `--no-optional-locks`). 17:38:36Z 시작, 17:41:37Z 끝. `/tmp` 세 분류는 예산 안에 다 돌지 못해 `partial`이며 그 값은 하한이다. 공개 기록에는 경로 없이 집계만 적는다.
+
+| 분류 | §1 (10:19Z) | 17:38Z | 비고 |
+|---|---|---|---|
+| git worktree | 58 | 108 | detached 25(이름에 `audit`이 든 것 21), dirty 12, locked 0 |
+| worktree `target/` | 39개, 27.3 GiB | 88개, 75.5 GiB | 늘어난 대부분이 감사·사전 감사용 worktree |
+| worktree checkout(`target/` 제외) | 표본 8~11 MiB | 108개 합계 5.8 GiB | |
+| `/tmp/moai-rc-target-*` | 57개, 65.9 GiB | 60개, 57.4 GiB 이상(partial) | |
+| `/tmp` 감사 clone | 86개, 39.6 GiB | 53개, 21.4 GiB 이상(partial) | WT-1 분류는 이름에 `audit` + `.git` 있음 |
+| `/tmp` 빈 임시 폴더 | 903 × 4 | 1,716 | 0 B, WT-8 대상 |
+| 로컬 branch / `refs/remotes/pr/*` | 224 / 1,828 | 254 / 1,832 | |
+| 디스크 여유 | 49.6 GiB | 22.4 GiB | |
+
+- **D3 근거 보강 — 한 빌드 폴더 = 한 worktree**: 같은 날 14:3xZ, 두 worktree가 같은 `CARGO_TARGET_DIR`을 써서 `Compiling … (자기 tree)`를 찍고도 다른 tree의 바이너리로 시험이 돈 사고가 레인에서 실제로 났다(#2401 댓글 6770623896, 다른 레인의 같은 사례 댓글 6770673087·6770674526·6770677078·6770783481·6770850433). 리더는 '새 빌드 폴더 금지, 기존 것 재사용' 지시를 '한 빌드 폴더 = 한 worktree'로 정정했다(결정 기록 14:58Z(11-10) 행). §3.3 C1·C2 실험 결과가 운영에서 재현된 것이고, D3 결정안(worktree 안 `target/`, `CARGO_TARGET_DIR` 미지정)과 같은 방향이다.
+- **D4 관찰 — 감사가 clone이 아니라 linked worktree로 옮겨 갔다**: 이날 레인 감사·사전 감사의 대부분은 primary 저장소의 detached linked worktree(`.moai-cli/worktrees/audit-*`)에서 돌았다(위 detached 25). D4가 버린 대안 (c)(작성자 clone의 `.git` 공유)에 해당한다. 같은 primary를 쓰더라도 감사 대상은 GitHub에서 fetch한 정확한 SHA라 내용 독립성은 지켰지만, 객체 저장소 공유라는 점은 그대로다. 디스크 압박에서 나온 운영 선택이므로 D4를 바꾸지 않고 Q6·Q1 질문과 함께 리더에게 올린다.
+- **D7 근거 보강 — 정리보다 생성이 빠르다**: 10:19Z 뒤 7시간 반 동안 worktree가 50개, worktree `target/`이 49개(약 48 GiB) 늘었다. 이 사이 리더가 병합 끝난 worktree의 `target/` 몇 곳을 지운 정리가 있었다(리더 보고, 회수량 약 20 GiB로 전달받았으나 공개 기록으로는 확인하지 못함 — unverified). 정리 뒤에도 여유는 49.6 → 22.4 GiB로 줄었다. 상한(D7, Q5) 없이 수동 정리에 기대는 방식의 한계를 다시 보여 준다.

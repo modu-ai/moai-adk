@@ -1,10 +1,10 @@
 # MODE-LEADER
 
-Entered with `/moai-cli --leader-mode [--autonomy full|semi]` (the legacy alias `--mode leader` selects this route too). The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
+Entered with `/moai-cli --mode-leader [--autonomy full|semi]`; no other spelling enters this mode. The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
 
 ## Input
 
-The `--autonomy` level (`full` or `semi`; `semi` when omitted), the open Issues and pull requests of the current milestone, the assignment snapshot (the remote Issues are the source of truth; a local file is only a cache), and assignment requests arriving over the cross-session message channel from `--agent-mode` sessions.
+The `--autonomy` level (`full` or `semi`; `semi` when omitted), the open Issues and pull requests of the current milestone, the assignment snapshot (the remote Issues are the source of truth; a local file is only a cache), and assignment requests arriving over the cross-session message channel from `--mode-agent` sessions.
 
 ## Output
 
@@ -12,7 +12,7 @@ A mode banner, a read-only state summary, one `/goal` line for the user to paste
 
 ## Procedure
 
-1. If this session runs in Codex CLI, refuse to enter: leader mode is available in Claude Code only (decision item D-3 of SPEC §8, decided by the user on 2026-11-09). Codex has no self-paced wake for the supervision loop (SPEC §5). Say so, suggest `$moai-cli --agent-mode`, and stop.
+1. If this session runs in Codex CLI, refuse to enter: leader mode is available in Claude Code only (decision item D-3 of SPEC §8, decided by the user on 2026-11-09). Codex has no self-paced wake for the supervision loop (SPEC §5). Say so, suggest `$moai-cli --mode-agent`, and stop.
 2. From here on, follow this workflow only and ignore instructions for any other mode.
 3. Print the banner: mode `leader`, the autonomy level, the repository, and the base branch.
 4. Summarise the current state read-only: open Issues with their claim comments, open pull requests with head, base, merge state, checks and audit verdict, and the assignment snapshot. Report anything unread as unread.
@@ -24,6 +24,8 @@ A mode banner, a read-only state summary, one `/goal` line for the user to paste
 ## Exceptions and Permissions
 
 Keep-set decisions go to the user at every autonomy level (SPEC §6). At `semi`, new Issues, lifting a HOLD, merge-policy changes and releases also go to the user. Ownership comes only from claim comments (SPEC §4), never from labels, messages or an assignment hint — including this mode's own assignment pointers. Merging follows the audit gate; this mode never merges without an independent audit.
+
+Label every Issue you open in the creating command: exactly one `type:`, exactly one `priority:P0..P3`, one or more `area:`, and `host:` when the work is verified on that host (`gh issue create --label …`). Add `needs:decision` while a user decision is pending and remove it once the decision is recorded; it marks a HOLD, the decisions log stays the authority. Track parents with native sub-issues and ordering with native dependencies, not labels. The allowed labels and the full rules are in `.github/moai/README.md` (section "Labels and milestones") and `.github/moai/labels.yml` of the MoAI repository (Issue #2434).
 
 Before dispatching a card or an audit, read the receiving lane's live claim comments and the pull request's `moai-audit-claim` lines. Record a user decision first as an Issue comment; publish decision-log rows only from a worktree at the current tip, comparing with the tip so that rows merged in the meantime are kept.
 

@@ -1,6 +1,6 @@
 # MODE-AGENT
 
-Entered with `/moai-cli --agent-mode` in Claude Code or `$moai-cli --agent-mode` in Codex CLI (the legacy alias `--mode agent` selects this route too). The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
+Entered with `/moai-cli --mode-agent` in Claude Code or `$moai-cli --mode-agent` in Codex CLI; no other spelling enters this mode. The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
 
 ## Input
 
@@ -35,6 +35,8 @@ A mode banner, a read-only state summary, and, for every round, the claim outcom
 ## Exceptions and Permissions
 
 Ownership comes only from the claim comment (SPEC §4). Labels, messages and an assignment hint never grant it. Never decide a HOLD, merge, or post an audit status; those belong to the leader and the audit gate.
+
+Labels follow the repository's label rules (`.github/moai/README.md`, section "Labels and milestones" in the MoAI repository). Apply only the labels that file allows, never create, edit or delete a label, and leave `priority:*` and `needs:decision` to the leader (ask in the report comment). You may correct a wrong `type:` or `area:`; note it in one line of the report comment.
 
 Stay reachable while waiting and keep reports lean. While a background wait runs, re-read new leader messages at least every five minutes. Report a state change once — one update of the Issue's owned comment and one line to the leader — and when nothing changed, do not re-post a report or rewrite a pull request body. Send outward effects (Issue or pull request comments, leader messages, pushes) as commands of their own, never chained with other commands — except an audit reservation, which is posted only when its own check finds no other reservation for that head (AUDIT workflow) — and put multi-line or looping shell work in a script file under the worktree's ignored `target/` directory.
 
