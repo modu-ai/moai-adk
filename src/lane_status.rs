@@ -243,7 +243,10 @@ fn validate(req: &LaneStatusRequest) -> Result<()> {
     Ok(())
 }
 
-fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Result<Vec<Value>> {
+pub(crate) fn pages<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    first: String,
+) -> Result<Vec<Value>> {
     let (mut url, mut out, mut n) = (Some(first), Vec::new(), 0);
     while let Some(u) = url {
         n += 1;
@@ -261,13 +264,13 @@ fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Re
     Ok(out)
 }
 
-fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
+pub(crate) fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
     let resp = client.get(url, None).map_err(String::from)?;
     Ok(resp.body.unwrap_or(Value::Null))
 }
 
 /// Issue or PR comments from the API, sorted by id without repeats.
-fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
+pub(crate) fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
     let mut comments: Vec<Comment> = raw
         .iter()
         .filter_map(|c| {
@@ -284,7 +287,7 @@ fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
 }
 
 /// Claim comment ids from whole-line `Moai-Claim: <issue>#<id>` trailers naming `issue`.
-fn claim_ids_in(message: &str, issue: i64) -> Vec<i64> {
+pub(crate) fn claim_ids_in(message: &str, issue: i64) -> Vec<i64> {
     message
         .lines()
         .filter_map(|l| l.trim().strip_prefix("Moai-Claim:"))
@@ -295,7 +298,7 @@ fn claim_ids_in(message: &str, issue: i64) -> Vec<i64> {
 }
 
 /// A whole-line `moai-audit-claim: lane=<lane> head=<40 lowercase hex>` reservation.
-fn reservation_in(body: &str) -> Option<(String, String)> {
+pub(crate) fn reservation_in(body: &str) -> Option<(String, String)> {
     body.lines().find_map(|l| {
         let rest = l.trim().strip_prefix("moai-audit-claim:")?;
         let mut words = rest.split_whitespace();

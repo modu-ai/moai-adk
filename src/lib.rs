@@ -4,6 +4,7 @@ pub mod archive;
 pub mod atlas_query;
 pub mod atlas_tag;
 pub mod audit;
+pub mod audit_claim;
 pub mod banner;
 pub mod baseline;
 pub mod claim;

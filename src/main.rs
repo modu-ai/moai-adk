@@ -799,6 +799,12 @@ enum Command {
         #[arg(long)]
         permission_reference: Option<String>,
     },
+    /// Reserve the independent audit of one exact PR head (rc.2 #2403 item 1): typed JSON
+    /// `{schema_version, owner, repo, pr, head, lane}` on stdin. Reads the PR, its commits and
+    /// comments (GET); refuses a stale head or an author lane; posts at most one
+    /// `moai-audit-claim` comment, then re-reads. The lowest reservation id on the head wins
+    /// (user decision #2403 c6784520362). Start the audit only when `outcome` is `reserved`.
+    AuditClaim,
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
     AuditReduce {
@@ -984,6 +990,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ArchiveRestore { .. } => "archive.restore",
         ArchiveSearch { .. } => "archive.search",
         AtlasTagScan { .. } => "atlas_tag.scan",
+        AuditClaim => "audit.claim",
         AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
@@ -1940,6 +1947,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input()?,
             apply,
             permission_reference.as_deref(),
+        ),
+        Command::AuditClaim => moai_cli::audit_claim::reserve_cli(
+            input::<moai_cli::audit_claim::AuditClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
         ),
         Command::AuditReduce { project } => {
             let request = input::<moai_cli::audit::AuditInput>()?;
