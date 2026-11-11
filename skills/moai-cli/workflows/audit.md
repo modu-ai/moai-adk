@@ -46,6 +46,17 @@ The finding classification is `없음` (none), `차단: concrete reason` (blocki
 
 Missing or duplicate visible fields, empty or punctuation-only values, and unfinished markers such as `TODO`, `TBD`, `not_run` and `<path>` fail. Completed explanations may cite source paths such as `src/todo.rs`, inline code such as `ci: not_run`, and comparison operators; those references alone are not unfinished markers. This checks text completeness only: well-formed text does not prove its truth, an actual repair, contract compliance or the existence of the remote Issue. The checker makes no network requests and never posts comments or creates Issues. The existing verdict first-line format, verdict/comment fields and CI/check-run rules remain unchanged.
 
+Bare markers followed only by punctuation or Markdown decoration also fail (for example, repair scope `TODO.` or `TBD-`, and finding classification `차단: TODO.` or `차단: TBD-`). This does not reject actual filenames such as `TODO.md` or `TBD-related.md`.
+
+The #2388 marker repair preserves the reported audit inputs unchanged:
+
+| Field value | Audit-reported exit before repair | Required exit after repair |
+| --- | --- | --- |
+| Repair scope `TODO.` | 0 | 1 |
+| Repair scope `TBD-` | 0 | 1 |
+| Finding classification `차단: TODO.` | 0 | 1 |
+| Finding classification `차단: TBD-` | 0 | 1 |
+
 ## Exceptions and Permissions
 
 Self-assessment in the same context and a judge's recommendation do not replace the required independent audit. If a reviewer cannot be created or the evidence is insufficient, the result is blocked or unknown.

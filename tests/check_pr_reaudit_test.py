@@ -109,6 +109,8 @@ class CheckPrReauditTest(unittest.TestCase):
     def test_completed_descriptions_with_marker_like_references_pass(self):
         descriptions = (
             "src/todo.rs 경계와 호출자를 수리하고 확인했다.",
+            "TODO.md 경계와 호출자를 수리하고 확인했다.",
+            "TBD-related.md 경계와 호출자를 수리하고 확인했다.",
             "`ci: not_run` 분류를 보존하는 CLI 경계를 수리하고 확인했다.",
             "0 < n > 10 비교 경계를 수리하고 확인했다.",
         )
@@ -119,6 +121,24 @@ class CheckPrReauditTest(unittest.TestCase):
                     self.assert_pass(
                         self.with_findings(classification + description), "--reaudit",
                     )
+
+    def test_marker_named_files_remain_valid_evidence(self):
+        for path in ("TODO.md", "TBD-related.md", "src/TODO.md", "docs/TBD-related.md"):
+            with self.subTest(path=path):
+                self.assert_pass(self.with_scope(path), "--reaudit")
+                self.assert_pass(self.with_findings("차단: " + path), "--reaudit")
+
+    def test_punctuation_suffixed_bare_markers_are_blocked(self):
+        for marker in ("TODO", "TBD", "not_run"):
+            for suffix in (".", "-", "...", ".-"):
+                for value in (marker + suffix, "`" + marker + "`" + suffix):
+                    with self.subTest(value=value):
+                        self.assert_blocked(self.with_scope(value), "reaudit:scope")
+                        for classification in ("차단: ", "후속 Issue #2388: "):
+                            self.assert_blocked(
+                                self.with_findings(classification + value),
+                                "reaudit:findings",
+                            )
 
     def test_inline_comment_delimiters_in_code_explanations_pass(self):
         for code in (

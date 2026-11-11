@@ -148,7 +148,7 @@ def meaningful(value: str) -> bool:
             prose, re.IGNORECASE,
         )
         and not re.search(r"<[^\s<>]+(?:[ \t]+[^\s<>]+)*>", value)
-        and not re.fullmatch(r"\s*[`*_]*\s*(?:TODO|TBD|not_run)\s*[`*_]*\s*",
+        and not re.fullmatch(r"\s*[`*_]*\s*(?:TODO|TBD|not_run)[\s`*_.-]*",
                              value, re.IGNORECASE)
     )
 
