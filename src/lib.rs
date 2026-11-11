@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod apply;
 pub mod archive;
+pub mod atlas_query;
 pub mod atlas_tag;
 pub mod audit;
 pub mod banner;
@@ -27,6 +28,7 @@ pub mod identity;
 pub mod index;
 pub mod index_records;
 pub mod install;
+pub mod key_vault;
 pub mod lane_handoff;
 pub mod lane_status;
 pub mod layout;
