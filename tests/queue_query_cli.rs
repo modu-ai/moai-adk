@@ -382,3 +382,54 @@ fn final_verdict_token_beats_key_text() {
         assert_eq!(out["rows"][0]["blocked_reasons"], reasons);
     }
 }
+
+#[test]
+fn repair_fence_delimiters_keep_example_tables_hidden() {
+    let example = "| position | PR |\n|---|---|\n|1|#99|\n";
+    let actual = "| position | PR |\n|---|---|\n|1|#20|\n";
+    for (open, nested, short, close) in [
+        ("~~~~markdown", "```", "~~~", "~~~~"),
+        ("````markdown", "~~~", "```", "`````"),
+    ] {
+        let body =
+            format!("{open}\n{nested}\n{example}{nested}\n{short}\n{example}{close}\n{actual}");
+        assert_eq!(parse_order(&body).unwrap(), vec![20], "{body}");
+    }
+}
+
+#[test]
+fn repair_final_pr_identity_change_refuses_same_sha_snapshot() {
+    let h = "a".repeat(40);
+    let base = "0".repeat(40);
+    for field in ["base_branch", "number", "head_branch"] {
+        let mut ex = vec![ledger(&[20])];
+        ex.extend(row(
+            20,
+            pr(20, &h),
+            vec![audit(20, &h, &base, "PASS")],
+            vec![
+                check(1, "rc-ci", &h, "success"),
+                check(2, "windows-build", &h, "success"),
+            ],
+        ));
+        let after = ex.last_mut().unwrap().response.body.as_mut().unwrap();
+        match field {
+            "base_branch" => after["base"]["ref"] = json!("unrelated-branch"),
+            "number" => after["number"] = json!(99),
+            "head_branch" => after["head"]["ref"] = json!("issue/7-other"),
+            _ => unreachable!(),
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        common::git::git(tmp.path(), &["init"]);
+        ex.push(ledger(&[20]));
+        let t = RecordedTransport::new(ex);
+        let result = query_cli(tmp.path(), req(), &t, &Fixed);
+        assert!(
+            result
+                .as_ref()
+                .is_err_and(|e| e.contains("changed during query")),
+            "{field}: {result:?}"
+        );
+        assert_eq!(t.remaining(), 1);
+    }
+}

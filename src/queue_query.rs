@@ -47,14 +47,24 @@ fn validate(r: &QueueQueryRequest) -> Result<()> {
 /// Refuse ambiguity, duplicate PRs, gaps and malformed rows instead of inventing order.
 pub fn parse_order(body: &str) -> Result<Vec<i64>> {
     let mut order = Vec::new();
-    let (mut found, mut active, mut separator, mut fenced) = (false, false, false, false);
+    let (mut found, mut active, mut separator) = (false, false, false);
+    let mut fence: Option<(u8, usize)> = None;
     for line in body.lines() {
         let line = line.trim();
-        if line.starts_with("```") || line.starts_with("~~~") {
-            fenced = !fenced;
+        let marker = line.as_bytes().first().copied();
+        let count = marker.map_or(0, |m| line.bytes().take_while(|b| *b == m).count());
+        if let Some((opened, length)) = fence {
+            // A different marker, shorter run or trailing info is code content.
+            if marker == Some(opened) && count >= length && line[count..].is_empty() {
+                fence = None;
+            }
             continue;
         }
-        if fenced {
+        if matches!(marker, Some(b'`' | b'~'))
+            && count >= 3
+            && (marker != Some(b'`') || !line[count..].contains('`'))
+        {
+            fence = marker.map(|m| (m, count));
             continue;
         }
         if !line.starts_with('|') {
@@ -384,7 +394,10 @@ pub fn query_cli<T: Transport, C: Clock>(
         // Detect a moving head/base during a multi-request observation. Do not publish a
         // mixed snapshot as current; the caller may explicitly query again.
         let after = one(&client, &format!("{repo}/pulls/{number}"))?;
-        if after["head"]["sha"] != head
+        if after["number"] != pr["number"]
+            || after["base"]["ref"] != req.base_branch
+            || after["head"]["ref"] != pr["head"]["ref"]
+            || after["head"]["sha"] != head
             || after["base"]["sha"] != base
             || after["state"] != pr["state"]
         {
