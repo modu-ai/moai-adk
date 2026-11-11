@@ -17,7 +17,6 @@
 | 배정·수락 관측 (#2390 S2) | `dispatch-record` / `dispatch-ack` / `dispatch-check` (`dispatch.record`·`dispatch.ack`·`dispatch.check`) | S1 위의 revision·수신/수락 구분·5분 경보. C3는 관측까지 충족, 감사 claim 소비·게이트 연동 미충족(#2403/#2388 후속). 계약은 `docs/rust-product-path.md`의 S2 절 |
 | 레인↔리더 영속 메시지 (#2390 S1) | `message-record` / `message-ack` / `message-reconcile` (`message.record`·`message.ack`·`message.reconcile`) | 로컬+Issue 기록과 명시 수신 ACK. `queued`·`received`·`received_ack`를 구분하며 dispatch 수락·소유권 이전·업무 완료는 아님. 입력/결과 계약은 `docs/rust-product-path.md`의 S1 절 |
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
-| — (문서 인터페이스명 없음) | `skill-source-plan` / `skill-source-apply` (`skill_source.plan`·`skill_source.apply`) / `skill-read-receipt` (`skill_source.read_receipt`) | 대응 없음 — 03-B #1996 신설(license review·skill 설치·read receipt); 문서 인터페이스 어휘와 [43fa] §18 명령표 어느 쪽에도 없는 영역 |
 
 ## C6d generation 문서 참조 (#2450)
 
@@ -141,9 +140,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `run-verify`
 - `scope-check`
 - `search`
-- `skill-read-receipt`
-- `skill-source-apply`
-- `skill-source-plan`
 - `snapshot-describe`
 - `update-apply`
 - `update-plan`
