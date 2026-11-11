@@ -150,7 +150,276 @@ Rust 시험에서도64셀을 끝까지 실행한 뒤 assertion exit101을 확인
 두 대안 모두 이번에 임의 채택하지 않았다.
 
 <!-- lifetime-cell-results:begin -->
-셀별 실제 변이 대조는 진행 중이며 아직 이 절의 완료 상태를 주장하지 않는다.
+native 원본/복원 control **251/251** 통과. 아래 native는 후보·저장 후보·직접 documents·같은 generation·줄/SHA256·missing0을 모두 통과했다는 뜻이다.
+전체251셀은 각각 적어도 한 실제 compiled CLI 의미 변이를 assertion 실패로 검출했다. 변이 이름은 해당 셀의 실패를 관측한 목록이며 영향 없는 control을 killed로 세지 않는다.
+
+| 실제 compiled 변이 실행 | 실행 셀 | assertion exit | 실패 셀 | 영향 없는 control |
+| --- | ---: | ---: | ---: | ---: |
+| M-relative | 211 | 101 | 16 | 195 |
+| M-pop | 211 | 101 | 152 | 59 |
+| M-orphan-indent | 211 | 101 | 26 | 185 |
+| M-indent | 211 | 101 | 46 | 165 |
+| M-fence | 211 | 101 | 77 | 134 |
+| M-unsupported | 211 | 101 | 4 | 207 |
+| M-production | 211 | 101 | 95 | 116 |
+| L-pop | 40 | 101 | 40 | 0 |
+| L-production | 40 | 101 | 40 | 0 |
+
+M-relative=전역 줄의 lazy 판정 복귀, M-pop=pop/현재 줄 재처리 제거, M-orphan-indent=종료된 list indent 승계, M-indent=indented-code 거부 제거, M-fence=fence 열림 인식 제거, M-unsupported=tab/HTML 보수적 제외 제거, M-production=상태는 유지하고 documents 생산만 제거. L-pop/L-production은 새 list40셀에 pop/생산 제거를 재적용한 실행이며 별도의 새 의미 변이로 세지 않는다(7종, 실행9건).
+
+| cell | 기대 후보/edge | native·복원 | assertion으로 검출한 변이 |
+| --- | ---: | --- | --- |
+| `N1-quote-exit` | 1 | passed | M-pop, M-production |
+| `N1-list-dedent` | 1 | passed | M-pop, M-production |
+| `N2-quote-list-indent-leak` | 0 | passed | M-pop, M-orphan-indent, M-indent |
+| `C-N1-plain-prose` | 1 | passed | M-production |
+| `C-N1-closed-quote` | 1 | passed | M-pop, M-production |
+| `C-N2-no-prior-list` | 0 | passed | M-pop, M-indent |
+| `C-N2-plain-indent` | 0 | passed | M-indent |
+| `C-N2-valid-list-continuation` | 0 | passed | M-fence |
+| `T-root-Q-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tilde-b0-code` | 0 | passed | M-indent |
+| `T-root-Q-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tilde-b1-code` | 0 | passed | M-indent |
+| `T-root-Q-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tick-b0-code` | 0 | passed | M-indent |
+| `T-root-Q-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-Q-tick-b1-code` | 0 | passed | M-indent |
+| `T-root-Q-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-indent-Q-b0` | 1 | passed | M-production |
+| `T-indent-Q-b1` | 0 | passed | M-pop, M-indent |
+| `T-root-L-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-L-tilde-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-root-L-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-L-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-L-tilde-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-L-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-L-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-L-tick-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-root-L-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-L-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-L-tick-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-L-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-indent-L-b0` | 1 | passed | M-production |
+| `T-indent-L-b1` | 1 | passed | M-production |
+| `T-root-QQ-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tilde-b0-code` | 0 | passed | M-indent |
+| `T-root-QQ-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tilde-b1-code` | 0 | passed | M-indent |
+| `T-root-QQ-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tick-b0-code` | 0 | passed | M-indent |
+| `T-root-QQ-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QQ-tick-b1-code` | 0 | passed | M-indent |
+| `T-root-QQ-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-indent-QQ-b0` | 1 | passed | M-production |
+| `T-indent-QQ-b1` | 0 | passed | M-pop, M-indent |
+| `T-root-LL-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tilde-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-root-LL-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tilde-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-LL-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tick-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-root-LL-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LL-tick-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-LL-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-indent-LL-b0` | 1 | passed | M-production |
+| `T-indent-LL-b1` | 1 | passed | M-production |
+| `T-root-QL-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tilde-b0-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-QL-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tilde-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-QL-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tick-b0-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-QL-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-QL-tick-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-QL-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-indent-QL-b0` | 1 | passed | M-production |
+| `T-indent-QL-b1` | 0 | passed | M-pop, M-orphan-indent, M-indent |
+| `T-root-LQ-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tilde-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-root-LQ-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tilde-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-LQ-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tick-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-root-LQ-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-root-LQ-tick-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-root-LQ-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-indent-LQ-b0` | 1 | passed | M-production |
+| `T-indent-LQ-b1` | 1 | passed | M-production |
+| `T-pop-child-QQ-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tilde-b0-code` | 0 | passed | M-indent |
+| `T-pop-child-QQ-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tilde-b1-code` | 0 | passed | M-indent |
+| `T-pop-child-QQ-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tick-b0-code` | 0 | passed | M-indent |
+| `T-pop-child-QQ-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QQ-tick-b1-code` | 0 | passed | M-indent |
+| `T-pop-child-QQ-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tilde-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-pop-child-LL-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tilde-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-pop-child-LL-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tick-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-pop-child-LL-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LL-tick-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-pop-child-LL-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tilde-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-pop-child-QL-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tilde-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-pop-child-QL-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tick-b0-code` | 0 | passed | M-orphan-indent, M-indent, M-fence |
+| `T-pop-child-QL-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-QL-tick-b1-code` | 0 | passed | M-orphan-indent, M-indent |
+| `T-pop-child-QL-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tilde-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tilde-b0-code` | 0 | passed | M-indent |
+| `T-pop-child-LQ-tilde-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tilde-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tilde-b1-code` | 0 | passed | M-indent |
+| `T-pop-child-LQ-tilde-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tick-b0-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tick-b0-code` | 0 | passed | M-indent |
+| `T-pop-child-LQ-tick-b0-new-quote` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tick-b1-prose` | 1 | passed | M-pop, M-production |
+| `T-pop-child-LQ-tick-b1-code` | 0 | passed | M-indent |
+| `T-pop-child-LQ-tick-b1-new-quote` | 1 | passed | M-pop, M-production |
+| `T-root-fence-stays-tilde` | 0 | passed | M-fence |
+| `T-root-fence-stays-tick` | 0 | passed | M-fence |
+| `T-unsupported-tab` | 0 | passed | M-unsupported |
+| `T-unsupported-html` | 0 | passed | M-unsupported |
+| `T-unsupported-html-comment` | 0 | passed | M-unsupported |
+| `T-html-then-new-doc-group` | 1 | passed | M-production |
+| `T-tab-then-new-doc-group` | 1 | passed | M-unsupported, M-production |
+| `T-relative-LQ-i0-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i0-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i0-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i0-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i1-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i1-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i1-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i1-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i2-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQ-i2-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i2-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQ-i2-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i3-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQ-i3-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQ-i3-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQ-i3-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i0-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i0-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i0-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i0-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i1-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i1-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i1-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i1-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i2-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i2-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i2-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i2-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i3-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i3-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LLQ-i3-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LLQ-i3-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i0-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i0-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i0-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i0-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i1-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i1-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i1-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i1-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i2-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i2-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i2-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i2-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i3-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i3-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i3-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-QLQ-i3-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i0-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i0-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i0-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i0-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i1-tilde-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i1-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i1-tick-b0` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i1-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i2-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQQ-i2-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i2-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQQ-i2-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i3-tilde-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQQ-i3-tilde-b1` | 0 | passed | M-pop, M-fence |
+| `T-relative-LQQ-i3-tick-b0` | 0 | passed | M-relative, M-pop, M-fence |
+| `T-relative-LQQ-i3-tick-b1` | 0 | passed | M-pop, M-fence |
+| `T-new-list-root-Q-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-Q-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-Q-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-Q-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-L-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-L-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-L-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-L-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QQ-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QQ-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QQ-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QQ-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LL-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LL-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LL-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LL-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QL-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QL-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QL-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-QL-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LQ-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LQ-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LQ-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-root-LQ-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QQ-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QQ-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QQ-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QQ-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LL-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LL-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LL-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LL-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QL-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QL-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QL-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-QL-tick-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LQ-tilde-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LQ-tilde-b1` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LQ-tick-b0` | 1 | passed | L-pop, L-production |
+| `T-new-list-child-LQ-tick-b1` | 1 | passed | L-pop, L-production |
 <!-- lifetime-cell-results:end -->
 
 전체 검사·actual CLI 변이·exact-head CI 결과는 PR #2461 본문과 저자 인계 댓글에
