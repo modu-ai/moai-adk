@@ -83,7 +83,7 @@ fn fetch_open_pulls<T: Transport, C: crate::forge::policy::Clock>(
     Ok(out)
 }
 
-fn fetch_pr<T: Transport, C: crate::forge::policy::Clock>(
+pub(crate) fn fetch_pr<T: Transport, C: crate::forge::policy::Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
     repo: &str,
