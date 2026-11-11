@@ -450,3 +450,175 @@ fn unshallowing_a_clone_builds_a_new_generation_equal_to_a_full_rebuild() {
     assert_eq!(rebuilt["records"]["reused_files"], 0);
     assert_eq!(view_bytes(&root, &gen), incremental);
 }
+
+/// #2442 AC-2: code references depend on the file set, not only on the source bytes. A
+/// target module file that appears or disappears while the referencing file is unchanged
+/// (and therefore reused) still changes the edges, and the incremental views equal a full
+/// rebuild byte for byte.
+#[test]
+fn code_references_follow_the_file_set_and_rebuild_identically() {
+    let (_tmp, root) = setup();
+    write(
+        &root,
+        "src/lib.rs",
+        "pub mod pay;\npub fn digest() {}\nfn f() { crate::pay::once(); }\n",
+    );
+    write(
+        &root,
+        "src/user.rs",
+        "use crate::pay;\nfn g() { crate::digest(); }\n",
+    );
+    commit(&root, "lib without the pay file");
+    let first = build(&root);
+    let q = records(&root);
+    assert!(!edges(&q["graph"]).contains(&t("calls", "file:src/lib.rs", "file:src/pay.rs")));
+    let misses = serde_json::to_string(&q["graph"]["missing"]).unwrap();
+    assert!(misses.contains("module_file_missing"), "{misses}");
+    assert!(
+        misses.contains("code_reference_unreached"),
+        "src/user.rs has no mod line"
+    );
+    assert_eq!(first["records"]["reused_files"], 0);
+
+    // Only the target appears: src/lib.rs and src/user.rs bytes are unchanged.
+    write(&root, "src/pay.rs", "pub fn once() {}\n");
+    commit(&root, "add the pay file");
+    let incremental = build(&root);
+    let gen = incremental["generation_id"].as_str().unwrap().to_string();
+    assert_eq!(incremental["records"]["extracted_files"], 1);
+    let q = records(&root);
+    let got = edges(&q["graph"]);
+    assert!(got.contains(&t("calls", "file:src/lib.rs", "file:src/pay.rs")));
+    for e in q["graph"]["edges"].as_array().unwrap() {
+        if e["kind"] == "calls" && e["target_id"] == "file:src/pay.rs" {
+            assert_eq!(e["basis"], "static_resolved");
+            assert_eq!(e["uncertainty"], "callee-binding-not-checked");
+            assert_eq!(e["extractor"]["name"], "code-refs");
+            let ev = e["evidence_refs"][0].as_str().unwrap();
+            assert!(ev.starts_with("file:src/lib.rs#L3@sha256:"), "{ev}");
+        }
+    }
+    let incremental_views = view_bytes(&root, &gen);
+    fs::remove_dir_all(root.join(".moai-cli/index")).unwrap();
+    let full = build(&root);
+    assert_eq!(full["generation_id"], gen.as_str());
+    assert_eq!(full["records"]["reused_files"], 0);
+    let full_views = view_bytes(&root, &gen);
+    assert_eq!(incremental_views[1], full_views[1], "graph.jsonl differs");
+    assert_eq!(incremental_views[0], full_views[0], "map.jsonl differs");
+
+    // The target disappears again: the edge goes, the gap is stated.
+    fs::remove_file(root.join("src/pay.rs")).unwrap();
+    commit(&root, "drop the pay file");
+    build(&root);
+    let q = records(&root);
+    assert!(!edges(&q["graph"]).contains(&t("calls", "file:src/lib.rs", "file:src/pay.rs")));
+    assert!(serde_json::to_string(&q["graph"]["missing"])
+        .unwrap()
+        .contains("module_file_missing"));
+}
+
+/// #2450: changing only a documented definition re-resolves reused source scans.
+/// Preserve each previous index outside the fixture instead of deleting it.
+#[test]
+fn doc_references_rebuild_identically_when_only_the_definition_changes() {
+    let (tmp, root) = setup();
+    write(&root, "src/lib.rs", "pub mod user; pub mod service;\n");
+    write(&root, "src/user.rs", "//! `crate::service::parse`\n");
+    write(&root, "src/service.rs", "pub fn absent() {}\n");
+    commit(&root, "doc initially unresolved");
+    build(&root);
+    for (step, target, found, reason) in [
+        (0, "pub fn parse() {}\n", true, ""),
+        (1, "pub fn renamed() {}\n", false, "unresolved"),
+        (
+            2,
+            "pub fn parse() {}\npub fn parse() {}\n",
+            false,
+            "ambiguous",
+        ),
+        (3, "pub fn parse() {}\n", true, ""),
+    ] {
+        write(&root, "src/service.rs", target);
+        commit(&root, &format!("definition step {step}"));
+        let inc = build(&root);
+        assert_eq!(inc["records"]["extracted_files"], 1);
+        assert!(inc["records"]["reused_files"].as_u64().unwrap() > 0);
+        let gen = inc["generation_id"].as_str().unwrap();
+        let q = records(&root);
+        validate_document(&q["graph"]).unwrap();
+        assert_eq!(
+            edges(&q["graph"]).contains(&t("documents", "file:src/user.rs", "file:src/service.rs")),
+            found
+        );
+        if !found {
+            assert!(q["graph"]["missing"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|m| m["kind"] == "doc_reference_missing" && m["reason"] == reason));
+        }
+        let incremental = view_bytes(&root, gen);
+        fs::rename(
+            root.join(".moai-cli/index"),
+            tmp.path().join(format!("saved-index-{step}")),
+        )
+        .unwrap();
+        let full = build(&root);
+        assert_eq!(full["generation_id"], gen);
+        assert_eq!(full["records"]["reused_files"], 0);
+        assert_eq!(view_bytes(&root, gen), incremental);
+    }
+}
+
+#[test]
+fn excluded_doc_blocks_survive_reuse_and_disappear_when_the_block_becomes_plain() {
+    let (tmp, root) = setup();
+    write(&root, "src/lib.rs", "pub mod user; pub mod service;\n");
+    write(
+        &root,
+        "src/user.rs",
+        "//! See `crate::service::parse`.\n//! > excluded\n",
+    );
+    write(&root, "src/service.rs", "pub fn parse() {}\n");
+    commit(&root, "excluded documentation");
+    build(&root);
+    for (step, plain) in [(0, false), (1, true)] {
+        if plain {
+            write(&root, "src/user.rs", "//! See `crate::service::parse`.\n");
+        } else {
+            write(
+                &root,
+                "src/service.rs",
+                "pub fn parse() {}\npub fn other() {}\n",
+            );
+        }
+        commit(&root, &format!("doc block step {step}"));
+        let inc = build(&root);
+        assert!(inc["records"]["reused_files"].as_u64().unwrap() > 0);
+        let gen = inc["generation_id"].as_str().unwrap();
+        let q = records(&root);
+        validate_document(&q["graph"]).unwrap();
+        assert_eq!(
+            edges(&q["graph"]).contains(&t("documents", "file:src/user.rs", "file:src/service.rs")),
+            plain
+        );
+        let count: u64 = q["graph"]["missing"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["kind"] == "doc_reference_unsupported")
+            .map(|m| m["count"].as_u64().unwrap())
+            .sum();
+        assert_eq!(count, u64::from(!plain));
+        let incremental = view_bytes(&root, gen);
+        fs::rename(
+            root.join(".moai-cli/index"),
+            tmp.path().join(format!("narrow-saved-{step}")),
+        )
+        .unwrap();
+        let full = build(&root);
+        assert_eq!(full["generation_id"], gen);
+        assert_eq!(view_bytes(&root, gen), incremental);
+    }
+}

@@ -17,7 +17,14 @@
 //!   node per C2 tag (`@MOAI:` / `@MX:`), and a `file annotated_by tag` edge with the
 //!   line evidence. Files the tag scanner cannot read are listed as `missing`.
 //! - Graph (`graph.jsonl`): the C5 explicit links (`references_requirement`,
-//!   `verifies`, `mentions_issue`) and their `missing` coverage (`src/spec_links.rs`).
+//!   `verifies`, `mentions_issue`) and their `missing` coverage (`src/spec_links.rs`),
+//!   plus the C6c file → file code references (`imports`, `calls`) of Rust files
+//!   (`src/code_refs.rs`, #2442). Each Rust file stores its scan as a per-origin
+//!   `code_scan` node; the edges depend on the whole file set, so they are resolved
+//!   again on every build from the stored scans and never reused as stored lines.
+//!   C6d #2450 also stores qualified doc-comment candidates and module-level item
+//!   declarations in those scans. `documents` edges require a unique declaration
+//!   and carry both mention and definition evidence; ambiguity is missing coverage.
 //!
 //! Every record line carries `origin`: the manifest path whose bytes produced it, or
 //! `null` for records derived from the whole snapshot (requirement nodes, commit
@@ -29,7 +36,7 @@
 //! Time is content here: `observed_at` is the commit time of the manifest's base
 //! commit, so the same input always yields the same records.
 
-use crate::{atlas_tag, ontology, spec_links};
+use crate::{atlas_tag, code_refs, ontology, spec_links};
 use ontology::{OntologyEdge, OntologyNode};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -46,10 +53,12 @@ pub const RECORDS_VERSION: &str = "1";
 /// relabelled as current.
 pub fn versions() -> String {
     format!(
-        "records={RECORDS_VERSION};{}={};tag-parser={}",
+        "records={RECORDS_VERSION};{}={};tag-parser={};{}={}",
         spec_links::EXTRACTOR_NAME,
         spec_links::EXTRACTOR_VERSION,
-        atlas_tag::PARSER_VERSION
+        atlas_tag::PARSER_VERSION,
+        code_refs::EXTRACTOR_NAME,
+        code_refs::EXTRACTOR_VERSION
     )
 }
 
@@ -122,9 +131,94 @@ pub(crate) fn extract_file(path: &str, sha256: &str, content: Content<'_>) -> Fr
             if spec_links::is_code_path(path) {
                 spec_links::file_links(&mut f.graph, path, bytes.to_vec());
             }
+            code_scan(&mut f.graph, path, sha256, bytes);
         }
     }
     f
+}
+
+/// The per-file half of the code-reference producer: a Rust file's scan, a Cargo
+/// manifest's library name, or the coverage note for a code file no scanner reads.
+fn code_scan(b: &mut Builder, path: &str, sha256: &str, bytes: &[u8]) {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    if name == "Cargo.toml" {
+        let lib = std::str::from_utf8(bytes)
+            .ok()
+            .and_then(code_refs::lib_name);
+        let lib = lib.as_deref().unwrap_or("");
+        b.node(
+            &format!("code-crate:{path}"),
+            code_refs::CRATE_NODE_KIND,
+            sha256,
+            &[("path", path), ("lib_name", lib)],
+        );
+        return;
+    }
+    if !spec_links::is_code_path(path) || !representable(path) {
+        return;
+    }
+    if !path.ends_with(".rs") {
+        b.miss(
+            "code_reference_unsupported",
+            json!({"path": path, "reason": "no code-reference scanner for this language"}),
+        );
+        return;
+    }
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        b.miss(
+            "code_reference_skipped",
+            json!({"path": path, "reason": "not UTF-8"}),
+        );
+        return;
+    };
+    let scan = code_refs::encode(&code_refs::scan(text));
+    b.node(
+        &format!("code-scan:{path}"),
+        code_refs::SCAN_NODE_KIND,
+        sha256,
+        &[("path", path), ("scan", &scan)],
+    );
+}
+
+/// The global half: resolves every stored scan against the file set and returns the
+/// stamped edges keyed by source path, plus the module-resolution coverage misses.
+fn code_edges(
+    graph: &Builder,
+    paths: &std::collections::BTreeSet<String>,
+    snapshot_id: &str,
+    observed_at: &str,
+) -> (Vec<OntologyEdge>, Vec<Value>) {
+    let mut scans = BTreeMap::new();
+    let mut manifests = BTreeMap::new();
+    let mut misses = Vec::new();
+    for node in graph.nodes.values() {
+        let Some(path) = node.properties.get("path") else {
+            continue;
+        };
+        if node.kind == code_refs::SCAN_NODE_KIND {
+            let stored = node
+                .properties
+                .get("scan")
+                .and_then(|t| code_refs::decode(t));
+            match stored {
+                Some(scan) => {
+                    scans.insert(path.clone(), (node.revision.clone(), scan));
+                }
+                None => misses.push(json!({"kind": "code_reference_skipped", "path": path, "reason": "stored scan unreadable"})),
+            }
+        } else if node.kind == code_refs::CRATE_NODE_KIND {
+            let dir = path.rsplit_once('/').map_or("", |(d, _)| d).to_string();
+            let lib = node
+                .properties
+                .get("lib_name")
+                .filter(|n| !n.is_empty())
+                .cloned();
+            manifests.insert(dir, lib);
+        }
+    }
+    let (refs, mut tree_misses) = code_refs::resolve(&scans, paths, &manifests);
+    misses.append(&mut tree_misses);
+    (code_refs::edges(&refs, snapshot_id, observed_at), misses)
 }
 
 fn map_tags(b: &mut Builder, path: &str, sha256: &str, file_id: &str, bytes: &[u8]) {
@@ -200,6 +294,10 @@ pub(crate) fn fragment_from_lines(map: &[Value], graph: &[Value]) -> Result<Frag
             } else if let Some(edge) = line.get("edge") {
                 let e: OntologyEdge = serde_json::from_value(edge.clone())
                     .map_err(|_| "stored record edge unreadable".to_string())?;
+                // Code references depend on the whole file set: re-resolved, never reused.
+                if e.extractor.name == code_refs::EXTRACTOR_NAME {
+                    continue;
+                }
                 if let Some(id) = e.target_id.strip_prefix("req:") {
                     b.requirement(id);
                 }
@@ -258,6 +356,7 @@ pub(crate) fn assemble(
     observed_at: &str,
 ) -> Result<Views> {
     let (generation_id, base_commit, file_set) = head;
+    let paths: std::collections::BTreeSet<String> = fragments.keys().cloned().collect();
     let mut origin_of: [BTreeMap<String, String>; 2] = Default::default();
     let mut edge_origin: [BTreeMap<(String, String, String), String>; 2] = Default::default();
     let mut miss_origin: [Vec<(String, Value)>; 2] = Default::default();
@@ -280,8 +379,10 @@ pub(crate) fn assemble(
             }
         }
     }
-    let [map_b, graph_b] = all;
-    let docs = [
+    let [map_b, mut graph_b] = all;
+    let (code, code_misses) = code_edges(&graph_b, &paths, base_commit, observed_at);
+    graph_b.missing.extend(code_misses);
+    let mut docs = [
         spec_links::finish_with(
             map_b,
             MAP_EXTRACTOR,
@@ -291,6 +392,18 @@ pub(crate) fn assemble(
         )?,
         spec_links::finish(graph_b, base_commit, observed_at)?,
     ];
+    for e in code {
+        edge_origin[1].insert(
+            (e.kind.clone(), e.source_id.clone(), e.target_id.clone()),
+            e.source_id.trim_start_matches("file:").to_string(),
+        );
+        let v = serde_json::to_value(&e).map_err(|_| "index records encode failed".to_string())?;
+        if let Some(list) = docs[1]["edges"].as_array_mut() {
+            list.push(v);
+        }
+    }
+    ontology::validate_document(&docs[1])
+        .map_err(|e| format!("code-reference records failed the C4 schema: {e}"))?;
     let mut out: Vec<(Vec<u8>, usize)> = Vec::new();
     for (i, (doc, view)) in docs.iter().zip(["map", "graph"]).enumerate() {
         let mut lines: Vec<String> = Vec::new();
@@ -455,6 +568,14 @@ mod tests {
         assert!(needs_bytes("doc.md", 262_144));
         assert!(!needs_bytes("doc.md", 262_145));
         assert!(needs_bytes("big.rs", 262_145));
+    }
+
+    /// #2442: a Rust file is always read (code files need bytes at any size), so the
+    /// `Oversize` branch never skips a code-reference scan.
+    #[test]
+    fn code_files_are_read_at_any_size() {
+        assert!(needs_bytes("src/huge.rs", u64::MAX));
+        assert!(!needs_bytes("docs/huge.md", u64::MAX));
     }
 
     #[test]

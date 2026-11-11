@@ -2536,6 +2536,41 @@ mod skill_package {
         );
     }
 
+    fn retired_mode_spelling(text: &str) -> Option<&'static str> {
+        // Legacy aliases remain aliases when their operands use tabs or repeated spaces.
+        let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        [
+            "--agent-mode",
+            "--leader-mode",
+            "--mode agent",
+            "--mode leader",
+        ]
+        .into_iter()
+        .find(|retired| normalized.contains(*retired))
+    }
+
+    #[test]
+    fn retired_mode_aliases_cannot_hide_behind_tabs_or_repeated_spaces() {
+        for (text, retired) in [
+            (
+                "For compatibility, `--mode\tagent` also selects MODE-AGENT.",
+                "--mode agent",
+            ),
+            (
+                "For compatibility, `--mode  leader` also selects MODE-LEADER.",
+                "--mode leader",
+            ),
+            ("`--mode  agent`", "--mode agent"),
+            ("`--mode\tleader`", "--mode leader"),
+        ] {
+            assert_eq!(retired_mode_spelling(text), Some(retired), "{text:?}");
+        }
+        assert_eq!(
+            retired_mode_spelling("`--mode-agent` or `--mode-leader`"),
+            None
+        );
+    }
+
     /// AC-2 (#2286, user decision 2026-11-10): the routing line sends exactly the two
     /// spellings `--mode-agent` and `--mode-leader` to their routes; the earlier
     /// spellings (`--agent-mode`, `--leader-mode`, `--mode agent|leader`) appear nowhere in
@@ -2554,19 +2589,13 @@ mod skill_package {
             .filter(|p| p != "references/source-manifest.json")
         {
             let text = fs::read_to_string(root().join(&file)).unwrap();
-            for retired in [
-                "--agent-mode",
-                "--leader-mode",
-                "--mode agent",
-                "--mode leader",
-            ] {
-                assert!(
-                    !text.contains(retired),
-                    "retired mode spelling {retired} is still in the package file {file}"
-                );
-            }
+            assert_eq!(
+                retired_mode_spelling(&text),
+                None,
+                "retired mode spelling is still in the package file {file}"
+            );
         }
-        // The canonical picks and the alias must pick the same routes.
+        // Both canonical picks must resolve to their MODE routes.
         assert!(
             skill.contains("pick the MODE-AGENT or MODE-LEADER route")
                 || (skill.contains("MODE-AGENT") && skill.contains("MODE-LEADER")),
