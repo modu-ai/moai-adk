@@ -570,3 +570,55 @@ fn doc_references_rebuild_identically_when_only_the_definition_changes() {
         assert_eq!(view_bytes(&root, gen), incremental);
     }
 }
+
+#[test]
+fn excluded_doc_blocks_survive_reuse_and_disappear_when_the_block_becomes_plain() {
+    let (tmp, root) = setup();
+    write(&root, "src/lib.rs", "pub mod user; pub mod service;\n");
+    write(
+        &root,
+        "src/user.rs",
+        "//! See `crate::service::parse`.\n//! > excluded\n",
+    );
+    write(&root, "src/service.rs", "pub fn parse() {}\n");
+    commit(&root, "excluded documentation");
+    build(&root);
+    for (step, plain) in [(0, false), (1, true)] {
+        if plain {
+            write(&root, "src/user.rs", "//! See `crate::service::parse`.\n");
+        } else {
+            write(
+                &root,
+                "src/service.rs",
+                "pub fn parse() {}\npub fn other() {}\n",
+            );
+        }
+        commit(&root, &format!("doc block step {step}"));
+        let inc = build(&root);
+        assert!(inc["records"]["reused_files"].as_u64().unwrap() > 0);
+        let gen = inc["generation_id"].as_str().unwrap();
+        let q = records(&root);
+        validate_document(&q["graph"]).unwrap();
+        assert_eq!(
+            edges(&q["graph"]).contains(&t("documents", "file:src/user.rs", "file:src/service.rs")),
+            plain
+        );
+        let count: u64 = q["graph"]["missing"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["kind"] == "doc_reference_unsupported")
+            .map(|m| m["count"].as_u64().unwrap())
+            .sum();
+        assert_eq!(count, u64::from(!plain));
+        let incremental = view_bytes(&root, gen);
+        fs::rename(
+            root.join(".moai-cli/index"),
+            tmp.path().join(format!("narrow-saved-{step}")),
+        )
+        .unwrap();
+        let full = build(&root);
+        assert_eq!(full["generation_id"], gen);
+        assert_eq!(view_bytes(&root, gen), incremental);
+    }
+}

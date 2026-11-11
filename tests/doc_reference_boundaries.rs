@@ -105,6 +105,16 @@ fn docs(graph: &Value) -> usize {
         .filter(|e| e["kind"] == "documents")
         .count()
 }
+fn excluded_blocks(graph: &Value) -> u64 {
+    graph["missing"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["kind"] == "doc_reference_unsupported")
+        .map(|m| m["count"].as_u64().unwrap())
+        .sum()
+}
+
 fn doc_misses(graph: &Value) -> usize {
     graph["missing"]
         .as_array()
@@ -237,7 +247,7 @@ fn attribute_doc_order_matrix_preserves_path_refusal_and_normal_modules() {
 }
 
 #[test]
-fn fence_container_matrix_excludes_examples_and_keeps_following_prose() {
+fn fence_blocks_exclude_following_prose_until_a_physical_block_boundary() {
     for (id, opening, body, closing) in [
         ("F-plain-tilde", "~~~rust", "`crate::service::parse`", "~~~"),
         ("F-plain-tick", "```rust", "`crate::service::parse`", "```"),
@@ -332,7 +342,10 @@ fn fence_container_matrix_excludes_examples_and_keeps_following_prose() {
         assert_eq!(doc_misses(&graph), 0, "{id}");
         let after = format!("{user}//! See `crate::service::parse`.\n");
         let (graph, _) = query(LIB, &after, SERVICE);
-        assert_eq!(docs(&graph), 1, "{id}: following prose survives");
+        assert_eq!(docs(&graph), 0, "{id}: the whole doc block is excluded");
+        let separate = format!("{user}\n//! See `crate::service::parse`.\n");
+        let (graph, _) = query(LIB, &separate, SERVICE);
+        assert_eq!(docs(&graph), 1, "{id}: a separate plain block survives");
         assert!(
             !graph["edges"][0]["evidence_refs"]
                 .as_array()
@@ -397,7 +410,7 @@ fn fence_body_markers_and_decorated_block_indentation_are_not_reinterpreted() {
 }
 
 #[test]
-fn container_prose_is_not_discarded_to_hide_fence_gaps() {
+fn container_prose_is_explicitly_outside_the_narrow_contract() {
     for (id, user) in [
         ("P-quote", "//! > See `crate::service::parse`.\n"),
         ("P-nested-quote", "//! > > See `crate::service::parse`.\n"),
@@ -406,13 +419,14 @@ fn container_prose_is_not_discarded_to_hide_fence_gaps() {
         ("P-list-quote", "//! - > See `crate::service::parse`.\n"),
     ] {
         let (graph, _) = query(LIB, user, SERVICE);
-        assert_eq!(docs(&graph), 1, "{id}");
-        eprintln!("boundary {id}: real prose reference passed");
+        assert_eq!(docs(&graph), 0, "{id}");
+        assert_eq!(excluded_blocks(&graph), 1, "{id}");
+        eprintln!("boundary {id}: container block exclusion passed");
     }
 }
 
 #[test]
-fn attributes_between_doc_comments_do_not_end_a_fenced_example() {
+fn attributes_between_doc_comments_delimit_separate_excluded_blocks() {
     for (id, user) in [
         ("F-attribute-between-docs", "/// > ~~~rust\n#[allow(dead_code)]\n/// > `crate::service::parse`\n/// > ~~~\npub fn user() {}\n"),
         ("F-attribute-between-docs-tick", "/// - ```rust\n#[allow(dead_code)]\n///   `crate::service::parse`\n///   ```\npub fn user() {}\n"),
@@ -486,7 +500,13 @@ fn auditor_eight_container_lifetime_literals() {
     );
 }
 
-fn lifetime_cell(id: &str, user: &str, expected: usize, line: Option<usize>) -> Value {
+fn lifetime_cell(
+    id: &str,
+    user: &str,
+    expected: usize,
+    line: Option<usize>,
+    excluded: u64,
+) -> Value {
     use sha2::{Digest, Sha256};
     let (graph, records) = query(LIB, user, SERVICE);
     let candidates = code_refs::scan(user)
@@ -522,14 +542,16 @@ fn lifetime_cell(id: &str, user: &str, expected: usize, line: Option<usize>) -> 
                     && e["evidence_refs"] == want
             })
     });
-    let actual = json!({"component_candidates":candidates,"stored_candidates":stored_candidates,"documents":docs(&graph),"stored_documents":docs(&records),"missing":doc_misses(&graph),"stored_missing":doc_misses(&records),"evidence_matches":evidence_matches});
+    let actual = json!({"component_candidates":candidates,"stored_candidates":stored_candidates,"documents":docs(&graph),"stored_documents":docs(&records),"missing":doc_misses(&graph),"stored_missing":doc_misses(&records),"evidence_matches":evidence_matches,"excluded_blocks":excluded_blocks(&graph),"stored_excluded_blocks":excluded_blocks(&records)});
     let passed = candidates == expected
         && stored_candidates == expected
         && docs(&graph) == expected
         && docs(&records) == expected
         && doc_misses(&graph) == 0
         && doc_misses(&records) == 0
-        && evidence_matches;
+        && evidence_matches
+        && excluded_blocks(&graph) == excluded
+        && excluded_blocks(&records) == excluded;
     eprintln!("lifetime {id}: expected={expected} actual={actual} passed={passed}");
     json!({"id":id,"user":user,"user_sha256":user_sha,"expected":expected,"line":line,"actual":actual,"passed":passed})
 }
@@ -537,7 +559,22 @@ fn lifetime_cell(id: &str, user: &str, expected: usize, line: Option<usize>) -> 
 fn lifetime_ledger(name: &str, cases: Vec<(String, String, usize, Option<usize>)>) {
     let rows: Vec<Value> = cases
         .iter()
-        .map(|(id, user, want, line)| lifetime_cell(id, user, *want, *line))
+        .map(|(id, user, _previous_want, line)| {
+            // These 251 historical input bytes are unchanged. The user explicitly
+            // replaced the old Markdown-lifetime oracle in decision 6801346885.
+            let (want, excluded) = match id.as_str() {
+                "C-N1-plain-prose" => (1, 0),
+                "T-html-then-new-doc-group" | "T-tab-then-new-doc-group" => (1, 1),
+                _ => (0, 1),
+            };
+            lifetime_cell(
+                id,
+                user,
+                want,
+                if want == 1 { *line } else { None },
+                excluded,
+            )
+        })
         .collect();
     let failed: Vec<&Value> = rows.iter().filter(|r| r["passed"] == false).collect();
     if let Some(dir) = std::env::var_os("MOAI_C6D_LIFETIME_LEDGER") {
@@ -557,7 +594,7 @@ fn lifetime_ledger(name: &str, cases: Vec<(String, String, usize, Option<usize>)
 }
 
 #[test]
-fn container_lifetime_transition_matrix() {
+fn legacy_container_transition_inputs_are_now_whole_block_gaps() {
     let mut cases = Vec::new();
     let mut add = |id: String, raw: String, expected: usize| {
         let user: String = raw
@@ -686,7 +723,7 @@ fn container_lifetime_transition_matrix() {
 }
 
 #[test]
-fn relative_fence_opening_resolves_container_lifetime() {
+fn legacy_relative_fence_inputs_are_now_whole_block_gaps() {
     let mut cases = Vec::new();
     for (context, opening, outer) in [
         ("LQ", "- > ", "  "),
@@ -730,7 +767,7 @@ fn relative_fence_opening_resolves_container_lifetime() {
 }
 
 #[test]
-fn new_list_container_lifetime_transition() {
+fn legacy_new_list_inputs_are_now_whole_block_gaps() {
     let mut cases = Vec::new();
     let mut add = |id: String, raw: String| {
         let user: String = raw
@@ -779,4 +816,120 @@ fn new_list_container_lifetime_transition() {
         }
     }
     lifetime_ledger("new-lists", cases);
+}
+
+/// Decision 6801346885 supersedes the container-lifetime interpretation.
+#[test]
+fn narrow_contract_auditor_literals_exclude_the_entire_block() {
+    let mut failures = Vec::new();
+    for (id, user) in [
+        (
+            "D3",
+            "//! > ~~~rust\n//! > `crate::service::parse`\n//! > ~~~\n",
+        ),
+        (
+            "N1-quote",
+            "//! > ~~~rust\n//! > example\n//!\n//! See `crate::service::parse`.\n",
+        ),
+        (
+            "N1-list",
+            "//! - ~~~rust\n//!   example\n//!\n//! See `crate::service::parse`.\n",
+        ),
+        (
+            "N2",
+            "//! > - Topic\n//!\n//!     `crate::service::parse`\n",
+        ),
+        ("empty-list", "//! -\n//!       `crate::service::parse`\n"),
+        (
+            "empty-quote-list",
+            "//! > -\n//! >       `crate::service::parse`\n",
+        ),
+        (
+            "empty-list-quote",
+            "//! - >\n//!   >     `crate::service::parse`\n",
+        ),
+        (
+            "empty-ordered",
+            "//! 1.\n//!        `crate::service::parse`\n",
+        ),
+        ("empty-quote", "//! >\n//! >     `crate::service::parse`\n"),
+        (
+            "plain-before-container",
+            "//! See `crate::service::parse`.\n//! > example\n",
+        ),
+        (
+            "plain-before-indent",
+            "//! See `crate::service::parse`.\n//!     example\n",
+        ),
+    ] {
+        let (graph, records) = query(LIB, user, SERVICE);
+        let candidates = code_refs::scan(user)
+            .refs
+            .iter()
+            .filter(|r| r.kind == "documents")
+            .count();
+        let excluded = |g: &Value| {
+            g["missing"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["kind"] == "doc_reference_unsupported")
+                .map(|m| m["count"].as_u64().unwrap_or(0))
+                .sum::<u64>()
+        };
+        let actual = json!({"candidates":candidates,"documents":docs(&graph),"stored_documents":docs(&records),"excluded":excluded(&graph),"stored_excluded":excluded(&records)});
+        let passed = candidates == 0
+            && docs(&graph) == 0
+            && docs(&records) == 0
+            && excluded(&graph) == 1
+            && excluded(&records) == 1;
+        eprintln!("narrow {id}: {actual} passed={passed}");
+        if !passed {
+            failures.push((id, actual));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "narrow contract failures: {failures:?}"
+    );
+}
+
+#[test]
+fn narrow_physical_block_boundaries_and_syntax_matrix() {
+    for (id, user, want, excluded) in [
+        ("plain", "//! See `crate::service::parse`.\n", 1, 0),
+        ("crlf-plain", "//! See `crate::service::parse`.\r\n", 1, 0),
+        ("crlf-html-start", "//! <script\r\n//! See `crate::service::parse`.\r\n", 0, 1),
+        ("plain-decorated-block", "/**\n * See `crate::service::parse`.\n */\n", 1, 0),
+        ("first-line-star-list", "/** * See `crate::service::parse`. */\n", 0, 1),
+        ("first-line-dash-list", "/** - See `crate::service::parse`. */\n", 0, 1),
+        ("inline-html-is-prose", "//! See `crate::service::parse` (`<!-- marker -->`).\n", 1, 0),
+        ("autolink-is-prose", "//! <https://example.test> See `crate::service::parse`.\n", 1, 0),
+        ("not-a-list", "//! -not-a-list See `crate::service::parse`.\n", 1, 0),
+        ("empty-plus-list", "//! +\n//! See `crate::service::parse`.\n", 0, 1),
+        ("star-list", "//! * See `crate::service::parse`.\n", 0, 1),
+        ("ordered-parenthesis", "//! 2) See `crate::service::parse`.\n", 0, 1),
+        ("backtick-fence", "//! See `crate::service::parse`.\n//! ```rust\n", 0, 1),
+        ("tilde-fence", "//! See `crate::service::parse`.\n//! ~~~rust\n", 0, 1),
+        ("trailing-tab", "//! See `crate::service::parse`.\n//! prose\t\n", 0, 1),
+        ("blank-indented-line", "//! See `crate::service::parse`.\n//!     \n", 0, 1),
+        ("html-after-prose", "//! See `crate::service::parse`.\n//! <div>\n", 0, 1),
+        ("html-comment", "//! <!--\n//! See `crate::service::parse`.\n", 0, 1),
+        ("physical-blank-boundary", "//! > excluded\n\n//! See `crate::service::parse`.\n", 1, 1),
+        ("doc-blank-is-same-block", "//! > excluded\n//!\n//! See `crate::service::parse`.\n", 0, 1),
+        ("ordinary-comment-boundary", "//! > excluded\n// ordinary\n//! See `crate::service::parse`.\n", 1, 1),
+        ("comment-before-doc-boundary", "//! > excluded\n/* ordinary */ //! See `crate::service::parse`.\n", 1, 1),
+        ("attribute-boundary", "/// See `crate::service::parse`.\n#[allow(dead_code)]\n/// > excluded\npub fn user() {}\n", 1, 1),
+        ("adjacent-block-comments", "/** > excluded */\n/** See `crate::service::parse`. */\n", 1, 1),
+        ("block-then-line", "/** > excluded */\n//! See `crate::service::parse`.\n", 1, 1),
+        ("two-excluded-blocks", "//! > excluded\npub fn user() {}\n/// - See `crate::service::parse`.\npub fn other() {}\n", 0, 2),
+    ] {
+        let (graph, stored) = query(LIB, user, SERVICE);
+        assert_eq!(docs(&graph), want, "{id}");
+        assert_eq!(docs(&stored), want, "{id}");
+        assert_eq!(excluded_blocks(&graph), excluded, "{id}");
+        assert_eq!(excluded_blocks(&stored), excluded, "{id}");
+        assert_eq!(doc_misses(&graph), 0, "{id}");
+        eprintln!("narrow boundary {id}: documents={want}, excluded={excluded}");
+    }
 }

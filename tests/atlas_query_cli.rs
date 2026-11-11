@@ -642,3 +642,44 @@ fn graph_cases_have_direct_code_reference_edges() {
     }
     assert_eq!(seen, 9);
 }
+
+#[test]
+fn narrow_frozen_doc_exclusion_counts_are_visible_without_excluding_g002() {
+    let (dir, snapshot) = snapshot_project();
+    let got = moai_cli::index::index_records(
+        dir.path(),
+        &moai_cli::index::IndexQueryRequest {
+            protocol_version: 1,
+        },
+    )
+    .unwrap();
+    assert_eq!(got["state"], "fresh");
+    let excluded: Vec<&Value> = got["graph"]["missing"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["kind"] == "doc_reference_unsupported")
+        .collect();
+    let count: u64 = excluded.iter().map(|m| m["count"].as_u64().unwrap()).sum();
+    assert!(
+        count > 0,
+        "unsupported blocks must remain visible as coverage gaps"
+    );
+    assert!(excluded
+        .iter()
+        .all(|m| m["count"] == 1 && m["reason"].as_str().is_some_and(|s| !s.is_empty())));
+    let pr_link = snapshot["files"]["src/pr_link.rs"]["content"]
+        .as_str()
+        .unwrap();
+    assert!(
+        moai_cli::code_refs::scan(pr_link)
+            .excluded_doc_blocks
+            .is_empty(),
+        "G-002 must remain in a supported plain block"
+    );
+    assert!(excluded.iter().all(|m| m["path"] != "src/pr_link.rs"));
+    eprintln!(
+        "NARROW_FROZEN_EXCLUDED_BLOCKS: {count}; diagnostic entries: {}",
+        serde_json::to_string(&excluded).unwrap()
+    );
+}

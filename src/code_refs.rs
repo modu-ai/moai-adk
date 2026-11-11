@@ -33,7 +33,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 /// Extractor identity of the code-reference edges.
 pub const EXTRACTOR_NAME: &str = "code-refs";
 /// Bump on any change to what `scan` or `resolve` records.
-pub const EXTRACTOR_VERSION: &str = "4";
+pub const EXTRACTOR_VERSION: &str = "5";
 /// Node kind holding one Rust file's stored scan.
 pub(crate) const SCAN_NODE_KIND: &str = "code_scan";
 /// Node kind holding one Cargo manifest's library crate name.
@@ -78,6 +78,14 @@ pub struct Scan {
     pub refs: Vec<Ref>,
     /// Module-level item declarations; associated and local items are not resolved.
     pub definitions: Vec<Definition>,
+    /// One explicit coverage gap per excluded documentation block.
+    pub excluded_doc_blocks: Vec<DocExclusion>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocExclusion {
+    pub line: u32,
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,7 +98,7 @@ pub struct Definition {
 #[derive(Debug, Clone, PartialEq)]
 enum T {
     Ident(String),
-    Doc(String, bool),
+    Doc(String, bool, bool),
     Lit,
     ColCol,
     P(char),
@@ -195,7 +203,15 @@ fn lex(src: &str) -> Vec<Tok> {
                 || (c.get(start + 2) == Some(&'/') && c.get(start + 3) != Some(&'/'))
             {
                 out.push(Tok {
-                    t: T::Doc(c[start + 3..i].iter().collect(), false),
+                    t: T::Doc(
+                        c[start + 3..i].iter().collect(),
+                        false,
+                        c[..start]
+                            .iter()
+                            .rev()
+                            .take_while(|ch| **ch != '\n')
+                            .all(|ch| ch.is_whitespace()),
+                    ),
                     line,
                 });
             }
@@ -225,17 +241,10 @@ fn lex(src: &str) -> Vec<Tok> {
                 && i >= start + 5
                 && c.get(i - 2..i) == Some(&['*', '/'])
             {
-                for (offset, text) in c[start + 3..i - 2]
-                    .iter()
-                    .collect::<String>()
-                    .lines()
-                    .enumerate()
-                {
-                    out.push(Tok {
-                        t: T::Doc(text.to_string(), true),
-                        line: first_line + offset as u32,
-                    });
-                }
+                out.push(Tok {
+                    t: T::Doc(c[start + 3..i - 2].iter().collect(), true, false),
+                    line: first_line,
+                });
             }
         } else if ch == '"' {
             let at = line;
@@ -482,10 +491,8 @@ fn use_tree(
 /// Macro arguments and attribute payloads are token trees, not declarations. Mask
 /// them for declaration/doc collection while preserving the existing lexical call
 /// scan inside macro arguments. Unbalanced trees remain opaque through EOF.
-fn opaque_declarations(toks: &[Tok]) -> (Vec<bool>, Vec<bool>) {
+fn opaque_declarations(toks: &[Tok]) -> Vec<bool> {
     let mut opaque = vec![false; toks.len()];
-    // Ordinary attributes do not break concatenated documentation attributes.
-    let mut attributes = vec![false; toks.len()];
     let mut i = 0;
     while i < toks.len() {
         let opening = if at(toks, i) == Some(&T::P('#')) {
@@ -521,40 +528,44 @@ fn opaque_declarations(toks: &[Tok]) -> (Vec<bool>, Vec<bool>) {
             }
         }
         opaque[i..end].fill(true);
-        if at(toks, i) == Some(&T::P('#')) {
-            attributes[i..end].fill(true);
-        }
         i = end;
     }
-    (opaque, attributes)
+    opaque
 }
 
 /// Scans one Rust source text. Pure: the same text always yields the same scan.
 pub fn scan(src: &str) -> Scan {
     let toks = lex(src);
-    let (opaque, attributes) = opaque_declarations(&toks);
+    let opaque = opaque_declarations(&toks);
     let mut s = Scan::default();
     let mut scope: Vec<String> = Vec::new();
     let mut open: Vec<usize> = Vec::new();
     let mut depth = 0usize;
     let mut i = 0usize;
-    let mut doc = DocState::default();
     while i < toks.len() {
-        if !attributes[i] && (!matches!(toks[i].t, T::Doc(..)) || opaque[i]) {
-            doc = DocState::default();
-        }
         match &toks[i].t {
-            T::Doc(text, block) if !opaque[i] => {
-                for path in doc_paths(text, *block, &mut doc) {
-                    s.refs.push(Ref {
-                        kind: "documents".into(),
-                        scope: scope.clone(),
-                        path,
-                        alias: None,
-                        line: toks[i].line,
-                    });
+            T::Doc(text, block, pure_line) if !opaque[i] => {
+                let mut lines = Vec::new();
+                let mut end = i + 1;
+                if *block {
+                    for (offset, text) in text.lines().enumerate() {
+                        lines.push((text, toks[i].line + offset as u32));
+                    }
+                } else {
+                    lines.push((text.as_str(), toks[i].line));
+                    while *pure_line && end < toks.len() && !opaque[end] {
+                        let T::Doc(next, false, true) = &toks[end].t else {
+                            break;
+                        };
+                        if toks[end].line != toks[end - 1].line + 1 {
+                            break;
+                        }
+                        lines.push((next.as_str(), toks[end].line));
+                        end += 1;
+                    }
                 }
-                i += 1;
+                collect_doc_block(&lines, *block, &scope, &mut s);
+                i = end;
             }
             T::P('{') => {
                 depth += 1;
@@ -675,42 +686,13 @@ pub fn scan(src: &str) -> Scan {
     s
 }
 
-/// Each open container owns its indentation and leaf state. Popping a parent
-/// drops every child fence/paragraph instead of leaking either into outer prose.
-#[derive(Clone, Copy)]
-enum DocContainer {
-    Quote,
-    List(usize),
-}
-struct DocFence {
-    marker: char,
-    width: usize,
-}
-#[derive(Default)]
-struct DocFrame {
-    container: Option<DocContainer>,
-    fence: Option<DocFence>,
-    paragraph: bool,
-}
-struct DocState {
-    frames: Vec<DocFrame>,
-    unsupported: bool,
-}
-impl Default for DocState {
-    fn default() -> Self {
-        Self {
-            frames: vec![DocFrame::default()],
-            unsupported: false,
-        }
-    }
-}
-
 fn spaces(text: &str) -> usize {
     text.bytes().take_while(|c| *c == b' ').count()
 }
 
 /// Strip only comment decoration, keeping the indentation that Markdown sees.
 fn doc_text(text: &str, block: bool) -> &str {
+    let text = text.strip_suffix('\r').unwrap_or(text);
     let text = text.strip_prefix(' ').unwrap_or(text);
     let indent = spaces(text);
     if block && indent <= 3 {
@@ -724,147 +706,88 @@ fn doc_text(text: &str, block: bool) -> &str {
     text
 }
 
-fn quote_content(text: &str) -> Option<&str> {
-    let indent = spaces(text);
-    if indent > 3 {
-        return None;
-    }
-    let rest = text[indent..].strip_prefix('>')?;
-    Some(rest.strip_prefix(' ').unwrap_or(rest))
-}
-
-/// The CommonMark bullet/ordered marker and its padding (one to four spaces).
-/// Larger padding retains four code-indentation spaces after consuming one.
-fn list_content(text: &str) -> Option<(usize, &str)> {
-    let indent = spaces(text);
-    if indent > 3 {
-        return None;
-    }
-    let text = &text[indent..];
-    let digits = text.bytes().take_while(u8::is_ascii_digit).count();
-    let width = if matches!(text.as_bytes().first(), Some(b'-' | b'+' | b'*')) {
-        1
-    } else if (1..=9).contains(&digits) && matches!(text.as_bytes().get(digits), Some(b'.' | b')'))
-    {
-        digits + 1
-    } else {
-        return None;
-    };
-    let rest = &text[width..];
-    if rest.is_empty() {
-        return Some((indent + width + 1, rest));
-    }
-    let padding = spaces(rest);
-    if padding == 0 {
-        return None;
-    }
-    let padding = if padding <= 4 { padding } else { 1 };
-    Some((indent + width + padding, &rest[padding..]))
-}
-
-fn container_content(text: &str, container: DocContainer) -> Option<&str> {
-    match container {
-        DocContainer::Quote => quote_content(text),
-        DocContainer::List(_) if text.bytes().all(|c| c == b' ') => Some(""),
-        DocContainer::List(indent) if spaces(text) >= indent => Some(&text[indent..]),
-        _ => None,
-    }
-}
-
-/// Only paragraph text may lazily continue a quote/list without its prefix.
-/// A fence or indented-code block never gains lazy container continuation.
-fn paragraph_continuation(text: &str) -> bool {
-    if text.trim().is_empty() || text.contains('\t') {
-        return false;
+/// This is a block-level exclusion predicate, not a Markdown container parser.
+fn unsupported_doc_reason(text: &str) -> Option<&'static str> {
+    if text.contains('\t') {
+        return Some("tab");
     }
     let indent = spaces(text);
     if indent >= 4 {
-        return true; // Indented code cannot interrupt an existing paragraph.
+        return Some("indent");
     }
     let body = &text[indent..];
-    if quote_content(text).is_some() || list_content(text).is_some() || body.starts_with(['<', '#'])
-    {
-        return false;
+    if body.starts_with('>') {
+        return Some("blockquote");
     }
-    !body.chars().next().is_some_and(|marker| {
-        matches!(marker, '`' | '~') && body.chars().take_while(|c| *c == marker).count() >= 3
-    })
+    let digits = body.bytes().take_while(u8::is_ascii_digit).count();
+    let marker_width = if matches!(body.as_bytes().first(), Some(b'-' | b'+' | b'*')) {
+        1
+    } else if (1..=9).contains(&digits) && matches!(body.as_bytes().get(digits), Some(b'.' | b')'))
+    {
+        digits + 1
+    } else {
+        0
+    };
+    if marker_width > 0
+        && (body.len() == marker_width || body.as_bytes()[marker_width].is_ascii_whitespace())
+    {
+        return Some("list");
+    }
+    if body.starts_with("```") || body.starts_with("~~~") {
+        return Some("fence");
+    }
+    // Conservatively include tag-like starts, comments, declarations and processing
+    // instructions. Autolinks such as <https://example.test> are not tag starts.
+    if let Some(html) = body.strip_prefix('<') {
+        if html.starts_with(['!', '?']) {
+            return Some("html");
+        }
+        let tag = html.strip_prefix('/').unwrap_or(html);
+        if tag.as_bytes().first().is_some_and(u8::is_ascii_alphabetic) {
+            let width = tag
+                .bytes()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == b'-')
+                .count();
+            if tag.len() == width || matches!(tag.as_bytes()[width], b' ' | b'/' | b'>') {
+                return Some("html");
+            }
+        }
+    }
+    None
 }
 
-/// Qualified inline-code paths in prose only. This is a conservative lexical
-/// subset of CommonMark containers/fences, not a complete Markdown or Rust binder.
-fn doc_paths(text: &str, block: bool, state: &mut DocState) -> Vec<Vec<String>> {
-    let mut text = doc_text(text, block);
-    if state.unsupported {
-        return Vec::new();
-    }
-    let paragraph = state.frames.last().unwrap().paragraph;
-    for depth in 1..state.frames.len() {
-        match container_content(text, state.frames[depth].container.unwrap()) {
-            Some(body) => text = body,
-            None if paragraph && paragraph_continuation(text) => {}
-            None => {
-                // Reprocess this same line in the surviving outer context.
-                state.frames.truncate(depth);
-                break;
-            }
-        }
-    }
-    let frame = state.frames.last_mut().unwrap();
-    if let Some(fence) = &frame.fence {
-        let indent = spaces(text);
-        let body = &text[indent..];
-        let width = body.chars().take_while(|c| *c == fence.marker).count();
-        if indent <= 3 && width >= fence.width && body[width..].trim().is_empty() {
-            frame.fence = None;
-        }
-        return Vec::new();
-    }
-    if text.trim().is_empty() {
-        frame.paragraph = false;
-        return Vec::new();
-    }
-    loop {
-        let next = if let Some(rest) = quote_content(text) {
-            Some((DocContainer::Quote, rest))
-        } else if let Some((padding, rest)) = list_content(text) {
-            Some((DocContainer::List(padding), rest))
-        } else {
-            None
-        };
-        let Some((container, rest)) = next else {
-            break;
-        };
-        state.frames.last_mut().unwrap().paragraph = false;
-        state.frames.push(DocFrame {
-            container: Some(container),
-            ..DocFrame::default()
+/// Inspect the entire physical doc block before emitting any candidate. Ordinary
+/// attributes, source/blank lines and adjacent block comments delimit new blocks.
+fn collect_doc_block(lines: &[(&str, u32)], block: bool, scope: &[String], scan: &mut Scan) {
+    let reasons: BTreeSet<&str> = lines
+        .iter()
+        .enumerate()
+        .filter_map(|(offset, (text, _))| {
+            unsupported_doc_reason(doc_text(text, block && offset > 0))
+        })
+        .collect();
+    if !reasons.is_empty() {
+        scan.excluded_doc_blocks.push(DocExclusion {
+            line: lines.first().unwrap().1,
+            reason: reasons.into_iter().collect::<Vec<_>>().join(","),
         });
-        text = rest;
+        return;
     }
-    let indent = spaces(text);
-    let frame = state.frames.last_mut().unwrap();
-    if indent >= 4 && !frame.paragraph {
-        return Vec::new();
-    }
-    let text = &text[indent..];
-    if text.contains('\t') || text.starts_with('<') {
-        // Tabs and HTML blocks are outside this space-based subset. Keep the
-        // remainder of this doc group opaque rather than guessing its lifetime.
-        state.unsupported = true;
-        return Vec::new();
-    }
-    if indent <= 3 {
-        if let Some(marker @ ('`' | '~')) = text.chars().next() {
-            let width = text.chars().take_while(|c| *c == marker).count();
-            if width >= 3 {
-                frame.fence = Some(DocFence { marker, width });
-                frame.paragraph = false;
-                return Vec::new();
-            }
+    for (offset, (text, line)) in lines.iter().enumerate() {
+        for path in plain_doc_paths(doc_text(text, block && offset > 0)) {
+            scan.refs.push(Ref {
+                kind: "documents".into(),
+                scope: scope.to_vec(),
+                path,
+                alias: None,
+                line: *line,
+            });
         }
     }
-    frame.paragraph = true;
+}
+
+/// Qualified backtick paths in an already accepted plain paragraph block only.
+fn plain_doc_paths(text: &str) -> Vec<Vec<String>> {
     let mut paths = Vec::new();
     let mut rest = text;
     while let Some(start) = rest.find('`') {
@@ -925,6 +848,9 @@ pub fn encode(s: &Scan) -> String {
             d.line
         ));
     }
+    for excluded in &s.excluded_doc_blocks {
+        out.push_str(&format!("x\t{}\t{}\n", excluded.line, excluded.reason));
+    }
     out
 }
 
@@ -968,6 +894,20 @@ pub fn decode(text: &str) -> Option<Scan> {
                 name: name.to_string(),
                 line: l.parse().ok()?,
             }),
+            ["x", l, reason]
+                if !reason.is_empty()
+                    && reason.split(',').all(|r| {
+                        matches!(
+                            r,
+                            "tab" | "indent" | "blockquote" | "list" | "fence" | "html"
+                        )
+                    }) =>
+            {
+                s.excluded_doc_blocks.push(DocExclusion {
+                    line: l.parse().ok()?,
+                    reason: reason.to_string(),
+                })
+            }
             _ => return None,
         }
     }
@@ -1350,6 +1290,11 @@ pub fn resolve(
         .collect();
     let (mut docs, mut misses) = resolve_docs(scans, manifests, &pkgs, &tree);
     refs.append(&mut docs);
+    for (file, (_, scan)) in scans {
+        for excluded in &scan.excluded_doc_blocks {
+            misses.push(json!({"kind":"doc_reference_unsupported", "path":file, "line":excluded.line, "count":1, "reason":format!("unsupported doc block: {}", excluded.reason)}));
+        }
+    }
     misses.extend(tree.misses);
     (refs, misses)
 }

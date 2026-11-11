@@ -32,13 +32,15 @@
 않는다. bare name·일반 주석·문자열·fenced 예시를 참조로 만들지 않으며,
 alias/re-export·associated item은 이 문서 해석기의 지원 범위 밖이다.
 상수 선언은 const generic과 구분하는 구문 해석을 구현하지 않아 지원하지 않는다.
-space 기반 quote/list의 frame이 자기 fence·paragraph·indent 상태를 소유하며,
-container가 끝나면 자손 상태도 해제하고 현재 줄을 바깥 문맥에서 다시 처리한다.
-tab·HTML block 전체 해석은 지원하지 않으며, 발견 뒤 해당 doc group의 나머지 후보를
-보수적으로 제외한다. 다음 source declaration 뒤 새 doc group은 다시 수집한다.
-대상 정의 0개/복수 후보는 `missing`의 `doc_reference_missing`과
-`reason=unresolved|ambiguous`로 기록한다. 증분 빌드도 저장 후보를 전체 파일 집합으로
-다시 해석하며, `code-refs=4`로 이전 추출기의 저장 조각을 재사용하지 않는다.
+사용자 결정 `6801346885`에 따라 물리적인 doc 블록 전체를 먼저 검사한다.
+quote/list/fence/4space indentation/tab/HTML 시작 중 하나라도 있으면 해당 블록의
+후보를 모두 제외하고 기존 `missing`에 `doc_reference_unsupported`의
+`path`, block `line`, `count=1`, `reason`을 기록한다. 앞선 prose도 소급 제외하며
+container 수명 추적은 하지 않는다. 물리적 blank/source/attribute나 별도 block comment는
+새 블록 경계이고, 지원되는 plain 블록만 backtick qualified 경로를 수집한다.
+대상 정의 0개/복수 후보는 `doc_reference_missing`, `reason=unresolved|ambiguous`다.
+증분 빌드는 제외 계수도 저장 scan으로 재사용하며 `code-refs=5`로 이전 추출기 fragment를
+재사용하지 않는다. 새 top-level 공개 필드는 추가하지 않는다.
 
 리더 결정 `6793749743`에 따라 GRAPH는 기존 7개 코드 관계와 G-002 문서 관계를
 확인하고 G-006만 이유 있는 gap으로 남긴다. concept identity/alias H1은 HOLD다.
