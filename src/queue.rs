@@ -358,8 +358,9 @@ pub fn next<T: Transport, C: Clock>(
         let own = events.iter().rev().find(|e| e.record.task_key == key);
         // #2344: a card this lane already handed to the gate (`pr_ready`, written by
         // pr-confirm) stays open until the merge, but it is not work to pick up again. Skip
-        // it here only; the record itself stays active so a repair handoff, worktree ops and
-        // scope-check keep treating it as owned.
+        // it here only; the record itself stays active so a repair handoff and worktree ops
+        // keep treating it as owned. scope-check drops it from its conflict candidates once the
+        // forge shows every PR of the claim closed (#2404).
         if let Some(e) = own.filter(|e| e.record.state == HANDED_OFF_STATE) {
             skipped.push(json!({
                 "issue": c.number,
