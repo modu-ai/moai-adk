@@ -75,17 +75,6 @@ fn pointer_gen(dir: &Path) -> Option<String> {
     v["generation_id"].as_str().map(str::to_string)
 }
 
-/// The fixture names the untracked list `changes.untracked`; the C6 output names it
-/// `changes.new_files`. Which name wins is #2407 scope 2 and is on HOLD until the user
-/// decides whether the `index` output contract changes, so the judge reads one as the
-/// other without choosing.
-fn output_key(fixture_key: &str) -> &str {
-    match fixture_key {
-        "untracked" => "new_files",
-        other => other,
-    }
-}
-
 /// A case the C6 index cannot judge yet, with the reason.
 fn not_run_reason(case: &Value) -> Option<&'static str> {
     (case["mutation"]["operation"] == "fail_scan").then_some(
@@ -183,7 +172,7 @@ fn compare(label: &str, dir: &Path, before: &Option<String>, want: &Value) -> Re
         ));
     }
     for (key, value) in want["changes"].as_object().into_iter().flatten() {
-        let seen = &got["changes"][output_key(key)];
+        let seen = &got["changes"][key];
         if seen != value {
             return Err(format!("{label}: changes.{key} {seen} != {value}"));
         }
