@@ -129,6 +129,7 @@ fn audit_input(dir: &Path, refs: &[usize]) -> AuditInput {
                 timeout_ms: 30_000,
             },
             baseline: None,
+            baseline_ref: None,
             diff_paths: vec![],
         },
         required_checks: vec![0, 1],
