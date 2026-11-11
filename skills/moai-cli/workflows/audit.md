@@ -33,7 +33,7 @@ Read revisions safely: write a revision path as `"${rev}:path"` (zsh reads `$rev
 
 Save the PR body as UTF-8 `BODY.md` and run `python3 -I tools/check_pr_self_audit.py --reaudit --file BODY.md`. Standard input is also supported: `python3 -I tools/check_pr_self_audit.py --reaudit < BODY.md`. Re-audits must explicitly select `--reaudit`; template text and claim epochs never select it automatically. For an initial audit, omit the two re-audit-only fields and use the existing command.
 
-Inside the exact `## 독립 review` section, before the next Markdown heading, include each of the following lines exactly once. Fill the repair scope with the actual repaired path, boundary and affected scope for F1.
+Use exactly one visible `## 독립 review` section; multiple visible review sections are ambiguous and fail. Inside that section, before the next visible Markdown heading, include each of the following fields exactly once as visible text. HTML comments and fenced or indented code examples do not establish a section, end it or supply its fields. Fill the repair scope with the actual repaired path, boundary and affected scope for F1.
 
 ```text
 - 수리 확인 범위: F1 repaired path, boundary and affected scope
@@ -42,7 +42,7 @@ Inside the exact `## 독립 review` section, before the next Markdown heading, i
 
 The finding classification is `없음` (none), `차단: concrete reason` (blocking), or `후속 Issue #123: concrete reason` (follow-up). Replace the follow-up number with the actual positive ASCII integer, and give a concrete reason for blocking or follow-up findings. Contract violations, data damage and security findings are blocking; other new findings belong in a follow-up Issue.
 
-Missing, duplicate, empty, punctuation-only or unfinished values such as `TODO`, `TBD`, `not_run` and `<...>` fail. This checks text completeness only: well-formed text does not prove its truth, an actual repair, contract compliance or the existence of the remote Issue. The checker makes no network requests and never posts comments or creates Issues. The existing verdict first-line format, verdict/comment fields and CI/check-run rules remain unchanged.
+Missing or duplicate visible fields, empty or punctuation-only values, and unfinished markers such as `TODO`, `TBD`, `not_run` and `<path>` fail. Completed explanations may cite source paths such as `src/todo.rs`, inline code such as `ci: not_run`, and comparison operators; those references alone are not unfinished markers. This checks text completeness only: well-formed text does not prove its truth, an actual repair, contract compliance or the existence of the remote Issue. The checker makes no network requests and never posts comments or creates Issues. The existing verdict first-line format, verdict/comment fields and CI/check-run rules remain unchanged.
 
 ## Exceptions and Permissions
 

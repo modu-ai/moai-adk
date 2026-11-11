@@ -34,15 +34,18 @@ opened.
 Re-audits (Issue #2388) require explicit `--reaudit` (or check(body, reaudit=True));
 neither template fields nor a claim epoch enables this mode. In the exact
 `## 독립 review` section, up to the next Markdown heading, require exactly one
-line for each field (whitespace and Markdown list markers are accepted):
+visible line for each field (whitespace and Markdown list markers are accepted).
+HTML comments, fenced examples and indented code are excluded; multiple visible
+review headings are ambiguous and fail:
 
   - 수리 확인 범위: F1 path/boundary repaired and touched scope
   - 새 지적 분류: 없음
 
 The classification can instead be `차단: <concrete reason>` or
 `후속 Issue #<positive ASCII integer>: <concrete reason>`. Angle-bracket text is
-documentation notation, not an accepted value. Empty, duplicate, punctuation-only,
-TODO/TBD/not_run and angle-placeholder values fail. Contract violations, data
+documentation notation, not an accepted placeholder. Empty, duplicate,
+punctuation-only and unfinished TODO/TBD/not_run values fail. Completed prose
+may reference path identifiers, inline code and comparisons. Contract violations, data
 damage and security findings are blocking; other new findings belong in a
 follow-up Issue. This is a text-completeness check only: it cannot judge repair
 truth, classification policy compliance, or whether the follow-up Issue exists.
@@ -136,18 +139,66 @@ def check_ci_lines(section) -> None:
 
 def meaningful(value: str) -> bool:
     """Reject unfilled evidence without attempting to judge its truth."""
+    # Inline code and path identifiers describe evidence, not unfinished work.
+    prose = re.sub(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)", "", value)
     return (
         any(char.isalnum() for char in value)
-        and not re.search(r"(?<![A-Za-z0-9])(?:TODO|TBD|not_run)(?![A-Za-z0-9])",
-                          value, re.IGNORECASE)
-        and not re.search(r"<[^>]*>", value)
+        and not re.search(
+            r"(?<![\w./\\-])(?:TODO|TBD|not_run)(?![\w./\\-])",
+            prose, re.IGNORECASE,
+        )
+        and not re.search(r"<[^\s<>]+(?:[ \t]+[^\s<>]+)*>", value)
+        and not re.fullmatch(r"\s*[`*_]*\s*(?:TODO|TBD|not_run)\s*[`*_]*\s*",
+                             value, re.IGNORECASE)
     )
+
+
+def visible_reaudit_lines(lines):
+    """Exclude Markdown examples and HTML comments from re-audit evidence."""
+    in_comment = False
+    fence = None
+    for line in lines:
+        if fence:
+            if re.fullmatch(r" {0,3}" + re.escape(fence[0]) +
+                            r"{" + str(fence[1]) + r",}[ \t]*", line):
+                fence = None
+            continue
+        # Indented examples cannot open comments or fenced blocks. Retain the
+        # existing tab-prefixed list-marker convention for evidence fields.
+        if not in_comment and (
+                line.startswith("    ") or line.startswith("\t")) and not re.match(
+                    r"^\t[-*+]\s", line):
+            continue
+        visible = []
+        position = 0
+        while position < len(line):
+            if in_comment:
+                end = line.find("-->", position)
+                if end < 0:
+                    break
+                in_comment = False
+                position = end + 3
+            else:
+                start = line.find("<!--", position)
+                if start < 0:
+                    visible.append(line[position:])
+                    break
+                visible.append(line[position:start])
+                in_comment = True
+                position = start + 4
+        line = "".join(visible)
+        opener = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if opener and (opener[1][0] != "`" or "`" not in opener[2]):
+            fence = (opener[1][0], len(opener[1]))
+            continue
+        yield line
 
 
 def check_reaudit(lines) -> None:
     """Require one repair scope and one explicit new-finding classification."""
+    lines = list(visible_reaudit_lines(lines))
     starts = [i for i, line in enumerate(lines) if line.strip() == "## 독립 review"]
-    if not starts:
+    if len(starts) != 1:
         fail(["## 독립 review"])
     fields = {"수리 확인 범위": [], "새 지적 분류": []}
     for line in lines[starts[0] + 1:]:

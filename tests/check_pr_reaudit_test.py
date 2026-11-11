@@ -105,6 +105,91 @@ class CheckPrReauditTest(unittest.TestCase):
             with self.subTest(classification=classification):
                 self.assert_pass(self.with_findings(classification), "--reaudit")
 
+
+    def test_completed_descriptions_with_marker_like_references_pass(self):
+        descriptions = (
+            "src/todo.rs 경계와 호출자를 수리하고 확인했다.",
+            "`ci: not_run` 분류를 보존하는 CLI 경계를 수리하고 확인했다.",
+            "0 < n > 10 비교 경계를 수리하고 확인했다.",
+        )
+        for description in descriptions:
+            with self.subTest(description=description):
+                self.assert_pass(self.with_scope(description), "--reaudit")
+                for classification in ("차단: ", "후속 Issue #2388: "):
+                    self.assert_pass(
+                        self.with_findings(classification + description), "--reaudit",
+                    )
+
+    def test_hidden_review_sections_cannot_supply_evidence(self):
+        examples = (
+            "<!--\n" + REVIEW + "-->\n",
+            "<!-- " + REVIEW.replace("\n", "\n<!-- -->") + " -->\n",
+            "```markdown\n" + REVIEW + "```\n",
+            "~~~~markdown\n" + REVIEW + "~~~~\n",
+            "".join("    " + line + "\n" for line in REVIEW.splitlines()),
+            "".join("\t" + line + "\n" for line in REVIEW.splitlines()),
+        )
+        initial = FULL.replace(REVIEW, "")
+        empty_review = "## 독립 review\n\n"
+        for example in examples:
+            with self.subTest(example=example):
+                self.assert_blocked(initial + example, "## 독립 review")
+                self.assert_blocked(
+                    initial + example + empty_review, "reaudit:scope",
+                )
+
+    def test_commented_fields_cannot_complete_visible_review(self):
+        for line, token in (
+            (SCOPE_LINE, "reaudit:scope"),
+            (FINDINGS_LINE, "reaudit:findings"),
+        ):
+            for hidden in ("<!-- " + line.rstrip() + " -->\n",
+                           "<!--\n" + line + "-->\n"):
+                with self.subTest(hidden=hidden):
+                    self.assert_blocked(FULL.replace(line, hidden), token)
+
+    def test_duplicate_visible_review_headings_are_ambiguous(self):
+        for duplicate in (REVIEW, "## 독립 review\n\n"):
+            for body in (FULL + duplicate, FULL.replace(REVIEW, duplicate + REVIEW)):
+                with self.subTest(body=body):
+                    self.assert_blocked(body, "## 독립 review")
+
+    def test_genuine_review_ignores_examples_and_inline_comments(self):
+        examples = (
+            "<!--\n" + REVIEW + "-->\n",
+            "<!-- ## 독립 review -->\n",
+            "````markdown\n```\n" + REVIEW + "````\n",
+            "~~~~markdown\n~~~\n" + REVIEW + "~~~~~\n",
+            "    ## 독립 review\n    - 수리 확인 범위: TODO\n",
+            "\t## 독립 review\n\t수리 확인 범위: TODO\n",
+            "<!--\n    -->\n",
+        )
+        for example in examples:
+            with self.subTest(example=example):
+                body = FULL.replace(SCOPE_LINE, example + SCOPE_LINE)
+                self.assert_pass(body, "--reaudit")
+        body = FULL.replace(SCOPE_LINE, SCOPE_LINE.rstrip() + " <!-- TODO -->\n")
+        self.assert_pass(body, "--reaudit")
+
+    def test_short_or_wrong_fence_closers_do_not_expose_examples(self):
+        for opener, false_closer, closer in (
+            ("````", "```", "````"),
+            ("~~~~", "~~~", "~~~~"),
+            ("```", "~~~", "```"),
+        ):
+            with self.subTest(opener=opener, false_closer=false_closer):
+                example = opener + "\n" + false_closer + "\n" + REVIEW + closer + "\n"
+                self.assert_blocked(FULL.replace(REVIEW, example), "## 독립 review")
+
+    def test_bare_code_wrapped_placeholders_remain_blocked(self):
+        for value in ("`TODO`", "`TBD`", "`not_run`", "`<path>`"):
+            with self.subTest(value=value):
+                self.assert_blocked(self.with_scope(value), "reaudit:scope")
+                for classification in ("차단: ", "후속 Issue #2388: "):
+                    self.assert_blocked(
+                        self.with_findings(classification + value), "reaudit:findings",
+                    )
+
     def test_missing_review_section_is_blocked(self):
         self.assert_blocked(FULL.replace(REVIEW, ""), "## 독립 review")
 
