@@ -33,7 +33,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 /// Extractor identity of the code-reference edges.
 pub const EXTRACTOR_NAME: &str = "code-refs";
 /// Bump on any change to what `scan` or `resolve` records.
-pub const EXTRACTOR_VERSION: &str = "2";
+pub const EXTRACTOR_VERSION: &str = "3";
 /// Node kind holding one Rust file's stored scan.
 pub(crate) const SCAN_NODE_KIND: &str = "code_scan";
 /// Node kind holding one Cargo manifest's library crate name.
@@ -90,7 +90,7 @@ pub struct Definition {
 #[derive(Debug, Clone, PartialEq)]
 enum T {
     Ident(String),
-    Doc(String),
+    Doc(String, bool),
     Lit,
     ColCol,
     P(char),
@@ -195,7 +195,7 @@ fn lex(src: &str) -> Vec<Tok> {
                 || (c.get(start + 2) == Some(&'/') && c.get(start + 3) != Some(&'/'))
             {
                 out.push(Tok {
-                    t: T::Doc(c[start + 3..i].iter().collect()),
+                    t: T::Doc(c[start + 3..i].iter().collect(), false),
                     line,
                 });
             }
@@ -232,7 +232,7 @@ fn lex(src: &str) -> Vec<Tok> {
                     .enumerate()
                 {
                     out.push(Tok {
-                        t: T::Doc(text.to_string()),
+                        t: T::Doc(text.to_string(), true),
                         line: first_line + offset as u32,
                     });
                 }
@@ -331,6 +331,7 @@ fn has_path_attr(toks: &[Tok], i: usize) -> bool {
     let mut k = i as isize - 1;
     while k >= 0 {
         match &toks[k as usize].t {
+            T::Doc(..) => k -= 1,
             T::Ident(w) if w == "pub" => k -= 1,
             T::P(close @ (')' | ']')) => {
                 let open = if *close == ')' { '(' } else { '[' };
@@ -478,22 +479,73 @@ fn use_tree(
     }
 }
 
+/// Macro arguments and attribute payloads are token trees, not declarations. Mask
+/// them for declaration/doc collection while preserving the existing lexical call
+/// scan inside macro arguments. Unbalanced trees remain opaque through EOF.
+fn opaque_declarations(toks: &[Tok]) -> (Vec<bool>, Vec<bool>) {
+    let mut opaque = vec![false; toks.len()];
+    // Ordinary attributes do not break concatenated documentation attributes.
+    let mut attributes = vec![false; toks.len()];
+    let mut i = 0;
+    while i < toks.len() {
+        let opening = if at(toks, i) == Some(&T::P('#')) {
+            let j = i + 1 + usize::from(at(toks, i + 1) == Some(&T::P('!')));
+            (at(toks, j) == Some(&T::P('['))).then_some(j)
+        } else if ident_at(toks, i).is_some() && at(toks, i + 1) == Some(&T::P('!')) {
+            let j = i + 2 + usize::from(ident_at(toks, i) == Some("macro_rules"));
+            matches!(at(toks, j), Some(T::P('(' | '[' | '{'))).then_some(j)
+        } else {
+            None
+        };
+        let Some(opening) = opening else {
+            i += 1;
+            continue;
+        };
+        let mut stack = Vec::new();
+        let mut end = toks.len();
+        for (j, tok) in toks.iter().enumerate().skip(opening) {
+            match tok.t {
+                T::P('(') => stack.push(')'),
+                T::P('[') => stack.push(']'),
+                T::P('{') => stack.push('}'),
+                T::P(close @ (')' | ']' | '}')) => {
+                    if stack.pop() != Some(close) {
+                        break;
+                    }
+                    if stack.is_empty() {
+                        end = j + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        opaque[i..end].fill(true);
+        if at(toks, i) == Some(&T::P('#')) {
+            attributes[i..end].fill(true);
+        }
+        i = end;
+    }
+    (opaque, attributes)
+}
+
 /// Scans one Rust source text. Pure: the same text always yields the same scan.
 pub fn scan(src: &str) -> Scan {
     let toks = lex(src);
+    let (opaque, attributes) = opaque_declarations(&toks);
     let mut s = Scan::default();
     let mut scope: Vec<String> = Vec::new();
     let mut open: Vec<usize> = Vec::new();
     let mut depth = 0usize;
     let mut i = 0usize;
-    let mut fence: Option<(char, usize)> = None;
+    let mut doc = DocState::default();
     while i < toks.len() {
-        if !matches!(toks[i].t, T::Doc(_)) {
-            fence = None;
+        if !attributes[i] && (!matches!(toks[i].t, T::Doc(..)) || opaque[i]) {
+            doc = DocState::default();
         }
         match &toks[i].t {
-            T::Doc(text) => {
-                for path in doc_paths(text, &mut fence) {
+            T::Doc(text, block) if !opaque[i] => {
+                for path in doc_paths(text, *block, &mut doc) {
                     s.refs.push(Ref {
                         kind: "documents".into(),
                         scope: scope.clone(),
@@ -516,7 +568,7 @@ pub fn scan(src: &str) -> Scan {
                 }
                 i += 1;
             }
-            T::Ident(w) if w == "mod" => {
+            T::Ident(w) if w == "mod" && !opaque[i] => {
                 let (Some(name), Some(T::P(end @ (';' | '{')))) =
                     (ident_at(&toks, i + 1), at(&toks, i + 2))
                 else {
@@ -538,7 +590,7 @@ pub fn scan(src: &str) -> Scan {
                 }
                 i += 3;
             }
-            T::Ident(w) if w == "use" => {
+            T::Ident(w) if w == "use" && !opaque[i] => {
                 let mut leaves = Vec::new();
                 let mut j = use_tree(&toks, i + 1, Vec::new(), &mut leaves, 0);
                 while j < toks.len() && toks[j].t != T::P(';') {
@@ -558,7 +610,8 @@ pub fn scan(src: &str) -> Scan {
                 i = j + 1;
             }
             T::Ident(w)
-                if depth == open.len()
+                if !opaque[i]
+                    && depth == open.len()
                     && matches!(
                         w.as_str(),
                         "fn" | "struct" | "enum" | "trait" | "type" | "static" | "union"
@@ -622,36 +675,155 @@ pub fn scan(src: &str) -> Scan {
     s
 }
 
-/// Qualified inline-code paths only. Fenced examples and bare names do not establish
-/// a cross-file reference. This is a bounded lexical subset, not rustdoc resolution.
-fn doc_paths(text: &str, fence: &mut Option<(char, usize)>) -> Vec<Vec<String>> {
-    // One leading space is conventional after the doc marker. Four further spaces
-    // denote an indented Markdown example, not an inline documentation reference.
-    let content = text.strip_prefix(' ').unwrap_or(text);
-    if content.starts_with("    ") || content.starts_with('\t') {
-        return Vec::new();
-    }
-    let text = text
-        .trim_start()
-        .strip_prefix('*')
-        .unwrap_or(text.trim_start())
-        .trim_start();
-    let first = text.chars().next();
-    if let Some(ch @ ('`' | '~')) = first {
-        let count = text.chars().take_while(|c| *c == ch).count();
-        if count >= 3 {
-            match *fence {
-                None => *fence = Some((ch, count)),
-                Some((open, n)) if open == ch && count >= n && text[count..].trim().is_empty() => {
-                    *fence = None
-                }
-                _ => {}
+/// Container prefixes of a fence are structural only at its opening. Inside the
+/// fence, extra quote/list markers are literal code and must never close it early.
+#[derive(Clone)]
+enum DocContainer {
+    Quote,
+    List(usize),
+}
+struct DocFence {
+    marker: char,
+    width: usize,
+    containers: Vec<DocContainer>,
+}
+#[derive(Default)]
+struct DocState {
+    fence: Option<DocFence>,
+    list_indents: Vec<usize>,
+}
+
+fn spaces(text: &str) -> usize {
+    text.bytes().take_while(|c| *c == b' ').count()
+}
+
+/// Strip only comment decoration, keeping the indentation that Markdown sees.
+fn doc_text(text: &str, block: bool) -> &str {
+    let text = text.strip_prefix(' ').unwrap_or(text);
+    let indent = spaces(text);
+    if block && indent <= 3 {
+        let rest = &text[indent..];
+        if let Some(rest) = rest.strip_prefix('*') {
+            if rest.is_empty() || rest.starts_with(' ') {
+                return rest.strip_prefix(' ').unwrap_or(rest);
             }
-            return Vec::new();
         }
     }
-    if fence.is_some() {
+    text
+}
+
+fn quote_content(text: &str) -> Option<&str> {
+    let indent = spaces(text);
+    if indent > 3 {
+        return None;
+    }
+    let rest = text[indent..].strip_prefix('>')?;
+    Some(rest.strip_prefix(' ').unwrap_or(rest))
+}
+
+/// The CommonMark bullet/ordered marker and its padding (one to four spaces).
+/// Larger padding retains four code-indentation spaces after consuming one.
+fn list_content(text: &str) -> Option<(usize, &str)> {
+    let indent = spaces(text);
+    if indent > 3 {
+        return None;
+    }
+    let text = &text[indent..];
+    let digits = text.bytes().take_while(u8::is_ascii_digit).count();
+    let width = if matches!(text.as_bytes().first(), Some(b'-' | b'+' | b'*')) {
+        1
+    } else if (1..=9).contains(&digits) && matches!(text.as_bytes().get(digits), Some(b'.' | b')'))
+    {
+        digits + 1
+    } else {
+        return None;
+    };
+    let rest = &text[width..];
+    if rest.is_empty() {
+        return Some((indent + width + 1, rest));
+    }
+    let padding = spaces(rest);
+    if padding == 0 {
+        return None;
+    }
+    let padding = if padding <= 4 { padding } else { 1 };
+    Some((indent + width + padding, &rest[padding..]))
+}
+
+fn fence_body<'a>(mut text: &'a str, containers: &[DocContainer]) -> Option<&'a str> {
+    for container in containers {
+        text = match container {
+            DocContainer::Quote => quote_content(text)?,
+            DocContainer::List(n) if spaces(text) >= *n => &text[*n..],
+            _ => return None,
+        };
+    }
+    Some(text)
+}
+
+/// Qualified inline-code paths in prose only. This is a conservative lexical
+/// subset of CommonMark containers/fences, not a complete Markdown or Rust binder.
+fn doc_paths(text: &str, block: bool, state: &mut DocState) -> Vec<Vec<String>> {
+    let mut text = doc_text(text, block);
+    if let Some(fence) = &state.fence {
+        if let Some(body) = fence_body(text, &fence.containers) {
+            let indent = spaces(body);
+            let body = &body[indent..];
+            let width = body.chars().take_while(|c| *c == fence.marker).count();
+            if indent <= 3 && width >= fence.width && body[width..].trim().is_empty() {
+                state.fence = None;
+            }
+        }
         return Vec::new();
+    }
+    if text.trim().is_empty() {
+        return Vec::new();
+    }
+    let mut containers = Vec::new();
+    while let Some(rest) = quote_content(text) {
+        containers.push(DocContainer::Quote);
+        text = rest;
+    }
+    let inherited = state
+        .list_indents
+        .iter()
+        .rev()
+        .copied()
+        .find(|n| *n <= spaces(text));
+    let mut list_indent = inherited.unwrap_or(0);
+    state.list_indents.retain(|n| *n <= list_indent);
+    if list_indent > 0 {
+        containers.push(DocContainer::List(list_indent));
+        text = &text[list_indent..];
+    }
+    loop {
+        if let Some(rest) = quote_content(text) {
+            containers.push(DocContainer::Quote);
+            text = rest;
+        } else if let Some((padding, rest)) = list_content(text) {
+            containers.push(DocContainer::List(padding));
+            list_indent += padding;
+            state.list_indents.push(list_indent);
+            text = rest;
+        } else {
+            break;
+        }
+    }
+    let indent = spaces(text);
+    if indent >= 4 || text[indent..].starts_with('\t') {
+        return Vec::new();
+    }
+    let text = &text[indent..];
+    if let Some(marker @ ('`' | '~')) = text.chars().next() {
+        let width = text.chars().take_while(|c| *c == marker).count();
+        if width >= 3 {
+            state.fence = Some(DocFence {
+                marker,
+                width,
+                containers,
+            });
+            return Vec::new();
+        }
     }
     let mut paths = Vec::new();
     let mut rest = text;

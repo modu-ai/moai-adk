@@ -19,7 +19,7 @@
 
 ## C6d generation 문서 참조 (#2450)
 
-`index-build`가 만드는 Graph와 이를 읽는 `index-records`/`atlas-graph`에는 기존
+`index-build`가 만드는 Graph와 이를 읽는 `index::index_records` API/`atlas-graph`에는 기존
 `imports`/`calls` 외에 Rust 문서 주석의 qualified 식별자에서 얻은 파일→파일
 `documents` edge가 포함된다. JSON 필드는 기존 온톨로지 형식을 그대로 사용한다.
 각 edge는 문서 언급과 대상 정의의 `file-uri#span@digest`를 모두 보존하며,
@@ -33,11 +33,12 @@ alias/re-export·associated item은 이 문서 해석기의 지원 범위 밖이
 상수 선언은 const generic과 구분하는 구문 해석을 구현하지 않아 지원하지 않는다.
 대상 정의 0개/복수 후보는 `missing`의 `doc_reference_missing`과
 `reason=unresolved|ambiguous`로 기록한다. 증분 빌드도 저장 후보를 전체 파일 집합으로
-다시 해석하며, `code-refs=2`로 이전 추출기의 저장 조각을 재사용하지 않는다.
+다시 해석하며, `code-refs=3`로 이전 추출기의 저장 조각을 재사용하지 않는다.
 
 리더 결정 `6793749743`에 따라 GRAPH는 기존 7개 코드 관계와 G-002 문서 관계를
 확인하고 G-006만 이유 있는 gap으로 남긴다. concept identity/alias H1은 HOLD다.
 fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 않는다.
+수리 경계·공식 근거·실행/미실행 표는 [C6d 수리 경계](../../atlas-doc-reference-boundaries.md)에 기록한다.
 
 ## RC1 OPERATIONS 전수
 
