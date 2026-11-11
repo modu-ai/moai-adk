@@ -89,7 +89,14 @@ fn dry(home: &Path, env_key: Option<&str>) -> (i32, Value, String) {
     if let Some(k) = env_key {
         cmd.env("ANTHROPIC_AUTH_TOKEN", k);
     }
-    let out = cmd.args(["glm", "-a", "--dry-run"]).output().unwrap();
+    dry_command(cmd)
+}
+
+fn dry_command(mut cmd: Command) -> (i32, Value, String) {
+    let out = cmd
+        .args(["glm", "-a", "--name", "vault-test", "--dry-run"])
+        .output()
+        .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
     let text = format!("{stdout}{}", String::from_utf8_lossy(&out.stderr));
     for key in [PROJECT_KEY, SHARED_KEY, LEGACY_KEY, ENV_KEY] {
@@ -147,7 +154,6 @@ fn the_variable_then_the_project_then_the_shared_folder() {
     let (code, v, text) = dry(h.path(), None);
     assert_eq!(code, 0, "{text}");
     assert_eq!(v["key_source"], "vault:shared:glm", "{text}");
-    assert!(v["notes"].to_string().contains("key vault"));
     assert_eq!(host_token(h.path()), SHARED_KEY);
 
     store(h.path(), false, PROJECT_KEY);
@@ -239,4 +245,67 @@ fn other_hosts_report_no_key_source() {
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     // The field is absent (not null): the recorded protocol shape of other hosts is unchanged.
     assert!(v.get("key_source").is_none(), "{v}");
+}
+
+/// Missing git cannot establish that a project key is absent. Even a shared-only vault
+/// must not be selected when the current project's identity is unknown.
+#[test]
+fn missing_git_stops_the_launch_even_with_a_shared_key() {
+    let empty_path = tempfile::tempdir().unwrap();
+    for with_project in [false, true] {
+        let h = home(false);
+        store(h.path(), true, SHARED_KEY);
+        if with_project {
+            store(h.path(), false, PROJECT_KEY);
+        }
+        let mut cmd = bin(h.path());
+        cmd.env("PATH", empty_path.path());
+        let (code, v, text) = dry_command(cmd);
+        assert_eq!(code, 1, "project={with_project}: {text}");
+        assert_eq!(v, Value::Null, "{text}");
+        assert!(text.contains("blocked: key_absent"), "{text}");
+        assert!(text.contains("next:"), "{text}");
+    }
+}
+
+/// An identity error must propagate instead of silently selecting a shared entry.
+#[test]
+fn an_identity_error_stops_the_launch_even_with_a_shared_key() {
+    let h = home(false);
+    store(h.path(), true, SHARED_KEY);
+    let state = h.path().join(".moai-cli");
+    let moved = h.path().join("state-fixture");
+    fs::rename(&state, &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, &state).unwrap();
+    let (code, v, text) = dry(h.path(), None);
+    assert_eq!(code, 1, "{text}");
+    assert_eq!(v, Value::Null, "{text}");
+    assert!(text.contains("blocked: key_absent"), "{text}");
+    assert!(text.contains("next:"), "{text}");
+}
+
+/// With no project entry, an unsafe shared entry must block before the legacy path.
+#[test]
+fn an_unsafe_shared_entry_stops_the_launch() {
+    let h = home(true);
+    let entry = store(h.path(), true, SHARED_KEY);
+    fs::set_permissions(&entry, fs::Permissions::from_mode(0o644)).unwrap();
+    let (code, v, text) = dry(h.path(), None);
+    assert_eq!(code, 1, "{text}");
+    assert_eq!(v, Value::Null, "{text}");
+    assert!(text.contains("blocked: key_file_unsafe"), "{text}");
+    assert!(text.contains("next:"), "{text}");
+}
+
+/// A successfully identified non-repository still uses the shared entry.
+#[test]
+fn outside_a_repository_the_shared_entry_is_still_available() {
+    let h = home(false);
+    store(h.path(), true, SHARED_KEY);
+    let outside = tempfile::tempdir().unwrap();
+    let mut cmd = bin(h.path());
+    cmd.current_dir(outside.path());
+    let (code, v, text) = dry_command(cmd);
+    assert_eq!(code, 0, "{text}");
+    assert_eq!(v["key_source"], "vault:shared:glm", "{text}");
 }

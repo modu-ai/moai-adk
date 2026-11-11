@@ -186,7 +186,13 @@ pub fn folder_name(project_id: Option<&str>, primary_dir: &str, clone_hex: &str)
 /// git work tree. No git command is started here beyond the identity's own.
 pub fn project_scope(dir: &Path) -> Result<Option<Scope>> {
     let id = crate::identity::identity(dir)?;
-    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
+    if id["identity_status"] == "no_git" {
+        return Ok(None);
+    }
+    if id["identity_status"] != "ok" {
+        return Err("the workspace identity could not be resolved".into());
+    }
+    if id["work_tree"].is_null() {
         return Ok(None);
     }
     let clone = id["clone_id"].as_str().unwrap_or("");

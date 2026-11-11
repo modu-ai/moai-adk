@@ -26,6 +26,8 @@
 - `archive-plan`
 - `archive-restore`
 - `archive-search`
+- `atlas-graph`
+- `atlas-map`
 - `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
@@ -43,6 +45,7 @@
 - `context-bundle`
 - `context-verify`
 - `cost-report`
+- `decision-append`
 - `decision-record`
 - `effect-confirm`
 - `effect-intend`
@@ -91,12 +94,11 @@
 - `recovery-plan`
 - `run-verify`
 - `scope-check`
+- `search`
 - `skill-read-receipt`
 - `skill-source-apply`
 - `skill-source-plan`
 - `snapshot-describe`
-- `todo-promote-apply`
-- `todo-promote-preview`
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
