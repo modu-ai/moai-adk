@@ -1811,7 +1811,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 return Err("unsupported protocol_version; supported: 1".into());
             }
             let current = moai_cli::plan::current_revision(&project)?;
-            serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
+            serde_json::to_value(moai_cli::run::run_verify(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
