@@ -189,6 +189,27 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
+    /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
+    /// preview's digest and a permission reference; the read-back must match; the legacy file
+    /// is kept. Destination: the current project's folder, or `_shared` with `--shared`.
+    KeyImportApply {
+        provider: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
+        #[arg(long)]
+        shared: bool,
+    },
+    /// Preview of moving a legacy key file into the encrypted vault (#2393 S3): which file,
+    /// which destination folder, never the value. Writes nothing.
+    KeyImportPlan {
+        provider: String,
+        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
+        #[arg(long)]
+        shared: bool,
+    },
     /// Remove a provider's key from the vault (#2393): the current project's entry, or the
     /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
     /// machine key and any legacy key file are never touched.
@@ -240,6 +261,10 @@ enum Command {
     /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
     /// candidate through `claim-acquire` under one journal lock.
     QueueNext {
+        project: PathBuf,
+    },
+    /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
+    QueueQuery {
         project: PathBuf,
     },
     /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
@@ -832,6 +857,12 @@ enum Command {
         #[arg(long)]
         permission_reference: Option<String>,
     },
+    /// Reserve the independent audit of one exact PR head (rc.2 #2403 item 1): typed JSON
+    /// `{schema_version, owner, repo, pr, head, lane}` on stdin. Reads the PR, its commits and
+    /// comments (GET); refuses a stale head or an author lane; posts at most one
+    /// `moai-audit-claim` comment, then re-reads. The lowest reservation id on the head wins
+    /// (user decision #2403 c6784520362). Start the audit only when `outcome` is `reserved`.
+    AuditClaim,
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
     AuditReduce {
@@ -947,7 +978,7 @@ fn launch(
 ) -> Result<serde_json::Value, String> {
     use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
-    // `-a` is `agent-N` from the project's counter; both start with full access.
+    // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
     // `-a` without `--name` is numbered; `--name` takes no number.
     let numbered = leader == Some(false) && o.name.is_none();
@@ -964,9 +995,9 @@ fn launch(
         // takes the launcher defaults (advisor fable, model, effort) too.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        // A role session starts with full access unless `--permissions` is given; a roleless
-        // one gets no permission flag (user decision 2026-11-10, #2359; replaces #2244).
-        skip_permissions: full_access(role.is_some(), o.permissions),
+        // Validate user configuration even for roleless sessions or CLI --permissions.
+        // Resolution precedes host composition and any agent-number allocation.
+        skip_permissions: full_access(role.is_some(), o.permissions)?,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
@@ -1017,6 +1048,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ArchiveRestore { .. } => "archive.restore",
         ArchiveSearch { .. } => "archive.search",
         AtlasTagScan { .. } => "atlas_tag.scan",
+        AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
         AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
@@ -1057,6 +1089,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
+        KeyImportApply { .. } => "key.import_apply",
+        KeyImportPlan { .. } => "key.import_plan",
         KeyRemove { .. } => "key.remove",
         KeySet { .. } => "key.set",
         KeyStatus { .. } => "key.status",
@@ -1077,6 +1111,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
         QueueNext { .. } => "queue.next",
+        QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
@@ -1201,6 +1236,12 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::QueueQuery { project } => Ok(moai_cli::queue_query::query_cli(
+            &project,
+            input::<moai_cli::queue_query::QueueQueryRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        )?),
         Command::ClaimRelease {
             project,
             task,
@@ -1513,6 +1554,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::KeyImportApply {
+            provider,
+            plan_digest,
+            permission_reference,
+            shared,
+        } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::import_apply(
+                &moai_cli::key_vault::home()?,
+                &scope,
+                &provider,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::KeyImportPlan { provider, shared } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::import_plan(&moai_cli::key_vault::home()?, &scope, &provider)
+        }
         Command::KeyRemove {
             provider,
             yes,
@@ -2003,6 +2063,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input()?,
             apply,
             permission_reference.as_deref(),
+        ),
+        Command::AuditClaim => moai_cli::audit_claim::reserve_cli(
+            input::<moai_cli::audit_claim::AuditClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
         ),
         Command::AuditReduce { project } => {
             let request = input::<moai_cli::audit::AuditInput>()?;

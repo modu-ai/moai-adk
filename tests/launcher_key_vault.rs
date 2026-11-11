@@ -181,6 +181,7 @@ fn without_a_vault_entry_the_legacy_file_is_named_not_read() {
         text.contains(".moai/.env.glm") && text.contains("key-set glm"),
         "{text}"
     );
+    assert!(text.contains("moai-cli key-import-plan glm"), "{text}");
     // Untouched: same bytes, same time, and no vault was created.
     assert_eq!(fs::read(&file).unwrap(), before);
     assert_eq!(fs::metadata(&file).unwrap().modified().unwrap(), mtime);
