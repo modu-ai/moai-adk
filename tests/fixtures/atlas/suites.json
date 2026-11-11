@@ -244,7 +244,7 @@
      "mutation": {"operation": "add_untracked", "path": "scratch.txt", "contents": "scratch"},
      "expected": {
       "state": "stale",
-      "changes": {"untracked": ["scratch.txt"], "deleted": [], "modified": []},
+      "changes": {"new_files": ["scratch.txt"], "deleted": [], "modified": []},
       "generation_unchanged": true
      }
     },
