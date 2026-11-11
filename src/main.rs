@@ -189,6 +189,34 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
+    /// Remove a provider's key from the vault (#2393): the current project's entry, or the
+    /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
+    /// machine key and any legacy key file are never touched.
+    KeyRemove {
+        provider: String,
+        #[arg(long)]
+        yes: bool,
+        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
+        #[arg(long)]
+        shared: bool,
+    },
+    /// Store a provider's key, encrypted, in the vault (#2393): for the current project, or
+    /// for every project with `--shared`. The value is read from stdin only (never argv); an
+    /// interactive terminal is refused. The answer never contains the value.
+    KeySet {
+        provider: String,
+        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
+        #[arg(long)]
+        shared: bool,
+    },
+    /// Whether a provider's entry (current project, or `--shared`) exists, is safe and
+    /// decrypts (#2393). Never the value, its length or a fingerprint.
+    KeyStatus {
+        provider: String,
+        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
+        #[arg(long)]
+        shared: bool,
+    },
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
     LayoutPlan {
@@ -525,6 +553,18 @@ enum Command {
         /// Time budget in milliseconds for the size walk; past it a class is `partial`.
         #[arg(long, default_value_t = moai_cli::worktree_report::DEFAULT_BUDGET_MS)]
         budget_ms: u64,
+    },
+    /// Code Map query (C9 #2185): read-only — the published generation's map records
+    /// (file and tag nodes, `annotated_by` edges, missing coverage) of the requested paths
+    /// or directory prefixes; `unavailable` when no index records can be read.
+    AtlasMap {
+        project: PathBuf,
+    },
+    /// Code Graph query (C9 #2185): read-only — a bounded-hop walk over the same
+    /// generation's map and graph records from the given node ids; `unavailable` when no
+    /// index records can be read.
+    AtlasGraph {
+        project: PathBuf,
     },
     /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
     /// matches over the published index generation (or the tracked files), each result with
@@ -1017,6 +1057,9 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
+        KeyRemove { .. } => "key.remove",
+        KeySet { .. } => "key.set",
+        KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
         LayoutApply { .. } => "layout.apply",
@@ -1039,6 +1082,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
         Search { .. } => "search.query",
+        AtlasMap { .. } => "atlas.map",
+        AtlasGraph { .. } => "atlas.graph",
         SkillReadReceipt { .. } => "skill_source.read_receipt",
         SkillSourceApply { .. } => "skill_source.apply",
         SkillSourcePlan { .. } => "skill_source.plan",
@@ -1245,6 +1290,18 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::AtlasMap { project } => serde_json::to_value(moai_cli::atlas_query::atlas_map(
+            &project,
+            &input::<moai_cli::atlas_query::MapRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::AtlasGraph { project } => {
+            serde_json::to_value(moai_cli::atlas_query::atlas_graph(
+                &project,
+                &input::<moai_cli::atlas_query::GraphRequest>()?,
+            )?)
+            .map_err(|_| "encode failed".into())
+        }
         Command::Search { project } => serde_json::to_value(moai_cli::search::search(
             &project,
             &input::<moai_cli::search::SearchRequest>()?,
@@ -1456,6 +1513,31 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::KeyRemove {
+            provider,
+            yes,
+            shared,
+        } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &scope, &provider, yes)
+        }
+        Command::KeySet { provider, shared } => {
+            use std::io::IsTerminal;
+            if io::stdin().is_terminal() {
+                return Err(
+                    "key-set reads the value from stdin and refuses a terminal (the \
+                            value would be echoed); pipe it in instead"
+                        .into(),
+                );
+            }
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            let value = moai_cli::key_vault::read_value(io::stdin())?;
+            moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &scope, &provider, &value)
+        }
+        Command::KeyStatus { provider, shared } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &scope, &provider)
+        }
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1792,7 +1874,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 return Err("unsupported protocol_version; supported: 1".into());
             }
             let current = moai_cli::plan::current_revision(&project)?;
-            serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
+            serde_json::to_value(moai_cli::run::run_verify(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
@@ -1958,8 +2040,14 @@ fn usage_error(e: clap::Error) -> ExitCode {
         }
         _ => "invalid command line; see --help",
     };
-    let rendered = e.render().to_string();
-    eprintln!("{}", rendered.lines().next().unwrap_or(message));
+    // A key command's stray argument may be a key typed in the wrong place (#2393 S1 B2), so
+    // its stderr carries only the fixed text, never clap's line that quotes the argument.
+    if op.starts_with("key.") {
+        eprintln!("{message}");
+    } else {
+        let rendered = e.render().to_string();
+        eprintln!("{}", rendered.lines().next().unwrap_or(message));
+    }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
     ExitCode::from(2)
 }
