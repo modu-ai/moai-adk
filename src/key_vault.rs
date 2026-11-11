@@ -60,6 +60,18 @@ pub struct Blocked {
 }
 
 impl Blocked {
+    /// No vault entry, but a legacy key file exists (`file` relative to HOME). Its content is
+    /// not read (user decision, Issue #2393 comment 6778150969).
+    pub fn legacy_key_only(file: &str) -> Self {
+        Blocked::new(
+            "legacy_key_only",
+            format!(
+                "the vault holds no glm key; ~/{file} exists but is no longer read"
+            ),
+            "move the key with `moai-cli key-set glm` (value on stdin); the old file is left as it is",
+        )
+    }
+
     fn new(code: &'static str, reason: impl Into<String>, next: impl Into<String>) -> Self {
         Self {
             code,
@@ -174,7 +186,13 @@ pub fn folder_name(project_id: Option<&str>, primary_dir: &str, clone_hex: &str)
 /// git work tree. No git command is started here beyond the identity's own.
 pub fn project_scope(dir: &Path) -> Result<Option<Scope>> {
     let id = crate::identity::identity(dir)?;
-    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
+    if id["identity_status"] == "no_git" {
+        return Ok(None);
+    }
+    if id["identity_status"] != "ok" {
+        return Err("the workspace identity could not be resolved".into());
+    }
+    if id["work_tree"].is_null() {
         return Ok(None);
     }
     let clone = id["clone_id"].as_str().unwrap_or("");
@@ -562,6 +580,25 @@ pub fn read(
         }
     }
     Ok(read_entry(home, &Scope::Shared, provider)?.map(|v| (v, Scope::Shared)))
+}
+
+/// [`read`] for the project of the current directory (the launcher's entry point). A project
+/// that cannot be resolved is a refusal, not a silent skip to the shared folder.
+pub fn read_here(
+    home: &Path,
+    provider: &str,
+) -> std::result::Result<Option<(String, Scope)>, Blocked> {
+    let unresolved = |why: String| {
+        Blocked::new(
+            "key_absent",
+            format!("cannot resolve the project for the vault: {why}"),
+            format!("run it inside the project, or store the key with `moai-cli key-set {provider} --shared`"),
+        )
+    };
+    let dir = std::env::current_dir()
+        .map_err(|_| unresolved("the current directory is unreadable".into()))?;
+    let project = project_scope(&dir).map_err(unresolved)?;
+    read(home, project.as_ref(), provider)
 }
 
 /// `key-status`: whether the scope's entry exists, passes the safety rules and decrypts.
