@@ -6,6 +6,8 @@
 
 Commit the intended source, tests, and runner before mutation. The runner requires a committed HEAD and a clean source Git index and working tree, including no untracked files. Before Cargo runs, the initial snapshot must compare every tracked entry's physical bytes with the raw HEAD blob, validate stage-0 index entries and Git modes, and reject assume-unchanged or skip-worktree flags even when the physical bytes are clean. Git status or a clean diff alone is insufficient. A nonexecutable file with filesystem permissions `0600` is compatible with Git mode `100644`. The runner must preserve the original raw index rather than clearing flags or refreshing it to hide differences. It does not commit for you, copy dirty changes, or repair the source tree. Keep the specification and output in the source worktree's ignored `target/` directory; an untracked specification elsewhere would fail the clean-tree guard.
 
+Gitlinks (`160000`) are not ordinary directory placeholders. An initialized child must have its own Git worktree root, HEAD equal to the recorded gitlink OID, and a recursively clean index and physical working tree. Child raw index, HEAD, refs, flags and tracked bytes participate in source-preservation snapshots. Explicit `--ignore-submodules=none` prevents repository ignore settings from hiding ordinary dirt; recursive physical/index validation also rejects hidden flags and nested gitlink dirt. Empty uninitialized gitlinks remain metadata-only inputs, without fetch or initialization; nonempty uninitialized directories are rejected. The same child-state reader detects clone-side gitlink poisoning during restoration.
+
 Run from the **source Git root**, with Python 3.9+, Git, Cargo, and the trusted project's offline dependencies available. For example, save this JSON as `target/mutations.json`:
 
 ```json
@@ -35,6 +37,8 @@ The example describes a deliberate removal of Git-environment scrubbing; it does
 `CARGO_TARGET_DIR` is mandatory for this tool. Unlike ordinary developer build-directory examples in `AGENTS.local.md`, the runner requires a resolved, strict descendant of **this source worktree's `target/`**. The `target/` root itself, external paths, another worktree's target, sibling-prefix matches, and escaping symlinks are rejected. Do not share this root with another run or session. The runner selects a unique build-directory child beneath it, never the shared root itself.
 
 The no-sharing rule applies to `CARGO_TARGET_DIR`, not dependency caches. Explicit `CARGO_HOME`, `RUSTUP_HOME`, `RUSTC` and other toolchain/cache settings are respected; a deliberately prepared dependency cache such as this repository's `/tmp/moai-rc-product-cargo` may be shared. Unset settings use scratch defaults. With actual Rustup proxies, explicitly provide a prepared project/toolchain cache when the scratch defaults do not contain the required offline toolchain and dependencies. Missing preparation produces a Cargo error, not evidence of a killed mutation.
+
+The actual-compiler test helper resolves Rustup proxies through the original `rustup` manager alias using the prepared outer environment, then passes real native tool paths into the synthetic HOME. In particular, Homebrew's resolved `rustup-init` path must never be executed as Cargo, Rustc or the manager. A native tool already selected by PATH keeps precedence over an unrelated manager. Synthetic alias-dispatch regressions are separate from the six real offline compiler regressions.
 
 ## Specification
 
@@ -175,6 +179,28 @@ Start the controlled deadline after owned spawn/job setup. READY/IPC synchroniza
 | F4-other-error: process exception | Non-timeout exceptions are not test kills; cleanup remains fail-closed. | `passed`: `DeadlineHandshakeTests.test_communicate_exception_is_error_not_timeout`. |
 | F4-Windows-timeout: native Job Object lifecycle | Suspended spawn, job assignment/resume and child-tree timeout cleanup require native execution. | `not_run`: native Windows host unavailable. |
 | F4-live-SIGINT: actual interruption | Quiesce owned children before restoration; termination refusal remains fail-closed. | `not_run`: no live SIGINT execution evidence supplied; injected interruption does not establish a live signal result. |
+
+### Additional gitlink and native-tool boundaries
+
+On 2026-11-11 the parent observed **10 gitlink tests OK** and **6 native-alias tests OK** after recording the new regressions RED. Gitlink rejection observations assert zero Cargo calls and preserve literal parent/child contents, raw indexes, HEADs, refs and configurations. Both clean initialized and empty uninitialized positive controls remain accepted. An intermediate macOS failure of `/dev/fd/N` cwd traversal was repaired with child-only `fchdir` on the pinned directory descriptor; the CLI remains single-threaded and never changes its parent's cwd or falls back to an unchecked pathname.
+
+| Neighbor boundary | Required and observed behavior | Permanent consumer |
+| --- | --- | --- |
+| Exact dirty child with parent `ignore=all` | `blocked`, nonzero, Cargo 0; exact hidden literal retained. | `GitlinkSafety.test_dirty_child_hidden_by_ignore_all_is_blocked_without_cargo` |
+| Visible dirt / `ignore=dirty` | Both reject without normalizing source configuration or index. | `test_visible_dirty_child_is_blocked_without_cargo`, `test_dirty_child_hidden_by_ignore_dirty_is_blocked_without_cargo` |
+| Clean initialized child | Allow mutation of the parent clone; preserve child state. | `test_clean_initialized_child_is_allowed_without_source_changes` |
+| Child HEAD / index / staged / untracked divergence | Each rejects, including a clean child HEAD different from the parent gitlink OID. | `test_child_head_index_staged_and_untracked_changes_are_blocked` (four states) |
+| Child assume / skip / combined flags | Reject each with clean and dirty physical bytes; preserve raw flags and index. | `test_hidden_child_index_flags_are_blocked_without_rewriting_index` (six states) |
+| Nested gitlink hidden bytes | Recursively reject despite clean porcelain at every level. | `test_nested_gitlink_hidden_bytes_are_blocked_without_cargo` |
+| Empty / nonempty uninitialized gitlink | Empty is metadata-only and remains uninitialized; nonempty rejects. | `test_empty_uninitialized_gitlink_is_allowed_as_metadata_only`, `test_nonempty_uninitialized_gitlink_is_blocked_without_cargo` |
+| Clone-only gitlink poison | `restored: false`, nonzero restore result; stop before the next mutation and retain the poison in the clone, never source. | `test_clone_gitlink_poison_blocks_restoration_and_next_mutation` |
+| Ordinary Rustup / Homebrew installer alias | Resolve through manager argv[0], then execute both synthetic native tools under a different synthetic HOME. The installer rejects even `which`. | `NativeToolAliasTests.test_ordinary_rustup_proxy_resolves_executable_native_tools`, `test_homebrew_installer_alias_resolves_executable_native_tools` |
+| Hardlinked proxy | Detect shared manager identity without replacing the manager alias with its resolved payload. | `test_hardlinked_proxies_use_samefile_manager_alias` |
+| Native PATH precedence | Execute the selected native tool, not the unrelated manager's incompatible toolchain. | `test_native_path_tools_take_precedence_over_unrelated_manager` |
+| Missing manager / invalid manager result | Explicit native prerequisite error; no installer invocation. Reject a returned proxy, missing file, directory or nonexecutable. | `test_proxy_without_manager_reports_clear_native_prerequisite_error`, `test_manager_returning_proxy_or_unusable_path_reports_clear_error` |
+
+The parent compiled and exercised **8 unique private mutant blobs**, with **9 assertion-detected consumer failures** and **1 surviving redundant-guard control**. Two variants deliberately remove two sites: forced-visible status plus recursive child validation for the original hidden-dirty input, and forced-visible status plus gitlink HEAD equality for child-HEAD divergence. A single recursive-validation removal still rejects ordinary visible dirt through the status guard; that surviving control is not counted as a kill. One uninitialized-content-signature variant is consumed separately by source rejection and clone-restoration tests, not counted as two distinct variants. Other variants remove child clean proof, execute the resolved installer for `which`, override native PATH precedence, skip returned-tool validation, or restore the exact original Homebrew-misclassifying helper. Mutants are private copies, never source-tree edits. Native Windows and live SIGINT remain `not_run`; synthetic alias tools are not real compiler evidence.
+
 
 
 ## Retained artifacts and manual cleanup

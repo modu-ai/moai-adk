@@ -18,17 +18,29 @@ DIAGNOSTIC_MACRO = ('extern crate proc_macro;\n'
 
 
 def native_tool(name, outer_env):
-    """Resolve rustup with the prepared outer environment, never fixture HOME."""
-    found = shutil.which(name, path=outer_env.get("PATH"))
+    """Resolve native tools through the prepared manager alias, never fixture HOME."""
+    found = shutil.which(name, path=outer_env.get("PATH", ""))
     if not found:
         raise AssertionError("Actual native " + name + " is required on prepared outer PATH")
-    path = Path(found).resolve()
-    if path.stem == "rustup":
-        result = subprocess.run([str(path), "which", name], env=outer_env,
-                                capture_output=True, text=True, check=True)
-        path = Path(result.stdout.strip()).resolve()
-    if not path.is_file() or path.stem == "rustup":
-        raise AssertionError("Prepared outer environment did not resolve native " + name)
+    manager = shutil.which("rustup", path=outer_env.get("PATH", ""))
+
+    def is_proxy(path):
+        return (path.stem.lower() in ("rustup", "rustup-init")
+                or (manager is not None and path.samefile(manager)))
+
+    try:
+        path = Path(found).resolve()
+        if is_proxy(path):
+            if manager is None:
+                raise AssertionError("Actual native " + name + " requires rustup on prepared outer PATH")
+            # Preserve argv[0]: Homebrew's resolved rustup-init is an installer.
+            result = subprocess.run([str(Path(manager).absolute()), "which", name],
+                                    env=outer_env, capture_output=True, text=True, check=True)
+            path = Path(result.stdout.strip()).resolve()
+        if not path.is_file() or not os.access(path, os.X_OK) or is_proxy(path):
+            raise AssertionError("Prepared outer environment did not resolve native " + name)
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+        raise AssertionError("Prepared outer environment did not resolve native " + name) from error
     return path
 
 

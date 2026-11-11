@@ -31,10 +31,16 @@ class Parser(argparse.ArgumentParser):
 
 
 def git(root, env, *args, check=True):
+    # This CLI is single-threaded. Change cwd only in the forked Git child:
+    # macOS cannot traverse /dev/fd/N as a directory, unlike Linux.
+    pinned_cwd = ({"pass_fds": (root,), "preexec_fn": lambda: os.fchdir(root)}
+                  if isinstance(root, int) else {})
     result = subprocess.run(
         ["git", "--no-optional-locks", "-c", "core.fsmonitor=false",
          "-c", "maintenance.auto=false",
-         "-c", "gc.auto=0", *args], cwd=root, env=env,
+         "-c", "gc.auto=0", *args],
+        cwd=None if isinstance(root, int) else root, env=env,
+        **pinned_cwd,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if check and result.returncode:
         raise Blocked("git {}: {}".format(args[0], result.stderr.decode("utf-8", "replace").strip()))
@@ -59,21 +65,39 @@ def _index_entries(raw):
     return entries
 
 
-def source_snapshot(root, env):
+def _repository_identity(root, env):
+    actual = os.fsdecode(git(root, env, "rev-parse", "--show-toplevel").stdout.rstrip(b"\n"))
+    expected = os.fstat(root) if isinstance(root, int) else os.stat(root)
+    found = os.stat(actual)
+    if (expected.st_dev, expected.st_ino) != (found.st_dev, found.st_ino):
+        raise Blocked("gitlink must have its own actual Git worktree root")
+    git_dir = os.fsdecode(git(root, env, "rev-parse", "--absolute-git-dir").stdout.rstrip(b"\n"))
+    info = os.stat(git_dir)
+    return info.st_dev, info.st_ino
+
+
+def source_snapshot(root, env, ancestors=()):
+    identity = _repository_identity(root, env)
+    if identity in ancestors:
+        raise Blocked("recursive gitlink repository identity")
+    ancestors = (*ancestors, identity)
     head = git(root, env, "rev-parse", "--verify", "HEAD^{commit}").stdout.strip().decode("ascii")
     metadata = git(root, env, "ls-files", "--stage", "-v", "-z").stdout
     entries = _index_entries(metadata)
     # Read tracked entries before asking Git to inspect working-tree status.
     # An unsafe ancestor aborts this snapshot without opening its descendants.
-    tracked = _tracked_files(root, env, entries)
+    tracked = _tracked_files(root, env, entries, ancestors)
     raw_metadata = []
     for name in ("index", "HEAD"):
         path = Path(os.fsdecode(git(root, env, "rev-parse", "--git-path", name).stdout.rstrip(b"\n")))
-        if not path.is_absolute():
-            path = root / path
-        raw_metadata.append(path.read_bytes())
+        if path.is_absolute():
+            data, _ = read_regular(Path(path.anchor), path.relative_to(path.anchor).as_posix())
+        else:
+            data, _ = read_regular(root, path.as_posix())
+        raw_metadata.append(data)
     return (head, raw_metadata[0], tracked,
-            git(root, env, "status", "--porcelain=v1", "--untracked-files=all").stdout,
+            git(root, env, "status", "--porcelain=v1", "--untracked-files=all",
+                "--ignore-submodules=none").stdout,
             git(root, env, "show-ref", check=False).stdout, raw_metadata[1], metadata,
             git(root, env, "ls-tree", "-r", "-z", "--full-tree", "HEAD").stdout)
 
@@ -101,8 +125,16 @@ def require_clean_source(snapshot):
             matches = actual_mode == mode and actual[3] == oid
         elif actual[0] == "symlink":
             matches = mode == b"120000" and actual[2] == oid
+        elif actual[0] == "gitlink" and mode == b"160000":
+            state = actual[2]
+            if state[0] == "initialized":
+                child = state[1]
+                require_clean_source(child)
+                matches = child[0].encode("ascii") == oid
+            else:
+                matches = not state[1]
         else:
-            matches = actual[0] == "directory" and mode == b"160000"
+            matches = False
         if not matches:
             raise Blocked("working tracked entry differs from HEAD: " + name)
 
@@ -118,7 +150,8 @@ def _relative_parts(relative):
 @contextmanager
 def _posix_parent(root, relative):
     parts = _relative_parts(relative)
-    directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    directory = (os.dup(root) if isinstance(root, int) else
+                 os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
     try:
         for part in parts[:-1]:
             child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
@@ -272,6 +305,42 @@ def _read_tracked_entry(root, relative):
         raise Blocked("tracked path is not a supported entry: " + relative)
     except OSError as exc:
         raise Blocked("cannot safely read tracked entry {}: {}".format(relative, exc)) from exc
+
+
+@contextmanager
+def _tracked_directory(root, relative):
+    """Keep the gitlink and all its parents pinned while inspecting its state."""
+    try:
+        if os.name == "nt":
+            # Treat the gitlink itself as an ancestor, so the existing Windows
+            # reader pins and checks it for reparse points as well.
+            with _windows_parent(root, relative + "/.git") as path:
+                yield path.parent
+        else:
+            with _posix_parent(root, relative) as (directory, leaf):
+                child = os.open(leaf, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                dir_fd=directory)
+                try:
+                    # Git receives this inherited descriptor as its cwd; no
+                    # pathname traversal can redirect it after validation.
+                    yield child
+                finally:
+                    os.close(child)
+    except OSError as exc:
+        raise Blocked("cannot safely inspect gitlink {}: {}".format(relative, exc)) from exc
+
+
+def _gitlink_snapshot(root, relative, env, ancestors):
+    with _tracked_directory(root, relative) as child:
+        names = tuple(sorted(os.listdir(child)))
+        if ".git" not in names:
+            # Never let Git discover the parent repository from an
+            # uninitialized directory, or overlook bytes planted in it.
+            return "uninitialized", names
+        kind, _, _ = _read_tracked_entry(child, ".git")
+        if kind not in ("file", "directory"):
+            raise Blocked("gitlink metadata must not be a symlink: " + relative)
+        return "initialized", source_snapshot(child, env, ancestors)
 
 
 def write_regular(root, relative, data, mode):
@@ -776,10 +845,12 @@ def run_target(argv, workspace, env, timeout, *, clock=None, started=None, spawn
     return row, interrupted
 
 
-def _tracked_files(workspace, env, entries=None):
+def _tracked_files(workspace, env, entries=None, ancestors=()):
     """Snapshot actual entries, independently of Git's index shortcuts."""
     if entries is None:
         entries = _index_entries(git(workspace, env, "ls-files", "--stage", "-v", "-z").stdout)
+    if not ancestors:
+        ancestors = (_repository_identity(workspace, env),)
     algorithm = git(workspace, env, "rev-parse", "--show-object-format").stdout.strip().decode("ascii")
     if algorithm not in ("sha1", "sha256"):
         raise Blocked("unsupported Git object format: " + algorithm)
@@ -795,6 +866,9 @@ def _tracked_files(workspace, env, entries=None):
             tracked[name] = (kind, permissions, digest(data), oid)
         elif kind == "symlink":
             tracked[name] = (kind, os.fsdecode(data), oid)
+        elif kind == "directory" and entries[name][1] == b"160000":
+            tracked[name] = ("gitlink", permissions,
+                             _gitlink_snapshot(workspace, name, env, ancestors))
         else:
             tracked[name] = (kind, permissions)
     return tracked
@@ -803,7 +877,8 @@ def _tracked_files(workspace, env, entries=None):
 def restore(workspace, env, name, data, mode, index, head, head_bytes, tracked):
     try:
         write_regular(workspace, name, data, mode)
-        diff = git(workspace, env, "diff", "--no-ext-diff", "--quiet", "HEAD", "--", check=False)
+        diff = git(workspace, env, "diff", "--no-ext-diff", "--ignore-submodules=none",
+                   "--quiet", "HEAD", "--", check=False)
         current, current_mode = read_regular(workspace, name)
         current_index = git(workspace, env, "ls-files", "--stage", "-v", "-z").stdout
         current_tracked = _tracked_files(workspace, env)
@@ -811,7 +886,8 @@ def restore(workspace, env, name, data, mode, index, head, head_bytes, tracked):
                     and current_index == index and current_tracked == tracked
                     and (workspace / ".git/HEAD").read_bytes() == head_bytes
                     and git(workspace, env, "rev-parse", "HEAD").stdout.strip().decode() == head
-                    and git(workspace, env, "diff", "--cached", "--quiet", "HEAD", check=False).returncode == 0)
+                    and git(workspace, env, "diff", "--cached", "--ignore-submodules=none",
+                            "--quiet", "HEAD", check=False).returncode == 0)
         return restored, 0 if restored else (diff.returncode or 1), None
     except (OSError, Blocked) as exc:
         return False, 1, str(exc)
