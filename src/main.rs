@@ -1049,9 +1049,7 @@ fn launch(
     o: LaunchOpts,
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    use moai_cli::session::{
-        launch_settings, peek_agent_number, take_agent_number, AdvisorSource,
-    };
+    use moai_cli::session::{launch_settings, peek_agent_number, take_agent_number, AdvisorSource};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
     // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });

@@ -109,7 +109,11 @@ fn argv(v: &Value) -> Vec<String> {
 fn rejected(out: &Output) -> String {
     let stderr = String::from_utf8_lossy(&out.stderr).to_string();
     assert_eq!(out.status.code(), Some(1), "{stderr}");
-    assert!(out.stdout.is_empty(), "{}", String::from_utf8_lossy(&out.stdout));
+    assert!(
+        out.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
     assert!(!stderr.contains("SECRET"), "value echoed: {stderr}");
     stderr
 }
@@ -195,7 +199,13 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "--dangerously-skip-permissions",
         ],
         2 => vec![
-            "claude", "--model", "opus", "--effort", "medium", "--advisor", advisor,
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--advisor",
+            advisor,
         ],
         _ => unreachable!(),
     }
@@ -256,7 +266,11 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
     for (role, flags) in ROLES.iter().enumerate() {
         let v = dry(&f, &args_for("cc", flags, &["--advisor", "fable"]));
         assert_eq!(v["argv"], serde_json::json!(with_advisor(role, "fable")));
-        assert!(v["notes"].to_string().contains("usage credits"), "{}", v["notes"]);
+        assert!(
+            v["notes"].to_string().contains("usage credits"),
+            "{}",
+            v["notes"]
+        );
     }
     config(f.home.path(), r#"{"launcher":{"advisor":"fable"}}"#);
     for (role, flags) in ROLES.iter().enumerate() {
@@ -301,7 +315,17 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
     );
     assert_eq!(
         argv(&dry(&f, &["cc", "-l"])),
-        ["claude", "--name", "leader", "--model", "opus", "--effort", "medium", "--advisor", "fable"]
+        [
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--advisor",
+            "fable"
+        ]
     );
 }
 
@@ -316,7 +340,10 @@ fn advisor_and_no_advisor_together_are_refused() {
         for host in HOSTS {
             for flags in ROLES {
                 for dry_run in [true, false] {
-                    let mut c = command(&f, &args_for(host, flags, &["--advisor", "fable", "--no-advisor"]));
+                    let mut c = command(
+                        &f,
+                        &args_for(host, flags, &["--advisor", "fable", "--no-advisor"]),
+                    );
                     if dry_run {
                         c.arg("--dry-run");
                     }
@@ -365,7 +392,18 @@ fn lower_ranked_setting_is_refused_before_numbering() {
     let v = dry(&f, &["cc", "-l", "--model", "sonnet"]);
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "leader", "--model", "sonnet", "--effort", "medium", "--advisor", "sonnet", "--dangerously-skip-permissions"]
+        [
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "sonnet",
+            "--effort",
+            "medium",
+            "--advisor",
+            "sonnet",
+            "--dangerously-skip-permissions"
+        ]
     );
 }
 
@@ -395,7 +433,11 @@ fn real_launch_uses_the_setting() {
     let f = fixture();
     config(f.home.path(), r#"{"launcher":{"advisor":"fable"}}"#);
     let out = command(&f, &["cc", "-a"]).output().unwrap();
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["argv"], serde_json::json!(with_advisor(1, "fable")));
     assert_eq!(v["executed"], serde_json::json!(true));
