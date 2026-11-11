@@ -4,8 +4,8 @@ tests/e2e/host-claude.sh and host-codex.sh with the credential variables strippe
 
 Every receipt the operator will later collect must already have this exact shape,
 and the credential-gated measurements must come out not_run with the reason naming
-the missing credential — never a guessed pass (REQ-08C-01, AGENTS.local.md: 미실행
-검사는 not_run으로 적는다). AC-08C-5 (`claude plugin validate`) needs no credentials
+the missing credential — never a guessed pass (REQ-08C-01, AGENTS.local.md: a check
+that did not run is recorded as not_run). AC-08C-5 (`claude plugin validate`) needs no credentials
 and is measured for real here.
 
 Skipped (with an explicit reason) on machines without the local binaries the

@@ -64,12 +64,12 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "c2aead4c5e65aafdc32a9aeb6f1598734cd4c957a5a9fd396a6ed98278ed552c",
+      "sha256": "e4437eed0d9d8ba561531b2beff4ef3a4cf6823b77d2d3e8be1527e74a08b364",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401."
       }
     },
     "workflows/setup.md": {
@@ -109,25 +109,25 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "45e8a46a811d2d7ba84a6c0f3fe0272f5c0e810403cf99eccf507bcb2e7fd33b",
+      "sha256": "4cda69b11052b12f7b46ed676039a74bde69353a85c8a7bd70dadafaac7d6835",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401."
       }
     },
     "workflows/audit.md": {
-      "sha256": "c2aafe87f07c580e9760f5712c72654e2604f84d978bbc62a00a1bc4f91b76ea",
+      "sha256": "ae14532bb0e9216692ae7d3e401b3faace09f161fea64f5653c0b0e98169b9a0",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401."
       }
     },
     "workflows/sync.md": {
-      "sha256": "3fcb5810e69dd0e086e336a7f7c0f063a55fd88e8bbdae98e94dadf97f4b2ec1",
+      "sha256": "5b2d7a6c6dbddf1c83f1f0853f4113d6bbd18e445eadd4fa94417f0fe40d3713",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -136,21 +136,21 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "edea379a9ed10d6feed1cf24e8c3e47a4bcaa85fc58960438993a0cd679eee12",
+      "sha256": "eab7c693c9156c2a464cc5606a279caa2dc0a08d97d8577b761b23c1c5b18df5",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286)."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286)."
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "6bd10d70a4f4534ff9482c33b9127e401985bd6ab8bdf7845a3bbf38e6b1cc6f",
+      "sha256": "4c7dc8a6a260f0b47a393d3e44d897dcffb98b901f8c82d20486011c986687ab",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286)."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286)."
       }
     }
   }

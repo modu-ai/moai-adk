@@ -9,11 +9,12 @@ asserts the classification plus that the SPEC bytes are untouched. The
 procedure itself stays prose executed by the host; nothing here is product
 code.
 
-Fixture states mirror the design's seven-way classification wording:
-- spec_oracle_conflict       "SPEC 문구와 테스트 oracle이 충돌함"
-- broken_reference           "삭제·이름 변경으로 참조가 끊김"
-- done_but_stale_evidence    "Issue는 완료인데 검증 증거가 없거나 stale임"
-- explicit_link_unreviewed   "명시 link는 있으나 의미가 맞는지 검토되지 않음"
+Fixture states mirror the design's seven-way classification wording (original text:
+docs/design-review/appendix/state-vocabulary-crosswalk.md):
+- spec_oracle_conflict       the SPEC wording and a test oracle contradict each other
+- broken_reference           a deletion or rename severed a reference
+- done_but_stale_evidence    the Issue is done but its verification evidence is missing or stale
+- explicit_link_unreviewed   an explicit link exists but its meaning was never reviewed
 """
 
 import os
