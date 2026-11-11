@@ -5,8 +5,10 @@
 //! The clone takes only the pull request's head branch without a checkout, then fetches the
 //! base branch for the merge base and checks out the exact head detached (§D4: about 5 MiB of
 //! `.git` instead of the full history's ~470 MiB, still independent of the author's object
-//! store). The folder is `<tmp>/moai-audit-<pr>-<head8>`, the name `worktree-report` (WT-1)
-//! counts as an audit clone. Evidence is kept in `~/.moai-cli/projects/<project_id>/audits/
+//! store). The clone names its remote `origin` explicitly and copies a local source with
+//! `--no-local`, so no alternates are inherited; a relative local origin is resolved against
+//! the project's top-level folder. The folder is `<tmp>/moai-audit-<pr>-<head8>`, the name
+//! `worktree-report` (WT-1) counts as an audit clone. Evidence is kept in `~/.moai-cli/projects/<project_id>/audits/
 //! <pr>-<head8>/` (user decision 2026-11-10, #2389 comment 6774899518 row 32, Q6 B); without a
 //! project profile the evidence folder is unknown and the answer says why.
 
@@ -53,6 +55,34 @@ fn branch_ok(project: &Path, name: &str) -> bool {
     !name.starts_with('-') && git_out(project, &["check-ref-format", "--branch", name]).is_some()
 }
 
+/// True when git reads `url` as a local path: no `scheme://` and not the scp-like
+/// `host:path` form (a colon before the first slash).
+fn is_local_path(url: &str) -> bool {
+    if url.contains("://") {
+        return false;
+    }
+    match url.find(':') {
+        Some(i) => url[..i].contains('/'),
+        None => true,
+    }
+}
+
+/// The default origin URL as the clone command must see it. Git resolves a relative local
+/// path in a remote against the repository's top-level folder, but the planned commands run
+/// from anywhere, so a relative path is made absolute against that folder here.
+fn origin_url(project: &Path) -> Option<String> {
+    let url = git_out(project, &["remote", "get-url", "origin"])?;
+    if !is_local_path(&url) || Path::new(&url).is_absolute() {
+        return Some(url);
+    }
+    let top = git_out(project, &["rev-parse", "--show-toplevel"])
+        .map(PathBuf::from)
+        .unwrap_or_else(|| project.to_path_buf());
+    let joined = top.join(&url);
+    let resolved = std::fs::canonicalize(&joined).unwrap_or(joined);
+    Some(resolved.to_string_lossy().into_owned())
+}
+
 /// The evidence folder for `project_id` under `home_state_root`.
 pub fn evidence_dir(home_state_root: &Path, project_id: &str, pr: u64, head: &str) -> PathBuf {
     home_state_root
@@ -81,8 +111,9 @@ pub fn plan(project: &Path, req: &Request) -> Result<Value> {
     }
     let url = match req.repo_url {
         Some(u) => u.to_string(),
-        None => git_out(project, &["remote", "get-url", "origin"])
-            .ok_or("audit clone refused: no --repo-url and no origin remote")?,
+        None => {
+            origin_url(project).ok_or("audit clone refused: no --repo-url and no origin remote")?
+        }
     };
     if url.is_empty() || url.chars().any(char::is_whitespace) || url.starts_with('-') {
         return Err("audit clone refused: the repository URL is not usable".into());
@@ -110,10 +141,17 @@ pub fn plan(project: &Path, req: &Request) -> Result<Value> {
         ),
         (_, None) => (Value::Null, json!("HOME unavailable")),
     };
+    // `--origin origin`: the fetch and `refs/remotes/origin/…` below need that remote name,
+    // whatever `clone.defaultRemoteName` says. `--no-local`: a local source is copied over the
+    // git transport, so the clone never inherits its alternates or hardlinks its objects and
+    // stays independent of the author's object store (§D4); for a remote URL it changes nothing.
     let commands = vec![
         vec![
             "git".to_string(),
             "clone".into(),
+            "--origin".into(),
+            "origin".into(),
+            "--no-local".into(),
             "--single-branch".into(),
             "--branch".into(),
             req.head_branch.into(),
@@ -187,6 +225,28 @@ mod tests {
         assert!(!is_sha(&format!("{ok}8")));
         assert!(!is_sha(&ok.to_uppercase()));
         assert!(!is_sha("g123456789abcdef0123456789abcdef01234567"));
+    }
+
+    #[test]
+    fn local_paths_are_told_apart_from_remote_urls() {
+        for local in [
+            "../forge.git",
+            "forge.git",
+            "/srv/forge.git",
+            "./a:b/c",
+            "sub/x:y",
+        ] {
+            assert!(is_local_path(local), "{local}");
+        }
+        for remote in [
+            "https://github.com/o/r.git",
+            "ssh://git@github.com/o/r.git",
+            "file:///srv/forge.git",
+            "git@github.com:o/r.git",
+            "host:path",
+        ] {
+            assert!(!is_local_path(remote), "{remote}");
+        }
     }
 
     #[test]

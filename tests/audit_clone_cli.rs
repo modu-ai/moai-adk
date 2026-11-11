@@ -166,6 +166,95 @@ fn the_planned_commands_make_a_minimal_detached_clone() {
     assert!(!refs.contains("other"), "{refs}");
 }
 
+/// Runs the planned commands from `cwd`, with `pre` as git options before each subcommand.
+fn run_commands(r: &Value, cwd: &Path, pre: &[&str]) -> Vec<String> {
+    r["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|argv| {
+            let argv: Vec<&str> = argv
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|a| a.as_str().unwrap())
+                .collect();
+            assert_eq!(argv[0], "git");
+            let mut all = pre.to_vec();
+            all.extend_from_slice(&argv[1..]);
+            git(cwd, &all)
+        })
+        .collect()
+}
+
+#[test]
+fn a_relative_local_origin_is_resolved_against_the_project() {
+    let fx = fixture();
+    // `project` and `forge.git` are siblings, so `../forge.git` works only from the project.
+    git(
+        &fx.project,
+        &["remote", "set-url", "origin", "../forge.git"],
+    );
+    let v = plan(&fx, &[]);
+    assert_eq!(v["ok"], true, "{v}");
+    let r = &v["result"];
+    assert_eq!(r["repo_url"], fx.bare.to_str().unwrap());
+    // Run from a folder two levels down, where `../forge.git` would name nothing.
+    let deep = fx.tmp.join("a").join("b");
+    fs::create_dir_all(&deep).unwrap();
+    let out = run_commands(r, &deep, &[]);
+    assert_eq!(out[3], fx.head);
+    assert_eq!(out[4], fx.base);
+}
+
+#[test]
+fn the_clone_names_its_remote_origin_whatever_the_default_name() {
+    let fx = fixture();
+    let v = plan(&fx, &[]);
+    let r = &v["result"];
+    let out = run_commands(r, &fx.tmp, &["-c", "clone.defaultRemoteName=upstream"]);
+    assert_eq!(out[3], fx.head);
+    assert_eq!(
+        out[4], fx.base,
+        "the base fetch into refs/remotes/origin worked"
+    );
+    let dir = PathBuf::from(r["clone_dir"].as_str().unwrap());
+    assert_eq!(git(&dir, &["remote"]), "origin");
+}
+
+#[test]
+fn a_local_source_with_alternates_gives_an_independent_clone() {
+    let fx = fixture();
+    // `alt.git` borrows every object from `forge.git` through objects/info/alternates.
+    let alt = fx.bare.with_file_name("alt.git");
+    git(
+        &fx.tmp,
+        &[
+            "clone",
+            "-q",
+            "--bare",
+            "--shared",
+            fx.bare.to_str().unwrap(),
+            alt.to_str().unwrap(),
+        ],
+    );
+    assert!(alt.join("objects/info/alternates").exists());
+    let url_flag = format!("--repo-url={}", alt.to_str().unwrap());
+    let v = plan(&fx, &[url_flag.as_str()]);
+    assert_eq!(v["ok"], true, "{v}");
+    let r = &v["result"];
+    let out = run_commands(r, &fx.tmp, &[]);
+    assert_eq!(out[3], fx.head);
+    let dir = PathBuf::from(r["clone_dir"].as_str().unwrap());
+    assert!(
+        !dir.join(".git/objects/info/alternates").exists(),
+        "the clone must not borrow the source's objects"
+    );
+    // With the borrowed-from store gone, the clone still reads its own objects.
+    fs::rename(&fx.bare, fx.bare.with_file_name("forge.moved")).unwrap();
+    assert_eq!(git(&dir, &["cat-file", "-t", &fx.head]), "commit");
+}
+
 #[test]
 fn bad_inputs_are_refused_before_anything_is_planned() {
     let fx = fixture();
