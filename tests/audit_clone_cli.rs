@@ -246,6 +246,58 @@ fn a_relative_origin_that_itself_has_a_space_is_still_refused() {
     assert!(v.to_string().contains("not usable"), "{v}");
 }
 
+/// Raw origin boundary through the real CLI path (`git remote get-url` → plan). Every value
+/// is stored with `git config` exactly as written; the plan must refuse it rather than plan a
+/// trimmed or otherwise different URL. Literal values, one per boundary cell.
+#[test]
+fn raw_origin_values_with_surrounding_or_control_characters_are_refused() {
+    for raw in [
+        " ../forge.git",     // leading space
+        "../forge.git ",     // trailing space (re-audit 6792085218 reproduction)
+        "\t../forge.git",    // leading tab
+        "../forge.git\t",    // trailing tab
+        "../forge.git\r",    // trailing CR
+        "../a\nb",           // newline inside the value
+        "../forge\u{1}.git", // other control character
+        "-x",                // leading dash
+    ] {
+        let fx = fixture();
+        git(&fx.project, &["config", "remote.origin.url", raw]);
+        let v = plan(&fx, &[]);
+        assert_eq!(v["ok"], false, "{raw:?}: {v}");
+        assert!(v.to_string().contains("not usable"), "{raw:?}: {v}");
+    }
+}
+
+#[test]
+fn a_raw_origin_that_is_not_utf8_is_refused() {
+    let fx = fixture();
+    git(&fx.project, &["config", "--unset-all", "remote.origin.url"]);
+    let config = fx.project.join(".git").join("config");
+    let mut bytes = fs::read(&config).unwrap();
+    bytes.extend_from_slice(b"[remote \"origin\"]\n\turl = ../forge\xff.git\n");
+    fs::write(&config, bytes).unwrap();
+    let v = plan(&fx, &[]);
+    assert_eq!(v["ok"], false, "{v}");
+    assert!(v.to_string().contains("not UTF-8"), "{v}");
+}
+
+#[test]
+fn an_empty_origin_is_planned_as_git_reads_it_the_remote_name() {
+    // Git answers an empty remote URL with the remote's name, so the plan uses what git uses.
+    let fx = fixture();
+    git(&fx.project, &["config", "remote.origin.url", ""]);
+    assert_eq!(git(&fx.project, &["remote", "get-url", "origin"]), "origin");
+    let v = plan(&fx, &[]);
+    assert_eq!(v["ok"], true, "{v}");
+    let url = v["result"]["repo_url"].as_str().unwrap();
+    assert_eq!(
+        url,
+        fx.project.join("origin").to_str().unwrap(),
+        "resolved against the project top level"
+    );
+}
+
 #[test]
 fn the_clone_names_its_remote_origin_whatever_the_default_name() {
     let fx = fixture();

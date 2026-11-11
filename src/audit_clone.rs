@@ -35,7 +35,8 @@ fn is_sha(s: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-fn git_out(dir: &Path, args: &[&str]) -> Option<String> {
+/// Stdout of a successful git call, byte for byte.
+fn git_bytes(dir: &Path, args: &[&str]) -> Option<Vec<u8>> {
     let mut cmd = Command::new("git");
     scrub_git_env(&mut cmd);
     let out = cmd
@@ -45,9 +46,12 @@ fn git_out(dir: &Path, args: &[&str]) -> Option<String> {
         .args(args)
         .output()
         .ok()?;
-    out.status
-        .success()
-        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+    out.status.success().then_some(out.stdout)
+}
+
+/// Trimmed stdout, for git answers whose surrounding whitespace carries no meaning.
+fn git_out(dir: &Path, args: &[&str]) -> Option<String> {
+    git_bytes(dir, args).map(|b| String::from_utf8_lossy(&b).trim().to_string())
 }
 
 /// True when `name` is a valid branch name for git (`git check-ref-format --branch`, offline).
@@ -68,27 +72,40 @@ fn is_local_path(url: &str) -> bool {
 }
 
 /// True when `raw`, a repository URL as the user or the remote config wrote it, can be
-/// planned: not empty, no whitespace, not starting with `-`. Only the written value is
-/// checked; a path this tool builds from it (see `origin_url`) may contain the spaces of the
-/// project's own folder and is passed as one argv element.
+/// planned: not empty, no whitespace (space, tab, CR, LF, …), no other control character, not
+/// starting with `-`. Only the written value is checked; a path this tool builds from it (see
+/// `origin_url`) may contain the spaces of the project's own folder and is passed as one argv
+/// element.
 fn usable_url(raw: &str) -> bool {
-    !raw.is_empty() && !raw.chars().any(char::is_whitespace) && !raw.starts_with('-')
+    !raw.is_empty()
+        && !raw.chars().any(|c| c.is_whitespace() || c.is_control())
+        && !raw.starts_with('-')
 }
 
-/// The default origin as (written value, URL for the clone command). Git resolves a relative
+const URL_NOT_USABLE: &str = "audit clone refused: the repository URL is not usable";
+
+/// The default origin as (written value, URL for the clone command). The written value is
+/// read without loss: `git remote get-url` prints the configured URL and one newline, and only
+/// that newline is removed, so leading or trailing spaces stay and are refused by
+/// `usable_url` instead of silently naming a different repository. Git resolves a relative
 /// local path in a remote against the repository's top-level folder, but the planned commands
 /// run from anywhere, so a relative path is made absolute against that folder here.
-fn origin_url(project: &Path) -> Option<(String, String)> {
-    let url = git_out(project, &["remote", "get-url", "origin"])?;
-    if !is_local_path(&url) || Path::new(&url).is_absolute() {
-        return Some((url.clone(), url));
+fn origin_url(project: &Path) -> Result<(String, String)> {
+    let mut raw = git_bytes(project, &["remote", "get-url", "origin"])
+        .ok_or("audit clone refused: no --repo-url and no origin remote")?;
+    if raw.last() == Some(&b'\n') {
+        raw.pop();
+    }
+    let url = String::from_utf8(raw).map_err(|_| format!("{URL_NOT_USABLE} (not UTF-8)"))?;
+    if !usable_url(&url) || !is_local_path(&url) || Path::new(&url).is_absolute() {
+        return Ok((url.clone(), url));
     }
     let top = git_out(project, &["rev-parse", "--show-toplevel"])
         .map(PathBuf::from)
         .unwrap_or_else(|| project.to_path_buf());
     let joined = top.join(&url);
     let resolved = std::fs::canonicalize(&joined).unwrap_or(joined);
-    Some((url, resolved.to_string_lossy().into_owned()))
+    Ok((url, resolved.to_string_lossy().into_owned()))
 }
 
 /// The evidence folder for `project_id` under `home_state_root`.
@@ -119,12 +136,10 @@ pub fn plan(project: &Path, req: &Request) -> Result<Value> {
     }
     let (written, url) = match req.repo_url {
         Some(u) => (u.to_string(), u.to_string()),
-        None => {
-            origin_url(project).ok_or("audit clone refused: no --repo-url and no origin remote")?
-        }
+        None => origin_url(project)?,
     };
     if !usable_url(&written) {
-        return Err("audit clone refused: the repository URL is not usable".into());
+        return Err(URL_NOT_USABLE.into());
     }
     let head8 = &req.head[..8];
     let dir = req.tmp_root.join(format!("moai-audit-{}-{head8}", req.pr));
@@ -259,7 +274,20 @@ mod tests {
 
     #[test]
     fn usable_url_rejects_only_raw_whitespace_empty_and_leading_dash() {
-        for bad in ["", " ", "a b", "../my forge.git", "-x", "\t"] {
+        for bad in [
+            "",
+            " ",
+            "a b",
+            "../my forge.git",
+            "-x",
+            "\t",
+            " ../forge.git",
+            "../forge.git ",
+            "../forge.git\r",
+            "../a\nb",
+            "../forge\u{1}.git",
+            "../forge\0.git",
+        ] {
             assert!(!usable_url(bad), "{bad:?}");
         }
         // Written values without whitespace pass. A path origin_url builds, such as
