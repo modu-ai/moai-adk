@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import sys
 import tarfile
@@ -96,6 +97,20 @@ class InstallerTest(unittest.TestCase):
         self.env = {"PATH": str(self.bin), "HOME": str(self.root), "RUNNER_OS": "Linux",
                     "RUNNER_TEMP": str(self.root / "runner"), "GITHUB_PATH": str(self.path_file),
                     "FIXTURE_ROOT": str(self.root), "PYTHONDONTWRITEBYTECODE": "1"}
+
+    def set_payload_version(self, text, exit_code=0):
+        source = self.script.read_text()
+        for arch in PINS:
+            archive = self.root / (arch + ".tar.gz")
+            old = hashlib.sha256(archive.read_bytes()).hexdigest()
+            data = ("#!/bin/bash\nprintf '%s\\n' " + shlex.quote(text) + "\nexit " + str(exit_code) + "\n").encode()
+            with tarfile.open(archive, "w:gz") as tar:
+                info = tarfile.TarInfo(f"ripgrep-14.1.1-{arch}/rg")
+                info.size = len(data)
+                info.mode = 0o755
+                tar.addfile(info, io.BytesIO(data))
+            source = source.replace(old, hashlib.sha256(archive.read_bytes()).hexdigest())
+        self.script.write_text(source)
 
     def run_installer(self, **env):
         return subprocess.run(["/bin/bash", str(self.script)], env={**self.env, **env},
@@ -209,6 +224,35 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(self.calls("brew"), [["install", "ripgrep"]])
         self.assertEqual(self.calls("sudo"), [])
         self.assertEqual(self.calls("curl"), [])
+
+    def test_pinned_version_accepts_exact_token_and_official_revision_suffix(self):
+        for text in ("ripgrep 14.1.1", "ripgrep 14.1.1 (rev 4649aa9)",
+                     "ripgrep 14.1.1 (rev 4649aa9)\n-SIMD -AVX\nPCRE2 is available"):
+            with self.subTest(output=text), installer_fixture() as other:
+                other.set_payload_version(text)
+                result = other.run_installer()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("SHA256 verified", result.stdout)
+                self.assertIn("ripgrep executable first line: " + text.splitlines()[0], result.stdout)
+                self.assertTrue(other.path_file.read_text().strip())
+
+    def test_pinned_version_rejects_prefix_aliases_and_wrong_first_line(self):
+        for text in ("ripgrep 14.1.10 (rev x)", "ripgrep 14x1x1", "ripgrep 14.1.1-dev",
+                     "ripgrep 14.1.1x", "not-ripgrep 14.1.1", "wrong first line\nripgrep 14.1.1"):
+            with self.subTest(output=text), installer_fixture() as other:
+                other.set_payload_version(text)
+                result = other.run_installer()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("SHA256 verified", result.stdout, "must reach the actual version gate")
+                self.assertIn("ripgrep executable first line: " + text.splitlines()[0], result.stdout)
+                self.assertEqual(other.path_file.read_text(), "")
+
+    def test_pinned_version_command_failure_logs_first_line_and_refuses_path(self):
+        self.set_payload_version("ripgrep 14.1.1 (rev 4649aa9)", exit_code=13)
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 13)
+        self.assertIn("ripgrep executable first line: ripgrep 14.1.1 (rev 4649aa9)", result.stdout)
+        self.assertEqual(self.path_file.read_text(), "")
 
 
 @contextmanager

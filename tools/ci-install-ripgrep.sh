@@ -58,8 +58,15 @@ if [[ ! -f "$work/$name/rg" || -L "$work/$name/rg" ]]; then
 fi
 mkdir "$work/bin"
 install -m 0755 "$work/$name/rg" "$work/bin/rg"
-observed="$("$work/bin/rg" --version)"
-if [[ "$observed" != "ripgrep $version" && "$observed" != "ripgrep $version"$'\n'* ]]; then
+version_status=0
+observed="$("$work/bin/rg" --version)" || version_status=$?
+first_line="${observed%%$'\n'*}"
+printf 'ripgrep executable first line: %s\n' "$first_line"
+if [[ "$version_status" -ne 0 ]]; then
+  echo "Pinned ripgrep version command failed" >&2
+  exit "$version_status"
+fi
+if [[ "$first_line" != "ripgrep $version" && "$first_line" != "ripgrep $version "* ]]; then
   echo "Pinned ripgrep executable reported an unexpected version" >&2
   exit 1
 fi
