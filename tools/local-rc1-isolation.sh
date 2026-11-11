@@ -1,7 +1,7 @@
 #!/bin/bash
 # #2262 local RC1 kit — isolation rehearsal. Everything happens under a fresh
 # temporary HOME and a fresh temporary project; the real HOME is never passed.
-# Usage: bash tools/local-rc1-isolation.sh <moai-cli binary> <repo root (for skills/moai-cli)> <out dir>
+# Usage: bash tools/local-rc1-isolation.sh <moai-cli binary> <repo root (for skills/moai)> <out dir>
 # Project leg order (#2291): project -> generation (creates .moai-cli/workflows/<id>/ itself,
 # #2274) -> agents with the same workflow_reference. No WF_REF workaround is needed or
 # accepted any more. Results: docs/local-rc1-kit.md §2.
@@ -54,10 +54,10 @@ AD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_d
 run agents-apply agents-apply "$P" --plan-digest "$AD" --permission-reference kit-isolation < "$OUT/agents-plan.result.json"
 
 # --- home leg: update-plan -> update-apply -> recovery-plan ---
-run update-plan update-plan "$H" "$REPO/skills/moai-cli" < /dev/null
+run update-plan update-plan "$H" "$REPO/skills/moai" < /dev/null
 python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1])); json.dump(v["result"],open(sys.argv[2],"w"))' "$OUT/update-plan.json" "$OUT/update-plan.result.json" 2>/dev/null
 UD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_digest"])' "$OUT/update-plan.result.json" 2>/dev/null)"
-run update-apply update-apply "$H" "$REPO/skills/moai-cli" --plan-digest "$UD" --permission-reference kit-isolation < "$OUT/update-plan.result.json"
+run update-apply update-apply "$H" "$REPO/skills/moai" --plan-digest "$UD" --permission-reference kit-isolation < "$OUT/update-plan.result.json"
 run recovery-plan recovery-plan "$H" < /dev/null
 
 snap "$H" > "$OUT/home-after.sha256"; snap "$P" > "$OUT/proj-after.sha256"

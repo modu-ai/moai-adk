@@ -40,7 +40,7 @@ After removal the code card checks for dead code left behind in `forge::{outbox,
 ### Changed in this document card
 
 - this file (supersession, rule, inventory);
-- `skills/moai-cli/workflows/sync.md` step 4: the sentence about moving local TODOs to a newly connected forge is replaced by the forge-only rule, and `skills/moai-cli/references/source-manifest.json` carries the new digest of that file.
+- `skills/moai/workflows/sync.md` step 4: the sentence about moving local TODOs to a newly connected forge is replaced by the forge-only rule, and `skills/moai/references/source-manifest.json` carries the new digest of that file.
 
 ### Kept: history, records and other systems (not current design)
 

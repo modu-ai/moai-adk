@@ -431,14 +431,10 @@ fn fixture(name: &str) -> Value {
     serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
 }
 
-/// The GRAPH suite (#2346) asks file-references-file questions. A case is found only when a
-/// direct code-reference edge (`imports` or `calls`, #2442) joins its two files; reaching the
-/// target through other files in a wider walk does not count. Every other case is a gap that
-/// must be printed with its reason — never silently passed. User decision on Issue #2442
-/// (leader record 6786587580): with the fixture expectations unchanged, the suite passes at 7
-/// found and exactly the 2 stated gaps G-002 (the source mentions the target only in doc
-/// comments) and G-006 (the target names the handoff protocol, not a file); more gaps, other
-/// gaps or a gap without a reason fail. Filling them is Issue #2450.
+/// The frozen GRAPH relations require direct evidence, not incidental multi-hop reach.
+/// #2450 decision 6793749743 permits typed targets and `documents` edges without changing
+/// the corpus, truth or baseline. Non-file concept targets remain unresolved under H1;
+/// only G-006 may remain a gap. The seven original code relations retain exact regressions.
 #[test]
 fn graph_suite_relations_are_found_or_their_gap_is_stated() {
     let (dir, snapshot) = snapshot_project();
@@ -464,7 +460,9 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         let rel = tasks[id]["ground_truth"]["relation"].as_array().unwrap();
         let (source, target) = (rel[0].as_str().unwrap(), rel[2].as_str().unwrap());
         let from = format!("file:{source}");
-        let to = format!("file:{target}");
+        let to = snapshot["files"]
+            .get(target)
+            .map(|_| format!("file:{target}"));
         let r = ok(
             root,
             "atlas-graph",
@@ -478,11 +476,15 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
             r["distance"][&from], 0,
             "{id}: {from} not in the generation"
         );
-        let direct: Vec<String> = direct_edges(root, source, target)
+        let direct: Vec<String> = to
+            .as_ref()
+            .map(|_| direct_edges(root, source, target))
+            .unwrap_or_default()
             .into_iter()
             .filter(|e| {
                 e.starts_with(&format!("imports {from} "))
                     || e.starts_with(&format!("calls {from} "))
+                    || e.starts_with(&format!("documents {from} "))
             })
             .collect();
         if !direct.is_empty() {
@@ -492,11 +494,11 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         let reason = if snapshot["files"].get(target).is_none() {
             format!("target {target:?} is not a file of the snapshot")
         } else {
-            let wider = match r["distance"].get(&to) {
+            let wider = match to.as_ref().and_then(|to| r["distance"].get(to)) {
                 Some(d) => format!("; reached only through other files at hop {d}"),
                 None => String::new(),
             };
-            format!("no direct imports/calls edge from {source} to {target}{wider}")
+            format!("no direct imports/calls/documents edge from {source} to {target}{wider}")
         };
         gaps.insert(id.to_string(), reason);
     }
@@ -513,10 +515,10 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
     assert_eq!(found.len() + gaps.len(), 9, "every GRAPH case queried");
     assert_eq!(
         gaps.keys().map(String::as_str).collect::<Vec<_>>(),
-        ["G-002", "G-006"],
-        "only the two decided gaps may remain (Issue #2450 fills them)"
+        ["G-006"],
+        "only the concept identity/alias HOLD may remain (decision 6793749743)"
     );
-    assert_eq!(found.len(), 7);
+    assert_eq!(found.len(), 8);
 }
 
 /// Builds the frozen GRAPH snapshot (#2346) as a committed repository with an index.
@@ -579,10 +581,8 @@ fn direct_edges(root: &Path, from: &str, to: &str) -> Vec<String> {
 /// Per-case evidence for the GRAPH suite (#2442 AC-3): the direct edge, its direction,
 /// basis and evidence lines, measured on the frozen snapshot. The suite walk is three hops
 /// in both directions, so reaching a target there does not prove a direct reference.
-/// G-008/G-009 are `inferred`: the snapshot has no Cargo.toml, so the library crate name
-/// `moai_cli` is inferred, not read. G-002 has no code reference (the snapshot mentions
-/// `parse_op_markers` in `//!` comments only) and G-006 names a protocol, not a file —
-/// both stay without a direct edge (Issue #2442 HOLD 1 and 3).
+/// G-008/G-009 retain their inferred library crate names. G-002 is a documents edge
+/// with both the mention and definition evidence; it is never a call. G-006 retains H1.
 #[test]
 fn graph_cases_have_direct_code_reference_edges() {
     let (dir, _) = snapshot_project();
@@ -592,7 +592,10 @@ fn graph_cases_have_direct_code_reference_edges() {
             "G-001",
             vec!["calls file:src/archive.rs file:src/profile.rs static_resolved L136"],
         ),
-        ("G-002", vec![]),
+        (
+            "G-002",
+            vec!["documents file:src/pr_link.rs file:src/forge/outbox.rs inferred L150,L11"],
+        ),
         (
             "G-003",
             vec!["imports file:src/handoff.rs file:src/forge/outbox.rs static_resolved L28"],
@@ -638,4 +641,45 @@ fn graph_cases_have_direct_code_reference_edges() {
         seen += 1;
     }
     assert_eq!(seen, 9);
+}
+
+#[test]
+fn narrow_frozen_doc_exclusion_counts_are_visible_without_excluding_g002() {
+    let (dir, snapshot) = snapshot_project();
+    let got = moai_cli::index::index_records(
+        dir.path(),
+        &moai_cli::index::IndexQueryRequest {
+            protocol_version: 1,
+        },
+    )
+    .unwrap();
+    assert_eq!(got["state"], "fresh");
+    let excluded: Vec<&Value> = got["graph"]["missing"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["kind"] == "doc_reference_unsupported")
+        .collect();
+    let count: u64 = excluded.iter().map(|m| m["count"].as_u64().unwrap()).sum();
+    assert!(
+        count > 0,
+        "unsupported blocks must remain visible as coverage gaps"
+    );
+    assert!(excluded
+        .iter()
+        .all(|m| m["count"] == 1 && m["reason"].as_str().is_some_and(|s| !s.is_empty())));
+    let pr_link = snapshot["files"]["src/pr_link.rs"]["content"]
+        .as_str()
+        .unwrap();
+    assert!(
+        moai_cli::code_refs::scan(pr_link)
+            .excluded_doc_blocks
+            .is_empty(),
+        "G-002 must remain in a supported plain block"
+    );
+    assert!(excluded.iter().all(|m| m["path"] != "src/pr_link.rs"));
+    eprintln!(
+        "NARROW_FROZEN_EXCLUDED_BLOCKS: {count}; diagnostic entries: {}",
+        serde_json::to_string(&excluded).unwrap()
+    );
 }

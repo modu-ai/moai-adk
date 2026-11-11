@@ -8,7 +8,7 @@
 ~/.moai-cli/
 ├── installations/<install_id>.json        # 04-A (기존, 불변)
 ├── installations/<id>/hosts/<host>/known-good/<sha256>   # pre-A14 legacy store (preserved)
-├── installations/<id>/hosts/moai-cli/<host>/known-good/<sha256>   # A14 (#2286)
+├── installations/<id>/hosts/moai/<host>/known-good/<sha256>   # A14 (#2286)
 ├── bin/moai-cli                            # 04-A (기존, 불변)
 └── projects/<project_id>/                  # 이 결정안이 정의하는 새 실물
     ├── layout.json                         # 포인터 — 존재 자체가 opt-in 상태

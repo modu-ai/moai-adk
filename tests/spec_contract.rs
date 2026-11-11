@@ -82,7 +82,7 @@ fn gears_parse_refuses_secret_shaped_or_oversized_text_without_echo() {
     }
     // Repository-relative paths, other absolute paths, `:` and ordinary slashes stay allowed.
     for text in [
-        "The generator shall write skills/moai-cli/SKILL.md.",
+        "The generator shall write skills/moai/SKILL.md.",
         "The runner shall write `/tmp/out` and read src/x.rs:12.",
         "The runner shall accept and/or reject 1/2 of the cases.",
     ] {

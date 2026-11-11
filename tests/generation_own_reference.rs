@@ -1,7 +1,7 @@
 //! generation-plan targeting its own workflow location (Issue #2274). New-file discipline:
 //! existing fixtures and goldens stay untouched.
 //!
-//! An ordinary project has no `skills/moai-cli/workflows/`. Generation writes
+//! An ordinary project has no `skills/moai/workflows/`. Generation writes
 //! `.moai-cli/workflows/<id>/` itself, so naming that as the `workflow_reference` must work
 //! from an empty project (REQ-1), while a direct `agents-plan` with a reference that does not
 //! exist is still refused (REQ-2).
@@ -158,7 +158,7 @@ fn a_missing_reference_is_still_refused_outside_generations_own_location() {
     for reference in [
         ".moai-cli/workflows/review-flow/",
         ".moai-cli/workflows/",
-        "skills/moai-cli/workflows/",
+        "skills/moai/workflows/",
     ] {
         let (ok, v) = cli(&f, &["agents-plan", p(&f)], &agents(reference));
         assert!(!ok, "{reference}: {v}");

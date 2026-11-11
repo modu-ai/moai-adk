@@ -176,11 +176,11 @@ fn fixture() -> Fixture {
 
 impl Fixture {
     fn claude(&self) -> PathBuf {
-        self.home.join(".claude/skills/moai-cli")
+        self.home.join(".claude/skills/moai")
     }
 
     fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai-cli")
+        self.home.join(".agents/skills/moai")
     }
 
     fn hosts_dir(&self) -> PathBuf {
@@ -191,7 +191,7 @@ impl Fixture {
             .filter(|p| p.is_dir())
             .collect();
         assert_eq!(dirs.len(), 1);
-        dirs[0].join("hosts/moai-cli")
+        dirs[0].join("hosts/moai")
     }
 
     fn receipt(&self, host: &str) -> Value {
@@ -490,10 +490,10 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     clone_checkout(&manifest, &clone);
 
     // The portable assets are all plain files in the clone — no binary, no state dir.
-    let skill = clone.join("skills/moai-cli");
+    let skill = clone.join("skills/moai");
     let skill_md = fs::read_to_string(skill.join("SKILL.md")).unwrap();
     assert!(
-        skill_md.starts_with("---\nname: moai-cli\ndescription: "),
+        skill_md.starts_with("---\nname: moai\ndescription: "),
         "SKILL.md frontmatter must name the skill: {skill_md}"
     );
     let routes: Value =

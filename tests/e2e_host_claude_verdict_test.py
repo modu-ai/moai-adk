@@ -56,7 +56,7 @@ def tool(path):
     emit({"type": "assistant", "message": {"content": [
         {"type": "tool_use", "id": "t", "name": "Read", "input": {"file_path": str(path)}}]}})
 mode = cfg["ac6" if "적용" in prompt else "ac3"]
-skills = cwd / ".claude" / "skills" / "moai-cli"
+skills = cwd / ".claude" / "skills" / "moai"
 emit({"type": "system", "subtype": "init", "session_id": "s1"})
 if mode == "rc1":
     sys.exit(1)

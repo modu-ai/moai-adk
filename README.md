@@ -2,7 +2,7 @@
 
 **English** · [한국어](README.ko.md)
 
-MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared `moai-cli` skill, with GitHub Issues as the work ledger.
+MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared `moai` skill, with GitHub Issues as the work ledger.
 
 > **Status: release candidate, not yet released.** This branch (`v2026.11.0`) holds the Rust generation, `moai-cli 2026.11.0-rc.1`. No release assets are published for it yet. The stable release today is the Go 3.x generation on the [`main`](https://github.com/modu-ai/moai-adk/tree/main) branch ([releases](https://github.com/modu-ai/moai-adk/releases)).
 
@@ -28,7 +28,7 @@ flowchart LR
 - **No unobserved claims.** A check counts as passed only when its command ran and its output was read. Checks that did not run are reported as `not_run`, never as passed.
 - **Independent audit.** A session other than the author reviews the exact head commit. The branch ruleset requires the `moai/audit` commit status before a pull request can merge.
 
-The workflow text the hosts load is in [skills/moai-cli/](skills/moai-cli/SKILL.md).
+The workflow text the hosts load is in [skills/moai/](skills/moai/SKILL.md).
 
 ## Status and compatibility
 
@@ -38,7 +38,7 @@ The workflow text the hosts load is in [skills/moai-cli/](skills/moai-cli/SKILL.
 | Command | `moai-cli` | `moai` |
 | Version | `2026.11.0-rc.1` (prerelease, unreleased) | latest release `v3.1.2` |
 | State folders | `.moai-cli/` (project), `~/.moai-cli/` (user) | `.moai/`, `~/.moai/` |
-| Host entry | `/moai-cli <request>` in Claude Code, `$moai-cli <request>` in Codex | `/moai` commands in Claude Code |
+| Host entry | `/moai <request>` in Claude Code, `$moai <request>` in Codex | `/moai` commands in Claude Code |
 
 The two generations use separate state folders and do not update each other.
 
@@ -70,10 +70,10 @@ The last command prints `moai-cli 2026.11.0-rc.1`. These commands were run on 20
 
 The intended entry is natural language in the host session at your project root:
 
-- Claude Code: `/moai-cli read this project and set it up`
-- Codex: `$moai-cli read this project and set it up`
+- Claude Code: `/moai read this project and set it up`
+- Codex: `$moai read this project and set it up`
 
-Adding the `moai-cli` skill to a project and these first-run requests have **not been tested end to end yet** (`not_run`, pending the RC1 release). The draft user flow is in [docs/user-entry-draft.md](docs/user-entry-draft.md).
+Adding the `moai` skill to a project and these first-run requests have **not been tested end to end yet** (`not_run`, pending the RC1 release). The draft user flow is in [docs/user-entry-draft.md](docs/user-entry-draft.md).
 
 `moai-cli --help` lists the internal commands the workflow calls. They are building blocks for the skill, not a daily interface.
 
@@ -92,7 +92,7 @@ Adding the `moai-cli` skill to a project and these first-run requests have **not
 ## FAQ
 
 **How is RC1 different from Go 3.x?**
-RC1 is a rewrite in Rust with one common `moai-cli` skill shared by Claude Code and Codex. It keeps its state in `.moai-cli/` and `~/.moai-cli/`, so it does not touch a Go 3.x setup. See [docs/rust-product-path.md](docs/rust-product-path.md).
+RC1 is a rewrite in Rust with one common `moai` skill shared by Claude Code and Codex. It keeps its state in `.moai-cli/` and `~/.moai-cli/`, so it does not touch a Go 3.x setup. See [docs/rust-product-path.md](docs/rust-product-path.md).
 
 **Can I use it today?**
 You can build it from source and read the code and documents. It is not released, and the host end-to-end tests have not run. For daily use, the stable choice is still Go 3.x on `main`.

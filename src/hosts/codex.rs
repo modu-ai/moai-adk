@@ -20,7 +20,7 @@
 //! `hooks-apply --host codex`, rc.2 I1 #2238); the projection target is always explicit.
 //! Writing the project `.codex/config.toml` is the separate plan/apply in `codex_config`
 //! (#2240); the doctor reading it is a follow-up.
-//! The install location (`~/.agents/skills/moai-cli` vs `<repo>/.agents/skills/moai-cli`) stays a
+//! The install location (`~/.agents/skills/moai` vs `<repo>/.agents/skills/moai`) stays a
 //! HOLD (P04 / contract gap C5): there is no default, the caller names the target.
 use crate::{apply, digest, package_digest};
 use serde_json::{json, Value};
@@ -39,7 +39,7 @@ const STATUS_LINE_HOLD: &str = "tui.status_line item identifiers are not listed 
 /// The package's own digest record (02-A); it lists every other package file's sha256.
 const SOURCE_MANIFEST: &str = "references/source-manifest.json";
 const TARGET_FILES: usize = 4096;
-const LOCATION_HOLD: &str = "caller-chosen target; ~/.agents/skills/moai-cli vs <repo>/.agents/skills/moai-cli is a HOLD (P04 / C5), no default";
+const LOCATION_HOLD: &str = "caller-chosen target; ~/.agents/skills/moai vs <repo>/.agents/skills/moai is a HOLD (P04 / C5), no default";
 
 /// Options for `agents/openai.yaml`; `None` keeps the documented default by omitting the key.
 pub struct OpenAiYaml {
@@ -126,8 +126,8 @@ fn check_frontmatter(skill: &[u8]) -> Result<()> {
             "invalid package: SKILL.md frontmatter must hold only name and description".into(),
         );
     }
-    if keys.iter().any(|(k, v)| *k == "name" && *v != "moai-cli") {
-        return Err("invalid package: SKILL.md name must be moai-cli".into());
+    if keys.iter().any(|(k, v)| *k == "name" && *v != "moai") {
+        return Err("invalid package: SKILL.md name must be moai".into());
     }
     Ok(())
 }
@@ -276,8 +276,8 @@ pub fn projection_plan(
     if resolved_target(target)?.starts_with(&package_abs) {
         return Err("invalid target: must be outside the package".into());
     }
-    if target.file_name().and_then(|n| n.to_str()) != Some("moai-cli") {
-        return Err("invalid target: the skill directory must be named moai-cli".into());
+    if target.file_name().and_then(|n| n.to_str()) != Some("moai") {
+        return Err("invalid target: the skill directory must be named moai".into());
     }
     let mut files = Vec::new();
     package_files(&package_abs, &package_abs, &mut files)?;
@@ -347,11 +347,11 @@ pub fn projection_plan(
         "skill_md_identical": skill_md_identical,
         "config_changes": config,
         "hooks": {"generated": [], "reason": "a projection generates no hooks; see hooks-plan / hooks-apply --host codex (#2238)"},
-        "invocation": {"desktop": "$moai-cli in the composer", "cli": "/skills or $moai-cli", "ide": "/skills or $moai-cli"},
+        "invocation": {"desktop": "$moai in the composer", "cli": "/skills or $moai", "ide": "/skills or $moai"},
         "notes": [
             "plan only: nothing is written; codex-projection-apply writes this plan when given its plan_digest",
-            "target candidates ~/.agents/skills/moai-cli and <repo>/.agents/skills/moai-cli are a HOLD; the caller chooses",
-            "a second skill named moai-cli in another location is not merged; both can appear in selectors"
+            "target candidates ~/.agents/skills/moai and <repo>/.agents/skills/moai are a HOLD; the caller chooses",
+            "a second skill named moai in another location is not merged; both can appear in selectors"
         ],
         "files_created": [],
         "host_loaded": false,
@@ -498,13 +498,14 @@ fn first_doc(dir: &Path, names: &[String]) -> Result<Option<(PathBuf, String)>> 
     Ok(None)
 }
 
-/// `roots` are skill roots (directories that hold `<name>/SKILL.md`). Only the RC1
-/// package name (`moai-cli`, #2286) is detected — a Go `moai` skill is another
-/// product's directory and stays unread here.
+/// `roots` are skill roots (directories that hold `<name>/SKILL.md`). The package
+/// name is `moai` (#2286); an earlier-generation (Go-era) MoAI `moai` skill sits at
+/// the same path, so this read-only doctor reports it too and cannot tell the two
+/// apart — ownership is judged by the update and project-copy plans, which block it.
 fn moai_skills(roots: &[(PathBuf, &str)]) -> Vec<Value> {
     roots
         .iter()
-        .map(|(root, scope)| (root.join("moai-cli/SKILL.md"), scope))
+        .map(|(root, scope)| (root.join("moai/SKILL.md"), scope))
         .filter(|(path, _)| path.is_file())
         .map(|(path, scope)| json!({"path": path, "scope": scope}))
         .collect()
@@ -625,8 +626,8 @@ pub fn doctor(
             "status_line": "not_evaluated",
             "reason": TOML_HOLD
         },
-        "skills": {"moai-cli": found, "duplicate_warning": if duplicate {
-            json!("more than one skill named moai-cli was found; Codex does not merge them and both can appear in selectors")
+        "skills": {"moai": found, "duplicate_warning": if duplicate {
+            json!("more than one skill named moai was found; Codex does not merge them and both can appear in selectors")
         } else { Value::Null }},
         "writes": [],
         "host_loaded": false,

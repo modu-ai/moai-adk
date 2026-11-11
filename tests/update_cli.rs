@@ -209,9 +209,9 @@ fn go_digest(home: &Path) -> String {
 
 fn projection_digest(home: &Path, host: &str) -> String {
     let dir = if host == "claude" {
-        home.join(".claude/skills/moai-cli")
+        home.join(".claude/skills/moai")
     } else {
-        home.join(".agents/skills/moai-cli")
+        home.join(".agents/skills/moai")
     };
     moai_cli::package_digest(&dir).unwrap()
 }
@@ -224,7 +224,7 @@ fn receipts_dir(home: &Path) -> PathBuf {
         .filter(|p| p.is_dir())
         .collect();
     assert_eq!(entries.len(), 1, "one installation id directory");
-    entries.pop().unwrap().join("hosts/moai-cli")
+    entries.pop().unwrap().join("hosts/moai")
 }
 
 fn receipt_value(home: &Path, host: &str) -> Value {
@@ -240,8 +240,8 @@ fn update_plan_is_read_only_and_covers_all_hosts() {
     // Pre-existing projections: claude has one user-modified file and the rest of v1;
     // codex matches v1 byte for byte. No receipts exist yet, so the user-modified
     // file (baseline=None, current≠new) plans as a conflict.
-    let claude = home.join(".claude/skills/moai-cli");
-    let codex = home.join(".agents/skills/moai-cli");
+    let claude = home.join(".claude/skills/moai");
+    let codex = home.join(".agents/skills/moai");
     let v1: Vec<(&str, String)> = stage_v1();
     write_pkg(&claude, &[("SKILL.md", &skill_md("user edited locally"))]);
     write_pkg(
@@ -321,9 +321,9 @@ fn update_apply_both_hosts_match_package_digest() {
         );
         // Independent copies, not symlinks (REQ-04B-08).
         let skill = if name == "claude" {
-            home.join(".claude/skills/moai-cli/SKILL.md")
+            home.join(".claude/skills/moai/SKILL.md")
         } else {
-            home.join(".agents/skills/moai-cli/SKILL.md")
+            home.join(".agents/skills/moai/SKILL.md")
         };
         assert!(fs::symlink_metadata(&skill).unwrap().is_file());
     }
@@ -362,10 +362,10 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
     apply_ok(&home, &stage1, &p1, p1["plan_digest"].as_str().unwrap());
 
     // User edits one projected file and adds a private file on the claude host.
-    let update_md = home.join(".claude/skills/moai-cli/workflows/update.md");
+    let update_md = home.join(".claude/skills/moai/workflows/update.md");
     fs::write(&update_md, "# UPDATE\nv1\nUSER EDIT\n").unwrap();
     fs::write(
-        home.join(".claude/skills/moai-cli/references/extra.md"),
+        home.join(".claude/skills/moai/references/extra.md"),
         "mine\n",
     )
     .unwrap();
@@ -396,24 +396,24 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
         "conflicted file not overwritten"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai-cli/SKILL.md")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai/SKILL.md")).unwrap(),
         stage_v2()[0].1,
         "non-conflicted file applied"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai-cli/references/extra.md")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai/references/extra.md")).unwrap(),
         "mine\n",
         "user file preserved"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".agents/skills/moai-cli/workflows/update.md")).unwrap(),
+        fs::read_to_string(home.join(".agents/skills/moai/workflows/update.md")).unwrap(),
         "# UPDATE\nv2\n",
         "other host applied"
     );
 
     // Template unchanged + user edited: preserved (routes.json user edit, v3 keeps it).
     fs::write(
-        home.join(".claude/skills/moai-cli/references/routes.json"),
+        home.join(".claude/skills/moai/references/routes.json"),
         "{\"routes\": mine}\n",
     )
     .unwrap();
@@ -434,22 +434,21 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
     let r3 = apply_ok(&home, &stage3, &p3, p3["plan_digest"].as_str().unwrap());
     assert_eq!(r3["status"], json!("applied"));
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai-cli/references/routes.json")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai/references/routes.json")).unwrap(),
         "{\"routes\": mine}\n",
         "template-unchanged user edit preserved"
     );
     assert!(
-        home.join(".claude/skills/moai-cli/workflows/update.md")
+        home.join(".claude/skills/moai/workflows/update.md")
             .exists(),
         "dropped file kept"
     );
     assert!(
-        home.join(".claude/skills/moai-cli/workflows/new.md")
-            .exists(),
+        home.join(".claude/skills/moai/workflows/new.md").exists(),
         "dropped file kept"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai-cli/SKILL.md")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai/SKILL.md")).unwrap(),
         stage_v3()[0].1,
     );
 }
@@ -608,7 +607,7 @@ fn update_result_reports_per_host_and_partial() {
     // Sabotage the codex projection for a deterministic mid-apply failure: the
     // `workflows` path becomes a plain file, so creating workflows/new.md fails inside
     // step (b) — after the pending receipt was written.
-    let codex = home.join(".agents/skills/moai-cli");
+    let codex = home.join(".agents/skills/moai");
     fs::remove_dir_all(codex.join("workflows")).unwrap();
     fs::write(codex.join("workflows"), b"not a directory\n").unwrap();
 
@@ -682,12 +681,12 @@ fn update_fixture_preserves_fake_go_state() {
     assert_eq!(go_digest(&home), before);
 }
 
-/// AC-1 (#2286): a Go-type `skills/moai` directory in the home is another product's
-/// package. update-plan plans the RC1 install for `skills/moai-cli` on both hosts
-/// (preflight ok — not blocked) and says nothing about `skills/moai`; update-apply
-/// then leaves both Go trees byte-identical (tree digests unchanged).
+/// #2286 (decision row 22): the skill package is named `moai`, the same folder name an
+/// earlier-generation (Go-era) MoAI skill uses. A Go-type `skills/moai` the install
+/// receipt does not own blocks the host in update-plan (never an automatic replace),
+/// and update-apply leaves both Go trees byte-identical (tree digests unchanged).
 #[test]
-fn go_type_moai_is_untouched_while_moai_cli_installs() {
+fn go_type_moai_blocks_the_install_and_stays_untouched() {
     let (_root, home, stage1, _s2, _s3) = setup();
     for host_dir in [".claude/skills", ".agents/skills"] {
         write_pkg(
@@ -702,32 +701,19 @@ fn go_type_moai_is_untouched_while_moai_cli_installs() {
 
     let (plan, _) = plan_via_cli(&home, &stage1);
     for host_name in ["claude", "codex"] {
-        // The RC1 package lands under the new name; preflight stays ok.
-        assert_eq!(plan_action(&plan, host_name, "SKILL.md"), "create");
-        // The plan never mentions the Go package: no file row, no blocked reason.
-        let host = plan["hosts"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|h| h["host"] == json!(host_name))
-            .unwrap()
-            .clone();
+        let h = host(&plan, host_name);
+        assert_eq!(h["preflight"], json!("blocked"), "{host_name}: {h}");
         assert!(
-            host["blocked_reason"].is_null(),
-            "{host_name} blocked: {}",
-            host["blocked_reason"]
+            h["blocked_reason"]
+                .as_str()
+                .unwrap()
+                .contains("unmanaged existing package"),
+            "{h}"
         );
-        let mentioned: Vec<&str> = host["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter_map(|f| f["path"].as_str())
-            .filter(|p| p.contains("skills/moai") && !p.contains("skills/moai-cli"))
-            .collect();
-        assert!(mentioned.is_empty(), "{host_name} touches {mentioned:?}");
     }
 
-    apply_ok(&home, &stage1, &plan, plan["plan_digest"].as_str().unwrap());
+    let v = apply_ok(&home, &stage1, &plan, plan["plan_digest"].as_str().unwrap());
+    assert_eq!(v["status"], json!("blocked"), "{v}");
     let go_after: Vec<String> = [".claude/skills/moai", ".agents/skills/moai"]
         .iter()
         .map(|d| tree_digest(&home.join(d), &[]).unwrap())
@@ -738,39 +724,45 @@ fn go_type_moai_is_untouched_while_moai_cli_installs() {
     );
 }
 
-/// A pre-rename Rust receipt owns `skills/moai`, not the new projection root.
-#[test]
-fn legacy_receipts_cannot_supply_the_new_skill_baseline_or_recovery() {
-    let (_root, home, stage1, stage2, _s3) = setup();
-    let go_before = go_digest(&home);
-    let (initial, _) = plan_via_cli(&home, &stage1);
+/// Moves a fresh install into the rc-era layout (#2286 before the `moai` rename): the
+/// projection roots at `skills/moai-cli` and the host receipts, marked pending, at
+/// `hosts/moai-cli/`. Returns each moved root and receipt with its digest/bytes.
+fn into_rc_era_layout(home: &Path, stage: &Path) -> Vec<(PathBuf, String, PathBuf, Vec<u8>)> {
+    let (initial, _) = plan_via_cli(home, stage);
     apply_ok(
-        &home,
-        &stage1,
+        home,
+        stage,
         &initial,
         initial["plan_digest"].as_str().unwrap(),
     );
-    let current_receipts = receipts_dir(&home);
-    let legacy_receipts = current_receipts.parent().unwrap();
+    let current_receipts = receipts_dir(home);
+    let legacy_receipts = current_receipts.parent().unwrap().join("moai-cli");
+    fs::create_dir_all(&legacy_receipts).unwrap();
     let mut legacy_state = Vec::new();
     for (name, parent) in [("claude", ".claude/skills"), ("codex", ".agents/skills")] {
-        let old_root = home.join(parent).join("moai");
-        fs::rename(home.join(parent).join("moai-cli"), &old_root).unwrap();
+        let old_root = home.join(parent).join("moai-cli");
+        fs::rename(home.join(parent).join("moai"), &old_root).unwrap();
         let current = current_receipts.join(format!("{name}.json"));
         let legacy = legacy_receipts.join(format!("{name}.json"));
-        // Use the receipt the fixture CLI emitted, including pre-rename layouts.
-        let generated = if current.is_file() { &current } else { &legacy };
-        let mut receipt: Value = serde_json::from_slice(&fs::read(generated).unwrap()).unwrap();
+        let mut receipt: Value = serde_json::from_slice(&fs::read(&current).unwrap()).unwrap();
         // Pending legacy work must not be recovered against the new, absent root.
         receipt["status"] = json!("pending");
         fs::write(&legacy, serde_json::to_vec(&receipt).unwrap()).unwrap();
-        if generated != &legacy {
-            fs::remove_file(generated).unwrap();
-        }
+        fs::remove_file(&current).unwrap();
         let old_digest = tree_digest(&old_root, &[]).unwrap();
         let legacy_bytes = fs::read(&legacy).unwrap();
         legacy_state.push((old_root, old_digest, legacy, legacy_bytes));
     }
+    legacy_state
+}
+
+/// Receipts written for the earlier `skills/moai-cli` root (namespace `hosts/moai-cli/`)
+/// never supply a baseline or recovery input for the `skills/moai` root.
+#[test]
+fn legacy_receipts_cannot_supply_the_new_skill_baseline_or_recovery() {
+    let (_root, home, stage1, stage2, _s3) = setup();
+    let go_before = go_digest(&home);
+    let legacy_state = into_rc_era_layout(&home, &stage1);
     let recovery = ok_result(&run_cli(&["recovery-plan", home.to_str().unwrap()], None));
     for name in ["claude", "codex"] {
         assert_eq!(host(&recovery, name)["receipt_status"], "none");
@@ -786,7 +778,7 @@ fn legacy_receipts_cannot_supply_the_new_skill_baseline_or_recovery() {
     for (name, parent) in [("claude", ".claude/skills"), ("codex", ".agents/skills")] {
         for (path, bytes) in stage_v2() {
             assert_eq!(
-                fs::read(home.join(parent).join("moai-cli").join(path)).unwrap(),
+                fs::read(home.join(parent).join("moai").join(path)).unwrap(),
                 bytes.as_bytes()
             );
         }
@@ -797,4 +789,34 @@ fn legacy_receipts_cannot_supply_the_new_skill_baseline_or_recovery() {
         assert_eq!(fs::read(receipt).unwrap(), bytes);
     }
     assert_eq!(go_digest(&home), go_before);
+}
+
+/// A legacy `hosts/moai-cli/` receipt that lists `SKILL.md` grants no ownership over a
+/// Go-era `skills/moai`: the host is blocked as an unmanaged existing package.
+#[test]
+fn legacy_receipts_do_not_own_a_go_era_moai_tree() {
+    let (_root, home, stage1, stage2, _s3) = setup();
+    let legacy_state = into_rc_era_layout(&home, &stage1);
+    for parent in [".claude/skills", ".agents/skills"] {
+        write_pkg(
+            &home.join(parent).join("moai"),
+            &[(
+                "SKILL.md",
+                "---\nname: moai\ndescription: go\n---\nGo body\n",
+            )],
+        );
+    }
+    let (plan, _) = plan_via_cli(&home, &stage2);
+    for name in ["claude", "codex"] {
+        let h = host(&plan, name);
+        assert_eq!(h["preflight"], json!("blocked"), "{name}: {h}");
+        assert!(h["blocked_reason"]
+            .as_str()
+            .unwrap()
+            .contains("unmanaged existing package"));
+    }
+    for (root, digest, receipt, bytes) in legacy_state {
+        assert_eq!(tree_digest(&root, &[]).unwrap(), digest);
+        assert_eq!(fs::read(receipt).unwrap(), bytes);
+    }
 }
