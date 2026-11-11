@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod apply;
 pub mod archive;
+pub mod atlas_query;
 pub mod atlas_tag;
 pub mod audit;
 pub mod banner;
@@ -18,6 +19,7 @@ pub mod forge;
 pub mod generation;
 pub mod github_templates;
 pub mod handoff;
+pub mod hook_config;
 pub mod hook_engine;
 pub mod hook_guards;
 pub mod hooks;

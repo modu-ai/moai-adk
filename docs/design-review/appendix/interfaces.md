@@ -26,6 +26,8 @@
 - `archive-plan`
 - `archive-restore`
 - `archive-search`
+- `atlas-graph`
+- `atlas-map`
 - `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
