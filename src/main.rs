@@ -189,6 +189,27 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
+    /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
+    /// preview's digest and a permission reference; the read-back must match; the legacy file
+    /// is kept. Destination: the current project's folder, or `_shared` with `--shared`.
+    KeyImportApply {
+        provider: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
+        #[arg(long)]
+        shared: bool,
+    },
+    /// Preview of moving a legacy key file into the encrypted vault (#2393 S3): which file,
+    /// which destination folder, never the value. Writes nothing.
+    KeyImportPlan {
+        provider: String,
+        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
+        #[arg(long)]
+        shared: bool,
+    },
     /// Remove a provider's key from the vault (#2393): the current project's entry, or the
     /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
     /// machine key and any legacy key file are never touched.
@@ -1039,6 +1060,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
+        KeyImportApply { .. } => "key.import_apply",
+        KeyImportPlan { .. } => "key.import_plan",
         KeyRemove { .. } => "key.remove",
         KeySet { .. } => "key.set",
         KeyStatus { .. } => "key.status",
@@ -1502,6 +1525,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::KeyImportApply {
+            provider,
+            plan_digest,
+            permission_reference,
+            shared,
+        } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::import_apply(
+                &moai_cli::key_vault::home()?,
+                &scope,
+                &provider,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::KeyImportPlan { provider, shared } => {
+            let scope = moai_cli::key_vault::scope_here(shared)?;
+            moai_cli::key_vault::import_plan(&moai_cli::key_vault::home()?, &scope, &provider)
+        }
         Command::KeyRemove {
             provider,
             yes,

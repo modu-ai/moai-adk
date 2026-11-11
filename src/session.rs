@@ -63,10 +63,11 @@ pub const GLM_MCP_KEY_VAR: &str = "Z_AI_API_KEY";
 /// Taken from the caller's environment, else from a key file (#2359). The value is passed to
 /// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
-/// Legacy key files under HOME (`~/.moai/.env.glm` is the store shared with the Go tool).
-/// They are never opened or read (user decision, Issue #2393 comment 6778150969): only their
-/// presence is checked, to point at the move into the vault (`legacy_key_only`).
-pub const GLM_KEY_FILES: [&str; 2] = [".moai/.env.glm", ".moai-cli/.env.glm"];
+/// Legacy key files under HOME (`~/.moai/.env.glm` is the store shared with the Go tool), one
+/// list with `key-import-*`. The launcher never opens or reads them (user decision, Issue
+/// #2393 comment 6778150969): only their presence is checked, to point at the move into the
+/// vault (`legacy_key_only`). Only `key-import-plan`/`key-import-apply` read them, on request.
+pub const GLM_KEY_FILES: [&str; 2] = crate::key_vault::LEGACY_GLM_FILES;
 
 /// The first legacy key file present at all (any kind of entry). Only `symlink_metadata` is
 /// used, so a FIFO, an unreadable file or a symlink is never opened.

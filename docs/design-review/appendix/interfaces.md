@@ -68,6 +68,8 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `key-import-apply`
+- `key-import-plan`
 - `key-remove`
 - `key-set`
 - `key-status`
