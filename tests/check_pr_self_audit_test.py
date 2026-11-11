@@ -194,7 +194,7 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         return (ROOT / rel).read_text(encoding="utf-8")
 
     def test_verify_holds_the_rules_once(self):
-        text = self.read("skills/moai-cli/workflows/verify.md")
+        text = self.read("skills/moai/workflows/verify.md")
         self.assertEqual(text.count("\n## Check-run rules\n"), 1)
         self.assertIn(CI_FORMAT, text)
         for case in ("Author: new or changed code", "Repair lane: the repair changes code",
@@ -202,7 +202,7 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
             self.assertIn(case, text)
 
     def test_other_places_reference_without_restating(self):
-        for rel in ("skills/moai-cli/workflows/audit.md", "skills/moai-cli/workflows/sync.md",
+        for rel in ("skills/moai/workflows/audit.md", "skills/moai/workflows/sync.md",
                     ".github/pull_request_template.md"):
             with self.subTest(path=rel):
                 text = self.read(rel)
