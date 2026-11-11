@@ -1387,3 +1387,56 @@ fn a_listed_shared_primary_checkout_is_protected() {
     ));
     git(&root, &["worktree", "remove", "--force", &lane_dir]);
 }
+
+/// A B9 config that turns the rule on, padded with an ASCII comment to exactly `len` bytes.
+fn padded_b9_config(len: usize) -> String {
+    let rule = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    let pad = len - rule.len() - 2;
+    format!("{rule}#{}\n", "x".repeat(pad))
+}
+
+/// The config read stops at 65,536 bytes (pre-audit FAIL 6780344159 B1): a valid config of
+/// exactly 65,536 bytes turns B9 on (deny), the same config one byte longer is off (allow).
+#[test]
+fn a_config_of_65536_bytes_is_read_and_65537_bytes_is_off() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-size-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let path = home.join(".moai-cli/config");
+    config(&home, &padded_b9_config(65_536));
+    assert_eq!(fs::metadata(&path).unwrap().len(), 65_536);
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(reason.contains("outside the project"), "{reason}");
+    config(&home, &padded_b9_config(65_537));
+    assert_eq!(fs::metadata(&path).unwrap().len(), 65_537);
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}
+
+/// A config that is a symlink is not followed (pre-audit FAIL 6780344159 B1): the same text
+/// denies as a regular file and is off when `config` only points at it.
+#[test]
+fn a_symlinked_config_is_off() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-link-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let text = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    config(&home, text);
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    let path = home.join(".moai-cli/config");
+    let target = home.join("elsewhere.toml");
+    fs::write(&target, text).unwrap();
+    fs::remove_file(&path).unwrap();
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+    assert!(fs::symlink_metadata(&path).unwrap().file_type().is_symlink());
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}
