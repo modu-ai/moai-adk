@@ -1289,3 +1289,157 @@ fn a_deny_on_the_same_line_wins_over_a_confirmation() {
     );
     assert_eq!(decision(&r).0, "ask");
 }
+
+// ---- stage 7: opt-in rules from ~/.moai-cli/config (B3, B9) ----
+
+fn config(home: &Path, text: &str) {
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    fs::write(home.join(".moai-cli/config"), text).unwrap();
+}
+
+fn write_input(path: &Path, cwd: &Path) -> Vec<u8> {
+    json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+           "tool_input": {"file_path": path, "content": "x"}, "cwd": cwd})
+    .to_string()
+    .into_bytes()
+}
+
+/// B9 is off without a config (and with a broken one), and refuses a write outside the
+/// project once `[hooks.outside_project_writes]` turns it on; an `allow` folder passes.
+#[test]
+fn outside_project_writes_follow_the_config() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(
+        &home,
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\n",
+    );
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(
+        &home,
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n",
+    );
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(reason.contains("outside the project"), "{reason}");
+    let reason = assert_deny(&codex("tool-preflight", &root, &input));
+    assert!(reason.is_empty() || reason.contains("MoAI"), "{reason}");
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &write_input(&root.join("src.rs"), &root),
+        &env,
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &write_input(&home.join(".claude/settings.json"), &root),
+        &env,
+    ));
+    assert!(!outside.exists(), "a hook never writes the file");
+}
+
+/// B3 is off unless the repo is listed; then a switch in a primary checkout with a linked
+/// worktree is refused, and an `allow_commands` line passes.
+#[test]
+fn a_listed_shared_primary_checkout_is_protected() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let lane_dir = format!("../{}-b3-lane", root.file_name().unwrap().to_string_lossy());
+    git(&root, &["worktree", "add", "-q", "-b", "lane", &lane_dir]);
+    let env = [("HOME", home.to_str().unwrap())];
+    let switch = pre_tool("git switch lane", &root);
+    assert_allow(&dispatch("tool-preflight", &root, &switch, &env));
+    config(
+        &home,
+        &format!(
+            "[hooks.primary_checkout]\nenabled = true\nrepos = [\"{}\"]\nallow_commands = [\"git switch main\"]\n",
+            root.display()
+        ),
+    );
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &switch, &env));
+    assert!(reason.contains("primary checkout"), "{reason}");
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git switch main", &root),
+        &env,
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git status", &root),
+        &env,
+    ));
+    // The linked worktree itself is not the primary checkout.
+    let lane = std::fs::canonicalize(root.join(&lane_dir)).unwrap();
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        &pre_tool("git switch main", &lane),
+        &env,
+    ));
+    git(&root, &["worktree", "remove", "--force", &lane_dir]);
+}
+
+/// A B9 config that turns the rule on, padded with an ASCII comment to exactly `len` bytes.
+fn padded_b9_config(len: usize) -> String {
+    let rule = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    let pad = len - rule.len() - 2;
+    format!("{rule}#{}\n", "x".repeat(pad))
+}
+
+/// The config read stops at 65,536 bytes (pre-audit FAIL 6780344159 B1): a valid config of
+/// exactly 65,536 bytes turns B9 on (deny), the same config one byte longer is off (allow).
+#[test]
+fn a_config_of_65536_bytes_is_read_and_65537_bytes_is_off() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-size-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let path = home.join(".moai-cli/config");
+    config(&home, &padded_b9_config(65_536));
+    assert_eq!(fs::metadata(&path).unwrap().len(), 65_536);
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(reason.contains("outside the project"), "{reason}");
+    config(&home, &padded_b9_config(65_537));
+    assert_eq!(fs::metadata(&path).unwrap().len(), 65_537);
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}
+
+/// A config that is a symlink is not followed (pre-audit FAIL 6780344159 B1): the same text
+/// denies as a regular file and is off when `config` only points at it.
+#[test]
+fn a_symlinked_config_is_off() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-link-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let text = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    config(&home, text);
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    let path = home.join(".moai-cli/config");
+    let target = home.join("elsewhere.toml");
+    fs::write(&target, text).unwrap();
+    fs::remove_file(&path).unwrap();
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+    assert!(fs::symlink_metadata(&path)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}

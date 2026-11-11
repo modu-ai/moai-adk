@@ -149,7 +149,7 @@ pub fn select(issues: &[Value], milestone: i64) -> (Vec<Candidate>, Vec<Value>) 
     (picked, skipped)
 }
 
-fn get_json<T: Transport, C: Clock>(
+pub(crate) fn get_json<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     url: &str,
 ) -> Result<(Value, Option<String>)> {

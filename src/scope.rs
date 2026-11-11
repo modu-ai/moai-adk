@@ -28,14 +28,22 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
     "AGENTS.md",
 ];
 
-fn segments(path: &str) -> Vec<&str> {
-    let mut p = path.trim();
-    while let Some(rest) = p.strip_prefix("./") {
-        p = rest;
+/// The path's segments, lowercased and with `.` and `..` resolved lexically; `None` when a
+/// `..` climbs above the repository root. Lowercasing is conservative: on a case-sensitive
+/// file system two spellings are two files, but treating them as one only adds conflicts,
+/// never hides one (#2392, design boundary table row 6).
+fn segments(path: &str) -> Option<Vec<String>> {
+    let mut out: Vec<String> = Vec::new();
+    for s in path.trim().split('/') {
+        match s {
+            "" | "." => {}
+            ".." => {
+                out.pop()?;
+            }
+            _ => out.push(s.to_lowercase()),
+        }
     }
-    p.split('/')
-        .filter(|s| !s.is_empty() && *s != ".")
-        .collect()
+    Some(out)
 }
 
 /// `*` inside one segment matches any run of characters within that segment.
@@ -74,12 +82,17 @@ fn segments_compatible(a: &str, b: &str) -> bool {
 // @MX:DEBT: [AUTO] std-only matching: exact path, directory prefix, `**` (anything below) and
 //   `*` within one segment; no character classes, braces or escapes (Cargo.toml additions are
 //   forbidden for this Issue, so no glob crate)
-// @MX:CEILING: repository-relative paths; symlinks and case-insensitive file systems are not seen
+// @MX:CEILING: repository-relative paths compared as text; case variants and `..` are folded
+//   conservatively (#2392), symlinks are still not resolved
 // @MX:UPGRADE: adopt a standard glob matcher once a dependency decision allows one
 /// True when some path could be written under both `a` and `b`. A plain path also covers
-/// everything below it (as 05-B's prefix rule does), and `**` covers everything below.
+/// everything below it (as 05-B's prefix rule does), and `**` covers everything below. Paths
+/// are compared case-insensitively with `.` and `..` resolved; a `..` that leaves the
+/// repository overlaps everything, because the path it names is unknown.
 pub fn overlap(a: &str, b: &str) -> bool {
-    let (sa, sb) = (segments(a), segments(b));
+    let (Some(sa), Some(sb)) = (segments(a), segments(b)) else {
+        return true;
+    };
     for (x, y) in sa.iter().zip(sb.iter()) {
         if *x == "**" || *y == "**" {
             return true;
