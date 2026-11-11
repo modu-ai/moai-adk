@@ -1,5 +1,6 @@
 //! A deliberately small reader for the block-style YAML mappings the statusline reads
-//! from the Go configuration (`statusline.yaml`, `statusline.local.yaml`, `system.yaml`,
+//! from the configuration (`statusline.yaml` and `statusline.local.yaml` under `.moai-cli/`
+//! first, else the Go files — #2350 scope 3; Go-only `system.yaml`,
 //! `llm.yaml`). The crate carries no YAML dependency and an offline build cannot add one.
 //!
 //! Supported: nested `key: value` / `key:` mappings by indentation, `#` comments, quoted
