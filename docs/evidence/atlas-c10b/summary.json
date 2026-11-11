@@ -4,7 +4,7 @@
   "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
   "source_commit": "98dab71433617ba179c164be8b7ca169e62fe7dc",
   "source_tree_sha1": "80b40d51b10db15ee732956aedc421f71d0e3301",
-  "generation_id": "gen-b15282b36a05a864",
+  "generation_id": "gen-36d8ec4c86b7b0b2",
   "index_build_status": "complete",
   "arms": [
     {
@@ -30,9 +30,10 @@
       },
       "tool_calls": 42,
       "empty_seed_skips": 0,
-      "response_bytes": 119144,
+      "response_bytes": 124478,
       "tokens": "not_run: bytes are not tokens",
       "citations": 140,
+      "raw_file_citations": 140,
       "snapshot_stale_ratio": 0.0,
       "search_span_states": {
         "fresh": 376
@@ -64,9 +65,10 @@
       },
       "tool_calls": 83,
       "empty_seed_skips": 1,
-      "response_bytes": 235496,
+      "response_bytes": 242224,
       "tokens": "not_run: bytes are not tokens",
       "citations": 140,
+      "raw_file_citations": 140,
       "snapshot_stale_ratio": 0.0,
       "search_span_states": {
         "fresh": 376
@@ -99,16 +101,19 @@
       },
       "tool_calls": 124,
       "empty_seed_skips": 2,
-      "response_bytes": 364752,
+      "response_bytes": 7612796,
       "tokens": "not_run: bytes are not tokens",
       "citations": 140,
+      "raw_file_citations": 1805,
       "snapshot_stale_ratio": 0.0,
       "search_span_states": {
         "fresh": 376
       },
-      "view_edges_returned": 170,
+      "view_edges_returned": 9781,
       "freshness_mutations": "not_run: #2407"
     }
   ],
+  "selection_policy": "literal-evidence-v1",
+  "raw_context_file": "raw-contexts.json",
   "semantic_graph": "not_measured: file coverage is not relation correctness"
 }

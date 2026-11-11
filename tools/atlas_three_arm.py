@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """C10b: execute cumulative lexical / +Map / +Graph on C10a's frozen input.
 
-No ground truth enters the queries. Map selects lexical hits; Graph expands their
-file nodes. File-set scores use the unchanged C10a judge (a coverage proxy, NOT
+No ground truth enters queries or selection. Map selects lexical hits; Graph expands
+their context. Literal-relevant, evidence-connected files become scored answers;
+all raw nodes, edges and distances are retained separately. File-set scores use
+the unchanged C10a judge (a coverage proxy, NOT
 proof of a code-reference edge). Costs count actual op responses and calls,
 excluding the shared index build. Bytes are not model tokens. Freshness mutation
 cases remain #2407; this experiment measures only the unmodified snapshot.
@@ -10,6 +12,8 @@ cases remain #2407; this experiment measures only the unmodified snapshot.
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,6 +21,56 @@ import subprocess
 from tempfile import TemporaryDirectory
 
 import atlas_baseline as baseline
+
+
+def select_answers(pattern: str, map_doc: dict, graph_doc: dict | None,
+                   files: dict[str, bytes]) -> dict:
+    """Select literal-relevant answer files from operation evidence, never an oracle."""
+    if not pattern:
+        raise ValueError("answer selection requires a nonempty literal query")
+    seeds = {n["id"][5:] for n in map_doc["nodes"] if n["id"].startswith("file:")}
+    if not seeds <= files.keys():
+        raise ValueError("Map context escaped the frozen source")
+    support = {"file:" + p: [] for p in seeds}
+    if graph_doc is not None:
+        ids = {n["id"] for n in graph_doc["nodes"]}
+        raw_files = {i[5:] for i in ids if i.startswith("file:")}
+        if not raw_files <= files.keys():
+            raise ValueError("Graph context escaped the frozen source")
+        if not support.keys() <= ids:
+            raise ValueError("Graph context omitted a Map start node")
+        incident = defaultdict(list)
+        for e in sorted(graph_doc["edges"], key=lambda e: e["edge_id"]):
+            # A returned node alone is not evidence of a connection to the query.
+            if not e.get("evidence_refs"):
+                continue
+            a, b = e["source_id"], e["target_id"]
+            if a not in ids or b not in ids:
+                raise ValueError("Graph edge omitted an endpoint")
+            incident[a].append((b, e["edge_id"]))
+            incident[b].append((a, e["edge_id"]))
+        frontier = set(support)
+        for _ in range(3):
+            following = set()
+            for start in sorted(frontier):
+                for end, edge_id in incident[start]:
+                    if end not in support:
+                        support[end] = support[start] + [edge_id]
+                        following.add(end)
+            frontier = following
+    candidates = {i[5:] for i in support if i.startswith("file:")}
+    hits = sorted(p for p in candidates if pattern.encode("utf-8") in files[p])
+    return {"policy": "literal-evidence-v1", "hits": hits,
+            "eligible": sorted(candidates),
+            "support": {p: support["file:" + p] for p in hits}}
+
+
+def context_document(documents: dict, document: dict) -> str:
+    """Keep complete raw documents once; task rows retain distances and references."""
+    raw = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    ref = "sha256:" + hashlib.sha256(raw).hexdigest()
+    documents.setdefault(ref, document)
+    return ref
 
 
 def run(binary: Path, output: Path) -> dict:
@@ -60,6 +114,7 @@ def run(binary: Path, output: Path) -> dict:
         if built.get("status") != "complete":
             raise ValueError("frozen snapshot index build incomplete")
         arms = []
+        documents = {}
         generation = None
         scored = [t for t in data["tasks"] if t["kind"] != "freshness"]
         for arm, operations in [("rg", ["search"]), ("+Map", ["search", "atlas-map"]),
@@ -73,6 +128,9 @@ def run(binary: Path, output: Path) -> dict:
             for task in scored:
                 hits = set()
                 task_bytes = 0
+                contexts = {}
+                mapped = {"nodes": [], "edges": []}
+                selection = None
                 for name in operations:
                     if name == "search":
                         query = {"query": {"literals": [task["pattern"]]},
@@ -115,12 +173,24 @@ def run(binary: Path, output: Path) -> dict:
                             raise ValueError(f"{name}: unavailable/stale/partial")
                         doc = value["map" if name == "atlas-map" else "graph"]
                         edge_count += len(doc["edges"])
-                        hits.update(n["id"][5:] for n in doc["nodes"]
-                                    if n["id"].startswith("file:"))
+                        raw_files = sorted(n["id"][5:] for n in doc["nodes"]
+                                           if n["id"].startswith("file:"))
+                        if not set(raw_files) <= files.keys():
+                            raise ValueError("raw context escaped the fixed source scope")
+                        contexts[name] = {"document": context_document(documents, doc),
+                                          "files": raw_files}
+                        if name == "atlas-map":
+                            mapped = doc
+                            selection = select_answers(task["pattern"], mapped, None, files)
+                        else:
+                            contexts[name]["distance"] = value["distance"]
+                            selection = select_answers(task["pattern"], mapped, doc, files)
+                        hits = set(selection["hits"])
                     if not hits <= files.keys():
                         raise ValueError("hit escaped the fixed source scope")
                 total_bytes += task_bytes
-                rows.append({"id": task["id"], "hits": sorted(hits), "response_bytes": task_bytes})
+                rows.append({"id": task["id"], "hits": sorted(hits), "response_bytes": task_bytes,
+                             "raw_context": contexts, "selection": selection})
             report = {"schema_version": committed["schema_version"], **identity, "tasks": rows}
             if arm == "rg":
                 expected = {t["id"]: t["hits"] for t in committed["tasks"]}
@@ -134,12 +204,19 @@ def run(binary: Path, output: Path) -> dict:
                          "empty_seed_skips": empty_seed_skips,
                          "response_bytes": total_bytes, "tokens": "not_run: bytes are not tokens",
                          "citations": sum(len(r["hits"]) for r in rows),
+                          "raw_file_citations": sum(len(r["raw_context"].get(
+                              "atlas-graph", r["raw_context"].get("atlas-map", {"files": r["hits"]}))[
+                                  "files"]) for r in rows),
                          "snapshot_stale_ratio": 0.0, "search_span_states": state_counts,
                          "view_edges_returned": edge_count,
                          "freshness_mutations": "not_run: #2407"})
         summary = {"schema_version": 1, **identity, "generation_id": generation,
                    "index_build_status": built["status"], "arms": arms,
+                   "selection_policy": "literal-evidence-v1", "raw_context_file": "raw-contexts.json",
                    "semantic_graph": "not_measured: file coverage is not relation correctness"}
+        (output / "raw-contexts.json").write_text(
+            json.dumps({"schema_version": 1, "generation_id": generation, "documents": documents},
+                       indent=2) + "\n")
         (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
         return summary
 

@@ -14,7 +14,9 @@
           "src/handoff.rs",
           "src/pr_link.rs"
         ],
-        "response_bytes": 3138
+        "response_bytes": 3265,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-002",
@@ -24,28 +26,36 @@
           "src/queue.rs",
           "src/worktree.rs"
         ],
-        "response_bytes": 3113
+        "response_bytes": 3240,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-003",
         "hits": [
           "src/ontology.rs"
         ],
-        "response_bytes": 1456
+        "response_bytes": 1583,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-004",
         "hits": [
           "src/ontology.rs"
         ],
-        "response_bytes": 1738
+        "response_bytes": 1865,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-005",
         "hits": [
           "src/ontology.rs"
         ],
-        "response_bytes": 898
+        "response_bytes": 1025,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-006",
@@ -53,7 +63,9 @@
           "src/atlas_tag.rs",
           "src/main.rs"
         ],
-        "response_bytes": 897
+        "response_bytes": 1024,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-007",
@@ -64,7 +76,9 @@
           "src/recovery.rs",
           "src/verify.rs"
         ],
-        "response_bytes": 1734
+        "response_bytes": 1861,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-008",
@@ -85,7 +99,9 @@
           "src/update.rs",
           "src/worktree.rs"
         ],
-        "response_bytes": 5950
+        "response_bytes": 6077,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-009",
@@ -98,35 +114,45 @@
           "src/redact.rs",
           "src/sources.rs"
         ],
-        "response_bytes": 3670
+        "response_bytes": 3797,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-010",
         "hits": [
           "src/profile.rs"
         ],
-        "response_bytes": 2287
+        "response_bytes": 2414,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-011",
         "hits": [
           "src/profile.rs"
         ],
-        "response_bytes": 1731
+        "response_bytes": 1858,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-012",
         "hits": [
           "src/flow.rs"
         ],
-        "response_bytes": 614
+        "response_bytes": 741,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-013",
         "hits": [
           "src/claim_verify.rs"
         ],
-        "response_bytes": 902
+        "response_bytes": 1029,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-014",
@@ -135,7 +161,9 @@
           "src/self_update.rs",
           "src/update.rs"
         ],
-        "response_bytes": 5379
+        "response_bytes": 5506,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-015",
@@ -144,7 +172,9 @@
           "src/leader.rs",
           "src/profile.rs"
         ],
-        "response_bytes": 3402
+        "response_bytes": 3529,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-016",
@@ -155,7 +185,9 @@
           "src/run.rs",
           "src/sources.rs"
         ],
-        "response_bytes": 7552
+        "response_bytes": 7679,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-017",
@@ -163,7 +195,9 @@
           "src/main.rs",
           "src/recovery.rs"
         ],
-        "response_bytes": 1176
+        "response_bytes": 1303,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-018",
@@ -171,35 +205,45 @@
           "src/main.rs",
           "src/session.rs"
         ],
-        "response_bytes": 1170
+        "response_bytes": 1297,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-019",
         "hits": [
           "src/pr_link.rs"
         ],
-        "response_bytes": 896
+        "response_bytes": 1023,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-020",
         "hits": [
           "src/archive.rs"
         ],
-        "response_bytes": 896
+        "response_bytes": 1023,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-021",
         "hits": [
           "src/ontology.rs"
         ],
-        "response_bytes": 898
+        "response_bytes": 1025,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-022",
         "hits": [
           "src/ontology.rs"
         ],
-        "response_bytes": 618
+        "response_bytes": 745,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-023",
@@ -209,7 +253,9 @@
           "src/queue.rs",
           "src/worktree.rs"
         ],
-        "response_bytes": 2566
+        "response_bytes": 2693,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-024",
@@ -217,28 +263,36 @@
           "src/hosts/codex.rs",
           "src/main.rs"
         ],
-        "response_bytes": 2022
+        "response_bytes": 2149,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-025",
         "hits": [
           "src/flow.rs"
         ],
-        "response_bytes": 2270
+        "response_bytes": 2397,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-026",
         "hits": [
           "src/context/mod.rs"
         ],
-        "response_bytes": 621
+        "response_bytes": 748,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-027",
         "hits": [
           "src/main.rs"
         ],
-        "response_bytes": 894
+        "response_bytes": 1021,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-028",
@@ -247,7 +301,9 @@
           "src/forge/transport.rs",
           "src/redact.rs"
         ],
-        "response_bytes": 1184
+        "response_bytes": 1311,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-029",
@@ -257,21 +313,27 @@
           "src/main.rs",
           "src/queue.rs"
         ],
-        "response_bytes": 3105
+        "response_bytes": 3232,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-030",
         "hits": [
           "src/run.rs"
         ],
-        "response_bytes": 613
+        "response_bytes": 740,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-031",
         "hits": [
           "src/sources.rs"
         ],
-        "response_bytes": 1175
+        "response_bytes": 1302,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-032",
@@ -282,12 +344,16 @@
           "src/recovery.rs",
           "src/update.rs"
         ],
-        "response_bytes": 4791
+        "response_bytes": 4918,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "T-033",
         "hits": [],
-        "response_bytes": 339
+        "response_bytes": 466,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-001",
@@ -296,7 +362,9 @@
           "src/context/mod.rs",
           "src/github_templates.rs"
         ],
-        "response_bytes": 1186
+        "response_bytes": 1313,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-002",
@@ -306,7 +374,9 @@
           "src/handoff.rs",
           "src/pr_link.rs"
         ],
-        "response_bytes": 3138
+        "response_bytes": 3265,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-003",
@@ -316,7 +386,9 @@
           "src/handoff.rs",
           "src/pr_link.rs"
         ],
-        "response_bytes": 3138
+        "response_bytes": 3265,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-004",
@@ -345,7 +417,9 @@
           "src/verify.rs",
           "src/worktree.rs"
         ],
-        "response_bytes": 21959
+        "response_bytes": 22086,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-005",
@@ -356,14 +430,18 @@
           "src/run.rs",
           "src/sources.rs"
         ],
-        "response_bytes": 7552
+        "response_bytes": 7679,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-006",
         "hits": [
           "src/claim_verify.rs"
         ],
-        "response_bytes": 902
+        "response_bytes": 1029,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-007",
@@ -376,7 +454,9 @@
           "src/main.rs",
           "src/queue.rs"
         ],
-        "response_bytes": 5886
+        "response_bytes": 6013,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-008",
@@ -384,7 +464,9 @@
           "src/atlas_tag.rs",
           "src/main.rs"
         ],
-        "response_bytes": 897
+        "response_bytes": 1024,
+        "raw_context": {},
+        "selection": null
       },
       {
         "id": "G-009",
@@ -395,7 +477,9 @@
           "src/recovery.rs",
           "src/update.rs"
         ],
-        "response_bytes": 4791
+        "response_bytes": 4918,
+        "raw_context": {},
+        "selection": null
       }
     ]
   },
