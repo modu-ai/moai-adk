@@ -1437,6 +1437,9 @@ fn a_symlinked_config_is_off() {
     fs::write(&target, text).unwrap();
     fs::remove_file(&path).unwrap();
     std::os::unix::fs::symlink(&target, &path).unwrap();
-    assert!(fs::symlink_metadata(&path).unwrap().file_type().is_symlink());
+    assert!(fs::symlink_metadata(&path)
+        .unwrap()
+        .file_type()
+        .is_symlink());
     assert_allow(&dispatch("tool-preflight", &root, &input, &env));
 }
