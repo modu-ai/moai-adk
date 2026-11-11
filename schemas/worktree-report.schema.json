@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/modu-ai/moai-adk/schemas/worktree-report.schema.json",
+  "title": "moai-cli worktree-report result (WT-1, Issue #2380)",
+  "description": "Read-only facts about worktrees, their build folders and temporary moai-* folders. Removal candidates are not evaluated (worktree.gc.plan, WT-4). Bytes of a partial class are a lower bound.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tmp_root",
+    "budget_ms",
+    "partial",
+    "partial_classes",
+    "size_basis",
+    "disk",
+    "classes",
+    "worktrees",
+    "candidates",
+    "network",
+    "writes"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "tmp_root": { "type": "string" },
+    "budget_ms": { "type": "integer", "minimum": 0 },
+    "partial": { "type": "boolean" },
+    "partial_classes": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "worktree_checkout",
+          "worktree_target",
+          "tmp_rc_target",
+          "tmp_audit_clone",
+          "tmp_empty_dir",
+          "tmp_other"
+        ]
+      }
+    },
+    "size_basis": { "enum": ["allocated_blocks_inode_once", "apparent_length"] },
+    "disk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["free_bytes", "total_bytes", "reason"],
+      "properties": {
+        "free_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "total_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "classes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worktree_checkout",
+        "worktree_target",
+        "tmp_rc_target",
+        "tmp_audit_clone",
+        "tmp_empty_dir",
+        "tmp_other",
+        "local_refs"
+      ],
+      "properties": {
+        "worktree_checkout": { "$ref": "#/$defs/class" },
+        "worktree_target": { "$ref": "#/$defs/class" },
+        "tmp_rc_target": { "$ref": "#/$defs/class" },
+        "tmp_audit_clone": { "$ref": "#/$defs/class" },
+        "tmp_empty_dir": { "$ref": "#/$defs/class" },
+        "tmp_other": { "$ref": "#/$defs/class" },
+        "local_refs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["branches", "remote_pr_refs"],
+          "properties": {
+            "branches": { "type": "integer", "minimum": 0 },
+            "remote_pr_refs": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "worktrees": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "inside_project",
+          "branch",
+          "head",
+          "detached",
+          "locked",
+          "lock_reason",
+          "prunable",
+          "dirty",
+          "has_target",
+          "target_cachedir_tag",
+          "checkout_bytes",
+          "target_bytes",
+          "partial"
+        ],
+        "properties": {
+          "path": { "type": "string", "description": "Relative to the primary checkout when inside it; absolute otherwise." },
+          "inside_project": { "type": "boolean" },
+          "branch": { "type": ["string", "null"] },
+          "head": { "type": ["string", "null"] },
+          "detached": { "type": "boolean" },
+          "locked": { "type": "boolean" },
+          "lock_reason": { "type": ["string", "null"] },
+          "prunable": { "type": "boolean" },
+          "dirty": { "type": ["boolean", "null"], "description": "null when not checked (budget spent, prunable, or git failed)." },
+          "has_target": { "type": "boolean" },
+          "target_cachedir_tag": { "type": "boolean" },
+          "checkout_bytes": { "type": "integer", "minimum": 0 },
+          "target_bytes": { "type": "integer", "minimum": 0 },
+          "partial": { "type": "boolean" }
+        }
+      }
+    },
+    "candidates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "const": "not_evaluated" },
+        "reason": { "type": "string" }
+      }
+    },
+    "network": { "const": "disabled" },
+    "writes": { "const": false }
+  },
+  "$defs": {
+    "class": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "bytes", "partial"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "partial": { "type": "boolean" }
+      }
+    }
+  }
+}

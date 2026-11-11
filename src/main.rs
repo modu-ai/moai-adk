@@ -263,6 +263,10 @@ enum Command {
     QueueNext {
         project: PathBuf,
     },
+    /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
+    QueueQuery {
+        project: PathBuf,
+    },
     /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
     /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
     LeaderTick {
@@ -562,6 +566,18 @@ enum Command {
         path: Option<PathBuf>,
         #[arg(long)]
         plan_digest: String,
+    },
+    /// Read-only space report of the repository's worktrees, their build folders and the
+    /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
+    /// evaluated. Writes nothing.
+    WorktreeReport {
+        project: PathBuf,
+        /// Folder whose `moai-*` children are classified (default `/tmp`).
+        #[arg(long)]
+        tmp_root: Option<PathBuf>,
+        /// Time budget in milliseconds for the size walk; past it a class is `partial`.
+        #[arg(long, default_value_t = moai_cli::worktree_report::DEFAULT_BUDGET_MS)]
+        budget_ms: u64,
     },
     /// Code Map query (C9 #2185): read-only — the published generation's map records
     /// (file and tag nodes, `annotated_by` edges, missing coverage) of the requested paths
@@ -935,7 +951,7 @@ fn launch(
 ) -> Result<serde_json::Value, String> {
     use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
-    // `-a` is `agent-N` from the project's counter; both start with full access.
+    // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
     // `-a` without `--name` is numbered; `--name` takes no number.
     let numbered = leader == Some(false) && o.name.is_none();
@@ -952,9 +968,9 @@ fn launch(
         // takes the launcher defaults (advisor fable, model, effort) too.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        // A role session starts with full access unless `--permissions` is given; a roleless
-        // one gets no permission flag (user decision 2026-11-10, #2359; replaces #2244).
-        skip_permissions: full_access(role.is_some(), o.permissions),
+        // Validate user configuration even for roleless sessions or CLI --permissions.
+        // Resolution precedes host composition and any agent-number allocation.
+        skip_permissions: full_access(role.is_some(), o.permissions)?,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
@@ -1066,6 +1082,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
         QueueNext { .. } => "queue.next",
+        QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
@@ -1081,6 +1098,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
+        WorktreeReport { .. } => "worktree.report",
     })
 }
 
@@ -1189,6 +1207,12 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::QueueQuery { project } => Ok(moai_cli::queue_query::query_cli(
+            &project,
+            input::<moai_cli::queue_query::QueueQueryRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        )?),
         Command::ClaimRelease {
             project,
             task,
@@ -1790,6 +1814,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+        ),
+        Command::WorktreeReport {
+            project,
+            tmp_root,
+            budget_ms,
+        } => moai_cli::worktree_report::report(
+            &project,
+            &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
+            std::time::Duration::from_millis(budget_ms),
         ),
         Command::ParityCheck {
             template,
