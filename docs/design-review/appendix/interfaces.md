@@ -26,6 +26,8 @@
 - `archive-plan`
 - `archive-restore`
 - `archive-search`
+- `atlas-graph`
+- `atlas-map`
 - `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
@@ -66,6 +68,9 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `key-remove`
+- `key-set`
+- `key-status`
 - `lane-handoff-check`
 - `lane-status`
 - `layout-apply`
