@@ -40,9 +40,13 @@ fn write(base: &Path, rel: &str, bytes: &[u8]) {
 /// One plain render with stdin `{}`: no model in the input, so the model segment can only
 /// come from `MOAI_LAST_MODEL` or the HOME model file.
 fn render(f: &Fixture, extra: &[(&str, &str)]) -> String {
+    render_in(f, &f.work, extra)
+}
+
+fn render_in(f: &Fixture, cwd: &Path, extra: &[(&str, &str)]) -> String {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     cmd.args(["statusline", "--render-budget-ms", "3600000"])
-        .current_dir(&f.work)
+        .current_dir(cwd)
         .env_clear()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", &f.home)
@@ -208,4 +212,38 @@ fn session_state_boundaries() {
     );
     let out = render(&f, &[]);
     assert!(out.contains("📋 [r]"), "minimal command: {out}");
+}
+
+/// AC-5 (leader scope 6792437161): with the cwd deep below HOME and only
+/// `HOME/.moai/config/sections/system.yaml` present, its template version never reaches
+/// the output; at HOME itself neither. A project folder directly below HOME is still read
+/// (#2389 project fallback).
+#[test]
+fn home_dot_moai_is_not_project_configuration() {
+    let f = fixture();
+    write(
+        &f.home,
+        ".moai/config/sections/system.yaml",
+        b"moai:\n  template_version: v9.9.9\n",
+    );
+    let deep = f.home.join("a/b/c");
+    std::fs::create_dir_all(&deep).unwrap();
+    for cwd in [&deep, &f.home] {
+        let out = render_in(&f, cwd, &[]);
+        assert!(!out.contains("9.9.9"), "{cwd:?}: {out}");
+    }
+
+    let proj = f.home.join("proj");
+    write(
+        &proj,
+        ".moai/config/sections/system.yaml",
+        b"moai:\n  template_version: v1.2.3\n",
+    );
+    let sub = proj.join("sub");
+    std::fs::create_dir_all(&sub).unwrap();
+    for cwd in [&proj, &sub] {
+        let out = render_in(&f, cwd, &[]);
+        assert!(out.contains("1.2.3"), "{cwd:?}: {out}");
+        assert!(!out.contains("9.9.9"), "{cwd:?}: {out}");
+    }
 }

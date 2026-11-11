@@ -503,12 +503,34 @@ fn match_context_window(model: &str, table: &[(String, i64)]) -> Option<i64> {
         .filter(|size| *size > 0)
 }
 
-/// `readLLMYAMLContextWindows`: the nearest `llm.yaml` above the cwd decides.
-fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
+/// The folders searched upward for project configuration: the cwd and its parents,
+/// stopping before HOME (#2455 AC-5, leader scope 6792437161). HOME's own `.moai` is the
+/// Go tool's home folder, not a project, so it is never read as project configuration and
+/// nothing above HOME is searched from a cwd below it — the same stop as
+/// `find_project_root`. A cwd outside HOME walks up to the root as before. Folders are
+/// compared canonically, so a HOME given through a symlink is still recognised.
+fn project_config_dirs(ctx: &Context) -> Vec<PathBuf> {
     let Some(mut dir) = ctx.cwd.clone() else {
         return Vec::new();
     };
+    let home = ctx.home().map(|h| std::fs::canonicalize(&h).unwrap_or(h));
+    let mut out = Vec::new();
     loop {
+        let here = std::fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone());
+        if home.as_deref() == Some(here.as_path()) {
+            return out;
+        }
+        out.push(dir.clone());
+        if !dir.pop() {
+            return out;
+        }
+    }
+}
+
+/// `readLLMYAMLContextWindows`: the nearest `llm.yaml` above the cwd decides (below HOME
+/// only, see `project_config_dirs`).
+fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
+    for dir in project_config_dirs(ctx) {
         let path = dir.join(".moai/config/sections/llm.yaml");
         if path.exists() {
             let Some(Node::Map(map)) = config::read(&path)
@@ -529,10 +551,8 @@ fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
             }
             return out;
         }
-        if !dir.pop() {
-            return Vec::new();
-        }
     }
+    Vec::new()
 }
 
 // ---- version ----
@@ -556,9 +576,9 @@ fn collect_version(ctx: &Context, binary: &str) -> Version {
     }
 }
 
+/// The nearest `system.yaml` above the cwd, below HOME only (see `project_config_dirs`).
 fn template_version(ctx: &Context) -> Option<String> {
-    let mut dir = ctx.cwd.clone()?;
-    loop {
+    for dir in project_config_dirs(ctx) {
         let path = dir.join(".moai/config/sections/system.yaml");
         if path.exists() {
             let doc = config::read(&path)?;
@@ -569,10 +589,8 @@ fn template_version(ctx: &Context) -> Option<String> {
             };
             return pick("template_version").or_else(|| pick("version"));
         }
-        if !dir.pop() {
-            return None;
-        }
     }
+    None
 }
 
 // ---- directory ----
@@ -853,6 +871,87 @@ mod tests {
         );
         std::fs::write(sections.join("system.yaml"), "moai:\n  version: 3.2.1\n").unwrap();
         assert_eq!(collect_version(&ctx, "v3.2.1").latest, None);
+    }
+
+    /// #2455 AC-5 (leader scope 6792437161): the upward search for `llm.yaml` and
+    /// `system.yaml` never treats HOME's own `.moai` as project configuration and stops
+    /// there; a project folder below HOME and a cwd outside HOME keep their reads.
+    #[test]
+    fn project_config_walk_stops_at_home() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(tmp.path()).unwrap();
+        let home = root.join("home");
+        let put = |dir: &Path, llm: &str, version: &str| {
+            let s = dir.join(".moai/config/sections");
+            std::fs::create_dir_all(&s).unwrap();
+            std::fs::write(
+                s.join("llm.yaml"),
+                format!("llm:\n  glm:\n    context_windows:\n      glm-marker: {llm}\n"),
+            )
+            .unwrap();
+            std::fs::write(
+                s.join("system.yaml"),
+                format!("moai:\n  template_version: {version}\n"),
+            )
+            .unwrap();
+        };
+        put(&home, "123456", "v9.9.9");
+        let deep = home.join("a/b/c");
+        std::fs::create_dir_all(&deep).unwrap();
+        let link = root.join("home-link");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&home, &link).unwrap();
+        let at = |home_var: &Path, cwd: &Path| {
+            Context::for_test(&[("HOME", home_var.to_str().unwrap())], Some(cwd), 0)
+        };
+
+        // Below HOME with no nearer project, and HOME itself: HOME's `.moai` is not read.
+        for cwd in [&deep, &home] {
+            let ctx = at(&home, cwd);
+            assert_eq!(llm_context_windows(&ctx), Vec::new(), "{cwd:?}");
+            assert_eq!(template_version(&ctx), None, "{cwd:?}");
+        }
+        // The search stops at HOME rather than skipping it: a folder above HOME holding
+        // `.moai` is not reached from below HOME either.
+        put(&root, "999", "v8.8.8");
+        let ctx = at(&home, &deep);
+        assert_eq!(llm_context_windows(&ctx), Vec::new());
+        assert_eq!(template_version(&ctx), None);
+        // HOME is recognised through a symlink, given as HOME or as part of the cwd.
+        #[cfg(unix)]
+        for (home_var, cwd) in [(&link, deep.clone()), (&home, link.join("a/b/c"))] {
+            let ctx = at(home_var, &cwd);
+            assert_eq!(llm_context_windows(&ctx), Vec::new(), "{cwd:?}");
+            assert_eq!(template_version(&ctx), None, "{cwd:?}");
+        }
+
+        // A project folder directly below HOME keeps the #2389 project read, from its
+        // root and from below it.
+        let proj = home.join("proj");
+        put(&proj, "777", "v1.2.3");
+        let sub = proj.join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        for cwd in [&proj, &sub] {
+            let ctx = at(&home, cwd);
+            assert_eq!(
+                llm_context_windows(&ctx),
+                vec![("glm-marker".to_string(), 777)],
+                "{cwd:?}"
+            );
+            assert_eq!(template_version(&ctx).as_deref(), Some("v1.2.3"), "{cwd:?}");
+        }
+
+        // A cwd outside HOME walks up as before.
+        let out = root.join("outside");
+        put(&out, "555", "v4.5.6");
+        let below = out.join("x");
+        std::fs::create_dir_all(&below).unwrap();
+        let ctx = at(&home, &below);
+        assert_eq!(
+            llm_context_windows(&ctx),
+            vec![("glm-marker".to_string(), 555)]
+        );
+        assert_eq!(template_version(&ctx).as_deref(), Some("v4.5.6"));
     }
 
     /// #2350 scope 3 (decision 6774899518 row 42 = B): `.moai-cli/` first, else the Go
