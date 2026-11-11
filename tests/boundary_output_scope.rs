@@ -1,4 +1,5 @@
-//! #2392: executable boundary reproducers; production policy is deliberately unchanged.
+//! #2392: executable boundary reproducers. F5c (incomplete output) stays an ignored RED until
+//! its classification is decided; F6 (scope symlink) is repaired and runs by default.
 #![cfg(unix)]
 mod common;
 
@@ -92,8 +93,8 @@ os._exit(0)
     );
 }
 
+// F6 repaired: scope-check blocks a link it reaches (tests/scope_symlink_cli.rs has the matrix).
 #[test]
-#[ignore = "#2392 F6: explicit RED pending scope repair design"]
 fn scope_symlink_escape_must_be_blocked() {
     let tmp = tempfile::tempdir().unwrap();
     let parent = fs::canonicalize(tmp.path()).unwrap();

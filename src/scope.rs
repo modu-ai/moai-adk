@@ -83,7 +83,8 @@ fn segments_compatible(a: &str, b: &str) -> bool {
 //   `*` within one segment; no character classes, braces or escapes (Cargo.toml additions are
 //   forbidden for this Issue, so no glob crate)
 // @MX:CEILING: repository-relative paths compared as text; case variants and `..` are folded
-//   conservatively (#2392), symlinks are still not resolved
+//   conservatively (#2392); links are not resolved here — `check_and_record` inspects the
+//   scope on disk and blocks any link it reaches (#2392 F6, `physical_findings`)
 // @MX:UPGRADE: adopt a standard glob matcher once a dependency decision allows one
 /// True when some path could be written under both `a` and `b`. A plain path also covers
 /// everything below it (as 05-B's prefix rule does), and `**` covers everything below. Paths
@@ -309,9 +310,176 @@ pub fn check_with(
     })
 }
 
+/// Directory entries one physical inspection may read before it gives up (#2392 F6).
+const INSPECT_BUDGET: usize = 100_000;
+
+struct Inspection<'a> {
+    pattern: &'a str,
+    budget: usize,
+    findings: Vec<Value>,
+}
+
+impl Inspection<'_> {
+    fn finding(&mut self, path: &str, reason: &str) {
+        self.findings
+            .push(json!({"scope": self.pattern, "path": path, "reason": reason}));
+    }
+
+    /// Lists `dir` without following links; `None` once a finding has been recorded.
+    fn list(
+        &mut self,
+        dir: &std::path::Path,
+        rel: &str,
+    ) -> Option<Vec<(String, std::fs::DirEntry)>> {
+        let entries = match std::fs::read_dir(dir) {
+            Ok(entries) => entries,
+            // A missing part is a new path the claim may create.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Some(Vec::new()),
+            Err(_) => {
+                self.finding(rel, "unreadable");
+                return None;
+            }
+        };
+        let mut out = Vec::new();
+        for entry in entries {
+            if self.budget == 0 {
+                self.finding(rel, "inspection_budget");
+                return None;
+            }
+            self.budget -= 1;
+            let Ok(entry) = entry else {
+                self.finding(rel, "unreadable");
+                return None;
+            };
+            out.push((entry.file_name().to_string_lossy().into_owned(), entry));
+        }
+        Some(out)
+    }
+
+    /// The entry at `path`: a link is a finding; a directory is returned for descent.
+    fn observe(&mut self, path: &std::path::Path, rel: &str) -> Option<bool> {
+        match std::fs::symlink_metadata(path) {
+            Ok(m) if m.file_type().is_symlink() => {
+                self.finding(rel, "symlink");
+                None
+            }
+            Ok(m) => Some(m.is_dir()),
+            Err(_) => {
+                self.finding(rel, "unreadable");
+                None
+            }
+        }
+    }
+
+    /// Everything below `dir`, which a plain path or `**` covers.
+    fn subtree(&mut self, dir: &std::path::Path, rel: &str) {
+        let Some(entries) = self.list(dir, rel) else {
+            return;
+        };
+        for (name, entry) in entries {
+            let child = join_rel(rel, &name);
+            if self.observe(&entry.path(), &child) == Some(true) {
+                self.subtree(&entry.path(), &child);
+            }
+            if !self.findings.is_empty() {
+                return;
+            }
+        }
+    }
+}
+
+fn join_rel(rel: &str, name: &str) -> String {
+    if rel.is_empty() {
+        name.to_string()
+    } else {
+        format!("{rel}/{name}")
+    }
+}
+
+/// Physical findings for one write_scope entry under `root`, read with at most `budget`
+/// directory entries. The raw spelling is walked (no lexical `..` folding, which would erase
+/// `link/../x`); names match case-insensitively, as [`overlap`] does, so a case variant reaches
+/// the entry it aliases on a case-insensitive file system and only adds blocks elsewhere.
+fn inspect_entry(root: &std::path::Path, pattern: &str, budget: usize) -> Vec<Value> {
+    let mut ins = Inspection {
+        pattern,
+        budget,
+        findings: Vec::new(),
+    };
+    let trimmed = pattern.trim();
+    if trimmed.starts_with('/') {
+        ins.finding(trimmed, "absolute");
+        return ins.findings;
+    }
+    let parts: Vec<&str> = trimmed
+        .split('/')
+        .filter(|s| !s.is_empty() && *s != ".")
+        .collect();
+    if parts.contains(&"..") {
+        ins.finding(trimmed, "parent_component");
+        return ins.findings;
+    }
+    // The directories reached so far, with their root-relative spelling on disk.
+    let mut frontier = vec![(root.to_path_buf(), String::new())];
+    for (i, part) in parts.iter().enumerate() {
+        if *part == "**" {
+            for (dir, rel) in &frontier {
+                ins.subtree(dir, rel);
+                if !ins.findings.is_empty() {
+                    break;
+                }
+            }
+            return ins.findings;
+        }
+        let last = i + 1 == parts.len();
+        let wanted = part.to_lowercase();
+        let mut next = Vec::new();
+        for (dir, rel) in &frontier {
+            let Some(entries) = ins.list(dir, rel) else {
+                return ins.findings;
+            };
+            for (name, entry) in entries {
+                if !segments_compatible(&wanted, &name.to_lowercase()) {
+                    continue;
+                }
+                let child = join_rel(rel, &name);
+                match ins.observe(&entry.path(), &child) {
+                    None => return ins.findings,
+                    // A plain path covers everything below it.
+                    Some(true) if last => ins.subtree(&entry.path(), &child),
+                    Some(true) => next.push((entry.path(), child)),
+                    Some(false) => {}
+                }
+                if !ins.findings.is_empty() {
+                    return ins.findings;
+                }
+            }
+        }
+        frontier = next;
+    }
+    ins.findings
+}
+
+// @MX:NOTE: [AUTO] #2392 F6: a check-time observation of the scope-check worktree only; a link
+//   created after the check, and links in other worktrees, are outside this guard
+/// Why `scope` may not be trusted as written under `root` (#2392 F6): every link reached by an
+/// entry (literal, `*`, `**` or a covered directory) and every absolute, `..`, unreadable or
+/// over-budget entry, root-relative. Links are never followed, so an internal alias, a dangling
+/// link and a link out of the project all block alike. Empty when the scope is plain.
+pub fn physical_findings(root: &std::path::Path, scope: &[String]) -> Vec<Value> {
+    scope
+        .iter()
+        .flat_map(|p| inspect_entry(root, p, INSPECT_BUDGET))
+        .collect()
+}
+
 /// [`check`] plus the record write: `blocked` with a `scope_conflict` effect, or an
 /// `integration_order` effect when the leader's order allowed the overlap. A repeated
 /// check with the same outcome adds no event.
+///
+/// The write_scope is also inspected on disk under the `project` work tree (#2392 F6): a
+/// [`physical_findings`] entry blocks with reason `scope_symlink`, which no integration order
+/// lifts, and the inspected root is reported under `physical_check`.
 pub fn check_and_record<C: crate::forge::policy::Clock>(
     project: &std::path::Path,
     mine: &ClaimRecord,
@@ -323,12 +491,29 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
 ) -> std::result::Result<Value, crate::contract::OpError> {
     use crate::worktree::{commit_update, not_written, open_locked_journal};
     let mut out = check_with(mine, records, integration_order, handed_off);
-    let effect = match out["decision"].as_str() {
-        Some("blocked") => Some(json!({"kind": "scope_conflict", "conflicts": out["conflicts"]})),
-        Some("allowed_with_order") => {
-            Some(json!({"kind": "integration_order", "order": integration_order}))
+    // The measured top level, never the record's own worktree path; read before the lock.
+    let root = crate::worktree::identity(project)?.path;
+    let findings = physical_findings(std::path::Path::new(&root), &mine.write_scope);
+    out["physical_check"] = json!({"root": root, "findings": findings});
+    let effect = if !findings.is_empty() {
+        out["decision"] = json!("blocked");
+        out["record_update_request"] = json!({
+            "task_key": mine.task_key,
+            "epoch": mine.epoch,
+            "state": "blocked",
+            "reason": "scope_symlink",
+        });
+        Some(json!({"kind": "scope_symlink", "findings": findings, "conflicts": out["conflicts"]}))
+    } else {
+        match out["decision"].as_str() {
+            Some("blocked") => {
+                Some(json!({"kind": "scope_conflict", "conflicts": out["conflicts"]}))
+            }
+            Some("allowed_with_order") => {
+                Some(json!({"kind": "integration_order", "order": integration_order}))
+            }
+            _ => None,
         }
-        _ => None,
     };
     out["record_update"] = match (effect, from_journal) {
         (None, _) => json!({"applied": false, "reason": "no scope conflict"}),
@@ -358,7 +543,40 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
 
 #[cfg(test)]
 mod tests {
-    use super::overlap;
+    use super::{inspect_entry, overlap};
+
+    fn reasons(root: &std::path::Path, pattern: &str, budget: usize) -> Vec<String> {
+        inspect_entry(root, pattern, budget)
+            .iter()
+            .map(|f| {
+                format!(
+                    "{}:{}",
+                    f["reason"].as_str().unwrap(),
+                    f["path"].as_str().unwrap()
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn inspection_refuses_absolute_parent_and_budget() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("safe/a")).unwrap();
+        std::fs::write(root.join("safe/a/x"), b"").unwrap();
+        std::fs::write(root.join("safe/y"), b"").unwrap();
+        assert_eq!(reasons(root, "/etc/**", 100), ["absolute:/etc/**"]);
+        assert_eq!(
+            reasons(root, "safe/../x", 100),
+            ["parent_component:safe/../x"]
+        );
+        // Four entries are read (`safe` in the root, `a` and `y`, then `x`): 4 suffices, 3 not.
+        assert!(reasons(root, "safe/**", 4).is_empty());
+        assert!(reasons(root, "safe", 4).is_empty());
+        assert_eq!(reasons(root, "safe/**", 3), ["inspection_budget:safe/a"]);
+        // A missing tail is a new path, not a finding.
+        assert!(reasons(root, "safe/new/deeper.rs", 100).is_empty());
+    }
 
     #[test]
     fn overlap_rules() {
