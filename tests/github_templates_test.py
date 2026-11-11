@@ -20,7 +20,8 @@ TEMPLATES = ROOT / "templates/github"
 MANIFEST = TEMPLATES / "manifest.json"
 FORMS = sorted((TEMPLATES / "ISSUE_TEMPLATE").glob("*.yml"))
 ALLOWED_BLOCK_TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes"}
-FORBIDDEN_TOP_KEYS = {"labels", "assignees", "projects", "type"}
+# `labels` is allowed: each form sets one `type:*` label (#2434 decision 1 = A).
+FORBIDDEN_TOP_KEYS = {"assignees", "projects", "type"}
 SECRET_SHAPES = re.compile(r"(ghp_|github_pat_|sk-[A-Za-z0-9]|-----BEGIN|/Users/|/home/|C:\\\\|PVT_)")
 REQUIRED_FIELDS = {
     "template_path",
