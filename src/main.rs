@@ -856,6 +856,27 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Read-only plan of an independent audit clone (WT-3, #2380): the single-branch,
+    /// no-checkout clone commands for an exact PR head and where the evidence is kept. Runs
+    /// nothing, no network.
+    AuditClonePlan {
+        project: PathBuf,
+        #[arg(long)]
+        pr: u64,
+        /// The exact head commit (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+        #[arg(long)]
+        head_branch: String,
+        #[arg(long)]
+        base_branch: String,
+        /// Default: the project's `origin` URL.
+        #[arg(long)]
+        repo_url: Option<String>,
+        /// Folder for the clone (default `/tmp`).
+        #[arg(long)]
+        tmp_root: Option<PathBuf>,
+    },
     /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
     /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
     /// rows are never edited or removed. Preview by default; `--apply` writes. Rows go to the
@@ -1063,6 +1084,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ArchiveSearch { .. } => "archive.search",
         AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
+        AuditClonePlan { .. } => "audit.clone.plan",
         AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
@@ -1890,6 +1912,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+        ),
+        Command::AuditClonePlan {
+            project,
+            pr,
+            head,
+            head_branch,
+            base_branch,
+            repo_url,
+            tmp_root,
+        } => moai_cli::audit_clone::plan(
+            &project,
+            &moai_cli::audit_clone::Request {
+                pr,
+                head: &head,
+                head_branch: &head_branch,
+                base_branch: &base_branch,
+                repo_url: repo_url.as_deref(),
+                tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
+            },
         ),
         Command::WorktreeReport {
             project,
