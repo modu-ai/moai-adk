@@ -110,6 +110,9 @@ class InstallerTest(unittest.TestCase):
         result = self.run_installer()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("ripgrep 14.1.1", result.stdout)
+        self.assertIn("apt attempt 4/4", result.stdout)
+        self.assertIn("fallback download", result.stdout)
+        self.assertIn("SHA256 verified", result.stdout)
         self.assertEqual(len(self.calls("apt-get")), 4)
         self.assertEqual(self.calls("sleep"), [["5"], ["10"], ["20"]])
         self.assertEqual(len(self.calls("curl")), 1)
@@ -175,6 +178,7 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(self.path_file.read_text(), "")
         self.assertEqual(list((self.root / "runner").rglob("rg")), [])
         self.assertNotIn("ripgrep 14.1.1", result.stdout)
+        self.assertNotIn("SHA256 verified", result.stdout)
 
     def test_download_failure_does_not_publish_a_path(self):
         result = self.run_installer(FIXTURE_CURL_FAIL="1")

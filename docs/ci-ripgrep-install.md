@@ -1,6 +1,6 @@
-# Prepared Linux ripgrep installer (#2469)
+# Linux ripgrep installer (#2469)
 
-**Status: option A preparation only; user decision HOLD. No PR or CI activation is authorized by this document.** The leader authorized investigation, tests and a pushed preparation branch only. Other workflows, rulesets and secrets are outside scope.
+**Status: option A approved by user decision6801393490 (2026-11-11T16:32Z).** The leader authorized a PR despite the five-open-PR limit, with independent review by pr-6 before integration. Actual Linux CI evidence is recorded against the exact PR head; the local preparation alone does not establish it. Other workflows, rulesets and secrets remain outside scope.
 
 ## Behavior
 
@@ -23,7 +23,7 @@ Both archives and their official `.tar.gz.sha256` files were actually downloaded
 
 Base URL: `https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/` (GitHub may redirect release downloads to its asset CDN). The expected hashes are reviewed repository literals, never supplied by an environment variable or downloaded alongside the runtime payload. Integrity against those literals is checked at runtime. The initial published checksum and archive share an upstream release trust domain; the checksum is not an independent publisher signature or a promise against a compromised upstream. This adds the official release distribution source only and does not change secret/permission policy.
 
-ELF headers were inspected: class2 and e_machine62 for x86_64, class2 and e_machine183 for aarch64. The real Linux executables were **not run on the development Mac**. Compatibility with the actual Ubuntu24.04 x64/arm64 runners remains not_run until the user decision permits a Linux validation/CI activation.
+ELF headers were inspected: class2 and e_machine62 for x86_64, class2 and e_machine183 for aarch64. The real Linux executables were **not run on the development Mac**. These local preparation measurements do not establish compatibility with actual Ubuntu24.04 x64/arm64 runners. Cite exact-head hosted CI separately; the first PR run is the live Linux validation.
 
 ## Official sources and adopt/reject record
 
@@ -43,14 +43,14 @@ Successfully downloaded source snapshots (hashes are of the actual bytes, not a 
 | [apt-get](https://manpages.debian.org/bookworm/apt/apt-get.8.en.html) | 2026-11-11T15:25:26.222190+00:00 | `ca82c18bc89cda82a42b18724e353bdd4a51cb9b0c7f3ab8f7ce7f4c40ed16fd` |
 | [rg-assets](https://github.com/BurntSushi/ripgrep/releases/expanded_assets/14.1.1) | 2026-11-11T15:25:26.639529+00:00 | `f126583b317352fda00e88256d86238f0086873fc7366a1404e28738672d4fab` |
 
-Full archive/checksum byte receipts and the failed Ubuntu local-download record are retained in the author's `target/agent-20/2469/`; that evidence directory is not committed. The Issue design comment6799971011 records the source review and HOLD.
+Full archive/checksum byte receipts and the failed Ubuntu local-download record are retained in the author's `target/agent-20/2469/`; that evidence directory is not committed. The Issue design comment6799971011 records the preparation source review; decision6801393490 subsequently authorized option A and PR activation.
 
 ## Pin update procedure (after approval)
 
 1. Read the selected official release and asset listing; confirm the x86_64 Linux musl and aarch64 Linux GNU asset names and supported runtime requirements.
 2. Download each archive and its published checksum over HTTPS into a temporary directory. Independently recompute both archive SHA256 values and compare the complete digests; record URL, retrieval UTC and byte hashes. Do not copy a checksum from an unaudited proposal.
 3. Update the helper's version, both targets and both digest literals together with this table. There is no runtime URL/hash override or automatic latest resolution.
-4. Run the offline behavioral suite and checksum-guard mutation. On disposable Linux x64/arm64 runners, inject an apt acquisition failure and verify the real pinned fallback executable and version. Check checksum mismatch refusal before extraction/execution/export. Preserve macOS/Windows scope checks, then complete the required independent review/CI process. This procedure does not lift the present HOLD.
+4. Run the offline behavioral suite and checksum-guard mutation. On disposable Linux x64/arm64 runners, inject an apt acquisition failure and verify the real pinned fallback executable and version. Check checksum mismatch refusal before extraction/execution/export. Preserve macOS/Windows scope checks, then complete the required independent review/CI process. This procedure does not authorize changes outside the approved Issue scope.
 
 ## Verification and limits
 
@@ -66,4 +66,8 @@ git diff --cached --check
 
 The fixture launches the actual shell helper through isolated sudo/apt/curl/sleep/timeout commands and temporary runner paths. Real hashing and tar extraction are exercised using synthetic archives. **Only the fixture's private copy** substitutes a digest matching its synthetic archive; production has no such environment/argument bypass. A deliberate mismatched checksum must leave extraction, execution and GITHUB_PATH untouched. Mutation removes that barrier in a temporary source copy and must make the regression fail at runtime. Existing/apt-success paths must avoid curl, retries must be finite, download failure and unsupported architecture must refuse, and the original macOS workflow branch must still execute against a fake Homebrew.
 
-AC-1 preparation covers injected command failure/timeout and a synthetic rg --version, plus separately observed checksums of real release assets. It is not the full live Linux AC: an actual bad mirror/failing apt acquisition with the official Linux ELF execution is not_run. Hosted CI and changes to installed apt/user configuration are not_run. AC-2 additionally compares the prepared workflow against its base: all bytes except the two Linux apt lines replaced by the helper exec must match, including Windows and macOS jobs/permissions. AC-3 is the source/pin/update record above. No Rust source changes are included; Rust full suite/clippy are not_run in this preparation and remain part of the required gate before a future PR where applicable. ShellCheck is not installed locally; its result is not_run, not PASS.
+AC-1 preparation covers injected command failure/timeout and a synthetic rg --version, plus separately observed checksums of real release assets. It is not the full live Linux AC: an actual bad mirror/failing apt acquisition with the official Linux ELF execution is not_run. Local preparation did not run hosted CI or change installed apt/user configuration; hosted results must be read separately from the current PR. AC-2 additionally compares the prepared workflow against its base: all bytes except the two Linux apt lines replaced by the helper exec must match, including Windows and macOS jobs/permissions. AC-3 is the source/pin/update record above. No Rust source changes are included; The preparation revision8fa3325 did not run the Rust full suite/clippy; cite the current PR Self-Audit for the final pre-PR check set. ShellCheck is not installed locally; its result is not_run, not PASS.
+
+## CI evidence logs
+
+The helper emits `ripgrep apt attempt N/4` before each bounded attempt, `ripgrep fallback download: <fixed URL>` before curl, and `ripgrep SHA256 verified: <digest> <asset>` only after the actual checksum command succeeds. The version output follows extraction and execution. A checksum failure must not emit the success line. Use these lines plus the Linux job/step result to distinguish apt recovery from fallback; an install-step success alone does not prove the fallback ran. The PR ci line records the run/head, target and observed path, with job log receipts.
