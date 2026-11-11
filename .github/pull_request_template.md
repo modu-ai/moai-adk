@@ -42,7 +42,13 @@ Refs #<Issue 번호>
 
 - 판정: <PASS / FAIL> · 검토 세션: <세션 이름> · 본 SHA: `<40자 SHA>`
 - 판정 댓글 링크: <https://github.com/modu-ai/moai-adk/issues/<n>#issuecomment-...>
-- 재감사라면: 수리 확인 범위 <항목> · 새 지적 분류 <차단 / 후속 Issue #<n>> · 3회째 FAIL이면 범위 분할 상신 (#2388)
+
+재감사 전용: 아래 두 줄은 최초 감사에서는 삭제하거나 생략한다. 재감사에서는 실제 값으로 채우고 `python3 -I tools/check_pr_self_audit.py --reaudit --file BODY.md`로 PR 본문을 검사한다. 재감사는 반드시 `--reaudit`를 명시한다(#2388).
+
+- 수리 확인 범위: <F1 수리 경로·경계와 영향받은 범위>
+- 새 지적 분류: 없음
+
+새 지적이 있으면 `없음` 대신 `차단: 구체적 이유` 또는 `후속 Issue #123: 구체적 이유` 중 하나를 적는다(실제 양의 Issue 번호 사용). 계약 위반·데이터 손상·보안 문제는 차단하고, 그 밖의 새 지적은 후속 Issue로 분류한다. 3회째 FAIL이면 범위 분할을 상신한다.
 
 ## not_run / blocked
 
