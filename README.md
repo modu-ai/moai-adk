@@ -14,14 +14,14 @@ Developers and teams who build software with Claude Code or Codex and want every
 
 ```mermaid
 flowchart LR
-    I[GitHub Issue<br/>design + scope] --> C[Claim]
-    C --> W[Isolated worktree]
-    W --> R[Implement]
-    R --> V[Verify:<br/>run the checks,<br/>record exit codes]
-    V --> P[Pull request<br/>Refs #issue]
-    P --> A[Independent audit<br/>by another session]
-    A --> S[moai/audit status<br/>on the exact head]
-    S --> M[Merge]
+    I["GitHub Issue<br/>design and scope"] --> C["Claim"]
+    C --> W["Isolated worktree"]
+    W --> R["Implement"]
+    R --> V["Verify: run the checks,<br/>record exit codes"]
+    V --> P["Pull request<br/>Refs #issue"]
+    P --> A["Independent audit<br/>by another session"]
+    A --> S["moai/audit status<br/>on the exact head"]
+    S --> M["Merge"]
 ```
 
 - **One Issue, one session.** Each Issue is the design; its report comment is the state.
@@ -101,7 +101,7 @@ You can build it from source and read the code and documents. It is not released
 No. Either host is a target on its own. The same workflow text serves both; host differences are listed in [docs/host-support-matrix.md](docs/host-support-matrix.md).
 
 **Does it change files in my home directory?**
-RC1 keeps its user state under `~/.moai-cli/` and does not modify the Go generation's `~/.moai/`. Commands that write follow a plan → apply pattern: the plan step writes nothing, and the apply step refuses to run without the plan's digest.
+RC1 keeps its own user state under `~/.moai-cli/` and does not modify the Go generation's `~/.moai/`. Commands that generate or apply managed files (for example project setup, host settings, hooks and skill copies) come as a plan → apply pair: the plan step writes nothing, and the apply step refuses to run without the plan's digest. Installing the skill into a host's skill folder is one of those explicit apply steps.
 
 **How do I contribute?**
 Read [CONTRIBUTING.md](CONTRIBUTING.md). You do not need to follow the internal claim and audit procedure; maintainers handle it for external pull requests.

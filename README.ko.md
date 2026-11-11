@@ -14,14 +14,14 @@ Claude Code나 Codex로 개발하면서, 모든 변경에 검증 기록과 독�
 
 ```mermaid
 flowchart LR
-    I[GitHub Issue<br/>설계와 범위] --> C[작업 예약 claim]
-    C --> W[독립 worktree]
-    W --> R[구현]
-    R --> V[검증:<br/>검사를 실행하고<br/>종료 코드를 기록]
-    V --> P[Pull request<br/>Refs #issue]
-    P --> A[다른 세션의<br/>독립 감사]
-    A --> S[정확한 head에<br/>moai/audit status]
-    S --> M[병합]
+    I["GitHub Issue<br/>설계와 범위"] --> C["작업 예약(claim)"]
+    C --> W["독립 worktree"]
+    W --> R["구현"]
+    R --> V["검증: 검사를 실행하고<br/>종료 코드를 기록"]
+    V --> P["Pull request<br/>Refs #issue"]
+    P --> A["다른 세션의<br/>독립 감사"]
+    A --> S["정확한 head에<br/>moai/audit status"]
+    S --> M["병합"]
 ```
 
 - **Issue 하나에 세션 하나.** Issue 본문이 설계이고, 보고 댓글이 상태입니다.
@@ -101,7 +101,7 @@ RC1은 Rust로 새로 만든 세대이고, Claude Code와 Codex가 함께 쓰는
 아닙니다. 어느 host 하나만으로도 목표 범위에 듭니다. 같은 작업 흐름 원문을 두 host가 함께 쓰고, host별 차이는 [docs/host-support-matrix.md](docs/host-support-matrix.md)에 있습니다.
 
 **내 홈 폴더의 파일을 바꾸나요?**
-RC1은 사용자 상태를 `~/.moai-cli/`에 두고 Go 세대의 `~/.moai/`는 바꾸지 않습니다. 파일을 쓰는 명령은 plan → apply 순서를 따릅니다. plan 단계는 아무것도 쓰지 않고, apply 단계는 plan digest가 없으면 실행을 거부합니다.
+RC1은 자기 사용자 상태를 `~/.moai-cli/`에 두고 Go 세대의 `~/.moai/`는 바꾸지 않습니다. 관리 파일을 만들거나 적용하는 명령(예: 프로젝트 설정, host 설정, hook, skill 복사)은 plan → apply 짝으로 나뉩니다. plan 단계는 아무것도 쓰지 않고, apply 단계는 plan digest가 없으면 실행을 거부합니다. host의 skill 폴더에 skill을 설치하는 일도 이런 명시적 apply 단계 중 하나입니다.
 
 **어떻게 기여하나요?**
 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어 주세요(영어). 내부의 작업 예약·감사 절차를 따를 필요는 없습니다. 외부 pull request에는 maintainer가 그 절차를 대신 처리합니다.

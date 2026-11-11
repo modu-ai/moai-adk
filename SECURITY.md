@@ -21,22 +21,21 @@ Only the maintainers and you can see the report. We will work with you on a fix 
 | Rust release candidate `moai-cli 2026.11.0-rc.1` | `v2026.11.0` | prerelease, not yet released |
 | Go 3.x (`moai`) | `main` | latest release `v3.1.2` |
 
-Which versions receive security fixes is [PENDING MAINTAINER DECISION]. Until it is published here, please report issues in either generation; reports against older releases are still welcome.
+Which versions receive security fixes is [PENDING MAINTAINER DECISION].
 
 ## Scope
 
 In scope:
 
-- the `moai-cli` binary and its commands (this branch), and the Go `moai` binary (branch `main`);
-- files MoAI generates or applies into a project or a host configuration, including hooks and the `moai-cli` skill package;
-- install, update and release artifacts, once they are published;
-- the repository's CI workflows.
+- the `moai-cli` binary and its commands;
+- files MoAI generates or applies into a project or a host configuration;
+- hooks that MoAI generates;
+- the installer and release artifacts, once they are published.
 
 Out of scope (please report these to their owners):
 
-- Claude Code itself (Anthropic) and Codex itself (OpenAI);
-- third-party MCP servers, plugins and model providers;
-- vulnerabilities that need an already compromised machine or account.
+- Claude Code itself (report to Anthropic) and Codex itself (report to OpenAI);
+- third-party MCP servers.
 
 ## Handling secrets
 
