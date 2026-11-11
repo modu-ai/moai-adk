@@ -307,6 +307,21 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Record a dispatch revision over durable S1 messages (typed JSON stdin).
+    DispatchRecord {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Record received ACK and explicit accepted/deferred/rejected decision, separately.
+    DispatchAck {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Observe dispatch revisions, decisions and the five-minute ACK alert (GET only).
+    /// Never authorizes a claim or an audit gate.
+    DispatchCheck,
     /// Publish a durable message from typed JSON on stdin; queued is not receiver ACK
     /// or business acceptance.
     MessageRecord {
@@ -1153,6 +1168,9 @@ fn operation(command: &Command) -> Option<&'static str> {
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
+        DispatchRecord { .. } => "dispatch.record",
+        DispatchAck { .. } => "dispatch.ack",
+        DispatchCheck => "dispatch.check",
         MessageAck { .. } => "message.ack",
         MessageReconcile { .. } => "message.reconcile",
         MessageRecord { .. } => "message.record",
@@ -1293,6 +1311,31 @@ fn run_internal(
         Command::QueueNext { project } => moai_cli::queue::next_cli(
             &project,
             input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchRecord {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::record_cli(
+            &project,
+            input::<moai_cli::dispatch::RecordRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchAck {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::ack_cli(
+            &project,
+            input::<moai_cli::dispatch::AckRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchCheck => moai_cli::dispatch::check_cli(
+            input::<moai_cli::dispatch::CheckRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
