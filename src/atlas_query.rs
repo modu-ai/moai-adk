@@ -14,6 +14,8 @@
 //! What the records hold today: file, tag, requirement, test, commit and issue nodes with
 //! `annotated_by`, `references_requirement`, `verifies` and `mentions_issue` edges, and
 //! file → file `imports` and `calls` edges of Rust files (C6c #2442, `src/code_refs.rs`).
+//! Qualified doc-comment references add `documents` edges with mention and definition
+//! evidence (C6d #2450); these are inferred lexical references, not executable calls.
 //! There are no symbol or module records, so symbol questions are reported `unavailable`
 //! in `coverage`, never answered by inference.
 //!
