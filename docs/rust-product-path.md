@@ -47,6 +47,9 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `claim.acquire` (06-A #2005) | `claim-acquire PROJECT` | `moai_cli::claim::acquire_cli` | `ClaimRequest` | — | `outcome`, `record`, `foreign_owner`, `coordination_scope`, `cross_host_atomic`, `notes` (see below) | `.git/.moai-cli/claims/` (the git common dir) + one GitHub comment POST |
 | `queue.next` (rc.2 A2 #2161) | `queue-next PROJECT` | `moai_cli::queue::next_cli` | `QueueRequest` | — | the `claim.acquire` keys plus `issue`, `lost_to`, `skipped`, `projection` (see below) | as `claim.acquire`, for the one card it claims |
 | `leader.tick` (rc.2 A3 #2162) | `leader-tick PROJECT` | `moai_cli::leader::tick_cli` | `TickRequest` | — | `observed`, `changes`, `hints`, `writes`, `interval_secs`, `interval_source`, `interval_note` (see below) | `.moai-cli/forge/leader-tick.json` only; nothing on GitHub |
+| `message.ack` (#2390 S1) | `message-ack PROJECT` | `moai_cli::message::ack_cli` | `AckRequest` | `--permission-reference` | S1 receipt result (below) | local inbox and one Issue ACK comment |
+| `message.reconcile` (#2390 S1) | `message-reconcile PROJECT` | `moai_cli::message::reconcile_cli` | `ReconcileRequest` | — | S1 receipt result (below) | local observations only; remote GET only |
+| `message.record` (#2390 S1) | `message-record PROJECT` | `moai_cli::message::record_cli` | `RecordRequest` | `--permission-reference` | S1 receipt result (below) | local outbox and one Issue report comment |
 | `lane.status` (rc.2 A11 #2265) | `lane-status PROJECT` | `moai_cli::lane_status::status_cli` | `LaneStatusRequest` | — | `rows`, `idle`, `ready`, `assignment_drafts`, `worktrees`, `writes`, `note` (see below) | nothing (GET only on GitHub; `git worktree list` locally) |
 | `claim.show` (06-A #2005) | `claim-show PROJECT --task KEY` | `moai_cli::claim::show_cli` | — | `--task` (16-hex key) | `outcome`, `record`, `coordination_scope`, `cross_host_atomic`, `expired` (#2166) | no |
 | `claim.release` (06-A #2005) | `claim-release PROJECT --task KEY --epoch N [--reason R]` | `moai_cli::claim::release_cli` | — | `--task`, `--epoch`, `--reason` | `outcome`, `record`, `foreign_owner`, `coordination_scope`, `cross_host_atomic`, `notes` | `.git/.moai-cli/claims/` |
@@ -118,11 +121,11 @@ stderr carries one human line: the same `message` for an operation failure, clap
 - the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`;
 - `git_failed` (Issue #2033): `identity` found git, but git failed for a reason other than "not a repository", for example a `safe.directory` ownership refusal. Not retryable. `plan-admit` and `run-verify` read `HEAD` the same way (Issue #2043).
 - `blocked` and `transport` (07-A #2008, `forge.read`; see the GitHub TODO reader section). These additions follow #1990 HOLD-C2 / REQ-01C-02 (r27).
-- `unavailable` (Issue #2345): another process holds an advisory lock the command needs — so far the claim journal lock (REQ-06A-05: the tool never waits). The kind is set at the lock-wait raise site through `contract::OpError`, never classified from message text. Retryable.
+- `unavailable` (Issue #2345): another process holds an advisory lock the command needs, including claim-journal and message-store locks. The kind is set at the lock-wait raise site through `contract::OpError`, never classified from message text. Retryable.
 
-`retryable` is true only for `io`, `transport` and `unavailable`, the kinds where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply`, and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind; the journal lock-wait path is the one place a kind is typed at the source instead of the table. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
+`retryable` is true only for `io`, `transport` and `unavailable`, the kinds where resending the unchanged request can succeed. It never authorizes blindly repeating an uncertain external write: message operations re-read their durable attempt and the remote first. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply`, and names the matching `*.plan`. On the String-classified path, a message no rule recognises is `internal`, never a guessed kind; typed operations retain their raise-site kinds. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
 
-Registry rules (D8 #2254, to keep parallel branches from colliding on one line). The operation name of a command comes only from `fn operation(&Command)` in `src/main.rs`, an exhaustive `match`: a new `Command` variant without an arm does not compile (it used to panic at run time). A command line that does not parse gets its operation by parsing the word's subcommand once with its required arguments filled in, so no second word table exists; the bin test `every_subcommand_word_maps_to_one_operation` checks that every subcommand word maps to exactly one name. New enum variants, match arms and table rows go at their alphabetical place, never at the end. A new module's error messages are checked against `contract::classify` in that module's own `#[test]`; the shared case lists in `src/contract.rs` and `src/forge/mod.rs` stay as they are and get no new rows.
+Registry rules (D8 #2254, to keep parallel branches from colliding on one line). The operation name of a command comes only from `fn operation(&Command)` in `src/main.rs`, an exhaustive `match`: a new `Command` variant without an arm does not compile (it used to panic at run time). A command line that does not parse gets its operation by parsing the word's subcommand once with its required arguments filled in, so no second word table exists; the bin test `every_subcommand_word_maps_to_one_operation` checks that every subcommand word maps to exactly one name. New enum variants, match arms and table rows go at their alphabetical place, never at the end. A new String-classified module checks its error mapping locally; typed modules assert consumer-visible kinds directly. The shared case lists in `src/contract.rs` and `src/forge/mod.rs` stay as they are and get no new rows.
 
 Not enveloped: `--help` and `--version`, the launchers, and command lines whose first word names no internal operation (clap's own output and exit 2), because no operation can be attributed to them. There is no `request_id`: the decided envelope has none. The input types (`Profile`, `Plan`, `AgentsRequest`, `AgentsPlan`) are unchanged, so a caller passes an envelope's `result`, not the envelope, to the matching `*.apply`.
 
@@ -132,7 +135,7 @@ These commands are internal contracts for future native skill adapters. Users ar
 
 ## State directories during the RC period
 
-The Rust RC writes project data under `<project>/.moai-cli/` and will install under `~/.moai-cli/` (constants `PROJECT_STATE_DIR`, `HOME_STATE_DIR` in `src/lib.rs`; no install command exists yet). The Go generation keeps `<project>/.moai/` and `~/.moai/`; both coexist and the Rust tool never moves, renames or writes the Go directories. One read-only exception: `moai-cli statusline` (#2350) reads its settings from `.moai-cli/config/sections/statusline.yaml` and `.moai-cli/statusline.local.yaml` when they exist, else from the Go files at the same relative paths under `.moai/` (user decision 2026-11-10, #2389 comment 6774899518 row 42 = B; existence decides, an unreadable `.moai-cli/` file means defaults). The design documents name the final location `.moai/`; switching the folder name is a later, separate step decided by the user (2026-11-08). The provisional Python Claude adapter follows the same rule (`.moai-cli/statusline.py`, `.moai-cli/claude-settings-owner.json`, `.moai-cli/licenses/`).
+The Rust RC writes project data under `<project>/.moai-cli/` and will install under `~/.moai-cli/` (constants `PROJECT_STATE_DIR`, `HOME_STATE_DIR` in `src/lib.rs`; no install command exists yet). The Go generation keeps `<project>/.moai/` and `~/.moai/`; both coexist and the Rust tool never moves, renames or writes the Go directories. One read-only exception: `moai-cli statusline` (#2350) reads its settings from `.moai-cli/config/sections/statusline.yaml` and `.moai-cli/statusline.local.yaml` when they exist, else from the Go files at the same relative paths under `.moai/` (user decision 2026-11-10, #2389 comment 6774899518 row 42 = B; existence decides, an unreadable `.moai-cli/` file means defaults). That exception covers the project settings only: the statusline's two HOME state files, `last-model.txt` (model fallback) and `last-session-state.json` (task segment), are read from `~/.moai-cli/state/` and never from the Go `~/.moai/state/` (user decision 2026-11-11, #2455). `MOAI_HOME`, the Go tool's variable, is not consulted; `MOAI_LAST_MODEL` is an environment value, not a file, and still wins over the model file. No Rust command writes either file yet, so an absent file and an empty model and task segment are the normal state; a writer is a separate card. The statusline's upward search for project files from the cwd — `.moai/config/sections/llm.yaml` (GLM context windows) and `.moai/config/sections/system.yaml` (template version) — stops before HOME, as the project-root search already did: HOME's own `.moai` is the Go home folder and is never read as project configuration, and nothing above HOME is searched from a cwd below it (leader scope 2026-11-11, #2455 comment 6792437161). A project folder below HOME is read as before, and a cwd outside HOME still walks up to the root. Special case: a project whose root is HOME itself gets no project settings from these two files (they read as absent). The design documents name the final location `.moai/`; switching the folder name is a later, separate step decided by the user (2026-11-08). The provisional Python Claude adapter follows the same rule (`.moai-cli/statusline.py`, `.moai-cli/claude-settings-owner.json`, `.moai-cli/licenses/`).
 
 ### Identity and state-root resolver (`identity`)
 
@@ -316,6 +319,135 @@ User decision: `docs/decisions-2026-11-08.md` row "01:1x(11-09) Forge 권한·fa
 
 No outbox marker is kept: a status has no body to carry one and is idempotent per (sha, context). Tests: `tests/forge_audit_status_cli.rs` (stub gh: App path, shared path with warning, refused inputs; no token value in stdout, stderr, the gh log or request bodies).
 
+## Durable lane/leader messages (`message-*`, #2390 S1)
+
+Decision 6774899518 row 21 chooses **local plus Issue comments**, not a host adapter's
+send attestation. The public serde types in `src/message.rs` are the report/request
+schema; unknown fields are refused. `message-record` and `message-reconcile` take
+`{"message": Message}`. `message-ack` additionally requires the expected
+`payload_digest` returned by the record. A complete example record request is:
+
+```json
+{
+  "message": {
+    "schema_version": 1,
+    "report_id": "r1",
+    "project_id": "p1",
+    "task": {
+      "owner": "org", "repo": "repo", "repository_id": 1,
+      "issue_id": 2, "issue_node_id": "I_2", "issue_number": 3,
+      "task_id": "task:3", "revision": "rev1"
+    },
+    "sender": {"actor_id": 11, "session_id": "agent:one"},
+    "receiver": {"actor_id": 22, "session_id": "leader"},
+    "owner_epoch": 1, "leader_epoch": 1, "event": "report",
+    "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-11-11T00:00:00Z",
+    "approval_refs": [], "hold_refs": [],
+    "payload": {"text": "hello"}
+  }
+}
+```
+
+The whole message is immutable for its `report_id`: a different task/revision,
+sender/receiver, epoch, event, candidate, creation time, reference or payload is a
+conflict, never an update. `report_id` and `project_id` are portable names of at
+most 64 bytes because they enter file names/markers. Task/session/revision IDs
+are nonempty, control-free literal data, including punctuation and Unicode;
+they are neither paths nor commands. Numeric identities and epochs are positive.
+The candidate is a caller-declared SHA256 digest, not artifact verification.
+`created_at` is declared UTC creation time, not proof of delivery. Payload digest
+is `crate::digest` over compact UTF-8 serde_json bytes after recursively sorting
+object keys; array order and serde_json number representation are retained.
+
+Each checkout stores `.moai-cli/messages/{outbox,inbox}/<report_id>.json`.
+Intent and actual attempt observations (`attempts`, `attempted_at`,
+`response_status`, `observed_at`) are persisted with sync plus temporary-file
+rename before a POST; the persistent `.lock` is an OS advisory lock, not a PID
+lease or authority to take a task. An unheld file survives process exit and does
+not block restart. No stale file is deleted to acquire the lock.
+
+`queued` requires a fresh matching Issue report; it is **not** an ACK.
+`received` records this checkout's authenticated, explicit receiver action.
+`received_ack` requires a matching receiver-authored remote ACK. Result fields
+include these flags, `state`, `report_id`, `payload_digest`, `record_comment_id`
+and `ack_comment_id`; `business_acceptance` and `business_completion` stay false.
+Reconciliation only observes the remote and updates local journals: it does not
+create a receiver action, ACK, claim transfer or business acceptance.
+
+Every comment page is checked, with exact first/end marker boundaries, immutable
+context/digest and numeric GitHub author IDs. Before publication `/user` must
+match the expected actor. A shared GitHub account's session name remains a
+declaration, not native-host receipt or cryptographic session identity. Identical
+duplicate comments are one logical packet; observed conflicts block mutation.
+Cross-host atomicity and exactly-once delivery are not guaranteed.
+
+Pagination stays within the exact Issue comments collection; foreign next URLs
+are refused before GET. Cyclic or malformed next links fail closed. ACK and
+reconciliation leave existing receipt files unchanged on these traversal errors.
+
+A response-lost publication can succeed only after a fresh matching read.
+Otherwise record/ACK return a typed error and retain the attempt; reconciliation
+may report `publish_unknown`. Transport/408/5xx uncertainty never permits blind
+republication. A definite rejected 4xx other than 408 is `blocked`; only a new
+explicit invocation, after fresh target/context/actor/permission checks, can make
+another attempt with the same ID. No invocation automatically retries POST.
+
+CLI stdin retains its 64 KiB bound. The actual rendered comment, markers and
+newlines included, reuses `forge::report::DEFAULT_MAX_BODY_CHARS` (65,535
+characters, a conservative unmeasured bound, not a newly documented API limit).
+The shared credential-shape filter checks decoded strings and object keys before
+payload persistence/publication; it is not a general secret/privacy detector.
+Permission references remain caller metadata: the invoking host owns real
+authorization and disclosure review. No user drafts or unrelated files are
+collected. Known symlinks/traversal are refused, not a race-proof sandbox claim.
+S1 has no host/Hide wake, daemon, dispatch disposition, ownership takeover or
+user-settings/home migration.
+
+### Directory durability and failed-sync restart boundaries (#2462 P2)
+
+Before any remote request, all three message operations validate/create each
+`.moai-cli/messages/{outbox,inbox}` directory and sync both its parent and itself.
+This includes the existing project directory, `.moai-cli`, `messages`, `outbox`,
+and `inbox`. The same calls run on `AlreadyExists`: an earlier interrupted
+invocation may have left a visible path whose parent entry was never synced.
+Every journal replacement still syncs its temporary file, renames it, then syncs
+the containing directory. Open/sync errors propagate as `io`; an unsupported
+directory sync is a refusal, never a successful durability claim. No platform
+silently skips this directory barrier.
+
+| Injected directory-sync failure | Observed effect | Next invocation after the fault is removed |
+| --- | --- | --- |
+| New or existing parent chain, sender or receiver | `io`, remote calls/POST count unchanged; no journal publication | Re-sync the complete chain, perform fresh context/actor/remote checks, publish once |
+| Sender intent or pre-attempt observation replacement | `io`, POST count zero, persisted `attempted:false` | Fresh checks may publish once |
+| Sender attempted replacement before POST | `io`, POST count zero, visible journal has `attempted:true` | Conservatively refuse another POST while publication is absent |
+| Record or ACK outcome replacement after POST | `io`, one POST already issued, attempted state retained | Hidden publication never causes another POST; a later matching GET reconciles it |
+| Reconcile parent-chain sync | `io`, no remote call, existing receipt bytes unchanged | Reopen and reconcile after re-syncing; never POST |
+
+Permanent Unix unit tests trace successful mkdir and directory-sync calls and
+assert the complete chain at the actual synthetic Transport POST boundary.
+Fault injection covers both new and pre-existing paths, both publishers and
+receipt replacement phases. These are syscall/invocation restart models, not a
+physical power-cut experiment or a guarantee about faulty hardware or every
+filesystem. The test observer and fault injector are compiled only for Unix unit
+tests; production has no environment switch to bypass synchronization.
+
+Official sources read 2026-11-11: [Linux fsync(2)](https://man7.org/linux/man-pages/man2/fsync.2.html)
+explains that file syncing does not by itself persist its parent directory entry;
+[Rust File::sync_all](https://doc.rust-lang.org/std/fs/struct.File.html#method.sync_all)
+describes content/metadata synchronization and errors that dropping a file can
+ignore. Adopt explicit directory sync and error propagation. This follows the
+OS/filesystem synchronization contract; actual power-loss and Windows runtime
+validation are not_run. Retrieval UTC and full HTML SHA256 are recorded with the
+PR repair evidence in `sources.json`; the live Rust docs version is distinct from
+the locally compiled 1.94.1 toolchain.
+
+Sources read 2026-11-10: [GitHub Issue comments](https://docs.github.com/en/rest/issues/comments),
+[Rust rename](https://doc.rust-lang.org/std/fs/fn.rename.html) and the
+[Idempotent Consumer pattern](https://microservices.io/patterns/communication-style/idempotent-consumer.html).
+Retrieval times/checksums and the user-decision link are recorded in #2390
+comment 6777791772.
+
 ## Claim journal and Issue comment claim (`claim-*`, 06-A #2005)
 
 One task is claimed by at most one owner. The P08 decision (2026-11-08) is ⑤ the GitHub Issue comment claim as primary and ① a single-host journal as the same-host serializer. The claim record (REQ-06A-01) carries `schema_version`, `task_ref`, `task_key`, `logical_key`, `owner`, `attempt`, `epoch`, `base_revision`, `worktree{common_dir, git_dir, path, head}`, `write_scope`, `spec_ref`, `comment_id`/`claim_token`, `lease_until`, `state`, `effects[]` and `last_observed_at`.
@@ -363,7 +495,7 @@ Audit columns (#2403 item 3): a row with a PR carries `audit`: `head`; `reservat
 
 ### Claim re-verification before commit and push (`claim-verify`, rc.2 A9 #2255)
 
-The claim line keeps its RC1 head, `moai-claim: session=<id> epoch=<n> lease_until=<utc>`, and gains appended tokens written by the one generator `claim::render_claim_line`: `lane=`, `issue=`, `branch=`, `at=` (UTC) and `relay=true` when another session posted the line (absent means not relayed, so a line with no extra fields — what `claim-acquire` posts — is the RC1 line byte for byte; a session that cannot confirm its id writes `session=unverified`). Readers of the RC1 form ignore the extra tokens. Two machine lines close a claim: `moai-claim-release: comment=<id> by=<who>` and `moai-claim-handoff: comment=<id> to=<session> by=<who>`; this code renders and parses them and posts neither (the one claim POST is unchanged). `claim_verify::evaluate` re-reads every comment and decides, in comment-id order: claim lines from authors outside `allowed_authors` are `author_mismatch`, unreadable lines (bad lease, missing fields, a closing line that names no earlier claim) are `malformed`, a second claim with the same session and epoch is `duplicate`; all three are ignored and reported (REQ-A9-02). The holder is the lowest claim not closed by a release or handoff. A live holder that is the caller gives `owner`; another live holder gives `not_owner` with `lost_to` (REQ-A9-01); an expired holder gives `stale` to everyone, the holder included, with `auto_assigned: false`, because time alone never reassigns the Issue (REQ-A9-03); a closed own claim gives `closed`; a recorded comment id that is not on the Issue gives `uncertain`; otherwise `no_claim`. `claim-verify` makes one paginated GET and succeeds only on `owner`; every other verdict is a classified error (`not owner`, `closed`, `no claim` → `conflict`; `stale`, `uncertain` → `blocked`). `--hook` is the host `PreToolUse` guard. It allows every call except a Bash segment whose first word (after `NAME=value` assignments) is `git` running `commit` or `push` — `echo git commit` is not a git run. In a worktree with an active claim record in this clone's journal it verifies that record's claim. Without a record — the claim was posted for the lane, not by `claim-acquire` — a worktree on a lane branch `issue/<n>-…` is still guarded: the Issue comes from the branch, owner and repository from the GitHub `origin` URL, and the claim comment id from the `Moai-Claim: <n>#<id>` token in the commit command's message (`git commit`) or with the highest comment id among the Issue's tokens on the branch's first-parent commits, merges included (`git push`; a renewal's token may sit only on a merge commit); no token, a token for another Issue only, or a non-GitHub origin is `uncertain` and refuses (fail-closed), with the next action — get the claim comment id — in the message. Other branches and a detached HEAD are not lane worktrees and pass, with the reason. On `git push` every lane-written commit on the branch's first-parent line since the base (the record's `base_revision`, else the commits on no other `origin` branch — the integration branch need not share history with the default branch, as `v2026.11.0` and `main` here do not; with no other remote branch every commit is checked and the push refused) must carry a token of the caller's claim or of an earlier claim of the Issue closed by a handoff line, so commits of a previous epoch stay valid after a takeover; merge commits are not checked (decision 2026-11-09 06:02, #1975), nor are the merged-in commits of other cards (`trailer missing` → `invalid_input`). A refusal exits 2, the code both hosts treat as blocking. `queue-next` now drops claims closed by a release or handoff line, so a released card is a candidate again. The `--mode agent` workflow runs `claim-verify` before every commit and push (`skills/moai-cli/workflows/mode-agent.md` step 6). Limits: every lane posts through one shared GitHub account, so a forged `session=` from an allowed author is indistinguishable from a real one; `hooks-apply` (#2260) writes the guard as the `PreToolUse` (matcher `Bash`) hook `moai-cli claim-verify . --hook` for both hosts; a guard that times out (10 s) does not block, so the workflow step stays the boundary. Tests: `tests/claim_verify_cli.rs` (concurrent, late-visible competitor, uncertain, duplicate, forged author, handoff and release, stale, restart, malformed lines, agreement with `resolve_winner`, the op over recorded exchanges, the hook in temporary repositories including the trailer check, the handoff epoch tokens, a lane branch without a claim record for commit and push, and the binary's exit 2 on both paths) and `src/queue.rs` `released_claims_do_not_hold_the_card`.
+The claim line keeps its RC1 head, `moai-claim: session=<id> epoch=<n> lease_until=<utc>`, and gains appended tokens written by the one generator `claim::render_claim_line`: `lane=`, `issue=`, `branch=`, `at=` (UTC) and `relay=true` when another session posted the line (absent means not relayed, so a line with no extra fields — what `claim-acquire` posts — is the RC1 line byte for byte; a session that cannot confirm its id writes `session=unverified`). Readers of the RC1 form ignore the extra tokens. Two machine lines close a claim: `moai-claim-release: comment=<id> by=<who>` and `moai-claim-handoff: comment=<id> to=<session> by=<who>`; this code renders and parses them and posts neither (the one claim POST is unchanged). `claim_verify::evaluate` re-reads every comment and decides, in comment-id order: claim lines from authors outside `allowed_authors` are `author_mismatch`, unreadable lines (bad lease, missing fields, a closing line that names no earlier claim) are `malformed`, a second claim with the same session and epoch is `duplicate`; all three are ignored and reported (REQ-A9-02). The holder is the lowest claim not closed by a release or handoff. A live holder that is the caller gives `owner`; another live holder gives `not_owner` with `lost_to` (REQ-A9-01); an expired holder gives `stale` to everyone, the holder included, with `auto_assigned: false`, because time alone never reassigns the Issue (REQ-A9-03); a closed own claim gives `closed`; a recorded comment id that is not on the Issue gives `uncertain`; otherwise `no_claim`. `claim-verify` makes one paginated GET and succeeds only on `owner`; every other verdict is a classified error (`not owner`, `closed`, `no claim` → `conflict`; `stale`, `uncertain` → `blocked`). `--hook` is the host `PreToolUse` guard. It allows every call except a Bash segment whose first word (after `NAME=value` assignments) is `git` running `commit` or `push` — `echo git commit` is not a git run. In a worktree with an active claim record in this clone's journal it verifies that record's claim. Without a record — the claim was posted for the lane, not by `claim-acquire` — a worktree on a lane branch `issue/<n>-…` is still guarded: the Issue comes from the branch, owner and repository from the GitHub `origin` URL, and the claim comment id from the `Moai-Claim: <n>#<id>` token in the commit command's message (`git commit`) or with the highest comment id among the Issue's tokens on the branch's first-parent commits, merges included (`git push`; a renewal's token may sit only on a merge commit); no token, a token for another Issue only, or a non-GitHub origin is `uncertain` and refuses (fail-closed), with the next action — get the claim comment id — in the message. Other branches and a detached HEAD are not lane worktrees and pass, with the reason. On `git push` every lane-written commit on the branch's first-parent line since the base (the record's `base_revision`, else the commits on no other `origin` branch — the integration branch need not share history with the default branch, as `v2026.11.0` and `main` here do not; with no other remote branch every commit is checked and the push refused) must carry a token of the caller's claim or of an earlier claim of the Issue closed by a handoff line, so commits of a previous epoch stay valid after a takeover; merge commits are not checked (decision 2026-11-09 06:02, #1975), nor are the merged-in commits of other cards (`trailer missing` → `invalid_input`). A refusal exits 2, the code both hosts treat as blocking. `queue-next` now drops claims closed by a release or handoff line, so a released card is a candidate again. The MODE-AGENT workflow runs `claim-verify` before every commit and push (`skills/moai-cli/workflows/mode-agent.md` step 6). Limits: every lane posts through one shared GitHub account, so a forged `session=` from an allowed author is indistinguishable from a real one; `hooks-apply` (#2260) writes the guard as the `PreToolUse` (matcher `Bash`) hook `moai-cli claim-verify . --hook` for both hosts; a guard that times out (10 s) does not block, so the workflow step stays the boundary. Tests: `tests/claim_verify_cli.rs` (concurrent, late-visible competitor, uncertain, duplicate, forged author, handoff and release, stale, restart, malformed lines, agreement with `resolve_winner`, the op over recorded exchanges, the hook in temporary repositories including the trailer check, the handoff epoch tokens, a lane branch without a claim record for commit and push, and the binary's exit 2 on both paths) and `src/queue.rs` `released_claims_do_not_hold_the_card`.
 
 ## Stalled-claim re-inspection and explicit handoff (`claim-handoff`, `effect-*`, `effects-reconcile`, 06-B #2006)
 
