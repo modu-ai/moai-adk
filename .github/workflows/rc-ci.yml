@@ -55,8 +55,7 @@ jobs:
           if ! command -v rg >/dev/null 2>&1; then
             case "$RUNNER_OS" in
               Linux)
-                sudo apt-get update
-                sudo apt-get install --yes ripgrep
+                exec bash tools/ci-install-ripgrep.sh
                 ;;
               macOS)
                 brew install ripgrep

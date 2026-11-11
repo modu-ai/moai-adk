@@ -341,7 +341,7 @@ pub fn apply_at(
     home_root: &Path,
     confirmed: &str,
     permission: &str,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
     if ["", "null", "placeholder"].contains(&permission.trim())
         || permission.len() > 128
@@ -351,15 +351,8 @@ pub fn apply_at(
     }
     check_destinations(project, home_root)?;
     // The journal lock spans plan→copy→switch so the window closes for claimants.
-    let claims_root = crate::claim::journal_root(project)?;
-    let journal_lock = crate::claim::Journal::open(&claims_root)?;
-    if !journal_lock.try_lock()? {
-        return Err(
-            "conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied"
-                .into(),
-        );
-    }
-    apply_locked(project, home_root, confirmed, &journal_lock)
+    let journal_lock = crate::worktree::open_locked_journal(project)?;
+    Ok(apply_locked(project, home_root, confirmed, &journal_lock)?)
 }
 
 fn apply_locked(
@@ -422,7 +415,11 @@ pub fn plan_cli(project: &Path) -> Result<Value> {
     serde_json::to_value(&plan).map_err(|_| "encode failed".to_string())
 }
 
-pub fn apply_cli(project: &Path, confirmed: &str, permission: &str) -> Result<Value> {
+pub fn apply_cli(
+    project: &Path,
+    confirmed: &str,
+    permission: &str,
+) -> std::result::Result<Value, crate::contract::OpError> {
     let home_root = default_home_root().ok_or("home root unavailable; HOME is not set")?;
     apply_at(project, &home_root, confirmed, permission)
 }
@@ -472,7 +469,8 @@ mod tests {
         let confirmed = plan(&project, &home_root).unwrap().plan_digest;
         let err = apply_at(&project, &home_root, &confirmed, "test:layout").unwrap_err();
         assert!(
-            err.contains("home target for receipts already exists"),
+            err.message
+                .contains("home target for receipts already exists"),
             "{err}"
         );
         assert_eq!(
@@ -494,7 +492,10 @@ mod tests {
         let confirmed = plan(&project, &home_root).unwrap().plan_digest;
         for permission in ["", "null", "placeholder"] {
             let err = apply_at(&project, &home_root, &confirmed, permission).unwrap_err();
-            assert_eq!(err, "permission reference required", "{permission:?}");
+            assert_eq!(
+                err.message, "permission reference required",
+                "{permission:?}"
+            );
         }
         assert!(
             !home_root.join("projects").exists(),
