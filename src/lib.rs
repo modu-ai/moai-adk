@@ -26,6 +26,7 @@ pub mod identity;
 pub mod index;
 pub mod index_records;
 pub mod install;
+pub mod key_vault;
 pub mod lane_handoff;
 pub mod lane_status;
 pub mod layout;
