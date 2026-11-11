@@ -2,6 +2,7 @@
 """Run explicit one-line mutations in a retained, independent HEAD clone."""
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -44,67 +45,156 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def _index_entries(raw):
+    entries = {}
+    for row in raw.split(b"\0"):
+        if not row:
+            continue
+        metadata, name = row.split(b"\t", 1)
+        tag, mode, oid, stage = metadata.split()
+        name = os.fsdecode(name)
+        if name in entries or stage != b"0":
+            raise Blocked("source index must contain only stage-zero entries")
+        entries[name] = (tag, mode, oid)
+    return entries
+
+
 def source_snapshot(root, env):
     head = git(root, env, "rev-parse", "--verify", "HEAD^{commit}").stdout.strip().decode("ascii")
-    index = Path(os.fsdecode(git(root, env, "rev-parse", "--git-path", "index").stdout.rstrip(b"\n")))
-    if not index.is_absolute():
-        index = root / index
-    tracked = {}
-    for raw in git(root, env, "ls-files", "-z").stdout.split(b"\0"):
-        if not raw:
-            continue
-        name = os.fsdecode(raw)
-        path = root / name
-        mode = path.lstat().st_mode
-        if stat.S_ISLNK(mode):
-            value = (mode, os.readlink(path))
-        elif stat.S_ISREG(mode):
-            value = (mode, digest(path.read_bytes()))
-        elif stat.S_ISDIR(mode):
-            value = (mode, "directory")
-        else:
-            value = (mode, "nonregular")
-        tracked[name] = value
-    return (head, index.read_bytes(), tracked,
+    metadata = git(root, env, "ls-files", "--stage", "-v", "-z").stdout
+    entries = _index_entries(metadata)
+    # Read tracked entries before asking Git to inspect working-tree status.
+    # An unsafe ancestor aborts this snapshot without opening its descendants.
+    tracked = _tracked_files(root, env, entries)
+    raw_metadata = []
+    for name in ("index", "HEAD"):
+        path = Path(os.fsdecode(git(root, env, "rev-parse", "--git-path", name).stdout.rstrip(b"\n")))
+        if not path.is_absolute():
+            path = root / path
+        raw_metadata.append(path.read_bytes())
+    return (head, raw_metadata[0], tracked,
             git(root, env, "status", "--porcelain=v1", "--untracked-files=all").stdout,
-            git(root, env, "show-ref", check=False).stdout)
+            git(root, env, "show-ref", check=False).stdout, raw_metadata[1], metadata,
+            git(root, env, "ls-tree", "-r", "-z", "--full-tree", "HEAD").stdout)
+
+
+def require_clean_source(snapshot):
+    if snapshot[3]:
+        raise Blocked("source index/worktree must be clean, including untracked files")
+    entries = _index_entries(snapshot[6])
+    committed = {}
+    for row in snapshot[7].split(b"\0"):
+        if row:
+            metadata, name = row.split(b"\t", 1)
+            mode, kind, oid = metadata.split()
+            committed[os.fsdecode(name)] = (mode, oid)
+    if entries.keys() != committed.keys():
+        raise Blocked("source index paths differ from HEAD")
+    for name, (tag, mode, oid) in entries.items():
+        if tag.islower() or tag.upper() == b"S":
+            raise Blocked("source index has assume-unchanged/skip-worktree flags: " + name)
+        if (mode, oid) != committed[name]:
+            raise Blocked("source index differs from HEAD: " + name)
+        actual = snapshot[2][name]
+        if actual[0] == "file":
+            actual_mode = b"100755" if actual[1] & stat.S_IXUSR else b"100644"
+            matches = actual_mode == mode and actual[3] == oid
+        elif actual[0] == "symlink":
+            matches = mode == b"120000" and actual[2] == oid
+        else:
+            matches = actual[0] == "directory" and mode == b"160000"
+        if not matches:
+            raise Blocked("working tracked entry differs from HEAD: " + name)
+
+
+def _relative_parts(relative):
+    if (not isinstance(relative, str) or not relative or "\\" in relative
+            or "\0" in relative or relative.startswith("/")
+            or any(part in ("", ".", "..") for part in relative.split("/"))):
+        raise Blocked("tracked path must be relative without traversal")
+    return PurePosixPath(relative).parts
+
+
+@contextmanager
+def _posix_parent(root, relative):
+    parts = _relative_parts(relative)
+    directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for part in parts[:-1]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
+            os.close(directory)
+            directory = child
+        yield directory, parts[-1]
+    finally:
+        os.close(directory)
 
 
 def regular_fd(root, relative, flags=os.O_RDONLY):
     """Traverse only directories and a regular leaf, without following symlinks."""
     if os.name == "nt":
         return windows_regular_fd(root, relative, flags)
-    directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    try:
-        parts = PurePosixPath(relative).parts
-        for part in parts[:-1]:
-            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
-            os.close(directory)
-            directory = child
-        fd = os.open(parts[-1], flags | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+    with _posix_parent(root, relative) as (directory, leaf):
+        fd = os.open(leaf, flags | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             os.close(fd)
             raise Blocked("mutation path is not a regular file: " + relative)
         return fd
+
+
+@contextmanager
+def _windows_parent(root, relative):
+    """Pin checked Windows ancestors against replacement while accessing a leaf."""
+    import ctypes
+    from ctypes import wintypes
+
+    parts = _relative_parts(relative)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = (wintypes.HANDLE,)
+
+    class AttributeTag(ctypes.Structure):
+        _fields_ = [("attributes", wintypes.DWORD), ("tag", wintypes.DWORD)]
+
+    inspect = kernel.GetFileInformationByHandleEx
+    inspect.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    handles = []
+    path = Path(root)
+    try:
+        for part in (None, *parts[:-1]):
+            if part is not None:
+                path = path / part
+            # Omit FILE_SHARE_DELETE so a checked component cannot be renamed
+            # or replaced before the leaf has been read or opened.
+            handle = create(str(path), 0x80, 3, None, 3, 0x02200000, None)
+            if handle == ctypes.c_void_p(-1).value:
+                raise ctypes.WinError(ctypes.get_last_error())
+            handles.append(handle)
+            tag = AttributeTag()
+            if not inspect(handle, 9, ctypes.byref(tag), ctypes.sizeof(tag)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if tag.attributes & 0x400 or not tag.attributes & 0x10:
+                raise Blocked("reparse point or non-directory tracked ancestor: " + str(path))
+        yield path / parts[-1]
     finally:
-        os.close(directory)
+        for handle in reversed(handles):
+            close(handle)
 
 
 def windows_regular_fd(root, relative, flags):
+    with _windows_parent(root, relative) as path:
+        return _windows_leaf_fd(path, flags)
+
+
+def _windows_leaf_fd(path, flags):
     """Open a Windows leaf without following reparse points or junctions."""
     import ctypes
     from ctypes import wintypes
     import msvcrt
 
-    path = Path(root)
-    for part in (None, *PurePosixPath(relative).parts):
-        if part is not None:
-            path = path / part
-        info = path.lstat()
-        if getattr(info, "st_file_attributes", 0) & 0x400:
-            raise Blocked("reparse point in mutation path: " + str(path))
-        if path != Path(root) / relative and not stat.S_ISDIR(info.st_mode):
-            raise Blocked("non-directory mutation ancestor: " + str(path))
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     create = kernel.CreateFileW
     create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
@@ -141,6 +231,47 @@ def read_regular(root, relative):
     fd = regular_fd(root, relative)
     with os.fdopen(fd, "rb") as handle:
         return handle.read(), stat.S_IMODE(os.fstat(handle.fileno()).st_mode)
+
+
+def _read_tracked_entry(root, relative):
+    """Read one rooted entry, never following a parent or a leaf symlink."""
+    def read_file(fd):
+        with os.fdopen(fd, "rb") as handle:
+            info = os.fstat(handle.fileno())
+            if not stat.S_ISREG(info.st_mode):
+                raise Blocked("tracked leaf is not regular: " + relative)
+            return "file", stat.S_IMODE(info.st_mode), handle.read()
+
+    try:
+        if os.name == "nt":
+            with _windows_parent(root, relative) as path:
+                info = path.lstat()
+                reparse = getattr(info, "st_file_attributes", 0) & 0x400
+                if stat.S_ISLNK(info.st_mode):
+                    if getattr(info, "st_reparse_tag", 0) != 0xA000000C:
+                        raise Blocked("unsupported tracked reparse point: " + relative)
+                    return "symlink", stat.S_IMODE(info.st_mode), os.fsencode(os.readlink(path))
+                if reparse:
+                    raise Blocked("reparse point in tracked leaf: " + relative)
+                if stat.S_ISREG(info.st_mode):
+                    return read_file(_windows_leaf_fd(path, os.O_RDONLY))
+                if stat.S_ISDIR(info.st_mode):
+                    return "directory", stat.S_IMODE(info.st_mode), None
+        else:
+            with _posix_parent(root, relative) as (directory, leaf):
+                info = os.stat(leaf, dir_fd=directory, follow_symlinks=False)
+                if stat.S_ISLNK(info.st_mode):
+                    return ("symlink", stat.S_IMODE(info.st_mode),
+                            os.fsencode(os.readlink(leaf, dir_fd=directory)))
+                if stat.S_ISREG(info.st_mode):
+                    fd = os.open(leaf, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                                 dir_fd=directory)
+                    return read_file(fd)
+                if stat.S_ISDIR(info.st_mode):
+                    return "directory", stat.S_IMODE(info.st_mode), None
+        raise Blocked("tracked path is not a supported entry: " + relative)
+    except OSError as exc:
+        raise Blocked("cannot safely read tracked entry {}: {}".format(relative, exc)) from exc
 
 
 def write_regular(root, relative, data, mode):
@@ -209,7 +340,7 @@ def validate(spec, root, env):
             kind = target.get("kind")
             if kind not in ("lib", "bin", "test", "example", "bench"):
                 raise Blocked("invalid target kind")
-            command = ["cargo", "test", "--offline", "--locked", "--" + kind]
+            command = ["cargo", "test", "--offline", "--locked", "--message-format=json", "--" + kind]
             if kind == "lib":
                 if "name" in target:
                     raise Blocked("lib must not have a name")
@@ -450,13 +581,119 @@ def quiesce(process, force=False):
         signal.signal(signal.SIGINT, previous)
 
 
-def run_target(argv, workspace, env, timeout):
+def _runtime_result(row):
+    """Separate Cargo build evidence from subsequent stdout-only libtest output."""
+    selectors = [(kind, row["argv"].index("--" + kind)) for kind in
+                 ("lib", "bin", "test", "example", "bench") if "--" + kind in row["argv"]]
+    if len(selectors) != 1:
+        row["error"] = "target requires exactly one Cargo target selector"
+        return
+    kind, position = selectors[0]
+    name = None
+    if kind != "lib":
+        if position + 1 >= len(row["argv"]):
+            row["error"] = "missing Cargo target name"
+            return
+        name = row["argv"][position + 1]
+    lines = row["stdout"].splitlines()
+    builds, artifacts = [], []
+    malformed_build = False
+    for position, line in enumerate(lines):
+        try:
+            message = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(message, dict):
+            continue
+        if message.get("reason") == "build-finished":
+            success = message.get("success")
+            if type(success) is not bool:
+                malformed_build = True
+            builds.append((position, success))
+        elif message.get("reason") == "compiler-artifact":
+            artifacts.append((position, message))
+    if any(success is False for _, success in builds):
+        row["build_success"] = False
+        row["error"] = "Cargo reported an unsuccessful build"
+        return
+    if not builds or malformed_build:
+        row["error"] = "missing or invalid Cargo build-finished marker"
+        return
+    row["build_success"] = True
+    boundary = builds[-1][0]
+    selected = []
+    for position, artifact in artifacts:
+        target, profile = artifact.get("target"), artifact.get("profile")
+        if position >= boundary or not isinstance(target, dict) or not isinstance(profile, dict):
+            continue
+        kinds = target.get("kind")
+        executable = artifact.get("executable")
+        if (not isinstance(kinds, list) or profile.get("test") is not True
+                or not isinstance(executable, str) or not executable):
+            continue
+        matches = (any(value in kinds for value in ("lib", "proc-macro")) if kind == "lib"
+                   else kind in kinds and target.get("name") == name)
+        if matches:
+            selected.append(artifact)
+    if len(selected) != 1:
+        row["error"] = "expected exactly one selected test compiler-artifact with executable"
+        return
+    summaries = []
+    for line in lines[boundary + 1:]:
+        summary = re.fullmatch(r"test result: (ok|FAILED)\. (\d+) passed; (\d+) failed;[^\r\n]*", line)
+        if summary:
+            summaries.append(summary.groups())
+    if not summaries:
+        if row["exit"] == 0:
+            row["status"] = "not_run"
+        else:
+            row["error"] = "target exited without a stdout libtest summary after the build"
+        return
+    if len(summaries) != 1:
+        row["error"] = "multiple libtest summaries for one target"
+        return
+    summary, passed, failed = summaries[0]
+    passed, failed = int(passed), int(failed)
+    row.update(passed=passed, failed=failed, test_executed=passed + failed > 0)
+    if passed == 0:
+        row["status"] = "not_run"
+    elif summary == "FAILED" and failed > 0 and row["exit"] != 0:
+        row["status"] = "FAILED"
+    elif summary == "ok" and failed == 0 and row["exit"] == 0:
+        row["status"] = "survived"
+    else:
+        row["error"] = "libtest summary and target exit disagree"
+
+
+def run_target(argv, workspace, env, timeout, *, clock=None, started=None, spawn=None, stop=None):
+    clock = time.monotonic if clock is None else clock
+    spawn = subprocess.Popen if spawn is None else spawn
+    stop = quiesce if stop is None else stop
     row = {"argv": argv, "exit": None, "stdout": "", "stderr": "",
-           "passed": None, "failed": None, "status": "error"}
+           "passed": None, "failed": None, "status": "error",
+           "build_success": None, "test_executed": False, "timed_out": False}
     problem = None
     interrupted = False
     process = None
     windows_job = None
+    stop_attempted = False
+    stdout = stderr = None
+
+    def stop_owned(force=False):
+        nonlocal stop_attempted
+        if stop_attempted:
+            return
+        stop_attempted = True
+        try:
+            stop(process, force=force)
+        except OSError as exc:
+            row["quiescent"] = False
+            raise UnsafeProcess("child-tree termination failed: " + str(exc)) from exc
+        except BaseException:
+            row["quiescent"] = False
+            raise
+        row["quiescent"] = True
+
     try:
         if os.name == "nt":
             # Popen closes the initial thread handle. Keep SIGINT deferred until
@@ -464,7 +701,7 @@ def run_target(argv, workspace, env, timeout):
             previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
                 windows_job = _WindowsJob()
-                process = subprocess.Popen(
+                process = spawn(
                     argv, cwd=workspace, env=env,
                     creationflags=0x00000004 | subprocess.CREATE_NEW_PROCESS_GROUP,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -473,38 +710,57 @@ def run_target(argv, workspace, env, timeout):
             finally:
                 signal.signal(signal.SIGINT, previous)
         else:
-            process = subprocess.Popen(argv, cwd=workspace, env=env, start_new_session=True,
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = spawn(argv, cwd=workspace, env=env, start_new_session=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        deadline = clock() + timeout
         try:
-            stdout, stderr = process.communicate(timeout=timeout)
+            if started is not None:
+                started(process)
+            remaining = deadline - clock()
+            if remaining <= 0:
+                row["timed_out"] = True
+                raise subprocess.TimeoutExpired(argv, timeout)
+            stdout, stderr = process.communicate(timeout=remaining)
         except subprocess.TimeoutExpired as exc:
+            row["timed_out"] = True
             problem = "target timed out"
             row.update(stdout=(exc.output or b"").decode("utf-8", "replace"),
                        stderr=(exc.stderr or b"").decode("utf-8", "replace"))
-            quiesce(process, force=True)
+            stop_owned(force=True)
             stdout, stderr = process.communicate()
         except KeyboardInterrupt:
             problem, interrupted = "target interrupted", True
-            quiesce(process, force=True)
+            stop_owned(force=True)
+            stdout, stderr = process.communicate()
+        except OSError as exc:
+            problem = str(exc)
+            stop_owned(force=True)
             stdout, stderr = process.communicate()
         finally:
-            quiesce(process)
-        row.update(exit=process.returncode, stdout=stdout.decode("utf-8", "replace"),
-                   stderr=stderr.decode("utf-8", "replace"))
+            if stdout is not None:
+                row.update(stdout=stdout.decode("utf-8", "replace"),
+                           stderr=stderr.decode("utf-8", "replace"))
+            stop_owned()
     except UnsafeProcess as exc:
         row["quiescent"] = False
         problem = str(exc)
     except KeyboardInterrupt:
-        if os.name != "nt":
-            raise
-        # Also cover an interrupt between Windows setup and communicate().
         problem, interrupted = "target interrupted", True
     except OSError as exc:
-        if process is not None:
-            row["quiescent"] = False
         problem = str(exc)
     finally:
-        if windows_job is not None:
+        if process is not None:
+            try:
+                stop_owned(force=problem is not None)
+            except (UnsafeProcess, OSError) as exc:
+                row["quiescent"] = False
+                problem = str(exc)
+            except KeyboardInterrupt:
+                row["quiescent"] = False
+                problem, interrupted = "target interrupted during child-tree cleanup", True
+            row["exit"] = process.returncode
+        elif windows_job is not None:
+            # A job created before a failed spawn still owns a handle to close.
             previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
                 windows_job.quiesce()
@@ -516,42 +772,31 @@ def run_target(argv, workspace, env, timeout):
     if problem:
         row["error"] = problem
         return row, interrupted
-    summaries = re.findall(r"^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed;[^\r\n]*$",
-                           row["stdout"] + "\n" + row["stderr"], re.MULTILINE)
-    if summaries:
-        summary, passed, failed = summaries[-1]
-        row.update(passed=int(passed), failed=int(failed))
-        if len(summaries) != 1:
-            row["error"] = "multiple libtest summaries for one target"
-        elif int(passed) == 0:
-            row["status"] = "not_run"
-        elif summary == "FAILED" and int(failed) > 0 and row["exit"] != 0:
-            row["status"] = "FAILED"
-        elif summary == "ok" and int(failed) == 0 and row["exit"] == 0:
-            row["status"] = "survived"
-    elif row["exit"] == 0:
-        row["status"] = "not_run"
+    _runtime_result(row)
     return row, interrupted
 
 
-def _tracked_files(workspace, env):
-    """Compare actual tracked content, independently of Git's index shortcuts."""
+def _tracked_files(workspace, env, entries=None):
+    """Snapshot actual entries, independently of Git's index shortcuts."""
+    if entries is None:
+        entries = _index_entries(git(workspace, env, "ls-files", "--stage", "-v", "-z").stdout)
+    algorithm = git(workspace, env, "rev-parse", "--show-object-format").stdout.strip().decode("ascii")
+    if algorithm not in ("sha1", "sha256"):
+        raise Blocked("unsupported Git object format: " + algorithm)
     tracked = {}
-    for raw in git(workspace, env, "ls-files", "-z").stdout.split(b"\0"):
-        if not raw:
-            continue
-        name = os.fsdecode(raw)
-        path = workspace / name
-        mode = path.lstat().st_mode
-        if stat.S_ISREG(mode):
-            data, permissions = read_regular(workspace, name)
-            tracked[name] = ("file", permissions, digest(data))
-        elif stat.S_ISLNK(mode):
-            tracked[name] = ("symlink", os.readlink(path))
-        elif stat.S_ISDIR(mode):
-            tracked[name] = ("directory", stat.S_IMODE(mode))
+    for name in entries:
+        kind, permissions, data = _read_tracked_entry(workspace, name)
+        if data is not None:
+            blob = hashlib.new(algorithm)
+            blob.update(b"blob " + str(len(data)).encode("ascii") + b"\0")
+            blob.update(data)
+            oid = blob.hexdigest().encode("ascii")
+        if kind == "file":
+            tracked[name] = (kind, permissions, digest(data), oid)
+        elif kind == "symlink":
+            tracked[name] = (kind, os.fsdecode(data), oid)
         else:
-            raise Blocked("tracked path is no longer regular: " + name)
+            tracked[name] = (kind, permissions)
     return tracked
 
 
@@ -595,8 +840,7 @@ def execute(args, report):
     before = source_snapshot(root, env)
     report["head"] = before[0]
     try:
-        if before[3]:
-            raise Blocked("source index/worktree must be clean, including untracked files")
+        require_clean_source(before)
         value = os.environ.get("CARGO_TARGET_DIR")
         if not value:
             raise Blocked("CARGO_TARGET_DIR is required")

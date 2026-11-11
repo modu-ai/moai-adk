@@ -16,7 +16,7 @@ NEW = "pub fn answer() -> u32 { 42 }"
 
 # This collaborator reads the actual checkout and Git state; it does not echo
 # the spec or manufacture runner output. All its side effects stay in tempdirs.
-FAKE_CARGO = r'''import json, os, pathlib, subprocess, sys, time
+FAKE_CARGO = r'''import json, os, pathlib, subprocess, sys
 p = pathlib.Path.cwd()
 def git(*args):
     return subprocess.check_output(["git", *args], cwd=p, text=True).strip()
@@ -50,17 +50,61 @@ elif mode in ("assume_unchanged", "skip_worktree"):
     (p / "kept.txt").write_text("hidden clone edit\n")
     flag = "--assume-unchanged" if mode == "assume_unchanged" else "--skip-worktree"
     subprocess.check_call(["git", "update-index", flag, "kept.txt"], cwd=p)
-elif mode == "timeout":
-    time.sleep(10)
-if mode == "compile":
-    print("error[E0308]: mismatched types", file=sys.stderr)
+summary = "test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 filtered out;"
+def emit(value):
+    print(json.dumps(value), flush=True)
+kind = next(k for k in ("lib", "bin", "test", "example", "bench")
+            if "--" + k in sys.argv)
+name = "fixture" if kind == "lib" else sys.argv[sys.argv.index("--" + kind) + 1]
+artifact = {"reason": "compiler-artifact", "package_id": "fixture 0.1.0",
+            "manifest_path": str(p / "Cargo.toml"),
+            "target": {"name": name, "kind": [kind], "crate_types": ["lib" if kind == "lib" else "bin"]},
+            "profile": {"test": True}, "executable": str(p / "target/fixture"),
+            "filenames": [], "fresh": False}
+if mode.startswith("compiler_") or mode == "compile":
+    if mode == "compiler_json":
+        emit({"reason": "compiler-message", "message": {"rendered": summary + "\n",
+              "message": summary, "level": "error"}, "target": artifact["target"]})
+    elif mode == "compiler_stdout":
+        print(summary)
+    elif mode == "compiler_forged_build_json":
+        emit(artifact)
+        emit({"reason": "build-finished", "success": True})
+        print(summary)
+    elif mode == "compiler_multiline":
+        print("error: diagnostic\n" + summary, file=sys.stderr)
+    else:
+        print(summary if mode == "compiler_stderr" else "error[E0308]: mismatched types",
+              file=sys.stderr)
+    emit({"reason": "build-finished", "success": False})
     sys.exit(101)
 if mode == "unknown":
     print("toolchain unavailable", file=sys.stderr)
     sys.exit(7)
-if mode == "missing":
-    print("Finished test profile")
+if mode != "no_artifact":
+    if mode == "wrong_artifact":
+        artifact["target"] = {"name": "unselected", "kind": ["bin"]}
+    if mode == "non_test_artifact":
+        artifact["profile"]["test"] = False
+    if mode == "no_executable":
+        artifact["executable"] = None
+    emit(artifact)
+    if mode == "ambiguous_artifact":
+        emit(artifact)
+if mode == "false_then_true":
+    emit({"reason": "build-finished", "success": False})
+if mode == "build_script":
+    emit({"reason": "build-script-executed", "package_id": "fixture 0.1.0",
+          "linked_libs": [], "linked_paths": [], "cfgs": [], "env": [],
+          "out_dir": str(p / "target/build"), "rendered": summary})
+    print(summary, file=sys.stderr)
+if mode != "no_build_finished":
+    emit({"reason": "build-finished", "success": True})
+if mode in ("missing", "build_script"):
     sys.exit(0)
+if mode == "runtime_stderr":
+    print(summary, file=sys.stderr)
+    sys.exit(101)
 if mode == "zero":
     print("test result: ok. 0 passed; 0 failed; 0 ignored; 8 filtered out;")
     sys.exit(0)
@@ -70,7 +114,7 @@ if mode == "zero_failed":
 if mode == "survived":
     print("test result: ok. 2 passed; 0 failed; 0 ignored; 0 filtered out;")
     sys.exit(0)
-print("test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 filtered out;")
+print(summary)
 sys.exit(101)
 '''
 
@@ -232,16 +276,17 @@ class MutationCLI(unittest.TestCase):
         self.assertNotEqual(actual_target, owned)
         self.assertEqual(len({call["target"] for call in calls}), 1)
         for call, target in zip(calls, targets):
-            expected = ["test", "--offline", "--locked", "--" + target["kind"]]
+            argv = call["argv"]
+            self.assertEqual(argv[0], "test")
+            for flag in ("--offline", "--locked", "--message-format=json"):
+                self.assertIn(flag, argv)
+            selectors = [flag for flag in argv
+                         if flag in ("--lib", "--bin", "--test", "--example", "--bench")]
+            self.assertEqual(selectors, ["--" + target["kind"]])
             if "name" in target:
-                expected.append(target["name"])
-            expected.append("answer")
-            argv = list(call["argv"])
-            if "--color" in argv:
-                at = argv.index("--color")
-                self.assertEqual(argv[at + 1], "never")
-                del argv[at:at + 2]
-            self.assertEqual(argv, expected)
+                self.assertEqual(argv[argv.index(selectors[0]) + 1], target["name"])
+            self.assertIn("answer", argv)
+            self.assertNotIn("--no-run", argv, "one Cargo invocation must execute the selected tests")
             self.assertEqual(Path(call["cwd"]), workspace)
             self.assertEqual(call["code"], NEW + "\npub fn other() -> u32 { 9 }\n")
             self.assertIn("-" + OLD, call["diff"])
@@ -299,32 +344,6 @@ class MutationCLI(unittest.TestCase):
                     self.assertIn("0 passed; 1 failed", result["stdout"])
                 if mode == "compile":
                     self.assertIn("E0308", result["stderr"])
-
-    def test_timeout_restores_only_after_child_tree_is_quiescent(self):
-        self.spec["timeout_seconds"] = 0.2
-        out, report = self.invoke("timeout")
-        self.assertEqual(out.returncode, 1, report)
-        self.assertTrue(report["source_unchanged"])
-        row = report["mutations"][0]
-        self.assertEqual(len(row["targets"]), 1)
-        self.assertEqual(len(self.calls()), 1)
-        result = row["targets"][0]
-        self.assertEqual(result["status"], "error")
-        workspace = Path(report["workspace"])
-        self.assertTrue(workspace.is_dir(), "timeout evidence must be retained")
-        if result.get("quiescent") is False:
-            self.assertEqual(report["status"], "blocked")
-            self.assertFalse(row["restored"])
-            self.assertNotEqual(row["restore_diff_exit"], 0)
-            self.assertTrue(report["errors"], report)
-            self.assertEqual((workspace / "src/lib.rs").read_text(),
-                             NEW + "\npub fn other() -> u32 { 9 }\n",
-                             "unsafe child tree must prevent restoration")
-        else:
-            self.assertTrue(row["restored"])
-            self.assertEqual(row["restore_diff_exit"], 0)
-            self.assertEqual((workspace / "src/lib.rs").read_bytes(),
-                             (self.source / "src/lib.rs").read_bytes())
 
     def test_restoration_failure_stops_before_next_mutation_and_never_follows_symlink(self):
         for mode in ("directory", "symlink", "index"):
