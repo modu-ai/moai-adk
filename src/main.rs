@@ -307,6 +307,21 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Record a dispatch revision over durable S1 messages (typed JSON stdin).
+    DispatchRecord {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Record received ACK and explicit accepted/deferred/rejected decision, separately.
+    DispatchAck {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Observe dispatch revisions, decisions and the five-minute ACK alert (GET only).
+    /// Never authorizes a claim or an audit gate.
+    DispatchCheck,
     /// Publish a durable message from typed JSON on stdin; queued is not receiver ACK
     /// or business acceptance.
     MessageRecord {
@@ -531,7 +546,7 @@ enum Command {
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
-        /// Absolute skill directory named `moai-cli`, e.g. ~/.agents/skills/moai-cli (no default).
+        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -541,7 +556,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
+        #[arg(long, default_value = "Use $moai to read this project's status")]
         default_prompt: String,
         /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
         #[arg(long)]
@@ -557,7 +572,7 @@ enum Command {
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
         package: PathBuf,
-        /// Absolute skill directory named `moai-cli`; the same target the plan was made for.
+        /// Absolute skill directory named `moai`; the same target the plan was made for.
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -567,7 +582,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
+        #[arg(long, default_value = "Use $moai to read this project's status")]
         default_prompt: String,
         #[arg(long)]
         allow_implicit_invocation: Option<bool>,
@@ -1153,6 +1168,9 @@ fn operation(command: &Command) -> Option<&'static str> {
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
+        DispatchRecord { .. } => "dispatch.record",
+        DispatchAck { .. } => "dispatch.ack",
+        DispatchCheck => "dispatch.check",
         MessageAck { .. } => "message.ack",
         MessageReconcile { .. } => "message.reconcile",
         MessageRecord { .. } => "message.record",
@@ -1296,6 +1314,31 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::DispatchRecord {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::record_cli(
+            &project,
+            input::<moai_cli::dispatch::RecordRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchAck {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::ack_cli(
+            &project,
+            input::<moai_cli::dispatch::AckRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchCheck => moai_cli::dispatch::check_cli(
+            input::<moai_cli::dispatch::CheckRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::MessageRecord {
             project,
             permission_reference,
@@ -1402,6 +1445,11 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LayoutApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::WorktreeApply {
             project,
             source,
@@ -1772,11 +1820,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )
         }
         Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
-        Command::LayoutApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::FlowWipCheck {
             owner,
             repo,

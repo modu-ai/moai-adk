@@ -22,6 +22,9 @@
 //!   (`src/code_refs.rs`, #2442). Each Rust file stores its scan as a per-origin
 //!   `code_scan` node; the edges depend on the whole file set, so they are resolved
 //!   again on every build from the stored scans and never reused as stored lines.
+//!   C6d #2450 also stores qualified doc-comment candidates and module-level item
+//!   declarations in those scans. `documents` edges require a unique declaration
+//!   and carry both mention and definition evidence; ambiguity is missing coverage.
 //!
 //! Every record line carries `origin`: the manifest path whose bytes produced it, or
 //! `null` for records derived from the whole snapshot (requirement nodes, commit

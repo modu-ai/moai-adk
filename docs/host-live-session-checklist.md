@@ -23,11 +23,11 @@ Claude Code와 Codex에서 **AGENTS.md 로드·skill 노출·hook 발화**를 �
 
 AC-I8C-4와 AC-I8X-4는 **호스트의 hook 메커니즘이 이 격리 환경에서 관측 가능한지**를 잴 뿐이다. MoAI hook이 발화한다는 주장(AC-I8C-5, AC-I8X-5)과는 다른 행이고, MoAI hook이 생기기 전에는 passed가 될 수 없다.
 
-각 임시 프로젝트에는 `skills/moai-cli` 전체도 호스트 위치(`.claude/skills/moai-cli` 또는 `.agents/skills/moai-cli`)에 함께 복사된다. receipt의 `skill_digest`는 그 `SKILL.md`의 sha256이다.
+각 임시 프로젝트에는 `skills/moai` 전체도 호스트 위치(`.claude/skills/moai` 또는 `.agents/skills/moai`)에 함께 복사된다. receipt의 `skill_digest`는 그 `SKILL.md`의 sha256이다.
 
 ## 2. 사전 조건
 
-1. 실행 위치는 이 저장소 루트다(하네스가 `skills/moai-cli`를 읽는다). receipt 디렉터리(`--out`)는 체크아웃 **밖**에 둔다. 예: `"$(mktemp -d)/i8"`.
+1. 실행 위치는 이 저장소 루트다(하네스가 `skills/moai`를 읽는다). receipt 디렉터리(`--out`)는 체크아웃 **밖**에 둔다. 예: `"$(mktemp -d)/i8"`.
 2. 자격 증명은 운영자가 이미 가진 것을 환경 변수로만 넘긴다: Claude Code는 `ANTHROPIC_API_KEY`, Codex는 `CODEX_API_KEY`. 하네스는 변수 이름만 기록하고, 호스트 원시 출력에 값이 나타나면 `[REDACTED:<이름>]`으로 바꾼 뒤 보관한다.
 3. `--live` 실행은 API 유료 호출이다. 스크립트 항목 7개는 각각 호스트를 한 번 띄우고, 호스트마다 `--version`도 한 번 실행한다. 실행 여부는 운영자가 정한다.
 4. 호스트 버전: Claude Code 2.1.277 이상(AGENTS.md 직접 읽기 최소 버전, `src/claude.rs` `MIN_AGENTS_VERSION`).
@@ -73,7 +73,7 @@ python3 -I tools/host_live_harness.py --out "$OUT" --live; echo "exit=$?"
 
 한 호스트만 잴 때는 `--only AC-I8C-1 --only AC-I8C-3`처럼 항목을 고른다. 다른 경로의 호스트 바이너리는 `--bin claude=<path>` / `--bin codex=<path>`로 준다. 바이너리가 없거나 자격 증명 변수가 비어 있으면 그 항목은 실행하지 않고 `not_run`으로 남는다.
 
-exit 코드: 0 = receipt 작성, 1 = 입력을 읽을 수 없음(`skills/moai-cli/SKILL.md` 없음 등) 또는 I/O 실패, 2 = 사용법 오류. 항목의 failed는 exit 코드가 아니라 receipt의 `result`로 나온다.
+exit 코드: 0 = receipt 작성, 1 = 입력을 읽을 수 없음(`skills/moai/SKILL.md` 없음 등) 또는 I/O 실패, 2 = 사용법 오류. 항목의 failed는 exit 코드가 아니라 receipt의 `result`로 나온다.
 
 ### 4.3 수동 항목 (대화형)
 
@@ -82,8 +82,8 @@ exit 코드: 0 = receipt 작성, 1 = 입력을 읽을 수 없음(`skills/moai-cl
 ```sh
 WORK="$(mktemp -d)"
 mkdir -p "$WORK/home" "$WORK/project/.claude/skills" "$WORK/project/.agents/skills"
-cp -R skills/moai-cli "$WORK/project/.claude/skills/moai-cli"
-cp -R skills/moai-cli "$WORK/project/.agents/skills/moai-cli"
+cp -R skills/moai "$WORK/project/.claude/skills/moai"
+cp -R skills/moai "$WORK/project/.agents/skills/moai"
 printf '# Probe\n\nMOAI_PROBE_MARKER=manual-check\n' > "$WORK/project/AGENTS.md"
 ```
 
