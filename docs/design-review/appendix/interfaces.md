@@ -42,6 +42,7 @@
 - `context-bundle`
 - `context-verify`
 - `cost-report`
+- `decision-append`
 - `decision-record`
 - `effect-confirm`
 - `effect-intend`
@@ -85,6 +86,7 @@
 - `recovery-plan`
 - `run-verify`
 - `scope-check`
+- `search`
 - `snapshot-describe`
 - `update-apply`
 - `update-plan`

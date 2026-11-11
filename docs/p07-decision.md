@@ -5,7 +5,10 @@
 ## Rule
 
 - **The work ledger is forge Issues only** (GitHub; GitLab when its adapter lands). There is no local TODO list, no local task store and no promotion from one.
-- **No forge connected means no ledger.** Ledger operations report the ledger as unavailable with error kind `blocked` (`retryable: false`: connecting a forge is a change, not a retry) and a message naming the missing forge. They never create, read or migrate a local TODO, and they never fall back to a local store. `unavailable` is not used here: in the 00-D vocabulary it means a retry may succeed (a lock wait).
+- **No forge connected means no ledger.** Ledger operations never create, read or migrate a local TODO, and they never fall back to a local store. They answer with the shared forge error classification as it is (user decision 2026-11-10, #2389 comment 6774899518 row 37: keep the current behaviour and fix this document; the shared classification is not changed):
+  - `gh` missing from `PATH`, or `gh` not signed in: error kind `transport`, `retryable: true` (the transport cannot reach the forge; signing in or installing `gh` and retrying succeeds);
+  - no repository named in the request: error kind `invalid_input`, `retryable: false`.
+  The test `forge_read_without_a_forge_creates_nothing_and_answers_transport` (`tests/ledger_forge_unconnected_cli.rs`) pins both answers and that no file is written. (This rule first said `blocked`/`retryable: false`; measured behaviour differed, Issue #2384 comment 6771930434.)
 - **No SQLite.** No state, index, queue or TODO store uses SQLite. The stores that exist are file based and already implemented: the claim journal (`claim::journal_root`), the generation receipts (`apply::Receipt`), the forge outbox (`<project>/.moai-cli/forge/outbox/`) and the P09 home layout pointer. `Cargo.toml` has no SQLite dependency (checked at tip `2930b8631f`).
 - **Out of scope** (preserved): the Go tool's own todo and SQLite features and any data under `~/.moai/`. Existing `<project>/.moai-cli/forge/promotions.json` files written by the removed preview/apply are left in place; nothing deletes user data.
 
@@ -32,12 +35,12 @@ Method A is `git grep -i -E` over tracked files. Method B (`target/agent5-2384/s
 | `.gitignore:41-42` | `*.sqlite`, `*.sqlite3` (no such file exists in the primary checkout to depth 4; leader-owned file) |
 | `src/forge/outbox.rs:276,295-303` | test fixtures use the operation word `promote`; they test the marker grammar, not promotion, and may stay or be renamed |
 
-After removal the code card checks for dead code left behind in `forge::{outbox, transport, write}` (clippy `-D warnings` fails on it) and adds the AC-1/AC-2 tests: the two subcommands exit 2 as usage errors and are absent from `--help`; a temporary project with no forge gives ledger operations the `blocked` response above and creates no file.
+After removal the code card checks for dead code left behind in `forge::{outbox, transport, write}` (clippy `-D warnings` fails on it) and adds the AC-1/AC-2 tests: the two subcommands exit 2 as usage errors and are absent from `--help`; a temporary project with no forge gives ledger operations the answers listed under Rule and creates no file.
 
 ### Changed in this document card
 
 - this file (supersession, rule, inventory);
-- `skills/moai-cli/workflows/sync.md` step 4: the sentence about moving local TODOs to a newly connected forge is replaced by the forge-only rule, and `skills/moai-cli/references/source-manifest.json` carries the new digest of that file.
+- `skills/moai/workflows/sync.md` step 4: the sentence about moving local TODOs to a newly connected forge is replaced by the forge-only rule, and `skills/moai/references/source-manifest.json` carries the new digest of that file.
 
 ### Kept: history, records and other systems (not current design)
 

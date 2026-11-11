@@ -1,6 +1,6 @@
 """SYNC drift detection fixtures for the four kinds added by #2168 (REQ-B1-01).
 
-The normative procedure is skills/moai-cli/workflows/sync.md step 3: drift beyond
+The normative procedure is skills/moai/workflows/sync.md step 3: drift beyond
 the original three kinds (omission, amendment, document mismatch) is classified
 as `(kind, ground, proposed_action)`, reported separately, and the approved
 SPEC is never auto-weakened. This file is the DETECTION FIXTURE for the four
@@ -23,7 +23,7 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SYNC = os.path.join(ROOT, "skills", "moai-cli", "workflows", "sync.md")
+SYNC = os.path.join(ROOT, "skills", "moai", "workflows", "sync.md")
 CROSSWALK_REL = "docs/design-review/appendix/state-vocabulary-crosswalk.md"
 ORIGINAL_THREE = ("omission", "amendment", "document mismatch")
 

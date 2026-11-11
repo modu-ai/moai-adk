@@ -424,7 +424,7 @@ enum Command {
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
-        /// Absolute skill directory named `moai-cli`, e.g. ~/.agents/skills/moai-cli (no default).
+        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -434,7 +434,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
+        #[arg(long, default_value = "Use $moai to read this project's status")]
         default_prompt: String,
         /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
         #[arg(long)]
@@ -450,7 +450,7 @@ enum Command {
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
         package: PathBuf,
-        /// Absolute skill directory named `moai-cli`; the same target the plan was made for.
+        /// Absolute skill directory named `moai`; the same target the plan was made for.
         #[arg(long)]
         target: PathBuf,
         #[arg(long, default_value = "MoAI")]
@@ -460,7 +460,7 @@ enum Command {
             default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
         )]
         short_description: String,
-        #[arg(long, default_value = "Use $moai-cli to read this project's status")]
+        #[arg(long, default_value = "Use $moai to read this project's status")]
         default_prompt: String,
         #[arg(long)]
         allow_implicit_invocation: Option<bool>,
@@ -513,6 +513,12 @@ enum Command {
         path: Option<PathBuf>,
         #[arg(long)]
         plan_digest: String,
+    },
+    /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
+    /// matches over the published index generation (or the tracked files), each result with
+    /// a source citation; the typed-edge step is reported unavailable (#2408).
+    Search {
+        project: PathBuf,
     },
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
@@ -713,6 +719,21 @@ enum Command {
         run: String,
         #[arg(long)]
         permission_reference: String,
+    },
+    /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
+    /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
+    /// rows are never edited or removed. Preview by default; `--apply` writes. Rows go to the
+    /// end of the table, so read the log by its time column, not by row order. The remote is
+    /// not checked (`remote_checked: false`): fetch the tip first and pass it as `base`.
+    DecisionAppend {
+        project: PathBuf,
+        /// Repository-relative path of the log, e.g. `docs/decisions-2026-11-08.md`.
+        #[arg(long)]
+        log: PathBuf,
+        #[arg(long)]
+        apply: bool,
+        #[arg(long)]
+        permission_reference: Option<String>,
     },
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
@@ -915,6 +936,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ContextBundle { .. } => "context.bundle",
         ContextVerify { .. } => "context.verify",
         CostReport { .. } => "cost.report",
+        DecisionAppend { .. } => "decision.append",
         DecisionRecord { .. } => "decision.record",
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
@@ -958,6 +980,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         RecoveryPlan { .. } => "recovery.plan",
         RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
+        Search { .. } => "search.query",
         SnapshotDescribe { .. } => "snapshot.describe",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
@@ -1160,6 +1183,11 @@ fn run_internal(
             &plan_digest,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::Search { project } => serde_json::to_value(moai_cli::search::search(
+            &project,
+            &input::<moai_cli::search::SearchRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::ScopeCheck {
             project,
             source,
@@ -1167,13 +1195,29 @@ fn run_internal(
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
+            // #2404: the PR state of overlapping handed-off claims, read before the journal
+            // lock; with no overlap with a `pr_ready` record the forge is not set up at all.
+            let clock = moai_cli::forge::policy::SystemClock;
+            let handed_off = if moai_cli::scope::needs_pr_status(&mine, &others) {
+                let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+                let client = moai_cli::forge::Client::new(
+                    &transport,
+                    &clock,
+                    Default::default(),
+                    Default::default(),
+                );
+                moai_cli::scope::handed_off_status(&mine, &others, &client)
+            } else {
+                Default::default()
+            };
             moai_cli::scope::check_and_record(
                 &project,
                 &mine,
                 source.task.is_some(),
                 &others,
                 integration_order.as_deref(),
-                &moai_cli::forge::policy::SystemClock,
+                &handed_off,
+                &clock,
             )
         }
         Command::PrConfirm {
@@ -1752,6 +1796,18 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             run,
             permission_reference,
         } => moai_cli::decision::append(&project, &run, &input()?, &permission_reference),
+        Command::DecisionAppend {
+            project,
+            log,
+            apply,
+            permission_reference,
+        } => moai_cli::decision_log::append(
+            &project,
+            &log,
+            &input()?,
+            apply,
+            permission_reference.as_deref(),
+        ),
         Command::AuditReduce { project } => {
             let request = input::<moai_cli::audit::AuditInput>()?;
             if request.protocol_version != contract::PROTOCOL_VERSION {

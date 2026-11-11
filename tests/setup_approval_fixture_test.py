@@ -1,6 +1,6 @@
 """SETUP approval-separation fixtures for #2170 (REQ-B3-01/02).
 
-The normative procedure is skills/moai-cli/workflows/setup.md steps 7-8: the
+The normative procedure is skills/moai/workflows/setup.md steps 7-8: the
 allowed initial local commit and the reviewed Issue publication are TWO
 separately approved effects — a dry-run diff is shown first, the commit
 approval never implies push or publication, the publication approval publishes
@@ -22,7 +22,7 @@ import unittest
 
 
 class SetupProcedureDocumentedTest(unittest.TestCase):
-    """Reads the real product artifact (skills/moai-cli/workflows/setup.md) and
+    """Reads the real product artifact (skills/moai/workflows/setup.md) and
     asserts the approval separation is actually written there — the fixture
     above demonstrates the semantics, this one pins the document."""
 
@@ -30,7 +30,7 @@ class SetupProcedureDocumentedTest(unittest.TestCase):
         with open(
             os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
-                "..", "skills", "moai-cli", "workflows", "setup.md",
+                "..", "skills", "moai", "workflows", "setup.md",
             ),
             "r", encoding="utf-8",
         ) as f:

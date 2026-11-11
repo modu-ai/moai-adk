@@ -467,14 +467,14 @@ fn issue_trailer(line: &str) -> Option<(&'static str, &str)> {
 /// Collected records before serialization: edges keyed by (kind, source, target) so
 /// repeated explicit references merge their evidence into one edge.
 #[derive(Default)]
-struct Builder {
-    nodes: BTreeMap<String, OntologyNode>,
-    edges: BTreeMap<(String, String, String), BTreeSet<String>>,
-    missing: Vec<Value>,
+pub(crate) struct Builder {
+    pub(crate) nodes: BTreeMap<String, OntologyNode>,
+    pub(crate) edges: BTreeMap<(String, String, String), BTreeSet<String>>,
+    pub(crate) missing: Vec<Value>,
 }
 
 impl Builder {
-    fn node(&mut self, id: &str, kind: &str, revision: &str, props: &[(&str, &str)]) {
+    pub(crate) fn node(&mut self, id: &str, kind: &str, revision: &str, props: &[(&str, &str)]) {
         self.nodes
             .entry(id.to_string())
             .or_insert_with(|| OntologyNode {
@@ -489,7 +489,7 @@ impl Builder {
             });
     }
 
-    fn requirement(&mut self, id: &str) {
+    pub(crate) fn requirement(&mut self, id: &str) {
         self.node(
             &format!("req:{id}"),
             "requirement",
@@ -498,14 +498,14 @@ impl Builder {
         );
     }
 
-    fn edge(&mut self, kind: &str, source: &str, target: &str, evidence: String) {
+    pub(crate) fn edge(&mut self, kind: &str, source: &str, target: &str, evidence: String) {
         self.edges
             .entry((kind.to_string(), source.to_string(), target.to_string()))
             .or_default()
             .insert(evidence);
     }
 
-    fn miss(&mut self, kind: &str, detail: Value) {
+    pub(crate) fn miss(&mut self, kind: &str, detail: Value) {
         let mut row = json!({"kind": kind});
         if let (Some(r), Some(d)) = (row.as_object_mut(), detail.as_object()) {
             r.extend(d.clone());
@@ -532,15 +532,7 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
     let mut files: Vec<&str> = tracked.split('\0').filter(|p| !p.is_empty()).collect();
     files.sort();
     for path in files {
-        let ext = path.rsplit('.').next().unwrap_or("");
-        if !CODE_EXTENSIONS.contains(&ext) {
-            continue;
-        }
-        if path.contains('#') || path.contains('@') {
-            b.miss(
-                "path_unrepresentable",
-                json!({"path": path, "reason": "# or @ cannot appear in an evidence file-uri"}),
-            );
+        if !is_code_path(path) || unrepresentable(&mut b, path) {
             continue;
         }
         let full = root.join(path);
@@ -558,81 +550,121 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
             );
             continue;
         };
-        let file_digest = digest(&bytes);
-        let Ok(text) = String::from_utf8(bytes) else {
-            b.miss(
-                "unreadable_file",
-                json!({"path": path, "reason": "not UTF-8"}),
-            );
-            continue;
-        };
-        let evidence = |line: usize| format!("file:{path}#L{line}@{file_digest}");
-        let file_id = format!("file:{path}");
+        file_links(&mut b, path, bytes);
+    }
+    commit_links(&mut b, root, None)?;
+    finish(b, snapshot_id, observed_at)
+}
 
-        match atlas_tag::scan_path(&full) {
-            Err(e) => b.miss("unreadable_file", json!({"path": path, "reason": e})),
-            Ok(report) => {
-                let file = &report["files"][0];
-                for inv in file["invalid"].as_array().into_iter().flatten() {
-                    b.miss(
-                        "invalid_marker",
-                        json!({"path": path, "line": inv["line"], "reason": inv["reason"]}),
-                    );
+/// Whether `extract` reads this tracked path (code extensions only).
+pub(crate) fn is_code_path(path: &str) -> bool {
+    CODE_EXTENSIONS.contains(&path.rsplit('.').next().unwrap_or(""))
+}
+
+/// Records a path that cannot appear in an evidence file-uri; true when skipped.
+fn unrepresentable(b: &mut Builder, path: &str) -> bool {
+    if path.contains('#') || path.contains('@') {
+        b.miss(
+            "path_unrepresentable",
+            json!({"path": path, "reason": "# or @ cannot appear in an evidence file-uri"}),
+        );
+        return true;
+    }
+    false
+}
+
+/// The per-file part of `extract`: REQ tags and REQ-named test declarations of one
+/// code file, from bytes the caller already read (and, in the C6b index build,
+/// verified against the manifest digest). Callers filter with `is_code_path`.
+pub(crate) fn file_links(b: &mut Builder, path: &str, bytes: Vec<u8>) {
+    if unrepresentable(b, path) {
+        return;
+    }
+    let bytes_len = bytes.len() as u64;
+    let file_digest = digest(&bytes);
+    let Ok(text) = String::from_utf8(bytes) else {
+        b.miss(
+            "unreadable_file",
+            json!({"path": path, "reason": "not UTF-8"}),
+        );
+        return;
+    };
+    let evidence = |line: usize| format!("file:{path}#L{line}@{file_digest}");
+    let file_id = format!("file:{path}");
+
+    let tags = if bytes_len > atlas_tag::FILE_LIMIT {
+        Err("tag file exceeds the size limit")
+    } else {
+        Ok(atlas_tag::scan_text(&text))
+    };
+    match tags {
+        Err(e) => b.miss("unreadable_file", json!({"path": path, "reason": e})),
+        Ok(file) => {
+            for inv in file["invalid"].as_array().into_iter().flatten() {
+                b.miss(
+                    "invalid_marker",
+                    json!({"path": path, "line": inv["line"], "reason": inv["reason"]}),
+                );
+            }
+            for tag in file["nodes"].as_array().into_iter().flatten() {
+                if tag["kind"] != "REQ" {
+                    continue;
                 }
-                for tag in file["nodes"].as_array().into_iter().flatten() {
-                    if tag["kind"] != "REQ" {
+                let line = tag["line"].as_u64().unwrap_or(0) as usize;
+                let args = tag["args"].as_str().unwrap_or("");
+                let tokens: Vec<&str> = args
+                    .split(|c: char| c.is_whitespace() || c == ',')
+                    .filter(|t| !t.is_empty())
+                    .collect();
+                if tokens.is_empty() {
+                    b.miss("req_tag_without_id", json!({"path": path, "line": line}));
+                }
+                for t in tokens {
+                    if !is_req_id(t) {
+                        b.miss(
+                            "malformed_req_ref",
+                            json!({"path": path, "line": line, "token": t}),
+                        );
                         continue;
                     }
-                    let line = tag["line"].as_u64().unwrap_or(0) as usize;
-                    let args = tag["args"].as_str().unwrap_or("");
-                    let tokens: Vec<&str> = args
-                        .split(|c: char| c.is_whitespace() || c == ',')
-                        .filter(|t| !t.is_empty())
-                        .collect();
-                    if tokens.is_empty() {
-                        b.miss("req_tag_without_id", json!({"path": path, "line": line}));
-                    }
-                    for t in tokens {
-                        if !is_req_id(t) {
-                            b.miss(
-                                "malformed_req_ref",
-                                json!({"path": path, "line": line, "token": t}),
-                            );
-                            continue;
-                        }
-                        b.node(&file_id, "file", &file_digest, &[("path", path)]);
-                        b.requirement(t);
-                        b.edge(
-                            "references_requirement",
-                            &file_id,
-                            &format!("req:{t}"),
-                            evidence(line),
-                        );
-                    }
+                    b.node(&file_id, "file", &file_digest, &[("path", path)]);
+                    b.requirement(t);
+                    b.edge(
+                        "references_requirement",
+                        &file_id,
+                        &format!("req:{t}"),
+                        evidence(line),
+                    );
                 }
-            }
-        }
-
-        for (line, name) in test_functions(path, &text) {
-            let leaf = name.rsplit("::").next().unwrap_or(&name);
-            let ids = req_ids_in_test_name(leaf);
-            let test_id = format!("test:{path}::{name}");
-            for id in ids {
-                b.node(
-                    &test_id,
-                    "test",
-                    &file_digest,
-                    &[("path", path), ("name", leaf)],
-                );
-                b.requirement(&id);
-                b.edge("verifies", &test_id, &format!("req:{id}"), evidence(line));
             }
         }
     }
 
+    for (line, name) in test_functions(path, &text) {
+        let leaf = name.rsplit("::").next().unwrap_or(&name);
+        let ids = req_ids_in_test_name(leaf);
+        let test_id = format!("test:{path}::{name}");
+        for id in ids {
+            b.node(
+                &test_id,
+                "test",
+                &file_digest,
+                &[("path", path), ("name", leaf)],
+            );
+            b.requirement(&id);
+            b.edge("verifies", &test_id, &format!("req:{id}"), evidence(line));
+        }
+    }
+}
+
+/// The history part of `extract`: commit → issue mentions reachable from `rev`
+/// (HEAD when `None`).
+pub(crate) fn commit_links(b: &mut Builder, root: &Path, rev: Option<&str>) -> Result<()> {
     // Read raw bodies: a footer or a separate coauthor paragraph must not hide
     // explicit protocol lines. %x1e separates commits; %x1f separates SHA and body.
-    let log = git(root, &["log", "--format=%H%x1f%B%x1e"])?;
+    let mut args = vec!["log", "--format=%H%x1f%B%x1e"];
+    args.extend(rev);
+    let log = git(root, &args)?;
     for rec in log.split('\x1e') {
         let Some((sha, body)) = rec.trim_start_matches('\n').split_once('\x1f') else {
             continue;
@@ -682,7 +714,29 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
             }
         }
     }
+    Ok(())
+}
 
+/// The global part of `extract`: triangle gaps, record serialization and the C4
+/// schema check over everything the builder collected.
+pub(crate) fn finish(b: Builder, snapshot_id: &str, observed_at: &str) -> Result<Value> {
+    finish_with(
+        b,
+        EXTRACTOR_NAME,
+        EXTRACTOR_VERSION,
+        snapshot_id,
+        observed_at,
+    )
+}
+
+/// `finish` under another extractor identity (the C6b map view records tags, not links).
+pub(crate) fn finish_with(
+    mut b: Builder,
+    extractor_name: &str,
+    extractor_version: &str,
+    snapshot_id: &str,
+    observed_at: &str,
+) -> Result<Value> {
     // Triangle gaps (AC-2): a requirement referenced only from code or only from tests.
     let mut by_req: BTreeMap<String, (bool, bool)> = BTreeMap::new();
     for (kind, _, target) in b.edges.keys() {
@@ -706,8 +760,8 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
     }
 
     let extractor = Extractor {
-        name: EXTRACTOR_NAME.into(),
-        version: EXTRACTOR_VERSION.into(),
+        name: extractor_name.into(),
+        version: extractor_version.into(),
     };
     let edges: Vec<OntologyEdge> = b
         .edges
@@ -736,7 +790,7 @@ pub fn extract(root: &Path, snapshot_id: &str, observed_at: &str) -> Result<Valu
         "nodes": nodes,
         "edges": edges,
         "missing": b.missing,
-        "extractor": {"name": EXTRACTOR_NAME, "version": EXTRACTOR_VERSION},
+        "extractor": {"name": extractor_name, "version": extractor_version},
         "snapshot_id": snapshot_id,
         "basis_inferred": 0,
     });
