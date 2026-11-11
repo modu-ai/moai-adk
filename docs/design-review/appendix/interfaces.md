@@ -30,6 +30,7 @@
 - `atlas-map`
 - `atlas-tag-scan`
 - `audit-claim`
+- `audit-clone-plan`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
