@@ -25,6 +25,8 @@ A mode banner, a read-only state summary, one `/goal` line for the user to paste
 
 Keep-set decisions go to the user at every autonomy level (SPEC §6). At `semi`, new Issues, lifting a HOLD, merge-policy changes and releases also go to the user. Ownership comes only from claim comments (SPEC §4), never from labels, messages or an assignment hint — including this mode's own assignment pointers. Merging follows the audit gate; this mode never merges without an independent audit.
 
+Label every Issue you open in the creating command: exactly one `type:`, exactly one `priority:P0..P3`, one or more `area:`, and `host:` when the work is verified on that host (`gh issue create --label …`). Add `needs:decision` while a user decision is pending and remove it once the decision is recorded; it marks a HOLD, the decisions log stays the authority. Track parents with native sub-issues and ordering with native dependencies, not labels. The allowed labels and the full rules are in `.github/moai/README.md` (section "Labels and milestones") and `.github/moai/labels.yml` of the MoAI repository (Issue #2434).
+
 Before dispatching a card or an audit, read the receiving lane's live claim comments and the pull request's `moai-audit-claim` lines. Record a user decision first as an Issue comment; publish decision-log rows only from a worktree at the current tip, comparing with the tip so that rows merged in the meantime are kept.
 
 ## Completion Check

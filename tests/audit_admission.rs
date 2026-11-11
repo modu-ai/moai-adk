@@ -99,6 +99,7 @@ fn run_request(commands: &[&str], refs: &[usize], revision: &str) -> RunRequest 
             timeout_ms: 30_000,
         },
         baseline: None,
+        baseline_ref: None,
         diff_paths: vec![],
     }
 }
