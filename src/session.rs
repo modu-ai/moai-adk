@@ -1,6 +1,8 @@
 //! Development launcher: starts a leader or agent session on a host CLI with the
-//! model/effort/advisor options the operator decided (2026-11-08). The launcher composes
-//! argv from documented flags only and never invents options.
+//! model/effort options the operator decided (2026-11-08). The advisor is off by default and
+//! is turned on by `--advisor` or the user setting `launcher.advisor` (user decision
+//! 2026-11-12, #2476). The launcher composes argv from documented flags only and never
+//! invents options.
 //!
 //! Hosts (00-F #2028; sources read 2026-11-08):
 //! - `claude`: Claude Code. `--name`, `--model`, `--effort`, `--dangerously-skip-permissions`
@@ -33,8 +35,11 @@ const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
-/// launcher's Claude defaults (`--model opus --effort medium --advisor fable`). False would pass no model, effort or advisor flag so the user's own Claude
-/// settings apply (option B, not chosen). This constant is the only place to change.
+/// launcher's Claude defaults `--model opus --effort medium`. False would pass no model or
+/// effort flag so the user's own Claude settings apply (option B, not chosen). This constant is
+/// the only place to change. The advisor is no longer a default (user decision 2026-11-12,
+/// #2476, replacing the `--advisor fable` part of the 2026-11-08 decision): see
+/// [`launch_settings`].
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// User decision 2026-11-10 (#2359, comment 6760976883): a role session (`-l`, `-a`) on every
 /// host starts with full access and no permission prompt (`--dangerously-skip-permissions` on
@@ -193,17 +198,19 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
-/// Reads the user-only launcher setting. Like the project profile's `.yaml` file, this file
-/// accepts only the JSON subset, parsed by serde_json (not general YAML).
-fn role_full_access() -> Result<bool, String> {
+/// Reads the `launcher` object of the user-only `~/.moai-cli/config/launcher.yaml`; `None` when
+/// HOME, the file or the key is absent. Like the project profile's `.yaml` file, this file
+/// accepts only the JSON subset, parsed by serde_json (not general YAML). Errors never quote
+/// the file's content.
+fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     let Ok(home) = crate::key_vault::home() else {
-        return Ok(FULL_ACCESS_DEFAULT);
+        return Ok(None);
     };
     let path = home.join(".moai-cli/config/launcher.yaml");
     // Check the entry before reading: directories, symlinks and special files (including
     // FIFOs, which could block a read) are not launcher configuration files.
     match fs::symlink_metadata(&path) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(FULL_ACCESS_DEFAULT),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(_) => return Err("user launcher configuration cannot be read".into()),
         Ok(metadata) if !metadata.file_type().is_file() => {
             return Err("user launcher configuration must be a regular file".into())
@@ -213,16 +220,18 @@ fn role_full_access() -> Result<bool, String> {
     let bytes = fs::read(&path).map_err(|_| "user launcher configuration cannot be read")?;
     let value: Value = serde_json::from_slice(&bytes)
         .map_err(|_| "user launcher configuration must use valid JSON-subset syntax")?;
-    let root = value
-        .as_object()
-        .ok_or("user launcher configuration must be an object")?;
-    let Some(launcher) = root.get("launcher") else {
-        return Ok(FULL_ACCESS_DEFAULT);
+    let Value::Object(mut root) = value else {
+        return Err("user launcher configuration must be an object".into());
     };
-    let launcher = launcher
-        .as_object()
-        .ok_or("user launcher configuration launcher must be an object")?;
-    match launcher.get("role_access") {
+    match root.remove("launcher") {
+        None => Ok(None),
+        Some(Value::Object(launcher)) => Ok(Some(launcher)),
+        Some(_) => Err("user launcher configuration launcher must be an object".into()),
+    }
+}
+
+fn role_full_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<bool, String> {
+    match launcher.and_then(|l| l.get("role_access")) {
         None => Ok(FULL_ACCESS_DEFAULT),
         Some(Value::String(access)) if access == "full" => Ok(true),
         Some(Value::String(access)) if access == "prompt" => Ok(false),
@@ -232,12 +241,80 @@ fn role_full_access() -> Result<bool, String> {
     }
 }
 
+/// `launcher.advisor`: absent or `none` is no advisor; `fable`, `opus`, `sonnet` or a full
+/// `claude-*` id (the `--advisor` forms) turns it on. Anything else is refused without quoting it.
+fn configured_advisor(
+    launcher: Option<&serde_json::Map<String, Value>>,
+) -> Result<Option<String>, String> {
+    match launcher.and_then(|l| l.get("advisor")) {
+        None => Ok(None),
+        Some(Value::String(a)) if a == "none" => Ok(None),
+        Some(Value::String(a))
+            if ADVISOR_ALIASES.contains(&a.as_str())
+                || (a.starts_with("claude-") && clean("advisor", a).is_ok()) =>
+        {
+            Ok(Some(a.clone()))
+        }
+        Some(_) => Err(
+            "user launcher configuration launcher.advisor must be none, fable, opus, sonnet or a full claude-* model id"
+                .into(),
+        ),
+    }
+}
+
+/// Where the advisor of a launch came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdvisorSource {
+    Cli,
+    UserSetting,
+}
+
+/// The launcher's resolution of the user-only settings for one launch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LaunchSettings {
+    /// See [`full_access`].
+    pub skip_permissions: bool,
+    /// The advisor and its source; `None` passes no `--advisor`.
+    pub advisor: Option<(String, AdvisorSource)>,
+}
+
+/// Resolves both user launcher settings from one read of the file (Issues #2413, #2476).
+/// Access: CLI `--permissions` > `launcher.role_access` > [`FULL_ACCESS_DEFAULT`], roleless
+/// sessions never get a permission flag. Advisor (user decision 2026-11-12, #2476, replacing
+/// the 2026-11-08 default `fable`): CLI `--no-advisor` / `--advisor` > `launcher.advisor` >
+/// none; `--advisor` with `--no-advisor` is refused, and the setting applies to Claude hosts
+/// only (codex has no advisor). The file is validated for every launch, also when the CLI
+/// decides, so a broken file is never silently skipped. Project settings do not matter.
+pub fn launch_settings(
+    host: &str,
+    has_role: bool,
+    keep_prompts: bool,
+    cli_advisor: Option<&str>,
+    no_advisor: bool,
+) -> Result<LaunchSettings, String> {
+    let launcher = user_launcher()?;
+    let configured_access = role_full_access(launcher.as_ref())?;
+    let configured = configured_advisor(launcher.as_ref())?;
+    if cli_advisor.is_some() && no_advisor {
+        return Err("--advisor and --no-advisor cannot be used together".into());
+    }
+    let advisor = match (cli_advisor, no_advisor) {
+        (Some(a), _) => Some((a.to_string(), AdvisorSource::Cli)),
+        (None, true) => None,
+        (None, false) if host != "codex" => configured.map(|a| (a, AdvisorSource::UserSetting)),
+        (None, false) => None,
+    };
+    Ok(LaunchSettings {
+        skip_permissions: has_role && !keep_prompts && configured_access,
+        advisor,
+    })
+}
+
 /// Resolves CLI `--permissions` > user `launcher.role_access` > [`FULL_ACCESS_DEFAULT`].
 /// The configuration is validated even for `--permissions` and roleless sessions; roleless
 /// sessions always leave permission flags to the host. Project settings do not matter.
 pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
-    let configured = role_full_access()?;
-    Ok(has_role && !keep_prompts && configured)
+    Ok(launch_settings("claude", has_role, keep_prompts, None, false)?.skip_permissions)
 }
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361) ----
@@ -420,6 +497,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
             notes.push("CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1 is set: the host ignores --advisor");
         }
         notes.push("--advisor is documented but hidden from `claude --help`; experimental, Anthropic API only");
+        notes.push("--advisor may bill to usage credits; without them set up the host can exit at start (#2476)");
         argv.push("--advisor".into());
         argv.push(a.clone());
     }
@@ -510,9 +588,9 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
         if r.host != "codex" {
             notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-                "launcher defaults without a role: model opus, effort medium, advisor fable (user decision 2026-11-08: A)"
+                "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
             } else {
-                "no model, effort or advisor flag without a role; the user's Claude settings apply"
+                "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
             });
         }
     }

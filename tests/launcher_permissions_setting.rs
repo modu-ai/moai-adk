@@ -80,8 +80,6 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
             "--dangerously-skip-permissions",
         ],
         ("cc", 1, false) => vec![
@@ -92,8 +90,6 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
             "--dangerously-skip-permissions",
         ],
         ("cc", 0, true) => vec![
@@ -104,8 +100,6 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
         ],
         ("cc", 1, true) => vec![
             "claude",
@@ -115,8 +109,6 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
         ],
         ("cc", 2, _) => vec![
             "claude",
@@ -124,8 +116,6 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
         ],
         ("glm", 0, false) => vec![
             "claude",

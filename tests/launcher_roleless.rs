@@ -57,7 +57,8 @@ fn roleless_cc_is_a_plain_claude_session() {
         !a.iter().any(|x| x == "--dangerously-skip-permissions"),
         "AC-1: no permission flag without a role (#2359)"
     );
-    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude defaults.
+    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude model/effort
+    // defaults; no advisor since the user decision of 2026-11-12 (#2476).
     const { assert!(moai_cli::session::ROLELESS_LAUNCHER_DEFAULTS) };
     assert_eq!(
         a,
@@ -66,9 +67,7 @@ fn roleless_cc_is_a_plain_claude_session() {
             "--model",
             "opus",
             "--effort",
-            "medium",
-            "--advisor",
-            "fable"
+            "medium"
         ]
     );
     let notes = v["notes"].to_string();
@@ -95,9 +94,7 @@ fn roleless_cc_is_a_plain_claude_session() {
             "--model",
             "opus",
             "--effort",
-            "medium",
-            "--advisor",
-            "fable"
+            "medium"
         ]
     );
     // -l and -a together stay an error.
@@ -174,8 +171,6 @@ fn role_paths_are_unchanged() {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
             skip
         ]
     );
@@ -190,8 +185,6 @@ fn role_paths_are_unchanged() {
             "opus",
             "--effort",
             "medium",
-            "--advisor",
-            "fable",
             skip
         ]
     );

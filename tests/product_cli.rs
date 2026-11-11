@@ -1100,8 +1100,6 @@ fn launcher_leader_default_claude() {
         "opus",
         "--effort",
         "medium",
-        "--advisor",
-        "fable",
         "--dangerously-skip-permissions"
     ]);
     for args in [
@@ -1165,8 +1163,20 @@ fn launcher_flags_can_be_disabled() {
         ],
         None,
     ));
-    let argv = v["argv"].to_string();
-    assert!(argv.contains(r#""--model","sonnet","--effort","high","--advisor","fable""#));
+    // No advisor by default since the user decision of 2026-11-12 (#2476).
+    assert_eq!(
+        v["argv"],
+        json!([
+            "claude",
+            "--name",
+            "agent-4",
+            "--model",
+            "sonnet",
+            "--effort",
+            "high",
+            "--dangerously-skip-permissions"
+        ])
+    );
     assert!(!launcher(&["-l", "--effort", "turbo", "--dry-run"], None)
         .status
         .success());
@@ -1252,7 +1262,14 @@ fn launcher_glm_requires_token_name_only() {
             "--dangerously-skip-permissions"
         ])
     );
-    assert!(v["notes"].to_string().contains("advisor"));
+    // No advisor by default since #2476; an explicit one is dropped on glm with a note.
+    assert!(!v["notes"].to_string().contains("--advisor omitted"));
+    let v = launched(&launcher(
+        &["glm", "-l", "--advisor", "fable", "--dry-run"],
+        Some(sentinel),
+    ));
+    assert!(!v["argv"].to_string().contains("advisor"));
+    assert!(v["notes"].to_string().contains("--advisor omitted on glm"));
 }
 #[test]
 fn launcher_codex_argv() {
