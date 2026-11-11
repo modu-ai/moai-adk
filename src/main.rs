@@ -307,6 +307,25 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Publish a durable message from typed JSON on stdin; queued is not receiver ACK
+    /// or business acceptance.
+    MessageRecord {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Publish an explicit receiver ACK from typed JSON on stdin; not business acceptance
+    /// or completion.
+    MessageAck {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Reconcile messages from typed JSON on stdin: remote GET only, with local
+    /// reconciliation writes; never publishes messages or ACKs.
+    MessageReconcile {
+        project: PathBuf,
+    },
     /// Lane handoff gate (rc.2 A10 #2264): typed JSON request on stdin; read-only
     /// verification that the worktree is safe to exit — status clean, HEAD ==
     /// observed remote == PR head, claim trailers on lane-authored non-merge commits, leader report
@@ -1134,6 +1153,9 @@ fn operation(command: &Command) -> Option<&'static str> {
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
+        MessageAck { .. } => "message.ack",
+        MessageReconcile { .. } => "message.reconcile",
+        MessageRecord { .. } => "message.record",
         MigrateApply { .. } => "migrate.apply",
         MigratePlan { .. } => "migrate.plan",
         MigrateRecover { .. } => "migrate.recover",
@@ -1256,9 +1278,8 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
 }
 
 /// Internal operations; `main` wraps the result in the envelope.
-/// #2345: the eleven journal-writing operations raise the journal lock-busy kind at its
-/// source and return it typed, so the envelope never re-derives it from message text;
-/// every other operation keeps the classified `String` fallback.
+/// Journal-writing operations and message operations return typed errors directly;
+/// the remaining operations keep the classified `String` fallback.
 fn run_internal(
     command: Command,
 ) -> std::result::Result<serde_json::Value, moai_cli::contract::OpError> {
@@ -1272,6 +1293,32 @@ fn run_internal(
         Command::QueueNext { project } => moai_cli::queue::next_cli(
             &project,
             input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::MessageRecord {
+            project,
+            permission_reference,
+        } => moai_cli::message::record_cli(
+            &project,
+            input::<moai_cli::message::RecordRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::MessageAck {
+            project,
+            permission_reference,
+        } => moai_cli::message::ack_cli(
+            &project,
+            input::<moai_cli::message::AckRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::MessageReconcile { project } => moai_cli::message::reconcile_cli(
+            &project,
+            input::<moai_cli::message::ReconcileRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
