@@ -252,6 +252,41 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Go MoAI migration preview (#2016) on a prepared synthetic HOME only: typed request
+    /// on stdin (`hosts`, `mode`, `go_release`, `selections`); shows ownership, the
+    /// update-conflict preview and the plan digest. Writes nothing.
+    MigratePlan {
+        /// Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`.
+        home: PathBuf,
+    },
+    /// Apply a previewed migration (#2016): the exact plan on stdin must equal a fresh
+    /// recompute and `--plan-digest`. Backs up, then copies only the selected owned files
+    /// to `.moai-cli/imports/`; the Go source is kept.
+    MigrateApply {
+        home: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Read-only recovery plan for one migration apply (#2016), from its backup manifest.
+    MigrateRecoveryPlan {
+        home: PathBuf,
+        /// The apply's backup id (its plan digest).
+        #[arg(long)]
+        backup: String,
+    },
+    /// Remove only the imports one migration apply published (#2016); changed files are
+    /// kept. The recovery plan travels on stdin and must match a fresh recompute.
+    MigrateRecover {
+        home: PathBuf,
+        #[arg(long)]
+        backup: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
     ClaimAcquire {
@@ -1077,6 +1112,10 @@ fn operation(command: &Command) -> Option<&'static str> {
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
+        MigrateApply { .. } => "migrate.apply",
+        MigratePlan { .. } => "migrate.plan",
+        MigrateRecover { .. } => "migrate.recover",
+        MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
         PackageInspect { .. } => "package.inspect",
         PackageResolve { .. } => "package.resolve",
         ParityCheck { .. } => "parity.check",
@@ -1633,6 +1672,36 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             }
         }
         Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
+        Command::MigratePlan { home } => {
+            let request = input::<moai_cli::migrate::PlanRequest>()?;
+            moai_cli::migrate::plan_cli(&home, &request)
+        }
+        Command::MigrateApply {
+            home,
+            plan_digest,
+            permission_reference,
+        } => {
+            let plan = plan_input::<moai_cli::migrate::Plan>()?;
+            moai_cli::migrate::apply_cli(&home, &plan, &plan_digest, &permission_reference)
+        }
+        Command::MigrateRecoveryPlan { home, backup } => {
+            moai_cli::migrate::recovery_plan_cli(&home, &backup)
+        }
+        Command::MigrateRecover {
+            home,
+            backup,
+            plan_digest,
+            permission_reference,
+        } => {
+            let plan = plan_input::<moai_cli::migrate::RecoveryPlan>()?;
+            moai_cli::migrate::recover_cli(
+                &home,
+                &backup,
+                &plan,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
         Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
         Command::LayoutApply {
             project,
