@@ -76,6 +76,10 @@ impl Event {
     }
 }
 
+/// The opt-in deny rules of stage 7 (B3, B9; decision 6779829826), off unless
+/// `~/.moai-cli/config` turns them on (see `hook_config`).
+pub const OPT_IN_RULES: &str = "[hooks.outside_project_writes] enabled + allow: file writes outside the project (after symlinks and ..) are refused unless under allow; [hooks.primary_checkout] enabled + repos + allow_commands: switch, checkout <branch>, reset, stash (not list/show) and rebase are refused in a listed primary checkout that has linked worktrees. A missing or broken config turns both off";
+
 /// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
 pub const CONFIRM_COMMANDS: &str =
     "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master";
@@ -281,7 +285,8 @@ pub fn capabilities(host: &str) -> Value {
                                    "Bash: git commit on an issue/<n> branch without a claim token",
                                    "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
                                    "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content"],
-                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
+                               "opt_in": OPT_IN_RULES,
+                               "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
                                "confirm": {"answer": "hookSpecificOutput.permissionDecision=ask", "commands": CONFIRM_COMMANDS,
                                            "note": "a deny anywhere on the line wins; ask in a bypass-permissions or -p session is not documented"},
@@ -300,7 +305,8 @@ pub fn capabilities(host: &str) -> Value {
                                    "Bash: git commit on an issue/<n> branch without a claim token",
                                    "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
                                    "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines"],
-                               "not_guarded": ["writes outside the project (decision pending)", "shell redirections into protected paths", "MCP tools"],
+                               "opt_in": OPT_IN_RULES,
+                               "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
                                "confirm": {"answer": "hookSpecificOutput.permissionDecision=deny (Codex has no ask)", "commands": CONFIRM_COMMANDS},
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
@@ -427,6 +433,22 @@ fn tool_preflight_deny(input: &Value, cwd: &Path) -> Verdict {
         crate::hook_guards::write_guard(tool, &input["tool_input"], &write_dir)
     };
     if let Some(reason) = guard {
+        return Verdict::Deny(reason.to_string());
+    }
+    // Stage 7 opt-in rules (B3, B9; decision 6779829826): off unless ~/.moai-cli/config turns
+    // them on; a missing or broken config leaves them off.
+    let config = crate::hook_config::load();
+    let opt_in = if tool == "Bash" {
+        config
+            .primary
+            .as_ref()
+            .and_then(|r| crate::hook_guards::primary_checkout_guard(command, &write_dir, r))
+    } else {
+        config.outside.as_ref().and_then(|r| {
+            crate::hook_guards::outside_project_guard(tool, &input["tool_input"], &write_dir, r)
+        })
+    };
+    if let Some(reason) = opt_in {
         return Verdict::Deny(reason.to_string());
     }
     if tool != "Bash" || !crate::claim_verify::is_commit(command) {

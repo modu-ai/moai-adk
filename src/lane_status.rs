@@ -267,7 +267,7 @@ fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<V
 }
 
 /// Issue or PR comments from the API, sorted by id without repeats.
-fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
+pub(crate) fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
     let mut comments: Vec<Comment> = raw
         .iter()
         .filter_map(|c| {
@@ -311,7 +311,7 @@ fn reservation_in(body: &str) -> Option<(String, String)> {
 /// The audit columns of a PR row (#2403 item 3): reservations with the current-head winner,
 /// the verdict on the current head (PR comments first, then the Issue's), and the sessions
 /// whose claim tokens appear in the PR's commits — the authors, who may not audit it.
-fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
+pub(crate) fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
     let reservations: Vec<Value> = pr
         .comments
         .iter()

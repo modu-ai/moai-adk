@@ -1,0 +1,8 @@
+# Issue template chooser (Issue #2434). Takes effect only on the default branch.
+# With blank Issues disabled, users with write access still see "Blank issue" labelled
+# "Maintainers only", so leader and lanes can still open Issues with `gh issue create`.
+blank_issues_enabled: false
+contact_links:
+  - name: 문서 / Documentation
+    url: https://github.com/modu-ai/moai-adk#readme
+    about: Issue를 열기 전에 문서를 확인해 주세요.
