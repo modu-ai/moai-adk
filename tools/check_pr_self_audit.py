@@ -31,6 +31,25 @@ the PR head; the auditor reads the run back with `gh api`. The independent audit
 place — this tool only pulls the audit evidence forward, before the PR is
 opened.
 
+Zero-selected evidence (Issue #2403, item 5). In the section and in every
+markdown table row of the body:
+
+  - a line that reports `0 passed` (a run that selected no test) must also say
+    `not_run` on the same line; otherwise it is blocked as zero-selected;
+  - a `cargo test` command that passes a test-name filter must select exactly
+    one target (`--lib`, `--bin X`, `--test X`, ...), because cargo applies the
+    filter to every target of the call; a filtered call with two or more
+    targets, or with none (cargo then runs several by default), is blocked as
+    filter-multi-target. Only commands written in a code span (`...`) are
+    read; prose that mentions cargo test is not a command.
+    Quoted option values remain single POSIX shell words; shell redirections
+    and their destinations are not filters. Cargo global options before `test`
+    are recognized. Tables may omit their edge pipes when a header and Markdown
+    delimiter establish table scope. Named target glob patterns (`*`, `?`, `[]`)
+    may select several targets, including in `--test=X` form, so they cannot
+    establish single-target filtered evidence. No Cargo command or GitHub
+    request is executed by this checker.
+
 Usage:
   python3 -I tools/check_pr_self_audit.py --file BODY.md
   python3 -I tools/check_pr_self_audit.py < BODY.md
@@ -40,6 +59,7 @@ Exit codes: 0 = section complete, 1 = section/items missing or unmeasured,
 """
 
 import re
+import shlex
 import sys
 from pathlib import Path
 
@@ -65,6 +85,175 @@ def strip_marker(line: str) -> str:
     return line.strip().lstrip("-*").strip().lower()
 
 
+# `0 passed` as a whole count: not preceded by another digit, so `10 passed`
+# and `20 passed` are not zero.
+ZERO_PASSED = re.compile(r"(?<![0-9])0 passed\b")
+# cargo test options that take a value as the next token (the value is not a
+# test-name filter).
+CARGO_VALUE_OPTS = {
+    "--test", "--bin", "--example", "--bench", "-p", "--package", "-F",
+    "--features", "--manifest-path", "--target", "--target-dir", "-j",
+    "--jobs", "--profile", "--color", "--message-format", "--config", "-Z",
+    "--exclude",
+}
+# Target selectors and how many targets each selects.
+CARGO_TARGETS_ONE = {"--lib", "--doc", "--test", "--bin", "--example", "--bench"}
+CARGO_TARGETS_MANY = {"--tests", "--bins", "--examples", "--benches", "--all-targets"}
+# Test-harness options after `--` that take a value as the next token.
+HARNESS_VALUE_OPTS = {"--skip", "--test-threads", "--format", "--color", "-Z", "--logfile"}
+CARGO_GLOBAL_FLAGS = {"--offline", "--locked", "--frozen", "-q", "--quiet", "-v", "--verbose"}
+CARGO_GLOBAL_VALUES = {"--color", "--config", "-Z", "-C"}
+# Preserve whether punctuation was shell syntax or a quoted literal word.
+SHELL_TOKEN = re.compile(
+    r"""(?P<redirect>&>>|&>|\d*(?:<<<|<<|<>|>>|>\||>&|<&|>|<))"""
+    r"""|(?P<separator>&&|\|\||[;&|()])"""
+    r"""|(?P<word>(?:[^\s;&|()<>'"\\]|\\.|'[^']*'|"(?:\\.|[^"\\])*")+)"""
+)
+
+
+def cargo_test_commands(line: str):
+    """The token lists of the `cargo test` commands written in code spans on one
+    line: each runs from `test` to the end of its span or a shell separator.
+    Prose such as "cargo test 671 passed" outside a code span is not a command."""
+    out = []
+    for span in re.findall(r"`([^`]+)`", line):
+        if not re.search(r"(?<![\w'])cargo(?=\s|$)", span):
+            continue
+        words = []
+        position = 0
+        malformed = False
+        for match in SHELL_TOKEN.finditer(span):
+            if span[position:match.start()].strip():
+                malformed = True
+                break
+            position = match.end()
+            raw = match.group()
+            if match.lastgroup == "word":
+                try:
+                    words.append((shlex.split(raw, posix=True)[0], "word"))
+                except (ValueError, IndexError):
+                    malformed = True
+                    break
+            else:
+                words.append((raw, match.lastgroup))
+        if malformed or span[position:].strip():
+            continue
+        i = 0
+        while i < len(words):
+            if words[i] != ("cargo", "word"):
+                i += 1
+                continue
+            test = i + 1
+            while test < len(words):
+                token, kind = words[test]
+                if kind == "redirect":
+                    test += 1
+                    if test < len(words) and words[test][1] == "word":
+                        test += 1
+                    continue
+                if kind != "word":
+                    break
+                name = token.split("=", 1)[0]
+                if token.startswith("+") or token in CARGO_GLOBAL_FLAGS:
+                    test += 1
+                elif name in CARGO_GLOBAL_VALUES:
+                    test += 1 if "=" in token else 2
+                elif (re.fullmatch(r"-[qv]+", token)
+                      or (token.startswith(("-Z", "-C")) and len(token) > 2)):
+                    test += 1
+                else:
+                    break
+            if test >= len(words) or words[test] != ("test", "word"):
+                i += 1
+                continue
+            end = test + 1
+            tokens = []
+            while end < len(words):
+                token, kind = words[end]
+                if kind == "separator":
+                    break
+                if kind == "redirect":
+                    # Both file destinations and fd duplication operands are
+                    # shell plumbing, not positional Cargo/harness arguments.
+                    end += 1
+                    if end < len(words) and words[end][1] == "word":
+                        end += 1
+                    continue
+                tokens.append(token)
+                end += 1
+            out.append(tokens)
+            i = end
+    return out
+
+
+def filtered_target_count(tokens):
+    """(has a name filter, number of targets selected; None = cargo's default
+    set, which is more than one)."""
+    has_filter = False
+    targets = 0
+    many = False
+    after_dashdash = False
+    skip_next = None
+    for tok in tokens:
+        if skip_next:
+            if skip_next in CARGO_TARGETS_ONE and any(c in tok for c in "*?["):
+                many = True
+            skip_next = None
+            continue
+        if after_dashdash:
+            if tok in HARNESS_VALUE_OPTS:
+                skip_next = tok
+            elif not tok.startswith("-"):
+                has_filter = True
+            continue
+        if tok == "--":
+            after_dashdash = True
+            continue
+        name = tok.split("=", 1)[0]
+        if name in CARGO_TARGETS_ONE:
+            targets += 1
+            if "=" in tok and any(c in tok.split("=", 1)[1] for c in "*?["):
+                many = True
+        elif name in CARGO_TARGETS_MANY:
+            many = True
+        if name in CARGO_VALUE_OPTS and "=" not in tok:
+            skip_next = name
+        elif not tok.startswith("-"):
+            has_filter = True
+    if many:
+        return has_filter, 2
+    return has_filter, (targets if targets else None)
+
+
+def check_zero_selected(section, lines) -> None:
+    """Block zero-selected test evidence in the section and in table rows."""
+    scope = list(section) + [ln for ln in lines if ln.lstrip().startswith("|")]
+    # Optional-edge-pipe tables require a header and a delimiter, rather than
+    # treating arbitrary prose containing a pipe as test evidence.
+    def cells(line):
+        return line.strip().strip("|").split("|")
+
+    for index in range(1, len(lines)):
+        delimiter = cells(lines[index])
+        if (len(delimiter) < 2
+                or not all(re.fullmatch(r"\s*:?-{3,}:?\s*", cell) for cell in delimiter)
+                or "|" not in lines[index - 1]
+                or len(cells(lines[index - 1])) != len(delimiter)):
+            continue
+        scope.append(lines[index - 1])
+        for row in lines[index + 1:]:
+            if "|" not in row:
+                break
+            scope.append(row)
+    for line in scope:
+        if ZERO_PASSED.search(line) and "not_run" not in line:
+            fail(["zero-selected"])
+        for tokens in cargo_test_commands(line):
+            has_filter, count = filtered_target_count(tokens)
+            if has_filter and (count is None or count > 1):
+                fail(["filter-multi-target"])
+
+
 def check(body: str) -> None:
     lines = body.splitlines()
     starts = [i for i, ln in enumerate(lines) if ln.strip().lower() == SECTION]
@@ -84,6 +273,7 @@ def check(body: str) -> None:
             missing.append(tag)
     if missing:
         fail(missing)
+    check_zero_selected(section, lines)
     # The mutation line must report the mutation actually failing a check
     # (measured, not asserted): the word FAILED must appear on it.
     mut = [ln for ln in section if strip_marker(ln).startswith("mutation:")][0]
