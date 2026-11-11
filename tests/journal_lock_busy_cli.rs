@@ -185,6 +185,12 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
     let home = tmp.path().join("home");
     fs::create_dir_all(&home).unwrap();
     git_repo(&repo);
+    fs::create_dir_all(repo.join(".moai-cli")).unwrap();
+    fs::write(
+        repo.join(".moai-cli/project.yaml"),
+        r#"{"schema_version":1,"project_id":"busy-fixture","purpose":"busy contract","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude"]}"#,
+    )
+    .unwrap();
     let gh = claim_stub(tmp.path());
     let loud = loud_gh(tmp.path());
     let lease = moai_cli::forge::policy::format_utc(now_utc() + 3600);
@@ -248,6 +254,18 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
 
     // (CLI args, stdin, expected operation name) — one row per journal-writing op.
     let cases: Vec<(Vec<String>, Option<String>, &str)> = vec![
+        (
+            vec![
+                "layout-apply".into(),
+                ".".into(),
+                "--plan-digest".into(),
+                "0".repeat(64),
+                "--permission-reference".into(),
+                "test:busy-layout".into(),
+            ],
+            None,
+            "layout.apply",
+        ),
         (
             vec!["claim-acquire".into(), ".".into()],
             Some(acquire_request(&lease, "busy-test-2")),
@@ -393,13 +411,19 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
             "pr.confirm",
         ),
     ];
+    assert_eq!(
+        cases.len(),
+        12,
+        "all journal-writing operations are covered"
+    );
 
     let mut shared_message: Option<String> = None;
     for (args, stdin, op) in &cases {
         let args: Vec<&str> = args.iter().map(String::as_str).collect();
         let out = run_op(&repo, &args, stdin.as_deref(), &home, &loud, "unused");
-        assert!(
-            !out.status.success(),
+        assert_eq!(
+            out.status.code(),
+            Some(1),
             "{op}: a held journal lock must exit 1, got success: {}",
             String::from_utf8_lossy(&out.stdout)
         );
@@ -416,6 +440,7 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
         assert_eq!(error["kind"], json!("unavailable"), "{op}");
         assert_eq!(error["retryable"], json!(true), "{op}");
         let message = error["message"].as_str().unwrap().to_string();
+        assert_eq!(message, "journal busy: the claim journal lock is unavailable (another process holds it); the caller may retry the same command after a bounded wait, within its own cap (REQ-06A-05)", "{op}: literal busy contract");
         // The single busy contract: one message across every op, set at the raise site.
         match &shared_message {
             None => shared_message = Some(message.clone()),
