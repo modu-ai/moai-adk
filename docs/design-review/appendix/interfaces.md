@@ -29,6 +29,7 @@
 - `atlas-graph`
 - `atlas-map`
 - `atlas-tag-scan`
+- `audit-claim`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`

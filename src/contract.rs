@@ -120,6 +120,10 @@ const RULES: &[(&str, Kind)] = &[
     ("claim verify: not owner", Kind::Conflict),
     ("claim verify: closed", Kind::Conflict),
     ("claim verify: no claim", Kind::Conflict),
+    // audit-claim (rc.2 #2403 item 1): ahead of the generic words its messages quote.
+    ("audit claim refused: ", Kind::InvalidInput),
+    ("audit claim conflict: ", Kind::Conflict),
+    ("audit claim blocked: ", Kind::Blocked),
     // decision-append (rc.2 #2403): ahead of the generic words its messages may contain.
     ("decision append blocked: ", Kind::Blocked),
     ("decision append refused: ", Kind::InvalidInput),
@@ -360,6 +364,15 @@ mod tests {
             ("lane status base_branch must be a plain branch name", InvalidInput),
             ("lane status evidence must be given with a session, a source and a time", InvalidInput),
             ("lane status page limit exceeded (50)", InvalidInput),
+            // audit-claim (rc.2 #2403 item 1)
+            ("audit claim refused: head must be 40 lowercase hex", InvalidInput),
+            ("audit claim refused: lane must be a plain name (letters, digits, - _ .)", InvalidInput),
+            ("audit claim conflict: PR #7 is not open", Conflict),
+            ("audit claim conflict: head is not the current head of PR #7 (aaaa); re-read the PR and reserve its current head", Conflict),
+            ("audit claim conflict: lane x is an author of PR #7 (claim comment 1); an author or repairer never audits its own PR", Conflict),
+            ("audit claim blocked: PR #7 names no Refs #<issue>, so its authors cannot be read", Blocked),
+            ("audit claim blocked: claim comment 1 named by a Moai-Claim trailer is not a claim line on Issue #3; authors cannot be ruled out", Blocked),
+            ("audit claim blocked: the comment POST returned HTTP 403; nothing was posted", Blocked),
             // decision-append (rc.2 #2403)
             ("decision append blocked: the project has no HEAD commit", Blocked),
             ("decision append blocked: HEAD is not the given base (HEAD 0123); fetch the tip and work from a worktree at it", Blocked),
