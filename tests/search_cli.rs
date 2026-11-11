@@ -70,10 +70,10 @@ fn without_a_generation_the_tracked_files_are_searched_and_coverage_says_so() {
     let r = result(&v);
     assert_eq!(r["coverage"]["file_source"], "tracked_files_fallback");
     assert_eq!(r["coverage"]["generation_id"], Value::Null);
-    assert!(r["coverage"]["graph"]
-        .as_str()
-        .unwrap()
-        .starts_with("unavailable"));
+    assert_eq!(
+        r["coverage"]["graph"],
+        json!({"state": "unavailable", "reason": "no published index generation"})
+    );
     assert_eq!(r["freshness"], "unavailable");
     let hits = r["results"].as_array().unwrap();
     assert_eq!(hits.len(), 1);
@@ -148,6 +148,26 @@ fn bad_requests_are_refused_with_the_bound_named() {
             json!({"max_spans_per_file": 1001}),
             "max_spans_per_file",
         ),
+        (
+            json!({"literals": ["a"]}),
+            json!({"max_hops": 0}),
+            "max_hops",
+        ),
+        (
+            json!({"literals": ["a"]}),
+            json!({"max_hops": 3}),
+            "max_hops",
+        ),
+        (
+            json!({"literals": ["a"]}),
+            json!({"max_fanout": 0}),
+            "max_fanout",
+        ),
+        (
+            json!({"literals": ["a"]}),
+            json!({"max_fanout": 201}),
+            "max_fanout",
+        ),
     ] {
         let (code, v) = run(
             p.path(),
@@ -167,6 +187,14 @@ fn bad_requests_are_refused_with_the_bound_named() {
         (
             json!({"literals": ["a"]}),
             json!({"max_files": 1, "max_spans_per_file": 1}),
+        ),
+        (
+            json!({"literals": ["a"]}),
+            json!({"max_hops": 2, "max_fanout": 200}),
+        ),
+        (
+            json!({"literals": ["a"]}),
+            json!({"max_hops": 1, "max_fanout": 1}),
         ),
     ] {
         let (code, v) = run(
@@ -202,4 +230,125 @@ fn the_query_term_limit_is_64() {
     );
     assert_ne!(code, 0, "65 terms: {v}");
     assert!(v.to_string().contains("too many query terms"), "{v}");
+}
+
+/// A project whose generation carries real map/graph records (C6b): a requirement tag in
+/// `a.rs` line 1 and a test naming it in `t.rs` line 2.
+fn graph_project() -> tempfile::TempDir {
+    let dir = tempfile::TempDir::new().unwrap();
+    git(dir.path(), &["init", "-q"]);
+    fs::write(
+        dir.path().join("a.rs"),
+        "// @MOAI:REQ REQ-X-01\nfn a() {}\n",
+    )
+    .unwrap();
+    fs::write(dir.path().join("t.rs"), "#[test]\nfn req_x_01_ok() {}\n").unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git(dir.path(), &["commit", "-q", "-m", "base"]);
+    let (code, v) = run(dir.path(), "index-build", &json!({"protocol_version": 1}));
+    assert_eq!(code, 0, "{v}");
+    dir
+}
+
+fn citations(r: &Value) -> Vec<(String, String, u64, String)> {
+    r["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| {
+            (
+                h["path"].as_str().unwrap().into(),
+                h["grade"].as_str().unwrap().into(),
+                h["start_line"].as_u64().unwrap(),
+                h["state"].as_str().unwrap().into(),
+            )
+        })
+        .collect()
+}
+
+fn c(path: &str, grade: &str, line: u64, state: &str) -> (String, String, u64, String) {
+    (path.into(), grade.into(), line, state.into())
+}
+
+/// #2408 AC-1: the graph step returns results from the generation's records — the
+/// declaration (map), the test that verifies the requirement (graph) — ahead of lexical
+/// matches, and coverage says the views were used.
+#[test]
+fn the_graph_step_cites_declarations_and_typed_edges() {
+    let p = graph_project();
+    let (code, v) = run(
+        p.path(),
+        "search",
+        &json!({"protocol_version": 1, "query": {"literals": ["REQ-X-01"]}}),
+    );
+    assert_eq!(code, 0, "{v}");
+    let r = result(&v);
+    assert_eq!(
+        citations(r),
+        [c("a.rs", "map", 1, "fresh"), c("t.rs", "graph", 2, "fresh")]
+    );
+    let g = &r["coverage"]["graph"];
+    assert_eq!(g["state"], "available", "{g}");
+    assert_eq!(g["max_hops"], 1);
+    assert_eq!(g["max_fanout"], 20);
+    assert!(g["edges_traversed"].as_u64().unwrap() >= 2, "{g}");
+    assert!(
+        r["results"][1]["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("verifies: test:t.rs::req_x_01_ok -> req:REQ-X-01"),
+        "{r}"
+    );
+    // A literal with no declaration or node id expands nothing: lexical only.
+    let (_, v) = run(
+        p.path(),
+        "search",
+        &json!({"protocol_version": 1, "query": {"literals": ["fn a"]}}),
+    );
+    let r = result(&v);
+    assert_eq!(citations(r), [c("a.rs", "lexical", 2, "fresh")]);
+    assert_eq!(r["coverage"]["graph"]["seeds"], 0);
+}
+
+/// #2408 AC-2: the return-time digest recheck covers graph citations. A file edited after
+/// the index build no longer has the generation's bytes, so its graph citation is stale.
+#[test]
+fn a_graph_citation_of_a_file_edited_after_the_build_is_stale() {
+    let p = graph_project();
+    fs::write(p.path().join("t.rs"), "#[test]\nfn req_x_01_ok() { }\n").unwrap();
+    let (code, v) = run(
+        p.path(),
+        "search",
+        &json!({"protocol_version": 1, "query": {"literals": ["REQ-X-01"]}}),
+    );
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        citations(result(&v)),
+        [c("a.rs", "map", 1, "fresh"), c("t.rs", "graph", 2, "stale")]
+    );
+}
+
+/// Records that do not match the generation are never used: the graph step is
+/// `unavailable` with the reason and the answer stays lexical (design L4300).
+#[test]
+fn records_that_do_not_match_the_generation_make_the_graph_step_unavailable() {
+    let p = graph_project();
+    let gens = p.path().join(".moai-cli/index/generations");
+    let gen = fs::read_dir(&gens).unwrap().next().unwrap().unwrap().path();
+    let graph = gen.join("graph.jsonl");
+    let mut bytes = fs::read(&graph).unwrap();
+    bytes.extend_from_slice(b"\n");
+    fs::write(&graph, bytes).unwrap();
+    let (code, v) = run(
+        p.path(),
+        "search",
+        &json!({"protocol_version": 1, "query": {"literals": ["REQ-X-01"]}}),
+    );
+    assert_eq!(code, 0, "{v}");
+    let r = result(&v);
+    assert_eq!(
+        r["coverage"]["graph"],
+        json!({"state": "unavailable", "reason": "map/graph records do not match the generation"})
+    );
+    assert_eq!(citations(r), [c("a.rs", "lexical", 1, "fresh")]);
 }
