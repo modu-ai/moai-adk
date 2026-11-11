@@ -1,12 +1,18 @@
-# moai-template:moai-feature@0.2.0; machine metadata is correlation only, never authorization
-# 뼈대: 필드 구성은 시작점이며 세부는 사용자와 하나씩 정합니다. 체크리스트·선택지는 미완료·HOLD로 시작합니다.
+# moai-template:moai-feature@0.3.0; machine metadata is correlation only, never authorization
+# Fields follow Issue #2434 (decisions 1-4 = A): one-line outcome, scope with non-scope and
+# search hints, AC with verification and boundary behaviour, prerequisites, HOLD, done definition.
 name: 'MoAI: 새 기능'
-description: 새 기능 또는 동작. Issue 하나에 실행 owner 한 명, 진행은 소유 댓글 하나로 보고. label·assignee는 별도로 적용.
+description: 새 기능 또는 동작. Issue 하나에 실행 owner 한 명, 진행은 소유 댓글 하나로 보고. type 라벨만 자동으로 붙고 priority·area 라벨은 리더가 붙입니다.
 title: '[기능] '
+labels:
+- type:feature
 body:
 - type: markdown
   attributes:
-    value: 'Issue 하나는 작업 하나이고 한 번에 한 명의 실행 owner만 가집니다. 이 form은 label·assignee·project·milestone을 설정하지 않습니다.
+    value: 'Issue 하나는 작업 하나이고 한 번에 한 명의 실행 owner만 가집니다. 이 form은 `type:feature` 라벨 하나만 붙입니다. priority·area·host 라벨과 assignee·project·milestone은 리더가 붙입니다.
+
+
+      에이전트가 이 Issue만 읽고 무엇을·어디까지·어떻게 검증할지 알 수 있게 짧고 자기완결적으로 씁니다. 다른 Issue나 대화를 읽어야만 알 수 있는 내용은 여기에 요약합니다.
 
 
       비밀값 제거: 토큰·API 키·자격증명·쿠키·개인정보·절대 홈 경로·원문 로그·비공개 저장소 내용은 쓰지 않습니다. 요약하고 접근 가능한 artifact를 링크합니다.
@@ -20,6 +26,14 @@ body:
     options:
     - label: 비밀값·개인정보·절대 홈 경로·원문 로그·비공개 내용을 제거했습니다
       required: true
+- type: input
+  id: outcome
+  attributes:
+    label: 한 줄 결과
+    description: 이 Issue가 닫히면 무엇이 참이 되는가, 한 문장.
+    placeholder: '`moai-cli <명령>`이 <조건>에서 <결과>를 낸다'
+  validations:
+    required: true
 - type: textarea
   id: goal
   attributes:
@@ -27,11 +41,6 @@ body:
     description: 이 작업이 무엇을 누구에게 제공하는지 한두 문장.
   validations:
     required: true
-- type: textarea
-  id: non-goals
-  attributes:
-    label: 비목표
-    description: 이 작업에서 명시적으로 제외하는 것.
 - type: textarea
   id: spec
   attributes:
@@ -41,27 +50,35 @@ body:
   validations:
     required: true
 - type: textarea
-  id: acceptance
+  id: scope
   attributes:
-    label: 인수 기준과 검증
-    description: 기준 한 줄마다 그것을 증명하는 실제 명령이나 검사를 짝지어 적습니다. 실행하지 않은 검사는 passed가 아니라 not_run입니다.
-    value: '- AC-1: <기준> · 검증: <명령 또는 검사> · 결과: not_run
+    label: 범위
+    description: 바꿀 수 있는 저장소 상대 경로, 건드리면 안 되는 경로, 이번에 하지 않는 일, 그리고 어디서부터 읽으면 되는지(파일·함수·명령).
+    value: '- 변경 가능: <경로>
 
-      - AC-2: <기준> · 검증: <명령 또는 검사> · 결과: not_run'
+      - 변경 금지: <경로>
+
+      - 비범위: <이번에 하지 않는 일>
+
+      - 탐색 단서: <파일·함수·명령>'
   validations:
     required: true
 - type: textarea
-  id: checklist
+  id: acceptance
   attributes:
-    label: 구현·검증 체크리스트
-    description: 완료해야 할 항목을 체크박스로 적습니다. 처음에는 모두 미완료(`- [ ]`)로 두고, 실제로 명령을 실행해 확인한 항목만 완료로 바꿉니다. 실행하지 않은 항목은 not_run으로 남깁니다.
-    value: '- [ ] 구현: <항목> · 범위: <경로>
+    label: 인수 기준과 검증
+    description: 기준 한 줄마다 그것을 증명하는 실제 명령이나 검사, 그리고 경계·실패 때 기대 동작을 짝지어 적습니다. 실행하지 않은 검사는 passed가 아니라 not_run입니다.
+    value: '- AC-1: <기준> · 검증: <명령 또는 검사> · 경계·실패 동작: <입력 → 기대> · 결과: not_run
 
-      - [ ] 검증: <명령 또는 검사> · 결과: not_run
-
-      - [ ] 독립 AUDIT verdict 수신
-
-      - [ ] 문서·Issue 보고 갱신'
+      - AC-2: <기준> · 검증: <명령 또는 검사> · 경계·실패 동작: <입력 → 기대> · 결과: not_run'
+  validations:
+    required: true
+- type: input
+  id: dependencies
+  attributes:
+    label: 선행 Issue
+    description: 먼저 닫혀야 하는 Issue, 없으면 `없음`. 리더가 native dependency로도 연결합니다.
+    placeholder: '#12, #15'
 - type: textarea
   id: decisions
   attributes:
@@ -69,21 +86,17 @@ body:
     description: 사용자가 판단할 기술·범위 선택을 선택지별로 적습니다. 영향과 근거(출처 링크·확인일)를 붙이고, 결정 전에는 상태를 HOLD로 둡니다. 템플릿이나 작성자가 선택을 대신 확정하지 않습니다.
     value: "- 결정: <무엇을 정해야 하는가> · 상태: HOLD\n  - 선택지 A: <내용> · 영향: <비용·호환·위험> · 근거: <링크, 확인일, 검증/미확인>\n  - 선택지 B: <내용> · 영향: <…> · 근거: <…>"
 - type: textarea
-  id: scope
+  id: checklist
   attributes:
-    label: 쓰기 범위와 제외
-    description: 이 작업이 바꿀 수 있는 저장소 상대 경로와 건드리면 안 되는 경로.
-    value: '- 변경 가능: <경로>
+    label: 완료 정의
+    description: 완료해야 할 항목을 체크박스로 적습니다. 처음에는 모두 미완료(`- [ ]`)로 두고, 실제로 명령을 실행해 출력을 확인한 항목만 완료로 바꿉니다. 실행하지 않은 항목은 not_run으로 남깁니다.
+    value: '- [ ] 구현: <항목> · 범위: <경로>
 
-      - 변경 금지: <경로>'
-  validations:
-    required: true
-- type: input
-  id: dependencies
-  attributes:
-    label: 의존성
-    description: 먼저 닫혀야 하는 Issue, 없으면 `없음`.
-    placeholder: '#12, #15'
+      - [ ] 검증: <명령 또는 검사> · 출력 관측 · 결과: not_run
+
+      - [ ] 독립 AUDIT verdict 수신
+
+      - [ ] 소유 보고 댓글 갱신'
 - type: dropdown
   id: hosts
   attributes:
