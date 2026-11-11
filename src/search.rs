@@ -11,6 +11,8 @@
 //!    from resolved seeds only — exact paths, exact node ids (`req:<id>`, `issue:<n>`, or a
 //!    full node id) and matched declarations — within `max_hops` and `max_fanout` per node;
 //!    every edge evidence span `file:<path>#L<n>@<sha256>` becomes a `graph` citation.
+//!    Evidence is emitted one span per edge per round, in traversal order, so repeated
+//!    evidence for one edge does not take the first slots of later traversed edges.
 //!    Without a published generation with records, or when the records do not match the
 //!    generation, the step is `unavailable` and the answer falls back to the lexical result
 //!    (design L4300);
@@ -28,7 +30,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, VecDeque},
     fs,
     path::{Component, Path},
     process::Command,
@@ -474,6 +476,7 @@ pub fn structural(
     }
 
     // Step 4: breadth-first over the typed edges, both directions.
+    let mut edge_citations = Vec::new();
     let mut incident: std::collections::BTreeMap<&str, Vec<usize>> = Default::default();
     for (i, e) in edges.iter().enumerate() {
         for end in ["source_id", "target_id"] {
@@ -526,15 +529,17 @@ pub fn structural(
                     e["source_id"].as_str().unwrap_or(""),
                     e["target_id"].as_str().unwrap_or("")
                 );
+                let mut citations = VecDeque::new();
                 for ev in e["evidence_refs"].as_array().into_iter().flatten() {
                     let Some((path, line, sha)) = ev.as_str().and_then(evidence_span) else {
                         continue;
                     };
                     match anchored(&mut io, path, line, sha, "graph", reason.clone()) {
-                        Ok(h) => hits.push(h),
+                        Ok(h) => citations.push_back(h),
                         Err(o) => omitted.push(o),
                     }
                 }
+                edge_citations.push(citations);
                 let other = far(i, node);
                 if reached.insert(other.clone()) {
                     next.push(other);
@@ -553,6 +558,20 @@ pub fn structural(
             .len();
         if left > 0 {
             omitted.push(json!({"node": node, "reason": "max_hops", "dropped_edges": left}));
+        }
+    }
+    // Give each traversed edge its first citation before an evidence-heavy edge gets
+    // another slot. Keep traversal order within each round and all public caps intact.
+    loop {
+        let mut emitted = false;
+        for citations in &mut edge_citations {
+            if let Some(hit) = citations.pop_front() {
+                hits.push(hit);
+                emitted = true;
+            }
+        }
+        if !emitted {
+            break;
         }
     }
     let stats = json!({
@@ -938,6 +957,36 @@ mod tests {
         hits.iter()
             .map(|h| (h.path.clone(), h.grade, h.start_line))
             .collect()
+    }
+
+    #[test]
+    fn graph_citations_share_slots_before_repeating_an_edge() {
+        let (dir, files, map, mut graph) = graph_fixture();
+        let edge = &mut graph["edges"][0];
+        let sha = crate::digest(&fs::read(dir.path().join("a.rs")).unwrap());
+        edge["evidence_refs"] = json!([
+            format!("file:a.rs#L1@{sha}"),
+            format!("file:a.rs#L2@{sha}"),
+            format!("file:a.rs#L3@{sha}")
+        ]);
+        let query = lits(&["req:R"]);
+        let bounds = Bounds {
+            max_hops: 1,
+            max_fanout: 2,
+        };
+        let first = structural(dir.path(), &files, &query, &map, &graph, bounds);
+        let second = structural(dir.path(), &files, &query, &map, &graph, bounds);
+        assert_eq!(first, second);
+        assert_eq!(
+            cited(&first.0),
+            [
+                ("a.rs".into(), "graph", 1),
+                ("t.rs".into(), "graph", 2),
+                ("a.rs".into(), "graph", 2),
+                ("a.rs".into(), "graph", 3),
+            ]
+        );
+        assert_eq!(first.2["edges_traversed"], 2);
     }
 
     #[test]
