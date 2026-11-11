@@ -2,7 +2,7 @@
 
 [English](README.md) · **한국어**
 
-MoAI ADK는 Claude Code와 Codex 안에서 하나의 공통 `moai-cli` skill로 같은 작업 흐름(읽기 → 계획 → 실행 → 검증 → 감사 → 동기화)을 돌리고, GitHub Issues를 작업 장부로 쓰는 오픈소스 개발 도구입니다.
+MoAI ADK는 Claude Code와 Codex 안에서 하나의 공통 `moai` skill로 같은 작업 흐름(읽기 → 계획 → 실행 → 검증 → 감사 → 동기화)을 돌리고, GitHub Issues를 작업 장부로 쓰는 오픈소스 개발 도구입니다.
 
 > **상태: 출시 전 릴리스 후보(RC)입니다.** 이 가지(`v2026.11.0`)에는 Rust 세대 `moai-cli 2026.11.0-rc.1`이 있습니다. 아직 릴리스 자산은 게시되지 않았습니다. 지금의 안정판은 [`main`](https://github.com/modu-ai/moai-adk/tree/main) 가지의 Go 3.x 세대입니다([릴리스 목록](https://github.com/modu-ai/moai-adk/releases)).
 
@@ -28,7 +28,7 @@ flowchart LR
 - **관측하지 않은 주장은 없다.** 명령을 실제로 실행하고 출력을 읽은 검사만 통과로 셉니다. 실행하지 않은 검사는 통과가 아니라 `not_run`으로 보고합니다.
 - **독립 감사.** 작성자가 아닌 세션이 정확한 head 커밋을 검토합니다. 가지 ruleset은 병합 전에 `moai/audit` commit status를 요구합니다.
 
-host가 읽는 작업 흐름 원문은 [skills/moai-cli/](skills/moai-cli/SKILL.md)에 있습니다.
+host가 읽는 작업 흐름 원문은 [skills/moai/](skills/moai/SKILL.md)에 있습니다.
 
 ## 상태와 호환
 
@@ -38,7 +38,7 @@ host가 읽는 작업 흐름 원문은 [skills/moai-cli/](skills/moai-cli/SKILL.
 | 명령 | `moai-cli` | `moai` |
 | 버전 | `2026.11.0-rc.1` (prerelease, 미출시) | 최신 릴리스 `v3.1.2` |
 | 상태 폴더 | `.moai-cli/`(프로젝트), `~/.moai-cli/`(사용자) | `.moai/`, `~/.moai/` |
-| host 진입 | Claude Code `/moai-cli <요청>`, Codex `$moai-cli <요청>` | Claude Code의 `/moai` 명령 |
+| host 진입 | Claude Code `/moai <요청>`, Codex `$moai <요청>` | Claude Code의 `/moai` 명령 |
 
 두 세대는 상태 폴더를 따로 쓰고, 서로를 업데이트하지 않습니다.
 
@@ -70,10 +70,10 @@ cargo build --release --locked
 
 프로젝트 루트에서 연 host 세션에 자연어로 요청하는 것이 기본 진입입니다.
 
-- Claude Code: `/moai-cli 이 프로젝트를 읽고 설정해 줘`
-- Codex: `$moai-cli 이 프로젝트를 읽고 설정해 줘`
+- Claude Code: `/moai 이 프로젝트를 읽고 설정해 줘`
+- Codex: `$moai 이 프로젝트를 읽고 설정해 줘`
 
-프로젝트에 `moai-cli` skill을 추가하는 일과 위의 첫 요청은 **아직 종단 간으로 시험하지 않았습니다**(`not_run`, RC1 출시 대기). 사용자 흐름 초안은 [docs/user-entry-draft.md](docs/user-entry-draft.md)에 있습니다.
+프로젝트에 `moai` skill을 추가하는 일과 위의 첫 요청은 **아직 종단 간으로 시험하지 않았습니다**(`not_run`, RC1 출시 대기). 사용자 흐름 초안은 [docs/user-entry-draft.md](docs/user-entry-draft.md)에 있습니다.
 
 `moai-cli --help`는 작업 흐름이 부르는 내부 명령을 보여 줍니다. skill이 쓰는 부품이지 매일 직접 쓰는 화면은 아닙니다.
 
@@ -92,7 +92,7 @@ cargo build --release --locked
 ## 자주 묻는 질문
 
 **RC1은 Go 3.x와 무엇이 다른가요?**
-RC1은 Rust로 새로 만든 세대이고, Claude Code와 Codex가 함께 쓰는 공통 `moai-cli` skill 하나를 둡니다. 상태는 `.moai-cli/`와 `~/.moai-cli/`에 두므로 Go 3.x 설정을 건드리지 않습니다. [docs/rust-product-path.md](docs/rust-product-path.md)를 보세요.
+RC1은 Rust로 새로 만든 세대이고, Claude Code와 Codex가 함께 쓰는 공통 `moai` skill 하나를 둡니다. 상태는 `.moai-cli/`와 `~/.moai-cli/`에 두므로 Go 3.x 설정을 건드리지 않습니다. [docs/rust-product-path.md](docs/rust-product-path.md)를 보세요.
 
 **지금 바로 쓸 수 있나요?**
 소스에서 빌드하고 코드와 문서를 읽을 수는 있습니다. 아직 출시 전이고 host 종단 간 시험도 돌리지 않았습니다. 일상 작업에는 지금도 `main`의 Go 3.x가 안정적인 선택입니다.

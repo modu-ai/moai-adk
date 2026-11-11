@@ -7,7 +7,7 @@
   "stdin": {
     "protocol_version": 2,
     "language": "ko",
-    "workflow_reference": "skills/moai-cli/workflows/",
+    "workflow_reference": "skills/moai/workflows/",
     "local_file": "none"
   },
   "exit": 1,

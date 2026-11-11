@@ -147,16 +147,16 @@ fn unmanaged_existing_package_blocks_plan_and_apply() {
     let home = root.path().join("home");
     let stage = root.path().join("stage");
     write_pkg(&stage, &stage_v1());
-    fs::create_dir_all(home.join(".claude/skills/moai-cli")).unwrap();
-    fs::create_dir_all(home.join(".agents/skills/moai-cli")).unwrap();
+    fs::create_dir_all(home.join(".claude/skills/moai")).unwrap();
+    fs::create_dir_all(home.join(".agents/skills/moai")).unwrap();
     // Non-RC1 previous-generation SKILL.md: no RC1 frontmatter, foreign content.
     fs::write(
-        home.join(".claude/skills/moai-cli/SKILL.md"),
+        home.join(".claude/skills/moai/SKILL.md"),
         "# moai (old generation skill, written by hand)\nlegacy body\n",
     )
     .unwrap();
     fs::write(
-        home.join(".agents/skills/moai-cli/SKILL.md"),
+        home.join(".agents/skills/moai/SKILL.md"),
         "legacy: also not an RC1 skill\n",
     )
     .unwrap();
@@ -271,7 +271,7 @@ fn recovery_lists_files_added_into_pre_existing_root() {
     let stage2 = tmp2.path().join("stage2");
     write_pkg(&stage2, &stage_v1());
     fs::create_dir_all(&home2).unwrap();
-    fs::create_dir_all(home2.join(".claude/skills/moai-cli")).unwrap();
+    fs::create_dir_all(home2.join(".claude/skills/moai")).unwrap();
     let out2 = cli_apply(&home2, &stage2);
     assert!(
         out2.status.success(),

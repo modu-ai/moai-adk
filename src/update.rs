@@ -1,7 +1,7 @@
 //! Host projection UPDATE (Issue #1999, 04-B).
 //!
-//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai-cli/`,
-//! Codex `~/.agents/skills/moai-cli/` — the design-verified paths; project-level projections
+//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai/`,
+//! Codex `~/.agents/skills/moai/` — the design-verified paths; project-level projections
 //! are a P04 HOLD and are not included), compares each file three-way (baseline = the
 //! ownership manifest of the latest host receipt, current = bytes on disk, new = the
 //! staged package) and writes nothing. `update-apply` recomputes the plan and refuses
@@ -15,7 +15,7 @@
 //! `unchanged` where the bytes already match — never as a silent overwrite.
 //!
 //! Host receipts live beside the 04-A install receipt:
-//! `~/.moai-cli/installations/<install_id>/hosts/moai-cli/<host>.json`. The `install_id` is the
+//! `~/.moai-cli/installations/<install_id>/hosts/moai/<host>.json`. The `install_id` is the
 //! 04-A derivation, obtained through the public `install::plan_receipt` so this module
 //! does not modify 04-A. Host config keys (Claude `settings.json`, Codex `config.toml`)
 //! are out of scope (P04 HOLD — the REQs name projections only). Projections are
@@ -56,12 +56,22 @@ fn skills_dir(host: &str) -> &'static str {
     }
 }
 
-/// The installed skill's projection directory name (#2286): `moai-cli`, so the RC1
-/// skill coexists with the Go MoAI `moai` skill under the same `skills/` root —
-/// the same state-root principle that put RC1 in `.moai-cli/`. A pre-existing
-/// `skills/moai` directory is another product's package: never read as ours, never
-/// written, never blocked on (AC-1, #2286).
-pub(crate) const SKILL_DIR: &str = "moai-cli";
+/// The installed skill's projection directory name (#2286): `moai`, the skill
+/// package name; the executable, product and state root stay `moai-cli`. The name
+/// is shared with the earlier-generation (Go-era) MoAI `moai` skill, so the two no
+/// longer coexist by name: a pre-existing `skills/moai` whose files the install
+/// receipt does not own is blocked with guidance and never replaced automatically
+/// (decision row 22). The host receipt namespace `hosts/<SKILL_DIR>/` follows this
+/// name, so receipts written for the earlier `skills/moai-cli` root never supply a
+/// baseline for this one.
+pub(crate) const SKILL_DIR: &str = "moai";
+
+/// Guidance appended wherever a `moai` skill folder this tool did not write is found
+/// (decision row 22, #2286): block and guide, never replace automatically. The
+/// backup-then-replace path is a separate, user-confirmed procedure, not implemented.
+pub(crate) const GO_ERA_GUIDANCE: &str = "this can be an earlier-generation (Go-era) \
+     MoAI `moai` skill at that path; moai-cli will not replace it — move it aside \
+     yourself, or wait for a confirmed backup-then-replace procedure";
 
 pub(crate) fn projection_root(home: &Path, host: &str) -> PathBuf {
     home.join(skills_dir(host)).join(SKILL_DIR)
@@ -347,7 +357,7 @@ pub(crate) fn save_host_receipt(
 /// REQ-04C-03 (#2089): preserve every file this host will overwrite as a known-good
 /// copy BEFORE the apply transaction starts (the pending receipt included) — a copy
 /// failure starts nothing for the host. Copies live at
-/// `~/.moai-cli/installations/<id>/hosts/moai-cli/<host>/known-good/<hex>`, where `<hex>` is the
+/// `~/.moai-cli/installations/<id>/hosts/moai/<host>/known-good/<hex>`, where `<hex>` is the
 /// bare-hex sha256 of the exact before bytes — a filename-valid form like `install_id`;
 /// the receipt's `before_sha256` carries the same digest with its `sha256:` prefix, so
 /// recovery derives the path by stripping that prefix. `create` actions have no before
@@ -792,7 +802,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
                      that install receipt {install_id} does not own ({}); \
                      safe alternatives: install to a separate location, or a \
                      user-confirmed backup-then-replace — never automatic; \
-                     per-file actions below are informational only",
+                     per-file actions below are informational only; {GO_ERA_GUIDANCE}",
                     unmanaged.len(),
                     unmanaged.join(", "),
                 )),
