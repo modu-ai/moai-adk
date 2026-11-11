@@ -42,6 +42,11 @@ pub(crate) const CRATE_NODE_KIND: &str = "crate_manifest";
 pub const CALL_UNCERTAINTY: &str = "callee-binding-not-checked";
 /// `uncertainty` of an edge whose library crate name was inferred, not read.
 pub const CRATE_NAME_UNCERTAINTY: &str = "crate-name-not-read";
+/// `uncertainty` of a `calls` edge whose library crate name was inferred: both apply.
+pub const INFERRED_CALL_UNCERTAINTY: &str = "crate-name-not-read; callee-binding-not-checked";
+/// Deepest `use` group nesting followed; deeper groups are skipped, so one malformed file
+/// cannot exhaust the index build's stack.
+pub const MAX_USE_DEPTH: usize = 32;
 
 const EXTERNAL_ROOTS: [&str; 5] = ["std", "core", "alloc", "proc_macro", "test"];
 
@@ -349,7 +354,33 @@ fn skip_angle(toks: &[Tok], mut j: usize) -> usize {
 
 type Leaf = (Vec<String>, Option<String>, u32);
 
-fn use_tree(toks: &[Tok], mut j: usize, mut path: Vec<String>, leaves: &mut Vec<Leaf>) -> usize {
+/// Index after the brace group opening at `j`, without recursion; stops at `;`.
+fn skip_group(toks: &[Tok], mut j: usize) -> usize {
+    let mut depth = 0usize;
+    while j < toks.len() {
+        match toks[j].t {
+            T::P('{') => depth += 1,
+            T::P('}') => {
+                depth -= 1;
+                if depth == 0 {
+                    return j + 1;
+                }
+            }
+            T::P(';') => return j,
+            _ => {}
+        }
+        j += 1;
+    }
+    j
+}
+
+fn use_tree(
+    toks: &[Tok],
+    mut j: usize,
+    mut path: Vec<String>,
+    leaves: &mut Vec<Leaf>,
+    depth: usize,
+) -> usize {
     if at(toks, j) == Some(&T::ColCol) {
         j += 1;
     }
@@ -385,6 +416,9 @@ fn use_tree(toks: &[Tok], mut j: usize, mut path: Vec<String>, leaves: &mut Vec<
                 return j + 1;
             }
             Some(T::P('{')) => {
+                if depth >= MAX_USE_DEPTH {
+                    return skip_group(toks, j);
+                }
                 j += 1;
                 loop {
                     match at(toks, j) {
@@ -393,7 +427,7 @@ fn use_tree(toks: &[Tok], mut j: usize, mut path: Vec<String>, leaves: &mut Vec<
                         None => return j,
                         _ => {
                             let before = j;
-                            j = use_tree(toks, j, path.clone(), leaves);
+                            j = use_tree(toks, j, path.clone(), leaves, depth + 1);
                             if j == before {
                                 j += 1;
                             }
@@ -452,7 +486,7 @@ pub fn scan(src: &str) -> Scan {
             }
             T::Ident(w) if w == "use" => {
                 let mut leaves = Vec::new();
-                let mut j = use_tree(&toks, i + 1, Vec::new(), &mut leaves);
+                let mut j = use_tree(&toks, i + 1, Vec::new(), &mut leaves, 0);
                 while j < toks.len() && toks[j].t != T::P(';') {
                     j += 1;
                 }
@@ -977,7 +1011,9 @@ pub fn edges(refs: &[Resolved], snapshot_id: &str, observed_at: &str) -> Vec<Ont
         .into_iter()
         .map(|((kind, source, target), (ev, inferred))| {
             let evidence_refs: Vec<String> = ev.into_iter().collect();
-            let uncertainty = if inferred {
+            let uncertainty = if inferred && kind == "calls" {
+                Some(INFERRED_CALL_UNCERTAINTY.to_string())
+            } else if inferred {
                 Some(CRATE_NAME_UNCERTAINTY.to_string())
             } else if kind == "calls" {
                 Some(CALL_UNCERTAINTY.to_string())
@@ -1266,6 +1302,13 @@ fn f() {
                 evidence: "file:src/main.rs#L2@sha256:01".into(),
                 inferred: true,
             },
+            Resolved {
+                kind: "calls".into(),
+                source: "src/main.rs".into(),
+                target: "src/b.rs".into(),
+                evidence: "file:src/main.rs#L3@sha256:01".into(),
+                inferred: true,
+            },
         ];
         let e = edges(&refs, "abc", "2026-11-11T00:00:00Z");
         for edge in &e {
@@ -1275,9 +1318,42 @@ fn f() {
             (e[0].basis.as_str(), e[0].uncertainty.as_deref()),
             ("static_resolved", Some(CALL_UNCERTAINTY))
         );
+        // Edges are ordered by (kind, source, target): calls a→b, calls main→b, imports main→b.
         assert_eq!(
             (e[1].basis.as_str(), e[1].uncertainty.as_deref()),
+            ("inferred", Some(INFERRED_CALL_UNCERTAINTY))
+        );
+        assert_eq!(
+            (e[2].basis.as_str(), e[2].uncertainty.as_deref()),
             ("inferred", Some(CRATE_NAME_UNCERTAINTY))
+        );
+    }
+
+    #[test]
+    fn use_group_nesting_is_bounded_at_max_use_depth() {
+        // MAX_USE_DEPTH = 32: a leaf inside 32 nested groups is kept, inside 33 skipped.
+        let nested = |n: usize| {
+            format!(
+                "use {}leaf{};\nfn f() {{ crate::after::call(); }}\n",
+                "a::{".repeat(n),
+                "}".repeat(n)
+            )
+        };
+        let kept = scan(&nested(32));
+        assert!(kept
+            .refs
+            .iter()
+            .any(|r| r.path.last().map(String::as_str) == Some("leaf")));
+        let cut = scan(&nested(33));
+        assert!(!cut
+            .refs
+            .iter()
+            .any(|r| r.path.last().map(String::as_str) == Some("leaf")));
+        // A pathological depth neither overflows the stack nor hides the code after it.
+        let deep = scan(&nested(100_000));
+        assert_eq!(
+            deep.refs.last().map(|r| r.path.join("::")),
+            Some("crate::after::call".to_string())
         );
     }
 }

@@ -567,6 +567,14 @@ mod tests {
         assert!(needs_bytes("big.rs", 262_145));
     }
 
+    /// #2442: a Rust file is always read (code files need bytes at any size), so the
+    /// `Oversize` branch never skips a code-reference scan.
+    #[test]
+    fn code_files_are_read_at_any_size() {
+        assert!(needs_bytes("src/huge.rs", u64::MAX));
+        assert!(!needs_bytes("docs/huge.md", u64::MAX));
+    }
+
     #[test]
     fn unread_entries_are_listed_as_missing_coverage() {
         let over = extract_file("big.md", "sha256:x", Content::Oversize);

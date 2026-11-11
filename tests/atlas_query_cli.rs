@@ -431,28 +431,20 @@ fn fixture(name: &str) -> Value {
     serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
 }
 
-/// The GRAPH suite (#2346) asks file-references-file questions. Each case is either found
-/// as a real path between the two file nodes or reported with coverage that names the gap
-/// — never silently empty. A relation whose target is not a file of the snapshot (G-006
-/// names the handoff protocol) cannot be a file → file relation: it is counted apart, must
-/// stay unreached, and never counts as found (Issue #2442 HOLD 1-2). Direct edges per case
-/// are pinned in `graph_cases_have_direct_code_reference_edges`.
+/// The GRAPH suite (#2346) asks file-references-file questions. A case is found only when a
+/// direct code-reference edge (`imports` or `calls`, #2442) joins its two files; reaching the
+/// target through other files in a wider walk does not count. Every other case is a gap that
+/// must be printed with its reason — never silently passed. User decision on Issue #2442
+/// (leader record 6786587580): with the fixture expectations unchanged, the suite passes at 7
+/// found and exactly the 2 stated gaps G-002 (the source mentions the target only in doc
+/// comments) and G-006 (the target names the handoff protocol, not a file); more gaps, other
+/// gaps or a gap without a reason fail. Filling them is Issue #2450.
 #[test]
 fn graph_suite_relations_are_found_or_their_gap_is_stated() {
-    let snapshot = fixture("source_snapshot.json");
+    let (dir, snapshot) = snapshot_project();
+    let root = dir.path();
     let corpus = fixture("corpus.json");
     let suites = fixture("suites.json");
-    let dir = tempfile::TempDir::new().unwrap();
-    let root = dir.path();
-    git(root, &["init", "-q"]);
-    write(root, ".gitignore", ".moai-cli/index/\n");
-    for (path, entry) in snapshot["files"].as_object().unwrap() {
-        write(root, path, entry["content"].as_str().unwrap());
-    }
-    git(root, &["add", "-A"]);
-    git(root, &["commit", "-q", "-m", "frozen snapshot"]);
-    build(root);
-
     let tasks: BTreeMap<&str, &Value> = corpus["tasks"]
         .as_array()
         .unwrap()
@@ -465,15 +457,14 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         .iter()
         .find(|s| s["id"] == "GRAPH")
         .unwrap();
-    let mut found = 0;
-    let mut cases = 0;
-    let mut non_file = 0;
+    let mut found = Vec::new();
+    let mut gaps: BTreeMap<String, String> = BTreeMap::new();
     for case in graph["cases"].as_array().unwrap() {
         let id = case["task_ref"].as_str().unwrap();
         let rel = tasks[id]["ground_truth"]["relation"].as_array().unwrap();
-        let from = format!("file:{}", rel[0].as_str().unwrap());
-        let to = format!("file:{}", rel[2].as_str().unwrap());
-        let target_is_file = snapshot["files"].get(rel[2].as_str().unwrap()).is_some();
+        let (source, target) = (rel[0].as_str().unwrap(), rel[2].as_str().unwrap());
+        let from = format!("file:{source}");
+        let to = format!("file:{target}");
         let r = ok(
             root,
             "atlas-graph",
@@ -487,41 +478,45 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
             r["distance"][&from], 0,
             "{id}: {from} not in the generation"
         );
-        cases += 1;
-        if !target_is_file {
-            assert!(r["distance"].get(&to).is_none(), "{id}: {to} is not a file");
-            non_file += 1;
-            continue;
-        }
-        if r["distance"].get(&to).is_some() {
-            found += 1;
-            continue;
-        }
-        let kinds: Vec<&str> = r["coverage"]["edge_kinds_in_generation"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|k| k.as_str().unwrap())
+        let direct: Vec<String> = direct_edges(root, source, target)
+            .into_iter()
+            .filter(|e| {
+                e.starts_with(&format!("imports {from} "))
+                    || e.starts_with(&format!("calls {from} "))
+            })
             .collect();
-        for code_kind in ["references", "imports", "calls"] {
-            assert!(
-                !kinds.contains(&code_kind),
-                "{id}: {code_kind} exists but not found"
-            );
+        if !direct.is_empty() {
+            found.push(id.to_string());
+            continue;
         }
-        assert!(
-            r["coverage"]["symbols"]
-                .as_str()
-                .unwrap()
-                .starts_with("unavailable"),
-            "{id}"
-        );
+        let reason = if snapshot["files"].get(target).is_none() {
+            format!("target {target:?} is not a file of the snapshot")
+        } else {
+            let wider = match r["distance"].get(&to) {
+                Some(d) => format!("; reached only through other files at hop {d}"),
+                None => String::new(),
+            };
+            format!("no direct imports/calls edge from {source} to {target}{wider}")
+        };
+        gaps.insert(id.to_string(), reason);
     }
-    assert_eq!(cases, 9, "every GRAPH case queried");
-    assert_eq!(non_file, 1, "only G-006 names a non-file target");
+    for (id, reason) in &gaps {
+        assert!(!reason.trim().is_empty(), "{id}: a gap needs its reason");
+        eprintln!("GRAPH gap {id}: {reason}");
+    }
     eprintln!(
-        "GRAPH suite through atlas-graph: {found}/{cases} relations reached ({non_file} non-file target)"
+        "GRAPH suite through atlas-graph: {}/{} found by a direct edge, {} gaps stated",
+        found.len(),
+        found.len() + gaps.len(),
+        gaps.len()
     );
+    assert_eq!(found.len() + gaps.len(), 9, "every GRAPH case queried");
+    assert_eq!(
+        gaps.keys().map(String::as_str).collect::<Vec<_>>(),
+        ["G-002", "G-006"],
+        "only the two decided gaps may remain (Issue #2450 fills them)"
+    );
+    assert_eq!(found.len(), 7);
 }
 
 /// Builds the frozen GRAPH snapshot (#2346) as a committed repository with an index.
