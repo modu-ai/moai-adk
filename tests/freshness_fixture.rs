@@ -161,7 +161,17 @@ fn mutate(repo: &Repo, m: &Value) {
 /// Compares one directory's query with an expectation (`state`, `changes`,
 /// `generation_unchanged`).
 fn compare(label: &str, dir: &Path, before: &Option<String>, want: &Value) -> Result<(), String> {
-    validate_expected(want)?;
+    compare_at(label, dir, before, want, false)
+}
+
+fn compare_at(
+    label: &str,
+    dir: &Path,
+    before: &Option<String>,
+    want: &Value,
+    other_worktree: bool,
+) -> Result<(), String> {
+    validate_expected_at(want, other_worktree)?;
     let got = cli(dir, "index-query");
     if got["state"] != want["state"] {
         return Err(format!(
@@ -175,24 +185,28 @@ fn compare(label: &str, dir: &Path, before: &Option<String>, want: &Value) -> Re
             return Err(format!("{label}: changes.{key} {seen} != {value}"));
         }
     }
-    if want["generation_unchanged"] == json!(true) && pointer_gen(dir) != *before {
-        return Err(format!("{label}: the generation pointer moved"));
+    if let Some(expected) = want.get("generation_unchanged") {
+        let actual = json!(pointer_gen(dir) == *before);
+        if actual != *expected {
+            return Err(format!(
+                "{label}: generation_unchanged {actual} != {expected}"
+            ));
+        }
     }
     Ok(())
 }
 
 /// Every accepted key must have a real observation in compare() or judge().
 fn validate_expected(want: &Value) -> Result<(), String> {
+    validate_expected_at(want, false)
+}
+
+fn validate_expected_at(want: &Value, other_worktree: bool) -> Result<(), String> {
     for key in want.as_object().ok_or("expected must be an object")?.keys() {
-        if !matches!(
-            key.as_str(),
-            "state"
-                | "changes"
-                | "generation_unchanged"
-                | "other_worktree"
-                | "cache_scope"
-                | "worktree"
-        ) {
+        let supported = matches!(key.as_str(), "state" | "changes" | "generation_unchanged")
+            || (!other_worktree && matches!(key.as_str(), "other_worktree" | "cache_scope"))
+            || (other_worktree && key == "worktree");
+        if !supported {
             return Err(format!("unconsumed expected key: {key}"));
         }
     }
@@ -211,7 +225,7 @@ fn validate_expected(want: &Value) -> Result<(), String> {
         }
     }
     if let Some(other) = want.get("other_worktree") {
-        validate_expected(other)?;
+        validate_expected_at(other, true)?;
     }
     if want.get("cache_scope").is_some_and(|v| v != "per_worktree") {
         return Err("unsupported cache_scope".into());
@@ -257,11 +271,12 @@ fn judge(case: &Value) -> Result<Option<String>, String> {
     compare(id, repo.dir(target), &gen_of(target), &case["expected"])?;
     if let Some(other) = case["expected"].get("other_worktree") {
         let name = other["worktree"].as_str().unwrap();
-        compare(
+        compare_at(
             &format!("{id} ({name})"),
             repo.dir(Some(name)),
             &gen_of(Some(name)),
             other,
+            true,
         )?;
     }
     if case["expected"]["cache_scope"] == json!("per_worktree") {
@@ -332,6 +347,21 @@ fn freshness_judge_rejects_unconsumed_expected_keys() {
     }
     assert!(validate_expected(&json!({"state":"fresh", "changes":{"typo":null}})).is_err());
     assert!(validate_expected(&json!({"state":"fresh", "other_worktree":{"typo":null}})).is_err());
+    assert!(compare(
+        "root metadata",
+        &repo.main,
+        &before,
+        &json!({"state":"fresh", "worktree":"ignored"})
+    )
+    .is_err());
+    assert!(compare(
+        "false generation",
+        &repo.main,
+        &before,
+        &json!({"state":"fresh", "generation_unchanged":false})
+    )
+    .is_err());
+    assert!(validate_expected(&json!({"state":"fresh", "other_worktree":{"worktree":"other", "cache_scope":"per_worktree"}})).is_err());
 }
 
 fn f08() -> Value {
