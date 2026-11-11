@@ -23,7 +23,7 @@ PINS = {
 }
 
 DRIVER = r'''
-import hashlib,json,os,shutil,sys
+import hashlib,json,os,shutil,sys,tarfile,tempfile
 from pathlib import Path
 root=Path(os.environ['FIXTURE_ROOT']); cmd=Path(sys.argv[0]).name; a=sys.argv[1:]
 with (root/'calls.jsonl').open('a') as f:f.write(json.dumps([cmd,a])+'\n')
@@ -44,6 +44,26 @@ elif cmd=='apt-get':
  if mode=='install_failure':sys.exit(100)
  (root/'bin/rg').write_text('#!/bin/bash\necho "ripgrep 14.1.1"\n')
  (root/'bin/rg').chmod(0o755)
+elif cmd=='mktemp':
+ assert a==['-d',str(root/'runner/moai-ripgrep.XXXXXX')],a
+ print(tempfile.mkdtemp(prefix='moai-ripgrep.',dir=root/'runner'))
+elif cmd=='tar':
+ assert len(a)==5 and a[0]=='-xzf' and a[2]=='-C',a
+ destination=Path(a[3]);member=a[4]
+ assert destination.is_relative_to(root/'runner')
+ assert member in ['ripgrep-14.1.1-'+arch+'/rg' for arch in ['x86_64-unknown-linux-musl','aarch64-unknown-linux-gnu']]
+ with tarfile.open(a[1],'r:gz') as archive:
+  info=archive.getmember(member);assert info.isfile()
+  target=destination/member;target.parent.mkdir(parents=True)
+  target.write_bytes(archive.extractfile(info).read());target.chmod(info.mode)
+elif cmd=='mkdir':
+ assert len(a)==1 and Path(a[0]).is_relative_to(root/'runner'),a
+ Path(a[0]).mkdir()
+elif cmd=='install':
+ assert len(a)==4 and a[:2]==['-m','0755'],a
+ assert all(Path(v).is_relative_to(root/'runner') for v in a[2:])
+ shutil.copyfile(a[2],a[3]);Path(a[3]).chmod(0o755)
+elif cmd=='cat':sys.stdout.write(sys.stdin.read())
 elif cmd=='brew':
  assert a==['install','ripgrep'];(root/'bin/rg').write_text('#!/bin/bash\necho "ripgrep 14.1.1"\n');(root/'bin/rg').chmod(0o755)
 elif cmd=='sleep':pass
@@ -73,11 +93,13 @@ class InstallerTest(unittest.TestCase):
         (self.root / "runner").mkdir()
         self.path_file = self.root / "github-path"
         self.path_file.write_text("")
-        for name in ("sudo", "timeout", "apt-get", "sleep", "uname", "curl", "sha256sum", "brew"):
+        for name in ("sudo", "timeout", "apt-get", "sleep", "uname", "curl", "sha256sum", "brew",
+                     "mktemp", "tar", "install", "mkdir", "cat"):
             f = self.bin / name
             f.write_text(f"#!{sys.executable}\n" + DRIVER)
             f.chmod(0o755)
-        for name in ("mktemp", "tar", "install", "mkdir", "bash", "cat"):
+        # Only the shell is native; file tools cannot inherit host-specific dependencies.
+        for name in ("bash",):
             path = shutil.which(name)
             self.assertIsNotNone(path, name)
             (self.bin / name).symlink_to(path)
@@ -136,6 +158,16 @@ class InstallerTest(unittest.TestCase):
         check = subprocess.run([str(installed), "--version"], capture_output=True, text=True)
         self.assertEqual(check.returncode, 0)
         self.assertIn("14.1.1", check.stdout)
+
+    def test_fallback_needs_no_host_tar_gzip_or_file_utilities(self):
+        self.assertFalse((self.bin / "gzip").exists())
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in ("mktemp", "tar", "mkdir", "install"):
+            self.assertFalse((self.bin / name).is_symlink(), name)
+            self.assertEqual(len(self.calls(name)), 1, name)
+        installed = Path(self.path_file.read_text().strip()) / "rg"
+        self.assertEqual(installed.stat().st_mode & 0o777, 0o755)
 
     def test_existing_rg_never_uses_apt_or_network(self):
         rg = self.bin / "rg"
