@@ -17,7 +17,7 @@ A source-bound answer and the uncertainty that remains.
 
 ## Exceptions and Permissions
 
-If read access is missing, only the affected material is blocked. Never guess the contents of a file that was not read.
+If read access is missing, only the affected material is blocked. Never guess the contents of a file that was not read. When a card cites a canonical document, read it from a copy you can open and record its path, line range and sha256; if no readable copy exists, say so on the first line of the answer and do not judge from a summary.
 
 ## Completion Check
 

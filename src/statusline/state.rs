@@ -218,8 +218,34 @@ pub fn display_config(input: Option<&Input>, ctx: &Context) -> DisplayConfig {
     let root = input
         .and_then(resolve_anchor)
         .or_else(|| find_project_root(ctx));
-    root.map(|r| read_display_config(&r.join(".moai/config/sections/statusline.yaml")))
+    root.map(|r| read_display_config(&config_path(&r, STATUSLINE_YAML)))
         .unwrap_or_default()
+}
+
+/// `statusline.yaml`: the RC location under `.moai-cli/`, then the Go file.
+const STATUSLINE_YAML: (&str, &str) = (
+    ".moai-cli/config/sections/statusline.yaml",
+    ".moai/config/sections/statusline.yaml",
+);
+/// `statusline.local.yaml`: the RC location under `.moai-cli/`, then the Go file.
+const STATUSLINE_LOCAL_YAML: (&str, &str) = (
+    ".moai-cli/statusline.local.yaml",
+    ".moai/statusline.local.yaml",
+);
+
+/// #2350 scope 3 (user decision 6774899518 row 42 = B): a statusline setting is read from
+/// `.moai-cli/` (the Go relative path under the RC folder) when that file exists, else
+/// from the Go file. The Go file is only read — never written, moved or copied — so the
+/// Go state stays as it is. Existence decides, not parsing: an unreadable `.moai-cli/`
+/// file means defaults (as Go treats an unparseable file), never a silent return to the
+/// Go values.
+fn config_path(root: &Path, (rc, go): (&str, &str)) -> PathBuf {
+    let rc = root.join(rc);
+    if rc.exists() {
+        rc
+    } else {
+        root.join(go)
+    }
 }
 
 fn read_display_config(path: &Path) -> DisplayConfig {
@@ -736,17 +762,14 @@ fn github_counts(anchor: &Path) -> GitHubCounts {
             open_issues: c.open_issues.unwrap_or(0),
             open_prs: c.open_prs.unwrap_or(0),
         });
-    let forge = [
-        ".moai/statusline.local.yaml",
-        ".moai/config/sections/statusline.yaml",
-    ]
-    .iter()
-    .filter_map(|rel| config::read(&anchor.join(rel)))
-    .filter_map(|doc| {
-        doc.scalar(&["statusline", "forge"])
-            .map(|s| s.trim().to_string())
-    })
-    .find(|v| !v.is_empty());
+    let forge = [STATUSLINE_LOCAL_YAML, STATUSLINE_YAML]
+        .into_iter()
+        .filter_map(|pair| config::read(&config_path(anchor, pair)))
+        .filter_map(|doc| {
+            doc.scalar(&["statusline", "forge"])
+                .map(|s| s.trim().to_string())
+        })
+        .find(|v| !v.is_empty());
     if let Some(forge) = forge {
         if !matches!(forge.to_lowercase().as_str(), "github" | "gitlab") {
             counts.suppressed = true;
@@ -826,6 +849,67 @@ mod tests {
         );
         std::fs::write(sections.join("system.yaml"), "moai:\n  version: 3.2.1\n").unwrap();
         assert_eq!(collect_version(&ctx, "v3.2.1").latest, None);
+    }
+
+    /// #2350 scope 3 (decision 6774899518 row 42 = B): `.moai-cli/` first, else the Go
+    /// file, which is only read.
+    #[test]
+    fn statusline_config_reads_moai_cli_first_and_keeps_the_go_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        let go = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&go).unwrap();
+        let go_file = go.join("statusline.yaml");
+        let go_text =
+            "statusline:\n  theme: catppuccin\n  forge: none\n  segments:\n    git: false\n";
+        std::fs::write(&go_file, go_text).unwrap();
+
+        // Only the Go file: it is read.
+        let c = display_config(None, &ctx);
+        assert_eq!(c.theme, "catppuccin");
+        assert_eq!(c.segments.get("git"), Some(&false));
+        assert!(github_counts(tmp.path()).suppressed);
+
+        // A `.moai-cli/` file wins whole; nothing is merged from the Go file.
+        let rc = tmp.path().join(".moai-cli/config/sections");
+        std::fs::create_dir_all(&rc).unwrap();
+        std::fs::write(
+            rc.join("statusline.yaml"),
+            "statusline:\n  theme: nord\n  forge: github\n",
+        )
+        .unwrap();
+        let c = display_config(None, &ctx);
+        assert_eq!(c.theme, "nord");
+        assert!(c.segments.is_empty());
+        assert!(!github_counts(tmp.path()).suppressed);
+
+        // An unreadable `.moai-cli/` file means defaults, not the Go values.
+        std::fs::write(rc.join("statusline.yaml"), "statusline:\n\ttheme: x\n").unwrap();
+        let c = display_config(None, &ctx);
+        assert_eq!(c.theme, "");
+        assert!(c.segments.is_empty());
+
+        // The local file follows the same order.
+        std::fs::write(
+            tmp.path().join(".moai/statusline.local.yaml"),
+            "statusline:\n  forge: github\n",
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join(".moai-cli/statusline.local.yaml"),
+            "statusline:\n  forge: none\n",
+        )
+        .unwrap();
+        assert!(github_counts(tmp.path()).suppressed);
+
+        // The Go file is never written, and nothing new appears under `.moai/`.
+        assert_eq!(std::fs::read_to_string(&go_file).unwrap(), go_text);
+        let mut names: Vec<_> = std::fs::read_dir(tmp.path().join(".moai"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["config", "statusline.local.yaml"]);
     }
 
     #[test]
