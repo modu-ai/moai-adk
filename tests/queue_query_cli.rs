@@ -356,3 +356,29 @@ fn binary_routes_typed_request_and_envelope_using_fake_gh() {
 fn req_json() -> Value {
     json!({"schema_version":1,"owner":"acme","repo":"widgets","base_branch":"integration","ledger_issue":1,"ledger_comment_id":5})
 }
+
+#[test]
+fn final_verdict_token_beats_key_text() {
+    let h = "a".repeat(40);
+    let base = "0".repeat(40);
+    for (key, verdict, reasons) in [
+        ("verdict:PASS", "FAIL", json!(["audit_failed"])),
+        ("verdict:FAIL", "PASS", json!([])),
+    ] {
+        let note = json!({"id":201,"body":format!("AUDIT #20 ({key}) head {h} base {base} — verdict: {verdict}")});
+        let mut ex = vec![ledger(&[20])];
+        ex.extend(row(
+            20,
+            pr(20, &h),
+            vec![note],
+            vec![
+                check(1, "rc-ci", &h, "success"),
+                check(2, "windows-build", &h, "success"),
+            ],
+        ));
+        let (out, _) = run(ex);
+        assert_eq!(out["rows"][0]["verdict"]["verdict"], verdict);
+        assert_eq!(out["rows"][0]["verdict"]["comment_id"], 201);
+        assert_eq!(out["rows"][0]["blocked_reasons"], reasons);
+    }
+}

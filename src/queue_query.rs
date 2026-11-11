@@ -173,7 +173,18 @@ fn exact_comments(raw: Vec<Value>, pr: i64, head: &str, base: &str) -> Vec<lane_
                 && matches!(words[9], "PASS" | "FAIL")
         })
         .map(|mut c| {
-            c.body = c.body.lines().next().unwrap_or_default().to_string();
+            // The legacy projection reads the first `verdict:` occurrence. Replace the
+            // opaque key so only the already validated terminal verdict can be read.
+            let verdict = c
+                .body
+                .lines()
+                .next()
+                .unwrap()
+                .split_whitespace()
+                .last()
+                .unwrap();
+            c.body =
+                format!("AUDIT #{pr} (queue-query) head {head} base {base} — verdict: {verdict}");
             c
         })
         .collect()
