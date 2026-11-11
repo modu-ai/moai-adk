@@ -404,6 +404,44 @@ collected. Known symlinks/traversal are refused, not a race-proof sandbox claim.
 S1 has no host/Hide wake, daemon, dispatch disposition, ownership takeover or
 user-settings/home migration.
 
+### Directory durability and failed-sync restart boundaries (#2462 P2)
+
+Before any remote request, all three message operations validate/create each
+`.moai-cli/messages/{outbox,inbox}` directory and sync both its parent and itself.
+This includes the existing project directory, `.moai-cli`, `messages`, `outbox`,
+and `inbox`. The same calls run on `AlreadyExists`: an earlier interrupted
+invocation may have left a visible path whose parent entry was never synced.
+Every journal replacement still syncs its temporary file, renames it, then syncs
+the containing directory. Open/sync errors propagate as `io`; an unsupported
+directory sync is a refusal, never a successful durability claim. No platform
+silently skips this directory barrier.
+
+| Injected directory-sync failure | Observed effect | Next invocation after the fault is removed |
+| --- | --- | --- |
+| New or existing parent chain, sender or receiver | `io`, remote calls/POST count unchanged; no journal publication | Re-sync the complete chain, perform fresh context/actor/remote checks, publish once |
+| Sender intent or pre-attempt observation replacement | `io`, POST count zero, persisted `attempted:false` | Fresh checks may publish once |
+| Sender attempted replacement before POST | `io`, POST count zero, visible journal has `attempted:true` | Conservatively refuse another POST while publication is absent |
+| Record or ACK outcome replacement after POST | `io`, one POST already issued, attempted state retained | Hidden publication never causes another POST; a later matching GET reconciles it |
+| Reconcile parent-chain sync | `io`, no remote call, existing receipt bytes unchanged | Reopen and reconcile after re-syncing; never POST |
+
+Permanent Unix unit tests trace successful mkdir and directory-sync calls and
+assert the complete chain at the actual synthetic Transport POST boundary.
+Fault injection covers both new and pre-existing paths, both publishers and
+receipt replacement phases. These are syscall/invocation restart models, not a
+physical power-cut experiment or a guarantee about faulty hardware or every
+filesystem. The test observer and fault injector are compiled only for Unix unit
+tests; production has no environment switch to bypass synchronization.
+
+Official sources read 2026-11-11: [Linux fsync(2)](https://man7.org/linux/man-pages/man2/fsync.2.html)
+explains that file syncing does not by itself persist its parent directory entry;
+[Rust File::sync_all](https://doc.rust-lang.org/std/fs/struct.File.html#method.sync_all)
+describes content/metadata synchronization and errors that dropping a file can
+ignore. Adopt explicit directory sync and error propagation. This follows the
+OS/filesystem synchronization contract; actual power-loss and Windows runtime
+validation are not_run. Retrieval UTC and full HTML SHA256 are recorded with the
+PR repair evidence in `sources.json`; the live Rust docs version is distinct from
+the locally compiled 1.94.1 toolchain.
+
 Sources read 2026-11-10: [GitHub Issue comments](https://docs.github.com/en/rest/issues/comments),
 [Rust rename](https://doc.rust-lang.org/std/fs/fn.rename.html) and the
 [Idempotent Consumer pattern](https://microservices.io/patterns/communication-style/idempotent-consumer.html).

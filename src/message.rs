@@ -255,6 +255,15 @@ fn check_path(path: &Path) -> Result<()> {
     }
     Ok(())
 }
+fn sync_directory(path: &Path) -> Result<()> {
+    let result = fs::File::open(path).and_then(|f| f.sync_all());
+    #[cfg(all(test, unix))]
+    let result = result.and_then(|()| durability_tests::reported_result(path));
+    result.map_err(|_| err(Kind::Io, "message directory sync failed"))?;
+    #[cfg(all(test, unix))]
+    durability_tests::synced(path);
+    Ok(())
+}
 fn directories(project: &Path) -> Result<PathBuf> {
     check_path(project)?;
     if !project.is_dir() {
@@ -269,10 +278,20 @@ fn directories(project: &Path) -> Result<PathBuf> {
     ] {
         check_path(&path)?;
         match fs::create_dir(&path) {
-            Ok(()) => {}
+            Ok(()) => {
+                #[cfg(all(test, unix))]
+                durability_tests::created(&path);
+            }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists && path.is_dir() => {}
             Err(_) => return Err(err(Kind::Io, "message directory unavailable")),
         }
+        // An existing path may be left by an interrupted invocation before its parent
+        // entry reached storage. Never infer durability from AlreadyExists.
+        sync_directory(
+            path.parent()
+                .ok_or_else(|| invalid("message parent missing"))?,
+        )?;
+        sync_directory(&path)?;
     }
     Ok(root)
 }
@@ -346,14 +365,10 @@ fn save(path: &Path, entry: &Entry) -> Result<()> {
             .and_then(|_| f.sync_all())
             .map_err(|_| err(Kind::Io, "message entry sync failed"))?;
         fs::rename(&tmp, path).map_err(|_| err(Kind::Io, "message entry replace failed"))?;
-        // On Unix sync the directory so the rename survives a restart, not just the bytes.
-        #[cfg(unix)]
-        fs::File::open(
+        sync_directory(
             path.parent()
                 .ok_or_else(|| invalid("message parent missing"))?,
-        )
-        .and_then(|f| f.sync_all())
-        .map_err(|_| err(Kind::Io, "message directory sync failed"))?;
+        )?;
         Ok(())
     })();
     if result.is_err() {
@@ -821,4 +836,354 @@ pub fn reconcile_cli<T: Transport, C: Clock>(
     Ok(result(
         incoming.as_ref().or(outgoing.as_ref()).unwrap_or(&probe),
     ))
+}
+
+#[cfg(all(test, unix))]
+mod durability_tests {
+    use super::*;
+    use crate::forge::transport::HttpResponse;
+    use std::cell::{Cell, RefCell};
+    use tempfile::TempDir;
+
+    #[derive(Default)]
+    struct Probe {
+        created: Vec<PathBuf>,
+        synced: Vec<PathBuf>,
+        fail: Option<(PathBuf, usize)>,
+    }
+    thread_local! {
+        static PROBE: RefCell<Probe> = RefCell::new(Probe::default());
+    }
+    pub(super) fn created(path: &Path) {
+        PROBE.with(|p| p.borrow_mut().created.push(path.to_path_buf()));
+    }
+    // Inject the syscall result before the product converts it, not an early OpError.
+    // Tests therefore detect ignoring an actual open/sync result inside the helper too.
+    pub(super) fn reported_result(path: &Path) -> std::io::Result<()> {
+        PROBE.with(|p| {
+            let mut p = p.borrow_mut();
+            if let Some((target, skip)) = &mut p.fail {
+                if target == path {
+                    if *skip == 0 {
+                        return Err(std::io::Error::other("injected directory sync failure"));
+                    }
+                    *skip -= 1;
+                }
+            }
+            Ok(())
+        })
+    }
+    pub(super) fn synced(path: &Path) {
+        PROBE.with(|p| p.borrow_mut().synced.push(path.to_path_buf()));
+    }
+    fn reset(fail: Option<(PathBuf, usize)>) {
+        PROBE.with(|p| {
+            *p.borrow_mut() = Probe {
+                fail,
+                ..Probe::default()
+            }
+        });
+    }
+    fn assert_synced_chain(project: &Path) {
+        PROBE.with(|p| {
+            let p = p.borrow();
+            for path in [
+                project.to_path_buf(),
+                project.join(".moai-cli"),
+                project.join(".moai-cli/messages"),
+                project.join(".moai-cli/messages/outbox"),
+                project.join(".moai-cli/messages/inbox"),
+            ] {
+                assert!(
+                    p.synced.contains(&path),
+                    "directory not synced before POST: {path:?}"
+                );
+            }
+            for path in &p.created {
+                assert!(
+                    p.synced.iter().any(|s| Some(s.as_path()) == path.parent()),
+                    "new directory parent not synced before POST: {path:?}"
+                );
+            }
+        });
+    }
+    struct Time;
+    impl Clock for Time {
+        fn now(&self) -> i64 {
+            1_794_355_200
+        }
+        fn sleep(&self, _: u64) {}
+    }
+    struct Remote {
+        project: RefCell<PathBuf>,
+        comments: RefCell<Vec<Value>>,
+        actor: Cell<u64>,
+        posts: Cell<usize>,
+        calls: Cell<usize>,
+        hidden_kind: Cell<Option<&'static str>>,
+    }
+    impl Transport for Remote {
+        fn send(&self, request: &HttpRequest) -> std::result::Result<HttpResponse, String> {
+            self.calls.set(self.calls.get() + 1);
+            if request.method == "POST" {
+                let project = self.project.borrow();
+                assert_synced_chain(&project);
+                let body = request.body.as_ref().unwrap()["body"].as_str().unwrap();
+                let ack = body.contains("\"kind\":\"ack\"");
+                let entry = journal(&project, ack);
+                assert!(if ack {
+                    entry.ack.attempted
+                } else {
+                    entry.record.attempted
+                });
+                self.posts.set(self.posts.get() + 1);
+                let mut comments = self.comments.borrow_mut();
+                let id = 100 + comments.len() as u64;
+                comments.push(json!({"id":id,"body":body,"user":{"id":self.actor.get()}}));
+                return Ok(HttpResponse::new(201).with_body(json!({"id":id})));
+            }
+            assert_eq!(request.method, "GET");
+            let body = if request.url.ends_with("/user") {
+                json!({"id":self.actor.get()})
+            } else if request.url.contains("/comments?") {
+                let comments: Vec<_> = self
+                    .comments
+                    .borrow()
+                    .iter()
+                    .filter(|c| {
+                        !self.hidden_kind.get().is_some_and(|kind| {
+                            c["body"]
+                                .as_str()
+                                .unwrap()
+                                .contains(&format!("\"kind\":\"{kind}\""))
+                        })
+                    })
+                    .cloned()
+                    .collect();
+                json!(comments)
+            } else if request.url.ends_with("/issues/3") {
+                json!({"id":2,"node_id":"I_2","number":3})
+            } else if request.url.ends_with("/repos/org/repo") {
+                json!({"id":1})
+            } else {
+                panic!("unexpected request")
+            };
+            Ok(HttpResponse::new(200).with_body(body))
+        }
+    }
+    fn message() -> Message {
+        serde_json::from_value(json!({"schema_version":1,"report_id":"r1","project_id":"p1",
+            "task":{"owner":"org","repo":"repo","repository_id":1,"issue_id":2,"issue_node_id":"I_2","issue_number":3,"task_id":"T1","revision":"rev1"},
+            "sender":{"actor_id":11,"session_id":"sender"},"receiver":{"actor_id":22,"session_id":"receiver"},
+            "owner_epoch":1,"leader_epoch":1,"event":"report","candidate_digest":crate::digest(b"candidate"),"created_at":"2026-11-11T00:00:00Z",
+            "approval_refs":["issue-comment:10"],"hold_refs":[],"payload":{"text":"hello"}})).unwrap()
+    }
+    fn invoke(project: &Path, remote: &Remote, ack: bool) -> Result<Value> {
+        if ack {
+            ack_cli(
+                project,
+                AckRequest {
+                    message: message(),
+                    payload_digest: crate::digest(br#"{"text":"hello"}"#),
+                },
+                "decision:1",
+                remote,
+                &Time,
+            )
+        } else {
+            record_cli(
+                project,
+                RecordRequest { message: message() },
+                "decision:1",
+                remote,
+                &Time,
+            )
+        }
+    }
+    fn temp() -> TempDir {
+        TempDir::new_in(fs::canonicalize(std::env::temp_dir()).unwrap()).unwrap()
+    }
+    fn setup(ack: bool, reused: bool) -> (TempDir, Remote) {
+        let project = temp();
+        let remote = Remote {
+            project: RefCell::new(project.path().to_path_buf()),
+            comments: RefCell::new(vec![]),
+            actor: Cell::new(11),
+            posts: Cell::new(0),
+            calls: Cell::new(0),
+            hidden_kind: Cell::new(None),
+        };
+        if ack {
+            let sender = temp();
+            *remote.project.borrow_mut() = sender.path().to_path_buf();
+            reset(None);
+            invoke(sender.path(), &remote, false).unwrap();
+            remote.actor.set(22);
+            *remote.project.borrow_mut() = project.path().to_path_buf();
+        }
+        if reused {
+            fs::create_dir_all(project.path().join(".moai-cli/messages/outbox")).unwrap();
+            fs::create_dir_all(project.path().join(".moai-cli/messages/inbox")).unwrap();
+        }
+        reset(None);
+        (project, remote)
+    }
+    fn journal(project: &Path, ack: bool) -> Entry {
+        let path = project.join(if ack {
+            ".moai-cli/messages/inbox/r1.json"
+        } else {
+            ".moai-cli/messages/outbox/r1.json"
+        });
+        serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+    }
+    fn posting_requires_synced_chain(reused: bool) {
+        for ack in [false, true] {
+            let (project, remote) = setup(ack, reused);
+            let before = remote.posts.get();
+            invoke(project.path(), &remote, ack).unwrap();
+            assert_eq!(remote.posts.get(), before + 1);
+            reset(None);
+            invoke(project.path(), &remote, ack).unwrap();
+            assert_eq!(remote.posts.get(), before + 1);
+            assert_synced_chain(project.path());
+        }
+    }
+    #[test]
+    fn audit_new_ancestors_synced_before_post() {
+        posting_requires_synced_chain(false);
+    }
+    #[test]
+    fn existing_ancestors_are_resynced_before_post() {
+        posting_requires_synced_chain(true);
+    }
+
+    #[test]
+    fn directory_sync_failure_blocks_new_and_existing_paths_then_restart_recovers() {
+        for ack in [false, true] {
+            for reused in [false, true] {
+                for relative in [
+                    "",
+                    ".moai-cli",
+                    ".moai-cli/messages",
+                    ".moai-cli/messages/outbox",
+                    ".moai-cli/messages/inbox",
+                ] {
+                    let (project, remote) = setup(ack, reused);
+                    let posts = remote.posts.get();
+                    let calls = remote.calls.get();
+                    let comments = remote.comments.borrow().clone();
+                    reset(Some((project.path().join(relative), 0)));
+                    assert_eq!(
+                        invoke(project.path(), &remote, ack).unwrap_err().kind,
+                        Kind::Io
+                    );
+                    assert_eq!(remote.posts.get(), posts);
+                    assert_eq!(remote.calls.get(), calls);
+                    assert_eq!(*remote.comments.borrow(), comments);
+                    reset(None);
+                    invoke(project.path(), &remote, ack).unwrap();
+                    assert_eq!(remote.posts.get(), posts + 1);
+                }
+            }
+        }
+    }
+    #[test]
+    fn intent_sync_failure_can_restart_once_but_attempt_sync_failure_never_reposts() {
+        // Record saves the intent, the fresh observation, then the POST attempt.
+        for skip in [1, 2, 3] {
+            let (project, remote) = setup(false, false);
+            reset(Some((
+                project.path().join(".moai-cli/messages/outbox"),
+                skip,
+            )));
+            assert_eq!(
+                invoke(project.path(), &remote, false).unwrap_err().kind,
+                Kind::Io
+            );
+            assert_eq!(remote.posts.get(), 0);
+            assert_eq!(journal(project.path(), false).record.attempted, skip == 3);
+            reset(None);
+            if skip < 3 {
+                invoke(project.path(), &remote, false).unwrap();
+                assert_eq!(remote.posts.get(), 1);
+            } else {
+                assert_eq!(
+                    invoke(project.path(), &remote, false).unwrap_err().kind,
+                    Kind::Transport
+                );
+                assert_eq!(remote.posts.get(), 0);
+            }
+        }
+    }
+    #[test]
+    fn post_sync_failure_keeps_attempt_and_restart_does_not_repeat_hidden_record_or_ack() {
+        for ack in [false, true] {
+            let (project, remote) = setup(ack, false);
+            let posts = remote.posts.get();
+            let leaf = if ack { "inbox" } else { "outbox" };
+            // Record has one extra pre-attempt observation save; ACK has none.
+            let skip = if ack { 3 } else { 4 };
+            reset(Some((
+                project.path().join(".moai-cli/messages").join(leaf),
+                skip,
+            )));
+            assert_eq!(
+                invoke(project.path(), &remote, ack).unwrap_err().kind,
+                Kind::Io
+            );
+            assert_eq!(remote.posts.get(), posts + 1);
+            let entry = journal(project.path(), ack);
+            assert!(if ack {
+                entry.ack.attempted
+            } else {
+                entry.record.attempted
+            });
+            remote
+                .hidden_kind
+                .set(Some(if ack { "ack" } else { "record" }));
+            reset(None);
+            assert_eq!(
+                invoke(project.path(), &remote, ack).unwrap_err().kind,
+                Kind::Transport
+            );
+            assert_eq!(remote.posts.get(), posts + 1);
+            remote.hidden_kind.set(None);
+            reset(None);
+            invoke(project.path(), &remote, ack).unwrap();
+            assert_eq!(remote.posts.get(), posts + 1);
+        }
+    }
+
+    #[test]
+    fn reconcile_sync_failure_preserves_receipts_and_performs_no_remote_calls() {
+        let (project, remote) = setup(false, false);
+        invoke(project.path(), &remote, false).unwrap();
+        let path = project.path().join(".moai-cli/messages/outbox/r1.json");
+        let before = fs::read(&path).unwrap();
+        let calls = remote.calls.get();
+        let posts = remote.posts.get();
+        reset(Some((project.path().to_path_buf(), 0)));
+        assert_eq!(
+            reconcile_cli(
+                project.path(),
+                ReconcileRequest { message: message() },
+                &remote,
+                &Time
+            )
+            .unwrap_err()
+            .kind,
+            Kind::Io
+        );
+        assert_eq!(remote.calls.get(), calls);
+        assert_eq!(fs::read(&path).unwrap(), before);
+        reset(None);
+        reconcile_cli(
+            project.path(),
+            ReconcileRequest { message: message() },
+            &remote,
+            &Time,
+        )
+        .unwrap();
+        assert_eq!(remote.posts.get(), posts);
+    }
 }

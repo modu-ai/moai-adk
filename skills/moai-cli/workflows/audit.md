@@ -29,6 +29,34 @@ Make every mutation real: after applying it, `git diff -U0` shows exactly the in
 
 Read revisions safely: write a revision path as `"${rev}:path"` (zsh reads `$rev:s…` as a modifier), compare full SHAs or `origin/<branch>` only, never a bare `HEAD` of a shared checkout, and run audit commands inside a detached audit worktree at the exact head. In a merge-only delta, compare the candidate's change with the audited one file by file; when a whole-diff patch-id differs because the base also changed a file, compare that file's added and removed line sets and name the files that differ only in context. Re-read the pull request head and the base tip right before posting a verdict or reporting a CI failure; if either moved, the verdict names the new values or waits.
 
+## Re-audit PR body check
+
+Save the PR body as UTF-8 `BODY.md` and run `python3 -I tools/check_pr_self_audit.py --reaudit --file BODY.md`. Standard input is also supported: `python3 -I tools/check_pr_self_audit.py --reaudit < BODY.md`. Re-audits must explicitly select `--reaudit`; template text and claim epochs never select it automatically. For an initial audit, omit the two re-audit-only fields and use the existing command.
+
+Use exactly one visible `## 독립 review` section; multiple visible review sections are ambiguous and fail. Inside that section, before the next visible Markdown heading, include each of the following fields exactly once as visible text. HTML comments and fenced or indented code examples do not establish a section, end it or supply its fields. Fill the repair scope with the actual repaired path, boundary and affected scope for F1.
+
+Comment delimiter text inside an inline code span (for example, `<!--`) remains visible explanation text, not an HTML comment opener. Code spans close with a backtick run of the same length as their opener; shorter or longer runs inside them are literal text. An unmatched backtick run does not hide an actual HTML comment, and comments outside a closed code span still cannot supply required fields.
+
+```text
+- 수리 확인 범위: F1 repaired path, boundary and affected scope
+- 새 지적 분류: 없음
+```
+
+The finding classification is `없음` (none), `차단: concrete reason` (blocking), or `후속 Issue #123: concrete reason` (follow-up). Replace the follow-up number with the actual positive ASCII integer, and give a concrete reason for blocking or follow-up findings. Contract violations, data damage and security findings are blocking; other new findings belong in a follow-up Issue.
+
+Missing or duplicate visible fields, empty or punctuation-only values, and unfinished markers such as `TODO`, `TBD`, `not_run` and `<path>` fail. Completed explanations may cite source paths such as `src/todo.rs`, inline code such as `ci: not_run`, and comparison operators; those references alone are not unfinished markers. This checks text completeness only: well-formed text does not prove its truth, an actual repair, contract compliance or the existence of the remote Issue. The checker makes no network requests and never posts comments or creates Issues. The existing verdict first-line format, verdict/comment fields and CI/check-run rules remain unchanged.
+
+Bare markers followed only by punctuation or Markdown decoration also fail (for example, repair scope `TODO.` or `TBD-`, and finding classification `차단: TODO.` or `차단: TBD-`). This does not reject actual filenames such as `TODO.md` or `TBD-related.md`.
+
+The #2388 marker repair preserves the reported audit inputs unchanged:
+
+| Field value | Audit-reported exit before repair | Required exit after repair |
+| --- | --- | --- |
+| Repair scope `TODO.` | 0 | 1 |
+| Repair scope `TBD-` | 0 | 1 |
+| Finding classification `차단: TODO.` | 0 | 1 |
+| Finding classification `차단: TBD-` | 0 | 1 |
+
 ## Exceptions and Permissions
 
 Self-assessment in the same context and a judge's recommendation do not replace the required independent audit. If a reviewer cannot be created or the evidence is insufficient, the result is blocked or unknown.
