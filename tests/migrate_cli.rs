@@ -320,15 +320,15 @@ fn ownership_needs_the_release_list_and_unreleased_files_are_preserved() {
 }
 
 #[test]
-fn omp_host_old_glm_key_file_and_secret_sources_are_refused() {
+fn onprem_host_old_glm_key_file_and_secret_sources_are_refused() {
     let env = Env::new();
     let home = env.home("synthetic");
     let h = s(&home);
     fs::write(home.join(".moai/.env.glm"), b"SYNTHETIC=1").unwrap();
     let before = digest(&home);
-    let mut omp = request(&[hash(CONFIG)], None);
-    omp["hosts"] = json!(["OnPrem"]);
-    let (code, v) = env.run(&["migrate-plan", h], &omp);
+    let mut onprem = request(&[hash(CONFIG)], None);
+    onprem["hosts"] = json!(["OnPrem"]);
+    let (code, v) = env.run(&["migrate-plan", h], &onprem);
     assert_ne!(code, 0);
     assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
     let mut dup = request(&[hash(CONFIG)], None);

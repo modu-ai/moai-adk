@@ -851,7 +851,7 @@ fn release_list_bounds_and_format_are_checked() {
 }
 
 #[test]
-fn omp_host_and_duplicate_hosts_are_refused() {
+fn onprem_host_and_duplicate_hosts_are_refused() {
     let (_d, h, item) = fixture();
     assert!(serde_json::from_str::<Host>("\"OnPrem\"").is_err());
     assert!(h

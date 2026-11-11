@@ -264,7 +264,7 @@ fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
     Ok(false)
 }
 
-/// Host choices for a migration. OMP (`OnPrem`) was removed by the user decision of
+/// Host choices for a migration. The on-prem host (`OnPrem`) was removed by the user decision of
 /// 2026-11-10 10:07Z; an `OnPrem` request is refused as an unknown variant.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Host {
