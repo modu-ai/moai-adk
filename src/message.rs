@@ -160,7 +160,7 @@ fn sensitive_value(value: &Value) -> bool {
         _ => false,
     }
 }
-fn validate(message: &mut Message) -> Result<String> {
+pub(crate) fn validate(message: &mut Message) -> Result<String> {
     let t = &message.task;
     if message.schema_version != 1
         || !portable(&message.report_id)
@@ -220,7 +220,7 @@ fn validate(message: &mut Message) -> Result<String> {
         .map_err(|_| err(Kind::Internal, "message encoding failed"))?;
     Ok(crate::digest(&bytes))
 }
-fn permission_gate(permission: &str) -> Result<()> {
+pub(crate) fn permission_gate(permission: &str) -> Result<()> {
     if ["", "null", "placeholder"].contains(&permission.trim())
         || permission.len() > 128
         || permission.chars().any(char::is_control)
@@ -836,6 +836,130 @@ pub fn reconcile_cli<T: Transport, C: Clock>(
     Ok(result(
         incoming.as_ref().or(outgoing.as_ref()).unwrap_or(&probe),
     ))
+}
+
+/// Verified S1 publications for one task, including server timestamps. No local writes.
+pub(crate) struct Publication {
+    pub message: Message,
+    pub payload_digest: String,
+    pub ack: bool,
+    pub comment_id: u64,
+    pub created_at: i64,
+}
+pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
+    anchor: &Message,
+    transport: &T,
+    clock: &C,
+) -> Result<Vec<Publication>> {
+    let client = client(transport, clock);
+    verify_target(&client, anchor)?;
+    let base = url(anchor);
+    let mut next = Some(format!("{base}?per_page=100"));
+    let mut visited = BTreeSet::new();
+    let mut candidates = Vec::new();
+    let mut relevant_ids = BTreeSet::from([anchor.report_id.clone()]);
+    let relevant = |m: &Message| {
+        m.project_id == anchor.project_id
+            && m.task.task_id == anchor.task.task_id
+            && (m.event == "dispatch" || m.event == "dispatch-decision")
+    };
+    // Discover all relevant packet IDs before any context/event filtering. A collision
+    // can precede its relevant packet on another page, project, task or message kind.
+    while let Some(page) = next {
+        if visited.len() >= 1000 || !visited.insert(page.clone()) {
+            return Err(err(
+                Kind::Blocked,
+                "dispatch pagination incomplete or cyclic",
+            ));
+        }
+        if !page.starts_with(&format!("{base}?")) {
+            return Err(invalid("dispatch pagination target refused"));
+        }
+        let response = client.get(&page, None).map_err(remote_error)?;
+        let link = next_link(response.header("link"));
+        if response
+            .header("link")
+            .is_some_and(|s| s.contains("rel=\"next\""))
+            && link.is_none()
+        {
+            return Err(err(Kind::Transport, "dispatch malformed pagination link"));
+        }
+        let body = response
+            .body
+            .ok_or_else(|| err(Kind::Transport, "dispatch comments missing"))?;
+        for comment in body
+            .as_array()
+            .ok_or_else(|| err(Kind::Transport, "dispatch comments not an array"))?
+        {
+            let text = comment["body"].as_str().ok_or_else(conflict)?;
+            let marks = outbox::parse_op_markers(text.split('\n').next().unwrap_or_default());
+            if !marks
+                .iter()
+                .any(|m| m.operation == "message-record" || m.operation == "message-ack")
+            {
+                continue;
+            }
+            let wire = text
+                .split('\n')
+                .nth(1)
+                .and_then(|encoded| serde_json::from_str::<Wire>(encoded).ok());
+            if wire.is_none() && marks.iter().any(|m| m.project_id == anchor.project_id) {
+                return Err(conflict());
+            }
+            if let Some(wire) = &wire {
+                if relevant(&wire.message) {
+                    relevant_ids.insert(wire.message.report_id.clone());
+                }
+            }
+            candidates.push((comment.clone(), marks, wire));
+        }
+        next = link;
+    }
+    let mut result = Vec::new();
+    for (comment, marks, wire) in candidates {
+        if !wire.as_ref().is_some_and(|w| relevant(&w.message))
+            && !marks.iter().any(|m| relevant_ids.contains(&m.local_id))
+        {
+            continue;
+        }
+        let mut wire = wire.ok_or_else(conflict)?;
+        let text = comment["body"].as_str().ok_or_else(conflict)?;
+        let digest = validate(&mut wire.message)?;
+        let ack = wire.kind == "ack";
+        if wire.schema_version != 1
+            || !["record", "ack"].contains(&wire.kind.as_str())
+            || wire.payload_digest != digest
+            || text != render(&wire.message, &digest, ack)?
+        {
+            return Err(conflict());
+        }
+        let actor = if ack {
+            wire.message.receiver.actor_id
+        } else {
+            wire.message.sender.actor_id
+        };
+        if comment["user"]["id"].as_u64() != Some(actor) {
+            return Err(conflict());
+        }
+        let id = comment["id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .ok_or_else(conflict)?;
+        let at = comment["created_at"]
+            .as_str()
+            .and_then(parse_utc)
+            .ok_or_else(conflict)?;
+        // Return colliding foreign-context/event packets too. The consumer must check
+        // immutable identities across this set before discarding any packet kind.
+        result.push(Publication {
+            message: wire.message,
+            payload_digest: digest,
+            ack,
+            comment_id: id,
+            created_at: at,
+        });
+    }
+    Ok(result)
 }
 
 #[cfg(all(test, unix))]

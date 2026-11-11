@@ -517,3 +517,108 @@ fn code_references_follow_the_file_set_and_rebuild_identically() {
         .unwrap()
         .contains("module_file_missing"));
 }
+
+/// #2450: changing only a documented definition re-resolves reused source scans.
+/// Preserve each previous index outside the fixture instead of deleting it.
+#[test]
+fn doc_references_rebuild_identically_when_only_the_definition_changes() {
+    let (tmp, root) = setup();
+    write(&root, "src/lib.rs", "pub mod user; pub mod service;\n");
+    write(&root, "src/user.rs", "//! `crate::service::parse`\n");
+    write(&root, "src/service.rs", "pub fn absent() {}\n");
+    commit(&root, "doc initially unresolved");
+    build(&root);
+    for (step, target, found, reason) in [
+        (0, "pub fn parse() {}\n", true, ""),
+        (1, "pub fn renamed() {}\n", false, "unresolved"),
+        (
+            2,
+            "pub fn parse() {}\npub fn parse() {}\n",
+            false,
+            "ambiguous",
+        ),
+        (3, "pub fn parse() {}\n", true, ""),
+    ] {
+        write(&root, "src/service.rs", target);
+        commit(&root, &format!("definition step {step}"));
+        let inc = build(&root);
+        assert_eq!(inc["records"]["extracted_files"], 1);
+        assert!(inc["records"]["reused_files"].as_u64().unwrap() > 0);
+        let gen = inc["generation_id"].as_str().unwrap();
+        let q = records(&root);
+        validate_document(&q["graph"]).unwrap();
+        assert_eq!(
+            edges(&q["graph"]).contains(&t("documents", "file:src/user.rs", "file:src/service.rs")),
+            found
+        );
+        if !found {
+            assert!(q["graph"]["missing"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|m| m["kind"] == "doc_reference_missing" && m["reason"] == reason));
+        }
+        let incremental = view_bytes(&root, gen);
+        fs::rename(
+            root.join(".moai-cli/index"),
+            tmp.path().join(format!("saved-index-{step}")),
+        )
+        .unwrap();
+        let full = build(&root);
+        assert_eq!(full["generation_id"], gen);
+        assert_eq!(full["records"]["reused_files"], 0);
+        assert_eq!(view_bytes(&root, gen), incremental);
+    }
+}
+
+#[test]
+fn excluded_doc_blocks_survive_reuse_and_disappear_when_the_block_becomes_plain() {
+    let (tmp, root) = setup();
+    write(&root, "src/lib.rs", "pub mod user; pub mod service;\n");
+    write(
+        &root,
+        "src/user.rs",
+        "//! See `crate::service::parse`.\n//! > excluded\n",
+    );
+    write(&root, "src/service.rs", "pub fn parse() {}\n");
+    commit(&root, "excluded documentation");
+    build(&root);
+    for (step, plain) in [(0, false), (1, true)] {
+        if plain {
+            write(&root, "src/user.rs", "//! See `crate::service::parse`.\n");
+        } else {
+            write(
+                &root,
+                "src/service.rs",
+                "pub fn parse() {}\npub fn other() {}\n",
+            );
+        }
+        commit(&root, &format!("doc block step {step}"));
+        let inc = build(&root);
+        assert!(inc["records"]["reused_files"].as_u64().unwrap() > 0);
+        let gen = inc["generation_id"].as_str().unwrap();
+        let q = records(&root);
+        validate_document(&q["graph"]).unwrap();
+        assert_eq!(
+            edges(&q["graph"]).contains(&t("documents", "file:src/user.rs", "file:src/service.rs")),
+            plain
+        );
+        let count: u64 = q["graph"]["missing"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["kind"] == "doc_reference_unsupported")
+            .map(|m| m["count"].as_u64().unwrap())
+            .sum();
+        assert_eq!(count, u64::from(!plain));
+        let incremental = view_bytes(&root, gen);
+        fs::rename(
+            root.join(".moai-cli/index"),
+            tmp.path().join(format!("narrow-saved-{step}")),
+        )
+        .unwrap();
+        let full = build(&root);
+        assert_eq!(full["generation_id"], gen);
+        assert_eq!(view_bytes(&root, gen), incremental);
+    }
+}

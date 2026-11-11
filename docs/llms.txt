@@ -22,6 +22,6 @@ Key facts:
 
 ## Optional
 
-- [Workflow skill](https://github.com/modu-ai/moai-adk/blob/v2026.11.0/skills/moai-cli/SKILL.md): the shared skill text the hosts load
+- [Workflow skill](https://github.com/modu-ai/moai-adk/blob/v2026.11.0/skills/moai/SKILL.md): the shared skill text the hosts load
 - [Release attestation](https://github.com/modu-ai/moai-adk/blob/v2026.11.0/docs/release-attestation.md): how release files will be verified
 - [Go 3.x generation](https://github.com/modu-ai/moai-adk/tree/main): the current stable release

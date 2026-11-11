@@ -11,7 +11,7 @@ fn write_source(dir: &Path) {
     fs::create_dir_all(dir.join("references")).unwrap();
     fs::write(
         dir.join("SKILL.md"),
-        b"---\nname: moai-cli\ndescription: fixture\n---\n",
+        b"---\nname: moai\ndescription: fixture\n---\n",
     )
     .unwrap();
     fs::write(dir.join("references/a.md"), b"a").unwrap();
@@ -36,7 +36,7 @@ fn d3a_revert_of_a_created_skill_keeps_a_user_file() {
         source_dir: source.path().to_path_buf(),
     })
     .unwrap();
-    let skill = project.path().join(".claude/skills/moai-cli");
+    let skill = project.path().join(".claude/skills/moai");
     assert!(
         skill.join("SKILL.md").exists(),
         "the apply created the copy"

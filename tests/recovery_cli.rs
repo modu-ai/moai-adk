@@ -117,10 +117,10 @@ fn fixture() -> Fixture {
 
 impl Fixture {
     fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai-cli")
+        self.home.join(".agents/skills/moai")
     }
     fn claude(&self) -> PathBuf {
-        self.home.join(".claude/skills/moai-cli")
+        self.home.join(".claude/skills/moai")
     }
     fn hosts_dir(&self) -> PathBuf {
         let inst = self.home.join(".moai-cli/installations");
@@ -130,7 +130,7 @@ impl Fixture {
             .filter(|p| p.is_dir())
             .collect();
         assert_eq!(dirs.len(), 1);
-        dirs[0].join("hosts/moai-cli")
+        dirs[0].join("hosts/moai")
     }
     fn receipt(&self, host: &str) -> Value {
         serde_json::from_slice(&fs::read(self.hosts_dir().join(format!("{host}.json"))).unwrap())

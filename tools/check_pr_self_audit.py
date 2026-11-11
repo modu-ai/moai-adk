@@ -14,7 +14,7 @@ Every lane PR must carry a `## Self-Audit` section with four measured lines
 A PR body without the section, missing any of the four lines, or a mutation
 line that does not report FAILED exits 1.
 
-Optional CI citation lines (Issue #2385; rules in skills/moai-cli/workflows/
+Optional CI citation lines (Issue #2385; rules in skills/moai/workflows/
 verify.md, section "Check-run rules"):
 
   ci: rc-ci run=<run id> head=<40-hex head SHA>

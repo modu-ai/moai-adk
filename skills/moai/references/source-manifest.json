@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "covers": "every file under skills/moai-cli/ except this manifest",
+  "covers": "every file under skills/moai/ except this manifest",
   "design_source": {
     "id": "design-22",
     "title": "MoAI 생성 파일 원문 템플릿과 적용 계약",
@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "79abedd8c194be72de5bc5b86eac3d331f10b4867e3f22e116bb2341a2790658",
+      "sha256": "25081f6c1492d1cf3b21792f4fd73b5d48983a89f02d2f910aa12993b974937e",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "286c1f87145090824712fff5c2c4ba2bac7923929b64635fdabce294d972f146",
+      "sha256": "3c53904cbcde1dbc3d4b19e70933fafd9c7cbfaa8261cdb758eb474013ba40f3",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "d465f093791d35685c820a178731609f70c47005ea84f78234dfc133f11413c3",
+      "sha256": "9ab7d3abdbc4a120d5ddfee7405e0b3bbc3d72d78e1306eee5674bfb438df33b",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",

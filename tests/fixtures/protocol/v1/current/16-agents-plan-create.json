@@ -7,7 +7,7 @@
   "stdin": {
     "protocol_version": 1,
     "language": "ko",
-    "workflow_reference": "skills/moai-cli/workflows/",
+    "workflow_reference": "skills/moai/workflows/",
     "local_file": "none"
   },
   "exit": 0,
@@ -20,7 +20,7 @@
       "request": {
         "protocol_version": 1,
         "language": "ko",
-        "workflow_reference": "skills/moai-cli/workflows/",
+        "workflow_reference": "skills/moai/workflows/",
         "local_file": "none"
       },
       "project_id": "demo",
@@ -34,7 +34,7 @@
           "expected_sha256": null,
           "section_id": "moai-workflow",
           "baseline_sha256": null,
-          "rendered_sha256": "sha256:25dbe37c3fc473b7780fe59c47026654a7ef6e9ae95d5cee85bfe6879a313f10",
+          "rendered_sha256": "sha256:4f221da171bc851fb904308839145aa84671632a4b8c83a6068065a75ffc6e95",
           "detail": null
         },
         {
