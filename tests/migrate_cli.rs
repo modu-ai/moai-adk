@@ -218,6 +218,14 @@ fn the_confirmation_gate_refuses_stale_altered_or_unreferenced_plans() {
     no_release.as_object_mut().unwrap().remove("go_release");
     let (_, v) = apply(&d, "r", &no_release);
     assert_eq!(v["error"]["kind"], "stale_plan", "{v}");
+    // Even one whose digest is recomputed to be self-consistent without the list.
+    let mut forged: moai_cli::migrate::Plan = serde_json::from_value(plan.clone()).unwrap();
+    forged.go_release = None;
+    forged.digest.clear();
+    forged.digest = hash(&serde_json::to_vec(&forged).unwrap());
+    let forged_digest = forged.digest.clone();
+    let (_, v) = apply(&forged_digest, "r", &serde_json::to_value(&forged).unwrap());
+    assert_eq!(v["error"]["kind"], "stale_plan", "{v}");
 
     for reference in ["", "placeholder", "null"] {
         let (_, v) = apply(&d, reference, &plan);
