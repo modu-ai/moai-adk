@@ -33,7 +33,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 /// Extractor identity of the code-reference edges.
 pub const EXTRACTOR_NAME: &str = "code-refs";
 /// Bump on any change to what `scan` or `resolve` records.
-pub const EXTRACTOR_VERSION: &str = "1";
+pub const EXTRACTOR_VERSION: &str = "2";
 /// Node kind holding one Rust file's stored scan.
 pub(crate) const SCAN_NODE_KIND: &str = "code_scan";
 /// Node kind holding one Cargo manifest's library crate name.
@@ -76,11 +76,21 @@ pub struct Ref {
 pub struct Scan {
     pub mods: Vec<ModDecl>,
     pub refs: Vec<Ref>,
+    /// Module-level item declarations; associated and local items are not resolved.
+    pub definitions: Vec<Definition>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Definition {
+    pub scope: Vec<String>,
+    pub name: String,
+    pub line: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum T {
     Ident(String),
+    Doc(String),
     Lit,
     ColCol,
     P(char),
@@ -177,10 +187,21 @@ fn lex(src: &str) -> Vec<Tok> {
         } else if ch.is_whitespace() {
             i += 1;
         } else if ch == '/' && c.get(i + 1) == Some(&'/') {
+            let start = i;
             while i < n && c[i] != '\n' {
                 i += 1;
             }
+            if c.get(start + 2) == Some(&'!')
+                || (c.get(start + 2) == Some(&'/') && c.get(start + 3) != Some(&'/'))
+            {
+                out.push(Tok {
+                    t: T::Doc(c[start + 3..i].iter().collect()),
+                    line,
+                });
+            }
         } else if ch == '/' && c.get(i + 1) == Some(&'*') {
+            let start = i;
+            let first_line = line;
             let mut depth = 0usize;
             while i < n {
                 if c[i] == '/' && c.get(i + 1) == Some(&'*') {
@@ -197,6 +218,23 @@ fn lex(src: &str) -> Vec<Tok> {
                         line += 1;
                     }
                     i += 1;
+                }
+            }
+            if (c.get(start + 2) == Some(&'!')
+                || (c.get(start + 2) == Some(&'*') && !matches!(c.get(start + 3), Some('*' | '/'))))
+                && i >= start + 5
+                && c.get(i - 2..i) == Some(&['*', '/'])
+            {
+                for (offset, text) in c[start + 3..i - 2]
+                    .iter()
+                    .collect::<String>()
+                    .lines()
+                    .enumerate()
+                {
+                    out.push(Tok {
+                        t: T::Doc(text.to_string()),
+                        line: first_line + offset as u32,
+                    });
                 }
             }
         } else if ch == '"' {
@@ -448,8 +486,24 @@ pub fn scan(src: &str) -> Scan {
     let mut open: Vec<usize> = Vec::new();
     let mut depth = 0usize;
     let mut i = 0usize;
+    let mut fence: Option<(char, usize)> = None;
     while i < toks.len() {
+        if !matches!(toks[i].t, T::Doc(_)) {
+            fence = None;
+        }
         match &toks[i].t {
+            T::Doc(text) => {
+                for path in doc_paths(text, &mut fence) {
+                    s.refs.push(Ref {
+                        kind: "documents".into(),
+                        scope: scope.clone(),
+                        path,
+                        alias: None,
+                        line: toks[i].line,
+                    });
+                }
+                i += 1;
+            }
             T::P('{') => {
                 depth += 1;
                 i += 1;
@@ -503,6 +557,22 @@ pub fn scan(src: &str) -> Scan {
                 }
                 i = j + 1;
             }
+            T::Ident(w)
+                if depth == open.len()
+                    && matches!(
+                        w.as_str(),
+                        "fn" | "struct" | "enum" | "trait" | "type" | "static" | "union"
+                    ) =>
+            {
+                if let Some(name) = ident_at(&toks, i + 1) {
+                    s.definitions.push(Definition {
+                        scope: scope.clone(),
+                        name: name.into(),
+                        line: toks[i].line,
+                    });
+                }
+                i += 1;
+            }
             T::Ident(_) => {
                 if i > 0 && matches!(toks[i - 1].t, T::ColCol | T::P('.')) {
                     i += 1;
@@ -552,6 +622,65 @@ pub fn scan(src: &str) -> Scan {
     s
 }
 
+/// Qualified inline-code paths only. Fenced examples and bare names do not establish
+/// a cross-file reference. This is a bounded lexical subset, not rustdoc resolution.
+fn doc_paths(text: &str, fence: &mut Option<(char, usize)>) -> Vec<Vec<String>> {
+    // One leading space is conventional after the doc marker. Four further spaces
+    // denote an indented Markdown example, not an inline documentation reference.
+    let content = text.strip_prefix(' ').unwrap_or(text);
+    if content.starts_with("    ") || content.starts_with('\t') {
+        return Vec::new();
+    }
+    let text = text
+        .trim_start()
+        .strip_prefix('*')
+        .unwrap_or(text.trim_start())
+        .trim_start();
+    let first = text.chars().next();
+    if let Some(ch @ ('`' | '~')) = first {
+        let count = text.chars().take_while(|c| *c == ch).count();
+        if count >= 3 {
+            match *fence {
+                None => *fence = Some((ch, count)),
+                Some((open, n)) if open == ch && count >= n && text[count..].trim().is_empty() => {
+                    *fence = None
+                }
+                _ => {}
+            }
+            return Vec::new();
+        }
+    }
+    if fence.is_some() {
+        return Vec::new();
+    }
+    let mut paths = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find('`') {
+        rest = &rest[start..];
+        let count = rest.bytes().take_while(|c| *c == b'`').count();
+        let delimiter = "`".repeat(count);
+        rest = &rest[count..];
+        let Some(end) = rest.find(&delimiter) else {
+            break;
+        };
+        let item = rest[..end]
+            .trim()
+            .strip_suffix("()")
+            .unwrap_or(rest[..end].trim());
+        let segments: Vec<&str> = item.split("::").collect();
+        if segments.len() >= 2
+            && segments.iter().all(|s| {
+                let mut chars = s.chars();
+                chars.next().is_some_and(ident_start) && chars.all(ident_char)
+            })
+        {
+            paths.push(segments.into_iter().map(str::to_string).collect());
+        }
+        rest = &rest[end + count..];
+    }
+    paths
+}
+
 /// Canonical text of a scan, stored as a node property. Identifiers never hold a tab,
 /// a newline or `::`, so the fields need no escaping.
 pub fn encode(s: &Scan) -> String {
@@ -574,6 +703,14 @@ pub fn encode(s: &Scan) -> String {
             r.path.join("::"),
             r.alias.as_deref().unwrap_or(""),
             r.line
+        ));
+    }
+    for d in &s.definitions {
+        out.push_str(&format!(
+            "d\t{}\t{}\t{}\n",
+            d.scope.join("::"),
+            d.name,
+            d.line
         ));
     }
     out
@@ -600,7 +737,12 @@ pub fn decode(text: &str) -> Option<Scan> {
                 inline: *inline == "1",
                 path_attr: *attr == "1",
             }),
-            ["r", kind, scope, path, alias, l] if matches!(*kind, "imports" | "calls") => {
+            ["r", kind, scope, path, alias, l]
+                if matches!(*kind, "imports" | "calls" | "documents") =>
+            {
+                if *kind == "documents" && (path.is_empty() || split_path(path).len() < 2) {
+                    return None;
+                }
                 s.refs.push(Ref {
                     kind: kind.to_string(),
                     scope: split_path(scope),
@@ -609,6 +751,11 @@ pub fn decode(text: &str) -> Option<Scan> {
                     line: l.parse().ok()?,
                 })
             }
+            ["d", scope, name, l] => s.definitions.push(Definition {
+                scope: split_path(scope),
+                name: name.to_string(),
+                line: l.parse().ok()?,
+            }),
             _ => return None,
         }
     }
@@ -951,7 +1098,7 @@ pub fn resolve(
                 lib_root: scans.contains_key(&lib_root).then_some(lib_root.as_str()),
                 lib_name: manifests.get(&pkg).and_then(|n| n.as_deref()),
             };
-            for r in &scan.refs {
+            for r in scan.refs.iter().filter(|r| r.kind != "documents") {
                 let mut cur = modpath.clone();
                 cur.extend(r.scope.iter().cloned());
                 let Some(mut l) = ctx.land(&cur, &r.scope, &r.path, 0) else {
@@ -979,7 +1126,7 @@ pub fn resolve(
             }
         }
     }
-    let refs = out
+    let mut refs: Vec<Resolved> = out
         .into_iter()
         .map(|(kind, source, target, evidence, inferred)| Resolved {
             kind,
@@ -989,7 +1136,121 @@ pub fn resolve(
             inferred,
         })
         .collect();
-    (refs, tree.misses)
+    let (mut docs, mut misses) = resolve_docs(scans, manifests, &pkgs, &tree);
+    refs.append(&mut docs);
+    misses.extend(tree.misses);
+    (refs, misses)
+}
+
+/// Doc paths must identify exactly one module-level definition. Root-relative prose
+/// is accepted as an inferred candidate; aliases, re-exports, associated items and
+/// compiler namespace/visibility rules are not claimed to be resolved.
+fn resolve_docs(
+    scans: &BTreeMap<String, (String, Scan)>,
+    manifests: &BTreeMap<String, Option<String>>,
+    pkgs: &[String],
+    tree: &Tree,
+) -> (Vec<Resolved>, Vec<Value>) {
+    let mut refs = Vec::new();
+    let mut misses = Vec::new();
+    for (file, (sha, scan)) in scans {
+        for r in scan.refs.iter().filter(|r| r.kind == "documents") {
+            let mut candidates = BTreeSet::new();
+            for (root, modpath) in tree.contexts.get(file).into_iter().flatten() {
+                let pkg = pkgs
+                    .iter()
+                    .filter(|p| is_root(p, root))
+                    .max_by_key(|p| p.len())
+                    .cloned()
+                    .unwrap_or_default();
+                let lib = join(&pkg, "src/lib.rs");
+                let ctx = Ctx {
+                    tree,
+                    scan,
+                    root,
+                    lib_root: scans.contains_key(&lib).then_some(lib.as_str()),
+                    lib_name: manifests.get(&pkg).and_then(|n| n.as_deref()),
+                };
+                let mut cur = modpath.clone();
+                cur.extend(r.scope.iter().cloned());
+                let first = &r.path[0];
+                let landing = if matches!(first.as_str(), "crate" | "self" | "super") {
+                    ctx.land(&cur, &r.scope, &r.path, 0)
+                } else if ctx.exists(root, &[cur.clone(), vec![first.clone()]].concat()) {
+                    Some(ctx.walk(root, cur, &r.path, false))
+                } else if scan.refs.iter().any(|a| {
+                    a.kind == "imports"
+                        && a.alias.as_ref() == Some(first)
+                        && r.scope.starts_with(&a.scope)
+                }) || scan
+                    .definitions
+                    .iter()
+                    .any(|d| d.name == *first && r.scope.starts_with(&d.scope))
+                {
+                    None
+                } else if ctx.exists(root, std::slice::from_ref(first)) {
+                    Some(ctx.walk(root, Vec::new(), &r.path, true))
+                } else if ctx.lib_name == Some(first.as_str()) {
+                    ctx.lib_root
+                        .map(|lib| ctx.walk(lib, Vec::new(), &r.path[1..], false))
+                } else {
+                    None
+                };
+                let Some(l) = landing else {
+                    continue;
+                };
+                if l.rest.len() != 1 {
+                    continue;
+                }
+                let Some(target) = tree.file_of.get(&l.module) else {
+                    continue;
+                };
+                let Some((target_sha, target_scan)) = scans.get(target) else {
+                    continue;
+                };
+                let Some((_, file_scope)) = tree
+                    .contexts
+                    .get(target)
+                    .into_iter()
+                    .flatten()
+                    .filter(|(rt, mp)| rt == &l.module.0 && l.module.1.starts_with(mp))
+                    .max_by_key(|(_, mp)| mp.len())
+                else {
+                    continue;
+                };
+                let scope = &l.module.1[file_scope.len()..];
+                for (ordinal, d) in target_scan
+                    .definitions
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, d)| d.scope == scope && d.name == l.rest[0])
+                {
+                    candidates.insert((
+                        target.clone(),
+                        format!("file:{target}#L{}@{target_sha}", d.line),
+                        ordinal,
+                    ));
+                }
+            }
+            if candidates.len() != 1 {
+                misses.push(json!({"kind": "doc_reference_missing", "path": file, "line": r.line, "reference": r.path.join("::"), "reason": if candidates.is_empty() { "unresolved" } else { "ambiguous" }}));
+                continue;
+            }
+            let (target, evidence, _) = candidates.into_iter().next().unwrap();
+            if target != *file {
+                for evidence in [format!("file:{file}#L{}@{sha}", r.line), evidence] {
+                    refs.push(Resolved {
+                        kind: "documents".into(),
+                        source: file.clone(),
+                        target: target.clone(),
+                        evidence,
+                        inferred: true,
+                    });
+                }
+            }
+        }
+    }
+    (refs, misses)
 }
 
 /// Stamps resolved references as C4 edges, one per (kind, source, target) with every
@@ -1011,7 +1272,9 @@ pub fn edges(refs: &[Resolved], snapshot_id: &str, observed_at: &str) -> Vec<Ont
         .into_iter()
         .map(|((kind, source, target), (ev, inferred))| {
             let evidence_refs: Vec<String> = ev.into_iter().collect();
-            let uncertainty = if inferred && kind == "calls" {
+            let uncertainty = if kind == "documents" {
+                Some("doc-lexical-reference; rustdoc-binding-not-checked".to_string())
+            } else if inferred && kind == "calls" {
                 Some(INFERRED_CALL_UNCERTAINTY.to_string())
             } else if inferred {
                 Some(CRATE_NAME_UNCERTAINTY.to_string())

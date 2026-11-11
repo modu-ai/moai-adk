@@ -17,6 +17,28 @@
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
 | — (문서 인터페이스명 없음) | `skill-source-plan` / `skill-source-apply` (`skill_source.plan`·`skill_source.apply`) / `skill-read-receipt` (`skill_source.read_receipt`) | 대응 없음 — 03-B #1996 신설(license review·skill 설치·read receipt); 문서 인터페이스 어휘와 [43fa] §18 명령표 어느 쪽에도 없는 영역 |
 
+## C6d generation 문서 참조 (#2450)
+
+`index-build`가 만드는 Graph와 이를 읽는 `index-records`/`atlas-graph`에는 기존
+`imports`/`calls` 외에 Rust 문서 주석의 qualified 식별자에서 얻은 파일→파일
+`documents` edge가 포함된다. JSON 필드는 기존 온톨로지 형식을 그대로 사용한다.
+각 edge는 문서 언급과 대상 정의의 `file-uri#span@digest`를 모두 보존하며,
+`basis=inferred`, `verification=unreviewed`,
+`uncertainty=doc-lexical-reference; rustdoc-binding-not-checked`로 한계를 표시한다.
+
+지원 범위는 `//!`·`///`·`/*! */`·`/** */` 문서의 inline-code qualified 경로와
+모듈 수준 선언이다. compiler/rustdoc의 완전한 이름 해석·가시성 검사는 수행하지
+않는다. bare name·일반 주석·문자열·fenced 예시를 참조로 만들지 않으며,
+alias/re-export·associated item은 이 문서 해석기의 지원 범위 밖이다.
+상수 선언은 const generic과 구분하는 구문 해석을 구현하지 않아 지원하지 않는다.
+대상 정의 0개/복수 후보는 `missing`의 `doc_reference_missing`과
+`reason=unresolved|ambiguous`로 기록한다. 증분 빌드도 저장 후보를 전체 파일 집합으로
+다시 해석하며, `code-refs=2`로 이전 추출기의 저장 조각을 재사용하지 않는다.
+
+리더 결정 `6793749743`에 따라 GRAPH는 기존 7개 코드 관계와 G-002 문서 관계를
+확인하고 G-006만 이유 있는 gap으로 남긴다. concept identity/alias H1은 HOLD다.
+fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 않는다.
+
 ## RC1 OPERATIONS 전수
 
 - `agents-apply`
