@@ -33,7 +33,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 /// Extractor identity of the code-reference edges.
 pub const EXTRACTOR_NAME: &str = "code-refs";
 /// Bump on any change to what `scan` or `resolve` records.
-pub const EXTRACTOR_VERSION: &str = "3";
+pub const EXTRACTOR_VERSION: &str = "4";
 /// Node kind holding one Rust file's stored scan.
 pub(crate) const SCAN_NODE_KIND: &str = "code_scan";
 /// Node kind holding one Cargo manifest's library crate name.
@@ -675,9 +675,9 @@ pub fn scan(src: &str) -> Scan {
     s
 }
 
-/// Container prefixes of a fence are structural only at its opening. Inside the
-/// fence, extra quote/list markers are literal code and must never close it early.
-#[derive(Clone)]
+/// Each open container owns its indentation and leaf state. Popping a parent
+/// drops every child fence/paragraph instead of leaking either into outer prose.
+#[derive(Clone, Copy)]
 enum DocContainer {
     Quote,
     List(usize),
@@ -685,12 +685,24 @@ enum DocContainer {
 struct DocFence {
     marker: char,
     width: usize,
-    containers: Vec<DocContainer>,
 }
 #[derive(Default)]
-struct DocState {
+struct DocFrame {
+    container: Option<DocContainer>,
     fence: Option<DocFence>,
-    list_indents: Vec<usize>,
+    paragraph: bool,
+}
+struct DocState {
+    frames: Vec<DocFrame>,
+    unsupported: bool,
+}
+impl Default for DocState {
+    fn default() -> Self {
+        Self {
+            frames: vec![DocFrame::default()],
+            unsupported: false,
+        }
+    }
 }
 
 fn spaces(text: &str) -> usize {
@@ -750,81 +762,109 @@ fn list_content(text: &str) -> Option<(usize, &str)> {
     Some((indent + width + padding, &rest[padding..]))
 }
 
-fn fence_body<'a>(mut text: &'a str, containers: &[DocContainer]) -> Option<&'a str> {
-    for container in containers {
-        text = match container {
-            DocContainer::Quote => quote_content(text)?,
-            DocContainer::List(n) if spaces(text) >= *n => &text[*n..],
-            _ => return None,
-        };
+fn container_content(text: &str, container: DocContainer) -> Option<&str> {
+    match container {
+        DocContainer::Quote => quote_content(text),
+        DocContainer::List(_) if text.bytes().all(|c| c == b' ') => Some(""),
+        DocContainer::List(indent) if spaces(text) >= indent => Some(&text[indent..]),
+        _ => None,
     }
-    Some(text)
+}
+
+/// Only paragraph text may lazily continue a quote/list without its prefix.
+/// A fence or indented-code block never gains lazy container continuation.
+fn paragraph_continuation(text: &str) -> bool {
+    if text.trim().is_empty() || text.contains('\t') {
+        return false;
+    }
+    let indent = spaces(text);
+    if indent >= 4 {
+        return true; // Indented code cannot interrupt an existing paragraph.
+    }
+    let body = &text[indent..];
+    if quote_content(text).is_some() || list_content(text).is_some() || body.starts_with(['<', '#'])
+    {
+        return false;
+    }
+    !body.chars().next().is_some_and(|marker| {
+        matches!(marker, '`' | '~') && body.chars().take_while(|c| *c == marker).count() >= 3
+    })
 }
 
 /// Qualified inline-code paths in prose only. This is a conservative lexical
 /// subset of CommonMark containers/fences, not a complete Markdown or Rust binder.
 fn doc_paths(text: &str, block: bool, state: &mut DocState) -> Vec<Vec<String>> {
     let mut text = doc_text(text, block);
-    if let Some(fence) = &state.fence {
-        if let Some(body) = fence_body(text, &fence.containers) {
-            let indent = spaces(body);
-            let body = &body[indent..];
-            let width = body.chars().take_while(|c| *c == fence.marker).count();
-            if indent <= 3 && width >= fence.width && body[width..].trim().is_empty() {
-                state.fence = None;
+    if state.unsupported {
+        return Vec::new();
+    }
+    let paragraph = state.frames.last().unwrap().paragraph;
+    for depth in 1..state.frames.len() {
+        match container_content(text, state.frames[depth].container.unwrap()) {
+            Some(body) => text = body,
+            None if paragraph && paragraph_continuation(text) => {}
+            None => {
+                // Reprocess this same line in the surviving outer context.
+                state.frames.truncate(depth);
+                break;
             }
+        }
+    }
+    let frame = state.frames.last_mut().unwrap();
+    if let Some(fence) = &frame.fence {
+        let indent = spaces(text);
+        let body = &text[indent..];
+        let width = body.chars().take_while(|c| *c == fence.marker).count();
+        if indent <= 3 && width >= fence.width && body[width..].trim().is_empty() {
+            frame.fence = None;
         }
         return Vec::new();
     }
     if text.trim().is_empty() {
+        frame.paragraph = false;
         return Vec::new();
     }
-    let mut containers = Vec::new();
-    while let Some(rest) = quote_content(text) {
-        containers.push(DocContainer::Quote);
+    loop {
+        let next = if let Some(rest) = quote_content(text) {
+            Some((DocContainer::Quote, rest))
+        } else if let Some((padding, rest)) = list_content(text) {
+            Some((DocContainer::List(padding), rest))
+        } else {
+            None
+        };
+        let Some((container, rest)) = next else {
+            break;
+        };
+        state.frames.last_mut().unwrap().paragraph = false;
+        state.frames.push(DocFrame {
+            container: Some(container),
+            ..DocFrame::default()
+        });
         text = rest;
     }
-    let inherited = state
-        .list_indents
-        .iter()
-        .rev()
-        .copied()
-        .find(|n| *n <= spaces(text));
-    let mut list_indent = inherited.unwrap_or(0);
-    state.list_indents.retain(|n| *n <= list_indent);
-    if list_indent > 0 {
-        containers.push(DocContainer::List(list_indent));
-        text = &text[list_indent..];
-    }
-    loop {
-        if let Some(rest) = quote_content(text) {
-            containers.push(DocContainer::Quote);
-            text = rest;
-        } else if let Some((padding, rest)) = list_content(text) {
-            containers.push(DocContainer::List(padding));
-            list_indent += padding;
-            state.list_indents.push(list_indent);
-            text = rest;
-        } else {
-            break;
-        }
-    }
     let indent = spaces(text);
-    if indent >= 4 || text[indent..].starts_with('\t') {
+    let frame = state.frames.last_mut().unwrap();
+    if indent >= 4 && !frame.paragraph {
         return Vec::new();
     }
     let text = &text[indent..];
-    if let Some(marker @ ('`' | '~')) = text.chars().next() {
-        let width = text.chars().take_while(|c| *c == marker).count();
-        if width >= 3 {
-            state.fence = Some(DocFence {
-                marker,
-                width,
-                containers,
-            });
-            return Vec::new();
+    if text.contains('\t') || text.starts_with('<') {
+        // Tabs and HTML blocks are outside this space-based subset. Keep the
+        // remainder of this doc group opaque rather than guessing its lifetime.
+        state.unsupported = true;
+        return Vec::new();
+    }
+    if indent <= 3 {
+        if let Some(marker @ ('`' | '~')) = text.chars().next() {
+            let width = text.chars().take_while(|c| *c == marker).count();
+            if width >= 3 {
+                frame.fence = Some(DocFence { marker, width });
+                frame.paragraph = false;
+                return Vec::new();
+            }
         }
     }
+    frame.paragraph = true;
     let mut paths = Vec::new();
     let mut rest = text;
     while let Some(start) = rest.find('`') {

@@ -76,7 +76,7 @@ fn query(lib: &str, user: &str, service: &str) -> (Value, Value) {
             .unwrap()
             .success());
     }
-    run(&root, &home, "index-build", json!({"protocol_version":1}));
+    let built = run(&root, &home, "index-build", json!({"protocol_version":1}));
     let graph = run(
         &root,
         &home,
@@ -91,6 +91,9 @@ fn query(lib: &str, user: &str, service: &str) -> (Value, Value) {
     )
     .unwrap();
     assert_eq!(graph["state"], "fresh");
+    assert_eq!(records["state"], "fresh");
+    assert_eq!(graph["generation_id"], built["generation_id"]);
+    assert_eq!(records["generation_id"], built["generation_id"]);
     (graph["graph"].clone(), records["graph"].clone())
 }
 
@@ -420,4 +423,360 @@ fn attributes_between_doc_comments_do_not_end_a_fenced_example() {
         assert_eq!(doc_misses(&graph), 0, "{id}");
         eprintln!("boundary {id}: intervening attribute preserves doc fence");
     }
+}
+
+#[test]
+fn auditor_eight_container_lifetime_literals() {
+    let cases = [
+        (
+            "N1-quote-exit",
+            "//! > ~~~rust\n//! > example\n//!\n//! See `crate::service::parse`.\n",
+            1,
+            Some(4),
+        ),
+        (
+            "N1-list-dedent",
+            "//! - ~~~rust\n//!   example\n//!\n//! See `crate::service::parse`.\n",
+            1,
+            Some(4),
+        ),
+        (
+            "N2-quote-list-indent-leak",
+            "//! > - Topic\n//!\n//!     `crate::service::parse`\n",
+            0,
+            None,
+        ),
+        (
+            "C-N1-plain-prose",
+            "//! See `crate::service::parse`.\n",
+            1,
+            Some(1),
+        ),
+        (
+            "C-N1-closed-quote",
+            "//! > ~~~rust\n//! > example\n//! > ~~~\n//! See `crate::service::parse`.\n",
+            1,
+            Some(4),
+        ),
+        (
+            "C-N2-no-prior-list",
+            "//! > Topic\n//!\n//!     `crate::service::parse`\n",
+            0,
+            None,
+        ),
+        (
+            "C-N2-plain-indent",
+            "//!     `crate::service::parse`\n",
+            0,
+            None,
+        ),
+        (
+            "C-N2-valid-list-continuation",
+            "//! - Topic\n//!     ~~~\n//!   `crate::service::parse`\n//!     ~~~\n",
+            0,
+            None,
+        ),
+    ];
+    lifetime_ledger(
+        "auditor-eight",
+        cases
+            .into_iter()
+            .map(|(id, text, expected, line)| (id.to_string(), text.to_string(), expected, line))
+            .collect(),
+    );
+}
+
+fn lifetime_cell(id: &str, user: &str, expected: usize, line: Option<usize>) -> Value {
+    use sha2::{Digest, Sha256};
+    let (graph, records) = query(LIB, user, SERVICE);
+    let candidates = code_refs::scan(user)
+        .refs
+        .iter()
+        .filter(|r| r.kind == "documents")
+        .count();
+    let stored = records["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["id"] == "code-scan:src/user.rs")
+        .unwrap();
+    let scan = code_refs::decode(stored["properties"]["scan"].as_str().unwrap()).unwrap();
+    let stored_candidates = scan.refs.iter().filter(|r| r.kind == "documents").count();
+    let user_sha = format!("sha256:{:x}", Sha256::digest(user.as_bytes()));
+    let service_sha = format!("sha256:{:x}", Sha256::digest(SERVICE.as_bytes()));
+    let expected_refs = line.map(|n| {
+        json!([
+            format!("file:src/service.rs#L1@{service_sha}"),
+            format!("file:src/user.rs#L{n}@{user_sha}")
+        ])
+    });
+    let evidence_matches = expected_refs.is_none_or(|want| {
+        graph["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["kind"] == "documents")
+            .all(|e| {
+                e["source_id"] == "file:src/user.rs"
+                    && e["target_id"] == "file:src/service.rs"
+                    && e["evidence_refs"] == want
+            })
+    });
+    let actual = json!({"component_candidates":candidates,"stored_candidates":stored_candidates,"documents":docs(&graph),"stored_documents":docs(&records),"missing":doc_misses(&graph),"stored_missing":doc_misses(&records),"evidence_matches":evidence_matches});
+    let passed = candidates == expected
+        && stored_candidates == expected
+        && docs(&graph) == expected
+        && docs(&records) == expected
+        && doc_misses(&graph) == 0
+        && doc_misses(&records) == 0
+        && evidence_matches;
+    eprintln!("lifetime {id}: expected={expected} actual={actual} passed={passed}");
+    json!({"id":id,"user":user,"user_sha256":user_sha,"expected":expected,"line":line,"actual":actual,"passed":passed})
+}
+
+fn lifetime_ledger(name: &str, cases: Vec<(String, String, usize, Option<usize>)>) {
+    let rows: Vec<Value> = cases
+        .iter()
+        .map(|(id, user, want, line)| lifetime_cell(id, user, *want, *line))
+        .collect();
+    let failed: Vec<&Value> = rows.iter().filter(|r| r["passed"] == false).collect();
+    if let Some(dir) = std::env::var_os("MOAI_C6D_LIFETIME_LEDGER") {
+        let dir = Path::new(&dir);
+        fs::create_dir_all(dir).unwrap();
+        fs::write(
+            dir.join(format!("{name}.json")),
+            serde_json::to_vec_pretty(&rows).unwrap(),
+        )
+        .unwrap();
+    }
+    assert!(
+        failed.is_empty(),
+        "lifetime failures: {}",
+        serde_json::to_string(&failed).unwrap()
+    );
+}
+
+#[test]
+fn container_lifetime_transition_matrix() {
+    let mut cases = Vec::new();
+    let mut add = |id: String, raw: String, expected: usize| {
+        let user: String = raw
+            .lines()
+            .map(|line| {
+                if line.is_empty() {
+                    "//!\n".into()
+                } else {
+                    format!("//! {line}\n")
+                }
+            })
+            .collect();
+        let line = (expected == 1).then(|| {
+            user.lines()
+                .enumerate()
+                .filter(|(_, l)| l.contains("crate::service::parse"))
+                .map(|(n, _)| n + 1)
+                .last()
+                .unwrap()
+        });
+        cases.push((id, user, expected, line));
+    };
+    let contexts = [
+        ("Q", "> ", "> "),
+        ("L", "- ", "  "),
+        ("QQ", "> > ", "> > "),
+        ("LL", "- - ", "    "),
+        ("QL", "> - ", ">   "),
+        ("LQ", "- > ", "  > "),
+    ];
+    for (context, opening, continuation) in contexts {
+        for (marker_name, marker) in [("tilde", "~~~"), ("tick", "```")] {
+            for blank in [false, true] {
+                let gap = if blank { "\n" } else { "" };
+                let head =
+                    format!("{opening}{marker}rust\n{continuation}example\n{gap}End outside.\n");
+                for (tail, text, expected) in [
+                    ("prose", "See `crate::service::parse`.\n", 1),
+                    ("code", "\n    `crate::service::parse`\n", 0),
+                    ("new-quote", "> See `crate::service::parse`.\n", 1),
+                ] {
+                    add(
+                        format!("T-root-{context}-{marker_name}-b{}-{tail}", u8::from(blank)),
+                        format!("{head}{text}"),
+                        expected,
+                    );
+                }
+            }
+        }
+        for blank in [false, true] {
+            let gap = if blank { "\n" } else { "" };
+            let expected = usize::from(!blank || matches!(context, "L" | "LL" | "LQ"));
+            add(
+                format!("T-indent-{context}-b{}", u8::from(blank)),
+                format!("{opening}Topic\n{gap}    `crate::service::parse`\n"),
+                expected,
+            );
+        }
+    }
+    for (context, opening, continuation, outer) in [
+        ("QQ", "> > ", "> > ", "> "),
+        ("LL", "- - ", "    ", "  "),
+        ("QL", "> - ", ">   ", "> "),
+        ("LQ", "- > ", "  > ", "  "),
+    ] {
+        for (marker_name, marker) in [("tilde", "~~~"), ("tick", "```")] {
+            for blank in [false, true] {
+                let gap = if blank {
+                    format!("{outer}\n")
+                } else {
+                    String::new()
+                };
+                let head = format!(
+                    "{opening}{marker}rust\n{continuation}example\n{gap}{outer}End outer.\n"
+                );
+                for (tail, text, expected) in [
+                    ("prose", format!("{outer}See `crate::service::parse`.\n"), 1),
+                    (
+                        "code",
+                        format!("{outer}\n{outer}    `crate::service::parse`\n"),
+                        0,
+                    ),
+                    (
+                        "new-quote",
+                        format!("{outer}> See `crate::service::parse`.\n"),
+                        1,
+                    ),
+                ] {
+                    add(
+                        format!(
+                            "T-pop-child-{context}-{marker_name}-b{}-{tail}",
+                            u8::from(blank)
+                        ),
+                        format!("{head}{text}"),
+                        expected,
+                    );
+                }
+            }
+        }
+    }
+    for (name, marker) in [("tilde", "~~~"), ("tick", "```")] {
+        add(
+            format!("T-root-fence-stays-{name}"),
+            format!("{marker}rust\n`crate::service::parse`\n"),
+            0,
+        );
+    }
+    add(
+        "T-unsupported-tab".into(),
+        "\tSee `crate::service::parse`.\n".into(),
+        0,
+    );
+    add(
+        "T-unsupported-html".into(),
+        "<div>\nSee `crate::service::parse`.\n</div>\n".into(),
+        0,
+    );
+    add(
+        "T-unsupported-html-comment".into(),
+        "<!--\nSee `crate::service::parse`.\n-->\n".into(),
+        0,
+    );
+    cases.push(("T-html-then-new-doc-group".into(), "//! <div>\n//! opaque\npub fn user() {}\n/// See `crate::service::parse`.\npub fn other() {}\n".into(), 1, Some(4)));
+    cases.push(("T-tab-then-new-doc-group".into(), "//! \tSee `crate::service::parse`.\npub fn user() {}\n/// See `crate::service::parse`.\npub fn other() {}\n".into(), 1, Some(3)));
+    lifetime_ledger("transitions", cases);
+}
+
+#[test]
+fn relative_fence_opening_resolves_container_lifetime() {
+    let mut cases = Vec::new();
+    for (context, opening, outer) in [
+        ("LQ", "- > ", "  "),
+        ("LLQ", "- - > ", "    "),
+        ("QLQ", "> - > ", ">   "),
+        ("LQQ", "- > > ", "  "),
+    ] {
+        for indent in 0..4 {
+            for (name, marker) in [("tilde", "~~~"), ("tick", "```")] {
+                for blank in [false, true] {
+                    let mut raw = vec![format!("{opening}Topic")];
+                    if blank {
+                        raw.push(outer.trim_end().to_string());
+                    }
+                    raw.extend([
+                        format!("{outer}{}{marker}rust", " ".repeat(indent)),
+                        format!("{outer}`crate::service::parse`"),
+                        format!("{outer}{}{marker}", " ".repeat(indent)),
+                    ]);
+                    let user: String = raw
+                        .into_iter()
+                        .map(|line| {
+                            if line.is_empty() {
+                                "//!\n".into()
+                            } else {
+                                format!("//! {line}\n")
+                            }
+                        })
+                        .collect();
+                    cases.push((
+                        format!("T-relative-{context}-i{indent}-{name}-b{}", u8::from(blank)),
+                        user,
+                        0,
+                        None,
+                    ));
+                }
+            }
+        }
+    }
+    lifetime_ledger("relative-fences", cases);
+}
+
+#[test]
+fn new_list_container_lifetime_transition() {
+    let mut cases = Vec::new();
+    let mut add = |id: String, raw: String| {
+        let user: String = raw
+            .lines()
+            .map(|line| {
+                if line.is_empty() {
+                    "//!\n".into()
+                } else {
+                    format!("//! {line}\n")
+                }
+            })
+            .collect();
+        let line = user.lines().count();
+        cases.push((id, user, 1, Some(line)));
+    };
+    for (context, opening, continuation) in [
+        ("Q", "> ", "> "),
+        ("L", "- ", "  "),
+        ("QQ", "> > ", "> > "),
+        ("LL", "- - ", "    "),
+        ("QL", "> - ", ">   "),
+        ("LQ", "- > ", "  > "),
+    ] {
+        for (name, marker) in [("tilde", "~~~"), ("tick", "```")] {
+            for blank in [false, true] {
+                let gap = if blank { "\n" } else { "" };
+                add(format!("T-new-list-root-{context}-{name}-b{}", u8::from(blank)), format!("{opening}{marker}rust\n{continuation}example\n{gap}End outside.\n- See `crate::service::parse`.\n"));
+            }
+        }
+    }
+    for (context, opening, continuation, outer) in [
+        ("QQ", "> > ", "> > ", "> "),
+        ("LL", "- - ", "    ", "  "),
+        ("QL", "> - ", ">   ", "> "),
+        ("LQ", "- > ", "  > ", "  "),
+    ] {
+        for (name, marker) in [("tilde", "~~~"), ("tick", "```")] {
+            for blank in [false, true] {
+                let gap = if blank {
+                    format!("{outer}\n")
+                } else {
+                    String::new()
+                };
+                add(format!("T-new-list-child-{context}-{name}-b{}", u8::from(blank)), format!("{opening}{marker}rust\n{continuation}example\n{gap}{outer}End outer.\n{outer}- See `crate::service::parse`.\n"));
+            }
+        }
+    }
+    lifetime_ledger("new-lists", cases);
 }
