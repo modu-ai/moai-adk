@@ -8,7 +8,10 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{collections::BTreeMap, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
 
 type Result<T> = std::result::Result<T, OpError>;
 #[derive(Clone, Deserialize)]
@@ -158,7 +161,9 @@ fn follows(p: &Dispatch, m: &Message, a: &Assignment) -> bool {
 }
 fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Snapshot> {
     let publications = message::dispatch_publications(anchor, t, c)?;
-    let latest_timestamp = publications.iter().map(|p| p.created_at).max();
+    let mut latest_timestamp: Option<i64> = None;
+    let mut records = BTreeSet::new();
+    let mut acknowledged = BTreeSet::new();
     let mut report_ids = BTreeMap::new();
     let mut assignments: BTreeMap<u64, Assignment> = BTreeMap::new();
     let mut receipts = Vec::new();
@@ -176,16 +181,39 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
                 return Err(conflict());
             }
         }
-        if p.message.event == "dispatch-decision" {
-            if !p.ack {
-                decisions.push(p);
-            }
-            continue;
+        // S1 identity is shared by every record/ACK, before all kind/context filters.
+        if p.message.report_id == anchor.report_id && p.message != *anchor {
+            return Err(conflict());
         }
         if let Some(old) = report_ids.insert(p.message.report_id.clone(), p.message.clone()) {
             if old != p.message {
                 return Err(conflict());
             }
+        }
+        if p.ack {
+            acknowledged.insert(p.message.report_id.clone());
+        } else {
+            records.insert(p.message.report_id.clone());
+        }
+        if p.message.project_id != anchor.project_id
+            || p.message.task.task_id != anchor.task.task_id
+        {
+            continue;
+        }
+        if p.message.event != "dispatch" && p.message.event != "dispatch-decision" {
+            continue;
+        }
+        let mut task = p.message.task.clone();
+        task.revision = anchor.task.revision.clone();
+        if task != anchor.task {
+            return Err(conflict());
+        }
+        latest_timestamp = Some(latest_timestamp.map_or(p.created_at, |old| old.max(p.created_at)));
+        if p.message.event == "dispatch-decision" {
+            if !p.ack {
+                decisions.push(p);
+            }
+            continue;
         }
         let (payload, digest) = dispatch(&mut p.message)?;
         if digest != p.payload_digest {
@@ -213,6 +241,9 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
                 },
             );
         }
+    }
+    if !acknowledged.is_subset(&records) {
+        return Err(conflict());
     }
     let mut prior: Option<(u64, &Assignment)> = None;
     for (&rev, a) in &assignments {

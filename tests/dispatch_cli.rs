@@ -609,3 +609,240 @@ print('HTTP/2 200'+chr(10)+chr(10)+json.dumps(b))
     assert_eq!(v["operation"], "dispatch.check");
     assert_eq!(v["result"]["claim_authorized"], false);
 }
+
+#[test]
+fn audit_decision_report_id_collision_preserves_s1() {
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    let v = send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    let d1 = answer(&m, "accepted");
+    ack(root.path(), &m, d1.clone(), &r).unwrap();
+    r.actor.set(11);
+    let m2 = next(&m, &v);
+    send(root.path(), &m2, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m2, answer(&m2, "accepted"), &r).unwrap();
+    {
+        let mut comments = r.comments.borrow_mut();
+        let c = comments.last_mut().unwrap();
+        c["body"] = json!(c["body"]
+            .as_str()
+            .unwrap()
+            .replace("d2-decision", "d1-decision"));
+    }
+    let before = journal_bytes(root.path());
+    let posts = r.posts();
+    let control = message::reconcile_cli(
+        root.path(),
+        message::ReconcileRequest { message: d1 },
+        &r,
+        &Time,
+    )
+    .unwrap_err();
+    assert_eq!(
+        control.kind,
+        moai_cli::contract::Kind::Conflict,
+        "S1 control must report identity conflict"
+    );
+    let observed = check(&m2, &r);
+    assert!(
+        observed.is_err(),
+        "S2 must also reject reused immutable decision ID, observed={observed:?}"
+    );
+    assert_eq!(r.posts(), posts);
+    assert_eq!(journal_bytes(root.path()), before);
+}
+
+fn accepted_pair() -> (TempDir, Remote, Message, Message) {
+    let root = temp_root();
+    let r = Remote::new();
+    let one = packet();
+    let v = send(root.path(), &one, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &one, answer(&one, "accepted"), &r).unwrap();
+    r.actor.set(11);
+    let two = next(&one, &v);
+    send(root.path(), &two, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &two, answer(&two, "accepted"), &r).unwrap();
+    (root, r, one, two)
+}
+fn rewrite_packet(comment: &mut Value, mut m: Message, ack: bool) {
+    m.payload.sort_all_objects();
+    let old = comment["body"].as_str().unwrap();
+    let mut wire: Value = serde_json::from_str(old.lines().nth(1).unwrap()).unwrap();
+    wire["message"] = serde_json::to_value(&m).unwrap();
+    wire["payload_digest"] = json!(payload_digest(&m));
+    wire["kind"] = json!(if ack { "ack" } else { "record" });
+    let marker = moai_cli::forge::outbox::op_marker(
+        if ack { "message-ack" } else { "message-record" },
+        &m.project_id,
+        &m.report_id,
+        1,
+    );
+    comment["body"] = json!(format!(
+        "{marker}\n{}\n<!-- moai:message:end -->",
+        serde_json::to_string(&wire).unwrap()
+    ));
+    comment["user"]["id"] = json!(if ack {
+        m.receiver.actor_id
+    } else {
+        m.sender.actor_id
+    });
+}
+#[test]
+fn every_skipped_message_kind_preserves_relevant_report_id_identity() {
+    let mut missed = Vec::new();
+    for kind in [
+        "decision-record",
+        "decision-ack",
+        "generic-event",
+        "other-task",
+        "other-project",
+    ] {
+        let (root, r, one, two) = accepted_pair();
+        let d1 = answer(&one, "accepted");
+        let mut reused = answer(&two, "accepted");
+        reused.report_id = d1.report_id.clone();
+        match kind {
+            "generic-event" => reused.event = "report".into(),
+            "other-task" => reused.task.task_id = "another-task".into(),
+            "other-project" => reused.project_id = "another-project".into(),
+            _ => {}
+        }
+        {
+            let mut comments = r.comments.borrow_mut();
+            rewrite_packet(comments.last_mut().unwrap(), reused, kind == "decision-ack");
+        }
+        let posts = r.posts();
+        let control = message::reconcile_cli(
+            root.path(),
+            message::ReconcileRequest { message: d1 },
+            &r,
+            &Time,
+        )
+        .unwrap_err();
+        assert_eq!(
+            control.kind,
+            moai_cli::contract::Kind::Conflict,
+            "S1: {kind}"
+        );
+        match check(&two, &r) {
+            Err(e) => assert_eq!(e.kind, moai_cli::contract::Kind::Conflict, "S2: {kind}"),
+            Ok(v) => missed.push((kind, v)),
+        }
+        assert_eq!(r.posts(), posts, "observation must not POST: {kind}");
+    }
+    assert!(
+        missed.is_empty(),
+        "identity checks skipped message kinds: {missed:?}"
+    );
+}
+#[test]
+fn unrelated_generic_packets_do_not_block_valid_dispatch_observation() {
+    let (_root, r, _, two) = accepted_pair();
+    let mut m = answer(&two, "accepted");
+    m.report_id = "unrelated".into();
+    m.event = "report".into();
+    for other in ["one-unrelated-task", "another-unrelated-task"] {
+        m.task.task_id = other.into();
+        let mut c = r.comments.borrow().last().unwrap().clone();
+        c["id"] = json!(1000 + r.comments.borrow().len());
+        c["created_at"] = json!("2099-01-01T00:00:00Z");
+        rewrite_packet(&mut c, m.clone(), false);
+        r.comments.borrow_mut().push(c);
+    }
+    r.comments
+        .borrow_mut()
+        .push(json!({"id":9001,"body":"HOLD: preserve the user's draft","user":{"id":99}}));
+    r.comments.borrow_mut().push(
+        json!({"id":9002,"body":"<!-- moai-op other-operation:p1:d2:1 -->","user":{"id":99}}),
+    );
+    let v = check(&two, &r).unwrap();
+    assert_eq!(v["disposition"], "accepted");
+    assert_eq!(v["observation_current"], true);
+}
+
+fn journal_bytes(root: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+    let mut files = Vec::new();
+    for dir in ["outbox", "inbox"] {
+        for p in fs::read_dir(root.join(".moai-cli/messages").join(dir)).unwrap() {
+            let p = p.unwrap().path();
+            files.push((
+                p.strip_prefix(root).unwrap().to_path_buf(),
+                fs::read(p).unwrap(),
+            ));
+        }
+    }
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    files
+}
+#[test]
+fn earlier_page_foreign_identity_collision_is_not_lost_before_discovery() {
+    let (root, r, one, two) = accepted_pair();
+    let d1 = answer(&one, "accepted");
+    let mut foreign = d1.clone();
+    foreign.project_id = "foreign-project".into();
+    foreign.event = "report".into();
+    let mut c = r.comments.borrow()[0].clone();
+    c["id"] = json!(1);
+    rewrite_packet(&mut c, foreign, false);
+    r.comments.borrow_mut().insert(0, c);
+    r.page_size.set(1);
+    assert_eq!(
+        message::reconcile_cli(
+            root.path(),
+            message::ReconcileRequest { message: d1 },
+            &r,
+            &Time
+        )
+        .unwrap_err()
+        .kind,
+        moai_cli::contract::Kind::Conflict
+    );
+    assert_eq!(
+        check(&two, &r).unwrap_err().kind,
+        moai_cli::contract::Kind::Conflict
+    );
+}
+#[test]
+fn decision_receipts_need_their_record_and_never_create_business_acceptance() {
+    for orphan in [false, true] {
+        let (root, r, _, two) = accepted_pair();
+        let mut d = answer(&two, "accepted");
+        if orphan {
+            d.report_id = "orphan-decision".into();
+        }
+        let mut c = r.comments.borrow().last().unwrap().clone();
+        c["id"] = json!(1000);
+        rewrite_packet(&mut c, d.clone(), true);
+        r.comments.borrow_mut().push(c);
+        let posts = r.posts();
+        let bytes = journal_bytes(root.path());
+        if orphan {
+            assert_eq!(
+                message::reconcile_cli(
+                    root.path(),
+                    message::ReconcileRequest { message: d },
+                    &r,
+                    &Time
+                )
+                .unwrap_err()
+                .kind,
+                moai_cli::contract::Kind::Conflict
+            );
+            assert_eq!(
+                check(&two, &r).unwrap_err().kind,
+                moai_cli::contract::Kind::Conflict
+            );
+        } else {
+            let v = check(&two, &r).unwrap();
+            assert_eq!(v["disposition"], "accepted");
+            assert_eq!(v["observation_current"], true);
+        }
+        assert_eq!(r.posts(), posts);
+        assert_eq!(journal_bytes(root.path()), bytes);
+    }
+}

@@ -856,7 +856,15 @@ pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
     let base = url(anchor);
     let mut next = Some(format!("{base}?per_page=100"));
     let mut visited = BTreeSet::new();
-    let mut result = Vec::new();
+    let mut candidates = Vec::new();
+    let mut relevant_ids = BTreeSet::from([anchor.report_id.clone()]);
+    let relevant = |m: &Message| {
+        m.project_id == anchor.project_id
+            && m.task.task_id == anchor.task.task_id
+            && (m.event == "dispatch" || m.event == "dispatch-decision")
+    };
+    // Discover all relevant packet IDs before any context/event filtering. A collision
+    // can precede its relevant packet on another page, project, task or message kind.
     while let Some(page) = next {
         if visited.len() >= 1000 || !visited.insert(page.clone()) {
             return Err(err(
@@ -884,63 +892,72 @@ pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
             .ok_or_else(|| err(Kind::Transport, "dispatch comments not an array"))?
         {
             let text = comment["body"].as_str().ok_or_else(conflict)?;
-            let first = text.split('\n').next().unwrap_or_default();
-            let marks = outbox::parse_op_markers(first);
-            if !marks.iter().any(|m| {
-                m.project_id == anchor.project_id
-                    && (m.operation == "message-record" || m.operation == "message-ack")
-            }) {
-                continue;
-            }
-            let encoded = text.split('\n').nth(1).ok_or_else(conflict)?;
-            let mut wire: Wire = serde_json::from_str(encoded).map_err(|_| conflict())?;
-            if wire.message.project_id != anchor.project_id
-                || wire.message.task.task_id != anchor.task.task_id
+            let marks = outbox::parse_op_markers(text.split('\n').next().unwrap_or_default());
+            if !marks
+                .iter()
+                .any(|m| m.operation == "message-record" || m.operation == "message-ack")
             {
                 continue;
             }
-            if wire.message.event != "dispatch" && wire.message.event != "dispatch-decision" {
-                continue;
-            }
-            let mut task = wire.message.task.clone();
-            task.revision = anchor.task.revision.clone();
-            if task != anchor.task {
+            let wire = text
+                .split('\n')
+                .nth(1)
+                .and_then(|encoded| serde_json::from_str::<Wire>(encoded).ok());
+            if wire.is_none() && marks.iter().any(|m| m.project_id == anchor.project_id) {
                 return Err(conflict());
             }
-            let digest = validate(&mut wire.message)?;
-            let ack = wire.kind == "ack";
-            if wire.schema_version != 1
-                || !["record", "ack"].contains(&wire.kind.as_str())
-                || wire.payload_digest != digest
-                || text != render(&wire.message, &digest, ack)?
-            {
-                return Err(conflict());
+            if let Some(wire) = &wire {
+                if relevant(&wire.message) {
+                    relevant_ids.insert(wire.message.report_id.clone());
+                }
             }
-            let actor = if ack {
-                wire.message.receiver.actor_id
-            } else {
-                wire.message.sender.actor_id
-            };
-            if comment["user"]["id"].as_u64() != Some(actor) {
-                return Err(conflict());
-            }
-            let id = comment["id"]
-                .as_u64()
-                .filter(|id| *id > 0)
-                .ok_or_else(conflict)?;
-            let at = comment["created_at"]
-                .as_str()
-                .and_then(parse_utc)
-                .ok_or_else(conflict)?;
-            result.push(Publication {
-                message: wire.message,
-                payload_digest: digest,
-                ack,
-                comment_id: id,
-                created_at: at,
-            });
+            candidates.push((comment.clone(), marks, wire));
         }
         next = link;
+    }
+    let mut result = Vec::new();
+    for (comment, marks, wire) in candidates {
+        if !wire.as_ref().is_some_and(|w| relevant(&w.message))
+            && !marks.iter().any(|m| relevant_ids.contains(&m.local_id))
+        {
+            continue;
+        }
+        let mut wire = wire.ok_or_else(conflict)?;
+        let text = comment["body"].as_str().ok_or_else(conflict)?;
+        let digest = validate(&mut wire.message)?;
+        let ack = wire.kind == "ack";
+        if wire.schema_version != 1
+            || !["record", "ack"].contains(&wire.kind.as_str())
+            || wire.payload_digest != digest
+            || text != render(&wire.message, &digest, ack)?
+        {
+            return Err(conflict());
+        }
+        let actor = if ack {
+            wire.message.receiver.actor_id
+        } else {
+            wire.message.sender.actor_id
+        };
+        if comment["user"]["id"].as_u64() != Some(actor) {
+            return Err(conflict());
+        }
+        let id = comment["id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .ok_or_else(conflict)?;
+        let at = comment["created_at"]
+            .as_str()
+            .and_then(parse_utc)
+            .ok_or_else(conflict)?;
+        // Return colliding foreign-context/event packets too. The consumer must check
+        // immutable identities across this set before discarding any packet kind.
+        result.push(Publication {
+            message: wire.message,
+            payload_digest: digest,
+            ack,
+            comment_id: id,
+            created_at: at,
+        });
     }
     Ok(result)
 }
