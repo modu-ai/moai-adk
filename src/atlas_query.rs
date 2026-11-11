@@ -12,9 +12,10 @@
 //! `unavailable` (REQ-C9-01); `stale` and `partial` pass through with their records.
 //!
 //! What the records hold today: file, tag, requirement, test, commit and issue nodes with
-//! `annotated_by`, `references_requirement`, `verifies` and `mentions_issue` edges. There
-//! are no symbol, module, import or call records, so symbol and code-reference questions
-//! are reported `unavailable` in `coverage`, never answered by inference.
+//! `annotated_by`, `references_requirement`, `verifies` and `mentions_issue` edges, and
+//! file → file `imports` and `calls` edges of Rust files (C6c #2442, `src/code_refs.rs`).
+//! There are no symbol or module records, so symbol questions are reported `unavailable`
+//! in `coverage`, never answered by inference.
 //!
 //! Read-only: no file is written, no network is used. Answer-only data (hop distances,
 //! cuts) lives in sibling fields so `map` and `graph` stay C4 documents.
@@ -45,7 +46,7 @@ pub const MAX_TERM_BYTES: usize = 512;
 
 /// Coverage note for questions the records cannot answer.
 pub const SYMBOLS_UNAVAILABLE: &str =
-    "unavailable: the index records hold no symbol, module, import or call records";
+    "unavailable: the index records hold no symbol or module records; imports and calls are file to file (Rust only)";
 
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
