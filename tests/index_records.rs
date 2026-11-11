@@ -450,3 +450,70 @@ fn unshallowing_a_clone_builds_a_new_generation_equal_to_a_full_rebuild() {
     assert_eq!(rebuilt["records"]["reused_files"], 0);
     assert_eq!(view_bytes(&root, &gen), incremental);
 }
+
+/// #2442 AC-2: code references depend on the file set, not only on the source bytes. A
+/// target module file that appears or disappears while the referencing file is unchanged
+/// (and therefore reused) still changes the edges, and the incremental views equal a full
+/// rebuild byte for byte.
+#[test]
+fn code_references_follow_the_file_set_and_rebuild_identically() {
+    let (_tmp, root) = setup();
+    write(
+        &root,
+        "src/lib.rs",
+        "pub mod pay;\npub fn digest() {}\nfn f() { crate::pay::once(); }\n",
+    );
+    write(
+        &root,
+        "src/user.rs",
+        "use crate::pay;\nfn g() { crate::digest(); }\n",
+    );
+    commit(&root, "lib without the pay file");
+    let first = build(&root);
+    let q = records(&root);
+    assert!(!edges(&q["graph"]).contains(&t("calls", "file:src/lib.rs", "file:src/pay.rs")));
+    let misses = serde_json::to_string(&q["graph"]["missing"]).unwrap();
+    assert!(misses.contains("module_file_missing"), "{misses}");
+    assert!(
+        misses.contains("code_reference_unreached"),
+        "src/user.rs has no mod line"
+    );
+    assert_eq!(first["records"]["reused_files"], 0);
+
+    // Only the target appears: src/lib.rs and src/user.rs bytes are unchanged.
+    write(&root, "src/pay.rs", "pub fn once() {}\n");
+    commit(&root, "add the pay file");
+    let incremental = build(&root);
+    let gen = incremental["generation_id"].as_str().unwrap().to_string();
+    assert_eq!(incremental["records"]["extracted_files"], 1);
+    let q = records(&root);
+    let got = edges(&q["graph"]);
+    assert!(got.contains(&t("calls", "file:src/lib.rs", "file:src/pay.rs")));
+    for e in q["graph"]["edges"].as_array().unwrap() {
+        if e["kind"] == "calls" && e["target_id"] == "file:src/pay.rs" {
+            assert_eq!(e["basis"], "static_resolved");
+            assert_eq!(e["uncertainty"], "callee-binding-not-checked");
+            assert_eq!(e["extractor"]["name"], "code-refs");
+            let ev = e["evidence_refs"][0].as_str().unwrap();
+            assert!(ev.starts_with("file:src/lib.rs#L3@sha256:"), "{ev}");
+        }
+    }
+    let incremental_views = view_bytes(&root, &gen);
+    fs::remove_dir_all(root.join(".moai-cli/index")).unwrap();
+    let full = build(&root);
+    assert_eq!(full["generation_id"], gen.as_str());
+    assert_eq!(full["records"]["reused_files"], 0);
+    let full_views = view_bytes(&root, &gen);
+    assert_eq!(incremental_views[1], full_views[1], "graph.jsonl differs");
+    assert_eq!(incremental_views[0], full_views[0], "map.jsonl differs");
+
+    // The target disappears again: the edge goes, the gap is stated.
+    fs::remove_file(root.join("src/pay.rs")).unwrap();
+    commit(&root, "drop the pay file");
+    build(&root);
+    let q = records(&root);
+    assert!(!edges(&q["graph"]).contains(&t("calls", "file:src/lib.rs", "file:src/pay.rs")));
+    assert!(serde_json::to_string(&q["graph"]["missing"])
+        .unwrap()
+        .contains("module_file_missing"));
+}
