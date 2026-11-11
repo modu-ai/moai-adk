@@ -68,6 +68,8 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `key-import-apply`
+- `key-import-plan`
 - `key-remove`
 - `key-set`
 - `key-status`
@@ -88,6 +90,7 @@
 - `project-skill-plan`
 - `project-skill-revert`
 - `queue-next`
+- `queue-query`
 - `recovery-apply`
 - `recovery-plan`
 - `run-verify`
