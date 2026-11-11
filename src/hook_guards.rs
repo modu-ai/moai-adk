@@ -620,7 +620,8 @@ fn overrides_hooks_path(global: &[String]) -> bool {
 }
 
 /// The reason a file write is refused, or `None`. `cwd` resolves relative paths.
-pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'static str> {
+/// The paths a file-writing tool names and the text it would write; `None` for other tools.
+fn write_targets(tool: &str, tool_input: &Value) -> Option<(Vec<String>, Vec<String>)> {
     let mut paths: Vec<String> = Vec::new();
     let mut contents: Vec<String> = Vec::new();
     match tool {
@@ -664,11 +665,131 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
         }
         _ => return None,
     }
+    Some((paths, contents))
+}
+
+pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'static str> {
+    let (paths, contents) = write_targets(tool, tool_input)?;
     if paths.iter().any(|p| is_protected_path(Path::new(p), cwd)) {
         return Some(PROTECTED_PATH);
     }
     if contents.iter().any(|c| carries_secret(c)) {
         return Some(SECRET_CONTENT);
+    }
+    None
+}
+
+const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/config to permit it.";
+const PRIMARY_CHECKOUT: &str = "MoAI tool-preflight: this primary checkout is shared with linked worktrees; switching, resetting, stashing or rebasing it is refused (add the exact command to `allow_commands` under [hooks.primary_checkout] in ~/.moai-cli/config to permit it).";
+
+/// The folder holding the nearest `.git` (a folder or a file) at or above `dir`, resolved.
+/// Found from the file system only: no git process.
+fn work_tree_top(dir: &Path) -> Option<PathBuf> {
+    let mut d = crate::hook_config::canonical(dir);
+    loop {
+        if std::fs::symlink_metadata(d.join(".git")).is_ok() {
+            return Some(d);
+        }
+        if !d.pop() {
+            return None;
+        }
+    }
+}
+
+/// B9 (opt-in, decision 6779829826): a file-writing tool's path must be inside the project
+/// (the work tree holding the session's directory) or under an `allow` folder. Paths are
+/// judged after symlinks and `..` are resolved, so a link or a `..` out of the project counts
+/// as outside. Outside any git work tree only `allow` remains.
+pub fn outside_project_guard(
+    tool: &str,
+    tool_input: &Value,
+    cwd: &Path,
+    rule: &crate::hook_config::OutsideRule,
+) -> Option<&'static str> {
+    let (paths, _) = write_targets(tool, tool_input)?;
+    let project = work_tree_top(cwd);
+    let outside = |p: &String| {
+        let path = Path::new(p);
+        let absolute = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            cwd.join(path)
+        };
+        let resolved = crate::hook_config::canonical(&absolute);
+        let inside = project
+            .as_ref()
+            .is_some_and(|top| resolved.starts_with(top))
+            || rule
+                .allow
+                .iter()
+                .any(|a| resolved.starts_with(crate::hook_config::canonical(a)));
+        !inside
+    };
+    paths.iter().any(outside).then_some(OUTSIDE_PROJECT)
+}
+
+/// Whether a git subcommand changes which commit or branch the work tree holds, or its
+/// uncommitted state (B3): `switch`; `checkout` naming a branch or commit (not a path restore
+/// after `--`, not a bare `checkout`); every `reset`; `stash` other than `list`/`show`;
+/// every `rebase`.
+fn moves_the_checkout(sub: &crate::claim_verify::GitSub) -> bool {
+    let rest = &sub.rest;
+    match sub.verb.as_str() {
+        "switch" | "rebase" | "reset" => true,
+        "checkout" => !rest.iter().any(|a| a == "--") && !rest.is_empty(),
+        "stash" => !matches!(rest.first().map(String::as_str), Some("list" | "show")),
+        _ => false,
+    }
+}
+
+/// The directory a git subcommand runs in: `cwd`, changed by each `-C <dir>` before the verb.
+fn git_dir_of(global: &[String], cwd: &Path) -> PathBuf {
+    let mut dir = cwd.to_path_buf();
+    let mut it = global.iter();
+    while let Some(a) = it.next() {
+        if a == "-C" {
+            if let Some(d) = it.next() {
+                dir = dir.join(d);
+            }
+        }
+    }
+    dir
+}
+
+/// A primary worktree (its `.git` is a folder) that has at least one linked worktree.
+fn shared_primary(top: &Path) -> bool {
+    let git = top.join(".git");
+    std::fs::symlink_metadata(&git).is_ok_and(|m| m.is_dir())
+        && std::fs::read_dir(git.join("worktrees"))
+            .is_ok_and(|mut entries| entries.next().is_some())
+}
+
+/// B3 (opt-in, decision 6779829826): in a primary checkout listed in `repos` that has linked
+/// worktrees, a git command that switches, resets, stashes or rebases it is refused unless
+/// the whole command line is in `allow_commands`. File writes are out of scope.
+pub fn primary_checkout_guard(
+    command: &str,
+    cwd: &Path,
+    rule: &crate::hook_config::PrimaryRule,
+) -> Option<&'static str> {
+    if rule.allow_commands.iter().any(|c| c == command.trim()) {
+        return None;
+    }
+    for (name, args) in crate::claim_verify::shell_commands(command) {
+        if name != "git" {
+            continue;
+        }
+        for sub in crate::claim_verify::git_subcommands(&args) {
+            if !moves_the_checkout(&sub) {
+                continue;
+            }
+            let Some(top) = work_tree_top(&git_dir_of(&sub.global, cwd)) else {
+                continue;
+            };
+            if rule.repos.contains(&top) && shared_primary(&top) {
+                return Some(PRIMARY_CHECKOUT);
+            }
+        }
     }
     None
 }
@@ -1139,6 +1260,148 @@ mod tests {
         }
         // Protected branches stay a deny, not a question.
         assert_eq!(bash_guard("git push --force origin main"), Some(FORCE_PUSH));
+    }
+
+    /// A temporary folder holding `repo/` (with a `.git` folder), `allowed/` and `outside/`.
+    fn layout() -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = std::fs::canonicalize(dir.path()).unwrap();
+        for d in ["repo/.git", "repo/src", "allowed", "outside", "nogit"] {
+            std::fs::create_dir_all(root.join(d)).unwrap();
+        }
+        (dir, root)
+    }
+
+    fn write(path: &str) -> Value {
+        json!({"file_path": path, "content": "x"})
+    }
+
+    /// B9 (stage 7): inside the project or under `allow` passes; anything that resolves
+    /// outside (absolute, `..`, a `..` through a folder that does not exist, a symlink) is
+    /// refused. Outside any work tree only `allow` remains.
+    #[test]
+    fn writes_outside_the_project_are_refused_when_turned_on() {
+        let (_d, root) = layout();
+        let repo = root.join("repo");
+        let rule = crate::hook_config::OutsideRule {
+            allow: vec![root.join("allowed")],
+        };
+        let out = root.join("outside/x").to_string_lossy().into_owned();
+        let allowed = root.join("allowed/x").to_string_lossy().into_owned();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(root.join("outside"), repo.join("link")).unwrap();
+        let mut cases = vec![
+            ("src/a.rs".to_string(), None),
+            (repo.join("src/b.rs").to_string_lossy().into_owned(), None),
+            ("new/dir/file".to_string(), None),
+            (allowed.clone(), None),
+            (out.clone(), Some(OUTSIDE_PROJECT)),
+            ("../outside/x".to_string(), Some(OUTSIDE_PROJECT)),
+            ("nothere/../../outside/x".to_string(), Some(OUTSIDE_PROJECT)),
+            ("../repo-twin/x".to_string(), Some(OUTSIDE_PROJECT)),
+        ];
+        #[cfg(unix)]
+        cases.push(("link/x".to_string(), Some(OUTSIDE_PROJECT)));
+        for (path, want) in cases {
+            assert_eq!(
+                outside_project_guard("Write", &write(&path), &repo, &rule),
+                want,
+                "{path}"
+            );
+        }
+        // Every file-writing tool, the patch format included; other tools are not judged.
+        let edit = json!({"file_path": out, "new_string": "x"});
+        assert_eq!(
+            outside_project_guard("Edit", &edit, &repo, &rule),
+            Some(OUTSIDE_PROJECT)
+        );
+        let patch =
+            json!({"command": format!("*** Begin Patch\n*** Add File: {out}\n+x\n*** End Patch")});
+        assert_eq!(
+            outside_project_guard("apply_patch", &patch, &repo, &rule),
+            Some(OUTSIDE_PROJECT)
+        );
+        assert_eq!(
+            outside_project_guard("Read", &write(&out), &repo, &rule),
+            None
+        );
+        // Outside any work tree: only `allow`.
+        let nogit = root.join("nogit");
+        assert_eq!(
+            outside_project_guard("Write", &write("x"), &nogit, &rule),
+            Some(OUTSIDE_PROJECT)
+        );
+        assert_eq!(
+            outside_project_guard("Write", &write(&allowed), &nogit, &rule),
+            None
+        );
+    }
+
+    /// B3 (stage 7): only in a listed primary checkout that has linked worktrees, and only
+    /// for commands that move it. Look-alikes and exceptions pass.
+    #[test]
+    fn a_shared_primary_checkout_is_not_moved_when_turned_on() {
+        let (_d, root) = layout();
+        let repo = root.join("repo");
+        std::fs::create_dir_all(repo.join(".git/worktrees/lane-1")).unwrap();
+        let rule = crate::hook_config::PrimaryRule {
+            repos: vec![repo.clone()],
+            allow_commands: vec!["git switch v2026.11.0".into()],
+        };
+        for (cmd, want) in [
+            ("git switch main", Some(PRIMARY_CHECKOUT)),
+            ("git checkout main", Some(PRIMARY_CHECKOUT)),
+            ("git checkout -b new", Some(PRIMARY_CHECKOUT)),
+            ("git reset --soft HEAD~1", Some(PRIMARY_CHECKOUT)),
+            ("git reset", Some(PRIMARY_CHECKOUT)),
+            ("git stash", Some(PRIMARY_CHECKOUT)),
+            ("git stash pop", Some(PRIMARY_CHECKOUT)),
+            ("git rebase main", Some(PRIMARY_CHECKOUT)),
+            ("cd . && git switch main", Some(PRIMARY_CHECKOUT)),
+            ("git checkout -- a.txt", None),
+            ("git checkout", None),
+            ("git stash list", None),
+            ("git stash show", None),
+            ("git status", None),
+            ("git log --oneline", None),
+            ("git switch v2026.11.0", None),
+            ("echo git switch main", None),
+        ] {
+            assert_eq!(primary_checkout_guard(cmd, &repo, &rule), want, "{cmd}");
+        }
+        // `-C` names the checkout the command runs in.
+        assert_eq!(
+            primary_checkout_guard("git -C repo switch main", &root, &rule),
+            Some(PRIMARY_CHECKOUT)
+        );
+        assert_eq!(
+            primary_checkout_guard("git switch main", &repo.join("src"), &rule),
+            Some(PRIMARY_CHECKOUT)
+        );
+        // Not listed, or no linked worktree, or a linked worktree itself: not this rule.
+        let unlisted = crate::hook_config::PrimaryRule {
+            repos: vec![],
+            allow_commands: vec![],
+        };
+        assert_eq!(
+            primary_checkout_guard("git switch main", &repo, &unlisted),
+            None
+        );
+        std::fs::remove_dir_all(repo.join(".git/worktrees")).unwrap();
+        assert_eq!(
+            primary_checkout_guard("git switch main", &repo, &rule),
+            None
+        );
+        let linked = root.join("nogit");
+        std::fs::write(linked.join(".git"), "gitdir: /elsewhere\n").unwrap();
+        let rule2 = crate::hook_config::PrimaryRule {
+            repos: vec![linked.clone()],
+            allow_commands: vec![],
+        };
+        assert_eq!(
+            primary_checkout_guard("git switch main", &linked, &rule2),
+            None
+        );
     }
 
     #[test]
