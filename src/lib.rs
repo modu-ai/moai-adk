@@ -11,6 +11,7 @@ pub mod claim;
 pub mod claim_cache;
 pub mod claim_verify;
 pub mod claude;
+pub mod code_refs;
 pub mod context;
 pub mod contract;
 pub mod decision;
