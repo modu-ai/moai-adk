@@ -352,3 +352,108 @@ fn worktrees_of_one_clone_share_the_counter() {
     assert_eq!(name(&run(&f, &["glm", "-a"])), "agent-3");
     assert_eq!(stored(&f).as_deref(), Some("3\n"));
 }
+
+/// #2361 AC-5 as amended by the 06:45Z user decision (`-l`, `-a` = full-access mode): a
+/// launch with `--name X` or `-l` takes no number and starts the host with exactly this argv,
+/// pinned byte for byte per host. Real launches against the stub hosts, not `--dry-run`.
+#[test]
+fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
+    let f = fixture();
+    let cases: [(&[&str], &[&str]); 6] = [
+        (
+            &["cc", "-l"],
+            &[
+                "claude",
+                "--name",
+                "leader",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--advisor",
+                "fable",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["glm", "-l"],
+            &[
+                "claude",
+                "--name",
+                "leader",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["codex", "-l"],
+            &[
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "MoAI session name: leader",
+            ],
+        ),
+        (
+            &["cc", "-a", "--name", "x"],
+            &[
+                "claude",
+                "--name",
+                "x",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--advisor",
+                "fable",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["glm", "-a", "--name", "x"],
+            &[
+                "claude",
+                "--name",
+                "x",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["codex", "-a", "--name", "x"],
+            &[
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "MoAI session name: x",
+            ],
+        ),
+    ];
+    for (args, want) in cases {
+        let out = run(&f, args);
+        assert!(
+            out.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let argv: Vec<&str> = v["argv"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{args:?}: no argv in {v}"))
+            .iter()
+            .map(|a| a.as_str().unwrap())
+            .collect();
+        assert_eq!(argv, want, "{args:?}");
+    }
+    assert_eq!(stored(&f), None, "--name and -l take no number");
+}
