@@ -431,9 +431,12 @@ fn fixture(name: &str) -> Value {
     serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
 }
 
-/// The GRAPH suite (#2346) asks file-references-file questions. The C6b records have no
-/// code-reference producer, so each case is either found as a real path between the two
-/// file nodes or reported with coverage that names the gap — never silently empty.
+/// The GRAPH suite (#2346) asks file-references-file questions. Each case is either found
+/// as a real path between the two file nodes or reported with coverage that names the gap
+/// — never silently empty. A relation whose target is not a file of the snapshot (G-006
+/// names the handoff protocol) cannot be a file → file relation: it is counted apart, must
+/// stay unreached, and never counts as found (Issue #2442 HOLD 1-2). Direct edges per case
+/// are pinned in `graph_cases_have_direct_code_reference_edges`.
 #[test]
 fn graph_suite_relations_are_found_or_their_gap_is_stated() {
     let snapshot = fixture("source_snapshot.json");
@@ -464,11 +467,13 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         .unwrap();
     let mut found = 0;
     let mut cases = 0;
+    let mut non_file = 0;
     for case in graph["cases"].as_array().unwrap() {
         let id = case["task_ref"].as_str().unwrap();
         let rel = tasks[id]["ground_truth"]["relation"].as_array().unwrap();
         let from = format!("file:{}", rel[0].as_str().unwrap());
         let to = format!("file:{}", rel[2].as_str().unwrap());
+        let target_is_file = snapshot["files"].get(rel[2].as_str().unwrap()).is_some();
         let r = ok(
             root,
             "atlas-graph",
@@ -483,6 +488,11 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
             "{id}: {from} not in the generation"
         );
         cases += 1;
+        if !target_is_file {
+            assert!(r["distance"].get(&to).is_none(), "{id}: {to} is not a file");
+            non_file += 1;
+            continue;
+        }
         if r["distance"].get(&to).is_some() {
             found += 1;
             continue;
@@ -508,7 +518,10 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         );
     }
     assert_eq!(cases, 9, "every GRAPH case queried");
-    eprintln!("GRAPH suite through atlas-graph: {found}/{cases} relations reached");
+    assert_eq!(non_file, 1, "only G-006 names a non-file target");
+    eprintln!(
+        "GRAPH suite through atlas-graph: {found}/{cases} relations reached ({non_file} non-file target)"
+    );
 }
 
 /// Builds the frozen GRAPH snapshot (#2346) as a committed repository with an index.
