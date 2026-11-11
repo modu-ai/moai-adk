@@ -120,6 +120,48 @@ class CheckPrReauditTest(unittest.TestCase):
                         self.with_findings(classification + description), "--reaudit",
                     )
 
+    def test_inline_comment_delimiters_in_code_explanations_pass(self):
+        for code in (
+            "`<!--`",
+            "``<!--``",
+            "```<!--```",
+            "`` `<!--` ``",
+            "``` ``<!--`` ```",
+            "`-->`",
+        ):
+            description = (
+                "HTML comment opener " + code +
+                " 인식 경계를 수리하고 회귀 시험을 확인했다."
+            )
+            with self.subTest(code=code):
+                self.assert_pass(self.with_scope(description), "--reaudit")
+                for classification in ("차단: ", "후속 Issue #2388: "):
+                    self.assert_pass(
+                        self.with_findings(classification + description), "--reaudit",
+                    )
+
+    def test_real_comments_after_inline_code_still_hide_required_fields(self):
+        for code in ("`<!--`", "`` `<!--` ``", "```<!--```"):
+            for line, token in (
+                (SCOPE_LINE, "reaudit:scope"),
+                (FINDINGS_LINE, "reaudit:findings"),
+            ):
+                with self.subTest(code=code, field=token):
+                    hidden = code + " <!--\n" + line + "-->\n"
+                    self.assert_blocked(FULL.replace(line, hidden), token)
+
+    def test_unmatched_or_mismatched_code_runs_do_not_hide_real_comments(self):
+        for prefix in ("`", "``", "``literal` ", "`literal`` ", "\\`literal` "):
+            with self.subTest(prefix=prefix):
+                hidden = prefix + "<!--\n" + FINDINGS_LINE + "-->\n"
+                self.assert_blocked(
+                    FULL.replace(FINDINGS_LINE, hidden), "reaudit:findings",
+                )
+
+    def test_backticks_inside_actual_comments_do_not_expose_fields(self):
+        hidden = "<!-- `\n" + FINDINGS_LINE + "` -->\n"
+        self.assert_blocked(FULL.replace(FINDINGS_LINE, hidden), "reaudit:findings")
+
     def test_hidden_review_sections_cannot_supply_evidence(self):
         examples = (
             "<!--\n" + REVIEW + "-->\n",

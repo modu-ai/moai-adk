@@ -35,6 +35,8 @@ Save the PR body as UTF-8 `BODY.md` and run `python3 -I tools/check_pr_self_audi
 
 Use exactly one visible `## 독립 review` section; multiple visible review sections are ambiguous and fail. Inside that section, before the next visible Markdown heading, include each of the following fields exactly once as visible text. HTML comments and fenced or indented code examples do not establish a section, end it or supply its fields. Fill the repair scope with the actual repaired path, boundary and affected scope for F1.
 
+Comment delimiter text inside an inline code span (for example, `<!--`) remains visible explanation text, not an HTML comment opener. Code spans close with a backtick run of the same length as their opener; shorter or longer runs inside them are literal text. An unmatched backtick run does not hide an actual HTML comment, and comments outside a closed code span still cannot supply required fields.
+
 ```text
 - 수리 확인 범위: F1 repaired path, boundary and affected scope
 - 새 지적 분류: 없음

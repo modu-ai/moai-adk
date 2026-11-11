@@ -179,13 +179,28 @@ def visible_reaudit_lines(lines):
                 in_comment = False
                 position = end + 3
             else:
-                start = line.find("<!--", position)
-                if start < 0:
+                token = re.search(r"\\[`\\]|`+|<!--", line[position:])
+                if token is None:
                     visible.append(line[position:])
                     break
+                start = position + token.start()
+                end = position + token.end()
                 visible.append(line[position:start])
-                in_comment = True
-                position = start + 4
+                if token[0].startswith("\\"):
+                    visible.append(token[0])
+                    position = end
+                    continue
+                if token[0] == "<!--":
+                    in_comment = True
+                    position = end
+                    continue
+                # Only an equal-length backtick run closes an inline code
+                # span. An unmatched run is literal text, not comment masking.
+                closer = re.search(
+                    r"(?<!`)" + re.escape(token[0]) + r"(?!`)", line[end:],
+                )
+                position = end if closer is None else end + closer.end()
+                visible.append(line[start:position])
         line = "".join(visible)
         opener = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
         if opener and (opener[1][0] != "`" or "`" not in opener[2]):
