@@ -1,8 +1,13 @@
-//! Everything the statusline reads outside stdin: environment, the Go configuration and
-//! state files, and local git. Read-only (#2350): the Go statusline also writes
-//! `$HOME/.moai/state/last-model.txt` and `<anchor>/.moai/state/context-usage/*.json`;
-//! this port writes nothing, so the Go state stays untouched until a later card decides
-//! who owns those records.
+//! Everything the statusline reads outside stdin: environment, the project configuration
+//! and state files, the HOME state files, and local git. Read-only (#2350): the Go
+//! statusline also writes `$HOME/.moai/state/last-model.txt` and
+//! `<anchor>/.moai/state/context-usage/*.json`; this port writes nothing.
+//!
+//! HOME state (#2455, user decision 2026-11-11): `last-model.txt` and
+//! `last-session-state.json` are read from `$HOME/.moai-cli/state/` only, never from the
+//! Go folder `$HOME/.moai/`, and `MOAI_HOME` is not consulted. No Rust command writes
+//! those two files yet, so "nothing to read" is the normal state and both segments stay
+//! empty until a producer exists.
 //!
 //! The only subprocess is `git`, and only when a `.git` entry is found above the
 //! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
@@ -69,12 +74,12 @@ impl Context {
         self.var("HOME").map(PathBuf::from)
     }
 
-    /// `paths.MoaiHome`: an absolute `MOAI_HOME`, else `$HOME/.moai`.
-    fn moai_home(&self) -> Option<PathBuf> {
-        match self.var("MOAI_HOME").map(PathBuf::from) {
-            Some(p) if p.is_absolute() => Some(p),
-            _ => self.home().map(|h| h.join(".moai")),
-        }
+    /// The HOME state folder `$HOME/.moai-cli/state` (Issue #2455, user decision
+    /// 2026-11-11). The Go folder `$HOME/.moai` is never read, and `MOAI_HOME` — the Go
+    /// tool's variable — is not consulted, so a Go setting cannot point back at it.
+    fn home_state(&self) -> Option<PathBuf> {
+        self.home()
+            .map(|h| h.join(crate::HOME_STATE_DIR).join("state"))
     }
 
     pub fn no_color(&self) -> bool {
@@ -377,7 +382,8 @@ fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
 // ---- model ----
 
 /// `CollectMetrics` model resolution: display name, shortened id or name, then the
-/// `MOAI_LAST_MODEL` / `$HOME/.moai/state/last-model.txt` fallback, then the GLM mapping.
+/// `MOAI_LAST_MODEL` / `$HOME/.moai-cli/state/last-model.txt` fallback (Go read
+/// `$HOME/.moai/state/`; #2455 moved it), then the GLM mapping.
 fn collect_model(input: Option<&Input>, ctx: &Context) -> String {
     let mut name = String::new();
     if let Some(m) = input.and_then(|i| i.model.as_ref()) {
@@ -393,8 +399,8 @@ fn collect_model(input: Option<&Input>, ctx: &Context) -> String {
         name = if let Some(env) = ctx.var("MOAI_LAST_MODEL") {
             segments::shorten_model_name(env)
         } else {
-            ctx.home()
-                .and_then(|h| std::fs::read_to_string(h.join(".moai/state/last-model.txt")).ok())
+            ctx.home_state()
+                .and_then(|s| std::fs::read_to_string(s.join("last-model.txt")).ok())
                 .map(|s| s.trim().to_string())
                 .unwrap_or_default()
         };
@@ -671,7 +677,8 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
 
 // ---- local state files ----
 
-/// `taskCollector.read`: `<MOAI_HOME>/state/last-session-state.json` `active_task`.
+/// `taskCollector.read`: `$HOME/.moai-cli/state/last-session-state.json` `active_task`
+/// (Go read `<MOAI_HOME>/state/`; #2455 moved it).
 fn collect_task(ctx: &Context) -> String {
     #[derive(Deserialize, Default)]
     #[serde(default)]
@@ -691,10 +698,7 @@ fn collect_task(ctx: &Context) -> String {
         specs_in_progress: Option<Vec<String>>,
         active_task: Option<Active>,
     }
-    let Some(path) = ctx
-        .moai_home()
-        .map(|h| h.join("state/last-session-state.json"))
-    else {
+    let Some(path) = ctx.home_state().map(|s| s.join("last-session-state.json")) else {
         return String::new();
     };
     let Some(state) = std::fs::read(path)
