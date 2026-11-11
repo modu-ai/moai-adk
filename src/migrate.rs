@@ -282,7 +282,10 @@ pub struct GoRelease {
     pub version: String,
     pub sha256: Vec<String>,
 }
-pub const RELEASE_HASH_LIMIT: usize = 4096;
+/// Reachable through `migrate-plan`: 768 hashes are about 51 KiB of the 64 KiB request
+/// (67 bytes each), which leaves room for the selections and covers a Go release of 663
+/// template files (measured 2026-11-11).
+pub const RELEASE_HASH_LIMIT: usize = 768;
 impl GoRelease {
     fn check(&self) -> Result<()> {
         let v = &self.version;
@@ -376,7 +379,10 @@ impl SyntheticHome {
         let root = fs::canonicalize(root).map_err(|_| "synthetic root unavailable")?;
         let temp = fs::canonicalize(std::env::temp_dir()).map_err(|_| "temp unavailable")?;
         if root == temp || !root.starts_with(&temp) || !root.is_dir() {
-            return Err("only an explicit temporary synthetic home is allowed".into());
+            return Err(
+                "synthetic home refused: only a directory under the system temp directory is allowed"
+                    .into(),
+            );
         }
         Ok(Self { root })
     }
@@ -446,7 +452,10 @@ impl SyntheticHome {
             .iter()
             .any(|s| lower.contains(s))
         {
-            return Err("only selected non-secret Go config and SPEC files are allowed".into());
+            return Err(
+                "selection refused: only selected non-secret Go config and SPEC files are allowed"
+                    .into(),
+            );
         }
         let bytes = self.read(rel)?.ok_or("source missing")?;
         let text = std::str::from_utf8(&bytes)
@@ -506,7 +515,7 @@ impl SyntheticHome {
                 {
                     self.read(path)?.map(|b| hash(&b))
                 }
-                Some(_) => return Err("project comparison must name config or SPEC".into()),
+                Some(_) => return Err("invalid project comparison: name config or SPEC".into()),
             };
             let released = release.map(|r| r.contains(&source_sha256));
             let ownership = match (&s.recorded_sha256, released) {
@@ -577,12 +586,14 @@ impl SyntheticHome {
             None => self.plan(&plan.hosts, plan.mode.clone(), &selections)?,
         };
         if plan != &fresh || confirmed != fresh.digest {
-            return Err("stale, altered or unconfirmed summary".into());
+            return Err("stale or altered plan: unconfirmed summary; rerun migrate-plan".into());
         }
         if plan.entries.iter().any(|e| {
             e.action == "conflict" || e.action == "excluded_secret" || e.ownership != "owned"
         }) {
-            return Err("conflict or preserved source; reselect before apply".into());
+            return Err(
+                "conflict in selection: conflict or preserved source; reselect before apply".into(),
+            );
         }
         let root = self
             .path(&Self::backup_rel(plan, "backup"))?
@@ -591,7 +602,13 @@ impl SyntheticHome {
             .to_path_buf();
         fs::create_dir_all(root.parent().ok_or("backup parent")?)
             .map_err(|_| "backup unavailable")?;
-        fs::create_dir(&root).map_err(|_| "backup already exists or unavailable")?;
+        fs::create_dir(&root).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                "exclusive create refused: backup already exists"
+            } else {
+                "backup unavailable"
+            }
+        })?;
         for (i, e) in plan.entries.iter().enumerate() {
             let bytes = self.source(&e.selection.source)?;
             if hash(&bytes) != e.source_sha256 {
@@ -686,7 +703,9 @@ impl SyntheticHome {
     pub fn recover(&self, plan: &RecoveryPlan, confirmed: &str) -> Result<Vec<String>> {
         let fresh = self.recovery_plan(&plan.receipt)?;
         if plan != &fresh || confirmed != fresh.digest {
-            return Err("stale or unconfirmed recovery".into());
+            return Err(
+                "stale or altered plan: unconfirmed recovery; rerun migrate-recovery-plan".into(),
+            );
         }
         for (e, a) in fresh.receipt.plan.entries.iter().zip(&fresh.actions) {
             if a == "removed_import" {

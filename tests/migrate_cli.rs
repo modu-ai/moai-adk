@@ -276,7 +276,7 @@ fn update_conflict_preview_shows_project_and_target_conflicts_and_blocks_apply()
     );
     let plan = v["result"]["plan"].clone();
     let d = v["result"]["plan_digest"].as_str().unwrap().to_string();
-    let (code, _) = env.run(
+    let (code, v) = env.run(
         &[
             "migrate-apply",
             h,
@@ -288,7 +288,15 @@ fn update_conflict_preview_shows_project_and_target_conflicts_and_blocks_apply()
         &plan,
     );
     assert_ne!(code, 0);
+    assert_eq!(v["error"]["kind"], "conflict", "{v}");
     assert_eq!(digest(&home), before);
+    // A project comparison outside config or SPEC is a refused request.
+    let (code, v) = env.run(
+        &["migrate-plan", h],
+        &request(&[hash(CONFIG)], Some("project/notes.txt")),
+    );
+    assert_ne!(code, 0);
+    assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
 
     fs::create_dir_all(home.join(".moai-cli/imports")).unwrap();
     fs::write(home.join(".moai-cli/imports/language.json"), b"existing").unwrap();
@@ -343,6 +351,8 @@ fn onprem_host_old_glm_key_file_and_secret_sources_are_refused() {
         r["selections"][0]["source"] = json!(source);
         let (code, v) = env.run(&["migrate-plan", h], &r);
         assert_ne!(code, 0, "{source}: {v}");
+        assert_eq!(v["error"]["kind"], "invalid_input", "{source}: {v}");
+        assert_eq!(v["error"]["retryable"], false, "{source}: {v}");
         assert!(!v.to_string().contains("SYNTHETIC=1"));
     }
     assert_eq!(digest(&home), before);
@@ -385,13 +395,15 @@ fn a_home_that_is_not_a_prepared_synthetic_home_is_refused() {
     fs::write(outside.join(SYNTHETIC_MARKER), SYNTHETIC_MARKER_TEXT).unwrap();
     let narrow_tmp = env.tmp.path().join("narrow");
     fs::create_dir_all(&narrow_tmp).unwrap();
-    let (code, _) = env.run_with(
+    let (code, v) = env.run_with(
         &["migrate-plan", s(&outside)],
         &req,
         env.user.path(),
         &narrow_tmp,
     );
     assert_ne!(code, 0);
+    assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
+    assert_eq!(v["error"]["retryable"], false, "{v}");
 
     // Marked, under TMPDIR, but it is the child's HOME, or an ancestor of it.
     let marked = env.home("as-home");
@@ -408,4 +420,36 @@ fn a_home_that_is_not_a_prepared_synthetic_home_is_refused() {
     // The same marked home is admitted when HOME is elsewhere (control).
     let (code, v) = env.run(&["migrate-plan", s(&marked)], &req);
     assert_eq!(code, 0, "{v}");
+}
+
+/// #2449 audit F3: the release-list bound is reachable through `migrate-plan` inside the
+/// 64 KiB request: 768 distinct hashes are admitted, 769 are refused by the list check
+/// (not by the input size). Literal values, not `RELEASE_HASH_LIMIT`.
+#[test]
+fn the_release_list_bound_is_reachable_through_the_cli() {
+    let env = Env::new();
+    let home = env.home("synthetic");
+    let h = s(&home);
+    let mut list: Vec<String> = vec![hash(CONFIG)];
+    list.extend((0..768u32).map(|i| hash(&i.to_le_bytes())));
+    assert_eq!(list.len(), 769);
+
+    let at = request(&list[..768], None);
+    assert!(serde_json::to_vec(&at).unwrap().len() <= 65536);
+    let (code, v) = env.run(&["migrate-plan", h], &at);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["plan"]["entries"][0]["ownership"], "owned");
+
+    let over = request(&list, None);
+    assert!(serde_json::to_vec(&over).unwrap().len() <= 65536);
+    let (code, v) = env.run(&["migrate-plan", h], &over);
+    assert_ne!(code, 0);
+    assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("bounded Go release hash list"),
+        "{v}"
+    );
 }

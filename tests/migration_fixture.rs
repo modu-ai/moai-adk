@@ -1,4 +1,3 @@
-use moai_cli::apply;
 use moai_cli::migrate::*;
 use std::fs;
 use tempfile::TempDir;
@@ -745,12 +744,12 @@ fn release_list_ownership_grades_are_conservative() {
     };
     // recorded + listed: the only importable grade.
     assert_eq!(
-        grade(&release(&[src.clone()]), &item),
+        grade(&release(std::slice::from_ref(&src)), &item),
         ("owned".into(), "create".into())
     );
     // recorded but not shipped by the release: preserved.
     assert_eq!(
-        grade(&release(&[other.clone()]), &item),
+        grade(&release(std::slice::from_ref(&other)), &item),
         ("unreleased".into(), "preserved".into())
     );
     // shipped by the release but no install record: preserved, reported only.
@@ -759,11 +758,11 @@ fn release_list_ownership_grades_are_conservative() {
         ..item.clone()
     };
     assert_eq!(
-        grade(&release(&[src.clone()]), &unrecorded),
+        grade(&release(std::slice::from_ref(&src)), &unrecorded),
         ("release_match_unrecorded".into(), "preserved".into())
     );
     assert_eq!(
-        grade(&release(&[other.clone()]), &unrecorded),
+        grade(&release(std::slice::from_ref(&other)), &unrecorded),
         ("unknown".into(), "preserved".into())
     );
     let modified = Selection {
@@ -780,7 +779,7 @@ fn release_list_ownership_grades_are_conservative() {
         .plan_release(
             &[Host::Claude],
             Mode::Default,
-            &release(&[src.clone()]),
+            &release(std::slice::from_ref(&src)),
             std::slice::from_ref(&item),
         )
         .unwrap();
@@ -812,19 +811,19 @@ fn release_list_bounds_and_format_are_checked() {
         release(&[ok[..63].to_string()]),
         GoRelease {
             version: String::new(),
-            ..release(&[ok.clone()])
+            ..release(std::slice::from_ref(&ok))
         },
         GoRelease {
             version: "v3/../x".into(),
-            ..release(&[ok.clone()])
+            ..release(std::slice::from_ref(&ok))
         },
         GoRelease {
             version: "v".repeat(65),
-            ..release(&[ok.clone()])
+            ..release(std::slice::from_ref(&ok))
         },
     ];
-    // 4096 / 4097 distinct hashes.
-    let many: Vec<String> = (0..4097u32).map(|i| hash(&i.to_le_bytes())).collect();
+    // 768 / 769 distinct hashes (RELEASE_HASH_LIMIT, written as literals).
+    let many: Vec<String> = (0..769u32).map(|i| hash(&i.to_le_bytes())).collect();
     bad.push(release(&many));
     for rel in &bad {
         assert!(h
@@ -838,7 +837,7 @@ fn release_list_bounds_and_format_are_checked() {
     }
     let edge = GoRelease {
         version: "v".repeat(64),
-        ..release(&many[..4096])
+        ..release(&many[..768])
     };
     assert!(h
         .plan_release(
@@ -861,4 +860,22 @@ fn onprem_host_and_duplicate_hosts_are_refused() {
             std::slice::from_ref(&item)
         )
         .is_err());
+}
+
+/// #2449 audit F2: an existing backup folder is a conflict (exclusive create), not an I/O
+/// error worth retrying; nothing is imported.
+#[test]
+fn an_existing_backup_folder_is_a_conflict() {
+    let (d, h, item) = fixture();
+    let p = h
+        .plan(&[Host::Claude], Mode::Default, std::slice::from_ref(&item))
+        .unwrap();
+    fs::create_dir_all(d.path().join(".moai-go-backup").join(&p.digest)).unwrap();
+    let err = h.apply(&p, &p.digest).unwrap_err();
+    assert!(err.contains("backup already exists"), "{err}");
+    assert_eq!(
+        moai_cli::contract::classify(&err),
+        moai_cli::contract::Kind::Conflict
+    );
+    assert!(!d.path().join(&item.target).exists());
 }
