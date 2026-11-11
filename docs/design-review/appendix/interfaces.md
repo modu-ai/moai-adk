@@ -80,6 +80,10 @@
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`
+- `migrate-apply`
+- `migrate-plan`
+- `migrate-recover`
+- `migrate-recovery-plan`
 - `package-inspect`
 - `package-resolve`
 - `parity-check`

@@ -36,6 +36,7 @@ pub mod lane_handoff;
 pub mod lane_status;
 pub mod layout;
 pub mod leader;
+pub mod migrate;
 pub mod ontology;
 pub mod parity;
 pub mod plan;
