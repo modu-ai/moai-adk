@@ -1445,6 +1445,11 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LayoutApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::WorktreeApply {
             project,
             source,
@@ -1815,11 +1820,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )
         }
         Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
-        Command::LayoutApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::FlowWipCheck {
             owner,
             repo,
