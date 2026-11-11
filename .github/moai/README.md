@@ -6,18 +6,20 @@ Issues on `modu-ai/moai-adk` are the official work ledger for `2026.11.0-rc.1` (
 
 | Path | Purpose | Native effect |
 | --- | --- | --- |
-| `ISSUE_TEMPLATE/moai-feature.yml` | New feature skeleton: goal, non-goals, SPEC reference, acceptance with real verification, write scope, dependencies, host scope, evidence | Issue form. Sets no labels, assignees, projects or milestones |
-| `ISSUE_TEMPLATE/moai-bugfix.yml` | Bug fix skeleton: observed, expected with source, reproduction, regression test, scope, host scope, evidence | Issue form. Same restriction |
-| `ISSUE_TEMPLATE/moai-investigation.yml` | Investigation or design skeleton: question or decision, sources, options (filled during work), expected output, evidence | Issue form. Same restriction |
-| `moai/labels.yml` | Label taxonomy: reused remote labels, labels added for RC1, proposed labels not yet created | none; applied by hand with `gh label create` after preview |
+| `ISSUE_TEMPLATE/moai-feature.yml` | New feature: one-line outcome, goal, SPEC reference, scope (allowed, forbidden, non-scope, search hints), acceptance with verification and boundary behaviour, prerequisite Issues, HOLD decisions, done definition, host scope, evidence | Issue form. Sets the label `type:feature` only; no assignees, projects or milestones |
+| `ISSUE_TEMPLATE/moai-bugfix.yml` | Bug fix: one-line outcome, observed, expected with source, reproduction, regression test, scope, acceptance, prerequisites, HOLD, done definition, host scope, evidence | Issue form. Sets `type:fix` only |
+| `ISSUE_TEMPLATE/moai-investigation.yml` | Investigation or design: one-line outcome, question, sources, options (filled during work), expected output, scope, acceptance, prerequisites, HOLD, done definition, evidence | Issue form. Sets `type:design` only |
+| `ISSUE_TEMPLATE/moai-followup.yml` | Follow-up or repair of an existing Issue or PR: one-line outcome, original work (Issue, PR, AC, verdict link, head), remaining work, scope, acceptance, prerequisites, HOLD, done definition (#2434) | Issue form. Sets no label: the type follows the original work |
+| `ISSUE_TEMPLATE/config.yml` | Template chooser: blank Issues disabled, one documentation link (#2434) | Chooser config. Writers still see "Blank issue" marked "Maintainers only" |
+| `moai/labels.yml` | Label taxonomy: reused remote labels, labels to create (`added`), and previous-generation labels documented as `not_used` | none by itself; `rc-label-sync` creates missing `added` labels on a manual apply |
 | `moai/README.md` | This record | none |
 | `workflows/rc-ci.yml` | Repository check set on every PR to `v2026.11.0`; reports the check `rc-ci` and writes each step's exit to the job summary (00-E #2020) | Actions workflow. `contents: read` only; actions pinned to commit SHAs |
 | `workflows/rc-label-sync.yml` | Compares `moai/labels.yml` with the remote labels. Dry run by default; a manual `workflow_dispatch` with `apply: true` only creates missing `added` labels, never edits or deletes (00-E #2020) | Actions workflow. Read-only except the manual apply job (`issues: write`) |
 | `pull_request_template.md` | RC1 PR body contract: `Refs #<n>` (no auto-close keyword), claim token, base/candidate 40-character SHAs, commands with exits, independent review link, not_run/blocked, remaining gaps (00-E #2020; 06-C #2007 extends it) | PR template. Applied automatically only from the default branch |
 
-The three forms are skeletons decided with the user on 2026-11-08 (new feature, bug fix, investigation or design). Their detailed fields are settled one by one with the user; nothing beyond the skeleton is added unilaterally. A SPEC-amendment form was drafted and withdrawn the same day; it stays a candidate until the user decides. The verified forms and labels are later ADDED to the Rust project-generation templates; this folder is never moved or removed in that step.
+The three original forms are skeletons decided with the user on 2026-11-08 (new feature, bug fix, investigation or design). Issue #2434 completed their fields and added the follow-up form and `config.yml` under user decisions 1-4 = A (Issue comment 6783612809, 2026-11-11). The fields follow the research recorded on #2434 (comment 6783409806): an agent-ready Issue has a clear outcome, complete acceptance criteria and the files to change, and a limited, self-contained scope; the forms merge fields rather than add more. A SPEC-amendment form was drafted and withdrawn on 2026-11-08; it stays a candidate until the user decides. The verified forms and labels are later ADDED to the Rust project-generation templates; this folder is never moved or removed in that step. The three forms and `labels.yml` already have byte-identical copies in `templates/github/` (08-B #2013 parity, checked by `tests/github_templates_test.py`), so #2434 updated those copies and their hashes too; the follow-up form and `config.yml` are not generated into projects.
 
-Local verification: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.github_assets_test` checks form schema shape (required keys, unique ids, allowed block types, required redaction checkbox, no label or assignee keys, no secret-shaped strings), form defaults, label-manifest consistency, the workflows (least-privilege permissions, every action pinned to a commit SHA, the `rc-ci` check set, label-sync dry run), the PR template fields, and that no previous-generation file is recreated. Remote verification is a separate `gh label list` cross-check recorded in the Issue report; GitHub form rendering stays not_run until the forms reach the default branch.
+Local verification: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.github_assets_test` checks form schema shape (required keys, unique ids, allowed block types, required redaction checkbox, no assignee, project or issue-type keys, at most the one decided `type:*` label and only a label the manifest knows, no secret-shaped strings), the agent-ready fields (#2434), form defaults, the chooser `config.yml`, label-manifest consistency, the workflows (least-privilege permissions, every action pinned to a commit SHA, the `rc-ci` check set, label-sync dry run), the PR template fields, and that no previous-generation file is recreated. Remote verification is a separate `gh label list` cross-check recorded in the Issue report; GitHub form rendering stays not_run until the forms reach the default branch.
 
 Progress, verification results and next steps are posted as one owned report comment per Issue (template `issue-report` in the design), updated only on meaningful transitions. Tool heartbeats are never posted.
 
@@ -62,7 +64,26 @@ Removed paths:
 
 ## Labels and milestones
 
-Existing remote labels (`type:*`, `priority:P0..P3`, `area:*`) are reused and never deleted or recoloured. RC1 adds `host:claude` and `host:codex` because every RC gate is verified per host, and `area:setup` for the SETUP slice. Status is reported in the Issue comment, not through `status:*` labels: labels and assignees are not a distributed lock.
+Taxonomy (Issue #2434, user decisions 1-4 = A, Issue comment 6783612809, 2026-11-11). Source: `labels.yml`.
+
+| Axis | Rule | Values |
+| --- | --- | --- |
+| `type:` | exactly one | `feature`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`, `design` |
+| `priority:` | exactly one | `P0` (blocks the RC release), `P1` (current queue), `P2` (follow-up), `P3` (later) |
+| `area:` | one or more, prefer one or two | `ci`, `cli`, `config`, `docs-site`, `hooks`, `security`, `templates`, `workflow`, `setup`, `atlas`, `design`, `runtime`, `router`, `update`, `forge` |
+| `host:` | when the work must be verified on that host | `host:claude`, `host:codex` (both when both) |
+| gate marker | only while a user decision is pending | `needs:decision` |
+
+Status is not a label: it is reported in the Issue's owned report comment, because labels and assignees are not a distributed lock. `needs:decision` is not a status either: it marks that lanes must not proceed until the user decides. The authority stays the decisions log and the Issue's HOLD line; the label only makes HOLD Issues filterable. Parent tracking uses native sub-issues (no `kind:epic` label) and ordering uses native issue dependencies (no `blocked` label). The REST endpoints are used because `gh` 2.92 has no flag for either; read the link back after the first use.
+
+Rules for whoever opens or edits an Issue:
+
+1. The creator labels the Issue in the creating command: `gh issue create --label type:<t>,priority:P<n>,area:<a>[,host:<h>]`. Issues are created with the CLI, so nothing relies on a form label.
+2. Only labels of the RC axes in `labels.yml` (`reused` and `added`) are applied. Lanes never create, edit or delete a label; a new label is first added to `labels.yml`, then the leader creates it with `rc-label-sync` (manual apply) after the PR merges.
+3. `priority:*` and `needs:decision` are changed by the leader only; a lane asks in its report comment. A lane may correct a wrong `type:` or `area:` and notes it in one line of its report comment.
+4. Web forms set one `type:` label (`type:feature`, `type:fix`, `type:design`; the follow-up form none). GitHub silently drops a form label that does not exist, so `type:design` must be created before the forms reach the default branch. Forms set no issue type: the organization's types (Task, Bug, Feature) cannot be set by `gh` 2.92 and would duplicate the `type:` label.
+
+Previous-generation labels (bare `bug`, `enhancement`, `high`, `priority:high`, `status:*` and the rest listed under `not_used` in `labels.yml`) stay on the remote. They are not applied to RC Issues and are not deleted or renamed: deleting a label removes it from every Issue and PR. They are reviewed after the stable release (decision 3 = A). Remote labels in neither list (for example `question`, `good first issue`) are not applied by lanes.
 
 ## Language rule
 
@@ -70,6 +91,7 @@ Issue titles, bodies, SPEC text, checklists and form descriptions are written in
 
 ## Known limits
 
+- The forms and `config.yml` take effect only on the default branch (`main`). They replace the previous generation's four Markdown templates on `main` together with the open-source preparation (#2435), and that `main` change is confirmed with the user right before it runs (decision 4 = A).
 - GitHub reads Issue forms and the PR template from the default branch only. Until the RC branch reaches the default branch they are inert. Meanwhile Issues are opened with `gh issue create --body-file`, and PRs with `gh pr create --body-file` from a filled copy of `pull_request_template.md`. Form rendering on GitHub: not_run.
 - The PR template uses the lowercase name `.github/pull_request_template.md`, the form GitHub's documentation gives. Whether GitHub also picks up an uppercase `PULL_REQUEST_TEMPLATE.md` was not verified (checked 2026-11-08).
 - Actions are pinned to full commit SHAs, as the 00-E design requires. GitHub's security-hardening guide (checked 2026-11-08) now calls locking workflow dependencies with a lockfile "the strongest protection available", superseding SHA pinning for repositories that adopt it. Whether to adopt it is left to 08-D (#2015).
