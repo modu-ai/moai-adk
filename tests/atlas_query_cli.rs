@@ -510,3 +510,124 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
     assert_eq!(cases, 9, "every GRAPH case queried");
     eprintln!("GRAPH suite through atlas-graph: {found}/{cases} relations reached");
 }
+
+/// Builds the frozen GRAPH snapshot (#2346) as a committed repository with an index.
+fn snapshot_project() -> (tempfile::TempDir, Value) {
+    let snapshot = fixture("source_snapshot.json");
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = dir.path();
+    git(root, &["init", "-q"]);
+    write(root, ".gitignore", ".moai-cli/index/\n");
+    for (path, entry) in snapshot["files"].as_object().unwrap() {
+        write(root, path, entry["content"].as_str().unwrap());
+    }
+    git(root, &["add", "-A"]);
+    git(root, &["commit", "-q", "-m", "frozen snapshot"]);
+    build(root);
+    (dir, snapshot)
+}
+
+/// The direct code-reference edges (#2442) between the two files of each GRAPH case:
+/// `kind source target L<lines>` for every edge whose endpoints are exactly the pair,
+/// read from a one-hop walk so a dense graph cannot reach the target by accident.
+fn direct_edges(root: &Path, from: &str, to: &str) -> Vec<String> {
+    let r = ok(
+        root,
+        "atlas-graph",
+        &json!({"protocol_version": 1, "query": {"start": [format!("file:{from}")]}, "limits": {"max_hops": 1, "max_edges": 5000}}),
+    );
+    let mut out = Vec::new();
+    for e in r["graph"]["edges"].as_array().unwrap() {
+        let (s, t) = (
+            e["source_id"].as_str().unwrap(),
+            e["target_id"].as_str().unwrap(),
+        );
+        let pair = [format!("file:{from}"), format!("file:{to}")];
+        if !(pair.contains(&s.to_string()) && pair.contains(&t.to_string())) {
+            continue;
+        }
+        let lines: Vec<String> = e["evidence_refs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| {
+                let r = r.as_str().unwrap();
+                r[r.find('#').unwrap() + 1..r.find('@').unwrap()].to_string()
+            })
+            .collect();
+        out.push(format!(
+            "{} {} {} {} {}",
+            e["kind"].as_str().unwrap(),
+            s,
+            t,
+            e["basis"].as_str().unwrap(),
+            lines.join(",")
+        ));
+    }
+    out.sort();
+    out
+}
+
+/// Per-case evidence for the GRAPH suite (#2442 AC-3): the direct edge, its direction,
+/// basis and evidence lines, measured on the frozen snapshot. The suite walk is three hops
+/// in both directions, so reaching a target there does not prove a direct reference.
+/// G-008/G-009 are `inferred`: the snapshot has no Cargo.toml, so the library crate name
+/// `moai_cli` is inferred, not read. G-002 has no code reference (the snapshot mentions
+/// `parse_op_markers` in `//!` comments only) and G-006 names a protocol, not a file —
+/// both stay without a direct edge (Issue #2442 HOLD 1 and 3).
+#[test]
+fn graph_cases_have_direct_code_reference_edges() {
+    let (dir, _) = snapshot_project();
+    let corpus = fixture("corpus.json");
+    let want: BTreeMap<&str, Vec<&str>> = BTreeMap::from([
+        (
+            "G-001",
+            vec!["calls file:src/archive.rs file:src/profile.rs static_resolved L136"],
+        ),
+        ("G-002", vec![]),
+        (
+            "G-003",
+            vec!["imports file:src/handoff.rs file:src/forge/outbox.rs static_resolved L28"],
+        ),
+        (
+            "G-004",
+            vec!["calls file:src/decision.rs file:src/lib.rs static_resolved L190"],
+        ),
+        (
+            "G-005",
+            vec!["calls file:src/audit.rs file:src/baseline.rs static_resolved L257"],
+        ),
+        ("G-006", vec![]),
+        (
+            "G-007",
+            vec!["imports file:src/flow.rs file:src/forge/transport.rs static_resolved L8"],
+        ),
+        (
+            "G-008",
+            vec!["calls file:src/main.rs file:src/atlas_tag.rs inferred L1426"],
+        ),
+        (
+            "G-009",
+            vec![
+                "calls file:src/main.rs file:src/contract.rs inferred L1688,L1714,L1720",
+                "imports file:src/main.rs file:src/contract.rs inferred L3",
+            ],
+        ),
+    ]);
+    let mut seen = 0;
+    for t in corpus["tasks"].as_array().unwrap() {
+        if t["kind"] != "graph" {
+            continue;
+        }
+        let id = t["id"].as_str().unwrap();
+        let rel = t["ground_truth"]["relation"].as_array().unwrap();
+        let got = direct_edges(
+            dir.path(),
+            rel[0].as_str().unwrap(),
+            rel[2].as_str().unwrap(),
+        );
+        assert_eq!(got, want[id], "{id}");
+        seen += 1;
+    }
+    assert_eq!(seen, 9);
+}
