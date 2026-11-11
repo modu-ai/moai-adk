@@ -73,7 +73,7 @@
       }
     },
     "workflows/setup.md": {
-      "sha256": "f675eb443244ecb5e678761c161b3e74946a469ec43b652875b993437eeab1c2",
+      "sha256": "90df285c03e18d203de3a2d5a744b4149e3691f7162130aabd9aa41ebfcc9b93",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-setup",
