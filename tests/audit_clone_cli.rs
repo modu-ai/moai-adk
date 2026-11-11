@@ -36,8 +36,14 @@ struct Fixture {
 /// A bare "forge" with `main` (base), `issue/1-x` (head, one commit on main) and an unrelated
 /// `other` branch; the project is a clone of it.
 fn fixture() -> Fixture {
+    fixture_in("")
+}
+
+/// The same fixture with every folder under `parent` (for example a name with a space).
+fn fixture_in(parent: &str) -> Fixture {
     let dir = tempfile::TempDir::new().unwrap();
-    let b = fs::canonicalize(dir.path()).unwrap();
+    let b = fs::canonicalize(dir.path()).unwrap().join(parent);
+    fs::create_dir_all(&b).unwrap();
     let (work, bare, project, tmp, home) = (
         b.join("work"),
         b.join("forge.git"),
@@ -205,6 +211,39 @@ fn a_relative_local_origin_is_resolved_against_the_project() {
     let out = run_commands(r, &deep, &[]);
     assert_eq!(out[3], fx.head);
     assert_eq!(out[4], fx.base);
+}
+
+#[test]
+fn a_relative_origin_under_a_project_path_with_a_space_is_planned_and_runs() {
+    // The written origin has no space; the resolved path inherits one from the parent.
+    let fx = fixture_in("audit space");
+    git(
+        &fx.project,
+        &["remote", "set-url", "origin", "../forge.git"],
+    );
+    let v = plan(&fx, &[]);
+    assert_eq!(v["ok"], true, "{v}");
+    let r = &v["result"];
+    let url = r["repo_url"].as_str().unwrap();
+    assert_eq!(url, fx.bare.to_str().unwrap());
+    assert!(url.contains("audit space"), "{url}");
+    let deep = fx.tmp.join("a").join("b");
+    fs::create_dir_all(&deep).unwrap();
+    let out = run_commands(r, &deep, &[]);
+    assert_eq!(out[3], fx.head);
+    assert_eq!(out[4], fx.base);
+}
+
+#[test]
+fn a_relative_origin_that_itself_has_a_space_is_still_refused() {
+    let fx = fixture();
+    git(
+        &fx.project,
+        &["remote", "set-url", "origin", "../my forge.git"],
+    );
+    let v = plan(&fx, &[]);
+    assert_eq!(v["ok"], false, "{v}");
+    assert!(v.to_string().contains("not usable"), "{v}");
 }
 
 #[test]
