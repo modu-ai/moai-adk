@@ -43,6 +43,7 @@
 - `context-bundle`
 - `context-verify`
 - `cost-report`
+- `decision-append`
 - `decision-record`
 - `effect-confirm`
 - `effect-intend`
@@ -65,6 +66,9 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `key-remove`
+- `key-set`
+- `key-status`
 - `lane-handoff-check`
 - `lane-status`
 - `layout-apply`
