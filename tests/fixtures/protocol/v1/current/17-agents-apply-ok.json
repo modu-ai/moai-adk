@@ -27,7 +27,7 @@
         "expected_sha256": null,
         "section_id": "moai-workflow",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:4f221da171bc851fb904308839145aa84671632a4b8c83a6068065a75ffc6e95",
+        "rendered_sha256": "sha256:1267f6e85f6bc25c701ba04df70303a1fb9a2f757e4af6aefec585623843219a",
         "detail": null
       },
       {
@@ -58,7 +58,7 @@
         ".moai-cli/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:000fbd41b73f045ea95de9e45b6de0ed6519f2417d4816f6880408cf67cb67cf",
+      "manifest_sha256": "sha256:d52b3ed59a55d02395e923b25f1cb0dbe680117f9dbf84cc7bfe1be763690228",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

@@ -183,6 +183,7 @@ fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
 승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
 명확한 허용 범위의 선택은 스스로 진행하고, 권한·비용·범위가 바뀔 때만 확인한다.\n\
 실행하지 않은 검증을 PASS로 보고하지 않는다. passed·failed·not_run·blocked·stale을 구분한다.\n\
+어떤 검사를 로컬에서 돌리고 언제 정확한 head의 CI 결과를 대신 인용할 수 있는지는 VERIFY workflow의 \"Check-run rules\" 절(단일 출처)을 따른다.\n\
 MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필수 gate의 검증된 대체가 없으면 관련 실행·발행을 막고 blocked로 보고한다.\n\
 상세 절차는 `{wf}`에서 필요한 workflow만 읽는다.\n\
 {share}\n",
@@ -202,6 +203,7 @@ Purpose: {purpose}\n\n\
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
 Decide on your own inside the allowed scope; ask only when permission, cost, or scope changes.\n\
 Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.\n\
+Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).\n\
 Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.\n\
 Read only the workflow you need from `{wf}`.\n\
 {share}\n",

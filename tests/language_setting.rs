@@ -238,7 +238,9 @@ fn interactive_setup_reads_one_answer_per_item() {
 }
 
 /// The managed block of a profile without `language`, pinned: the #2293 change must leave
-/// existing projects' AGENTS.md byte-identical.
+/// existing projects' AGENTS.md byte-identical. #2385 deliberately adds one line (the
+/// pointer to the VERIFY workflow's "Check-run rules"), so existing projects get it as an
+/// `update` on their next plan.
 const PLAIN_EN: &str = "<!-- moai:managed:begin id=moai-workflow -->
 ## MoAI workflow (managed section)
 
@@ -248,6 +250,7 @@ Purpose: Build a small editor
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.
 Decide on your own inside the allowed scope; ask only when permission, cost, or scope changes.
 Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.
+Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).
 Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.
 Read only the workflow you need from `skills/moai/workflows/`.
 Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.
