@@ -102,9 +102,14 @@ fn fixture() -> Fixture {
     fs::write(a.join("ignored.bin"), vec![1u8; 262_144]).unwrap();
     fs::write(b.join("untracked.txt"), "dirty\n").unwrap();
 
+    // #2563: a session building in the former `moai-rc-target-` folder and one in the new
+    // `moai-target-` folder are both build folders; neither may drop out of the totals.
     let rc = tmp.join("moai-rc-target-agent-2-t61-audit-2326");
     fs::create_dir_all(rc.join(".git")).unwrap();
     blob(&rc.join("x.bin"));
+    let new_target = tmp.join("moai-target-agent-7");
+    fs::create_dir_all(&new_target).unwrap();
+    blob(&new_target.join("x.bin"));
     let audit = tmp.join("moai-audit-2369-x");
     fs::create_dir_all(audit.join(".git")).unwrap();
     blob(&audit.join(".git/pack.bin"));
@@ -169,8 +174,8 @@ fn classes_and_worktree_facts_match_the_fixture() {
     let c = &r["classes"];
     assert_eq!(c["worktree_checkout"]["count"], 3);
     assert_eq!(c["worktree_target"]["count"], 2);
-    // The build-folder prefix wins over the audit pattern in its name.
-    assert_eq!(c["tmp_rc_target"]["count"], 1);
+    // The build-folder prefix wins over the audit pattern in its name; both prefixes count.
+    assert_eq!(c["tmp_target"]["count"], 2);
     assert_eq!(c["tmp_audit_clone"]["count"], 1);
     assert_eq!(c["tmp_empty_dir"]["count"], 1);
     assert_eq!(
@@ -178,7 +183,7 @@ fn classes_and_worktree_facts_match_the_fixture() {
         "other-tool is not a moai-* folder"
     );
     assert_eq!(c["local_refs"]["branches"], 2);
-    assert!(c["tmp_rc_target"]["bytes"].as_u64().unwrap() >= 65_536);
+    assert!(c["tmp_target"]["bytes"].as_u64().unwrap() >= 2 * 65_536);
 
     let primary = by_path(&r, ".");
     let a = by_path(&r, ".moai-cli/worktrees/a");
@@ -219,7 +224,7 @@ fn an_expired_budget_marks_every_sized_class_partial() {
     for cls in [
         "worktree_checkout",
         "worktree_target",
-        "tmp_rc_target",
+        "tmp_target",
         "tmp_audit_clone",
         "tmp_other",
     ] {
@@ -311,7 +316,7 @@ fn symlinks_are_never_followed() {
     let c = &r["classes"];
     assert_eq!(c["tmp_other"]["count"], 1, "{c}");
     let tmp_total: u64 = [
-        "tmp_rc_target",
+        "tmp_target",
         "tmp_audit_clone",
         "tmp_empty_dir",
         "tmp_other",
@@ -348,7 +353,7 @@ fn unreadable_folders_mark_their_class_partial() {
     let r = report_with_tmp(&fx, &missing, "600000");
     assert_eq!(r["partial"], true, "{r}");
     let want: BTreeSet<String> = [
-        "tmp_rc_target",
+        "tmp_target",
         "tmp_audit_clone",
         "tmp_empty_dir",
         "tmp_other",
