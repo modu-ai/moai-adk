@@ -503,3 +503,74 @@ fn a_profile_without_a_baseline_takes_the_answers_in_two_steps() {
         serde_json::from_slice(&fs::read(root.path().join(PROFILE)).unwrap()).unwrap();
     assert_eq!(written["purpose"], answered["purpose"]);
 }
+
+/// #2561: Go-generation project state is reported as a fact, read only, beside `detected`
+/// (never inside it, so the profile and its digest do not change). Only when `.moai/` is a
+/// real folder does the step suggest the read-only `go-state-plan` preview, and only to run
+/// after the user agrees; nothing is moved or created by detection.
+#[test]
+fn go_generation_state_is_reported_and_its_preview_only_suggested() {
+    // No `.moai/`: absent, no suggestion.
+    let root = with_profile();
+    let result = detect(&root);
+    assert_eq!(
+        result["go_state"],
+        json!({"moai_dir": "absent", "go_manifest": false}),
+        "{result}"
+    );
+    assert!(!result["next_actions"].to_string().contains("go-state-plan"));
+    assert!(result["detected"].get("go_state").is_none(), "{result}");
+
+    // A Go `.moai/` with its manifest: reported, and the preview is suggested after consent.
+    let root = with_profile();
+    write(
+        root.path(),
+        ".moai/manifest.json",
+        "{\"version\":\"1.0.0\",\"files\":{}}\n",
+    );
+    write(root.path(), ".moai/specs/SPEC-1/spec.md", "# spec\n");
+    let before = tree(root.path());
+    let result = detect(&root);
+    assert_eq!(tree(root.path()), before, "detection wrote nothing");
+    assert_eq!(
+        result["go_state"],
+        json!({"moai_dir": "folder", "go_manifest": true}),
+        "{result}"
+    );
+    let actions = result["next_actions"].to_string();
+    assert!(actions.contains("moai-cli go-state-plan"), "{actions}");
+    assert!(actions.contains("after the user agrees"), "{actions}");
+    assert!(result["profile"].get("go_state").is_none(), "{result}");
+
+    // A `.moai/` without a manifest is still a folder fact, with go_manifest false.
+    let root = with_profile();
+    write(root.path(), ".moai/config/x.yaml", "a: 1\n");
+    let result = detect(&root);
+    assert_eq!(
+        result["go_state"],
+        json!({"moai_dir": "folder", "go_manifest": false}),
+        "{result}"
+    );
+}
+
+/// #2561: a linked `.moai` is reported as a link and never followed (its target's manifest is
+/// not read), and no preview is suggested for it.
+#[cfg(unix)]
+#[test]
+fn a_linked_moai_folder_is_reported_not_followed() {
+    let root = with_profile();
+    let outside = TempDir::new().unwrap();
+    write(
+        outside.path(),
+        "manifest.json",
+        "{\"version\":\"1.0.0\",\"files\":{}}\n",
+    );
+    std::os::unix::fs::symlink(outside.path(), root.path().join(".moai")).unwrap();
+    let result = detect(&root);
+    assert_eq!(
+        result["go_state"],
+        json!({"moai_dir": "link", "go_manifest": false}),
+        "{result}"
+    );
+    assert!(!result["next_actions"].to_string().contains("go-state-plan"));
+}
