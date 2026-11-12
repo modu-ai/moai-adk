@@ -128,8 +128,9 @@ class NativeToolAliasTests(unittest.TestCase):
             environment.update(HOME=str(self.inner_home),
                                CARGO_HOME=str(self.inner_home / "cargo"),
                                RUSTUP_HOME=str(self.inner_home / "rustup"))
-        return subprocess.run([str(tool)] + args, cwd=self.project, env=environment,
-                              capture_output=True, text=True, timeout=10)
+        return support.run_with_progress_budget(
+            [str(tool)] + args, cwd=self.project, env=environment,
+            log=self.alias_log)
 
     def assert_command(self, name, tool):
         if name == "cargo":
