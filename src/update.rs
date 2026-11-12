@@ -350,6 +350,25 @@ pub(crate) fn test_fault(point: &str) -> Result<()> {
     Ok(())
 }
 
+/// Test seam (#2483 AC-5): `MOAI_CLI_TEST_FAULT=corrupt_after_move` appends one byte to
+/// the first moved file, standing in for a writer that changes the folder between the
+/// move and the manifest check. Debug builds only.
+fn test_corrupt_moved(moved: &Path, files: &[BackupFile]) {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok("corrupt_after_move") {
+        if let Some(first) = files.first() {
+            if let Ok(mut f) = fs::OpenOptions::new()
+                .append(true)
+                .open(moved.join(&first.path))
+            {
+                use std::io::Write as _;
+                let _ = f.write_all(b"x");
+            }
+        }
+    }
+    let _ = (moved, files);
+}
+
 /// Refuses a symlink in any existing component between `~/.moai-cli` and `dir`.
 pub(crate) fn refuse_state_symlinks(dir: &Path, what: &str) -> Result<()> {
     let mut cursor = dir;
@@ -1570,6 +1589,7 @@ fn run_backup_then_replace(
     let moved = dir.join(BACKUP_TREE);
     fs::rename(&root, &moved)
         .map_err(|_| "moving the original folder into the backup failed; nothing moved")?;
+    test_corrupt_moved(&moved, &btr.source_files);
     if source_files(&moved).ok().as_ref() != Some(&btr.source_files) {
         let _ = fs::rename(&moved, &root);
         return Err("the moved folder does not match the manifest; moved back".into());

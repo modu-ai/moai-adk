@@ -545,6 +545,40 @@ fn a_failure_mid_replace_keeps_the_backup_and_recovers() {
     );
 }
 
+/// AC-2/AC-5: when the moved folder no longer matches the manifest (a writer changed it
+/// between the move and the check — injected), the apply moves it back, installs
+/// nothing and leaves the host pending; recovery releases it.
+#[test]
+fn a_moved_folder_that_differs_from_the_manifest_is_moved_back() {
+    let f = fixture();
+    let before = originals(&f);
+    let p = plan(&f);
+    let r = result_of(&apply(
+        &f,
+        &p,
+        &[&token(&p, "claude")],
+        Some("corrupt_after_move"),
+    ));
+    let h = host(&r, "claude");
+    assert_eq!(h["status"], json!("failed"), "{r}");
+    assert_eq!(h["receipt_status"], json!("pending"));
+    assert!(
+        h["reload_basis"]
+            .as_str()
+            .unwrap()
+            .contains("does not match the manifest"),
+        "{h}"
+    );
+    let root = f.home.join(ROOTS[0].1);
+    let now = snapshot(&root);
+    assert_eq!(
+        now.keys().collect::<Vec<_>>(),
+        before[0].keys().collect::<Vec<_>>(),
+        "moved back; no package file installed"
+    );
+    assert!(!backup_of(&f.home, "claude").join("moai").exists());
+}
+
 /// A changed backup is never put back: recovery reports a conflict and writes nothing.
 #[test]
 fn a_tampered_backup_is_not_restored() {
