@@ -125,6 +125,40 @@ fn concurrent_claims_lowest_id_holds() {
     assert!(refusal(&verdict(&c, "a", Some(100))).is_none());
 }
 
+/// #2612 item 2: the MODE-AGENT `claim` step says a lease is renewed by editing the lease time
+/// on the own claim comment, and that a new claim line of the same session does not renew. Both
+/// halves are pinned here against the evaluator the text cites.
+#[test]
+fn renewal_is_an_edit_of_the_own_claim_comment_not_a_new_line() {
+    let epoch2 = |id: i64, lease: &str| IssueComment {
+        id,
+        author: "GoosLab".into(),
+        body: format!("moai-claim: session=a epoch=2 lease_until={lease}"),
+    };
+    // A new line while the first is live: the first still holds, the new id is not_owner.
+    let both_live = [claim(100, "a", LIVE), epoch2(200, LIVE)];
+    assert_eq!(verdict(&both_live, "a", Some(100))["status"], json!("owner"));
+    let v = verdict(&both_live, "a", Some(200));
+    assert_eq!(v["status"], json!("not_owner"));
+    assert_eq!(v["lost_to"], json!(100));
+    // After the first lapses, the new line is stale until a handoff closes the first.
+    let lapsed = [claim(100, "a", EXPIRED), epoch2(200, LIVE)];
+    let v = verdict(&lapsed, "a", Some(200));
+    assert_eq!(v["status"], json!("stale"));
+    assert_eq!(v["holder"], json!(100));
+    let handed = [
+        claim(100, "a", EXPIRED),
+        epoch2(200, LIVE),
+        comment(300, "GoosLab", "moai-claim-handoff: comment=100 to=a by=leader"),
+    ];
+    assert_eq!(verdict(&handed, "a", Some(200))["status"], json!("owner"));
+    // Editing the own comment's lease (same id, later time) keeps owner.
+    let edited = [claim(100, "a", LIVE)];
+    assert_eq!(verdict(&edited, "a", Some(100))["status"], json!("owner"));
+    let before_edit = [claim(100, "a", EXPIRED)];
+    assert_eq!(verdict(&before_edit, "a", Some(100))["status"], json!("stale"));
+}
+
 /// AC-1 late-visible competitor: the first read showed only our claim; the re-read shows a
 /// lower id and the verdict flips to not_owner.
 #[test]
