@@ -288,6 +288,30 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("cargo fetch --locked", script)
         self.assertNotIn("dependencies: no cache", script)
 
+    def test_rc_ci_runs_tests_with_pinned_nextest_and_doc_tests_separately(self):
+        """#2554 2-1: the test binaries run in parallel under cargo-nextest, installed from a
+        pinned release and checked against a sha256 recorded in the workflow (no fallback);
+        doc-tests, which nextest does not run, run with `cargo test --doc`."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        steps = flow["jobs"]["check"]["steps"]
+        names = [s.get("name") for s in steps]
+        install = steps[names.index("cargo-nextest (pinned, sha256-checked)")]["run"]
+        self.assertIn("version=0.9.151", install)
+        self.assertIn("releases/download/cargo-nextest-${version}/", install)
+        _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
+        for target in {e["target"] for e in after_merge}:
+            self.assertRegex(install, rf"{target}[|)].*sum=[0-9a-f]{{64}}")
+        self.assertIn('if [ "$actual" != "$sum" ]; then', install)
+        self.assertNotRegex(install, r"\|\|\s*true|cargo install")
+        self.assertLess(names.index("cargo-nextest (pinned, sha256-checked)"), names.index("Check set"))
+        script = steps[names.index("Check set")]["run"]
+        # Both must be real `run` steps of the check set (a recorded exit), not just text.
+        self.assertRegex(script, r"(?m)^\s*run test bash -c 'RUST_MIN_STACK=8388608 "
+                                 r"cargo nextest run --offline --locked --no-fail-fast ")
+        self.assertRegex(script, r"(?m)^\s*run doctest bash -c 'RUST_MIN_STACK=8388608 "
+                                 r"cargo test --offline --locked --doc ")
+        self.assertNotRegex(script, r"cargo test --offline --locked 2>&1")
+
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         triggers = flow.get("on", flow.get(True))  # PyYAML reads a bare `on:` key as True
