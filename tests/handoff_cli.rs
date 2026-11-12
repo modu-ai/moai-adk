@@ -1723,10 +1723,9 @@ fn handoff_cli_refuses_stale_request_and_unknown_key() {
 /// #2392 D3-C (decision 6774899518 row 15 = A, test only): an effect whose result was lost
 /// (`uncertain`) must be reconciled before it is sent again. Re-intending it with the same key
 /// and payload today answers `outcome: intended, verdict: passed`, so a caller that sends on a
-/// passed intent sends a second comment (RED). A repair answers without `passed` and points to
-/// `effects-reconcile`; the journal itself stays unchanged either way.
+/// passed intent sends a second comment. The repair answers `outcome: needs_reconcile,
+/// verdict: blocked` and points to `effects-reconcile`; the journal stays unchanged.
 #[test]
-#[ignore = "#2392 D3-C: RED until re-intending an uncertain effect is not a passed intent"]
 fn d3c_reintending_an_uncertain_effect_is_not_a_fresh_intent() {
     let tmp = tempfile::tempdir().unwrap();
     let repo = tmp.path().join("repo");
@@ -1753,6 +1752,33 @@ fn d3c_reintending_an_uncertain_effect_is_not_a_fresh_intent() {
         out["verdict"], "passed",
         "an uncertain effect was answered as a passed intent, inviting a duplicate send: {out}"
     );
+    assert_eq!(out["outcome"], "needs_reconcile", "{out}");
+    assert_eq!(out["verdict"], "blocked", "{out}");
+    assert!(
+        out["notes"].to_string().contains("effects-reconcile"),
+        "{out}"
+    );
+
+    // Boundary: a still `intended` effect re-intended with the same payload stays a passed
+    // intent (the existing idempotent answer), so only the lost result is blocked.
+    let repo = tmp.path().join("repo-intended");
+    git_repo(&repo);
+    let (journal, key, _) = reconcile_probe_setup(&repo, "intended");
+    let out = effect_intend(
+        &journal,
+        &key,
+        1,
+        "comment_post",
+        "acme",
+        "op-9",
+        1,
+        "comment_post",
+        b"payload",
+        &clock,
+    )
+    .unwrap();
+    assert_eq!(out["state"], "intended", "{out}");
+    assert_eq!(out["verdict"], "passed", "{out}");
 }
 
 /// Issue #2572 made deterministic: a child is forked in another thread and held between
