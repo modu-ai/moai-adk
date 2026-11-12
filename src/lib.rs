@@ -45,6 +45,7 @@ pub mod parity;
 pub mod plan;
 pub mod pr_link;
 pub mod profile;
+pub mod project_detect;
 pub mod project_skills;
 pub mod queue;
 pub mod queue_query;

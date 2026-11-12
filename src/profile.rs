@@ -47,6 +47,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("leader", true),
     ("context_max_bytes", true),
     ("archive_grace_days", true),
+    ("detected", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -113,6 +114,11 @@ pub struct Profile {
     /// before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive_grace_days: Option<u64>,
+    /// Project facts `project-detect` found (#2496): new or existing, manifests, languages,
+    /// language servers, MCP server names and databases. Absent means detection never ran; a
+    /// profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detected: Option<crate::project_detect::Detected>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -193,6 +199,9 @@ fn validate(p: &Profile) -> Result<()> {
         .is_some_and(|l| l.pr_check_interval_secs == 0)
     {
         return Err("leader pr_check_interval_secs must be a positive number".into());
+    }
+    if let Some(detected) = &p.detected {
+        crate::project_detect::validate(detected)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -727,6 +736,7 @@ mod tests {
             leader: None,
             context_max_bytes: None,
             archive_grace_days: None,
+            detected: None,
         }
     }
 
@@ -742,6 +752,10 @@ mod tests {
             }),
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
+            detected: Some(crate::project_detect::Detected {
+                project_kind: "new".into(),
+                ..Default::default()
+            }),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -767,7 +781,8 @@ mod tests {
                 "github_issues",
                 "leader",
                 "context_max_bytes",
-                "archive_grace_days"
+                "archive_grace_days",
+                "detected"
             ]
         );
     }
