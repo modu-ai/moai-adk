@@ -133,6 +133,33 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.event_name == 'push' }}
+      # #2554 2-1 (leader 6827616388): `cargo test` runs the ~120 test binaries one after
+      # another (11-25 min of run time per target); cargo-nextest runs them in parallel with
+      # the same tests. Pinned release assets of nextest-rs/nextest `cargo-nextest-0.9.151`,
+      # checked against the sha256 recorded here (equal to the release's .sha256 files, read
+      # 2026-11-12). A download or checksum failure fails the job; there is no fallback.
+      - name: cargo-nextest (pinned, sha256-checked)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          version=0.9.151
+          case "${{ matrix.target }}" in
+            linux-x86_64) asset=x86_64-unknown-linux-gnu; sum=1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4 ;;
+            linux-arm64) asset=aarch64-unknown-linux-gnu; sum=3e35e8f6913af92558ba09d7155f74e35dd1f0024ef3cd891637433ae4eacbdd ;;
+            macos-arm64|macos-x86_64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
+            *) echo "no pinned cargo-nextest asset for ${{ matrix.target }}" >&2; exit 1 ;;
+          esac
+          file="$RUNNER_TEMP/cargo-nextest-${version}-${asset}.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$file" \
+            "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${version}/cargo-nextest-${version}-${asset}.tar.gz"
+          actual="$( (sha256sum "$file" 2>/dev/null || shasum -a 256 "$file") | cut -d' ' -f1)"
+          if [ "$actual" != "$sum" ]; then
+            echo "cargo-nextest checksum mismatch: expected $sum, got $actual" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.cargo/bin"
+          tar xzf "$file" -C "$HOME/.cargo/bin" cargo-nextest
+          cargo nextest --version
       - name: Check set
         shell: bash
         run: |
@@ -182,7 +209,11 @@ jobs:
           # subcommand. RUST_MIN_STACK sets the stack of spawned threads, which libtest uses
           # (https://doc.rust-lang.org/std/thread/index.html, read 2026-11-11).
           echo "- test threads: \`RUST_MIN_STACK=8388608\` (#2452)" >> "$summary"
-          run test bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked 2>&1 | tee ci-test.log; exit "${PIPESTATUS[0]}"'
+          # #2554 2-1: the test binaries run in parallel under cargo-nextest (each test in its
+          # own process; #[ignore] tests stay skipped). nextest does not run doc-tests, so
+          # `cargo test --doc` runs them right after; together they are the old `cargo test`.
+          run test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --locked --no-fail-fast 2>&1 | tee ci-test.log; exit "${PIPESTATUS[0]}"'
+          run doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee ci-doctest.log; exit "${PIPESTATUS[0]}"'
           run clippy cargo clippy --offline --locked --all-targets -- -D warnings
           run fmt cargo fmt --check
           run unittest bash -c "python -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
@@ -200,7 +231,8 @@ jobs:
             echo "| case | gate | outcome on this target |"
             echo "| --- | --- | --- |"
             for t in e2e_never_writes_outside_temp_home privacy_06_operations_need_no_network; do
-              line=$({ grep -E "^test ${t} \.\.\. " ci-test.log || true; } | head -n 1 | sed 's/^test [^ ]* \.\.\. //')
+              # nextest line: `PASS [   0.282s] ( 1/25) moai-cli::<binary> <test>`; report its status word.
+              line=$({ grep -E "^ *[A-Z-]+ +\[[^]]*\] +(\([^)]*\) +)?[^ ]+ ${t}\$" ci-test.log || true; } | head -n 1 | awk '{print $1}')
               echo "| \`${t}\` | \`#[cfg(target_os = \"macos\")]\` | ${line:-not compiled on this target} |"
             done
             for t in e2e_host_claude_verdict_test e2e_receipt_not_run_test; do
