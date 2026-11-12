@@ -82,12 +82,12 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "29ea2ae44ba052701539843196fa8db5c0780172d8f2b000d3e8c090f580628f",
+      "sha256": "9d6d6feabf036dcfc2d90235c6d74036b40d9d1f8eb14b661d57c6906dde7228",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22)."
       }
     },
     "workflows/plan.md": {
