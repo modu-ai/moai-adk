@@ -114,7 +114,7 @@ git status --short
 
 ## (k) 독립 감사 verdict
 
-- [ ] `docs/rc-release-review.md` — 독립 reviewer가 reviewer identity·공유 context 범위·대조 digest·gap 표와 함께 기록한다. 필수 gap이 있으면 verdict는 `release blocked`(현재 예상 verdict: **release blocked** — (d) artifact 목록·(e) attestation·(g) 게시 실측이 not_run).
+- [ ] `docs/release-review.md` — 독립 reviewer가 reviewer identity·공유 context 범위·대조 digest·gap 표와 함께 기록한다. 필수 gap이 있으면 verdict는 `release blocked`(현재 예상 verdict: **release blocked** — (d) artifact 목록·(e) attestation·(g) 게시 실측이 not_run).
 
 ## 릴리스 게시 절차 (별도 권한 단계 — 이 체크리스트가 수행하지 않는다)
 
@@ -149,7 +149,7 @@ tree `v2026.11.0` tip `cf4e662aff5b33ceb96c47757eafa9eb6f250f20`, 실행 2026-11
 | (h) `rc-ci.yml` | passed | `ruby -ryaml` 파싱 → trigger `pull_request`(branches `v2026.11.0`)·`workflow_dispatch`, `permissions: {contents: read}` | 맞음(보강: 4개 target matrix — Linux x86_64·arm64, macOS arm64·x86_64 — 와 집계 `rc-ci` job, Windows 빌드 job) |
 | (h) ruleset 필수 체크 | blocked | `gh api …/rulesets/26791615` → required_status_checks `["moai/audit"]`만 — `rc-ci` 필수 등록은 저장소 설정(HOLD) | 맞음(HOLD 유지) — 03:59Z `["moai/audit"]` |
 | (i) SBOM | blocked | HOLD(사용자 결정 대기) | **낡음** — 결정 07:0x(11-09)로 'dist build + cargo cyclonedx 단계'로 재정의되어 도입됨((i)절). 현재 tree의 component 수는 재생성 전까지 not_run |
-| (k) 독립 감사 verdict(`docs/rc-release-review.md`) | not_run | 이 리허설은 감사가 아니다. #2262 PR의 독립 감사는 agent-2 | 맞음 — verdict 초기값 `release blocked` 그대로 |
+| (k) 독립 감사 verdict(`docs/release-review.md`) | not_run | 이 리허설은 감사가 아니다. #2262 PR의 독립 감사는 agent-2 | 맞음 — verdict 초기값 `release blocked` 그대로 |
 | T2 host 로딩 E2E | not_run | #2014 OPEN — receipt `AC-08C-3`·`AC-08C-4`·`AC-08C-6` = `not_run`(receipts.jsonl) | 맞음 — #2014 OPEN, receipt AC-08C-3·4·6 `not_run` |
 
 이 리허설에서 하지 않은 것: `git tag`, `gh release create`, 공개 게시, 서명 키 사용, workflow 실행, 저장소 설정 변경.
