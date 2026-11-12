@@ -134,6 +134,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `pr-body-render`
 - `pr-confirm`
 - `project-apply`
+- `project-detect`
 - `project-plan`
 - `project-skill-apply`
 - `project-skill-plan`

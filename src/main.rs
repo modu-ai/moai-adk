@@ -108,6 +108,12 @@ enum Command {
     ProjectPlan {
         project: PathBuf,
     },
+    /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
+    /// manifests, languages, language servers, configured MCP server names, databases. Reads
+    /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
+    ProjectDetect {
+        project: PathBuf,
+    },
     ProjectApply {
         project: PathBuf,
         #[arg(long)]
@@ -1260,6 +1266,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
         ProjectApply { .. } => "project.apply",
+        ProjectDetect { .. } => "project.detect",
         ProjectPlan { .. } => "project.plan",
         ProjectSkillApply { .. } => "project_skill.apply",
         ProjectSkillPlan { .. } => "project_skill.plan",
@@ -1654,6 +1661,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::PackageInspect { package } => Ok(
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
         ),
+        Command::ProjectDetect { project } => moai_cli::project_detect::detect_cli(&project),
         Command::ProjectPlan { project } => {
             // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
             // the profile message; no input value is echoed.

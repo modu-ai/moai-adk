@@ -48,6 +48,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("context_max_bytes", true),
     ("archive_grace_days", true),
     ("language", true),
+    ("detected", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -119,6 +120,11 @@ pub struct Profile {
     /// before this key reads unchanged and the managed section renders as before.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<crate::language::LanguageSettings>,
+    /// Project facts `project-detect` found (#2496): new or existing, manifests, languages,
+    /// language servers, MCP server names and databases. Absent means detection never ran; a
+    /// profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detected: Option<crate::project_detect::Detected>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -202,6 +208,9 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(language) = &p.language {
         crate::language::validate(language)?;
+    }
+    if let Some(detected) = &p.detected {
+        crate::project_detect::validate(detected)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -737,6 +746,7 @@ mod tests {
             context_max_bytes: None,
             archive_grace_days: None,
             language: None,
+            detected: None,
         }
     }
 
@@ -753,6 +763,10 @@ mod tests {
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
             language: Some([("code_comments".to_string(), "en".to_string())].into()),
+            detected: Some(crate::project_detect::Detected {
+                project_kind: "new".into(),
+                ..Default::default()
+            }),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -779,7 +793,8 @@ mod tests {
                 "leader",
                 "context_max_bytes",
                 "archive_grace_days",
-                "language"
+                "language",
+                "detected"
             ]
         );
     }
