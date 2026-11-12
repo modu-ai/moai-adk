@@ -110,6 +110,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `key-status`
 - `lane-handoff-check`
 - `lane-status`
+- `language-setup`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`

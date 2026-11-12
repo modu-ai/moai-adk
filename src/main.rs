@@ -354,6 +354,21 @@ enum Command {
     LaneStatus {
         project: PathBuf,
     },
+    /// Per-item writing-language setup (#2293): asks one question per item and returns a
+    /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
+    /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
+    /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
+    LanguageSetup {
+        project: PathBuf,
+        #[arg(long, conflicts_with = "answers")]
+        questions: bool,
+        #[arg(long)]
+        answers: bool,
+        /// Conversation language code for the conversation-default items; else the
+        /// profile's `language.user_chat`, else `en`.
+        #[arg(long)]
+        conversation: Option<String>,
+    },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -1141,6 +1156,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
+        LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1728,6 +1744,34 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LanguageSetup {
+            project,
+            questions,
+            answers,
+            conversation,
+        } => {
+            use moai_cli::language::{setup, SetupMode};
+            let mode = if questions {
+                SetupMode::Questions
+            } else if answers {
+                let value = input::<serde_json::Value>()?;
+                SetupMode::Answers(
+                    value
+                        .as_object()
+                        .cloned()
+                        .ok_or("answers must be a JSON object")?,
+                )
+            } else {
+                SetupMode::Interactive
+            };
+            setup(
+                &project,
+                mode,
+                conversation.as_deref(),
+                &mut io::stdin().lock(),
+                &mut io::stderr(),
+            )
+        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
