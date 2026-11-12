@@ -24,7 +24,7 @@ Rules for developing MoAI ADK itself in this checkout (Rust `moai-cli`, RC `2026
 - Lane sessions (`agent-N`): one Issue at a time in their own worktree. `agent-2` is the read-only independent auditor (never writes to the repo or GitHub). `agent-1` owns `skills/moai/` only when assigned. New sessions are opened only by the operator; no session spawns another.
 - Start sessions with `moai-cli cc|glm|codex` — a plain host session with no role (main model `opus` at effort `medium`, advisor `fable` on Claude hosts; #2053). The launcher flags `-l|-a` (`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`) are deprecated since #2164 (user decision 2026-11-09 D-1, docs/decisions-2026-11-08.md): #2164 adds a stderr warning and a note while still composing the same command; removal is a later card. `--name` stays. The legacy `moai-cli session --role …` form is compatibility only.
 - The MoAI role is a skill argument typed inside the open session (#2160): `/moai --mode leader [--autonomy full|semi]` or `/moai --mode agent` (Codex: `$moai --mode agent`), routed by `skills/moai/SKILL.md` to `skills/moai/workflows/mode-leader.md` and `mode-agent.md`. The spelling `--leader-mode`/`--agent-mode` in the SPEC title is historical. Only Claude Code sessions take leader mode in rc.2 (D-3); Codex sessions run agent mode and are reached through Issue comments and `.md` files (no cross-session channel).
-- Each session uses its own `CARGO_TARGET_DIR=/tmp/moai-target-<label>`; `CARGO_HOME=/tmp/moai-product-cargo` is shared. A shared target dir let one session's build overwrite another's test binary (observed 2026-11-08). The names were `/tmp/moai-rc-target-<label>` and `/tmp/moai-rc-product-cargo` before #2563: a session that already uses an old-name folder may keep using it; new sessions use the new names (no re-download is forced, and moving or deleting old folders is the leader's act after a list check).
+- Each session uses its own `CARGO_TARGET_DIR=/tmp/moai-target-<label>`; one dependency cache is shared as `CARGO_HOME`. A shared target dir let one session's build overwrite another's test binary (observed 2026-11-08). The names were `/tmp/moai-rc-target-<label>` and `/tmp/moai-rc-product-cargo` before #2563. A session that already builds in an old-name target folder may keep it; new sessions use `/tmp/moai-target-<label>`. The cache is different: `--offline` builds need the prepared cache, and an empty new folder fails at dependency resolution (PR #2585 audit B1). So `CARGO_HOME` is `/tmp/moai-product-cargo` once that folder exists and `/tmp/moai-rc-product-cargo` until then (the commands below pick it); moving the existing cache to the new name once (`mv /tmp/moai-rc-product-cargo /tmp/moai-product-cargo`, when no build runs) is the leader's act, and nothing is downloaded again.
 
 ## Agent loop (self-claim)
 
@@ -40,8 +40,8 @@ The self-claim round is defined once in `docs/design-review/autonomy-modes-spec.
 - Check set, run from the repository root before every PR and re-run after the final edit:
 
 ```sh
-CARGO_HOME=/tmp/moai-product-cargo CARGO_TARGET_DIR=/tmp/moai-target-<label> cargo test --offline --locked
-CARGO_HOME=/tmp/moai-product-cargo CARGO_TARGET_DIR=/tmp/moai-target-<label> cargo clippy --offline --locked --all-targets -- -D warnings
+CARGO_HOME=$(test -d /tmp/moai-product-cargo && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo) CARGO_TARGET_DIR=/tmp/moai-target-<label> cargo test --offline --locked
+CARGO_HOME=$(test -d /tmp/moai-product-cargo && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo) CARGO_TARGET_DIR=/tmp/moai-target-<label> cargo clippy --offline --locked --all-targets -- -D warnings
 cargo fmt --check
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p '*_test.py'
 git diff --check
