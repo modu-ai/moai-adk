@@ -331,10 +331,10 @@ impl Inspection<'_> {
         dir: &std::path::Path,
         rel: &str,
     ) -> Option<Vec<(String, std::fs::DirEntry)>> {
+        // Only directories already observed are listed, so a missing part never gets here: it
+        // simply matches no entry. Any error, a vanished directory included, fails closed.
         let entries = match std::fs::read_dir(dir) {
             Ok(entries) => entries,
-            // A missing part is a new path the claim may create.
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Some(Vec::new()),
             Err(_) => {
                 self.finding(rel, "unreadable");
                 return None;
@@ -576,6 +576,23 @@ mod tests {
         assert_eq!(reasons(root, "safe/**", 3), ["inspection_budget:safe/a"]);
         // A missing tail is a new path, not a finding.
         assert!(reasons(root, "safe/new/deeper.rs", 100).is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn inspection_fails_closed_on_an_unreadable_directory() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let locked = tmp.path().join("safe/locked");
+        std::fs::create_dir_all(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let readable = std::fs::read_dir(&locked).is_ok();
+        let got = reasons(tmp.path(), "safe/**", 100);
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // A privileged runner can read a 0o000 directory; then there is nothing to observe.
+        if !readable {
+            assert_eq!(got, ["unreadable:safe/locked"]);
+        }
     }
 
     #[test]
