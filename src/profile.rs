@@ -47,6 +47,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("leader", true),
     ("context_max_bytes", true),
     ("archive_grace_days", true),
+    ("language", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -113,6 +114,11 @@ pub struct Profile {
     /// before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive_grace_days: Option<u64>,
+    /// Writing language per item (#2293): item id → language code, both checked against the
+    /// tables in `crate::language`. Absent means no choice was recorded; a profile written
+    /// before this key reads unchanged and the managed section renders as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<crate::language::LanguageSettings>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -193,6 +199,9 @@ fn validate(p: &Profile) -> Result<()> {
         .is_some_and(|l| l.pr_check_interval_secs == 0)
     {
         return Err("leader pr_check_interval_secs must be a positive number".into());
+    }
+    if let Some(language) = &p.language {
+        crate::language::validate(language)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -727,6 +736,7 @@ mod tests {
             leader: None,
             context_max_bytes: None,
             archive_grace_days: None,
+            language: None,
         }
     }
 
@@ -742,6 +752,7 @@ mod tests {
             }),
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
+            language: Some([("code_comments".to_string(), "en".to_string())].into()),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -767,9 +778,62 @@ mod tests {
                 "github_issues",
                 "leader",
                 "context_max_bytes",
-                "archive_grace_days"
+                "archive_grace_days",
+                "language"
             ]
         );
+    }
+
+    /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
+    /// refused by `validate` and by `read_profile` on a hand-edited file.
+    #[test]
+    fn language_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let all = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"language".to_string()))
+        };
+        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        let mut desired = base.clone();
+        desired["language"] = serde_json::json!({"code_comments": "en"});
+        assert_eq!(
+            compute_delta(Some(&base), Some(&base), &desired).added,
+            vec!["language"]
+        );
+        let with = |pairs: &[(&str, &str)]| Profile {
+            language: Some(
+                pairs
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect(),
+            ),
+            ..v2()
+        };
+        assert!(validate(&with(&[("code_comments", "ko")])).is_ok());
+        assert!(validate(&with(&[("code_coments", "ko")])).is_err());
+        assert!(validate(&with(&[("code_comments", "kr")])).is_err());
+        assert!(validate(&with(&[])).is_err());
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join(PROJECT_STATE_DIR).join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for (bad, _) in [
+            (
+                json!({"code_comments": "en", "emoji": "en"}),
+                "unknown item",
+            ),
+            (json!({"code_comments": "english"}), "unsupported code"),
+            (json!({"code_comments": 1}), "non-string code"),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["language"] = bad;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            assert!(read_profile(tmp.path()).is_err());
+        }
     }
 
     /// `read_profile` keeps the `PROFILE_KEYS` and leaves a user's own key out, so the
