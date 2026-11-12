@@ -385,3 +385,76 @@ fn two_overlapping_calls_have_exactly_one_winner_the_lowest_id() {
     assert_eq!(loser["holder"]["comment_id"], 1001);
     assert_eq!(loser["holder"]["lane"], winner["lane"]);
 }
+
+// ---- #2499: lane name normalisation (`<letters>-<digits>-<fragment>` → `<letters>-<digits>`),
+// names taken from real 2026-11-1x records ----
+
+#[test]
+fn lane_names_normalise_by_the_documented_rule_only() {
+    use moai_cli::audit_claim::{lane_key, same_lane};
+    for (name, key) in [
+        ("pr-1", Some("pr-1")),
+        ("pr-1-hB", Some("pr-1")),
+        ("pr-2-hB", Some("pr-2")),
+        ("agent-22-2293", Some("agent-22")),
+        ("agent-25-2477", Some("agent-25")),
+        ("agent-4-59cb6a", Some("agent-4")),
+        ("agent-6-hBp17", Some("agent-6")),
+        ("agent-7-t67", Some("agent-7")),
+        ("agent-2", Some("agent-2")),
+        // Outside the rule: the second part is not all digits, a third hyphen, a UUID.
+        ("omp-t74", None),
+        ("codex-t47", None),
+        ("agent-1-hB-x", None),
+        ("742ea713-7133-42a5-8466-1915642362d6", None),
+        ("Agent-1", None),
+    ] {
+        assert_eq!(lane_key(name), key, "{name}");
+    }
+    assert!(same_lane("pr-1", "pr-1-hB"));
+    assert!(same_lane("agent-22-2293", "agent-22"));
+    assert!(!same_lane("agent-2", "agent-22"));
+    assert!(!same_lane("agent-2-hB", "agent-22-hB"));
+    // Outside the rule only byte-exact names match.
+    assert!(same_lane("codex-t47", "codex-t47"));
+    assert!(!same_lane("codex-t47", "codex-t47-hB"));
+    assert!(!same_lane("omp-t74", "omp-t7"));
+}
+
+#[test]
+fn an_author_spelled_with_a_session_fragment_is_still_an_author() {
+    let head = sha('a');
+    for (claim_session, lane) in [("pr-1", "pr-1-hB"), ("agent-22-2293", "agent-22")] {
+        let mut forge = Forge::new(&head);
+        forge.issue_comments[0].1 =
+            format!("moai-claim: session={claim_session} epoch=1 lease_until=2030-01-01T00:00:00Z");
+        let err = reserve_cli(req(lane, &head), &forge, &clock()).unwrap_err();
+        assert!(
+            err.contains(&format!(
+                "lane {lane} is an author of PR #7 (claim comment 301)"
+            )),
+            "{claim_session} vs {lane}: {err}"
+        );
+        assert_eq!(forge.posts(), 0);
+    }
+    // Outside the rule the match stays byte-exact: a differing spelling is not an author.
+    let mut forge = Forge::new(&head);
+    forge.issue_comments[0].1 =
+        "moai-claim: session=codex-t47 epoch=1 lease_until=2030-01-01T00:00:00Z".into();
+    let out = reserve_cli(req("codex-t47-hB", &head), &forge, &clock()).unwrap();
+    assert_eq!(out["outcome"], "reserved", "{out}");
+}
+
+#[test]
+fn a_reservation_spelled_with_a_session_fragment_is_the_same_lane() {
+    let head = sha('a');
+    let line = render_line("pr-1", &head);
+    let forge = Forge::new(&head).with_pr_comments(&[(500, &line)]);
+    let out = reserve_cli(req("pr-1-hB", &head), &forge, &clock()).unwrap();
+    assert_eq!(out["outcome"], "reserved", "{out}");
+    assert_eq!(out["comment_id"], 500);
+    assert_eq!(forge.posts(), 0);
+    // A different lane number still loses the head.
+    let out = reserve_cli(req("pr-11-hB", &head), &forge, &clock()).unwrap();
+    assert_eq!(out["outcome"], "held_by", "{out}");
+}

@@ -704,3 +704,134 @@ fn audit_columns_are_null_without_a_pr_and_empty_without_records() {
     assert_eq!(a["verdict_on_head"]["source"], json!("issue"));
     assert_eq!(a["verdict_on_head"]["verdict"], json!("PASS"));
 }
+
+// ---- #2499: winner_on_head follows the leader handoff like audit-claim; lane names
+// normalise by the audit_claim rule ----
+
+fn audit_remote_with(
+    issue_comments: Vec<Value>,
+    commit_message: &str,
+    pr_comments: Vec<Value>,
+) -> Vec<Exchange> {
+    let h2 = sha('2');
+    vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([{"number": 121, "head": {"sha": h2, "ref": "issue/21-x"}, "body": "Refs #21"}]),
+        ),
+        get(&format!("{API}/issues/21"), issue(21, "Blocked-By: 없음")),
+        get(
+            &format!("{API}/issues/21/comments?per_page=100"),
+            Value::Array(issue_comments),
+        ),
+        get(
+            &format!("{API}/pulls/121/commits?per_page=100"),
+            json!([{"sha": h2, "commit": {"message": commit_message}}]),
+        ),
+        get(
+            &format!("{API}/issues/121/comments?per_page=100"),
+            Value::Array(pr_comments),
+        ),
+    ]
+}
+
+fn as_comments(list: &[Value]) -> Vec<moai_cli::lane_status::Comment> {
+    list.iter()
+        .map(|c| moai_cli::lane_status::Comment {
+            id: c["id"].as_i64().unwrap(),
+            created_at: c["created_at"].as_str().unwrap_or_default().to_string(),
+            body: c["body"].as_str().unwrap().to_string(),
+        })
+        .collect()
+}
+
+#[test]
+fn winner_on_head_follows_the_last_leader_handoff_like_audit_claim() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let h2 = sha('2');
+    let pr_comments = vec![
+        note(4001, &format!("moai-audit-claim: lane=agent-9 head={h2}")),
+        note(4002, &format!("moai-audit-claim: lane=agent-8 head={h2}")),
+        note(
+            4003,
+            "moai-claim-handoff: comment=4001 to=agent-27 by=leader",
+        ),
+        // Not by the leader: ignored.
+        note(
+            4004,
+            "moai-claim-handoff: comment=4001 to=agent-30 by=agent-9",
+        ),
+        // Names the losing reservation: ignored.
+        note(
+            4005,
+            "moai-claim-handoff: comment=4002 to=agent-31 by=leader",
+        ),
+        // The last leader line on the winning reservation counts.
+        note(
+            4006,
+            "moai-claim-handoff: comment=4001 to=agent-26 by=leader",
+        ),
+    ];
+    let expected = moai_cli::audit_claim::holder_of(&as_comments(&pr_comments), &h2).unwrap();
+    assert_eq!(
+        (expected.lane.as_str(), expected.comment_id),
+        ("agent-26", 4006)
+    );
+    for reverse in [false, true] {
+        let mut prc = pr_comments.clone();
+        if reverse {
+            prc.reverse();
+        }
+        let issue_comments = vec![claim(2101, "agent-b", 1)];
+        let out = run(
+            &p,
+            audit_request(),
+            audit_remote_with(issue_comments, "feat: x\n\nMoai-Claim: 21#2101\n", prc),
+        );
+        let a = &row(&out, "agent-b", 21)["audit"];
+        assert_eq!(
+            a["winner_on_head"],
+            json!({"lane": expected.lane, "comment_id": expected.comment_id}),
+            "reverse={reverse} {out}"
+        );
+        assert_eq!(a["winner_via"], json!("handoff"));
+        assert_eq!(a["winner_reservation_id"], json!(4001));
+    }
+}
+
+#[test]
+fn winner_is_author_uses_the_lane_name_rule() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let p = project(&root);
+    let h2 = sha('2');
+    // (claim session, reservation lane, expected winner_is_author)
+    for (session, lane, author) in [
+        ("pr-1", "pr-1-hB", true),
+        ("agent-22-2293", "agent-22", true),
+        ("agent-2", "agent-22", false),
+        // Outside the rule: byte-exact only.
+        ("codex-t47", "codex-t47-hB", false),
+        ("codex-t47", "codex-t47", true),
+    ] {
+        let out = run(
+            &p,
+            audit_request(),
+            audit_remote_with(
+                vec![claim(2101, session, 1)],
+                "feat: x\n\nMoai-Claim: 21#2101\n",
+                vec![note(
+                    4001,
+                    &format!("moai-audit-claim: lane={lane} head={h2}"),
+                )],
+            ),
+        );
+        let a = &row(&out, session, 21)["audit"];
+        assert_eq!(a["winner_on_head"]["lane"], json!(lane), "{out}");
+        assert_eq!(a["winner_via"], json!("reservation"));
+        assert_eq!(a["winner_is_author"], json!(author), "{session} vs {lane}");
+        assert_eq!(a["lane_name_rule"], json!(moai_cli::audit_claim::NAME_RULE));
+    }
+}

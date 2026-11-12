@@ -325,11 +325,12 @@ pub(crate) fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
             Some(json!({"lane": lane, "comment_id": c.id, "head": head, "current": current, "state": state}))
         })
         .collect();
-    let winner = reservations
-        .iter()
-        .filter(|r| r["current"] == json!(true))
-        .min_by_key(|r| r["comment_id"].as_i64())
-        .map(|r| json!({"lane": r["lane"], "comment_id": r["comment_id"]}));
+    // The same holder rule as `audit-claim` (#2499): lowest current-head reservation, moved by
+    // the last leader handoff line that names it.
+    let holder = crate::audit_claim::holder_of(&pr.comments, &pr.head);
+    let winner = holder
+        .as_ref()
+        .map(|h| json!({"lane": h.lane, "comment_id": h.comment_id}));
     let verdict = verdict_on(&pr.comments, &pr.head)
         .map(|(v, id)| json!({"verdict": v, "comment_id": id, "source": "pr"}))
         .or_else(|| {
@@ -350,10 +351,19 @@ pub(crate) fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
             None => unresolved.push(*id),
         }
     }
+    let winner_is_author = holder.as_ref().map(|h| {
+        authors.iter().any(|a| {
+            crate::audit_claim::same_lane(a["session"].as_str().unwrap_or_default(), &h.lane)
+        })
+    });
     json!({
         "head": pr.head,
         "reservations": reservations,
         "winner_on_head": winner,
+        "winner_via": holder.as_ref().map(|h| if h.via_handoff { "handoff" } else { "reservation" }),
+        "winner_reservation_id": holder.as_ref().map(|h| h.reservation_id),
+        "winner_is_author": winner_is_author,
+        "lane_name_rule": crate::audit_claim::NAME_RULE,
         "verdict_on_head": verdict,
         "author_sessions": authors,
         "unresolved_claim_ids": unresolved,
