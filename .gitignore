@@ -357,6 +357,9 @@ dist-ssr/
 # Lane worktrees for every host (user decision 2026-11-08): inside the primary checkout so the Go hook allows
 # edits, outside .claude/; a nested worktree holds a .git file, so git lists it as untracked unless ignored here
 /.moai-cli/worktrees/
+# Apply receipts and their before-bytes stay local (#2590, docs/rust-product-path.md "Per-file receipts
+# and recovery"); the profile baseline .moai-cli/manifests/profile-baseline.json is tracked with project.yaml
+/.moai-cli/receipts/
 # Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary)
 .claude/
 .moai/
