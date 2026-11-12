@@ -653,6 +653,24 @@ enum Command {
         #[arg(long)]
         plan_digest: String,
     },
+    /// Read-only removal plan (WT-4, #2380): per linked worktree `remove`, `trim` (cargo
+    /// build output only) or `skip` with reasons, and a digest. Deletes nothing.
+    WorktreeGcPlan {
+        project: PathBuf,
+        /// Local ref of the integration branch, e.g. `origin/v2026.11.0`; a worktree whose
+        /// HEAD it contains counts as merged. Nothing is fetched.
+        #[arg(long)]
+        integration_ref: String,
+        /// A change newer than this many minutes keeps a worktree (design: 120).
+        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
+        recent_minutes: u64,
+        /// Time budget in milliseconds; past it the remaining worktrees are `skip`.
+        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
+        budget_ms: u64,
+        /// Test seam: the current time in Unix seconds instead of the clock.
+        #[arg(long, hide = true)]
+        now_unix: Option<u64>,
+    },
     /// Read-only space report of the repository's worktrees, their build folders and the
     /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
     /// evaluated. Writes nothing.
@@ -1226,6 +1244,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
         WorktreeReport { .. } => "worktree.report",
+        WorktreeGcPlan { .. } => "worktree.gc.plan",
     })
 }
 
@@ -2041,6 +2060,19 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+        ),
+        Command::WorktreeGcPlan {
+            project,
+            integration_ref,
+            recent_minutes,
+            budget_ms,
+            now_unix,
+        } => moai_cli::worktree_gc::plan(
+            &project,
+            &integration_ref,
+            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
+            std::time::Duration::from_millis(budget_ms),
+            now_unix,
         ),
         Command::AuditClonePlan {
             project,

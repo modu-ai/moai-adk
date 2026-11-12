@@ -10,6 +10,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 const SUITES: &str = "tests/fixtures/atlas/suites.json";
@@ -234,9 +235,9 @@ fn validate_expected_at(want: &Value, other_worktree: bool) -> Result<(), String
 }
 
 /// Runs one case end to end; `Err` names the first difference.
-fn judge(case: &Value) -> Result<Option<String>, String> {
+fn judge(test: &str, case: &Value) -> Result<Option<String>, String> {
     if case["mutation"]["operation"] == "fail_scan" {
-        return match prepare_failed_scan(case) {
+        return match f08_prepare(test, case) {
             Ok(failure) => {
                 let observed = failure.observe_failure();
                 compare_failure_expected(&observed, &case["expected"])?;
@@ -298,7 +299,7 @@ fn freshness_cases_from_the_fixture() {
     let mut not_run = Vec::new();
     for case in &all {
         let id = case["case_id"].as_str().unwrap();
-        match judge(case) {
+        match judge("freshness_cases_from_the_fixture", case) {
             Ok(None) => eprintln!("passed {id}"),
             Ok(Some(reason)) => {
                 eprintln!("not_run {id}: {reason}");
@@ -315,6 +316,55 @@ fn freshness_cases_from_the_fixture() {
     );
 }
 
+/// #2477 scope 2: the fixture's `c6_status` text states what this file runs. The judge
+/// reads no `c6_status`, so only the wording is checked here.
+#[test]
+fn c6_status_states_that_every_case_is_covered() {
+    for case in cases() {
+        let id = case["case_id"].as_str().unwrap();
+        let status = case["c6_status"].as_str().unwrap();
+        assert!(status.starts_with("covered by "), "{id}: {status}");
+    }
+}
+
+/// #2477 scope 1: a fault that cannot be set up is an error where F-08 must run (Linux,
+/// macOS) and a stated not_run elsewhere.
+#[test]
+fn f08_not_run_is_refused_where_f08_must_run() {
+    let err = f08_not_run_allowed(true, "synthetic reason").unwrap_err();
+    assert!(err.contains("synthetic reason"), "{err}");
+    assert_eq!(f08_not_run_allowed(false, "synthetic reason"), Ok(()));
+    assert_eq!(
+        F08_REQUIRED,
+        cfg!(any(target_os = "linux", target_os = "macos"))
+    );
+}
+
+/// Every F-08 setup goes through [`f08_prepare`], and [`F08_SITES`] counts them, so the
+/// summary line cannot miss a site: the direct calls plus the two `judge` callers, each of
+/// which reaches F-08 once through the fixture's single `fail_scan` case.
+#[test]
+fn f08_sites_match_the_calls_in_this_file() {
+    // Whitespace removed, so a call rustfmt splits over lines still counts.
+    let source: String = include_str!("freshness_fixture.rs")
+        .split_whitespace()
+        .collect();
+    let gated = concat!("f08_prepare", "(\"");
+    let judged = concat!("judge", "(\"");
+    let raw = concat!("prepare_failed_scan", "(");
+    assert_eq!(
+        source.matches(gated).count() + source.matches(judged).count(),
+        F08_SITES
+    );
+    let fail_scan = cases()
+        .iter()
+        .filter(|c| c["mutation"]["operation"] == "fail_scan")
+        .count();
+    assert_eq!(fail_scan, 1);
+    // The definition and the one call inside `f08_prepare`.
+    assert_eq!(source.matches(raw).count(), 2);
+}
+
 /// Mutation per case: a wrong expected state must make the judge fail.
 #[test]
 fn the_judge_rejects_a_wrong_expectation_in_every_runnable_case() {
@@ -324,7 +374,10 @@ fn the_judge_rejects_a_wrong_expectation_in_every_runnable_case() {
         let state = wrong["expected"]["state"].as_str().unwrap();
         let flipped = if state == "fresh" { "stale" } else { "fresh" };
         wrong["expected"]["state"] = json!(flipped);
-        match judge(&wrong) {
+        match judge(
+            "the_judge_rejects_a_wrong_expectation_in_every_runnable_case",
+            &wrong,
+        ) {
             Err(_) => (),
             Ok(Some(reason)) => eprintln!("not_run {id} wrong-expectation check: {reason}"),
             Ok(None) => panic!("{id}: the judge accepted state {flipped}"),
@@ -431,6 +484,63 @@ fn records(dir: &Path) -> Value {
     .unwrap()
 }
 
+/// Platforms whose test runners can raise the mode-000 read fault, so F-08 must run there
+/// (#2477). Windows has no mode-based read fault and keeps a stated not_run.
+const F08_REQUIRED: bool = cfg!(any(target_os = "linux", target_os = "macos"));
+/// The tests that set up the F-08 fault: one [`f08_prepare`] call each.
+const F08_SITES: usize = 6;
+static F08_RUN: AtomicUsize = AtomicUsize::new(0);
+static F08_NOT_RUN: AtomicUsize = AtomicUsize::new(0);
+static F08_DONE: AtomicUsize = AtomicUsize::new(0);
+
+/// Writes to the process stderr directly. libtest captures `eprintln!` of a passing test, so
+/// only a direct write reaches the rc-ci log as evidence that F-08 ran.
+fn evidence(line: &str) {
+    let _ = writeln!(std::io::stderr(), "{line}");
+}
+
+/// The gate for an F-08 fault that could not be set up: an error where F-08 must run, a
+/// stated not_run elsewhere.
+fn f08_not_run_allowed(required: bool, reason: &str) -> Result<(), String> {
+    if required {
+        Err(format!(
+            "F-08 must run on this platform but the read fault could not be set up: {reason} (run the tests as an unprivileged user)"
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+/// Sets up F-08 for `test` and records the outcome in the evidence lines. `Err` is an allowed
+/// not_run (with its reason); a not_run where F-08 must run fails the test. The test that
+/// completes the last of [`F08_SITES`] prints the summary line.
+fn f08_prepare(test: &str, case: &Value) -> Result<FailedScan, String> {
+    let outcome = prepare_failed_scan(case);
+    match &outcome {
+        Ok(_) => {
+            F08_RUN.fetch_add(1, Ordering::SeqCst);
+            evidence(&format!("F-08 run: {test}"));
+        }
+        Err(reason) => {
+            if let Err(e) = f08_not_run_allowed(F08_REQUIRED, reason) {
+                evidence(&format!("F-08 FAILED: {test}: {e}"));
+                panic!("{e}");
+            }
+            F08_NOT_RUN.fetch_add(1, Ordering::SeqCst);
+            evidence(&format!("F-08 not_run: {test}: {reason}"));
+        }
+    }
+    if F08_DONE.fetch_add(1, Ordering::SeqCst) + 1 == F08_SITES {
+        evidence(&format!(
+            "F-08 summary: run={} not_run={} of {F08_SITES} on {} (F-08 required: {F08_REQUIRED})",
+            F08_RUN.load(Ordering::SeqCst),
+            F08_NOT_RUN.load(Ordering::SeqCst),
+            std::env::consts::OS,
+        ));
+    }
+    outcome
+}
+
 fn prepare_failed_scan(case: &Value) -> Result<FailedScan, String> {
     assert_eq!(case["mutation"]["operation"], "fail_scan");
     assert_eq!(case["mutation"]["file_removed"], false);
@@ -525,12 +635,12 @@ impl FailedScan {
 #[test]
 fn f08_failed_scan_preserves_file_and_published_generation() {
     let case = f08();
-    let failure = match prepare_failed_scan(&case) {
-        Ok(failure) => failure,
-        Err(reason) => {
-            eprintln!("not_run F-08: {reason}");
-            return;
-        }
+    // An allowed not_run (Windows) is recorded by `f08_prepare`.
+    let Ok(failure) = f08_prepare(
+        "f08_failed_scan_preserves_file_and_published_generation",
+        &case,
+    ) else {
+        return;
     };
     compare_failure_expected(&failure.observe_failure(), &case["expected"]).unwrap();
     failure.blocked.restore();
@@ -539,12 +649,12 @@ fn f08_failed_scan_preserves_file_and_published_generation() {
 #[test]
 fn f08_recovery_clears_partial_after_read_access_returns() {
     let case = f08();
-    let failure = match prepare_failed_scan(&case) {
-        Ok(failure) => failure,
-        Err(reason) => {
-            eprintln!("not_run F-08: {reason}");
-            return;
-        }
+    // An allowed not_run (Windows) is recorded by `f08_prepare`.
+    let Ok(failure) = f08_prepare(
+        "f08_recovery_clears_partial_after_read_access_returns",
+        &case,
+    ) else {
+        return;
     };
     compare_failure_expected(&failure.observe_failure(), &case["expected"]).unwrap();
     failure.blocked.restore();
@@ -567,12 +677,12 @@ fn failed_scan_retains_historical_edges_with_partial_freshness() {
         "src/b.rs": "pub fn callee() {}\n"
     });
     case["mutation"]["path"] = json!("src/a.rs");
-    let failure = match prepare_failed_scan(&case) {
-        Ok(failure) => failure,
-        Err(reason) => {
-            eprintln!("not_run F-08: {reason}");
-            return;
-        }
+    // An allowed not_run (Windows) is recorded by `f08_prepare`.
+    let Ok(failure) = f08_prepare(
+        "failed_scan_retains_historical_edges_with_partial_freshness",
+        &case,
+    ) else {
+        return;
     };
     assert!(
         failure.records["graph"]["edges"]
@@ -611,12 +721,9 @@ fn compare_failure_expected(observed: &Value, want: &Value) -> Result<(), String
 #[test]
 fn f08_judge_rejects_every_wrong_expected_field() {
     let case = f08();
-    let failure = match prepare_failed_scan(&case) {
-        Ok(failure) => failure,
-        Err(reason) => {
-            eprintln!("not_run F-08: {reason}");
-            return;
-        }
+    // An allowed not_run (Windows) is recorded by `f08_prepare`.
+    let Ok(failure) = f08_prepare("f08_judge_rejects_every_wrong_expected_field", &case) else {
+        return;
     };
     let observed = failure.observe_failure();
     compare_failure_expected(&observed, &case["expected"]).unwrap();
