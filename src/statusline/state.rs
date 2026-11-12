@@ -315,7 +315,7 @@ pub fn resolve_anchor(input: &Input) -> Option<PathBuf> {
 
 /// The parent of the git common directory for `dir`: `.git` as a directory, or a `.git`
 /// file naming a worktree git dir whose `commondir` points back to the main repository.
-pub(crate) fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
+fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
     let dir = std::fs::canonicalize(dir).ok()?;
     let (top, dot_git) = find_dot_git(&dir)?;
     if dot_git.is_dir() {
@@ -345,7 +345,7 @@ pub(crate) fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
+pub(crate) fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
     let mut dir = start.to_path_buf();
     loop {
         let candidate = dir.join(".git");

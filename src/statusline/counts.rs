@@ -95,13 +95,53 @@ pub fn is_fresh(cache: &Cache, now: i64) -> bool {
         .is_some_and(|t| now.saturating_sub(t) < STALE.as_secs() as i64)
 }
 
-/// The `origin` remote of `anchor` is on github.com, read from `.git/config` alone.
-/// A linked worktree (`.git` is a file) reads the main checkout's config.
-pub fn origin_is_github(anchor: &Path) -> bool {
-    let checkout = super::state::main_checkout_of(anchor).unwrap_or_else(|| anchor.to_path_buf());
-    let Ok(text) = fs::read_to_string(checkout.join(".git/config")) else {
-        return false;
+/// The `config` file of the repository `anchor` belongs to, found without a subprocess:
+/// a `.git` folder holds it; a `.git` file (linked worktree, `--separate-git-dir`
+/// checkout, submodule) names the git directory, whose `commondir`, when present, points
+/// at the shared directory that holds the remotes.
+fn git_config_path(anchor: &Path) -> Option<PathBuf> {
+    let (top, dot_git) = super::state::find_dot_git(&fs::canonicalize(anchor).ok()?)?;
+    if dot_git.is_dir() {
+        return Some(dot_git.join("config"));
+    }
+    let text = fs::read_to_string(&dot_git).ok()?;
+    let git_dir = PathBuf::from(text.trim().strip_prefix("gitdir:")?.trim());
+    let git_dir = if git_dir.is_absolute() {
+        git_dir
+    } else {
+        top.join(git_dir)
     };
+    let common = match fs::read_to_string(git_dir.join("commondir")) {
+        Ok(c) => {
+            let c = PathBuf::from(c.trim());
+            if c.is_absolute() {
+                c
+            } else {
+                git_dir.join(c)
+            }
+        }
+        Err(_) => git_dir,
+    };
+    Some(common.join("config"))
+}
+
+/// `owner/name` of a github.com URL in any of git's forms (`https://`, `ssh://`,
+/// `git@github.com:`), without a trailing `.git` or slash.
+fn github_owner_name(url: &str) -> Option<(String, String)> {
+    let at = url.find("github.com")?;
+    let rest = &url[at + "github.com".len()..];
+    let path = rest.strip_prefix(':').or_else(|| rest.strip_prefix('/'))?;
+    let path = path.trim_end_matches('/');
+    let path = path.strip_suffix(".git").unwrap_or(path);
+    let (owner, name) = path.split_once('/')?;
+    (!owner.is_empty() && !name.is_empty() && !name.contains('/'))
+        .then(|| (owner.to_string(), name.to_string()))
+}
+
+/// The repository of the `origin` remote of `anchor` when it is on github.com, read
+/// from the git config file alone (no subprocess on the render path).
+pub fn github_repo(anchor: &Path) -> Option<(String, String)> {
+    let text = fs::read_to_string(git_config_path(anchor)?).ok()?;
     let mut in_origin = false;
     for line in text.lines() {
         let line = line.trim();
@@ -112,13 +152,17 @@ pub fn origin_is_github(anchor: &Path) -> bool {
         if in_origin {
             if let Some((key, value)) = line.split_once('=') {
                 if key.trim() == "url" {
-                    let url = value.trim();
-                    return url.contains("github.com:") || url.contains("github.com/");
+                    return github_owner_name(value.trim());
                 }
             }
         }
     }
-    false
+    None
+}
+
+/// The `origin` remote of `anchor` is on github.com.
+pub fn origin_is_github(anchor: &Path) -> bool {
+    github_repo(anchor).is_some()
 }
 
 /// Take the refresh lock: create it exclusively, or take over one older than
@@ -135,10 +179,17 @@ fn take_lock(anchor: &Path, now: i64) -> bool {
                 return true;
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // A lock whose holder has not written its time yet (or wrote something
+                // unreadable) is aged by its modification time, so a fresh one is live.
                 let started = fs::read_to_string(&path)
                     .ok()
                     .and_then(|s| s.split_whitespace().nth(1)?.parse::<i64>().ok())
-                    .unwrap_or(0);
+                    .or_else(|| {
+                        let modified = fs::metadata(&path).ok()?.modified().ok()?;
+                        Some(modified.duration_since(UNIX_EPOCH).ok()?.as_secs() as i64)
+                    });
+                // Gone between the two reads: try to create it again.
+                let Some(started) = started else { continue };
                 if now.saturating_sub(started) < LOCK_TTL.as_secs() as i64 {
                     return false;
                 }
@@ -183,14 +234,27 @@ pub fn maybe_refresh(anchor: &Path, exe: &Path, suppressed: bool) -> bool {
     true
 }
 
-/// One `gh <kind> list` count, bounded by [`FETCH_BUDGET`]. `Err(true)` when `gh` is
-/// not installed, `Err(false)` for any other failure.
-fn gh_count(anchor: &Path, kind: &str) -> Result<i64, bool> {
+/// Exact open Issue and PR totals of one repository in a single GraphQL call.
+const COUNTS_QUERY: &str = "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){issues(states:OPEN){totalCount} pullRequests(states:OPEN){totalCount}}}";
+
+/// The open Issue and PR totals of `owner/name` on github.com, bounded by
+/// [`FETCH_BUDGET`]. The repository and host are passed explicitly and `GH_REPO` /
+/// `GH_HOST` are removed, so an inherited environment cannot redirect the query.
+/// `Err(true)` when `gh` is not installed, `Err(false)` for any other failure.
+fn gh_counts(anchor: &Path, owner: &str, name: &str) -> Result<(i64, i64), bool> {
     let mut child = Command::new("gh")
+        .args(["api", "graphql", "--hostname", "github.com", "-f"])
+        .arg(format!("query={COUNTS_QUERY}"))
+        .arg("-f")
+        .arg(format!("owner={owner}"))
+        .arg("-f")
+        .arg(format!("name={name}"))
         .args([
-            kind, "list", "--state", "open", "--limit", "1000", "--json", "number", "--jq",
-            "length",
+            "--jq",
+            r#".data.repository | "\(.issues.totalCount) \(.pullRequests.totalCount)""#,
         ])
+        .env_remove("GH_REPO")
+        .env_remove("GH_HOST")
         .current_dir(anchor)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -205,10 +269,13 @@ fn gh_count(anchor: &Path, kind: &str) -> Result<i64, bool> {
                 if let Some(mut s) = child.stdout.take() {
                     let _ = std::io::Read::read_to_string(&mut s, &mut out);
                 }
-                return if status.success() {
-                    out.trim().parse::<i64>().map_err(|_| false)
-                } else {
-                    Err(false)
+                if !status.success() {
+                    return Err(false);
+                }
+                let mut it = out.split_whitespace().map(str::parse::<i64>);
+                return match (it.next(), it.next(), it.next()) {
+                    (Some(Ok(issues)), Some(Ok(prs)), None) => Ok((issues, prs)),
+                    _ => Err(false),
                 };
             }
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(50)),
@@ -236,20 +303,21 @@ fn write(anchor: &Path, cache: &Cache) {
 }
 
 /// The refresh child (`statusline --refresh-counts --board-root <anchor>`): fetch both
-/// counts, rewrite this tool's cache and release the lock. A failure keeps the previous
+/// totals, rewrite this tool's cache and release the lock. A failure keeps the previous
 /// counts with a new `attempted_at`; a missing `gh` marks the pair suppressed.
 pub fn refresh(anchor: &Path) {
     let mut cache = read(anchor).unwrap_or_default();
     let now = now_unix();
     cache.attempted_at = Some(now);
-    match (gh_count(anchor, "issue"), gh_count(anchor, "pr")) {
-        (Ok(issues), Ok(prs)) => {
+    let fetched = github_repo(anchor).map(|(owner, name)| gh_counts(anchor, &owner, &name));
+    match fetched {
+        Some(Ok((issues, prs))) => {
             cache.open_issues = Some(issues);
             cache.open_prs = Some(prs);
             cache.fetched_at = Some(now);
             cache.suppressed = None;
         }
-        (Err(true), _) | (_, Err(true)) => cache.suppressed = Some(true),
+        Some(Err(true)) => cache.suppressed = Some(true),
         _ => {}
     }
     write(anchor, &cache);
@@ -337,6 +405,56 @@ mod tests {
         fs::create_dir_all(&wt).unwrap();
         fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
         assert!(origin_is_github(&wt));
+    }
+
+    #[test]
+    fn github_urls_in_every_form_name_owner_and_repository() {
+        let on = |u: &str| github_owner_name(u);
+        let acme = Some(("acme".to_string(), "w".to_string()));
+        assert_eq!(on("https://github.com/acme/w.git"), acme);
+        assert_eq!(on("https://github.com/acme/w/"), acme);
+        assert_eq!(on("git@github.com:acme/w.git"), acme);
+        assert_eq!(on("ssh://git@github.com/acme/w"), acme);
+        assert_eq!(on("https://user@github.com/acme/w.git"), acme);
+        assert_eq!(on("https://github.com/acme"), None);
+        assert_eq!(on("https://github.com/acme/w/extra"), None);
+        assert_eq!(on("https://gitlab.com/acme/w.git"), None);
+    }
+
+    #[test]
+    fn a_separate_git_dir_checkout_reads_its_own_git_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git_dir = tmp.path().join("store/widgets.git");
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(
+            git_dir.join("config"),
+            "[remote \"origin\"]\n\turl = https://github.com/acme/widgets.git\n",
+        )
+        .unwrap();
+        let work = tmp.path().join("work");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            work.join(".git"),
+            format!("gitdir: {}\n", git_dir.display()),
+        )
+        .unwrap();
+        assert_eq!(
+            github_repo(&work),
+            Some(("acme".to_string(), "widgets".to_string()))
+        );
+    }
+
+    #[test]
+    fn a_lock_whose_time_is_not_written_yet_is_live_until_its_file_ages() {
+        let tmp = tempfile::tempdir().unwrap();
+        let a = tmp.path();
+        fs::create_dir_all(dir(a)).unwrap();
+        // The window between create_new and the holder's write: an empty file.
+        fs::write(lock_path(a), "").unwrap();
+        let now = now_unix();
+        assert!(!take_lock(a, now));
+        assert!(!take_lock(a, now + LOCK_TTL.as_secs() as i64 - 2));
+        assert!(take_lock(a, now + LOCK_TTL.as_secs() as i64 + 2));
     }
 
     #[test]
