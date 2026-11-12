@@ -34,6 +34,8 @@ const SETTINGS_LOCAL: &str = ".claude/settings.local.json";
 const MANIFEST_LIMIT: u64 = 16 * 1024 * 1024;
 const FILE_LIMIT: u64 = 64 * 1024 * 1024;
 const ROOTS: [&str; 2] = [".moai", ".claude"];
+/// Decision 1 (#2561 comment 6831345102): `.moai/` moves as a whole folder.
+const MOAI_DIR: &str = ".moai";
 
 #[derive(Deserialize)]
 struct Manifest {
@@ -107,6 +109,7 @@ fn policy(
     key: &str,
     entry: &Entry,
     settings: &[(&'static str, String)],
+    folder_moves: bool,
 ) -> (&'static str, &'static str) {
     if !plain_relative(key) {
         return ("leave", "not a plain relative path");
@@ -118,6 +121,15 @@ fn policy(
         .unwrap_or("");
     if !ROOTS.contains(&top) {
         return ("leave", "outside .moai/ and .claude/");
+    }
+    // Decision 1: everything under `.moai/` follows the folder (one rename), so no file
+    // there moves on its own; when the folder stays, all of it stays.
+    if top == MOAI_DIR {
+        return if folder_moves {
+            ("with_folder", "moves with .moai/ as a whole")
+        } else {
+            ("leave", "the .moai/ folder stays (see the .moai item)")
+        };
     }
     if key == MANIFEST {
         return ("leave", "the Go manifest itself");
@@ -272,10 +284,38 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
             (None, HashMap::new())
         }
     };
+    // The `.moai/` folder item. Only with a usable manifest (nothing is proven otherwise),
+    // only a real folder (a linked `.moai` was refused by the manifest read above), and
+    // never while either settings file names a path under `.moai/` (decision 2: what the
+    // settings reference stays, fail-closed; cleanup is #2581).
+    let folder_is_dir = fs::symlink_metadata(project.join(MOAI_DIR))
+        .map(|m| m.is_dir())
+        .unwrap_or(false);
+    let referenced_by_settings = settings.iter().any(|(_, text)| text.contains(".moai/"));
+    let folder_moves = version.is_some() && folder_is_dir && !referenced_by_settings;
+    if version.is_some() && folder_is_dir {
+        items.push(Item {
+            path: MOAI_DIR.into(),
+            action: if folder_moves { "move" } else { "leave" }.into(),
+            reason: if folder_moves {
+                "the Go .moai/ folder as a whole (decision 1, #2561 comment 6831345102)"
+            } else {
+                "settings reference .moai/; the folder stays until they are cleaned (#2581)"
+            }
+            .into(),
+        });
+    }
+    if folder_moves {
+        warnings.push(
+            "Hooks that write under .moai/ recreate it while sessions run; a revert refuses \
+             while .moai/ exists again."
+                .to_string(),
+        );
+    }
     let mut keys: Vec<&String> = recorded.keys().collect();
     keys.sort();
     for key in keys {
-        let (action, reason) = policy(&project, key, &recorded[key], &settings);
+        let (action, reason) = policy(&project, key, &recorded[key], &settings, folder_moves);
         items.push(Item {
             path: key.clone(),
             action: action.into(),
@@ -323,8 +363,13 @@ const RECEIPT: &str = "go-state-receipt.json";
 #[serde(deny_unknown_fields)]
 pub struct Moved {
     pub path: String,
+    /// A file's sha256, or for the folder its `baseline::tree_digest` taken right after
+    /// the move (empty until then).
     pub sha256: String,
     pub moved: bool,
+    /// `folder` for the `.moai/` rename; absent (a file) in stage-2 receipts.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub kind: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -407,6 +452,27 @@ fn move_exclusive(from: &Path, to: &Path) -> Result<()> {
     fs::remove_file(from).map_err(|_| "move failed: source not removed (both copies kept)".into())
 }
 
+/// Move one folder with a single rename: the source must be a real folder (not a link),
+/// the destination must not exist, and another filesystem is refused (no copy fallback).
+fn move_folder(from: &Path, to: &Path) -> Result<()> {
+    match fs::symlink_metadata(from) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => return Err("folder move refused: the source is not a real folder".into()),
+        Err(_) => return Err("folder move refused: the source is missing".into()),
+    }
+    if fs::symlink_metadata(to).is_ok() {
+        return Err("folder move refused: the destination already exists".into());
+    }
+    fs::rename(from, to).map_err(|e| {
+        if e.raw_os_error() == Some(18) {
+            "cross-filesystem move refused; the project and its backup must share one filesystem"
+                .to_string()
+        } else {
+            "folder move failed (rename)".to_string()
+        }
+    })
+}
+
 /// Apply the preview whose digest the caller confirmed. Nothing is written unless a fresh
 /// preview has exactly that digest.
 pub fn apply_with_stamp(
@@ -450,18 +516,37 @@ pub fn apply_with_stamp(
             "backup folder create failed".to_string()
         }
     })?;
-    for item in &planned {
+    // Files first, the folder last: one rename that either happened or did not.
+    for item in planned.iter().filter(|i| i.path != MOAI_DIR) {
         let h = sha256_file(&project.join(&item.path))?;
         receipt.moves.push(Moved {
             path: item.path.clone(),
             sha256: h,
             moved: false,
+            kind: String::new(),
+        });
+    }
+    if planned.iter().any(|i| i.path == MOAI_DIR) {
+        receipt.moves.push(Moved {
+            path: MOAI_DIR.into(),
+            sha256: String::new(),
+            moved: false,
+            kind: "folder".into(),
         });
     }
     receipt.state = "pending".into();
     let mut saved = save_receipt(&project, &receipt, None)?;
     for i in 0..receipt.moves.len() {
         let rel = receipt.moves[i].path.clone();
+        if receipt.moves[i].kind == "folder" {
+            let dest_rel = format!("{backup_rel}/go-state/{MOAI_DIR}");
+            make_dirs(&project, &format!("{backup_rel}/go-state"))?;
+            move_folder(&project.join(MOAI_DIR), &project.join(&dest_rel))?;
+            receipt.moves[i].sha256 = crate::baseline::tree_digest(&project.join(&dest_rel), &[])?;
+            receipt.moves[i].moved = true;
+            saved = save_receipt(&project, &receipt, Some(&saved))?;
+            continue;
+        }
         refuse_linked(&project, &rel)?;
         let dest_rel = format!("{backup_rel}/go-state/{rel}");
         let parent = Path::new(&dest_rel)
@@ -527,6 +612,14 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>)> {
     }) {
         return Err("receipt holds a path outside .moai/ and .claude/; refused".into());
     }
+    // A folder entry is exactly `.moai`; a file entry is never the folder itself.
+    if receipt.moves.iter().any(|m| match m.kind.as_str() {
+        "folder" => m.path != MOAI_DIR,
+        "" => m.path == MOAI_DIR,
+        _ => true,
+    }) {
+        return Err("receipt holds an entry of the wrong kind; refused".into());
+    }
     Ok((receipt, text.into_bytes()))
 }
 
@@ -536,6 +629,37 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
     let (receipt, _) = read_receipt(&project, backup)?;
     let mut items = Vec::new();
     for m in &receipt.moves {
+        if m.kind == "folder" {
+            let dest_rel = format!("{BACKUPS}/{backup}/go-state/{MOAI_DIR}");
+            let source_present = fs::symlink_metadata(project.join(MOAI_DIR)).is_ok();
+            let backup_dir = !linked_component(&project, &dest_rel)
+                && fs::symlink_metadata(project.join(&dest_rel))
+                    .map(|md| md.is_dir())
+                    .unwrap_or(false);
+            let action = if source_present {
+                // Never merged: `.moai/` came back (a live hook) or was never moved.
+                if m.moved {
+                    "conflict"
+                } else {
+                    "skip"
+                }
+            } else if !backup_dir {
+                "missing"
+            } else if m.sha256.is_empty() {
+                // Moved but the receipt write did not follow: the disk says where it is.
+                "restore"
+            } else {
+                match crate::baseline::tree_digest(&project.join(&dest_rel), &[]) {
+                    Ok(d) if d == m.sha256 => "restore",
+                    _ => "missing",
+                }
+            };
+            items.push(RevertItem {
+                path: m.path.clone(),
+                action: action.into(),
+            });
+            continue;
+        }
         let action = if !m.moved {
             "skip"
         } else if fs::symlink_metadata(project.join(&m.path)).is_ok()
@@ -611,7 +735,11 @@ pub fn revert(
             make_dirs(&project, &parent)?;
         }
         let src = format!("{BACKUPS}/{backup}/go-state/{}", item.path);
-        move_exclusive(&project.join(src), &project.join(&item.path))?;
+        if item.path == MOAI_DIR {
+            move_folder(&project.join(src), &project.join(MOAI_DIR))?;
+        } else {
+            move_exclusive(&project.join(src), &project.join(&item.path))?;
+        }
         if let Some(m) = receipt.moves.iter_mut().find(|m| m.path == item.path) {
             m.moved = false;
         }
