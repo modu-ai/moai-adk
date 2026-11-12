@@ -3,13 +3,15 @@
 //!
 //! Split so another host adapter can reuse the parts: `input` (stdin contract),
 //! `segments` (pure computations), `state` (environment, files and git, read-only),
-//! `render` and `color` (layout and escape sequences), `config` (the YAML subset read).
+//! `render` and `color` (layout and escape sequences), `config` (the YAML subset read),
+//! `counts` (the forge counts cache and its detached refresh, #2588).
 //!
 //! The output is raw text, not the JSON envelope every other operation prints: Claude
 //! Code shows the command's stdout as is.
 
 pub mod color;
 pub mod config;
+pub mod counts;
 pub mod godecode;
 pub mod input;
 pub mod render;
@@ -60,7 +62,26 @@ pub fn run(budget: Duration) -> String {
     } else {
         read_capped(std::io::stdin())
     };
-    render(&stdin, &state::Context::from_process(budget))
+    let out = render(&stdin, &state::Context::from_process(budget));
+    refresh_counts_after_render(&stdin);
+    out
+}
+
+/// #2588: after a render, start the detached counts refresh when the cache needs one.
+/// The render itself stays read-only and never waits for it.
+fn refresh_counts_after_render(stdin: &[u8]) {
+    let Some(anchor) = (stdin.len() <= STDIN_CAP as usize)
+        .then(|| input::parse(stdin))
+        .flatten()
+        .filter(|i| i.tasks.is_none())
+        .as_ref()
+        .and_then(state::resolve_anchor)
+    else {
+        return;
+    };
+    if let Ok(exe) = std::env::current_exe() {
+        counts::maybe_refresh(&anchor, &exe, state::forge_suppressed(&anchor));
+    }
 }
 
 #[cfg(test)]
