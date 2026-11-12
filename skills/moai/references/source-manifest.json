@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "ccae6adbdd9d7a1e3f564c82f40bf05d9ecb13437cd1cf751f07f5fc5565aa89",
+      "sha256": "13375cdc1ecbe8b6a517fafbae32c228f83edcdc284e0a3a7aaed73f77070548",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -100,30 +100,30 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "0d9b9fc865fa804b2267a02450cec196caf0cdca46c6c1a02eaed5b7daa35e81",
+      "sha256": "f029ccd552df6f0015a63098bdfc9a2d1c67a9647f81eb69b2d2c3d06dfdae74",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/verify.md": {
-      "sha256": "214d9f25cabede055f50697d932342bbe62dbfc90119258c1c5b10467ccba78c",
+      "sha256": "98ca7207a3f4fc98fc8927fd36722c81a3de6d7fbb8e38ee9d11f63b4ab07459",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/audit.md": {
-      "sha256": "dc0f26c01f06970c4d918fa6659adaa47450befb3cb33ac1dd16104294f218e4",
+      "sha256": "c1aa4619f6687838d24cc362756c58c78532832a5a4f73a747f09626d83117df",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/sync.md": {
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "1fc1cd4edf83be86fc3a400aa30716e6980a0d7fe2860902feb5435100d802c5",
+      "sha256": "6818a77eab511366906949702670a412d358a3828f3de0b630ef34160bab2bbd",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "e98007c6bf5aea49e8bc38d385ba3f464b32e00882a12377e7fdacb27061a42c",
+      "sha256": "1c8669b8fdb8f7b06541f607860e4d4d32dab362a1d74f514f5b011ab8f79912",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
