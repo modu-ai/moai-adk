@@ -171,6 +171,77 @@ fn symbolic_links_are_not_followed() {
     assert_eq!(d["project_kind"], "new", "{d}");
 }
 
+/// #2496 pre-audit B1/B2: no read leaves the project — a symlinked middle folder (`prisma`,
+/// `.codex`), a symlinked file (`Cargo.toml`, `.mcp.json`, `requirements.txt`) and a symlink
+/// loop all count for nothing, while the same files in real folders are found.
+#[cfg(unix)]
+#[test]
+fn symlinked_folders_and_files_never_lead_outside() {
+    use std::os::unix::fs::symlink;
+    let outside = TempDir::new().unwrap();
+    let o = outside.path();
+    write(
+        o,
+        "prisma/schema.prisma",
+        "datasource db {\n  provider = \"mysql\"\n}\n",
+    );
+    write(
+        o,
+        ".codex/config.toml",
+        "[mcp_servers.leaked]\ncommand = \"x\"\n",
+    );
+    write(
+        o,
+        "Cargo.toml",
+        "[package]\nname = \"x\"\n\n[dependencies]\nrusqlite = \"0.31\"\n",
+    );
+    write(
+        o,
+        "mcp.json",
+        &json!({"mcpServers": {"leaked2": {}}}).to_string(),
+    );
+    write(o, "requirements.txt", "psycopg\n");
+
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    symlink(o.join("prisma"), r.join("prisma")).unwrap();
+    symlink(o.join(".codex"), r.join(".codex")).unwrap();
+    symlink(o.join("Cargo.toml"), r.join("Cargo.toml")).unwrap();
+    symlink(o.join("mcp.json"), r.join(".mcp.json")).unwrap();
+    symlink(o.join("requirements.txt"), r.join("requirements.txt")).unwrap();
+    fs::create_dir(r.join("a")).unwrap();
+    symlink("..", r.join("a").join("up")).unwrap();
+    symlink(".", r.join("loop")).unwrap();
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["databases"], json!([]), "{d}");
+    assert_eq!(d["mcp_servers"], json!([]), "{d}");
+    assert_eq!(d["manifests"], json!([]), "{d}");
+    assert_eq!(d["project_kind"], "new", "{d}");
+
+    // Positive control: the same files inside the project are found.
+    let real = TempDir::new().unwrap();
+    for rel in [
+        "prisma/schema.prisma",
+        ".codex/config.toml",
+        "Cargo.toml",
+        "requirements.txt",
+    ] {
+        write(real.path(), rel, &fs::read_to_string(o.join(rel)).unwrap());
+    }
+    write(
+        real.path(),
+        ".mcp.json",
+        &fs::read_to_string(o.join("mcp.json")).unwrap(),
+    );
+    let d = detect(&real)["detected"].clone();
+    assert_eq!(
+        d["databases"],
+        json!(["mysql", "postgres", "sqlite"]),
+        "{d}"
+    );
+    assert_eq!(d["mcp_servers"], json!(["leaked", "leaked2"]), "{d}");
+}
+
 /// AC-3: MCP server names and database kinds are recorded in `project.yaml`; MCP files are
 /// read for names only — no token reaches the output or the profile, the files stay byte
 /// for byte, and no MCP configuration is created.

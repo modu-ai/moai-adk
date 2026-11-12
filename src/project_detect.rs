@@ -140,17 +140,39 @@ const MAX_FILE: u64 = 256 * 1024;
 /// Largest list kept in `detected`.
 const MAX_ITEMS: usize = 64;
 
-/// A regular file at `path`, never through a symbolic link, at most `MAX_FILE` bytes.
-fn read_small(path: &Path) -> Option<String> {
-    let meta = fs::symlink_metadata(path).ok()?;
-    if !meta.file_type().is_file() || meta.len() > MAX_FILE {
+/// The regular file at `root/<parts…>`, checked component by component: every folder on the
+/// way must be a real folder and the last part a regular file, none of them a symbolic link
+/// (#2496 pre-audit B1: a symlinked middle folder such as `prisma -> /elsewhere` must not lead
+/// outside). A change between this check and the read is not guarded against.
+fn file_in(root: &Path, parts: &[&str]) -> Option<(PathBuf, fs::Metadata)> {
+    let (last, folders) = parts.split_last()?;
+    let mut path = root.to_path_buf();
+    for folder in folders {
+        path.push(folder);
+        let meta = fs::symlink_metadata(&path).ok()?;
+        if !meta.file_type().is_dir() {
+            return None;
+        }
+    }
+    path.push(last);
+    let meta = fs::symlink_metadata(&path).ok()?;
+    if !meta.file_type().is_file() {
+        return None;
+    }
+    Some((path, meta))
+}
+
+/// The text of [`file_in`], at most `MAX_FILE` bytes.
+fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
+    let (path, meta) = file_in(root, parts)?;
+    if meta.len() > MAX_FILE {
         return None;
     }
     fs::read_to_string(path).ok()
 }
 
-fn is_file(path: &Path) -> bool {
-    fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_file())
+fn is_file_in(root: &Path, parts: &[&str]) -> bool {
+    file_in(root, parts).is_some()
 }
 
 /// A name that may be recorded: short, printable, no path separators, no spaces.
@@ -221,13 +243,13 @@ fn requirement_name(spec: &str) -> String {
 /// Dependency names declared in the root manifests (names only; versions are ignored).
 fn dependency_names(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
-    if let Some(doc) = read_small(&root.join("Cargo.toml")).and_then(|t| toml_doc(&t)) {
+    if let Some(doc) = read_in(root, &["Cargo.toml"]).and_then(|t| toml_doc(&t)) {
         for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
             names.extend(table_keys(doc.get(section)));
         }
     }
     if let Some(v) =
-        read_small(&root.join("package.json")).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
     {
         for section in ["dependencies", "devDependencies"] {
             if let Some(map) = v[section].as_object() {
@@ -235,7 +257,7 @@ fn dependency_names(root: &Path) -> BTreeSet<String> {
             }
         }
     }
-    if let Some(doc) = read_small(&root.join("pyproject.toml")).and_then(|t| toml_doc(&t)) {
+    if let Some(doc) = read_in(root, &["pyproject.toml"]).and_then(|t| toml_doc(&t)) {
         if let Some(list) = doc
             .get("project")
             .and_then(|p| p.get("dependencies"))
@@ -249,7 +271,7 @@ fn dependency_names(root: &Path) -> BTreeSet<String> {
                 .and_then(|p| p.get("dependencies")),
         ));
     }
-    if let Some(text) = read_small(&root.join("requirements.txt")) {
+    if let Some(text) = read_in(root, &["requirements.txt"]) {
         names.extend(
             text.lines()
                 .map(str::trim)
@@ -257,7 +279,7 @@ fn dependency_names(root: &Path) -> BTreeSet<String> {
                 .map(requirement_name),
         );
     }
-    if let Some(text) = read_small(&root.join("go.mod")) {
+    if let Some(text) = read_in(root, &["go.mod"]) {
         for line in text.lines() {
             let line = line.trim().trim_start_matches("require").trim();
             if let Some(module) = line.split_whitespace().next() {
@@ -272,7 +294,7 @@ fn dependency_names(root: &Path) -> BTreeSet<String> {
 
 /// The datasource provider named in `prisma/schema.prisma`, as a database kind.
 fn prisma_database(root: &Path) -> Option<String> {
-    let text = read_small(&root.join("prisma").join("schema.prisma"))?;
+    let text = read_in(root, &["prisma", "schema.prisma"])?;
     let provider = text.lines().find_map(|l| {
         let l = l.trim();
         l.strip_prefix("provider")
@@ -295,18 +317,14 @@ fn prisma_database(root: &Path) -> Option<String> {
 fn mcp_servers(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     if let Some(v) =
-        read_small(&root.join(".mcp.json")).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        read_in(root, &[".mcp.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
     {
         if let Some(map) = v["mcpServers"].as_object() {
             names.extend(map.keys().cloned());
         }
     }
-    let codex = root.join(".codex");
-    let codex_dir = fs::symlink_metadata(&codex).is_ok_and(|m| m.file_type().is_dir());
-    if codex_dir {
-        if let Some(doc) = read_small(&codex.join("config.toml")).and_then(|t| toml_doc(&t)) {
-            names.extend(table_keys(doc.get("mcp_servers")));
-        }
+    if let Some(doc) = read_in(root, &[".codex", "config.toml"]).and_then(|t| toml_doc(&t)) {
+        names.extend(table_keys(doc.get("mcp_servers")));
     }
     names
 }
@@ -327,7 +345,7 @@ pub fn detect(root: &Path) -> Result<Detected> {
     let mut manifests = BTreeSet::new();
     let mut languages = BTreeSet::new();
     for (file, lang) in MANIFESTS {
-        if is_file(&root.join(file)) {
+        if is_file_in(root, &[file]) {
             manifests.insert((*file).to_string());
             languages.insert((*lang).to_string());
         }
