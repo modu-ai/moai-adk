@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "ccae6adbdd9d7a1e3f564c82f40bf05d9ecb13437cd1cf751f07f5fc5565aa89",
+      "sha256": "13375cdc1ecbe8b6a517fafbae32c228f83edcdc284e0a3a7aaed73f77070548",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "e98007c6bf5aea49e8bc38d385ba3f464b32e00882a12377e7fdacb27061a42c",
+      "sha256": "e1c66e7d59d43e020754edb1a64837bfecb925f3f4756cb2843b91ae762d5566",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
