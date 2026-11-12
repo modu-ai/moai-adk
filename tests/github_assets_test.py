@@ -247,6 +247,47 @@ class WorkflowTest(unittest.TestCase):
                         with self.subTest(workflow=path.name, job=job_id, uses=step["uses"]):
                             self.assertRegex(step["uses"], PINNED_USES)
 
+    @staticmethod
+    def rc_ci_matrix(check):
+        """The two `include` lists of the rc-ci matrix expression (#2554): the one a
+        `pull_request` run gets, and the one every other event gets."""
+        expr = check["strategy"]["matrix"]["include"]
+        m = re.fullmatch(
+            r"\$\{\{ fromJSON\(github\.event_name == 'pull_request'\s+&& '(\[.*?\])'\s+\|\| '(\[.*?\])'\) \}\}",
+            expr.strip(), re.S)
+        if m is None:
+            raise AssertionError(f"unexpected rc-ci matrix expression: {expr!r}")
+        return json.loads(m.group(1)), json.loads(m.group(2))
+
+    def test_rc_ci_moves_the_full_matrix_after_merge_without_cancelling_it(self):
+        """#2554 (user decision U10): PRs run linux-x86_64; the merging push and
+        workflow_dispatch run all four targets and windows-build. Only PR runs cancel an
+        older run of the same PR; a post-merge run is never cancelled."""
+        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        triggers = flow.get("on", flow.get(True))
+        self.assertEqual(triggers["push"]["branches"], ["v2026.11.0"])
+        self.assertIn("workflow_dispatch", triggers)
+        self.assertEqual(flow["concurrency"]["cancel-in-progress"],
+                         "${{ github.event_name == 'pull_request' }}")
+        self.assertIn("github.sha", flow["concurrency"]["group"])
+        self.assertEqual(flow["jobs"]["windows-build"]["if"],
+                         "${{ github.event_name != 'pull_request' }}")
+        self.assertNotIn("if", flow["jobs"]["check"])
+
+    def test_rc_ci_dependency_cache_is_written_only_by_post_merge_runs(self):
+        """#2554 AC-3: a PR run restores the base branch's dependency cache and never saves
+        one; the cache is pinned and sits before the check set."""
+        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        steps = flow["jobs"]["check"]["steps"]
+        names = [s.get("name") for s in steps]
+        cache = steps[names.index("Dependency cache")]
+        self.assertRegex(cache["uses"], r"^Swatinem/rust-cache@[0-9a-f]{40}$")
+        self.assertEqual(cache["with"]["save-if"], "${{ github.event_name == 'push' }}")
+        self.assertLess(names.index("Dependency cache"), names.index("Check set"))
+        script = steps[names.index("Check set")]["run"]
+        self.assertIn("cargo fetch --locked", script)
+        self.assertNotIn("dependencies: no cache", script)
+
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
         flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
         triggers = flow.get("on", flow.get(True))  # PyYAML reads a bare `on:` key as True
@@ -265,14 +306,22 @@ class WorkflowTest(unittest.TestCase):
         flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
         check = flow["jobs"]["check"]
         self.assertIs(check["strategy"]["fail-fast"], False)
-        targets = {e["target"]: e["runner"] for e in check["strategy"]["matrix"]["include"]}
-        self.assertEqual(targets, {
+        on_pr, after_merge = self.rc_ci_matrix(check)
+        # #2554 (user decision U10): the timing moves, the content does not — the targets
+        # a PR leaves out all run after merge, with the same runner labels.
+        self.assertEqual({e["target"]: e["runner"] for e in after_merge}, {
             "linux-x86_64": "ubuntu-24.04",
             "linux-arm64": "ubuntu-24.04-arm",
             "macos-arm64": "macos-15",
             "macos-x86_64": "macos-15-intel",
         })
+        self.assertEqual(on_pr, [e for e in after_merge if e["target"] == "linux-x86_64"])
         self.assertEqual(check["runs-on"], "${{ matrix.runner }}")
+        # #2554: every target's cap leaves room over its measured run time (linux-arm64:
+        # median 28.1 min, max 29.1 min over 20 runs), so a slow day is not a timeout failure.
+        caps = {e["target"]: e["timeout"] for e in after_merge}
+        self.assertGreaterEqual(caps["linux-arm64"], 45)
+        self.assertEqual(check["timeout-minutes"], "${{ matrix.timeout }}")
         aggregate = flow["jobs"]["rc-ci"]
         self.assertEqual(aggregate["needs"], ["check"])
         # #2312: runs after a failed target (so the check fails, not skips) but not after a

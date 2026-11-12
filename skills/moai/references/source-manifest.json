@@ -109,12 +109,12 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "235956ad4d1d5f8eb7271d572cadd3e05208fa411f3a44d93a7d5bedbbe917e1",
+      "sha256": "bc61ff15588e6f55d92c7e8cc0b495f0a135c7cf5bbc8bc9829a9c33a525f683",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10)."
       }
     },
     "workflows/audit.md": {
