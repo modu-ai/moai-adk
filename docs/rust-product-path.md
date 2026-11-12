@@ -490,6 +490,40 @@ Tests (`tests/claim_cli.rs`) cover: 8-process concurrency (one `claimed`, the re
 
 Audit columns (#2403 item 3): a row with a PR carries `audit`: `head`; `reservations` — every whole-line `moai-audit-claim: lane=<lane> head=<40 lowercase hex>` on the PR, each with `comment_id`, `current` and `state` (`current`, or `stale` for a reservation on an older head) (names the PR's current head); `winner_on_head` — the current-head reservation with the lowest comment id, or null; `verdict_on_head` — the last `AUDIT … verdict: PASS|FAIL` line naming the current head, read from the PR's comments first and then the Issue's, with `source` `pr` or `issue`; `author_sessions` — the sessions of the claim comments named by `Moai-Claim: <this Issue>#<id>` lines in the PR's commit messages (every epoch, so a repaired PR lists both the original and the repair session; tokens for other Issues are ignored), the sessions that may not audit that head; and `unresolved_claim_ids` — token ids that are not a claim comment on the Issue. A row without a PR has `audit: null`. The phase still reads verdicts from the Issue only (unchanged); nothing is assigned or posted.
 
+#### Additive communication observation (#2390 S6)
+
+The input and all existing output fields retain their meanings. `lane-status` adds this top-level metadata-only object; message payload values are not returned:
+
+```text
+communication: {
+  available: bool,
+  observed_at: i64,
+  lanes: [{
+    session,
+    sent_reports: [{
+      report_id, issue, event, to, record_comment_id, ack_comment_id,
+      received_ack, ack_alert, elapsed_secs
+    }],
+    received_acks: [{report_id, issue, ack_comment_id}],
+    unacknowledged_report_ids: [string],
+    dispatches: [<S2 dispatch-check JSON plus issue, from, to>]
+  }],
+  errors: [{issue, reason}]
+}
+```
+
+`sent_reports` selects the canonical S1 wire sender's `session_id`, not the GitHub comment author's login. `received_acks` lists explicit receiver ACKs of that lane's **sent** reports; it does not list reports the lane received, infer receipt from publication, or imply acceptance. Named lanes and discovered message actors are included with deterministic ordering. Generic events, `dispatch` and `dispatch-decision` remain distinct.
+
+Sources are the existing Issue/comment GET snapshots with complete pagination. Shared list readers follow GitHub's `Link rel="next"` verbatim, including its normal transition from `/repos/{owner}/{repo}/...` to `/repositories/{id}/...`; S6 collection validation must not truncate the existing status table or other readers.
+
+Only `communication` validates the captured comment-page source URLs: each must name the original slug collection or `https://api.github.com/repositories/<verified repository id>/issues/<n>/comments`. One live repository identity GET is needed when an S1 marker is detected or a comment-page source needs repository identity verification (including a numeric alias without message packets). The comment pages are not fetched again. A different repository id, host or collection makes the communication observation unavailable rather than manufacturing an ACK.
+
+Canonical S1 message validation, operation marker/digest, numeric publisher identity, target and actual repository/Issue context must agree. GitHub authors identify accounts; session IDs are declarations, not independent session authentication. Exact duplicate publications are deduplicated deterministically. Immutable report-ID conflicts are checked before event/context filtering. Relevant malformed packets, conflicts or incomplete observations make `communication.available=false` with generic `{issue, reason}` errors, without replacing the old lane-status output or fabricating an ACK.
+
+The five-minute target uses the server record comment's `created_at`, never `Message.created_at`: at 299 seconds without explicit receipt the alert is `waiting`; at 300 (N) and 301 (N+1) it is `unacknowledged`; an explicit matching receipt is `received`. Future time is unknown; malformed timestamps or arithmetic overflow make the observation unavailable/unknown, never elapsed zero or a fabricated timeout.
+
+Dispatch metadata reuses the S2 checker against the frozen GET snapshot, not a second live read or a parallel acceptance reducer. Receipt is not acceptance; an older superseded dispatch is not a current assignment. S2's observation-only flags and revision/decision rules remain intact. This is GET-only observation with no filesystem writes, host transmission/wake, scheduled delivery, takeover or claim/audit gate changes. S3, the S4 remainder, S5, host transport and audit gate linkage remain **HOLD**.
+
 ### Audit reservation (`audit-claim`, rc.2 #2403 item 1)
 
 `moai-cli audit-claim` takes `{schema_version, owner, repo, pr, head, lane}` on stdin. It reads, GET only, the PR (it must be open and `head` must be its current head), the PR's commits (at most 250, per the GitHub REST reference) and the comments of the Issue its body `Refs`, to find the authors: every `Moai-Claim: <issue>#<id>` trailer resolved to the `session` of that claim comment. The author match is byte-exact on the claim `session=` name and the output says so in `author_rule` (leader answer, #2403 comment 6784934128); a lane that spells its name differently in a reservation is not recognised, and name normalisation is a follow-up item. A lane that is an author is refused (`conflict`), and a trailer whose claim comment is not a claim line refuses the call (`blocked`), so an unreadable author is never taken for a non-author. Then it reads the PR's comments. The holder of a head is the `moai-audit-claim: lane=<lane> head=<head>` line with the lowest comment id (user decision, #2403 comment 6784520362); the leader moves it only with `moai-claim-handoff: comment=<reservation id> to=<lane> by=leader` on the PR (the last such line counts; a prose release is not read). If the lane already holds the head the answer is `reserved` with no write; if it has a line but another holds the head, `lost`; if another lane holds it, `held_by`; otherwise it posts one line, re-reads once, and answers `reserved` or `lost` by the same rule. A POST whose result is unknown, or a re-read that does not show the posted id, gives `uncertain` (re-running is safe: it reads first). It never edits or deletes a comment, posts no status and assigns nothing. Only `outcome: reserved` lets the lane start the audit. Tests: `tests/audit_claim_cli.rs` and unit tests in `src/audit_claim.rs`.
