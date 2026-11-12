@@ -9,6 +9,10 @@
 each time its place in the queue changes. `status` lists the slots held now. It only
 reads; it never ends or reorders another lane's work.
 
+A slot or queue path that is a symlink, FIFO, device, folder or hard link is refused
+before anything is written: `acquire` exits 125 (the wrapper's own failure, apart from
+COMMAND's codes) without running COMMAND, and `status` lists it under "refused".
+
 A slot is a file `slot-<i>` with an exclusive `fcntl.flock` lock. The lock lives on
 the open file, so the descriptor is also handed to COMMAND: the slot stays held while
 either this wrapper or COMMAND is alive, and the operating system frees it when both
@@ -28,6 +32,7 @@ import argparse
 import json
 import os
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -38,6 +43,8 @@ except ImportError:  # pragma: no cover - non-unix
     fcntl = None
 
 POLL_SECONDS = 0.2
+# The wrapper's own refusal, kept apart from COMMAND's codes like env(1) and timeout(1) do.
+REFUSED = 125
 FORWARDED = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
 
@@ -46,9 +53,41 @@ def default_dir():
     return os.path.join(base, "moai-cli", "heavy-slots")
 
 
-def try_lock(path, mode):
+class NotASlotFile(Exception):
+    """A slot or queue path that is not a plain file of its own (exit REFUSED)."""
+
+
+def open_plain(path, flags):
+    """Open `path` without following a symlink and only as a regular file with one link.
+
+    A symlink, FIFO, device, folder or hard-linked file at a slot path is refused before
+    anything is written, so the tool never truncates a file somewhere else (audit B1 of
+    PR #2571). O_NONBLOCK keeps a FIFO from blocking the open itself.
+    """
+    try:
+        fd = os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    except OSError as e:
+        try:
+            plain = stat.S_ISREG(os.lstat(path).st_mode)
+        except OSError:
+            raise e from None
+        if not plain:
+            raise NotASlotFile(path) from e
+        raise
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+            raise NotASlotFile(path)
+        os.set_blocking(fd, True)
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def try_lock(path, mode, create=os.O_CREAT):
     """Open `path` and take `mode` without waiting; return the fd or None if held."""
-    fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+    fd = open_plain(path, os.O_RDWR | create)
     try:
         fcntl.flock(fd, mode | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -67,7 +106,11 @@ def write_record(fd, record):
 
 def read_record(path):
     try:
-        with open(path, "rb") as f:
+        fd = open_plain(path, os.O_RDONLY)
+    except (OSError, NotASlotFile):
+        return {}
+    try:
+        with os.fdopen(fd, "rb") as f:
             return json.loads(f.read() or b"{}")
     except (OSError, ValueError):
         return {}
@@ -91,11 +134,18 @@ def take_slot(folder, maximum):
 
 
 def queue_place(waiting, me):
-    """1-based place of `me` among live waiters, oldest first (by file name)."""
+    """1-based place of `me` among live waiters, oldest first (by file name).
+
+    Another entry that is not a plain file is no waiter: it is skipped, never written.
+    """
     live = []
     for name in sorted(os.listdir(waiting)):
         path = os.path.join(waiting, name)
-        if name == me or is_held(path):
+        try:
+            alive = name == me or is_held(path)
+        except NotASlotFile:
+            alive = False
+        if alive:
             live.append(name)
     return live.index(me) + 1, len(live)
 
@@ -107,7 +157,7 @@ def acquire(folder, maximum, name, command):
     if fd is None:
         me = f"{time.time_ns():020d}-{os.getpid()}"
         wait_path = os.path.join(waiting, me)
-        wait_fd = try_lock(wait_path, fcntl.LOCK_EX)
+        wait_fd = try_lock(wait_path, fcntl.LOCK_EX, create=os.O_CREAT | os.O_EXCL)
         last = None
         try:
             while fd is None:
@@ -150,13 +200,19 @@ def acquire(folder, maximum, name, command):
 
 
 def status(folder):
-    slots = []
+    slots, refused = [], []
     if os.path.isdir(folder):
         for name in sorted(os.listdir(folder)):
             path = os.path.join(folder, name)
-            if name.startswith("slot-") and is_held(path):
-                slots.append(read_record(path))
-    print(json.dumps({"folder": folder, "held": slots}, indent=1, sort_keys=True))
+            if not name.startswith("slot-"):
+                continue
+            try:
+                if is_held(path):
+                    slots.append(read_record(path))
+            except NotASlotFile:
+                refused.append(name)
+    print(json.dumps({"folder": folder, "held": slots, "refused": refused}, indent=1,
+                     sort_keys=True))
     return 0
 
 
@@ -181,7 +237,13 @@ def main(argv=None):
     if args.max < 1 or not command:
         parser.error("acquire needs --max >= 1 and a command after --")
     os.makedirs(folder, mode=0o700, exist_ok=True)
-    return acquire(folder, args.max, args.name, command)
+    try:
+        return acquire(folder, args.max, args.name, command)
+    except NotASlotFile as e:
+        print(f"heavy-check-slot: refused {e}: not a plain file (symlink, FIFO, device, folder "
+              f"or hard link); nothing was written and COMMAND did not run — remove it or pass "
+              f"another --dir", file=sys.stderr)
+        return REFUSED
 
 
 if __name__ == "__main__":

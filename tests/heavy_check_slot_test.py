@@ -133,6 +133,109 @@ class HeavyCheckSlotTest(unittest.TestCase):
         self.assertEqual(record["slot"], 0)
         self.assertIsInstance(record["started_unix"], int)
 
+    def refused_run(self, make_slot):
+        """Plant a non-plain `slot-0`, run acquire --max 1, return (result, ran marker)."""
+        self.folder.mkdir()
+        make_slot(self.folder / "slot-0")
+        ran = Path(self.tmp.name) / "ran"
+        r = subprocess.run(
+            tool(self.folder, "acquire", "--max", "1", "--name", "x", "--",
+                 sys.executable, "-c", f"open({str(ran)!r}, 'w')"),
+            capture_output=True, text=True, timeout=30)
+        return r, ran
+
+    def test_symlinked_slot_is_refused_and_its_target_untouched(self):
+        """Audit B1 (PR #2571): a symlink at a slot path made the tool truncate and
+        overwrite the link's target."""
+        victim = Path(self.tmp.name) / "victim.txt"
+        victim.write_bytes(b"precious\n")
+        r, ran = self.refused_run(lambda slot: slot.symlink_to(victim))
+        self.assertEqual(r.returncode, 125, r)
+        self.assertEqual(victim.read_bytes(), b"precious\n")
+        self.assertFalse(ran.exists(), "COMMAND must not run on a refusal")
+        self.assertIn("refused", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertTrue((self.folder / "slot-0").is_symlink(), "the link is left as found")
+
+    def test_dangling_symlinked_slot_creates_nothing_at_its_target(self):
+        target = Path(self.tmp.name) / "created-elsewhere"
+        r, ran = self.refused_run(lambda slot: slot.symlink_to(target))
+        self.assertEqual(r.returncode, 125, r)
+        self.assertFalse(target.exists())
+        self.assertFalse(ran.exists())
+
+    def test_hard_linked_slot_is_refused_and_the_other_name_untouched(self):
+        victim = Path(self.tmp.name) / "victim.txt"
+        victim.write_bytes(b"precious\n")
+        r, ran = self.refused_run(lambda slot: os.link(victim, slot))
+        self.assertEqual(r.returncode, 125, r)
+        self.assertEqual(victim.read_bytes(), b"precious\n")
+        self.assertFalse(ran.exists())
+
+    def test_fifo_and_folder_slots_are_refused_without_a_traceback(self):
+        """Audit N2: a FIFO slot ended in an unhandled OSError traceback."""
+        for make in (os.mkfifo, os.mkdir):
+            with self.subTest(make=make.__name__):
+                self.folder = Path(self.tmp.name) / f"slots-{make.__name__}"
+                r, ran = self.refused_run(make)
+                self.assertEqual(r.returncode, 125, r)
+                self.assertNotIn("Traceback", r.stderr)
+                self.assertFalse(ran.exists())
+
+    def test_status_lists_a_refused_slot_and_writes_nothing(self):
+        victim = Path(self.tmp.name) / "victim.txt"
+        victim.write_bytes(b"precious\n")
+        self.folder.mkdir()
+        (self.folder / "slot-0").symlink_to(victim)
+        out = subprocess.run(tool(self.folder, "status"), capture_output=True, text=True, check=True)
+        state = json.loads(out.stdout)
+        self.assertEqual((state["held"], state["refused"]), ([], ["slot-0"]))
+        self.assertEqual(victim.read_bytes(), b"precious\n")
+
+    def test_a_symlink_among_the_waiters_is_skipped_never_written(self):
+        victim = Path(self.tmp.name) / "victim.txt"
+        victim.write_bytes(b"precious\n")
+        marker = Path(self.tmp.name) / "release"
+        script = f"import os,time\nwhile not os.path.exists({str(marker)!r}): time.sleep(0.05)"
+        holder = self.acquire(1, "holder", sys.executable, "-c", script)
+        self.assertTrue(wait_for(lambda: len(held(self.folder)) == 1))
+        (self.folder / "waiting" / "00000000000000000000-1").symlink_to(victim)
+        nxt = self.acquire(1, "next", "true")
+        self.assertTrue(wait_for(lambda: len(list((self.folder / "waiting").iterdir())) == 2))
+        marker.write_text("")
+        out = nxt.communicate(timeout=30)[0]
+        holder.communicate(timeout=30)
+        self.assertEqual(nxt.returncode, 0, out)
+        self.assertIn("waiting 1 of 1 for 1 slot(s)", out, "the link is not counted as a waiter")
+        self.assertEqual(victim.read_bytes(), b"precious\n")
+
+    def test_a_signal_before_the_command_starts_is_passed_on_once_it_does(self):
+        """Audit N1: the held-signal path. SIGTERM reaches the wrapper inside Popen, before
+        the command exists (no timing: the patched Popen sends it), and must still end the
+        command; without the hand-over the command would sleep for an hour."""
+        driver = (
+            "import os, signal, subprocess, sys\n"
+            f"sys.path.insert(0, {str(TOOL.parent)!r})\n"
+            "import heavy_check_slot as h\n"
+            "real = subprocess.Popen\n"
+            "def popen(*a, **k):\n"
+            "    os.kill(os.getpid(), signal.SIGTERM)\n"
+            "    return real(*a, **k)\n"
+            "h.subprocess.Popen = popen\n"
+            f"sys.exit(h.main(['acquire', '--max', '1', '--name', 'early', '--dir', {str(self.folder)!r},"
+            " '--', 'sleep', '3600']))\n")
+        p = subprocess.Popen([sys.executable, "-I", "-c", driver], stdin=subprocess.DEVNULL,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                             start_new_session=True)
+        try:
+            out = p.communicate(timeout=30)[0]
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            out = p.communicate()[0]
+            self.fail(f"the early SIGTERM never reached the command: {out!r}")
+        self.assertEqual(p.returncode, 128 + signal.SIGTERM, out)
+        self.assertEqual(held(self.folder), [])
+
     def test_usage_errors_exit_two(self):
         for args in (["--max", "0", "--name", "x", "--", "true"], ["--max", "1", "--name", "x", "--"]):
             r = subprocess.run(tool(self.folder, "acquire", *args), capture_output=True)
