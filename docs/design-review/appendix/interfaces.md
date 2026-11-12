@@ -146,6 +146,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `scope-check`
 - `search`
 - `snapshot-describe`
+- `update`
 - `update-apply`
 - `update-plan`
 - `worktree-apply`

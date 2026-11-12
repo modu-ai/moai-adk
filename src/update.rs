@@ -1278,6 +1278,106 @@ struct HostOutcome {
     backup_dir: Option<String>,
 }
 
+/// #2522: the skill package installed with this binary. The release layout puts it beside
+/// the binary's folder, `<version folder>/skills/moai` next to `<version folder>/bin/moai-cli`
+/// (decisions L165), so it is found from the canonical executable path. The folder itself
+/// must be a real directory; `stage_package` then applies the usual package rules.
+pub fn installed_package_dir() -> Result<PathBuf> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    let dir = exe
+        .parent()
+        .and_then(Path::parent)
+        .ok_or("binary path has no parent folder")?
+        .join("skills")
+        .join(SKILL_DIR);
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => Ok(dir),
+        Ok(m) if m.file_type().is_symlink() => {
+            Err("the installed skill package folder is a symlink; refused".into())
+        }
+        _ => Err(format!(
+            "no skill package installed with this binary (expected {}); use update-plan and \
+             update-apply with a package folder instead",
+            dir.display()
+        )),
+    }
+}
+
+/// #2522: one-line `moai-cli update` over the package installed with this binary.
+///
+/// Always computes the same preview as `update-plan`. Without a confirmation it writes
+/// nothing and returns the preview with the exact confirming command. `confirm` is the
+/// preview's `plan_digest` (`--confirm`); `ask` is the terminal question, called only when
+/// no digest was given, and answering yes confirms the preview it was shown. A confirmed
+/// run goes through `apply_update` with that digest, so a plan that changed in between is
+/// refused before any write. A backup-then-replace is never confirmed here: it keeps its
+/// explicit `update-apply --confirm-backup-replace` token.
+pub fn update_command(
+    home: &Path,
+    confirm: Option<&str>,
+    ask: impl FnOnce(&UpdatePlan) -> Result<bool>,
+) -> Result<serde_json::Value> {
+    let package = installed_package_dir()?;
+    let staged = stage_package(&package)?;
+    let plan = plan_update(home, &staged)?;
+    let package_text = package
+        .to_str()
+        .ok_or("non UTF-8 package path")?
+        .to_string();
+    let digest = match confirm {
+        Some(d) => d.to_string(),
+        None if ask(&plan)? => plan.plan_digest.clone(),
+        None => {
+            return Ok(json!({
+                "mode": "preview",
+                "applied": false,
+                "package": package_text,
+                "plan": plan,
+                "confirm_with": format!("moai-cli update --confirm {}", plan.plan_digest),
+            }))
+        }
+    };
+    let result = apply_update(
+        home,
+        &staged,
+        &plan,
+        &digest,
+        "moai-cli update confirmation",
+        &[],
+    )?;
+    Ok(json!({
+        "mode": "applied",
+        "applied": true,
+        "package": package_text,
+        "plan_digest": digest,
+        "result": result,
+    }))
+}
+
+/// A short per-host summary of a plan for the terminal question (#2522).
+pub fn plan_summary(plan: &UpdatePlan) -> String {
+    let mut out = String::new();
+    for h in &plan.hosts {
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for f in &h.files {
+            *counts.entry(f.action.as_str()).or_default() += 1;
+        }
+        let counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        out.push_str(&format!(
+            "  {}: {} — {}{}\n",
+            h.host,
+            h.preflight,
+            counts.join(", "),
+            h.blocked_reason
+                .as_ref()
+                .map(|r| format!(" ({r})"))
+                .unwrap_or_default()
+        ));
+    }
+    out
+}
+
 /// Applies the plan host by host (REQ-04B-03..06). Refuses anything but a freshly
 /// recomputed identical digest before touching a single file. `confirm_backup_replace`
 /// carries the tokens of the hosts whose backup-then-replace the user confirmed
