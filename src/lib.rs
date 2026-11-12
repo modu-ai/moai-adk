@@ -36,6 +36,7 @@ pub mod install;
 pub mod key_vault;
 pub mod lane_handoff;
 pub mod lane_status;
+pub mod language;
 pub mod launcher_init;
 pub mod layout;
 pub mod leader;
