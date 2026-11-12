@@ -343,7 +343,7 @@ fn the_round_keeps_going_until_its_end_condition() {
         "self-pick",
         &[
             "Never report \"no startable Issue\" bare",
-            "expired claim of <session> — leader handoff needed",
+            "When an expired claim of another session blocks an otherwise ready Issue, send `LANE-BLOCKED <lane> #<n> expired claim of <session> — leader handoff needed` for each such Issue and take other work",
         ],
     );
     assert_says(
