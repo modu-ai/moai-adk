@@ -46,6 +46,20 @@
         "skill_instructions": {"$ref": "#/$defs/language_code"},
         "code_comments": {"$ref": "#/$defs/language_code"}
       }
+    },
+    "detected": {
+      "description": "Project facts from project-detect (#2496); lists are sorted and unique.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_kind", "manifests", "languages", "lsp", "mcp_servers", "databases"],
+      "properties": {
+        "project_kind": {"enum": ["new", "existing"]},
+        "manifests": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "languages": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "lsp": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "mcp_servers": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "databases": {"type": "array", "maxItems": 64, "items": {"type": "string"}}
+      }
     }
   },
   "$defs": {
