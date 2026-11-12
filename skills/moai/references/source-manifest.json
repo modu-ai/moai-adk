@@ -64,12 +64,12 @@
       }
     },
     "references/session-control-orca.md": {
-      "sha256": "0cc6735e52a21f178d4ed09be9156632a938f1c26a255840b77d252e63894842",
+      "sha256": "5b55e4d72ea39e8bb06400fd25c93f5a034c7ce3540c57b5d4857332f1f71f1a",
       "origin": {
         "kind": "design-spec",
         "template_id": "reference-session-control-orca",
         "adoption": "new",
-        "reason": "Written for rc.2 #2516 from the study of orca 1.4.256 (Issue #2516 comment 6823174285): how to read Orca's version-matched guides and the MoAI rules on top of them, without restating Orca's commands. No design-22 template exists for session control."
+        "reason": "Written for rc.2 #2516 from the study of orca 1.4.256 (Issue #2516 comment 6823174285): how to read Orca's version-matched guides and the MoAI rules on top of them, without restating Orca's commands. Handle-not-title identification from the AC-4 measurement (comment 6823326358). No design-22 template exists for session control."
       }
     },
     "workflows/read.md": {

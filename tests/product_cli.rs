@@ -2705,6 +2705,8 @@ mod skill_package {
             "never authorises recovery",
             // Handles.
             "Never send the same input to an old and a new handle.",
+            "Name the target terminal by its handle on every command",
+            "A terminal's title is not an identity",
         ] {
             assert!(body.contains(line), "session-control-orca.md lacks: {line}");
         }

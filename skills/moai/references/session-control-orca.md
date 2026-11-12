@@ -23,6 +23,8 @@ Use Orca only when the user chose it for this project (for example in `AGENTS.md
 
 Handles are runtime-scoped: after an Orca restart or a stale-handle error, list the terminals again and use only the new handle. Never send the same input to an old and a new handle.
 
+Name the target terminal by its handle on every command; without `--terminal`, a command acts on the active terminal of the current worktree, which may be someone else's. A terminal's title is not an identity: the shell running in it may rewrite the title you gave it, so before closing a terminal you created, match the handle, tab and incarnation recorded at creation (measured in Issue #2516).
+
 ## Who uses which commands
 
 - Leader and lanes read: `orca terminal read`, `show`, `list`, `wait` (always with `--timeout-ms`), `orca worktree ps`, `list`, `show`, `current`, `orca reference find`.
