@@ -545,6 +545,24 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
         .map_err(|_| "receipt not found; inspect the rollback directory".to_string())?;
     let receipt: ProjectSkillApplyReceipt = serde_json::from_slice(&bytes)
         .map_err(|_| "receipt unreadable; inspect the rollback directory".to_string())?;
+    // #2392 D3-A: a created folder is removed only while it is still exactly what the apply
+    // wrote. A copy that changed since — a file the user added or edited, or a folder the
+    // digest cannot read — is never removed, and the whole revert is refused before anything
+    // moves, so no host is left half reverted.
+    let mut changed = Vec::new();
+    for a in receipt.applied.iter().filter(|a| a.action == "create") {
+        let dest = project_skill_dir(&root, &a.host)?;
+        if dest.is_dir() && installed_digest(&dest).ok().flatten() != a.after_sha256 {
+            changed.push(a.host.clone());
+        }
+    }
+    if !changed.is_empty() {
+        return Err(format!(
+            "the project copy for {} changed after apply; nothing reverted — move your own \
+             files out of that skill folder, then revert again",
+            changed.join(", ")
+        ));
+    }
     let mut reverted = Vec::new();
     for a in receipt.applied.iter().rev() {
         let dest = project_skill_dir(&root, &a.host)?;
