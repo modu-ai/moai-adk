@@ -1063,7 +1063,7 @@ fn s6_review_decision_cannot_reference_a_foreign_task() {
     let mut dispatch = s6_dispatch();
     dispatch.payload.sort_all_objects();
     let mut decision = dispatch.clone();
-    decision.report_id = "foreign-task-decision".into();
+    decision.report_id = "s6-decision".into();
     decision.event = "dispatch-decision".into();
     decision.task.task_id = "T2".into();
     std::mem::swap(&mut decision.sender, &mut decision.receiver);

@@ -1209,11 +1209,13 @@ fn communication<T: Transport, C: Clock>(
                     dispatches.insert(report.message.report_id.clone(), view);
                 }
             }
-            // A decision with no dispatch must not masquerade as accepted work.
+            // Route every referenced decision into the same S2 task group for validation.
             for report in &reports {
                 if report.message.event == "dispatch-decision"
                     && !reports.iter().any(|r| {
                         r.message.event == "dispatch"
+                            && r.message.project_id == report.message.project_id
+                            && r.message.task == report.message.task
                             && r.message.report_id == report.message.payload["dispatch_report_id"]
                     })
                 {
