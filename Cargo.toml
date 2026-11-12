@@ -34,6 +34,13 @@ tempfile = "=3.27.0"
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.
 libc = "=0.2.189"
 
+# Debug builds hash the running moai-cli binary on every update/recovery operation
+# (`update::current_install_id`, ~28 MB in debug). Unoptimized sha2 made that ~2.2 s of CPU
+# per launch, which a loaded machine stretched to minutes per test (Issue #2507). Optimizing
+# only this crate in dev builds changes no behavior and no lock entry; release is untouched.
+[profile.dev.package.sha2]
+opt-level = 3
+
 # The profile that 'dist' will build with (cargo-dist 0.34, E1 #2193)
 [profile.dist]
 inherits = "release"
