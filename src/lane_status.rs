@@ -13,10 +13,11 @@
 //! here: the caller passes them with a source and a time, and they are cited as given.
 //! Not done here: host session events (#A12), posting the assignment drafts, live runs.
 use crate::claim_verify::{classify_comment, evaluate, CommentKind, IssueComment, Verifier};
-use crate::forge::policy::{next_link, Clock};
-use crate::forge::transport::Transport;
+use crate::forge::policy::{next_link, parse_utc, Clock};
+use crate::forge::transport::{HttpRequest, HttpResponse, Transport};
 use crate::forge::Client;
-use serde::Deserialize;
+use crate::message::Message;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -247,6 +248,16 @@ pub(crate) fn pages<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     first: String,
 ) -> Result<Vec<Value>> {
+    // Shared readers follow GitHub's Link verbatim, including numeric repository URLs.
+    pages_with_evidence(client, first, None).map(|(values, _)| values)
+}
+
+fn pages_with_evidence<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    first: String,
+    mut source_urls: Option<&mut Vec<String>>,
+) -> Result<(Vec<Value>, bool)> {
+    let mut complete = true;
     let (mut url, mut out, mut n) = (Some(first), Vec::new(), 0);
     while let Some(u) = url {
         n += 1;
@@ -254,14 +265,20 @@ pub(crate) fn pages<T: Transport, C: Clock>(
             return Err("lane status page limit exceeded (50)".into());
         }
         let resp = client.get(&u, None).map_err(String::from)?;
-        url = next_link(resp.header("link"));
-        out.extend(
-            resp.body
-                .and_then(|b| b.as_array().cloned())
-                .unwrap_or_default(),
-        );
+        if let Some(urls) = &mut source_urls {
+            urls.push(u);
+        }
+        let link = resp.header("link");
+        url = next_link(link);
+        if link.is_some_and(|link| link.contains("rel=\"next\"")) && url.is_none() {
+            complete = false;
+        }
+        match resp.body {
+            Some(Value::Array(values)) => out.extend(values),
+            _ => complete = false,
+        }
     }
-    Ok(out)
+    Ok((out, complete))
 }
 
 pub(crate) fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
@@ -271,6 +288,10 @@ pub(crate) fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) 
 
 /// Issue or PR comments from the API, sorted by id without repeats.
 pub(crate) fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
+    comments_from(&raw)
+}
+
+fn comments_from(raw: &[Value]) -> Vec<Comment> {
     let mut comments: Vec<Comment> = raw
         .iter()
         .filter_map(|c| {
@@ -377,6 +398,23 @@ pub fn collect<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     clock: &C,
 ) -> Result<Snapshot> {
+    collect_with_raw(project, req, client, clock).map(|(snapshot, _)| snapshot)
+}
+
+struct ReadIssue {
+    number: i64,
+    issue: Value,
+    comments: Value,
+    complete: bool,
+    source_urls: Vec<String>,
+}
+
+fn collect_with_raw<T: Transport, C: Clock>(
+    project: &Path,
+    req: &LaneStatusRequest,
+    client: &Client<'_, T, C>,
+    clock: &C,
+) -> Result<(Snapshot, Vec<ReadIssue>)> {
     validate(req)?;
     let repo = format!("{API}/repos/{}/{}", req.owner, req.repo);
     let wanted: BTreeSet<i64> = req.issues.iter().copied().collect();
@@ -388,17 +426,28 @@ pub fn collect<T: Transport, C: Clock>(
         ),
     )?;
     let mut issues = Vec::new();
+    let mut raw = Vec::new();
     for n in &wanted {
         let issue = one(client, &format!("{repo}/issues/{n}"))?;
-        let comments = read_comments(pages(
+        let mut source_urls = Vec::new();
+        let (raw_comments, complete) = pages_with_evidence(
             client,
             format!("{repo}/issues/{n}/comments?per_page=100"),
-        )?);
+            Some(&mut source_urls),
+        )?;
+        let comments = comments_from(&raw_comments);
         issues.push(IssueData {
             number: *n,
             open: issue["state"].as_str() != Some("closed"),
             body: issue["body"].as_str().unwrap_or_default().into(),
             comments,
+        });
+        raw.push(ReadIssue {
+            number: *n,
+            issue,
+            comments: Value::Array(raw_comments),
+            complete,
+            source_urls,
         });
     }
     let others: BTreeSet<i64> = issues
@@ -461,13 +510,16 @@ pub fn collect<T: Transport, C: Clock>(
             })
             .collect()
     });
-    Ok(Snapshot {
-        issues,
-        other_open,
-        prs,
-        worktrees,
-        now: clock.now(),
-    })
+    Ok((
+        Snapshot {
+            issues,
+            other_open,
+            prs,
+            worktrees,
+            now: clock.now(),
+        },
+        raw,
+    ))
 }
 
 /// Every 40-hex token in `text`, in order of appearance, without repeats.
@@ -897,6 +949,390 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
     })
 }
 
+// S6 consumes the same complete Issue snapshot as the original table. It never opens
+// the message journal: reading status must not create a lock, receipt or directory.
+#[derive(Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct MessageWire {
+    schema_version: u32,
+    kind: String,
+    message: Message,
+    payload_digest: String,
+}
+
+struct ReportObservation {
+    message: Message,
+    record: Option<(u64, i64)>,
+    ack: Option<(u64, i64)>,
+}
+
+#[derive(Default, Serialize)]
+struct CommunicationLane {
+    session: String,
+    sent_reports: Vec<Value>,
+    received_acks: Vec<Value>,
+    unacknowledged_report_ids: Vec<String>,
+    dispatches: Vec<Value>,
+}
+
+struct ObservationClock<'a, C> {
+    now: i64,
+    source: &'a C,
+}
+
+impl<C: Clock> Clock for ObservationClock<'_, C> {
+    fn now(&self) -> i64 {
+        self.now
+    }
+
+    fn sleep(&self, secs: u64) {
+        self.source.sleep(secs);
+    }
+}
+
+// S2 retains ownership of dispatch revision/decision validation. Its GET-only checker
+// receives this frozen, already-paginated snapshot, not a second live network read.
+struct MessageSnapshot<'a> {
+    base: String,
+    repository: &'a Value,
+    issue: &'a ReadIssue,
+}
+
+impl Transport for MessageSnapshot<'_> {
+    fn send(&self, req: &HttpRequest) -> Result<HttpResponse> {
+        if req.method != "GET" || req.body.is_some() {
+            return Err("lane status snapshot permits GET only".into());
+        }
+        let body = if req.url == self.base {
+            self.repository
+        } else if req.url == format!("{}/issues/{}", self.base, self.issue.number) {
+            &self.issue.issue
+        } else if req.url
+            == format!(
+                "{}/issues/{}/comments?per_page=100",
+                self.base, self.issue.number
+            )
+        {
+            &self.issue.comments
+        } else {
+            return Err("lane status snapshot target unavailable".into());
+        };
+        Ok(HttpResponse::new(200).with_body(body.clone()))
+    }
+}
+
+fn has_message(comment: &Value) -> bool {
+    comment["body"].as_str().is_some_and(|body| {
+        body.split('\n')
+            .next()
+            .unwrap_or_default()
+            .split("<!--")
+            .skip(1)
+            .any(|inner| {
+                let inner = inner.trim_start();
+                inner
+                    .strip_prefix("moai:op ")
+                    .or_else(|| inner.strip_prefix("moai-op "))
+                    .is_some_and(|operation| {
+                        let operation = operation.trim_start();
+                        operation.starts_with("message-record:")
+                            || operation.starts_with("message-ack:")
+                    })
+            })
+    })
+}
+
+fn message_observations(
+    req: &LaneStatusRequest,
+    issue: &ReadIssue,
+    repository: &Value,
+    now: i64,
+) -> Result<Vec<ReportObservation>> {
+    let invalid = || "message publication evidence unavailable".to_string();
+    let mut reports: BTreeMap<String, ReportObservation> = BTreeMap::new();
+    let mut comments: BTreeMap<u64, (MessageWire, i64)> = BTreeMap::new();
+    for comment in issue.comments.as_array().ok_or_else(invalid)? {
+        if !has_message(comment) {
+            continue;
+        }
+        let body = comment["body"].as_str().ok_or_else(invalid)?;
+        let mut wire: MessageWire = body
+            .split('\n')
+            .nth(1)
+            .and_then(|line| serde_json::from_str(line).ok())
+            .ok_or_else(invalid)?;
+        let digest = crate::message::validate(&mut wire.message).map_err(|_| invalid())?;
+        let ack = wire.kind == "ack";
+        let m = &wire.message;
+        let task = &m.task;
+        let operation = if ack { "message-ack" } else { "message-record" };
+        let marker = crate::forge::outbox::op_marker(operation, &m.project_id, &m.report_id, 1);
+        let rendered = format!(
+            "{marker}\n{}\n<!-- moai:message:end -->",
+            serde_json::to_string(&wire).map_err(|_| invalid())?
+        );
+        if wire.schema_version != 1
+            || !matches!(wire.kind.as_str(), "record" | "ack")
+            || wire.payload_digest != digest
+            || body != rendered
+            || task.owner != req.owner
+            || task.repo != req.repo
+            || repository["id"].as_u64() != Some(task.repository_id)
+            || task.issue_number != issue.number as u64
+            || issue.issue["number"].as_u64() != Some(task.issue_number)
+            || issue.issue["id"].as_u64() != Some(task.issue_id)
+            || issue.issue["node_id"].as_str() != Some(task.issue_node_id.as_str())
+            || issue
+                .issue
+                .get("pull_request")
+                .is_some_and(|v| !v.is_null())
+            || comment["user"]["id"].as_u64()
+                != Some(if ack {
+                    m.receiver.actor_id
+                } else {
+                    m.sender.actor_id
+                })
+        {
+            return Err(invalid());
+        }
+        let id = comment["id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .ok_or_else(invalid)?;
+        let at = comment["created_at"]
+            .as_str()
+            .and_then(parse_utc)
+            .filter(|at| now.checked_sub(*at).is_some_and(|age| age >= 0))
+            .ok_or_else(invalid)?;
+        if let Some((previous, previous_at)) = comments.get(&id) {
+            if previous != &wire || *previous_at != at {
+                return Err(invalid());
+            }
+            continue;
+        }
+        let report = reports
+            .entry(m.report_id.clone())
+            .or_insert_with(|| ReportObservation {
+                message: m.clone(),
+                record: None,
+                ack: None,
+            });
+        if report.message != *m {
+            return Err(invalid());
+        }
+        let slot = if ack {
+            &mut report.ack
+        } else {
+            &mut report.record
+        };
+        if slot.is_none_or(|(old, _)| id < old) {
+            *slot = Some((id, at));
+        }
+        comments.insert(id, (wire, at));
+    }
+    for report in reports.values() {
+        let (_, record_at) = report.record.ok_or_else(invalid)?;
+        if report.ack.is_some_and(|(_, at)| at < record_at) {
+            return Err(invalid());
+        }
+    }
+    Ok(reports.into_values().collect())
+}
+
+fn communication_lane<'a>(
+    lanes: &'a mut BTreeMap<String, CommunicationLane>,
+    session: &str,
+) -> &'a mut CommunicationLane {
+    lanes
+        .entry(session.to_string())
+        .or_insert_with(|| CommunicationLane {
+            session: session.to_string(),
+            ..Default::default()
+        })
+}
+
+// Collection identity belongs to the S6 observation, never to shared pagination.
+// Numeric aliases are accepted only for the repository whose metadata was verified.
+fn comment_collection_matches(issue: &ReadIssue, repository_id: Option<u64>) -> bool {
+    let Some(first) = issue.source_urls.first() else {
+        return false;
+    };
+    let collection = first.split('?').next().unwrap_or_default();
+    let same_slug = |url: &str| {
+        url.strip_prefix(collection)
+            .is_some_and(|suffix| suffix.starts_with('?'))
+    };
+    if issue.source_urls.iter().all(|url| same_slug(url)) {
+        return true;
+    }
+    let Some(repository_id) = repository_id.filter(|id| *id > 0) else {
+        return false;
+    };
+    let numeric = format!(
+        "{API}/repositories/{repository_id}/issues/{}/comments?",
+        issue.number
+    );
+    issue
+        .source_urls
+        .iter()
+        .all(|url| same_slug(url) || url.starts_with(&numeric))
+}
+
+fn communication<T: Transport, C: Clock>(
+    req: &LaneStatusRequest,
+    raw: &[ReadIssue],
+    client: &Client<'_, T, C>,
+    clock: &C,
+    now: i64,
+) -> Value {
+    let mut lanes = BTreeMap::new();
+    for lane in &req.lanes {
+        communication_lane(&mut lanes, &lane.session);
+    }
+    let mut errors: Vec<Value> = raw
+        .iter()
+        .filter(|issue| !issue.complete)
+        .map(|issue| {
+            json!({"issue":issue.number,
+            "reason":"message comments snapshot incomplete"})
+        })
+        .collect();
+    let has_packets = raw.iter().any(|i| {
+        i.comments
+            .as_array()
+            .is_some_and(|comments| comments.iter().any(has_message))
+    });
+    if !has_packets
+        && raw
+            .iter()
+            .all(|issue| comment_collection_matches(issue, None))
+    {
+        return json!({"available":errors.is_empty(), "observed_at":now,
+            "lanes":lanes.into_values().collect::<Vec<_>>(), "errors":errors});
+    }
+    let base = format!("{API}/repos/{}/{}", req.owner, req.repo);
+    let repository = match one(client, &base) {
+        Ok(repository) => repository,
+        Err(_) => {
+            return json!({"available":false, "observed_at":now,
+            "lanes":lanes.into_values().collect::<Vec<_>>(),
+            "errors":[{"issue":null,"reason":"message repository evidence unavailable"}]})
+        }
+    };
+    let observation_clock = ObservationClock { now, source: clock };
+    let mut report_ids = BTreeSet::new();
+    for issue in raw {
+        if !issue.complete {
+            continue;
+        }
+        let observations = (|| {
+            if !comment_collection_matches(issue, repository["id"].as_u64()) {
+                return Err("message comments collection mismatch".to_string());
+            }
+            let reports = message_observations(req, issue, &repository, now)?;
+            // A report cannot change its task by moving to another inspected Issue.
+            if reports
+                .iter()
+                .any(|report| report_ids.contains(&report.message.report_id))
+            {
+                return Err("message immutable identity conflict".to_string());
+            }
+            let frozen = MessageSnapshot {
+                base: base.clone(),
+                repository: &repository,
+                issue,
+            };
+            let mut dispatches = BTreeMap::new();
+            for report in &reports {
+                if report.message.event == "dispatch" {
+                    let view = crate::dispatch::check_cli(
+                        crate::dispatch::CheckRequest {
+                            dispatch: report.message.clone(),
+                        },
+                        &frozen,
+                        &observation_clock,
+                    )
+                    .map_err(|_| "dispatch observation unavailable".to_string())?;
+                    dispatches.insert(report.message.report_id.clone(), view);
+                }
+            }
+            // Route every referenced decision into the same S2 task group for validation.
+            for report in &reports {
+                if report.message.event == "dispatch-decision"
+                    && !reports.iter().any(|r| {
+                        r.message.event == "dispatch"
+                            && r.message.project_id == report.message.project_id
+                            && r.message.task == report.message.task
+                            && r.message.report_id == report.message.payload["dispatch_report_id"]
+                    })
+                {
+                    return Err("dispatch observation unavailable".to_string());
+                }
+            }
+            Ok::<_, String>((reports, dispatches))
+        })();
+        let (reports, mut dispatches) = match observations {
+            Ok(observations) => observations,
+            Err(reason) => {
+                errors.push(json!({"issue":issue.number,"reason":reason}));
+                continue;
+            }
+        };
+        for report in reports {
+            let m = report.message;
+            report_ids.insert(m.report_id.clone());
+            let (record_id, at) = report.record.expect("validated record");
+            let elapsed = now.checked_sub(at);
+            let alert = if report.ack.is_some() {
+                "received"
+            } else if elapsed.is_some_and(|n| n >= 300) {
+                "unacknowledged"
+            } else {
+                "waiting"
+            };
+            communication_lane(&mut lanes, &m.receiver.session_id);
+            let lane = communication_lane(&mut lanes, &m.sender.session_id);
+            lane.sent_reports.push(json!({
+                "report_id":m.report_id,"issue":issue.number,"event":m.event,
+                "to":m.receiver.session_id,"record_comment_id":record_id,
+                "ack_comment_id":report.ack.map(|(id,_)|id),"received_ack":report.ack.is_some(),
+                "ack_alert":alert,"elapsed_secs":elapsed,
+            }));
+            if let Some((id, _)) = report.ack {
+                lane.received_acks.push(json!({"report_id":m.report_id,
+                    "issue":issue.number,"ack_comment_id":id}));
+            }
+            if alert == "unacknowledged" {
+                lane.unacknowledged_report_ids.push(m.report_id.clone());
+            }
+            if let Some(mut dispatch) = dispatches.remove(&m.report_id) {
+                dispatch["issue"] = json!(issue.number);
+                dispatch["from"] = json!(m.sender.session_id);
+                dispatch["to"] = json!(m.receiver.session_id);
+                // A self-addressed packet appears once, not twice in the same lane.
+                if m.sender.session_id != m.receiver.session_id {
+                    communication_lane(&mut lanes, &m.receiver.session_id)
+                        .dispatches
+                        .push(dispatch.clone());
+                }
+                communication_lane(&mut lanes, &m.sender.session_id)
+                    .dispatches
+                    .push(dispatch);
+            }
+        }
+    }
+    if !errors.is_empty() {
+        for lane in lanes.values_mut() {
+            lane.sent_reports.clear();
+            lane.received_acks.clear();
+            lane.unacknowledged_report_ids.clear();
+            lane.dispatches.clear();
+        }
+    }
+    json!({"available":errors.is_empty(),"observed_at":now,
+        "lanes":lanes.into_values().collect::<Vec<_>>(),"errors":errors})
+}
+
 /// CLI: validate, read (GET only), build. Writes nothing.
 pub fn status_cli<T: Transport, C: Clock>(
     project: &Path,
@@ -906,8 +1342,10 @@ pub fn status_cli<T: Transport, C: Clock>(
 ) -> Result<Value> {
     validate(&req)?;
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    let snap = collect(project, &req, &client, clock)?;
-    Ok(build(&req, &snap))
+    let (snap, raw) = collect_with_raw(project, &req, &client, clock)?;
+    let mut table = build(&req, &snap);
+    table["communication"] = communication(&req, &raw, &client, clock, snap.now);
+    Ok(table)
 }
 
 #[cfg(test)]

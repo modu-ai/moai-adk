@@ -167,11 +167,19 @@ fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
         (_, "tracked") => "Never share credentials or raw secret logs in the repo or in Issues.",
         _ => "Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.",
     };
+    // #2293: the writing-language lines appear only when the profile sets `language`, so a
+    // profile without it renders byte-identical to the earlier template.
+    let writing = p
+        .language
+        .as_ref()
+        .map(|l| format!("{}\n", crate::language::render_lines(l, &r.language)))
+        .unwrap_or_default();
     let body = if r.language == "ko" {
         format!(
             "## MoAI 작업 흐름 (관리 구간)\n\n\
 프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
 목적: {purpose}\n\n\
+{writing}\
 승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
 명확한 허용 범위의 선택은 스스로 진행하고, 권한·비용·범위가 바뀔 때만 확인한다.\n\
 실행하지 않은 검증을 PASS로 보고하지 않는다. passed·failed·not_run·blocked·stale을 구분한다.\n\
@@ -190,6 +198,7 @@ MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필�
             "## MoAI workflow (managed section)\n\n\
 Project `{id}` · tools: {tools} · methods: {methods} · hosts: {hosts}.\n\
 Purpose: {purpose}\n\n\
+{writing}\
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
 Decide on your own inside the allowed scope; ask only when permission, cost, or scope changes.\n\
 Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.\n\
@@ -413,6 +422,19 @@ pub(crate) fn agents_plan_for(
         };
         if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
             warnings.push(BLOCK_ABSENT.into());
+        }
+        // #2293: the managed text is written in the request language; a profile that sets
+        // instruction files to another language is reported, not refused.
+        if let Some(code) = profile
+            .language
+            .as_ref()
+            .and_then(|l| l.get("instruction_files"))
+            .filter(|code| **code != request.language)
+        {
+            warnings.push(format!(
+                "managed section rendered in `{}` while profile language.instruction_files is `{code}`",
+                request.language
+            ));
         }
         if agents_file.action != "conflict" && projected > 32 * 1024 {
             warnings
