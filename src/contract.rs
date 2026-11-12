@@ -124,6 +124,11 @@ const RULES: &[(&str, Kind)] = &[
     ("audit claim refused: ", Kind::InvalidInput),
     ("audit claim conflict: ", Kind::Conflict),
     ("audit claim blocked: ", Kind::Blocked),
+    // audit-delta (#2403): explicit prefixes precede generic Git/input phrases.
+    ("audit delta refused: ", Kind::InvalidInput),
+    ("audit delta blocked: ", Kind::Blocked),
+    ("audit delta git failed: ", Kind::GitFailed),
+    ("audit delta I/O failed: ", Kind::Io),
     // decision-append (rc.2 #2403): ahead of the generic words its messages may contain.
     ("decision append blocked: ", Kind::Blocked),
     ("decision append refused: ", Kind::InvalidInput),

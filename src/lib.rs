@@ -6,6 +6,7 @@ pub mod atlas_tag;
 pub mod audit;
 pub mod audit_claim;
 pub mod audit_clone;
+pub mod audit_delta;
 pub mod banner;
 pub mod baseline;
 pub mod claim;
