@@ -41,6 +41,8 @@ Heavy checks are serialised: on one machine, at most one full build or full test
 
 A test must not depend on wall-clock time. When an assertion depends on elapsed time or a time budget, inject the clock or the budget (a seam such as a `--render-budget-ms` style flag or a clock parameter) and fix it in the test. Auditors treat a direct wall-clock budget in a test assertion as a finding.
 
+A child-process budget in a test is load-independent: bound the child by progress — an invocation count or a log signal that resets the deadline — plus a hard hang ceiling and an invocation cap, never a bare wall-clock timeout (`ci_install_ripgrep_test` #2469, `mutate_test` #2502). The budget numbers are pinned by tests, and wall-clock appears only as the generous hang guard.
+
 ## Shell and helper rules
 
 - Guard refusal (WF-OBS #17): when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. Only when the refusal is confirmed to be about the combined form (the guard says the command is too complex to verify, not that its effect is forbidden) may it be retried split into plain single steps: the refused effect itself stays forbidden, and each step must pass the same guard on its own. Splitting is never a bypass.

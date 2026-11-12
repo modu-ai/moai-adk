@@ -46,21 +46,21 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "25081f6c1492d1cf3b21792f4fd73b5d48983a89f02d2f910aa12993b974937e",
+      "sha256": "ccae6adbdd9d7a1e3f564c82f40bf05d9ecb13437cd1cf751f07f5fc5565aa89",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071)."
       }
     },
     "references/routes.json": {
-      "sha256": "509a29d0c261b632d1c457c023569bf97a0ecb7b8220922fbd9e79353bed6d92",
+      "sha256": "aa25666ca00c3d6d4aef12a73733efe67820e599534f3e6b891f2e1fcd5f129f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071)."
       }
     },
     "workflows/read.md": {
@@ -73,7 +73,7 @@
       }
     },
     "workflows/setup.md": {
-      "sha256": "90df285c03e18d203de3a2d5a744b4149e3691f7162130aabd9aa41ebfcc9b93",
+      "sha256": "c55fee86b38ff1fffa48c9a3c539fb399040ece6cdc50111de42ced9145836da",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-setup",
@@ -82,12 +82,12 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "29ea2ae44ba052701539843196fa8db5c0780172d8f2b000d3e8c090f580628f",
+      "sha256": "9d6d6feabf036dcfc2d90235c6d74036b40d9d1f8eb14b661d57c6906dde7228",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22)."
       }
     },
     "workflows/plan.md": {
@@ -109,16 +109,16 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "08388138abdd7eb68d28dabeb1c596290299ab9eb3104844fc152dd17d4dea6e",
+      "sha256": "e4448ea1b4f1f0a26845cd24950ed42b9fda08e1dbc5f19b6dfc72b30e1da47b",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Shell and helper rules (WF-OBS #16, #17, #19) added by #2493."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. Shell and helper rules (WF-OBS #16, #17, #19) added by #2493."
       }
     },
     "workflows/audit.md": {
-      "sha256": "7568b1eaf2c220637eece066ef70cbeec53a6ae689a0071ff000b1765b857320",
+      "sha256": "cd0835bb3527f01fcecbcae366509e8c0144590650188c1cbb5117ebf216062d",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "3c53904cbcde1dbc3d4b19e70933fafd9c7cbfaa8261cdb758eb474013ba40f3",
+      "sha256": "64f6e15ad845a1c052608884c7004065b774164121dc5f8b8a657e3d554f8614",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,12 +145,21 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "9ab7d3abdbc4a120d5ddfee7405e0b3bbc3d72d78e1306eee5674bfb438df33b",
+      "sha256": "1fc1cd4edf83be86fc3a400aa30716e6980a0d7fe2860902feb5435100d802c5",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
         "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434."
+      }
+    },
+    "workflows/project.md": {
+      "sha256": "e98007c6bf5aea49e8bc38d385ba3f464b32e00882a12377e7fdacb27061a42c",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-project",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B)."
       }
     }
   }

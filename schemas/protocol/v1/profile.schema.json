@@ -30,6 +30,39 @@
           "scope": {"type": "string"}
         }
       }
+    },
+    "language": {
+      "description": "Writing language per item (#2293). Item ids and codes are the tables in src/language.rs.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "user_chat": {"$ref": "#/$defs/language_code"},
+        "reports": {"$ref": "#/$defs/language_code"},
+        "issue_pr_records": {"$ref": "#/$defs/language_code"},
+        "commit_messages": {"$ref": "#/$defs/language_code"},
+        "agent_messages": {"$ref": "#/$defs/language_code"},
+        "instruction_files": {"$ref": "#/$defs/language_code"},
+        "skill_instructions": {"$ref": "#/$defs/language_code"},
+        "code_comments": {"$ref": "#/$defs/language_code"}
+      }
+    },
+    "detected": {
+      "description": "Project facts from project-detect (#2496); lists are sorted and unique.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_kind", "manifests", "languages", "lsp", "mcp_servers", "databases"],
+      "properties": {
+        "project_kind": {"enum": ["new", "existing"]},
+        "manifests": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "languages": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "lsp": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "mcp_servers": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "databases": {"type": "array", "maxItems": 64, "items": {"type": "string"}}
+      }
     }
+  },
+  "$defs": {
+    "language_code": {"enum": ["en", "ko", "ja", "zh"]}
   }
 }
