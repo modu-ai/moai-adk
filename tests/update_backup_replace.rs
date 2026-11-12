@@ -603,6 +603,72 @@ fn a_tampered_backup_is_not_restored() {
     assert!(!dir.join("RESTORED.json").exists());
 }
 
+/// Every entry (recursive) under `dir`, for "nothing was written there" checks.
+fn entries(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Ok(rd) = fs::read_dir(dir) {
+        for e in rd {
+            let p = e.unwrap().path();
+            out.push(p.clone());
+            if fs::symlink_metadata(&p).unwrap().is_dir() {
+                out.extend(entries(&p));
+            }
+        }
+    }
+    out
+}
+
+/// Confirmed apply when `link` (a state path) is a symlink to a directory outside HOME:
+/// the host fails before anything moves, the original folder keeps its bytes and modes,
+/// and the link target receives no write.
+fn assert_symlinked_state_path_is_refused(link_rel: &str) {
+    let f = fixture();
+    let outside = f._tmp.path().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    let link = f.home.join(link_rel);
+    fs::create_dir_all(link.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&outside, &link).unwrap();
+    let before = originals(&f);
+    let p = plan(&f);
+    let r = result_of(&apply(&f, &p, &[&token(&p, "claude")], None));
+    let h = host(&r, "claude");
+    assert_eq!(h["status"], json!("failed"), "{link_rel}: {r}");
+    assert_eq!(
+        h["receipt_status"],
+        Value::Null,
+        "{link_rel}: no pending receipt: {h}"
+    );
+    assert!(
+        h["reload_basis"]
+            .as_str()
+            .unwrap()
+            .contains("is a symlink; refused"),
+        "{link_rel}: {h}"
+    );
+    assert_eq!(
+        originals(&f),
+        before,
+        "{link_rel}: original folders unchanged"
+    );
+    assert_eq!(
+        entries(&outside),
+        Vec::<PathBuf>::new(),
+        "{link_rel}: no write through the link"
+    );
+}
+
+/// B1 (audit 6812528075): `~/.moai-cli/backups` is a symlink leading out of HOME.
+#[test]
+fn a_symlinked_backups_directory_is_refused() {
+    assert_symlinked_state_path_is_refused(".moai-cli/backups");
+}
+
+/// B1 (audit 6812528075): `~/.moai-cli` itself is a symlink leading out of HOME.
+#[test]
+fn a_symlinked_state_directory_is_refused() {
+    assert_symlinked_state_path_is_refused(".moai-cli");
+}
+
 /// A user edit to the installed package blocks the restore (never overwritten).
 #[test]
 fn a_user_edit_after_the_replace_blocks_the_restore() {

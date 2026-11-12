@@ -1591,8 +1591,14 @@ fn run_backup_then_replace(
         .map_err(|_| "moving the original folder into the backup failed; nothing moved")?;
     test_corrupt_moved(&moved, &btr.source_files);
     if source_files(&moved).ok().as_ref() != Some(&btr.source_files) {
-        let _ = fs::rename(&moved, &root);
-        return Err("the moved folder does not match the manifest; moved back".into());
+        return Err(match fs::rename(&moved, &root) {
+            Ok(()) => "the moved folder does not match the manifest; moved back".into(),
+            Err(_) => format!(
+                "the moved folder does not match the manifest and moving it back failed; \
+                 it stays at {}",
+                moved.display()
+            ),
+        });
     }
 
     let mut owned = BTreeMap::new();
