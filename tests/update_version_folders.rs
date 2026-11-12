@@ -394,3 +394,131 @@ fn of_two_earlier_folders_the_latest_receipt_wins() {
         assert!(actions(&p, h).iter().all(|(_, a)| a == "unchanged"), "{p}");
     }
 }
+
+fn host_receipt(home: &Path, id: &str, h: &str) -> PathBuf {
+    installations(home)
+        .join(id)
+        .join(format!("hosts/moai/{h}.json"))
+}
+
+fn edit_receipt(home: &Path, id: &str, h: &str, edit: impl Fn(&mut Value)) {
+    let path = host_receipt(home, id, h);
+    let mut v: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    edit(&mut v);
+    fs::write(&path, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+}
+
+fn assert_blocked_with(plan: &Value, h: &str, needle: &str) {
+    let hp = host(plan, h);
+    assert_eq!(hp["preflight"], json!("blocked"), "{h}: {plan}");
+    let reason = hp["blocked_reason"].as_str().unwrap();
+    assert!(reason.contains(needle), "{h}: {reason}");
+    assert!(hp.get("receipt_from").is_none(), "{h}: {plan}");
+}
+
+// AC-2 (audit 6820396218 V7): a receipt that names another installation or another host
+// (a copied file) lends nothing.
+#[test]
+fn a_receipt_naming_another_installation_or_host_lends_nothing() {
+    let f = fixture();
+    let a = version_exe(&f.home, "a");
+    install(&a, &f.home, &f.v1);
+    let [a_id]: [String; 1] = receipt_dirs(&f.home).try_into().unwrap();
+    edit_receipt(&f.home, &a_id, "claude", |v| {
+        v["install_id"] = json!("0".repeat(64))
+    });
+    edit_receipt(&f.home, &a_id, "codex", |v| v["host"] = json!("claude"));
+    let b = version_exe(&f.home, "b");
+    let p = plan(&b, &f.home, &f.v2);
+    for h in HOSTS {
+        assert_blocked_with(&p, h, "names another installation or host");
+    }
+}
+
+// AC-2 (V10): an unreadable earlier receipt blocks instead of being skipped.
+#[test]
+fn an_unreadable_earlier_receipt_blocks() {
+    let f = fixture();
+    let a = version_exe(&f.home, "a");
+    install(&a, &f.home, &f.v1);
+    let [a_id]: [String; 1] = receipt_dirs(&f.home).try_into().unwrap();
+    for h in HOSTS {
+        fs::write(host_receipt(&f.home, &a_id, h), b"{ not json").unwrap();
+    }
+    let b = version_exe(&f.home, "b");
+    let p = plan(&b, &f.home, &f.v2);
+    for h in HOSTS {
+        assert_blocked_with(&p, h, "is unreadable");
+    }
+}
+
+// AC-2 (V4): two different earlier folders finishing in the same second are ambiguous.
+#[test]
+fn two_earlier_folders_finishing_in_the_same_second_block() {
+    let f = fixture();
+    let a = version_exe(&f.home, "a");
+    let c = version_exe(&f.home, "c");
+    install(&a, &f.home, &f.v1);
+    let [a_id]: [String; 1] = receipt_dirs(&f.home).try_into().unwrap();
+    install(&c, &f.home, &f.v2);
+    let c_id = receipt_dirs(&f.home)
+        .into_iter()
+        .find(|id| *id != a_id)
+        .unwrap();
+    for h in HOSTS {
+        let when: Value =
+            serde_json::from_slice(&fs::read(host_receipt(&f.home, &c_id, h)).unwrap()).unwrap();
+        edit_receipt(&f.home, &a_id, h, |v| {
+            v["finished_at"] = when["finished_at"].clone()
+        });
+    }
+    let b = version_exe(&f.home, "b");
+    let p = plan(&b, &f.home, &f.v2);
+    for h in HOSTS {
+        assert_blocked_with(&p, h, "ambiguous");
+    }
+}
+
+// AC-2 (V9): an earlier pending receipt that started in the same second the newest
+// finished one ended is not ordered after it, so it still blocks.
+#[test]
+fn a_pending_receipt_in_the_same_second_as_the_newest_finished_one_blocks() {
+    let f = fixture();
+    let a = version_exe(&f.home, "a");
+    let c = version_exe(&f.home, "c");
+    install(&a, &f.home, &f.v1);
+    let [a_id]: [String; 1] = receipt_dirs(&f.home).try_into().unwrap();
+    install(&c, &f.home, &f.v2);
+    let c_id = receipt_dirs(&f.home)
+        .into_iter()
+        .find(|id| *id != a_id)
+        .unwrap();
+    for h in HOSTS {
+        let a_receipt: Value =
+            serde_json::from_slice(&fs::read(host_receipt(&f.home, &a_id, h)).unwrap()).unwrap();
+        edit_receipt(&f.home, &c_id, h, |v| {
+            v["status"] = json!("pending");
+            v["started_at"] = a_receipt["finished_at"].clone();
+            v["finished_at"] = Value::Null;
+        });
+    }
+    let b = version_exe(&f.home, "b");
+    let p = plan(&b, &f.home, &f.v2);
+    for h in HOSTS {
+        assert_blocked_with(&p, h, "is pending");
+    }
+}
+
+// AC-2 (V1): a binary inside a version folder but not in its `bin/` is outside the layout,
+// so it adopts nothing.
+#[test]
+fn a_binary_outside_the_bin_folder_of_a_version_adopts_nothing() {
+    let f = fixture();
+    let a = version_exe(&f.home, "a");
+    install(&a, &f.home, &f.v1);
+    let libexec = f.home.join(".moai-cli/versions/b/libexec");
+    fs::create_dir_all(&libexec).unwrap();
+    let b = libexec.join("moai-cli");
+    fs::copy(EXE, &b).unwrap();
+    assert_blocked_unmanaged(&plan(&b, &f.home, &f.v2));
+}
