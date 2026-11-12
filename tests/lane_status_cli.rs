@@ -1155,3 +1155,182 @@ fn s6_review_identity_is_immutable_across_inspected_issues() {
     assert_eq!(t.remaining(), 0);
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
 }
+
+fn b1_numeric_comment_pages(
+    project: &Path,
+    first: Vec<Value>,
+    second: Vec<Value>,
+    source_repo: u64,
+    expected_repo: u64,
+) -> (Value, RecordedTransport) {
+    let next = format!(
+        "https://api.github.com/repositories/{source_repo}/issues/21/comments?per_page=100&page=2"
+    );
+    let first_response = common::json_response(200, json!(first))
+        .with_header("link", format!("<{next}>; rel=\"next\""));
+    let transport = RecordedTransport::new(vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id": 2, "node_id": "I_2", "number": 21, "state": "open", "body": ""}),
+        ),
+        common::exchange(
+            "GET",
+            &format!("{API}/issues/21/comments?per_page=100"),
+            first_response,
+        ),
+        get(&next, json!(second)),
+        get(API, json!({"id": expected_repo})),
+    ]);
+    let out = status_cli(
+        project,
+        audit_request(),
+        &transport,
+        &FakeClock(Cell::new(1_794_355_501)),
+    )
+    .unwrap();
+    (out, transport)
+}
+
+#[test]
+fn b1_page_101_claim_is_not_silently_treated_as_unassigned() {
+    let tmp = tempfile::tempdir().unwrap();
+    let first = (1..=100).map(|id| note(id, "ordinary status")).collect();
+    let (out, transport) = b1_numeric_comment_pages(
+        tmp.path(),
+        first,
+        vec![claim(2001, "after-page", 1)],
+        101,
+        101,
+    );
+    assert_eq!(
+        out["ready"],
+        json!([]),
+        "page-two ownership must prevent assignment: {out}"
+    );
+    let owner = row(&out, "after-page", 21);
+    assert_eq!(owner["ownership"]["claim_comment_id"], 2001);
+    assert_eq!(owner["phase"], "claimed");
+    assert_eq!(out["communication"]["available"], true);
+    assert_eq!(transport.remaining(), 0);
+    assert!(transport
+        .sent
+        .borrow()
+        .iter()
+        .all(|request| request.method == "GET"));
+}
+
+#[test]
+fn b1_public_pr_pagination_preserves_page_two_pr_and_audit() {
+    let tmp = tempfile::tempdir().unwrap();
+    let head = sha('b');
+    let first: Vec<Value> = (1..=100)
+        .map(|n| {
+            json!({"number":1000+n,"head":{"sha":sha('c'),"ref":"unrelated"},
+            "body":"Refs #999"})
+        })
+        .collect();
+    let next = "https://api.github.com/repositories/101/pulls?per_page=100&page=2";
+    let transport = RecordedTransport::new(vec![
+        common::exchange(
+            "GET",
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            common::json_response(200, json!(first))
+                .with_header("link", format!("<{next}>; rel=\"next\"")),
+        ),
+        get(
+            next,
+            json!([{"number":121,"head":{"sha":head,"ref":"issue/21-message"},
+            "body":"Refs #21"}]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id":2,"node_id":"I_2","number":21,"state":"open","body":""}),
+        ),
+        get(
+            &format!("{API}/issues/21/comments?per_page=100"),
+            json!([claim(2001, "owner", 1)]),
+        ),
+        get(
+            &format!("{API}/pulls/121/commits?per_page=100"),
+            json!([{"sha":head,"commit":{"message":"Moai-Claim: 21#2001"}}]),
+        ),
+        get(
+            &format!("{API}/issues/121/comments?per_page=100"),
+            json!([
+                note(
+                    3001,
+                    &format!("moai-audit-claim: lane=reviewer head={head}")
+                ),
+                note(
+                    3002,
+                    &format!(
+                        "AUDIT #121 (B1) head {head} base {} — verdict: PASS",
+                        sha('a')
+                    )
+                ),
+            ]),
+        ),
+    ]);
+    let out = status_cli(
+        tmp.path(),
+        audit_request(),
+        &transport,
+        &FakeClock(Cell::new(1_794_355_501)),
+    )
+    .unwrap();
+    let entry = row(&out, "owner", 21);
+    assert_eq!(entry["pr"], 121);
+    assert_eq!(entry["phase"], "pr_open");
+    assert_eq!(entry["audit"]["winner_on_head"]["lane"], "reviewer");
+    assert_eq!(entry["audit"]["verdict_on_head"]["verdict"], "PASS");
+    assert_eq!(transport.remaining(), 0);
+    assert!(transport
+        .sent
+        .borrow()
+        .iter()
+        .all(|request| request.method == "GET"));
+}
+
+#[test]
+fn b1_numeric_comment_alias_binds_ack_to_the_verified_repository() {
+    let tmp = tempfile::tempdir().unwrap();
+    for source_repo in [1, 2] {
+        let mut first: Vec<_> = (1..=99).map(|id| note(id, "ordinary status")).collect();
+        first.push(s6_packet(101, s6_message(), false));
+        let (out, transport) = b1_numeric_comment_pages(
+            tmp.path(),
+            first,
+            vec![s6_packet(102, s6_message(), true)],
+            source_repo,
+            1,
+        );
+        if source_repo == 1 {
+            assert_eq!(out["communication"]["available"], true, "{out}");
+            let sender = s6_lane(&out, "sender");
+            assert_eq!(sender["sent_reports"][0]["received_ack"], true);
+            assert_eq!(
+                sender["received_acks"],
+                json!([{"report_id":"s6-report","issue":21,"ack_comment_id":102}])
+            );
+        } else {
+            assert_eq!(out["communication"]["available"], false, "{out}");
+            assert!(out["communication"]["lanes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(
+                    |lane| lane["sent_reports"] == json!([]) && lane["received_acks"] == json!([])
+                ));
+        }
+        assert_eq!(transport.remaining(), 0);
+        assert!(transport
+            .sent
+            .borrow()
+            .iter()
+            .all(|request| request.method == "GET"));
+    }
+}

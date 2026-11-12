@@ -248,14 +248,15 @@ pub(crate) fn pages<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     first: String,
 ) -> Result<Vec<Value>> {
-    pages_with_evidence(client, first).map(|(values, _)| values)
+    // Shared readers follow GitHub's Link verbatim, including numeric repository URLs.
+    pages_with_evidence(client, first, None).map(|(values, _)| values)
 }
 
 fn pages_with_evidence<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     first: String,
+    mut source_urls: Option<&mut Vec<String>>,
 ) -> Result<(Vec<Value>, bool)> {
-    let collection = format!("{}?", first.split('?').next().unwrap_or_default());
     let mut complete = true;
     let (mut url, mut out, mut n) = (Some(first), Vec::new(), 0);
     while let Some(u) = url {
@@ -264,17 +265,13 @@ fn pages_with_evidence<T: Transport, C: Clock>(
             return Err("lane status page limit exceeded (50)".into());
         }
         let resp = client.get(&u, None).map_err(String::from)?;
+        if let Some(urls) = &mut source_urls {
+            urls.push(u);
+        }
         let link = resp.header("link");
         url = next_link(link);
         if link.is_some_and(|link| link.contains("rel=\"next\"")) && url.is_none() {
             complete = false;
-        }
-        if url
-            .as_ref()
-            .is_some_and(|url| !url.starts_with(&collection))
-        {
-            complete = false;
-            url = None;
         }
         match resp.body {
             Some(Value::Array(values)) => out.extend(values),
@@ -399,6 +396,7 @@ struct ReadIssue {
     issue: Value,
     comments: Value,
     complete: bool,
+    source_urls: Vec<String>,
 }
 
 fn collect_with_raw<T: Transport, C: Clock>(
@@ -421,8 +419,12 @@ fn collect_with_raw<T: Transport, C: Clock>(
     let mut raw = Vec::new();
     for n in &wanted {
         let issue = one(client, &format!("{repo}/issues/{n}"))?;
-        let (raw_comments, complete) =
-            pages_with_evidence(client, format!("{repo}/issues/{n}/comments?per_page=100"))?;
+        let mut source_urls = Vec::new();
+        let (raw_comments, complete) = pages_with_evidence(
+            client,
+            format!("{repo}/issues/{n}/comments?per_page=100"),
+            Some(&mut source_urls),
+        )?;
         let comments = comments_from(&raw_comments);
         issues.push(IssueData {
             number: *n,
@@ -435,6 +437,7 @@ fn collect_with_raw<T: Transport, C: Clock>(
             issue,
             comments: Value::Array(raw_comments),
             complete,
+            source_urls,
         });
     }
     let others: BTreeSet<i64> = issues
@@ -1138,6 +1141,33 @@ fn communication_lane<'a>(
         })
 }
 
+// Collection identity belongs to the S6 observation, never to shared pagination.
+// Numeric aliases are accepted only for the repository whose metadata was verified.
+fn comment_collection_matches(issue: &ReadIssue, repository_id: Option<u64>) -> bool {
+    let Some(first) = issue.source_urls.first() else {
+        return false;
+    };
+    let collection = first.split('?').next().unwrap_or_default();
+    let same_slug = |url: &str| {
+        url.strip_prefix(collection)
+            .is_some_and(|suffix| suffix.starts_with('?'))
+    };
+    if issue.source_urls.iter().all(|url| same_slug(url)) {
+        return true;
+    }
+    let Some(repository_id) = repository_id.filter(|id| *id > 0) else {
+        return false;
+    };
+    let numeric = format!(
+        "{API}/repositories/{repository_id}/issues/{}/comments?",
+        issue.number
+    );
+    issue
+        .source_urls
+        .iter()
+        .all(|url| same_slug(url) || url.starts_with(&numeric))
+}
+
 fn communication<T: Transport, C: Clock>(
     req: &LaneStatusRequest,
     raw: &[ReadIssue],
@@ -1162,7 +1192,11 @@ fn communication<T: Transport, C: Clock>(
             .as_array()
             .is_some_and(|comments| comments.iter().any(has_message))
     });
-    if !has_packets {
+    if !has_packets
+        && raw
+            .iter()
+            .all(|issue| comment_collection_matches(issue, None))
+    {
         return json!({"available":errors.is_empty(), "observed_at":now,
             "lanes":lanes.into_values().collect::<Vec<_>>(), "errors":errors});
     }
@@ -1182,6 +1216,9 @@ fn communication<T: Transport, C: Clock>(
             continue;
         }
         let observations = (|| {
+            if !comment_collection_matches(issue, repository["id"].as_u64()) {
+                return Err("message comments collection mismatch".to_string());
+            }
             let reports = message_observations(req, issue, &repository, now)?;
             // A report cannot change its task by moving to another inspected Issue.
             if reports
