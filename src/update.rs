@@ -258,6 +258,8 @@ pub struct ReplaceBackup {
 const BACKUP_MANIFEST: &str = "MANIFEST.json";
 /// The moved original folder inside a backup directory.
 pub(crate) const BACKUP_TREE: &str = "moai";
+/// #2505: the package is staged and verified here before the original folder moves.
+pub(crate) const BACKUP_INCOMING: &str = "incoming";
 
 fn file_mode(meta: &fs::Metadata) -> u32 {
     #[cfg(unix)]
@@ -350,23 +352,24 @@ pub(crate) fn test_fault(point: &str) -> Result<()> {
     Ok(())
 }
 
-/// Test seam (#2483 AC-5): `MOAI_CLI_TEST_FAULT=corrupt_after_move` appends one byte to
-/// the first moved file, standing in for a writer that changes the folder between the
-/// move and the manifest check. Debug builds only.
-fn test_corrupt_moved(moved: &Path, files: &[BackupFile]) {
+/// Test seam (#2483 AC-5, #2505 X6): `MOAI_CLI_TEST_FAULT=<point>` appends one byte to the
+/// first file of `files` under `dir`, standing in for a writer that changes a folder between
+/// a move and its manifest check (`corrupt_after_move` in the replace, `corrupt_after_restore`
+/// in recovery). Debug builds only.
+pub(crate) fn test_corrupt_first_file(point: &str, dir: &Path, files: &[BackupFile]) {
     #[cfg(debug_assertions)]
-    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok("corrupt_after_move") {
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
         if let Some(first) = files.first() {
             if let Ok(mut f) = fs::OpenOptions::new()
                 .append(true)
-                .open(moved.join(&first.path))
+                .open(dir.join(&first.path))
             {
                 use std::io::Write as _;
                 let _ = f.write_all(b"x");
             }
         }
     }
-    let _ = (moved, files);
+    let _ = (point, dir, files);
 }
 
 /// Refuses a symlink in any existing component between `~/.moai-cli` and `dir`.
@@ -1001,7 +1004,9 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
                         .into_owned(),
                     backup_layout: format!(
                         "<apply UTC>-{host}/{BACKUP_TREE} (the folder, moved as is) and \
-                         <apply UTC>-{host}/{BACKUP_MANIFEST}"
+                         <apply UTC>-{host}/{BACKUP_MANIFEST}; a second run in the same \
+                         second uses <apply UTC>.2-{host} (up to .{BACKUP_NAME_TRIES}); the \
+                         package is staged in <apply UTC>-{host}/{BACKUP_INCOMING} first"
                     ),
                     replace_with: ReplaceWith {
                         package_digest: staged.digest.clone(),
@@ -1414,9 +1419,51 @@ pub fn apply_update(
     }))
 }
 
-/// UTC `YYYYMMDDTHHMMSSZ` for backup directory names.
+/// UTC `YYYYMMDDTHHMMSSZ` for backup directory names. Test seam (#2505): debug builds take
+/// an alphanumeric `MOAI_CLI_TEST_BACKUP_STAMP` instead, so same-second runs reproduce.
 fn compact_stamp() -> String {
+    #[cfg(debug_assertions)]
+    if let Ok(s) = std::env::var("MOAI_CLI_TEST_BACKUP_STAMP") {
+        if !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric()) {
+            return s;
+        }
+    }
     now_rfc3339().replace(['-', ':'], "")
+}
+
+/// Backup folder names tried for one stamp (#2505): `<stamp>-<host>`, then `<stamp>.2-<host>`
+/// through `<stamp>.16-<host>`. The `-<host>` suffix stays last so a listing still groups by
+/// host.
+pub(crate) const BACKUP_NAME_TRIES: usize = 16;
+
+/// Creates the first free backup folder name for `stamp` and `host` (exclusive create, so two
+/// runs never share one). A taken name moves on to the next; any other error, or all names
+/// taken, stops before anything moved and says why.
+fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Result<PathBuf> {
+    for n in 1..=BACKUP_NAME_TRIES {
+        let name = if n == 1 {
+            format!("{stamp}-{host}")
+        } else {
+            format!("{stamp}.{n}-{host}")
+        };
+        let dir = backups.join(name);
+        match fs::create_dir(&dir) {
+            Ok(()) => return Ok(dir),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => {
+                return Err(format!(
+                    "creating the backup folder {} failed ({e}); nothing moved",
+                    dir.display()
+                ))
+            }
+        }
+    }
+    Err(format!(
+        "all {BACKUP_NAME_TRIES} backup folder names for this second ({stamp}-{host}, \
+         {stamp}.2-{host} … {stamp}.{BACKUP_NAME_TRIES}-{host}) already exist under {}; \
+         nothing moved — retry in a second",
+        backups.display()
+    ))
 }
 
 /// #2483: one confirmed backup-then-replace. Order: fresh scan equal to the preview →
@@ -1531,8 +1578,7 @@ fn run_backup_then_replace(
     refuse_state_symlinks(&backups, "backup")?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     refuse_state_symlinks(&backups, "backup")?;
-    let dir = backups.join(format!("{}-{host}", compact_stamp()));
-    fs::create_dir(&dir).map_err(|_| "backup directory already exists or is unavailable")?;
+    let dir = create_backup_dir(&backups, &compact_stamp(), host)?;
     *backup_out = Some(dir.clone());
 
     let manifest = json!({
@@ -1586,10 +1632,33 @@ fn run_backup_then_replace(
     *receipt_out = Some(receipt.clone());
     test_fault("after_backup")?;
 
+    // #2505: write and verify the whole package in `<backup>/incoming` first. The projection
+    // then holds either the original or the complete package; the only moment it holds
+    // neither is the gap between the two renames below. A failure while staging leaves the
+    // original in place (recovery-plan: `release`).
+    let incoming = dir.join(BACKUP_INCOMING);
+    fs::create_dir(&incoming)
+        .map_err(|e| format!("creating the staging folder failed ({e}); nothing moved"))?;
+    for (idx, (rel, bytes)) in staged.files.iter().enumerate() {
+        let target = incoming.join(rel);
+        if let Err(e) = publish_exclusive(&target, bytes) {
+            receipt.entries[idx].error = Some(e.clone());
+            *receipt_out = Some(receipt.clone());
+            return Err(e);
+        }
+        if read_opt(&target)?.map(|b| sha256_hex(&b)) != receipt.entries[idx].after_sha256 {
+            *receipt_out = Some(receipt.clone());
+            return Err("staged bytes do not match the package; nothing moved".into());
+        }
+        if idx == 0 {
+            test_fault("mid_stage")?;
+        }
+    }
+
     let moved = dir.join(BACKUP_TREE);
     fs::rename(&root, &moved)
         .map_err(|_| "moving the original folder into the backup failed; nothing moved")?;
-    test_corrupt_moved(&moved, &btr.source_files);
+    test_corrupt_first_file("corrupt_after_move", &moved, &btr.source_files);
     if source_files(&moved).ok().as_ref() != Some(&btr.source_files) {
         return Err(match fs::rename(&moved, &root) {
             Ok(()) => "the moved folder does not match the manifest; moved back".into(),
@@ -1600,27 +1669,31 @@ fn run_backup_then_replace(
             ),
         });
     }
+    test_fault("mid_replace")?;
+    if let Err(e) = fs::rename(&incoming, &root) {
+        return Err(match fs::rename(&moved, &root) {
+            Ok(()) => {
+                format!("moving the staged package into place failed ({e}); the original was moved back")
+            }
+            Err(_) => format!(
+                "moving the staged package into place failed ({e}) and moving the original \
+                 back failed; it stays at {}",
+                moved.display()
+            ),
+        });
+    }
 
     let mut owned = BTreeMap::new();
-    for (idx, (rel, bytes)) in staged.files.iter().enumerate() {
-        let target = root.join(rel);
-        if let Err(e) = publish_exclusive(&target, bytes) {
-            receipt.entries[idx].error = Some(e.clone());
-            *receipt_out = Some(receipt.clone());
-            return Err(e);
-        }
-        let written = read_opt(&target)?.map(|b| sha256_hex(&b));
+    for (idx, (rel, _)) in staged.files.iter().enumerate() {
+        let written = read_opt(&root.join(rel))?.map(|b| sha256_hex(&b));
         if written != receipt.entries[idx].after_sha256 {
             *receipt_out = Some(receipt.clone());
             return Err("published bytes do not match the package".into());
         }
         receipt.entries[idx].published = true;
         owned.insert(rel.clone(), written.expect("sha of a written file"));
-        *receipt_out = Some(receipt.clone());
-        if idx == 0 {
-            test_fault("mid_replace")?;
-        }
     }
+    *receipt_out = Some(receipt.clone());
     receipt.owned = owned_vec(host, &owned);
     receipt.status = "committed".into();
     receipt.finished_at = Some(now_rfc3339());
