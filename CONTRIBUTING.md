@@ -34,7 +34,7 @@ cargo fetch --locked
 
 ## The check set
 
-Run all five before you push. CI (`rc-ci`) runs the same set.
+Run all five before you push. CI (`ci`) runs the same set.
 
 ```sh
 cargo test --offline --locked
@@ -71,7 +71,7 @@ You do **not** need to use the internal pull request template, claim comments, c
 MoAI ADK is developed with coding-agent sessions that follow the same workflow the kit provides. Your pull request joins that flow like this:
 
 1. **Claim on your behalf.** A maintainer records a claim for your work on the linked Issue, so that no agent session starts the same work.
-2. **CI approval.** For a first-time contributor, GitHub holds the workflow run of a pull request from a fork until a maintainer approves it. After approval, `rc-ci` runs the check set. It runs with read-only permissions and no secrets.
+2. **CI approval.** For a first-time contributor, GitHub holds the workflow run of a pull request from a fork until a maintainer approves it. After approval, `ci` runs the check set. It runs with read-only permissions and no secrets.
 3. **Independent audit.** A reviewer session that did not write the change audits the exact head commit against the Issue, the diff and the evidence. It posts a verdict on the pull request, either PASS or FAIL. A FAIL lists what to fix.
 4. **Merge gate.** Only a maintainer posts the `moai/audit` commit status on the audited head and merges. The branch ruleset requires that status, and the branch must be up to date.
 5. **New pushes need a new audit.** Any new commit after the verdict invalidates it, and the audit runs again on the new head.

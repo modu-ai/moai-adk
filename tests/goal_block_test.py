@@ -18,6 +18,7 @@ ISSUES = {"milestone": "rc.2", "issues": [
 PRS = {"milestone": "rc.2", "issues": [{"number": 210, "state": "closed"}],
        "prs": [{"number": 2200, "state": "open"}, {"number": 2199, "state": "open"},
                {"number": 2198, "state": "merged"}], "keep_set": []}
+LOOP = "/goal 저장소에 열린 PR이 0이고 시작할 수 있는 Issue가 0임(milestone rc.2, HOLD·needs:decision 제외)"
 KEPT = {"milestone": "rc.2", "issues": [
     {"number": 2016, "state": "open"}, {"number": 202, "state": "open"}],
     "prs": [{"number": 2199, "state": "open"}, {"number": 2017, "state": "open"}],
@@ -44,7 +45,7 @@ class GoalBlockSnapshotTest(unittest.TestCase):
             "leader": {
                 "goal_line": "/goal milestone rc.2의 열린 Issue가 모두 병합되거나 종료됨",
                 "condition": "milestone rc.2의 열린 Issue가 모두 병합되거나 종료됨"},
-            "agent": {"goal_lines": [
+            "agent": {"loop_line": LOOP, "goal_lines": [
                 "/goal #202의 PR이 병합되거나 blocked로 보고됨",
                 "/goal #204의 PR이 병합되거나 blocked로 보고됨"]},
             "codex": {"goal_line": "/goal milestone rc.2의 열린 Issue가 모두 병합되거나 종료됨", "note": NOTE},
@@ -57,7 +58,7 @@ class GoalBlockSnapshotTest(unittest.TestCase):
             "leader": {
                 "goal_line": "/goal milestone rc.2의 열린 PR이 모두 병합되거나 종료됨",
                 "condition": "milestone rc.2의 열린 PR이 모두 병합되거나 종료됨"},
-            "agent": {"goal_lines": None},
+            "agent": {"loop_line": LOOP, "goal_lines": None},
             "codex": {"goal_line": "/goal milestone rc.2의 열린 PR이 모두 병합되거나 종료됨", "note": NOTE},
             "counts": {"open_issues": 0, "open_prs": 2, "keep_set": 0},
             "keep_set_excluded": [], "model_can_input": False, "writes": False,
@@ -68,7 +69,8 @@ class GoalBlockSnapshotTest(unittest.TestCase):
             "leader": {
                 "goal_line": "/goal milestone rc.2의 열린 Issue·PR이 모두 병합되거나 종료됨 — 다음은 제외: #2016(운영자 보유), #2017(운영자 보유)",
                 "condition": "milestone rc.2의 열린 Issue·PR이 모두 병합되거나 종료됨 — 다음은 제외: #2016(운영자 보유), #2017(운영자 보유)"},
-            "agent": {"goal_lines": ["/goal #202의 PR이 병합되거나 blocked로 보고됨"]},
+            "agent": {"loop_line": LOOP + " — 다음은 제외: #2016(운영자 보유), #2017(운영자 보유)",
+                      "goal_lines": ["/goal #202의 PR이 병합되거나 blocked로 보고됨"]},
             "codex": {
                 "goal_line": "/goal milestone rc.2의 열린 Issue·PR이 모두 병합되거나 종료됨 — 다음은 제외: #2016(운영자 보유), #2017(운영자 보유)",
                 "note": NOTE},
@@ -89,9 +91,18 @@ class GoalBlockSnapshotTest(unittest.TestCase):
                 self.assertIsNone(out["leader"]["goal_line"])
                 self.assertIsNone(out["codex"]["goal_line"])
                 self.assertIsNone(out["agent"]["goal_lines"])
+                self.assertIsNone(out["agent"]["loop_line"])
                 self.assertIn("열린 항목 없음", out["leader"]["condition"])
                 self.assertEqual(out["counts"]["open_issues"], 0)
                 self.assertEqual(out["counts"]["open_prs"], 0)
+
+    def test_the_agent_default_is_the_lane_wide_round_not_one_card(self):
+        # #2515: a card-scoped goal ends the session when that card ends; the loop line
+        # holds until no open PR and no startable Issue remain, whatever card is held.
+        out = run_generator(PRS)
+        self.assertIsNone(out["agent"]["goal_lines"])
+        self.assertEqual(out["agent"]["loop_line"], LOOP)
+        self.assertNotIn("#", out["agent"]["loop_line"].split("—")[0])
 
     def test_input_permutations_produce_identical_output(self):
         for fixture in [ISSUES, PRS, KEPT]:

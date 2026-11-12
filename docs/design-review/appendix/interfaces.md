@@ -77,6 +77,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `claude-doctor`
 - `claude-settings-apply`
 - `claude-settings-plan`
+- `codex-config-apply`
+- `codex-config-plan`
 - `codex-doctor`
 - `codex-projection-apply`
 - `codex-projection-plan`
@@ -101,6 +103,10 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `go-state-apply`
+- `go-state-plan`
+- `go-state-revert`
+- `go-state-revert-plan`
 - `hook-dispatch`
 - `hook-receipt`
 - `hooks-apply`
@@ -151,6 +157,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
+- `worktree-gc-apply`
 - `worktree-gc-plan`
 - `worktree-plan`
 - `worktree-report`
