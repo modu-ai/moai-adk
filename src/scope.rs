@@ -684,7 +684,7 @@ mod tests {
         assert!(overlap("src/lib.rs", "src/lib.rs"));
         assert!(overlap("src", "src/lib.rs"));
         assert!(overlap("./src/", "src/a.rs"));
-        assert!(overlap(".github/**", ".github/workflows/rc-ci.yml"));
+        assert!(overlap(".github/**", ".github/workflows/ci.yml"));
         assert!(overlap("src/*.rs", "src/lib.rs"));
         assert!(overlap("docs/**", "docs/a/*.md"));
         assert!(!overlap("src/lib.rs", "src/main.rs"));

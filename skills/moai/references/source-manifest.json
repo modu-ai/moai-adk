@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "81ad90ff598ef986677404976f5ade17e8a04bacacf23dfdeea023747df457ca",
+      "sha256": "ffea38ac2fdcad86db67a02697228268cfc78c42e6d76ec180a37396f40a335f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "e3cbfdb17ca9c47363e1a3e6a780f056f06b791f3e408b90f30dfec70b962632",
+      "sha256": "98ca7207a3f4fc98fc8927fd36722c81a3de6d7fbb8e38ee9d11f63b4ab07459",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -127,7 +127,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "1c50d63a279e9b8425b1325f3a198f4e972147afbf4c84cb858caea72144689f",
+      "sha256": "228350833a15547e9ea8fd5858e9e2ed1cff250f30f773e18141e542ac4c5cde",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "37f9e7abdc020c2df944abee066ab049b44b52f4102c627688cb94b7a77f7ebb",
+      "sha256": "ae405f2711db57630f94cddfac5c58a766bee2391dda64bc0119e89c0873d367",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "7317409ffdf5dd33aa69e5c1905b71bf1a779cea064c1cbd32a6969ffdf78937",
+      "sha256": "92e661b83425f30618d4244ab3ac264e9283e901e520208dc7f655d413fb3316",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "e98007c6bf5aea49e8bc38d385ba3f464b32e00882a12377e7fdacb27061a42c",
+      "sha256": "1c8669b8fdb8f7b06541f607860e4d4d32dab362a1d74f514f5b011ab8f79912",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
