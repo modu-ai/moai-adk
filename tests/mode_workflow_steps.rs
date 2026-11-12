@@ -264,7 +264,7 @@ fn the_round_keeps_going_until_its_end_condition() {
         &agent,
         "keep-going",
         &[
-            "A turn ends only when (i) the repository has no open pull request and no startable Issue",
+            "A turn ends only when (i) the repository has no open pull request and no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed)",
             "(ii) the user says stop",
             "In every other case do not end the turn",
             "A card's completion report closes the card, never the round.",
@@ -328,6 +328,30 @@ fn the_round_keeps_going_until_its_end_condition() {
         &[
             "Answer handoff requests, decision requests and `LANE-BLOCKED` lines within the supervision round",
             "post the handoff line in that round without waiting for a request",
+        ],
+    );
+    // Audit 6824297146 F1/N1: self-pick states the same end condition, exclusions included.
+    assert_says(
+        &agent,
+        "self-pick",
+        &["no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed) — the same end condition as the `keep-going` step"],
+    );
+    // Cause 8 (6824158448): no bare "no startable Issue"; expired foreign claims go up.
+    assert_says(&agent, "state", &["expired claims of other sessions"]);
+    assert_says(
+        &agent,
+        "self-pick",
+        &[
+            "Never report \"no startable Issue\" bare",
+            "expired claim of <session> — leader handoff needed",
+        ],
+    );
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "ownerless — no claim, or an expired claim of a session that is not running",
+            "hand it over with your handoff line",
         ],
     );
     let skill =
