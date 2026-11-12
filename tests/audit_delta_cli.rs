@@ -552,6 +552,50 @@ fn temporary_root_inside_a_bare_source_is_blocked_by_the_common_boundary() {
     );
     assert_eq!(fs::read_dir(&inside).unwrap().count(), 0);
 }
+#[test]
+fn tmp_inside_project_is_blocked_when_core_worktree_points_elsewhere() {
+    // #2529 B1: with core.worktree at another folder, --show-toplevel is that
+    // folder and --git-common-dir is PROJECT/.git, so neither the worktree nor
+    // the common clause sees a temporary root under PROJECT. Only the PROJECT
+    // clause keeps the scratch out of the audited tree.
+    let fx = Fixture::new(false, false);
+    let base = fx.project.parent().unwrap();
+    let holder = base.join("worktree-holder");
+    fs::create_dir(&holder).unwrap();
+    git(
+        &holder,
+        &["init", "-q", "--object-format=sha1", "-b", "main"],
+    );
+    let elsewhere = base.join("elsewhere");
+    fs::create_dir(&elsewhere).unwrap();
+    git(
+        &holder,
+        &["config", "core.worktree", &elsewhere.display().to_string()],
+    );
+    let sub = holder.join("sub");
+    fs::create_dir(&sub).unwrap();
+    let inside = sub.join("tmp");
+    fs::create_dir(&inside).unwrap();
+    let before = snapshot(&holder);
+    let out = fx.invoke_with_tmp(&sub, &fx.pass, &inside);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "core.worktree-shaped source-contained temporary root must be blocked; stdout={} stderr={}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let envelope: Value = serde_json::from_slice(&out.stdout).expect("blocked audit-delta JSON");
+    assert_eq!(envelope["operation"], "audit.delta");
+    assert_eq!(envelope["ok"], false);
+    assert_eq!(envelope["error"]["kind"], "blocked");
+    assert_eq!(
+        snapshot(&holder),
+        before,
+        "blocked scratch must not touch the core.worktree holder"
+    );
+    assert_eq!(fs::read_dir(&inside).unwrap().count(), 0);
+}
 
 #[test]
 fn filesystem_failures_keep_typed_io_error_kind() {

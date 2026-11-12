@@ -165,7 +165,8 @@ fn text(bytes: &[u8]) -> Result<&str> {
 
 /// PROJECT may name a subdirectory. Protect the entire actual worktree, not only
 /// that argument. Bare sources have no worktree; their common directory equals the
-/// passed directory, so the same scratch-location guard protects them (#2506).
+/// passed directory. With `core.worktree` elsewhere the toplevel is not an ancestor
+/// of PROJECT at all, so the passed directory is guarded in its own right (#2529 B1).
 fn source_boundaries(project: &Path) -> Result<(PathBuf, Option<PathBuf>)> {
     let raw = git(
         project,
@@ -571,19 +572,20 @@ pub fn inspect(project: &Path, request: Request) -> Result<Report> {
     let objects = alternates_path(&objects_dir)?;
     let temp_root = fs::canonicalize(std::env::temp_dir())
         .map_err(|e| format!("audit delta I/O failed: cannot resolve temporary root: {e}"))?;
-    // The discovered worktree root (an ancestor of every PROJECT argument that is a
-    // subdirectory) and the common directory (which equals a bare PROJECT) together
-    // cover every source shape, so a separate check against PROJECT itself would be
-    // redundant (#2506): a temporary root inside the source always falls under one of
-    // those two boundaries. Pinned by the subdirectory and bare-source CLI tests.
-    if temp_root.starts_with(&common)
+    // Guard the passed directory itself as well: with `core.worktree` pointing at
+    // another folder, --show-toplevel is that folder (not an ancestor of PROJECT)
+    // and --git-common-dir is PROJECT/.git, so a temporary root under PROJECT
+    // escapes the worktree and common clauses (#2529 B1). Pinned by the
+    // subdirectory, bare-source and core.worktree CLI tests.
+    if temp_root.starts_with(&project)
+        || temp_root.starts_with(&common)
         || temp_root.starts_with(&objects_dir)
         || worktree
             .as_ref()
             .is_some_and(|root| temp_root.starts_with(root))
     {
         return Err(blocked(
-            "temporary root must be outside the source worktree and common Git directory",
+            "temporary root must be outside the source worktree, project and common Git directory",
         ));
     }
     let scratch = tempfile::Builder::new()

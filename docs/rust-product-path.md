@@ -548,11 +548,12 @@ first-parent chain, patch-id 비교, 내용 감사·검증 명령 실행·claim/
 원격 CI/PR 조회·stale 판정, verdict 발행 — 은 이번에 구현하지 않았고 후속으로
 남는다. `docs/decisions-2026-11-08.md`에 이 축소를 적는 행은 리더가 추가한다
 (사전 감사 6813273445 N1 지적; 레인은 결정 로그를 직접 쓰지 않는다).
-같은 카드에서 TMP 경계 조건을 정리했다: scratch 임시 폴더는 발견된 worktree
-root(모든 subdirectory PROJECT 인자의 조상)와 common directory(bare PROJECT와
-동일)의 바깥이어야 하며, PROJECT 인자 자체에 대한 별도 검사는 이 둘이 완전히
-덮으므로 제거했다(#2488 감사 N1). 하위 디렉터리 인자와 bare 원본 두 CLI 시험이
-남은 두 경계를 각각 고정한다.
+같은 카드의 TMP 경계 조건(#2488 감사 N1 → #2529 감사 B1): scratch 임시 폴더는
+발견된 worktree root·common directory·그리고 **PROJECT 인자 자체**의 바깥이어야
+한다. PROJECT 절은 중복이 아니었다 — `core.worktree`가 다른 폴더를 가리키면
+toplevel이 그 폴더가 되어 PROJECT의 조상이 아니므로, PROJECT 안의 임시 폴더는
+나머지 두 경계에 걸리지 않는다(#2529 B1 실측). 하위 디렉터리 인자·bare 원본·
+core.worktree 세 CLI 시험이 세 경계를 각각 고정한다.
 
 ### Claim re-verification before commit and push (`claim-verify`, rc.2 A9 #2255)
 
