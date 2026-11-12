@@ -224,10 +224,8 @@ fn count_unrecorded(project: &Path, recorded: &HashMap<String, Entry>) -> BTreeM
 /// The read-only preview over one project folder.
 pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
-    let moai = project.join(".moai");
-    if fs::symlink_metadata(&moai).is_ok_and(|m| m.file_type().is_symlink()) {
-        return Err(".moai is a symlink; refused".into());
-    }
+    // A linked `.moai` (or any linked component above the manifest) is refused by the
+    // manifest read below, with or without a manifest file.
     let mut warnings = vec![
         "Running Claude Code sessions in this project may read .claude/hooks, rules and output \
          styles; apply only while none is running (this preview cannot tell)."

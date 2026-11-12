@@ -279,5 +279,14 @@ fn a_linked_moai_folder_or_manifest_is_refused() {
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(v.to_string().contains("symlink"), "{v}");
+
+    // A linked .moai with no manifest in it is refused too, not read as "no manifest".
+    let g = Fx::new();
+    let real = g.root.join("real-moai");
+    fs::create_dir_all(real.join("config")).unwrap();
+    symlink(&real, g.root.join(".moai")).unwrap();
+    let out = run(&["go-state-plan", g.root.to_str().unwrap()]);
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
     let _ = Path::new("");
 }
