@@ -25,6 +25,9 @@ pub const INIT_LINE: &str = "moai-cli: initialized";
 const PERMISSION: &str = "launcher-auto-init #2481 user decision 6810818827";
 /// The generated workflow id; AGENTS.md points at `.moai-cli/workflows/moai/`.
 const WORKFLOW_ID: &str = "moai";
+/// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
+/// generating `AGENTS.md` (at most 3000), so a test can show a concurrent launch waits.
+pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
 
 /// What [`prepare`] did or, under `--dry-run`, would do.
 #[derive(Debug, Default)]
@@ -72,7 +75,7 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
             }
             git_init(&dir)?;
             let mut done = vec!["git init".to_string()];
-            done.extend(settings(&dir, &dir, host)?);
+            done.extend(settings(&dir, &dir.join(".git"), host)?);
             Ok(Prepared {
                 note: Some(format!(
                     "{INIT_LINE} {}: {}",
@@ -87,6 +90,12 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                 return Ok(Prepared::default()); // bare repository or inside `.git`
             };
             if exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+                // A first launch that is still generating AGENTS.md holds `.init-lock` (created
+                // before the settings file): wait for it, so this host does not start before the
+                // initialization it found has finished. No lock file, no wait and no write.
+                if let Some(common) = id["clone_anchor"].as_str() {
+                    wait_for_initializer(&init_lock_dir(Path::new(common)).join(".init-lock"));
+                }
                 return Ok(Prepared::default());
             }
             if let Some(what) = guard(&top) {
@@ -112,13 +121,10 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                     git_pending: false,
                 });
             }
-            let primary = match (id["workspace_kind"].as_str(), id["clone_anchor"].as_str()) {
-                (Some("linked"), Some(common)) => Path::new(common)
-                    .parent()
-                    .map_or_else(|| top.clone(), Path::to_path_buf),
-                _ => top.clone(),
-            };
-            let done = settings(&top, &primary, host)?;
+            let anchor = id["clone_anchor"]
+                .as_str()
+                .map_or_else(|| top.join(".git"), PathBuf::from);
+            let done = settings(&top, &anchor, host)?;
             Ok(Prepared {
                 note: (!done.is_empty())
                     .then(|| format!("{INIT_LINE} {}: {}", top.display(), done.join(", "))),
@@ -140,6 +146,22 @@ pub fn home_or_root(dir: &Path, home: Option<&Path>) -> Option<&'static str> {
 
 fn exists(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
+}
+
+/// `<clone common dir>/.moai-cli/sessions`, the folder of the agent-number store
+/// (`session::agent_seq_dir`), read from an identity already resolved.
+fn init_lock_dir(common: &Path) -> PathBuf {
+    common.join(".moai-cli").join("sessions")
+}
+
+/// Waits until no first launch holds `lock` (a regular file only; never created here).
+fn wait_for_initializer(lock: &Path) {
+    if !fs::symlink_metadata(lock).is_ok_and(|m| m.file_type().is_file()) {
+        return;
+    }
+    if let Ok(f) = OpenOptions::new().read(true).open(lock) {
+        let _ = f.lock_shared();
+    }
 }
 
 /// `git init -q` in `dir` with the same variable scrub as every other git subprocess. A
@@ -168,7 +190,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
 /// Creates the project settings and, when `AGENTS.md` is absent, the generated workflow and
 /// `AGENTS.md` in work tree `top`, under a lock in the clone's common dir so concurrent first
 /// launches initialize once. Returns what it created.
-fn settings(top: &Path, primary: &Path, host: &str) -> Result<Vec<String>, String> {
+fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String> {
     let lock_dir = crate::session::agent_seq_dir(top)?;
     for p in [&lock_dir, &lock_dir.join(".init-lock")] {
         if fs::symlink_metadata(p).is_ok_and(|m| m.file_type().is_symlink()) {
@@ -187,7 +209,7 @@ fn settings(top: &Path, primary: &Path, host: &str) -> Result<Vec<String>, Strin
         .map_err(|_| "the project initialization lock is unavailable".to_string())?;
     let mut done = Vec::new();
     if !exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
-        let plan = profile::plan(top, default_profile(primary, host)?)?;
+        let plan = profile::plan(top, default_profile(&primary_name(anchor), host)?)?;
         if plan.action != "create" {
             return Err(format!(
                 "project settings plan is {}, not create; nothing written",
@@ -197,6 +219,12 @@ fn settings(top: &Path, primary: &Path, host: &str) -> Result<Vec<String>, Strin
         let digest = plan.plan_digest.clone();
         profile::apply(top, plan, &digest, PERMISSION)?;
         done.push(format!("{PROJECT_STATE_DIR}/project.yaml"));
+        if let Some(ms) = std::env::var(INIT_TEST_HOLD_VAR)
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+        {
+            std::thread::sleep(std::time::Duration::from_millis(ms.min(3000)));
+        }
         if exists(&top.join("AGENTS.md")) {
             done.push("AGENTS.md present, unchanged".into());
         } else {
@@ -230,15 +258,26 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
     Ok(vec!["AGENTS.md".into()])
 }
 
-/// The profile a first launch writes: `project_id` from the primary folder name (the same
-/// mapping as the key vault's project folder, so the vault folder name does not change),
-/// `hosts` from the launching host, and placeholder values marked `source: default` that
-/// the project interview replaces.
-fn default_profile(primary: &Path, host: &str) -> Result<profile::Profile, String> {
-    let folder = primary
+/// The primary folder name exactly as `key_vault::project_scope` derives it from the clone
+/// common dir `anchor`: the folder holding `.git` (else `anchor` itself), with trailing `.git`
+/// removed. Keeping both the same means writing the profile does not move the vault folder.
+fn primary_name(anchor: &Path) -> String {
+    let primary = if anchor.file_name().is_some_and(|n| n == ".git") {
+        anchor.parent().unwrap_or(anchor)
+    } else {
+        anchor
+    };
+    primary
         .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("project");
+        .map(|n| n.to_string_lossy().trim_end_matches(".git").to_string())
+        .unwrap_or_default()
+}
+
+/// The profile a first launch writes: `project_id` from the primary folder name with the key
+/// vault's folder-name mapping (so the vault folder name does not change), `hosts` from the
+/// launching host, and placeholder values marked `source: default` that the project interview
+/// replaces.
+fn default_profile(folder: &str, host: &str) -> Result<profile::Profile, String> {
     let named = crate::key_vault::folder_name(None, folder, "");
     let project_id = named.strip_suffix('-').unwrap_or(&named).to_string();
     let host = if host == "codex" { "codex" } else { "claude" };
@@ -296,11 +335,18 @@ mod tests {
 
     #[test]
     fn the_first_launch_profile_passes_the_profile_rules() {
-        let p = default_profile(Path::new("/x/My Project"), "glm").unwrap();
+        let p = default_profile("My Project", "glm").unwrap();
         assert_eq!(p.project_id, "my-project");
         assert_eq!(p.hosts, ["claude"]);
-        let p = default_profile(Path::new("/x/___"), "codex").unwrap();
+        let p = default_profile("___", "codex").unwrap();
         assert_eq!(p.project_id, "project");
         assert_eq!(p.hosts, ["codex"]);
+    }
+
+    #[test]
+    fn the_primary_name_matches_the_key_vault_derivation() {
+        assert_eq!(primary_name(Path::new("/x/example.git/.git")), "example");
+        assert_eq!(primary_name(Path::new("/x/plain/.git")), "plain");
+        assert_eq!(primary_name(Path::new("/x/bare.git")), "bare");
     }
 }

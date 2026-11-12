@@ -304,3 +304,78 @@ fn concurrent_first_launches_initialize_once_and_never_share_a_number() {
     assert!(plain.path().join(".moai-cli/project.yaml").is_file());
     assert!(plain.path().join("AGENTS.md").is_file());
 }
+
+#[test]
+fn a_home_that_already_is_a_repository_starts_the_host_but_gets_no_settings() {
+    // Design 6810918398 §2: a dotfiles-repository HOME is launched as before; no settings and
+    // no AGENTS.md are written into HOME, and a note says why.
+    let f = fixture();
+    git_init(f.home.path());
+    let out = run_in(&f, f.home.path(), &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert_eq!(init_lines(&out), 0, "{}", text(&out));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("MoAI project settings are not created"),
+        "{}",
+        text(&out)
+    );
+    assert!(!f.home.path().join(".moai-cli/project.yaml").exists());
+    assert!(!f.home.path().join("AGENTS.md").exists());
+}
+
+#[test]
+fn dry_run_in_a_repository_without_settings_writes_nothing() {
+    let f = fixture();
+    let p = tempfile::tempdir().unwrap();
+    git_init(p.path());
+    let before = entries(p.path());
+    let git_before = entries(&p.path().join(".git"));
+    let v = json(&run_in(&f, p.path(), &["cc", "-a", "--dry-run"]));
+    let notes = v["notes"].to_string();
+    assert!(notes.contains("would initialize"), "{notes}");
+    assert!(notes.contains(".moai-cli/project.yaml"), "{notes}");
+    assert_eq!(entries(p.path()), before);
+    assert_eq!(entries(&p.path().join(".git")), git_before);
+}
+
+#[test]
+fn a_folder_named_like_a_bare_repository_keeps_the_key_vault_name() {
+    // `key_vault::project_scope` drops a trailing `.git` from the primary folder name; the
+    // first-launch profile must give the same name, or the vault folder would move.
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path().join("example.git");
+    fs::create_dir(&dir).unwrap();
+    json(&run_in(&f, &dir, &["cc", "-a"]));
+    assert_eq!(profile(&dir)["project_id"], "example");
+}
+
+#[test]
+fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let first = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+        .env(moai_cli::launcher_init::INIT_TEST_HOLD_VAR, "3000")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let yaml = plain.path().join(".moai-cli/project.yaml");
+    let start = std::time::Instant::now();
+    while !yaml.exists() {
+        assert!(
+            start.elapsed().as_secs() < 120,
+            "first launch never wrote settings"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    // The settings exist but AGENTS.md is still being generated: the second launch waits.
+    let second = run_in(&f, plain.path(), &["cc", "-l"]);
+    json(&second);
+    assert!(
+        plain.path().join("AGENTS.md").is_file(),
+        "second launch started before the first finished initializing"
+    );
+    let first = first.wait_with_output().unwrap();
+    assert_eq!(json(&first)["name"], "agent-1");
+}
