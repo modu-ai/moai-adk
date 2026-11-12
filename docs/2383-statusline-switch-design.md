@@ -139,6 +139,8 @@ fi
 exit 0
 ```
 
+저장소 원본: `tools/claude-statusline.sh`(mode 755). 위 블록과 바이트 단위로 같아야 하며 `tests/claude_statusline_wrapper_test.py`가 그 일치와 동작(임시 HOME·가짜 실행체로 stdin·argv·cwd·exit 보존, Rust 우선, 폴백, PATH의 `moai`/`moai-cli` 미호출, `.env.glm` 미source)을 확인한다. §5-5의 교체는 이 파일을 쓴다. 실제 설치본·실제 Go로 한 실행은 이 시험의 범위가 아니다.
+
 현행(§1.3)과 다른 점과 그 근거:
 - `command -v moai`와 `~/go/bin/moai`·`~/.local/bin/moai` 폴백을 없앴다. PATH 이름에 기대지 않는 것이 이 카드의 목적이다.
 - 존재 검사를 `-f`에서 `-x`로 바꿨다. 실행 권한 없는 파일을 exec해 126으로 끝나는 경우를 막는다(재감사 F2와 같은 원인).
