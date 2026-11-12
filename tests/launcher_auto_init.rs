@@ -232,6 +232,43 @@ fn home_itself_is_never_initialized_also_through_a_symlinked_home() {
     assert!(err.contains("HOME"), "{err}");
 }
 
+/// #2501 (audit note 6812547778, item 2): the root guard through the real CLI. The launch runs
+/// in the real `/` under `--dry-run`, which writes nothing even if the guard were gone (the
+/// guard runs before the dry-run branch, so without it the launch would only report "would
+/// initialize /"). The test also checks that `/` and the temporary HOME are unchanged.
+#[test]
+fn the_file_system_root_is_never_initialized_through_the_cli() {
+    let root = Path::new("/");
+    let not_a_repository = !common::git::command()
+        .args(["-C", "/", "rev-parse", "--is-inside-work-tree"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+        .success();
+    assert!(
+        not_a_repository,
+        "precondition: / must not be a git work tree"
+    );
+    for args in [
+        &["cc", "-a", "--dry-run"][..],
+        &["codex", "-l", "--dry-run"][..],
+    ] {
+        let f = fixture();
+        let home_before = entries(f.home.path());
+        let before = entries(root);
+        let out = run_in(&f, root, args);
+        let err = refused_without_writes(&f, &out, root, &before);
+        assert!(err.contains("the file-system root"), "{args:?}: {err}");
+        assert!(!err.contains("would initialize"), "{args:?}: {err}");
+        assert_eq!(
+            entries(f.home.path()),
+            home_before,
+            "{args:?}: HOME changed"
+        );
+    }
+}
+
 #[test]
 fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
     for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
