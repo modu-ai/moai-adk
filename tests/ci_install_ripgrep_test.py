@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import shlex
+import signal
 import subprocess
 import sys
 import tarfile
@@ -21,12 +22,27 @@ PINS = {
     "x86_64-unknown-linux-musl": "4cf9f2741e6c465ffdb7c26f38056a59e2a2544b51f7cc128ef28337eeae4d8e",
     "aarch64-unknown-linux-gnu": "c827481c4ff4ea10c9dc7a4022c8de5db34a5737cb74484d62eb94a95841ab2f",
 }
+# Finite retries are proven by counting, not by a wall-clock limit (#2469 follow-up): every fake
+# tool start counts, and start number TOOL_START_BUDGET + 1 kills the run's process group. The
+# longest legitimate run (apt install failure) is 4 attempts x 6 starts + 3 sleeps + 7 fallback
+# starts = 34, pinned by test_longest_legitimate_run_stays_inside_the_tool_budget.
+TOOL_START_BUDGET = 40
+# Last resort for a pure-shell spin that starts no fake tool; never a performance limit. One run
+# needs about 2 s of CPU but took up to 23 s of wall time at load 236 on 16 CPUs (2026-11-12),
+# which made the former 15 s limit fail under load while rc-ci passed.
+HANG_GUARD_SECONDS = 300
 
 DRIVER = r'''
-import hashlib,json,os,shutil,sys,tarfile,tempfile
+import hashlib,json,os,shutil,signal,sys,tarfile,tempfile
 from pathlib import Path
 root=Path(os.environ['FIXTURE_ROOT']); cmd=Path(sys.argv[0]).name; a=sys.argv[1:]
 with (root/'calls.jsonl').open('a') as f:f.write(json.dumps([cmd,a])+'\n')
+with (root/'starts').open('ab') as f:f.write(b'.')
+if (root/'starts').stat().st_size>int(os.environ['FIXTURE_TOOL_BUDGET']):
+ (root/'budget-exceeded').write_text(cmd)
+ # Only an isolated session is killed; never the test runner's own process group.
+ if os.getpgrp()!=int(os.environ['FIXTURE_RUNNER_PGRP']):os.killpg(os.getpgrp(),signal.SIGKILL)
+ sys.exit(125)
 mode=os.environ.get('FIXTURE_APT_MODE','update_failure')
 if cmd=='sudo':
  assert a.pop(0)=='-n';os.execvp(a[0],a)
@@ -134,9 +150,30 @@ class InstallerTest(unittest.TestCase):
             source = source.replace(old, hashlib.sha256(archive.read_bytes()).hexdigest())
         self.script.write_text(source)
 
+    def spawn(self, argv, env, cwd=None, budget=TOOL_START_BUDGET):
+        """Run argv in its own session; return (result, budget_exceeded)."""
+        for name in ("starts", "budget-exceeded"):
+            (self.root / name).unlink(missing_ok=True)
+        env = {**env, "FIXTURE_TOOL_BUDGET": str(budget), "FIXTURE_RUNNER_PGRP": str(os.getpgrp())}
+        proc = subprocess.Popen(argv, env=env, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, start_new_session=True)
+        try:
+            out, err = proc.communicate(timeout=HANG_GUARD_SECONDS)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.communicate()
+            self.fail(f"hang guard: no exit after {HANG_GUARD_SECONDS} s (a spin that starts no fake tool)")
+        exceeded = (self.root / "budget-exceeded").exists()
+        return subprocess.CompletedProcess(argv, proc.returncode, out, err), exceeded
+
+    def run_checked(self, argv, env, cwd=None):
+        result, exceeded = self.spawn(argv, env, cwd)
+        self.assertFalse(exceeded, f"more than {TOOL_START_BUDGET} fake tool starts in one run "
+                                   f"(unbounded retry loop?): {result.stdout[-400:]}")
+        return result
+
     def run_installer(self, **env):
-        return subprocess.run(["/bin/bash", str(self.script)], env={**self.env, **env},
-                              capture_output=True, text=True, timeout=15)
+        return self.run_checked(["/bin/bash", str(self.script)], {**self.env, **env})
 
     def calls(self, name):
         path = self.root / "calls.jsonl"
@@ -249,9 +286,8 @@ class InstallerTest(unittest.TestCase):
     def test_workflow_macos_brew_path_is_still_executable(self):
         flow = yaml.safe_load((ROOT / ".github/workflows/rc-ci.yml").read_text())
         step = next(s for s in flow["jobs"]["check"]["steps"] if s.get("name") == "Install and verify ripgrep (C10a baseline)")
-        result = subprocess.run(["/bin/bash", "-e", "-o", "pipefail", "-c", step["run"]],
-                                env={**self.env, "RUNNER_OS": "macOS"}, cwd=ROOT,
-                                capture_output=True, text=True, timeout=15)
+        result = self.run_checked(["/bin/bash", "-e", "-o", "pipefail", "-c", step["run"]],
+                                  {**self.env, "RUNNER_OS": "macOS"}, cwd=ROOT)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls("brew"), [["install", "ripgrep"]])
         self.assertEqual(self.calls("sudo"), [])
@@ -284,6 +320,45 @@ class InstallerTest(unittest.TestCase):
         result = self.run_installer()
         self.assertEqual(result.returncode, 13)
         self.assertIn("ripgrep executable first line: ripgrep 14.1.1 (rev 4649aa9)", result.stdout)
+        self.assertEqual(self.path_file.read_text(), "")
+
+    def test_tool_budget_allows_start_40_and_kills_start_41(self):
+        self.assertEqual(TOOL_START_BUDGET, 40)
+        for count, killed in ((40, False), (41, True)):
+            with self.subTest(count=count), installer_fixture() as other:
+                script = f"for ((i=0;i<{count};i++)); do uname -m >/dev/null; done; echo finished"
+                result, exceeded = other.spawn(["/bin/bash", "-c", script], other.env)
+                self.assertEqual(exceeded, killed)
+                self.assertEqual(len(other.calls("uname")), count)
+                if killed:
+                    self.assertEqual(result.returncode, -signal.SIGKILL)
+                    self.assertNotIn("finished", result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("finished", result.stdout)
+
+    def test_tool_budget_counts_each_run_separately(self):
+        script = "for ((i=0;i<30;i++)); do uname -m >/dev/null; done"
+        for _ in range(2):
+            result, exceeded = self.spawn(["/bin/bash", "-c", script], self.env)
+            self.assertFalse(exceeded)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.calls("uname")), 60)
+
+    def test_longest_legitimate_run_stays_inside_the_tool_budget(self):
+        result = self.run_installer(FIXTURE_APT_MODE="install_failure")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "starts").stat().st_size, 34)
+
+    def test_unbounded_retry_loop_is_killed_by_the_tool_budget(self):
+        source = self.script.read_text()
+        bounded = "for delay in 0 5 10 20; do"
+        self.assertEqual(source.count(bounded), 1)
+        self.script.write_text(source.replace(bounded, "while delay=5; do"))
+        result, exceeded = self.spawn(["/bin/bash", str(self.script)], self.env)
+        self.assertTrue(exceeded)
+        self.assertEqual(result.returncode, -signal.SIGKILL)
+        self.assertEqual(self.calls("curl"), [])
         self.assertEqual(self.path_file.read_text(), "")
 
 
