@@ -2250,6 +2250,9 @@ mod skill_package {
     /// Mode routes (rc.2 A1 #2160). Kept apart from INTENTS, which also counts the legacy
     /// asset map's rows by intent.
     const MODES: [&str; 2] = ["MODE-LEADER", "MODE-AGENT"];
+    /// The `/moai project` route (#2496). Kept apart from INTENTS for the same reason as
+    /// MODES: the legacy asset map has no rows for it.
+    const PROJECT: &str = "PROJECT";
     const SPEC: &str = "docs/design-review/autonomy-modes-spec.md";
     const MANIFEST: &str = "references/source-manifest.json";
     // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
@@ -2369,7 +2372,12 @@ mod skill_package {
         let table = routes["routes"].as_object().unwrap();
         let mut keys: Vec<&str> = table.keys().map(String::as_str).collect();
         keys.sort();
-        let mut want: Vec<&str> = INTENTS.iter().chain(MODES.iter()).copied().collect();
+        let mut want: Vec<&str> = INTENTS
+            .iter()
+            .chain(MODES.iter())
+            .chain(std::iter::once(&PROJECT))
+            .copied()
+            .collect();
         want.sort();
         assert_eq!(keys, want);
         for (intent, route) in table {
@@ -2632,6 +2640,41 @@ mod skill_package {
             routes["routes"]["MODE-LEADER"]["requires_binary"],
             json!(false)
         );
+    }
+
+    /// #2496 AC-1: `/moai project` is a route, and its workflow carries the three stages —
+    /// detect and interview, the index-build suggestion, and detection-only LSP·MCP·DB.
+    #[test]
+    fn project_route_names_its_three_stages() {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let r = &routes["routes"][PROJECT];
+        assert_eq!(r["reference"], json!("../workflows/project.md"));
+        assert_eq!(r["requires_binary"], json!(true));
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains("PROJECT"), "SKILL.md lists the route");
+        assert!(
+            skill.contains("`/moai project`"),
+            "SKILL.md names the entry"
+        );
+        let body = fs::read_to_string(root().join("workflows/project.md")).unwrap();
+        for stage in [
+            "**Detect.** Run `moai-cli project-detect <project>`",
+            "**Interview by kind.**",
+            "New project:",
+            "Existing project:",
+            "\"value\": \"HOLD\"",
+            "**Offer the code map.**",
+            "run it only after the user agrees",
+            "`lsp`",
+            "`mcp_servers`",
+            "`databases`",
+            "MoAI never creates or edits an MCP configuration",
+            "no product, structure or tech documents are written",
+        ] {
+            assert!(body.contains(stage), "project.md lacks: {stage}");
+        }
     }
 
     #[test]

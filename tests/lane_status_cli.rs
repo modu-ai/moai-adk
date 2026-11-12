@@ -704,3 +704,633 @@ fn audit_columns_are_null_without_a_pr_and_empty_without_records() {
     assert_eq!(a["verdict_on_head"]["source"], json!("issue"));
     assert_eq!(a["verdict_on_head"]["verdict"], json!("PASS"));
 }
+
+// S6 packets deliberately share an authenticated GitHub account: sessions, not
+// account names, identify the two lanes.
+fn s6_message() -> moai_cli::message::Message {
+    serde_json::from_value(json!({
+        "schema_version": 1, "report_id": "s6-report", "project_id": "p1",
+        "task": {"owner": "acme", "repo": "widgets", "repository_id": 1,
+            "issue_id": 2, "issue_node_id": "I_2", "issue_number": 21,
+            "task_id": "T1", "revision": "1"},
+        "sender": {"actor_id": 11, "session_id": "sender"},
+        "receiver": {"actor_id": 11, "session_id": "receiver"},
+        "owner_epoch": 1, "leader_epoch": 1, "event": "report",
+        "candidate_digest": moai_cli::digest(b"candidate"),
+        "created_at": "2099-01-01T00:00:00Z",
+        "approval_refs": ["decision:1"], "hold_refs": [],
+        "payload": {"private_text": "never expose this payload"}
+    }))
+    .unwrap()
+}
+
+fn s6_packet(id: u64, mut m: moai_cli::message::Message, ack: bool) -> Value {
+    #[derive(serde::Serialize)]
+    struct Wire<'a> {
+        schema_version: u32,
+        kind: &'a str,
+        message: &'a moai_cli::message::Message,
+        payload_digest: String,
+    }
+    m.payload.sort_all_objects();
+    let wire = Wire {
+        schema_version: 1,
+        kind: if ack { "ack" } else { "record" },
+        payload_digest: moai_cli::digest(&serde_json::to_vec(&m.payload).unwrap()),
+        message: &m,
+    };
+    let marker = moai_cli::forge::outbox::op_marker(
+        if ack { "message-ack" } else { "message-record" },
+        &m.project_id,
+        &m.report_id,
+        1,
+    );
+    json!({"id": id, "user": {"id": 11}, "created_at": "2026-11-11T00:00:00Z",
+        "body": format!("{marker}\n{}\n<!-- moai:message:end -->",
+            serde_json::to_string(&wire).unwrap())})
+}
+
+fn s6_run(p: &Path, comments: Vec<Value>, offset: i64, packets: bool) -> Value {
+    let mut exchanges = vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id": 2, "node_id": "I_2", "number": 21, "state": "open", "body": ""}),
+        ),
+        get(
+            &format!("{API}/issues/21/comments?per_page=100"),
+            json!(comments),
+        ),
+    ];
+    if packets {
+        exchanges.push(get(API, json!({"id": 1})));
+    }
+    let t = RecordedTransport::new(exchanges);
+    let mut req = audit_request();
+    req.lanes = serde_json::from_value(json!([{"session": "named-only"}])).unwrap();
+    let out = status_cli(p, req, &t, &FakeClock(Cell::new(1_794_355_200 + offset))).unwrap();
+    assert!(
+        out["communication"].is_object(),
+        "missing S6 communication: {out}"
+    );
+    assert_eq!(
+        t.remaining(),
+        0,
+        "reuse issue and comments; only repository identity is extra"
+    );
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+    assert_eq!(out["writes"], "none");
+    out
+}
+
+fn s6_lane<'a>(out: &'a Value, session: &str) -> &'a Value {
+    out["communication"]["lanes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|lane| lane["session"] == session)
+        .unwrap()
+}
+
+#[test]
+fn s6_server_record_age_has_literal_299_300_301_boundaries() {
+    let tmp = tempfile::tempdir().unwrap();
+    for (age, alert) in [
+        (299, "waiting"),
+        (300, "unacknowledged"),
+        (301, "unacknowledged"),
+    ] {
+        let out = s6_run(
+            tmp.path(),
+            vec![s6_packet(101, s6_message(), false)],
+            age,
+            true,
+        );
+        assert_eq!(out["communication"]["available"], true);
+        assert_eq!(out["communication"]["observed_at"], 1_794_355_200_i64 + age);
+        let lane = s6_lane(&out, "sender");
+        let report = &lane["sent_reports"][0];
+        assert_eq!(
+            report["elapsed_secs"], age,
+            "message timestamp must not fake server age"
+        );
+        assert_eq!(report["ack_alert"], alert);
+        assert_eq!(report["received_ack"], false);
+        assert_eq!(report["record_comment_id"], 101);
+        assert_eq!(report["ack_comment_id"], Value::Null);
+        assert_eq!(
+            lane["unacknowledged_report_ids"],
+            if age >= 300 {
+                json!(["s6-report"])
+            } else {
+                json!([])
+            }
+        );
+    }
+}
+
+#[test]
+fn s6_explicit_receipt_deduplicates_and_discovers_distinct_sessions() {
+    let tmp = tempfile::tempdir().unwrap();
+    let record = s6_packet(101, s6_message(), false);
+    let ack = s6_packet(102, s6_message(), true);
+    let out = s6_run(
+        tmp.path(),
+        vec![ack.clone(), record.clone(), ack, record],
+        301,
+        true,
+    );
+    assert_eq!(out["communication"]["available"], true);
+    let sessions: Vec<_> = out["communication"]["lanes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["session"].clone())
+        .collect();
+    assert_eq!(
+        sessions,
+        json!(["named-only", "receiver", "sender"])
+            .as_array()
+            .unwrap()
+            .clone()
+    );
+    let sender = s6_lane(&out, "sender");
+    assert_eq!(sender["sent_reports"].as_array().unwrap().len(), 1);
+    assert_eq!(sender["sent_reports"][0]["received_ack"], true);
+    assert_eq!(sender["sent_reports"][0]["ack_alert"], "received");
+    assert_eq!(sender["sent_reports"][0]["ack_comment_id"], 102);
+    assert_eq!(
+        sender["received_acks"],
+        json!([{"report_id": "s6-report", "issue": 21, "ack_comment_id": 102}])
+    );
+    assert_eq!(sender["unacknowledged_report_ids"], json!([]));
+    assert_eq!(s6_lane(&out, "receiver")["sent_reports"], json!([]));
+    assert!(!serde_json::to_string(&out["communication"])
+        .unwrap()
+        .contains("never expose"));
+    assert!(!serde_json::to_string(&out["communication"])
+        .unwrap()
+        .contains("private_text"));
+}
+
+#[test]
+fn s6_invalid_packets_fail_closed_without_changing_old_observations() {
+    let tmp = tempfile::tempdir().unwrap();
+    let record = s6_packet(101, s6_message(), false);
+    let ack = s6_packet(102, s6_message(), true);
+    let mut actor = ack.clone();
+    actor["user"]["id"] = json!(99);
+    let mut digest = ack.clone();
+    digest["body"] = json!(digest["body"].as_str().unwrap().replace(
+        &moai_cli::digest(&serde_json::to_vec(&s6_message().payload).unwrap()),
+        &"0".repeat(64)
+    ));
+    let mut foreign = s6_message();
+    foreign.task.issue_id = 999;
+    let mut conflict = s6_message();
+    conflict.receiver.session_id = "someone-else".into();
+    let mut malformed = record.clone();
+    malformed["body"] = json!(format!(
+        "{}\nnot-json\n<!-- moai:message:end -->",
+        record["body"].as_str().unwrap().lines().next().unwrap()
+    ));
+    for (case, comments) in [
+        ("orphan", vec![ack]),
+        ("actor", vec![record.clone(), actor]),
+        ("digest", vec![record.clone(), digest]),
+        ("context", vec![s6_packet(101, foreign, false)]),
+        (
+            "immutable-id",
+            vec![record.clone(), s6_packet(103, conflict, false)],
+        ),
+        ("malformed", vec![record, malformed]),
+    ] {
+        let out = s6_run(tmp.path(), comments, 301, true);
+        assert_eq!(out["communication"]["available"], false, "{case}: {out}");
+        assert!(
+            !out["communication"]["errors"]
+                .as_array()
+                .unwrap()
+                .is_empty(),
+            "{case}"
+        );
+        assert_eq!(out["rows"], json!([]), "{case}");
+        assert_eq!(out["ready"], json!([21]), "{case}");
+        assert!(!serde_json::to_string(&out["communication"]["errors"])
+            .unwrap()
+            .contains("private_text"));
+    }
+}
+
+#[test]
+fn s6_future_or_malformed_server_time_is_not_clamped_to_waiting() {
+    let tmp = tempfile::tempdir().unwrap();
+    for timestamp in [
+        "2099-01-01T00:00:00Z",
+        "not-a-time",
+        "999999999999999999999",
+    ] {
+        let mut packet = s6_packet(101, s6_message(), false);
+        packet["created_at"] = json!(timestamp);
+        let out = s6_run(tmp.path(), vec![packet], 301, true);
+        assert_eq!(out["communication"]["available"], false, "{timestamp}");
+    }
+}
+
+#[test]
+fn s6_no_packets_preserves_get_sequence_and_project_files() {
+    let tmp = tempfile::tempdir().unwrap();
+    let sentinel = tmp.path().join("user-owned");
+    fs::write(&sentinel, b"unchanged").unwrap();
+    let out = s6_run(tmp.path(), vec![], 300, false);
+    assert_eq!(out["communication"]["available"], true);
+    assert_eq!(out["communication"]["errors"], json!([]));
+    assert_eq!(s6_lane(&out, "named-only")["sent_reports"], json!([]));
+    assert_eq!(out["rows"], json!([]));
+    assert_eq!(fs::read(&sentinel).unwrap(), b"unchanged");
+    assert_eq!(fs::read_dir(tmp.path()).unwrap().count(), 1);
+}
+
+fn s6_dispatch() -> moai_cli::message::Message {
+    let mut m = s6_message();
+    m.event = "dispatch".into();
+    m.payload = json!({"dispatch_id": "job1", "revision": 1, "previous": null,
+        "scope": ["src/example.rs"], "completion": ["tests pass"], "audit": null});
+    m
+}
+
+#[test]
+fn s6_dispatch_receipt_is_not_business_acceptance() {
+    let tmp = tempfile::tempdir().unwrap();
+    let m = s6_dispatch();
+    let record = s6_packet(101, m.clone(), false);
+    let receipt = s6_packet(102, m.clone(), true);
+    for received in [false, true] {
+        let comments = if received {
+            vec![record.clone(), receipt.clone()]
+        } else {
+            vec![record.clone()]
+        };
+        let out = s6_run(tmp.path(), comments, 301, true);
+        assert_eq!(out["communication"]["available"], true);
+        let dispatch = &s6_lane(&out, "sender")["dispatches"][0];
+        assert_eq!(dispatch["received_ack"], received);
+        assert_eq!(dispatch["disposition"], Value::Null);
+        assert_eq!(dispatch["claim_authorized"], false);
+        assert_eq!(dispatch["ownership_transferred"], false);
+        assert_eq!(dispatch["issue"], 21);
+        assert_eq!(dispatch["from"], "sender");
+        assert_eq!(dispatch["to"], "receiver");
+    }
+    let mut decision = m.clone();
+    decision.report_id = "s6-decision".into();
+    decision.event = "dispatch-decision".into();
+    std::mem::swap(&mut decision.sender, &mut decision.receiver);
+    let mut dispatch_payload = m.payload.clone();
+    dispatch_payload.sort_all_objects();
+    decision.payload = json!({"dispatch_report_id": m.report_id,
+        "dispatch_payload_digest": moai_cli::digest(&serde_json::to_vec(&dispatch_payload).unwrap()),
+        "disposition": "accepted", "reason": "explicit receiver decision"});
+    let out = s6_run(
+        tmp.path(),
+        vec![record, receipt, s6_packet(103, decision, false)],
+        301,
+        true,
+    );
+    assert_eq!(out["communication"]["available"], true);
+    let dispatch = &s6_lane(&out, "sender")["dispatches"][0];
+    assert_eq!(dispatch["received_ack"], true);
+    assert_eq!(dispatch["disposition"], "accepted");
+    assert_eq!(dispatch["ownership_transferred"], false);
+    assert_eq!(
+        s6_lane(&out, "receiver")["sent_reports"][0]["event"],
+        "dispatch-decision"
+    );
+}
+
+#[test]
+fn s6_dispatch_new_revision_supersedes_old_receiver() {
+    let tmp = tempfile::tempdir().unwrap();
+    let m = s6_dispatch();
+    let mut payload = m.payload.clone();
+    payload.sort_all_objects();
+    let mut next = m.clone();
+    next.report_id = "s6-revision-two".into();
+    next.task.revision = "2".into();
+    next.receiver.session_id = "next-receiver".into();
+    next.owner_epoch = 2;
+    next.payload["revision"] = json!(2);
+    next.payload["previous"] = json!({"report_id": m.report_id,
+        "payload_digest": moai_cli::digest(&serde_json::to_vec(&payload).unwrap()),
+        "comment_id": 101});
+    let out = s6_run(
+        tmp.path(),
+        vec![
+            s6_packet(103, next, false),
+            s6_packet(102, m.clone(), true),
+            s6_packet(101, m, false),
+        ],
+        301,
+        true,
+    );
+    assert_eq!(out["communication"]["available"], true);
+    let dispatches = s6_lane(&out, "sender")["dispatches"].as_array().unwrap();
+    assert_eq!(dispatches.len(), 2);
+    let old = dispatches.iter().find(|d| d["superseded"] == true).unwrap();
+    assert_eq!(old["current_revision"], 2);
+    assert_eq!(old["disposition"], Value::Null);
+    assert_eq!(old["claim_authorized"], false);
+    assert_eq!(old["ownership_transferred"], false);
+}
+
+#[test]
+fn s6_review_malformed_marker_is_not_ordinary_prose() {
+    let tmp = tempfile::tempdir().unwrap();
+    for (from, to) in [(":1 -->", ":not-a-number -->"), ("<!-- ", "<!--  ")] {
+        let mut packet = s6_packet(101, s6_message(), false);
+        packet["body"] = json!(packet["body"].as_str().unwrap().replacen(from, to, 1));
+        let out = s6_run(tmp.path(), vec![packet], 301, true);
+        assert_eq!(out["communication"]["available"], false);
+    }
+}
+
+#[test]
+fn s6_review_decision_cannot_reference_a_foreign_task() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut dispatch = s6_dispatch();
+    dispatch.payload.sort_all_objects();
+    let mut decision = dispatch.clone();
+    decision.report_id = "s6-decision".into();
+    decision.event = "dispatch-decision".into();
+    decision.task.task_id = "T2".into();
+    std::mem::swap(&mut decision.sender, &mut decision.receiver);
+    decision.payload = json!({"dispatch_report_id": dispatch.report_id,
+        "dispatch_payload_digest": moai_cli::digest(&serde_json::to_vec(&dispatch.payload).unwrap()),
+        "disposition": "accepted", "reason": "wrong task"});
+    let out = s6_run(
+        tmp.path(),
+        vec![
+            s6_packet(101, dispatch.clone(), false),
+            s6_packet(102, dispatch, true),
+            s6_packet(103, decision, false),
+        ],
+        301,
+        true,
+    );
+    assert_eq!(out["communication"]["available"], false);
+}
+
+#[test]
+fn s6_review_incomplete_pagination_cannot_become_a_complete_snapshot() {
+    let tmp = tempfile::tempdir().unwrap();
+    let comments = common::json_response(200, json!([s6_packet(101, s6_dispatch(), false)]))
+        .with_header(
+            "link",
+            format!("{API}/issues/21/comments?page=2; rel=\"next\""),
+        );
+    let t = RecordedTransport::new(vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id": 2, "node_id": "I_2", "number": 21, "state": "open", "body": ""}),
+        ),
+        common::exchange(
+            "GET",
+            &format!("{API}/issues/21/comments?per_page=100"),
+            comments,
+        ),
+        get(API, json!({"id": 1})),
+    ]);
+    let out = status_cli(
+        tmp.path(),
+        audit_request(),
+        &t,
+        &FakeClock(Cell::new(1_794_355_501)),
+    )
+    .unwrap();
+    assert_eq!(out["communication"]["available"], false);
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+}
+
+#[test]
+fn s6_review_identity_is_immutable_across_inspected_issues() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut other = s6_message();
+    other.task.issue_id = 3;
+    other.task.issue_node_id = "I_3".into();
+    other.task.issue_number = 22;
+    let t = RecordedTransport::new(vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id": 2, "node_id": "I_2", "number": 21, "state": "open", "body": ""}),
+        ),
+        get(
+            &format!("{API}/issues/21/comments?per_page=100"),
+            json!([s6_packet(101, s6_message(), false)]),
+        ),
+        get(
+            &format!("{API}/issues/22"),
+            json!({"id": 3, "node_id": "I_3", "number": 22, "state": "open", "body": ""}),
+        ),
+        get(
+            &format!("{API}/issues/22/comments?per_page=100"),
+            json!([s6_packet(201, other, false)]),
+        ),
+        get(API, json!({"id": 1})),
+    ]);
+    let mut req = audit_request();
+    req.issues.push(22);
+    let out = status_cli(tmp.path(), req, &t, &FakeClock(Cell::new(1_794_355_501))).unwrap();
+    assert_eq!(out["communication"]["available"], false);
+    assert_eq!(t.remaining(), 0);
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+}
+
+fn b1_numeric_comment_pages(
+    project: &Path,
+    first: Vec<Value>,
+    second: Vec<Value>,
+    source_repo: u64,
+    expected_repo: u64,
+) -> (Value, RecordedTransport) {
+    let next = format!(
+        "https://api.github.com/repositories/{source_repo}/issues/21/comments?per_page=100&page=2"
+    );
+    let first_response = common::json_response(200, json!(first))
+        .with_header("link", format!("<{next}>; rel=\"next\""));
+    let transport = RecordedTransport::new(vec![
+        get(
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            json!([]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id": 2, "node_id": "I_2", "number": 21, "state": "open", "body": ""}),
+        ),
+        common::exchange(
+            "GET",
+            &format!("{API}/issues/21/comments?per_page=100"),
+            first_response,
+        ),
+        get(&next, json!(second)),
+        get(API, json!({"id": expected_repo})),
+    ]);
+    let out = status_cli(
+        project,
+        audit_request(),
+        &transport,
+        &FakeClock(Cell::new(1_794_355_501)),
+    )
+    .unwrap();
+    (out, transport)
+}
+
+#[test]
+fn b1_page_101_claim_is_not_silently_treated_as_unassigned() {
+    let tmp = tempfile::tempdir().unwrap();
+    let first = (1..=100).map(|id| note(id, "ordinary status")).collect();
+    let (out, transport) = b1_numeric_comment_pages(
+        tmp.path(),
+        first,
+        vec![claim(2001, "after-page", 1)],
+        101,
+        101,
+    );
+    assert_eq!(
+        out["ready"],
+        json!([]),
+        "page-two ownership must prevent assignment: {out}"
+    );
+    let owner = row(&out, "after-page", 21);
+    assert_eq!(owner["ownership"]["claim_comment_id"], 2001);
+    assert_eq!(owner["phase"], "claimed");
+    assert_eq!(out["communication"]["available"], true);
+    assert_eq!(transport.remaining(), 0);
+    assert!(transport
+        .sent
+        .borrow()
+        .iter()
+        .all(|request| request.method == "GET"));
+}
+
+#[test]
+fn b1_public_pr_pagination_preserves_page_two_pr_and_audit() {
+    let tmp = tempfile::tempdir().unwrap();
+    let head = sha('b');
+    let first: Vec<Value> = (1..=100)
+        .map(|n| {
+            json!({"number":1000+n,"head":{"sha":sha('c'),"ref":"unrelated"},
+            "body":"Refs #999"})
+        })
+        .collect();
+    let next = "https://api.github.com/repositories/101/pulls?per_page=100&page=2";
+    let transport = RecordedTransport::new(vec![
+        common::exchange(
+            "GET",
+            &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+            common::json_response(200, json!(first))
+                .with_header("link", format!("<{next}>; rel=\"next\"")),
+        ),
+        get(
+            next,
+            json!([{"number":121,"head":{"sha":head,"ref":"issue/21-message"},
+            "body":"Refs #21"}]),
+        ),
+        get(
+            &format!("{API}/issues/21"),
+            json!({"id":2,"node_id":"I_2","number":21,"state":"open","body":""}),
+        ),
+        get(
+            &format!("{API}/issues/21/comments?per_page=100"),
+            json!([claim(2001, "owner", 1)]),
+        ),
+        get(
+            &format!("{API}/pulls/121/commits?per_page=100"),
+            json!([{"sha":head,"commit":{"message":"Moai-Claim: 21#2001"}}]),
+        ),
+        get(
+            &format!("{API}/issues/121/comments?per_page=100"),
+            json!([
+                note(
+                    3001,
+                    &format!("moai-audit-claim: lane=reviewer head={head}")
+                ),
+                note(
+                    3002,
+                    &format!(
+                        "AUDIT #121 (B1) head {head} base {} — verdict: PASS",
+                        sha('a')
+                    )
+                ),
+            ]),
+        ),
+    ]);
+    let out = status_cli(
+        tmp.path(),
+        audit_request(),
+        &transport,
+        &FakeClock(Cell::new(1_794_355_501)),
+    )
+    .unwrap();
+    let entry = row(&out, "owner", 21);
+    assert_eq!(entry["pr"], 121);
+    assert_eq!(entry["phase"], "pr_open");
+    assert_eq!(entry["audit"]["winner_on_head"]["lane"], "reviewer");
+    assert_eq!(entry["audit"]["verdict_on_head"]["verdict"], "PASS");
+    assert_eq!(transport.remaining(), 0);
+    assert!(transport
+        .sent
+        .borrow()
+        .iter()
+        .all(|request| request.method == "GET"));
+}
+
+#[test]
+fn b1_numeric_comment_alias_binds_ack_to_the_verified_repository() {
+    let tmp = tempfile::tempdir().unwrap();
+    for source_repo in [1, 2] {
+        let mut first: Vec<_> = (1..=99).map(|id| note(id, "ordinary status")).collect();
+        first.push(s6_packet(101, s6_message(), false));
+        let (out, transport) = b1_numeric_comment_pages(
+            tmp.path(),
+            first,
+            vec![s6_packet(102, s6_message(), true)],
+            source_repo,
+            1,
+        );
+        if source_repo == 1 {
+            assert_eq!(out["communication"]["available"], true, "{out}");
+            let sender = s6_lane(&out, "sender");
+            assert_eq!(sender["sent_reports"][0]["received_ack"], true);
+            assert_eq!(
+                sender["received_acks"],
+                json!([{"report_id":"s6-report","issue":21,"ack_comment_id":102}])
+            );
+        } else {
+            assert_eq!(out["communication"]["available"], false, "{out}");
+            assert!(out["communication"]["lanes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(
+                    |lane| lane["sent_reports"] == json!([]) && lane["received_acks"] == json!([])
+                ));
+        }
+        assert_eq!(transport.remaining(), 0);
+        assert!(transport
+            .sent
+            .borrow()
+            .iter()
+            .all(|request| request.method == "GET"));
+    }
+}

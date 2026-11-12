@@ -43,6 +43,8 @@ To wait for a turn instead of counting processes with `ps`, wrap the heavy comma
 
 A test must not depend on wall-clock time. When an assertion depends on elapsed time or a time budget, inject the clock or the budget (a seam such as a `--render-budget-ms` style flag or a clock parameter) and fix it in the test. Auditors treat a direct wall-clock budget in a test assertion as a finding.
 
+A child-process budget in a test is load-independent: bound the child by progress — an invocation count or a log signal that resets the deadline — plus a hard hang ceiling and an invocation cap, never a bare wall-clock timeout (`ci_install_ripgrep_test` #2469, `mutate_test` #2502). The budget numbers are pinned by tests, and wall-clock appears only as the generous hang guard.
+
 ## Exceptions and Permissions
 
 A command that was not run is not_run. A missing required guard is blocked before anything runs, and exit code 0 alone does not satisfy every AC. A test-name filter applies to every target named in the same `cargo test` call, so filter one target per call; a result that ran zero tests (`0 passed`) is not_run, never a pass.
