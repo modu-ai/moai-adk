@@ -514,6 +514,7 @@ fn restore_backup_host(
         fs::rename(dir.join(BACKUP_TREE), &root)
             .map_err(|_| "moving the original folder back failed; the backup is unchanged")?;
         let (_, files) = backup_manifest(home, &backup).ok_or("backup manifest unavailable")?;
+        crate::update::test_corrupt_first_file("corrupt_after_restore", &root, &files);
         if source_files(&root).ok() != Some(files) {
             return Err("the restored folder does not match the manifest".into());
         }
