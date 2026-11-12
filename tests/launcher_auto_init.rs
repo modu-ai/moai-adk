@@ -148,7 +148,7 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
             agents.contains("<!-- moai:managed:begin id=moai-workflow -->"),
             "{host}: {agents}"
         );
-        assert_eq!(fs::read(&marker(&f)).unwrap(), b"started", "{host}");
+        assert_eq!(fs::read(marker(&f)).unwrap(), b"started", "{host}");
 
         // The second launch does not initialize again and keeps every file byte for byte.
         let yaml = fs::read(dir.join(".moai-cli/project.yaml")).unwrap();
