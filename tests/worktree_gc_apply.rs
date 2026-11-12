@@ -412,3 +412,36 @@ fn apply_needs_a_permission_reference() {
     assert_eq!(envelope(&out)["ok"], false);
     assert_eq!(tree(&fx.root), before);
 }
+
+/// Audit B1 on PR #2557 (6827556008, agent-25): a worktree whose `target` is a symlink to a
+/// folder outside it (for example a shared build folder) is never trimmed — the plan skips it
+/// and apply leaves the outside folder exactly as it was.
+#[cfg(unix)]
+#[test]
+fn a_target_symlinked_outside_the_worktree_is_never_trimmed() {
+    let fx = fixture();
+    let outside = fx.root.parent().unwrap().join("shared-target");
+    cargo_output(&outside.join("x"), "debug");
+    let outside = outside.join("x/target");
+    fs::write(outside.join("debug/deps/other-lane.rlib"), "other lane\n").unwrap();
+    fs::remove_dir_all(fx.wt("b").join("target")).unwrap();
+    std::os::unix::fs::symlink(&outside, fx.wt("b").join("target")).unwrap();
+    let before_outside = tree(&outside);
+    let now = later();
+    let r = plan(&fx, now);
+    let b = entry(&r, ".moai-cli/worktrees/b");
+    assert_ne!(b["action"], "trim", "{b}");
+    assert_ne!(b["action"], "remove", "{b}");
+    let digest = r["plan_digest"].as_str().unwrap().to_string();
+    let v = apply(&fx, now, &digest);
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(
+        tree(&outside),
+        before_outside,
+        "the outside folder is untouched"
+    );
+    assert!(fs::symlink_metadata(fx.wt("b").join("target"))
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}

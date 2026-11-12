@@ -147,9 +147,20 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
     }
 }
 
-/// Splits the children of a `target/` folder into cargo-owned entries and others.
+/// Splits the children of a `target/` folder into cargo-owned entries and others. A `target`
+/// that is not a real folder — a symlink (possibly to a shared build folder outside the
+/// worktree) or a file — has no cargo-owned entries and counts as one file outside the build
+/// output, so the plan never trims through it (audit B1 on PR #2557).
 pub fn split_target(target: &Path) -> (Vec<PathBuf>, Vec<String>) {
     let (mut cargo, mut other) = (Vec::new(), Vec::new());
+    match fs::symlink_metadata(target) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => {
+            other.push("target".to_string());
+            return (cargo, other);
+        }
+        Err(_) => return (cargo, other),
+    }
     let Ok(rd) = fs::read_dir(target) else {
         return (cargo, other);
     };
@@ -518,6 +529,12 @@ fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
 /// directly in `wt/target`, not be a symlink, and still be cargo-owned.
 fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
     let target = wt.join("target");
+    // Audit B1 on PR #2557: never delete through a linked `target` — it may point outside
+    // the worktree (a shared build folder). `wt` itself is the canonical worktree path.
+    let target_meta = fs::symlink_metadata(&target).map_err(|_| "target/ unavailable")?;
+    if !target_meta.is_dir() {
+        return Err("target/ is a symlink or not a folder; refused".into());
+    }
     let (owned, _) = split_target(&target);
     for rel in trim_paths {
         let path = wt.join(rel);
@@ -718,6 +735,30 @@ mod tests {
         fs::write(wt.join("target/debug/.cargo-lock"), "").unwrap();
         trim(wt, &["target/debug".to_string()]).unwrap();
         assert!(!wt.join("target/debug").exists());
+    }
+
+    /// Audit B1 on PR #2557: `trim` itself refuses when `target` is a symlink, even if a
+    /// caller passes paths that look planned — the delete never follows the link out.
+    #[cfg(unix)]
+    #[test]
+    fn trim_refuses_a_symlinked_target_folder() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let wt = dir.path().join("wt");
+        let outside = dir.path().join("outside");
+        fs::create_dir_all(outside.join("debug")).unwrap();
+        fs::write(outside.join("debug/.cargo-lock"), "").unwrap();
+        fs::write(outside.join("debug/other-lane.rlib"), "x").unwrap();
+        fs::create_dir_all(&wt).unwrap();
+        std::os::unix::fs::symlink(&outside, wt.join("target")).unwrap();
+        let err = trim(&wt, &["target/debug".to_string()]).unwrap_err();
+        assert!(err.contains("symlink"), "{err}");
+        assert!(outside.join("debug/other-lane.rlib").exists());
+        let (owned, other) = split_target(&wt.join("target"));
+        assert!(owned.is_empty(), "{owned:?}");
+        assert!(
+            !other.is_empty(),
+            "a linked target counts as files outside the build"
+        );
     }
 
     /// #2498 N3: clean and merged but never built and holding nothing — kept, not removed.
