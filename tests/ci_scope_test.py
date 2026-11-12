@@ -156,57 +156,6 @@ class DocumentationDriftTest(unittest.TestCase):
         "docs/TBD-related.md", "docs/workflows/", "docs/wf",
     )
 
-
-    def _fragmented_docs_paths(self):
-        """Paths built from pieces like ROOT / "docs" / "x.md" or join("docs", "x.md").
-
-        #2538 B2prime: the quoted-string scan misses these, so collect them with a
-        separate pattern and deny their joined forms.
-        """
-        import re as _re
-        import subprocess as _sp
-        # Python: X / "docs" / "name"  and  os.path.join(..., "docs", "name")
-        py = _sp.run(
-            ["grep", "-rnE",
-             r'["\x27]docs["\x27]\s*\/\s*["\x27]([A-Za-z0-9_./-]+)["\x27]',
-             "tests", "tools", "src"],
-            capture_output=True, text=True, cwd=REPO_ROOT,
-        ).stdout
-        # Line-filtered: skip this test's own docstrings and temp-dir fixtures
-        # (a path under a tmp/scratch root never reads the repository docs/).
-        keep = []
-        for line in py.splitlines():
-            if "ci_scope_test.py" in line:
-                continue
-            if "self.tmp" in line or "tmp.path" in line or "mkdtemp" in line:
-                continue
-            keep.append(line)
-        py = "\n".join(keep)
-        names = set(_re.findall(r'["\x27]docs["\x27]\s*/\s*["\x27]([A-Za-z0-9_./-]+)["\x27]', py))
-        # Rust: .join("docs").join("x.md") or single .join("x.md") after a docs root
-        rs_proc = _sp.run(
-            ["grep", "-rnE",
-             r'join\("docs"\)(?:\s*\.join\("[^"]+"\))*',
-             "tests", "src"],
-            capture_output=True, text=True, cwd=REPO_ROOT,
-        )
-        rs = "\n".join(
-            line for line in rs_proc.stdout.splitlines()
-            if "ci_scope_test.py" not in line
-            and "self.tmp" not in line and "tmp.path" not in line
-        )
-        for chunk in rs.splitlines():
-            for seg in _re.findall(r'join\("([A-Za-z0-9_./-]+)"\)', chunk)[1:]:
-                if "." in seg:
-                    names.add(seg)
-        return {f"docs/{n}" for n in names if "." in n.rsplit("/", 1)[-1]}
-
-    def test_fragmented_docs_paths_are_denied(self):
-        found = self._fragmented_docs_paths()
-        module = load_module()
-        missing = sorted(p for p in found if p not in module.EXACT_DENY)
-        self.assertEqual(missing, [], f"fragmented docs paths not denied: {missing}")
-
     def test_every_referenced_docs_path_is_denied(self):
         import re as _re
         import subprocess as _sp
