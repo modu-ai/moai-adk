@@ -1330,13 +1330,17 @@ pub fn update_command(
         .to_str()
         .ok_or("non UTF-8 package path")?
         .to_string();
+    // #2540: a plan that would write nothing (every host blocked or unchanged) is shown, never
+    // asked about.
+    let writes = plan_writes_anything(&plan);
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if ask(&plan)? => plan.plan_digest.clone(),
+        None if writes && ask(&plan)? => plan.plan_digest.clone(),
         None => {
             return Ok(json!({
                 "mode": "preview",
                 "applied": false,
+                "nothing_to_apply": !writes,
                 "package": package_text,
                 "plan": plan,
                 "confirm_with": format!("moai-cli update --confirm {}", plan.plan_digest),
@@ -1351,13 +1355,27 @@ pub fn update_command(
         "moai-cli update confirmation",
         &[],
     )?;
+    // #2540: `applied` says whether files were written, not only that the apply step ran.
+    let applied = matches!(result["status"].as_str(), Some("applied" | "partial"));
     Ok(json!({
         "mode": "applied",
-        "applied": true,
+        "applied": applied,
         "package": package_text,
         "plan_digest": digest,
         "result": result,
     }))
+}
+
+/// True when confirming `plan` would write at least one file (#2540): some host is not
+/// blocked and has a `create` or `update` action. A host blocked for a backup-then-replace
+/// counts as writing nothing here, since `update` never confirms that procedure.
+pub fn plan_writes_anything(plan: &UpdatePlan) -> bool {
+    plan.hosts.iter().any(|h| {
+        h.preflight != "blocked"
+            && h.files
+                .iter()
+                .any(|f| f.action == "create" || f.action == "update")
+    })
 }
 
 /// A short per-host summary of a plan for the terminal question (#2522).
