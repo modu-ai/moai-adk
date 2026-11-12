@@ -7,7 +7,8 @@
 //! a plain relative key (no root, no `..`, no backslash), under `.moai/` or `.claude/`,
 //! no path component is a symlink, the path is a regular file, the manifest records it as
 //! `template_managed`, its bytes still hash to the recorded `deployed_hash`, and
-//! `.claude/settings.json` does not reference it. Anything else stays, with its reason;
+//! neither `.claude/settings.json` nor `.claude/settings.local.json` references it, and it
+//! is not one of those two live settings files. Anything else stays, with its reason;
 //! files the manifest does not record are never offered and are counted per folder.
 //! Without a usable manifest nothing moves. Which of these rules apply to `.moai/` as a
 //! whole is a pending decision (#2561 comment 6827973256); [`policy`] is the one place
@@ -28,6 +29,7 @@ type Result<T> = std::result::Result<T, String>;
 const SCHEMA_VERSION: u32 = 1;
 const MANIFEST: &str = ".moai/manifest.json";
 const SETTINGS: &str = ".claude/settings.json";
+const SETTINGS_LOCAL: &str = ".claude/settings.local.json";
 /// The Go manifest of this checkout is about 180 KiB; this only refuses absurd inputs.
 const MANIFEST_LIMIT: u64 = 16 * 1024 * 1024;
 const FILE_LIMIT: u64 = 64 * 1024 * 1024;
@@ -104,7 +106,7 @@ fn policy(
     project: &Path,
     key: &str,
     entry: &Entry,
-    settings: &str,
+    settings: &[(&'static str, String)],
 ) -> (&'static str, &'static str) {
     if !plain_relative(key) {
         return ("leave", "not a plain relative path");
@@ -119,6 +121,15 @@ fn policy(
     }
     if key == MANIFEST {
         return ("leave", "the Go manifest itself");
+    }
+    // AUDIT #2584 B1: the settings files are the live host settings (permissions.deny,
+    // hooks, statusLine) even when the Go manifest proves them unchanged. Moving them is a
+    // policy question (decision 1 of #2561 comment 6827973256), never a default.
+    if key == SETTINGS || key == SETTINGS_LOCAL {
+        return (
+            "leave",
+            "live host settings; moving them drops permissions, hooks and the status line",
+        );
     }
     if linked_component(project, key) {
         return ("leave", "a path component is a symlink");
@@ -137,8 +148,17 @@ fn policy(
         Ok(_) => return ("leave", "changed since the Go deploy"),
         Err(_) => return ("leave", "not a bounded regular file"),
     }
-    if referenced(settings, key) {
-        return ("leave", "referenced by .claude/settings.json");
+    for (file, text) in settings {
+        if referenced(text, key) {
+            return (
+                "leave",
+                if *file == SETTINGS_LOCAL {
+                    "referenced by .claude/settings.local.json"
+                } else {
+                    "referenced by .claude/settings.json"
+                },
+            );
+        }
     }
     ("move", "proven Go deploy, unchanged")
 }
@@ -237,7 +257,11 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         None => None,
         Some(text) => serde_json::from_str::<Manifest>(&text).ok(),
     };
-    let settings = read_bounded_text(&project, SETTINGS, MANIFEST_LIMIT)?.unwrap_or_default();
+    let mut settings = Vec::new();
+    for file in [SETTINGS, SETTINGS_LOCAL] {
+        let text = read_bounded_text(&project, file, MANIFEST_LIMIT)?.unwrap_or_default();
+        settings.push((file, text));
+    }
     let mut items = Vec::new();
     let (version, recorded) = match manifest {
         Some(m) => (Some(m.version), m.files),

@@ -703,3 +703,43 @@ fn a_receipt_that_points_elsewhere_is_refused() {
         assert!(!fx.root.join("src/evil.rs").exists(), "{name}");
     }
 }
+
+/// AUDIT #2584 B1: an unchanged Go `.claude/settings.json` is a recorded, unchanged
+/// template file, yet it is the live host settings (permissions.deny, hooks, statusLine).
+/// Moving it would drop those rules, so both settings files always stay, and a file the
+/// local settings name stays like one the shared settings name.
+#[test]
+fn the_live_settings_files_always_stay() {
+    let mut fx = Fx::new();
+    let shared = json!({"permissions": {"deny": ["Bash(rm -rf:*)", "Read(./.env)"]},
+        "hooks": {"PreToolUse": [{"hooks": [{"type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\""}]}]}})
+    .to_string();
+    fx.deployed(".claude/settings.json", &shared);
+    let local = json!({"statusLine": {"type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status.sh\""}})
+    .to_string();
+    fx.deployed(".claude/settings.local.json", &local);
+    fx.deployed(".claude/hooks/moai/handle-pre-tool.sh", "#!/bin/sh\n");
+    fx.deployed(".claude/hooks/moai/status.sh", "#!/bin/sh\necho s\n");
+    fx.deployed(".claude/workflows/free.md", "# free\n");
+    fx.manifest();
+    let p = plan(&fx);
+    for rel in [".claude/settings.json", ".claude/settings.local.json"] {
+        assert_eq!(action(&p, rel).0, "leave", "{rel}: {p}");
+    }
+    assert_eq!(
+        action(&p, ".claude/hooks/moai/status.sh"),
+        ("leave", "referenced by .claude/settings.local.json")
+    );
+    assert_eq!(action(&p, ".claude/workflows/free.md").0, "move");
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".claude/settings.json")).unwrap(),
+        shared,
+        "the deny rules and hooks are still in place after the apply"
+    );
+    assert!(fx.root.join(".claude/settings.local.json").is_file());
+    assert!(fx.root.join(".claude/hooks/moai/status.sh").is_file());
+}
