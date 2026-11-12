@@ -50,7 +50,7 @@
 ## (h) 문서 예제 재현 (AC-08D-8)
 
 - [x] 사용자 문서(README·user-entry-draft): 3.x 명령을 차세대 필수 단계로 안내하는 문장 **0건**. `/moai`·`$moai` 자연어 진입이 기본, 수동 명령은 명시적 fallback(`docs/user-entry-draft.md`)으로 분리.
-- [x] docs 전역 기계 grep(`grep -nE 'moai (init|update)\b' docs/*.md README.md | grep -v 'fallback\|3\.x'`): 2건 — `docs/github-inventory-rc1.md:49`(forge 제목-매칭 규칙의 예시 문장)과 `docs/decisions-2026-11-08.md:11`(결정 장부의 요구 기록, "설계 반영만, 지금 실행 없음"). 둘 다 내부 장부·기술 문서로 사용자 안내가 아니며 REQ-08D-06 위반 아님 — 기계 grep 결과를 있는 그대로 기록한다.
+- [x] docs 전역 기계 grep(`git grep -nP 'moai (init|update)\b' <tip> -- ':(glob)docs/*.md' README.md README.ko.md | grep -v 'fallback\|3\.x'`, tip `df215316ff`): 3건 — `docs/github-inventory-rc1.md:49`(forge 제목-매칭 규칙의 예시 문장), `docs/decisions-2026-11-08.md:11`(결정 장부의 요구 기록, "설계 반영만, 지금 실행 없음"), `docs/decisions-2026-11-08.md:165`(로컬 설치 방식 결정 — Go `moai update` 의미 변경 금지). 셋 다 내부 장부·기술 문서로 사용자 안내가 아니며 REQ-08D-06 위반 아님 — 기계 grep 결과를 있는 그대로 기록한다(11-09 기록은 2건, 165행은 11-10 결정으로 추가됨).
 - [x] 지원표·체크리스트에 secret·개인 절대 경로 0건 (AC-08D-6 grep — 대상 3문서 0건; 일치는 시험 파일 자체의 패턴 리터럴뿐).
 - [x] `.github/workflows/rc-ci.yml` yaml 파싱 exit 0, `pull_request` trigger 존재, `contents: read`, cargo test/clippy/fmt·Python unittest step 확인 — **파일 수정 불요**(00-E 작성본이 이미 08-A 명세 항목을 충족; 근거: 위 확인 출력). ruleset에 `rc-ci` 필수 체크 등록은 저장소 설정 = 별도 결정(HOLD).
 
