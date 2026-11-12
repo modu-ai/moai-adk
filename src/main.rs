@@ -909,6 +909,20 @@ enum Command {
         #[arg(long)]
         tmp_root: Option<PathBuf>,
     },
+    /// Compare one local two-parent merge with a controlled replay; evidence only, not AUDIT PASS.
+    AuditDelta {
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// Previously audited commit (40 lowercase hex).
+        #[arg(long)]
+        pass_head: String,
+        /// Integrated base tip (40 lowercase hex).
+        #[arg(long)]
+        tip: String,
+        /// Candidate merge commit (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+    },
     /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
     /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
     /// rows are never edited or removed. Preview by default; `--apply` writes. Rows go to the
@@ -952,6 +966,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// Confirm one host's backup-then-replace of an unmanaged `moai` skill folder
+        /// with the `confirm_token` its plan previews (#2483); repeatable.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_backup_replace: Vec<String>,
     },
     /// Read-only recovery plan for UPDATE hosts left `pending` (04-C #2000; names P06 HOLD).
     RecoveryPlan {
@@ -1151,6 +1169,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
+        AuditDelta { .. } => "audit.delta",
         AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
@@ -2065,6 +2084,20 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
         ),
+        Command::AuditDelta {
+            project,
+            pass_head,
+            tip,
+            head,
+        } => serde_json::to_value(moai_cli::audit_delta::inspect(
+            &project,
+            moai_cli::audit_delta::Request {
+                pass_head,
+                tip,
+                head,
+            },
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::WorktreeReport {
             project,
             tmp_root,
@@ -2098,6 +2131,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             stage,
             plan_digest,
             permission_reference,
+            confirm_backup_replace,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
@@ -2107,6 +2141,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan,
                 &plan_digest,
                 &permission_reference,
+                &confirm_backup_replace,
             )
         }
         Command::RecoveryPlan { home } => {
@@ -2397,8 +2432,14 @@ fn main() -> ExitCode {
     match run_internal(cli.command.expect("internal operation")) {
         Ok(_) if hook_mode => ExitCode::SUCCESS,
         Ok(result) => {
+            // A computed delta is evidence, not audit admission; only a pure replay exits 0.
+            let exit = if op == "audit.delta" && result["status"] != "pure_merge" {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
+            };
             println!("{}", contract::success(op, result));
-            ExitCode::SUCCESS
+            exit
         }
         Err(e) if hook_mode => {
             eprintln!("{e}");
