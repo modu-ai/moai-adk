@@ -206,7 +206,12 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
         # WF-OBS repeat findings documented by Issue #2493, each with its ledger number.
         self.assertEqual(text.count("\n## Shell and helper rules\n"), 1)
-        for rule in ("Guard refusal (WF-OBS #17)", "splitting is not a bypass",
+        # The split retry is bounded (pre-audit FAIL 6814410637 B1): only a refusal of the
+        # combined form, the refused effect stays forbidden, every step passes the same guard.
+        for rule in ("Guard refusal (WF-OBS #17)",
+                     "Only when the refusal is confirmed to be about the combined form",
+                     "not that its effect is forbidden", "the refused effect itself stays forbidden",
+                     "each step must pass the same guard on its own", "Splitting is never a bypass",
                      "Helper authentication failure (WF-OBS #19)", "record that review as `not_run`",
                      "Never record a key or token value", "zsh word splitting (WF-OBS #16)",
                      "for x in ${=var}", "never name a shell function after an existing alias"):
