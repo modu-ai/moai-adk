@@ -613,3 +613,93 @@ fn a_failure_midway_leaves_a_pending_receipt_the_revert_can_use() {
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(project_tree(&fx), before);
 }
+
+#[test]
+fn an_empty_permission_reference_writes_nothing() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let before = fx.tree();
+    let v = call(&[
+        "go-state-apply",
+        fx.root.to_str().unwrap(),
+        "--plan-digest",
+        p["plan_digest"].as_str().unwrap(),
+        "--permission-reference",
+        " ",
+    ]);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), before);
+
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = revert_plan(&fx, &backup);
+    let before = fx.tree();
+    let v = call(&[
+        "go-state-revert",
+        fx.root.to_str().unwrap(),
+        "--backup",
+        &backup,
+        "--plan-digest",
+        rp["result"]["plan_digest"].as_str().unwrap(),
+        "--permission-reference",
+        "",
+    ]);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+#[test]
+fn a_reverted_apply_is_not_reverted_twice() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = revert_plan(&fx, &backup);
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["result"]["receipt_state"], json!("reverted"), "{rp}");
+    let before = fx.tree();
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("already reverted"), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+/// The receipt is not its own authority: a receipt edited after the apply (or planted)
+/// must not steer a revert outside what an apply can have moved.
+#[test]
+fn a_receipt_that_points_elsewhere_is_refused() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let dir = fx.root.join(".moai-cli/backups").join(&backup);
+    let receipt_path = dir.join("go-state-receipt.json");
+    let original: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
+    // A copy staged where a forged path would restore from, with the recorded hash.
+    let staged = dir.join("go-state/src/evil.rs");
+    fs::create_dir_all(staged.parent().unwrap()).unwrap();
+    fs::write(&staged, "evil\n").unwrap();
+    type Forge = fn(&mut Value);
+    let cases: Vec<(&str, Forge)> = vec![
+        ("another project", |r: &mut Value| {
+            r["project"] = json!("/elsewhere")
+        }),
+        ("a path that climbs", |r: &mut Value| {
+            r["moves"][0]["path"] = json!(".claude/../src/evil.rs")
+        }),
+        ("a path outside .moai/ and .claude/", |r: &mut Value| {
+            r["moves"][0]["path"] = json!("src/evil.rs");
+            r["moves"][0]["sha256"] = json!(sha(b"evil\n"));
+        }),
+    ];
+    for (name, edit) in cases {
+        let mut forged = original.clone();
+        edit(&mut forged);
+        fs::write(&receipt_path, forged.to_string()).unwrap();
+        let rp = revert_plan(&fx, &backup);
+        assert_eq!(rp["ok"], json!(false), "{name}: {rp}");
+        assert!(!fx.root.join("src/evil.rs").exists(), "{name}");
+    }
+}

@@ -492,6 +492,17 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>)> {
     if receipt.moves.iter().any(|m| !plain_relative(&m.path)) {
         return Err("receipt holds a path that is not plain relative; refused".into());
     }
+    // The receipt is not its own authority: it may only name what an apply can move.
+    if receipt.moves.iter().any(|m| {
+        let top = Path::new(&m.path)
+            .components()
+            .next()
+            .and_then(|c| c.as_os_str().to_str())
+            .unwrap_or("");
+        !ROOTS.contains(&top) || m.path == MANIFEST
+    }) {
+        return Err("receipt holds a path outside .moai/ and .claude/; refused".into());
+    }
     Ok((receipt, text.into_bytes()))
 }
 
