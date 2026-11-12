@@ -692,6 +692,25 @@ enum Command {
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
     },
+    /// Act on a `worktree-gc-plan` (WT-9, #2498): recomputes the plan with the same inputs,
+    /// refuses before any write unless its digest equals `--plan-digest`, then trims the
+    /// listed cargo output and removes the listed worktrees (no `--force`; branches kept).
+    WorktreeGcApply {
+        project: PathBuf,
+        #[arg(long)]
+        integration_ref: String,
+        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
+        recent_minutes: u64,
+        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
+        budget_ms: u64,
+        /// Test seam: the current time in Unix seconds instead of the clock.
+        #[arg(long, hide = true)]
+        now_unix: Option<u64>,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only space report of the repository's worktrees, their build folders and the
     /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
     /// evaluated. Writes nothing.
@@ -1321,6 +1340,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         WorktreePlan { .. } => "worktree.plan",
         WorktreeReport { .. } => "worktree.report",
         WorktreeGcPlan { .. } => "worktree.gc.plan",
+        WorktreeGcApply { .. } => "worktree.gc.apply",
     })
 }
 
@@ -2178,6 +2198,23 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+        ),
+        Command::WorktreeGcApply {
+            project,
+            integration_ref,
+            recent_minutes,
+            budget_ms,
+            now_unix,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::worktree_gc::apply(
+            &project,
+            &integration_ref,
+            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
+            std::time::Duration::from_millis(budget_ms),
+            now_unix,
+            &plan_digest,
+            &permission_reference,
         ),
         Command::AuditClonePlan {
             project,
