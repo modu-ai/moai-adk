@@ -32,7 +32,8 @@ use crate::apply::{publish_replace, read_opt, relative_ok};
 use crate::contract::PROTOCOL_VERSION;
 use crate::update::{
     current_install_id, host_receipt_path, load_host_receipt, now_rfc3339, projection_root,
-    save_host_receipt, sha256_hex, HostReceipt, FILE_LIMIT, HOSTS,
+    refuse_state_symlinks, save_host_receipt, sha256_hex, source_files, BackupFile, HostReceipt,
+    ReplaceBackup, BACKUP_TREE, FILE_LIMIT, HOSTS,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -71,6 +72,112 @@ pub struct RecoveryHost {
     /// The receipt's `version_before` (#2091): the version the failed apply replaced.
     pub version_before: Option<String>,
     pub files: Vec<RecoveryFile>,
+    /// #2483: present for a backup-then-replace receipt (pending or committed).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restore_backup: Option<RestoreBackup>,
+}
+
+/// How a backup-then-replace host can be put back (#2483).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RestoreBackup {
+    pub backup_dir: String,
+    /// backup (the original sits in the backup) | root (it never moved) | missing
+    pub original_at: String,
+    /// restore_backup | release (nothing moved; only the receipt closes) | none
+    pub action: String,
+    /// For `none`: backup_unavailable | manifest_mismatch | backup_mismatch | symlink |
+    /// user_changed | original_missing.
+    pub reason: Option<String>,
+}
+
+const RESTORED_RECORD: &str = "RESTORED.json";
+const REPLACED_TREE: &str = "replaced";
+
+/// The manifest's file list, only when the manifest still has the receipt's digest.
+fn backup_manifest(home: &Path, b: &ReplaceBackup) -> Option<(PathBuf, Vec<BackupFile>)> {
+    let dir = PathBuf::from(&b.dir);
+    let backups = home.join(crate::HOME_STATE_DIR).join("backups");
+    if dir.parent() != Some(backups.as_path()) || refuse_state_symlinks(&dir, "backup").is_err() {
+        return None;
+    }
+    let manifest = dir.join("MANIFEST.json");
+    let meta = fs::symlink_metadata(&manifest).ok()?;
+    if !meta.is_file() || meta.len() > 16 * FILE_LIMIT {
+        return None;
+    }
+    let bytes = fs::read(&manifest).ok()?;
+    if sha256_hex(&bytes) != b.manifest_sha256 {
+        return None;
+    }
+    let v: Value = serde_json::from_slice(&bytes).ok()?;
+    let files: Vec<BackupFile> = serde_json::from_value(v["files"].clone()).ok()?;
+    Some((dir, files))
+}
+
+/// True when every file under the projection root is one this receipt created, with its
+/// recorded bytes (an absent root counts as true).
+fn root_holds_only_ours(root: &Path, receipt: &HostReceipt) -> std::result::Result<(), String> {
+    match fs::symlink_metadata(root) {
+        Err(_) => return Ok(()),
+        Ok(m) if m.file_type().is_symlink() => return Err("symlink".into()),
+        Ok(_) => {}
+    }
+    let current = source_files(root).map_err(|_| "user_changed".to_string())?;
+    for f in current {
+        let ours = receipt
+            .entries
+            .iter()
+            .any(|e| e.path == f.path && e.after_sha256.as_deref() == Some(f.sha256.as_str()));
+        if !ours {
+            return Err("user_changed".into());
+        }
+    }
+    Ok(())
+}
+
+fn classify_backup(
+    home: &Path,
+    root: &Path,
+    receipt: &HostReceipt,
+    b: &ReplaceBackup,
+) -> RestoreBackup {
+    let mut r = RestoreBackup {
+        backup_dir: b.dir.clone(),
+        original_at: "missing".into(),
+        action: "none".into(),
+        reason: None,
+    };
+    let Some((dir, files)) = backup_manifest(home, b) else {
+        r.reason = Some(
+            if PathBuf::from(&b.dir).join("MANIFEST.json").exists() {
+                "manifest_mismatch"
+            } else {
+                "backup_unavailable"
+            }
+            .into(),
+        );
+        return r;
+    };
+    let tree = dir.join(BACKUP_TREE);
+    if fs::symlink_metadata(&tree).is_ok() {
+        r.original_at = "backup".into();
+        if source_files(&tree).ok().as_ref() != Some(&files) {
+            r.reason = Some("backup_mismatch".into());
+            return r;
+        }
+        if let Err(why) = root_holds_only_ours(root, receipt) {
+            r.reason = Some(why);
+            return r;
+        }
+        r.action = "restore_backup".into();
+    } else if source_files(root).ok().as_ref() == Some(&files) {
+        r.original_at = "root".into();
+        r.action = "release".into();
+    } else {
+        r.reason = Some("original_missing".into());
+    }
+    r
 }
 
 /// Why `version_before` is null, or null when it is known (REQ-04C-06).
@@ -226,6 +333,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
             package_version: None,
             version_before: None,
             files: Vec::new(),
+            restore_backup: None,
         };
         let receipt = match load_host_receipt(&path) {
             Ok(r) => r,
@@ -244,6 +352,16 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
         h.package_version = Some(receipt.package_version.clone());
         h.version_before = receipt.version_before.clone();
         h.receipt_status = receipt.status.clone();
+        // #2483: a backup-then-replace receipt is recovered as a whole folder, pending or
+        // committed; its per-file entries are not classified separately.
+        if let Some(b) = &receipt.backup {
+            if receipt.status == "pending" || receipt.status == "committed" {
+                let root = projection_root(&canonical_home, host);
+                h.restore_backup = Some(classify_backup(&canonical_home, &root, &receipt, b));
+            }
+            hosts.push(h);
+            continue;
+        }
         // REQ-3 (#2268): a FIRST apply (`version_before` none) into a projection root
         // that already existed (`top_skills_existed_before`) landed created files
         // inside a previously unmanaged folder — list them so the operator sees what
@@ -345,6 +463,94 @@ fn conflict_json(f: &RecoveryFile) -> Value {
            "current_sha256": f.current_sha256})
 }
 
+/// #2483: puts a backup-then-replace host back. `restore_backup` moves the installed
+/// package aside into `<backup>/replaced` (never deleted) and the original folder from
+/// `<backup>/moai` back into the projection root, then verifies it against the manifest
+/// and writes `<backup>/RESTORED.json`; `release` (the original never moved) only closes
+/// the receipt. Either way the receipt becomes `recovered` with an empty ownership
+/// manifest, so the next `update-plan` sees the folder as unmanaged again. This is the
+/// one recovery that also acts on a `committed` receipt: ordinary updates keep
+/// REQ-04C-05 (a committed host is never written).
+fn restore_backup_host(
+    home: &Path,
+    install_id: &str,
+    h: &RecoveryHost,
+    rb: &RestoreBackup,
+    plan_digest: &str,
+) -> Result<Value> {
+    let mut report = json!({"host": h.host, "receipt_status": h.receipt_status,
+        "backup_dir": rb.backup_dir, "action": rb.action, "reason": rb.reason,
+        "backup_restored": false, "applied": [], "failed": [], "recovered": [],
+        "conflicts": [], "written": false});
+    if rb.action == "none" {
+        report["conflicts"] =
+            json!([{"path": rb.backup_dir, "class": "conflict", "reason": rb.reason}]);
+        return Ok(report);
+    }
+    let path = host_receipt_path(home, install_id, &h.host, false)?;
+    let mut receipt: HostReceipt = load_host_receipt(&path)?.ok_or("host receipt disappeared")?;
+    let backup = receipt
+        .backup
+        .clone()
+        .ok_or("host receipt changed since recovery-plan")?;
+    // Re-classify right before any move (REQ-04C-02 style re-verification).
+    let root = projection_root(home, &h.host);
+    if classify_backup(home, &root, &receipt, &backup) != *rb {
+        return Err("backup or projection changed since recovery-plan; nothing moved".into());
+    }
+    let started = now_rfc3339();
+    let dir = PathBuf::from(&backup.dir);
+    let mut moved_aside: Option<String> = None;
+    if rb.action == "restore_backup" {
+        if fs::symlink_metadata(&root).is_ok() {
+            let aside = dir.join(REPLACED_TREE);
+            if fs::symlink_metadata(&aside).is_ok() {
+                return Err("backup already holds a replaced folder; nothing moved".into());
+            }
+            fs::rename(&root, &aside)
+                .map_err(|_| "moving the installed package aside failed; nothing moved")?;
+            moved_aside = Some(aside.to_string_lossy().into_owned());
+        }
+        fs::rename(dir.join(BACKUP_TREE), &root)
+            .map_err(|_| "moving the original folder back failed; the backup is unchanged")?;
+        let (_, files) = backup_manifest(home, &backup).ok_or("backup manifest unavailable")?;
+        if source_files(&root).ok() != Some(files) {
+            return Err("the restored folder does not match the manifest".into());
+        }
+        let record = json!({"schema_version": RECOVERY_SCHEMA_VERSION, "host": h.host,
+            "restored_at": now_rfc3339(), "plan_digest": plan_digest,
+            "restored_to": root.to_string_lossy(), "replaced_moved_to": moved_aside});
+        let bytes = serde_json::to_vec_pretty(&record).map_err(|_| "encode failed".to_string())?;
+        crate::apply::publish_exclusive(&dir.join(RESTORED_RECORD), &bytes)?;
+    }
+    receipt.status = "recovered".into();
+    receipt.owned = Vec::new();
+    receipt.finished_at = Some(now_rfc3339());
+    save_host_receipt(home, install_id, &receipt)?;
+    let done = vec![format!("{} ({})", backup.dir, rb.action)];
+    save_record(
+        home,
+        install_id,
+        &RecoveryRecord {
+            schema_version: RECOVERY_SCHEMA_VERSION,
+            host: h.host.clone(),
+            plan_digest: plan_digest.to_string(),
+            started_at: started,
+            finished_at: now_rfc3339(),
+            status: "recovered".into(),
+            reverted: done.clone(),
+            conflicts: Vec::new(),
+            failed: None,
+            not_attempted: Vec::new(),
+        },
+    )?;
+    report["receipt_status"] = json!("recovered");
+    report["backup_restored"] = json!(rb.action == "restore_backup");
+    report["recovered"] = json!(done);
+    report["written"] = json!(true);
+    Ok(report)
+}
+
 /// REQ-04C-02..07: reverts only `matches_after` files of pending hosts.
 pub fn recovery_apply(
     home: &Path,
@@ -364,6 +570,12 @@ pub fn recovery_apply(
     let mut conflicts_remain = false;
 
     for h in &fresh.hosts {
+        if let Some(rb) = &h.restore_backup {
+            let report = restore_backup_host(&home, install_id, h, rb, plan_digest)?;
+            conflicts_remain |= rb.action == "none";
+            reports.push(report);
+            continue;
+        }
         let applied: Vec<&str> = h
             .files
             .iter()
