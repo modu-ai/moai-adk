@@ -466,3 +466,40 @@ fn project_apply_takes_the_plan_result_not_the_envelope() {
     let applied = ok(&apply(&envelope["result"]));
     assert_eq!(applied["state"], json!("updated"));
 }
+
+/// #2535 item 7 (leader host observation 6826590481): a profile with no baseline holds every
+/// changed key as a conflict, so an interview answer that changes `purpose` cannot apply. The
+/// documented two steps get past it without a hand edit: apply the detected facts with every
+/// existing value kept (that writes the baseline), then plan the answer again.
+#[test]
+fn a_profile_without_a_baseline_takes_the_answers_in_two_steps() {
+    let root = with_profile();
+    let baseline = root
+        .path()
+        .join(".moai-cli/manifests/profile-baseline.json");
+    assert!(!baseline.exists());
+    let facts = detect(&root)["profile"].clone();
+    let mut answered = facts.clone();
+    answered["purpose"] = json!("MoAI-ADK, an agentic development kit");
+
+    let before = tree(root.path());
+    let held = ok(&run(
+        &["project-plan", p(&root)],
+        answered.to_string().as_bytes(),
+    ));
+    assert_eq!(held["action"], json!("conflict"), "{held}");
+    assert_eq!(held["delta"]["conflict"], json!(["purpose"]), "{held}");
+    assert_eq!(tree(root.path()), before, "planning writes nothing");
+
+    let first = plan_apply(&root, &facts);
+    assert_eq!(first["action"], json!("update"), "{first}");
+    assert!(first["delta"]["conflict"].as_array().unwrap().is_empty());
+    assert!(baseline.is_file(), "the first apply writes the baseline");
+
+    let second = plan_apply(&root, &answered);
+    assert_eq!(second["action"], json!("update"), "{second}");
+    assert_eq!(second["delta"]["changed"], json!(["purpose"]), "{second}");
+    let written: Value =
+        serde_json::from_slice(&fs::read(root.path().join(PROFILE)).unwrap()).unwrap();
+    assert_eq!(written["purpose"], answered["purpose"]);
+}

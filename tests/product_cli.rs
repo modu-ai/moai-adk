@@ -2679,6 +2679,10 @@ mod skill_package {
             "create the profile first",
             "Detection reads the project root only",
             "`project_kind` speaks of code only",
+            // #2535 item 7: a no-baseline conflict is taken in two steps, never by hand.
+            "has no baseline yet",
+            "Apply in two steps",
+            "Never edit `project.yaml` by hand to get past the conflict",
         ] {
             assert!(body.contains(stage), "project.md lacks: {stage}");
         }
