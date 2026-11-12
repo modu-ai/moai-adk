@@ -3,6 +3,12 @@ name = "moai-cli"
 version = "2026.11.0-rc.1"
 edition = "2021"
 publish = false
+# Package metadata (Issue #2500, #2435 decision 5-A). Each value restates LICENSE or the README
+# opening sentence and Facts block; tests/cargo_metadata_test.py keeps them equal.
+description = "MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared moai skill, with GitHub Issues as the work ledger."
+license = "Apache-2.0"
+repository = "https://github.com/modu-ai/moai-adk"
+homepage = "https://adk.mo.ai.kr"
 
 [dependencies]
 clap = { version = "=4.6.1", features = ["derive"] }
@@ -22,13 +28,11 @@ self-replace = "=1.5.1"
 cap-std = "=4.0.3"
 cap-fs-ext = "=4.0.3"
 chacha20poly1305 = "=0.10.1"
+tempfile = "=3.27.0"
 
 [target.'cfg(unix)'.dependencies]
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.
 libc = "=0.2.189"
-
-[dev-dependencies]
-tempfile = "=3.27.0"
 
 # The profile that 'dist' will build with (cargo-dist 0.34, E1 #2193)
 [profile.dist]

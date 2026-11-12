@@ -53,7 +53,7 @@ Issue #2380 (rc.2 WT). 사용자 요청 2026-11-10T10:15Z. 작성: agent-5-t64 (
 
 ### 1.3 기존 기록
 
-- `src/worktree.rs`: `worktree-plan`/`worktree-apply`가 claim 하나에 worktree 하나를 잠금과 함께 만든다. 기본 위치 `.moai-cli/worktrees/<issue>-<key>`는 사용자 결정 16:5x→17:0x(11-08)이고, branch 접두어는 HOLD다.
+- `src/worktree.rs`: `worktree-plan`/`worktree-apply`가 claim 하나에 worktree 하나를 잠금과 함께 만든다. 기본 위치 `.moai-cli/worktrees/<issue>-<key>`는 사용자 결정 16:5x→17:0x(11-08)이고, branch 접두어는 현재 구현값 `issue/<number>-<key>`로 확정됐다(리더 확정 2026-11-12, `docs/decisions-2026-11-08.md` 90행 절차, #2380 댓글 6816161048).
 - `src/lane_handoff.rs`: worktree를 떠나기 전의 읽기 전용 점검이다(clean, head=remote, PR, trailer, 보고, 불확실 효과 없음).
 - **정리·용량을 다루는 기능은 없다.**
 - 결정 22:0x(11-08): EnterWorktree로 들어가고, ExitWorktree(keep)로 나오며, **삭제 금지**.

@@ -37,6 +37,10 @@ fn git(dir: &Path, args: &[&str]) {
 fn fixture() -> Fixture {
     let project = tempfile::tempdir().unwrap();
     git(project.path(), &["init", "-q"]);
+    // An initialized project: with settings present no launch runs the #2481 first-launch
+    // initialization, so these tests measure numbering only (tests/launcher_auto_init.rs).
+    fs::create_dir(project.path().join(".moai-cli")).unwrap();
+    fs::write(project.path().join(".moai-cli/project.yaml"), "{}\n").unwrap();
     let bin = tempfile::tempdir().unwrap();
     for host in ["claude", "codex"] {
         let path = bin.path().join(host);
@@ -130,17 +134,13 @@ fn numbers_count_up_across_hosts_and_live_in_the_clone_common_dir() {
         ["agent-1", "agent-2", "agent-3", "agent-4", "agent-5"]
     );
     assert_eq!(stored(&f).as_deref(), Some("5\n"));
-    // The counter sits under `.git`, so git never lists it.
+    // The counter sits under `.git`, so git never lists it: only the fixture's settings show.
     let status = common::git::command()
         .args(["status", "--porcelain", "--ignored"])
         .current_dir(f.project.path())
         .output()
         .unwrap();
-    assert!(
-        status.stdout.is_empty(),
-        "{}",
-        String::from_utf8_lossy(&status.stdout)
-    );
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "?? .moai-cli/\n");
     // codex carries the name in its first prompt.
     let v: Value = serde_json::from_slice(&run(&f, &["codex", "-a"]).stdout).unwrap();
     assert_eq!(
@@ -328,13 +328,21 @@ fn a_store_path_that_is_not_a_regular_file_is_refused_without_blocking() {
 }
 
 #[test]
-fn outside_a_git_project_numbering_is_an_error_but_a_given_name_works() {
+fn outside_a_git_project_the_first_launch_initializes_it_and_a_given_name_works() {
+    // #2481 (user decision 6810818827): the folder becomes a git repository on the first
+    // launch, so numbering starts in its new clone common dir (tests/launcher_auto_init.rs).
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    for args in [&["cc", "-a"][..], &["codex", "-a", "--dry-run"][..]] {
-        let err = refused(&run_in(&f, plain.path(), args));
-        assert!(err.contains("git repository"), "{err}");
-    }
+    assert_eq!(
+        name(&run_in(&f, plain.path(), &["codex", "-a", "--dry-run"])),
+        "agent-1"
+    );
+    assert!(!plain.path().join(".git").exists());
+    assert_eq!(name(&run_in(&f, plain.path(), &["cc", "-a"])), "agent-1");
+    assert_eq!(
+        fs::read_to_string(plain.path().join(".git/.moai-cli/sessions/agent-seq")).unwrap(),
+        "1\n"
+    );
     assert_eq!(
         name(&run_in(&f, plain.path(), &["cc", "-a", "--name", "n1"])),
         "n1"
