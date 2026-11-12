@@ -124,14 +124,16 @@ PATH="$HOME/go/hook-bin:$PATH"  # #2383: Go hooks call the Go binary by absolute
 # stdin is handed straight to the exec'd process; this script creates no temporary
 # file (an exec'd process never runs an EXIT trap, so a temp buffer would leak).
 
+# A regular file that is executable: `-x` alone is true for a directory, which exec
+# cannot run (exit 126, no fallback) - #2503.
 MOAI_CLI="$HOME/.moai-cli/path/moai-cli"
-if [ -x "$MOAI_CLI" ]; then
+if [ -f "$MOAI_CLI" ] && [ -x "$MOAI_CLI" ]; then
 	exec "$MOAI_CLI" statusline
 fi
 
 # Fallback while the Go build is still installed: the same Go render as today.
 MOAI_GO="$HOME/go/bin/moai.old"
-if [ -x "$MOAI_GO" ]; then
+if [ -f "$MOAI_GO" ] && [ -x "$MOAI_GO" ]; then
 	exec "$MOAI_GO" statusline
 fi
 
@@ -144,9 +146,23 @@ exit 0
 현행(§1.3)과 다른 점과 그 근거:
 - `command -v moai`와 `~/go/bin/moai`·`~/.local/bin/moai` 폴백을 없앴다. PATH 이름에 기대지 않는 것이 이 카드의 목적이다.
 - 존재 검사를 `-f`에서 `-x`로 바꿨다. 실행 권한 없는 파일을 exec해 126으로 끝나는 경우를 막는다(재감사 F2와 같은 원인).
+- #2503에서 `-f`를 다시 함께 둔다(`[ -f X ] && [ -x X ]`, Rust·Go 두 경로 모두). `-x`만으로는 디렉터리(또는 디렉터리를 가리키는 링크)도 참이라 exec가 126으로 끝나고 폴백이 돌지 않았다(PR #2482 감사 N1). 이제 디렉터리는 없는 것과 같게 다음 단계로 넘어간다.
 - Rust 경로는 `~/.moai-cli/path/moai-cli`(§0, 심링크)다. **#2374가 병합·재설치되기 전의 설치본에는 `statusline` op가 없다.** 그래서 §5-5는 #2374 재설치 뒤에만 실행한다. 그 전에 실행하면 Rust가 사용 오류로 끝나고 폴백이 돌지 않는다(exec 뒤라서).
 - Go 폴백은 shim을 거치지 않고 `moai.old`를 직접 부른다. shim이 `statusline` 단어를 `moai.old`로 그대로 넘기므로(§2.2) 출력은 같다.
 - **현행 9–11행의 `~/.moai/.env.glm` source를 넣지 않았다.** Rust는 `~/.moai`를 읽지 않는다는 결정(#2393)을 따르고, 상태줄 렌더에 자격 증명이 필요하지 않기 때문이다. 이 env가 Go 렌더 결과를 바꾸는지는 아직 확인하지 않았다(not_run). §5-2(b)에서 같은 stdin으로 env 유무를 비교하고, 출력이 다르면 중단해 #2393에 올린다.
+
+### 4.2 #2503 후속 확인 — 보호 장치 오탐과 Go 재작성 위험
+
+**보호 장치 오탐(AC-2).** PR #2482 작업 중 golden 재검 명령 1건이 사례 이름 `b01-git-clean` 속 단어 때문에, 다른 1건이 `$(…)` 때문에 거부됐다(보고 #2383 6810975788, 실행 안 됨). 그 기록에는 거부한 장치의 이름과 거부 문구가 없다. 저장소의 tool-preflight 가드(`src/hook_guards.rs`, #2391)는 명령을 단어가 아니라 명령으로 읽는다: `tests/statusline_guard_false_positive.rs`가 `--case b01-git-clean`이 든 golden `--check` 명령, `$(…)`가 앞에 붙은 같은 명령, `--case` 없는 전체 `--check`를 `bash_guard`·`bash_confirm` 모두 통과(None)로 고정하고, 대조군으로 실제 `git clean -fd`는 여전히 확인 대상임을 고정한다. 그래서 이 가드에서는 재현되지 않는다. 다른 장치(세션 쪽 보호 장치)에서 다시 거부되면:
+- 다른 경로로 같은 명령을 다시 보내지 않는다(AGENTS.md "거부된 동작을 다른 도구·경로로 다시 하지 않는다"). 거부 문구·장치 이름·명령을 기록해 리더에게 보고한다.
+- 사례를 고를 필요가 없으면 `--case` 없이 전체 `--check`를 쓴다. 명령 줄에 사례 이름이 없으므로 이 오탐이 생기지 않는다.
+- `$(…)`는 필요 없다. 경로는 `--bin`에 바로 쓴다.
+
+**전환 뒤 Go `moai update`/`init`이 `status_line.sh`를 다시 쓰는가(AC-3, 보고 #2383 6769648298).** Go 실행체 실행은 규칙상 금지라 실행 시험은 not_run이다. 대신 Go 저장소(`modu-ai/moai-adk` main `4fa2aa9db2`, 읽은 파일은 그 커밋과 같음 — 작업 트리 변경 없음 확인)를 읽었다. 설치된 `moai.old`가 이 커밋으로 빌드됐는지는 확인하지 않았다(미확인).
+- `moai update`(일반·clean reinstall): `.moai/status_line.sh`는 병합 대상 집합에 있다(`internal/cli/update_template_sync.go` `mergeableFilePaths`, `internal/cli/update_clean_install.go` 416행). 배포 전에 사용자 파일을 읽어 두고(`update_template_sync.go` 815–821행), 배포 뒤 3-way 병합에서 `.sh`는 키 구조가 없어 base를 만들지 못하므로 사용자 내용을 그대로 다시 쓴다(`internal/cli/update/merge/merge.go` 287–296행, `merge/base.go` 68–74행). 기존 파일에 쓰므로 mode(755)는 유지된다. 즉 소스상 §4.1 내용은 update 뒤에도 남는다. 배포와 병합 사이에는 잠시 Go 원본이 놓이며, 병합 단계가 오류로 끝나면 Go 원본이 남을 수 있다(실행 확인 not_run).
+- `moai init`: 이미 초기화된 프로젝트에서는 `--force` 없이 거부한다(`internal/core/project/phase.go` 181–194행). `--force`면 `.moai/` 전체를 백업 디렉터리로 옮긴 뒤 다시 배포한다(`validator.go` 266–287행). `CarryManifestForward`는 `.moai/` 밖 파일만 보호하므로 `.moai/status_line.sh`는 Go 원본으로 바뀌고 §4.1 내용은 백업 쪽에 남는다.
+- 인접 위험(이 Issue 범위 밖): `.claude/hooks/moai/*.sh`는 병합 대상 집합에 없다. §2.2의 훅 2행 한 줄이 update 배포로 사라질 수 있는지는 별도 확인이 필요하다.
+- 따라서 전환 뒤 Go `moai update`나 `moai init --force`를 실행했다면 §5-5 readback(상태줄 sha256·mode·렌더)과 §5-6 readback(훅 해시·거부 fixture)을 다시 실행한다. Go 명령 실행을 막을지는 사용자 결정이며 이 문서가 정하지 않는다.
 
 ## 5. 승인 순서 절차 (각 실제 변경·영구 삭제의 직전 별도 확인)
 
