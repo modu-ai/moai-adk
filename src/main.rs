@@ -67,7 +67,11 @@ struct LaunchOpts {
     /// Claude effort (default `medium`).
     #[arg(long)]
     effort: Option<String>,
-    /// Do not pass `--advisor fable` (Claude Code host).
+    /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
+    /// the user setting `launcher.advisor` can turn it on. May bill to usage credits.
+    #[arg(long)]
+    advisor: Option<String>,
+    /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
     no_advisor: bool,
     /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts) and the
@@ -1036,7 +1040,7 @@ fn launch(
     o: LaunchOpts,
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
+    use moai_cli::session::{launch_settings, peek_agent_number, take_agent_number, AdvisorSource};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
     // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
@@ -1045,19 +1049,27 @@ fn launch(
     let name = o
         .name
         .or_else(|| (leader == Some(true)).then(|| "leader".into()));
+    // Validate user configuration even for roleless sessions or a CLI override. Resolution
+    // precedes host composition and any agent-number allocation. No advisor by default (user
+    // decision 2026-11-12, #2476): only `--advisor` or the user setting `launcher.advisor`.
+    let settings = launch_settings(
+        host,
+        role.is_some(),
+        o.permissions,
+        o.advisor.as_deref(),
+        o.no_advisor,
+    )?;
+    let advisor_note = (host == "claude"
+        && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
+    .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");
     let mut request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
         name,
         model: o.model,
         effort: o.effort,
-        // Claude defaults (user decision 2026-11-08, HOLD-L1 = A, #2053): roleless `cc`
-        // takes the launcher defaults (advisor fable, model, effort) too.
-        advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
-            .then(|| "fable".into()),
-        // Validate user configuration even for roleless sessions or CLI --permissions.
-        // Resolution precedes host composition and any agent-number allocation.
-        skip_permissions: full_access(role.is_some(), o.permissions)?,
+        advisor: settings.advisor.map(|(a, _)| a),
+        skip_permissions: settings.skip_permissions,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
@@ -1085,8 +1097,9 @@ fn launch(
         request.name = Some(format!("agent-{n}"));
     }
     let mut v = session_launch(&request, o.dry_run)?;
-    if let (Some(note), Some(notes)) = (number_note, v["notes"].as_array_mut()) {
-        notes.push(note.into());
+    if let Some(notes) = v["notes"].as_array_mut() {
+        notes.extend(advisor_note.map(Into::into));
+        notes.extend(number_note.map(Into::into));
     }
     Ok(v)
 }
