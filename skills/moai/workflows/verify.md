@@ -43,6 +43,8 @@ A test must not depend on wall-clock time. When an assertion depends on elapsed 
 
 A child-process budget in a test is load-independent: bound the child by progress — an invocation count or a log signal that resets the deadline — plus a hard hang ceiling and an invocation cap, never a bare wall-clock timeout (`ci_install_ripgrep_test` #2469, `mutate_test` #2502). The budget numbers are pinned by tests, and wall-clock appears only as the generous hang guard.
 
+Docs-only PRs get light CI (#2527, design comment 6822993459): when every changed path is under a verified-safe doc root the heavy steps (PyYAML install, ripgrep install, rust toolchain setup, build/test) are skipped and only `git diff --check` runs, but the aggregate `rc-ci` check, the `ci: rc-ci run=<id> head=<sha>` line contract and every citation condition above are unchanged — a light run still counts as the required CI result for that head. The scope classifier is `tools/ci_scope.py`; its verified-safe list is `docs/` with `.md`/`.txt`/`.png`/`.svg` suffixes (minus files tests read) plus `.moai-cli/reports/`. Any failure or unrecognized path fails safe to the full scope.
+
 ## Shell and helper rules
 
 - Guard refusal (WF-OBS #17): when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. Only when the refusal is confirmed to be about the combined form (the guard says the command is too complex to verify, not that its effect is forbidden) may it be retried split into plain single steps: the refused effect itself stays forbidden, and each step must pass the same guard on its own. Splitting is never a bypass.

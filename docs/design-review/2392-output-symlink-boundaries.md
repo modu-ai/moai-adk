@@ -1,7 +1,7 @@
 # Issue #2392: incomplete output and symlink boundary preparation
 
-Status: F6 repaired (see "F6 repair as implemented"); F5c still an ignored RED awaiting
-the classification decision (request 6807717170, options and recommendation 6809803334).
+Status: F6 repaired (see "F6 repair as implemented", PR #2484 merged `df215316ff`); F5c
+repaired as option 1 `NotRun` by user decision (see "F5c repair as implemented").
 Preparation base: `523052622385751f7ccc473cddff709d99834bb1` (agent-19).
 Claims: `Moai-Claim: 2392#6782198349` (agent-19, epoch 4, preparation), handed off by
 6809689773 to `Moai-Claim: 2392#6809707646` (agent-7, epoch 5, F6 repair).
@@ -49,6 +49,22 @@ Options reported to the leader before implementation:
 Raw output is currently not retained. Digest-only provenance must be stated
 honestly; adding raw-log persistence requires a retention/redaction decision.
 No log store or schema change is silently included in this preparation.
+
+## F5c repair as implemented (agent-7)
+
+User decision: option 1, `NotRun` (leader record 6813788595 on #2392, 2026-11-12T03:4xZ;
+decision sheet #1975 6813237309 item 7; options and recommendation 6809803334). Raw output
+stays digest-only.
+
+- `verify::check_result` decides the result of a spawned check: a failed or timed-out command
+  is `Failed`; a command that exited 0 is `NotRun` when its `test result:` lines sum to zero
+  tests (row 19) or when `output_complete` is not true; otherwise `Passed`.
+- No new reason field or schema change: `exit_code: 0` with `output_complete: false` and null
+  digests distinguishes it from a check that never ran (both null). `failure_class` stays
+  null, so it is never counted as RED or as a repeated failure.
+- `tests/boundary_output_scope.rs::incomplete_output_must_not_be_passed` is no longer ignored
+  and asserts `NotRun` literally; the unit test `verify::tests::check_result_matrix` pins every
+  input combination with literals.
 
 ## F6 repair design
 
