@@ -212,19 +212,38 @@ fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
     Ok(out)
 }
 
+/// #2563: the aggregate CI check run is renamed `rc-ci` → `ci`. During the transition
+/// both spellings name the same logical check: a PR whose head ran before the rename
+/// carries `rc-ci`, a newer one carries `ci`. Only these exact names count — a matrix
+/// job such as `ci / linux-x86_64` never does.
+pub const CI_CHECK_NAMES: [&str; 2] = ["ci", "rc-ci"];
+
+/// Whether a check run named `actual` is a run of the required check `required`.
+/// Either CI spelling matches every run of the logical CI check (the union of both
+/// names); any other required name matches only itself.
+pub fn check_name_matches(required: &str, actual: &str) -> bool {
+    if CI_CHECK_NAMES.contains(&required) {
+        CI_CHECK_NAMES.contains(&actual)
+    } else {
+        required == actual
+    }
+}
+
 /// Every required name must exist, and all returned runs with that name must have
 /// concluded `success`. A failed or pending duplicate cannot be hidden by list order.
-/// Unrelated names are ignored. An empty policy blocks.
+/// The CI check's two spellings (#2563) are one name here: a failed run under either
+/// spelling blocks. Unrelated names are ignored. An empty policy blocks.
 fn required_ci_judgment(runs: &[Value], required: &[String]) -> (bool, String) {
     if required.is_empty() {
         return (false, "no required checks configured".to_string());
     }
     for name in required {
         let mut found = false;
-        for r in runs
-            .iter()
-            .filter(|r| r["name"].as_str() == Some(name.as_str()))
-        {
+        for r in runs.iter().filter(|r| {
+            r["name"]
+                .as_str()
+                .is_some_and(|actual| check_name_matches(name, actual))
+        }) {
             found = true;
             let status = r["status"].as_str().unwrap_or_default();
             let conclusion = r["conclusion"].as_str().unwrap_or_default();

@@ -2672,9 +2672,25 @@ mod skill_package {
             "`databases`",
             "MoAI never creates or edits an MCP configuration",
             "no product, structure or tech documents are written",
+            // #2535 AC-1 (items 1 and 3) and AC-2 (items 2 and 4).
+            "with the plan output's `result` object on stdin, not the whole response",
+            "`invalid typed JSON input`",
+            "When `result.profile` is `null`",
+            "create the profile first",
+            "Detection reads the project root only",
+            "`project_kind` speaks of code only",
+            // #2535 item 7: a no-baseline conflict is taken in two steps, never by hand.
+            "has no baseline yet",
+            "Apply in two steps",
+            "Never edit `project.yaml` by hand to get past the conflict",
         ] {
             assert!(body.contains(stage), "project.md lacks: {stage}");
         }
+        // #2535 item 5: skill files are read with the host's file tool, not `ls`/`cat`.
+        assert!(
+            skill.contains("with the host's file-reading tool, not with a shell command"),
+            "SKILL.md names the file-reading tool"
+        );
     }
 
     #[test]

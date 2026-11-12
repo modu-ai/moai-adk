@@ -1,4 +1,4 @@
-# RC1 toolchain pin (Issue #2029): local sessions and rc-ci use the same Rust, so a local
+# RC1 toolchain pin (Issue #2029): local sessions and CI use the same Rust, so a local
 # `cargo clippy -D warnings` result predicts CI. Raising it to a newer stable is decided in 08-D.
 [toolchain]
 channel = "1.94.1"
