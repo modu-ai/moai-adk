@@ -13,23 +13,65 @@ const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
 
 /// A theme's colors (internal/tui/catppuccin.go). `stops` run green → yellow → peach → red.
+/// The per-segment colors are the #2559 segment palette (user decision 2026-11-12): each
+/// segment kind takes its own Catppuccin accent, so neighbours never share a color.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Theme {
     pub text: &'static str,
     pub muted: &'static str,
     pub stops: [&'static str; 4],
+    /// `🤖` model (mauve).
+    pub model: &'static str,
+    /// `🧠` effort and thinking (lavender).
+    pub effort: &'static str,
+    /// `♻️` cache hit (teal).
+    pub cache: &'static str,
+    /// `🔅` Claude Code and `🗿` MoAI versions (sky).
+    pub version: &'static str,
+    /// `📡` repository (blue).
+    pub repo: &'static str,
+    /// `❗` open Issues (peach).
+    pub issues: &'static str,
+    /// `🔀` open pull requests (pink).
+    pub prs: &'static str,
+    /// `🅱️` branch with its behind and dirty counts (green).
+    pub branch: &'static str,
+    /// `(⚠️ /clear)` soft handoff warning (yellow).
+    pub warn: &'static str,
+    /// `(🛑/clear!)` hard handoff warning (red).
+    pub alert: &'static str,
 }
 
 pub const MOCHA: Theme = Theme {
     text: "#CDD6F4",
     muted: "#6C7086",
     stops: ["#A6E3A1", "#F9E2AF", "#FAB387", "#F38BA8"],
+    model: "#CBA6F7",
+    effort: "#B4BEFE",
+    cache: "#94E2D5",
+    version: "#89DCEB",
+    repo: "#89B4FA",
+    issues: "#FAB387",
+    prs: "#F5C2E7",
+    branch: "#A6E3A1",
+    warn: "#F9E2AF",
+    alert: "#F38BA8",
 };
 
 pub const LATTE: Theme = Theme {
     text: "#4C4F69",
     muted: "#9CA0B0",
     stops: ["#40A02B", "#DF8E1D", "#FE640B", "#D20F39"],
+    model: "#8839EF",
+    effort: "#7287FD",
+    cache: "#179299",
+    version: "#04A5E5",
+    repo: "#1E66F5",
+    issues: "#FE640B",
+    prs: "#EA76CB",
+    branch: "#40A02B",
+    warn: "#DF8E1D",
+    alert: "#D20F39",
 };
 
 /// `NewTheme`: `catppuccin-latte`, anything else is Mocha.
@@ -94,15 +136,16 @@ impl Renderer {
         let mut segs = Vec::new();
         let metrics = !s.model.is_empty();
         if self.enabled("model") && metrics {
-            segs.push(format!("🤖 {}", s.model));
+            segs.push(self.paint(self.theme.model, &format!("🤖 {}", s.model)));
         }
         if self.enabled("effort_thinking") {
             let thinking = s.thinking == Some(true);
             match &s.effort {
-                None if thinking => segs.push("·t".into()),
-                Some(level) if !level.is_empty() => {
-                    segs.push(format!("🧠 {level}{}", if thinking { "·t" } else { "" }))
-                }
+                None if thinking => segs.push(self.paint(self.theme.effort, "·t")),
+                Some(level) if !level.is_empty() => segs.push(self.paint(
+                    self.theme.effort,
+                    &format!("🧠 {level}{}", if thinking { "·t" } else { "" }),
+                )),
                 _ => {}
             }
         }
@@ -111,11 +154,11 @@ impl Renderer {
                 .cache
                 .and_then(|(read, creation)| segments::cache_hit_percent(read, creation))
             {
-                segs.push(format!("♻️ {pct}%"));
+                segs.push(self.paint(self.theme.cache, &format!("♻️ {pct}%")));
             }
         }
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
-            segs.push(format!("🔅 v{}", s.claude_version));
+            segs.push(self.paint(self.theme.version, &format!("🔅 v{}", s.claude_version)));
         }
         if self.enabled("moai_version") {
             if let Some(v) = s.version.as_ref().filter(|v| !v.current.is_empty()) {
@@ -123,7 +166,7 @@ impl Renderer {
                 if let Some(latest) = &v.latest {
                     seg.push_str(&format!(" -> 🗿 v{latest}"));
                 }
-                segs.push(seg);
+                segs.push(self.paint(self.theme.version, &seg));
             }
         }
         if self.enabled("session_time") && metrics {
@@ -145,8 +188,15 @@ impl Renderer {
                 let mut bar = self.usage_bar("CTX:", pct);
                 if !s.goal_armed {
                     match segments::handoff_stage(&s.memory, s.auto_compact) {
-                        HandoffStage::Hard => bar.push_str(" (🛑/clear!)"),
-                        HandoffStage::Soft => bar.push_str(" (⚠️ /clear)"), // #2559: space before /clear
+                        HandoffStage::Hard => {
+                            bar.push(' ');
+                            bar.push_str(&self.paint(self.theme.alert, "(🛑/clear!)"));
+                        }
+                        // #2559: space before /clear
+                        HandoffStage::Soft => {
+                            bar.push(' ');
+                            bar.push_str(&self.paint(self.theme.warn, "(⚠️ /clear)"));
+                        }
                         HandoffStage::None => {}
                     }
                 }
@@ -236,6 +286,7 @@ impl Renderer {
         if dirty > 0 {
             branch.push_str(&format!(" +{dirty}"));
         }
+        let branch = self.paint(self.theme.branch, &branch);
         let Some((owner, name)) = s
             .repo
             .as_ref()
@@ -245,11 +296,16 @@ impl Renderer {
         };
         let forge = if self.enabled("github") && s.github.available && !s.github.suppressed {
             // #2559 (user instruction 2026-11-12): icons instead of letter labels.
-            format!(" | ❗ {} / 🔀 {}", s.github.open_issues, s.github.open_prs)
+            format!(
+                " | {} / {}",
+                self.paint(self.theme.issues, &format!("❗ {}", s.github.open_issues)),
+                self.paint(self.theme.prs, &format!("🔀 {}", s.github.open_prs))
+            )
         } else {
             String::new()
         };
-        Some(format!("📡 {owner}/{name}{forge} | {branch}"))
+        let repo = self.paint(self.theme.repo, &format!("📡 {owner}/{name}"));
+        Some(format!("{repo}{forge} | {branch}"))
     }
 }
 
@@ -513,6 +569,88 @@ mod tests {
             apply_base_color("a\x1b[0mb\nc", "\x1b[38;5;1m"),
             "\x1b[22m\x1b[38;5;1ma\x1b[0m\x1b[38;5;1mb\x1b[0m\n\x1b[22m\x1b[38;5;1mc\x1b[0m"
         );
+    }
+
+    fn colored(theme_name: &str, profile: Profile, status: &Status) -> String {
+        let config = DisplayConfig {
+            theme: theme_name.into(),
+            ..Default::default()
+        };
+        Renderer::new(&config, Some(profile)).render(status)
+    }
+
+    fn strip_sgr(text: &str) -> String {
+        let mut out = String::new();
+        let mut rest = text;
+        while let Some(at) = rest.find("\x1b[") {
+            out.push_str(&rest[..at]);
+            let tail = &rest[at..];
+            let end = tail.find('m').expect("SGR ends with m");
+            rest = &tail[end + 1..];
+        }
+        out.push_str(rest);
+        out
+    }
+
+    fn segment_colors(t: &Theme) -> [&'static str; 10] {
+        [
+            t.model, t.effort, t.cache, t.version, t.repo, t.issues, t.prs, t.branch, t.warn,
+            t.alert,
+        ]
+    }
+
+    /// #2559 (user decision 2026-11-12): each segment kind has its own color, distinct
+    /// from the others and from the base text, in both themes and both palettes.
+    #[test]
+    fn each_segment_kind_has_its_own_color() {
+        for (name, t) in [("catppuccin-mocha", MOCHA), ("catppuccin-latte", LATTE)] {
+            for profile in [Profile::TrueColor, Profile::Ansi256] {
+                let mut status = full_status();
+                let out = colored(name, profile, &status);
+                for (hex, text) in [
+                    (t.model, "🤖 Opus"),
+                    (t.effort, "🧠 high·t"),
+                    (t.cache, "♻️ 75%"),
+                    (t.version, "🔅 v2.1.293"),
+                    (t.version, "🗿 v2.0 -> 🗿 v3.0"),
+                    (t.repo, "📡 owner/repo"),
+                    (t.issues, "❗ 7"),
+                    (t.prs, "🔀 3"),
+                    (t.branch, "🅱️ main ↓2 +3"),
+                ] {
+                    assert!(
+                        out.contains(&profile.paint(hex, text)),
+                        "{name} {profile:?}: {text:?} not painted {hex} in {out:?}"
+                    );
+                }
+                // Escapes removed, the text is the NO_COLOR text (AC-2, AC-3 widths).
+                assert_eq!(strip_sgr(&out), plain(&status, &[]));
+
+                status.memory.token_budget = 200_000;
+                status.memory.tokens_used = 180_000;
+                let soft = colored(name, profile, &status);
+                assert!(
+                    soft.contains(&profile.paint(t.warn, "(⚠️ /clear)")),
+                    "{soft:?}"
+                );
+                status.memory.tokens_used = 190_000;
+                let hard = colored(name, profile, &status);
+                assert!(
+                    hard.contains(&profile.paint(t.alert, "(🛑/clear!)")),
+                    "{hard:?}"
+                );
+
+                let mut seen: Vec<String> = vec![profile.foreground(t.text)];
+                for hex in segment_colors(&t) {
+                    let sgr = profile.foreground(hex);
+                    assert!(
+                        !seen.contains(&sgr),
+                        "{name} {profile:?}: {hex} repeats {sgr}"
+                    );
+                    seen.push(sgr);
+                }
+            }
+        }
     }
 
     #[test]
