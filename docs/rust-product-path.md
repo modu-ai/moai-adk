@@ -147,7 +147,7 @@ These commands are internal contracts for future native skill adapters. Users ar
 
 ## State directories during the RC period
 
-The Rust RC writes project data under `<project>/.moai-cli/` and will install under `~/.moai-cli/` (constants `PROJECT_STATE_DIR`, `HOME_STATE_DIR` in `src/lib.rs`; no install command exists yet). The Go generation keeps `<project>/.moai/` and `~/.moai/`; both coexist and the Rust tool never moves, renames or writes the Go directories. One read-only exception: `moai-cli statusline` (#2350) reads its settings from `.moai-cli/config/sections/statusline.yaml` and `.moai-cli/statusline.local.yaml` when they exist, else from the Go files at the same relative paths under `.moai/` (user decision 2026-11-10, #2389 comment 6774899518 row 42 = B; existence decides, an unreadable `.moai-cli/` file means defaults). That exception covers the project settings only: the statusline's two HOME state files, `last-model.txt` (model fallback) and `last-session-state.json` (task segment), are read from `~/.moai-cli/state/` and never from the Go `~/.moai/state/` (user decision 2026-11-11, #2455). `MOAI_HOME`, the Go tool's variable, is not consulted; `MOAI_LAST_MODEL` is an environment value, not a file, and still wins over the model file. No Rust command writes either file yet, so an absent file and an empty model and task segment are the normal state; a writer is a separate card. The statusline's upward search for project files from the cwd — `.moai/config/sections/llm.yaml` (GLM context windows) and `.moai/config/sections/system.yaml` (template version) — stops before HOME, as the project-root search already did: HOME's own `.moai` is the Go home folder and is never read as project configuration, and nothing above HOME is searched from a cwd below it (leader scope 2026-11-11, #2455 comment 6792437161). A project folder below HOME is read as before, and a cwd outside HOME still walks up to the root. Special case: a project whose root is HOME itself gets no project settings from these two files (they read as absent). The design documents name the final location `.moai/`; switching the folder name is a later, separate step decided by the user (2026-11-08). The provisional Python Claude adapter follows the same rule (`.moai-cli/statusline.py`, `.moai-cli/claude-settings-owner.json`, `.moai-cli/licenses/`).
+The Rust RC writes project data under `<project>/.moai-cli/` and will install under `~/.moai-cli/` (constants `PROJECT_STATE_DIR`, `HOME_STATE_DIR` in `src/lib.rs`; no install command exists yet). The Go generation keeps `<project>/.moai/` and `~/.moai/`; both coexist and the Rust tool never moves, renames or writes the Go directories. One read-only exception: `moai-cli statusline` (#2350) reads its settings from `.moai-cli/config/sections/statusline.yaml` and `.moai-cli/statusline.local.yaml` when they exist, else from the Go files at the same relative paths under `.moai/` (user decision 2026-11-10, #2389 comment 6774899518 row 42 = B; existence decides, an unreadable `.moai-cli/` file means defaults). That exception covers the project settings only: the statusline's HOME state file `last-model.txt` (model fallback) is read from `~/.moai-cli/state/` and never from the Go `~/.moai/state/` (user decision 2026-11-11, #2455); `last-session-state.json` (the task segment) is no longer read, because the three-line layout never shows the task (#2376, user decision 3). `MOAI_HOME`, the Go tool's variable, is not consulted; `MOAI_LAST_MODEL` is an environment value, not a file, and still wins over the model file. No Rust command writes that file yet, so an absent file and an empty model are the normal state; a writer is a separate card. The statusline's upward search for project files from the cwd — `.moai/config/sections/llm.yaml` (GLM context windows) and `.moai/config/sections/system.yaml` (template version) — stops before HOME, as the project-root search already did: HOME's own `.moai` is the Go home folder and is never read as project configuration, and nothing above HOME is searched from a cwd below it (leader scope 2026-11-11, #2455 comment 6792437161). A project folder below HOME is read as before, and a cwd outside HOME still walks up to the root. Special case: a project whose root is HOME itself gets no project settings from these two files (they read as absent). The design documents name the final location `.moai/`; switching the folder name is a later, separate step decided by the user (2026-11-08). The provisional Python Claude adapter follows the same rule (`.moai-cli/statusline.py`, `.moai-cli/claude-settings-owner.json`, `.moai-cli/licenses/`).
 
 ### Identity and state-root resolver (`identity`)
 
@@ -768,6 +768,42 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 **Codex config writer (#2240, rc.2 I3; CLI connection #2237).** `codex-config-plan` and `codex-config-apply` call `hosts::codex_config::{config_plan, config_apply}` to plan and apply the project `.codex/config.toml` only, with `toml_edit =0.25.3` (MIT OR Apache-2.0, format-preserving). MoAI owns at most `tui.status_line`, `skills.bundled.enabled`, `project_doc_fallback_filenames` and `project_doc_max_bytes`, decided per key three-way against `.moai-cli/manifests/codex-config.json` like the Claude settings (REQ-I3-01). Every other key, table and comment is kept. Trust is declared, never written (it lives in the user config; the home is blocked); a project equal to the home is refused. The CLI also refuses a project `.codex` that is CODEX_HOME and an unavailable explicit CODEX_HOME, and, because the home comparison needs a resolved home, a missing or unresolvable HOME/USERPROFILE (plan and apply, before any write). Both commands read at most 64 KiB of desired-key JSON; apply requires the preview digest and permission reference. Tests: `tests/codex_config.rs`, `tests/codex_config_cli.rs` (synthetic HOME only). P04/C5, MCP, live host loading and actual home changes stay outside this connection. Contract and the official-doc table: `docs/codex-adapter-contract.md` "config.toml 생성".
 
 `host_loaded` and `execution_verified` stay false. Desktop `$moai` and CLI `$moai` runs are not_run from a lane: the first needs the GUI, the second sends a prompt to OpenAI. Local evidence is `codex --version` → `codex-cli 0.163.0` only.
+
+## Claude Code status line (`statusline`, #2376)
+
+`moai-cli statusline` reads Claude Code JSON from stdin and prints raw text, not an
+operation envelope. The main layout replaces the earlier Go-parity layout:
+
+1. Model, effort/thinking, cache hit, Claude/MoAI versions, elapsed time and output style.
+2. Optional session name, two spaces, then `CTX`, available `5H`, and available `Week`
+   bars. Missing rate windows are hidden; reset times are not printed. Context handoff
+   warnings and the existing usage calculation are retained.
+3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
+   arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
+
+Directory, PR review state, agent name and active task segments are never rendered in
+the main layout, including when their old segment options are enabled. Remaining
+segment switches and themes still apply; empty lines are omitted and an entirely
+disabled layout prints `MoAI`. `NO_COLOR`, `MOAI_NO_COLOR`, or non-terminal stdout
+disables ANSI color without changing visible content.
+
+The separate Claude Code `subagentStatusLine` protocol still accepts `tasks[]` and
+returns JSONL rows. It is not a second main layout. Empty, malformed and oversized
+main input degrades to the normal nonempty fallback; the input ceiling is 4 MiB,
+including when an oversized stream begins with otherwise valid JSON.
+
+Rendering remains read-only and network-free. Local git retains its 800 ms render
+budget; no forge refresh is added. Existing configuration/cache sources are unchanged,
+and this command does not change Claude settings, Go scripts or Orca wrappers.
+
+`tests/fixtures/statusline/` preserves the historical Go recordings unchanged.
+The active Rust layout recordings are in `tests/fixtures/statusline-claude/`;
+`tools/statusline_golden.py --check` verifies them with isolated state and actual
+terminal capture for the ANSI variants. The main layout follows Issue #2376 and
+decision comment `6774899518` (recommendation rows 7–12 and 28). The official
+[status-line contract](https://code.claude.com/docs/en/statusline.md), including the
+separate subagent protocol, was read on 2026-11-10; source retrieval evidence is
+recorded on the Issue.
 
 ## Host hook generation (`hooks-plan` / `hooks-apply` / `hook-receipt`, rc.2 I1 #2238)
 
