@@ -251,18 +251,18 @@ fn install_id(canonical_exe: &Path) -> Result<String> {
 
 /// Plans the receipt the current executable would be recorded under. Computes everything
 /// from the binary itself; writes nothing.
+///
+/// The binary is identified by the regular file its path resolves to, so a call through a
+/// link (the installed layout `~/.moai-cli/path/moai-cli`, decisions L165) plans the same
+/// receipt and `install_id` as the target itself (#2495). Whether `std::env::current_exe`
+/// reports the link is platform dependent (macOS keeps it, Linux resolves it); the result
+/// is the same either way. A link to a non-file or a dangling link is refused.
 pub fn plan_receipt(
     current_exe: &Path,
     home: &Path,
     installer_owner: InstallerOwner,
 ) -> Result<ReceiptPlan> {
-    if fs::symlink_metadata(current_exe)
-        .map_err(|_| "binary metadata unavailable")?
-        .file_type()
-        .is_symlink()
-    {
-        return Err("binary path is a symlink; refused".into());
-    }
+    fs::symlink_metadata(current_exe).map_err(|_| "binary metadata unavailable")?;
     let canonical_exe = fs::canonicalize(current_exe).map_err(|_| "binary path unavailable")?;
     if !canonical_exe.is_file() {
         return Err("binary path is not a regular file".into());
@@ -604,6 +604,10 @@ pub fn inspect(home: &Path, path_env: &str) -> Result<Value> {
             "current_exe": normalize_home(&canonical_home, &canonical_exe)?,
             "binary_sha256": exe_sha256,
             "state": self_state,
+            // The path the platform reported before resolution, and whether it was a link
+            // (macOS reports a link it was started through; Linux already resolves it).
+            "invoked_exe": normalize_home(&canonical_home, &exe)?,
+            "invoked_via_link": fs::symlink_metadata(&exe).is_ok_and(|m| m.file_type().is_symlink()),
         },
         "go_generation": {
             "home_moai_exists": exists_dir(&canonical_home.join(".moai")),
