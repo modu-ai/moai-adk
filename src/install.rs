@@ -241,7 +241,7 @@ fn channel_of(version: &str) -> String {
     }
 }
 
-fn install_id(canonical_exe: &Path) -> Result<String> {
+pub(crate) fn install_id(canonical_exe: &Path) -> Result<String> {
     let bytes = canonical_exe
         .to_str()
         .ok_or("non UTF-8 binary path")?
