@@ -1828,12 +1828,16 @@ fn a_lock_held_at_a_fork_outlives_its_drop_until_the_child_execs() {
 }
 
 /// The repair: `seed_journal` never takes the lock, so a child forked at any moment holds
-/// no lock and the CLI reaches its own answer (here the stale-request conflict).
+/// no lock and the CLI reaches its own answer (here the stale-request conflict). Seeding
+/// while another handle holds the lock proves it takes none: a lock taken and dropped
+/// inside the helper would leave the same window a fork can fall into.
 #[cfg(unix)]
 #[test]
 fn seed_journal_leaves_no_lock_for_a_forked_child() {
     let v = handoff_while_a_child_sits_between_fork_and_exec(|repo, record| {
+        let other = journal_of(repo);
         seed_journal(repo, "acquire", record);
+        drop(other);
         None
     });
     assert_eq!(v["error"]["kind"], json!("conflict"), "{v}");
