@@ -18,7 +18,7 @@ P12 결정(리더 범위 댓글 2026-11-08, 사용자 결정 적용): RC1의 조
 실행 명령(실제 시험 파일·시험명과 일치 — AC 명령 인용 전 확인 의무):
 
 ```sh
-CARGO_HOME=$(test -d /tmp/moai-product-cargo && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo) CARGO_TARGET_DIR=/tmp/moai-product-target \
+CARGO_HOME=$(test -d /tmp/moai-product-cargo/registry/cache && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo) CARGO_TARGET_DIR=/tmp/moai-product-target \
 HOME=$(mktemp -d) cargo test --offline --locked --test e2e_host_fixture -- --nocapture
 ```
 
