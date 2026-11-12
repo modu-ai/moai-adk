@@ -17,8 +17,12 @@ line that does not report FAILED exits 1.
 Optional CI citation lines (Issue #2385; rules in skills/moai/workflows/
 verify.md, section "Check-run rules"):
 
-  ci: rc-ci run=<run id> head=<40-hex head SHA>
+  ci: ci run=<run id> head=<40-hex head SHA>
   ci: not_run <reason>
+
+The workflow was named `rc-ci` before Issue #2563, so open PRs may still carry
+`ci: rc-ci run=…`. Only the keyed `run=` and `head=` tokens are judged, never
+the workflow word, so both spellings pass under exactly the same token rules.
 
 Each `ci:` line in the section is checked. A citation must carry the keyed
 field `run=` with one or more digits and the keyed field `head=` with exactly

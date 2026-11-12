@@ -329,11 +329,15 @@ pub fn query_cli<T: Transport, C: Clock>(
             Some("check_runs"),
         )?;
         let mut ci = serde_json::Map::new();
-        for name in ["rc-ci", "windows-build"] {
+        for name in ["ci", "windows-build"] {
             let newest = checks
                 .iter()
                 .filter(|c| {
-                    c["name"] == name
+                    // #2563: `ci` also reads runs under its former name `rc-ci`; the
+                    // newest run under either spelling decides.
+                    c["name"]
+                        .as_str()
+                        .is_some_and(|actual| crate::flow::check_name_matches(name, actual))
                         && c["head_sha"] == head
                         && c["app"]["slug"] == "github-actions"
                 })
@@ -376,11 +380,17 @@ pub fn query_cli<T: Transport, C: Clock>(
             Some("FAIL") => blocked.push("audit_failed"),
             _ => blocked.push("audit_missing_or_stale"),
         }
+        // #2554 (user decision U10): on a PR `windows-build` does not run (it runs after
+        // merge). Its job-level `if` leaves a check run with conclusion `skipped` (or none at
+        // all, `not_run`); neither blocks. Any other state that is not `success` (failure,
+        // cancelled, still running, ...) still does. `ci` must be `success` on the head.
         for (name, reason) in [
-            ("rc-ci", "rc_ci_not_success"),
+            ("ci", "ci_not_success"),
             ("windows-build", "windows_build_not_success"),
         ] {
-            if ci[name]["state"] != "success" {
+            let state = &ci[name]["state"];
+            let absent_ok = name == "windows-build" && (state == "not_run" || state == "skipped");
+            if state != "success" && !absent_ok {
                 blocked.push(reason);
             }
         }

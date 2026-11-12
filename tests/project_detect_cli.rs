@@ -373,3 +373,133 @@ fn a_malformed_detected_value_is_refused() {
         assert!(!out.status.success(), "{bad}");
     }
 }
+
+/// #2535 AC-2 (item 2): manifests, dependency databases and compose images are read at the
+/// root only; a subfolder's code still counts for `languages`. The root control shows the same
+/// dependency is found when it sits at the root.
+#[test]
+fn detection_reads_manifests_and_databases_at_the_root_only() {
+    let root = TempDir::new().unwrap();
+    write(
+        root.path(),
+        "web/package.json",
+        r#"{"dependencies":{"pg":"8"}}"#,
+    );
+    write(root.path(), "web/index.js", "console.log(1)\n");
+    write(
+        root.path(),
+        "docker-compose.yml",
+        "services:\n  db:\n    image: postgres:16\n",
+    );
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["project_kind"], "existing");
+    assert_eq!(d["manifests"], json!([]));
+    assert_eq!(d["languages"], json!(["javascript"]));
+    assert_eq!(d["databases"], json!([]));
+
+    write(
+        root.path(),
+        "package.json",
+        r#"{"dependencies":{"pg":"8"}}"#,
+    );
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["manifests"], json!(["package.json"]));
+    assert_eq!(d["databases"], json!(["postgres"]));
+}
+
+/// #2535 AC-2 (item 4): `project_kind` speaks of code only. A folder holding nothing but a
+/// Prisma schema and a Codex MCP configuration is `new`, and its database and server names are
+/// still recorded as configuration facts.
+#[test]
+fn a_configuration_only_folder_is_new_with_its_facts() {
+    let root = TempDir::new().unwrap();
+    write(
+        root.path(),
+        "prisma/schema.prisma",
+        "datasource db {\n  provider = \"postgresql\"\n  url = env(\"DATABASE_URL\")\n}\n",
+    );
+    write(
+        root.path(),
+        ".codex/config.toml",
+        "[mcp_servers.docs]\ncommand = \"x\"\n",
+    );
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["project_kind"], "new");
+    assert_eq!(d["manifests"], json!([]));
+    assert_eq!(d["languages"], json!([]));
+    assert_eq!(d["databases"], json!(["postgres"]));
+    assert_eq!(d["mcp_servers"], json!(["docs"]));
+}
+
+/// #2535 AC-1 (item 1): `project-apply` takes the plan output's `result` object on stdin. The
+/// whole response envelope is refused and writes nothing; the `result` object applies.
+#[test]
+fn project_apply_takes_the_plan_result_not_the_envelope() {
+    let root = with_profile();
+    let profile = detect(&root)["profile"].clone();
+    let out = run(&["project-plan", p(&root)], profile.to_string().as_bytes());
+    let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(envelope["ok"], json!(true), "{envelope}");
+    let digest = envelope["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let apply = |stdin: &Value| {
+        run(
+            &[
+                "project-apply",
+                p(&root),
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                "fixture-approved",
+            ],
+            stdin.to_string().as_bytes(),
+        )
+    };
+    let before = tree(root.path());
+    let refused = apply(&envelope);
+    assert!(!refused.status.success());
+    let v: Value = serde_json::from_slice(&refused.stdout).unwrap();
+    assert_eq!(v["error"]["message"], json!("invalid typed JSON input"));
+    assert_eq!(tree(root.path()), before, "a refused apply writes nothing");
+    let applied = ok(&apply(&envelope["result"]));
+    assert_eq!(applied["state"], json!("updated"));
+}
+
+/// #2535 item 7 (leader host observation 6826590481): a profile with no baseline holds every
+/// changed key as a conflict, so an interview answer that changes `purpose` cannot apply. The
+/// documented two steps get past it without a hand edit: apply the detected facts with every
+/// existing value kept (that writes the baseline), then plan the answer again.
+#[test]
+fn a_profile_without_a_baseline_takes_the_answers_in_two_steps() {
+    let root = with_profile();
+    let baseline = root
+        .path()
+        .join(".moai-cli/manifests/profile-baseline.json");
+    assert!(!baseline.exists());
+    let facts = detect(&root)["profile"].clone();
+    let mut answered = facts.clone();
+    answered["purpose"] = json!("MoAI-ADK, an agentic development kit");
+
+    let before = tree(root.path());
+    let held = ok(&run(
+        &["project-plan", p(&root)],
+        answered.to_string().as_bytes(),
+    ));
+    assert_eq!(held["action"], json!("conflict"), "{held}");
+    assert_eq!(held["delta"]["conflict"], json!(["purpose"]), "{held}");
+    assert_eq!(tree(root.path()), before, "planning writes nothing");
+
+    let first = plan_apply(&root, &facts);
+    assert_eq!(first["action"], json!("update"), "{first}");
+    assert!(first["delta"]["conflict"].as_array().unwrap().is_empty());
+    assert!(baseline.is_file(), "the first apply writes the baseline");
+
+    let second = plan_apply(&root, &answered);
+    assert_eq!(second["action"], json!("update"), "{second}");
+    assert_eq!(second["delta"]["changed"], json!(["purpose"]), "{second}");
+    let written: Value =
+        serde_json::from_slice(&fs::read(root.path().join(PROFILE)).unwrap()).unwrap();
+    assert_eq!(written["purpose"], answered["purpose"]);
+}

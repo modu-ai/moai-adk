@@ -284,7 +284,7 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(self.calls("curl"), [])
 
     def test_workflow_macos_brew_path_is_still_executable(self):
-        flow = yaml.safe_load((ROOT / ".github/workflows/rc-ci.yml").read_text())
+        flow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
         step = next(s for s in flow["jobs"]["check"]["steps"] if s.get("name") == "Install and verify ripgrep (C10a baseline)")
         result = self.run_checked(["/bin/bash", "-e", "-o", "pipefail", "-c", step["run"]],
                                   {**self.env, "RUNNER_OS": "macOS"}, cwd=ROOT)
