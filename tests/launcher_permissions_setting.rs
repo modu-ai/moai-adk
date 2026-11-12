@@ -197,6 +197,10 @@ fn access_matrix_and_cli_precedence_preserve_complete_host_argv() {
 #[test]
 fn absent_key_retains_byte_identical_output_and_project_config_is_ignored() {
     let p = project();
+    // #2481: the baseline runs with a settings file too; without one the dry run reports the
+    // first-launch initialization it would do, and the outputs would differ for that alone.
+    fs::create_dir_all(p.path().join(".moai-cli")).unwrap();
+    fs::write(p.path().join(".moai-cli/project.yaml"), "{}").unwrap();
     let home = tempfile::tempdir().unwrap();
     for host in HOSTS {
         for flags in ROLES {
