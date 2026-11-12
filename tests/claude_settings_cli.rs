@@ -196,3 +196,87 @@ fn home_and_claude_config_dir_are_refused() {
     assert_eq!(out.status.code(), Some(1));
     assert!(!project.path().join(".claude/settings.json").exists());
 }
+
+/// Runs git in `dir` with the caller's git environment removed and a fixed identity.
+fn git(dir: &Path, args: &[&str]) {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_AUTHOR_NAME", "t")
+        .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
+        .env("GIT_COMMITTER_NAME", "t")
+        .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "git {args:?}: {out:?}");
+}
+
+/// #2581: the plan reports whether git ignores `.claude/settings.json`, and so whether a
+/// session started in a linked worktree of the repository reads it. Four states: outside a
+/// repository (`unknown`), ignored (`not_reached`), not ignored, and a tracked file that
+/// matches an ignore pattern — git does not treat a tracked file as ignored. The facts never
+/// change the plan itself: the action and digest are the same in every state.
+#[test]
+fn plan_reports_whether_worktree_sessions_read_the_settings_file() {
+    let home = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let p = project.path();
+    let facts = |v: &Value| {
+        (
+            v["settings_ignored"].as_str().unwrap().to_string(),
+            v["worktree_sessions"].as_str().unwrap().to_string(),
+        )
+    };
+    let outside = plan(p, home.path(), &desired());
+    assert_eq!(
+        facts(&outside),
+        ("unknown".into(), "unknown".into()),
+        "{outside}"
+    );
+
+    git(p, &["init", "-q"]);
+    let open = plan(p, home.path(), &desired());
+    assert_eq!(
+        facts(&open),
+        ("not_ignored".into(), "reached_when_committed".into())
+    );
+
+    fs::write(p.join(".gitignore"), ".claude/\n").unwrap();
+    let ignored = plan(p, home.path(), &desired());
+    assert_eq!(facts(&ignored), ("ignored".into(), "not_reached".into()));
+    assert_eq!(ignored["action"], outside["action"]);
+    assert_eq!(ignored["plan_digest"], outside["plan_digest"]);
+
+    // A tracked settings file that an ignore pattern matches is checked out into every
+    // worktree; git reports it as not ignored.
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    fs::write(p.join(".claude/settings.json"), "{}\n").unwrap();
+    git(p, &["add", "-f", ".claude/settings.json"]);
+    let tracked = plan(p, home.path(), &desired());
+    assert_eq!(
+        facts(&tracked),
+        ("not_ignored".into(), "reached_when_committed".into())
+    );
+
+    // The caller's GIT_DIR does not redirect the check to another repository.
+    let other = TempDir::new().unwrap();
+    git(other.path(), &["init", "-q"]);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .args(["claude-settings-plan", p.to_str().unwrap()])
+        .env("HOME", home.path())
+        .env_remove("CLAUDE_CONFIG_DIR")
+        .env("GIT_DIR", other.path().join(".git"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, desired().to_string().as_bytes());
+    let v: Value = serde_json::from_slice(&child.wait_with_output().unwrap().stdout).unwrap();
+    assert_eq!(v["result"]["settings_ignored"], json!("not_ignored"), "{v}");
+}
