@@ -57,20 +57,10 @@ fn roleless_cc_is_a_plain_claude_session() {
         !a.iter().any(|x| x == "--dangerously-skip-permissions"),
         "AC-1: no permission flag without a role (#2359)"
     );
-    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude defaults.
+    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude model/effort
+    // defaults; no advisor since the user decision of 2026-11-12 (#2476).
     const { assert!(moai_cli::session::ROLELESS_LAUNCHER_DEFAULTS) };
-    assert_eq!(
-        a,
-        [
-            "claude",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--advisor",
-            "fable"
-        ]
-    );
+    assert_eq!(a, ["claude", "--model", "opus", "--effort", "medium"]);
     let notes = v["notes"].to_string();
     assert!(!notes.contains("HOLD"), "decided, no HOLD wording: {notes}");
     assert!(notes.contains("user decision 2026-11-08: A"), "{notes}");
@@ -90,15 +80,7 @@ fn roleless_cc_is_a_plain_claude_session() {
     let (_, v, _) = dry(&["cc", "--permissions"], None);
     assert_eq!(
         argv(&v),
-        [
-            "claude",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--advisor",
-            "fable"
-        ]
+        ["claude", "--model", "opus", "--effort", "medium"]
     );
     // -l and -a together stay an error.
     let (code, _, _) = dry(&["cc", "-l", "-a"], None);
@@ -166,34 +148,12 @@ fn role_paths_are_unchanged() {
     assert_eq!(v["role"], "leader");
     assert_eq!(
         argv(&v),
-        [
-            "claude",
-            "--name",
-            "leader",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--advisor",
-            "fable",
-            skip
-        ]
+        ["claude", "--name", "leader", "--model", "opus", "--effort", "medium", skip]
     );
     let (_, v, _) = dry(&["-a"], None);
     assert_eq!(
         argv(&v),
-        [
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--advisor",
-            "fable",
-            skip
-        ]
+        ["claude", "--name", "agent-1", "--model", "opus", "--effort", "medium", skip]
     );
     let (_, v, _) = dry(&["codex", "-a", "--name", "agent-9"], None);
     assert_eq!(
