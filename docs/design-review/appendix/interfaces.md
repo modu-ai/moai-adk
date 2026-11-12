@@ -103,6 +103,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `go-state-plan`
 - `hook-dispatch`
 - `hook-receipt`
 - `hooks-apply`

@@ -991,6 +991,12 @@ enum Command {
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
     },
+    /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
+    /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
+    GoStatePlan {
+        /// Project root carrying the Go `.moai/manifest.json`.
+        project: PathBuf,
+    },
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
     UpdatePlan {
@@ -1316,6 +1322,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
+        GoStatePlan { .. } => "go_state.plan",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
@@ -2259,6 +2266,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                     .map_err(|_| "could not read the answer".to_string())?;
                 Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
             })
+        }
+        Command::GoStatePlan { project } => {
+            serde_json::to_value(moai_cli::go_state::plan(&project)?)
+                .map_err(|_| "encode failed".into())
         }
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
