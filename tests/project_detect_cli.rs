@@ -573,4 +573,20 @@ fn a_linked_moai_folder_is_reported_not_followed() {
         "{result}"
     );
     assert!(!result["next_actions"].to_string().contains("go-state-plan"));
+
+    // A real `.moai/` whose manifest.json is a link: the folder is reported, the linked
+    // manifest is not counted as the Go manifest.
+    let root = with_profile();
+    fs::create_dir_all(root.path().join(".moai")).unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("manifest.json"),
+        root.path().join(".moai/manifest.json"),
+    )
+    .unwrap();
+    let result = detect(&root);
+    assert_eq!(
+        result["go_state"],
+        json!({"moai_dir": "folder", "go_manifest": false}),
+        "{result}"
+    );
 }
