@@ -5,6 +5,8 @@
 
 #![cfg(unix)]
 
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -64,7 +66,7 @@ fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBu
     let bin = folder.join("bin");
     fs::create_dir_all(&bin).unwrap();
     let exe = bin.join("moai-cli");
-    fs::copy(EXE, &exe).unwrap();
+    common::copy_executable(Path::new(EXE), &exe);
     for (rel, body) in pkg {
         let p = folder.join("skills/moai").join(rel);
         fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -304,7 +306,7 @@ fn no_package_beside_the_binary_is_an_error() {
     let bin = f.root.join("elsewhere/bin");
     fs::create_dir_all(&bin).unwrap();
     let exe = bin.join("moai-cli");
-    fs::copy(EXE, &exe).unwrap();
+    common::copy_executable(Path::new(EXE), &exe);
     let before = state(&f.home);
     let out = run(&exe, &f.home, &["update"]);
     assert!(!out.status.success());
