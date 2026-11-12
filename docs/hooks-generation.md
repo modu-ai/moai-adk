@@ -61,6 +61,26 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - 남은 한계: 이미 배포된 옛 `moai-cli`가 PATH에 있으면, 그 바이너리가 모르는 단어·플래그로 exit 2를 낼 수 있다. 이 동작은 이 저장소의 새 바이너리로는 바꿀 수 없다.
 - Codex 파일에는 선택적 top-level `description`을 넣는다("optional top-level metadata... It doesn't change which hooks run").
 
+## 3a. 명령 경로와 trust — 세 가지 선택지와 현재 선택 (#2391 R3)
+
+#2391 본문은 "버전 경로(업데이트마다 재신뢰) 대 고정 링크(변경 미탐지)의 선택과 이유"를 요구한다. 실제 생성기는 둘 중 어느 것도 아닌 세 번째 안, **PATH의 bare 이름 `moai-cli`** 를 쓴다(`src/hooks.rs` `hook_command`·`HOOK_BINARY`, #2348). 아래 표는 세 안을 같은 기준으로 비교한다.
+
+| 안 | `command` 예 | 업데이트 뒤 재신뢰 | 실행체가 바뀐 것을 host가 알아채는가 | 개인 경로 노출 |
+| --- | --- | --- | --- | --- |
+| 버전 경로 | `~/.moai-cli/versions/<v>/moai-cli …` | 필요(업데이트마다 hook 정의가 바뀐다) | 정의가 바뀌므로 Codex는 재검토를 요구한다 | 있음(절대 경로) |
+| 고정 링크 | `~/.moai-cli/bin/moai-cli …`(링크 대상만 교체) | 불필요 | 아니다(정의가 그대로) | 있음(절대 경로) |
+| **PATH bare 이름(현재)** | `moai-cli …` | 불필요 | 아니다(정의가 그대로) | 없음 |
+
+- **현재 선택과 이유**: bare 이름. ① 생성 파일(`.claude/settings.json`·`.codex/hooks.json`)은 project 트리에 들어가므로 개인 절대 경로를 넣지 않는다(§3). ② 업데이트마다 사용자가 hook을 다시 검토해야 하는 부담이 없다.
+- **대가**: 고정 링크와 같이, 같은 이름 아래 실행체가 바뀌어도 host 재검토는 일어나지 않는다. 또 host가 hook 프로세스에 주는 PATH에 따라 다른 `moai-cli`가 실행될 수 있다(§3 PATH 해석, 옛 바이너리 한계). 이것을 막는 장치는 지금 없다.
+- **Codex hash가 무엇을 덮는가**: 문서는 "Codex requires you to review and trust the exact hook definition", "Codex records trust against the hook's current hash, so new or changed hooks are marked for review and skipped until trusted"라고만 적는다. hash가 정의(명령 문자열·JSON 항목)에 걸리는지 실행 파일에 걸리는지는 **적혀 있지 않다(미확인)**. 실행 파일 변경에 재검토가 붙는다고 명시된 경우는 plugin 번들 훅뿐이다: "If a plugin update changes a bundled script, Codex requires a new review even if the hook definition stays the same." MoAI 생성 훅은 plugin 번들이 아니므로 이 문장에 기대지 않는다. 위 표의 "알아채지 않는다"는 hash가 정의에 걸린다는 가정 위의 판단이며, 실제 Codex로 확인하지 않았다(not_run).
+- **Claude Code**: hooks 페이지에는 hash나 재검토 문장이 없다. settings 파일 훅의 신뢰 규칙("workspace trust")은 링크된 다른 절에 있고 이번에도 원문을 읽지 못했다(미확인, §6).
+- **명령 실행 방식**: Claude는 `args`가 없으면 `command`를 "passed to a shell: `sh -c` on macOS and Linux"로, `args`가 있으면 "resolves `command` as an executable on `PATH`"로 실행한다. Codex는 "Commands run with the session `cwd` as their working directory"만 적고 shell과 PATH 조회 방식은 적지 않는다.
+- **timeout**: Claude는 "Claude Code cancels a `command`, `http`, or `mcp_tool` hook that reaches its timeout, discarding the hook's output", "On `PreToolUse`, a timed-out … hook doesn't block the tool call"이며, 막으려면 `"onFailure": "block"`(v2.1.295 이상)이 필요하다. Codex는 일반 command hook의 timeout 결과를 적지 않는다(`SessionEnd`에서 "reports it as a hook failure"만 있음). 엔진 쪽 결정은 fail-open(D1, `docs/decisions-2026-11-08.md` 17:52Z(11-10) 행)이고, 모의 host 시험은 `tests/hook_dispatch_cli.rs` `a_timed_out_preflight_is_non_blocking_by_the_host_rules`다.
+- 버전 경로·고정 링크로 바꾸는 일, 실행체 hash를 생성 정의에 넣는 일은 이 절의 범위가 아니다(설치 경로·trust 결정 필요).
+
+출처 조회: 2026-11-12T00:0xZ(UTC), https://code.claude.com/docs/en/hooks (HTTP 200, 293,021자 중 Timeouts·"Block the action when a hook fails"·Exec form 절 원문, Workspace trust 절 미열람), https://learn.chatgpt.com/docs/hooks (HTTP 200, 79,364자 전문). 조회 도구가 응답 시각을 따로 주지 않아 조회 직후 `date -u` 값으로 적는다.
+
 ## 4. 영수증
 
 - Claude: `.moai-cli/manifests/claude-settings.json`의 `owned.hooks`가 생성한 훅 집합이다(기존 settings 영수증, pending 복구 포함).

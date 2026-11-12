@@ -2250,6 +2250,9 @@ mod skill_package {
     /// Mode routes (rc.2 A1 #2160). Kept apart from INTENTS, which also counts the legacy
     /// asset map's rows by intent.
     const MODES: [&str; 2] = ["MODE-LEADER", "MODE-AGENT"];
+    /// The `/moai project` route (#2496). Kept apart from INTENTS for the same reason as
+    /// MODES: the legacy asset map has no rows for it.
+    const PROJECT: &str = "PROJECT";
     const SPEC: &str = "docs/design-review/autonomy-modes-spec.md";
     const MANIFEST: &str = "references/source-manifest.json";
     // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
@@ -2369,7 +2372,12 @@ mod skill_package {
         let table = routes["routes"].as_object().unwrap();
         let mut keys: Vec<&str> = table.keys().map(String::as_str).collect();
         keys.sort();
-        let mut want: Vec<&str> = INTENTS.iter().chain(MODES.iter()).copied().collect();
+        let mut want: Vec<&str> = INTENTS
+            .iter()
+            .chain(MODES.iter())
+            .chain(std::iter::once(&PROJECT))
+            .copied()
+            .collect();
         want.sort();
         assert_eq!(keys, want);
         for (intent, route) in table {
@@ -2632,6 +2640,41 @@ mod skill_package {
             routes["routes"]["MODE-LEADER"]["requires_binary"],
             json!(false)
         );
+    }
+
+    /// #2496 AC-1: `/moai project` is a route, and its workflow carries the three stages —
+    /// detect and interview, the index-build suggestion, and detection-only LSP·MCP·DB.
+    #[test]
+    fn project_route_names_its_three_stages() {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let r = &routes["routes"][PROJECT];
+        assert_eq!(r["reference"], json!("../workflows/project.md"));
+        assert_eq!(r["requires_binary"], json!(true));
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains("PROJECT"), "SKILL.md lists the route");
+        assert!(
+            skill.contains("`/moai project`"),
+            "SKILL.md names the entry"
+        );
+        let body = fs::read_to_string(root().join("workflows/project.md")).unwrap();
+        for stage in [
+            "**Detect.** Run `moai-cli project-detect <project>`",
+            "**Interview by kind.**",
+            "New project:",
+            "Existing project:",
+            "\"value\": \"HOLD\"",
+            "**Offer the code map.**",
+            "run it only after the user agrees",
+            "`lsp`",
+            "`mcp_servers`",
+            "`databases`",
+            "MoAI never creates or edits an MCP configuration",
+            "no product, structure or tech documents are written",
+        ] {
+            assert!(body.contains(stage), "project.md lacks: {stage}");
+        }
     }
 
     #[test]
@@ -3143,7 +3186,7 @@ fn claude_doctor_bounds_a_hanging_claude() {
     common::write_executable(
         &bin.path().join("claude"),
         &format!(
-            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            "#!/bin/sh\nsleep 120 &\necho $! > '{}'\nwait\n",
             pidfile.display()
         ),
     );
@@ -3154,7 +3197,9 @@ fn claude_doctor_bounds_a_hanging_claude() {
     let elapsed = started.elapsed();
     assert!(out.status.success(), "{:?}", out.stderr);
     assert!(
-        elapsed < std::time::Duration::from_secs(12),
+        // #2511: far below the 120s stub, far above the 5s probe (VERSION_TIMEOUT is pinned
+        // by a unit test in src/claude.rs), so load cannot fail it.
+        elapsed < std::time::Duration::from_secs(60),
         "doctor waited {elapsed:?} for a hanging claude"
     );
     assert_eq!(v["agents_md_status"], json!("unknown"));
@@ -3192,7 +3237,7 @@ fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
     common::write_executable(
         &bin.path().join("claude"),
         &format!(
-            "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 30 &\necho $! > '{}'\nexit 0\n",
+            "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 120 &\necho $! > '{}'\nexit 0\n",
             pidfile.display()
         ),
     );
@@ -3201,7 +3246,8 @@ fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
     let started = std::time::Instant::now();
     let (out, v) = doctor(project.path(), home.path(), &bin);
     assert!(out.status.success(), "{:?}", out.stderr);
-    assert!(started.elapsed() < std::time::Duration::from_secs(12));
+    // #2511: below the 120s grandchild, generous above the 5s probe.
+    assert!(started.elapsed() < std::time::Duration::from_secs(60));
     assert_eq!(v["claude_version"], json!(null));
     assert_eq!(v["agents_md_status"], json!("unknown"));
     assert!(v["reason"].as_str().unwrap().contains("timed out"));
@@ -3219,7 +3265,7 @@ fn claude_doctor_cleans_groups_without_trusting_path_kill() {
         common::write_executable(
             &bin.path().join("claude"),
             &format!(
-                "#!/bin/sh\n/bin/sleep 25 &\necho $! > '{}'\nwait\n",
+                "#!/bin/sh\n/bin/sleep 120 &\necho $! > '{}'\nwait\n",
                 pidfile.display()
             ),
         );
@@ -3242,7 +3288,10 @@ fn claude_doctor_cleans_groups_without_trusting_path_kill() {
         assert_eq!(result["agents_md_status"], json!("unknown"));
         assert_eq!(result["claude_version"], json!(null));
         assert!(
-            elapsed < std::time::Duration::from_secs(9),
+            // #2511: the five-second value itself is pinned by
+            // `claude::tests::version_probe_deadline_is_five_seconds`; here only "it did not
+            // wait for the 120s grandchild", with room for machine load.
+            elapsed < std::time::Duration::from_secs(60),
             "the documented five-second probe took {elapsed:?}"
         );
         let pid = fs::read_to_string(pidfile).unwrap();

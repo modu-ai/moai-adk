@@ -1,7 +1,10 @@
-# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). Runs on every PR to
-# v2026.11.0 on the four targets of decision 01:1x(11-09): Linux x86_64/arm64 and macOS
-# arm64/x86_64. The `rc-ci` job aggregates them so one `rc-ci` check reports the result
-# (the integration ruleset requires only `moai/audit`; `rc-ci` is read by name).
+# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The four targets of
+# decision 01:1x(11-09) are Linux x86_64/arm64 and macOS arm64/x86_64. User decision U10
+# (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
+# runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
+# runs all four targets plus windows-build with the same check set. The `rc-ci` job
+# aggregates the targets of its run so one `rc-ci` check reports the result (the
+# integration ruleset requires only `moai/audit`; `rc-ci` is read by name).
 # Runner labels: standard GitHub-hosted runners for public repositories, free and unlimited
 # (https://docs.github.com/en/actions/reference/runners/github-hosted-runners, read 2026-11-09).
 # For `pull_request`, GITHUB_REF is the PR merge branch (refs/pull/<n>/merge), so this runs
@@ -11,14 +14,18 @@ name: rc-ci
 on:
   pull_request:
     branches: [v2026.11.0]
+  push:
+    branches: [v2026.11.0]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A new push to a PR cancels that PR's older run. Post-merge runs on v2026.11.0 are never
+# cancelled: each one is the full-matrix result of one merge (#2554).
 concurrency:
-  group: rc-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: rc-ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -28,14 +35,16 @@ jobs:
     permissions:
       contents: read
     strategy:
-      # Every target is a measurement: one failure must not cancel the other three.
+      # Every target is a measurement: one failure must not cancel the others.
       fail-fast: false
+      # #2554 (U10): `pull_request` gets the first list (linux-x86_64), every other event
+      # the second (all four). The linux-arm64 cap is 45 min: 20 runs before #2554 took
+      # 28.1 min (median) and 29.1 min (max) there, 1-2 min under the old 30-min cap.
       matrix:
-        include:
-          - { target: linux-x86_64, runner: ubuntu-24.04, timeout: 30 }
-          - { target: linux-arm64, runner: ubuntu-24.04-arm, timeout: 30 }
-          - { target: macos-arm64, runner: macos-15, timeout: 45 }
-          - { target: macos-x86_64, runner: macos-15-intel, timeout: 60 }
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request'
+          && '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
+          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"linux-arm64","runner":"ubuntu-24.04-arm","timeout":45},{"target":"macos-arm64","runner":"macos-15","timeout":45},{"target":"macos-x86_64","runner":"macos-15-intel","timeout":60}]') }}
     env:
       CARGO_TERM_COLOR: never
       PYTHONDONTWRITEBYTECODE: "1"
@@ -44,12 +53,34 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0 # `git diff --check` compares against the PR base commit
+      # Docs-only light CI (#2527, design comment 6822993459): classify the diff and
+      # skip the heavy steps when every changed path is under a verified-safe doc root.
+      # Fail-safe: any git or parse failure, or an unrecognized path, keeps scope "full".
+      - name: Scope (docs-only detection)
+        shell: bash
+        run: |
+          CI_SCOPE=full
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          # --no-renames (#2538 B1): a rename must reach the classifier as
+          # delete(old)+add(new) so renaming or deleting a test-consumed doc still
+          # exposes the denied source path; plain --name-only omits the source.
+          if paths="$(git diff --name-only --no-renames "${base}...${GITHUB_SHA}" 2>/dev/null)"; then
+            result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)"
+            CI_SCOPE="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])')"
+            printf '%s\n' "$result" | python3 -c 'import json,sys; [print("scope-reason:", r) for r in json.load(sys.stdin)["reasons"]]'
+          else
+            echo "scope-reason: git diff failed; defaulting to full"
+          fi
+          echo "CI_SCOPE=$CI_SCOPE" >> "$GITHUB_ENV"
+          echo "scope: $CI_SCOPE"
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Install PyYAML (tests/github_assets_test.py)
+        if: ${{ env.CI_SCOPE == 'full' }}
         run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
       - name: Install and verify ripgrep (C10a baseline)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           if ! command -v rg >/dev/null 2>&1; then
@@ -67,16 +98,60 @@ jobs:
             esac
           fi
           rg --version
-      # rustup reads rust-toolchain.toml (#2029) and installs the pinned toolchain on first use.
+      # rustup reads rust-toolchain.toml (#2029). A runner can start with a partially installed
+      # copy of the pinned toolchain (rustup#4724); repairing it in place can fail with a
+      # component file conflict (rustup#2417), so remove it first and install explicitly, with
+      # at most 3 attempts (#2490, user decision 6813237309 item 3 = B; analysis #2457 6812694378).
       - name: Toolchain (rust-toolchain.toml)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
+          channel="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          for attempt in 1 2 3; do
+            echo "toolchain install attempt ${attempt}/3 (${channel})"
+            rustup toolchain uninstall "$channel" || true
+            if rustup toolchain install; then break; fi
+            if [ "$attempt" = 3 ]; then
+              echo "toolchain install failed after 3 attempts (${channel})" >&2
+              exit 1
+            fi
+            echo "toolchain install attempt ${attempt}/3 failed; removing ${channel} and retrying" >&2
+            sleep $((attempt * 10))
+          done
           rustc -V
           rustup show
+      # Dependency cache (#2554; replaces the RC1 interim strategy B, decisions 2026-11-08
+      # 17:4x, released by the leader in #2554 comment 6827136046). Swatinem/rust-cache keeps
+      # ~/.cargo and the dependencies' build output only — workspace crates are always
+      # rebuilt — keyed by rustc host/version, Cargo.lock/Cargo.toml and the toolchain file.
+      # Only push runs on v2026.11.0 save; a PR run restores the base branch's entry and
+      # cannot write it (GitHub scopes a PR's cache to refs/pull/<n>/merge).
+      - name: Dependency cache
+        id: cache
+        if: ${{ env.CI_SCOPE == 'full' }}
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.event_name == 'push' }}
       - name: Check set
         shell: bash
         run: |
           set -u
+          # Docs-only light CI (#2527, design comment 6822993459): heavy steps are skipped
+          # above via CI_SCOPE; here run only the whitespace check and emit a minimal
+          # summary (runner + scope), then succeed. Fail-safe: anything not classified
+          # docs-only takes the full path below, unchanged.
+          if [ "$CI_SCOPE" = "docs-only" ]; then
+            {
+              echo "## rc-ci / ${{ matrix.target }}"
+              echo
+              echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · scope: \`docs-only\`"
+              echo
+              echo "docs-only: 3 heavy steps skipped (paths all under verified-safe doc roots)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
+            exit 0
+          fi
           summary="$GITHUB_STEP_SUMMARY"
           failed=0
           {
@@ -98,11 +173,10 @@ jobs:
             echo "| $label | \`$*\` | $code |" >> "$summary"
             [ "$code" -eq 0 ] || failed=1
           }
-          # Dependency strategy B (RC1 interim decision, 2026-11-08 17:4x; actions/cache is
-          # re-evaluated in 08-D): fetch once against Cargo.lock, then run the set offline
-          # exactly as lanes do locally.
+          # Fetch once against Cargo.lock, then run the set offline exactly as lanes do
+          # locally; the dependency cache above only saves the download and dependency build.
           run fetch cargo fetch --locked
-          echo "- dependencies: no cache; fetched with \`cargo fetch --locked\` before the offline steps" >> "$summary"
+          echo "- dependencies: rust-cache hit \`${{ steps.cache.outputs.cache-hit }}\` (saved by push runs only); fetched with \`cargo fetch --locked\` before the offline steps" >> "$summary"
           # #2452: test threads get 8 MiB. In debug builds `Cli::command()` needs about 2000 KiB
           # of the 2 MiB default (measured on #2016 comment 6790101536) and grows about 4 KiB per
           # subcommand. RUST_MIN_STACK sets the stack of spawned threads, which libtest uses
@@ -162,8 +236,10 @@ jobs:
   # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
   # remain not_run.
   # Standard GitHub-hosted runner, no secrets. Not part of the required `rc-ci` check.
+  # #2554 (U10): runs after merge (push to v2026.11.0) and on workflow_dispatch, not on PRs.
   windows-build:
     name: windows-build
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -174,15 +250,37 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Docs-only light CI (#2527, design comment 6822993459): same classifier as the
+      # check job; fail-safe to full on any git or parse failure.
+      - name: Scope (docs-only detection)
+        shell: bash
+        run: |
+          CI_SCOPE=full
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          # --no-renames (#2538 B1): a rename must reach the classifier as
+          # delete(old)+add(new) so renaming or deleting a test-consumed doc still
+          # exposes the denied source path; plain --name-only omits the source.
+          if paths="$(git diff --name-only --no-renames "${base}...${GITHUB_SHA}" 2>/dev/null)"; then
+            result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)"
+            CI_SCOPE="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])')"
+            printf '%s\n' "$result" | python3 -c 'import json,sys; [print("scope-reason:", r) for r in json.load(sys.stdin)["reasons"]]'
+          else
+            echo "scope-reason: git diff failed; defaulting to full"
+          fi
+          echo "CI_SCOPE=$CI_SCOPE" >> "$GITHUB_ENV"
+          echo "scope: $CI_SCOPE"
       - name: Toolchain (rust-toolchain.toml)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           rustc -V
           rustup show
       - name: Fetch (Cargo.lock)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: cargo fetch --locked
       - name: Build all targets (tests compiled, not run)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           cargo build --offline --locked --all-targets
@@ -192,3 +290,10 @@ jobs:
             echo "- toolchain: \`$(rustc --version)\` on \`$RUNNER_OS\` / \`$RUNNER_ARCH\`"
             echo "- \`cargo build --offline --locked --all-targets\`: exit 0 — tests compiled, not run"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Docs-only note
+        if: ${{ env.CI_SCOPE == 'docs-only' }}
+        shell: bash
+        run: |
+          echo "docs-only: build skipped (paths all under verified-safe doc roots; #2527)"
+          echo "## windows-build" >> "$GITHUB_STEP_SUMMARY"
+          echo "docs-only: build skipped (paths all under verified-safe doc roots; #2527)" >> "$GITHUB_STEP_SUMMARY"

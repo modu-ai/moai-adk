@@ -309,7 +309,8 @@ fn a_store_path_that_is_not_a_regular_file_is_refused_without_blocking() {
         .unwrap();
     let start = Instant::now();
     while child.try_wait().unwrap().is_none() {
-        if start.elapsed() > Duration::from_secs(20) {
+        // #2511: a hang guard (a FIFO read blocks forever), so the bound is generous.
+        if start.elapsed() > Duration::from_secs(120) {
             let _ = child.kill();
             panic!("launcher blocked on a FIFO store");
         }

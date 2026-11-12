@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project_id": "moai-adk",
-  "purpose": "MoAI ADK 2026.11.0-rc.1: Rust online-first development kit with one common MoAI skill for Claude Code and Codex",
+  "purpose": "MoAI-ADK (Agentic Development Kit) 2026.11.0-rc.1: online-first development kit with one common MoAI skill for Claude Code and Codex",
   "tools": [
     "Rust",
     "Python"
@@ -13,5 +13,30 @@
   "hosts": [
     "claude",
     "codex"
+  ],
+  "detected": {
+    "project_kind": "existing",
+    "manifests": [
+      "Cargo.toml"
+    ],
+    "languages": [
+      "python",
+      "rust"
+    ],
+    "lsp": [
+      "pyright",
+      "rust-analyzer"
+    ],
+    "mcp_servers": [],
+    "databases": []
+  },
+  "decisions": [
+    {
+      "id": "must-not-change",
+      "topic": "must-not-change",
+      "value": "real HOME, keys and global settings are not changed without the user's confirmation",
+      "source": "user",
+      "scope": "project"
+    }
   ]
 }
