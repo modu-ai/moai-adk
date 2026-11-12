@@ -207,6 +207,11 @@ pub struct HostPlan {
     /// clean scan, nothing owned). Left out otherwise, so other plans keep their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup_then_replace: Option<BackupThenReplace>,
+    /// #2521: the `install_id` of the earlier version folder whose host receipt supplies
+    /// this host's baseline (see [`resolve_host_receipt`]). Left out when the baseline is
+    /// this installation's own receipt or there is none, so other plans keep their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub receipt_from: Option<String>,
 }
 
 /// One file of the folder a backup-then-replace moves (#2483).
@@ -852,6 +857,167 @@ pub(crate) fn current_install_id(home: &Path) -> Result<String> {
     Ok(plan_receipt(&exe, home, InstallerOwner::Unknown)?.install_id)
 }
 
+/// Where a host's baseline receipt comes from (#2521).
+pub(crate) struct ReceiptSource {
+    pub receipt: Option<HostReceipt>,
+    /// The earlier installation's id when its receipt was adopted.
+    pub from: Option<String>,
+    /// Set when no baseline can be chosen safely; the host is blocked with this reason.
+    pub blocked: Option<String>,
+}
+
+/// The decided layout installs every build in its own folder,
+/// `<home>/.moai-cli/versions/<version>/bin/<exe>` (decisions L165), and `install_id` is
+/// derived from that path, so each upgrade starts a new installation id. Returns the
+/// `versions` directory and this build's folder name when the canonical executable sits
+/// exactly there (compared by path components); `None` for any other location.
+fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf, PathBuf)> {
+    let bin = canonical_exe.parent()?;
+    if bin.file_name()? != "bin" {
+        return None;
+    }
+    let folder = bin.parent()?;
+    let versions = canonical_home.join(crate::HOME_STATE_DIR).join("versions");
+    if folder.parent()? != versions {
+        return None;
+    }
+    Some((versions, PathBuf::from(folder.file_name()?)))
+}
+
+/// Picks the host receipt that supplies the baseline (#2521).
+///
+/// Only a build inside the layout looks beyond its own receipt: it also reads the host
+/// receipts of the other folders under `versions/` — each id derived from the same path
+/// shape this build has — and takes the one that finished last, its own included (so going
+/// back A → B → A reads B's newer state, not A's stale receipt). A folder or receipt
+/// directory that is a symlink lends nothing; a build outside the layout neither adopts nor
+/// lends. The adopted receipt is only read: apply writes the new receipt under this
+/// installation's id. Own pending → returned as is (the existing pending block applies);
+/// an earlier folder's pending receipt that is newer than every finished one, an unreadable
+/// one, or two different folders finishing in the same second → blocked, never guessed.
+pub(crate) fn resolve_host_receipt(
+    canonical_home: &Path,
+    install_id: &str,
+    host: &str,
+) -> Result<ReceiptSource> {
+    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let plain = |receipt| ReceiptSource {
+        receipt,
+        from: None,
+        blocked: None,
+    };
+    if own.as_ref().is_some_and(|r| r.status == "pending") {
+        return Ok(plain(own));
+    }
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    let Some((versions, own_folder)) = layout_folder(canonical_home, &exe) else {
+        return Ok(plain(own));
+    };
+    let exe_name = exe.file_name().ok_or("binary path unavailable")?.to_owned();
+    let installations = canonical_home
+        .join(crate::HOME_STATE_DIR)
+        .join("installations");
+    let blocked = |reason: String| ReceiptSource {
+        receipt: None,
+        from: None,
+        blocked: Some(reason),
+    };
+
+    let finished_key = |r: &HostReceipt| r.finished_at.clone().unwrap_or(r.started_at.clone());
+    // (key, id, receipt); own first so it wins a tie with an earlier folder.
+    let mut best: Option<(String, Option<String>, HostReceipt)> =
+        own.map(|r| (finished_key(&r), None, r));
+    let mut newest_pending: Option<(String, String)> = None;
+    let mut tie = false;
+
+    let entries = match fs::read_dir(&versions) {
+        Ok(e) => e,
+        Err(_) => return Ok(plain(best.map(|(_, _, r)| r))),
+    };
+    let mut folders: Vec<PathBuf> = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|_| "versions directory unreadable".to_string())?;
+        let name = PathBuf::from(entry.file_name());
+        if name == own_folder {
+            continue;
+        }
+        match fs::symlink_metadata(entry.path()) {
+            Ok(m) if m.is_dir() => folders.push(name),
+            _ => continue, // a link or a file lends nothing
+        }
+    }
+    folders.sort();
+    for name in folders {
+        let id = crate::install::install_id(&versions.join(&name).join("bin").join(&exe_name))?;
+        if id == install_id {
+            continue;
+        }
+        match fs::symlink_metadata(installations.join(&id)) {
+            Ok(m) if m.is_dir() => {}
+            _ => continue, // never installed anything, or a linked receipt directory
+        }
+        let path = host_receipt_path(canonical_home, &id, host, false)?;
+        let receipt = match load_host_receipt(&path) {
+            Ok(Some(r)) => r,
+            Ok(None) => continue,
+            Err(e) => {
+                return Ok(blocked(format!(
+                    "the host receipt of the earlier installation {id} is unreadable ({e}); \
+                     nothing was adopted"
+                )))
+            }
+        };
+        if receipt.install_id != id || receipt.host != host {
+            return Ok(blocked(format!(
+                "the host receipt of the earlier installation {id} names another \
+                 installation or host; nothing was adopted"
+            )));
+        }
+        if receipt.status == "pending" {
+            if newest_pending
+                .as_ref()
+                .is_none_or(|(k, _)| receipt.started_at > *k)
+            {
+                newest_pending = Some((receipt.started_at.clone(), id));
+            }
+            continue;
+        }
+        let key = finished_key(&receipt);
+        match &best {
+            Some((k, _, _)) if key < *k => {}
+            Some((k, from, _)) if key == *k => tie |= from.is_some(),
+            _ => {
+                tie = false;
+                best = Some((key, Some(id), receipt));
+            }
+        }
+    }
+    if let Some((started, id)) = newest_pending {
+        if best.as_ref().is_none_or(|(k, _, _)| started >= *k) {
+            return Ok(blocked(format!(
+                "the host receipt of the earlier installation {id} is pending; run \
+                 recovery-plan with that version's binary first"
+            )));
+        }
+    }
+    if tie {
+        return Ok(blocked(
+            "two earlier installations finished in the same second; the baseline is \
+             ambiguous and nothing was adopted"
+                .into(),
+        ));
+    }
+    Ok(match best {
+        Some((_, from, r)) => ReceiptSource {
+            receipt: Some(r),
+            from,
+            blocked: None,
+        },
+        None => plain(None),
+    })
+}
+
 /// Read-only three-way plan over every host (REQ-04B-01/02/03). Writes nothing.
 pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
@@ -868,16 +1034,24 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             .ok_or("non UTF-8 projection path")?
             .to_string();
         let (blocked, scan) = preflight(&canonical_home, host);
-        let receipt = if blocked.is_some() {
-            None
+        // #2521: the baseline may come from an earlier version folder's receipt.
+        let source = if blocked.is_some() {
+            ReceiptSource {
+                receipt: None,
+                from: None,
+                blocked: None,
+            }
         } else {
-            let path = host_receipt_path(&canonical_home, &install_id, host, false)?;
-            load_host_receipt(&path)?
+            resolve_host_receipt(&canonical_home, &install_id, host)?
         };
+        let receipt_from = source.from;
+        let receipt = source.receipt;
         // REQ-04C-04 (04-C #2000): a pending host takes no new apply until recovered; the
-        // other hosts plan as usual.
-        let (blocked, scan) = match &receipt {
-            Some(r) if r.status == "pending" => (
+        // other hosts plan as usual. A baseline that cannot be chosen safely blocks the
+        // same way.
+        let (blocked, scan) = match (&receipt, source.blocked) {
+            (_, Some(reason)) => (Some(reason), None),
+            (Some(r), None) if r.status == "pending" => (
                 Some("host receipt is pending; run recovery-plan first".to_string()),
                 None,
             ),
@@ -1053,6 +1227,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             },
             files,
             backup_then_replace,
+            receipt_from,
         });
     }
 
@@ -1244,8 +1419,11 @@ pub fn apply_update(
 
         // Transaction start: pending receipt BEFORE the first file write (REQ-04B-04a),
         // carrying the pre-apply ownership manifest.
-        let receipt_path = host_receipt_path(&canonical_home, &install_id, host, true)?;
-        let previous = load_host_receipt(&receipt_path)?;
+        // Creates the receipt directory (refusing a symlinked component) before any write.
+        host_receipt_path(&canonical_home, &install_id, host, true)?;
+        // #2521: the same baseline the plan used (an earlier version folder's receipt is
+        // read, never written; the new receipt goes under this installation's id).
+        let previous = resolve_host_receipt(&canonical_home, &install_id, host)?.receipt;
         let pre_owned = owned_map(previous.as_ref());
         let top_skills_existed = fs::symlink_metadata(home.join(skills_dir(host))).is_ok();
         let mut receipt = HostReceipt {
