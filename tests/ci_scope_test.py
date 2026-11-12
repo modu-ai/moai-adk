@@ -53,6 +53,12 @@ class CiScopeTest(unittest.TestCase):
         scope, _ = self.ci_scope.classify(["docs/e2e-receipts/receipts.jsonl"])
         self.assertEqual(scope, "full")
 
+    def test_space_applied_record_alone_is_full(self):
+        # Only the Space record changed: space_applied_record_test must still run (#2207).
+        for path in ("docs/design-review/applied.md", "docs/design-review/pages.tsv"):
+            scope, _ = self.ci_scope.classify([path])
+            self.assertEqual(scope, "full", path)
+
     def test_design_review_fixes_prefix_is_full(self):
         # tests/space_applied_record_test.py hashes every fix file (#2207).
         scope, reasons = self.ci_scope.classify(["docs/design-review/fixes/group3-487fa473.md"])

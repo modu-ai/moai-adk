@@ -91,6 +91,8 @@ class SpaceAppliedRecordTest(unittest.TestCase):
             re.compile(r"#2016은 OPEN|#2016은 OPEN으로"),
             re.compile(r"PROFILE_KEYS`? ?\d+개"),
             re.compile(r"\d+ route\("),
+            # PR #2534 (#2237) connected codex-config-plan/-apply; audit note on PR #2576.
+            re.compile(r"CLI 명령(은)? 아직 없"),
         ]
         for p in g2_fixes():
             for cell in replacement_cells(p.read_text(encoding="utf-8")):
