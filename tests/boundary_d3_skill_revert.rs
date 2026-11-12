@@ -98,3 +98,25 @@ fn d3a_one_changed_host_refuses_the_whole_revert() {
         b"edited by the user"
     );
 }
+
+/// D3-A: a copy the digest cannot read (here the user added a symlink, which the staged-package
+/// rules refuse) counts as changed, so the revert refuses and removes nothing.
+#[cfg(unix)]
+#[test]
+fn d3a_a_copy_the_digest_cannot_read_is_not_removed() {
+    let project = tempfile::TempDir::new().unwrap();
+    let source = tempfile::TempDir::new().unwrap();
+    write_source(source.path());
+    let request_id = apply(project.path(), source.path(), &["claude"]);
+    let skill = project.path().join(".claude/skills/moai");
+    let link = skill.join("my-link");
+    std::os::unix::fs::symlink(project.path(), &link).unwrap();
+
+    let err = revert(project.path(), &request_id).expect_err("an unreadable copy refuses");
+    assert!(
+        err.contains("claude") && err.contains("nothing reverted"),
+        "{err}"
+    );
+    assert!(link.symlink_metadata().is_ok(), "the user's link is kept");
+    assert!(skill.join("SKILL.md").exists(), "nothing was removed");
+}
