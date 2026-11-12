@@ -80,8 +80,15 @@ class ActualCompilerTests(FixtureCase):
                 stream.write(tests)
         if build_script:
             (c.source / "build.rs").write_text(build_script)
-        subprocess.run([self.cargo, "generate-lockfile", "--offline"], cwd=c.source,
-                       env=c.env, capture_output=True, check=True, timeout=120)
+        # Real cargo writes no progress log, so there is nothing to reset the
+        # step deadline with; the step IS the whole budget for this single
+        # atomic invocation. Give it the ceiling (5x the old 120s wall-clock)
+        # so load does not falsely kill it (#2519 AC-1). check=True is
+        # preserved manually: the helper returns without raising.
+        support.run_with_progress_budget(
+            [self.cargo, "generate-lockfile", "--offline"], cwd=c.source,
+            env=c.env, log=c.log,
+            step_seconds=support.HARD_CEILING_SECONDS).check_returncode()
         c.git("add", ".")
         c.git("commit", "-qm", "actual compiler fixture with offline lockfile")
 
