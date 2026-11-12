@@ -28,8 +28,13 @@ const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
 /// generating `AGENTS.md` (at most 3000), so a test can show a concurrent launch waits.
 pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
-/// Test-only (Issue #2504, not implemented yet in this RED commit).
+/// Test-only: when set, a first launch stops with an error right after writing the settings,
+/// the interrupted state that the next launch must finish (Issue #2504).
 pub const INIT_TEST_FAIL_VAR: &str = "MOAI_CLI_TEST_INIT_FAIL_AFTER_PROFILE";
+/// Marker of a first-launch initialization that has started and not finished, in the clone's
+/// common dir beside `.init-lock` (never listed by git). Written before the settings, removed
+/// after the AGENTS.md step (Issue #2504).
+const PENDING: &str = ".init-pending";
 
 /// What [`prepare`] did or, under `--dry-run`, would do.
 #[derive(Debug, Default)]
@@ -92,12 +97,33 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                 return Ok(Prepared::default()); // bare repository or inside `.git`
             };
             if exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+                let Some(common) = id["clone_anchor"].as_str().map(PathBuf::from) else {
+                    return Ok(Prepared::default());
+                };
+                // A first launch that stopped between the settings and AGENTS.md left its
+                // `.init-pending` marker (Issue #2504): finish it. Settings without the marker
+                // are the user's own (or a finished launch's) and stay exactly as they are.
+                if exists(&init_lock_dir(&common).join(PENDING)) {
+                    if dry_run {
+                        return Ok(Prepared {
+                            note: Some(format!(
+                                "would finish the interrupted initialization of {}: AGENTS.md (--dry-run writes nothing)",
+                                top.display()
+                            )),
+                            git_pending: false,
+                        });
+                    }
+                    let done = settings(&top, &common, host)?;
+                    return Ok(Prepared {
+                        note: (!done.is_empty())
+                            .then(|| format!("{INIT_LINE} {}: {}", top.display(), done.join(", "))),
+                        git_pending: false,
+                    });
+                }
                 // A first launch that is still generating AGENTS.md holds `.init-lock` (created
                 // before the settings file): wait for it, so this host does not start before the
                 // initialization it found has finished. No lock file, no wait and no write.
-                if let Some(common) = id["clone_anchor"].as_str() {
-                    wait_for_initializer(&init_lock_dir(Path::new(common)).join(".init-lock"));
-                }
+                wait_for_initializer(&init_lock_dir(&common).join(".init-lock"));
                 return Ok(Prepared::default());
             }
             if let Some(what) = guard(&top) {
@@ -210,7 +236,15 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         .and_then(|f| f.lock().map(|()| f))
         .map_err(|_| "the project initialization lock is unavailable".to_string())?;
     let mut done = Vec::new();
+    let pending = lock_dir.join(PENDING);
+    if fs::symlink_metadata(&pending).is_ok_and(|m| !m.file_type().is_file()) {
+        return Err(format!(
+            "{} is not a regular file; refused",
+            pending.display()
+        ));
+    }
     if !exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+        fs::write(&pending, b"").map_err(|_| format!("{} cannot be written", pending.display()))?;
         let plan = profile::plan(top, default_profile(&primary_name(anchor), host)?)?;
         if plan.action != "create" {
             return Err(format!(
@@ -227,11 +261,27 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         {
             std::thread::sleep(std::time::Duration::from_millis(ms.min(3000)));
         }
+        if std::env::var_os(INIT_TEST_FAIL_VAR).is_some() {
+            return Err("moai-cli: initialization stopped after the settings (test)".into());
+        }
         if exists(&top.join("AGENTS.md")) {
             done.push("AGENTS.md present, unchanged".into());
         } else {
             done.extend(agents(top)?);
         }
+        let _ = fs::remove_file(&pending);
+    } else if exists(&pending) {
+        // Resume an interrupted first launch (Issue #2504): only the AGENTS.md step is left.
+        if exists(&top.join("AGENTS.md")) {
+            done.push("AGENTS.md present, unchanged (interrupted initialization finished)".into());
+        } else {
+            done.extend(
+                agents(top)?
+                    .into_iter()
+                    .map(|d| format!("{d} (interrupted initialization finished)")),
+            );
+        }
+        let _ = fs::remove_file(&pending);
     }
     drop(lock);
     Ok(done)
