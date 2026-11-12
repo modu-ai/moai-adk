@@ -138,6 +138,9 @@ fn links_reached_by_any_scope_form_block() {
     // Names match case-insensitively, like `overlap`: a variant spelling still reaches the link.
     blocked(&["SAFE/**"], "safe/link");
     blocked(&["docs/a.md", "safe/**"], "safe/link");
+    // An entry with no path part covers the whole repository (Codex review 4545024323).
+    blocked(&["."], "safe/link");
+    blocked(&["./"], "safe/link");
     assert_eq!(fs::read(f.outside.join("sentinel")).unwrap(), b"ORIGINAL");
 }
 
@@ -190,6 +193,19 @@ fn absolute_and_parent_entries_block() {
         (decision.as_str(), findings),
         ("blocked", vec![format!("absolute:{abs}")])
     );
+}
+
+#[test]
+fn a_whole_repository_entry_without_links_stays_clear() {
+    // Negative control for the root walk: `.`-like entries block only when a link exists.
+    let f = fixture();
+    fs::create_dir_all(f.root.join("safe/sub")).unwrap();
+    fs::write(f.root.join("safe/sub/a.rs"), b"").unwrap();
+    for scope in [&["."][..], &["./"], &["./."], &[" "]] {
+        let (decision, findings) = check(&f, scope);
+        assert_eq!(decision, "clear", "{scope:?}: {findings:?}");
+        assert!(findings.is_empty(), "{scope:?}");
+    }
 }
 
 #[test]

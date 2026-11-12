@@ -114,6 +114,13 @@ journal lock, runs `physical_findings(root, write_scope)`:
 
 - The raw spelling of each entry is walked from the root; `..` is not folded. An absolute
   entry blocks as `absolute`, any `..` component as `parent_component`.
+- Windows spellings are refused as text on every host (PR #2484 audit N1, Codex review
+  4545024327): a leading `\`, a UNC path or a drive prefix (`C:`, `c:\`, `C:x`) blocks as
+  `absolute`, and any other `\` blocks as `backslash`. `overlap` is unchanged and still
+  splits on `/` only; the physical check is what refuses these entries.
+- An entry with no part left after trimming and dropping `.` (`.`, `./`, `./.`, blank) covers
+  the whole repository in `overlap`, so it is inspected exactly as a root `**`: the same
+  subtree walk under the same budget (PR #2484 audit B1, Codex review 4545024323).
 - Each level is listed with `read_dir` and checked with `symlink_metadata`; names match
   case-insensitively with the existing `*` rule. A link anywhere the entry reaches (an
   intermediate part, the matched entry, or below a covered directory or `**`) blocks as
@@ -140,6 +147,10 @@ blocked by it.
 | Plain scope, `*.rs` not matching a link, link outside the scope, new tail | clear | `scope_symlink_cli::plain_scopes_and_links_outside_the_scope_stay_clear` |
 | Integration order, journal effect, repeat adds no event | blocked; effect `scope_symlink` | `scope_symlink_cli::integration_order_does_not_lift_a_link_block_and_the_journal_records_it` |
 | Inspection budget, unreadable directory | blocked | unit `inspection_refuses_absolute_parent_and_budget`, `inspection_fails_closed_on_an_unreadable_directory` |
+| Whole-repository entry `.`, `./`, `./.`, blank, ` . ` | walked as root `**`: link blocks, budget 4 clear and 3 `inspection_budget` (same as `**`) | unit `inspection_walks_the_root_for_an_entry_with_no_parts`, `scope_symlink_cli::links_reached_by_any_scope_form_block` (`.`, `./`) |
+| Whole-repository entry without any link | clear (negative control) | `scope_symlink_cli::a_whole_repository_entry_without_links_stays_clear` |
+| Windows spellings `C:/x`, `c:\x`, `C:x`, `\x`, `\\server\share`, `..\x`, `safe\link` | blocked as `absolute` or `backslash` on every host; `safe/c:`, `cc:/x` stay plain | unit `inspection_refuses_windows_spellings` |
+| Built repository walked by `**` or a whole-repository entry | may block as `inspection_budget` once `target/` passes 100,000 entries: fails closed, an operational false block, not measured | not_run |
 | Other active worktree physical alias | not covered: only the scope-check worktree is inspected | not_run |
 | Link created after the check (swap race) | out of scope: check-time observation only | not_run |
 | Windows runtime | the new tests are `cfg(unix)` | not_run |

@@ -407,8 +407,17 @@ fn inspect_entry(root: &std::path::Path, pattern: &str, budget: usize) -> Vec<Va
         findings: Vec::new(),
     };
     let trimmed = pattern.trim();
-    if trimmed.starts_with('/') {
+    // Windows spellings are refused as text on every host (Codex review 4545024327): a drive
+    // (`C:`), a root `\` or a UNC path is absolute there, and any other `\` is a separator the
+    // `/`-only checks below would not see.
+    let bytes = trimmed.as_bytes();
+    let drive = bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    if trimmed.starts_with('/') || trimmed.starts_with('\\') || drive {
         ins.finding(trimmed, "absolute");
+        return ins.findings;
+    }
+    if trimmed.contains('\\') {
+        ins.finding(trimmed, "backslash");
         return ins.findings;
     }
     let parts: Vec<&str> = trimmed
@@ -417,6 +426,12 @@ fn inspect_entry(root: &std::path::Path, pattern: &str, budget: usize) -> Vec<Va
         .collect();
     if parts.contains(&"..") {
         ins.finding(trimmed, "parent_component");
+        return ins.findings;
+    }
+    // No part left (`.`, `./`, blank): `overlap` reads this as the whole repository, so it is
+    // inspected exactly as a root `**` (Codex review 4545024323, audit B1).
+    if parts.is_empty() {
+        ins.subtree(root, "");
         return ins.findings;
     }
     // The directories reached so far, with their root-relative spelling on disk.
@@ -463,7 +478,8 @@ fn inspect_entry(root: &std::path::Path, pattern: &str, budget: usize) -> Vec<Va
 // @MX:NOTE: [AUTO] #2392 F6: a check-time observation of the scope-check worktree only; a link
 //   created after the check, and links in other worktrees, are outside this guard
 /// Why `scope` may not be trusted as written under `root` (#2392 F6): every link reached by an
-/// entry (literal, `*`, `**` or a covered directory) and every absolute, `..`, unreadable or
+/// entry (literal, `*`, `**`, a covered directory, or the root for an entry with no part such
+/// as `.`) and every absolute (also a drive or `\` root), `\`-separated, `..`, unreadable or
 /// over-budget entry, root-relative. Links are never followed, so an internal alias, a dangling
 /// link and a link out of the project all block alike. Empty when the scope is plain.
 pub fn physical_findings(root: &std::path::Path, scope: &[String]) -> Vec<Value> {
@@ -576,6 +592,74 @@ mod tests {
         assert_eq!(reasons(root, "safe/**", 3), ["inspection_budget:safe/a"]);
         // A missing tail is a new path, not a finding.
         assert!(reasons(root, "safe/new/deeper.rs", 100).is_empty());
+    }
+
+    // Codex review 4545024323: an entry with no path part covers the whole repository in
+    // `overlap`, so it is inspected exactly as a root `**`.
+    #[cfg(unix)]
+    #[test]
+    fn inspection_walks_the_root_for_an_entry_with_no_parts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("safe")).unwrap();
+        std::os::unix::fs::symlink("/", root.join("safe/link")).unwrap();
+        for pattern in [".", "./", "", "  ", "./.", " . ", "**"] {
+            assert!(overlap(pattern, "anything/below"), "{pattern:?}");
+            assert_eq!(
+                reasons(root, pattern, 100),
+                ["symlink:safe/link"],
+                "{pattern:?}"
+            );
+        }
+        // `//` already leads with `/` and stays an absolute finding.
+        assert_eq!(reasons(root, "//", 100), ["absolute://"]);
+        let plain = tempfile::tempdir().unwrap();
+        let root = plain.path();
+        std::fs::create_dir_all(root.join("safe/a")).unwrap();
+        std::fs::write(root.join("safe/a/x"), b"").unwrap();
+        std::fs::write(root.join("safe/y"), b"").unwrap();
+        // The same four entries as `safe/**`: 4 suffices, 3 not, for every spelling.
+        for pattern in [".", "./", "", "**"] {
+            assert!(reasons(root, pattern, 4).is_empty(), "{pattern:?}");
+            assert_eq!(
+                reasons(root, pattern, 3),
+                ["inspection_budget:safe/a"],
+                "{pattern:?}"
+            );
+        }
+    }
+
+    // Codex review 4545024327: Windows spellings are refused as text on every host, so a
+    // drive, root or `\` path cannot slip past the `/`-only absolute and `..` checks.
+    #[test]
+    fn inspection_refuses_windows_spellings() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("safe")).unwrap();
+        for pattern in [
+            "C:/outside/file",
+            "c:\\outside",
+            "C:outside",
+            "\\outside\\file",
+            "\\\\server\\share\\x",
+        ] {
+            assert_eq!(
+                reasons(root, pattern, 100),
+                [format!("absolute:{pattern}")],
+                "{pattern:?}"
+            );
+        }
+        for pattern in ["..\\outside\\file", "safe\\..\\x", "safe\\link"] {
+            assert_eq!(
+                reasons(root, pattern, 100),
+                [format!("backslash:{pattern}")],
+                "{pattern:?}"
+            );
+        }
+        // Neighbours that are not drive spellings stay plain.
+        for pattern in ["safe/c:", "safe/new.rs", "cc:/x"] {
+            assert!(reasons(root, pattern, 100).is_empty(), "{pattern:?}");
+        }
     }
 
     #[cfg(unix)]
