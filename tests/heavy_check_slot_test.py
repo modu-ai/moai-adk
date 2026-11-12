@@ -34,6 +34,13 @@ def held(folder):
     return json.loads(out.stdout)["held"]
 
 
+def holder_names(folder):
+    """Names of the held slots. The holder takes the slot's lock before it writes its record,
+    so for a moment `status` lists a held slot with an empty record (#2599); that slot has no
+    name yet and the caller keeps waiting instead of failing on a missing key."""
+    return [h.get("name") for h in held(folder)]
+
+
 @unittest.skipUnless(UNIX, "flock slots are unix only")
 class HeavyCheckSlotTest(unittest.TestCase):
     def setUp(self):
@@ -63,7 +70,7 @@ class HeavyCheckSlotTest(unittest.TestCase):
 
     def test_ac2_sigkill_of_the_holder_frees_the_slot_at_once(self):
         holder = self.acquire(1, "victim", "sleep", "60", start_new_session=True)
-        self.assertTrue(wait_for(lambda: [h["name"] for h in held(self.folder)] == ["victim"]))
+        self.assertTrue(wait_for(lambda: holder_names(self.folder) == ["victim"]))
         os.killpg(holder.pid, signal.SIGKILL)
         holder.communicate(timeout=10)
         nxt = self.acquire(1, "next", "true")
@@ -81,8 +88,14 @@ class HeavyCheckSlotTest(unittest.TestCase):
 
     def test_slot_stays_held_while_the_command_outlives_a_killed_wrapper(self):
         marker = Path(self.tmp.name) / "release"
-        script = f"import os,time\nwhile not os.path.exists({str(marker)!r}): time.sleep(0.05)"
+        started = Path(self.tmp.name) / "started"
+        script = (f"import os,time\nopen({str(started)!r}, 'w').close()\n"
+                  f"while not os.path.exists({str(marker)!r}): time.sleep(0.05)")
         wrapper = self.acquire(1, "orphan", sys.executable, "-c", script)
+        # Wait for the command itself, not only the slot lock: the wrapper takes the lock,
+        # writes its record and only then starts the command (#2599, audit 6838460410 B1).
+        # Killing the wrapper before the command runs leaves nobody holding the slot.
+        self.assertTrue(wait_for(started.exists))
         self.assertTrue(wait_for(lambda: len(held(self.folder)) == 1))
         os.kill(wrapper.pid, signal.SIGKILL)
         wrapper.wait(timeout=10)
@@ -96,7 +109,11 @@ class HeavyCheckSlotTest(unittest.TestCase):
         """Pre-audit 6814850663 M5: a SIGTERM sent only to the wrapper is passed to the
         command, which ends; the wrapper returns 143 and the slot is free again."""
         wrapper = self.acquire(1, "term", "sleep", "60")
-        self.assertTrue(wait_for(lambda: len(held(self.folder)) == 1))
+        # Wait for the holder's record, not only the slot lock: the wrapper installs its signal
+        # handlers after taking the lock and before writing the record, so a SIGTERM in that
+        # gap would kill the wrapper outright (#2599, audit 6838460410). Once the record is
+        # there, a SIGTERM before the command starts is held and passed on (#2571 N1).
+        self.assertTrue(wait_for(lambda: holder_names(self.folder) == ["term"]))
         os.kill(wrapper.pid, signal.SIGTERM)
         try:
             out = wrapper.communicate(timeout=10)[0]
@@ -126,7 +143,7 @@ class HeavyCheckSlotTest(unittest.TestCase):
         self.assertFalse(self.folder.exists(), "status creates nothing")
         p = self.acquire(1, "lane-x", "sleep", "30", start_new_session=True)
         self.addCleanup(lambda: (os.killpg(p.pid, signal.SIGKILL), p.communicate(timeout=10)))
-        self.assertTrue(wait_for(lambda: len(held(self.folder)) == 1))
+        self.assertTrue(wait_for(lambda: holder_names(self.folder) == ["lane-x"]))
         [record] = held(self.folder)
         self.assertEqual(record["name"], "lane-x")
         self.assertEqual(record["command"], ["sleep", "30"])
