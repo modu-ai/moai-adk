@@ -1,5 +1,5 @@
 //! #2350 audit F2: the Go parity contract of `moai-cli statusline` runs inside `cargo test`,
-//! so the check set and rc-ci fail when the built binary stops matching the Go goldens.
+//! so the check set and CI fail when the built binary stops matching the Go goldens.
 //!
 //! The comparison itself is `tools/statusline_golden.py --check` (fresh HOME and project per
 //! case, the binary copied under another name, on macOS the network/HOME/exec sandbox), run

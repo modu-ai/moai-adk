@@ -3,13 +3,13 @@
 //! supervision).
 //!
 //! One call reads every open pull request into the base branch and, per PR, its merge state,
-//! the `moai/audit` status and the `rc-ci` check run on the current head, and the claim and
+//! the `moai/audit` status and the CI check run (`ci`, or `rc-ci` before #2563) on the current head, and the claim and
 //! audit-verdict comments of the Issue it `Refs`. It compares that with the previous tick
 //! (`<project>/.moai-cli/forge/leader-tick.json`) and reports only the PRs whose observation
 //! changed (REQ-A3-01; an unchanged PR is not reported, so polling does not multiply reports).
 //!
 //! It is GET-only on GitHub. For a PR that needs a repair (a `FAIL` verdict on the current
-//! head, a failed `rc-ci`, or a `dirty` merge state) it drafts an `assignee-hint` comment for
+//! head, a failed CI check, or a `dirty` merge state) it drafts an `assignee-hint` comment for
 //! the first caller-supplied free lane that is not the PR's author (REQ-A3-02; ownership still
 //! comes only from a claim comment) and a one-line repair Issue title. Posting either is the
 //! leader's act through `effect-intend` → `gh` → `effect-confirm` (leader decision 2026-11-09).

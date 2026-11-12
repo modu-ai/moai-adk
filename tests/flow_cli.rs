@@ -500,7 +500,11 @@ fn gate_verdict_ignores_poisoned_combined_status() {
         .clone();
     assert_eq!(ci["pass"], json!(true));
     assert!(
-        ci["detail"].as_str().unwrap().contains("rc-ci"),
+        // #2563: the default required name is the renamed `ci` check.
+        ci["detail"]
+            .as_str()
+            .unwrap()
+            .contains("required check runs: ci: success"),
         "{}",
         ci["detail"]
     );
@@ -587,8 +591,7 @@ fn gate_verdict_missing_required_check_blocks() {
     assert_eq!(v["verdict"], json!("blocked"), "{}", v);
     let rs = reasons_of(&v);
     assert!(
-        rs.iter()
-            .any(|r| r.contains("rc-ci") && r.contains("not found")),
+        rs.iter().any(|r| r.contains("ci check run not found")),
         "{:?}",
         rs
     );
