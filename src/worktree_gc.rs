@@ -699,6 +699,27 @@ mod tests {
         }
     }
 
+    /// #2498: `trim` re-checks each listed path right before deleting it. A path that is no
+    /// longer cargo-owned (its `.cargo-lock` marker gone, e.g. a lane folder put in its place
+    /// after the plan) is refused and kept, and so is one outside `target/`.
+    #[test]
+    fn trim_refuses_a_path_that_is_no_longer_cargo_owned() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let wt = dir.path();
+        fs::create_dir_all(wt.join("target/debug")).unwrap();
+        fs::write(wt.join("target/debug/note.md"), "lane note\n").unwrap();
+        let err = trim(wt, &["target/debug".to_string()]).unwrap_err();
+        assert!(err.contains("no longer a cargo-owned"), "{err}");
+        assert!(wt.join("target/debug/note.md").exists());
+        fs::write(wt.join("keep.txt"), "x\n").unwrap();
+        assert!(trim(wt, &["keep.txt".to_string()]).is_err());
+        assert!(wt.join("keep.txt").exists());
+        // Control: with the marker back it is cargo-owned and trimmed.
+        fs::write(wt.join("target/debug/.cargo-lock"), "").unwrap();
+        trim(wt, &["target/debug".to_string()]).unwrap();
+        assert!(!wt.join("target/debug").exists());
+    }
+
     /// #2498 N3: clean and merged but never built and holding nothing — kept, not removed.
     #[test]
     fn an_empty_worktree_is_skipped_not_removed() {
