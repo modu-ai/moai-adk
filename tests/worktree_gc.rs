@@ -104,10 +104,16 @@ fn plan(fx: &Fixture, now: Option<u64>) -> Value {
 
 /// The plan run with `cwd` as the process's working directory.
 fn plan_from(fx: &Fixture, cwd: &Path, now: Option<u64>) -> Value {
+    plan_with(fx, cwd, now, &[])
+}
+
+/// The plan run from `cwd` with extra command-line arguments.
+fn plan_with(fx: &Fixture, cwd: &Path, now: Option<u64>, extra: &[&str]) -> Value {
     let mut cmd = Command::new(BIN);
     cmd.args(["worktree-gc-plan"])
         .arg(&fx.root)
         .args(["--integration-ref", "integ"])
+        .args(extra)
         .current_dir(cwd)
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -268,6 +274,59 @@ fn a_process_working_in_a_worktree_keeps_it() {
     let e = entry(&r, ".moai-cli/worktrees/a");
     assert_eq!(e["action"], "skip", "{e}");
     assert_eq!(reasons(e), ["process_in_use"]);
+}
+
+/// Audit FAIL 6811382861 B1 (K1): a process whose working directory is a subfolder of a
+/// linked worktree keeps it too, not only one at the worktree's top folder.
+#[test]
+fn a_process_working_in_a_worktree_subfolder_keeps_it() {
+    let fx = fixture();
+    let sub = fx.root.join(".moai-cli/worktrees/a/target/debug");
+    let mut child = Command::new("sleep")
+        .arg("30")
+        .current_dir(&sub)
+        .spawn()
+        .unwrap();
+    let r = plan(&fx, Some(later()));
+    let _ = child.kill();
+    let _ = child.wait();
+    let e = entry(&r, ".moai-cli/worktrees/a");
+    assert_eq!(e["action"], "skip", "{e}");
+    assert_eq!(reasons(e), ["process_in_use"]);
+}
+
+/// Audit FAIL 6811382861 B1 (K6): the change age is the newest of the proxy paths. Every
+/// fixture path is about a day older than `now`; only `target/debug` is set one minute
+/// before it, and that one path keeps the worktree.
+#[test]
+fn one_recent_proxy_path_keeps_the_worktree() {
+    let fx = fixture();
+    let now = later();
+    let debug = fx.root.join(".moai-cli/worktrees/a/target/debug");
+    let one_minute_before = std::time::UNIX_EPOCH + std::time::Duration::from_secs(now - 60);
+    fs::File::open(&debug)
+        .unwrap()
+        .set_modified(one_minute_before)
+        .unwrap();
+    let r = plan(&fx, Some(now));
+    let e = entry(&r, ".moai-cli/worktrees/a");
+    assert_eq!(e["action"], "skip", "{e}");
+    assert_eq!(reasons(e), ["recent_change"]);
+    assert_eq!(e["change_age_secs"], 60, "{e}");
+}
+
+/// Audit 6811382861 N4 (K8): with the time budget already spent, no worktree is a candidate;
+/// every one is `skip` and names `budget_spent`.
+#[test]
+fn a_spent_budget_skips_every_worktree() {
+    let fx = fixture();
+    let r = plan_with(&fx, &fx.root, Some(later()), &["--budget-ms", "0"]);
+    assert_eq!(r["totals"]["remove"], 0, "{r}");
+    assert_eq!(r["totals"]["trim"], 0, "{r}");
+    for c in r["candidates"].as_array().unwrap() {
+        assert_eq!(c["action"], "skip", "{c}");
+        assert!(reasons(c).contains(&"budget_spent".to_string()), "{c}");
+    }
 }
 
 /// Every file and folder under `dir` with length and modification time (a folder's length is

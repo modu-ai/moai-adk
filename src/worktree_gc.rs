@@ -22,6 +22,18 @@
 //! modification time among the worktree's git admin files (`index`, `HEAD`, `logs/HEAD`),
 //! its top folder, its `target/` and the cargo folders inside — commits, checkouts, builds
 //! and new files show there; an uncommitted edit shows as a tracked change instead.
+//!
+//! What the plan does not check, against design §D5 and the WT-4 card row (audit FAIL
+//! 6811382861 B2). `worktree.gc.apply` must re-check the first two right before it deletes:
+//! - claim leases: §D5 counts a live claim lease as "in use", but the plan uses no network and
+//!   cannot read Issue comments, so a worktree with a live lease and no other sign can still
+//!   be a candidate;
+//! - open files: §D5 also counts a process holding a file open inside the worktree, but only
+//!   working directories are read; a process working elsewhere with a file open inside (the
+//!   audit's `tail -f` on `target/debug/deps/blob`) is not seen;
+//! - "pushed": the card's push condition is replaced by "HEAD is contained in the local
+//!   integration ref" (`merged`), which needs no network and implies the commits already sit
+//!   on the integration branch; a pushed but unmerged worktree is `skip` with `not_merged`.
 
 use crate::identity::scrub_git_env;
 use crate::worktree_report::{bytes_under, parse_worktree_list};
