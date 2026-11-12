@@ -921,3 +921,115 @@ fn a_receipt_with_a_wrong_kind_is_refused() {
         assert_eq!(rp["ok"], json!(false), "{name}: {rp}");
     }
 }
+
+// ---- stage 3b: restore `.moai/specs` into `.moai-cli/specs` (AC-5) ----
+
+fn restore_action<'a>(plan: &'a Value, from: &str) -> &'a str {
+    plan["restores"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["from"] == from)
+        .unwrap_or_else(|| panic!("{from} not in restores: {plan}"))["action"]
+        .as_str()
+        .unwrap()
+}
+
+/// AC-5: the SPEC is copied to `.moai-cli/specs` from the backup and the original stays in
+/// the backup; a SPEC that holds a secret-looking value is not copied; the receipt names
+/// each copy with its hash.
+#[test]
+fn specs_are_restored_from_the_backup_and_secrets_are_not() {
+    let fx = movable_fixture();
+    fx.write(
+        ".moai/specs/SPEC-2/spec.md",
+        "api_key: sk-live-0123456789abcdef\n",
+    );
+    let p = plan(&fx);
+    assert_eq!(restore_action(&p, ".moai/specs/SPEC-1/spec.md"), "copy");
+    assert_eq!(
+        restore_action(&p, ".moai/specs/SPEC-2/spec.md"),
+        "excluded_secret"
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai-cli/specs/SPEC-1/spec.md")).unwrap(),
+        "# spec\n"
+    );
+    assert!(!fx.root.join(".moai-cli/specs/SPEC-2").exists());
+    let dir = fx.root.join(".moai-cli/backups").join(&backup);
+    assert!(dir.join("go-state/.moai/specs/SPEC-1/spec.md").is_file());
+    assert!(dir.join("go-state/.moai/specs/SPEC-2/spec.md").is_file());
+    let (_, r) = receipt_of(&fx, &backup);
+    assert_eq!(
+        r["restored"],
+        json!([{"path": ".moai-cli/specs/SPEC-1/spec.md", "sha256": sha(b"# spec\n")}])
+    );
+}
+
+/// An existing target is never overwritten: the preview says `conflict` and the apply
+/// writes nothing at all.
+#[test]
+fn an_existing_restore_target_stops_the_apply() {
+    let fx = movable_fixture();
+    fx.write(".moai-cli/specs/SPEC-1/spec.md", "# mine, already here\n");
+    let p = plan(&fx);
+    assert_eq!(restore_action(&p, ".moai/specs/SPEC-1/spec.md"), "conflict");
+    let before = fx.tree();
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("never overwritten"), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+/// The revert removes an unchanged restored copy and keeps (and reports) a changed one.
+#[test]
+fn revert_removes_only_unchanged_restored_copies() {
+    let fx = movable_fixture();
+    fx.write(".moai/specs/SPEC-3/spec.md", "# three\n");
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fx.write(
+        ".moai-cli/specs/SPEC-3/spec.md",
+        "# three, edited after the apply\n",
+    );
+    let rp = revert_plan(&fx, &backup);
+    let items = rp["result"]["items"].as_array().unwrap().clone();
+    let act = |path: &str| {
+        items
+            .iter()
+            .find(|i| i["path"] == path)
+            .unwrap_or_else(|| panic!("{path}: {rp}"))["action"]
+            .clone()
+    };
+    assert_eq!(
+        act(".moai-cli/specs/SPEC-1/spec.md"),
+        json!("remove_restored")
+    );
+    assert_eq!(act(".moai-cli/specs/SPEC-3/spec.md"), json!("keep_changed"));
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(!fx.root.join(".moai-cli/specs/SPEC-1/spec.md").exists());
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai-cli/specs/SPEC-3/spec.md")).unwrap(),
+        "# three, edited after the apply\n"
+    );
+    assert!(fx.root.join(".moai/specs/SPEC-3/spec.md").is_file());
+}
+
+/// A receipt may only name restored copies under `.moai-cli/specs/`.
+#[test]
+fn a_receipt_restored_path_elsewhere_is_refused() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, mut r) = receipt_of(&fx, &backup);
+    r["restored"][0]["path"] = json!("src/main.rs");
+    fs::write(&path, r.to_string()).unwrap();
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(false), "{rp}");
+}

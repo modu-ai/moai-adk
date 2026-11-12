@@ -36,6 +36,9 @@ const FILE_LIMIT: u64 = 64 * 1024 * 1024;
 const ROOTS: [&str; 2] = [".moai", ".claude"];
 /// Decision 1 (#2561 comment 6831345102): `.moai/` moves as a whole folder.
 const MOAI_DIR: &str = ".moai";
+/// AC-5: what is restored from the moved folder, and where (Rust reads SPECs there).
+const SPECS_FROM: &str = ".moai/specs";
+const SPECS_TO: &str = ".moai-cli/specs";
 
 #[derive(Deserialize)]
 struct Manifest {
@@ -67,8 +70,81 @@ pub struct GoStatePlan {
     /// Regular files under `.moai/` and `.claude/` the manifest does not record, counted per
     /// second-level folder (`.moai/specs`, `.claude/worktrees`, …). They are never moved.
     pub unrecorded: BTreeMap<String, u64>,
+    /// AC-5: files copied back from the moved `.moai/specs` into `.moai-cli/specs`
+    /// (`copy`), or not (`conflict`, `conflict_link`, `excluded_secret`, `excluded_unclassifiable`,
+    /// `leave_link`). Empty unless the folder moves.
+    pub restores: Vec<Restore>,
     pub warnings: Vec<String>,
     pub plan_digest: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct Restore {
+    pub from: String,
+    pub to: String,
+    pub sha256: String,
+    pub action: String,
+}
+
+/// The restore candidates under `.moai/specs`: regular files are copied unless the
+/// target exists (never overwritten) or the content is or may be a secret (the `migrate`
+/// filter, fail-closed); links are never followed.
+fn plan_restores(project: &Path) -> Vec<Restore> {
+    let mut out = Vec::new();
+    let mut stack = vec![project.join(SPECS_FROM)];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            let Ok(m) = fs::symlink_metadata(&p) else {
+                continue;
+            };
+            if m.is_dir() {
+                stack.push(p);
+                continue;
+            }
+            let Some(rel) = p
+                .strip_prefix(project.join(SPECS_FROM))
+                .ok()
+                .and_then(|r| r.to_str())
+                .map(|r| r.replace('\\', "/"))
+            else {
+                continue;
+            };
+            let from = format!("{SPECS_FROM}/{rel}");
+            let to = format!("{SPECS_TO}/{rel}");
+            let (sha, action) = if !m.is_file() {
+                (String::new(), "leave_link")
+            } else {
+                match fs::read(&p) {
+                    Ok(bytes) if (bytes.len() as u64) <= FILE_LIMIT => {
+                        let sha = format!("sha256:{:x}", Sha256::digest(&bytes));
+                        let action = match crate::migrate::sensitive_content(&bytes, true) {
+                            Ok(true) => "excluded_secret",
+                            Err(_) => "excluded_unclassifiable",
+                            Ok(false) if linked_component(project, &to) => "conflict_link",
+                            Ok(false) if fs::symlink_metadata(project.join(&to)).is_ok() => {
+                                "conflict"
+                            }
+                            Ok(false) => "copy",
+                        };
+                        (sha, action)
+                    }
+                    _ => (String::new(), "excluded_unclassifiable"),
+                }
+            };
+            out.push(Restore {
+                from,
+                to,
+                sha256: sha,
+                action: action.into(),
+            });
+        }
+    }
+    out.sort_by(|a, b| a.from.cmp(&b.from));
+    out
 }
 
 fn sha256_file(path: &Path) -> Result<String> {
@@ -327,6 +403,11 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     } else {
         BTreeMap::new()
     };
+    let restores = if folder_moves {
+        plan_restores(&project)
+    } else {
+        Vec::new()
+    };
     let mut plan = GoStatePlan {
         schema_version: SCHEMA_VERSION,
         project: project
@@ -336,6 +417,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         manifest_version: version,
         items,
         unrecorded,
+        restores,
         warnings,
         plan_digest: String::new(),
     };
@@ -384,6 +466,16 @@ pub struct Receipt {
     /// `pending` → `committed` → `reverted`.
     pub state: String,
     pub moves: Vec<Moved>,
+    /// AC-5: the copies written under `.moai-cli/specs`, each with its sha256.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub restored: Vec<Restored>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Restored {
+    pub path: String,
+    pub sha256: String,
 }
 
 /// A backup name is the apply's UTC stamp, `YYYYMMDDTHHMMSSZ`, and nothing else.
@@ -501,9 +593,27 @@ pub fn apply_with_stamp(
         permission_reference: permission_reference.to_string(),
         state: "unchanged".into(),
         moves: Vec::new(),
+        restored: Vec::new(),
     };
     if planned.is_empty() {
         return Ok(receipt);
+    }
+    if let Some(c) = fresh
+        .restores
+        .iter()
+        .find(|r| r.action.starts_with("conflict"))
+    {
+        return Err(if c.action == "conflict_link" {
+            format!(
+                "{}: a path component is a symlink; refused; nothing written",
+                c.to
+            )
+        } else {
+            format!(
+                "restore conflict: {} already exists and is never overwritten; nothing written",
+                c.to
+            )
+        });
     }
     let backup_rel = format!("{BACKUPS}/{stamp}");
     // `make_dirs` refuses a linked `.moai-cli` or `.moai-cli/backups`; the stamp folder
@@ -545,6 +655,30 @@ pub fn apply_with_stamp(
             receipt.moves[i].sha256 = crate::baseline::tree_digest(&project.join(&dest_rel), &[])?;
             receipt.moves[i].moved = true;
             saved = save_receipt(&project, &receipt, Some(&saved))?;
+            // AC-5: copy from the backup (the original stays there), never overwriting.
+            for r in fresh.restores.iter().filter(|r| r.action == "copy") {
+                let src_rel = format!("{backup_rel}/go-state/{}", r.from);
+                refuse_linked(&project, &src_rel)?;
+                let bytes = fs::read(project.join(&src_rel)).map_err(|_| "restore read failed")?;
+                if format!("sha256:{:x}", Sha256::digest(&bytes)) != r.sha256 {
+                    return Err(format!(
+                        "{} changed after the preview; restore stopped",
+                        r.from
+                    ));
+                }
+                let parent = Path::new(&r.to)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .ok_or("restore path")?
+                    .to_string();
+                make_dirs(&project, &parent)?;
+                crate::apply::publish_exclusive(&project.join(&r.to), &bytes)?;
+                receipt.restored.push(Restored {
+                    path: r.to.clone(),
+                    sha256: r.sha256.clone(),
+                });
+                saved = save_receipt(&project, &receipt, Some(&saved))?;
+            }
             continue;
         }
         refuse_linked(&project, &rel)?;
@@ -620,6 +754,13 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>)> {
     }) {
         return Err("receipt holds an entry of the wrong kind; refused".into());
     }
+    if receipt
+        .restored
+        .iter()
+        .any(|r| !plain_relative(&r.path) || !r.path.starts_with(&format!("{SPECS_TO}/")))
+    {
+        return Err("receipt holds a restored path outside .moai-cli/specs/; refused".into());
+    }
     Ok((receipt, text.into_bytes()))
 }
 
@@ -628,6 +769,21 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
     let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
     let (receipt, _) = read_receipt(&project, backup)?;
     let mut items = Vec::new();
+    for r in &receipt.restored {
+        let action = if linked_component(&project, &r.path) {
+            "keep_changed"
+        } else {
+            match sha256_file(&project.join(&r.path)) {
+                Ok(h) if h == r.sha256 => "remove_restored",
+                Ok(_) => "keep_changed",
+                Err(_) => "skip",
+            }
+        };
+        items.push(RevertItem {
+            path: r.path.clone(),
+            action: action.into(),
+        });
+    }
     for m in &receipt.moves {
         if m.kind == "folder" {
             let dest_rel = format!("{BACKUPS}/{backup}/go-state/{MOAI_DIR}");
@@ -725,6 +881,13 @@ pub fn revert(
     }
     let project = PathBuf::from(&fresh.project);
     let (mut receipt, mut saved) = read_receipt(&project, backup)?;
+    // Unchanged restored copies go; a changed one stays and is reported (`keep_changed`).
+    for item in fresh.items.iter().filter(|i| i.action == "remove_restored") {
+        refuse_linked(&project, &item.path)?;
+        fs::remove_file(project.join(&item.path)).map_err(|_| "restored copy not removed")?;
+        receipt.restored.retain(|r| r.path != item.path);
+        saved = save_receipt(&project, &receipt, Some(&saved))?;
+    }
     for item in fresh.items.iter().filter(|i| i.action == "restore") {
         let parent = Path::new(&item.path)
             .parent()
