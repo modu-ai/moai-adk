@@ -132,9 +132,8 @@ impl Renderer {
                 segs.push(t);
             }
         }
-        if self.enabled("output_style") && !s.output_style.is_empty() {
-            segs.push(format!("💬 {}", s.output_style));
-        }
+        // #2559 AC-7 (user instruction 2026-11-12): the output style is not shown. The
+        // `output_style` option name is still accepted in configs, it just shows nothing.
         segs.join(SEPARATOR)
     }
 
@@ -339,10 +338,22 @@ mod tests {
     fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
         assert_eq!(
             plain(&full_status(), &[]),
-            "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m | 💬 MoAI\n\
+            "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m\n\
              🏷️ release  🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%\n\
              📡 owner/repo | ❗ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
         );
+    }
+
+    /// #2559 AC-7 (user instruction 2026-11-12T16:5xZ): the output style is not shown,
+    /// even when the input names one and the `output_style` option is left enabled.
+    #[test]
+    fn the_output_style_is_never_shown() {
+        let status = full_status();
+        assert_eq!(status.output_style, "MoAI", "the input names a style");
+        let out = plain(&status, &[]);
+        assert!(!out.contains('💬'), "{out}");
+        assert!(!out.contains("MoAI"), "{out}");
+        assert!(out.lines().next().unwrap().ends_with("⏳ 1h 30m"), "{out}");
     }
 
     #[test]
