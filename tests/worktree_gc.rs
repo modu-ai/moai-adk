@@ -270,13 +270,19 @@ fn a_process_working_in_a_worktree_keeps_it() {
     assert_eq!(reasons(e), ["process_in_use"]);
 }
 
-/// Every file under `dir` with length and modification time.
+/// Every file and folder under `dir` with length and modification time (a folder's length is
+/// recorded as 0, so removing an empty folder is seen too).
 fn snapshot(dir: &Path) -> Vec<(String, u64, std::time::SystemTime)> {
     let mut out = Vec::new();
     let mut stack = vec![dir.to_path_buf()];
     while let Some(p) = stack.pop() {
         let m = fs::symlink_metadata(&p).unwrap();
         if m.is_dir() {
+            out.push((
+                format!("{}/", p.to_string_lossy()),
+                0,
+                m.modified().unwrap(),
+            ));
             for e in fs::read_dir(&p).unwrap() {
                 stack.push(e.unwrap().path());
             }
@@ -292,14 +298,34 @@ fn snapshot(dir: &Path) -> Vec<(String, u64, std::time::SystemTime)> {
     out
 }
 
+/// What git itself reports about the worktrees, refs and the primary's status
+/// (`--no-optional-locks`: reading the status must not refresh the index file).
+fn git_state(root: &Path) -> Vec<String> {
+    [
+        &["worktree", "list", "--porcelain"][..],
+        &["for-each-ref", "--format=%(refname) %(objectname)"],
+        &["--no-optional-locks", "status", "--porcelain", "--ignored"],
+    ]
+    .iter()
+    .map(|args| git(root, args))
+    .collect()
+}
+
 #[test]
 fn the_plan_writes_nothing_and_its_digest_is_stable() {
     let fx = fixture();
     let now = later();
     let before = snapshot(&fx.root);
+    let git_before = git_state(&fx.root);
     let one = plan(&fx, Some(now));
+    // The fixture must give the plan something it would remove and trim, or a plan that
+    // deleted its candidates would leave nothing changed here.
+    assert_eq!(one["totals"]["remove"], 1, "{one}");
+    assert_eq!(one["totals"]["trim"], 2, "{one}");
     let two = plan(&fx, Some(now));
     assert_eq!(snapshot(&fx.root), before);
+    assert_eq!(git_state(&fx.root), git_before);
+    assert_eq!(one["writes"], false);
     assert_eq!(one["plan_digest"], two["plan_digest"]);
     assert!(one["plan_digest"].as_str().unwrap().starts_with("sha256:"));
 }
