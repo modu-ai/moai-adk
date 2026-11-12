@@ -1,7 +1,6 @@
-//! Layout and color, ported from the Go `Renderer` (renderer.go, gradient.go, color.go,
-//! theme.go): up to four lines joined by `\n`, segments joined by `" | "`, 10-cell bars
-//! with a per-cell gradient, and two Catppuccin themes. Without color (`NO_COLOR` or
-//! `MOAI_NO_COLOR`) the text is identical and carries no escape sequence.
+//! The main Claude Code statusline: up to three lines joined by `\n`, 10-cell
+//! gradient bars, and two Catppuccin themes. Without color the text is identical
+//! and carries no escape sequence.
 
 use super::color::{hex_rgb, Profile};
 use super::segments::{self, HandoffStage};
@@ -14,32 +13,65 @@ const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
 
 /// A theme's colors (internal/tui/catppuccin.go). `stops` run green → yellow → peach → red.
+/// The per-segment colors are the #2559 segment palette (user decision 2026-11-12): each
+/// segment kind takes its own Catppuccin accent, so neighbours never share a color.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Theme {
     pub text: &'static str,
     pub muted: &'static str,
-    pub success: &'static str,
-    pub warning: &'static str,
-    pub danger: &'static str,
     pub stops: [&'static str; 4],
+    /// `🤖` model (mauve).
+    pub model: &'static str,
+    /// `🧠` effort and thinking (lavender).
+    pub effort: &'static str,
+    /// `♻️` cache hit (teal).
+    pub cache: &'static str,
+    /// `🔅` Claude Code and `🗿` MoAI versions (sky).
+    pub version: &'static str,
+    /// `📡` repository (blue).
+    pub repo: &'static str,
+    /// `❗` open Issues (peach).
+    pub issues: &'static str,
+    /// `🔀` open pull requests (pink).
+    pub prs: &'static str,
+    /// `🅱️` branch with its behind and dirty counts (green).
+    pub branch: &'static str,
+    /// `(⚠️ /clear)` soft handoff warning (yellow).
+    pub warn: &'static str,
+    /// `(🛑/clear!)` hard handoff warning (red).
+    pub alert: &'static str,
 }
 
 pub const MOCHA: Theme = Theme {
     text: "#CDD6F4",
     muted: "#6C7086",
-    success: "#A6E3A1",
-    warning: "#F9E2AF",
-    danger: "#F38BA8",
     stops: ["#A6E3A1", "#F9E2AF", "#FAB387", "#F38BA8"],
+    model: "#CBA6F7",
+    effort: "#B4BEFE",
+    cache: "#94E2D5",
+    version: "#89DCEB",
+    repo: "#89B4FA",
+    issues: "#FAB387",
+    prs: "#F5C2E7",
+    branch: "#A6E3A1",
+    warn: "#F9E2AF",
+    alert: "#F38BA8",
 };
 
 pub const LATTE: Theme = Theme {
     text: "#4C4F69",
     muted: "#9CA0B0",
-    success: "#40A02B",
-    warning: "#DF8E1D",
-    danger: "#D20F39",
     stops: ["#40A02B", "#DF8E1D", "#FE640B", "#D20F39"],
+    model: "#8839EF",
+    effort: "#7287FD",
+    cache: "#179299",
+    version: "#04A5E5",
+    repo: "#1E66F5",
+    issues: "#FE640B",
+    prs: "#EA76CB",
+    branch: "#40A02B",
+    warn: "#DF8E1D",
+    alert: "#D20F39",
 };
 
 /// `NewTheme`: `catppuccin-latte`, anything else is Mocha.
@@ -77,8 +109,7 @@ impl Renderer {
         let lines: Vec<String> = [
             self.info_line(status),
             self.bars_line(status),
-            self.dir_git_line(status),
-            self.session_line(status),
+            self.git_line(status),
         ]
         .into_iter()
         .filter(|l| !l.is_empty())
@@ -105,15 +136,16 @@ impl Renderer {
         let mut segs = Vec::new();
         let metrics = !s.model.is_empty();
         if self.enabled("model") && metrics {
-            segs.push(format!("🤖 {}", s.model));
+            segs.push(self.paint(self.theme.model, &format!("🤖 {}", s.model)));
         }
         if self.enabled("effort_thinking") {
             let thinking = s.thinking == Some(true);
             match &s.effort {
-                None if thinking => segs.push("·t".into()),
-                Some(level) if !level.is_empty() => {
-                    segs.push(format!("🧠 {level}{}", if thinking { "·t" } else { "" }))
-                }
+                None if thinking => segs.push(self.paint(self.theme.effort, "·t")),
+                Some(level) if !level.is_empty() => segs.push(self.paint(
+                    self.theme.effort,
+                    &format!("🧠 {level}{}", if thinking { "·t" } else { "" }),
+                )),
                 _ => {}
             }
         }
@@ -122,11 +154,11 @@ impl Renderer {
                 .cache
                 .and_then(|(read, creation)| segments::cache_hit_percent(read, creation))
             {
-                segs.push(format!("♻️ {pct}%"));
+                segs.push(self.paint(self.theme.cache, &format!("♻️ {pct}%")));
             }
         }
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
-            segs.push(format!("🔅 v{}", s.claude_version));
+            segs.push(self.paint(self.theme.version, &format!("🔅 v{}", s.claude_version)));
         }
         if self.enabled("moai_version") {
             if let Some(v) = s.version.as_ref().filter(|v| !v.current.is_empty()) {
@@ -134,7 +166,7 @@ impl Renderer {
                 if let Some(latest) = &v.latest {
                     seg.push_str(&format!(" -> 🗿 v{latest}"));
                 }
-                segs.push(seg);
+                segs.push(self.paint(self.theme.version, &seg));
             }
         }
         if self.enabled("session_time") && metrics {
@@ -143,9 +175,8 @@ impl Renderer {
                 segs.push(t);
             }
         }
-        if self.enabled("output_style") && !s.output_style.is_empty() {
-            segs.push(format!("💬 {}", s.output_style));
-        }
+        // #2559 AC-7 (user instruction 2026-11-12): the output style is not shown. The
+        // `output_style` option name is still accepted in configs, it just shows nothing.
         segs.join(SEPARATOR)
     }
 
@@ -154,55 +185,52 @@ impl Renderer {
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
                 let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
-                let mut bar = self.usage_bar("CW:", pct);
+                let mut bar = self.usage_bar("CTX:", pct);
                 if !s.goal_armed {
                     match segments::handoff_stage(&s.memory, s.auto_compact) {
-                        HandoffStage::Hard => bar.push_str(" (🛑/clear!)"),
-                        HandoffStage::Soft => bar.push_str(" (⚠️/clear)"),
+                        HandoffStage::Hard => {
+                            bar.push(' ');
+                            bar.push_str(&self.paint(self.theme.alert, "(🛑/clear!)"));
+                        }
+                        // #2559: space before /clear
+                        HandoffStage::Soft => {
+                            bar.push(' ');
+                            bar.push_str(&self.paint(self.theme.warn, "(⚠️ /clear)"));
+                        }
                         HandoffStage::None => {}
                     }
                 }
                 segs.push(bar);
             } else {
-                segs.push(self.unknown_bar("CW:"));
+                segs.push(self.unknown_bar("CTX:"));
             }
         }
         if self.enabled("usage_5h") {
-            segs.push(match s.five_hour {
-                Some(w) => self.bar_with_reset(
-                    "5H:",
-                    w.used_percentage.unwrap_or(0.0) as i64,
-                    &segments::reset_relative(w.resets_at.unwrap_or(0), s.now_ms),
-                ),
-                None => self.unknown_bar("5H:"),
-            });
+            if let Some(w) = s.five_hour {
+                segs.push(self.usage_bar("5H:", w.used_percentage.unwrap_or(0.0) as i64));
+            }
         }
         if self.enabled("usage_7d") {
-            segs.push(match s.seven_day {
-                Some(w) => self.bar_with_reset(
-                    "7D:",
-                    w.used_percentage.unwrap_or(0.0) as i64,
-                    &segments::reset_absolute(w.resets_at.unwrap_or(0)),
-                ),
-                None => self.unknown_bar("7D:"),
-            });
+            if let Some(w) = s.seven_day {
+                segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
+            }
         }
-        segs.join(SEPARATOR)
+        let bars = segs.join(SEPARATOR);
+        if self.enabled("session") && !s.session_name.is_empty() {
+            if bars.is_empty() {
+                format!("🏷️ {}", s.session_name)
+            } else {
+                format!("🏷️ {}  {bars}", s.session_name)
+            }
+        } else {
+            bars
+        }
     }
 
     /// `renderUsageBar`: battery icon, label, gradient bar, percentage.
     fn usage_bar(&self, label: &str, pct: i64) -> String {
         let icon = if pct > 70 { "🪫" } else { "🔋" };
         format!("{icon} {label} {} {pct}%", self.gradient_bar(pct))
-    }
-
-    fn bar_with_reset(&self, label: &str, pct: i64, reset: &str) -> String {
-        let base = self.usage_bar(label, pct);
-        if reset.is_empty() {
-            base
-        } else {
-            format!("{base} ({reset})")
-        }
     }
 
     /// `renderUnknownBar`: an empty muted placeholder and `n/a`, never a percentage.
@@ -231,11 +259,8 @@ impl Renderer {
         out + &empty
     }
 
-    fn dir_git_line(&self, s: &Status) -> String {
+    fn git_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        if self.enabled("directory") && !s.directory.is_empty() {
-            segs.push(format!("📁 {}", s.directory));
-        }
         if self.enabled("git_branch") {
             if let Some(rb) = self.repo_branch(s) {
                 segs.push(rb);
@@ -246,38 +271,14 @@ impl Renderer {
                 segs.push(format!("💾 +{} M{} ?{}", g.staged, g.modified, g.untracked));
             }
         }
-        if self.enabled("task") && !s.task.is_empty() {
-            segs.push(format!("📋 {}", s.task));
-        }
-        if self.enabled("pr") {
-            if let Some((number, state)) = s.pr.as_ref().filter(|(n, _)| *n != 0) {
-                let mut seg = format!("💌 PR #{number}");
-                if !state.is_empty() {
-                    let text = format!("(⌥{state})");
-                    let color = match state.as_str() {
-                        "approved" => Some(self.theme.success),
-                        "pending" => Some(self.theme.warning),
-                        "changes_requested" => Some(self.theme.danger),
-                        "draft" => Some(self.theme.muted),
-                        _ => None,
-                    };
-                    let text = color.map_or(text.clone(), |c| self.paint(c, &text));
-                    seg.push_str(&format!(" {text}"));
-                }
-                segs.push(seg);
-            }
-        }
         segs.join(SEPARATOR)
     }
 
-    /// `renderRepoBranchSegment`: `📡 owner/name, i/p | 🅱️ branch ↑A ↓B +N`; the repo half
-    /// needs `workspace.repo`, the whole segment needs a branch.
+    /// Repository, optional forge counts, and branch retain the `git_branch` switch.
     fn repo_branch(&self, s: &Status) -> Option<String> {
         let git = s.git.as_ref().filter(|g| !g.branch.is_empty())?;
         let mut branch = format!("🅱️ {}", git.branch);
-        if git.ahead > 0 {
-            branch.push_str(&format!(" ↑{}", git.ahead));
-        }
+        // Ahead is deliberately hidden; behind and dirty counts remain visible.
         if git.behind > 0 {
             branch.push_str(&format!(" ↓{}", git.behind));
         }
@@ -285,6 +286,7 @@ impl Renderer {
         if dirty > 0 {
             branch.push_str(&format!(" +{dirty}"));
         }
+        let branch = self.paint(self.theme.branch, &branch);
         let Some((owner, name)) = s
             .repo
             .as_ref()
@@ -292,27 +294,18 @@ impl Renderer {
         else {
             return Some(branch);
         };
-        let forge = if !self.enabled("github") || s.github.suppressed {
-            String::new()
-        } else if !s.github.available {
-            ", -/-".to_string()
+        let forge = if self.enabled("github") && s.github.available && !s.github.suppressed {
+            // #2559 (user instruction 2026-11-12): icons instead of letter labels.
+            format!(
+                " | {} / {}",
+                self.paint(self.theme.issues, &format!("❗ {}", s.github.open_issues)),
+                self.paint(self.theme.prs, &format!("🔀 {}", s.github.open_prs))
+            )
         } else {
-            format!(", {}/{}", s.github.open_issues, s.github.open_prs)
+            String::new()
         };
-        Some(format!("📡 {owner}/{name}{forge} | {branch}"))
-    }
-
-    fn session_line(&self, s: &Status) -> String {
-        let mut segs = Vec::new();
-        if self.enabled("session") {
-            if !s.session_name.is_empty() {
-                segs.push(format!("🏷️ {}", s.session_name));
-            }
-            if !s.agent_name.is_empty() {
-                segs.push(format!("👤 {}", s.agent_name));
-            }
-        }
-        segs.join(SEPARATOR)
+        let repo = self.paint(self.theme.repo, &format!("📡 {owner}/{name}"));
+        Some(format!("{repo}{forge} | {branch}"))
     }
 }
 
@@ -343,6 +336,224 @@ fn apply_base_color(text: &str, base: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::statusline::input::{self, RateWindow};
+    use crate::statusline::state::{self, Context, GitHubCounts, Version};
+
+    fn plain(status: &Status, disabled: &[&str]) -> String {
+        let config = DisplayConfig {
+            segments: disabled.iter().map(|key| ((*key).into(), false)).collect(),
+            ..Default::default()
+        };
+        Renderer::new(&config, None).render(status)
+    }
+
+    fn full_status() -> Status {
+        Status {
+            model: "Opus".into(),
+            effort: Some("high".into()),
+            thinking: Some(true),
+            cache: Some((300, 100)),
+            claude_version: "2.1.293".into(),
+            version: Some(Version {
+                current: "2.0".into(),
+                latest: Some("3.0".into()),
+            }),
+            session_ms: 5_400_000,
+            output_style: "MoAI".into(),
+            session_name: "release".into(),
+            memory: segments::Memory {
+                tokens_used: 50,
+                token_budget: 100,
+                context_window_size: 200_000,
+                available: true,
+            },
+            auto_compact: 85,
+            five_hour: Some(RateWindow {
+                used_percentage: Some(25.0),
+                resets_at: Some(1),
+            }),
+            seven_day: Some(RateWindow {
+                used_percentage: Some(75.0),
+                resets_at: Some(1),
+            }),
+            repo: Some(("owner".into(), "repo".into())),
+            github: GitHubCounts {
+                available: true,
+                open_issues: 7,
+                open_prs: 3,
+                ..Default::default()
+            },
+            git: Some(segments::parse_porcelain(
+                "## main...origin/main [ahead 5, behind 2]\n M a\nA  b\n?? c\n",
+            )),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
+        assert_eq!(
+            plain(&full_status(), &[]),
+            "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m\n\
+             🏷️ release  🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%\n\
+             📡 owner/repo | ❗ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
+        );
+    }
+
+    /// #2559 AC-7 (user instruction 2026-11-12T16:5xZ): the output style is not shown,
+    /// even when the input names one and the `output_style` option is left enabled.
+    #[test]
+    fn the_output_style_is_never_shown() {
+        let status = full_status();
+        assert_eq!(status.output_style, "MoAI", "the input names a style");
+        let out = plain(&status, &[]);
+        assert!(!out.contains('💬'), "{out}");
+        assert!(!out.contains("MoAI"), "{out}");
+        assert!(out.lines().next().unwrap().ends_with("⏳ 1h 30m"), "{out}");
+    }
+
+    #[test]
+    fn rate_windows_are_optional_but_present_windows_keep_zero_percent() {
+        let mut status = Status::default();
+        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a");
+        status.five_hour = Some(RateWindow::default());
+        assert_eq!(
+            plain(&status, &[]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
+        );
+        status.five_hour = None;
+        status.seven_day = Some(RateWindow::default());
+        assert_eq!(
+            plain(&status, &[]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
+        );
+        status.five_hour = Some(RateWindow::default());
+        assert_eq!(
+            plain(&status, &["context"]),
+            "🔋 5H: ░░░░░░░░░░ 0% | 🔋 Week: ░░░░░░░░░░ 0%"
+        );
+        assert_eq!(
+            plain(&status, &["usage_5h", "usage_7d"]),
+            "CTX: ░░░░░░░░░░ n/a"
+        );
+    }
+
+    #[test]
+    fn session_prefix_uses_two_spaces_only_when_bars_follow() {
+        let mut status = Status {
+            session_name: "focus".into(),
+            ..Default::default()
+        };
+        assert_eq!(plain(&status, &[]), "🏷️ focus  CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &["context"]), "🏷️ focus");
+        assert_eq!(plain(&status, &["session"]), "CTX: ░░░░░░░░░░ n/a");
+        status.session_name.clear();
+        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a");
+    }
+
+    #[test]
+    fn forge_counts_show_zero_but_hide_missing_suppressed_or_disabled_data() {
+        let mut status = full_status();
+        status.github = GitHubCounts {
+            available: true,
+            ..Default::default()
+        };
+        let with_zero = plain(&status, &[]);
+        assert!(with_zero.contains("📡 owner/repo | ❗ 0 / 🔀 0 | 🅱️ main ↓2 +3"));
+        // #2559: icons, not the old letter labels.
+        assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
+        status.github.available = false;
+        let absent = plain(&status, &[]);
+        assert!(absent.contains("📡 owner/repo | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"));
+        assert!(!absent.contains("-/-"));
+        status.github.available = true;
+        status.github.suppressed = true;
+        assert_eq!(plain(&status, &[]), absent);
+        status.github.suppressed = false;
+        assert_eq!(plain(&status, &["github"]), absent);
+        assert!(!plain(&status, &["git_branch"]).contains("📡"));
+        assert!(!plain(&status, &["git_status"]).contains("💾"));
+        status.repo = None;
+        assert!(plain(&status, &[]).contains("🅱️ main ↓2 +3 | 💾 +1 M1 ?1"));
+    }
+
+    #[test]
+    fn hidden_main_segments_cannot_be_enabled_by_configuration() {
+        let home = tempfile::tempdir().unwrap();
+        // The HOME state folder since #2455 (`$HOME/.moai-cli/state`).
+        std::fs::create_dir_all(home.path().join(".moai-cli/state")).unwrap();
+        std::fs::write(
+            home.path().join(".moai-cli/state/last-session-state.json"),
+            r#"{"active_task":{"command":"TASK_SENTINEL","spec_id":"SPEC","stage":"run"}}"#,
+        )
+        .unwrap();
+        let home_path = home.path().to_string_lossy();
+        let ctx = Context::for_test(&[("HOME", home_path.as_ref())], None);
+        let input = input::parse(
+            br#"{
+                "model":{"display_name":"Opus"},
+                "cwd":"/DIRECTORY_SENTINEL",
+                "agent":{"name":"AGENT_SENTINEL"},
+                "pr":{"number":987,"review_state":"approved"}
+            }"#,
+        )
+        .unwrap();
+        let status = state::collect(Some(&input), &ctx);
+        let config = DisplayConfig {
+            segments: ["directory", "pr", "task", "session"]
+                .into_iter()
+                .map(|key| (key.into(), true))
+                .collect(),
+            ..Default::default()
+        };
+        let output = Renderer::new(&config, None).render(&status);
+        for hidden in ["📁", "💌", "👤", "📋", "SENTINEL", "987", "approved"] {
+            assert!(!output.contains(hidden), "{output:?}");
+        }
+    }
+
+    #[test]
+    fn surviving_options_can_hide_every_line_with_nonempty_fallback() {
+        let disabled = [
+            "model",
+            "effort_thinking",
+            "cache_hit",
+            "claude_version",
+            "moai_version",
+            "session_time",
+            "output_style",
+            "context",
+            "usage_5h",
+            "usage_7d",
+            "session",
+            "git_branch",
+            "git_status",
+        ];
+        assert_eq!(plain(&full_status(), &disabled), "MoAI");
+        let output = plain(&full_status(), &["session", "usage_5h", "usage_7d"]);
+        assert_eq!(output.lines().count(), 3);
+        assert_eq!(output.lines().nth(1), Some("🔋 CTX: █████░░░░░ 50%"));
+    }
+
+    #[test]
+    fn context_warning_keeps_handoff_bands_and_goal_suppression() {
+        let mut status = Status {
+            auto_compact: 85,
+            memory: segments::Memory {
+                tokens_used: 180_000,
+                token_budget: 170_000,
+                context_window_size: 200_000,
+                available: true,
+            },
+            ..Default::default()
+        };
+        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (⚠️ /clear)");
+        status.memory.tokens_used = 190_000;
+        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (🛑/clear!)");
+        status.goal_armed = true;
+        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100%");
+        assert_eq!(plain(&status, &["context"]), "MoAI");
+    }
 
     #[test]
     fn gradient_interpolates_like_go() {
@@ -358,6 +569,88 @@ mod tests {
             apply_base_color("a\x1b[0mb\nc", "\x1b[38;5;1m"),
             "\x1b[22m\x1b[38;5;1ma\x1b[0m\x1b[38;5;1mb\x1b[0m\n\x1b[22m\x1b[38;5;1mc\x1b[0m"
         );
+    }
+
+    fn colored(theme_name: &str, profile: Profile, status: &Status) -> String {
+        let config = DisplayConfig {
+            theme: theme_name.into(),
+            ..Default::default()
+        };
+        Renderer::new(&config, Some(profile)).render(status)
+    }
+
+    fn strip_sgr(text: &str) -> String {
+        let mut out = String::new();
+        let mut rest = text;
+        while let Some(at) = rest.find("\x1b[") {
+            out.push_str(&rest[..at]);
+            let tail = &rest[at..];
+            let end = tail.find('m').expect("SGR ends with m");
+            rest = &tail[end + 1..];
+        }
+        out.push_str(rest);
+        out
+    }
+
+    fn segment_colors(t: &Theme) -> [&'static str; 10] {
+        [
+            t.model, t.effort, t.cache, t.version, t.repo, t.issues, t.prs, t.branch, t.warn,
+            t.alert,
+        ]
+    }
+
+    /// #2559 (user decision 2026-11-12): each segment kind has its own color, distinct
+    /// from the others and from the base text, in both themes and both palettes.
+    #[test]
+    fn each_segment_kind_has_its_own_color() {
+        for (name, t) in [("catppuccin-mocha", MOCHA), ("catppuccin-latte", LATTE)] {
+            for profile in [Profile::TrueColor, Profile::Ansi256] {
+                let mut status = full_status();
+                let out = colored(name, profile, &status);
+                for (hex, text) in [
+                    (t.model, "🤖 Opus"),
+                    (t.effort, "🧠 high·t"),
+                    (t.cache, "♻️ 75%"),
+                    (t.version, "🔅 v2.1.293"),
+                    (t.version, "🗿 v2.0 -> 🗿 v3.0"),
+                    (t.repo, "📡 owner/repo"),
+                    (t.issues, "❗ 7"),
+                    (t.prs, "🔀 3"),
+                    (t.branch, "🅱️ main ↓2 +3"),
+                ] {
+                    assert!(
+                        out.contains(&profile.paint(hex, text)),
+                        "{name} {profile:?}: {text:?} not painted {hex} in {out:?}"
+                    );
+                }
+                // Escapes removed, the text is the NO_COLOR text (AC-2, AC-3 widths).
+                assert_eq!(strip_sgr(&out), plain(&status, &[]));
+
+                status.memory.token_budget = 200_000;
+                status.memory.tokens_used = 180_000;
+                let soft = colored(name, profile, &status);
+                assert!(
+                    soft.contains(&profile.paint(t.warn, "(⚠️ /clear)")),
+                    "{soft:?}"
+                );
+                status.memory.tokens_used = 190_000;
+                let hard = colored(name, profile, &status);
+                assert!(
+                    hard.contains(&profile.paint(t.alert, "(🛑/clear!)")),
+                    "{hard:?}"
+                );
+
+                let mut seen: Vec<String> = vec![profile.foreground(t.text)];
+                for hex in segment_colors(&t) {
+                    let sgr = profile.foreground(hex);
+                    assert!(
+                        !seen.contains(&sgr),
+                        "{name} {profile:?}: {hex} repeats {sgr}"
+                    );
+                    seen.push(sgr);
+                }
+            }
+        }
     }
 
     #[test]

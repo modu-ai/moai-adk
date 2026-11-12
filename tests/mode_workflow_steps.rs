@@ -60,7 +60,9 @@ fn mode_agent_first_run_steps_are_fixed() {
             "merge-train",
             "hand-off",
             "goal-lines",
+            "keep-going",
             "self-pick",
+            "wake",
             "report",
         ]
     );
@@ -166,5 +168,210 @@ fn spans_parse_ops_and_flags() {
             ("claim-verify".to_string(), vec!["--hook".to_string()]),
             ("queue-next".to_string(), vec![])
         ]
+    );
+}
+
+/// The text of one `## Procedure` step (`N. **key** — …` up to the next step or section).
+fn step(text: &str, key: &str) -> String {
+    let head = format!("**{key}** — ");
+    let start = text.find(&head).unwrap_or_else(|| panic!("step {key}"));
+    let rest = &text[start..];
+    let end = rest[head.len()..]
+        .find("\n1")
+        .into_iter()
+        .chain(
+            [
+                "\n2", "\n3", "\n4", "\n5", "\n6", "\n7", "\n8", "\n9", "\n## ",
+            ]
+            .iter()
+            .filter_map(|m| rest[head.len()..].find(m)),
+        )
+        .min()
+        .map_or(rest.len(), |i| i + head.len());
+    rest[..end].to_string()
+}
+
+fn assert_says(text: &str, key: &str, phrases: &[&str]) {
+    let body = step(text, key);
+    for p in phrases {
+        assert!(body.contains(p), "{key} must say `{p}`:\n{body}");
+    }
+}
+
+// #2515: lanes open their own pull requests, settle a simultaneous opening themselves,
+// run one round as a cycle, name their waiting branches, and follow the U6 gate (no tip
+// chasing); the leader workflow says the same.
+#[test]
+fn self_opening_rules_are_pinned_in_both_mode_workflows() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "pr-gate",
+        &[
+            "Below four, open one yourself; no leader nomination is needed",
+            "`git merge-tree`",
+            "among the four lowest open non-draft numbers",
+            "`gh pr ready --undo`",
+            "the author of the lowest-numbered draft marks it ready",
+        ],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &["One round runs `claim → worktree work → verify → push → pull request (when the pr-gate count allows) → report → next round`"],
+    );
+    assert_says(&agent, "report", &["· waiting for PR slot: #<issue> …"]);
+    assert_says(
+        &agent,
+        "merge-train",
+        &[
+            "the latest-tip requirement is off",
+            "Do not merge the tip to follow it",
+        ],
+    );
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "pr-gate",
+        &[
+            "lanes open their own pull requests",
+            "you no longer name the next lane by default",
+        ],
+    );
+    assert_says(
+        &leader,
+        "merge-train",
+        &[
+            "the latest-tip requirement is off",
+            "no conflict and no file both sides changed",
+        ],
+    );
+    for (name, text) in [("mode-agent.md", &agent), ("mode-leader.md", &leader)] {
+        for stale in ["names the one lane", "name the one lane", "at its own turn"] {
+            assert!(!text.contains(stale), "{name} still says `{stale}`");
+        }
+    }
+}
+
+// #2515 (comment 6823975793): ten of twelve lanes ended their turn after `LANE-DONE` and
+// stayed stopped. The round only ends on its end condition; the open-PR limit stops only
+// the opening; a wait is not work; `LANE-DONE` is a progress record; a turn that must end
+// arms a wake first; the leader restarts a stopped lane. Each sentence is pinned.
+#[test]
+fn the_round_keeps_going_until_its_end_condition() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "keep-going",
+        &[
+            "A turn ends only when (i) the repository has no open pull request and no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed)",
+            "(ii) the user says stop",
+            "In every other case do not end the turn",
+            "A card's completion report closes the card, never the round.",
+        ],
+    );
+    // (i) the limit does not block implementation.
+    assert_says(
+        &agent,
+        "pr-gate",
+        &["The limit stops only the opening — go on with the round and claim the next Issue"],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &["with nothing above left and whatever the open-PR count, self-claim a ready Issue"],
+    );
+    assert!(!agent.contains("below the open-PR limit"));
+    // A wait is not work, for CI and for a leader reply alike.
+    assert_says(&agent, "heavy-checks", &["a wait is not work"]);
+    assert_says(
+        &agent,
+        "claim",
+        &["nor on a requested decision or handoff line"],
+    );
+    // (ii) LANE-DONE continues in the same turn.
+    assert_says(
+        &agent,
+        "report",
+        &["A `LANE-DONE` line is a progress record, not a stop: after writing it, go to the next pick in the same turn"],
+    );
+    // (iii) arm a wake before ending a turn.
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "arm a wake before ending the turn, at most 300 seconds away",
+            "`ScheduleWakeup`",
+            "`decision: \"block\"`",
+            "`LANE-BLOCKED <lane> wake no wake mechanism on this host`",
+        ],
+    );
+    assert_says(
+        &agent,
+        "goal-lines",
+        &["The goal is the round, not one card", "`loop_line`"],
+    );
+    // (iv) the leader restarts a stopped lane and answers requests within the round.
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "Restart, do not dispatch",
+            "`순환 계속 — self-pick (1)부터`",
+            "only when its input box is empty",
+        ],
+    );
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "Answer handoff requests, decision requests and `LANE-BLOCKED` lines within the supervision round",
+            "post the handoff line in that round without waiting for a request",
+        ],
+    );
+    // Audit 6824297146 F1/N1: self-pick states the same end condition, exclusions included.
+    assert_says(
+        &agent,
+        "self-pick",
+        &["no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed) — the same end condition as the `keep-going` step"],
+    );
+    // Cause 8 (6824158448): no bare "no startable Issue"; expired foreign claims go up.
+    assert_says(&agent, "state", &["expired claims of other sessions"]);
+    assert_says(
+        &agent,
+        "self-pick",
+        &[
+            "Never report \"no startable Issue\" bare",
+            "When an expired claim of another session blocks an otherwise ready Issue, send `LANE-BLOCKED <lane> #<n> expired claim of <session> — leader handoff needed` for each such Issue and take other work",
+        ],
+    );
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "ownerless — no claim, or an expired claim of a session that is not running",
+            "hand it over with your handoff line",
+        ],
+    );
+    let skill =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"))
+            .unwrap();
+    assert!(skill.contains("reporting a finished card and then stopping is not completion"));
+}
+
+/// #2581: project hooks are read from the session's working folder, so a lane session in a
+/// linked worktree without the project settings file runs no project hook; the manual
+/// `claim-verify` step is then the only boundary. The claim-verify step says so.
+#[test]
+fn claim_verify_names_the_worktree_session_without_project_hooks() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim-verify",
+        &[
+            "The host reads project hooks from the session's working folder",
+            "runs none of the project's hooks, so there this step is the only boundary",
+            "`worktree_sessions: not_reached`",
+        ],
     );
 }

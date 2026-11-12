@@ -19,7 +19,7 @@ rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, 
 
 ## 조합 범위 (P12)
 
-RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode의 host 항목은 전부 `not_run`이다(숨김 없음). rc.2 E2(#2194)부터 `rc-ci`가 결정 01:1x(11-09)의 네 target(Linux x86_64·arm64, macOS arm64·x86_64)에서 check set을 돌린다. 그 결과는 아래 "CI OS matrix" 절에 따로 적는다. CI check set 통과는 host 지원 판정(receipt)이 아니라서 위 지원 행에 더하지 않는다.
+RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode의 host 항목은 전부 `not_run`이다(숨김 없음). rc.2 E2(#2194)부터 `ci`(#2563 전 이름 `rc-ci`)가 결정 01:1x(11-09)의 네 target(Linux x86_64·arm64, macOS arm64·x86_64)에서 check set을 돌린다. 사용자 결정 U10(#2554)부터 PR 에서는 linux-x86_64 만 돌고, 네 target 과 `windows-build` 는 병합하는 push(`v2026.11.0`) 실행에서 같은 check set 으로 돈다. 그 결과는 아래 "CI OS matrix" 절에 따로 적는다. CI check set 통과는 host 지원 판정(receipt)이 아니라서 위 지원 행에 더하지 않는다.
 
 ## 지원 행 (passed receipt 기반 — 6행)
 
@@ -41,7 +41,7 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 | Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
 | ubuntu-24.04 / arm 변형 / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. host E2E receipt 없음(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
-| windows-2025 | — | local | 빌드(`cargo build --offline --locked --all-targets`, 라이브러리·binary·portable 시험 target 컴파일) | PR의 `windows-build` run 참조 | E3 #2195 — 컴파일 증거일 뿐 시험 실행이나 host 지원 보증이 아니다 |
+| windows-2025 | — | local | 빌드(`cargo build --offline --locked --all-targets`, 라이브러리·binary·portable 시험 target 컴파일) | 병합 뒤 push 실행의 `windows-build` 참조(#2554 이전에는 PR 실행) | E3 #2195 — 컴파일 증거일 뿐 시험 실행이나 host 지원 보증이 아니다 |
 | windows-2025 | — | local | 첫 시험 target 컴파일(`--all-targets`) | failed(run `42707532063`, 수리 전 이력) | 당시 `src/agents.rs:1127·1166·1180`, `src/claude.rs:1149`의 Unix 전용 코드가 조건부 컴파일되지 않아 실패했다. 수리에서는 권한 시험과 symlink 구간만 `cfg(unix)`로 제한하고 `--all-targets` 범위를 유지한다. 수리 후보의 결과는 PR의 최신 run으로 확인한다 |
 | windows-2025 | — | local | 추가 integration 시험 컴파일(`--all-targets`) | failed(run `42716692062`, head `1a29cfb4d`, 수리 중 이력) | library 수리 뒤 `tests/apply_receipt.rs`의 Unix chmod 시험에서 실패했다. 권한 시험만 Unix로 제한하고, context·baseline·tree digest·identity의 혼합 시험은 Unix symlink 구간만 제한하여 portable 검사를 유지한다. 최종 Windows 빌드 결과는 PR의 후속 run으로 확인한다 |
 | windows-2025 | — | local | 시험 실행·실행 중 binary 교체(self-replace)·host 로딩 | not_run | 결정 01:1x(11-09): Windows는 빌드 + self-replace 구현만. 교체 경로는 `src/self_update.rs`의 모의 replacer 단위 시험(macOS)으로만 확인했고, 실제 `self_replace` 호출은 시험에서 실행하지 않는다(시험 binary 자신을 교체하므로). 호출부(binary update 경로)는 04-B |
@@ -51,7 +51,7 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 
 ## CI OS matrix (rc.2 E2 #2194) — check set 실측, host 지원 판정 아님
 
-입력은 GitHub Actions `rc-ci` run의 job 결과와 job log뿐이다. 이 절의 행은 host E2E receipt가 아니므로 지원 행 수(RL-10)에 들어가지 않는다. 결론 칸은 GitHub job 결론(`success`/`failure`)을 그대로 적는다.
+입력은 GitHub Actions `ci`(옛 이름 `rc-ci`) run의 job 결과와 job log뿐이다. 이 절의 행은 host E2E receipt가 아니므로 지원 행 수(RL-10)에 들어가지 않는다. 결론 칸은 GitHub job 결론(`success`/`failure`)을 그대로 적는다.
 
 run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae54246bd1ecb099`, 2026-11-09). 모든 runner는 공개 저장소용 표준 GitHub-hosted runner(무료)다.
 
@@ -66,7 +66,7 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 - macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude·Codex 실세션은 어느 target에서도 돌리지 않았다.
 - AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
 - 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
-- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `rc-ci` 집계(`needs: [check]`)에 들어가지 않으므로 `rc-ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
+- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `ci` 집계(`needs: [check]`)에 들어가지 않으므로 `ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
 
 ## RELEASE 시험군 (rc.2 E6 #2198) — fixture 결과, host 지원 판정 아님
 

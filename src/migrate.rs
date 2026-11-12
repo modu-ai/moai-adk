@@ -203,7 +203,7 @@ fn toml_table_sensitive(table: &toml_edit::Table) -> bool {
 // is intentionally limited to a flat scalar map: tags, aliases, nested/multiline
 // values and non-JSON escapes are refused rather than guessed. Plain SPEC text
 // may pass the same policy, but ambiguous escape sequences are never copied.
-fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
+pub(crate) fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
     let text = std::str::from_utf8(bytes).map_err(|_| "text source required")?;
     if sensitive_text(text) {
         return Ok(true);

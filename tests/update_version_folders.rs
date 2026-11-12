@@ -7,6 +7,8 @@
 
 #![cfg(unix)]
 
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -82,7 +84,7 @@ fn version_exe(home: &Path, version: &str) -> PathBuf {
     let bin = home.join(".moai-cli/versions").join(version).join("bin");
     fs::create_dir_all(&bin).unwrap();
     let exe = bin.join("moai-cli");
-    fs::copy(EXE, &exe).unwrap();
+    common::copy_executable(Path::new(EXE), &exe);
     exe
 }
 
@@ -306,13 +308,13 @@ fn a_build_outside_the_layout_stays_blocked_both_ways() {
     install(&a, &f.home, &f.v1);
     let outside = f.root.join("elsewhere/bin/moai-cli");
     fs::create_dir_all(outside.parent().unwrap()).unwrap();
-    fs::copy(EXE, &outside).unwrap();
+    common::copy_executable(Path::new(EXE), &outside);
     assert_blocked_unmanaged(&plan(&outside, &f.home, &f.v2));
 
     let g = fixture();
     let outside = g.root.join("elsewhere/bin/moai-cli");
     fs::create_dir_all(outside.parent().unwrap()).unwrap();
-    fs::copy(EXE, &outside).unwrap();
+    common::copy_executable(Path::new(EXE), &outside);
     install(&outside, &g.home, &g.v1);
     let b = version_exe(&g.home, "b");
     assert_blocked_unmanaged(&plan(&b, &g.home, &g.v2));
@@ -519,6 +521,32 @@ fn a_binary_outside_the_bin_folder_of_a_version_adopts_nothing() {
     let libexec = f.home.join(".moai-cli/versions/b/libexec");
     fs::create_dir_all(&libexec).unwrap();
     let b = libexec.join("moai-cli");
-    fs::copy(EXE, &b).unwrap();
+    common::copy_executable(Path::new(EXE), &b);
     assert_blocked_unmanaged(&plan(&b, &f.home, &f.v2));
+}
+
+// #2543: a version folder whose name is not UTF-8 lends nothing and never fails the plan; the
+// earlier folder's receipt is still adopted. Linux only: macOS APFS refuses such a name
+// (EILSEQ), so there the unit test `update::version_folder_tests` covers the rule.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_version_folder_named_in_bytes_that_are_not_utf8_lends_nothing() {
+    use std::os::unix::ffi::OsStrExt;
+    let f = fixture();
+    let a = version_exe(&f.home, "2026.11.0-rc.1+a");
+    install(&a, &f.home, &f.v1);
+    let [a_id]: [String; 1] = receipt_dirs(&f.home).try_into().unwrap();
+    let bad = f
+        .home
+        .join(".moai-cli/versions")
+        .join(std::ffi::OsStr::from_bytes(b"\xff\xfe-not-utf8"))
+        .join("bin");
+    fs::create_dir_all(&bad).unwrap();
+    common::copy_executable(Path::new(EXE), &bad.join("moai-cli"));
+    let b = version_exe(&f.home, "2026.11.0-rc.1+b");
+    let p = plan(&b, &f.home, &f.v2);
+    assert_ok_for_both(&p);
+    for h in HOSTS {
+        assert_eq!(host(&p, h)["receipt_from"], json!(a_id), "{h}: {p}");
+    }
 }

@@ -108,6 +108,17 @@ class CiCitationLineTest(unittest.TestCase):
     def test_full_citation_passes(self):
         self.assert_pass(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40))
 
+    def test_both_workflow_spellings_follow_the_same_token_rules(self):
+        # #2563: the workflow is renamed rc-ci -> ci. Open PRs keep the old word, new
+        # ones write the new word; neither spelling relaxes the run=/head= checks.
+        for word in ("ci", "rc-ci"):
+            with self.subTest(word=word):
+                self.assert_pass(with_ci(f"- ci: {word} run=42821157127 head=" + HEAD40))
+                self.assert_blocked(with_ci(f"- ci: {word} run=42821157127 head=" + HEAD40[:39]), "ci:head")
+                self.assert_blocked(with_ci(f"- ci: {word} run=42821157127 head=" + HEAD40 + "-dirty"), "ci:head")
+                self.assert_blocked(with_ci(f"- ci: {word} rerun=42821157127 head=" + HEAD40), "ci:run")
+                self.assert_blocked(with_ci(f"- ci: {word} run= head=" + HEAD40), "ci:run")
+
     def test_head_39_hex_blocked(self):
         self.assert_blocked(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40[:39]), "ci:head")
 
@@ -183,7 +194,7 @@ class CiCitationLineTest(unittest.TestCase):
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-CI_FORMAT = "ci: rc-ci run=<run id> head=<40-hex head SHA>"
+CI_FORMAT = "ci: ci run=<run id> head=<40-hex head SHA>"
 
 
 class CheckRunRulesSingleSourceTest(unittest.TestCase):
@@ -220,6 +231,18 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
             self.assertIn(case, text)
         # One build folder per worktree, and lanes report instead of deleting (#2385 follow-up).
         self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
+        # WF-OBS repeat findings documented by Issue #2493, each with its ledger number.
+        self.assertEqual(text.count("\n## Shell and helper rules\n"), 1)
+        # The split retry is bounded (pre-audit FAIL 6814410637 B1): only a refusal of the
+        # combined form, the refused effect stays forbidden, every step passes the same guard.
+        for rule in ("Guard refusal (WF-OBS #17)",
+                     "Only when the refusal is confirmed to be about the combined form",
+                     "not that its effect is forbidden", "the refused effect itself stays forbidden",
+                     "each step must pass the same guard on its own", "Splitting is never a bypass",
+                     "Helper authentication failure (WF-OBS #19)", "record that review as `not_run`",
+                     "Never record a key or token value", "zsh word splitting (WF-OBS #16)",
+                     "for x in ${=var}", "never name a shell function after an existing alias"):
+            self.assertIn(rule, text)
         self.assertNotIn("Reuse the existing target directory instead of creating a new one", text)
         # Cleaning removes cargo output only; `target/` and lane files stay (pre-audit B1).
         # The leader's canonical wording, Issue #2385 comment 6777290466, points 1-4.
@@ -244,7 +267,7 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
 
     def test_pr_form_and_checker_use_the_same_ci_format(self):
         self.assertIn(CI_FORMAT, self.read(".github/pull_request_template.md"))
-        self.assertIn("ci: rc-ci run=<run id> head=<40-hex head SHA>", self.read("tools/check_pr_self_audit.py"))
+        self.assertIn(CI_FORMAT, self.read("tools/check_pr_self_audit.py"))
 
 
 if __name__ == "__main__":

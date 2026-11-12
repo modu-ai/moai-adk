@@ -346,6 +346,20 @@ pub(crate) fn source_tree_sha256(files: &[BackupFile]) -> String {
     sha256_hex(text.as_bytes())
 }
 
+/// Test seam (#2544): `MOAI_CLI_TEST_FAULT=<point>` makes one rename report a failure as if
+/// the OS refused it, without performing it, so the recovery after it runs for real. Debug
+/// builds only; a release build never consults it.
+fn injected_rename_error(point: &str) -> Option<std::io::Error> {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+        return Some(std::io::Error::other(format!(
+            "injected test fault at {point}"
+        )));
+    }
+    let _ = point;
+    None
+}
+
 /// Test seam (#2483 AC-4): `MOAI_CLI_TEST_FAULT=<point>` fails the backup-then-replace
 /// at that point. Read only in debug builds; a release build never consults it.
 pub(crate) fn test_fault(point: &str) -> Result<()> {
@@ -884,6 +898,25 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
     Some((versions, PathBuf::from(folder.file_name()?)))
 }
 
+/// The install ids the builds in the earlier version folders `folders` (names under
+/// `versions`) have, each derived from the same path shape as this build's own id. A folder
+/// whose path cannot form an id (a name that is not UTF-8) lends nothing and is skipped, so
+/// one such folder never fails the whole plan (#2543).
+fn earlier_install_ids(
+    versions: &Path,
+    folders: &[PathBuf],
+    exe_name: &std::ffi::OsStr,
+) -> Result<Vec<(PathBuf, String)>> {
+    Ok(folders
+        .iter()
+        .filter_map(|name| {
+            crate::install::install_id(&versions.join(name).join("bin").join(exe_name))
+                .ok()
+                .map(|id| (name.clone(), id))
+        })
+        .collect())
+}
+
 /// Picks the host receipt that supplies the baseline (#2521).
 ///
 /// Only a build inside the layout looks beyond its own receipt: it also reads the host
@@ -948,8 +981,7 @@ pub(crate) fn resolve_host_receipt(
         }
     }
     folders.sort();
-    for name in folders {
-        let id = crate::install::install_id(&versions.join(&name).join("bin").join(&exe_name))?;
+    for (_, id) in earlier_install_ids(&versions, &folders, &exe_name)? {
         if id == install_id {
             continue;
         }
@@ -1281,6 +1313,124 @@ struct HostOutcome {
     blocked_reason: Option<String>,
     /// #2483: the backup directory of a backup-then-replace.
     backup_dir: Option<String>,
+}
+
+/// #2522: the skill package installed with this binary. The release layout puts it beside
+/// the binary's folder, `<version folder>/skills/moai` next to `<version folder>/bin/moai-cli`
+/// (decisions L165), so it is found from the canonical executable path. The folder itself
+/// must be a real directory; `stage_package` then applies the usual package rules.
+pub fn installed_package_dir() -> Result<PathBuf> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    let dir = exe
+        .parent()
+        .and_then(Path::parent)
+        .ok_or("binary path has no parent folder")?
+        .join("skills")
+        .join(SKILL_DIR);
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => Ok(dir),
+        Ok(m) if m.file_type().is_symlink() => {
+            Err("the installed skill package folder is a symlink; refused".into())
+        }
+        _ => Err(format!(
+            "no skill package installed with this binary (expected {}); use update-plan and \
+             update-apply with a package folder instead",
+            dir.display()
+        )),
+    }
+}
+
+/// #2522: one-line `moai-cli update` over the package installed with this binary.
+///
+/// Always computes the same preview as `update-plan`. Without a confirmation it writes
+/// nothing and returns the preview with the exact confirming command. `confirm` is the
+/// preview's `plan_digest` (`--confirm`); `ask` is the terminal question, called only when
+/// no digest was given, and answering yes confirms the preview it was shown. A confirmed
+/// run goes through `apply_update` with that digest, so a plan that changed in between is
+/// refused before any write. A backup-then-replace is never confirmed here: it keeps its
+/// explicit `update-apply --confirm-backup-replace` token.
+pub fn update_command(
+    home: &Path,
+    confirm: Option<&str>,
+    ask: impl FnOnce(&UpdatePlan) -> Result<bool>,
+) -> Result<serde_json::Value> {
+    let package = installed_package_dir()?;
+    let staged = stage_package(&package)?;
+    let plan = plan_update(home, &staged)?;
+    let package_text = package
+        .to_str()
+        .ok_or("non UTF-8 package path")?
+        .to_string();
+    // #2540: a plan that would write nothing (every host blocked or unchanged) is shown, never
+    // asked about.
+    let writes = plan_writes_anything(&plan);
+    let digest = match confirm {
+        Some(d) => d.to_string(),
+        None if writes && ask(&plan)? => plan.plan_digest.clone(),
+        None => {
+            return Ok(json!({
+                "mode": "preview",
+                "applied": false,
+                "nothing_to_apply": !writes,
+                "package": package_text,
+                "plan": plan,
+                "confirm_with": format!("moai-cli update --confirm {}", plan.plan_digest),
+            }))
+        }
+    };
+    let result = apply_update(
+        home,
+        &staged,
+        &plan,
+        &digest,
+        "moai-cli update confirmation",
+        &[],
+    )?;
+    // #2540: `applied` says whether files were written, not only that the apply step ran.
+    let applied = matches!(result["status"].as_str(), Some("applied" | "partial"));
+    Ok(json!({
+        "mode": "applied",
+        "applied": applied,
+        "package": package_text,
+        "plan_digest": digest,
+        "result": result,
+    }))
+}
+
+/// True when confirming `plan` would write at least one file (#2540): some host is not
+/// blocked and has a `create` or `update` action. A host blocked for a backup-then-replace
+/// counts as writing nothing here, since `update` never confirms that procedure.
+pub fn plan_writes_anything(plan: &UpdatePlan) -> bool {
+    plan.hosts.iter().any(|h| {
+        h.preflight != "blocked"
+            && h.files
+                .iter()
+                .any(|f| f.action == "create" || f.action == "update")
+    })
+}
+
+/// A short per-host summary of a plan for the terminal question (#2522).
+pub fn plan_summary(plan: &UpdatePlan) -> String {
+    let mut out = String::new();
+    for h in &plan.hosts {
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for f in &h.files {
+            *counts.entry(f.action.as_str()).or_default() += 1;
+        }
+        let counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        out.push_str(&format!(
+            "  {}: {} — {}{}\n",
+            h.host,
+            h.preflight,
+            counts.join(", "),
+            h.blocked_reason
+                .as_ref()
+                .map(|r| format!(" ({r})"))
+                .unwrap_or_default()
+        ));
+    }
+    out
 }
 
 /// Applies the plan host by host (REQ-04B-03..06). Refuses anything but a freshly
@@ -1848,7 +1998,11 @@ fn run_backup_then_replace(
         });
     }
     test_fault("mid_replace")?;
-    if let Err(e) = fs::rename(&incoming, &root) {
+    let into_place = match injected_rename_error("stage_rename") {
+        Some(e) => Err(e),
+        None => fs::rename(&incoming, &root),
+    };
+    if let Err(e) = into_place {
         return Err(match fs::rename(&moved, &root) {
             Ok(()) => {
                 format!("moving the staged package into place failed ({e}); the original was moved back")
@@ -1958,4 +2112,32 @@ fn host_outcome_fields(o: &HostOutcome) -> serde_json::Value {
         "host_loaded": false,
         "execution_verified": "not_run",
     })
+}
+
+#[cfg(test)]
+mod version_folder_tests {
+    use super::*;
+
+    /// #2543: a version folder whose name is not UTF-8 cannot form an install id; it lends
+    /// nothing, and the other folders still do — it never fails the whole plan.
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_name_that_is_not_utf8_lends_nothing_instead_of_failing() {
+        use std::os::unix::ffi::OsStrExt;
+        let versions = Path::new("/home-fixture/.moai-cli/versions");
+        let bad = PathBuf::from(std::ffi::OsStr::from_bytes(b"\xff\xfe-not-utf8"));
+        let good = PathBuf::from("2026.11.0-rc.1");
+        let ids = earlier_install_ids(
+            versions,
+            &[bad, good.clone()],
+            std::ffi::OsStr::new("moai-cli"),
+        )
+        .expect("a non-UTF-8 folder name must not fail the plan");
+        assert_eq!(ids.len(), 1, "{ids:?}");
+        assert_eq!(ids[0].0, good);
+        assert_eq!(
+            ids[0].1,
+            crate::install::install_id(&versions.join(&good).join("bin").join("moai-cli")).unwrap()
+        );
+    }
 }
