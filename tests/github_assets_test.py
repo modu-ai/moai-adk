@@ -204,7 +204,7 @@ class LabelTaxonomyTest(unittest.TestCase):
         reused = [name for group in data["reused"].values() for name in group]
         self.assertEqual([n for n in reused if n not in remote], [], "reused labels must exist remotely")
         # An `added` label is either already remote with the same colour and description, or not
-        # remote yet: `rc-label-sync` apply only creates missing ones and never edits, so a
+        # remote yet: `moai-label-sync` apply only creates missing ones and never edits, so a
         # remote label that differs would never converge.
         for item in data["added"]:
             with self.subTest(label=item["name"]):
@@ -220,14 +220,14 @@ class LabelTaxonomyTest(unittest.TestCase):
 WORKFLOWS = ROOT / ".github/workflows"
 PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
-# The only write scope a workflow may hold: rc-label-sync's manual apply job creates labels.
-ALLOWED_WRITES = {("rc-label-sync.yml", "apply"): {"issues"}}
+# The only write scope a workflow may hold: moai-label-sync's manual apply job creates labels.
+ALLOWED_WRITES = {("moai-label-sync.yml", "apply"): {"issues"}}
 
 
 class WorkflowTest(unittest.TestCase):
     def workflows(self):
         paths = sorted(WORKFLOWS.glob("*.yml"))
-        self.assertEqual([p.name for p in paths], ["ci.yml", "rc-label-sync.yml"])
+        self.assertEqual([p.name for p in paths], ["ci.yml", "moai-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -331,11 +331,11 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('[ "${{ needs.check.result }}" = "success" ]', gate)
 
     def test_label_sync_is_a_dry_run_unless_applied_by_hand(self):
-        flow = dict(self.workflows())[WORKFLOWS / "rc-label-sync.yml"]
+        flow = dict(self.workflows())[WORKFLOWS / "moai-label-sync.yml"]
         triggers = flow.get("on", flow.get(True))
         self.assertIs(triggers["workflow_dispatch"]["inputs"]["apply"]["default"], False)
         self.assertIn("workflow_dispatch", flow["jobs"]["apply"]["if"])
-        text = (WORKFLOWS / "rc-label-sync.yml").read_text(encoding="utf-8")
+        text = (WORKFLOWS / "moai-label-sync.yml").read_text(encoding="utf-8")
         self.assertIn(".github/moai/labels.yml", text)
         self.assertIsNone(re.search(r"gh label (delete|edit)|--force", text), "no label edits or deletes")
 

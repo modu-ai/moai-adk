@@ -52,7 +52,7 @@
     {"name": "b05-task-state", "class": "b", "stdin": "stdin/a01-minimal.json",
      "setup": [{"kind": "write", "under": "moai_home", "path": "state/last-session-state.json",
                 "content": "{\"active_task\": {\"command\": \"run\", \"spec_id\": \"SPEC-DEMO-001\", \"stage\": \"green\"}}\n"},
-               {"kind": "write", "under": "rc_home", "path": "state/last-session-state.json",
+               {"kind": "write", "under": "cli_home", "path": "state/last-session-state.json",
                 "content": "{\"active_task\": {\"command\": \"run\", \"spec_id\": \"SPEC-DEMO-001\", \"stage\": \"green\"}}\n"}],
      "covers": ["task segment from the HOME session state: Go recorded it from MOAI_HOME/state/, moai-cli reads HOME/.moai-cli/state/ (#2455)"]},
     {"name": "b06-goal-armed", "class": "b", "stdin": "stdin/b-goal.json",
