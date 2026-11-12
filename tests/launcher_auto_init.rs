@@ -232,6 +232,43 @@ fn home_itself_is_never_initialized_also_through_a_symlinked_home() {
     assert!(err.contains("HOME"), "{err}");
 }
 
+/// #2501 (audit note 6812547778, item 2): the root guard through the real CLI. The launch runs
+/// in the real `/` under `--dry-run`, which writes nothing even if the guard were gone (the
+/// guard runs before the dry-run branch, so without it the launch would only report "would
+/// initialize /"). The test also checks that `/` and the temporary HOME are unchanged.
+#[test]
+fn the_file_system_root_is_never_initialized_through_the_cli() {
+    let root = Path::new("/");
+    let not_a_repository = !common::git::command()
+        .args(["-C", "/", "rev-parse", "--is-inside-work-tree"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+        .success();
+    assert!(
+        not_a_repository,
+        "precondition: / must not be a git work tree"
+    );
+    for args in [
+        &["cc", "-a", "--dry-run"][..],
+        &["codex", "-l", "--dry-run"][..],
+    ] {
+        let f = fixture();
+        let home_before = entries(f.home.path());
+        let before = entries(root);
+        let out = run_in(&f, root, args);
+        let err = refused_without_writes(&f, &out, root, &before);
+        assert!(err.contains("the file-system root"), "{args:?}: {err}");
+        assert!(!err.contains("would initialize"), "{args:?}: {err}");
+        assert_eq!(
+            entries(f.home.path()),
+            home_before,
+            "{args:?}: HOME changed"
+        );
+    }
+}
+
 #[test]
 fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
     for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
@@ -378,4 +415,205 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
     );
     let first = first.wait_with_output().unwrap();
     assert_eq!(json(&first)["name"], "agent-1");
+}
+
+/// #2504: a first launch that stops between the settings and AGENTS.md leaves its marker in the
+/// clone's common dir; the next launch finishes the AGENTS.md step and removes the marker. A dry
+/// run in between only reports what it would finish.
+#[test]
+fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path();
+    let marker_file = dir.join(".git/.moai-cli/sessions/.init-pending");
+    let out = command(&f, dir, &with_git(&f), &["cc", "-a"])
+        .env(moai_cli::launcher_init::INIT_TEST_FAIL_VAR, "1")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert!(!marker(&f).exists(), "the host must not start");
+    assert!(dir.join(".moai-cli/project.yaml").is_file());
+    assert!(!dir.join("AGENTS.md").exists());
+    assert!(
+        marker_file.is_file(),
+        "the interrupted launch leaves its marker"
+    );
+
+    let v = json(&run_in(&f, dir, &["cc", "-a", "--dry-run"]));
+    assert!(
+        v["notes"]
+            .to_string()
+            .contains("would finish the interrupted initialization"),
+        "{v}"
+    );
+    assert!(!dir.join("AGENTS.md").exists());
+
+    let out = run_in(&f, dir, &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert_eq!(init_lines(&out), 1, "{}", text(&out));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("interrupted initialization finished"),
+        "{}",
+        text(&out)
+    );
+    let agents = fs::read(dir.join("AGENTS.md")).unwrap();
+    assert!(
+        String::from_utf8_lossy(&agents).contains("<!-- moai:managed:begin id=moai-workflow -->")
+    );
+    assert!(!marker_file.exists(), "the marker is removed once finished");
+
+    let out = run_in(&f, dir, &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-2");
+    assert_eq!(init_lines(&out), 0, "{}", text(&out));
+    assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
+}
+
+/// #2504: only an interrupted first launch is finished. After a complete one the marker is gone,
+/// so an AGENTS.md the user deleted is not brought back (the agents engine's rule as well).
+#[test]
+fn an_agents_md_deleted_after_a_finished_first_launch_stays_deleted() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path();
+    json(&run_in(&f, dir, &["cc", "-a"]));
+    assert!(!dir.join(".git/.moai-cli/sessions/.init-pending").exists());
+    fs::remove_file(dir.join("AGENTS.md")).unwrap();
+    let out = run_in(&f, dir, &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-2");
+    assert_eq!(init_lines(&out), 0, "{}", text(&out));
+    assert!(!dir.join("AGENTS.md").exists());
+}
+
+/// #2489: two first launches race on `git init` (CI run 43146819966: "git init failed" while
+/// the other launch was still creating the repository). A `git` shim ahead of the real git makes
+/// the race certain: the first `init` takes 2 s, an `init` that starts meanwhile fails at once,
+/// as git's own `.git/config` lock does. The second launch must wait for the first instead.
+#[test]
+fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
+    let f = fixture();
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_string();
+    assert!(real.starts_with('/'), "real git: {real}");
+    let shims = tempfile::tempdir().unwrap();
+    let shim = shims.path().join("git");
+    let calls = shims.path().join("init-calls");
+    fs::write(
+        &shim,
+        format!(
+            "#!/bin/sh\nfor a; do last=$a; done\ncase \" $* \" in *\" init \"*)\n  echo init >> '{calls}'\n  if mkdir \"$last/.init-race\" 2>/dev/null; then sleep 2; else exit 1; fi;;\nesac\nexec '{real}' \"$@\"\n",
+            calls = calls.display()
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&shim, fs::Permissions::from_mode(0o755)).unwrap();
+    let path_var = format!("{}:{}", shims.path().display(), with_git(&f));
+    let plain = tempfile::tempdir().unwrap();
+    let first = command(&f, plain.path(), &path_var, &["cc", "-a"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    while !plain.path().join(".init-race").exists() {
+        assert!(
+            start.elapsed().as_secs() < 120,
+            "first git init never started"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    let second = command(&f, plain.path(), &path_var, &["cc", "-a"])
+        .output()
+        .unwrap();
+    let first = first.wait_with_output().unwrap();
+    let mut names = vec![
+        json(&first)["name"].as_str().unwrap().to_string(),
+        json(&second)["name"].as_str().unwrap().to_string(),
+    ];
+    names.sort();
+    assert_eq!(names, ["agent-1", "agent-2"]);
+    // The launch that waited found the repository and ran no `git init` of its own.
+    assert_eq!(fs::read_to_string(&calls).unwrap(), "init\n");
+}
+
+/// PR #2494 audit B1: the `git init` lock sits in the OS temporary folder under a predictable
+/// name. A symlink planted there is never followed — its target is not created — and the launch
+/// still succeeds without the lock.
+#[test]
+fn a_symlink_planted_at_the_git_init_lock_is_not_followed() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = tempfile::tempdir().unwrap();
+    let canonical = plain.path().canonicalize().unwrap();
+    let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
+    let lock = tmp.path().join(format!(
+        "moai-cli-git-init-{}.lock",
+        &id.strip_prefix("sha256:").unwrap()[..16]
+    ));
+    let target = tmp.path().join("planted-target");
+    std::os::unix::fs::symlink(&target, &lock).unwrap();
+    let out = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+        .env("TMPDIR", tmp.path())
+        .output()
+        .unwrap();
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert!(plain.path().join(".git").is_dir());
+    assert!(!target.exists(), "the symlink target must not be created");
+    assert!(fs::symlink_metadata(&lock)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}
+
+/// PR #2494 re-audit B1': `init_lock` must actually apply the owner rule. Without a second
+/// account: the test itself holds the lock file (owned by this account) while HOME is `/usr`,
+/// whose owner is root, so the lock is not "ours" and the launch must not wait on it — it falls
+/// back to the unlocked init and finishes while the lock is still held.
+#[test]
+fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = tempfile::tempdir().unwrap();
+    let canonical = plain.path().canonicalize().unwrap();
+    let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
+    let lock = tmp.path().join(format!(
+        "moai-cli-git-init-{}.lock",
+        &id.strip_prefix("sha256:").unwrap()[..16]
+    ));
+    let held = fs::File::create(&lock).unwrap();
+    held.lock().unwrap();
+    {
+        use std::os::unix::fs::MetadataExt;
+        assert_ne!(
+            fs::metadata("/usr").unwrap().uid(),
+            fs::metadata(&lock).unwrap().uid(),
+            "the test needs a HOME owned by another account"
+        );
+    }
+    let mut child = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+        .env("TMPDIR", tmp.path())
+        .env("HOME", "/usr")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    while child.try_wait().unwrap().is_none() {
+        if start.elapsed().as_secs() > 90 {
+            let _ = child.kill();
+            panic!("the launch waited on a lock that is not the HOME owner's");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert!(plain.path().join(".git").is_dir());
+    drop(held);
 }

@@ -207,6 +207,11 @@ pub struct HostPlan {
     /// clean scan, nothing owned). Left out otherwise, so other plans keep their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup_then_replace: Option<BackupThenReplace>,
+    /// #2521: the `install_id` of the earlier version folder whose host receipt supplies
+    /// this host's baseline (see [`resolve_host_receipt`]). Left out when the baseline is
+    /// this installation's own receipt or there is none, so other plans keep their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub receipt_from: Option<String>,
 }
 
 /// One file of the folder a backup-then-replace moves (#2483).
@@ -258,6 +263,8 @@ pub struct ReplaceBackup {
 const BACKUP_MANIFEST: &str = "MANIFEST.json";
 /// The moved original folder inside a backup directory.
 pub(crate) const BACKUP_TREE: &str = "moai";
+/// #2505: the package is staged and verified here before the original folder moves.
+pub(crate) const BACKUP_INCOMING: &str = "incoming";
 
 fn file_mode(meta: &fs::Metadata) -> u32 {
     #[cfg(unix)]
@@ -350,23 +357,24 @@ pub(crate) fn test_fault(point: &str) -> Result<()> {
     Ok(())
 }
 
-/// Test seam (#2483 AC-5): `MOAI_CLI_TEST_FAULT=corrupt_after_move` appends one byte to
-/// the first moved file, standing in for a writer that changes the folder between the
-/// move and the manifest check. Debug builds only.
-fn test_corrupt_moved(moved: &Path, files: &[BackupFile]) {
+/// Test seam (#2483 AC-5, #2505 X6): `MOAI_CLI_TEST_FAULT=<point>` appends one byte to the
+/// first file of `files` under `dir`, standing in for a writer that changes a folder between
+/// a move and its manifest check (`corrupt_after_move` in the replace, `corrupt_after_restore`
+/// in recovery). Debug builds only.
+pub(crate) fn test_corrupt_first_file(point: &str, dir: &Path, files: &[BackupFile]) {
     #[cfg(debug_assertions)]
-    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok("corrupt_after_move") {
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
         if let Some(first) = files.first() {
             if let Ok(mut f) = fs::OpenOptions::new()
                 .append(true)
-                .open(moved.join(&first.path))
+                .open(dir.join(&first.path))
             {
                 use std::io::Write as _;
                 let _ = f.write_all(b"x");
             }
         }
     }
-    let _ = (moved, files);
+    let _ = (point, dir, files);
 }
 
 /// Refuses a symlink in any existing component between `~/.moai-cli` and `dir`.
@@ -849,6 +857,167 @@ pub(crate) fn current_install_id(home: &Path) -> Result<String> {
     Ok(plan_receipt(&exe, home, InstallerOwner::Unknown)?.install_id)
 }
 
+/// Where a host's baseline receipt comes from (#2521).
+pub(crate) struct ReceiptSource {
+    pub receipt: Option<HostReceipt>,
+    /// The earlier installation's id when its receipt was adopted.
+    pub from: Option<String>,
+    /// Set when no baseline can be chosen safely; the host is blocked with this reason.
+    pub blocked: Option<String>,
+}
+
+/// The decided layout installs every build in its own folder,
+/// `<home>/.moai-cli/versions/<version>/bin/<exe>` (decisions L165), and `install_id` is
+/// derived from that path, so each upgrade starts a new installation id. Returns the
+/// `versions` directory and this build's folder name when the canonical executable sits
+/// exactly there (compared by path components); `None` for any other location.
+fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf, PathBuf)> {
+    let bin = canonical_exe.parent()?;
+    if bin.file_name()? != "bin" {
+        return None;
+    }
+    let folder = bin.parent()?;
+    let versions = canonical_home.join(crate::HOME_STATE_DIR).join("versions");
+    if folder.parent()? != versions {
+        return None;
+    }
+    Some((versions, PathBuf::from(folder.file_name()?)))
+}
+
+/// Picks the host receipt that supplies the baseline (#2521).
+///
+/// Only a build inside the layout looks beyond its own receipt: it also reads the host
+/// receipts of the other folders under `versions/` — each id derived from the same path
+/// shape this build has — and takes the one that finished last, its own included (so going
+/// back A → B → A reads B's newer state, not A's stale receipt). A folder or receipt
+/// directory that is a symlink lends nothing; a build outside the layout neither adopts nor
+/// lends. The adopted receipt is only read: apply writes the new receipt under this
+/// installation's id. Own pending → returned as is (the existing pending block applies);
+/// an earlier folder's pending receipt that is newer than every finished one, an unreadable
+/// one, or two different folders finishing in the same second → blocked, never guessed.
+pub(crate) fn resolve_host_receipt(
+    canonical_home: &Path,
+    install_id: &str,
+    host: &str,
+) -> Result<ReceiptSource> {
+    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let plain = |receipt| ReceiptSource {
+        receipt,
+        from: None,
+        blocked: None,
+    };
+    if own.as_ref().is_some_and(|r| r.status == "pending") {
+        return Ok(plain(own));
+    }
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    let Some((versions, own_folder)) = layout_folder(canonical_home, &exe) else {
+        return Ok(plain(own));
+    };
+    let exe_name = exe.file_name().ok_or("binary path unavailable")?.to_owned();
+    let installations = canonical_home
+        .join(crate::HOME_STATE_DIR)
+        .join("installations");
+    let blocked = |reason: String| ReceiptSource {
+        receipt: None,
+        from: None,
+        blocked: Some(reason),
+    };
+
+    let finished_key = |r: &HostReceipt| r.finished_at.clone().unwrap_or(r.started_at.clone());
+    // (key, id, receipt); own first so it wins a tie with an earlier folder.
+    let mut best: Option<(String, Option<String>, HostReceipt)> =
+        own.map(|r| (finished_key(&r), None, r));
+    let mut newest_pending: Option<(String, String)> = None;
+    let mut tie = false;
+
+    let entries = match fs::read_dir(&versions) {
+        Ok(e) => e,
+        Err(_) => return Ok(plain(best.map(|(_, _, r)| r))),
+    };
+    let mut folders: Vec<PathBuf> = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|_| "versions directory unreadable".to_string())?;
+        let name = PathBuf::from(entry.file_name());
+        if name == own_folder {
+            continue;
+        }
+        match fs::symlink_metadata(entry.path()) {
+            Ok(m) if m.is_dir() => folders.push(name),
+            _ => continue, // a link or a file lends nothing
+        }
+    }
+    folders.sort();
+    for name in folders {
+        let id = crate::install::install_id(&versions.join(&name).join("bin").join(&exe_name))?;
+        if id == install_id {
+            continue;
+        }
+        match fs::symlink_metadata(installations.join(&id)) {
+            Ok(m) if m.is_dir() => {}
+            _ => continue, // never installed anything, or a linked receipt directory
+        }
+        let path = host_receipt_path(canonical_home, &id, host, false)?;
+        let receipt = match load_host_receipt(&path) {
+            Ok(Some(r)) => r,
+            Ok(None) => continue,
+            Err(e) => {
+                return Ok(blocked(format!(
+                    "the host receipt of the earlier installation {id} is unreadable ({e}); \
+                     nothing was adopted"
+                )))
+            }
+        };
+        if receipt.install_id != id || receipt.host != host {
+            return Ok(blocked(format!(
+                "the host receipt of the earlier installation {id} names another \
+                 installation or host; nothing was adopted"
+            )));
+        }
+        if receipt.status == "pending" {
+            if newest_pending
+                .as_ref()
+                .is_none_or(|(k, _)| receipt.started_at > *k)
+            {
+                newest_pending = Some((receipt.started_at.clone(), id));
+            }
+            continue;
+        }
+        let key = finished_key(&receipt);
+        match &best {
+            Some((k, _, _)) if key < *k => {}
+            Some((k, from, _)) if key == *k => tie |= from.is_some(),
+            _ => {
+                tie = false;
+                best = Some((key, Some(id), receipt));
+            }
+        }
+    }
+    if let Some((started, id)) = newest_pending {
+        if best.as_ref().is_none_or(|(k, _, _)| started >= *k) {
+            return Ok(blocked(format!(
+                "the host receipt of the earlier installation {id} is pending; run \
+                 recovery-plan with that version's binary first"
+            )));
+        }
+    }
+    if tie {
+        return Ok(blocked(
+            "two earlier installations finished in the same second; the baseline is \
+             ambiguous and nothing was adopted"
+                .into(),
+        ));
+    }
+    Ok(match best {
+        Some((_, from, r)) => ReceiptSource {
+            receipt: Some(r),
+            from,
+            blocked: None,
+        },
+        None => plain(None),
+    })
+}
+
 /// Read-only three-way plan over every host (REQ-04B-01/02/03). Writes nothing.
 pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
@@ -865,16 +1034,24 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             .ok_or("non UTF-8 projection path")?
             .to_string();
         let (blocked, scan) = preflight(&canonical_home, host);
-        let receipt = if blocked.is_some() {
-            None
+        // #2521: the baseline may come from an earlier version folder's receipt.
+        let source = if blocked.is_some() {
+            ReceiptSource {
+                receipt: None,
+                from: None,
+                blocked: None,
+            }
         } else {
-            let path = host_receipt_path(&canonical_home, &install_id, host, false)?;
-            load_host_receipt(&path)?
+            resolve_host_receipt(&canonical_home, &install_id, host)?
         };
+        let receipt_from = source.from;
+        let receipt = source.receipt;
         // REQ-04C-04 (04-C #2000): a pending host takes no new apply until recovered; the
-        // other hosts plan as usual.
-        let (blocked, scan) = match &receipt {
-            Some(r) if r.status == "pending" => (
+        // other hosts plan as usual. A baseline that cannot be chosen safely blocks the
+        // same way.
+        let (blocked, scan) = match (&receipt, source.blocked) {
+            (_, Some(reason)) => (Some(reason), None),
+            (Some(r), None) if r.status == "pending" => (
                 Some("host receipt is pending; run recovery-plan first".to_string()),
                 None,
             ),
@@ -1001,7 +1178,9 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
                         .into_owned(),
                     backup_layout: format!(
                         "<apply UTC>-{host}/{BACKUP_TREE} (the folder, moved as is) and \
-                         <apply UTC>-{host}/{BACKUP_MANIFEST}"
+                         <apply UTC>-{host}/{BACKUP_MANIFEST}; a second run in the same \
+                         second uses <apply UTC>.2-{host} (up to .{BACKUP_NAME_TRIES}); the \
+                         package is staged in <apply UTC>-{host}/{BACKUP_INCOMING} first"
                     ),
                     replace_with: ReplaceWith {
                         package_digest: staged.digest.clone(),
@@ -1048,6 +1227,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             },
             files,
             backup_then_replace,
+            receipt_from,
         });
     }
 
@@ -1101,6 +1281,106 @@ struct HostOutcome {
     blocked_reason: Option<String>,
     /// #2483: the backup directory of a backup-then-replace.
     backup_dir: Option<String>,
+}
+
+/// #2522: the skill package installed with this binary. The release layout puts it beside
+/// the binary's folder, `<version folder>/skills/moai` next to `<version folder>/bin/moai-cli`
+/// (decisions L165), so it is found from the canonical executable path. The folder itself
+/// must be a real directory; `stage_package` then applies the usual package rules.
+pub fn installed_package_dir() -> Result<PathBuf> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    let dir = exe
+        .parent()
+        .and_then(Path::parent)
+        .ok_or("binary path has no parent folder")?
+        .join("skills")
+        .join(SKILL_DIR);
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => Ok(dir),
+        Ok(m) if m.file_type().is_symlink() => {
+            Err("the installed skill package folder is a symlink; refused".into())
+        }
+        _ => Err(format!(
+            "no skill package installed with this binary (expected {}); use update-plan and \
+             update-apply with a package folder instead",
+            dir.display()
+        )),
+    }
+}
+
+/// #2522: one-line `moai-cli update` over the package installed with this binary.
+///
+/// Always computes the same preview as `update-plan`. Without a confirmation it writes
+/// nothing and returns the preview with the exact confirming command. `confirm` is the
+/// preview's `plan_digest` (`--confirm`); `ask` is the terminal question, called only when
+/// no digest was given, and answering yes confirms the preview it was shown. A confirmed
+/// run goes through `apply_update` with that digest, so a plan that changed in between is
+/// refused before any write. A backup-then-replace is never confirmed here: it keeps its
+/// explicit `update-apply --confirm-backup-replace` token.
+pub fn update_command(
+    home: &Path,
+    confirm: Option<&str>,
+    ask: impl FnOnce(&UpdatePlan) -> Result<bool>,
+) -> Result<serde_json::Value> {
+    let package = installed_package_dir()?;
+    let staged = stage_package(&package)?;
+    let plan = plan_update(home, &staged)?;
+    let package_text = package
+        .to_str()
+        .ok_or("non UTF-8 package path")?
+        .to_string();
+    let digest = match confirm {
+        Some(d) => d.to_string(),
+        None if ask(&plan)? => plan.plan_digest.clone(),
+        None => {
+            return Ok(json!({
+                "mode": "preview",
+                "applied": false,
+                "package": package_text,
+                "plan": plan,
+                "confirm_with": format!("moai-cli update --confirm {}", plan.plan_digest),
+            }))
+        }
+    };
+    let result = apply_update(
+        home,
+        &staged,
+        &plan,
+        &digest,
+        "moai-cli update confirmation",
+        &[],
+    )?;
+    Ok(json!({
+        "mode": "applied",
+        "applied": true,
+        "package": package_text,
+        "plan_digest": digest,
+        "result": result,
+    }))
+}
+
+/// A short per-host summary of a plan for the terminal question (#2522).
+pub fn plan_summary(plan: &UpdatePlan) -> String {
+    let mut out = String::new();
+    for h in &plan.hosts {
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for f in &h.files {
+            *counts.entry(f.action.as_str()).or_default() += 1;
+        }
+        let counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        out.push_str(&format!(
+            "  {}: {} — {}{}\n",
+            h.host,
+            h.preflight,
+            counts.join(", "),
+            h.blocked_reason
+                .as_ref()
+                .map(|r| format!(" ({r})"))
+                .unwrap_or_default()
+        ));
+    }
+    out
 }
 
 /// Applies the plan host by host (REQ-04B-03..06). Refuses anything but a freshly
@@ -1239,8 +1519,11 @@ pub fn apply_update(
 
         // Transaction start: pending receipt BEFORE the first file write (REQ-04B-04a),
         // carrying the pre-apply ownership manifest.
-        let receipt_path = host_receipt_path(&canonical_home, &install_id, host, true)?;
-        let previous = load_host_receipt(&receipt_path)?;
+        // Creates the receipt directory (refusing a symlinked component) before any write.
+        host_receipt_path(&canonical_home, &install_id, host, true)?;
+        // #2521: the same baseline the plan used (an earlier version folder's receipt is
+        // read, never written; the new receipt goes under this installation's id).
+        let previous = resolve_host_receipt(&canonical_home, &install_id, host)?.receipt;
         let pre_owned = owned_map(previous.as_ref());
         let top_skills_existed = fs::symlink_metadata(home.join(skills_dir(host))).is_ok();
         let mut receipt = HostReceipt {
@@ -1414,9 +1697,51 @@ pub fn apply_update(
     }))
 }
 
-/// UTC `YYYYMMDDTHHMMSSZ` for backup directory names.
+/// UTC `YYYYMMDDTHHMMSSZ` for backup directory names. Test seam (#2505): debug builds take
+/// an alphanumeric `MOAI_CLI_TEST_BACKUP_STAMP` instead, so same-second runs reproduce.
 fn compact_stamp() -> String {
+    #[cfg(debug_assertions)]
+    if let Ok(s) = std::env::var("MOAI_CLI_TEST_BACKUP_STAMP") {
+        if !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric()) {
+            return s;
+        }
+    }
     now_rfc3339().replace(['-', ':'], "")
+}
+
+/// Backup folder names tried for one stamp (#2505): `<stamp>-<host>`, then `<stamp>.2-<host>`
+/// through `<stamp>.16-<host>`. The `-<host>` suffix stays last so a listing still groups by
+/// host.
+pub(crate) const BACKUP_NAME_TRIES: usize = 16;
+
+/// Creates the first free backup folder name for `stamp` and `host` (exclusive create, so two
+/// runs never share one). A taken name moves on to the next; any other error, or all names
+/// taken, stops before anything moved and says why.
+fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Result<PathBuf> {
+    for n in 1..=BACKUP_NAME_TRIES {
+        let name = if n == 1 {
+            format!("{stamp}-{host}")
+        } else {
+            format!("{stamp}.{n}-{host}")
+        };
+        let dir = backups.join(name);
+        match fs::create_dir(&dir) {
+            Ok(()) => return Ok(dir),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => {
+                return Err(format!(
+                    "creating the backup folder {} failed ({e}); nothing moved",
+                    dir.display()
+                ))
+            }
+        }
+    }
+    Err(format!(
+        "all {BACKUP_NAME_TRIES} backup folder names for this second ({stamp}-{host}, \
+         {stamp}.2-{host} … {stamp}.{BACKUP_NAME_TRIES}-{host}) already exist under {}; \
+         nothing moved — retry in a second",
+        backups.display()
+    ))
 }
 
 /// #2483: one confirmed backup-then-replace. Order: fresh scan equal to the preview →
@@ -1531,8 +1856,7 @@ fn run_backup_then_replace(
     refuse_state_symlinks(&backups, "backup")?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     refuse_state_symlinks(&backups, "backup")?;
-    let dir = backups.join(format!("{}-{host}", compact_stamp()));
-    fs::create_dir(&dir).map_err(|_| "backup directory already exists or is unavailable")?;
+    let dir = create_backup_dir(&backups, &compact_stamp(), host)?;
     *backup_out = Some(dir.clone());
 
     let manifest = json!({
@@ -1586,10 +1910,33 @@ fn run_backup_then_replace(
     *receipt_out = Some(receipt.clone());
     test_fault("after_backup")?;
 
+    // #2505: write and verify the whole package in `<backup>/incoming` first. The projection
+    // then holds either the original or the complete package; the only moment it holds
+    // neither is the gap between the two renames below. A failure while staging leaves the
+    // original in place (recovery-plan: `release`).
+    let incoming = dir.join(BACKUP_INCOMING);
+    fs::create_dir(&incoming)
+        .map_err(|e| format!("creating the staging folder failed ({e}); nothing moved"))?;
+    for (idx, (rel, bytes)) in staged.files.iter().enumerate() {
+        let target = incoming.join(rel);
+        if let Err(e) = publish_exclusive(&target, bytes) {
+            receipt.entries[idx].error = Some(e.clone());
+            *receipt_out = Some(receipt.clone());
+            return Err(e);
+        }
+        if read_opt(&target)?.map(|b| sha256_hex(&b)) != receipt.entries[idx].after_sha256 {
+            *receipt_out = Some(receipt.clone());
+            return Err("staged bytes do not match the package; nothing moved".into());
+        }
+        if idx == 0 {
+            test_fault("mid_stage")?;
+        }
+    }
+
     let moved = dir.join(BACKUP_TREE);
     fs::rename(&root, &moved)
         .map_err(|_| "moving the original folder into the backup failed; nothing moved")?;
-    test_corrupt_moved(&moved, &btr.source_files);
+    test_corrupt_first_file("corrupt_after_move", &moved, &btr.source_files);
     if source_files(&moved).ok().as_ref() != Some(&btr.source_files) {
         return Err(match fs::rename(&moved, &root) {
             Ok(()) => "the moved folder does not match the manifest; moved back".into(),
@@ -1600,27 +1947,31 @@ fn run_backup_then_replace(
             ),
         });
     }
+    test_fault("mid_replace")?;
+    if let Err(e) = fs::rename(&incoming, &root) {
+        return Err(match fs::rename(&moved, &root) {
+            Ok(()) => {
+                format!("moving the staged package into place failed ({e}); the original was moved back")
+            }
+            Err(_) => format!(
+                "moving the staged package into place failed ({e}) and moving the original \
+                 back failed; it stays at {}",
+                moved.display()
+            ),
+        });
+    }
 
     let mut owned = BTreeMap::new();
-    for (idx, (rel, bytes)) in staged.files.iter().enumerate() {
-        let target = root.join(rel);
-        if let Err(e) = publish_exclusive(&target, bytes) {
-            receipt.entries[idx].error = Some(e.clone());
-            *receipt_out = Some(receipt.clone());
-            return Err(e);
-        }
-        let written = read_opt(&target)?.map(|b| sha256_hex(&b));
+    for (idx, (rel, _)) in staged.files.iter().enumerate() {
+        let written = read_opt(&root.join(rel))?.map(|b| sha256_hex(&b));
         if written != receipt.entries[idx].after_sha256 {
             *receipt_out = Some(receipt.clone());
             return Err("published bytes do not match the package".into());
         }
         receipt.entries[idx].published = true;
         owned.insert(rel.clone(), written.expect("sha of a written file"));
-        *receipt_out = Some(receipt.clone());
-        if idx == 0 {
-            test_fault("mid_replace")?;
-        }
     }
+    *receipt_out = Some(receipt.clone());
     receipt.owned = owned_vec(host, &owned);
     receipt.status = "committed".into();
     receipt.finished_at = Some(now_rfc3339());

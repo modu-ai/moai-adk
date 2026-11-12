@@ -28,6 +28,13 @@ const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
 /// generating `AGENTS.md` (at most 3000), so a test can show a concurrent launch waits.
 pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
+/// Test-only: when set, a first launch stops with an error right after writing the settings,
+/// the interrupted state that the next launch must finish (Issue #2504).
+pub const INIT_TEST_FAIL_VAR: &str = "MOAI_CLI_TEST_INIT_FAIL_AFTER_PROFILE";
+/// Marker of a first-launch initialization that has started and not finished, in the clone's
+/// common dir beside `.init-lock` (never listed by git). Written before the settings, removed
+/// after the AGENTS.md step (Issue #2504).
+const PENDING: &str = ".init-pending";
 
 /// What [`prepare`] did or, under `--dry-run`, would do.
 #[derive(Debug, Default)]
@@ -90,12 +97,33 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                 return Ok(Prepared::default()); // bare repository or inside `.git`
             };
             if exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+                let Some(common) = id["clone_anchor"].as_str().map(PathBuf::from) else {
+                    return Ok(Prepared::default());
+                };
+                // A first launch that stopped between the settings and AGENTS.md left its
+                // `.init-pending` marker (Issue #2504): finish it. Settings without the marker
+                // are the user's own (or a finished launch's) and stay exactly as they are.
+                if exists(&init_lock_dir(&common).join(PENDING)) {
+                    if dry_run {
+                        return Ok(Prepared {
+                            note: Some(format!(
+                                "would finish the interrupted initialization of {}: AGENTS.md (--dry-run writes nothing)",
+                                top.display()
+                            )),
+                            git_pending: false,
+                        });
+                    }
+                    let done = settings(&top, &common, host)?;
+                    return Ok(Prepared {
+                        note: (!done.is_empty())
+                            .then(|| format!("{INIT_LINE} {}: {}", top.display(), done.join(", "))),
+                        git_pending: false,
+                    });
+                }
                 // A first launch that is still generating AGENTS.md holds `.init-lock` (created
                 // before the settings file): wait for it, so this host does not start before the
                 // initialization it found has finished. No lock file, no wait and no write.
-                if let Some(common) = id["clone_anchor"].as_str() {
-                    wait_for_initializer(&init_lock_dir(Path::new(common)).join(".init-lock"));
-                }
+                wait_for_initializer(&init_lock_dir(&common).join(".init-lock"));
                 return Ok(Prepared::default());
             }
             if let Some(what) = guard(&top) {
@@ -168,6 +196,17 @@ fn wait_for_initializer(lock: &Path) {
 /// concurrent launch may have initialized the folder meanwhile: a failed `init` that leaves a
 /// repository behind is accepted.
 fn git_init(dir: &Path) -> Result<(), String> {
+    // Concurrent first launches in one folder (Issue #2489): two `git init` runs race on
+    // `.git/config`; the loser fails while the winner is still writing, so a re-check right
+    // after the failure can still see "not a repository". Serialize the init on a lock that
+    // exists before `.git` does — in the OS temporary directory, named after the folder, so
+    // neither the folder nor HOME gets an extra file — and re-check under the lock: a launch
+    // that waited finds the repository the first one made and runs no `git init` itself.
+    let lock = init_lock(dir);
+    if identity(dir).is_ok_and(|id| id["identity_status"] == "ok") {
+        drop(lock);
+        return Ok(());
+    }
     let mut cmd = Command::new("git");
     cmd.arg("init").arg("-q").arg(dir);
     crate::identity::scrub_git_env(&mut cmd);
@@ -177,7 +216,9 @@ fn git_init(dir: &Path) -> Result<(), String> {
         .stderr(Stdio::null())
         .status()
         .is_ok_and(|s| s.success());
-    if ok || identity(dir).is_ok_and(|id| id["identity_status"] == "ok") {
+    let ready = ok || identity(dir).is_ok_and(|id| id["identity_status"] == "ok");
+    drop(lock);
+    if ready {
         Ok(())
     } else {
         Err(format!(
@@ -185,6 +226,58 @@ fn git_init(dir: &Path) -> Result<(), String> {
             dir.display()
         ))
     }
+}
+
+/// The `git init` lock of `dir` (canonical): `moai-cli-git-init-<16 hex of sha256(path)>.lock`
+/// in the OS temporary directory, held exclusively while the guard lives. On Linux that folder
+/// can be the shared `/tmp`, where any account can predict the name (PR #2494 audit B1), so the
+/// file is opened without following a symlink (`O_NOFOLLOW`, mode 0600) and locked only when
+/// the opened handle is a regular file owned by the owner of HOME — the key vault's owner rule,
+/// which needs no `unsafe` uid call. Anything else (a symlink, a file of another account, an
+/// unopenable path) gives no lock: the init then runs as it did before #2489 rather than
+/// failing the launch or waiting on a lock another account holds.
+fn init_lock(dir: &Path) -> Option<fs::File> {
+    let id = crate::digest(dir.as_os_str().as_encoded_bytes());
+    let hex = id.strip_prefix("sha256:").unwrap_or(&id);
+    let path = std::env::temp_dir().join(format!("moai-cli-git-init-{}.lock", &hex[..16]));
+    if fs::symlink_metadata(&path).is_ok_and(|m| !m.file_type().is_file()) {
+        return None;
+    }
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+    }
+    let file = options.open(&path).ok()?;
+    if !lock_file_is_ours(&file.metadata().ok()?) {
+        return None;
+    }
+    file.lock().ok()?;
+    Some(file)
+}
+
+/// Whether an opened lock file may be waited on: a regular file whose owner is HOME's owner.
+#[cfg(unix)]
+fn lock_file_is_ours(meta: &fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let home_owner = crate::key_vault::home()
+        .ok()
+        .and_then(|h| fs::metadata(h).ok())
+        .map(|m| m.uid());
+    owned_regular_file(meta.file_type().is_file(), meta.uid(), home_owner)
+}
+
+#[cfg(not(unix))]
+fn lock_file_is_ours(meta: &fs::Metadata) -> bool {
+    meta.file_type().is_file()
+}
+
+/// The owner rule of [`lock_file_is_ours`] (pure, so it is tested without a second account).
+#[cfg_attr(not(unix), allow(dead_code))]
+fn owned_regular_file(is_file: bool, owner: u32, home_owner: Option<u32>) -> bool {
+    is_file && home_owner == Some(owner)
 }
 
 /// Creates the project settings and, when `AGENTS.md` is absent, the generated workflow and
@@ -208,7 +301,15 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         .and_then(|f| f.lock().map(|()| f))
         .map_err(|_| "the project initialization lock is unavailable".to_string())?;
     let mut done = Vec::new();
+    let pending = lock_dir.join(PENDING);
+    if fs::symlink_metadata(&pending).is_ok_and(|m| !m.file_type().is_file()) {
+        return Err(format!(
+            "{} is not a regular file; refused",
+            pending.display()
+        ));
+    }
     if !exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+        fs::write(&pending, b"").map_err(|_| format!("{} cannot be written", pending.display()))?;
         let plan = profile::plan(top, default_profile(&primary_name(anchor), host)?)?;
         if plan.action != "create" {
             return Err(format!(
@@ -225,11 +326,27 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         {
             std::thread::sleep(std::time::Duration::from_millis(ms.min(3000)));
         }
+        if std::env::var_os(INIT_TEST_FAIL_VAR).is_some() {
+            return Err("moai-cli: initialization stopped after the settings (test)".into());
+        }
         if exists(&top.join("AGENTS.md")) {
             done.push("AGENTS.md present, unchanged".into());
         } else {
             done.extend(agents(top)?);
         }
+        let _ = fs::remove_file(&pending);
+    } else if exists(&pending) {
+        // Resume an interrupted first launch (Issue #2504): only the AGENTS.md step is left.
+        if exists(&top.join("AGENTS.md")) {
+            done.push("AGENTS.md present, unchanged (interrupted initialization finished)".into());
+        } else {
+            done.extend(
+                agents(top)?
+                    .into_iter()
+                    .map(|d| format!("{d} (interrupted initialization finished)")),
+            );
+        }
+        let _ = fs::remove_file(&pending);
     }
     drop(lock);
     Ok(done)
@@ -341,6 +458,41 @@ mod tests {
         let p = default_profile("___", "codex").unwrap();
         assert_eq!(p.project_id, "project");
         assert_eq!(p.hosts, ["codex"]);
+    }
+
+    #[test]
+    fn writing_the_first_launch_profile_keeps_the_key_vault_folder_name() {
+        // #2504 AC-2: the key vault names a project folder from the profile's project_id when
+        // there is one, else from the primary folder name. The first-launch project_id must make
+        // both give the same folder, so writing the profile never moves the vault folder.
+        let hex = "0123456789abcdef";
+        for folder in [
+            "My Project",
+            "example.git",
+            "a__b",
+            "---",
+            "Ünïcode Dir",
+            "x".repeat(60).as_str(),
+            "Mixed.Case-Name_1",
+        ] {
+            let anchor = PathBuf::from("/x").join(folder).join(".git");
+            let name = primary_name(&anchor);
+            let p = default_profile(&name, "claude").unwrap();
+            assert_eq!(
+                crate::key_vault::folder_name(Some(&p.project_id), &name, hex),
+                crate::key_vault::folder_name(None, &name, hex),
+                "{folder}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_git_init_lock_is_waited_on_only_when_it_is_a_file_of_the_home_owner() {
+        // PR #2494 audit B1: a lock of another account in a shared /tmp is never waited on.
+        assert!(owned_regular_file(true, 501, Some(501)));
+        assert!(!owned_regular_file(true, 502, Some(501)));
+        assert!(!owned_regular_file(false, 501, Some(501)));
+        assert!(!owned_regular_file(true, 501, None));
     }
 
     #[test]

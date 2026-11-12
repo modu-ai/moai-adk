@@ -116,8 +116,8 @@ class SourceSafety(unittest.TestCase):
             ready = case.base / "audit-ready"
             argv = [sys.executable, "-I", "-c", AUDITED_RUNNER,
                     str(sentinel), str(log), str(support.RUNNER), str(spec), str(ready)]
-        out = subprocess.run(argv, cwd=case.source, env=case.env,
-                             capture_output=True, text=True, timeout=30)
+        out = support.run_with_progress_budget(argv, cwd=case.source, env=case.env,
+                                               log=case.log)
         # Check physical preservation before checking rejection: failures must
         # retain evidence even when the SUT unexpectedly reports completion.
         self.assertEqual(self.physical_snapshot(), before,

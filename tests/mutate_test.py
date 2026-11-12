@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -119,6 +120,101 @@ sys.exit(101)
 '''
 
 
+# Load-independent child budget (#2502): the runner's real work is observable as
+# appends to the mutation log (one JSON line per completed fake-cargo
+# invocation), so the deadline resets on progress instead of expiring on
+# wall-clock alone. A silent child fails the step deadline, a looping child
+# fails the invocation budget, and slow-but-progressing work still meets the
+# hard ceiling. Supersedes the bare 30-second timeout that raised five false
+# subprocess.TimeoutExpired under load 167-218 with zero assertion failures
+# (#2466 audit supplement 6811398145); rc-ci runs the same cases in 62 seconds.
+PROGRESS_LOG_LINES_BUDGET = 64
+STEP_DEADLINE_SECONDS = 120
+HARD_CEILING_SECONDS = 600
+_POLL_SECONDS = 0.2
+
+
+class BudgetExceeded(RuntimeError):
+    def __init__(self, reason, stdout="", stderr=""):
+        super().__init__("mutation runner budget exceeded: " + reason)
+        self.reason = reason
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def run_with_progress_budget(argv, cwd, env, log,
+                             step_seconds=STEP_DEADLINE_SECONDS,
+                             ceiling_seconds=HARD_CEILING_SECONDS,
+                             budget=PROGRESS_LOG_LINES_BUDGET,
+                             clock=time.monotonic, sleep=time.sleep,
+                             spawn=subprocess.Popen):
+    """Run a child bounded by progress, not by a bare wall-clock timeout.
+
+    The deadline resets whenever ``log`` gains a line, so a loaded machine only
+    has to keep making progress. Child output is captured into temporary files
+    (never undrained pipes, which would deadlock a chatty child and look like
+    no progress). Both deadline comparisons allow one poll interval of grace so
+    punctual progress is not killed by scheduling jitter. ``clock``, ``sleep``
+    and ``spawn`` are seams: production uses the real ones and tests simulate
+    time and children deterministically.
+    """
+
+    # The log is shared across invocations (MutationCLI keeps one file), so the
+    # budget bounds this child's own entries: count from a start baseline and
+    # check the final delta too, because a child can overspend and exit between
+    # two polls — the exit branch must not accept it.
+    def observed_lines():
+        try:
+            return len(Path(log).read_text().splitlines())
+        except (FileNotFoundError, NotADirectoryError):
+            return 0
+
+    baseline = observed_lines()
+    start = clock()
+    deadline = start + step_seconds
+    ceiling = start + ceiling_seconds
+    seen = baseline
+    with tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as out_file, \
+            tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as err_file:
+        child = spawn(argv, cwd=cwd, env=env, stdout=out_file, stderr=err_file,
+                      text=True)
+        try:
+            while True:
+                if child.poll() is not None:
+                    child.wait()
+                    if observed_lines() - baseline > budget:
+                        raise BudgetExceeded(
+                            f"invocation budget of {budget} progress lines exceeded")
+                    break
+                lines = observed_lines()
+                if lines - baseline > budget:
+                    raise BudgetExceeded(
+                        f"invocation budget of {budget} progress lines exceeded")
+                if lines > seen:
+                    seen = lines
+                    deadline = clock() + step_seconds
+                now = clock()
+                if now > deadline + _POLL_SECONDS:
+                    raise BudgetExceeded(
+                        f"no progress for {step_seconds} seconds")
+                if now > ceiling + _POLL_SECONDS:
+                    raise BudgetExceeded(
+                        f"hang ceiling of {ceiling_seconds} seconds exceeded")
+                sleep(_POLL_SECONDS)
+        except BudgetExceeded as failure:
+            child.kill()
+            child.wait()
+            out_file.seek(0)
+            err_file.seek(0)
+            failure.stdout = out_file.read()
+            failure.stderr = err_file.read()
+            raise
+        out_file.seek(0)
+        err_file.seek(0)
+        return subprocess.CompletedProcess(argv, child.returncode,
+                                           out_file.read(), err_file.read())
+
+
 class MutationCLI(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="mutate-contract-")
@@ -197,9 +293,9 @@ class MutationCLI(unittest.TestCase):
         env = dict(self.env, FAKE_MODE=mode)
         if environment:
             env.update(environment)
-        out = subprocess.run([sys.executable, "-I", str(RUNNER), "--spec", str(path)],
-                             cwd=self.source, env=env, capture_output=True, text=True,
-                             timeout=30)
+        out = run_with_progress_budget(
+            [sys.executable, "-I", str(RUNNER), "--spec", str(path)],
+            cwd=self.source, env=env, log=self.log)
         self.assertEqual(self.snapshot(), before, "runner changed source HEAD/index/bytes/status/refs")
         self.assertEqual(self.sentinel.read_bytes(), b"external bytes must survive\n")
         try:
@@ -468,9 +564,9 @@ class MutationCLI(unittest.TestCase):
         path = self.base / "broken.json"
         path.write_text('{"schema_version":')
         before = self.snapshot()
-        out = subprocess.run(
+        out = run_with_progress_budget(
             [sys.executable, "-I", str(RUNNER), "--spec", str(path)],
-            cwd=self.source, env=self.env, capture_output=True, text=True, timeout=30)
+            cwd=self.source, env=self.env, log=self.log)
         self.assertEqual(self.snapshot(), before)
         self.assertNotEqual(out.returncode, 0)
         report = json.loads(out.stdout)
@@ -489,9 +585,9 @@ class MutationCLI(unittest.TestCase):
         spec = self.base / "unborn-spec.json"
         spec.write_text(json.dumps(self.spec))
         env = dict(self.env, CARGO_TARGET_DIR=str(unborn / "target/cargo"))
-        out = subprocess.run(
+        out = run_with_progress_budget(
             [sys.executable, "-I", str(RUNNER), "--spec", str(spec)],
-            cwd=unborn, env=env, capture_output=True, text=True, timeout=30)
+            cwd=unborn, env=env, log=self.log)
         self.assertNotEqual(out.returncode, 0)
         report = json.loads(out.stdout)
         self.assertIn(report["status"], ("blocked", "error"))
