@@ -193,6 +193,22 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
     def read(self, rel):
         return (ROOT / rel).read_text(encoding="utf-8")
 
+    def test_generated_agents_md_points_at_the_single_source(self):
+        # #2385 AC-1: the AGENTS.md managed-section template (both languages) refers to the
+        # VERIFY workflow's "Check-run rules" instead of restating them, and that section exists.
+        template = self.read("src/agents.rs")
+        for line in (
+            'Which checks run locally, and when an exact-head CI result may be cited instead, '
+            'follow the \\"Check-run rules\\" section of the VERIFY workflow (the single source).',
+            '어떤 검사를 로컬에서 돌리고 언제 정확한 head의 CI 결과를 대신 인용할 수 있는지는 '
+            'VERIFY workflow의 \\"Check-run rules\\" 절(단일 출처)을 따른다.',
+        ):
+            self.assertEqual(template.count(line), 1, line)
+        self.assertEqual(self.read("skills/moai/workflows/verify.md").count("\n## Check-run rules\n"), 1)
+        # The template points; it never restates the rules (no citation format, no role table).
+        self.assertNotIn(CI_FORMAT, template)
+        self.assertNotIn("Delta auditor: merge-only delta", template)
+
     def test_verify_holds_the_rules_once(self):
         text = self.read("skills/moai/workflows/verify.md")
         self.assertEqual(text.count("\n## Check-run rules\n"), 1)
