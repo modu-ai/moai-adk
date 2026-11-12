@@ -123,7 +123,9 @@ fn cli_before_deadline(project: &Path, args: &[&str]) -> std::process::Output {
         .unwrap()
         .write_all(br#"{"protocol_version":1}"#)
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(8);
+    // #2511: a hang guard, not a speed limit — a blocking open would wait forever, so a
+    // generous bound keeps the check and cannot fail a slow but correct run under load.
+    let deadline = Instant::now() + Duration::from_secs(120);
     let status = loop {
         if let Some(status) = child.try_wait().unwrap() {
             break status;

@@ -983,6 +983,14 @@ enum Command {
     AuditReduce {
         project: PathBuf,
     },
+    /// Update the skill from the package installed with this binary (#2522): previews like
+    /// update-plan and writes nothing unless confirmed — in a terminal it asks once; elsewhere
+    /// pass the preview's digest with --confirm. HOME comes from the environment.
+    Update {
+        /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
+        #[arg(long, value_name = "PLAN_DIGEST")]
+        confirm: Option<String>,
+    },
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
     UpdatePlan {
@@ -1306,6 +1314,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         AtlasMap { .. } => "atlas.map",
         AtlasGraph { .. } => "atlas.graph",
         SnapshotDescribe { .. } => "snapshot.describe",
+        Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
@@ -2225,6 +2234,31 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .ok_or("home directory missing; install-inspect requires HOME")?;
             let path_env = std::env::var("PATH").unwrap_or_default();
             moai_cli::install::inspect(&home, &path_env)
+        }
+        Command::Update { confirm } => {
+            let home = std::env::var_os("HOME")
+                .filter(|h| !h.is_empty())
+                .map(PathBuf::from)
+                .ok_or("home directory missing; update requires HOME")?;
+            moai_cli::update::update_command(&home, confirm.as_deref(), |plan| {
+                use std::io::{BufRead as _, IsTerminal as _, Write as _};
+                if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
+                    return Ok(false);
+                }
+                let mut err = io::stderr();
+                let _ = write!(
+                    err,
+                    "moai-cli update preview:\n{}Apply this update? [y/N] ",
+                    moai_cli::update::plan_summary(plan)
+                );
+                let _ = err.flush();
+                let mut answer = String::new();
+                io::stdin()
+                    .lock()
+                    .read_line(&mut answer)
+                    .map_err(|_| "could not read the answer".to_string())?;
+                Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
+            })
         }
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
