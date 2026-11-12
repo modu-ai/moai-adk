@@ -305,8 +305,11 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotRegex(install, r"\|\|\s*true|cargo install")
         self.assertLess(names.index("cargo-nextest (pinned, sha256-checked)"), names.index("Check set"))
         script = steps[names.index("Check set")]["run"]
-        self.assertIn("cargo nextest run --offline --locked --no-fail-fast", script)
-        self.assertIn("cargo test --offline --locked --doc", script)
+        # Both must be real `run` steps of the check set (a recorded exit), not just text.
+        self.assertRegex(script, r"(?m)^\s*run test bash -c 'RUST_MIN_STACK=8388608 "
+                                 r"cargo nextest run --offline --locked --no-fail-fast ")
+        self.assertRegex(script, r"(?m)^\s*run doctest bash -c 'RUST_MIN_STACK=8388608 "
+                                 r"cargo test --offline --locked --doc ")
         self.assertNotRegex(script, r"cargo test --offline --locked 2>&1")
 
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
