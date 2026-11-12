@@ -156,6 +156,13 @@ pub struct Plan {
     /// create | update | unchanged | conflict
     pub action: String,
     pub delta: Delta,
+    /// Managed keys whose value in the current file differs from the baseline the last
+    /// `project-apply` recorded, sorted (#2590). A hand edit after an apply shows here even
+    /// when the input agrees with the baseline and `action` stays `unchanged` (the edit is
+    /// kept, never overwritten). Empty — and left out of the JSON — without a baseline or a
+    /// file, or when the file still matches the baseline.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub drift: Vec<String>,
     pub plan_digest: String,
 }
 
@@ -379,6 +386,24 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
     delta
 }
 
+/// Managed keys where the current file and the baseline disagree (#2590). Needs both: with
+/// no baseline every key is already treated as user-edited, and with no file there is
+/// nothing to drift. An additive key absent from both is skipped like in the delta.
+fn compute_drift(baseline: Option<&Value>, current: Option<&Value>) -> Vec<String> {
+    let (Some(b), Some(c)) = (
+        baseline.and_then(Value::as_object),
+        current.and_then(Value::as_object),
+    ) else {
+        return Vec::new();
+    };
+    let mut drift: Vec<String> = managed_keys()
+        .filter(|key| b.get(*key) != c.get(*key))
+        .map(String::from)
+        .collect();
+    drift.sort();
+    drift
+}
+
 fn plan_digest(p: &Plan) -> String {
     digest(
         &serde_json::to_vec(&(
@@ -388,6 +413,7 @@ fn plan_digest(p: &Plan) -> String {
             &p.target_binding,
             &p.action,
             &p.delta,
+            &p.drift,
         ))
         .expect("typed plan"),
     )
@@ -413,6 +439,7 @@ pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
     let baseline = read_baseline(root)?;
     let desired = serde_json::to_value(&profile).expect("typed profile");
     let delta = compute_delta(baseline.as_ref(), current.as_ref(), &desired);
+    let drift = compute_drift(baseline.as_ref(), current.as_ref());
     let action = if !delta.conflict.is_empty() {
         "conflict"
     } else if old.is_none() {
@@ -435,6 +462,7 @@ pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
         expected_sha256: old.as_deref().map(digest),
         action: action.into(),
         delta,
+        drift,
         plan_digest: String::new(),
     };
     p.plan_digest = plan_digest(&p);
