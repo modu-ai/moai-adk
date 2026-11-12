@@ -263,8 +263,9 @@ fn the_worktree_the_plan_runs_in_is_kept() {
 fn a_process_working_in_a_worktree_keeps_it() {
     let fx = fixture();
     let a = fx.root.join(".moai-cli/worktrees/a");
+    // #2511: the process must outlive `plan` even on a loaded machine; it is killed below.
     let mut child = Command::new("sleep")
-        .arg("30")
+        .arg("600")
         .current_dir(&a)
         .spawn()
         .unwrap();
@@ -282,8 +283,9 @@ fn a_process_working_in_a_worktree_keeps_it() {
 fn a_process_working_in_a_worktree_subfolder_keeps_it() {
     let fx = fixture();
     let sub = fx.root.join(".moai-cli/worktrees/a/target/debug");
+    // #2511: outlives `plan` under load; killed after the plan.
     let mut child = Command::new("sleep")
-        .arg("30")
+        .arg("600")
         .current_dir(&sub)
         .spawn()
         .unwrap();
