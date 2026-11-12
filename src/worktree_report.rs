@@ -141,6 +141,22 @@ impl Sizer {
     }
 }
 
+/// Allocated bytes under `paths` (symlinks not followed, each inode once) and whether the
+/// walk stopped at `deadline` (then the total is a lower bound). Shared with WT-4.
+pub(crate) fn bytes_under(paths: &[PathBuf], deadline: Instant) -> (u64, bool) {
+    let mut sizer = Sizer {
+        deadline,
+        seen: HashSet::new(),
+    };
+    let (mut bytes, mut partial) = (0, false);
+    for p in paths {
+        let w = sizer.walk(p, &[]);
+        bytes += w.bytes;
+        partial |= w.partial;
+    }
+    (bytes, partial)
+}
+
 fn git(dir: &Path, args: &[&str]) -> Option<String> {
     let mut cmd = Command::new("git");
     scrub_git_env(&mut cmd);
