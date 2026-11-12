@@ -44,12 +44,31 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0 # `git diff --check` compares against the PR base commit
+      # Docs-only light CI (#2527, design comment 6822993459): classify the diff and
+      # skip the heavy steps when every changed path is under a verified-safe doc root.
+      # Fail-safe: any git or parse failure, or an unrecognized path, keeps scope "full".
+      - name: Scope (docs-only detection)
+        shell: bash
+        run: |
+          CI_SCOPE=full
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          if paths="$(git diff --name-only "${base}...${GITHUB_SHA}" 2>/dev/null)"; then
+            result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)"
+            CI_SCOPE="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])')"
+            printf '%s\n' "$result" | python3 -c 'import json,sys; [print("scope-reason:", r) for r in json.load(sys.stdin)["reasons"]]'
+          else
+            echo "scope-reason: git diff failed; defaulting to full"
+          fi
+          echo "CI_SCOPE=$CI_SCOPE" >> "$GITHUB_ENV"
+          echo "scope: $CI_SCOPE"
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Install PyYAML (tests/github_assets_test.py)
+        if: ${{ env.CI_SCOPE == 'full' }}
         run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
       - name: Install and verify ripgrep (C10a baseline)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           if ! command -v rg >/dev/null 2>&1; then
@@ -72,6 +91,7 @@ jobs:
       # component file conflict (rustup#2417), so remove it first and install explicitly, with
       # at most 3 attempts (#2490, user decision 6813237309 item 3 = B; analysis #2457 6812694378).
       - name: Toolchain (rust-toolchain.toml)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           channel="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
@@ -93,6 +113,21 @@ jobs:
         shell: bash
         run: |
           set -u
+          # Docs-only light CI (#2527, design comment 6822993459): heavy steps are skipped
+          # above via CI_SCOPE; here run only the whitespace check and emit a minimal
+          # summary (runner + scope), then succeed. Fail-safe: anything not classified
+          # docs-only takes the full path below, unchanged.
+          if [ "$CI_SCOPE" = "docs-only" ]; then
+            {
+              echo "## rc-ci / ${{ matrix.target }}"
+              echo
+              echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · scope: \`docs-only\`"
+              echo
+              echo "docs-only: 3 heavy steps skipped (paths all under verified-safe doc roots)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
+            exit 0
+          fi
           summary="$GITHUB_STEP_SUMMARY"
           failed=0
           {
@@ -190,15 +225,34 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Docs-only light CI (#2527, design comment 6822993459): same classifier as the
+      # check job; fail-safe to full on any git or parse failure.
+      - name: Scope (docs-only detection)
+        shell: bash
+        run: |
+          CI_SCOPE=full
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          if paths="$(git diff --name-only "${base}...${GITHUB_SHA}" 2>/dev/null)"; then
+            result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)"
+            CI_SCOPE="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])')"
+            printf '%s\n' "$result" | python3 -c 'import json,sys; [print("scope-reason:", r) for r in json.load(sys.stdin)["reasons"]]'
+          else
+            echo "scope-reason: git diff failed; defaulting to full"
+          fi
+          echo "CI_SCOPE=$CI_SCOPE" >> "$GITHUB_ENV"
+          echo "scope: $CI_SCOPE"
       - name: Toolchain (rust-toolchain.toml)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           rustc -V
           rustup show
       - name: Fetch (Cargo.lock)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: cargo fetch --locked
       - name: Build all targets (tests compiled, not run)
+        if: ${{ env.CI_SCOPE == 'full' }}
         shell: bash
         run: |
           cargo build --offline --locked --all-targets
@@ -208,3 +262,10 @@ jobs:
             echo "- toolchain: \`$(rustc --version)\` on \`$RUNNER_OS\` / \`$RUNNER_ARCH\`"
             echo "- \`cargo build --offline --locked --all-targets\`: exit 0 — tests compiled, not run"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Docs-only note
+        if: ${{ env.CI_SCOPE == 'docs-only' }}
+        shell: bash
+        run: |
+          echo "docs-only: build skipped (paths all under verified-safe doc roots; #2527)"
+          echo "## windows-build" >> "$GITHUB_STEP_SUMMARY"
+          echo "docs-only: build skipped (paths all under verified-safe doc roots; #2527)" >> "$GITHUB_STEP_SUMMARY"
