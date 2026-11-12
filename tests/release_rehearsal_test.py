@@ -50,7 +50,9 @@ class ReleaseRehearsalTest(unittest.TestCase):
 
     def test_no_publish_effect_is_recorded_as_done(self):
         by_id = {r[0]: r for r in self.rows}
-        for step in ("a3", "d4", "e1", "e2", "g1", "g3", "i3", "k1", "p1", "p2", "p3", "p4", "p5", "p6"):
+        # j1 tag ruleset, j2 attestation workflow, j6 operator check: audit note on PR #2574.
+        for step in ("a3", "d4", "e1", "e2", "g1", "g3", "i3", "j1", "j2", "j6", "k1",
+                     "p1", "p2", "p3", "p4", "p5", "p6"):
             self.assertEqual(by_id[step][2], "not_run", step)
 
     def test_no_personal_absolute_path(self):
