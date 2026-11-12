@@ -161,7 +161,8 @@ fn an_unreadable_entry_at_the_legacy_path_is_named_without_opening_it() {
         if let Some(status) = child.try_wait().unwrap() {
             break status;
         }
-        if started.elapsed() > std::time::Duration::from_secs(20) {
+        // #2511: a hang guard (a FIFO read blocks forever), so the bound is generous.
+        if started.elapsed() > std::time::Duration::from_secs(120) {
             child.kill().unwrap();
             child.wait().unwrap();
             panic!("the launcher hung on a FIFO key file");

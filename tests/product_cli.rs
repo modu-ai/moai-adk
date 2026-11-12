@@ -3186,7 +3186,7 @@ fn claude_doctor_bounds_a_hanging_claude() {
     common::write_executable(
         &bin.path().join("claude"),
         &format!(
-            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            "#!/bin/sh\nsleep 120 &\necho $! > '{}'\nwait\n",
             pidfile.display()
         ),
     );
@@ -3197,7 +3197,9 @@ fn claude_doctor_bounds_a_hanging_claude() {
     let elapsed = started.elapsed();
     assert!(out.status.success(), "{:?}", out.stderr);
     assert!(
-        elapsed < std::time::Duration::from_secs(12),
+        // #2511: far below the 120s stub, far above the 5s probe (VERSION_TIMEOUT is pinned
+        // by a unit test in src/claude.rs), so load cannot fail it.
+        elapsed < std::time::Duration::from_secs(60),
         "doctor waited {elapsed:?} for a hanging claude"
     );
     assert_eq!(v["agents_md_status"], json!("unknown"));
@@ -3235,7 +3237,7 @@ fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
     common::write_executable(
         &bin.path().join("claude"),
         &format!(
-            "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 30 &\necho $! > '{}'\nexit 0\n",
+            "#!/bin/sh\nprintf '2.1.319\\n'\nsleep 120 &\necho $! > '{}'\nexit 0\n",
             pidfile.display()
         ),
     );
@@ -3244,7 +3246,8 @@ fn claude_doctor_stops_inherited_stdout_after_the_launcher_exits() {
     let started = std::time::Instant::now();
     let (out, v) = doctor(project.path(), home.path(), &bin);
     assert!(out.status.success(), "{:?}", out.stderr);
-    assert!(started.elapsed() < std::time::Duration::from_secs(12));
+    // #2511: below the 120s grandchild, generous above the 5s probe.
+    assert!(started.elapsed() < std::time::Duration::from_secs(60));
     assert_eq!(v["claude_version"], json!(null));
     assert_eq!(v["agents_md_status"], json!("unknown"));
     assert!(v["reason"].as_str().unwrap().contains("timed out"));
@@ -3262,7 +3265,7 @@ fn claude_doctor_cleans_groups_without_trusting_path_kill() {
         common::write_executable(
             &bin.path().join("claude"),
             &format!(
-                "#!/bin/sh\n/bin/sleep 25 &\necho $! > '{}'\nwait\n",
+                "#!/bin/sh\n/bin/sleep 120 &\necho $! > '{}'\nwait\n",
                 pidfile.display()
             ),
         );
@@ -3285,7 +3288,10 @@ fn claude_doctor_cleans_groups_without_trusting_path_kill() {
         assert_eq!(result["agents_md_status"], json!("unknown"));
         assert_eq!(result["claude_version"], json!(null));
         assert!(
-            elapsed < std::time::Duration::from_secs(9),
+            // #2511: the five-second value itself is pinned by
+            // `claude::tests::version_probe_deadline_is_five_seconds`; here only "it did not
+            // wait for the 120s grandchild", with room for machine load.
+            elapsed < std::time::Duration::from_secs(60),
             "the documented five-second probe took {elapsed:?}"
         );
         let pid = fs::read_to_string(pidfile).unwrap();
