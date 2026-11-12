@@ -1,4 +1,4 @@
-//! Issue #2588: the statusline `❗ issues / 🔀 PRs` counts are refreshed by a detached
+//! Issue #2588: the statusline `⬇️ issues / 🔀 PRs` counts are refreshed by a detached
 //! child the render starts, and the render never waits for it.
 //!
 //! Every case runs the real binary with a cleared environment, a temporary HOME and a
@@ -137,7 +137,7 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
     write(&f.repo, GO_CACHE, go);
     // AC-3: a count fetched long ago is not shown as current.
     let (first, _) = render(&f);
-    assert!(!first.contains('❗'), "stale counts shown: {first}");
+    assert!(!first.contains('⬇'), "stale counts shown: {first}");
     assert!(
         wait_for(|| cache(&f).is_some_and(|c| c["open_issues"] == 12)),
         "no refresh: {:?}",
@@ -150,7 +150,7 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
         (Some(12), Some(5))
     );
     let (second, _) = render(&f);
-    assert!(second.contains("❗ 12 / 🔀 5"), "{second}");
+    assert!(second.contains("⬇️ 12 / 🔀 5"), "{second}");
     assert_eq!(std::fs::read_to_string(f.repo.join(GO_CACHE)).unwrap(), go);
     let mut calls = gh_calls(&f);
     calls.sort();
@@ -218,7 +218,7 @@ fn a_missing_gh_marks_the_counts_suppressed_without_a_retry_storm() {
     let attempted = cache(&f).unwrap()["attempted_at"].as_i64();
     assert!(attempted.is_some());
     let (out, _) = render(&f);
-    assert!(!out.contains('❗'), "{out}");
+    assert!(!out.contains('⬇'), "{out}");
     std::thread::sleep(Duration::from_millis(500));
     assert_eq!(cache(&f).unwrap()["attempted_at"].as_i64(), attempted);
     assert!(!f.repo.join(LOCK).exists(), "a second refresh started");
