@@ -898,6 +898,13 @@ pub fn projection(package: &Path, skills_root: &Path, added: &Map<String, Value>
 mod tests {
     use super::*;
 
+    /// #2511: the documented five-second `claude --version` probe is pinned here, by value,
+    /// so the CLI tests in `tests/product_cli.rs` can bound wall time generously under load.
+    #[test]
+    fn version_probe_deadline_is_five_seconds() {
+        assert_eq!(VERSION_TIMEOUT, Duration::from_secs(5));
+    }
+
     fn package() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
     }
