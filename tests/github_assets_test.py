@@ -288,6 +288,27 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("cargo fetch --locked", script)
         self.assertNotIn("dependencies: no cache", script)
 
+    def test_rc_ci_runs_tests_with_pinned_nextest_and_doc_tests_separately(self):
+        """#2554 2-1: the test binaries run in parallel under cargo-nextest, installed from a
+        pinned release and checked against a sha256 recorded in the workflow (no fallback);
+        doc-tests, which nextest does not run, run with `cargo test --doc`."""
+        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        steps = flow["jobs"]["check"]["steps"]
+        names = [s.get("name") for s in steps]
+        install = steps[names.index("cargo-nextest (pinned, sha256-checked)")]["run"]
+        self.assertIn("version=0.9.151", install)
+        self.assertIn("releases/download/cargo-nextest-${version}/", install)
+        _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
+        for target in {e["target"] for e in after_merge}:
+            self.assertRegex(install, rf"{target}[|)].*sum=[0-9a-f]{{64}}")
+        self.assertIn('if [ "$actual" != "$sum" ]; then', install)
+        self.assertNotRegex(install, r"\|\|\s*true|cargo install")
+        self.assertLess(names.index("cargo-nextest (pinned, sha256-checked)"), names.index("Check set"))
+        script = steps[names.index("Check set")]["run"]
+        self.assertIn("cargo nextest run --offline --locked --no-fail-fast", script)
+        self.assertIn("cargo test --offline --locked --doc", script)
+        self.assertNotRegex(script, r"cargo test --offline --locked 2>&1")
+
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
         flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
         triggers = flow.get("on", flow.get(True))  # PyYAML reads a bare `on:` key as True
