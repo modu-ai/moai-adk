@@ -1,8 +1,10 @@
 //! `worktree.gc.plan` (WT-4, Issue #2380; design `docs/worktree-strategy-2026-11-10.md`
 //! §D5, §D8). Read-only: for every linked worktree it lists whether its cargo build output
 //! may be trimmed or the whole worktree removed, with the reasons, and a digest of the list.
-//! Nothing is deleted here. Under the user decision of 2026-11-10 (#2389 comment 6774899518,
-//! item 2) the leader deletes after checking this list; `worktree.gc.apply` is a later card.
+//! The plan deletes nothing. `worktree.gc.apply` ([`apply`], #2498) acts on a plan only when
+//! the recomputed digest is the same; under the user decision of 2026-11-10 (#2389 comment
+//! 6774899518, item 2) running it on the user's own machine is the leader's step after the
+//! user confirms.
 //!
 //! Fail closed: a fact that cannot be established (git failed, no process table, the time
 //! budget spent) makes the worktree `skip` with a named reason, never a candidate.
@@ -24,7 +26,8 @@
 //! and new files show there; an uncommitted edit shows as a tracked change instead.
 //!
 //! What the plan does not check, against design §D5 and the WT-4 card row (audit FAIL
-//! 6811382861 B2). `worktree.gc.apply` must re-check the first two right before it deletes:
+//! 6811382861 B2). `worktree.gc.apply` (#2498) re-checks open files right before it deletes;
+//! claim leases still need the network and stay unchecked by both:
 //! - claim leases: §D5 counts a live claim lease as "in use", but the plan uses no network and
 //!   cannot read Issue comments, so a worktree with a live lease and no other sign can still
 //!   be a candidate;
@@ -47,6 +50,10 @@ type Result<T> = std::result::Result<T, String>;
 
 /// Default "recent change" window: 120 minutes (design §D5).
 pub const DEFAULT_RECENT_MINUTES: u64 = 120;
+/// Smallest accepted window (#2498 N2): half the design default. A smaller value would turn
+/// the recent-change protection off for work that pauses between builds; it is refused, not
+/// clamped, so the caller sees it.
+pub const MIN_RECENT_MINUTES: u64 = 60;
 /// Default time budget for the whole plan.
 pub const DEFAULT_BUDGET_MS: u64 = 120_000;
 
@@ -112,6 +119,13 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         return ("skip", reasons);
     }
     match (f.untracked, f.ignored_outside_build) {
+        // #2498 N3: a worktree with nothing in it but its checkout — never built, no files
+        // of its own — looks exactly like one a lane has just created and not started; it
+        // frees almost nothing, so it is kept.
+        (Some(0), Some(0)) if !f.has_build_output => {
+            reasons.push("empty_worktree");
+            return ("skip", reasons);
+        }
         (Some(0), Some(0)) => return ("remove", reasons),
         (u, i) => {
             if u.is_none() || i.is_none() {
@@ -133,9 +147,20 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
     }
 }
 
-/// Splits the children of a `target/` folder into cargo-owned entries and others.
+/// Splits the children of a `target/` folder into cargo-owned entries and others. A `target`
+/// that is not a real folder — a symlink (possibly to a shared build folder outside the
+/// worktree) or a file — has no cargo-owned entries and counts as one file outside the build
+/// output, so the plan never trims through it (audit B1 on PR #2557).
 pub fn split_target(target: &Path) -> (Vec<PathBuf>, Vec<String>) {
     let (mut cargo, mut other) = (Vec::new(), Vec::new());
+    match fs::symlink_metadata(target) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => {
+            other.push("target".to_string());
+            return (cargo, other);
+        }
+        Err(_) => return (cargo, other),
+    }
     let Ok(rd) = fs::read_dir(target) else {
         return (cargo, other);
     };
@@ -225,6 +250,41 @@ fn process_cwds() -> Option<Vec<PathBuf>> {
     )
 }
 
+/// Paths of the files the processes this user can see hold open (`/proc/*/fd` on Linux,
+/// `lsof -Fn` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
+/// right before it deletes (#2498; the plan reads working directories only).
+fn open_file_paths() -> Option<Vec<PathBuf>> {
+    let mut out = Vec::new();
+    if Path::new("/proc/self/fd").exists() {
+        for e in fs::read_dir("/proc").ok()?.flatten() {
+            if let Ok(fds) = fs::read_dir(e.path().join("fd")) {
+                out.extend(fds.flatten().filter_map(|fd| fs::read_link(fd.path()).ok()));
+            }
+        }
+    } else {
+        let o = Command::new("lsof")
+            .args(["-w", "-Fn"])
+            .env("LC_ALL", "C")
+            .output()
+            .ok()?;
+        if o.stdout.is_empty() {
+            return None;
+        }
+        out.extend(
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .filter_map(|l| l.strip_prefix('n'))
+                .filter(|l| l.starts_with('/'))
+                .map(PathBuf::from),
+        );
+    }
+    Some(
+        out.into_iter()
+            .map(|p| fs::canonicalize(&p).unwrap_or(p))
+            .collect(),
+    )
+}
+
 fn unix_secs(t: SystemTime) -> Option<u64> {
     t.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
 }
@@ -294,6 +354,12 @@ pub fn plan(
     budget: Duration,
     now_unix: Option<u64>,
 ) -> Result<Value> {
+    if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
+        return Err(format!(
+            "--recent-minutes must be at least {MIN_RECENT_MINUTES} (#2498); got {}",
+            recent.as_secs() / 60
+        ));
+    }
     let deadline = Instant::now() + budget;
     let now = now_unix
         .or_else(|| unix_secs(SystemTime::now()))
@@ -381,10 +447,11 @@ pub fn plan(
         }));
     }
     candidates.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
-    // The digest binds what a later apply would act on: path, head, action and reasons.
+    // The digest binds what a later apply acts on: path, head, action, reasons and the exact
+    // trim paths (#2498 N1 — a cargo folder that appears after the plan changes the digest).
     let bound: Vec<Value> = candidates
         .iter()
-        .map(|c| json!({"path": c["path"], "head": c["head"], "action": c["action"], "reasons": c["reasons"]}))
+        .map(|c| json!({"path": c["path"], "head": c["head"], "action": c["action"], "reasons": c["reasons"], "trim_paths": c["trim_paths"]}))
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
@@ -406,9 +473,192 @@ pub fn plan(
         },
         "candidates": candidates,
         "plan_digest": plan_digest,
-        "apply": "not implemented here: the leader deletes after checking this list (#2389 comment 6774899518 item 2); worktree.gc.apply is a later card",
+        "apply": "worktree-gc-apply with this plan_digest and a permission reference (#2498); on this machine the leader runs it only after the user confirms (#2389 comment 6774899518 item 2)",
         "network": "disabled",
         "writes": false,
+    }))
+}
+
+fn validate_permission(permission: &str) -> Result<()> {
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
+    Ok(())
+}
+
+/// Why `wt` must not be touched right now, re-checked just before each deletion: a process
+/// working inside it, a tracked change, or (for a removal) any untracked file or ignored file
+/// outside the cargo build output. An unknown fact refuses too.
+fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
+    let cwds = match process_cwds() {
+        Some(v) => v,
+        None => return Some("process_check_unavailable"),
+    };
+    if cwds
+        .into_iter()
+        .map(|p| fs::canonicalize(&p).unwrap_or(p))
+        .any(|c| c.starts_with(wt))
+    {
+        return Some("process_in_use");
+    }
+    match open_file_paths() {
+        Some(paths) if paths.iter().any(|p| p.starts_with(wt)) => return Some("file_open_in_use"),
+        Some(_) => {}
+        None => return Some("open_file_check_unavailable"),
+    }
+    match git_out(wt, &["status", "--porcelain", "--untracked-files=no"]) {
+        Some(s) if s.trim().is_empty() => {}
+        Some(_) => return Some("tracked_changes"),
+        None => return Some("status_unknown"),
+    }
+    if removing {
+        let (_, preserved) = split_target(&wt.join("target"));
+        match census(wt) {
+            Some((0, 0, _)) if preserved.is_empty() => {}
+            Some(_) => return Some("files_outside_build_output"),
+            None => return Some("file_census_unknown"),
+        }
+    }
+    None
+}
+
+/// Deletes the cargo-owned trim paths of `wt` that the plan listed. Each path must still sit
+/// directly in `wt/target`, not be a symlink, and still be cargo-owned.
+fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
+    let target = wt.join("target");
+    // Audit B1 on PR #2557: never delete through a linked `target` — it may point outside
+    // the worktree (a shared build folder). `wt` itself is the canonical worktree path.
+    let target_meta = fs::symlink_metadata(&target).map_err(|_| "target/ unavailable")?;
+    if !target_meta.is_dir() {
+        return Err("target/ is a symlink or not a folder; refused".into());
+    }
+    let (owned, _) = split_target(&target);
+    for rel in trim_paths {
+        let path = wt.join(rel);
+        if path.parent() != Some(target.as_path()) || !owned.contains(&path) {
+            return Err(format!("{rel} is no longer a cargo-owned entry of target/"));
+        }
+        let meta = fs::symlink_metadata(&path).map_err(|_| format!("{rel} unavailable"))?;
+        if meta.file_type().is_symlink() {
+            return Err(format!("{rel} is a symlink; refused"));
+        }
+        let removed = if meta.is_dir() {
+            fs::remove_dir_all(&path)
+        } else {
+            fs::remove_file(&path)
+        };
+        removed.map_err(|_| format!("{rel} could not be removed"))?;
+    }
+    Ok(())
+}
+
+/// `worktree.gc.apply` (#2498, WT-9): recomputes the plan with the same inputs and refuses
+/// before any write unless its digest equals `plan_digest`. Then, in the plan's order, it
+/// acts only on the `trim` and `remove` entries — `trim` deletes the listed cargo-owned
+/// paths, `remove` runs `git worktree remove` without `--force` (git refuses a dirty tree;
+/// the branch is kept) — after re-checking each worktree right before touching it
+/// ([`busy_now`]). A refused or failed entry is reported and the rest go on; nothing is
+/// retried. Running this on the user's own machine is a user-confirmed step the leader takes.
+#[allow(clippy::too_many_arguments)]
+pub fn apply(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<Value> {
+    validate_permission(permission_reference)?;
+    let fresh = plan(project, integration_ref, recent, budget, now_unix)?;
+    if fresh["plan_digest"].as_str() != Some(plan_digest) {
+        return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
+    }
+    let top = git_out(
+        project,
+        &["rev-parse", "--path-format=absolute", "--show-toplevel"],
+    )
+    .map(|s| PathBuf::from(s.trim()))
+    .ok_or("not inside a git work tree")?;
+    let listing =
+        git_out(&top, &["worktree", "list", "--porcelain"]).ok_or("git worktree list failed")?;
+    let entries = parse_worktree_list(&listing);
+    let worktrees: Vec<PathBuf> = entries
+        .iter()
+        .filter(|e| !e.bare)
+        .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
+        .collect();
+    let primary = worktrees.first().cloned().ok_or("no primary worktree")?;
+
+    let mut results = Vec::new();
+    let mut not_done = 0usize;
+    for c in fresh["candidates"].as_array().into_iter().flatten() {
+        let action = c["action"].as_str().unwrap_or("skip");
+        if action != "trim" && action != "remove" {
+            continue;
+        }
+        let shown_path = c["path"].as_str().unwrap_or_default().to_string();
+        let wt = fs::canonicalize(primary.join(&shown_path))
+            .unwrap_or_else(|_| primary.join(&shown_path));
+        let outcome = if wt == primary || !worktrees.contains(&wt) {
+            Err("not a linked worktree of this repository".to_string())
+        } else if let Some(why) = busy_now(&wt, action == "remove") {
+            Err(format!("refused: {why}"))
+        } else if action == "trim" {
+            let paths: Vec<String> = c["trim_paths"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|p| p.as_str().map(str::to_string))
+                .collect();
+            trim(&wt, &paths).map(|()| "trimmed")
+        } else {
+            let mut cmd = Command::new("git");
+            scrub_git_env(&mut cmd);
+            match cmd
+                .arg("-C")
+                .arg(&primary)
+                .args(["worktree", "remove"])
+                .arg(&wt)
+                .output()
+            {
+                Ok(o) if o.status.success() => Ok("removed"),
+                Ok(o) => Err(format!(
+                    "git worktree remove refused: {}",
+                    String::from_utf8_lossy(&o.stderr).trim()
+                )),
+                Err(_) => Err("git worktree remove could not run".to_string()),
+            }
+        };
+        let (status, detail) = match outcome {
+            Ok(s) => (s, Value::Null),
+            Err(e) => {
+                not_done += 1;
+                (
+                    if e.starts_with("refused") {
+                        "refused"
+                    } else {
+                        "failed"
+                    },
+                    json!(e),
+                )
+            }
+        };
+        results.push(
+            json!({"path": shown_path, "action": action, "status": status, "detail": detail}),
+        );
+    }
+    Ok(json!({
+        "schema_version": 1,
+        "status": if results.is_empty() { "unchanged" } else if not_done == 0 { "applied" } else { "partial" },
+        "plan_digest": plan_digest,
+        "results": results,
+        "retry": "none: a refused or failed entry is reported, never retried",
+        "network": "disabled",
+        "writes": !results.is_empty(),
     }))
 }
 
@@ -464,6 +714,61 @@ mod tests {
             edit(&mut f);
             assert_eq!(decide(&f, 7_200), ("skip", vec![why]), "{why}");
         }
+    }
+
+    /// #2498: `trim` re-checks each listed path right before deleting it. A path that is no
+    /// longer cargo-owned (its `.cargo-lock` marker gone, e.g. a lane folder put in its place
+    /// after the plan) is refused and kept, and so is one outside `target/`.
+    #[test]
+    fn trim_refuses_a_path_that_is_no_longer_cargo_owned() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let wt = dir.path();
+        fs::create_dir_all(wt.join("target/debug")).unwrap();
+        fs::write(wt.join("target/debug/note.md"), "lane note\n").unwrap();
+        let err = trim(wt, &["target/debug".to_string()]).unwrap_err();
+        assert!(err.contains("no longer a cargo-owned"), "{err}");
+        assert!(wt.join("target/debug/note.md").exists());
+        fs::write(wt.join("keep.txt"), "x\n").unwrap();
+        assert!(trim(wt, &["keep.txt".to_string()]).is_err());
+        assert!(wt.join("keep.txt").exists());
+        // Control: with the marker back it is cargo-owned and trimmed.
+        fs::write(wt.join("target/debug/.cargo-lock"), "").unwrap();
+        trim(wt, &["target/debug".to_string()]).unwrap();
+        assert!(!wt.join("target/debug").exists());
+    }
+
+    /// Audit B1 on PR #2557: `trim` itself refuses when `target` is a symlink, even if a
+    /// caller passes paths that look planned — the delete never follows the link out.
+    #[cfg(unix)]
+    #[test]
+    fn trim_refuses_a_symlinked_target_folder() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let wt = dir.path().join("wt");
+        let outside = dir.path().join("outside");
+        fs::create_dir_all(outside.join("debug")).unwrap();
+        fs::write(outside.join("debug/.cargo-lock"), "").unwrap();
+        fs::write(outside.join("debug/other-lane.rlib"), "x").unwrap();
+        fs::create_dir_all(&wt).unwrap();
+        std::os::unix::fs::symlink(&outside, wt.join("target")).unwrap();
+        let err = trim(&wt, &["target/debug".to_string()]).unwrap_err();
+        assert!(err.contains("symlink"), "{err}");
+        assert!(outside.join("debug/other-lane.rlib").exists());
+        let (owned, other) = split_target(&wt.join("target"));
+        assert!(owned.is_empty(), "{owned:?}");
+        assert!(
+            !other.is_empty(),
+            "a linked target counts as files outside the build"
+        );
+    }
+
+    /// #2498 N3: clean and merged but never built and holding nothing — kept, not removed.
+    #[test]
+    fn an_empty_worktree_is_skipped_not_removed() {
+        let mut f = eligible();
+        f.has_build_output = false;
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["empty_worktree"]));
+        f.has_build_output = true;
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
     }
 
     #[test]
