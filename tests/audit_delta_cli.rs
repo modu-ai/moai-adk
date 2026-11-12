@@ -512,6 +512,46 @@ fn temporary_root_inside_repository_is_blocked_even_from_subdirectory() {
     );
     assert_eq!(fs::read_dir(&inside_tmp).unwrap().count(), 0);
 }
+#[test]
+fn temporary_root_inside_a_bare_source_is_blocked_by_the_common_boundary() {
+    // #2506: with the redundant `project` clause removed, the bare case must still
+    // refuse a scratch inside the source — here the common directory IS the bare
+    // project, so only that clause can catch it.
+    let fx = Fixture::new(false, false);
+    let head = fx.clean_merge();
+    let bare = fx.project.parent().unwrap().join("bare-source.git");
+    git(
+        &fx.project,
+        &[
+            "clone",
+            "-q",
+            "--bare",
+            &fx.project.display().to_string(),
+            &bare.display().to_string(),
+        ],
+    );
+    let inside = bare.join("inside-tmp");
+    fs::create_dir(&inside).unwrap();
+    let before = snapshot(&bare);
+    let out = fx.invoke_with_tmp(&bare, &head, &inside);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "bare source-contained temporary root must be blocked; stdout={} stderr={}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let envelope: Value = serde_json::from_slice(&out.stdout).expect("blocked audit-delta JSON");
+    assert_eq!(envelope["operation"], "audit.delta");
+    assert_eq!(envelope["ok"], false);
+    assert_eq!(envelope["error"]["kind"], "blocked");
+    assert_eq!(
+        snapshot(&bare),
+        before,
+        "blocked scratch must not touch the bare source"
+    );
+    assert_eq!(fs::read_dir(&inside).unwrap().count(), 0);
+}
 
 #[test]
 fn filesystem_failures_keep_typed_io_error_kind() {
