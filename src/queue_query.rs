@@ -376,11 +376,16 @@ pub fn query_cli<T: Transport, C: Clock>(
             Some("FAIL") => blocked.push("audit_failed"),
             _ => blocked.push("audit_missing_or_stale"),
         }
+        // #2554 (user decision U10): a PR run has no `windows-build` (it runs after merge),
+        // so its absence (`not_run`) does not block; a present `windows-build` that is not
+        // `success` still does. `rc-ci` must be `success` on the head.
         for (name, reason) in [
             ("rc-ci", "rc_ci_not_success"),
             ("windows-build", "windows_build_not_success"),
         ] {
-            if ci[name]["state"] != "success" {
+            let state = &ci[name]["state"];
+            let absent_ok = name == "windows-build" && state == "not_run";
+            if state != "success" && !absent_ok {
                 blocked.push(reason);
             }
         }

@@ -139,9 +139,48 @@ fn stale_conditional_wrong_pr_or_wrong_base_pass_never_counts() {
             json!([
                 "audit_missing_or_stale",
                 "rc_ci_not_success",
-                "windows_build_not_success",
                 "merge_conflict"
             ])
+        );
+    }
+}
+
+/// #2554 (user decision U10): a PR run has no `windows-build` (it runs after merge). Its
+/// absence does not block; a `windows-build` that ran on the head and is not `success` does.
+#[test]
+fn windows_build_blocks_only_when_it_ran_and_did_not_succeed() {
+    let h = "a".repeat(40);
+    let base = "0".repeat(40);
+    for (windows, blocked) in [
+        (None, false),
+        (Some("success"), false),
+        (Some("failure"), true),
+        (Some("cancelled"), true),
+    ] {
+        let mut checks = vec![check(10, "rc-ci", &h, "success")];
+        if let Some(conclusion) = windows {
+            checks.push(check(11, "windows-build", &h, conclusion));
+        }
+        let mut ex = vec![ledger(&[20])];
+        ex.extend(row(
+            20,
+            pr(20, &h),
+            vec![audit(20, &h, &base, "PASS")],
+            checks,
+        ));
+        let (out, _) = run(ex);
+        let reasons = out["rows"][0]["blocked_reasons"]
+            .as_array()
+            .unwrap()
+            .clone();
+        assert_eq!(
+            reasons.contains(&json!("windows_build_not_success")),
+            blocked,
+            "windows-build {windows:?}: {reasons:?}"
+        );
+        assert!(
+            !reasons.contains(&json!("rc_ci_not_success")),
+            "{reasons:?}"
         );
     }
 }
