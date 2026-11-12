@@ -400,10 +400,12 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
     assert!(real.starts_with('/'), "real git: {real}");
     let shims = tempfile::tempdir().unwrap();
     let shim = shims.path().join("git");
+    let calls = shims.path().join("init-calls");
     fs::write(
         &shim,
         format!(
-            "#!/bin/sh\nfor a; do last=$a; done\ncase \" $* \" in *\" init \"*)\n  if mkdir \"$last/.init-race\" 2>/dev/null; then sleep 2; else exit 1; fi;;\nesac\nexec '{real}' \"$@\"\n"
+            "#!/bin/sh\nfor a; do last=$a; done\ncase \" $* \" in *\" init \"*)\n  echo init >> '{calls}'\n  if mkdir \"$last/.init-race\" 2>/dev/null; then sleep 2; else exit 1; fi;;\nesac\nexec '{real}' \"$@\"\n",
+            calls = calls.display()
         ),
     )
     .unwrap();
@@ -433,4 +435,6 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
     ];
     names.sort();
     assert_eq!(names, ["agent-1", "agent-2"]);
+    // The launch that waited found the repository and ran no `git init` of its own.
+    assert_eq!(fs::read_to_string(&calls).unwrap(), "init\n");
 }
