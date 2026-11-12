@@ -100,30 +100,30 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "0d9b9fc865fa804b2267a02450cec196caf0cdca46c6c1a02eaed5b7daa35e81",
+      "sha256": "f029ccd552df6f0015a63098bdfc9a2d1c67a9647f81eb69b2d2c3d06dfdae74",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/verify.md": {
-      "sha256": "235956ad4d1d5f8eb7271d572cadd3e05208fa411f3a44d93a7d5bedbbe917e1",
+      "sha256": "fce4487aaf0a15893213c4172a6538b52429e39f0d9286f577bfc16bb35c1fea",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/audit.md": {
-      "sha256": "cd0835bb3527f01fcecbcae366509e8c0144590650188c1cbb5117ebf216062d",
+      "sha256": "5d6576d7ec29e3b226330e3022a3acb81c6d1dd08b63b4c8e4270f43f08a7bae",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/sync.md": {
