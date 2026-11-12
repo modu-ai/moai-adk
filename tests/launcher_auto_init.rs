@@ -379,3 +379,58 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
     let first = first.wait_with_output().unwrap();
     assert_eq!(json(&first)["name"], "agent-1");
 }
+
+/// #2489: two first launches race on `git init` (CI run 43146819966: "git init failed" while
+/// the other launch was still creating the repository). A `git` shim ahead of the real git makes
+/// the race certain: the first `init` takes 2 s, an `init` that starts meanwhile fails at once,
+/// as git's own `.git/config` lock does. The second launch must wait for the first instead.
+#[test]
+fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
+    let f = fixture();
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_string();
+    assert!(real.starts_with('/'), "real git: {real}");
+    let shims = tempfile::tempdir().unwrap();
+    let shim = shims.path().join("git");
+    fs::write(
+        &shim,
+        format!(
+            "#!/bin/sh\nfor a; do last=$a; done\ncase \" $* \" in *\" init \"*)\n  if mkdir \"$last/.init-race\" 2>/dev/null; then sleep 2; else exit 1; fi;;\nesac\nexec '{real}' \"$@\"\n"
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&shim, fs::Permissions::from_mode(0o755)).unwrap();
+    let path_var = format!("{}:{}", shims.path().display(), with_git(&f));
+    let plain = tempfile::tempdir().unwrap();
+    let first = command(&f, plain.path(), &path_var, &["cc", "-a"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    while !plain.path().join(".init-race").exists() {
+        assert!(
+            start.elapsed().as_secs() < 120,
+            "first git init never started"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    let second = command(&f, plain.path(), &path_var, &["cc", "-a"])
+        .output()
+        .unwrap();
+    let first = first.wait_with_output().unwrap();
+    let mut names = vec![
+        json(&first)["name"].as_str().unwrap().to_string(),
+        json(&second)["name"].as_str().unwrap().to_string(),
+    ];
+    names.sort();
+    assert_eq!(names, ["agent-1", "agent-2"]);
+}
