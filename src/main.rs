@@ -67,7 +67,11 @@ struct LaunchOpts {
     /// Claude effort (default `medium`).
     #[arg(long)]
     effort: Option<String>,
-    /// Do not pass `--advisor fable` (Claude Code host).
+    /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
+    /// the user setting `launcher.advisor` can turn it on. May bill to usage credits.
+    #[arg(long)]
+    advisor: Option<String>,
+    /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
     no_advisor: bool,
     /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts) and the
@@ -801,11 +805,6 @@ enum Command {
         #[arg(long)]
         query: String,
     },
-    /// Plan external skill source candidates read-only (03-B #1996): typed request on
-    /// stdin; judgment envelope on stdout; writes nothing.
-    SkillSourcePlan {
-        project: PathBuf,
-    },
     /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
     /// typed request on stdin; judgment envelope on stdout; writes nothing.
     ProjectSkillPlan {
@@ -821,25 +820,6 @@ enum Command {
     /// (I5 #2242): typed request on stdin.
     ProjectSkillRevert {
         project: PathBuf,
-    },
-    /// Install approved skill sources into the host official skill folders (03-B
-    /// #1996): the exact plan on stdin, `--plan-digest` and `--permission-reference`.
-    SkillSourceApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Record that every file of an installed skill was actually read (03-B #1996).
-    SkillReadReceipt {
-        project: PathBuf,
-        /// Installed skill directory to walk and hash.
-        #[arg(long)]
-        dir: PathBuf,
-        /// Installed skill name (Agent Skills spec shape).
-        #[arg(long)]
-        name: String,
     },
     /// Aggregate cost items across run/verify receipts (D5 #2191): typed request
     /// (receipt array) on stdin; breakdown envelope on stdout; writes nothing.
@@ -1059,7 +1039,7 @@ fn launch(
     o: LaunchOpts,
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    use moai_cli::session::{full_access, peek_agent_number, take_agent_number};
+    use moai_cli::session::{launch_settings, peek_agent_number, take_agent_number, AdvisorSource};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
     // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
@@ -1068,19 +1048,27 @@ fn launch(
     let name = o
         .name
         .or_else(|| (leader == Some(true)).then(|| "leader".into()));
+    // Validate user configuration even for roleless sessions or a CLI override. Resolution
+    // precedes host composition and any agent-number allocation. No advisor by default (user
+    // decision 2026-11-12, #2476): only `--advisor` or the user setting `launcher.advisor`.
+    let settings = launch_settings(
+        host,
+        role.is_some(),
+        o.permissions,
+        o.advisor.as_deref(),
+        o.no_advisor,
+    )?;
+    let advisor_note = (host == "claude"
+        && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
+    .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");
     let mut request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
         name,
         model: o.model,
         effort: o.effort,
-        // Claude defaults (user decision 2026-11-08, HOLD-L1 = A, #2053): roleless `cc`
-        // takes the launcher defaults (advisor fable, model, effort) too.
-        advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
-            .then(|| "fable".into()),
-        // Validate user configuration even for roleless sessions or CLI --permissions.
-        // Resolution precedes host composition and any agent-number allocation.
-        skip_permissions: full_access(role.is_some(), o.permissions)?,
+        advisor: settings.advisor.map(|(a, _)| a),
+        skip_permissions: settings.skip_permissions,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
@@ -1108,8 +1096,9 @@ fn launch(
         request.name = Some(format!("agent-{n}"));
     }
     let mut v = session_launch(&request, o.dry_run)?;
-    if let (Some(note), Some(notes)) = (number_note, v["notes"].as_array_mut()) {
-        notes.push(note.into());
+    if let Some(notes) = v["notes"].as_array_mut() {
+        notes.extend(advisor_note.map(Into::into));
+        notes.extend(number_note.map(Into::into));
     }
     Ok(v)
 }
@@ -1213,9 +1202,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         Search { .. } => "search.query",
         AtlasMap { .. } => "atlas.map",
         AtlasGraph { .. } => "atlas.graph",
-        SkillReadReceipt { .. } => "skill_source.read_receipt",
-        SkillSourceApply { .. } => "skill_source.apply",
-        SkillSourcePlan { .. } => "skill_source.plan",
         SnapshotDescribe { .. } => "snapshot.describe",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
@@ -2153,30 +2139,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
         } => moai_cli::archive::restore(&project, &spec, &permission_reference),
         Command::ArchiveSearch { project, query } => moai_cli::archive::search(&project, &query),
-        Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
-            &project,
-            input::<moai_cli::sources::SourcesRequest>()?,
-        )?)
-        .map_err(|_| "encode failed".into()),
-        Command::SkillSourceApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => {
-            let home = std::env::var_os("HOME")
-                .map(PathBuf::from)
-                .ok_or("home directory missing; set HOME")?;
-            moai_cli::sources::sources_apply(
-                &project,
-                &home,
-                plan_input::<moai_cli::sources::SourcePlan>()?,
-                &plan_digest,
-                &permission_reference,
-            )
-        }
-        Command::SkillReadReceipt { project, dir, name } => {
-            moai_cli::sources::read_receipt(&project, &dir, &name)
-        }
         Command::CostReport {} => {
             // cost_report checks protocol_version itself (one check, not two).
             moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
