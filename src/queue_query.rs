@@ -333,7 +333,11 @@ pub fn query_cli<T: Transport, C: Clock>(
             let newest = checks
                 .iter()
                 .filter(|c| {
-                    c["name"] == name
+                    // #2563: `rc-ci` also reads runs of the renamed `ci` check; the
+                    // newest run under either spelling decides.
+                    c["name"]
+                        .as_str()
+                        .is_some_and(|actual| crate::flow::check_name_matches(name, actual))
                         && c["head_sha"] == head
                         && c["app"]["slug"] == "github-actions"
                 })

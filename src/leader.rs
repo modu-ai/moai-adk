@@ -155,7 +155,17 @@ fn observe<T: Transport, C: Clock>(
         .to_string();
     let ci = runs["check_runs"]
         .as_array()
-        .and_then(|a| a.iter().find(|r| r["name"] == "rc-ci"))
+        // #2563: either spelling of the CI check; the newest run (largest id) decides,
+        // so the answer does not depend on the order the API lists the runs in.
+        .and_then(|a| {
+            a.iter()
+                .filter(|r| {
+                    r["name"]
+                        .as_str()
+                        .is_some_and(|actual| crate::flow::check_name_matches("ci", actual))
+                })
+                .max_by_key(|r| r["id"].as_i64().unwrap_or(0))
+        })
         .map(|r| {
             r["conclusion"]
                 .as_str()

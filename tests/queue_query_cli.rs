@@ -474,3 +474,58 @@ fn repair_final_pr_identity_change_refuses_same_sha_snapshot() {
         assert_eq!(t.remaining(), 1);
     }
 }
+
+/// #2563: the CI check renamed `rc-ci` → `ci`. The `rc-ci` row reads runs under either
+/// spelling and the newest run (largest id) decides, whichever name it carries; a matrix
+/// job name never counts. A newer failure under the other name is not hidden by an older
+/// success, so accepting both names does not weaken the success requirement.
+#[test]
+fn ci_row_reads_both_names_and_the_newest_run_decides() {
+    let h = "a".repeat(40);
+    for (checks, state) in [
+        (vec![check(10, "ci", &h, "success")], "success"),
+        (vec![check(10, "rc-ci", &h, "success")], "success"),
+        (
+            vec![
+                check(10, "rc-ci", &h, "success"),
+                check(11, "ci", &h, "failure"),
+            ],
+            "failure",
+        ),
+        (
+            vec![
+                check(10, "ci", &h, "success"),
+                check(11, "rc-ci", &h, "failure"),
+            ],
+            "failure",
+        ),
+        (
+            vec![
+                check(11, "ci", &h, "success"),
+                check(10, "rc-ci", &h, "failure"),
+            ],
+            "success",
+        ),
+        (
+            vec![check(10, "ci / linux-x86_64", &h, "success")],
+            "not_run",
+        ),
+    ] {
+        let mut ex = vec![ledger(&[20])];
+        ex.extend(row(
+            20,
+            pr(20, &h),
+            vec![audit(20, &h, &"0".repeat(40), "PASS")],
+            checks.clone(),
+        ));
+        let (out, _) = run(ex);
+        let row = &out["rows"][0];
+        assert_eq!(row["ci"]["rc-ci"]["state"], state, "{checks:?}");
+        let blocked = row["blocked_reasons"].as_array().unwrap();
+        assert_eq!(
+            blocked.iter().any(|b| b == "rc_ci_not_success"),
+            state != "success",
+            "{checks:?} {blocked:?}"
+        );
+    }
+}
