@@ -41,7 +41,7 @@ pub const AUTHOR_RULE: &str = "exact match of lane with a claim session= name af
 /// The lane name rule (#2499), from the names lanes actually wrote (2026-11-1x): a name of the
 /// form `<lowercase letters>-<digits>-<fragment>` (fragment: ASCII letters and digits, for a
 /// session id, a restart tag or an Issue number) belongs to lane `<letters>-<digits>`, and
-/// `<letters>-<digits>` is its own lane. Any other name (`omp-t74`, a UUID, a second fragment)
+/// `<letters>-<digits>` is its own lane. Any other name (`lane-t74`, a UUID, a second fragment)
 /// is not normalised and matches byte-exact only.
 pub const NAME_RULE: &str = "<letters>-<digits>-<fragment> is lane <letters>-<digits>; \
                              other names match byte-exact";

@@ -403,7 +403,7 @@ fn lane_names_normalise_by_the_documented_rule_only() {
         ("agent-7-t67", Some("agent-7")),
         ("agent-2", Some("agent-2")),
         // Outside the rule: the second part is not all digits, a third hyphen, a UUID.
-        ("omp-t74", None),
+        ("lane-t74", None),
         ("codex-t47", None),
         ("agent-1-hB-x", None),
         ("742ea713-7133-42a5-8466-1915642362d6", None),
@@ -418,7 +418,7 @@ fn lane_names_normalise_by_the_documented_rule_only() {
     // Outside the rule only byte-exact names match.
     assert!(same_lane("codex-t47", "codex-t47"));
     assert!(!same_lane("codex-t47", "codex-t47-hB"));
-    assert!(!same_lane("omp-t74", "omp-t7"));
+    assert!(!same_lane("lane-t74", "lane-t7"));
 }
 
 #[test]
