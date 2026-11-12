@@ -142,6 +142,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
+- `worktree-gc-plan`
 - `worktree-plan`
 - `worktree-report`
 
