@@ -20,7 +20,8 @@
 //! N1, design 6777574227) so a rule the user believes on is not silently off. An absent file
 //! is not a problem.
 //!
-//! The file is opened once without following a symlink, checked on that handle, and read
+//! The file is opened once without following a symlink (on unix by the open itself; elsewhere
+//! by a look just before it), checked on that handle, and read
 //! through a `CONFIG_MAX + 1` bound, so a file swapped or grown after the check is still
 //! refused (#2391 N2).
 
@@ -133,7 +134,9 @@ pub fn load_path(path: &Path, home: &Path) -> Loaded {
     }
 }
 
-/// Opens a file for reading without following a symlink (and without blocking on a FIFO).
+/// Opens a file for reading without following a symlink. On unix the open itself refuses a
+/// symlink (`O_NOFOLLOW`) and does not block on a FIFO (`O_NONBLOCK`). Elsewhere a symlink is
+/// refused by a look before the open, as before N2; that look and the open are two steps.
 fn open_nofollow(path: &Path) -> std::io::Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
@@ -141,6 +144,10 @@ fn open_nofollow(path: &Path) -> std::io::Result<fs::File> {
     {
         use std::os::unix::fs::OpenOptionsExt;
         options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    #[cfg(not(unix))]
+    if fs::symlink_metadata(path)?.file_type().is_symlink() {
+        return Err(std::io::Error::other("config is a symlink"));
     }
     options.open(path)
 }
@@ -321,6 +328,52 @@ mod tests {
         );
         assert_eq!(read_bounded(&over[..]).unwrap(), None);
         assert!(read_bounded(&b"\xff"[..]).is_err(), "not UTF-8");
+    }
+
+    /// N2 (pre-audit 6812063964 B2): the read itself stops after `CONFIG_MAX + 1` bytes, so a
+    /// file that keeps growing is never read whole. The reader is endless and panics once more
+    /// than that bound has been asked of it; the post-read length check alone cannot pass this.
+    #[test]
+    fn the_read_stops_at_the_bound_on_an_endless_reader() {
+        struct Endless {
+            served: u64,
+        }
+        impl Read for Endless {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                self.served += buf.len() as u64;
+                assert!(
+                    self.served <= CONFIG_MAX + 1,
+                    "read past the bound: {} bytes asked",
+                    self.served
+                );
+                buf.fill(b'#');
+                Ok(buf.len())
+            }
+        }
+        let mut reader = Endless { served: 0 };
+        assert_eq!(read_bounded(&mut reader).unwrap(), None);
+        assert_eq!(reader.served, CONFIG_MAX + 1);
+    }
+
+    /// N2 (pre-audit 6812063964 B1): the file is opened before its type is checked, so a FIFO
+    /// must not hold the open (`O_NONBLOCK`); it is named `NotRegularFile` within a bound.
+    #[cfg(unix)]
+    #[test]
+    fn a_fifo_config_returns_at_once_as_not_regular() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path().to_path_buf();
+        let path = home.join("config");
+        let c = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()).unwrap();
+        // SAFETY: `c` is a valid NUL-terminated path that outlives the call.
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0, "mkfifo");
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(load_path(&path, &home).problem);
+        });
+        let got = rx
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("load_path blocked on a FIFO config");
+        assert_eq!(got, Some(ConfigProblem::NotRegularFile));
     }
 
     /// N1/N2: each unusable file has its fixed reason; an absent file has none.

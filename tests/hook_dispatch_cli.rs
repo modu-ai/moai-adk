@@ -524,7 +524,24 @@ fn a_timed_out_preflight_is_non_blocking_by_the_host_rules() {
     let fast = root.join("home/fast-bin");
     git_shim(&fast, &format!("exec '{real_git}' \"$@\""));
     let slow = root.join("home/slow-bin");
-    git_shim(&slow, "exec sleep 120");
+    // The sleeping git outlives the cancelled engine, so it waits on a release file and also
+    // ends once the temporary directory is gone (pre-audit 6812063964 N2: no orphan sleeper).
+    let release = root.join("home/release-slow-git");
+    git_shim(
+        &slow,
+        &format!(
+            "while [ -d '{dir}' ] && [ ! -e '{rel}' ]; do sleep 0.1; done; exit 1",
+            dir = slow.display(),
+            rel = release.display()
+        ),
+    );
+    struct Release(PathBuf);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            let _ = fs::write(&self.0, "");
+        }
+    }
+    let _release = Release(release);
     let before = commit_count(&root);
 
     let (ran, cancelled) =
@@ -1633,7 +1650,8 @@ fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
         "absent and usable: no line"
     );
 
-    let mut cases: Vec<(&str, Box<dyn Fn() + '_>)> = vec![
+    type Setup<'a> = Box<dyn Fn() + 'a>;
+    let mut cases: Vec<(&str, Setup<'_>)> = vec![
         (
             "invalid_toml",
             Box::new(|| {
