@@ -105,5 +105,37 @@ class CiScopeTest(unittest.TestCase):
         self.assertTrue(data["reasons"])
 
 
+class WorkflowContractTest(unittest.TestCase):
+    def test_scope_steps_pass_rename_sources(self):
+        # #2538 B1: plain `git diff --name-only` emits only the rename destination,
+        # so renaming/deleting a test-consumed doc could pass as docs-only. Both
+        # Scope steps must use --no-renames so old paths reach the classifier.
+        with open(
+            os.path.join(REPO_ROOT, ".github", "workflows", "rc-ci.yml"),
+            "r",
+            encoding="utf-8",
+        ) as fh:
+            yaml_text = fh.read()
+        self.assertEqual(yaml_text.count("git diff --name-only --no-renames"), 2)
+        self.assertNotIn('git diff --name-only "${base}', yaml_text)
+
+
+class MainExceptionPathTest(unittest.TestCase):
+    def test_internal_error_fails_safe_to_full(self):
+        # #2538 audit note (M3): the except branch in main() must answer "full".
+        from unittest import mock
+        from io import StringIO
+
+        module = load_module()
+        with mock.patch.object(module, "classify", side_effect=RuntimeError("boom")):
+            with mock.patch.object(module.sys, "stdin", StringIO("docs/a.md\n")):
+                with mock.patch.object(module.sys, "stdout", StringIO()) as out:
+                    code = module.main()
+        self.assertEqual(code, 0)
+        data = json.loads(out.getvalue())
+        self.assertEqual(data["scope"], "full")
+        self.assertTrue(any("boom" in r for r in data["reasons"]))
+
+
 if __name__ == "__main__":
     unittest.main()
