@@ -23,19 +23,6 @@ const GO_CACHE: &str = ".moai/state/github/counts.json";
 const CACHE: &str = ".moai-cli/state/github/counts.json";
 const LOCK: &str = ".moai-cli/state/github/refresh.lock";
 
-fn git(repo: &Path, home: &Path, args: &[&str]) {
-    let status = Command::new("git")
-        .args(args)
-        .current_dir(repo)
-        .env("HOME", home)
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .unwrap();
-    assert!(status.success(), "git {args:?}");
-}
-
 /// A checkout with `origin` at `origin_url`. With `gh_delay` the PATH holds a fake `gh`
 /// (see [`gh_script`]) beside `git`; without it, only `git`.
 fn fixture(origin_url: &str, gh_delay: Option<u32>) -> Fixture {
@@ -46,8 +33,8 @@ fn fixture(origin_url: &str, gh_delay: Option<u32>) -> Fixture {
     for d in [&home, &repo, &bin] {
         std::fs::create_dir_all(d).unwrap();
     }
-    git(&repo, &home, &["init", "-q", "-b", "main"]);
-    git(&repo, &home, &["remote", "add", "origin", origin_url]);
+    common::git::git_ok(&repo, &["init", "-q", "-b", "main"]);
+    common::git::git_ok(&repo, &["remote", "add", "origin", origin_url]);
     let log = tmp.path().join("gh.log");
     // Only git is linked next to the fake gh, so a real gh elsewhere is never found.
     let real_git = String::from_utf8(
