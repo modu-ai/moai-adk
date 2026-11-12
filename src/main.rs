@@ -514,7 +514,7 @@ enum Command {
         /// Comma-separated required check-run names (#2335). The verdict reads these
         /// runs' conclusions; unrelated checks and the combined commit status are
         /// excluded from the judgment.
-        #[arg(long = "required-checks", default_value = "rc-ci")]
+        #[arg(long = "required-checks", default_value = "ci")]
         required_checks: String,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.

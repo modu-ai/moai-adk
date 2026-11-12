@@ -1,4 +1,4 @@
-# #2452 AC-3: local `cargo test` gets the same 8 MiB test-thread stack as rc-ci.
+# #2452 AC-3: local `cargo test` gets the same 8 MiB test-thread stack as CI.
 # In debug builds `Cli::command()` needs about 2000 KiB of the 2 MiB default and grows
 # about 4 KiB per subcommand (#2016 comment 6790101536). Without `force`, an existing
 # RUST_MIN_STACK in the environment wins (measured on #2452). rustc also receives it;

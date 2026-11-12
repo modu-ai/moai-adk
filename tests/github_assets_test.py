@@ -227,7 +227,7 @@ ALLOWED_WRITES = {("rc-label-sync.yml", "apply"): {"issues"}}
 class WorkflowTest(unittest.TestCase):
     def workflows(self):
         paths = sorted(WORKFLOWS.glob("*.yml"))
-        self.assertEqual([p.name for p in paths], ["rc-ci.yml", "rc-label-sync.yml"])
+        self.assertEqual([p.name for p in paths], ["ci.yml", "rc-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -249,21 +249,21 @@ class WorkflowTest(unittest.TestCase):
 
     @staticmethod
     def rc_ci_matrix(check):
-        """The two `include` lists of the rc-ci matrix expression (#2554): the one a
+        """The two `include` lists of the ci matrix expression (#2554): the one a
         `pull_request` run gets, and the one every other event gets."""
         expr = check["strategy"]["matrix"]["include"]
         m = re.fullmatch(
             r"\$\{\{ fromJSON\(github\.event_name == 'pull_request'\s+&& '(\[.*?\])'\s+\|\| '(\[.*?\])'\) \}\}",
             expr.strip(), re.S)
         if m is None:
-            raise AssertionError(f"unexpected rc-ci matrix expression: {expr!r}")
+            raise AssertionError(f"unexpected ci matrix expression: {expr!r}")
         return json.loads(m.group(1)), json.loads(m.group(2))
 
     def test_rc_ci_moves_the_full_matrix_after_merge_without_cancelling_it(self):
         """#2554 (user decision U10): PRs run linux-x86_64; the merging push and
         workflow_dispatch run all four targets and windows-build. Only PR runs cancel an
         older run of the same PR; a post-merge run is never cancelled."""
-        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         triggers = flow.get("on", flow.get(True))
         self.assertEqual(triggers["push"]["branches"], ["v2026.11.0"])
         self.assertIn("workflow_dispatch", triggers)
@@ -277,7 +277,7 @@ class WorkflowTest(unittest.TestCase):
     def test_rc_ci_dependency_cache_is_written_only_by_post_merge_runs(self):
         """#2554 AC-3: a PR run restores the base branch's dependency cache and never saves
         one; the cache is pinned and sits before the check set."""
-        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         steps = flow["jobs"]["check"]["steps"]
         names = [s.get("name") for s in steps]
         cache = steps[names.index("Dependency cache")]
@@ -289,11 +289,11 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotIn("dependencies: no cache", script)
 
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
-        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         triggers = flow.get("on", flow.get(True))  # PyYAML reads a bare `on:` key as True
         self.assertEqual(triggers["pull_request"]["branches"], ["v2026.11.0"])
-        self.assertEqual(flow["jobs"]["rc-ci"]["name"], "rc-ci")
-        # The check set runs on every matrix target (#2194); `rc-ci` aggregates them.
+        self.assertEqual(flow["jobs"]["ci"]["name"], "ci")
+        # The check set runs on every matrix target (#2194); `ci` aggregates them.
         script = "\n".join(s.get("run", "") for s in flow["jobs"]["check"]["steps"])
         for command in ("cargo test --offline --locked", "cargo clippy --offline --locked --all-targets -- -D warnings",
                         "cargo fmt --check", "unittest discover -v -s tests -p '*_test.py'", "git diff --check",
@@ -302,8 +302,8 @@ class WorkflowTest(unittest.TestCase):
 
     def test_rc_ci_runs_the_four_decided_targets_and_fails_when_any_fails(self):
         """#2194 (decision 01:1x(11-09)): Linux x86_64/arm64 and macOS arm64/x86_64 on standard
-        free GitHub-hosted runner labels; a failing target fails `rc-ci` instead of skipping it."""
-        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        free GitHub-hosted runner labels; a failing target fails `ci` instead of skipping it."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         check = flow["jobs"]["check"]
         self.assertIs(check["strategy"]["fail-fast"], False)
         on_pr, after_merge = self.rc_ci_matrix(check)
@@ -322,7 +322,7 @@ class WorkflowTest(unittest.TestCase):
         caps = {e["target"]: e["timeout"] for e in after_merge}
         self.assertGreaterEqual(caps["linux-arm64"], 45)
         self.assertEqual(check["timeout-minutes"], "${{ matrix.timeout }}")
-        aggregate = flow["jobs"]["rc-ci"]
+        aggregate = flow["jobs"]["ci"]
         self.assertEqual(aggregate["needs"], ["check"])
         # #2312: runs after a failed target (so the check fails, not skips) but not after a
         # cancellation (always() reported a cancel-in-progress run as a failure).

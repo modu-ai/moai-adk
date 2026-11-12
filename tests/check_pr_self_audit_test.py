@@ -108,6 +108,17 @@ class CiCitationLineTest(unittest.TestCase):
     def test_full_citation_passes(self):
         self.assert_pass(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40))
 
+    def test_both_workflow_spellings_follow_the_same_token_rules(self):
+        # #2563: the workflow is renamed rc-ci -> ci. Open PRs keep the old word, new
+        # ones write the new word; neither spelling relaxes the run=/head= checks.
+        for word in ("ci", "rc-ci"):
+            with self.subTest(word=word):
+                self.assert_pass(with_ci(f"- ci: {word} run=42821157127 head=" + HEAD40))
+                self.assert_blocked(with_ci(f"- ci: {word} run=42821157127 head=" + HEAD40[:39]), "ci:head")
+                self.assert_blocked(with_ci(f"- ci: {word} run=42821157127 head=" + HEAD40 + "-dirty"), "ci:head")
+                self.assert_blocked(with_ci(f"- ci: {word} rerun=42821157127 head=" + HEAD40), "ci:run")
+                self.assert_blocked(with_ci(f"- ci: {word} run= head=" + HEAD40), "ci:run")
+
     def test_head_39_hex_blocked(self):
         self.assert_blocked(with_ci("- ci: rc-ci run=42821157127 head=" + HEAD40[:39]), "ci:head")
 
@@ -183,7 +194,7 @@ class CiCitationLineTest(unittest.TestCase):
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-CI_FORMAT = "ci: rc-ci run=<run id> head=<40-hex head SHA>"
+CI_FORMAT = "ci: ci run=<run id> head=<40-hex head SHA>"
 
 
 class CheckRunRulesSingleSourceTest(unittest.TestCase):
@@ -240,7 +251,7 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
 
     def test_pr_form_and_checker_use_the_same_ci_format(self):
         self.assertIn(CI_FORMAT, self.read(".github/pull_request_template.md"))
-        self.assertIn("ci: rc-ci run=<run id> head=<40-hex head SHA>", self.read("tools/check_pr_self_audit.py"))
+        self.assertIn(CI_FORMAT, self.read("tools/check_pr_self_audit.py"))
 
 
 if __name__ == "__main__":
