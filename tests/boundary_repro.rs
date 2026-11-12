@@ -831,8 +831,10 @@ fn f6_scope_overlap_sees_case_and_dotdot_variants() {
 }
 
 /// F8: a check that changes the tree while it runs leaves no admissible receipt.
+/// The verdict is judged on the project as it is after the checks ran, so the change is the
+/// same `candidate-changed` rejection as a change made before the audit; a check that leaves
+/// the tree alone is still admitted.
 #[test]
-#[ignore = "#2392 repro F8: RED until a tree change during the run is detected"]
 fn f8_tree_change_during_the_run_is_not_admitted() {
     let Some(dir) = project() else { return };
     let input = audit_input(dir.path(), &["touch mutated.txt"]);
@@ -842,6 +844,28 @@ fn f8_tree_change_during_the_run_is_not_admitted() {
         verdict["admission"], "admitted",
         "a check that changed the tree left the receipt digest unchanged: {verdict}"
     );
+    assert_eq!(verdict["admission"], "rejected", "{verdict}");
+    assert_eq!(
+        verdict["reasons"],
+        json!(["candidate-changed"]),
+        "{verdict}"
+    );
+
+    // An edit to a tracked file during the run counts too, not only a new file.
+    let Some(dir) = project() else { return };
+    let input = audit_input(dir.path(), &["sh -c 'echo changed >> README.md'"]);
+    let verdict = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+    assert_eq!(
+        verdict["reasons"],
+        json!(["candidate-changed"]),
+        "{verdict}"
+    );
+
+    // Boundary: a check that changes nothing is admitted.
+    let Some(dir) = project() else { return };
+    let input = audit_input(dir.path(), &["true"]);
+    let verdict = serde_json::to_value(audit(dir.path(), &input).unwrap()).unwrap();
+    assert_eq!(verdict["admission"], "admitted", "{verdict}");
 }
 
 /// D2 stage 1 (decision 6774899518 row 14 = B, staged): the verdict says on what basis the

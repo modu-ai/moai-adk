@@ -835,7 +835,7 @@
         {
           "kind": "write",
           "path": ".moai/state/github/counts.json",
-          "content": "{\"open_issues\":0,\"open_prs\":0,\"fetched_at\":1}\n"
+          "content": "{\"open_issues\":0,\"open_prs\":0,\"fetched_at\":4102444800}\n"
         }
       ]
     },
@@ -883,7 +883,7 @@
         {
           "kind": "write",
           "path": ".moai/state/github/counts.json",
-          "content": "{\"open_issues\":7,\"open_prs\":3,\"fetched_at\":1}\n"
+          "content": "{\"open_issues\":7,\"open_prs\":3,\"fetched_at\":4102444800}\n"
         },
         {
           "kind": "write",
