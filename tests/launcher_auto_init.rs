@@ -135,7 +135,10 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
         assert_eq!(v["name"], "agent-1", "{host}");
         assert_eq!(init_lines(&out), 1, "{host}: {}", text(&out));
         assert!(dir.join(".git").is_dir(), "{host}");
-        assert!(dir.join(".git/.moai-cli/sessions/agent-seq").is_file(), "{host}");
+        assert!(
+            dir.join(".git/.moai-cli/sessions/agent-seq").is_file(),
+            "{host}"
+        );
         let p = profile(&dir);
         assert_eq!(p["schema_version"], 2, "{host}");
         assert_eq!(p["project_id"], "my-project", "{host}");
@@ -167,7 +170,10 @@ fn leader_and_roleless_launches_initialize_too() {
         json(&out);
         assert_eq!(init_lines(&out), 1, "{args:?}: {}", text(&out));
         assert!(plain.path().join(".git").is_dir(), "{args:?}");
-        assert!(plain.path().join(".moai-cli/project.yaml").is_file(), "{args:?}");
+        assert!(
+            plain.path().join(".moai-cli/project.yaml").is_file(),
+            "{args:?}"
+        );
     }
 }
 
@@ -232,7 +238,9 @@ fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let only_stubs = f.bin.path().display().to_string();
-        let out = command(&f, plain.path(), &only_stubs, args).output().unwrap();
+        let out = command(&f, plain.path(), &only_stubs, args)
+            .output()
+            .unwrap();
         let err = refused_without_writes(&f, &out, plain.path(), &[]);
         let page = if cfg!(target_os = "macos") {
             "https://git-scm.com/install/mac"
@@ -256,7 +264,11 @@ fn dry_run_creates_nothing_and_reports_what_it_would_initialize() {
         assert!(notes.contains(item), "{item}: {notes}");
     }
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
-    assert!(entries(plain.path()).is_empty(), "{:?}", entries(plain.path()));
+    assert!(
+        entries(plain.path()).is_empty(),
+        "{:?}",
+        entries(plain.path())
+    );
     assert!(!marker(&f).exists());
     // A repository whose settings exist reports nothing to initialize.
     let p = tempfile::tempdir().unwrap();
