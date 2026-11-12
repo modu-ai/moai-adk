@@ -660,41 +660,37 @@ fn goal_armed(anchor: &Path, session_id: &str) -> bool {
         .is_some_and(|g| g.status.as_deref() == Some("armed"))
 }
 
-/// `resolveGitHubCounts`: the cache only, never the network; an explicit
-/// `statusline.forge` naming no forge suppresses the pair.
+/// `resolveGitHubCounts`: the cache only, never the network (#2588: the refresh runs
+/// in a detached child, see [`super::counts`]); an explicit `statusline.forge` naming no
+/// forge suppresses the pair, and counts fetched longer ago than
+/// [`super::counts::STALE`] are hidden rather than shown as current.
 fn github_counts(anchor: &Path) -> GitHubCounts {
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    struct Cache {
-        open_issues: Option<i64>,
-        open_prs: Option<i64>,
-        suppressed: Option<bool>,
-        #[allow(dead_code)]
-        fetched_at: Option<i64>,
-    }
-    let mut counts = std::fs::read(anchor.join(".moai/state/github/counts.json"))
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Cache>(&b).ok())
+    let now = super::counts::now_unix();
+    let mut counts = super::counts::read(anchor)
+        .filter(|c| c.suppressed == Some(true) || super::counts::is_fresh(c, now))
         .map_or(GitHubCounts::default(), |c| GitHubCounts {
             available: true,
             suppressed: c.suppressed.unwrap_or(false),
             open_issues: c.open_issues.unwrap_or(0),
             open_prs: c.open_prs.unwrap_or(0),
         });
-    let forge = [STATUSLINE_LOCAL_YAML, STATUSLINE_YAML]
+    if forge_suppressed(anchor) {
+        counts.suppressed = true;
+    }
+    counts
+}
+
+/// An explicit `statusline.forge` naming neither github nor gitlab.
+pub fn forge_suppressed(anchor: &Path) -> bool {
+    [STATUSLINE_LOCAL_YAML, STATUSLINE_YAML]
         .into_iter()
         .filter_map(|pair| config::read(&config_path(anchor, pair)))
         .filter_map(|doc| {
             doc.scalar(&["statusline", "forge"])
                 .map(|s| s.trim().to_string())
         })
-        .find(|v| !v.is_empty());
-    if let Some(forge) = forge {
-        if !matches!(forge.to_lowercase().as_str(), "github" | "gitlab") {
-            counts.suppressed = true;
-        }
-    }
-    counts
+        .find(|v| !v.is_empty())
+        .is_some_and(|forge| !matches!(forge.to_lowercase().as_str(), "github" | "gitlab"))
 }
 
 #[cfg(test)]
@@ -909,9 +905,17 @@ mod tests {
         assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
         let gh = tmp.path().join(".moai/state/github");
         std::fs::create_dir_all(&gh).unwrap();
+        // #2588 AC-3: a count fetched more than an hour ago is hidden, not shown as current.
         std::fs::write(
             gh.join("counts.json"),
             r#"{"open_issues":7,"open_prs":3,"fetched_at":1}"#,
+        )
+        .unwrap();
+        assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
+        let now = super::super::counts::now_unix();
+        std::fs::write(
+            gh.join("counts.json"),
+            format!(r#"{{"open_issues":7,"open_prs":3,"fetched_at":{now}}}"#),
         )
         .unwrap();
         let c = github_counts(tmp.path());
@@ -919,6 +923,16 @@ mod tests {
             (c.available, c.open_issues, c.open_prs, c.suppressed),
             (true, 7, 3, false)
         );
+        // The cache this tool writes wins over the Go-generation file.
+        let own = tmp.path().join(".moai-cli/state/github");
+        std::fs::create_dir_all(&own).unwrap();
+        std::fs::write(
+            own.join("counts.json"),
+            format!(r#"{{"open_issues":9,"open_prs":4,"fetched_at":{now}}}"#),
+        )
+        .unwrap();
+        let c = github_counts(tmp.path());
+        assert_eq!((c.open_issues, c.open_prs), (9, 4));
         let sections = tmp.path().join(".moai/config/sections");
         std::fs::create_dir_all(&sections).unwrap();
         std::fs::write(
