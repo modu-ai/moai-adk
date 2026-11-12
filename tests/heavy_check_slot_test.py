@@ -92,6 +92,22 @@ class HeavyCheckSlotTest(unittest.TestCase):
         marker.write_text("")
         self.assertTrue(wait_for(lambda: held(self.folder) == []), "freed when the command ends")
 
+    def test_sigterm_to_the_wrapper_alone_reaches_the_command(self):
+        """Pre-audit 6814850663 M5: a SIGTERM sent only to the wrapper is passed to the
+        command, which ends; the wrapper returns 143 and the slot is free again."""
+        wrapper = self.acquire(1, "term", "sleep", "60")
+        self.assertTrue(wait_for(lambda: len(held(self.folder)) == 1))
+        os.kill(wrapper.pid, signal.SIGTERM)
+        try:
+            out = wrapper.communicate(timeout=10)[0]
+        except subprocess.TimeoutExpired:
+            wrapper.kill()
+            wrapper.wait()
+            wrapper.stdout.close()  # the unsignalled command still holds the pipe
+            self.fail("the command did not receive the wrapper's SIGTERM; wrapper still waiting")
+        self.assertEqual(wrapper.returncode, 128 + signal.SIGTERM, out)
+        self.assertEqual(held(self.folder), [], "the slot is free once both are gone")
+
     def test_ac3_exit_codes_are_passed_through(self):
         for command, want in [
             (["true"], 0),

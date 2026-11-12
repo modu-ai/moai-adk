@@ -124,12 +124,26 @@ def acquire(folder, maximum, name, command):
                 os.unlink(wait_path)
             except FileNotFoundError:
                 pass
+    # Handlers go in before the slot is announced and the command starts, so no signal lands in
+    # a gap where the wrapper would die and leave the command running; one that arrives before
+    # the command exists is held and passed on as soon as it does.
+    held = {"child": None, "pending": []}
+
+    def forward(sig, _frame):
+        if held["child"] is None:
+            held["pending"].append(sig)
+        else:
+            held["child"].send_signal(sig)
+
+    for sig in FORWARDED:
+        signal.signal(sig, forward)
     write_record(fd, {"name": name, "command": command, "pid": os.getpid(),
                       "started_unix": int(time.time()), "slot": slot})
     print(f"heavy-check-slot: slot {slot} taken by {name}", flush=True)
     child = subprocess.Popen(command, pass_fds=(fd,))
-    for sig in FORWARDED:
-        signal.signal(sig, lambda s, _f: child.send_signal(s))
+    held["child"] = child
+    for sig in held["pending"]:
+        child.send_signal(sig)
     code = child.wait()
     os.close(fd)
     return 128 - code if code < 0 else code
