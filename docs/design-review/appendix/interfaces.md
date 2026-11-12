@@ -16,7 +16,12 @@
 | `dispatch.*` | `forge-read`/`forge-report` + `effect-intend`/`effect-confirm`/`effects-reconcile` | dispatch는 forge 읽기·outbox effect 3-op로 분리 실현 |
 | 배정·수락 관측 (#2390 S2) | `dispatch-record` / `dispatch-ack` / `dispatch-check` (`dispatch.record`·`dispatch.ack`·`dispatch.check`) | S1 위의 revision·수신/수락 구분·5분 경보. C3는 관측까지 충족, 감사 claim 소비·게이트 연동 미충족(#2403/#2388 후속). 계약은 `docs/rust-product-path.md`의 S2 절 |
 | 레인↔리더 영속 메시지 (#2390 S1) | `message-record` / `message-ack` / `message-reconcile` (`message.record`·`message.ack`·`message.reconcile`) | 로컬+Issue 기록과 명시 수신 ACK. `queued`·`received`·`received_ack`를 구분하며 dispatch 수락·소유권 이전·업무 완료는 아님. 입력/결과 계약은 `docs/rust-product-path.md`의 S1 절 |
+| 레인 통신 메타데이터 관측 (#2390 S6) | `lane-status` (`lane.status`)의 추가 `communication` 객체 | 기존 입력·출력 의미 유지. `available`, `observed_at`, `lanes`(세션별 `sent_reports`, `received_acks`, `unacknowledged_report_ids`, S2 `dispatches`), `errors: [{issue, reason}]`; payload 값은 노출하지 않음. 상세 필드는 `docs/rust-product-path.md`의 S6 절 |
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
+
+S6의 `sent_reports`는 S1 wire의 sender session 기준이며, `received_acks`는 그 레인이 **보낸** 보고에 대한 명시적 receiver ACK다. GitHub 작성자 숫자 ID는 계정 증거이지 독립 세션 인증이 아니다. 기존 Issue/comment GET 스냅샷과 완전한 pagination을 재사용한다. 공용 목록 reader는 GitHub `Link`의 `/repos/{owner}/{repo}/...` → `/repositories/{id}/...` 전환을 그대로 따라가며, S6의 컬렉션 검사가 기존 목록을 자르지 않는다. `communication`만 캡처된 댓글 URL을 원래 slug 경로 또는 검증된 저장소 ID의 `/repositories/{id}/issues/<n>/comments` 경로와 대조한다. S1 marker가 있거나 댓글 URL의 저장소 identity 확인이 필요할 때 저장소 GET을 1회 추가하고 댓글은 다시 읽지 않는다. 다른 저장소 ID·host·컬렉션이면 관측을 unavailable로 남긴다. canonical packet·marker/digest·작성자·대상·실제 context를 검증한다. 선언 레인과 발견한 메시지 actor를 결정적으로 정렬하고, 정확히 같은 중복은 합친다. event/context 필터 전에 동일 report ID의 불변성 충돌을 검사하며, 관련 malformed packet·충돌·불완전 관측은 `communication.available=false`와 일반 오류 사유로 남긴다. 기존 상태 출력은 유지하고 ACK를 추정하지 않는다.
+
+5분은 `Message.created_at`이 아니라 서버 record comment의 `created_at` 기준이다. 명시 ACK가 없으면 299초 `waiting`, 300초(N)·301초(N+1) `unacknowledged`; 일치하는 명시 ACK는 `received`다. 미래 시간은 unknown이며 malformed 시간·overflow는 unavailable/unknown이지 0초나 timeout으로 보정하지 않는다. S2 checker를 같은 frozen snapshot에 적용하며 receipt는 acceptance가 아니고 superseded revision은 current 배정이 아니다. GET-only·파일 쓰기 없음·관측 전용 경계를 유지한다. S3·S4 나머지·S5·host transport·claim/audit gate 연동은 **HOLD**다.
 
 ## C6d generation 문서 참조 (#2450)
 
@@ -72,6 +77,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `claude-doctor`
 - `claude-settings-apply`
 - `claude-settings-plan`
+- `codex-config-apply`
+- `codex-config-plan`
 - `codex-doctor`
 - `codex-projection-apply`
 - `codex-projection-plan`
@@ -111,6 +118,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `key-status`
 - `lane-handoff-check`
 - `lane-status`
+- `language-setup`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`
@@ -128,6 +136,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `pr-body-render`
 - `pr-confirm`
 - `project-apply`
+- `project-detect`
 - `project-plan`
 - `project-skill-apply`
 - `project-skill-plan`
@@ -140,6 +149,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `scope-check`
 - `search`
 - `snapshot-describe`
+- `update`
 - `update-apply`
 - `update-plan`
 - `worktree-apply`

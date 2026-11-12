@@ -450,7 +450,7 @@ fn stalled_gh(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
     let path = dir.join(name);
     let pid_file = dir.join(format!("{name}.pid"));
     let script = format!(
-        "#!/bin/sh\n# test stub: gh that hangs\nsleep 30 &\necho $! > '{}'\nwait\n",
+        "#!/bin/sh\n# test stub: gh that hangs\nsleep 120 &\necho $! > '{}'\nwait\n",
         pid_file.display()
     );
     common::write_executable(&path, &script);
@@ -501,18 +501,20 @@ fn transport_times_out_on_stalled_gh() {
         let t = GhTransport::new(bin).timeout(Duration::from_secs(2));
         let _ = tx.send(t.send(&req));
     });
-    // The stub sleeps 30s; the caller must get an answer long before that.
+    // The stub sleeps 120s; the caller must get an answer long before that. #2511: the bound
+    // is far above the 2s timeout so machine load cannot fail it, and far below the stub's life.
     let answer = rx
-        .recv_timeout(Duration::from_secs(10))
-        .expect("GhTransport::send did not return within 10s on a stalled gh");
+        .recv_timeout(Duration::from_secs(60))
+        .expect("GhTransport::send did not return within 60s on a stalled gh");
     let err = answer.expect_err("a stalled gh is not a response");
-    assert!(started.elapsed() < Duration::from_secs(10));
+    assert!(started.elapsed() < Duration::from_secs(60));
     assert!(err.contains("timed out"), "{err}");
 
     // The grandchild that held the pipes was ended with the group.
     let pid = fs::read_to_string(tmp.path().join("gh-stalled-timeout.pid")).unwrap();
     assert!(
-        process_ends_within(pid.trim(), Duration::from_secs(2)),
+        // Returns as soon as the grandchild is gone; 30s only bounds a broken group kill.
+        process_ends_within(pid.trim(), Duration::from_secs(30)),
         "sleep grandchild {} still running",
         pid.trim()
     );

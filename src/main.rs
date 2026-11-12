@@ -108,6 +108,12 @@ enum Command {
     ProjectPlan {
         project: PathBuf,
     },
+    /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
+    /// manifests, languages, language servers, configured MCP server names, databases. Reads
+    /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
+    ProjectDetect {
+        project: PathBuf,
+    },
     ProjectApply {
         project: PathBuf,
         #[arg(long)]
@@ -358,6 +364,21 @@ enum Command {
     LaneStatus {
         project: PathBuf,
     },
+    /// Per-item writing-language setup (#2293): asks one question per item and returns a
+    /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
+    /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
+    /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
+    LanguageSetup {
+        project: PathBuf,
+        #[arg(long, conflicts_with = "answers")]
+        questions: bool,
+        #[arg(long)]
+        answers: bool,
+        /// Conversation language code for the conversation-default items; else the
+        /// profile's `language.user_chat`, else `en`.
+        #[arg(long)]
+        conversation: Option<String>,
+    },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -508,6 +529,19 @@ enum Command {
     /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
     /// reference. Writes the project settings file and its receipt only; home is refused.
     ClaudeSettingsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
+    CodexConfigPlan {
+        project: PathBuf,
+    },
+    /// Apply a previewed project config with the same stdin, digest and permission reference.
+    /// User HOME and CODEX_HOME config targets are refused; trust is never changed.
+    CodexConfigApply {
         project: PathBuf,
         #[arg(long)]
         plan_digest: String,
@@ -968,6 +1002,14 @@ enum Command {
     AuditReduce {
         project: PathBuf,
     },
+    /// Update the skill from the package installed with this binary (#2522): previews like
+    /// update-plan and writes nothing unless confirmed — in a terminal it asks once; elsewhere
+    /// pass the preview's digest with --confirm. HOME comes from the environment.
+    Update {
+        /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
+        #[arg(long, value_name = "PLAN_DIGEST")]
+        confirm: Option<String>,
+    },
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
     UpdatePlan {
@@ -1044,6 +1086,24 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
         return Err("input exceeds 64 KiB".into());
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+}
+/// The config writer takes an explicit user home. Refuse a project target that is also
+/// the host's relocated user config directory before either preview or apply can run.
+fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .ok_or("home directory missing; config target refused")?;
+    let home = std::fs::canonicalize(home)
+        .map_err(|_| "home directory unavailable; config target refused")?;
+    if let Some(path) = std::env::var_os("CODEX_HOME") {
+        let user = std::fs::canonicalize(path)
+            .map_err(|_| "CODEX_HOME unavailable; user config target refused")?;
+        if std::fs::canonicalize(project.join(".codex")).is_ok_and(|target| target == user) {
+            return Err("project .codex is CODEX_HOME; user config target refused".into());
+        }
+    }
+    Ok(home)
 }
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
@@ -1199,6 +1259,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         ClaudeDoctor { .. } => "claude.doctor",
         ClaudeSettingsApply { .. } => "claude.settings_apply",
         ClaudeSettingsPlan { .. } => "claude.settings_plan",
+        CodexConfigApply { .. } => "codex.config_apply",
+        CodexConfigPlan { .. } => "codex.config_plan",
         CodexDoctor { .. } => "codex.doctor",
         CodexProjectionApply { .. } => "codex.projection_apply",
         CodexProjectionPlan { .. } => "codex.projection_plan",
@@ -1235,6 +1297,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
+        LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1255,6 +1318,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
         ProjectApply { .. } => "project.apply",
+        ProjectDetect { .. } => "project.detect",
         ProjectPlan { .. } => "project.plan",
         ProjectSkillApply { .. } => "project_skill.apply",
         ProjectSkillPlan { .. } => "project_skill.plan",
@@ -1269,6 +1333,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         AtlasMap { .. } => "atlas.map",
         AtlasGraph { .. } => "atlas.graph",
         SnapshotDescribe { .. } => "snapshot.describe",
+        Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
@@ -1649,6 +1714,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::PackageInspect { package } => Ok(
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
         ),
+        Command::ProjectDetect { project } => moai_cli::project_detect::detect_cli(&project),
         Command::ProjectPlan { project } => {
             // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
             // the profile message; no input value is echoed.
@@ -1824,6 +1890,34 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LanguageSetup {
+            project,
+            questions,
+            answers,
+            conversation,
+        } => {
+            use moai_cli::language::{setup, SetupMode};
+            let mode = if questions {
+                SetupMode::Questions
+            } else if answers {
+                let value = input::<serde_json::Value>()?;
+                SetupMode::Answers(
+                    value
+                        .as_object()
+                        .cloned()
+                        .ok_or("answers must be a JSON object")?,
+                )
+            } else {
+                SetupMode::Interactive
+            };
+            setup(
+                &project,
+                mode,
+                conversation.as_deref(),
+                &mut io::stdin().lock(),
+                &mut io::stderr(),
+            )
+        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -2002,6 +2096,26 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &permission_reference,
             )
         }
+        Command::CodexConfigPlan { project } => {
+            let home = codex_config_home(&project)?;
+            let desired = input()?;
+            moai_cli::hosts::codex_config::config_plan(&project, &home, &desired)
+        }
+        Command::CodexConfigApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = codex_config_home(&project)?;
+            let desired = input()?;
+            moai_cli::hosts::codex_config::config_apply(
+                &project,
+                &home,
+                &desired,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
         Command::CodexProjectionPlan {
             package,
             target,
@@ -2157,6 +2271,31 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .ok_or("home directory missing; install-inspect requires HOME")?;
             let path_env = std::env::var("PATH").unwrap_or_default();
             moai_cli::install::inspect(&home, &path_env)
+        }
+        Command::Update { confirm } => {
+            let home = std::env::var_os("HOME")
+                .filter(|h| !h.is_empty())
+                .map(PathBuf::from)
+                .ok_or("home directory missing; update requires HOME")?;
+            moai_cli::update::update_command(&home, confirm.as_deref(), |plan| {
+                use std::io::{BufRead as _, IsTerminal as _, Write as _};
+                if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
+                    return Ok(false);
+                }
+                let mut err = io::stderr();
+                let _ = write!(
+                    err,
+                    "moai-cli update preview:\n{}Apply this update? [y/N] ",
+                    moai_cli::update::plan_summary(plan)
+                );
+                let _ = err.flush();
+                let mut answer = String::new();
+                io::stdin()
+                    .lock()
+                    .read_line(&mut answer)
+                    .map_err(|_| "could not read the answer".to_string())?;
+                Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
+            })
         }
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;

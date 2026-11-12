@@ -117,10 +117,10 @@ class GitlinkSafety(unittest.TestCase):
         spec.write_text(json.dumps(case.spec))
         repositories = (case.source, *children)
         before = self.snapshot(case, repositories)
-        out = subprocess.run(
+        out = support.run_with_progress_budget(
             [sys.executable, "-I", str(support.RUNNER), "--spec", str(spec)],
             cwd=case.source, env=dict(case.env, FAKE_MODE="killed"),
-            capture_output=True, text=True, timeout=30)
+            log=case.log)
         # Preserve literal evidence even when a dirty source is wrongly accepted.
         self.assertEqual(self.snapshot(case, repositories), before,
                          "runner changed parent/child bytes, raw indexes, HEADs, refs or config")
