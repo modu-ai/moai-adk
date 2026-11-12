@@ -416,7 +416,8 @@ pub fn apply_with_stamp(
         return Ok(receipt);
     }
     let backup_rel = format!("{BACKUPS}/{stamp}");
-    refuse_linked(&project, &backup_rel)?;
+    // `make_dirs` refuses a linked `.moai-cli` or `.moai-cli/backups`; the stamp folder
+    // itself is created exclusively, so a link already at that name fails the create.
     make_dirs(&project, BACKUPS)?;
     fs::create_dir(project.join(&backup_rel)).map_err(|e| {
         if e.kind() == std::io::ErrorKind::AlreadyExists {
