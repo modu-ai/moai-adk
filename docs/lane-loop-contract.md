@@ -18,11 +18,11 @@
 | 0 수령 | 리더가 조정 record에 claim(issue·owner session·attempt·epoch·base SHA·write scope)을 기록한 뒤 Issue 번호를 전달. 레인은 Issue 본문(설계·HOLD·의존성)과 선행 Issue 상태를 읽고 blocked_by가 열려 있으면 시작하지 않는다 | 소유 댓글 1건: `상태: assigned`, claim epoch |
 | 1 EnterWorktree | Issue 전용 worktree·브랜치(`issue/<번호>-<키>`, base = 최신 `origin/v2026.11.0`)를 만든다. 공유 checkout에는 쓰지 않는다 | worktree 경로·base SHA를 소유 댓글에 기록 |
 | 2 구현 | Issue의 파일 범위 안에서만 변경. 공유 interface(agents.rs·schema·lockfile·.github/workflows 등)는 설계가 지정한 소유자 Issue만 바꾼다 | 커밋 메시지에 `Refs #번호` |
-| 3 로컬 build/test | 저장소 검사 묶음을 실제 실행하고 exit code·개수를 기록: `cargo test --offline --locked`, `cargo clippy --offline --locked --all-targets -- -D warnings`, `cargo fmt --check`, `python3 -m unittest discover -s tests -p '*_test.py'`, `git diff --check` + Issue의 AC 검증 명령 | 소유 댓글에 명령·exit·수치. 실행 안 한 항목은 not_run |
+| 3 로컬 build/test | 저장소 검사 묶음을 실제 실행하고 exit code·개수를 기록: `cargo test --offline --locked`, `cargo clippy --offline --locked --all-targets -- -D warnings`, `cargo fmt --check`, `python3 -m unittest discover -s tests -p '*_test.py'`, `git diff --check` + Issue의 AC 검증 명령. 빌드 폴더는 worktree 안 `target/` 하나(`CARGO_TARGET_DIR` 지정 안 함, #2380 WT-2) | 소유 댓글에 명령·exit·수치. 실행 안 한 항목은 not_run |
 | 4 독립 review | 작성 세션과 다른 세션(감사 레인)이 SPEC·exact diff·시험 증거를 대조 | review verdict 링크 |
 | 5 PR | `v2026.11.0` 대상 PR 개설, 본문에 Issue·SPEC digest·base/candidate SHA·시험 증거·독립 review·남은 gap. `Refs #번호` 기본, `Closes`는 승인 범위·완료조건 충족 때만 | 상태 `pr_ready → in_review` |
 | 6 통합 | 통합 owner(리더 또는 지정 세션)가 최신 base 재검증·CI·보호 규칙·HOLD 확인 뒤 merge. 레인은 merge하지 않는다(HOLD-06C: 통합 owner 선택지) | 상태 `integrated`, 통합 SHA |
-| 7 ExitWorktree | 미커밋 변경·검증 artifact 보존 확인 후 worktree 종료, claim 해제 요청 | 소유 댓글 최종 갱신, 리더 record 해제 |
+| 7 ExitWorktree | 미커밋 변경·검증 artifact 보존 확인 후 worktree 종료, claim 해제 요청. worktree는 레인이 지우지 않는다. 병합 뒤 리더가 `worktree-gc-plan` 목록으로 cargo 출력을 먼저 지우고, worktree는 사용자 보고 뒤 지운다(결정 2026-11-10 Q4 B, #2380 WT-2) | 소유 댓글 최종 갱신, 리더 record 해제 |
 | 8 다음 Issue | 리더에게 다음 Issue 요청. 동시에 두 Issue의 활성 claim을 갖지 않는다 | — |
 
 중단·인계: 세션이 끊기거나 멈추면 리더는 journal·PR·worktree 상태를 먼저 읽고(결과 불명은 uncertain), 명시 handoff로만 새 attempt를 연다. 무응답만으로 자동 takeover하지 않는다(P08 HOLD).

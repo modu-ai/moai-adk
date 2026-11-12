@@ -40,6 +40,7 @@ EXACT_DENY = frozenset(
         "docs/design-review/applied.md",
         "docs/design-review/pages.tsv",
         "docs/release-rehearsal-2026-11-12.md",
+        "docs/lane-loop-contract.md",
     }
 )
 # Directory prefixes that are never docs-only even under docs/.
