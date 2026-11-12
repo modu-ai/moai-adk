@@ -68,7 +68,8 @@ pub(crate) const SKILL_DIR: &str = "moai";
 
 /// Guidance appended wherever a `moai` skill folder this tool did not write is found
 /// (decision row 22, #2286): block and guide, never replace automatically. The
-/// backup-then-replace path is a separate, user-confirmed procedure, not implemented.
+/// backup-then-replace path is a separate, user-confirmed procedure (#2483): the plan
+/// previews it and `update-apply --confirm-backup-replace <token>` runs it.
 pub(crate) const GO_ERA_GUIDANCE: &str = "this can be an earlier-generation (Go-era) \
      MoAI `moai` skill at that path; moai-cli will not replace it — move it aside \
      yourself, or wait for a confirmed backup-then-replace procedure";
@@ -202,6 +203,170 @@ pub struct HostPlan {
     pub preflight: String,
     pub blocked_reason: Option<String>,
     pub files: Vec<FilePlan>,
+    /// #2483: offered only for a host blocked by an unmanaged existing package (a
+    /// clean scan, nothing owned). Left out otherwise, so other plans keep their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backup_then_replace: Option<BackupThenReplace>,
+}
+
+/// One file of the folder a backup-then-replace moves (#2483).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BackupFile {
+    pub path: String,
+    pub sha256: String,
+    /// Permission bits (`mode & 0o7777`); 0 where the platform has none.
+    pub mode: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ReplaceWith {
+    pub package_digest: String,
+    pub file_count: usize,
+}
+
+/// The backup-then-replace preview of one host (#2483, decision row 22). The original
+/// folder is moved whole into `<backup_root>/<apply UTC>-<host>/moai` (a same-filesystem
+/// rename: no byte is rewritten, nothing is deleted) beside a `MANIFEST.json` of
+/// `source_files`, and the package is created in its place. It runs only when
+/// `update-apply` carries `confirm_token`, which is bound to `source_tree_sha256`.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BackupThenReplace {
+    pub source_root: String,
+    pub source_files: Vec<BackupFile>,
+    pub source_file_count: usize,
+    pub source_tree_sha256: String,
+    pub backup_root: String,
+    pub backup_layout: String,
+    pub replace_with: ReplaceWith,
+    pub confirm_token: String,
+    pub apply_flag: String,
+}
+
+/// The backup a backup-then-replace receipt points at (#2483).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ReplaceBackup {
+    pub dir: String,
+    pub manifest_sha256: String,
+    pub source_tree_sha256: String,
+    pub file_count: usize,
+}
+
+const BACKUP_MANIFEST: &str = "MANIFEST.json";
+/// The moved original folder inside a backup directory.
+pub(crate) const BACKUP_TREE: &str = "moai";
+
+fn file_mode(meta: &fs::Metadata) -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        meta.permissions().mode() & 0o7777
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        0
+    }
+}
+
+/// Every regular file under `root` with its sha256 and mode, sorted by path. Refuses
+/// symlinks and special files; bounded like the projection scan.
+pub(crate) fn source_files(root: &Path) -> Result<Vec<BackupFile>> {
+    fn walk(
+        root: &Path,
+        dir: &Path,
+        out: &mut Vec<BackupFile>,
+        total: &mut usize,
+        depth: usize,
+    ) -> Result<()> {
+        if depth > WALK_DEPTH {
+            return Err("backup source nesting limit exceeded".into());
+        }
+        for entry in fs::read_dir(dir).map_err(|_| "backup source directory unavailable")? {
+            let path = entry.map_err(|_| "backup source entry unavailable")?.path();
+            let meta =
+                fs::symlink_metadata(&path).map_err(|_| "backup source metadata unavailable")?;
+            if meta.file_type().is_symlink() {
+                return Err("backup source contains a symlink; refused".into());
+            }
+            if meta.is_dir() {
+                walk(root, &path, out, total, depth + 1)?;
+            } else if meta.is_file() {
+                if meta.len() > FILE_LIMIT {
+                    return Err("backup source file exceeds the size limit".into());
+                }
+                let rel = path
+                    .strip_prefix(root)
+                    .map_err(|_| "backup source path invalid")?
+                    .to_str()
+                    .ok_or("non UTF-8 backup source path")?
+                    .replace('\\', "/");
+                let bytes = fs::read(&path).map_err(|_| "backup source read failed")?;
+                *total += bytes.len();
+                if *total > WALK_BYTES || out.len() >= WALK_FILES {
+                    return Err("backup source too large".into());
+                }
+                out.push(BackupFile {
+                    path: rel,
+                    sha256: sha256_hex(&bytes),
+                    mode: file_mode(&meta),
+                });
+            } else {
+                return Err("backup source special file refused".into());
+            }
+        }
+        Ok(())
+    }
+    let meta = fs::symlink_metadata(root).map_err(|_| "backup source unavailable")?;
+    if meta.file_type().is_symlink() || !meta.is_dir() {
+        return Err("backup source is not a plain directory".into());
+    }
+    let mut out = Vec::new();
+    walk(root, root, &mut out, &mut 0, 0)?;
+    out.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(out)
+}
+
+/// One digest over the sorted (path, sha256, mode) list.
+pub(crate) fn source_tree_sha256(files: &[BackupFile]) -> String {
+    let mut text = String::new();
+    for f in files {
+        text.push_str(&format!("{}\0{}\0{:o}\n", f.path, f.sha256, f.mode));
+    }
+    sha256_hex(text.as_bytes())
+}
+
+/// Test seam (#2483 AC-4): `MOAI_CLI_TEST_FAULT=<point>` fails the backup-then-replace
+/// at that point. Read only in debug builds; a release build never consults it.
+pub(crate) fn test_fault(point: &str) -> Result<()> {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+        return Err(format!("injected test fault at {point}"));
+    }
+    let _ = point;
+    Ok(())
+}
+
+/// Refuses a symlink in any existing component between `~/.moai-cli` and `dir`.
+pub(crate) fn refuse_state_symlinks(dir: &Path, what: &str) -> Result<()> {
+    let mut cursor = dir;
+    loop {
+        if let Ok(m) = fs::symlink_metadata(cursor) {
+            if m.file_type().is_symlink() {
+                return Err(format!("{what} path is a symlink; refused"));
+            }
+        }
+        if cursor.file_name().map(|n| n == crate::HOME_STATE_DIR) == Some(true) {
+            return Ok(());
+        }
+        cursor = match cursor.parent() {
+            Some(p) => p,
+            None => return Ok(()),
+        };
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -283,6 +448,9 @@ pub struct HostReceipt {
     /// them. serde-default keeps pre-#2268 receipts readable.
     #[serde(default)]
     pub top_skills_existed_before: bool,
+    /// #2483: set by a backup-then-replace apply; recovery restores from it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backup: Option<ReplaceBackup>,
 }
 
 /// Receipt path; `create` also creates the directory chain (apply only — the plan must
@@ -794,6 +962,39 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             })
             .map(|f| f.path.as_str())
             .collect();
+        // #2483: a host blocked ONLY by the unmanaged package (clean scan, no other
+        // reason, nothing owned) gets the backup-then-replace preview.
+        let backup_then_replace = if !unmanaged.is_empty() && blocked.is_none() && owned.is_empty()
+        {
+            source_files(&root).ok().map(|source| {
+                let tree = source_tree_sha256(&source);
+                let hex = tree.strip_prefix("sha256:").unwrap_or(&tree);
+                let token = format!("backup-replace:{host}:{}", &hex[..16]);
+                BackupThenReplace {
+                    source_root: root_text.clone(),
+                    source_file_count: source.len(),
+                    source_files: source,
+                    source_tree_sha256: tree.clone(),
+                    backup_root: canonical_home
+                        .join(crate::HOME_STATE_DIR)
+                        .join("backups")
+                        .to_string_lossy()
+                        .into_owned(),
+                    backup_layout: format!(
+                        "<apply UTC>-{host}/{BACKUP_TREE} (the folder, moved as is) and \
+                         <apply UTC>-{host}/{BACKUP_MANIFEST}"
+                    ),
+                    replace_with: ReplaceWith {
+                        package_digest: staged.digest.clone(),
+                        file_count: staged.files.len(),
+                    },
+                    apply_flag: format!("--confirm-backup-replace {token}"),
+                    confirm_token: token,
+                }
+            })
+        } else {
+            None
+        };
         let (preflight, blocked) = if !unmanaged.is_empty() {
             (
                 "blocked".to_string(),
@@ -818,8 +1019,16 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             host: (*host).to_string(),
             projection_root: root_text,
             preflight,
-            blocked_reason: blocked,
+            blocked_reason: match (&backup_then_replace, blocked) {
+                (Some(b), Some(reason)) => Some(format!(
+                    "{reason}; this host offers a backup-then-replace preview \
+                     (backup_then_replace): confirm with {}",
+                    b.apply_flag
+                )),
+                (_, reason) => reason,
+            },
             files,
+            backup_then_replace,
         });
     }
 
@@ -871,16 +1080,21 @@ struct HostOutcome {
     reload_required: String, // no | yes | unknown
     reload_basis: String,
     blocked_reason: Option<String>,
+    /// #2483: the backup directory of a backup-then-replace.
+    backup_dir: Option<String>,
 }
 
 /// Applies the plan host by host (REQ-04B-03..06). Refuses anything but a freshly
-/// recomputed identical digest before touching a single file.
+/// recomputed identical digest before touching a single file. `confirm_backup_replace`
+/// carries the tokens of the hosts whose backup-then-replace the user confirmed
+/// (#2483); a token the plan did not offer is refused before any write.
 pub fn apply_update(
     home: &Path,
     staged: &StagedPackage,
     plan: &UpdatePlan,
     plan_digest: &str,
     permission_reference: &str,
+    confirm_backup_replace: &[String],
 ) -> Result<serde_json::Value> {
     validate_permission(permission_reference)?;
     let fresh = plan_update(home, staged)?;
@@ -894,6 +1108,19 @@ pub fn apply_update(
     {
         return Err("stale or altered plan; re-preview required".into());
     }
+    for token in confirm_backup_replace {
+        let offered = fresh.hosts.iter().any(|h| {
+            h.backup_then_replace
+                .as_ref()
+                .is_some_and(|b| &b.confirm_token == token)
+        });
+        if !offered {
+            return Err(
+                "confirmation token does not match any backup-then-replace in the plan; nothing written"
+                    .into(),
+            );
+        }
+    }
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let install_id = current_install_id(&canonical_home)?;
 
@@ -905,6 +1132,26 @@ pub fn apply_update(
     for host_plan in &fresh.hosts {
         let host = host_plan.host.as_str();
         if host_plan.preflight == "blocked" {
+            if let Some(btr) = host_plan
+                .backup_then_replace
+                .as_ref()
+                .filter(|b| confirm_backup_replace.iter().any(|t| t == &b.confirm_token))
+            {
+                // #2483: the user confirmed this host's backup-then-replace.
+                let o = backup_then_replace(
+                    &canonical_home,
+                    &install_id,
+                    host,
+                    staged,
+                    &fresh,
+                    plan_digest,
+                    btr,
+                )?;
+                any_failed |= o.status == "failed";
+                published_anywhere |= o.status == "replaced";
+                outcomes.push(o);
+                continue;
+            }
             // REQ-04B-02: a blocked host is never written; the others go on.
             outcomes.push(HostOutcome {
                 host: host.to_string(),
@@ -914,6 +1161,7 @@ pub fn apply_update(
                 reload_required: "no".into(),
                 reload_basis: "no files written".into(),
                 blocked_reason: host_plan.blocked_reason.clone(),
+                backup_dir: None,
             });
             continue;
         }
@@ -948,6 +1196,7 @@ pub fn apply_update(
                 reload_required: "no".into(),
                 reload_basis: "no files written".into(),
                 blocked_reason: None,
+                backup_dir: None,
             });
             continue;
         }
@@ -964,6 +1213,7 @@ pub fn apply_update(
                 reload_required: "no".into(),
                 reload_basis: format!("known-good copy failed; host not started: {e}"),
                 blocked_reason: None,
+                backup_dir: None,
             });
             continue;
         }
@@ -999,6 +1249,7 @@ pub fn apply_update(
                 })
                 .collect(),
             owned: owned_vec(host, &pre_owned),
+            backup: None,
         };
         save_host_receipt(&canonical_home, &install_id, &receipt)?;
 
@@ -1076,6 +1327,7 @@ pub fn apply_update(
                 reload_basis: "apply failed mid-transaction; host state is pending (04-C recovery)"
                     .into(),
                 blocked_reason: None,
+                backup_dir: None,
             });
             continue;
         }
@@ -1115,6 +1367,7 @@ pub fn apply_update(
             reload_required: reload.into(),
             reload_basis: basis,
             blocked_reason: None,
+            backup_dir: None,
         });
     }
 
@@ -1140,6 +1393,214 @@ pub fn apply_update(
         "reload_note": "host loading is not measured here (08-C owns the live check)",
         "writes": false,
     }))
+}
+
+/// UTC `YYYYMMDDTHHMMSSZ` for backup directory names.
+fn compact_stamp() -> String {
+    now_rfc3339().replace(['-', ':'], "")
+}
+
+/// #2483: one confirmed backup-then-replace. Order: fresh scan equal to the preview →
+/// exclusive backup directory → `MANIFEST.json` → pending receipt (carrying `backup`) →
+/// move the original folder into the backup (same-filesystem rename) → verify the moved
+/// tree against the manifest → create the package files → verify → committed. Before the
+/// move nothing in the projection changed; after it the original sits intact in the
+/// backup — so at every point the original or the backup is whole, and a failure after
+/// the pending receipt reads as `pending` in `recovery-plan`.
+fn backup_then_replace(
+    home: &Path,
+    install_id: &str,
+    host: &str,
+    staged: &StagedPackage,
+    plan: &UpdatePlan,
+    plan_digest: &str,
+    btr: &BackupThenReplace,
+) -> Result<HostOutcome> {
+    let mut receipt: Option<HostReceipt> = None;
+    let mut backup_dir: Option<PathBuf> = None;
+    let run = run_backup_then_replace(
+        home,
+        install_id,
+        host,
+        staged,
+        plan,
+        plan_digest,
+        btr,
+        &mut receipt,
+        &mut backup_dir,
+    );
+    let dir_text = backup_dir
+        .as_ref()
+        .map(|d| d.to_string_lossy().into_owned());
+    let created: Vec<serde_json::Value> = receipt
+        .as_ref()
+        .map(|r| {
+            r.entries
+                .iter()
+                .map(|e| {
+                    json!({"path": e.path, "action": e.action, "before_sha256": e.before_sha256,
+                       "after_sha256": if e.published { e.after_sha256.clone() } else { None },
+                       "published": e.published, "error": e.error})
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    match run {
+        Ok(()) => {
+            let (reload, basis) = reload_state(host, true, true);
+            Ok(HostOutcome {
+                host: host.to_string(),
+                status: "replaced".into(),
+                files: created,
+                receipt_status: Some("committed".into()),
+                reload_required: reload.into(),
+                reload_basis: basis,
+                blocked_reason: None,
+                backup_dir: dir_text,
+            })
+        }
+        Err(e) => match receipt {
+            None => Ok(HostOutcome {
+                host: host.to_string(),
+                status: "failed".into(),
+                files: Vec::new(),
+                receipt_status: None,
+                reload_required: "no".into(),
+                reload_basis: format!(
+                    "backup-then-replace stopped before the original folder moved: {e}"
+                ),
+                blocked_reason: None,
+                backup_dir: dir_text,
+            }),
+            Some(mut r) => {
+                r.finished_at = Some(now_rfc3339());
+                save_host_receipt(home, install_id, &r)?;
+                Ok(HostOutcome {
+                    host: host.to_string(),
+                    status: "failed".into(),
+                    files: created,
+                    receipt_status: Some("pending".into()),
+                    reload_required: "unknown".into(),
+                    reload_basis: format!(
+                        "backup-then-replace failed after the pending receipt: {e}; run recovery-plan"
+                    ),
+                    blocked_reason: None,
+                    backup_dir: dir_text,
+                })
+            }
+        },
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_backup_then_replace(
+    home: &Path,
+    install_id: &str,
+    host: &str,
+    staged: &StagedPackage,
+    plan: &UpdatePlan,
+    plan_digest: &str,
+    btr: &BackupThenReplace,
+    receipt_out: &mut Option<HostReceipt>,
+    backup_out: &mut Option<PathBuf>,
+) -> Result<()> {
+    let root = projection_root(home, host);
+    if source_files(&root)? != btr.source_files {
+        return Err("projection changed since the plan; nothing moved".into());
+    }
+    let backups = home.join(crate::HOME_STATE_DIR).join("backups");
+    refuse_state_symlinks(&backups, "backup")?;
+    fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
+    refuse_state_symlinks(&backups, "backup")?;
+    let dir = backups.join(format!("{}-{host}", compact_stamp()));
+    fs::create_dir(&dir).map_err(|_| "backup directory already exists or is unavailable")?;
+    *backup_out = Some(dir.clone());
+
+    let manifest = json!({
+        "schema_version": 1,
+        "host": host,
+        "source_root": btr.source_root,
+        "source_tree_sha256": btr.source_tree_sha256,
+        "plan_digest": plan_digest,
+        "created_at": now_rfc3339(),
+        "files": btr.source_files,
+    });
+    let manifest_bytes =
+        serde_json::to_vec_pretty(&manifest).map_err(|_| "manifest encode failed".to_string())?;
+    publish_exclusive(&dir.join(BACKUP_MANIFEST), &manifest_bytes)?;
+
+    let previous = load_host_receipt(&host_receipt_path(home, install_id, host, false)?)?;
+    let mut receipt = HostReceipt {
+        schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
+        install_id: install_id.to_string(),
+        host: host.to_string(),
+        operation: "update.backup_then_replace".into(),
+        plan_digest: plan_digest.to_string(),
+        package_digest: staged.digest.clone(),
+        package_version: plan.target_version.clone(),
+        version_before: previous.as_ref().map(|p| p.package_version.clone()),
+        top_skills_existed_before: true,
+        status: "pending".into(),
+        started_at: now_rfc3339(),
+        finished_at: None,
+        entries: staged
+            .files
+            .iter()
+            .map(|(rel, bytes)| HostReceiptEntry {
+                path: rel.clone(),
+                action: "create".into(),
+                before_sha256: None,
+                after_sha256: Some(sha256_hex(bytes)),
+                published: false,
+                error: None,
+            })
+            .collect(),
+        owned: Vec::new(),
+        backup: Some(ReplaceBackup {
+            dir: dir.to_string_lossy().into_owned(),
+            manifest_sha256: sha256_hex(&manifest_bytes),
+            source_tree_sha256: btr.source_tree_sha256.clone(),
+            file_count: btr.source_files.len(),
+        }),
+    };
+    save_host_receipt(home, install_id, &receipt)?;
+    *receipt_out = Some(receipt.clone());
+    test_fault("after_backup")?;
+
+    let moved = dir.join(BACKUP_TREE);
+    fs::rename(&root, &moved)
+        .map_err(|_| "moving the original folder into the backup failed; nothing moved")?;
+    if source_files(&moved).ok().as_ref() != Some(&btr.source_files) {
+        let _ = fs::rename(&moved, &root);
+        return Err("the moved folder does not match the manifest; moved back".into());
+    }
+
+    let mut owned = BTreeMap::new();
+    for (idx, (rel, bytes)) in staged.files.iter().enumerate() {
+        let target = root.join(rel);
+        if let Err(e) = publish_exclusive(&target, bytes) {
+            receipt.entries[idx].error = Some(e.clone());
+            *receipt_out = Some(receipt.clone());
+            return Err(e);
+        }
+        let written = read_opt(&target)?.map(|b| sha256_hex(&b));
+        if written != receipt.entries[idx].after_sha256 {
+            *receipt_out = Some(receipt.clone());
+            return Err("published bytes do not match the package".into());
+        }
+        receipt.entries[idx].published = true;
+        owned.insert(rel.clone(), written.expect("sha of a written file"));
+        *receipt_out = Some(receipt.clone());
+        if idx == 0 {
+            test_fault("mid_replace")?;
+        }
+    }
+    receipt.owned = owned_vec(host, &owned);
+    receipt.status = "committed".into();
+    receipt.finished_at = Some(now_rfc3339());
+    save_host_receipt(home, install_id, &receipt)?;
+    *receipt_out = Some(receipt);
+    Ok(())
 }
 
 /// REQ-04B-06: reload state and its documented basis per host.
@@ -1201,6 +1662,14 @@ fn file_result_with(f: &FilePlan, e: &HostReceiptEntry) -> serde_json::Value {
 }
 
 fn host_outcome_json(o: &HostOutcome) -> serde_json::Value {
+    let mut v = host_outcome_fields(o);
+    if let Some(dir) = &o.backup_dir {
+        v["backup_dir"] = json!(dir);
+    }
+    v
+}
+
+fn host_outcome_fields(o: &HostOutcome) -> serde_json::Value {
     json!({
         "host": o.host,
         "status": o.status,

@@ -934,6 +934,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// Confirm one host's backup-then-replace of an unmanaged `moai` skill folder
+        /// with the `confirm_token` its plan previews (#2483); repeatable.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_backup_replace: Vec<String>,
     },
     /// Read-only recovery plan for UPDATE hosts left `pending` (04-C #2000; names P06 HOLD).
     RecoveryPlan {
@@ -2041,6 +2045,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             stage,
             plan_digest,
             permission_reference,
+            confirm_backup_replace,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
@@ -2050,6 +2055,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan,
                 &plan_digest,
                 &permission_reference,
+                &confirm_backup_replace,
             )
         }
         Command::RecoveryPlan { home } => {
