@@ -34,11 +34,36 @@ const API: &str = "https://api.github.com";
 /// The GitHub list-commits-on-a-PR endpoint returns at most 250 commits; at that count the
 /// author check may have missed some, so it refuses instead of guessing.
 const MAX_PR_COMMITS: usize = 250;
-/// How authors are matched (leader answer, #2403 comment 6784934128): byte-exact names only.
-/// A lane whose reservation name differs from its claim `session=` (for example `pr-1-hB`
-/// against `pr-1`) is not recognised as the author; name normalisation is a follow-up item.
-pub const AUTHOR_RULE: &str = "exact match of lane with a claim session= name; differing \
-                               spellings of one lane are not recognised";
+/// How authors are matched (leader answer, #2403 comment 6784934128; normalisation #2499):
+/// lane names are compared by [`same_lane`], so `pr-1-hB` and `pr-1` are one lane.
+pub const AUTHOR_RULE: &str = "exact match of lane with a claim session= name after the \
+                               lane name rule (NAME_RULE); names outside the rule stay byte-exact";
+/// The lane name rule (#2499), from the names lanes actually wrote (2026-11-1x): a name of the
+/// form `<lowercase letters>-<digits>-<fragment>` (fragment: ASCII letters and digits, for a
+/// session id, a restart tag or an Issue number) belongs to lane `<letters>-<digits>`, and
+/// `<letters>-<digits>` is its own lane. Any other name (`lane-t74`, a UUID, a second fragment)
+/// is not normalised and matches byte-exact only.
+pub const NAME_RULE: &str = "<letters>-<digits>-<fragment> is lane <letters>-<digits>; \
+                             other names match byte-exact";
+
+/// The lane a name belongs to under [`NAME_RULE`], or `None` when the rule does not apply.
+pub fn lane_key(name: &str) -> Option<&str> {
+    let mut parts = name.splitn(3, '-');
+    let (letters, digits) = (parts.next()?, parts.next()?);
+    let fragment = parts.next();
+    let base_ok = !letters.is_empty()
+        && letters.bytes().all(|b| b.is_ascii_lowercase())
+        && !digits.is_empty()
+        && digits.bytes().all(|b| b.is_ascii_digit());
+    let fragment_ok =
+        fragment.is_none_or(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_alphanumeric()));
+    (base_ok && fragment_ok).then(|| &name[..letters.len() + 1 + digits.len()])
+}
+
+/// Whether two lane names are the same lane: byte-equal, or equal under [`NAME_RULE`].
+pub fn same_lane(a: &str, b: &str) -> bool {
+    a == b || matches!((lane_key(a), lane_key(b)), (Some(x), Some(y)) if x == y)
+}
 
 /// `audit-claim` stdin (typed JSON, unknown keys rejected).
 #[derive(Clone, Debug, Deserialize)]
@@ -249,7 +274,7 @@ fn precheck<T: Transport, C: Clock>(
                          not a claim line on Issue #{issue}; authors cannot be ruled out"
                 ));
             };
-            if session == req.lane {
+            if same_lane(&session, &req.lane) {
                 return Err(format!(
                     "audit claim conflict: lane {} is an author of PR #{} (claim comment {id}); \
                          an author or repairer never audits its own PR",
@@ -301,10 +326,10 @@ pub fn reserve<T: Transport, C: Clock>(
     let holder = holder_of(&comments, &req.head);
     let own = reservations_on(&comments, &req.head)
         .into_iter()
-        .find(|(lane, _)| *lane == req.lane)
+        .find(|(lane, _)| same_lane(lane, &req.lane))
         .map(|(_, id)| id);
     match (&holder, own) {
-        (Some(h), _) if h.lane == req.lane => {
+        (Some(h), _) if same_lane(&h.lane, &req.lane) => {
             let id = own.unwrap_or(h.comment_id);
             return Ok(base("reserved", json!(false), Some(id), &comments));
         }
@@ -349,7 +374,7 @@ pub fn reserve<T: Transport, C: Clock>(
             return Ok(out);
         }
     };
-    let won = holder_of(&after, &req.head).is_some_and(|h| h.lane == req.lane);
+    let won = holder_of(&after, &req.head).is_some_and(|h| same_lane(&h.lane, &req.lane));
     let outcome = if won { "reserved" } else { "lost" };
     Ok(base(outcome, json!(true), Some(posted_id), &after))
 }

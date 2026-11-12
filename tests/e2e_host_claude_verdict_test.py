@@ -38,6 +38,7 @@ cfg = json.loads((pathlib.Path(sys.argv[0]).parent / "fake.json").read_text())
 args = sys.argv[1:]
 with open(cfg["log"], "a") as fh:
     fh.write(" ".join(args) + "\n")
+    fh.write("home=%s\n" % os.environ.get("HOME"))
 if args == ["--version"]:
     print("9.9.9 (Fake Claude)"); sys.exit(0)
 if args[:2] == ["plugin", "validate"]:
@@ -128,6 +129,12 @@ class HostClaudeVerdictTest(unittest.TestCase):
         self.assertEqual(calls.count("--output-format stream-json --verbose"), 2, calls)
         # Both -p runs read stdin from /dev/null (#2291); the two non -p calls do not care.
         self.assertEqual(calls.count("stdin=devnull"), 2, calls)
+        # #2014 agent-8 N4: all four calls (version, plugin validate, two -p runs) see
+        # HOME inside the script's work dir, never the operator's real HOME.
+        homes = [line for line in calls.splitlines() if line.startswith("home=")]
+        self.assertEqual(len(homes), 4, calls)
+        for line in homes:
+            self.assertRegex(line, r"^home=/tmp/e2e-claude-[^/]+/home$", calls)
         return {ac: r["result"] for ac, r in by_ac.items()}
 
     def test_ac6_no_output_and_plain_ac3_answer_fail(self):

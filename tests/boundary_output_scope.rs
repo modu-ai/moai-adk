@@ -1,5 +1,5 @@
-//! #2392: executable boundary reproducers. F5c (incomplete output) stays an ignored RED until
-//! its classification is decided; F6 (scope symlink) is repaired and runs by default.
+//! #2392: executable boundary reproducers. F5c (incomplete output is `not_run`) and F6 (scope
+//! symlink) are repaired and run by default.
 #![cfg(unix)]
 mod common;
 
@@ -13,9 +13,8 @@ use std::{
     time::Duration,
 };
 
-// Explicitly run this RED until the leader decides how incomplete evidence is classified.
+// F5c repaired: exit 0 with incomplete output is `not_run` (user decision, record 6813788595).
 #[test]
-#[ignore = "#2392 F5c: policy decision pending; explicit RED reproducer"]
 fn incomplete_output_must_not_be_passed() {
     // Keep the AF_UNIX pathname below the platform socket limit.
     let tmp = tempfile::tempdir_in("/tmp").unwrap();
@@ -86,11 +85,13 @@ os._exit(0)
     assert_eq!(check.output_complete, Some(false));
     assert_eq!(check.stdout_sha256, None);
     assert_eq!(check.stderr_sha256, None);
-    assert_ne!(
+    assert_eq!(
         check.result,
-        CheckResult::Passed,
-        "incomplete evidence accepted as Passed"
+        CheckResult::NotRun,
+        "incomplete evidence must be not_run"
     );
+    // The record still tells it apart from a check that never ran.
+    assert_eq!(check.failure_class, None);
 }
 
 // F6 repaired: scope-check blocks a link it reaches (tests/scope_symlink_cli.rs has the matrix).
