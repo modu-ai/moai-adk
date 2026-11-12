@@ -34,6 +34,13 @@ def held(folder):
     return json.loads(out.stdout)["held"]
 
 
+def holder_names(folder):
+    """Names of the held slots. The holder takes the slot's lock before it writes its record,
+    so for a moment `status` lists a held slot with an empty record (#2599); that slot has no
+    name yet and the caller keeps waiting instead of failing on a missing key."""
+    return [h.get("name") for h in held(folder)]
+
+
 @unittest.skipUnless(UNIX, "flock slots are unix only")
 class HeavyCheckSlotTest(unittest.TestCase):
     def setUp(self):
@@ -63,7 +70,7 @@ class HeavyCheckSlotTest(unittest.TestCase):
 
     def test_ac2_sigkill_of_the_holder_frees_the_slot_at_once(self):
         holder = self.acquire(1, "victim", "sleep", "60", start_new_session=True)
-        self.assertTrue(wait_for(lambda: [h["name"] for h in held(self.folder)] == ["victim"]))
+        self.assertTrue(wait_for(lambda: holder_names(self.folder) == ["victim"]))
         os.killpg(holder.pid, signal.SIGKILL)
         holder.communicate(timeout=10)
         nxt = self.acquire(1, "next", "true")
@@ -126,7 +133,7 @@ class HeavyCheckSlotTest(unittest.TestCase):
         self.assertFalse(self.folder.exists(), "status creates nothing")
         p = self.acquire(1, "lane-x", "sleep", "30", start_new_session=True)
         self.addCleanup(lambda: (os.killpg(p.pid, signal.SIGKILL), p.communicate(timeout=10)))
-        self.assertTrue(wait_for(lambda: len(held(self.folder)) == 1))
+        self.assertTrue(wait_for(lambda: holder_names(self.folder) == ["lane-x"]))
         [record] = held(self.folder)
         self.assertEqual(record["name"], "lane-x")
         self.assertEqual(record["command"], ["sleep", "30"])

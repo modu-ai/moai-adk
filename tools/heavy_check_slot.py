@@ -16,7 +16,9 @@ COMMAND's codes) without running COMMAND, and `status` lists it under "refused".
 A slot is a file `slot-<i>` with an exclusive `fcntl.flock` lock. The lock lives on
 the open file, so the descriptor is also handed to COMMAND: the slot stays held while
 either this wrapper or COMMAND is alive, and the operating system frees it when both
-are gone, even after SIGKILL. No stale slot is left behind to clean up.
+are gone, even after SIGKILL. No stale slot is left behind to clean up. The record
+(name, command, pid) is written just after the lock is taken, so for a moment `status`
+can list a held slot with an empty record (#2599).
 
 Every caller on one machine should pass the same --max; a smaller --max only looks at
 the first slots. The default folder is ${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots.
