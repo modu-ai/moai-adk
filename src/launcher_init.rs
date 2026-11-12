@@ -168,6 +168,17 @@ fn wait_for_initializer(lock: &Path) {
 /// concurrent launch may have initialized the folder meanwhile: a failed `init` that leaves a
 /// repository behind is accepted.
 fn git_init(dir: &Path) -> Result<(), String> {
+    // Concurrent first launches in one folder (Issue #2489): two `git init` runs race on
+    // `.git/config`; the loser fails while the winner is still writing, so a re-check right
+    // after the failure can still see "not a repository". Serialize the init on a lock that
+    // exists before `.git` does — in the OS temporary directory, named after the folder, so
+    // neither the folder nor HOME gets an extra file — and re-check under the lock: a launch
+    // that waited finds the repository the first one made and runs no `git init` itself.
+    let lock = init_lock(dir);
+    if identity(dir).is_ok_and(|id| id["identity_status"] == "ok") {
+        drop(lock);
+        return Ok(());
+    }
     let mut cmd = Command::new("git");
     cmd.arg("init").arg("-q").arg(dir);
     crate::identity::scrub_git_env(&mut cmd);
@@ -177,7 +188,9 @@ fn git_init(dir: &Path) -> Result<(), String> {
         .stderr(Stdio::null())
         .status()
         .is_ok_and(|s| s.success());
-    if ok || identity(dir).is_ok_and(|id| id["identity_status"] == "ok") {
+    let ready = ok || identity(dir).is_ok_and(|id| id["identity_status"] == "ok");
+    drop(lock);
+    if ready {
         Ok(())
     } else {
         Err(format!(
@@ -185,6 +198,28 @@ fn git_init(dir: &Path) -> Result<(), String> {
             dir.display()
         ))
     }
+}
+
+/// The `git init` lock of `dir` (canonical): `moai-cli-git-init-<16 hex of sha256(path)>.lock`
+/// in the OS temporary directory, held exclusively while the guard lives. A path that is not a
+/// regular file (a symlink, say) or a lock that cannot be opened gives no lock: the init then
+/// runs as it did before #2489 rather than failing the launch.
+fn init_lock(dir: &Path) -> Option<fs::File> {
+    let id = crate::digest(dir.as_os_str().as_encoded_bytes());
+    let hex = id.strip_prefix("sha256:").unwrap_or(&id);
+    let path = std::env::temp_dir().join(format!("moai-cli-git-init-{}.lock", &hex[..16]));
+    if fs::symlink_metadata(&path).is_ok_and(|m| !m.file_type().is_file()) {
+        return None;
+    }
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .ok()?;
+    file.lock().ok()?;
+    Some(file)
 }
 
 /// Creates the project settings and, when `AGENTS.md` is absent, the generated workflow and
