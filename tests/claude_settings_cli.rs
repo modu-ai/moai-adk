@@ -197,26 +197,6 @@ fn home_and_claude_config_dir_are_refused() {
     assert!(!project.path().join(".claude/settings.json").exists());
 }
 
-/// Runs git in `dir` with the caller's git environment removed and a fixed identity.
-fn git(dir: &Path, args: &[&str]) {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_AUTHOR_NAME", "t")
-        .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
-        .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
-        .output()
-        .unwrap();
-    assert!(out.status.success(), "git {args:?}: {out:?}");
-}
-
 /// #2581: the plan reports whether git ignores `.claude/settings.json`, and so whether a
 /// session started in a linked worktree of the repository reads it. Four states: outside a
 /// repository (`unknown`), ignored (`not_reached`), not ignored, and a tracked file that
@@ -240,7 +220,7 @@ fn plan_reports_whether_worktree_sessions_read_the_settings_file() {
         "{outside}"
     );
 
-    git(p, &["init", "-q"]);
+    common::git::git_ok(p, &["init", "-q"]);
     let open = plan(p, home.path(), &desired());
     assert_eq!(
         facts(&open),
@@ -257,7 +237,7 @@ fn plan_reports_whether_worktree_sessions_read_the_settings_file() {
     // worktree; git reports it as not ignored.
     fs::create_dir_all(p.join(".claude")).unwrap();
     fs::write(p.join(".claude/settings.json"), "{}\n").unwrap();
-    git(p, &["add", "-f", ".claude/settings.json"]);
+    common::git::git_ok(p, &["add", "-f", ".claude/settings.json"]);
     let tracked = plan(p, home.path(), &desired());
     assert_eq!(
         facts(&tracked),
@@ -266,7 +246,7 @@ fn plan_reports_whether_worktree_sessions_read_the_settings_file() {
 
     // The caller's GIT_DIR does not redirect the check to another repository.
     let other = TempDir::new().unwrap();
-    git(other.path(), &["init", "-q"]);
+    common::git::git_ok(other.path(), &["init", "-q"]);
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args(["claude-settings-plan", p.to_str().unwrap()])
         .env("HOME", home.path())
