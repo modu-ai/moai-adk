@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "covers": "every file under skills/moai/ except this manifest",
+  "design_source": {
+    "id": "design-22",
+    "title": "MoAI 생성 파일 원문 템플릿과 적용 계약",
+    "url": "https://chatgpt.com/space/page_396f36aa5d588191b92f8572bccc3bab",
+    "updated_at": "2026-11-08T04:19:15.740708Z",
+    "snapshot": "design-snapshot/22-page_396f36aa5d588191b92f8572bccc3bab.md",
+    "snapshot_sha256": "62bc9bcaa8661731e377c50512d44be7272c81c6e45a36e9f69b55993800c394",
+    "snapshot_check": "matches SHA256SUMS.txt of the RC1 handoff bundle (read 2026-11-08)"
+  },
+  "legacy_source": {
+    "repository": "modu-ai/moai-adk",
+    "revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+    "license": "Apache-2.0",
+    "license_evidence": "LICENSE at the revision begins 'Apache License Version 2.0, January 2004' (read 2026-11-08)",
+    "inventory": "asset-inventory/moai-skills-rules-inventory-20261108.csv",
+    "inventory_sha256": "1c772fda6290e2a39643acf15e9d4702d8b72923671336a9b4f4d8f25f969f8b",
+    "blob_check": {
+      "method": "git ls-tree -r <revision>, compared with each row's git_blob_sha1",
+      "rows": 1107,
+      "matched": 1107,
+      "mismatched": [],
+      "missing_at_revision": []
+    },
+    "note": "Pointers only: no legacy bytes are copied into the package.",
+    "asset_map": {
+      "path": ".moai-cli/manifests/legacy-asset-map.json",
+      "location": "repository only; not part of the installed package",
+      "sha256": "24cb01bcb32dc9fa9b94fc5138c9f312ff0400c4f80c385ddd2d3ff09fff16fa",
+      "rows": 1107,
+      "status": "all unchecked",
+      "rows_by_intent": {
+        "read": 359,
+        "setup": 328,
+        "update": 218,
+        "plan": 202,
+        "run": 543,
+        "verify": 288,
+        "audit": 292,
+        "sync": 383
+      },
+      "rows_without_intent": 28
+    }
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "25081f6c1492d1cf3b21792f4fd73b5d48983a89f02d2f910aa12993b974937e",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-core",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias."
+      }
+    },
+    "references/routes.json": {
+      "sha256": "509a29d0c261b632d1c457c023569bf97a0ecb7b8220922fbd9e79353bed6d92",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-routes",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160."
+      }
+    },
+    "workflows/read.md": {
+      "sha256": "e4437eed0d9d8ba561531b2beff4ef3a4cf6823b77d2d3e8be1527e74a08b364",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-read",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401."
+      }
+    },
+    "workflows/setup.md": {
+      "sha256": "90df285c03e18d203de3a2d5a744b4149e3691f7162130aabd9aa41ebfcc9b93",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-setup",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/update.md": {
+      "sha256": "9d6d6feabf036dcfc2d90235c6d74036b40d9d1f8eb14b661d57c6906dde7228",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-update",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22)."
+      }
+    },
+    "workflows/plan.md": {
+      "sha256": "665f52f08a9f916d9e7c9fc33d67d9f976b4e530ff0f5306964a69036ce79195",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-plan",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission)."
+      }
+    },
+    "workflows/run.md": {
+      "sha256": "0d9b9fc865fa804b2267a02450cec196caf0cdca46c6c1a02eaed5b7daa35e81",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-run",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
+      }
+    },
+    "workflows/verify.md": {
+      "sha256": "78cb6aef37188b87c5bf16fdbabba1097291845df64d03551636431b06556729",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-verify",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401."
+      }
+    },
+    "workflows/audit.md": {
+      "sha256": "cd0835bb3527f01fcecbcae366509e8c0144590650188c1cbb5117ebf216062d",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-audit",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401."
+      }
+    },
+    "workflows/sync.md": {
+      "sha256": "5b2d7a6c6dbddf1c83f1f0853f4113d6bbd18e445eadd4fa94417f0fe40d3713",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-sync",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/mode-leader.md": {
+      "sha256": "3c53904cbcde1dbc3d4b19e70933fafd9c7cbfaa8261cdb758eb474013ba40f3",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-leader",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434."
+      }
+    },
+    "workflows/mode-agent.md": {
+      "sha256": "9ab7d3abdbc4a120d5ddfee7405e0b3bbc3d72d78e1306eee5674bfb438df33b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-agent",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434."
+      }
+    }
+  }
+}

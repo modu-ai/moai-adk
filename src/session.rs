@@ -1,6 +1,8 @@
 //! Development launcher: starts a leader or agent session on a host CLI with the
-//! model/effort/advisor options the operator decided (2026-11-08). The launcher composes
-//! argv from documented flags only and never invents options.
+//! model/effort options the operator decided (2026-11-08). The advisor is off by default and
+//! is turned on by `--advisor` or the user setting `launcher.advisor` (user decision
+//! 2026-11-12, #2476). The launcher composes argv from documented flags only and never
+//! invents options.
 //!
 //! Hosts (00-F #2028; sources read 2026-11-08):
 //! - `claude`: Claude Code. `--name`, `--model`, `--effort`, `--dangerously-skip-permissions`
@@ -18,8 +20,8 @@
 //! Without a role (`moai-cli cc|glm|codex` with neither `-l` nor `-a`, Issue #2053) the launcher
 //! opens a plain host session: no role is guessed, no session name is added and no permission
 //! flag is passed, so the host starts in the mode its own settings choose. A role session
-//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless `--permissions`
-//! is given ([`FULL_ACCESS_DEFAULT`], user decision 2026-11-10, #2359).
+//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless the user setting
+//! `launcher.role_access` selects prompts or `--permissions` is given.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
@@ -33,16 +35,18 @@ const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
-/// launcher's Claude defaults (`--model opus --effort medium --advisor fable`). False would pass no model, effort or advisor flag so the user's own Claude
-/// settings apply (option B, not chosen). This constant is the only place to change.
+/// launcher's Claude defaults `--model opus --effort medium`. False would pass no model or
+/// effort flag so the user's own Claude settings apply (option B, not chosen). This constant is
+/// the only place to change. The advisor is no longer a default (user decision 2026-11-12,
+/// #2476, replacing the `--advisor fable` part of the 2026-11-08 decision): see
+/// [`launch_settings`].
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// User decision 2026-11-10 (#2359, comment 6760976883): a role session (`-l`, `-a`) on every
 /// host starts with full access and no permission prompt (`--dangerously-skip-permissions` on
 /// Claude hosts whatever the project's `permissions` key says, `-s danger-full-access -a never`
 /// on codex); `--permissions` keeps the prompts. A roleless session gets no permission flag at
-/// all. This replaces #2244 (a project `permissions` key dropped the skip). Choosing this
-/// default from a settings key is a recorded follow-up; until then this constant is the only
-/// place to change.
+/// all. The user-only `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose
+/// `full` or `prompt`; an absent file or key keeps this default. Project settings are ignored.
 pub const FULL_ACCESS_DEFAULT: bool = true;
 /// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
 /// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
@@ -64,36 +68,19 @@ pub const GLM_MCP_KEY_VAR: &str = "Z_AI_API_KEY";
 /// Taken from the caller's environment, else from a key file (#2359). The value is passed to
 /// the host process only; it is never printed, logged or written.
 pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
-/// Key files under HOME, read in this order when the variable is absent. The first is the
-/// global store shared with the Go tool (user decision 2026-11-10). Both are read, never
-/// created or changed.
-pub const GLM_KEY_FILES: [&str; 2] = [".moai/.env.glm", ".moai-cli/.env.glm"];
-/// Names a key file may use for the token.
-const GLM_KEY_NAMES: [&str; 2] = [GLM_TOKEN_VAR, "GLM_API_KEY"];
-/// Largest key file that is read; a bigger one is skipped.
-const GLM_KEY_FILE_MAX: u64 = 65536;
+/// Legacy key files under HOME (`~/.moai/.env.glm` is the store shared with the Go tool), one
+/// list with `key-import-*`. The launcher never opens or reads them (user decision, Issue
+/// #2393 comment 6778150969): only their presence is checked, to point at the move into the
+/// vault (`legacy_key_only`). Only `key-import-plan`/`key-import-apply` read them, on request.
+pub const GLM_KEY_FILES: [&str; 2] = crate::key_vault::LEGACY_GLM_FILES;
 
-/// The token from the first key file that holds a non-empty one. Only a regular file within
-/// the size limit is opened, so a FIFO or a device at the path cannot block the launcher.
-fn glm_file_token() -> Option<String> {
-    let home = std::path::PathBuf::from(std::env::var_os("HOME")?);
-    GLM_KEY_FILES.iter().find_map(|file| {
-        let path = home.join(file);
-        let meta = std::fs::metadata(&path).ok()?;
-        if !meta.is_file() || meta.len() > GLM_KEY_FILE_MAX {
-            return None;
-        }
-        let text = std::fs::read_to_string(path).ok()?;
-        text.lines().find_map(|line| {
-            let line = line.trim();
-            let line = line.strip_prefix("export ").unwrap_or(line);
-            let (key, value) = line.split_once('=')?;
-            if !GLM_KEY_NAMES.contains(&key.trim()) {
-                return None;
-            }
-            usable_token(value.trim().trim_matches(|c| c == '"' || c == '\''))
-        })
-    })
+/// The first legacy key file present at all (any kind of entry). Only `symlink_metadata` is
+/// used, so a FIFO, an unreadable file or a symlink is never opened.
+fn legacy_key_file(home: &std::path::Path) -> Option<&'static str> {
+    GLM_KEY_FILES
+        .iter()
+        .copied()
+        .find(|f| std::fs::symlink_metadata(home.join(f)).is_ok())
 }
 
 /// The one rule for a token value from any source: surrounding whitespace is dropped, and an
@@ -103,17 +90,54 @@ fn usable_token(value: &str) -> Option<String> {
     (!value.is_empty() && !value.chars().any(char::is_control)).then(|| value.to_string())
 }
 
-/// The token and whether it came from a key file: the variable when it holds a usable value,
-/// else the first key file that does. An empty or whitespace-only variable does not hide a
-/// key file.
-fn glm_token() -> Option<(String, bool)> {
+/// Where the GLM token came from, by name only (never the value).
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum KeySource {
+    Env,
+    Vault(crate::key_vault::Scope),
+}
+
+impl KeySource {
+    fn name(&self) -> &'static str {
+        match self {
+            KeySource::Env => "env:ANTHROPIC_AUTH_TOKEN",
+            KeySource::Vault(crate::key_vault::Scope::Project(_)) => "vault:project:glm",
+            KeySource::Vault(crate::key_vault::Scope::Shared) => "vault:shared:glm",
+        }
+    }
+}
+
+/// The token and its source, in this order (#2393 S2, leader decision on the Issue):
+/// 1. the variable, when it holds a usable value (an empty or blank one does not hide the rest);
+/// 2. the encrypted vault's `glm` entry: the current project's folder, then `_shared`
+///    (decision 4 of Issue #2393 comment 6778671862) — an entry that is present but unsafe or
+///    does not decrypt stops the launch with its code instead of falling through, so a broken
+///    entry is not bypassed;
+/// 3. with no vault entry, a legacy key file is not read (user decision, Issue #2393 comment
+///    6778150969); its presence stops the launch with `legacy_key_only` and the way to move
+///    the key, and the file is left as it is.
+fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked> {
     let from_env = std::env::var(GLM_TOKEN_VAR)
         .ok()
         .and_then(|v| usable_token(&v));
-    match from_env {
-        Some(token) => Some((token, false)),
-        None => glm_file_token().map(|token| (token, true)),
+    if let Some(token) = from_env {
+        return Ok(Some((token, KeySource::Env)));
     }
+    if let Ok(home) = crate::key_vault::home() {
+        if let Some((token, scope)) = crate::key_vault::read_here(&home, "glm")? {
+            return Ok(Some((token, KeySource::Vault(scope))));
+        }
+        if let Some(file) = legacy_key_file(&home) {
+            return Err(crate::key_vault::Blocked::legacy_key_only(file));
+        }
+    }
+    Ok(None)
+}
+
+/// The launcher's one-line refusal for a vault that cannot give the key: code, reason and the
+/// next action, never the value.
+fn blocked_line(b: &crate::key_vault::Blocked) -> String {
+    format!("blocked: {}: {} (next: {})", b.code, b.reason, b.next)
 }
 const MAX_PROMPT: usize = 4096;
 
@@ -174,11 +198,123 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
-/// Whether a launched session runs with full access: only a role session, and then
-/// [`FULL_ACCESS_DEFAULT`] unless `--permissions` asks to keep the prompts. Host and project
-/// settings do not matter.
-pub fn full_access(has_role: bool, keep_prompts: bool) -> bool {
-    has_role && FULL_ACCESS_DEFAULT && !keep_prompts
+/// Reads the `launcher` object of the user-only `~/.moai-cli/config/launcher.yaml`; `None` when
+/// HOME, the file or the key is absent. Like the project profile's `.yaml` file, this file
+/// accepts only the JSON subset, parsed by serde_json (not general YAML). Errors never quote
+/// the file's content.
+fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
+    let Ok(home) = crate::key_vault::home() else {
+        return Ok(None);
+    };
+    let path = home.join(".moai-cli/config/launcher.yaml");
+    // Check the entry before reading: directories, symlinks and special files (including
+    // FIFOs, which could block a read) are not launcher configuration files.
+    match fs::symlink_metadata(&path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("user launcher configuration cannot be read".into()),
+        Ok(metadata) if !metadata.file_type().is_file() => {
+            return Err("user launcher configuration must be a regular file".into())
+        }
+        Ok(_) => {}
+    }
+    let bytes = fs::read(&path).map_err(|_| "user launcher configuration cannot be read")?;
+    let value: Value = serde_json::from_slice(&bytes)
+        .map_err(|_| "user launcher configuration must use valid JSON-subset syntax")?;
+    let Value::Object(mut root) = value else {
+        return Err("user launcher configuration must be an object".into());
+    };
+    match root.remove("launcher") {
+        None => Ok(None),
+        Some(Value::Object(launcher)) => Ok(Some(launcher)),
+        Some(_) => Err("user launcher configuration launcher must be an object".into()),
+    }
+}
+
+fn role_full_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<bool, String> {
+    match launcher.and_then(|l| l.get("role_access")) {
+        None => Ok(FULL_ACCESS_DEFAULT),
+        Some(Value::String(access)) if access == "full" => Ok(true),
+        Some(Value::String(access)) if access == "prompt" => Ok(false),
+        Some(_) => {
+            Err("user launcher configuration launcher.role_access must be full or prompt".into())
+        }
+    }
+}
+
+/// `launcher.advisor`: absent or `none` is no advisor; `fable`, `opus`, `sonnet` or a full
+/// `claude-*` id (the `--advisor` forms) turns it on. Anything else is refused without quoting it.
+fn configured_advisor(
+    launcher: Option<&serde_json::Map<String, Value>>,
+) -> Result<Option<String>, String> {
+    match launcher.and_then(|l| l.get("advisor")) {
+        None => Ok(None),
+        Some(Value::String(a)) if a == "none" => Ok(None),
+        Some(Value::String(a))
+            if ADVISOR_ALIASES.contains(&a.as_str())
+                || (a.starts_with("claude-") && clean("advisor", a).is_ok()) =>
+        {
+            Ok(Some(a.clone()))
+        }
+        Some(_) => Err(
+            "user launcher configuration launcher.advisor must be none, fable, opus, sonnet or a full claude-* model id"
+                .into(),
+        ),
+    }
+}
+
+/// Where the advisor of a launch came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdvisorSource {
+    Cli,
+    UserSetting,
+}
+
+/// The launcher's resolution of the user-only settings for one launch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LaunchSettings {
+    /// See [`full_access`].
+    pub skip_permissions: bool,
+    /// The advisor and its source; `None` passes no `--advisor`.
+    pub advisor: Option<(String, AdvisorSource)>,
+}
+
+/// Resolves both user launcher settings from one read of the file (Issues #2413, #2476).
+/// Access: CLI `--permissions` > `launcher.role_access` > [`FULL_ACCESS_DEFAULT`], roleless
+/// sessions never get a permission flag. Advisor (user decision 2026-11-12, #2476, replacing
+/// the 2026-11-08 default `fable`): CLI `--no-advisor` / `--advisor` > `launcher.advisor` >
+/// none; `--advisor` with `--no-advisor` is refused, and the setting applies to Claude hosts
+/// only (codex has no advisor). The file is validated for every launch, also when the CLI
+/// decides, so a broken file is never silently skipped. Project settings do not matter.
+pub fn launch_settings(
+    host: &str,
+    has_role: bool,
+    keep_prompts: bool,
+    cli_advisor: Option<&str>,
+    no_advisor: bool,
+) -> Result<LaunchSettings, String> {
+    let launcher = user_launcher()?;
+    let configured_access = role_full_access(launcher.as_ref())?;
+    let configured = configured_advisor(launcher.as_ref())?;
+    if cli_advisor.is_some() && no_advisor {
+        return Err("--advisor and --no-advisor cannot be used together".into());
+    }
+    let advisor = match (cli_advisor, no_advisor) {
+        (Some(a), _) => Some((a.to_string(), AdvisorSource::Cli)),
+        (None, true) => None,
+        (None, false) if host != "codex" => configured.map(|a| (a, AdvisorSource::UserSetting)),
+        (None, false) => None,
+    };
+    Ok(LaunchSettings {
+        skip_permissions: has_role && !keep_prompts && configured_access,
+        advisor,
+    })
+}
+
+/// Resolves CLI `--permissions` > user `launcher.role_access` > [`FULL_ACCESS_DEFAULT`].
+/// The configuration is validated even for `--permissions` and roleless sessions; roleless
+/// sessions always leave permission flags to the host. Project settings do not matter.
+pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
+    Ok(launch_settings("claude", has_role, keep_prompts, None, false)?.skip_permissions)
 }
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361) ----
@@ -361,6 +497,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
             notes.push("CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1 is set: the host ignores --advisor");
         }
         notes.push("--advisor is documented but hidden from `claude --help`; experimental, Anthropic API only");
+        notes.push("--advisor may bill to usage credits; without them set up the host can exit at start (#2476)");
         argv.push("--advisor".into());
         argv.push(a.clone());
     }
@@ -379,7 +516,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
 fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     clean("codex_bin", &r.codex_bin)?;
     // User decision 2026-11-10 (#2359): a role session gets full access (no sandbox, never
-    // ask), or the sandboxed ask-first pair with `--permissions`; a roleless session gets no
+    // ask), or the sandboxed ask-first pair when prompts are selected; a roleless session gets no
     // flag, so `~/.codex/config.toml` decides (Codex ranks CLI flags above it, so any flag here
     // would override the user's choice).
     let pair = if r.skip_permissions {
@@ -451,25 +588,31 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
         if r.host != "codex" {
             notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-                "launcher defaults without a role: model opus, effort medium, advisor fable (user decision 2026-11-08: A)"
+                "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
             } else {
-                "no model, effort or advisor flag without a role; the user's Claude settings apply"
+                "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
             });
         }
     }
     let mut env_keys: Vec<&str> = Vec::new();
+    let mut key_source: Option<&str> = None;
     let argv = match r.host.as_str() {
         "codex" => codex_argv(r, &mut notes)?,
         "glm" => {
             match glm_token() {
-                None => {
+                Err(b) => return Err(blocked_line(&b)),
+                Ok(None) => {
                     return Err(format!(
-                        "blocked: {GLM_TOKEN_VAR} is not set or is empty in this environment and no key file holds one (set it in your shell, or put GLM_API_KEY=<key> in ~/{}; ~/{} is read too; the launcher never prints or stores the value)",
-                        GLM_KEY_FILES[0], GLM_KEY_FILES[1]
+                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment and the vault holds no glm key (store it with `moai-cli key-set glm` reading the value from stdin, or set the variable; the launcher never prints or stores the value)"
                     ));
                 }
-                Some((_, true)) => notes.push("ANTHROPIC_AUTH_TOKEN comes from a key file under HOME; it is passed to the host process only"),
-                Some((_, false)) => {}
+                Ok(Some((_, source))) => {
+                    key_source = Some(source.name());
+                    match source {
+                        KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only"),
+                        KeySource::Env => {}
+                    }
+                }
             }
             let mut plain = r.clone();
             if plain.advisor.take().is_some() {
@@ -483,10 +626,14 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         }
         _ => claude_argv(r, &mut notes)?,
     };
-    Ok(
-        json!({"host": r.host, "role": r.role, "name": r.name, "argv": argv,
-        "env_keys": env_keys, "notes": notes, "host_loaded": false, "executed": false}),
-    )
+    let mut out = json!({"host": r.host, "role": r.role, "name": r.name, "argv": argv,
+        "env_keys": env_keys, "notes": notes, "host_loaded": false, "executed": false});
+    // Only a launch that reads a key names its source (#2393 S2); the other hosts' answer
+    // keeps its recorded protocol shape.
+    if let Some(source) = key_source {
+        out["key_source"] = json!(source);
+    }
+    Ok(out)
 }
 
 /// Composes and, unless `dry_run`, starts the host and waits for it to exit.
@@ -502,7 +649,9 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
         command.envs(GLM_ENV);
         // The same rule as `compose`: both names carry the trimmed token, so an empty variable
         // is replaced by the key file value and never reaches the host.
-        let (token, _) = glm_token().ok_or("blocked: the key changed")?;
+        let (token, _) = glm_token()
+            .map_err(|b| blocked_line(&b))?
+            .ok_or("blocked: the key changed")?;
         command.env(GLM_TOKEN_VAR, &token);
         command.env(GLM_MCP_KEY_VAR, &token);
     }

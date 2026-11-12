@@ -76,11 +76,27 @@ impl Event {
     }
 }
 
+/// The opt-in deny rules of stage 7 (B3, B9; decision 6779829826), off unless
+/// `~/.moai-cli/config` turns them on (see `hook_config`).
+pub const OPT_IN_RULES: &str = "[hooks.outside_project_writes] enabled + allow: file writes outside the project (after symlinks and ..) are refused unless under allow; [hooks.primary_checkout] enabled + repos + allow_commands: switch, checkout <branch>, reset, stash (not list/show) and rebase are refused in a listed primary checkout that has linked worktrees. A missing or broken config turns both off";
+
+/// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
+pub const CONFIRM_COMMANDS: &str =
+    "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master";
+
+/// Appended to a confirmation on Codex, which cannot ask.
+pub const CODEX_ASK_SUFFIX: &str =
+    "Codex cannot ask for confirmation in a hook, so it is refused here; run it yourself outside the agent if you mean it.";
+
 /// What the policy core decided, before any host rendering.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verdict {
     Allow,
     Deny(String),
+    /// Confirmation needed (decision B2 = A, Issue #2389 c6774899518 row 25): Claude Code asks
+    /// the user; Codex has no ask, so it is rendered as a deny there. Never written as a deny
+    /// line: the user's answer is unknown to the engine.
+    Ask(String),
     Context(String),
 }
 
@@ -222,6 +238,16 @@ fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
 fn render_codex(event: Event, verdict: Verdict) -> Answer {
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
+        // Codex parses `ask` but does not support it (the hook run fails and the call
+        // continues), so a confirmation becomes a deny the user can act on outside the agent.
+        (Event::ToolPreflight, Verdict::Ask(reason)) => json!({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": format!("{reason} {CODEX_ASK_SUFFIX}"),
+            }
+        })
+        .to_string(),
         (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -255,9 +281,16 @@ pub fn capabilities(host: &str) -> Value {
             "host": "claude",
             "source": "https://code.claude.com/docs/en/hooks (read 2026-11-10)",
             "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": ["Bash: git commit on an issue/<n> branch without a claim token"],
-                               "not_guarded": ["Write", "Edit", "MultiEdit", "NotebookEdit", "MCP tools"],
-                               "answer": "hookSpecificOutput.permissionDecision=deny", "never_uses": ["allow", "ask", "defer", "decision/reason (deprecated)"]},
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content"],
+                               "opt_in": OPT_IN_RULES,
+                               "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", "MCP tools"],
+                               "answer": "hookSpecificOutput.permissionDecision=deny",
+                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=ask", "commands": CONFIRM_COMMANDS,
+                                           "note": "a deny anywhere on the line wins; ask in a bypass-permissions or -p session is not documented"},
+                               "never_uses": ["allow", "defer", "decision/reason (deprecated)"]},
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
                                 "host_cap": "8 consecutive continuations (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP)", "moai_cap": MOAI_STOP_BLOCK_CAP},
@@ -268,9 +301,14 @@ pub fn capabilities(host: &str) -> Value {
             "source": "https://learn.chatgpt.com/docs/hooks (read 2026-11-10)",
             "trust": "non-managed hooks run only after the user reviews and trusts the exact hook definition",
             "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": ["Bash: git commit on an issue/<n> branch without a claim token"],
-                               "not_guarded": ["apply_patch (edits files, cannot commit)", "MCP tools"],
+            "tool-preflight": {"event": "PreToolUse", "guards": [
+                                   "Bash: git commit on an issue/<n> branch without a claim token",
+                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
+                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines"],
+                               "opt_in": OPT_IN_RULES,
+                               "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
+                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=deny (Codex has no ask)", "commands": CONFIRM_COMMANDS},
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
                              "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
@@ -296,6 +334,16 @@ fn allow_quietly() -> Answer {
 fn render_claude(event: Event, verdict: Verdict) -> Answer {
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
+        // "`ask` prompts the user to confirm" (code.claude.com/docs/en/hooks, read 2026-11-11);
+        // how a bypass-permissions or `-p` session treats it is not documented.
+        (Event::ToolPreflight, Verdict::Ask(reason)) => json!({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": reason,
+            }
+        })
+        .to_string(),
         (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -355,9 +403,55 @@ fn session_check(cwd: &Path) -> Verdict {
 /// no local claim record must carry `Moai-Claim: <n>#<id>` in its command line (the decided
 /// lane rule; AGENTS.local.md and the MODE-AGENT workflow step 6). Everything else is allowed
 /// here; a forge check of the claim stays with `claim-verify --hook`.
+/// tool-preflight with the confirmation class (B2): any deny — a guard or the claim token, in
+/// any segment of the line — wins; only a call that would be allowed is turned into `Ask`
+/// (Claude's own order is deny > defer > ask > allow).
 fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
+    let verdict = tool_preflight_deny(input, cwd);
+    if verdict != Verdict::Allow || input["tool_name"] != json!("Bash") {
+        return verdict;
+    }
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
-    if input["tool_name"] != json!("Bash") || !crate::claim_verify::is_commit(command) {
+    match crate::hook_guards::bash_confirm(command) {
+        Some(reason) => Verdict::Ask(reason.to_string()),
+        None => Verdict::Allow,
+    }
+}
+
+fn tool_preflight_deny(input: &Value, cwd: &Path) -> Verdict {
+    let command = input["tool_input"]["command"].as_str().unwrap_or("");
+    let tool = input["tool_name"].as_str().unwrap_or("");
+    // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
+    // do not refuse still spawns no `git` unless it is a commit.
+    let write_dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    let guard = if tool == "Bash" {
+        crate::hook_guards::bash_guard(command)
+    } else {
+        crate::hook_guards::write_guard(tool, &input["tool_input"], &write_dir)
+    };
+    if let Some(reason) = guard {
+        return Verdict::Deny(reason.to_string());
+    }
+    // Stage 7 opt-in rules (B3, B9; decision 6779829826): off unless ~/.moai-cli/config turns
+    // them on; a missing or broken config leaves them off.
+    let config = crate::hook_config::load();
+    let opt_in = if tool == "Bash" {
+        config
+            .primary
+            .as_ref()
+            .and_then(|r| crate::hook_guards::primary_checkout_guard(command, &write_dir, r))
+    } else {
+        config.outside.as_ref().and_then(|r| {
+            crate::hook_guards::outside_project_guard(tool, &input["tool_input"], &write_dir, r)
+        })
+    };
+    if let Some(reason) = opt_in {
+        return Verdict::Deny(reason.to_string());
+    }
+    if tool != "Bash" || !crate::claim_verify::is_commit(command) {
         return Verdict::Allow;
     }
     // The command runs in the session's directory unless the input names another one.
@@ -599,9 +693,14 @@ fn consecutive_blocks(cwd: &Path, session: &str) -> usize {
 /// turn-validation (Stop): runs `rules` and keeps the session working only when a rule asks
 /// and MoAI's own bound allows it:
 /// - no rule → allow, nothing read or written (the shipped default);
-/// - `stop_hook_active` while MoAI has not blocked this session → allow: the continuation came
-///   from another stop hook (for example a user's `/goal`), and MoAI does not compete with it;
-/// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow;
+/// - `stop_hook_active` → allow, always (decision D2 = a, Issue #2389 c6774899518 row 24): the
+///   turn is already being continued by a stop hook — a user's `/goal`, another hook, or MoAI's
+///   own earlier block, which the field cannot tell apart — and MoAI never competes with it.
+///   Both hosts send the field (Claude Code; Codex "Whether this turn was already continued by
+///   `Stop`", learn.chatgpt.com/docs/hooks read 2026-11-11). The Go `/goal` Stop link is not
+///   carried over (B5 rejected);
+/// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow (backstop for a host that
+///   does not report a continuation);
 /// - a block that cannot be recorded (no `.moai-cli/`, refused log) → allow, because an
 ///   unrecorded block could not be bounded.
 ///
@@ -619,7 +718,7 @@ pub fn turn_validation_with(
     let active = input["stop_hook_active"] == json!(true);
     let session = session_key(input);
     let blocks = consecutive_blocks(cwd, &session);
-    if (active && blocks == 0) || blocks >= MOAI_STOP_BLOCK_CAP {
+    if active || blocks >= MOAI_STOP_BLOCK_CAP {
         return Verdict::Allow;
     }
     let ctx = StopContext {
@@ -685,35 +784,49 @@ mod tests {
         assert!(!log(p.path()).exists());
     }
 
+    /// Decision D2 = a (Issue #2389 c6774899518 row 24): once the host is continuing the turn
+    /// (`stop_hook_active`), MoAI never blocks — not even after its own block, since the field
+    /// cannot tell whose block continued it. MoAI therefore blocks at most once per stop.
     #[test]
-    fn fixture_rule_blocks_exactly_two_times_in_a_row_then_allows() {
+    fn fixture_rule_blocks_once_and_never_while_a_continuation_runs() {
         let p = project(true);
         let first = turn_validation_with(FAKE, &stop(false), p.path(), 1);
         assert!(matches!(first, Verdict::Deny(ref r) if r.contains("fake-always")));
         // The host now continues the turn: stop_hook_active is true from here on.
-        assert!(matches!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 2),
-            Verdict::Deny(_)
-        ));
-        assert_eq!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 3),
-            Verdict::Allow
-        );
-        assert_eq!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 4),
-            Verdict::Allow
-        );
+        for t in 2..5 {
+            assert_eq!(
+                turn_validation_with(FAKE, &stop(true), p.path(), t),
+                Verdict::Allow
+            );
+        }
         let text = std::fs::read_to_string(log(p.path())).unwrap();
-        assert_eq!(text.lines().count(), 2, "two recorded blocks: {text}");
+        assert_eq!(text.lines().count(), 1, "one recorded block: {text}");
+    }
+
+    /// The block cap stays as the backstop for a host that reports `stop_hook_active: false`
+    /// again without a tool call in between: two blocks, then allow.
+    #[test]
+    fn the_cap_bounds_blocks_when_the_host_never_reports_a_continuation() {
+        let p = project(true);
+        for t in 1..3 {
+            assert!(matches!(
+                turn_validation_with(FAKE, &stop(false), p.path(), t),
+                Verdict::Deny(_)
+            ));
+        }
+        assert_eq!(
+            turn_validation_with(FAKE, &stop(false), p.path(), 3),
+            Verdict::Allow
+        );
     }
 
     #[test]
     fn a_tool_call_resets_the_count() {
         let p = project(true);
         let _ = turn_validation_with(FAKE, &stop(false), p.path(), 1);
-        let _ = turn_validation_with(FAKE, &stop(true), p.path(), 2);
+        let _ = turn_validation_with(FAKE, &stop(false), p.path(), 2);
         assert_eq!(
-            turn_validation_with(FAKE, &stop(true), p.path(), 3),
+            turn_validation_with(FAKE, &stop(false), p.path(), 3),
             Verdict::Allow
         );
         let post = json!({"hook_event_name": "PostToolUse", "session_id": "sess-A",

@@ -186,6 +186,11 @@ pub struct PrData {
     pub issue: Option<i64>,
     /// The PR's commits in the API's order (oldest first, at most 250).
     pub commits: Vec<String>,
+    /// Claim comment ids from `Moai-Claim: <issue>#<id>` lines in the PR's commit messages,
+    /// for this PR's own Issue only, in commit order without repeats (#2403 item 3).
+    pub claim_ids: Vec<i64>,
+    /// The PR's own conversation comments (audit reservations and verdicts; #2403 item 3).
+    pub comments: Vec<Comment>,
 }
 
 #[derive(Clone, Debug)]
@@ -238,7 +243,10 @@ fn validate(req: &LaneStatusRequest) -> Result<()> {
     Ok(())
 }
 
-fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Result<Vec<Value>> {
+pub(crate) fn pages<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    first: String,
+) -> Result<Vec<Value>> {
     let (mut url, mut out, mut n) = (Some(first), Vec::new(), 0);
     while let Some(u) = url {
         n += 1;
@@ -256,9 +264,100 @@ fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Re
     Ok(out)
 }
 
-fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
+pub(crate) fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
     let resp = client.get(url, None).map_err(String::from)?;
     Ok(resp.body.unwrap_or(Value::Null))
+}
+
+/// Issue or PR comments from the API, sorted by id without repeats.
+pub(crate) fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
+    let mut comments: Vec<Comment> = raw
+        .iter()
+        .filter_map(|c| {
+            Some(Comment {
+                id: c["id"].as_i64()?,
+                created_at: c["created_at"].as_str().unwrap_or_default().into(),
+                body: c["body"].as_str().unwrap_or_default().into(),
+            })
+        })
+        .collect();
+    comments.sort_by_key(|c| c.id);
+    comments.dedup_by_key(|c| c.id);
+    comments
+}
+
+/// Claim comment ids from whole-line `Moai-Claim: <issue>#<id>` trailers naming `issue`.
+pub(crate) fn claim_ids_in(message: &str, issue: i64) -> Vec<i64> {
+    message
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("Moai-Claim:"))
+        .filter_map(|t| t.trim().split_once('#'))
+        .filter(|(n, _)| n.parse::<i64>().ok() == Some(issue))
+        .filter_map(|(_, id)| id.parse::<i64>().ok())
+        .collect()
+}
+
+/// A whole-line `moai-audit-claim: lane=<lane> head=<40 lowercase hex>` reservation.
+pub(crate) fn reservation_in(body: &str) -> Option<(String, String)> {
+    body.lines().find_map(|l| {
+        let rest = l.trim().strip_prefix("moai-audit-claim:")?;
+        let mut words = rest.split_whitespace();
+        let lane = words.next()?.strip_prefix("lane=")?;
+        let head = words.next()?.strip_prefix("head=")?;
+        let hex40 =
+            head.len() == 40 && head.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+        (words.next().is_none() && !lane.is_empty() && hex40)
+            .then(|| (lane.to_string(), head.to_string()))
+    })
+}
+
+/// The audit columns of a PR row (#2403 item 3): reservations with the current-head winner,
+/// the verdict on the current head (PR comments first, then the Issue's), and the sessions
+/// whose claim tokens appear in the PR's commits — the authors, who may not audit it.
+pub(crate) fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
+    let reservations: Vec<Value> = pr
+        .comments
+        .iter()
+        .filter_map(|c| {
+            let (lane, head) = reservation_in(&c.body)?;
+            let current = head == pr.head;
+            let state = if current { "current" } else { "stale" };
+            Some(json!({"lane": lane, "comment_id": c.id, "head": head, "current": current, "state": state}))
+        })
+        .collect();
+    let winner = reservations
+        .iter()
+        .filter(|r| r["current"] == json!(true))
+        .min_by_key(|r| r["comment_id"].as_i64())
+        .map(|r| json!({"lane": r["lane"], "comment_id": r["comment_id"]}));
+    let verdict = verdict_on(&pr.comments, &pr.head)
+        .map(|(v, id)| json!({"verdict": v, "comment_id": id, "source": "pr"}))
+        .or_else(|| {
+            verdict_on(&issue.comments, &pr.head)
+                .map(|(v, id)| json!({"verdict": v, "comment_id": id, "source": "issue"}))
+        });
+    let mut authors = Vec::new();
+    let mut unresolved = Vec::new();
+    for id in &pr.claim_ids {
+        let session = issue.comments.iter().find(|c| c.id == *id).and_then(|c| {
+            match classify_comment(&c.body) {
+                CommentKind::Claim { session, .. } => Some(session),
+                _ => None,
+            }
+        });
+        match session {
+            Some(s) => authors.push(json!({"session": s, "claim_comment_id": id})),
+            None => unresolved.push(*id),
+        }
+    }
+    json!({
+        "head": pr.head,
+        "reservations": reservations,
+        "winner_on_head": winner,
+        "verdict_on_head": verdict,
+        "author_sessions": authors,
+        "unresolved_claim_ids": unresolved,
+    })
 }
 
 /// Reads everything for `req` (GET only) and the local worktree list of `project`.
@@ -281,19 +380,10 @@ pub fn collect<T: Transport, C: Clock>(
     let mut issues = Vec::new();
     for n in &wanted {
         let issue = one(client, &format!("{repo}/issues/{n}"))?;
-        let mut comments: Vec<Comment> =
-            pages(client, format!("{repo}/issues/{n}/comments?per_page=100"))?
-                .iter()
-                .filter_map(|c| {
-                    Some(Comment {
-                        id: c["id"].as_i64()?,
-                        created_at: c["created_at"].as_str().unwrap_or_default().into(),
-                        body: c["body"].as_str().unwrap_or_default().into(),
-                    })
-                })
-                .collect();
-        comments.sort_by_key(|c| c.id);
-        comments.dedup_by_key(|c| c.id);
+        let comments = read_comments(pages(
+            client,
+            format!("{repo}/issues/{n}/comments?per_page=100"),
+        )?);
         issues.push(IssueData {
             number: *n,
             open: issue["state"].as_str() != Some("closed"),
@@ -320,6 +410,8 @@ pub fn collect<T: Transport, C: Clock>(
                 branch: p["head"]["ref"].as_str().unwrap_or_default().into(),
                 issue: crate::leader::refs_issue(p["body"].as_str().unwrap_or_default()),
                 commits: Vec::new(),
+                claim_ids: Vec::new(),
+                comments: Vec::new(),
             })
         })
         .filter(|p| p.issue.is_some_and(|i| wanted.contains(&i)))
@@ -327,13 +419,26 @@ pub fn collect<T: Transport, C: Clock>(
     prs.sort_by_key(|p| p.number);
     prs.dedup_by_key(|p| p.number);
     for pr in prs.iter_mut() {
-        pr.commits = pages(
+        let commits = pages(
             client,
             format!("{repo}/pulls/{}/commits?per_page=100", pr.number),
-        )?
-        .iter()
-        .filter_map(|c| c["sha"].as_str().map(str::to_string))
-        .collect();
+        )?;
+        pr.commits = commits
+            .iter()
+            .filter_map(|c| c["sha"].as_str().map(str::to_string))
+            .collect();
+        let issue = pr.issue.unwrap_or_default();
+        for c in &commits {
+            for id in claim_ids_in(c["commit"]["message"].as_str().unwrap_or_default(), issue) {
+                if !pr.claim_ids.contains(&id) {
+                    pr.claim_ids.push(id);
+                }
+            }
+        }
+        pr.comments = read_comments(pages(
+            client,
+            format!("{repo}/issues/{}/comments?per_page=100", pr.number),
+        )?);
     }
     let worktrees = crate::worktree::worktrees(project).map(|list| {
         list.into_iter()
@@ -600,6 +705,7 @@ fn rows_for(issue: &IssueData, snap: &Snapshot, names: &BTreeMap<&str, Option<&s
         "open_blockers": open_blockers,
         "last_event_at": last_event_at,
         "events": pr.map(|p| events(&issue.comments, p)),
+        "audit": pr.map(|p| audit_value(issue, p)),
     });
     vec![Row {
         session,

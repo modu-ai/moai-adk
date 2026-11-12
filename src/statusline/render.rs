@@ -410,14 +410,15 @@ mod tests {
     #[test]
     fn hidden_main_segments_cannot_be_enabled_by_configuration() {
         let home = tempfile::tempdir().unwrap();
-        std::fs::create_dir(home.path().join("state")).unwrap();
+        // The HOME state folder since #2455 (`$HOME/.moai-cli/state`).
+        std::fs::create_dir_all(home.path().join(".moai-cli/state")).unwrap();
         std::fs::write(
-            home.path().join("state/last-session-state.json"),
+            home.path().join(".moai-cli/state/last-session-state.json"),
             r#"{"active_task":{"command":"TASK_SENTINEL","spec_id":"SPEC","stage":"run"}}"#,
         )
         .unwrap();
         let home_path = home.path().to_string_lossy();
-        let ctx = Context::for_test(&[("MOAI_HOME", home_path.as_ref())], None);
+        let ctx = Context::for_test(&[("HOME", home_path.as_ref())], None);
         let input = input::parse(
             br#"{
                 "model":{"display_name":"Opus"},

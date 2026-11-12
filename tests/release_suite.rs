@@ -526,8 +526,8 @@ fn dist_default_tag_trigger_fires_on_go_tags_and_namespace_isolates() {
 // --- interrupted update recovery -------------------------------------------------------
 
 const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
-const SKILL_V1: &str = "---\nname: moai-cli\ndescription: fixture package\n---\n# MoAI\nbody v1\n";
-const SKILL_V2: &str = "---\nname: moai-cli\ndescription: fixture package\n---\n# MoAI\nbody v2\n";
+const SKILL_V1: &str = "---\nname: moai\ndescription: fixture package\n---\n# MoAI\nbody v1\n";
+const SKILL_V2: &str = "---\nname: moai\ndescription: fixture package\n---\n# MoAI\nbody v2\n";
 const UPDATE_V1: &str = "# UPDATE\nv1\n";
 const UPDATE_V2: &str = "# UPDATE\nv2\n";
 const NEW_V2: &str = "# NEW\nadded in v2\n";
@@ -595,7 +595,7 @@ fn hosts_dir(home: &Path) -> PathBuf {
         .filter(|p| p.is_dir())
         .collect();
     assert_eq!(dirs.len(), 1);
-    dirs[0].join("hosts/moai-cli")
+    dirs[0].join("hosts/moai")
 }
 
 fn sha_hex(bytes: &[u8]) -> String {
@@ -644,8 +644,8 @@ fn crash_and_recover(k: usize) -> Sweep {
             ("workflows/new.md", NEW_V2),
         ],
     );
-    let codex = home.join(".agents/skills/moai-cli");
-    let claude = home.join(".claude/skills/moai-cli");
+    let codex = home.join(".agents/skills/moai");
+    let claude = home.join(".claude/skills/moai");
     let go_before = digest(&home.join(".moai"));
 
     plan_and_apply(&home, &stage1);

@@ -21,13 +21,12 @@ self-replace = "=1.5.1"
 # docs/index-generation.md for the source, checksums and dependency rationale.
 cap-std = "=4.0.3"
 cap-fs-ext = "=4.0.3"
+chacha20poly1305 = "=0.10.1"
+tempfile = "=3.27.0"
 
 [target.'cfg(unix)'.dependencies]
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.
 libc = "=0.2.189"
-
-[dev-dependencies]
-tempfile = "=3.27.0"
 
 # The profile that 'dist' will build with (cargo-dist 0.34, E1 #2193)
 [profile.dist]

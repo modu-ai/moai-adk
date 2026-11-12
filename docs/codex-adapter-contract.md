@@ -1,6 +1,6 @@
 # Codex adapter 계약 (02-C #1993)
 
-공통 skill package(`skills/moai-cli/`, 02-A #1991; #2286에서 `moai-cli`로 개명)를 OpenAI Codex(Desktop 앱, CLI, IDE 확장)에 연결하는 adapter의 계약이다. RC1에서는 projection을 계획하고 설치 상태를 진단하는 데까지만 했다. rc.2 I4 #2241이 계획한 projection을 호출자가 정한 대상에 설치하는 `codex.projection_apply`를 더했다(아래 Operation 절). 설치 위치는 여전히 정하지 않는다. 02-C 범위의 확인일은 2026-11-08이고, I4가 다시 확인한 항목은 2026-11-09(#2286 개명 갱신 동일일)로 따로 적는다. 지원표 행은 `docs/host-support-matrix.md`의 Codex 절에 있다.
+공통 skill package(`skills/moai/`, 02-A #1991; #2286에서 skill 이름 `moai`로 확정, 실행 파일은 `moai-cli`)를 OpenAI Codex(Desktop 앱, CLI, IDE 확장)에 연결하는 adapter의 계약이다. RC1에서는 projection을 계획하고 설치 상태를 진단하는 데까지만 했다. rc.2 I4 #2241이 계획한 projection을 호출자가 정한 대상에 설치하는 `codex.projection_apply`를 더했다(아래 Operation 절). 설치 위치는 여전히 정하지 않는다. 02-C 범위의 확인일은 2026-11-08이고, I4가 다시 확인한 항목은 2026-11-09(#2286 개명 갱신 동일일)로 따로 적는다. 지원표 행은 `docs/host-support-matrix.md`의 Codex 절에 있다.
 
 ## 결정 (리더 RC1 임시, 2026-11-08, Issue 본문 r30)
 
@@ -78,7 +78,7 @@ MoAI가 쓰는 키는 이 중 `interface.display_name`·`short_description`·`de
 - `agents_override_created: false`다. 개인 보충용 override를 만들지 않는다(REQ-02C-05).
 - `trust`: `{status: "not_evaluated", reason, consequence}`. config.toml을 읽지 않으므로 untrusted여서 생기는 `blocked_by_trust`를 판정할 수 없고, trust 상태를 바꾸지도 않는다(REQ-02C-06).
 - `codex_layer`: `.codex/config.toml`과 `.codex/hooks.json`이 있는지만 본다. `inline_hooks`와 `status_line`은 `not_evaluated`다.
-- `skills.moai-cli`(key renamed by #2286): cwd → root의 `.agents/skills/moai-cli`, `$HOME/.agents/skills/moai-cli`, `/etc/codex/skills/moai-cli` 중 있는 것을 모두 보여 준다. 둘 이상이면 병합되지 않는다는 경고를 낸다(REQ-02C-04). Go `moai` skill 디렉터리는 읽지 않는다(#2286 REQ-3).
+- `skills.moai-cli`(key renamed by #2286): cwd → root의 `.agents/skills/moai`, `$HOME/.agents/skills/moai`, `/etc/codex/skills/moai` 중 있는 것을 모두 보여 준다. 둘 이상이면 병합되지 않는다는 경고를 낸다(REQ-02C-04). Go `moai` skill 디렉터리는 읽지 않는다(#2286 REQ-3).
 - 결과: `writes: []`, `host_loaded: false`, `execution_verified: false`.
 
 ## AC와 시험 (Issue 본문 r30)

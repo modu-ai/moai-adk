@@ -26,14 +26,14 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 WORK="$(mktemp -d /tmp/e2e-codex-XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
-SKILL_DIGEST="$(shasum -a 256 "$REPO/skills/moai-cli/SKILL.md" | awk '{print $1}')"
+SKILL_DIGEST="$(shasum -a 256 "$REPO/skills/moai/SKILL.md" | awk '{print $1}')"
 CLI_SHA="$(command -v moai-cli >/dev/null 2>&1 && shasum -a 256 "$(command -v moai-cli)" | awk '{print $1}' || echo absent)"
 HOST_VERSION="$(codex --version 2>/dev/null | head -1 || echo unknown)"
 
 # Pre-step: project the skill into the temporary project's .agents/skills and give
 # the run an isolated HOME / CODEX_HOME.
 mkdir -p "$WORK/project/.agents/skills" "$WORK/home/.codex"
-cp -R "$REPO/skills/moai-cli" "$WORK/project/.agents/skills/moai-cli"
+cp -R "$REPO/skills/moai" "$WORK/project/.agents/skills/moai"
 
 receipt() { # receipt <name> <result> <detail>
   printf '{"ac":"%s","os":"%s","arch":"%s","host":"codex","host_exact_version":"%s","mode":"local","skill_digest":"%s","moai_cli_sha":"%s","result":"%s","ran_at":"%s","detail":"%s"}\n' \
@@ -59,7 +59,7 @@ else
   (cd "$WORK/project" && HOME="$WORK/home" CODEX_HOME="$WORK/home/.codex" codex exec --json --ephemeral \
       --ignore-user-config --sandbox read-only --skip-git-repo-check \
       -o "$WORK/last.md" \
-      '$moai-cli 프로젝트 설정 미리보기만 해줘' \
+      '$moai 프로젝트 설정 미리보기만 해줘' \
       > "$WORK/ac4.jsonl" 2> "$WORK/ac4.err")
   RC4=$?
   keep last.md > /dev/null

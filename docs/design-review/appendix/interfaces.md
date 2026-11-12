@@ -14,8 +14,38 @@
 | `sync.*` | 없음 (RC1 미출하 — SYNC는 workflow 문서 절차) | `skills/moai/workflows/sync.md` 절차만; 상태 기계는 부록 1 |
 | `artifact.pin` | `plan.admit` `PinnedContract` + `update` rollback_manifest | artifact pin은 plan pin/manifest로 실현 |
 | `dispatch.*` | `forge-read`/`forge-report` + `effect-intend`/`effect-confirm`/`effects-reconcile` | dispatch는 forge 읽기·outbox effect 3-op로 분리 실현 |
+| 배정·수락 관측 (#2390 S2) | `dispatch-record` / `dispatch-ack` / `dispatch-check` (`dispatch.record`·`dispatch.ack`·`dispatch.check`) | S1 위의 revision·수신/수락 구분·5분 경보. C3는 관측까지 충족, 감사 claim 소비·게이트 연동 미충족(#2403/#2388 후속). 계약은 `docs/rust-product-path.md`의 S2 절 |
+| 레인↔리더 영속 메시지 (#2390 S1) | `message-record` / `message-ack` / `message-reconcile` (`message.record`·`message.ack`·`message.reconcile`) | 로컬+Issue 기록과 명시 수신 ACK. `queued`·`received`·`received_ack`를 구분하며 dispatch 수락·소유권 이전·업무 완료는 아님. 입력/결과 계약은 `docs/rust-product-path.md`의 S1 절 |
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
-| — (문서 인터페이스명 없음) | `skill-source-plan` / `skill-source-apply` (`skill_source.plan`·`skill_source.apply`) / `skill-read-receipt` (`skill_source.read_receipt`) | 대응 없음 — 03-B #1996 신설(license review·skill 설치·read receipt); 문서 인터페이스 어휘와 [43fa] §18 명령표 어느 쪽에도 없는 영역 |
+
+## C6d generation 문서 참조 (#2450)
+
+`index-build`가 만드는 Graph와 이를 읽는 `index::index_records` API/`atlas-graph`에는 기존
+`imports`/`calls` 외에 Rust 문서 주석의 qualified 식별자에서 얻은 파일→파일
+`documents` edge가 포함된다. JSON 필드는 기존 온톨로지 형식을 그대로 사용한다.
+각 edge는 문서 언급과 대상 정의의 `file-uri#span@digest`를 모두 보존하며,
+`basis=inferred`, `verification=unreviewed`,
+`uncertainty=doc-lexical-reference; rustdoc-binding-not-checked`로 한계를 표시한다.
+
+지원 범위는 `//!`·`///`·`/*! */`·`/** */` 문서의 inline-code qualified 경로와
+모듈 수준 선언이다. compiler/rustdoc의 완전한 이름 해석·가시성 검사는 수행하지
+않는다. bare name·일반 주석·문자열·fenced 예시를 참조로 만들지 않으며,
+alias/re-export·associated item은 이 문서 해석기의 지원 범위 밖이다.
+상수 선언은 const generic과 구분하는 구문 해석을 구현하지 않아 지원하지 않는다.
+사용자 결정 `6801346885`에 따라 물리적인 doc 블록 전체를 먼저 검사한다.
+quote/list/fence/4space indentation/tab/HTML 시작 중 하나라도 있으면 해당 블록의
+후보를 모두 제외하고 기존 `missing`에 `doc_reference_unsupported`의
+`path`, block `line`, `count=1`, `reason`을 기록한다. 앞선 prose도 소급 제외하며
+container 수명 추적은 하지 않는다. 물리적 blank/source/attribute나 별도 block comment는
+새 블록 경계이고, 지원되는 plain 블록만 backtick qualified 경로를 수집한다.
+대상 정의 0개/복수 후보는 `doc_reference_missing`, `reason=unresolved|ambiguous`다.
+증분 빌드는 제외 계수도 저장 scan으로 재사용하며 `code-refs=5`로 이전 추출기 fragment를
+재사용하지 않는다. 새 top-level 공개 필드는 추가하지 않는다.
+
+리더 결정 `6793749743`에 따라 GRAPH는 기존 7개 코드 관계와 G-002 문서 관계를
+확인하고 G-006만 이유 있는 gap으로 남긴다. concept identity/alias H1은 HOLD다.
+fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 않는다.
+수리 경계·공식 근거·실행/미실행 표는 [C6d 수리 경계](../../atlas-doc-reference-boundaries.md)에 기록한다.
 
 ## RC1 OPERATIONS 전수
 
@@ -26,7 +56,12 @@
 - `archive-plan`
 - `archive-restore`
 - `archive-search`
+- `atlas-graph`
+- `atlas-map`
 - `atlas-tag-scan`
+- `audit-claim`
+- `audit-clone-plan`
+- `audit-delta`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
@@ -43,7 +78,11 @@
 - `context-bundle`
 - `context-verify`
 - `cost-report`
+- `decision-append`
 - `decision-record`
+- `dispatch-ack`
+- `dispatch-check`
+- `dispatch-record`
 - `effect-confirm`
 - `effect-intend`
 - `effects-reconcile`
@@ -65,11 +104,23 @@
 - `index-build`
 - `index-query`
 - `install-inspect`
+- `key-import-apply`
+- `key-import-plan`
+- `key-remove`
+- `key-set`
+- `key-status`
 - `lane-handoff-check`
 - `lane-status`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`
+- `message-ack`
+- `message-reconcile`
+- `message-record`
+- `migrate-apply`
+- `migrate-plan`
+- `migrate-recover`
+- `migrate-recovery-plan`
 - `package-inspect`
 - `package-resolve`
 - `parity-check`
@@ -82,24 +133,33 @@
 - `project-skill-plan`
 - `project-skill-revert`
 - `queue-next`
+- `queue-query`
 - `recovery-apply`
 - `recovery-plan`
 - `run-verify`
 - `scope-check`
-- `skill-read-receipt`
-- `skill-source-apply`
-- `skill-source-plan`
+- `search`
 - `snapshot-describe`
-- `todo-promote-apply`
-- `todo-promote-preview`
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
+- `worktree-gc-plan`
 - `worktree-plan`
+- `worktree-report`
 
 (알파벳순, 한 줄에 operation 하나, 개수는 적지 않는다. `src/main.rs`의 시험 `operations_doc_matches_code`가 이 목록과 OPERATIONS 배열의 이름 집합을 비교해 빠진 것·남는 것·중복·순서 어긋남을 이름으로 보고한다 — op를 더하거나 빼는 PR은 알파벳 위치에 자기 줄만 넣거나 뺀다. 이력: tip `604792666` 47개에서 시작해 rc.2 카드들이 더했고, #2241에서 이 형식으로 바꿨다; `lane-handoff-check`은 A10 #2264 수리 r2에서 더했다. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
 
 envelope 예외 하위 명령: `statusline`(#2350). Claude Code가 `statusLine` 명령의 stdout을 그대로 화면에 보여 주므로 JSON envelope 대신 상태줄 원문을 출력하고 항상 exit 0으로 끝난다. OPERATIONS에 들어가지 않으므로 위 목록에도 없다. 실행기 `cc`·`glm`·`codex`·`session`도 같은 이유로 목록 밖이다. 숨은 시험용 옵션 `--render-budget-ms`는 렌더 예산(기본 800ms, Go와 같음)을 바꾼다. golden 시험이 부하와 무관하게 결정적으로 돌도록 큰 값을 넘기고, `0`은 이미 지난 예산(git을 시작하지 않음)이다. `src/main.rs`의 시험 `statusline_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
+
+`audit-delta [PROJECT] --pass-head SHA --tip SHA --head SHA`는 `audit.delta`로 대응한다.
+로컬 3개 commit의 두 부모 merge 재현 증거만 계산하며 PROJECT 기본값은 `.`이다.
+원본 저장소는 읽기 전용이고 새 Git 객체는 외부 임시 bare 저장소에만 생성한 뒤 정리한다.
+`pure_merge`만 exit 0이며 `manual_delta`·`replay_conflict`·`refused`는 계산된
+`ok: true` report와 exit 1이다. 여기서 `ok`는 계산 성공이지 AUDIT PASS가 아니다.
+입력/Git/I/O 실패는 기존 error envelope와 exit 1, 사용법 오류는 exit 2다.
+부모 0~1개·3개 이상·순서가 `[pass_head, tip]`와 다른 merge는 각각
+`not_merge`·`octopus`·`parent_mismatch`로 거절한다. 원격 CI/PR 모드,
+여러 merge의 first-parent chain, patch-id 비교와 최종 감사 판정은 범위 밖이다.
 
 ## 문서별 내부 명령 체계 → RC1
 

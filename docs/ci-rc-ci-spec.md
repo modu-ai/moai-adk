@@ -1,6 +1,6 @@
 # rc-ci 명세 (08-A #2012)
 
-`v2026.11.0` 대상 PR의 CI가 SYNC 절차(`skills/moai-cli/workflows/sync.md`)에 넘겨야 하는 것을 정한다. workflow 파일 `.github/workflows/rc-ci.yml`의 소유 Issue는 08-D #2015이고(2026-11-08 사용자 확정, `docs/decisions-2026-11-08.md`), 첫 판은 00-E #2020이 만들었다. 이 문서는 요구만 적는다. 파일을 바꿀 일이 생기면 08-D에 요청한다.
+`v2026.11.0` 대상 PR의 CI가 SYNC 절차(`skills/moai/workflows/sync.md`)에 넘겨야 하는 것을 정한다. workflow 파일 `.github/workflows/rc-ci.yml`의 소유 Issue는 08-D #2015이고(2026-11-08 사용자 확정, `docs/decisions-2026-11-08.md`), 첫 판은 00-E #2020이 만들었다. 이 문서는 요구만 적는다. 파일을 바꿀 일이 생기면 08-D에 요청한다.
 
 아래 "현재 상태"는 2026-11-08에 `rc-ci.yml`을 읽고 PR #2058의 실행(run 42478275200)을 조회해 확인한 내용이다.
 

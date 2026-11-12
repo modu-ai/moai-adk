@@ -20,7 +20,8 @@ written. Nothing is written outside DIR and the temporary tree, which is removed
 
 Output (REQ-I8-01): DIR/receipts.jsonl (schemas/e2e-receipt.schema.json fields, appended),
 DIR/<AC>.out / .err (raw host output), DIR/rows.md (docs/support-matrix.md rows: passed
-items in the "지원 행" shape, the rest in the "not_run 행" shape). rows.md is also printed.
+items in the supported-row shape, the rest in the not_run-row shape; see render_rows).
+rows.md is also printed.
 
 Exit codes: 0 = receipts written, 1 = unreadable input or I/O failure, 2 = usage.
 """
@@ -89,7 +90,7 @@ def probe_skill(marker: str) -> str:
 def build_fixture(kind: str, host: str, project: Path, repo: Path, markers: dict) -> None:
     """Writes the item's temporary project. markers gets the expected/forbidden values."""
     skills = ".claude/skills" if host == "claude" else ".agents/skills"
-    shutil.copytree(repo / "skills/moai-cli", project / skills / "moai-cli")
+    shutil.copytree(repo / "skills/moai", project / skills / "moai")
     if kind in ("agents", "agents_shadowed", "agents_override"):
         markers["expect"] = "mp-" + secrets.token_hex(8)
         write(project / "AGENTS.md", agents_text(markers["expect"]))
@@ -246,8 +247,8 @@ def run_item(item, args, overrides: dict, skill_digest: str, cli_sha: str, versi
 
 
 def render_rows(receipts: list) -> str:
-    """docs/support-matrix.md rows. A passed receipt becomes a "지원 행" row citing
-    receipts.jsonl; every other result becomes a "not_run 행" row with its reason."""
+    """docs/support-matrix.md rows. A passed receipt becomes a supported row citing
+    receipts.jsonl; every other result becomes a not_run row with its reason."""
     caps = {ac: (host, kind, cap) for ac, host, kind, cap in ITEMS}
     supported, others = [], []
     for r in receipts:
@@ -301,9 +302,9 @@ def main(argv: list) -> int:
         args, overrides = parse_args(argv)
     except SystemExit as exc:
         return 2 if exc.code else 0
-    skill_md = args.repo / "skills/moai-cli/SKILL.md"
+    skill_md = args.repo / "skills/moai/SKILL.md"
     if not skill_md.is_file():
-        print(f"not a repository root (skills/moai-cli/SKILL.md missing): {args.repo}", file=sys.stderr)
+        print(f"not a repository root (skills/moai/SKILL.md missing): {args.repo}", file=sys.stderr)
         return 1
     try:
         args.out.mkdir(parents=True, exist_ok=True)

@@ -46,7 +46,7 @@ fn ok_result(out: &std::process::Output) -> Value {
 }
 
 fn agents_request(language: &str, local_file: &str) -> Value {
-    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai-cli/workflows/","local_file":local_file})
+    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
 }
 
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
@@ -83,7 +83,7 @@ fn apply_recover(root: &TempDir, receipt_id: &str) -> std::process::Output {
 
 /// A project with `project.yaml` in place; the caller runs agents-plan/apply itself.
 fn agents_project_root(root: &TempDir) {
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     let p = root.path().to_str().unwrap();
     let preview = cli(&["project-plan", p], &profile());
     assert!(preview.status.success(), "{:?}", preview.stderr);

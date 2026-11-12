@@ -120,6 +120,18 @@ const RULES: &[(&str, Kind)] = &[
     ("claim verify: not owner", Kind::Conflict),
     ("claim verify: closed", Kind::Conflict),
     ("claim verify: no claim", Kind::Conflict),
+    // audit-claim (rc.2 #2403 item 1): ahead of the generic words its messages quote.
+    ("audit claim refused: ", Kind::InvalidInput),
+    ("audit claim conflict: ", Kind::Conflict),
+    ("audit claim blocked: ", Kind::Blocked),
+    // audit-delta (#2403): explicit prefixes precede generic Git/input phrases.
+    ("audit delta refused: ", Kind::InvalidInput),
+    ("audit delta blocked: ", Kind::Blocked),
+    ("audit delta git failed: ", Kind::GitFailed),
+    ("audit delta I/O failed: ", Kind::Io),
+    // decision-append (rc.2 #2403): ahead of the generic words its messages may contain.
+    ("decision append blocked: ", Kind::Blocked),
+    ("decision append refused: ", Kind::InvalidInput),
     ("claim verify: stale", Kind::Blocked),
     ("claim verify: uncertain", Kind::Blocked),
     ("claim verify: trailer missing", Kind::InvalidInput),
@@ -186,6 +198,8 @@ const RULES: &[(&str, Kind)] = &[
     // incremental index (rc.2 C6 #2182): a failed build is plain I/O trouble; the
     // previous generation is kept and the query state turns partial.
     ("index build failed", Kind::Io),
+    // search (rc.2 C7 #2183): every refusal is about the request itself.
+    ("search refused: ", Kind::InvalidInput),
     ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
@@ -355,6 +369,37 @@ mod tests {
             ("lane status base_branch must be a plain branch name", InvalidInput),
             ("lane status evidence must be given with a session, a source and a time", InvalidInput),
             ("lane status page limit exceeded (50)", InvalidInput),
+            // audit-claim (rc.2 #2403 item 1)
+            ("audit claim refused: head must be 40 lowercase hex", InvalidInput),
+            ("audit claim refused: lane must be a plain name (letters, digits, - _ .)", InvalidInput),
+            ("audit claim conflict: PR #7 is not open", Conflict),
+            ("audit claim conflict: head is not the current head of PR #7 (aaaa); re-read the PR and reserve its current head", Conflict),
+            ("audit claim conflict: lane x is an author of PR #7 (claim comment 1); an author or repairer never audits its own PR", Conflict),
+            ("audit claim blocked: PR #7 names no Refs #<issue>, so its authors cannot be read", Blocked),
+            ("audit claim blocked: claim comment 1 named by a Moai-Claim trailer is not a claim line on Issue #3; authors cannot be ruled out", Blocked),
+            ("audit claim blocked: the comment POST returned HTTP 403; nothing was posted", Blocked),
+            // decision-append (rc.2 #2403)
+            ("decision append blocked: the project has no HEAD commit", Blocked),
+            ("decision append blocked: HEAD is not the given base (HEAD 0123); fetch the tip and work from a worktree at it", Blocked),
+            ("decision append blocked: the log differs from HEAD in the worktree or the index; commit or discard local edits first", Blocked),
+            ("decision append refused: give at least one row", InvalidInput),
+            ("decision append refused: base must be a 40-hex commit", InvalidInput),
+            ("decision append refused: --log must be a relative path inside the repository", InvalidInput),
+            ("decision append refused: --log passes through a symlink", InvalidInput),
+            ("decision append refused: --log must be UTF-8", InvalidInput),
+            ("decision append refused: PROJECT must be the repository top directory", InvalidInput),
+            ("decision append refused: --log is not tracked at HEAD", InvalidInput),
+            ("decision append refused: the log is not UTF-8", InvalidInput),
+            ("decision append refused: the log must hold exactly one table (found 2)", InvalidInput),
+            ("decision append refused: the table's last line has no line terminator", InvalidInput),
+            ("decision append refused: row 1 has 4 cells; the table has 5", InvalidInput),
+            ("decision append refused: row 1 cell 3 holds a bare | or a line break", InvalidInput),
+            ("decision append git failed to start", Io),
+            ("decision append project unreadable", Io),
+            ("decision append log unreadable", Io),
+            ("decision append log unreadable after write", Io),
+            ("decision append log replace failed; the log is unchanged", Io),
+            ("decision append log replace failed: read-back differs", Io),
             // identity (01-A #1988)
             ("path unavailable", NotFound),
             ("path must be a directory", InvalidInput),
@@ -492,6 +537,22 @@ mod tests {
             ("index pointer write failed", Io),
             ("index pointer replace failed", Io),
             ("index pointer encode failed", Internal),
+            // search (rc.2 C7 #2183); every current message of the module
+            ("search refused: give at least one path or literal", InvalidInput),
+            ("search refused: too many query terms", InvalidInput),
+            (
+                "search refused: a path must be relative inside the repository",
+                InvalidInput,
+            ),
+            (
+                "search refused: a literal must be non-empty, one line, at most 512 bytes",
+                InvalidInput,
+            ),
+            ("search refused: max_files must be 1..=2000", InvalidInput),
+            (
+                "search refused: max_spans_per_file must be 1..=1000",
+                InvalidInput,
+            ),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

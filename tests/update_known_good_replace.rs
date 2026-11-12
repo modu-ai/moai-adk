@@ -123,7 +123,7 @@ fn receipt_json(home: &Path) -> Value {
         installations
             .join(id)
             .join("hosts")
-            .join("moai-cli")
+            .join("moai")
             .join(format!("{HOST}.json")),
     )
     .unwrap();
@@ -135,7 +135,7 @@ fn known_good_dir(home: &Path, install_id: &str) -> PathBuf {
         .join("installations")
         .join(install_id)
         .join("hosts")
-        .join("moai-cli")
+        .join("moai")
         .join(HOST)
         .join("known-good")
 }

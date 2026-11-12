@@ -18,6 +18,7 @@ use std::{
 struct Fixture {
     project: tempfile::TempDir,
     bin: tempfile::TempDir,
+    home: tempfile::TempDir,
 }
 
 fn git(dir: &Path, args: &[&str]) {
@@ -36,13 +37,25 @@ fn git(dir: &Path, args: &[&str]) {
 fn fixture() -> Fixture {
     let project = tempfile::tempdir().unwrap();
     git(project.path(), &["init", "-q"]);
+    // An initialized project: with settings present no launch runs the #2481 first-launch
+    // initialization, so these tests measure numbering only (tests/launcher_auto_init.rs).
+    fs::create_dir(project.path().join(".moai-cli")).unwrap();
+    fs::write(project.path().join(".moai-cli/project.yaml"), "{}\n").unwrap();
     let bin = tempfile::tempdir().unwrap();
     for host in ["claude", "codex"] {
         let path = bin.path().join(host);
-        fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::write(
+            &path,
+            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\nexit 0\n",
+        )
+        .unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     }
-    Fixture { project, bin }
+    Fixture {
+        project,
+        bin,
+        home: tempfile::tempdir().unwrap(),
+    }
 }
 
 fn command(f: &Fixture, dir: &Path, args: &[&str]) -> Command {
@@ -50,10 +63,9 @@ fn command(f: &Fixture, dir: &Path, args: &[&str]) -> Command {
     c.args(args)
         .current_dir(dir)
         .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))
-        .env(
-            "HOME",
-            std::env::temp_dir().join("moai-cli-test-no-such-home"),
-        )
+        .env("HOME", f.home.path())
+        .env("USERPROFILE", f.home.path())
+        .env("MOAI_TEST_HOST_MARKER", f.home.path().join("host-started"))
         .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
         .env_remove(moai_cli::session::AGENT_SEQ_TEST_HOLD_VAR);
@@ -122,17 +134,13 @@ fn numbers_count_up_across_hosts_and_live_in_the_clone_common_dir() {
         ["agent-1", "agent-2", "agent-3", "agent-4", "agent-5"]
     );
     assert_eq!(stored(&f).as_deref(), Some("5\n"));
-    // The counter sits under `.git`, so git never lists it.
+    // The counter sits under `.git`, so git never lists it: only the fixture's settings show.
     let status = common::git::command()
         .args(["status", "--porcelain", "--ignored"])
         .current_dir(f.project.path())
         .output()
         .unwrap();
-    assert!(
-        status.stdout.is_empty(),
-        "{}",
-        String::from_utf8_lossy(&status.stdout)
-    );
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "?? .moai-cli/\n");
     // codex carries the name in its first prompt.
     let v: Value = serde_json::from_slice(&run(&f, &["codex", "-a"]).stdout).unwrap();
     assert_eq!(
@@ -151,7 +159,6 @@ fn dry_run_previews_and_takes_no_number() {
     assert_eq!(name(&run(&f, &["glm", "-a"])), "agent-1");
     let out = run(&f, &["codex", "-a", "--dry-run"]);
     assert_eq!(name(&out), "agent-2");
-    assert!(String::from_utf8_lossy(&out.stdout).contains("--dry-run takes no number"));
     assert_eq!(stored(&f).as_deref(), Some("1\n"));
 }
 
@@ -321,13 +328,21 @@ fn a_store_path_that_is_not_a_regular_file_is_refused_without_blocking() {
 }
 
 #[test]
-fn outside_a_git_project_numbering_is_an_error_but_a_given_name_works() {
+fn outside_a_git_project_the_first_launch_initializes_it_and_a_given_name_works() {
+    // #2481 (user decision 6810818827): the folder becomes a git repository on the first
+    // launch, so numbering starts in its new clone common dir (tests/launcher_auto_init.rs).
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    for args in [&["cc", "-a"][..], &["codex", "-a", "--dry-run"][..]] {
-        let err = refused(&run_in(&f, plain.path(), args));
-        assert!(err.contains("git repository"), "{err}");
-    }
+    assert_eq!(
+        name(&run_in(&f, plain.path(), &["codex", "-a", "--dry-run"])),
+        "agent-1"
+    );
+    assert!(!plain.path().join(".git").exists());
+    assert_eq!(name(&run_in(&f, plain.path(), &["cc", "-a"])), "agent-1");
+    assert_eq!(
+        fs::read_to_string(plain.path().join(".git/.moai-cli/sessions/agent-seq")).unwrap(),
+        "1\n"
+    );
     assert_eq!(
         name(&run_in(&f, plain.path(), &["cc", "-a", "--name", "n1"])),
         "n1"
@@ -351,4 +366,216 @@ fn worktrees_of_one_clone_share_the_counter() {
     assert_eq!(name(&run_in(&f, &wt, &["codex", "-a"])), "agent-2");
     assert_eq!(name(&run(&f, &["glm", "-a"])), "agent-3");
     assert_eq!(stored(&f).as_deref(), Some("3\n"));
+}
+
+fn launcher_config(f: &Fixture) -> PathBuf {
+    f.home.path().join(".moai-cli/config/launcher.yaml")
+}
+
+fn assert_config_refusal_before_side_effects(f: &Fixture) {
+    for host in ["cc", "glm", "codex"] {
+        for role in [&["-l"][..], &["-a"][..], &[][..]] {
+            for cli in [false, true] {
+                let mut args = vec![host];
+                args.extend_from_slice(role);
+                if cli {
+                    args.push("--permissions");
+                }
+                let out = run(f, &args);
+                assert_eq!(out.status.code(), Some(1), "{args:?}");
+                assert!(out.stdout.is_empty(), "{args:?}");
+                assert!(!String::from_utf8_lossy(&out.stderr).contains("SECRET"));
+                assert!(!f.home.path().join("host-started").exists(), "{args:?}");
+                assert_eq!(stored(f).as_deref(), Some("00041\n"), "{args:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn invalid_launcher_config_never_executes_host_or_allocates_number() {
+    for bad in [
+        r#"{"launcher":{"role_access":"SECRET-invalid-access"}}"#,
+        r#"{"launcher":{"role_access":null}}"#,
+        r#"{"launcher":{"role_access":false}}"#,
+        r#"{"launcher":{"role_access":42}}"#,
+        r#"{"launcher":{"role_access":[]}}"#,
+        r#"{"launcher":{"role_access":{}}}"#,
+        r#"{"launcher":null}"#,
+        r#"{"launcher":[]}"#,
+        r#"{"launcher":"SECRET-invalid-structure"}"#,
+        "null",
+        "[]",
+        "42",
+        "{ SECRET-malformed",
+    ] {
+        let f = fixture();
+        seed(&f, "00041\n");
+        fs::create_dir_all(launcher_config(&f).parent().unwrap()).unwrap();
+        fs::write(launcher_config(&f), bad).unwrap();
+        assert_config_refusal_before_side_effects(&f);
+    }
+}
+
+#[test]
+fn nonregular_launcher_config_never_executes_host_or_allocates_number() {
+    let f = fixture();
+    seed(&f, "00041\n");
+    fs::create_dir_all(launcher_config(&f)).unwrap();
+    assert_config_refusal_before_side_effects(&f);
+}
+
+#[test]
+fn unreadable_launcher_config_never_executes_host_or_allocates_number() {
+    let f = fixture();
+    seed(&f, "00041\n");
+    fs::create_dir_all(launcher_config(&f).parent().unwrap()).unwrap();
+    fs::write(
+        launcher_config(&f),
+        r#"{"launcher":{"role_access":"prompt"}}"#,
+    )
+    .unwrap();
+    fs::set_permissions(launcher_config(&f), fs::Permissions::from_mode(0o000)).unwrap();
+    // Elevated CI users can read mode-000 files; exercise refusal only when unreadable.
+    let unreadable = fs::File::open(launcher_config(&f)).is_err();
+    if unreadable {
+        assert_config_refusal_before_side_effects(&f);
+    }
+    fs::set_permissions(launcher_config(&f), fs::Permissions::from_mode(0o600)).unwrap();
+}
+
+#[test]
+fn valid_launcher_settings_execute_fake_hosts_and_allocate_normally() {
+    for setting in ["full", "prompt"] {
+        let f = fixture();
+        seed(&f, "00041\n");
+        fs::create_dir_all(launcher_config(&f).parent().unwrap()).unwrap();
+        fs::write(
+            launcher_config(&f),
+            format!(r#"{{"launcher":{{"role_access":"{setting}"}}}}"#),
+        )
+        .unwrap();
+        for (host, number) in [("cc", 42), ("glm", 43), ("codex", 44)] {
+            assert_eq!(name(&run(&f, &[host, "-a"])), format!("agent-{number}"));
+            assert_eq!(stored(&f), Some(format!("{number}\n")));
+            assert_eq!(
+                fs::read(f.home.path().join("host-started")).unwrap(),
+                b"started"
+            );
+        }
+    }
+}
+
+#[test]
+fn symlink_launcher_config_is_refused_without_following_it() {
+    let f = fixture();
+    seed(&f, "00041\n");
+    fs::create_dir_all(launcher_config(&f).parent().unwrap()).unwrap();
+    let target = f.home.path().join("synthetic-config");
+    let contents = r#"{"launcher":{"role_access":"full"}}"#;
+    fs::write(&target, contents).unwrap();
+    std::os::unix::fs::symlink(&target, launcher_config(&f)).unwrap();
+    assert_config_refusal_before_side_effects(&f);
+    assert_eq!(fs::read_to_string(target).unwrap(), contents);
+}
+
+/// #2361 AC-5 as amended by the 06:45Z user decision (`-l`, `-a` = full-access mode): a
+/// launch with `--name X` or `-l` takes no number and starts the host with exactly this argv,
+/// pinned byte for byte per host. Real launches against the stub hosts, not `--dry-run`.
+#[test]
+fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
+    let f = fixture();
+    let cases: [(&[&str], &[&str]); 6] = [
+        (
+            &["cc", "-l"],
+            &[
+                "claude",
+                "--name",
+                "leader",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["glm", "-l"],
+            &[
+                "claude",
+                "--name",
+                "leader",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["codex", "-l"],
+            &[
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "MoAI session name: leader",
+            ],
+        ),
+        (
+            &["cc", "-a", "--name", "x"],
+            &[
+                "claude",
+                "--name",
+                "x",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["glm", "-a", "--name", "x"],
+            &[
+                "claude",
+                "--name",
+                "x",
+                "--model",
+                "opus",
+                "--effort",
+                "medium",
+                "--dangerously-skip-permissions",
+            ],
+        ),
+        (
+            &["codex", "-a", "--name", "x"],
+            &[
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "MoAI session name: x",
+            ],
+        ),
+    ];
+    for (args, want) in cases {
+        let out = run(&f, args);
+        assert!(
+            out.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let argv: Vec<&str> = v["argv"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{args:?}: no argv in {v}"))
+            .iter()
+            .map(|a| a.as_str().unwrap())
+            .collect();
+        assert_eq!(argv, want, "{args:?}");
+    }
+    assert_eq!(stored(&f), None, "--name and -l take no number");
 }

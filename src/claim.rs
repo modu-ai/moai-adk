@@ -41,6 +41,7 @@ use crate::identity;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeSet,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -670,8 +671,8 @@ pub fn render_claim_line(f: &ClaimFields) -> String {
     line
 }
 
-/// Reads every comment of the issue through the read path (GET only) and returns the
-/// parsed claim comments of all pages.
+/// Reads every comment page and returns claims not explicitly closed.
+/// Release/handoff markers can close only an earlier referenced claim comment.
 fn read_claims<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
@@ -681,6 +682,7 @@ fn read_claims<T: Transport, C: Clock>(
         t.owner, t.repo, t.issue_number
     ));
     let mut claims = Vec::new();
+    let mut closed = BTreeSet::new();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -702,13 +704,29 @@ fn read_claims<T: Transport, C: Clock>(
             let (Some(id), Some(body)) = (c["id"].as_i64(), c["body"].as_str()) else {
                 continue;
             };
-            if let Some(mut line) = parse_claim_line(body) {
-                line.comment_id = id;
-                claims.push(line);
+            match crate::claim_verify::classify_comment(body) {
+                crate::claim_verify::CommentKind::Claim {
+                    session,
+                    epoch,
+                    lease_until,
+                } => claims.push(ClaimComment {
+                    comment_id: id,
+                    session,
+                    epoch,
+                    lease_until,
+                }),
+                crate::claim_verify::CommentKind::Release { target }
+                | crate::claim_verify::CommentKind::Handoff { target, .. }
+                    if target < id =>
+                {
+                    closed.insert(target);
+                }
+                _ => {}
             }
         }
         url = resp.header("link").and_then(|l| next_link(Some(l)));
     }
+    claims.retain(|c| !closed.contains(&c.comment_id));
     Ok(claims)
 }
 
