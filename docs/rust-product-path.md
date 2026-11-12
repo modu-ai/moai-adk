@@ -71,6 +71,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `decision.record` | `decision-record PROJECT` | `moai_cli::decision::append` | `DecisionRecord` | `--run`, `--permission-reference` | `path`, `line_sha256`, `authority`, `files_created`, `network` | appends one line to `.moai-cli/decisions/<run>.jsonl` |
 | `audit.claim` (rc.2 #2403 item 1) | `audit-claim` | `moai_cli::audit_claim::reserve_cli` | `AuditClaimRequest` | — | `outcome` (`reserved`\|`lost`\|`held_by`\|`uncertain`), `pr`, `head`, `lane`, `posted`, `comment_id`, `holder`, `reservations`, `authors`, `writes`, `rule`, `author_rule` (see below) | at most one PR comment (`moai-audit-claim: lane=<lane> head=<head>`), only when no line holds the head |
 | `audit.clone.plan` (rc.2 #2380 WT-3) | `audit-clone-plan PROJECT` | `moai_cli::audit_clone::plan` | — | `--pr`, `--head` (40 hex), `--head-branch`, `--base-branch`, `--repo-url` (default `origin`; a relative local origin path is resolved against the project top level), `--tmp-root` (default `/tmp`) | `schema_version`, `pr`, `head`, `head_branch`, `base_branch`, `repo_url`, `clone_dir` (`<tmp>/moai-audit-<pr>-<head8>`), `commands` (single-branch no-checkout clone with `--origin origin` and `--no-local` — no inherited alternates, independent of the source object store — base fetch, detached checkout, `rev-parse HEAD`, `merge-base`), `expect`, `build`, `evidence_dir` (`~/.moai-cli/projects/<id>/audits/<pr>-<head8>`, Q6 B) or null with `evidence_reason`, `after_verdict`, `network`, `writes` | no; runs none of the commands |
+| `audit.delta` (#2403 로컬 3-SHA) | `audit-delta [PROJECT]` (기본 `.`) | `moai_cli::audit_delta::inspect` | — | `--pass-head`, `--tip`, `--head` (필수, 40자리 소문자 hex commit OID) | `schema_version`, `status`, `pass_head`, `tip`, `head`, `actual_parents`, `actual_tree`, `replayed_tree`, `replay_exit`, `conflicted_files`, `manual_delta`, `manual_text_hunks`, `tip_changed_files`, `pass_changed_files`, `manual_changed_files`, `refusal`, `writes`, `network` (아래 계약) | 원본 쓰기 없음; 외부 임시 bare Git 객체만 생성·정리 |
 | `audit.reduce` (temporary name, fixed after P06) | `audit-reduce PROJECT` | `moai_cli::audit::audit` | `AuditInput` | — | `status`, `admission`, `reasons`, `candidate`, `observed`, `reviewer`, `independence`, `independence_basis`, `pr_binding`, `run_decision`, `run_reasons`, `must_pass`, `stale_receipts`, `excluded_self_reports`, `findings`, `waivers`, `receipt` (see below) | none by the tool; it re-runs the verification commands, which may write in PROJECT |
 | `install.inspect` (04-A #1998) | `install-inspect` | `moai_cli::install::inspect` | — | `--json` (accepted; the envelope is always JSON) | `install_id_derivation`, `home_state_root`, `path_resolution`, `installations`, `self`, `go_generation`, `writes` | no |
 | `key.import_plan` (#2393 S3) | `key-import-plan PROVIDER` (`glm` only; `--shared` imports into `_shared`, else the current project) | `moai_cli::key_vault::import_plan` | — | `--shared` | `provider`, `scope`, `folder`, `action` (`import`/`already_in_vault`/`nothing_to_import`/`blocked`), `reason`, `sources` (per legacy file: `path`, `exists`, `regular_file`, `size_ok`, `private`, `has_key`), `source`, `destination` (`path`, `entry`), `original_kept: true`, `plan_digest`, `value_shown: false`, `writes: false` | no (reads the legacy files to find the key; never shows it) |
@@ -119,6 +120,11 @@ Every internal operation prints exactly one JSON object on stdout:
 
 - success: `{"protocol_version": 1, "operation": "<name>", "ok": true, "result": {...}}`
 - failure: `{"protocol_version": 1, "operation": "<name>", "ok": false, "error": {"kind", "message", "retryable", "next_actions"?}}`
+
+`audit.delta`의 계산된 report는 이 envelope를 그대로 사용하되 `pure_merge`만 exit 0이다.
+`manual_delta`·`replay_conflict`·`refused`는 `ok: true`와 exit 1을 함께 반환한다.
+이 경우 `ok`는 계산 성공이며 기계적 동등성이나 AUDIT PASS가 아니다.
+실제 입력/Git/I/O 실패는 기존 `ok: false` error envelope와 exit 1, 사용법 오류는 exit 2다.
 
 stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`). Callers tell failures apart by `kind`, 15 in all:
 - the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`;
@@ -497,6 +503,54 @@ Audit columns (#2403 item 3): a row with a PR carries `audit`: `head`; `reservat
 ### Audit reservation (`audit-claim`, rc.2 #2403 item 1)
 
 `moai-cli audit-claim` takes `{schema_version, owner, repo, pr, head, lane}` on stdin. It reads, GET only, the PR (it must be open and `head` must be its current head), the PR's commits (at most 250, per the GitHub REST reference) and the comments of the Issue its body `Refs`, to find the authors: every `Moai-Claim: <issue>#<id>` trailer resolved to the `session` of that claim comment. The author match is byte-exact on the claim `session=` name and the output says so in `author_rule` (leader answer, #2403 comment 6784934128); a lane that spells its name differently in a reservation is not recognised, and name normalisation is a follow-up item. A lane that is an author is refused (`conflict`), and a trailer whose claim comment is not a claim line refuses the call (`blocked`), so an unreadable author is never taken for a non-author. Then it reads the PR's comments. The holder of a head is the `moai-audit-claim: lane=<lane> head=<head>` line with the lowest comment id (user decision, #2403 comment 6784520362); the leader moves it only with `moai-claim-handoff: comment=<reservation id> to=<lane> by=leader` on the PR (the last such line counts; a prose release is not read). If the lane already holds the head the answer is `reserved` with no write; if it has a line but another holds the head, `lost`; if another lane holds it, `held_by`; otherwise it posts one line, re-reads once, and answers `reserved` or `lost` by the same rule. A POST whose result is unknown, or a re-read that does not show the posted id, gives `uncertain` (re-running is safe: it reads first). It never edits or deletes a comment, posts no status and assigns nothing. Only `outcome: reserved` lets the lane start the audit. Tests: `tests/audit_claim_cli.rs` and unit tests in `src/audit_claim.rs`.
+
+### 로컬 merge delta 증거 (`audit-delta`, #2403)
+
+`moai-cli audit-delta [PROJECT] --pass-head SHA --tip SHA --head SHA`는 네트워크 없이
+로컬 commit 세 개만 읽는다. PROJECT 기본값은 `.`이고 Rust API는
+`inspect(project: &Path, request: Request) -> Result<Report, String>`이다.
+`Request`는 `pass_head`, `tip`, `head`를 소유하는 `String` 필드로 받는다.
+모든 SHA는 40자리 소문자 hex의 commit OID여야 한다. ref·range·option·tag peeling은
+허용하지 않으며 누락 객체·tag·비commit 객체는 입력 오류다.
+
+HEAD의 실제 tree와 순서 있는 부모를 먼저 읽고, 부모가 정확히 `[pass_head, tip]`인
+두 부모 merge만 재현한다. 부모 0~1개는 `refused/not_merge`, 3개 이상은
+`refused/octopus`, 두 부모의 값이나 순서가 다르면 `refused/parent_mismatch`다.
+정상적인 `--no-ff` ancestor-parent merge는 이 조건을 만족하면 허용한다.
+
+원본 checkout·index·refs·config·worktree·object DB는 변경하지 않는다.
+dirty checkout과 linked worktree도 허용하며 공통 object store는 읽기만 한다.
+보안 생성된 외부 임시 bare 저장소가 alternates로 원본 객체를 빌려 읽고,
+Git 기본 merge 알고리즘의 `merge-tree --write-tree --name-only -z --no-messages`를
+실제 두 부모에 적용한다. 새 객체는 임시 저장소에만 생기며 반환 전에 정리한다.
+사용자/시스템 Git 설정, 외부 merge driver·hook·filter, lazy fetch·network는 실행하지
+않는다. 이것은 과거 작성자의 머신별 merge 설정을 재현한다는 뜻이 아니다.
+
+결과의 `schema_version`은 1이다. `pass_head`, `tip`, `head`는 입력 OID,
+`actual_parents`는 실제 순서의 OID 배열, `actual_tree`는 후보의 tree OID다.
+`replayed_tree`와 `replay_exit`는 재현 tree와 Git exit 0/1이며, 거절 시 null이다.
+Git exit 1은 실행 오류가 아니라 `replay_conflict` 증거이고 `conflicted_files`는
+NUL 구분 출력에서 읽은 충돌 경로다. clean 재현 tree가 후보 tree와 같으면
+`pure_merge`, 다르면 `manual_delta`다. 충돌은 tree 일치 여부와 무관하게
+`replay_conflict`다.
+
+`manual_delta`는 tree 불일치 여부(`bool`), `manual_text_hunks`는 numeric text
+numstat의 비영 값 존재 여부(`bool`)다. 재현하지 않은 거절에서는 둘 다 null이며,
+충돌 report에서도 수동 변경 판정은 null이다. binary·mode-only 차이는 text hunk가
+아니므로 tree 차이와 별도로 읽어야 한다. `tip_changed_files`와 `pass_changed_files`는
+각각 tip→head, pass_head→head이고 `manual_changed_files`는 replayed_tree→actual_tree다.
+파일 항목은 `{path, status}`이며 status는 `A|M|D|T`, rename 탐지는 하지 않는다.
+UTF-8 경로의 tab·개행을 보존하며 표현할 수 없는 출력은 오류로 처리한다.
+`refusal`은 거절에서만 `{code, message}`, 그 외에는 null이다.
+`writes`는 `{source: false, temporary_scratch: true}`, `network`는 `"none"`이다.
+임시 정리 실패는 성공으로 숨기지 않고 I/O 오류로 반환한다.
+
+`pure_merge`만 exit 0이다. `manual_delta`, `replay_conflict`, `refused`는
+계산된 `ok: true` report와 exit 1이며 `ok`는 AUDIT PASS가 아니다.
+`audit delta refused: `·`audit delta blocked: `·`audit delta git failed: ` 오류는
+각각 `invalid_input`·`blocked`·`git_failed`다. 원격 CI/PR 모드, 여러 merge의
+first-parent chain, patch-id 비교, 내용 감사·검증 명령 실행·claim/최종 verdict
+발행은 승인 범위 밖이며 기존 사람의 감사 절차로 남는다.
 
 ### Claim re-verification before commit and push (`claim-verify`, rc.2 A9 #2255)
 
