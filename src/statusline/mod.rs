@@ -32,7 +32,9 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
         return segments::subagent_rows(tasks) + "\n";
     }
     let config = state::display_config(input.as_ref(), ctx);
-    let profile = (ctx.stdout_is_terminal && !ctx.no_color())
+    // #2559: Claude Code reads stdout through a pipe, so color never depends on a TTY
+    // (the regression PR #2552 introduced); only NO_COLOR / MOAI_NO_COLOR turn it off.
+    let profile = (!ctx.no_color())
         .then(|| color::Profile::from_colorterm(ctx.var("COLORTERM").unwrap_or("")));
     let status = state::collect(input.as_ref(), ctx);
     render::Renderer::new(&config, profile).render(&status) + "\n"
@@ -105,23 +107,37 @@ mod tests {
         }
     }
 
+    /// #2559 regression (PR #2552): Claude Code reads the statusline through a pipe, so
+    /// color must not depend on stdout being a terminal. Only NO_COLOR / MOAI_NO_COLOR
+    /// turn it off; without them the default context (as Claude Code runs it) is colored,
+    /// and the colored text equals the NO_COLOR text once the escapes are removed.
     #[test]
-    fn redirected_stdout_is_colorless_without_changing_content() {
+    fn piped_stdout_keeps_color_and_only_no_color_removes_it() {
         let stdin = br#"{"model":{"display_name":"Opus"},"rate_limits":{"five_hour":{"used_percentage":0}}}"#;
-        for colorterm in ["truecolor", ""] {
-            let vars = [("COLORTERM", colorterm)];
-            let mut redirected = state::Context::for_test(&vars, None);
-            redirected.stdout_is_terminal = false;
-            let plain = render(stdin, &redirected);
-            assert!(!plain.contains('\x1b'), "{plain:?}");
-            assert_eq!(
-                plain,
-                render(
-                    stdin,
-                    &state::Context::for_test(&[("COLORTERM", colorterm), ("NO_COLOR", "1")], None,),
-                )
+        for (colorterm, sgr) in [("truecolor", "38;2;"), ("", "38;5;")] {
+            let colored = render(
+                stdin,
+                &state::Context::for_test(&[("COLORTERM", colorterm)], None),
             );
-            assert!(render(stdin, &state::Context::for_test(&vars, None)).contains('\x1b'));
+            assert!(colored.contains(sgr), "{colorterm:?}: {colored:?}");
+            let plain = render(
+                stdin,
+                &state::Context::for_test(&[("COLORTERM", colorterm), ("NO_COLOR", "1")], None),
+            );
+            assert!(!plain.contains('\x1b'), "{plain:?}");
+            let stripped: String = {
+                let mut out = String::new();
+                let mut rest = colored.as_str();
+                while let Some(i) = rest.find('\x1b') {
+                    out.push_str(&rest[..i]);
+                    rest = &rest[i..];
+                    let end = rest.find('m').map(|e| e + 1).unwrap_or(rest.len());
+                    rest = &rest[end..];
+                }
+                out.push_str(rest);
+                out
+            };
+            assert_eq!(stripped, plain, "{colorterm:?}");
         }
     }
 
