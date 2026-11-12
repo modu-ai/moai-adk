@@ -168,3 +168,85 @@ fn spans_parse_ops_and_flags() {
         ]
     );
 }
+
+/// The text of one `## Procedure` step (`N. **key** — …` up to the next step or section).
+fn step(text: &str, key: &str) -> String {
+    let head = format!("**{key}** — ");
+    let start = text.find(&head).unwrap_or_else(|| panic!("step {key}"));
+    let rest = &text[start..];
+    let end = rest[head.len()..]
+        .find("\n1")
+        .into_iter()
+        .chain(
+            [
+                "\n2", "\n3", "\n4", "\n5", "\n6", "\n7", "\n8", "\n9", "\n## ",
+            ]
+            .iter()
+            .filter_map(|m| rest[head.len()..].find(m)),
+        )
+        .min()
+        .map_or(rest.len(), |i| i + head.len());
+    rest[..end].to_string()
+}
+
+fn assert_says(text: &str, key: &str, phrases: &[&str]) {
+    let body = step(text, key);
+    for p in phrases {
+        assert!(body.contains(p), "{key} must say `{p}`:\n{body}");
+    }
+}
+
+// #2515: lanes open their own pull requests, settle a simultaneous opening themselves,
+// run one round as a cycle, name their waiting branches, and follow the U6 gate (no tip
+// chasing); the leader workflow says the same.
+#[test]
+fn self_opening_rules_are_pinned_in_both_mode_workflows() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "pr-gate",
+        &[
+            "Below four, open one yourself; no leader nomination is needed",
+            "`git merge-tree`",
+            "among the four lowest open non-draft numbers",
+            "`gh pr ready --undo`",
+            "the author of the lowest-numbered draft marks it ready",
+        ],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &["One round runs `claim → worktree work → verify → push → pull request (when the pr-gate count allows) → report → next round`"],
+    );
+    assert_says(&agent, "report", &["· waiting for PR slot: #<issue> …"]);
+    assert_says(
+        &agent,
+        "merge-train",
+        &[
+            "the latest-tip requirement is off",
+            "Do not merge the tip to follow it",
+        ],
+    );
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "pr-gate",
+        &[
+            "lanes open their own pull requests",
+            "you no longer name the next lane by default",
+        ],
+    );
+    assert_says(
+        &leader,
+        "merge-train",
+        &[
+            "the latest-tip requirement is off",
+            "no conflict and no file both sides changed",
+        ],
+    );
+    for (name, text) in [("mode-agent.md", &agent), ("mode-leader.md", &leader)] {
+        for stale in ["names the one lane", "name the one lane", "at its own turn"] {
+            assert!(!text.contains(stale), "{name} still says `{stale}`");
+        }
+    }
+}
