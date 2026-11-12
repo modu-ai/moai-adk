@@ -687,3 +687,235 @@ fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     format!("{:x}", Sha256::digest(bytes))
 }
+
+// ---- #2505: same-second reruns, the replace window, the restore re-check ----
+
+/// Test seam (#2505): debug builds take the backup folder's time stamp from this variable,
+/// so two runs "in the same second" are reproducible.
+const STAMP_VAR: &str = "MOAI_CLI_TEST_BACKUP_STAMP";
+const STAMP: &str = "20260101T000000Z";
+
+fn run_cli_env(
+    args: &[&str],
+    stdin: Option<&Value>,
+    home: &Path,
+    envs: &[(&str, &str)],
+) -> std::process::Output {
+    let mut cmd = Command::new(EXE);
+    cmd.args(args)
+        .env("HOME", home)
+        .env_remove("MOAI_CLI_TEST_FAULT")
+        .env_remove(STAMP_VAR)
+        .envs(envs.iter().copied())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().unwrap();
+    let mut pipe = child.stdin.take().unwrap();
+    if let Some(v) = stdin {
+        let _ = pipe.write_all(v.to_string().as_bytes());
+    }
+    drop(pipe);
+    child.wait_with_output().unwrap()
+}
+
+fn apply_env(
+    f: &Fixture,
+    plan: &Value,
+    tokens: &[&str],
+    envs: &[(&str, &str)],
+) -> std::process::Output {
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let mut args = vec![
+        "update-apply".to_string(),
+        f.home.to_str().unwrap().to_string(),
+        f.stage.to_str().unwrap().to_string(),
+        "--plan-digest".into(),
+        digest,
+        "--permission-reference".into(),
+        "fixture-approved".into(),
+    ];
+    for t in tokens {
+        args.push("--confirm-backup-replace".into());
+        args.push((*t).to_string());
+    }
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    run_cli_env(&refs, Some(plan), &f.home, envs)
+}
+
+fn backups_dir(f: &Fixture) -> PathBuf {
+    f.home.join(".moai-cli/backups")
+}
+
+/// AC-1: replace, restore, replace again within the same (pinned) second. The second run
+/// gets `<stamp>.2-<host>` instead of failing, and the first backup is left as it was.
+#[test]
+fn a_rerun_in_the_same_second_gets_its_own_backup_folder() {
+    let f = fixture();
+    let p = plan(&f);
+    let r = result_of(&apply_env(
+        &f,
+        &p,
+        &[&token(&p, "claude")],
+        &[(STAMP_VAR, STAMP)],
+    ));
+    let first = backups_dir(&f).join(format!("{STAMP}-claude"));
+    assert_eq!(
+        host(&r, "claude")["backup_dir"],
+        json!(first.to_str().unwrap()),
+        "{r}"
+    );
+    result_of(&recovery_apply(&f, &recovery_plan(&f)));
+    let kept = snapshot(&first);
+
+    let p2 = plan(&f);
+    let r2 = result_of(&apply_env(
+        &f,
+        &p2,
+        &[&token(&p2, "claude")],
+        &[(STAMP_VAR, STAMP)],
+    ));
+    let h = host(&r2, "claude");
+    assert_eq!(h["status"], json!("replaced"), "{r2}");
+    let second = backups_dir(&f).join(format!("{STAMP}.2-claude"));
+    assert_eq!(h["backup_dir"], json!(second.to_str().unwrap()), "{h}");
+    assert_eq!(snapshot(&first), kept, "the earlier backup is untouched");
+    assert_package_installed(&f.home.join(ROOTS[0].1), &f.stage);
+}
+
+/// AC-1 boundary: 16 names are tried (`<stamp>-<host>`, then `.2` … `.16`). With 15 taken
+/// the run uses `.16`; with all 16 taken it fails before anything moves, and the message
+/// names the cause.
+#[test]
+fn the_sixteenth_backup_name_is_the_last_one_tried() {
+    for taken in [15usize, 16] {
+        let f = fixture();
+        let before = originals(&f);
+        fs::create_dir_all(backups_dir(&f)).unwrap();
+        fs::create_dir(backups_dir(&f).join(format!("{STAMP}-claude"))).unwrap();
+        for n in 2..=taken {
+            fs::create_dir(backups_dir(&f).join(format!("{STAMP}.{n}-claude"))).unwrap();
+        }
+        let p = plan(&f);
+        let r = result_of(&apply_env(
+            &f,
+            &p,
+            &[&token(&p, "claude")],
+            &[(STAMP_VAR, STAMP)],
+        ));
+        let h = host(&r, "claude");
+        if taken == 15 {
+            assert_eq!(h["status"], json!("replaced"), "{taken}: {h}");
+            let last = backups_dir(&f).join(format!("{STAMP}.16-claude"));
+            assert_eq!(h["backup_dir"], json!(last.to_str().unwrap()), "{h}");
+        } else {
+            assert_eq!(h["status"], json!("failed"), "{taken}: {h}");
+            assert_eq!(h["receipt_status"], Value::Null, "{h}");
+            let why = h["reload_basis"].as_str().unwrap();
+            assert!(
+                why.contains("16 backup folder names") && why.contains("already exist"),
+                "{why}"
+            );
+            assert!(why.contains(STAMP), "{why}");
+            assert_eq!(
+                snapshot(&f.home.join(ROOTS[0].1)),
+                before[0],
+                "nothing moved"
+            );
+            assert_eq!(backups(&f.home).len(), 16, "no folder created");
+        }
+    }
+}
+
+/// AC-2: the package is written and verified in `<backup>/incoming` before the original
+/// moves, so a failure while staging leaves the original folder exactly in place.
+#[test]
+fn a_failure_while_staging_leaves_the_original_in_place() {
+    let f = fixture();
+    let before = originals(&f);
+    let p = plan(&f);
+    let r = result_of(&apply(&f, &p, &[&token(&p, "claude")], Some("mid_stage")));
+    assert_eq!(
+        host(&r, "claude")["receipt_status"],
+        json!("pending"),
+        "{r}"
+    );
+    assert_eq!(
+        snapshot(&f.home.join(ROOTS[0].1)),
+        before[0],
+        "original in place"
+    );
+    let rp = recovery_plan(&f);
+    let rb = &host(&rp, "claude")["restore_backup"];
+    assert_eq!(rb["original_at"], json!("root"), "{rb}");
+    assert_eq!(rb["action"], json!("release"), "{rb}");
+}
+
+/// AC-2: between moving the original out and moving the staged package in, the projection
+/// is absent — never a partly written folder — and recovery restores the original.
+#[test]
+fn the_projection_is_absent_never_partial_between_the_two_moves() {
+    let f = fixture();
+    let before = originals(&f);
+    let p = plan(&f);
+    let r = result_of(&apply(&f, &p, &[&token(&p, "claude")], Some("mid_replace")));
+    assert_eq!(
+        host(&r, "claude")["receipt_status"],
+        json!("pending"),
+        "{r}"
+    );
+    let root = f.home.join(ROOTS[0].1);
+    assert!(
+        fs::symlink_metadata(&root).is_err(),
+        "absent, not partial: {:?}",
+        snapshot(&root).keys().collect::<Vec<_>>()
+    );
+    let dir = backup_of(&f.home, "claude");
+    assert_package_installed(&dir.join("incoming"), &f.stage);
+    result_of(&recovery_apply(&f, &recovery_plan(&f)));
+    assert_eq!(snapshot(&root), before[0], "original restored");
+}
+
+/// AC-2: a successful replace leaves no staging folder behind.
+#[test]
+fn a_successful_replace_leaves_no_staging_folder() {
+    let f = fixture();
+    let p = plan(&f);
+    result_of(&apply(&f, &p, &[&token(&p, "claude")], None));
+    let dir = backup_of(&f.home, "claude");
+    assert!(!dir.join("incoming").exists(), "{:?}", entries(&dir));
+    assert_package_installed(&f.home.join(ROOTS[0].1), &f.stage);
+}
+
+/// Audit note X6 (#2486): the manifest re-check right after a restore. A seam changes one
+/// restored file; the recovery must fail, write no RESTORED.json and leave the receipt
+/// unrecovered.
+#[test]
+fn a_restored_folder_that_differs_from_the_manifest_is_not_marked_restored() {
+    let f = fixture();
+    let p = plan(&f);
+    result_of(&apply(&f, &p, &[&token(&p, "claude")], None));
+    let rp = recovery_plan(&f);
+    let digest = rp["plan_digest"].as_str().unwrap();
+    let out = run_cli(
+        &[
+            "recovery-apply",
+            f.home.to_str().unwrap(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        Some(&rp),
+        &f.home,
+        Some("corrupt_after_restore"),
+    );
+    let v = envelope(&out);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("does not match the manifest"), "{v}");
+    assert!(!backup_of(&f.home, "claude").join("RESTORED.json").exists());
+    assert_ne!(
+        host(&recovery_plan(&f), "claude")["receipt_status"],
+        json!("recovered")
+    );
+}
