@@ -44,11 +44,11 @@ T1 receipt 필드(위 probed 행 공통): os=Darwin, arch=aarch64, host=none, mo
 
 | host | surface | item | capability_status | unknown_class | 내용 | source |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude Code | cli | skill_static_validation (AC-08C-5) | probed | | `claude plugin validate <tmp>/.claude/skills` — 자격증명 불필요. 실행은 AC 명령 절에서 수행하고 receipt로 기록. **receipt 낡음**: 2026-11-08 receipt의 `skill_digest` `bff1c53b…`는 현재 SKILL.md(`25081f6c…`)와 다르다. 실제 `claude` 바이너리를 레인이 다시 돌릴지(인계 범위의 "실제 host HOLD" 안쪽인지)는 리더 질문(#2014 6809848052 Q2)이라 다시 측정하지 않았다 | 이 문서의 AC 명령 절 |
+| Claude Code | cli | skill_static_validation (AC-08C-5) | probed | | `claude plugin validate <tmp>/.claude/skills` — 자격증명 불필요. 실행은 AC 명령 절에서 수행하고 receipt로 기록. **receipt 낡음**: 2026-11-08 receipt의 `skill_digest` `bff1c53b…`는 현재 SKILL.md(`25081f6c…`)와 다르다. **리더 답(2026-11-12, Q2 = HOLD 유지)**: 레인은 실제 `claude` 바이너리를 실행하는 검사를 하지 않는다(실제 host 실행 HOLD). 그래서 이 receipt는 운영자 실행 때까지 낡은 채로 남는다. 레인 check set의 `tests/e2e_receipt_not_run_test.py`도 실제 `claude`를 부르므로, 레인은 이 파일을 실행하지 않고 not_run으로 적는다 | 이 문서의 AC 명령 절 |
 | Claude Code | cli | explicit_invocation_setup_route (AC-08C-3) | unknown | 시험 대기 | `claude --bare -p '/moai …' --add-dir <tmp> --output-format stream-json --verbose --permission-mode dontAsk --permission-prompts none`(HOME 격리) — 기대: exit 0 + `result` 이벤트 `is_error == false` + fixture의 `.claude/skills/moai/references/routes.json`과 `workflows/setup.md`를 가리키는 `tool_use` 이벤트(skill 본문이 "references/routes.json으로 route를 고른다"고 지시하므로, skill 로드와 SETUP route 도달이 이벤트로 드러난다. dontAsk가 거부한 시도도 센다). skill 없는 일반 답변은 failed. 이벤트 구조만 단언하고 자연어는 단언하지 않는다. not_run — 운영자 실측 대기 | tests/e2e/host-claude.sh |
 | Claude Code | cli | permission_denial_blocked (AC-08C-6) | unknown | 시험 대기 | 동일 옵션(`stream-json --verbose`)으로 apply 요청 → `result` 이벤트의 `permission_denials`가 비어 있지 않은 배열 + 대상 트리 shasum 전후 동일. `result` 이벤트가 없거나(예: exit≠0, 빈 출력) `[]`이면 failed. not_run — 운영자 실측 대기 | tests/e2e/host-claude.sh |
 | Codex | cli | explicit_invocation_setup_route (AC-08C-4) | unknown | 시험 대기 | `HOME`·`CODEX_HOME` 임시 격리 + `codex exec --json --ephemeral --ignore-user-config --sandbox read-only --skip-git-repo-check -o last.md '$moai …' < /dev/null` — passed 조건(모두 필요, 2026-11-11 강화): exit 0, `turn.completed` 있음, `turn.failed`·`error` 없음, last message 비어 있지 않음, `command_execution` item의 `command`가 `references/routes.json`과 `workflows/setup.md`를 가리킴. 마지막 조건은 **미검증 가정**이다 — Codex가 skill 파일을 셸 `command_execution`으로 읽는다는 것과 `$moai`가 SKILL.md를 따르게 한다는 것은 공식 문서 원문이나 실제 stream으로 확인하지 않았다. 가정이 틀리면 실제 성공이 failed로 나올 수 있고(원시 stream이 receipt 옆에 남음), 실패가 passed로 바뀌지는 않는다. 판정기는 `tests/e2e_host_codex_verdict_test.py`(가짜 codex 9사례)가 고정한다. 인증은 `CODEX_API_KEY`만 쓴다. not_run — 운영자 실측 대기 | tests/e2e/host-codex.sh |
-| Claude Code | cli | clean_clone_read_plan (AC-08C-8, T2 절반) | unknown | 시험 대기 · 명령 미정 | 본문 명령은 binary 없는 clean clone에서 `claude --bare -p '/moai 현재 저장소 읽기' --output-format json`이다. 그런데 저장소는 `.claude/skills`를 추적하지 않고 명령에 `--add-dir`도 없어, `--bare`가 `moai` skill을 찾을 경로가 없다. 투영 단계를 넣으면 AC가 재는 것이 바뀌므로 스크립트로 만들지 않았다 — 리더 질문(#2014 6809848052 Q1). not_run(T1 절반은 위 표 probed) | 이 문서의 AC 명령 절 |
+| Claude Code | cli | clean_clone_read_plan (AC-08C-8, T2 절반) | unknown | 시험 대기 · 명령 미정 | 본문 명령은 binary 없는 clean clone에서 `claude --bare -p '/moai 현재 저장소 읽기' --output-format json`이다. 그런데 저장소는 `.claude/skills`를 추적하지 않고 명령에 `--add-dir`도 없어, `--bare`가 `moai` skill을 찾을 경로가 없다. 투영 단계를 넣으면 AC가 재는 것이 바뀌므로 스크립트로 만들지 않았다. **리더 답(2026-11-12, Q1 = HOLD 유지)**: 스크립트에 skill 복사 단계를 넣지 않는다. 실제 HOME에 skill을 설치·교체하는 일은 사용자 확인 대기이며 절차는 #2483에서 구현 중이다. 운영자가 할 수동 단계로만 아래 "운영자 수동 단계(AC-08C-8 host 절반)"에 적는다. not_run(T1 절반은 위 표 probed) | 이 문서의 AC 명령 절 |
 
 ## OS·mode 조합 (P12)
 
@@ -74,6 +74,17 @@ TMP=$(mktemp -d /tmp/e2e-ac5-XXXXXX) && mkdir -p "$TMP/.claude/skills" \
 AC-08C-7의 Go 바이너리 해시는 읽기만 한다(실행 금지): `shasum -a 256 "$(command -v moai)"` — 실행 전후 동일.
 
 AC-08C-9(독립 AUDIT)는 리더 통합 게이트가 진행한다.
+
+### 운영자 수동 단계(AC-08C-8 host 절반, 레인 미실행)
+
+리더 답(2026-11-12, #2014 Q1)에 따라 스크립트로 만들지 않고 여기에만 적는다. 레인은 실행하지 않으며, 결과가 들어오기 전까지 이 항목은 not_run이다.
+
+본문 명령(`cd /tmp/clean && PATH=/usr/bin:/bin claude --bare -p '/moai 현재 저장소 읽기' --output-format json`)만으로는 `--bare`가 `moai` skill을 찾지 못한다. 저장소는 `.claude/skills`를 추적하지 않고, 명령에 `--add-dir`도 없기 때문이다. 그래서 운영자가 다음 수동 단계를 더해 실행할지 정한다. 이 단계를 더하면 본문 AC가 재는 것과 모양이 달라지므로, 결과에도 그렇게 적는다.
+
+1. 체크아웃 밖의 임시 clean 사본을 만든다(예: `git clone --depth 1 <repo> "$(mktemp -d)/clean"`).
+2. skill을 그 **임시 사본 안의** `.claude/skills/moai`로 복사한다. 실제 HOME(`~/.claude/skills`)에는 설치하지 않는다. 실제 HOME에 skill을 설치·교체하는 일은 사용자 확인 대기이며, 절차는 #2483에서 구현 중이다.
+3. `moai-cli`가 없는 PATH와 임시 HOME으로 `claude --bare -p '/moai 현재 저장소 읽기' --add-dir <임시 사본> --output-format json`을 실행한다.
+4. 받은 결과를 receipt 형식으로 남기고, 위 단계가 본문 명령과 다르다는 것을 detail에 적는다.
 
 ## 운영자 T2 실행 블록 (paste-ready — #2014 사전 점검 완료 후)
 
