@@ -1124,7 +1124,48 @@ mod durability_tests {
             )
         }
     }
+    const WORKER: &str = "MOAI_MESSAGE_DURABILITY_WORKER";
+    fn run_isolated(body: impl FnOnce()) {
+        let thread = std::thread::current();
+        let name = thread.name().expect("named libtest case");
+        if std::env::var(WORKER).as_deref() == Ok(name) {
+            body();
+            eprintln!("MOAI_DURABILITY_COMPLETE {name} pid={}", std::process::id());
+            return;
+        }
+        // Other libtest threads can spawn while a message File owns an advisory lock.
+        // A fresh single-case process gives this fixture its own descriptor table.
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", name, "--test-threads=1", "--no-capture"])
+            .env(WORKER, name)
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "isolated {name}: {stdout}\n{stderr}"
+        );
+        assert!(
+            stdout.contains("running 1 test"),
+            "case not selected: {stdout}"
+        );
+        let marker = format!("MOAI_DURABILITY_COMPLETE {name} pid=");
+        let pid: u32 = stderr
+            .lines()
+            .find_map(|line| line.strip_prefix(&marker))
+            .expect("isolated case did not finish")
+            .parse()
+            .unwrap();
+        assert_ne!(pid, std::process::id(), "case ran in the parent process");
+    }
+
     fn temp() -> TempDir {
+        assert_eq!(
+            std::env::var(WORKER).unwrap(),
+            std::thread::current().name().unwrap(),
+            "fixture must run in its isolated case"
+        );
         TempDir::new_in(fs::canonicalize(std::env::temp_dir()).unwrap()).unwrap()
     }
     fn setup(ack: bool, reused: bool) -> (TempDir, Remote) {
@@ -1174,15 +1215,26 @@ mod durability_tests {
     }
     #[test]
     fn audit_new_ancestors_synced_before_post() {
+        run_isolated(audit_new_ancestors_synced_before_post_case);
+    }
+    fn audit_new_ancestors_synced_before_post_case() {
         posting_requires_synced_chain(false);
     }
     #[test]
     fn existing_ancestors_are_resynced_before_post() {
+        run_isolated(existing_ancestors_are_resynced_before_post_case);
+    }
+    fn existing_ancestors_are_resynced_before_post_case() {
         posting_requires_synced_chain(true);
     }
 
     #[test]
     fn directory_sync_failure_blocks_new_and_existing_paths_then_restart_recovers() {
+        run_isolated(
+            directory_sync_failure_blocks_new_and_existing_paths_then_restart_recovers_case,
+        );
+    }
+    fn directory_sync_failure_blocks_new_and_existing_paths_then_restart_recovers_case() {
         for ack in [false, true] {
             for reused in [false, true] {
                 for relative in [
@@ -1213,6 +1265,11 @@ mod durability_tests {
     }
     #[test]
     fn intent_sync_failure_can_restart_once_but_attempt_sync_failure_never_reposts() {
+        run_isolated(
+            intent_sync_failure_can_restart_once_but_attempt_sync_failure_never_reposts_case,
+        );
+    }
+    fn intent_sync_failure_can_restart_once_but_attempt_sync_failure_never_reposts_case() {
         // Record saves the intent, the fresh observation, then the POST attempt.
         for skip in [1, 2, 3] {
             let (project, remote) = setup(false, false);
@@ -1241,6 +1298,11 @@ mod durability_tests {
     }
     #[test]
     fn post_sync_failure_keeps_attempt_and_restart_does_not_repeat_hidden_record_or_ack() {
+        run_isolated(
+            post_sync_failure_keeps_attempt_and_restart_does_not_repeat_hidden_record_or_ack_case,
+        );
+    }
+    fn post_sync_failure_keeps_attempt_and_restart_does_not_repeat_hidden_record_or_ack_case() {
         for ack in [false, true] {
             let (project, remote) = setup(ack, false);
             let posts = remote.posts.get();
@@ -1280,6 +1342,9 @@ mod durability_tests {
 
     #[test]
     fn reconcile_sync_failure_preserves_receipts_and_performs_no_remote_calls() {
+        run_isolated(reconcile_sync_failure_preserves_receipts_and_performs_no_remote_calls_case);
+    }
+    fn reconcile_sync_failure_preserves_receipts_and_performs_no_remote_calls_case() {
         let (project, remote) = setup(false, false);
         invoke(project.path(), &remote, false).unwrap();
         let path = project.path().join(".moai-cli/messages/outbox/r1.json");
