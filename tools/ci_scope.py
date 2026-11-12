@@ -16,11 +16,25 @@ import sys
 # Tests read these exact files, so renaming or editing them is not docs-only.
 EXACT_DENY = frozenset(
     {
+        # Collected mechanically: every docs/ path that a test, tool or src file
+        # opens or compares (#2538 B2). Source: grep for the quoted path across
+        # tests/, tools/ and src/; DocumentationDriftTest below re-runs that scan
+        # so a newly referenced doc fails the suite until it is added here.
         "docs/decisions-2026-11-08.md",
         "docs/host-support-matrix.md",
         "docs/zcode-support.md",
         "docs/codex-adapter-contract.md",
         "docs/design-review/appendix/interfaces.md",
+        "docs/design-review/appendix/state-vocabulary-crosswalk.md",
+        "docs/design-review/autonomy-modes-spec.md",
+        "docs/release-attestation.md",
+        "docs/2383-statusline-switch-design.md",
+        "docs/rust-product-path.md",
+        "docs/llms.txt",
+        "docs/user-entry-draft.md",
+        "docs/product-naming-inventory.md",
+        "docs/pr-contract.md",
+        "docs/support-matrix.md",
     }
 )
 # Directory prefixes that are never docs-only even under docs/.

@@ -137,5 +137,59 @@ class MainExceptionPathTest(unittest.TestCase):
         self.assertTrue(any("boom" in r for r in data["reasons"]))
 
 
+class DocumentationDriftTest(unittest.TestCase):
+    """#2538 B2: every docs/ path a test, tool or src file names must be denied.
+
+    A path referenced by name in tests/, tools/ or src/ is read, compared or
+    embedded by that code; classifying it docs-only would skip the very check
+    that consumes it. The scan is the same mechanical grep that produced
+    EXACT_DENY, so adding a new reader without extending the denylist fails
+    here first.
+    """
+
+    IGNORED_LITERAL_PREFIXES = (
+        "docs/a.md", "docs/A.md", "docs/c.svg", "docs/d.txt", "docs/img/",
+        "docs/x.rs", "docs/old.md", "docs/huge.md", "docs/ssh.md",
+        "docs/spec.md", "docs/receipt.md", "docs/elsewhere.md",
+        "docs/missing.md", "docs/untracked.md", "docs/staged.md",
+        "docs/link.md", "docs/decisions-test.md", "docs/decisions.md",
+        "docs/TBD-related.md", "docs/workflows/", "docs/wf",
+    )
+
+    def test_every_referenced_docs_path_is_denied(self):
+        import re as _re
+        import subprocess as _sp
+        pattern = _re.compile(r'["\']((?:docs|\.\.\/docs)\/[A-Za-z0-9_./-]+)["\']')
+        proc = _sp.run(
+            ["grep", "-rhoE", r'["\x27](docs|\.\./docs)/[A-Za-z0-9_./-]+["\x27]',
+             "tests", "tools", "src"],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        quoted = set()
+        for token in proc.stdout.splitlines():
+            path = token.strip().strip('"').strip("'")
+            path = path.replace("../docs/", "docs/", 1).rstrip("\\")
+            if not path.startswith("docs/"):
+                continue
+            if any(path.startswith(p) for p in self.IGNORED_LITERAL_PREFIXES):
+                continue
+            module_now = load_module()
+            if ("." not in path.rsplit("/", 1)[-1]
+                    and f"{path}.md" in module_now.EXACT_DENY):
+                continue  # prose shard of a denied .md file (usage/row strings)
+            if path in ("docs/e2e-receipts", "docs/e2e-receipts/"):
+                continue  # covered by PREFIX_DENY
+            if path.startswith("docs/e2e-receipts/"):
+                continue  # covered by PREFIX_DENY
+            if path == "docs/support-matrix":
+                continue  # prose shard of docs/support-matrix.md in usage/row strings; the .md path itself is denied
+            if not path[5].isalnum() and path[5] != "_":
+                continue  # trailing escape artifact from multi-line strings
+            quoted.add(path)
+        module = load_module()
+        missing = sorted(p for p in quoted if p not in module.EXACT_DENY)
+        self.assertEqual(missing, [], f"docs paths referenced by code but not denied: {missing}")
+
+
 if __name__ == "__main__":
     unittest.main()
