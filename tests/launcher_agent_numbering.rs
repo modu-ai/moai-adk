@@ -328,13 +328,21 @@ fn a_store_path_that_is_not_a_regular_file_is_refused_without_blocking() {
 }
 
 #[test]
-fn outside_a_git_project_numbering_is_an_error_but_a_given_name_works() {
+fn outside_a_git_project_the_first_launch_initializes_it_and_a_given_name_works() {
+    // #2481 (user decision 6810818827): the folder becomes a git repository on the first
+    // launch, so numbering starts in its new clone common dir (tests/launcher_auto_init.rs).
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    for args in [&["cc", "-a"][..], &["codex", "-a", "--dry-run"][..]] {
-        let err = refused(&run_in(&f, plain.path(), args));
-        assert!(err.contains("git repository"), "{err}");
-    }
+    assert_eq!(
+        name(&run_in(&f, plain.path(), &["codex", "-a", "--dry-run"])),
+        "agent-1"
+    );
+    assert!(!plain.path().join(".git").exists());
+    assert_eq!(name(&run_in(&f, plain.path(), &["cc", "-a"])), "agent-1");
+    assert_eq!(
+        fs::read_to_string(plain.path().join(".git/.moai-cli/sessions/agent-seq")).unwrap(),
+        "1\n"
+    );
     assert_eq!(
         name(&run_in(&f, plain.path(), &["cc", "-a", "--name", "n1"])),
         "n1"
