@@ -137,7 +137,10 @@ fn renewal_is_an_edit_of_the_own_claim_comment_not_a_new_line() {
     };
     // A new line while the first is live: the first still holds, the new id is not_owner.
     let both_live = [claim(100, "a", LIVE), epoch2(200, LIVE)];
-    assert_eq!(verdict(&both_live, "a", Some(100))["status"], json!("owner"));
+    assert_eq!(
+        verdict(&both_live, "a", Some(100))["status"],
+        json!("owner")
+    );
     let v = verdict(&both_live, "a", Some(200));
     assert_eq!(v["status"], json!("not_owner"));
     assert_eq!(v["lost_to"], json!(100));
@@ -149,14 +152,21 @@ fn renewal_is_an_edit_of_the_own_claim_comment_not_a_new_line() {
     let handed = [
         claim(100, "a", EXPIRED),
         epoch2(200, LIVE),
-        comment(300, "GoosLab", "moai-claim-handoff: comment=100 to=a by=leader"),
+        comment(
+            300,
+            "GoosLab",
+            "moai-claim-handoff: comment=100 to=a by=leader",
+        ),
     ];
     assert_eq!(verdict(&handed, "a", Some(200))["status"], json!("owner"));
     // Editing the own comment's lease (same id, later time) keeps owner.
     let edited = [claim(100, "a", LIVE)];
     assert_eq!(verdict(&edited, "a", Some(100))["status"], json!("owner"));
     let before_edit = [claim(100, "a", EXPIRED)];
-    assert_eq!(verdict(&before_edit, "a", Some(100))["status"], json!("stale"));
+    assert_eq!(
+        verdict(&before_edit, "a", Some(100))["status"],
+        json!("stale")
+    );
 }
 
 /// AC-1 late-visible competitor: the first read showed only our claim; the re-read shows a

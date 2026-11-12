@@ -478,8 +478,16 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
     );
     // No decided values for the pending decisions.
     for (name, text) in [("mode-agent.md", &agent), ("mode-leader.md", &leader)] {
-        for decided in ["1,800 seconds", "1800 seconds", "limit of eight", "Below eight"] {
-            assert!(!text.contains(decided), "{name} decides a pending value: `{decided}`");
+        for decided in [
+            "1,800 seconds",
+            "1800 seconds",
+            "limit of eight",
+            "Below eight",
+        ] {
+            assert!(
+                !text.contains(decided),
+                "{name} decides a pending value: `{decided}`"
+            );
         }
     }
 }
