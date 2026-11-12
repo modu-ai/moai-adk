@@ -775,6 +775,12 @@ enum Command {
         /// is an already expired budget (no git call is started).
         #[arg(long, hide = true, value_name = "MS")]
         render_budget_ms: Option<u64>,
+        /// #2588: the detached counts refresh a render starts. Hidden; asks `gh` for the
+        /// open Issue and PR counts of `--board-root` and rewrites its cache.
+        #[arg(long, hide = true, requires = "board_root")]
+        refresh_counts: bool,
+        #[arg(long, hide = true, value_name = "DIR")]
+        board_root: Option<PathBuf>,
     },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
@@ -1009,6 +1015,40 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+    },
+    /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
+    /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
+    GoStatePlan {
+        /// Project root carrying the Go `.moai/manifest.json`.
+        project: PathBuf,
+    },
+    /// Move the files a confirmed go-state preview offers into
+    /// `.moai-cli/backups/<UTC>/go-state/` (#2561 stage 2), with a receipt. Applies only
+    /// when a fresh preview has the given digest; never overwrites, never copies.
+    GoStateApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Read-only: what reverting one go-state apply would do (#2561 stage 2).
+    GoStateRevertPlan {
+        project: PathBuf,
+        /// The apply's backup stamp (`YYYYMMDDTHHMMSSZ`).
+        #[arg(long)]
+        backup: String,
+    },
+    /// Move one go-state apply's files back (#2561 stage 2). All or nothing: a file that
+    /// came back at its original path, or a changed backup copy, refuses the revert.
+    GoStateRevert {
+        project: PathBuf,
+        #[arg(long)]
+        backup: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
     },
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
@@ -1335,6 +1375,10 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
+        GoStatePlan { .. } => "go_state.plan",
+        GoStateApply { .. } => "go_state.apply",
+        GoStateRevertPlan { .. } => "go_state.revert_plan",
+        GoStateRevert { .. } => "go_state.revert",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
@@ -2297,6 +2341,36 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
             })
         }
+        Command::GoStatePlan { project } => {
+            serde_json::to_value(moai_cli::go_state::plan(&project)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::GoStateApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => serde_json::to_value(moai_cli::go_state::apply(
+            &project,
+            &plan_digest,
+            &permission_reference,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::GoStateRevertPlan { project, backup } => {
+            serde_json::to_value(moai_cli::go_state::revert_plan(&project, &backup)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::GoStateRevert {
+            project,
+            backup,
+            plan_digest,
+            permission_reference,
+        } => serde_json::to_value(moai_cli::go_state::revert(
+            &project,
+            &backup,
+            &plan_digest,
+            &permission_reference,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             serde_json::to_value(moai_cli::update::plan_update(&home, &staged)?)
@@ -2579,7 +2653,19 @@ fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
-    if let Some(Command::Statusline { render_budget_ms }) = cli.command {
+    if let Some(Command::Statusline {
+        refresh_counts: true,
+        board_root: Some(root),
+        ..
+    }) = &cli.command
+    {
+        moai_cli::statusline::counts::refresh(root);
+        return ExitCode::SUCCESS;
+    }
+    if let Some(Command::Statusline {
+        render_budget_ms, ..
+    }) = cli.command
+    {
         let budget = render_budget_ms
             .map(std::time::Duration::from_millis)
             .unwrap_or(moai_cli::statusline::RENDER_BUDGET);

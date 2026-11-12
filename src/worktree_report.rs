@@ -31,9 +31,12 @@ type Result<T> = std::result::Result<T, String>;
 /// Default time budget for the size walk and per-worktree status calls.
 pub const DEFAULT_BUDGET_MS: u64 = 30_000;
 
-/// Prefix of the per-session cargo build folders under the temporary root. Checked before
-/// any audit pattern: `moai-rc-target-agent-2-t61-audit-2326` is a build folder.
-const RC_TARGET_PREFIX: &str = "moai-rc-target-";
+/// Prefixes of the per-session cargo build folders under the temporary root, checked before
+/// any audit pattern (`moai-target-agent-2-t61-audit-2326` is a build folder). Lanes name new
+/// folders `moai-target-<label>` (#2563); sessions that already build in the former
+/// `moai-rc-target-<label>` keep it, so both prefixes count — a cleanup or a total that
+/// skipped the old folders would miss live build output.
+const TARGET_PREFIXES: [&str; 2] = ["moai-target-", "moai-rc-target-"];
 
 /// The temporary folders the design counted as empty leftovers (§1.1).
 const EMPTY_PREFIXES: [&str; 4] = [
@@ -46,7 +49,7 @@ const EMPTY_PREFIXES: [&str; 4] = [
 /// What a temporary `moai-*` folder is, by name and shape.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TmpClass {
-    RcTarget,
+    Target,
     AuditClone,
     EmptyDir,
     Other,
@@ -58,8 +61,8 @@ pub fn classify_tmp(name: &str, is_empty: bool, has_git: bool) -> Option<TmpClas
     if !name.starts_with("moai-") {
         return None;
     }
-    if name.starts_with(RC_TARGET_PREFIX) {
-        return Some(TmpClass::RcTarget);
+    if TARGET_PREFIXES.iter().any(|p| name.starts_with(p)) {
+        return Some(TmpClass::Target);
     }
     if is_empty && EMPTY_PREFIXES.iter().any(|p| name.starts_with(p)) {
         return Some(TmpClass::EmptyDir);
@@ -412,7 +415,7 @@ pub fn report(project: &Path, tmp_root: &Path, budget: Duration) -> Result<Value
     let classes = json!({
         "worktree_checkout": class(co_count, co_bytes, co_partial),
         "worktree_target": class(tg_count, tg_bytes, tg_partial),
-        "tmp_rc_target": class(tmp[0].0, tmp[0].1, tmp[0].2),
+        "tmp_target": class(tmp[0].0, tmp[0].1, tmp[0].2),
         "tmp_audit_clone": class(tmp[1].0, tmp[1].1, tmp[1].2),
         "tmp_empty_dir": class(tmp[2].0, tmp[2].1, tmp[2].2),
         "tmp_other": class(tmp[3].0, tmp[3].1, tmp[3].2),
@@ -421,7 +424,7 @@ pub fn report(project: &Path, tmp_root: &Path, budget: Duration) -> Result<Value
     let partial_classes: Vec<&str> = [
         ("worktree_checkout", co_partial),
         ("worktree_target", tg_partial),
-        ("tmp_rc_target", tmp[0].2),
+        ("tmp_target", tmp[0].2),
         ("tmp_audit_clone", tmp[1].2),
         ("tmp_empty_dir", tmp[2].2),
         ("tmp_other", tmp[3].2),
@@ -455,10 +458,29 @@ mod tests {
 
     #[test]
     fn build_folder_prefix_wins_over_the_audit_pattern() {
-        assert_eq!(
-            classify_tmp("moai-rc-target-agent-2-t61-audit-2326", false, true),
-            Some(TmpClass::RcTarget)
-        );
+        // #2563: the new `moai-target-` and the former `moai-rc-target-` are both build
+        // folders; a name that only resembles them is not.
+        for name in [
+            "moai-target-agent-2-t61-audit-2326",
+            "moai-rc-target-agent-2-t61-audit-2326",
+        ] {
+            assert_eq!(
+                classify_tmp(name, false, true),
+                Some(TmpClass::Target),
+                "{name}"
+            );
+        }
+        for name in [
+            "moai-targets-x",
+            "moai-product-target",
+            "moai-rc-product-target",
+        ] {
+            assert_eq!(
+                classify_tmp(name, false, false),
+                Some(TmpClass::Other),
+                "{name}"
+            );
+        }
         assert_eq!(
             classify_tmp("moai-audit-2369-x", false, true),
             Some(TmpClass::AuditClone)

@@ -1,7 +1,9 @@
 //! Everything the statusline reads outside stdin: environment, the project configuration
 //! and state files, the HOME state files, and local git. Read-only (#2350): the Go
 //! statusline also writes `$HOME/.moai/state/last-model.txt` and
-//! `<anchor>/.moai/state/context-usage/*.json`; this port writes nothing.
+//! `<anchor>/.moai/state/context-usage/*.json`; this module writes nothing. The one write
+//! of the statusline is the forge counts cache, done by the detached refresh child in
+//! [`super::counts`] (#2588), never by the render path.
 //!
 //! HOME state (#2455, user decision 2026-11-11): `last-model.txt` is read from
 //! `$HOME/.moai-cli/state/` only, never from the Go folder `$HOME/.moai/`, and `MOAI_HOME` is
@@ -11,14 +13,15 @@
 //!
 //! The only subprocess is `git`, and only when a `.git` entry is found above the
 //! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
-//! deadline. No network, no detached refresh child, no self re-invocation.
+//! deadline. No network here: the counts refresh child is started by `statusline::run`
+//! after the render (#2588).
 
 use super::config::{self, Node};
 use super::input::{self, Input};
 use super::segments::{self, ContextReading, GitStatus, Memory};
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
-use std::io::{IsTerminal, Read};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -28,7 +31,6 @@ use std::time::{Duration, Instant};
 pub struct Context {
     vars: HashMap<String, String>,
     pub cwd: Option<PathBuf>,
-    pub stdout_is_terminal: bool,
     /// When the render must be finished; git is stopped at this point.
     pub deadline: Option<Instant>,
     /// The git executable; `git` from PATH outside tests.
@@ -40,7 +42,6 @@ impl Context {
         Context {
             vars: std::env::vars().collect(),
             cwd: std::env::current_dir().ok(),
-            stdout_is_terminal: std::io::stdout().is_terminal(),
             deadline: Some(Instant::now() + budget),
             git_program: "git".to_string(),
         }
@@ -54,7 +55,6 @@ impl Context {
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
             cwd: cwd.map(Path::to_path_buf),
-            stdout_is_terminal: true,
             deadline: None,
             git_program: "git".to_string(),
         }
@@ -315,7 +315,7 @@ pub fn resolve_anchor(input: &Input) -> Option<PathBuf> {
 
 /// The parent of the git common directory for `dir`: `.git` as a directory, or a `.git`
 /// file naming a worktree git dir whose `commondir` points back to the main repository.
-fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
+pub(crate) fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
     let dir = std::fs::canonicalize(dir).ok()?;
     let (top, dot_git) = find_dot_git(&dir)?;
     if dot_git.is_dir() {
@@ -663,41 +663,37 @@ fn goal_armed(anchor: &Path, session_id: &str) -> bool {
         .is_some_and(|g| g.status.as_deref() == Some("armed"))
 }
 
-/// `resolveGitHubCounts`: the cache only, never the network; an explicit
-/// `statusline.forge` naming no forge suppresses the pair.
+/// `resolveGitHubCounts`: the cache only, never the network (#2588: the refresh runs
+/// in a detached child, see [`super::counts`]); an explicit `statusline.forge` naming no
+/// forge suppresses the pair, and counts fetched longer ago than
+/// [`super::counts::STALE`] are hidden rather than shown as current.
 fn github_counts(anchor: &Path) -> GitHubCounts {
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    struct Cache {
-        open_issues: Option<i64>,
-        open_prs: Option<i64>,
-        suppressed: Option<bool>,
-        #[allow(dead_code)]
-        fetched_at: Option<i64>,
-    }
-    let mut counts = std::fs::read(anchor.join(".moai/state/github/counts.json"))
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Cache>(&b).ok())
+    let now = super::counts::now_unix();
+    let mut counts = super::counts::read(anchor)
+        .filter(|c| c.suppressed == Some(true) || super::counts::is_fresh(c, now))
         .map_or(GitHubCounts::default(), |c| GitHubCounts {
             available: true,
             suppressed: c.suppressed.unwrap_or(false),
             open_issues: c.open_issues.unwrap_or(0),
             open_prs: c.open_prs.unwrap_or(0),
         });
-    let forge = [STATUSLINE_LOCAL_YAML, STATUSLINE_YAML]
+    if forge_suppressed(anchor) {
+        counts.suppressed = true;
+    }
+    counts
+}
+
+/// An explicit `statusline.forge` naming neither github nor gitlab.
+pub fn forge_suppressed(anchor: &Path) -> bool {
+    [STATUSLINE_LOCAL_YAML, STATUSLINE_YAML]
         .into_iter()
         .filter_map(|pair| config::read(&config_path(anchor, pair)))
         .filter_map(|doc| {
             doc.scalar(&["statusline", "forge"])
                 .map(|s| s.trim().to_string())
         })
-        .find(|v| !v.is_empty());
-    if let Some(forge) = forge {
-        if !matches!(forge.to_lowercase().as_str(), "github" | "gitlab") {
-            counts.suppressed = true;
-        }
-    }
-    counts
+        .find(|v| !v.is_empty())
+        .is_some_and(|forge| !matches!(forge.to_lowercase().as_str(), "github" | "gitlab"))
 }
 
 #[cfg(test)]
@@ -912,9 +908,17 @@ mod tests {
         assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
         let gh = tmp.path().join(".moai/state/github");
         std::fs::create_dir_all(&gh).unwrap();
+        // #2588 AC-3: a count fetched more than an hour ago is hidden, not shown as current.
         std::fs::write(
             gh.join("counts.json"),
             r#"{"open_issues":7,"open_prs":3,"fetched_at":1}"#,
+        )
+        .unwrap();
+        assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
+        let now = super::super::counts::now_unix();
+        std::fs::write(
+            gh.join("counts.json"),
+            format!(r#"{{"open_issues":7,"open_prs":3,"fetched_at":{now}}}"#),
         )
         .unwrap();
         let c = github_counts(tmp.path());
@@ -922,6 +926,16 @@ mod tests {
             (c.available, c.open_issues, c.open_prs, c.suppressed),
             (true, 7, 3, false)
         );
+        // The cache this tool writes wins over the Go-generation file.
+        let own = tmp.path().join(".moai-cli/state/github");
+        std::fs::create_dir_all(&own).unwrap();
+        std::fs::write(
+            own.join("counts.json"),
+            format!(r#"{{"open_issues":9,"open_prs":4,"fetched_at":{now}}}"#),
+        )
+        .unwrap();
+        let c = github_counts(tmp.path());
+        assert_eq!((c.open_issues, c.open_prs), (9, 4));
         let sections = tmp.path().join(".moai/config/sections");
         std::fs::create_dir_all(&sections).unwrap();
         std::fs::write(

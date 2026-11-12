@@ -646,10 +646,53 @@ pub fn owned_settings(project: &Path) -> Result<Map<String, Value>> {
     Ok(settings_state(project, &Map::new())?.owned)
 }
 
+/// Whether git ignores `PROJECT/.claude/settings.json` (#2581): `ignored`, `not_ignored`, or
+/// `unknown` when PROJECT is not in a git work tree or git fails. Index-aware (the default of
+/// `git check-ignore`): a tracked file that matches an ignore pattern is `not_ignored`. The
+/// caller's git environment is scrubbed so PROJECT is the repository read (#2054).
+fn settings_ignored(root: &Path) -> &'static str {
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks").arg("-C").arg(root).args([
+        "check-ignore",
+        "-q",
+        "--",
+        SETTINGS_FILE,
+    ]);
+    crate::identity::scrub_git_env(&mut cmd);
+    let status = cmd
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    match status.ok().and_then(|s| s.code()) {
+        Some(0) => "ignored",
+        Some(1) => "not_ignored",
+        _ => "unknown",
+    }
+}
+
+/// What a session started in a linked worktree of this repository sees of the settings file
+/// (#2581). Claude Code reads the shared project settings from the session's working folder
+/// (https://code.claude.com/docs/en/settings, read 2026-11-12), and a linked worktree carries
+/// only the files git checks out, so an ignored settings file never reaches it.
+fn worktree_sessions(ignored: &str) -> &'static str {
+    match ignored {
+        "ignored" => "not_reached",
+        "not_ignored" => "reached_when_committed",
+        _ => "unknown",
+    }
+}
+
 /// Previews setting `desired` (managed keys only) in `PROJECT/.claude/settings.json`. Never
 /// writes. The returned `plan_digest` binds the current file, the receipt and the result.
+/// `settings_ignored` and `worktree_sessions` report whether the file reaches sessions started
+/// in a linked worktree (#2581); they are facts for the caller and do not change the plan.
 pub fn settings_plan(project: &Path, desired: &Map<String, Value>) -> Result<Value> {
     let s = settings_state(project, desired)?;
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    let ignored = settings_ignored(&root);
     let action = match (&s.candidate, &s.after, &s.before) {
         (None, _, _) => "conflict",
         (Some(_), None, _) => "unchanged",
@@ -663,6 +706,8 @@ pub fn settings_plan(project: &Path, desired: &Map<String, Value>) -> Result<Val
         "expected_sha256": s.before.as_deref().map(crate::digest),
         "planned_sha256": s.after.as_deref().map(crate::digest),
         "plan_digest": s.digest,
+        "settings_ignored": ignored,
+        "worktree_sessions": worktree_sessions(ignored),
         "writes": false,
     }))
 }

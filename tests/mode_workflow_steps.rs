@@ -359,3 +359,19 @@ fn the_round_keeps_going_until_its_end_condition() {
             .unwrap();
     assert!(skill.contains("reporting a finished card and then stopping is not completion"));
 }
+
+/// #2581: project hooks are read from the session's working folder, so a lane session in a
+/// linked worktree without the project settings file runs no project hook; the manual
+/// `claim-verify` step is then the only boundary. The claim-verify step says so.
+#[test]
+fn claim_verify_names_the_worktree_session_without_project_hooks() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim-verify",
+        &[
+            "The host reads project hooks from the session's working folder",
+            "runs none of the project's hooks, so there this step is the only boundary",
+            "`worktree_sessions: not_reached`",
+        ],
+    );
+}

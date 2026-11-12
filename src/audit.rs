@@ -577,5 +577,9 @@ pub fn audit(project: &Path, input: &AuditInput) -> Result<Verdict> {
     }
     let observed = observe(project)?;
     let outcome = run::run(project, &input.run, &observed.commit)?;
-    Ok(reduce(input, &observed, &outcome, &utc_now()))
+    // #2392 F8: judge the project as it is after the checks ran. A check that changed the
+    // tree (or the commit) while it ran then meets the same `candidate-changed` rejection as
+    // a change made before the audit, instead of an admission of a tree nobody checked.
+    let after = observe(project)?;
+    Ok(reduce(input, &after, &outcome, &utc_now()))
 }

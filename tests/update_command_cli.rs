@@ -414,3 +414,219 @@ fn a_linked_package_folder_is_refused() {
     assert!(v.to_string().contains("symlink; refused"), "{v}");
     assert_eq!(state(&f.home), before);
 }
+
+// ---- #2540: report what was actually applied; ask only when something would be written ----
+
+/// A `skills/moai` folder this tool did not install, in both hosts' projection roots, so
+/// every host of the plan is `blocked`.
+fn foreign_skill_in_both_hosts(home: &Path) {
+    for root in [".claude/skills/moai", ".agents/skills/moai"] {
+        let dir = home.join(root);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("SKILL.md"), skill_md("someone else's skill")).unwrap();
+    }
+}
+
+// #2540 AC-1: a confirmed plan whose hosts are all blocked writes nothing and is not
+// reported as applied.
+#[test]
+fn a_confirmed_plan_with_every_host_blocked_is_not_reported_as_applied() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    foreign_skill_in_both_hosts(&f.home);
+    let p = preview(&a, &f.home);
+    for h in HOSTS {
+        assert_eq!(
+            host(&p["plan"]["hosts"], h)["preflight"],
+            json!("blocked"),
+            "{p}"
+        );
+    }
+    let before = state(&f.home);
+    let r = ok(&run(&a, &f.home, &["update", "--confirm", &digest(&p)]));
+    assert_eq!(r["result"]["status"], json!("blocked"), "{r}");
+    assert_eq!(r["applied"], json!(false), "{r}");
+    assert_eq!(state(&f.home), before, "nothing was written");
+}
+
+// #2540 AC-1: confirming a plan that is unchanged everywhere is not reported as applied.
+#[test]
+fn a_confirmed_plan_with_nothing_to_write_is_not_reported_as_applied() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let p = preview(&a, &f.home);
+    let r = confirm(&a, &f.home, &digest(&p));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    let again = preview(&a, &f.home);
+    let r = confirm(&a, &f.home, &digest(&again));
+    assert_eq!(r["result"]["status"], json!("unchanged"), "{r}");
+    assert_eq!(r["applied"], json!(false), "{r}");
+}
+
+// #2540 AC-3: a preview with nothing to write says so and offers no confirmation.
+#[test]
+fn a_preview_with_nothing_to_write_says_so() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    foreign_skill_in_both_hosts(&f.home);
+    let p = preview(&a, &f.home);
+    assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
+    let g = fx();
+    let b = install_version(&g.home, "a", &v1());
+    let p = preview(&b, &g.home);
+    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
+}
+
+/// The everyday rerun: the package was applied once, so every host is `unchanged`.
+fn applied_once() -> (Fx, PathBuf) {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let p = preview(&a, &f.home);
+    confirm(&a, &f.home, &digest(&p));
+    (f, a)
+}
+
+// #2540 AC-3 (pre-audit 6824540371 F1): a preview where every host is unchanged has nothing
+// to apply.
+#[test]
+fn a_preview_of_an_already_applied_package_has_nothing_to_apply() {
+    let (f, a) = applied_once();
+    let p = preview(&a, &f.home);
+    for h in HOSTS {
+        assert_eq!(
+            host(&p["plan"]["hosts"], h)["preflight"],
+            json!("ok"),
+            "{p}"
+        );
+        assert!(
+            plan_actions(&p, h).iter().all(|(_, a)| a == "unchanged"),
+            "{p}"
+        );
+    }
+    assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
+}
+
+// #2540 (pre-audit 6824540371 N1): a plan whose only difference is a file the user changed
+// (a conflict, never written) has nothing to apply either.
+#[test]
+fn a_preview_with_only_a_conflict_has_nothing_to_apply() {
+    let (f, a) = applied_once();
+    fs::write(
+        f.home.join(".claude/skills/moai/workflows/update.md"),
+        "# UPDATE\nmy own notes\n",
+    )
+    .unwrap();
+    fs::write(
+        f.home
+            .join(".moai-cli/versions/a/skills/moai/workflows/update.md"),
+        "# UPDATE\nv2\n",
+    )
+    .unwrap();
+    let p = preview(&a, &f.home);
+    assert!(
+        plan_actions(&p, "claude").contains(&("workflows/update.md".into(), "conflict".into())),
+        "{p}"
+    );
+    assert!(
+        !plan_actions(&p, "claude")
+            .iter()
+            .any(|(_, a)| a == "create" || a == "update"),
+        "{p}"
+    );
+    // codex has no user edit, so it would update; only claude is conflict-only.
+    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
+    fs::write(
+        f.home.join(".agents/skills/moai/workflows/update.md"),
+        "# UPDATE\nmy own notes too\n",
+    )
+    .unwrap();
+    let p = preview(&a, &f.home);
+    assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
+}
+
+/// Runs `update` in a pseudo terminal with nothing typed, and returns everything shown.
+#[cfg(target_os = "macos")]
+fn run_in_terminal_unanswered(exe: &Path, home: &Path) -> String {
+    let out = Command::new("/usr/bin/script")
+        .args(["-q", "/dev/null"])
+        .arg(exe)
+        .arg("update")
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", home)
+        .env("LC_ALL", "C")
+        .current_dir(home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .unwrap();
+    String::from_utf8_lossy(&out.stdout).to_string()
+}
+
+// #2540 AC-3: in a terminal, a plan with every host blocked is shown without the question.
+#[cfg(target_os = "macos")]
+#[test]
+fn in_a_terminal_nothing_to_write_asks_nothing() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    foreign_skill_in_both_hosts(&f.home);
+    let before = state(&f.home);
+    let text = run_in_terminal_unanswered(&a, &f.home);
+    assert!(!text.contains("[y/N]"), "{text}");
+    assert!(text.contains("\"mode\":\"preview\""), "{text}");
+    assert_eq!(state(&f.home), before);
+}
+
+// #2540 AC-3 (pre-audit 6824540371 F1): in a terminal, rerunning `update` on an already
+// applied package asks nothing.
+#[cfg(target_os = "macos")]
+#[test]
+fn in_a_terminal_an_already_applied_package_asks_nothing() {
+    let (f, a) = applied_once();
+    let before = state(&f.home);
+    let text = run_in_terminal_unanswered(&a, &f.home);
+    assert!(!text.contains("[y/N]"), "{text}");
+    assert!(text.contains("\"nothing_to_apply\":true"), "{text}");
+    assert_eq!(state(&f.home), before);
+}
+
+// #2545 (audit note U5 on #2530): the question goes to stderr, so `update` asks only when both
+// stdin and stderr are terminals. With stdin on a terminal but stderr sent to a file, a person
+// would wait on a question they cannot see: `update` must not ask and must write nothing.
+#[cfg(target_os = "macos")]
+#[test]
+fn with_stderr_away_from_the_terminal_update_does_not_ask() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let err_file = f.root.join("stderr.txt");
+    let before = state(&f.home);
+    let out = Command::new("/usr/bin/script")
+        .args([
+            "-q",
+            "/dev/null",
+            "/bin/sh",
+            "-c",
+            "exec \"$0\" update 2>\"$1\"",
+        ])
+        .arg(&a)
+        .arg(&err_file)
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &f.home)
+        .env("LC_ALL", "C")
+        .current_dir(&f.home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .unwrap();
+    let shown = String::from_utf8_lossy(&out.stdout);
+    let err = fs::read_to_string(&err_file).unwrap_or_default();
+    assert!(
+        !err.contains("[y/N]"),
+        "asked on a stderr nobody sees: {err}"
+    );
+    assert!(shown.contains("\"mode\":\"preview\""), "{shown}");
+    assert_eq!(state(&f.home), before);
+}

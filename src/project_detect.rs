@@ -396,6 +396,25 @@ pub fn validate(d: &Detected) -> Result<()> {
     Ok(())
 }
 
+/// Go-generation project state as a fact (#2561), read only and without following links:
+/// what `.moai` is (`absent`, `folder`, `link` or `other`) and whether a real folder holds a
+/// regular `manifest.json`. Reported beside `detected`, never inside it, so the profile is
+/// unchanged.
+fn go_state_fact(root: &Path) -> Value {
+    let moai = root.join(".moai");
+    let moai_dir = match fs::symlink_metadata(&moai) {
+        Err(_) => "absent",
+        Ok(m) if m.file_type().is_symlink() => "link",
+        Ok(m) if m.is_dir() => "folder",
+        Ok(_) => "other",
+    };
+    let go_manifest = moai_dir == "folder"
+        && fs::symlink_metadata(moai.join("manifest.json"))
+            .map(|m| m.file_type().is_file())
+            .unwrap_or(false);
+    json!({"moai_dir": moai_dir, "go_manifest": go_manifest})
+}
+
 /// `project-detect`: the facts, and — when the project has a profile — that profile with
 /// `detected` set, ready for `project-plan`. Writes nothing.
 pub fn detect_cli(root: &Path) -> Result<Value> {
@@ -404,31 +423,38 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     let index = format!(
         "suggest only, run after the user agrees: moai-cli index-build {shown} with stdin {{\"protocol_version\":1}}"
     );
-    match crate::read_profile(root) {
+    let go_state = go_state_fact(root);
+    let go_step = (go_state["moai_dir"] == "folder").then(|| {
+        format!(
+            "Go-generation .moai/ found: ask the user first; only after the user agrees run the \
+             read-only preview `moai-cli go-state-plan {shown}`, show it, and apply only after a \
+             second agreement (see the PROJECT workflow)"
+        )
+    });
+    let (profile, first) = match crate::read_profile(root) {
         Ok((mut profile, _)) => {
             profile.schema_version = 2;
             profile.detected = Some(detected.clone());
-            Ok(json!({
-                "detected": detected,
-                "profile": profile,
-                "profile_written": false,
-                "next_actions": [
-                    format!("pass result.profile to `moai-cli project-plan {shown}` on stdin, review the plan, then `moai-cli project-apply`"),
-                    index,
-                ]
-            }))
+            (
+                json!(profile),
+                format!("pass result.profile to `moai-cli project-plan {shown}` on stdin, review the plan, then `moai-cli project-apply`"),
+            )
         }
-        Err(e) if e == "project profile missing" => Ok(json!({
-            "detected": detected,
-            "profile": null,
-            "profile_written": false,
-            "next_actions": [
-                "no .moai-cli/project.yaml yet: create the profile first (a first launch or SETUP), then run project-detect again",
-                index,
-            ]
-        })),
-        Err(e) => Err(e),
-    }
+        Err(e) if e == "project profile missing" => (
+            Value::Null,
+            "no .moai-cli/project.yaml yet: create the profile first (a first launch or SETUP), then run project-detect again".to_string(),
+        ),
+        Err(e) => return Err(e),
+    };
+    let mut next_actions = vec![first, index];
+    next_actions.extend(go_step);
+    Ok(json!({
+        "detected": detected,
+        "profile": profile,
+        "profile_written": false,
+        "go_state": go_state,
+        "next_actions": next_actions,
+    }))
 }
 
 #[cfg(test)]
