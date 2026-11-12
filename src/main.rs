@@ -108,6 +108,12 @@ enum Command {
     ProjectPlan {
         project: PathBuf,
     },
+    /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
+    /// manifests, languages, language servers, configured MCP server names, databases. Reads
+    /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
+    ProjectDetect {
+        project: PathBuf,
+    },
     ProjectApply {
         project: PathBuf,
         #[arg(long)]
@@ -357,6 +363,21 @@ enum Command {
     /// named Issues, their open PRs and the local worktrees; writes nothing.
     LaneStatus {
         project: PathBuf,
+    },
+    /// Per-item writing-language setup (#2293): asks one question per item and returns a
+    /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
+    /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
+    /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
+    LanguageSetup {
+        project: PathBuf,
+        #[arg(long, conflicts_with = "answers")]
+        questions: bool,
+        #[arg(long)]
+        answers: bool,
+        /// Conversation language code for the conversation-default items; else the
+        /// profile's `language.user_chat`, else `en`.
+        #[arg(long)]
+        conversation: Option<String>,
     },
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
@@ -922,6 +943,20 @@ enum Command {
         #[arg(long)]
         tmp_root: Option<PathBuf>,
     },
+    /// Compare one local two-parent merge with a controlled replay; evidence only, not AUDIT PASS.
+    AuditDelta {
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// Previously audited commit (40 lowercase hex).
+        #[arg(long)]
+        pass_head: String,
+        /// Integrated base tip (40 lowercase hex).
+        #[arg(long)]
+        tip: String,
+        /// Candidate merge commit (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+    },
     /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
     /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
     /// rows are never edited or removed. Preview by default; `--apply` writes. Rows go to the
@@ -965,6 +1000,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// Confirm one host's backup-then-replace of an unmanaged `moai` skill folder
+        /// with the `confirm_token` its plan previews (#2483); repeatable.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_backup_replace: Vec<String>,
     },
     /// Read-only recovery plan for UPDATE hosts left `pending` (04-C #2000; names P06 HOLD).
     RecoveryPlan {
@@ -1108,12 +1147,35 @@ fn launch(
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
+    // #2481 (user decisions 6810797000, 6810818827): the first launch in a folder that is not a
+    // project initializes it (git init, settings, AGENTS.md). Options are composed first, so a
+    // launch refused anyway writes nothing; numbering follows the initialization.
+    let init = match std::env::current_dir() {
+        Ok(here) => {
+            let mut probe = request.clone();
+            if numbered {
+                probe.name = Some("agent-0".into());
+            }
+            moai_cli::session::compose(&probe)?;
+            moai_cli::launcher_init::prepare(&here, host, o.dry_run)?
+        }
+        Err(_) => moai_cli::launcher_init::Prepared::default(),
+    };
+    if let (false, Some(note)) = (o.dry_run, &init.note) {
+        eprintln!("{note}");
+    }
     let mut number_note = None;
     if numbered {
         let here = std::env::current_dir()
             .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
-        let dir = moai_cli::session::agent_seq_dir(&here)?;
-        let n = if o.dry_run {
+        let n = if o.dry_run && init.git_pending {
+            number_note = Some(
+                "agent-N preview: --dry-run takes no number (the store is created by git init)"
+                    .to_string(),
+            );
+            1
+        } else if o.dry_run {
+            let dir = moai_cli::session::agent_seq_dir(&here)?;
             number_note = Some(format!(
                 "agent-N preview: --dry-run takes no number (store {})",
                 dir.display()
@@ -1124,6 +1186,7 @@ fn launch(
             // option) takes no number.
             request.name = Some("agent-0".into());
             moai_cli::session::compose(&request)?;
+            let dir = moai_cli::session::agent_seq_dir(&here)?;
             let n = take_agent_number(&here)?;
             number_note = Some(format!("agent number {n} taken (store {})", dir.display()));
             n
@@ -1133,6 +1196,7 @@ fn launch(
     let mut v = session_launch(&request, o.dry_run)?;
     if let Some(notes) = v["notes"].as_array_mut() {
         notes.extend(advisor_note.map(Into::into));
+        notes.extend(init.note.map(Into::into));
         notes.extend(number_note.map(Into::into));
     }
     Ok(v)
@@ -1157,6 +1221,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
+        AuditDelta { .. } => "audit.delta",
         AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
@@ -1205,6 +1270,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
+        LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1225,6 +1291,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
         ProjectApply { .. } => "project.apply",
+        ProjectDetect { .. } => "project.detect",
         ProjectPlan { .. } => "project.plan",
         ProjectSkillApply { .. } => "project_skill.apply",
         ProjectSkillPlan { .. } => "project_skill.plan",
@@ -1618,6 +1685,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::PackageInspect { package } => Ok(
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
         ),
+        Command::ProjectDetect { project } => moai_cli::project_detect::detect_cli(&project),
         Command::ProjectPlan { project } => {
             // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
             // the profile message; no input value is echoed.
@@ -1793,6 +1861,34 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LanguageSetup {
+            project,
+            questions,
+            answers,
+            conversation,
+        } => {
+            use moai_cli::language::{setup, SetupMode};
+            let mode = if questions {
+                SetupMode::Questions
+            } else if answers {
+                let value = input::<serde_json::Value>()?;
+                SetupMode::Answers(
+                    value
+                        .as_object()
+                        .cloned()
+                        .ok_or("answers must be a JSON object")?,
+                )
+            } else {
+                SetupMode::Interactive
+            };
+            setup(
+                &project,
+                mode,
+                conversation.as_deref(),
+                &mut io::stdin().lock(),
+                &mut io::stderr(),
+            )
+        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -2093,6 +2189,20 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
         ),
+        Command::AuditDelta {
+            project,
+            pass_head,
+            tip,
+            head,
+        } => serde_json::to_value(moai_cli::audit_delta::inspect(
+            &project,
+            moai_cli::audit_delta::Request {
+                pass_head,
+                tip,
+                head,
+            },
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::WorktreeReport {
             project,
             tmp_root,
@@ -2126,6 +2236,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             stage,
             plan_digest,
             permission_reference,
+            confirm_backup_replace,
         } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             let plan = plan_input::<moai_cli::update::UpdatePlan>()?;
@@ -2135,6 +2246,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan,
                 &plan_digest,
                 &permission_reference,
+                &confirm_backup_replace,
             )
         }
         Command::RecoveryPlan { home } => {
@@ -2425,8 +2537,14 @@ fn main() -> ExitCode {
     match run_internal(cli.command.expect("internal operation")) {
         Ok(_) if hook_mode => ExitCode::SUCCESS,
         Ok(result) => {
+            // A computed delta is evidence, not audit admission; only a pure replay exits 0.
+            let exit = if op == "audit.delta" && result["status"] != "pure_merge" {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
+            };
             println!("{}", contract::success(op, result));
-            ExitCode::SUCCESS
+            exit
         }
         Err(e) if hook_mode => {
             eprintln!("{e}");
