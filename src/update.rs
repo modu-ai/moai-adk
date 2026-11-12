@@ -346,6 +346,20 @@ pub(crate) fn source_tree_sha256(files: &[BackupFile]) -> String {
     sha256_hex(text.as_bytes())
 }
 
+/// Test seam (#2544): `MOAI_CLI_TEST_FAULT=<point>` makes one rename report a failure as if
+/// the OS refused it, without performing it, so the recovery after it runs for real. Debug
+/// builds only; a release build never consults it.
+fn injected_rename_error(point: &str) -> Option<std::io::Error> {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+        return Some(std::io::Error::other(format!(
+            "injected test fault at {point}"
+        )));
+    }
+    let _ = point;
+    None
+}
+
 /// Test seam (#2483 AC-4): `MOAI_CLI_TEST_FAULT=<point>` fails the backup-then-replace
 /// at that point. Read only in debug builds; a release build never consults it.
 pub(crate) fn test_fault(point: &str) -> Result<()> {
@@ -1966,7 +1980,11 @@ fn run_backup_then_replace(
         });
     }
     test_fault("mid_replace")?;
-    if let Err(e) = fs::rename(&incoming, &root) {
+    let into_place = match injected_rename_error("stage_rename") {
+        Some(e) => Err(e),
+        None => fs::rename(&incoming, &root),
+    };
+    if let Err(e) = into_place {
         return Err(match fs::rename(&moved, &root) {
             Ok(()) => {
                 format!("moving the staged package into place failed ({e}); the original was moved back")
