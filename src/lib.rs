@@ -23,6 +23,7 @@ pub mod flow;
 pub mod forge;
 pub mod generation;
 pub mod github_templates;
+pub mod go_state;
 pub mod handoff;
 pub mod hook_config;
 pub mod hook_engine;
