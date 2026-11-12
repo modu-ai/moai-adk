@@ -42,8 +42,9 @@ an error; the CLI does not return an apparently complete partial train.
   success cannot mask a newer running/failed attempt. Missing is `not_run`;
   running, failure, cancelled, skipped and unknown never become success. A PR run
   has no `windows-build` (#2554, user decision U10: it runs after merge), so a
-  missing `windows-build` does not block; one that ran on the head and is not
-  `success` does. `rc-ci` must be `success`.
+  missing `windows-build` or one its job condition skipped (`skipped`) does not
+  block; one that ran on the head and is not `success` does. `rc-ci` must be
+  `success`.
 - `blocked_reasons` lists every observed impediment: predecessor, closed/draft PR,
   unknown/expired ownership, open dependency, missing/stale/failed audit,
   unsuccessful CI, merge conflict, behind base, forge block or unknown mergeability.

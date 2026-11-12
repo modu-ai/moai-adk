@@ -145,14 +145,16 @@ fn stale_conditional_wrong_pr_or_wrong_base_pass_never_counts() {
     }
 }
 
-/// #2554 (user decision U10): a PR run has no `windows-build` (it runs after merge). Its
-/// absence does not block; a `windows-build` that ran on the head and is not `success` does.
+/// #2554 (user decision U10): on a PR `windows-build` does not run (it runs after merge).
+/// A missing check run or one its `if` skipped (conclusion `skipped`, pre-audit FAIL
+/// 6827770462) does not block; one that ran on the head and is not `success` does.
 #[test]
 fn windows_build_blocks_only_when_it_ran_and_did_not_succeed() {
     let h = "a".repeat(40);
     let base = "0".repeat(40);
     for (windows, blocked) in [
         (None, false),
+        (Some("skipped"), false),
         (Some("success"), false),
         (Some("failure"), true),
         (Some("cancelled"), true),
