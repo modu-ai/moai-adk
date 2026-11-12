@@ -11,9 +11,11 @@
 //! files the manifest does not record are never offered and are counted per folder.
 //! Without a usable manifest nothing moves. Which of these rules apply to `.moai/` as a
 //! whole is a pending decision (#2561 comment 6827973256); [`policy`] is the one place
-//! that choice lives. This module writes nothing.
+//! that choice lives. The preview writes nothing; the apply and revert below it write
+//! only under the project's `.moai-cli/backups/` and move the planned files.
 
 use serde::{Deserialize, Serialize};
+// Stage 2 (`go-state-apply`, `go-state-revert-plan`, `go-state-revert`) is below `plan`.
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -276,4 +278,310 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let bytes = serde_json::to_vec(&plan).map_err(|_| "encode failed")?;
     plan.plan_digest = format!("sha256:{:x}", Sha256::digest(bytes));
     Ok(plan)
+}
+
+// ---- stage 2: apply and revert ----
+//
+// The apply moves each planned file, one by one, into
+// `<project>/.moai-cli/backups/<stamp>/go-state/<same relative path>`; the receipt beside
+// it (`go-state-receipt.json`) is written `pending` before the first move and records
+// every move as it happens, so a revert also works after a failure midway. A move is a
+// hard link to the backup path followed by removing the source: the link fails when the
+// backup path exists (no overwrite) or lies on another filesystem (no copy fallback).
+// Emptied folders stay, so a revert brings the tree back exactly. The policy (which files
+// move) is the preview's; only files proven tool-made move until decision 1 of
+// #2561 comment 6827973256 says otherwise.
+
+const BACKUPS: &str = ".moai-cli/backups";
+const RECEIPT: &str = "go-state-receipt.json";
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Moved {
+    pub path: String,
+    pub sha256: String,
+    pub moved: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Receipt {
+    pub schema_version: u32,
+    pub project: String,
+    pub backup: String,
+    pub plan_digest: String,
+    /// The caller's `--permission-reference`, recorded as given (not an authorization).
+    pub permission_reference: String,
+    /// `pending` → `committed` → `reverted`.
+    pub state: String,
+    pub moves: Vec<Moved>,
+}
+
+/// A backup name is the apply's UTC stamp, `YYYYMMDDTHHMMSSZ`, and nothing else.
+fn valid_stamp(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 16
+        && b[8] == b'T'
+        && b[15] == b'Z'
+        && b[..8].iter().chain(&b[9..15]).all(u8::is_ascii_digit)
+}
+
+fn stamp_now() -> String {
+    crate::baseline::utc_now().replace(['-', ':'], "")
+}
+
+/// Every existing component of `rel` under `project` must be a real folder (not a link).
+fn refuse_linked(project: &Path, rel: &str) -> Result<()> {
+    if linked_component(project, rel) {
+        return Err(format!("{rel}: a path component is a symlink; refused"));
+    }
+    Ok(())
+}
+
+fn save_receipt(project: &Path, receipt: &Receipt, before: Option<&[u8]>) -> Result<Vec<u8>> {
+    let rel = format!("{BACKUPS}/{}/{RECEIPT}", receipt.backup);
+    refuse_linked(project, &rel)?;
+    let bytes = serde_json::to_vec_pretty(receipt).map_err(|_| "encode failed")?;
+    let path = project.join(&rel);
+    match before {
+        None => crate::apply::publish_exclusive(&path, &bytes)?,
+        Some(b) => crate::apply::publish_replace(&path, Some(b), &bytes)?,
+    }
+    Ok(bytes)
+}
+
+/// Create the folders of `rel` (relative to `project`) one by one, refusing a link.
+fn make_dirs(project: &Path, rel: &str) -> Result<()> {
+    let mut cur = project.to_path_buf();
+    for part in Path::new(rel).components() {
+        cur.push(part);
+        match fs::symlink_metadata(&cur) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Err(format!("{rel}: a path component is a symlink; refused"))
+            }
+            Ok(m) if m.is_dir() => {}
+            Ok(_) => return Err(format!("{rel}: a path component is not a folder")),
+            Err(_) => fs::create_dir(&cur).map_err(|_| format!("{rel}: folder create failed"))?,
+        }
+    }
+    Ok(())
+}
+
+/// Move one file without overwriting: hard link, then remove the source.
+fn move_exclusive(from: &Path, to: &Path) -> Result<()> {
+    fs::hard_link(from, to).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            "move refused: the destination already exists".to_string()
+        } else if e.raw_os_error() == Some(18) {
+            // EXDEV on Linux and macOS.
+            "cross-filesystem move refused; the project and its backup must share one filesystem"
+                .to_string()
+        } else {
+            "move failed (hard link)".to_string()
+        }
+    })?;
+    fs::remove_file(from).map_err(|_| "move failed: source not removed (both copies kept)".into())
+}
+
+/// Apply the preview whose digest the caller confirmed. Nothing is written unless a fresh
+/// preview has exactly that digest.
+pub fn apply_with_stamp(
+    project: &Path,
+    plan_digest: &str,
+    permission_reference: &str,
+    stamp: &str,
+) -> Result<Receipt> {
+    let fresh = plan(project)?;
+    if fresh.plan_digest != plan_digest {
+        return Err("stale or unconfirmed plan: the digest does not match a fresh go-state-plan; nothing written".into());
+    }
+    if permission_reference.trim().is_empty() {
+        return Err("a permission reference is required".into());
+    }
+    if !valid_stamp(stamp) {
+        return Err("invalid backup stamp".into());
+    }
+    let project = PathBuf::from(&fresh.project);
+    let planned: Vec<&Item> = fresh.items.iter().filter(|i| i.action == "move").collect();
+    let mut receipt = Receipt {
+        schema_version: SCHEMA_VERSION,
+        project: fresh.project.clone(),
+        backup: stamp.to_string(),
+        plan_digest: fresh.plan_digest.clone(),
+        permission_reference: permission_reference.to_string(),
+        state: "unchanged".into(),
+        moves: Vec::new(),
+    };
+    if planned.is_empty() {
+        return Ok(receipt);
+    }
+    let backup_rel = format!("{BACKUPS}/{stamp}");
+    refuse_linked(&project, &backup_rel)?;
+    make_dirs(&project, BACKUPS)?;
+    fs::create_dir(project.join(&backup_rel)).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            "exclusive create refused: backup already exists".to_string()
+        } else {
+            "backup folder create failed".to_string()
+        }
+    })?;
+    for item in &planned {
+        let h = sha256_file(&project.join(&item.path))?;
+        receipt.moves.push(Moved {
+            path: item.path.clone(),
+            sha256: h,
+            moved: false,
+        });
+    }
+    receipt.state = "pending".into();
+    let mut saved = save_receipt(&project, &receipt, None)?;
+    for i in 0..receipt.moves.len() {
+        let rel = receipt.moves[i].path.clone();
+        refuse_linked(&project, &rel)?;
+        let dest_rel = format!("{backup_rel}/go-state/{rel}");
+        let parent = Path::new(&dest_rel)
+            .parent()
+            .and_then(|p| p.to_str())
+            .ok_or("backup path")?
+            .to_string();
+        make_dirs(&project, &parent)?;
+        move_exclusive(&project.join(&rel), &project.join(&dest_rel))?;
+        receipt.moves[i].moved = true;
+        saved = save_receipt(&project, &receipt, Some(&saved))?;
+    }
+    receipt.state = "committed".into();
+    save_receipt(&project, &receipt, Some(&saved))?;
+    Ok(receipt)
+}
+
+pub fn apply(project: &Path, plan_digest: &str, permission_reference: &str) -> Result<Receipt> {
+    apply_with_stamp(project, plan_digest, permission_reference, &stamp_now())
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RevertItem {
+    pub path: String,
+    /// `restore`, `conflict` (something is at the original path again), `missing` (the
+    /// backup copy is gone or changed) or `skip` (never moved).
+    pub action: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RevertPlan {
+    pub schema_version: u32,
+    pub project: String,
+    pub backup: String,
+    pub receipt_state: String,
+    pub items: Vec<RevertItem>,
+    pub plan_digest: String,
+}
+
+fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>)> {
+    if !valid_stamp(backup) {
+        return Err("invalid backup name: expected the apply's UTC stamp YYYYMMDDTHHMMSSZ".into());
+    }
+    let rel = format!("{BACKUPS}/{backup}/{RECEIPT}");
+    let text = read_bounded_text(project, &rel, MANIFEST_LIMIT)?
+        .ok_or_else(|| format!("{rel}: no go-state receipt"))?;
+    let receipt: Receipt =
+        serde_json::from_str(&text).map_err(|_| format!("{rel}: unreadable receipt"))?;
+    if receipt.backup != backup || receipt.project != project.to_string_lossy() {
+        return Err("receipt scope mismatch".into());
+    }
+    if receipt.moves.iter().any(|m| !plain_relative(&m.path)) {
+        return Err("receipt holds a path that is not plain relative; refused".into());
+    }
+    Ok((receipt, text.into_bytes()))
+}
+
+/// Read-only: what a revert of one apply would do.
+pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
+    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let (receipt, _) = read_receipt(&project, backup)?;
+    let mut items = Vec::new();
+    for m in &receipt.moves {
+        let action = if !m.moved {
+            "skip"
+        } else if fs::symlink_metadata(project.join(&m.path)).is_ok()
+            || linked_component(&project, &m.path)
+        {
+            "conflict"
+        } else {
+            let dest_rel = format!("{BACKUPS}/{backup}/go-state/{}", m.path);
+            if linked_component(&project, &dest_rel) {
+                "missing"
+            } else {
+                match sha256_file(&project.join(&dest_rel)) {
+                    Ok(h) if h == m.sha256 => "restore",
+                    _ => "missing",
+                }
+            }
+        };
+        items.push(RevertItem {
+            path: m.path.clone(),
+            action: action.into(),
+        });
+    }
+    let mut plan = RevertPlan {
+        schema_version: SCHEMA_VERSION,
+        project: receipt.project.clone(),
+        backup: backup.to_string(),
+        receipt_state: receipt.state.clone(),
+        items,
+        plan_digest: String::new(),
+    };
+    let bytes = serde_json::to_vec(&plan).map_err(|_| "encode failed")?;
+    plan.plan_digest = format!("sha256:{:x}", Sha256::digest(bytes));
+    Ok(plan)
+}
+
+/// Move every backed-up file back, all or nothing up front: any `conflict` or `missing`
+/// item refuses the whole revert before the first move. Never overwrites.
+pub fn revert(
+    project: &Path,
+    backup: &str,
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<RevertPlan> {
+    let fresh = revert_plan(project, backup)?;
+    if fresh.plan_digest != plan_digest {
+        return Err("stale or unconfirmed revert plan: the digest does not match a fresh go-state-revert-plan; nothing written".into());
+    }
+    if permission_reference.trim().is_empty() {
+        return Err("a permission reference is required".into());
+    }
+    if fresh.receipt_state == "reverted" {
+        return Err("this apply was already reverted".into());
+    }
+    if let Some(bad) = fresh
+        .items
+        .iter()
+        .find(|i| i.action == "conflict" || i.action == "missing")
+    {
+        return Err(format!(
+            "revert refused: {} is {}; nothing written",
+            bad.path, bad.action
+        ));
+    }
+    let project = PathBuf::from(&fresh.project);
+    let (mut receipt, mut saved) = read_receipt(&project, backup)?;
+    for item in fresh.items.iter().filter(|i| i.action == "restore") {
+        let parent = Path::new(&item.path)
+            .parent()
+            .and_then(|p| p.to_str())
+            .unwrap_or("")
+            .to_string();
+        if !parent.is_empty() {
+            make_dirs(&project, &parent)?;
+        }
+        let src = format!("{BACKUPS}/{backup}/go-state/{}", item.path);
+        move_exclusive(&project.join(src), &project.join(&item.path))?;
+        if let Some(m) = receipt.moves.iter_mut().find(|m| m.path == item.path) {
+            m.moved = false;
+        }
+        saved = save_receipt(&project, &receipt, Some(&saved))?;
+    }
+    receipt.state = "reverted".into();
+    save_receipt(&project, &receipt, Some(&saved))?;
+    Ok(fresh)
 }

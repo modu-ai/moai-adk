@@ -290,3 +290,242 @@ fn a_linked_moai_folder_or_manifest_is_refused() {
     assert_eq!(v["ok"], json!(false), "{v}");
     let _ = Path::new("");
 }
+
+// ---- stage 2: apply and revert (#2561 AC-2, AC-3, AC-4) ----
+
+const REF: &str = "test-permission-ref";
+
+fn call(args: &[&str]) -> Value {
+    let out = run(args);
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{args:?}: {}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+/// The project tree without the backup area: AC-3 compares the project as the user sees
+/// it; the backup folder and its receipt stay after a revert as the record of both acts.
+fn project_tree(fx: &Fx) -> Vec<(PathBuf, Vec<u8>)> {
+    let backups = fx.root.join(".moai-cli/backups");
+    fx.tree()
+        .into_iter()
+        .filter(|(p, _)| !p.starts_with(&backups))
+        .collect()
+}
+
+fn movable_fixture() -> Fx {
+    let mut fx = Fx::new();
+    fx.deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    fx.deployed(".claude/workflows/w.md", "# w\n");
+    fx.deployed(".moai/config/sections/b.yaml", "b: 1\n");
+    fx.write(".moai/config/sections/b.yaml", "b: 2 # edited\n");
+    fx.write(".moai/specs/SPEC-1/spec.md", "# spec\n");
+    fx.manifest();
+    fx
+}
+
+fn apply(fx: &Fx, digest: &str) -> Value {
+    call(&[
+        "go-state-apply",
+        fx.root.to_str().unwrap(),
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        REF,
+    ])
+}
+
+fn moves(plan: &Value) -> usize {
+    plan["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i["action"] == "move")
+        .count()
+}
+
+#[test]
+fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
+    let fx = movable_fixture();
+    let before = fx.tree();
+    let p = plan(&fx);
+    assert_eq!(moves(&p), 2, "{p}");
+
+    // AC-2: without the confirmed digest nothing changes, not even the backup area.
+    for wrong in ["", "sha256:0000", "not-a-digest"] {
+        let v = apply(&fx, wrong);
+        assert_eq!(v["ok"], json!(false), "{wrong}: {v}");
+        assert_eq!(
+            fx.tree(),
+            before,
+            "{wrong}: an unconfirmed apply writes nothing"
+        );
+    }
+
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let r = &v["result"];
+    let backup = r["backup"].as_str().unwrap().to_string();
+    assert_eq!(r["state"], json!("committed"), "{r}");
+    assert_eq!(r["permission_reference"], json!(REF));
+    let dir = fx.root.join(".moai-cli/backups").join(&backup);
+    for (rel, body) in [
+        (".moai/config/sections/a.yaml", "a: 1\n"),
+        (".claude/workflows/w.md", "# w\n"),
+    ] {
+        assert!(!fx.root.join(rel).exists(), "{rel} moved away");
+        assert_eq!(
+            fs::read_to_string(dir.join("go-state").join(rel)).unwrap(),
+            body,
+            "{rel} kept byte for byte in the backup"
+        );
+    }
+    // Changed, unrecorded and manifest files stay where they were.
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai/config/sections/b.yaml")).unwrap(),
+        "b: 2 # edited\n"
+    );
+    assert!(fx.root.join(".moai/specs/SPEC-1/spec.md").is_file());
+    assert!(fx.root.join(".moai/manifest.json").is_file());
+    let receipt: Value =
+        serde_json::from_slice(&fs::read(dir.join("go-state-receipt.json")).unwrap()).unwrap();
+    assert_eq!(receipt["state"], json!("committed"), "{receipt}");
+    assert_eq!(receipt["plan_digest"], p["plan_digest"]);
+
+    // AC-2: the preview after the apply offers nothing more, and a second apply is a no-op
+    // that creates no new backup folder.
+    let again = plan(&fx);
+    assert_eq!(moves(&again), 0, "{again}");
+    let after = fx.tree();
+    let v = apply(&fx, again["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["state"], json!("unchanged"), "{v}");
+    assert_eq!(fx.tree(), after);
+}
+
+#[test]
+fn a_file_changed_after_the_preview_stops_the_apply() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    fx.write(".claude/workflows/w.md", "# w, edited after the preview\n");
+    let before = fx.tree();
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+#[test]
+fn a_linked_backup_area_is_refused() {
+    for linked in [".moai-cli", ".moai-cli/backups"] {
+        let fx = movable_fixture();
+        let elsewhere = fx.root.parent().unwrap().join("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        let link = fx.root.join(linked);
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        symlink(&elsewhere, &link).unwrap();
+        let p = plan(&fx);
+        let before = fx.tree();
+        let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+        assert_eq!(v["ok"], json!(false), "{linked}: {v}");
+        assert!(v.to_string().contains("symlink"), "{linked}: {v}");
+        assert_eq!(fx.tree(), before, "{linked}");
+        assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0, "{linked}");
+    }
+}
+
+fn revert_plan(fx: &Fx, backup: &str) -> Value {
+    call(&[
+        "go-state-revert-plan",
+        fx.root.to_str().unwrap(),
+        "--backup",
+        backup,
+    ])
+}
+
+fn revert(fx: &Fx, backup: &str, digest: &str) -> Value {
+    call(&[
+        "go-state-revert",
+        fx.root.to_str().unwrap(),
+        "--backup",
+        backup,
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        REF,
+    ])
+}
+
+#[test]
+fn revert_restores_the_project_tree() {
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    assert_ne!(project_tree(&fx), before);
+
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    let rp = &rp["result"];
+    let restore = rp["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i["action"] == "restore")
+        .count();
+    assert_eq!(restore, 2, "{rp}");
+
+    let wrong = revert(&fx, &backup, "sha256:0000");
+    assert_eq!(wrong["ok"], json!(false), "{wrong}");
+
+    let v = revert(&fx, &backup, rp["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    // AC-3: the project tree outside the backup area is what it was before the apply.
+    assert_eq!(project_tree(&fx), before);
+    let receipt: Value = serde_json::from_slice(
+        &fs::read(
+            fx.root
+                .join(".moai-cli/backups")
+                .join(&backup)
+                .join("go-state-receipt.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+}
+
+#[test]
+fn revert_never_overwrites_a_file_that_came_back() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fx.write(".claude/workflows/w.md", "# new, written after the apply\n");
+    let rp = revert_plan(&fx, &backup);
+    let rp = &rp["result"];
+    let item = rp["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".claude/workflows/w.md")
+        .unwrap()
+        .clone();
+    assert_eq!(item["action"], json!("conflict"), "{rp}");
+    let before = fx.tree();
+    let v = revert(&fx, &backup, rp["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), before, "a refused revert writes nothing");
+}
+
+#[test]
+fn revert_refuses_a_backup_name_that_is_not_a_stamp() {
+    let fx = movable_fixture();
+    for bad in ["../x", "20261112T000000Z/..", "", "x"] {
+        let v = revert_plan(&fx, bad);
+        assert_eq!(v["ok"], json!(false), "{bad}: {v}");
+    }
+}
