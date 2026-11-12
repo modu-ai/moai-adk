@@ -19,11 +19,17 @@ use std::{
     process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, PoisonError, RwLock,
     },
     thread,
     time::Duration,
 };
+
+/// The forking tests hold this shared, the ETXTBSY test exclusive (#2518). A child another
+/// test thread forks while the ETXTBSY test's write fd is open keeps a copy until its own
+/// exec, so in rc-ci (job 131198747457) the final exec there met ETXTBSY from such a child;
+/// with the lock the only child holding that fd is the test's own handshake child.
+static FORKS: RwLock<()> = RwLock::new(());
 
 /// Forks a child that stays between fork and exec for `hold`, holding inherited fds.
 fn fork_and_hold(hold: Duration) {
@@ -78,6 +84,7 @@ impl Drop for Release {
 
 #[test]
 fn inherited_writer_fd_makes_exec_fail_with_etxtbsy() {
+    let _alone = FORKS.write().unwrap_or_else(PoisonError::into_inner);
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("stub");
     let mut file = fs::File::create(&path).unwrap();
@@ -123,6 +130,7 @@ fn copy_executable_survives_concurrent_forks() {
 /// Makes and execs 300 executables with `make` while four threads keep forking children that
 /// sit between fork and exec; every exec must succeed.
 fn exec_survives_concurrent_forks(make: impl Fn(&std::path::Path)) {
+    let _shared = FORKS.read().unwrap_or_else(PoisonError::into_inner);
     let tmp = tempfile::tempdir().unwrap();
     let stop = Arc::new(AtomicBool::new(false));
     let forkers: Vec<_> = (0..4)
