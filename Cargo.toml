@@ -3,6 +3,12 @@ name = "moai-cli"
 version = "2026.11.0-rc.1"
 edition = "2021"
 publish = false
+# Package metadata (Issue #2500, #2435 decision 5-A). Each value restates LICENSE or the README
+# opening sentence and Facts block; tests/cargo_metadata_test.py keeps them equal.
+description = "MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared moai skill, with GitHub Issues as the work ledger."
+license = "Apache-2.0"
+repository = "https://github.com/modu-ai/moai-adk"
+homepage = "https://adk.mo.ai.kr"
 
 [dependencies]
 clap = { version = "=4.6.1", features = ["derive"] }
