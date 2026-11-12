@@ -205,7 +205,7 @@ fn repair_reasons(o: &Observation) -> Vec<&'static str> {
         r.push("audit verdict FAIL on the current head");
     }
     if ["failure", "timed_out"].contains(&o.ci.as_str()) {
-        r.push("rc-ci failed");
+        r.push("ci failed");
     }
     if o.mergeable_state == "dirty" {
         r.push("merge conflict with the base");

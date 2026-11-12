@@ -133,14 +133,10 @@ fn stale_conditional_wrong_pr_or_wrong_base_pass_never_counts() {
         let (out, _) = run(ex);
         let r = &out["rows"][0];
         assert!(r["verdict"].is_null());
-        assert_eq!(r["ci"]["rc-ci"]["state"], "not_run");
+        assert_eq!(r["ci"]["ci"]["state"], "not_run");
         assert_eq!(
             r["blocked_reasons"],
-            json!([
-                "audit_missing_or_stale",
-                "rc_ci_not_success",
-                "merge_conflict"
-            ])
+            json!(["audit_missing_or_stale", "ci_not_success", "merge_conflict"])
         );
     }
 }
@@ -180,10 +176,7 @@ fn windows_build_blocks_only_when_it_ran_and_did_not_succeed() {
             blocked,
             "windows-build {windows:?}: {reasons:?}"
         );
-        assert!(
-            !reasons.contains(&json!("rc_ci_not_success")),
-            "{reasons:?}"
-        );
+        assert!(!reasons.contains(&json!("ci_not_success")), "{reasons:?}");
     }
 }
 
@@ -205,7 +198,7 @@ fn newest_ci_attempt_wins_even_when_old_success_appears_first() {
         checks,
     ));
     let (out, _) = run(ex);
-    assert_eq!(out["rows"][0]["ci"]["rc-ci"]["state"], "in_progress");
+    assert_eq!(out["rows"][0]["ci"]["ci"]["state"], "in_progress");
     assert_eq!(out["rows"][0]["ci"]["windows-build"]["state"], "not_run");
     assert_eq!(out["rows"][0]["verdict"]["verdict"], "FAIL");
 }
@@ -288,7 +281,7 @@ fn paginated_checks_use_newest_attempt_and_comment_order_is_by_id() {
     ex.insert(6,common::exchange("GET",&next,common::json_response(200,json!({"check_runs":[check(3,"rc-ci",&h,"failure"),check(4,"windows-build",&h,"success")]}))));
     let (out, _) = run(ex);
     assert_eq!(out["rows"][0]["verdict"]["verdict"], "PASS");
-    assert_eq!(out["rows"][0]["ci"]["rc-ci"]["state"], "failure");
+    assert_eq!(out["rows"][0]["ci"]["ci"]["state"], "failure");
 }
 
 #[test]
@@ -475,7 +468,7 @@ fn repair_final_pr_identity_change_refuses_same_sha_snapshot() {
     }
 }
 
-/// #2563: the CI check renamed `rc-ci` → `ci`. The `rc-ci` row reads runs under either
+/// #2563: the CI check renamed `rc-ci` → `ci`. The `ci` row reads runs under either
 /// spelling and the newest run (largest id) decides, whichever name it carries; a matrix
 /// job name never counts. A newer failure under the other name is not hidden by an older
 /// success, so accepting both names does not weaken the success requirement.
@@ -520,10 +513,10 @@ fn ci_row_reads_both_names_and_the_newest_run_decides() {
         ));
         let (out, _) = run(ex);
         let row = &out["rows"][0];
-        assert_eq!(row["ci"]["rc-ci"]["state"], state, "{checks:?}");
+        assert_eq!(row["ci"]["ci"]["state"], state, "{checks:?}");
         let blocked = row["blocked_reasons"].as_array().unwrap();
         assert_eq!(
-            blocked.iter().any(|b| b == "rc_ci_not_success"),
+            blocked.iter().any(|b| b == "ci_not_success"),
             state != "success",
             "{checks:?} {blocked:?}"
         );
