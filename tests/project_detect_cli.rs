@@ -380,7 +380,11 @@ fn a_malformed_detected_value_is_refused() {
 #[test]
 fn detection_reads_manifests_and_databases_at_the_root_only() {
     let root = TempDir::new().unwrap();
-    write(root.path(), "web/package.json", r#"{"dependencies":{"pg":"8"}}"#);
+    write(
+        root.path(),
+        "web/package.json",
+        r#"{"dependencies":{"pg":"8"}}"#,
+    );
     write(root.path(), "web/index.js", "console.log(1)\n");
     write(
         root.path(),
@@ -393,7 +397,11 @@ fn detection_reads_manifests_and_databases_at_the_root_only() {
     assert_eq!(d["languages"], json!(["javascript"]));
     assert_eq!(d["databases"], json!([]));
 
-    write(root.path(), "package.json", r#"{"dependencies":{"pg":"8"}}"#);
+    write(
+        root.path(),
+        "package.json",
+        r#"{"dependencies":{"pg":"8"}}"#,
+    );
     let d = detect(&root)["detected"].clone();
     assert_eq!(d["manifests"], json!(["package.json"]));
     assert_eq!(d["databases"], json!(["postgres"]));
@@ -432,7 +440,10 @@ fn project_apply_takes_the_plan_result_not_the_envelope() {
     let out = run(&["project-plan", p(&root)], profile.to_string().as_bytes());
     let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(envelope["ok"], json!(true), "{envelope}");
-    let digest = envelope["result"]["plan_digest"].as_str().unwrap().to_string();
+    let digest = envelope["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let apply = |stdin: &Value| {
         run(
             &[
