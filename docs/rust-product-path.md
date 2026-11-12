@@ -713,7 +713,7 @@ The decision, first match wins:
 | reviewer not independent (table below) | blocked | blocked | `independence-missing` |
 | PROJECT has no workspace id | held | unknown | `workspace-unknown` |
 | PROJECT's workspace id differs from the candidate's | rejected | failed | `foreign-workspace` |
-| PROJECT's commit or tree differs from the candidate (a reviewer edit makes a new candidate) | rejected | stale | `candidate-changed` |
+| PROJECT's commit or tree differs from the candidate (a reviewer edit makes a new candidate; PROJECT is observed again after the checks ran, so a check that changes the tree is caught too, #2392 F8) | rejected | stale | `candidate-changed` |
 | PR `head.sha` differs from the candidate commit | rejected | stale | `pr-head-mismatch` |
 | PR lookup failed or the JSON has no `head.sha` | held | unknown | `pr-lookup-failed` |
 | reviewer opinion contradicts the evidence, either way | held | unknown | `opinion-conflicts-with-evidence`, also added as a finding |
