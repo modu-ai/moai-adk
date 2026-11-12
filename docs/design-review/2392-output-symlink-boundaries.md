@@ -1,8 +1,10 @@
 # Issue #2392: incomplete output and symlink boundary preparation
 
-Status: RED reproduced; production repair not implemented. No PR is authorized.
-Base: `523052622385751f7ccc473cddff709d99834bb1`.
-Claim: `Moai-Claim: 2392#6782198349` (agent-19, epoch 4).
+Status: F6 repaired (see "F6 repair as implemented"); F5c still an ignored RED awaiting
+the classification decision (request 6807717170, options and recommendation 6809803334).
+Preparation base: `523052622385751f7ccc473cddff709d99834bb1` (agent-19).
+Claims: `Moai-Claim: 2392#6782198349` (agent-19, epoch 4, preparation), handed off by
+6809689773 to `Moai-Claim: 2392#6809707646` (agent-7, epoch 5, F6 repair).
 Sources actually read: Issue #2392 body/comments, comparison 6793261122,
 `src/verify.rs`, `src/scope.rs`, and the committed decisions log.
 Design comment: 6807658907. Reproduction and decision request: 6807717170.
@@ -103,6 +105,50 @@ This is an observation at check time, not a filesystem sandbox or an atomic
 check-and-write guarantee. A later symlink swap is a separate race; do not claim
 this design eliminates it. Production changes, GREEN, mutants, and exact-head
 hosted CI remain unverified until implementation and actual execution.
+
+## F6 repair as implemented (agent-7)
+
+`scope::check_and_record` now measures the project top level with
+`worktree::identity(project)` (never the record's own `worktree.path`) and, before the
+journal lock, runs `physical_findings(root, write_scope)`:
+
+- The raw spelling of each entry is walked from the root; `..` is not folded. An absolute
+  entry blocks as `absolute`, any `..` component as `parent_component`.
+- Each level is listed with `read_dir` and checked with `symlink_metadata`; names match
+  case-insensitively with the existing `*` rule. A link anywhere the entry reaches (an
+  intermediate part, the matched entry, or below a covered directory or `**`) blocks as
+  `symlink`. Links are never followed, so internal aliases, dangling links and cycles block
+  alike.
+- A missing part matches no entry and stays a new path. Any listing or metadata error blocks
+  as `unreadable`; more than 100,000 entries read blocks as `inspection_budget`.
+- A finding sets `decision=blocked`, `record_update_request.reason=scope_symlink` and the
+  journal effect `scope_symlink` with the findings. An integration order does not lift it.
+  `physical_check` reports the inspected root and the findings. `check`/`check_with` and
+  `overlap` stay lexical and unchanged.
+
+Measured before choosing the conservative rule: a built worktree held no symlink outside
+`.git` (`find . -path ./.git -prune -o -type l -print` printed nothing), the repository
+tracks no symlink, and the local claim journal does not exist, so no current scope is
+blocked by it.
+
+| Boundary | Result | Test |
+| --- | --- | --- |
+| Directory prefix plus symlink escape | blocked, sentinel unchanged | `boundary_output_scope::scope_symlink_escape_must_be_blocked` (no longer ignored) |
+| Literal link, link as an intermediate part, `*`, `l*k`, case variant | blocked | `scope_symlink_cli::links_reached_by_any_scope_form_block` |
+| Internal alias, dangling link, self-loop, nested below `**` | blocked, not followed | `scope_symlink_cli::internal_dangling_and_nested_links_block_without_traversal` |
+| `link/../x`, `../outside/**`, absolute | blocked | `scope_symlink_cli::absolute_and_parent_entries_block`, unit `inspection_refuses_absolute_parent_and_budget` |
+| Plain scope, `*.rs` not matching a link, link outside the scope, new tail | clear | `scope_symlink_cli::plain_scopes_and_links_outside_the_scope_stay_clear` |
+| Integration order, journal effect, repeat adds no event | blocked; effect `scope_symlink` | `scope_symlink_cli::integration_order_does_not_lift_a_link_block_and_the_journal_records_it` |
+| Inspection budget, unreadable directory | blocked | unit `inspection_refuses_absolute_parent_and_budget`, `inspection_fails_closed_on_an_unreadable_directory` |
+| Other active worktree physical alias | not covered: only the scope-check worktree is inspected | not_run |
+| Link created after the check (swap race) | out of scope: check-time observation only | not_run |
+| Windows runtime | the new tests are `cfg(unix)` | not_run |
+
+Guard mutants (one unique line each, three targets run separately, source restored and
+`git diff --quiet HEAD` checked after each): 11 of 12 FAILED a runtime assertion with no
+compile error. The survivor, "a missing directory blocks", sat on a `NotFound` branch that
+cannot be reached because only observed directories are listed; that branch was removed and
+every listing error now fails closed, whose mutant then FAILED.
 
 ## Preparation verification (base 5230526223)
 
