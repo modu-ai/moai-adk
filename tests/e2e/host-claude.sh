@@ -38,7 +38,11 @@ WORK="$(mktemp -d /tmp/e2e-claude-XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
 SKILL_DIGEST="$(shasum -a 256 "$REPO/skills/moai/SKILL.md" | awk '{print $1}')"
 CLI_SHA="$(command -v moai-cli >/dev/null 2>&1 && shasum -a 256 "$(command -v moai-cli)" | awk '{print $1}' || echo absent)"
-HOST_VERSION="$(claude --version 2>/dev/null | head -1 || echo unknown)"
+# Every claude call, the static ones included, runs with HOME in the temporary work dir:
+# the version probe and `plugin validate` need no user state, so the operator's real
+# HOME is never read or written (#2014 agent-8 N4).
+mkdir -p "$WORK/home"
+HOST_VERSION="$(HOME="$WORK/home" claude --version 2>/dev/null < /dev/null | head -1 || echo unknown)"
 
 # Pre-step: project the skill into the temporary project for both host layouts, and
 # give the -p runs an isolated HOME (no personal-skill shadowing, no real-HOME writes).
@@ -60,7 +64,7 @@ keep() {
 }
 
 # AC-08C-5: static validity — local frontmatter validation, no credentials needed.
-if claude plugin validate "$WORK/project/.claude/skills" > "$WORK/ac5.out" 2>&1; then
+if HOME="$WORK/home" claude plugin validate "$WORK/project/.claude/skills" < /dev/null > "$WORK/ac5.out" 2>&1; then
   receipt "AC-08C-5" passed "$(keep ac5.out)"
 else
   receipt "AC-08C-5" failed "$(keep ac5.out)"

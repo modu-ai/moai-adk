@@ -1,0 +1,3 @@
+# Golden output is byte-exact, including final blank lines.
+golden/* -whitespace -text
+stdin/* -text

@@ -109,21 +109,21 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "fce4487aaf0a15893213c4172a6538b52429e39f0d9286f577bfc16bb35c1fea",
+      "sha256": "dcd77be6e54c9a7a7b9d6772e1da01a6f3102d219889b72d7ce74f125989cd0b",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. Web pages section (browser choice and rules) added by #2517."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/audit.md": {
-      "sha256": "5d6576d7ec29e3b226330e3022a3acb81c6d1dd08b63b4c8e4270f43f08a7bae",
+      "sha256": "c1aa4619f6687838d24cc362756c58c78532832a5a4f73a747f09626d83117df",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Web pages section (browser choice and rules) added by #2517."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/sync.md": {
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "64f6e15ad845a1c052608884c7004065b774164121dc5f8b8a657e3d554f8614",
+      "sha256": "d5874ab77a394e80840908fc3ce25edaaa62d50b3939d0071d684c04e7a9fa34",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",

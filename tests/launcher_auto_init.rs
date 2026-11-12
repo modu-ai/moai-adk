@@ -232,6 +232,43 @@ fn home_itself_is_never_initialized_also_through_a_symlinked_home() {
     assert!(err.contains("HOME"), "{err}");
 }
 
+/// #2501 (audit note 6812547778, item 2): the root guard through the real CLI. The launch runs
+/// in the real `/` under `--dry-run`, which writes nothing even if the guard were gone (the
+/// guard runs before the dry-run branch, so without it the launch would only report "would
+/// initialize /"). The test also checks that `/` and the temporary HOME are unchanged.
+#[test]
+fn the_file_system_root_is_never_initialized_through_the_cli() {
+    let root = Path::new("/");
+    let not_a_repository = !common::git::command()
+        .args(["-C", "/", "rev-parse", "--is-inside-work-tree"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+        .success();
+    assert!(
+        not_a_repository,
+        "precondition: / must not be a git work tree"
+    );
+    for args in [
+        &["cc", "-a", "--dry-run"][..],
+        &["codex", "-l", "--dry-run"][..],
+    ] {
+        let f = fixture();
+        let home_before = entries(f.home.path());
+        let before = entries(root);
+        let out = run_in(&f, root, args);
+        let err = refused_without_writes(&f, &out, root, &before);
+        assert!(err.contains("the file-system root"), "{args:?}: {err}");
+        assert!(!err.contains("would initialize"), "{args:?}: {err}");
+        assert_eq!(
+            entries(f.home.path()),
+            home_before,
+            "{args:?}: HOME changed"
+        );
+    }
+}
+
 #[test]
 fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
     for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
@@ -378,6 +415,73 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
     );
     let first = first.wait_with_output().unwrap();
     assert_eq!(json(&first)["name"], "agent-1");
+}
+
+/// #2504: a first launch that stops between the settings and AGENTS.md leaves its marker in the
+/// clone's common dir; the next launch finishes the AGENTS.md step and removes the marker. A dry
+/// run in between only reports what it would finish.
+#[test]
+fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path();
+    let marker_file = dir.join(".git/.moai-cli/sessions/.init-pending");
+    let out = command(&f, dir, &with_git(&f), &["cc", "-a"])
+        .env(moai_cli::launcher_init::INIT_TEST_FAIL_VAR, "1")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert!(!marker(&f).exists(), "the host must not start");
+    assert!(dir.join(".moai-cli/project.yaml").is_file());
+    assert!(!dir.join("AGENTS.md").exists());
+    assert!(
+        marker_file.is_file(),
+        "the interrupted launch leaves its marker"
+    );
+
+    let v = json(&run_in(&f, dir, &["cc", "-a", "--dry-run"]));
+    assert!(
+        v["notes"]
+            .to_string()
+            .contains("would finish the interrupted initialization"),
+        "{v}"
+    );
+    assert!(!dir.join("AGENTS.md").exists());
+
+    let out = run_in(&f, dir, &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert_eq!(init_lines(&out), 1, "{}", text(&out));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("interrupted initialization finished"),
+        "{}",
+        text(&out)
+    );
+    let agents = fs::read(dir.join("AGENTS.md")).unwrap();
+    assert!(
+        String::from_utf8_lossy(&agents).contains("<!-- moai:managed:begin id=moai-workflow -->")
+    );
+    assert!(!marker_file.exists(), "the marker is removed once finished");
+
+    let out = run_in(&f, dir, &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-2");
+    assert_eq!(init_lines(&out), 0, "{}", text(&out));
+    assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
+}
+
+/// #2504: only an interrupted first launch is finished. After a complete one the marker is gone,
+/// so an AGENTS.md the user deleted is not brought back (the agents engine's rule as well).
+#[test]
+fn an_agents_md_deleted_after_a_finished_first_launch_stays_deleted() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path();
+    json(&run_in(&f, dir, &["cc", "-a"]));
+    assert!(!dir.join(".git/.moai-cli/sessions/.init-pending").exists());
+    fs::remove_file(dir.join("AGENTS.md")).unwrap();
+    let out = run_in(&f, dir, &["cc", "-a"]);
+    assert_eq!(json(&out)["name"], "agent-2");
+    assert_eq!(init_lines(&out), 0, "{}", text(&out));
+    assert!(!dir.join("AGENTS.md").exists());
 }
 
 /// #2489: two first launches race on `git init` (CI run 43146819966: "git init failed" while

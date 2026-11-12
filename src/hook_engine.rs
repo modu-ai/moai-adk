@@ -159,7 +159,15 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     }
     let verdict = match event {
         Event::SessionCheck => session_check(cwd),
-        Event::ToolPreflight => tool_preflight(&input, cwd),
+        Event::ToolPreflight => {
+            // Stage 7 opt-in rules (B3, B9; decision 6779829826) come from ~/.moai-cli/config,
+            // read once per call; an unusable file leaves them off and one line says why (N1).
+            let loaded = crate::hook_config::load();
+            if let Some(problem) = loaded.problem {
+                record_config_error(&input, cwd, now_unix_ms, host, problem);
+            }
+            tool_preflight(&input, cwd, &loaded.config)
+        }
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
     };
@@ -218,6 +226,27 @@ fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
         "host": host.name(),
         "session": session_key(input),
         "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+}
+
+/// An unusable `~/.moai-cli/config` leaves one `config_error` line (session, host, fixed
+/// reason, time) in the engine log when `.moai-cli/` exists (#2391 N1): no path and no config
+/// text. Best effort, never changes the answer.
+fn record_config_error(
+    input: &Value,
+    cwd: &Path,
+    now_unix_ms: u128,
+    host: Host,
+    problem: crate::hook_config::ConfigProblem,
+) {
+    let line = json!({
+        "schema_version": 1,
+        "kind": "config_error",
+        "host": host.name(),
+        "session": session_key(input),
+        "reason": problem.reason(),
         "unix_ms": now_unix_ms as u64,
     });
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
@@ -406,8 +435,8 @@ fn session_check(cwd: &Path) -> Verdict {
 /// tool-preflight with the confirmation class (B2): any deny — a guard or the claim token, in
 /// any segment of the line — wins; only a call that would be allowed is turned into `Ask`
 /// (Claude's own order is deny > defer > ask > allow).
-fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
-    let verdict = tool_preflight_deny(input, cwd);
+fn tool_preflight(input: &Value, cwd: &Path, config: &crate::hook_config::HookConfig) -> Verdict {
+    let verdict = tool_preflight_deny(input, cwd, config);
     if verdict != Verdict::Allow || input["tool_name"] != json!("Bash") {
         return verdict;
     }
@@ -418,7 +447,11 @@ fn tool_preflight(input: &Value, cwd: &Path) -> Verdict {
     }
 }
 
-fn tool_preflight_deny(input: &Value, cwd: &Path) -> Verdict {
+fn tool_preflight_deny(
+    input: &Value,
+    cwd: &Path,
+    config: &crate::hook_config::HookConfig,
+) -> Verdict {
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
     let tool = input["tool_name"].as_str().unwrap_or("");
     // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
@@ -437,7 +470,6 @@ fn tool_preflight_deny(input: &Value, cwd: &Path) -> Verdict {
     }
     // Stage 7 opt-in rules (B3, B9; decision 6779829826): off unless ~/.moai-cli/config turns
     // them on; a missing or broken config leaves them off.
-    let config = crate::hook_config::load();
     let opt_in = if tool == "Bash" {
         config
             .primary

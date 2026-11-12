@@ -360,18 +360,29 @@ pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duratio
     (rec.tests_passed, rec.tests_failed) = test_counts(&text);
     let success = status.is_some_and(|s| s.success());
     rec.failure_class = classify(None, rec.timed_out, success, &text);
-    // A test command whose output says it ran zero tests tested nothing: `not_run`, not a pass
-    // (#2392 decision 6774899518 row 19 = A). Only cargo `test result:` lines are counted; a
-    // command without them keeps its exit-code result.
     let ran_zero = rec.tests_passed == Some(0) && rec.tests_failed == Some(0);
-    rec.result = if success && !rec.timed_out && ran_zero {
-        CheckResult::NotRun
-    } else if success && !rec.timed_out {
-        CheckResult::Passed
-    } else {
-        CheckResult::Failed
-    };
+    rec.result = check_result(success, rec.timed_out, ran_zero, rec.output_complete);
     rec
+}
+
+/// The result of a check that was spawned. A failed or timed-out command is `Failed`. A command
+/// that exited 0 is `not_run` when its evidence cannot prove a test ran: its `test result:`
+/// lines sum to zero tests (#2392 decision 6774899518 row 19 = A), or its output was not fully
+/// collected (`output_complete` not true; #2392 F5c, user decision = A). Only cargo `test
+/// result:` lines are counted; a complete output without them keeps its exit-code result.
+fn check_result(
+    success: bool,
+    timed_out: bool,
+    ran_zero: bool,
+    output_complete: Option<bool>,
+) -> CheckResult {
+    if !success || timed_out {
+        CheckResult::Failed
+    } else if ran_zero || output_complete != Some(true) {
+        CheckResult::NotRun
+    } else {
+        CheckResult::Passed
+    }
 }
 
 /// `rustc -V` and `cargo -V` as seen from `dir` (a project toolchain file applies there).
@@ -390,5 +401,35 @@ pub fn toolchain(dir: &Path) -> Toolchain {
     Toolchain {
         rustc: first_line("rustc"),
         cargo: first_line("cargo"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check_result, CheckResult};
+
+    // #2392 F5c: every input of the result rule, as literals.
+    #[test]
+    fn check_result_matrix() {
+        use CheckResult::{Failed, NotRun, Passed};
+        let cases = [
+            // (success, timed_out, ran_zero, output_complete) -> result
+            ((true, false, false, Some(true)), Passed),
+            ((true, false, false, Some(false)), NotRun),
+            ((true, false, false, None), NotRun),
+            ((true, false, true, Some(true)), NotRun),
+            ((true, false, true, Some(false)), NotRun),
+            ((true, true, false, Some(true)), Failed),
+            ((false, false, false, Some(true)), Failed),
+            ((false, false, false, Some(false)), Failed),
+            ((false, true, true, None), Failed),
+        ];
+        for ((success, timed_out, ran_zero, complete), want) in cases {
+            assert_eq!(
+                check_result(success, timed_out, ran_zero, complete),
+                want,
+                "{success} {timed_out} {ran_zero} {complete:?}"
+            );
+        }
     }
 }
