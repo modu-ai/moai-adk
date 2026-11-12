@@ -51,14 +51,6 @@ entries:
     measure: verdict-rendered
 
   - kind: github-workflow
-    locator: .github/workflows/community.yml
-    events: [issues, pull_request_target, schedule]
-    window: 3d
-    # The daily schedule is the floor; the responder jobs skip when there is
-    # nothing to triage.
-    measure: fired-at-all
-
-  - kind: github-workflow
     locator: .github/workflows/docs-i18n-check.yml
     events: [pull_request, push]
     window: 60d
