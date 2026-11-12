@@ -1077,12 +1077,35 @@ fn launch(
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
+    // #2481 (user decisions 6810797000, 6810818827): the first launch in a folder that is not a
+    // project initializes it (git init, settings, AGENTS.md). Options are composed first, so a
+    // launch refused anyway writes nothing; numbering follows the initialization.
+    let init = match std::env::current_dir() {
+        Ok(here) => {
+            let mut probe = request.clone();
+            if numbered {
+                probe.name = Some("agent-0".into());
+            }
+            moai_cli::session::compose(&probe)?;
+            moai_cli::launcher_init::prepare(&here, host, o.dry_run)?
+        }
+        Err(_) => moai_cli::launcher_init::Prepared::default(),
+    };
+    if let (false, Some(note)) = (o.dry_run, &init.note) {
+        eprintln!("{note}");
+    }
     let mut number_note = None;
     if numbered {
         let here = std::env::current_dir()
             .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
-        let dir = moai_cli::session::agent_seq_dir(&here)?;
-        let n = if o.dry_run {
+        let n = if o.dry_run && init.git_pending {
+            number_note = Some(
+                "agent-N preview: --dry-run takes no number (the store is created by git init)"
+                    .to_string(),
+            );
+            1
+        } else if o.dry_run {
+            let dir = moai_cli::session::agent_seq_dir(&here)?;
             number_note = Some(format!(
                 "agent-N preview: --dry-run takes no number (store {})",
                 dir.display()
@@ -1093,6 +1116,7 @@ fn launch(
             // option) takes no number.
             request.name = Some("agent-0".into());
             moai_cli::session::compose(&request)?;
+            let dir = moai_cli::session::agent_seq_dir(&here)?;
             let n = take_agent_number(&here)?;
             number_note = Some(format!("agent number {n} taken (store {})", dir.display()));
             n
@@ -1102,6 +1126,7 @@ fn launch(
     let mut v = session_launch(&request, o.dry_run)?;
     if let Some(notes) = v["notes"].as_array_mut() {
         notes.extend(advisor_note.map(Into::into));
+        notes.extend(init.note.map(Into::into));
         notes.extend(number_note.map(Into::into));
     }
     Ok(v)
