@@ -477,6 +477,73 @@ fn a_preview_with_nothing_to_write_says_so() {
     assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
 }
 
+/// The everyday rerun: the package was applied once, so every host is `unchanged`.
+fn applied_once() -> (Fx, PathBuf) {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let p = preview(&a, &f.home);
+    confirm(&a, &f.home, &digest(&p));
+    (f, a)
+}
+
+// #2540 AC-3 (pre-audit 6824540371 F1): a preview where every host is unchanged has nothing
+// to apply.
+#[test]
+fn a_preview_of_an_already_applied_package_has_nothing_to_apply() {
+    let (f, a) = applied_once();
+    let p = preview(&a, &f.home);
+    for h in HOSTS {
+        assert_eq!(
+            host(&p["plan"]["hosts"], h)["preflight"],
+            json!("ok"),
+            "{p}"
+        );
+        assert!(
+            plan_actions(&p, h).iter().all(|(_, a)| a == "unchanged"),
+            "{p}"
+        );
+    }
+    assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
+}
+
+// #2540 (pre-audit 6824540371 N1): a plan whose only difference is a file the user changed
+// (a conflict, never written) has nothing to apply either.
+#[test]
+fn a_preview_with_only_a_conflict_has_nothing_to_apply() {
+    let (f, a) = applied_once();
+    fs::write(
+        f.home.join(".claude/skills/moai/workflows/update.md"),
+        "# UPDATE\nmy own notes\n",
+    )
+    .unwrap();
+    fs::write(
+        f.home
+            .join(".moai-cli/versions/a/skills/moai/workflows/update.md"),
+        "# UPDATE\nv2\n",
+    )
+    .unwrap();
+    let p = preview(&a, &f.home);
+    assert!(
+        plan_actions(&p, "claude").contains(&("workflows/update.md".into(), "conflict".into())),
+        "{p}"
+    );
+    assert!(
+        !plan_actions(&p, "claude")
+            .iter()
+            .any(|(_, a)| a == "create" || a == "update"),
+        "{p}"
+    );
+    // codex has no user edit, so it would update; only claude is conflict-only.
+    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
+    fs::write(
+        f.home.join(".agents/skills/moai/workflows/update.md"),
+        "# UPDATE\nmy own notes too\n",
+    )
+    .unwrap();
+    let p = preview(&a, &f.home);
+    assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
+}
+
 /// Runs `update` in a pseudo terminal with nothing typed, and returns everything shown.
 #[cfg(target_os = "macos")]
 fn run_in_terminal_unanswered(exe: &Path, home: &Path) -> String {
@@ -508,5 +575,18 @@ fn in_a_terminal_nothing_to_write_asks_nothing() {
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
     assert!(text.contains("\"mode\":\"preview\""), "{text}");
+    assert_eq!(state(&f.home), before);
+}
+
+// #2540 AC-3 (pre-audit 6824540371 F1): in a terminal, rerunning `update` on an already
+// applied package asks nothing.
+#[cfg(target_os = "macos")]
+#[test]
+fn in_a_terminal_an_already_applied_package_asks_nothing() {
+    let (f, a) = applied_once();
+    let before = state(&f.home);
+    let text = run_in_terminal_unanswered(&a, &f.home);
+    assert!(!text.contains("[y/N]"), "{text}");
+    assert!(text.contains("\"nothing_to_apply\":true"), "{text}");
     assert_eq!(state(&f.home), before);
 }
