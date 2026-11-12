@@ -63,6 +63,15 @@
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071)."
       }
     },
+    "references/session-control-orca.md": {
+      "sha256": "0cc6735e52a21f178d4ed09be9156632a938f1c26a255840b77d252e63894842",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "reference-session-control-orca",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2516 from the study of orca 1.4.256 (Issue #2516 comment 6823174285): how to read Orca's version-matched guides and the MoAI rules on top of them, without restating Orca's commands. No design-22 template exists for session control."
+      }
+    },
     "workflows/read.md": {
       "sha256": "e4437eed0d9d8ba561531b2beff4ef3a4cf6823b77d2d3e8be1527e74a08b364",
       "origin": {

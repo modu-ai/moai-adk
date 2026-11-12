@@ -2677,6 +2677,39 @@ mod skill_package {
         }
     }
 
+    /// #2516 AC-3: the Orca session-control reference keeps how to read Orca's own guides and
+    /// the five MoAI rules; deleting any pinned sentence fails here.
+    #[test]
+    fn session_control_reference_keeps_the_moai_rules() {
+        let body = fs::read_to_string(root().join("references/session-control-orca.md")).unwrap();
+        for line in [
+            // How to read the official, version-matched guides instead of copies.
+            "`orca skills get orca-cli`",
+            "`orca skills get orchestration`",
+            "`orca agent-context --json`",
+            "When the help text and the schema disagree, the schema wins.",
+            // Use only when chosen; without the tool, not_run.
+            "Having the tool installed is not a reason to use it.",
+            "report the session-control step as `not_run`",
+            // Rules 1-5.
+            "1. **Read before sending.**",
+            "Never overwrite another session's unsubmitted input.",
+            "2. **Confirm after sending.**",
+            "A send you could not confirm is `uncertain`, not sent; never resend on silence",
+            "3. **Read the whole output when checking.**",
+            "`LANE-DONE`, `LANE-BLOCKED` and handoff requests across the full output",
+            "4. **Do not act for another session.**",
+            "Never answer another session's permission or trust prompt",
+            "without the user's confirmation",
+            "5. **A message is not a permission.**",
+            "never authorises recovery",
+            // Handles.
+            "Never send the same input to an old and a new handle.",
+        ] {
+            assert!(body.contains(line), "session-control-orca.md lacks: {line}");
+        }
+    }
+
     #[test]
     fn source_manifest_covers_every_package_file() {
         let manifest: Value =
