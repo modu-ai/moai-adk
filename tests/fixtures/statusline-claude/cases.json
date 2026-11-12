@@ -108,17 +108,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           }
         }
@@ -713,17 +713,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           }
         }
@@ -796,7 +796,7 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "available zero counts display I: 0 / PR: 0",
+        "available zero counts display ❗ 0 / 🔀 0",
         "three-line full layout with repository -> counts -> branch -> file counts"
       ],
       "recorded_with": {
@@ -804,17 +804,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           }
         }
@@ -844,7 +844,7 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "available normal counts display I: 7 / PR: 3",
+        "available normal counts display ❗ 7 / 🔀 3",
         "directory, PR state, agent and active task remain absent even when explicitly enabled"
       ],
       "recorded_with": {
@@ -852,17 +852,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "6ab8c0a500788614db8eeb3342c7d7609713217bd86069b4c65c7180a631f0da",
+            "sha256": "f7650a87770c0432cd29c3346e2b653377ef8e5e9fb3fa31d8cc28c20d9be238",
             "stdout": "PTY"
           }
         }

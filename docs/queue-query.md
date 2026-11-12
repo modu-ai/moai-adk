@@ -37,13 +37,16 @@ an error; the CLI does not return an apparently complete partial train.
   incidental SHA mentions and other PRs are excluded. Only the first line is
   projected. Existing PR-comment precedence over Issue comments is preserved;
   each source is sorted/deduplicated by comment ID as in lane-status.
-- `ci` reports `rc-ci` and `windows-build` separately, on the exact head, from
-  GitHub Actions check runs. Paginated attempts are compared by check ID so an old
+- `ci` reports `ci` and `windows-build` separately, on the exact head, from
+  GitHub Actions check runs (the key and the reason `ci_not_success` were `rc-ci`
+  and `rc_ci_not_success` before #2563). The `ci` entry reads the aggregate CI
+  check under either name, `ci` or its former name `rc-ci`; the newest run under
+  either name decides, and a matrix job such as `ci / linux-x86_64` never counts. Paginated attempts are compared by check ID so an old
   success cannot mask a newer running/failed attempt. Missing is `not_run`;
   running, failure, cancelled, skipped and unknown never become success. A PR run
   has no `windows-build` (#2554, user decision U10: it runs after merge), so a
   missing `windows-build` or one its job condition skipped (`skipped`) does not
-  block; one that ran on the head and is not `success` does. `rc-ci` must be
+  block; one that ran on the head and is not `success` does. The CI check must be
   `success`.
 - `blocked_reasons` lists every observed impediment: predecessor, closed/draft PR,
   unknown/expired ownership, open dependency, missing/stale/failed audit,

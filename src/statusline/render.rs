@@ -147,7 +147,7 @@ impl Renderer {
                 if !s.goal_armed {
                     match segments::handoff_stage(&s.memory, s.auto_compact) {
                         HandoffStage::Hard => bar.push_str(" (🛑/clear!)"),
-                        HandoffStage::Soft => bar.push_str(" (⚠️/clear)"),
+                        HandoffStage::Soft => bar.push_str(" (⚠️ /clear)"), // #2559: space before /clear
                         HandoffStage::None => {}
                     }
                 }
@@ -245,7 +245,8 @@ impl Renderer {
             return Some(branch);
         };
         let forge = if self.enabled("github") && s.github.available && !s.github.suppressed {
-            format!(" | I: {} / PR: {}", s.github.open_issues, s.github.open_prs)
+            // #2559 (user instruction 2026-11-12): icons instead of letter labels.
+            format!(" | ❗ {} / 🔀 {}", s.github.open_issues, s.github.open_prs)
         } else {
             String::new()
         };
@@ -340,7 +341,7 @@ mod tests {
             plain(&full_status(), &[]),
             "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m | 💬 MoAI\n\
              🏷️ release  🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%\n\
-             📡 owner/repo | I: 7 / PR: 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
+             📡 owner/repo | ❗ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
         );
     }
 
@@ -391,7 +392,9 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("📡 owner/repo | I: 0 / PR: 0 | 🅱️ main ↓2 +3"));
+        assert!(with_zero.contains("📡 owner/repo | ❗ 0 / 🔀 0 | 🅱️ main ↓2 +3"));
+        // #2559: icons, not the old letter labels.
+        assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         status.github.available = false;
         let absent = plain(&status, &[]);
         assert!(absent.contains("📡 owner/repo | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"));
@@ -477,7 +480,7 @@ mod tests {
             },
             ..Default::default()
         };
-        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (⚠️/clear)");
+        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (⚠️ /clear)");
         status.memory.tokens_used = 190_000;
         assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (🛑/clear!)");
         status.goal_armed = true;
