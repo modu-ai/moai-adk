@@ -467,3 +467,49 @@ fn a_symlink_planted_at_the_git_init_lock_is_not_followed() {
         .file_type()
         .is_symlink());
 }
+
+/// PR #2494 re-audit B1': `init_lock` must actually apply the owner rule. Without a second
+/// account: the test itself holds the lock file (owned by this account) while HOME is `/usr`,
+/// whose owner is root, so the lock is not "ours" and the launch must not wait on it — it falls
+/// back to the unlocked init and finishes while the lock is still held.
+#[test]
+fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = tempfile::tempdir().unwrap();
+    let canonical = plain.path().canonicalize().unwrap();
+    let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
+    let lock = tmp.path().join(format!(
+        "moai-cli-git-init-{}.lock",
+        &id.strip_prefix("sha256:").unwrap()[..16]
+    ));
+    let held = fs::File::create(&lock).unwrap();
+    held.lock().unwrap();
+    {
+        use std::os::unix::fs::MetadataExt;
+        assert_ne!(
+            fs::metadata("/usr").unwrap().uid(),
+            fs::metadata(&lock).unwrap().uid(),
+            "the test needs a HOME owned by another account"
+        );
+    }
+    let mut child = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+        .env("TMPDIR", tmp.path())
+        .env("HOME", "/usr")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    while child.try_wait().unwrap().is_none() {
+        if start.elapsed().as_secs() > 90 {
+            let _ = child.kill();
+            panic!("the launch waited on a lock that is not the HOME owner's");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert!(plain.path().join(".git").is_dir());
+    drop(held);
+}
