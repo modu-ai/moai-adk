@@ -28,6 +28,8 @@ const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
 /// generating `AGENTS.md` (at most 3000), so a test can show a concurrent launch waits.
 pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
+/// Test-only (Issue #2504, not implemented yet in this RED commit).
+pub const INIT_TEST_FAIL_VAR: &str = "MOAI_CLI_TEST_INIT_FAIL_AFTER_PROFILE";
 
 /// What [`prepare`] did or, under `--dry-run`, would do.
 #[derive(Debug, Default)]
@@ -341,6 +343,32 @@ mod tests {
         let p = default_profile("___", "codex").unwrap();
         assert_eq!(p.project_id, "project");
         assert_eq!(p.hosts, ["codex"]);
+    }
+
+    #[test]
+    fn writing_the_first_launch_profile_keeps_the_key_vault_folder_name() {
+        // #2504 AC-2: the key vault names a project folder from the profile's project_id when
+        // there is one, else from the primary folder name. The first-launch project_id must make
+        // both give the same folder, so writing the profile never moves the vault folder.
+        let hex = "0123456789abcdef";
+        for folder in [
+            "My Project",
+            "example.git",
+            "a__b",
+            "---",
+            "Ünïcode Dir",
+            "x".repeat(60).as_str(),
+            "Mixed.Case-Name_1",
+        ] {
+            let anchor = PathBuf::from("/x").join(folder).join(".git");
+            let name = primary_name(&anchor);
+            let p = default_profile(&name, "claude").unwrap();
+            assert_eq!(
+                crate::key_vault::folder_name(Some(&p.project_id), &name, hex),
+                crate::key_vault::folder_name(None, &name, hex),
+                "{folder}"
+            );
+        }
     }
 
     #[test]
