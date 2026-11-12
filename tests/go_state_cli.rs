@@ -139,28 +139,35 @@ fn only_unchanged_template_files_are_offered_for_moving() {
     let mut fx = Fx::new();
     fx.deployed(".moai/config/sections/a.yaml", "a: 1\n");
     fx.deployed(".claude/workflows/w.md", "# w\n");
-    fx.deployed(".moai/config/sections/b.yaml", "b: 1\n");
-    fx.write(".moai/config/sections/b.yaml", "b: 2 # edited\n");
+    fx.deployed(".claude/rules/b.md", "b: 1\n");
+    fx.write(".claude/rules/b.md", "b: 2 # edited\n");
     fx.write("AGENTS.md", "mine\n");
     fx.record("AGENTS.md", "user_created", &sha(b"mine\n"));
-    fx.write(".moai/config/sections/u.yaml", "u: 1\n");
-    fx.record(
-        ".moai/config/sections/u.yaml",
-        "user_modified",
-        &sha(b"u: 1\n"),
-    );
+    fx.write(".claude/rules/u.md", "u: 1\n");
+    fx.record(".claude/rules/u.md", "user_modified", &sha(b"u: 1\n"));
     fx.write(".moai/specs/SPEC-1/spec.md", "# spec\n");
     fx.manifest();
     let p = plan(&fx);
     assert_eq!(p["manifest_version"], json!("v3.2.1-rc.6"));
-    assert_eq!(action(&p, ".moai/config/sections/a.yaml").0, "move");
+    // Decision 1: `.moai/` moves as one folder; nothing under it moves on its own.
+    assert_eq!(
+        action(&p, ".moai"),
+        (
+            "move",
+            "the Go .moai/ folder as a whole (decision 1, #2561 comment 6831345102)"
+        )
+    );
+    assert_eq!(
+        action(&p, ".moai/config/sections/a.yaml"),
+        ("with_folder", "moves with .moai/ as a whole")
+    );
     assert_eq!(action(&p, ".claude/workflows/w.md").0, "move");
     assert_eq!(
-        action(&p, ".moai/config/sections/b.yaml"),
+        action(&p, ".claude/rules/b.md"),
         ("leave", "changed since the Go deploy")
     );
     assert_eq!(
-        action(&p, ".moai/config/sections/u.yaml"),
+        action(&p, ".claude/rules/u.md"),
         ("leave", "not template_managed")
     );
     assert_eq!(
@@ -184,13 +191,13 @@ fn links_and_escaping_keys_are_never_moved() {
         "template_managed",
         &sha(b"#!/bin/sh\n"),
     );
-    fx.write(".moai/config/real.yaml", "x\n");
+    fx.write(".claude/rules/real.md", "x\n");
     symlink(
-        fx.root.join(".moai/config/real.yaml"),
-        fx.root.join(".moai/config/link.yaml"),
+        fx.root.join(".claude/rules/real.md"),
+        fx.root.join(".claude/rules/link.md"),
     )
     .unwrap();
-    fx.record(".moai/config/link.yaml", "template_managed", &sha(b"x\n"));
+    fx.record(".claude/rules/link.md", "template_managed", &sha(b"x\n"));
     fx.record(".moai/../escape.txt", "template_managed", &sha(b""));
     fx.record("/etc/passwd", "template_managed", &sha(b""));
     fx.manifest();
@@ -200,7 +207,7 @@ fn links_and_escaping_keys_are_never_moved() {
         ("leave", "a path component is a symlink")
     );
     assert_eq!(
-        action(&p, ".moai/config/link.yaml"),
+        action(&p, ".claude/rules/link.md"),
         ("leave", "a path component is a symlink")
     );
     assert_eq!(
@@ -383,16 +390,38 @@ fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
             "{rel} kept byte for byte in the backup"
         );
     }
-    // Changed, unrecorded and manifest files stay where they were.
-    assert_eq!(
-        fs::read_to_string(fx.root.join(".moai/config/sections/b.yaml")).unwrap(),
-        "b: 2 # edited\n"
-    );
-    assert!(fx.root.join(".moai/specs/SPEC-1/spec.md").is_file());
-    assert!(fx.root.join(".moai/manifest.json").is_file());
+    // Decision 1: the whole `.moai/` folder went to the backup in one rename, changed,
+    // unrecorded and manifest files included, byte for byte.
+    assert!(!fx.root.join(".moai").exists(), ".moai moved away");
+    for (rel, body) in [
+        (".moai/config/sections/b.yaml", "b: 2 # edited\n"),
+        (".moai/specs/SPEC-1/spec.md", "# spec\n"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(dir.join("go-state").join(rel)).unwrap(),
+            body,
+            "{rel}"
+        );
+    }
+    assert!(dir.join("go-state/.moai/manifest.json").is_file());
     let receipt: Value =
         serde_json::from_slice(&fs::read(dir.join("go-state-receipt.json")).unwrap()).unwrap();
     assert_eq!(receipt["state"], json!("committed"), "{receipt}");
+    let folder = receipt["moves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["path"] == ".moai")
+        .unwrap()
+        .clone();
+    assert_eq!(folder["kind"], json!("folder"), "{receipt}");
+    assert_eq!(folder["moved"], json!(true));
+    assert!(folder["sha256"].as_str().unwrap().starts_with("sha256:"));
+    assert_eq!(
+        receipt["moves"].as_array().unwrap().last().unwrap()["path"],
+        json!(".moai"),
+        "the folder moves last"
+    );
     assert_eq!(receipt["plan_digest"], p["plan_digest"]);
 
     // AC-2: the preview after the apply offers nothing more, and a second apply is a no-op
@@ -574,9 +603,9 @@ fn a_failure_midway_leaves_a_pending_receipt_the_revert_can_use() {
     let fx = movable_fixture();
     let before = project_tree(&fx);
     let p = plan(&fx);
-    // Moves run in path order: `.claude/workflows/w.md` first, then
-    // `.moai/config/sections/a.yaml`, whose folder cannot lose a file now.
-    let locked = fx.root.join(".moai/config/sections");
+    // Files move first, then `.moai/` in one rename. A folder that cannot be written
+    // cannot change its parent (`..`), so locking `.moai` stops only the folder move.
+    let locked = fx.root.join(".moai");
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
@@ -601,10 +630,7 @@ fn a_failure_midway_leaves_a_pending_receipt_the_revert_can_use() {
         .collect();
     assert_eq!(
         moved,
-        vec![
-            (".claude/workflows/w.md", true),
-            (".moai/config/sections/a.yaml", false)
-        ]
+        vec![(".claude/workflows/w.md", true), (".moai", false)]
     );
     assert!(fx.root.join(".moai/config/sections/a.yaml").is_file());
 
@@ -742,4 +768,268 @@ fn the_live_settings_files_always_stay() {
     );
     assert!(fx.root.join(".claude/settings.local.json").is_file());
     assert!(fx.root.join(".claude/hooks/moai/status.sh").is_file());
+}
+
+// ---- stage 3a: `.moai/` as one folder (decision 1, #2561 comment 6831345102) ----
+
+fn receipt_of(fx: &Fx, backup: &str) -> (PathBuf, Value) {
+    let path = fx
+        .root
+        .join(".moai-cli/backups")
+        .join(backup)
+        .join("go-state-receipt.json");
+    let v = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    (path, v)
+}
+
+/// Decision 2 (fail-closed): while a settings file names a path under `.moai/`, the folder
+/// and everything in it stay; `.claude/` files still move one by one, and the receipt
+/// has no folder entry (so it reads like a stage-2 receipt, without `kind`).
+#[test]
+fn settings_that_reference_moai_keep_the_whole_folder() {
+    for file in [".claude/settings.json", ".claude/settings.local.json"] {
+        let mut fx = movable_fixture();
+        let text = json!({"statusLine": {"type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\""}})
+        .to_string();
+        fx.write(file, &text);
+        fx.record(file, "user_created", &sha(text.as_bytes()));
+        fx.manifest();
+        let p = plan(&fx);
+        assert_eq!(
+            action(&p, ".moai"),
+            (
+                "leave",
+                "settings reference .moai/; the folder stays until they are cleaned (#2581)"
+            ),
+            "{file}"
+        );
+        assert_eq!(
+            action(&p, ".moai/config/sections/a.yaml"),
+            ("leave", "the .moai/ folder stays (see the .moai item)")
+        );
+        assert_eq!(moves(&p), 1, "{file}: only the .claude file: {p}");
+        let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+        assert_eq!(v["ok"], json!(true), "{v}");
+        assert!(fx.root.join(".moai/config/sections/a.yaml").is_file());
+        let (_, r) = receipt_of(&fx, v["result"]["backup"].as_str().unwrap());
+        assert!(!r.to_string().contains("\"kind\""), "{r}");
+    }
+}
+
+/// A live hook recreates `.moai/` after the apply: the revert never merges into it.
+#[test]
+fn a_moai_folder_that_came_back_refuses_the_revert() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fx.write(".moai/logs/hook.log", "written by a live hook\n");
+    let rp = revert_plan(&fx, &backup);
+    let item = rp["result"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".moai")
+        .unwrap()
+        .clone();
+    assert_eq!(item["action"], json!("conflict"), "{rp}");
+    let before = fx.tree();
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains(".moai is conflict"), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+/// The folder's backup is checked against the tree digest the apply recorded.
+#[test]
+fn a_changed_folder_backup_refuses_the_revert() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fx.write(
+        &format!(".moai-cli/backups/{backup}/go-state/.moai/specs/SPEC-1/spec.md"),
+        "# tampered\n",
+    );
+    let rp = revert_plan(&fx, &backup);
+    let item = rp["result"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".moai")
+        .unwrap()
+        .clone();
+    assert_eq!(item["action"], json!("missing"), "{rp}");
+    let before = fx.tree();
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+/// The folder was renamed but the receipt write after it did not happen (the receipt
+/// still says `moved: false`, no digest): the disk decides, and the revert brings it back.
+#[test]
+fn a_folder_move_the_receipt_missed_is_still_restored() {
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, mut r) = receipt_of(&fx, &backup);
+    for m in r["moves"].as_array_mut().unwrap() {
+        if m["path"] == ".moai" {
+            m["moved"] = json!(false);
+            m["sha256"] = json!("");
+        }
+    }
+    r["state"] = json!("pending");
+    fs::write(&path, r.to_string()).unwrap();
+    let rp = revert_plan(&fx, &backup);
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+}
+
+/// A receipt may only name the folder as `.moai` with kind `folder`, and a file entry is
+/// never the folder itself.
+#[test]
+fn a_receipt_with_a_wrong_kind_is_refused() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, original) = receipt_of(&fx, &backup);
+    type Forge = fn(&mut Value);
+    let cases: Vec<(&str, Forge)> = vec![
+        ("folder kind on a file", |r: &mut Value| {
+            r["moves"][0]["kind"] = json!("folder")
+        }),
+        ("file kind on the folder", |r: &mut Value| {
+            let last = r["moves"].as_array().unwrap().len() - 1;
+            r["moves"][last]["kind"] = json!("");
+        }),
+        ("unknown kind", |r: &mut Value| {
+            r["moves"][0]["kind"] = json!("tree")
+        }),
+    ];
+    for (name, edit) in cases {
+        let mut forged = original.clone();
+        edit(&mut forged);
+        fs::write(&path, forged.to_string()).unwrap();
+        let rp = revert_plan(&fx, &backup);
+        assert_eq!(rp["ok"], json!(false), "{name}: {rp}");
+    }
+}
+
+// ---- stage 3b: restore `.moai/specs` into `.moai-cli/specs` (AC-5) ----
+
+fn restore_action<'a>(plan: &'a Value, from: &str) -> &'a str {
+    plan["restores"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["from"] == from)
+        .unwrap_or_else(|| panic!("{from} not in restores: {plan}"))["action"]
+        .as_str()
+        .unwrap()
+}
+
+/// AC-5: the SPEC is copied to `.moai-cli/specs` from the backup and the original stays in
+/// the backup; a SPEC that holds a secret-looking value is not copied; the receipt names
+/// each copy with its hash.
+#[test]
+fn specs_are_restored_from_the_backup_and_secrets_are_not() {
+    let fx = movable_fixture();
+    fx.write(
+        ".moai/specs/SPEC-2/spec.md",
+        "api_key: sk-live-0123456789abcdef\n",
+    );
+    let p = plan(&fx);
+    assert_eq!(restore_action(&p, ".moai/specs/SPEC-1/spec.md"), "copy");
+    assert_eq!(
+        restore_action(&p, ".moai/specs/SPEC-2/spec.md"),
+        "excluded_secret"
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai-cli/specs/SPEC-1/spec.md")).unwrap(),
+        "# spec\n"
+    );
+    assert!(!fx.root.join(".moai-cli/specs/SPEC-2").exists());
+    let dir = fx.root.join(".moai-cli/backups").join(&backup);
+    assert!(dir.join("go-state/.moai/specs/SPEC-1/spec.md").is_file());
+    assert!(dir.join("go-state/.moai/specs/SPEC-2/spec.md").is_file());
+    let (_, r) = receipt_of(&fx, &backup);
+    assert_eq!(
+        r["restored"],
+        json!([{"path": ".moai-cli/specs/SPEC-1/spec.md", "sha256": sha(b"# spec\n")}])
+    );
+}
+
+/// An existing target is never overwritten: the preview says `conflict` and the apply
+/// writes nothing at all.
+#[test]
+fn an_existing_restore_target_stops_the_apply() {
+    let fx = movable_fixture();
+    fx.write(".moai-cli/specs/SPEC-1/spec.md", "# mine, already here\n");
+    let p = plan(&fx);
+    assert_eq!(restore_action(&p, ".moai/specs/SPEC-1/spec.md"), "conflict");
+    let before = fx.tree();
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("never overwritten"), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+/// The revert removes an unchanged restored copy and keeps (and reports) a changed one.
+#[test]
+fn revert_removes_only_unchanged_restored_copies() {
+    let fx = movable_fixture();
+    fx.write(".moai/specs/SPEC-3/spec.md", "# three\n");
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fx.write(
+        ".moai-cli/specs/SPEC-3/spec.md",
+        "# three, edited after the apply\n",
+    );
+    let rp = revert_plan(&fx, &backup);
+    let items = rp["result"]["items"].as_array().unwrap().clone();
+    let act = |path: &str| {
+        items
+            .iter()
+            .find(|i| i["path"] == path)
+            .unwrap_or_else(|| panic!("{path}: {rp}"))["action"]
+            .clone()
+    };
+    assert_eq!(
+        act(".moai-cli/specs/SPEC-1/spec.md"),
+        json!("remove_restored")
+    );
+    assert_eq!(act(".moai-cli/specs/SPEC-3/spec.md"), json!("keep_changed"));
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(!fx.root.join(".moai-cli/specs/SPEC-1/spec.md").exists());
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai-cli/specs/SPEC-3/spec.md")).unwrap(),
+        "# three, edited after the apply\n"
+    );
+    assert!(fx.root.join(".moai/specs/SPEC-3/spec.md").is_file());
+}
+
+/// A receipt may only name restored copies under `.moai-cli/specs/`.
+#[test]
+fn a_receipt_restored_path_elsewhere_is_refused() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, mut r) = receipt_of(&fx, &backup);
+    r["restored"][0]["path"] = json!("src/main.rs");
+    fs::write(&path, r.to_string()).unwrap();
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(false), "{rp}");
 }
