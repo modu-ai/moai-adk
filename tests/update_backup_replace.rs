@@ -919,3 +919,39 @@ fn a_restored_folder_that_differs_from_the_manifest_is_not_marked_restored() {
         json!("recovered")
     );
 }
+
+/// #2544 (audit note C3 on #2505): when moving the staged package into place fails, the
+/// original folder is moved back — whole, byte for byte — and the backup no longer holds it.
+/// A debug-only seam makes that one rename fail; the move back runs for real.
+#[test]
+fn a_failed_move_into_place_puts_the_original_back() {
+    let f = fixture();
+    let before = originals(&f);
+    let p = plan(&f);
+    let r = result_of(&apply(
+        &f,
+        &p,
+        &[&token(&p, "claude")],
+        Some("stage_rename"),
+    ));
+    let h = host(&r, "claude");
+    assert_eq!(h["receipt_status"], json!("pending"), "{r}");
+    let why = h["reload_basis"].as_str().unwrap_or_default();
+    assert!(
+        why.contains("moving the staged package into place failed")
+            && why.contains("the original was moved back"),
+        "{why}"
+    );
+    let root = f.home.join(ROOTS[0].1);
+    assert_eq!(snapshot(&root), before[0], "original back in place");
+    let dir = backup_of(&f.home, "claude");
+    assert!(
+        fs::symlink_metadata(dir.join("moai")).is_err(),
+        "{:?}",
+        entries(&dir)
+    );
+    let rp = recovery_plan(&f);
+    let rb = &host(&rp, "claude")["restore_backup"];
+    assert_eq!(rb["original_at"], json!("root"), "{rb}");
+    assert_eq!(rb["action"], json!("release"), "{rb}");
+}

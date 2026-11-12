@@ -46,12 +46,12 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "ccae6adbdd9d7a1e3f564c82f40bf05d9ecb13437cd1cf751f07f5fc5565aa89",
+      "sha256": "ffea38ac2fdcad86db67a02697228268cfc78c42e6d76ec180a37396f40a335f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515."
       }
     },
     "references/routes.json": {
@@ -100,61 +100,61 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "0d9b9fc865fa804b2267a02450cec196caf0cdca46c6c1a02eaed5b7daa35e81",
+      "sha256": "f029ccd552df6f0015a63098bdfc9a2d1c67a9647f81eb69b2d2c3d06dfdae74",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/verify.md": {
-      "sha256": "235956ad4d1d5f8eb7271d572cadd3e05208fa411f3a44d93a7d5bedbbe917e1",
+      "sha256": "57c99a018d4acfe83af67b99585f2288a85177d3e867dfff97ed35301b701337",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/audit.md": {
-      "sha256": "cd0835bb3527f01fcecbcae366509e8c0144590650188c1cbb5117ebf216062d",
+      "sha256": "c1aa4619f6687838d24cc362756c58c78532832a5a4f73a747f09626d83117df",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517."
       }
     },
     "workflows/sync.md": {
-      "sha256": "5b2d7a6c6dbddf1c83f1f0853f4113d6bbd18e445eadd4fa94417f0fe40d3713",
+      "sha256": "228350833a15547e9ea8fd5858e9e2ed1cff250f30f773e18141e542ac4c5cde",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 8 merge-train bullet follows the U6 integration gate — #2515."
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "64f6e15ad845a1c052608884c7004065b774164121dc5f8b8a657e3d554f8614",
+      "sha256": "ae405f2711db57630f94cddfac5c58a766bee2391dda64bc0119e89c0873d367",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8 and 9: lanes open their own pull requests and the leader names a lane only when the order matters; the U6 integration gate (merge without re-merging the tip when nothing conflicts or overlaps) — #2515. Step 7 restart (not dispatch) of stopped lanes, step 10 same-round answers and same-session handoff lines, step 9 docs-only overlap exception — #2515. Step 7 sorts open Issues and hands ownerless ones (no claim or a dead session's expired claim) to idle lanes (cause 8, #2515)."
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "1fc1cd4edf83be86fc3a400aa30716e6980a0d7fe2860902feb5435100d802c5",
+      "sha256": "27655a0bdfbf148c5f9d12de1d6a82420a9d2395896bcc2099a49f878bb4a88c",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8, 9, 12 and 13: lanes open their own pull requests below four non-draft ones and settle a simultaneous opening by the four lowest numbers (others become drafts), the U6 integration gate (no tip chasing), the one-line round, and the waiting-branch suffix — #2515. Steps 12 keep-going and 14 wake added, report/pr-gate/heavy-checks/claim/goal-lines/self-pick changed so a round never stops on LANE-DONE, a full open-PR count, a wait or a leader request (#2515 comment 6823975793). Step 3 four-way Issue counts and step 13 LANE-BLOCKED for expired foreign claims (cause 8, #2515 comment 6824158448). Step 13 end condition matches keep-going (audit 6824297146 N1). Worktree sessions without the project settings file run no project hook, so claim-verify is the only boundary there (#2581)."
       }
     },
     "workflows/project.md": {
-      "sha256": "e98007c6bf5aea49e8bc38d385ba3f464b32e00882a12377e7fdacb27061a42c",
+      "sha256": "1c8669b8fdb8f7b06541f607860e4d4d32dab362a1d74f514f5b011ab8f79912",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",

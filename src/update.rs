@@ -346,6 +346,20 @@ pub(crate) fn source_tree_sha256(files: &[BackupFile]) -> String {
     sha256_hex(text.as_bytes())
 }
 
+/// Test seam (#2544): `MOAI_CLI_TEST_FAULT=<point>` makes one rename report a failure as if
+/// the OS refused it, without performing it, so the recovery after it runs for real. Debug
+/// builds only; a release build never consults it.
+fn injected_rename_error(point: &str) -> Option<std::io::Error> {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+        return Some(std::io::Error::other(format!(
+            "injected test fault at {point}"
+        )));
+    }
+    let _ = point;
+    None
+}
+
 /// Test seam (#2483 AC-4): `MOAI_CLI_TEST_FAULT=<point>` fails the backup-then-replace
 /// at that point. Read only in debug builds; a release build never consults it.
 pub(crate) fn test_fault(point: &str) -> Result<()> {
@@ -884,6 +898,25 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
     Some((versions, PathBuf::from(folder.file_name()?)))
 }
 
+/// The install ids the builds in the earlier version folders `folders` (names under
+/// `versions`) have, each derived from the same path shape as this build's own id. A folder
+/// whose path cannot form an id (a name that is not UTF-8) lends nothing and is skipped, so
+/// one such folder never fails the whole plan (#2543).
+fn earlier_install_ids(
+    versions: &Path,
+    folders: &[PathBuf],
+    exe_name: &std::ffi::OsStr,
+) -> Result<Vec<(PathBuf, String)>> {
+    Ok(folders
+        .iter()
+        .filter_map(|name| {
+            crate::install::install_id(&versions.join(name).join("bin").join(exe_name))
+                .ok()
+                .map(|id| (name.clone(), id))
+        })
+        .collect())
+}
+
 /// Picks the host receipt that supplies the baseline (#2521).
 ///
 /// Only a build inside the layout looks beyond its own receipt: it also reads the host
@@ -948,8 +981,7 @@ pub(crate) fn resolve_host_receipt(
         }
     }
     folders.sort();
-    for name in folders {
-        let id = crate::install::install_id(&versions.join(&name).join("bin").join(&exe_name))?;
+    for (_, id) in earlier_install_ids(&versions, &folders, &exe_name)? {
         if id == install_id {
             continue;
         }
@@ -1966,7 +1998,11 @@ fn run_backup_then_replace(
         });
     }
     test_fault("mid_replace")?;
-    if let Err(e) = fs::rename(&incoming, &root) {
+    let into_place = match injected_rename_error("stage_rename") {
+        Some(e) => Err(e),
+        None => fs::rename(&incoming, &root),
+    };
+    if let Err(e) = into_place {
         return Err(match fs::rename(&moved, &root) {
             Ok(()) => {
                 format!("moving the staged package into place failed ({e}); the original was moved back")
@@ -2076,4 +2112,32 @@ fn host_outcome_fields(o: &HostOutcome) -> serde_json::Value {
         "host_loaded": false,
         "execution_verified": "not_run",
     })
+}
+
+#[cfg(test)]
+mod version_folder_tests {
+    use super::*;
+
+    /// #2543: a version folder whose name is not UTF-8 cannot form an install id; it lends
+    /// nothing, and the other folders still do — it never fails the whole plan.
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_name_that_is_not_utf8_lends_nothing_instead_of_failing() {
+        use std::os::unix::ffi::OsStrExt;
+        let versions = Path::new("/home-fixture/.moai-cli/versions");
+        let bad = PathBuf::from(std::ffi::OsStr::from_bytes(b"\xff\xfe-not-utf8"));
+        let good = PathBuf::from("2026.11.0-rc.1");
+        let ids = earlier_install_ids(
+            versions,
+            &[bad, good.clone()],
+            std::ffi::OsStr::new("moai-cli"),
+        )
+        .expect("a non-UTF-8 folder name must not fail the plan");
+        assert_eq!(ids.len(), 1, "{ids:?}");
+        assert_eq!(ids[0].0, good);
+        assert_eq!(
+            ids[0].1,
+            crate::install::install_id(&versions.join(&good).join("bin").join("moai-cli")).unwrap()
+        );
+    }
 }

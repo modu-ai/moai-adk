@@ -590,3 +590,43 @@ fn in_a_terminal_an_already_applied_package_asks_nothing() {
     assert!(text.contains("\"nothing_to_apply\":true"), "{text}");
     assert_eq!(state(&f.home), before);
 }
+
+// #2545 (audit note U5 on #2530): the question goes to stderr, so `update` asks only when both
+// stdin and stderr are terminals. With stdin on a terminal but stderr sent to a file, a person
+// would wait on a question they cannot see: `update` must not ask and must write nothing.
+#[cfg(target_os = "macos")]
+#[test]
+fn with_stderr_away_from_the_terminal_update_does_not_ask() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let err_file = f.root.join("stderr.txt");
+    let before = state(&f.home);
+    let out = Command::new("/usr/bin/script")
+        .args([
+            "-q",
+            "/dev/null",
+            "/bin/sh",
+            "-c",
+            "exec \"$0\" update 2>\"$1\"",
+        ])
+        .arg(&a)
+        .arg(&err_file)
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &f.home)
+        .env("LC_ALL", "C")
+        .current_dir(&f.home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .unwrap();
+    let shown = String::from_utf8_lossy(&out.stdout);
+    let err = fs::read_to_string(&err_file).unwrap_or_default();
+    assert!(
+        !err.contains("[y/N]"),
+        "asked on a stderr nobody sees: {err}"
+    );
+    assert!(shown.contains("\"mode\":\"preview\""), "{shown}");
+    assert_eq!(state(&f.home), before);
+}

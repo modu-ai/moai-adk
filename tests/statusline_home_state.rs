@@ -137,22 +137,23 @@ fn go_home_state_files_are_never_read() {
     assert_eq!(snapshot(&f.home), before, "HOME changed during render");
 }
 
-/// AC-2: the same files under `.moai-cli/state/` appear. With both locations filled the
-/// RC files win and the Go markers stay out.
+/// AC-2: the same files under `.moai-cli/state/` are read. With both locations filled the
+/// RC files win and the Go markers stay out. The session task (📋) is never shown since the new
+/// three-line layout (#2376, user decision 3), even when its state file is present.
 #[test]
 fn moai_cli_home_state_files_are_read() {
     let f = fixture();
     write_rc_state(&f);
     let out = render(&f, &[]);
     assert!(out.contains("🤖 rc-marker-model"), "{out}");
-    assert!(out.contains("📋 [rcmarker SPEC-RC-1-green]"), "{out}");
+    assert!(!out.contains("📋") && !out.contains("rcmarker"), "{out}");
 
     write_go_state(&f);
     let go_home = f.home.join(".moai");
     for extra in [vec![], vec![("MOAI_HOME", go_home.to_str().unwrap())]] {
         let out = render(&f, &extra);
         assert!(out.contains("🤖 rc-marker-model"), "{out}");
-        assert!(out.contains("📋 [rcmarker SPEC-RC-1-green]"), "{out}");
+        assert!(!out.contains("📋") && !out.contains("rcmarker"), "{out}");
         assert_no_go_markers(&out);
     }
 }
@@ -187,7 +188,8 @@ fn model_file_boundaries() {
 }
 
 /// AC-2 boundaries for the session state: absent, 0 bytes, broken JSON, no `active_task`,
-/// an empty command. Each renders (exit 0) without a task segment.
+/// an empty command, a minimal command. Each renders (exit 0), and none shows a task segment —
+/// the new layout never shows 📋 (#2376, user decision 3).
 #[test]
 fn session_state_boundaries() {
     let f = fixture();
@@ -211,7 +213,11 @@ fn session_state_boundaries() {
         br#"{"active_task": {"command": "r"}}"#,
     );
     let out = render(&f, &[]);
-    assert!(out.contains("📋 [r]"), "minimal command: {out}");
+    assert!(
+        !out.trim().is_empty(),
+        "minimal command still renders: {out}"
+    );
+    assert!(!out.contains("📋"), "minimal command: {out}");
 }
 
 /// AC-5 (leader scope 6792437161): with the cwd deep below HOME and only

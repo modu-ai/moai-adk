@@ -139,3 +139,69 @@ fn profile_writes_only_through_the_apply_engine() {
     }
     assert!(src.contains("apply::publish_replace") && src.contains("apply::publish_exclusive"));
 }
+
+/// #2590 AC-1: a hand edit of `project.yaml` after an apply shows as `drift` in the next
+/// plan, even when the input equals the baseline and the action stays `unchanged` (the
+/// edit is kept). A file that still matches the baseline carries no `drift` key.
+#[test]
+fn a_hand_edit_after_apply_shows_as_drift() {
+    let root = TempDir::new().unwrap();
+    let p = root.path().to_str().unwrap();
+    apply(root.path(), "first");
+    let clean = cli(&["project-plan", p], &profile("first"));
+    assert_eq!(clean["action"], json!("unchanged"), "{clean}");
+    assert!(clean.get("drift").is_none(), "{clean}");
+
+    let path = root.path().join(".moai-cli/project.yaml");
+    let mut file: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    file["purpose"] = json!("edited by hand");
+    file["tools"] = json!(["Rust", "Python"]);
+    file["my_own_key"] = json!("not managed");
+    fs::write(&path, serde_json::to_vec_pretty(&file).unwrap()).unwrap();
+
+    let drifted = cli(&["project-plan", p], &profile("first"));
+    assert_eq!(drifted["action"], json!("unchanged"), "{drifted}");
+    assert_eq!(drifted["drift"], json!(["purpose", "tools"]), "{drifted}");
+    assert_ne!(drifted["plan_digest"], clean["plan_digest"]);
+    // The hand edit is never overwritten by applying that plan.
+    cli(
+        &[
+            "project-apply",
+            p,
+            "--plan-digest",
+            drifted["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &drifted,
+    );
+    let after: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(after["purpose"], json!("edited by hand"));
+}
+
+/// #2590 AC-2: in this repository the apply receipts stay out of git and the profile
+/// baseline is tracked next to `project.yaml` (docs/rust-product-path.md, "Per-file
+/// receipts and recovery").
+#[test]
+fn receipts_are_ignored_and_the_baseline_is_tracked_here() {
+    let ignore = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/.gitignore")).unwrap();
+    let rules: Vec<&str> = ignore
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    assert!(
+        rules.contains(&"/.moai-cli/receipts/"),
+        "receipts rule missing"
+    );
+    for rule in &rules {
+        let r = rule.trim_start_matches('/').trim_end_matches('/');
+        assert!(
+            !(r == ".moai-cli"
+                || r == ".moai-cli/manifests"
+                || r.ends_with("profile-baseline.json")
+                || r == "*.json"),
+            "rule {rule} would hide the profile baseline"
+        );
+    }
+}
