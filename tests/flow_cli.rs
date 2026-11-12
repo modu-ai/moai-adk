@@ -500,7 +500,11 @@ fn gate_verdict_ignores_poisoned_combined_status() {
         .clone();
     assert_eq!(ci["pass"], json!(true));
     assert!(
-        ci["detail"].as_str().unwrap().contains("rc-ci"),
+        // #2563: the default required name is the renamed `ci` check.
+        ci["detail"]
+            .as_str()
+            .unwrap()
+            .contains("required check runs: ci: success"),
         "{}",
         ci["detail"]
     );
@@ -587,8 +591,7 @@ fn gate_verdict_missing_required_check_blocks() {
     assert_eq!(v["verdict"], json!("blocked"), "{}", v);
     let rs = reasons_of(&v);
     assert!(
-        rs.iter()
-            .any(|r| r.contains("rc-ci") && r.contains("not found")),
+        rs.iter().any(|r| r.contains("ci check run not found")),
         "{:?}",
         rs
     );
@@ -839,4 +842,53 @@ fn gate_verdict_blocks_eleven_check_run_pages() {
         json!("required check runs: check runs unavailable")
     );
     assert_eq!(v["writes"], json!(false));
+}
+
+/// #2563: the aggregate CI check is renamed `rc-ci` → `ci`. Through the transition the
+/// two spellings are one required check: a run under either name is found, and a
+/// failed or pending run under either name still blocks (the union of both names keeps
+/// the every-run-succeeds rule). A matrix job name (`ci / linux-x86_64`) is not the
+/// aggregate and never satisfies it. Both `--required-checks` spellings behave the same.
+#[test]
+fn gate_verdict_reads_both_ci_check_names_without_weakening() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let gate = |required: Option<&str>, runs: &[Value]| {
+        let envs = [
+            ("FLOW_PR", http200(&pr_body(true))),
+            ("FLOW_COMMITS", http200(&commit_list(true))),
+            ("FLOW_TIP", http200(&tip_body())),
+            ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+            ("FLOW_CHECK_RUNS", http200(&check_runs_body(runs))),
+            ("FLOW_STATUS", http200(&status_body("success"))),
+        ];
+        let mut owned = gate_args("pr-5a4b3c2d");
+        if let Some(r) = required {
+            owned.push("--required-checks".into());
+            owned.push(r.into());
+        }
+        let args: Vec<&str> = owned.iter().map(|s| s.as_str()).collect();
+        run_flow(&gh, &envs, &args).0
+    };
+    let ok = |name: &str| check_run(name, "completed", "success");
+    let failed = |name: &str| check_run(name, "completed", "failure");
+    let pending = |name: &str| check_run(name, "in_progress", "");
+    for required in [None, Some("rc-ci"), Some("ci")] {
+        for (runs, verdict) in [
+            (vec![ok("ci")], "ok"),
+            (vec![ok("rc-ci")], "ok"),
+            (vec![ok("rc-ci"), ok("ci")], "ok"),
+            (vec![failed("rc-ci"), ok("ci")], "blocked"),
+            (vec![ok("rc-ci"), failed("ci")], "blocked"),
+            (vec![ok("rc-ci"), pending("ci")], "blocked"),
+            (vec![ok("ci / linux-x86_64")], "blocked"),
+            (
+                vec![ok("rc-ci / linux-x86_64"), ok("cii"), ok("CI")],
+                "blocked",
+            ),
+        ] {
+            let v = gate(required, &runs);
+            assert_eq!(v["verdict"], json!(verdict), "{required:?} {runs:?} → {v}");
+        }
+    }
 }

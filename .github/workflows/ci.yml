@@ -2,14 +2,14 @@
 # decision 01:1x(11-09) are Linux x86_64/arm64 and macOS arm64/x86_64. User decision U10
 # (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
 # runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
-# runs all four targets plus windows-build with the same check set. The `rc-ci` job
-# aggregates the targets of its run so one `rc-ci` check reports the result (the
-# integration ruleset requires only `moai/audit`; `rc-ci` is read by name).
+# runs all four targets plus windows-build with the same check set. The `ci` job
+# aggregates the targets of its run so one `ci` check reports the result (the
+# integration ruleset requires only `moai/audit`; `ci` is read by name).
 # Runner labels: standard GitHub-hosted runners for public repositories, free and unlimited
 # (https://docs.github.com/en/actions/reference/runners/github-hosted-runners, read 2026-11-09).
 # For `pull_request`, GITHUB_REF is the PR merge branch (refs/pull/<n>/merge), so this runs
 # before the RC branch reaches the default branch; first observed on the 00-E PR (AC-00E-2).
-name: rc-ci
+name: ci
 
 on:
   pull_request:
@@ -24,12 +24,12 @@ permissions:
 # A new push to a PR cancels that PR's older run. Post-merge runs on v2026.11.0 are never
 # cancelled: each one is the full-matrix result of one merge (#2554).
 concurrency:
-  group: rc-ci-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
-    name: rc-ci / ${{ matrix.target }}
+    name: ci / ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeout }}
     permissions:
@@ -170,7 +170,7 @@ jobs:
           # docs-only takes the full path below, unchanged.
           if [ "$CI_SCOPE" = "docs-only" ]; then
             {
-              echo "## rc-ci / ${{ matrix.target }}"
+              echo "## ci / ${{ matrix.target }}"
               echo
               echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · scope: \`docs-only\`"
               echo
@@ -182,7 +182,7 @@ jobs:
           summary="$GITHUB_STEP_SUMMARY"
           failed=0
           {
-            echo "## rc-ci / ${{ matrix.target }}"
+            echo "## ci / ${{ matrix.target }}"
             echo
             echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · rust host \`$(rustc -vV | sed -n 's/^host: //p')\`"
             echo "- tree: \`${{ github.event.pull_request.head.sha || github.sha }}\` (head) · merge ref \`$GITHUB_SHA\`"
@@ -212,18 +212,18 @@ jobs:
           # #2554 2-1: the test binaries run in parallel under cargo-nextest (each test in its
           # own process; #[ignore] tests stay skipped). nextest does not run doc-tests, so
           # `cargo test --doc` runs them right after; together they are the old `cargo test`.
-          run test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --locked --no-fail-fast 2>&1 | tee rc-ci-test.log; exit "${PIPESTATUS[0]}"'
-          run doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee rc-ci-doctest.log; exit "${PIPESTATUS[0]}"'
+          run test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --locked --no-fail-fast 2>&1 | tee ci-test.log; exit "${PIPESTATUS[0]}"'
+          run doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee ci-doctest.log; exit "${PIPESTATUS[0]}"'
           run clippy cargo clippy --offline --locked --all-targets -- -D warnings
           run fmt cargo fmt --check
-          run unittest bash -c "python -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee rc-ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
+          run unittest bash -c "python -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
           run diff-check git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
           # macOS-only cases (#2194): cfg(target_os = "macos") Rust tests are compiled out on
           # Linux and darwin-gated Python tests are skipped; report per target which of them
           # ran, so a Linux pass is never read as a macOS-only measurement (AC-08C-7).
           # The step shell is `bash -eo pipefail`: a grep with no match exits 1, so every
           # grep below ends in `|| true` (without it the Linux targets failed after a green
-          # check set, rc-ci run 42618040618).
+          # check set, CI run 42618040618).
           {
             echo
             echo "### macOS-only cases"
@@ -232,19 +232,19 @@ jobs:
             echo "| --- | --- | --- |"
             for t in e2e_never_writes_outside_temp_home privacy_06_operations_need_no_network; do
               # nextest line: `PASS [   0.282s] ( 1/25) moai-cli::<binary> <test>`; report its status word.
-              line=$({ grep -E "^ *[A-Z-]+ +\[[^]]*\] +(\([^)]*\) +)?[^ ]+ ${t}\$" rc-ci-test.log || true; } | head -n 1 | awk '{print $1}')
+              line=$({ grep -E "^ *[A-Z-]+ +\[[^]]*\] +(\([^)]*\) +)?[^ ]+ ${t}\$" ci-test.log || true; } | head -n 1 | awk '{print $1}')
               echo "| \`${t}\` | \`#[cfg(target_os = \"macos\")]\` | ${line:-not compiled on this target} |"
             done
             for t in e2e_host_claude_verdict_test e2e_receipt_not_run_test; do
-              n=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. skipped" rc-ci-unittest.log || true)
-              r=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. ok" rc-ci-unittest.log || true)
+              n=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. skipped" ci-unittest.log || true)
+              r=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. ok" ci-unittest.log || true)
               echo "| \`${t}\` | \`skipUnless(sys.platform == \"darwin\" …)\` | ok ${r} · skipped ${n} |"
             done
           } >> "$summary"
           exit "$failed"
 
-  rc-ci:
-    name: rc-ci
+  ci:
+    name: ci
     # !cancelled() (#2312): a failed target must fail this check, not skip it (a job without
     # a status function gets the default success() and is skipped, which reads as neutral);
     # a run cancelled by cancel-in-progress stays cancelled instead of always() reporting it
@@ -260,14 +260,14 @@ jobs:
         shell: bash
         run: |
           echo "check: ${{ needs.check.result }}"
-          echo "## rc-ci: all targets ${{ needs.check.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "## ci: all targets ${{ needs.check.result }}" >> "$GITHUB_STEP_SUMMARY"
           [ "${{ needs.check.result }}" = "success" ]
 
   # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
   # not_run). Compile all targets, including portable test targets, without running tests.
   # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
   # remain not_run.
-  # Standard GitHub-hosted runner, no secrets. Not part of the required `rc-ci` check.
+  # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check.
   # #2554 (U10): runs after merge (push to v2026.11.0) and on workflow_dispatch, not on PRs.
   windows-build:
     name: windows-build

@@ -111,7 +111,7 @@ class WorkflowContractTest(unittest.TestCase):
         # so renaming/deleting a test-consumed doc could pass as docs-only. Both
         # Scope steps must use --no-renames so old paths reach the classifier.
         with open(
-            os.path.join(REPO_ROOT, ".github", "workflows", "rc-ci.yml"),
+            os.path.join(REPO_ROOT, ".github", "workflows", "ci.yml"),
             "r",
             encoding="utf-8",
         ) as fh:
