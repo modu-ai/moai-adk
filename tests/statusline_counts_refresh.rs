@@ -59,13 +59,19 @@ fn fixture(origin_url: &str, gh_delay: Option<u32>) -> Fixture {
     }
 }
 
-/// A fake gh: logs `<kind>` per call, sleeps `delay` seconds, prints 12 issues / 5 PRs.
+/// A fake gh: logs one line per call (the call shape, the inherited `GH_REPO`/`GH_HOST`,
+/// the owner and name fields), sleeps `delay` seconds, answers 12 issues / 5 PRs.
 fn gh_script(log: &Path, delay: u32) -> String {
     format!(
-        "#!/bin/sh\necho \"$1\" >> '{log}'\n/bin/sleep {delay}\ncase \"$1\" in issue) echo 12;; pr) echo 5;; *) exit 2;; esac\n",
+        "#!/bin/sh\necho \"$1 $2 $3 $4 GH_REPO=${{GH_REPO-unset}} GH_HOST=${{GH_HOST-unset}} $8 ${{10}}\" >> '{log}'\n/bin/sleep {delay}\ncase \"$1 $2\" in 'api graphql') echo '12 5';; *) exit 2;; esac\n",
         log = log.display()
     )
 }
+
+/// The one call a refresh makes: explicit host and repository, with the inherited
+/// `GH_REPO`/`GH_HOST` the render sets (see [`render`]) removed.
+const CALL: &str =
+    "api graphql --hostname github.com GH_REPO=unset GH_HOST=unset owner=acme name=widgets";
 
 fn with_gh(origin_url: &str, delay: u32) -> Fixture {
     fixture(origin_url, Some(delay))
@@ -87,6 +93,9 @@ fn render(f: &Fixture) -> (String, Duration) {
         .env("PATH", &f.bin)
         .env("HOME", &f.home)
         .env("NO_COLOR", "1")
+        // An inherited gh target must not redirect the refresh (Codex review on #2604).
+        .env("GH_REPO", "elsewhere/other")
+        .env("GH_HOST", "ghe.example.com")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -152,11 +161,9 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
     let (second, _) = render(&f);
     assert!(second.contains("❗ 12 / 🔀 5"), "{second}");
     assert_eq!(std::fs::read_to_string(f.repo.join(GO_CACHE)).unwrap(), go);
-    let mut calls = gh_calls(&f);
-    calls.sort();
     assert_eq!(
-        calls,
-        ["issue", "pr"],
+        gh_calls(&f),
+        [CALL],
         "the fresh second render must not refetch"
     );
 }
@@ -180,9 +187,7 @@ fn concurrent_renders_start_a_single_refresh() {
     assert!(wait_for(
         || cache(&f).is_some() && !f.repo.join(LOCK).exists()
     ));
-    let mut calls = gh_calls(&f);
-    calls.sort();
-    assert_eq!(calls, ["issue", "pr"]);
+    assert_eq!(gh_calls(&f), [CALL]);
 }
 
 #[test]
