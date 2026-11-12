@@ -70,14 +70,14 @@ def run_git(cwd, *args):
 def apply_setup(step, root, project, moai_home):
     """One setup step from cases.json. Paths are relative to the project unless the
     step says otherwise (`moai_home`: the Go MOAI_HOME the goldens were recorded with;
-    `rc_home`: HOME/.moai-cli, the folder moai-cli reads, #2455); every write lands
+    `cli_home`: HOME/.moai-cli, the folder moai-cli reads, #2455); every write lands
     inside the temporary root."""
     kind = step["kind"]
     if kind == "write":
         under = step.get("under")
         if under == "moai_home":
             base = moai_home
-        elif under == "rc_home":
+        elif under == "cli_home":
             base = moai_home.parent / ".moai-cli"
         elif under is None:
             base = project
