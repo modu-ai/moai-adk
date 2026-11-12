@@ -77,6 +77,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `claude-doctor`
 - `claude-settings-apply`
 - `claude-settings-plan`
+- `codex-config-apply`
+- `codex-config-plan`
 - `codex-doctor`
 - `codex-projection-apply`
 - `codex-projection-plan`

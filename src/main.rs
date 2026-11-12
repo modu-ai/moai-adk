@@ -535,6 +535,19 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
+    CodexConfigPlan {
+        project: PathBuf,
+    },
+    /// Apply a previewed project config with the same stdin, digest and permission reference.
+    /// User HOME and CODEX_HOME config targets are refused; trust is never changed.
+    CodexConfigApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
     HooksPlan {
         project: PathBuf,
@@ -1055,6 +1068,24 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
 }
+/// The config writer takes an explicit user home. Refuse a project target that is also
+/// the host's relocated user config directory before either preview or apply can run.
+fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .ok_or("home directory missing; config target refused")?;
+    let home = std::fs::canonicalize(home)
+        .map_err(|_| "home directory unavailable; config target refused")?;
+    if let Some(path) = std::env::var_os("CODEX_HOME") {
+        let user = std::fs::canonicalize(path)
+            .map_err(|_| "CODEX_HOME unavailable; user config target refused")?;
+        if std::fs::canonicalize(project.join(".codex")).is_ok_and(|target| target == user) {
+            return Err("project .codex is CODEX_HOME; user config target refused".into());
+        }
+    }
+    Ok(home)
+}
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
 /// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
@@ -1209,6 +1240,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         ClaudeDoctor { .. } => "claude.doctor",
         ClaudeSettingsApply { .. } => "claude.settings_apply",
         ClaudeSettingsPlan { .. } => "claude.settings_plan",
+        CodexConfigApply { .. } => "codex.config_apply",
+        CodexConfigPlan { .. } => "codex.config_plan",
         CodexDoctor { .. } => "codex.doctor",
         CodexProjectionApply { .. } => "codex.projection_apply",
         CodexProjectionPlan { .. } => "codex.projection_plan",
@@ -2038,6 +2071,26 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
             moai_cli::claude::settings_apply(
                 &project,
+                &desired,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::CodexConfigPlan { project } => {
+            let home = codex_config_home(&project)?;
+            let desired = input()?;
+            moai_cli::hosts::codex_config::config_plan(&project, &home, &desired)
+        }
+        Command::CodexConfigApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = codex_config_home(&project)?;
+            let desired = input()?;
+            moai_cli::hosts::codex_config::config_apply(
+                &project,
+                &home,
                 &desired,
                 &plan_digest,
                 &permission_reference,
