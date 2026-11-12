@@ -60,7 +60,9 @@ fn mode_agent_first_run_steps_are_fixed() {
             "merge-train",
             "hand-off",
             "goal-lines",
+            "keep-going",
             "self-pick",
+            "wake",
             "report",
         ]
     );
@@ -249,4 +251,87 @@ fn self_opening_rules_are_pinned_in_both_mode_workflows() {
             assert!(!text.contains(stale), "{name} still says `{stale}`");
         }
     }
+}
+
+// #2515 (comment 6823975793): ten of twelve lanes ended their turn after `LANE-DONE` and
+// stayed stopped. The round only ends on its end condition; the open-PR limit stops only
+// the opening; a wait is not work; `LANE-DONE` is a progress record; a turn that must end
+// arms a wake first; the leader restarts a stopped lane. Each sentence is pinned.
+#[test]
+fn the_round_keeps_going_until_its_end_condition() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "keep-going",
+        &[
+            "A turn ends only when (i) the repository has no open pull request and no startable Issue",
+            "(ii) the user says stop",
+            "In every other case do not end the turn",
+            "A card's completion report closes the card, never the round.",
+        ],
+    );
+    // (i) the limit does not block implementation.
+    assert_says(
+        &agent,
+        "pr-gate",
+        &["The limit stops only the opening — go on with the round and claim the next Issue"],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &["with nothing above left and whatever the open-PR count, self-claim a ready Issue"],
+    );
+    assert!(!agent.contains("below the open-PR limit"));
+    // A wait is not work, for CI and for a leader reply alike.
+    assert_says(&agent, "heavy-checks", &["a wait is not work"]);
+    assert_says(
+        &agent,
+        "claim",
+        &["nor on a requested decision or handoff line"],
+    );
+    // (ii) LANE-DONE continues in the same turn.
+    assert_says(
+        &agent,
+        "report",
+        &["A `LANE-DONE` line is a progress record, not a stop: after writing it, go to the next pick in the same turn"],
+    );
+    // (iii) arm a wake before ending a turn.
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "arm a wake before ending the turn, at most 300 seconds away",
+            "`ScheduleWakeup`",
+            "`decision: \"block\"`",
+            "`LANE-BLOCKED <lane> wake no wake mechanism on this host`",
+        ],
+    );
+    assert_says(
+        &agent,
+        "goal-lines",
+        &["The goal is the round, not one card", "`loop_line`"],
+    );
+    // (iv) the leader restarts a stopped lane and answers requests within the round.
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "Restart, do not dispatch",
+            "`순환 계속 — self-pick (1)부터`",
+            "only when its input box is empty",
+        ],
+    );
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "Answer handoff requests, decision requests and `LANE-BLOCKED` lines within the supervision round",
+            "post the handoff line in that round without waiting for a request",
+        ],
+    );
+    let skill =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"))
+            .unwrap();
+    assert!(skill.contains("reporting a finished card and then stopping is not completion"));
 }
