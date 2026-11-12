@@ -15,9 +15,17 @@
 //! A config that is absent, not a regular file (a symlink too), over 64 KiB or not valid TOML
 //! turns both rules off: a broken config must not block every write (the engine's fail-open
 //! rule, D1). A rule whose own table is malformed (a non-boolean `enabled`, a non-string list
-//! entry) is off as well.
+//! entry) is off as well. An unusable file (not a regular file, too large, unreadable, not
+//! valid TOML) is also named by a [`ConfigProblem`], which the engine logs as one line (#2391
+//! N1, design 6777574227) so a rule the user believes on is not silently off. An absent file
+//! is not a problem.
+//!
+//! The file is opened once without following a symlink, checked on that handle, and read
+//! through a `CONFIG_MAX + 1` bound, so a file swapped or grown after the check is still
+//! refused (#2391 N2).
 
 use std::fs;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
 /// Largest config file read.
@@ -45,28 +53,119 @@ pub struct HookConfig {
     pub primary: Option<PrimaryRule>,
 }
 
+/// Why a present config file was not used (both rules are then off).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConfigProblem {
+    /// A symlink, a directory, a FIFO or any other non-regular file.
+    NotRegularFile,
+    /// More than [`CONFIG_MAX`] bytes.
+    TooLarge,
+    /// The file could not be opened or read.
+    Unreadable,
+    /// Not UTF-8 or not valid TOML.
+    InvalidToml,
+}
+
+impl ConfigProblem {
+    /// The fixed reason word written to the engine log.
+    pub fn reason(self) -> &'static str {
+        match self {
+            ConfigProblem::NotRegularFile => "not_regular_file",
+            ConfigProblem::TooLarge => "too_large",
+            ConfigProblem::Unreadable => "unreadable",
+            ConfigProblem::InvalidToml => "invalid_toml",
+        }
+    }
+}
+
+/// A loaded config and, when a present file was unusable, why.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Loaded {
+    pub config: HookConfig,
+    pub problem: Option<ConfigProblem>,
+}
+
 /// The config of `HOME` (both rules off when `HOME` is unset or the file is unusable).
-pub fn load() -> HookConfig {
+pub fn load() -> Loaded {
     let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) else {
-        return HookConfig::default();
+        return Loaded::default();
     };
     let home = PathBuf::from(home);
     let path = home.join(crate::HOME_STATE_DIR).join("config");
-    match fs::symlink_metadata(&path) {
-        Ok(m) if m.is_file() && m.len() <= CONFIG_MAX => {}
-        _ => return HookConfig::default(),
+    load_path(&path, &home)
+}
+
+/// The config at `path`; `home` expands a leading `~`.
+pub fn load_path(path: &Path, home: &Path) -> Loaded {
+    let off = |problem| Loaded {
+        config: HookConfig::default(),
+        problem: Some(problem),
+    };
+    let file = match open_nofollow(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Loaded::default(),
+        // The open refused a symlink (O_NOFOLLOW); the extra look only names the reason.
+        Err(_) if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) => {
+            return off(ConfigProblem::NotRegularFile)
+        }
+        Err(_) => return off(ConfigProblem::Unreadable),
+    };
+    match file.metadata() {
+        Ok(m) if !m.is_file() => return off(ConfigProblem::NotRegularFile),
+        Ok(m) if m.len() > CONFIG_MAX => return off(ConfigProblem::TooLarge),
+        Ok(_) => {}
+        Err(_) => return off(ConfigProblem::Unreadable),
     }
-    match fs::read_to_string(&path) {
-        Ok(text) => parse(&text, &home),
-        Err(_) => HookConfig::default(),
+    let text = match read_bounded(file) {
+        Ok(Some(text)) => text,
+        Ok(None) => return off(ConfigProblem::TooLarge),
+        Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+            return off(ConfigProblem::InvalidToml)
+        }
+        Err(_) => return off(ConfigProblem::Unreadable),
+    };
+    match parse_checked(&text, home) {
+        Some(config) => Loaded {
+            config,
+            problem: None,
+        },
+        None => off(ConfigProblem::InvalidToml),
     }
+}
+
+/// Opens a file for reading without following a symlink (and without blocking on a FIFO).
+fn open_nofollow(path: &Path) -> std::io::Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    options.open(path)
+}
+
+/// Reads at most [`CONFIG_MAX`] bytes as UTF-8: `Ok(None)` when there are more, whatever size
+/// was seen before the read; `InvalidData` when the bytes are not UTF-8.
+fn read_bounded(reader: impl Read) -> std::io::Result<Option<String>> {
+    let mut bytes = Vec::new();
+    reader.take(CONFIG_MAX + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > CONFIG_MAX {
+        return Ok(None);
+    }
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))
 }
 
 /// Parses the config text; `home` expands a leading `~`.
 pub fn parse(text: &str, home: &Path) -> HookConfig {
-    let Ok(doc) = text.parse::<toml_edit::DocumentMut>() else {
-        return HookConfig::default();
-    };
+    parse_checked(text, home).unwrap_or_default()
+}
+
+/// [`parse`], with `None` when the text is not valid TOML.
+fn parse_checked(text: &str, home: &Path) -> Option<HookConfig> {
+    let doc = text.parse::<toml_edit::DocumentMut>().ok()?;
     let hooks = doc.get("hooks").and_then(|h| h.as_table_like());
     let table = |name: &str| {
         hooks
@@ -110,7 +209,7 @@ pub fn parse(text: &str, home: &Path) -> HookConfig {
                 .collect(),
         })
     });
-    HookConfig { outside, primary }
+    Some(HookConfig { outside, primary })
 }
 
 /// `~` or `~/…` expanded against `home`; a relative path is ignored (None).
@@ -208,6 +307,41 @@ mod tests {
         let p = c.primary.unwrap();
         assert_eq!(p.repos, vec![PathBuf::from("/no/such/repo/a")]);
         assert_eq!(p.allow_commands, vec!["git switch main".to_string()]);
+    }
+
+    /// N2: the bound is on the bytes actually read, so a file that grows after its size was
+    /// seen is still cut off; 65,536 bytes are read whole, 65,537 are refused.
+    #[test]
+    fn the_read_bound_is_on_the_bytes_read() {
+        let at = vec![b'#'; 65_536];
+        let over = vec![b'#'; 65_537];
+        assert_eq!(
+            read_bounded(&at[..]).unwrap().map(|s| s.len()),
+            Some(65_536)
+        );
+        assert_eq!(read_bounded(&over[..]).unwrap(), None);
+        assert!(read_bounded(&b"\xff"[..]).is_err(), "not UTF-8");
+    }
+
+    /// N1/N2: each unusable file has its fixed reason; an absent file has none.
+    #[cfg(unix)]
+    #[test]
+    fn load_path_names_the_problem() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let home = dir.path();
+        let path = home.join("config");
+        let problem = |p: &Path| load_path(p, home).problem;
+        assert_eq!(problem(&path), None);
+        fs::write(&path, "[hooks]\n").unwrap();
+        assert_eq!(problem(&path), None);
+        fs::write(&path, "not toml [").unwrap();
+        assert_eq!(problem(&path), Some(ConfigProblem::InvalidToml));
+        fs::write(&path, vec![b'#'; 65_537]).unwrap();
+        assert_eq!(problem(&path), Some(ConfigProblem::TooLarge));
+        let link = home.join("link");
+        std::os::unix::fs::symlink(&path, &link).unwrap();
+        assert_eq!(problem(&link), Some(ConfigProblem::NotRegularFile));
+        assert_eq!(problem(home), Some(ConfigProblem::NotRegularFile));
     }
 
     #[test]

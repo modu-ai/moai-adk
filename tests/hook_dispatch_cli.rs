@@ -410,6 +410,154 @@ fn a_missing_binary_is_non_blocking_by_the_host_rules() {
     assert_eq!(commit_count(&root), before + 1);
 }
 
+/// A host that cancels a hook at `timeout` (https://code.claude.com/docs/en/hooks, read
+/// 2026-11-12: "Claude Code cancels a `command` … hook that reaches its timeout, discarding the
+/// hook's output"; "On `PreToolUse`, a timed-out … hook doesn't block the tool call"); `None`
+/// waits for the hook. The hook runs with `path_prefix` first on PATH; the tool command runs
+/// with the normal PATH. Returns (tool ran, hook was cancelled).
+fn host_runs_tool_with_timeout(
+    root: &Path,
+    path_prefix: &Path,
+    command: &str,
+    timeout: Option<std::time::Duration>,
+) -> (bool, bool) {
+    let path = format!(
+        "{}:{}",
+        path_prefix.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let mut child = Command::new(BIN)
+        .args([
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ])
+        .current_dir(root)
+        .env("HOME", root.join("home"))
+        .env("PATH", path)
+        .env_remove("MOAI_FORGE_GH_BIN")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        // A cancelled hook's children may outlive it; no pipe of theirs is waited on.
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, &pre_tool(command, root));
+    let start = std::time::Instant::now();
+    let cancelled = loop {
+        if child.try_wait().unwrap().is_some() {
+            break false;
+        }
+        if timeout.is_some_and(|t| start.elapsed() >= t) {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            break true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    };
+    let proceed = if cancelled {
+        // Output discarded; a timeout is a non-blocking error on PreToolUse.
+        true
+    } else {
+        let mut stdout = String::new();
+        use std::io::Read as _;
+        child
+            .stdout
+            .take()
+            .unwrap()
+            .read_to_string(&mut stdout)
+            .unwrap();
+        serde_json::from_str::<Value>(stdout.trim())
+            .map(|v| v["hookSpecificOutput"]["permissionDecision"] != "deny")
+            .unwrap_or(true)
+    };
+    if proceed {
+        let status = Command::new("sh")
+            .args(["-c", command])
+            .current_dir(root)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("HOME", root.join("home"))
+            .status()
+            .unwrap();
+        assert!(status.success(), "tool command failed: {command}");
+    }
+    (proceed, cancelled)
+}
+
+/// Writes an executable `git` into `dir` running `body` (a POSIX sh script body).
+fn git_shim(dir: &Path, body: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    fs::create_dir_all(dir).unwrap();
+    let path = dir.join("git");
+    fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+/// R1 timeout (#2391): the engine has no deadline of its own; the host's timeout bounds it
+/// and, by decision D1 (fail-open, `docs/decisions-2026-11-08.md` 17:52Z(11-10)), a timed-out
+/// tool-preflight lets the tool run. The engine is held past the host timeout by a `git` on
+/// the hook's PATH that sleeps (a lane commit makes the engine read the branch with `git`).
+/// Control: a shim that only forwards to the real git, waited for without a timeout (a loaded
+/// machine took 5–7 s here, so no wall-clock bound is put on it), denies with no side effect.
+/// The sleeping shim never answers, so the host timeout decides whatever its value.
+#[test]
+fn a_timed_out_preflight_is_non_blocking_by_the_host_rules() {
+    let host_timeout = std::time::Duration::from_secs(3);
+    let (_d, root) = repo("issue/77-k");
+    fs::write(root.join("a.txt"), "c\n").unwrap();
+    git(&root, &["add", "a.txt"]);
+    let real_git = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    let real_git = real_git.trim();
+    assert!(real_git.starts_with('/'), "{real_git}");
+    let fast = root.join("home/fast-bin");
+    git_shim(&fast, &format!("exec '{real_git}' \"$@\""));
+    let slow = root.join("home/slow-bin");
+    git_shim(&slow, "exec sleep 120");
+    let before = commit_count(&root);
+
+    let (ran, cancelled) =
+        host_runs_tool_with_timeout(&root, &fast, "git commit -q -m 'no token'", None);
+    assert!(!cancelled);
+    assert!(
+        !ran,
+        "the engine reached git through the shim PATH and denied"
+    );
+    assert_eq!(commit_count(&root), before, "no side effect despite deny");
+
+    let start = std::time::Instant::now();
+    let (ran, cancelled) = host_runs_tool_with_timeout(
+        &root,
+        &slow,
+        "git commit -q -m 'no token'",
+        Some(host_timeout),
+    );
+    assert!(
+        cancelled,
+        "the sleeping git holds the engine past the host timeout"
+    );
+    assert!(
+        ran,
+        "a timed-out PreToolUse hook does not block (D1 fail-open)"
+    );
+    assert_eq!(commit_count(&root), before + 1, "the tool ran");
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(90),
+        "the host timeout, not the engine, ended the hook"
+    );
+}
+
 // ---- audit #2399 (6770112093) B1-B4: guards pinned by tests ----
 
 /// A PreToolUse input for a lane commit without a claim token, padded to exactly `total`
@@ -1442,4 +1590,126 @@ fn a_symlinked_config_is_off() {
         .file_type()
         .is_symlink());
     assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}
+
+/// The `config_error` lines of the engine log, in order.
+fn config_errors(root: &Path) -> Vec<Value> {
+    fs::read_to_string(engine_log(root))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str::<Value>(l).unwrap())
+        .filter(|l| l["kind"] == json!("config_error"))
+        .collect()
+}
+
+/// Whether this process can read a file it made unreadable (root can).
+fn reads_through_mode_000() -> bool {
+    let out = Command::new("id").arg("-u").output().unwrap();
+    String::from_utf8_lossy(&out.stdout).trim() == "0"
+}
+
+/// N1 (pre-audit FAIL 6780344159, design 6777574227): an unusable config turns both rules
+/// off and leaves exactly one `config_error` line with a fixed reason in the engine log — no
+/// path, no config text. An absent config and a usable one leave none.
+#[test]
+fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-n1-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let path = home.join(".moai-cli/config");
+    let text = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(&home, text);
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(
+        config_errors(&root).is_empty(),
+        "absent and usable: no line"
+    );
+
+    let mut cases: Vec<(&str, Box<dyn Fn() + '_>)> = vec![
+        (
+            "invalid_toml",
+            Box::new(|| {
+                config(
+                    &home,
+                    "[hooks.outside_project_writes]\nenabled = true\nallow = [\n",
+                )
+            }),
+        ),
+        (
+            "invalid_toml",
+            Box::new(|| {
+                fs::write(
+                    &path,
+                    b"[hooks.outside_project_writes]\nenabled = true # \xff\n",
+                )
+                .unwrap()
+            }),
+        ),
+        (
+            "too_large",
+            Box::new(|| config(&home, &padded_b9_config(65_537))),
+        ),
+        (
+            "not_regular_file",
+            Box::new(|| {
+                let target = home.join("elsewhere.toml");
+                fs::write(&target, text).unwrap();
+                fs::remove_file(&path).unwrap();
+                std::os::unix::fs::symlink(&target, &path).unwrap();
+            }),
+        ),
+        (
+            "not_regular_file",
+            Box::new(|| {
+                fs::remove_file(&path).unwrap();
+                fs::create_dir(&path).unwrap();
+            }),
+        ),
+    ];
+    if !reads_through_mode_000() {
+        cases.push((
+            "unreadable",
+            Box::new(|| {
+                use std::os::unix::fs::PermissionsExt;
+                fs::remove_dir(&path).unwrap();
+                config(&home, text);
+                fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+            }),
+        ));
+    }
+    for (n, (reason, make)) in cases.iter().enumerate() {
+        make();
+        assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+        let lines = config_errors(&root);
+        assert_eq!(lines.len(), n + 1, "{reason}: one line per run");
+        let line = &lines[n];
+        assert_eq!(line["reason"], json!(reason), "{line}");
+        assert_eq!(line["host"], json!("claude"), "{line}");
+        let mut keys: Vec<&String> = line.as_object().unwrap().keys().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            [
+                "host",
+                "kind",
+                "reason",
+                "schema_version",
+                "session",
+                "unix_ms"
+            ],
+            "{line}"
+        );
+        let raw = line.to_string();
+        assert!(!raw.contains(home.to_str().unwrap()), "no path: {raw}");
+        assert!(!raw.contains("outside_project_writes"), "no text: {raw}");
+    }
+    assert!(!outside.exists(), "a hook never writes the file");
 }
