@@ -154,3 +154,40 @@ fn interval_comes_from_the_profile_or_the_default() {
     assert_eq!(out["interval_secs"], json!(60));
     assert_eq!(out["interval_source"], json!("profile"));
 }
+
+/// #2563: the CI check renamed `rc-ci` → `ci`. The tick reads either spelling and the
+/// newest run (largest id) decides, whatever order the API lists them in; a matrix job
+/// name never counts.
+#[test]
+fn ci_reads_both_names_and_the_newest_run_decides() {
+    let with_runs = |runs: Value| {
+        let mut ex = one_pr("h1", "agent-1", "PASS", "success");
+        ex[3] = get(
+            &format!("{API}/commits/h1/check-runs"),
+            json!({ "check_runs": runs }),
+        );
+        ex
+    };
+    let run = |id: i64, name: &str, c: &str| json!({"id": id, "name": name, "status": "completed", "conclusion": c});
+    for (runs, ci) in [
+        (json!([run(1, "ci", "success")]), "success"),
+        (json!([run(1, "rc-ci", "failure")]), "failure"),
+        (
+            json!([run(2, "ci", "failure"), run(1, "rc-ci", "success")]),
+            "failure",
+        ),
+        (
+            json!([run(1, "rc-ci", "success"), run(2, "ci", "failure")]),
+            "failure",
+        ),
+        (
+            json!([run(1, "ci", "failure"), run(2, "rc-ci", "success")]),
+            "success",
+        ),
+        (json!([run(1, "ci / linux-x86_64", "success")]), "none"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tick(tmp.path(), &[], with_runs(runs.clone()));
+        assert_eq!(out["changes"][0]["now"]["ci"], json!(ci), "{runs} → {out}");
+    }
+}

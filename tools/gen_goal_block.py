@@ -9,8 +9,11 @@ Reads a JSON fixture from stdin and prints the paste-ready block as JSON:
 Output kinds:
   leader  — milestone-wide completion condition (open issues+prs merged or
             closed; keep-set entries excluded with their reasons)
-  agent   — card-scoped condition for the assigned issue (PR merged or
-            reported blocked)
+  agent   — loop_line: the lane-wide round condition (no open PR and no
+            startable Issue, keep-set exclusions with reasons; the default goal
+            of agent mode, #2515), and goal_lines: card-scoped conditions for
+            the open issues (PR merged or reported blocked), used only when the
+            user holds one card
   codex   — the same one-liner with the Codex caveat (effect unverified,
             docs/host-support-matrix.md goal rows)
 
@@ -70,6 +73,12 @@ def build(fixture: dict) -> dict:
         condition += f" — 다음은 제외: {exclusions}"
     leader_line = f"/goal {condition}" if issues or prs else None
 
+    loop_line = None
+    if issues or prs:
+        loop_line = (f"/goal 저장소에 열린 PR이 0이고 시작할 수 있는 Issue가 0임"
+                     f"(milestone {milestone}, HOLD·needs:decision 제외)")
+        if keep_set:
+            loop_line += f" — 다음은 제외: {exclusions}"
     agent_lines = []
     for i in issues:
         agent_lines.append(f"/goal #{i['number']}의 PR이 병합되거나 blocked로 보고됨")
@@ -84,7 +93,7 @@ def build(fixture: dict) -> dict:
 
     return {
         "leader": {"goal_line": leader_line, "condition": condition},
-        "agent": {"goal_lines": agent_lines},
+        "agent": {"loop_line": loop_line, "goal_lines": agent_lines},
         "codex": {"goal_line": codex_line, "note": codex_note},
         "counts": {
             "open_issues": len(issues),

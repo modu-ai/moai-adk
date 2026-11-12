@@ -1,6 +1,6 @@
 # MoAI RC label taxonomy for modu-ai/moai-adk (Issue #2434, user decisions 1-4 = A,
 # recorded in Issue comment 6783612809 on 2026-11-11).
-# `rc-label-sync` reads this file: a dry run on every PR that touches it, and a manual apply
+# `moai-label-sync` reads this file: a dry run on every PR that touches it, and a manual apply
 # that only CREATES the missing `added` labels. Nothing here edits, renames, recolours or
 # deletes a remote label.
 #

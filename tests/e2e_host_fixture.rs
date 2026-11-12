@@ -411,15 +411,23 @@ fn e2e_second_update_is_diff_zero() {
 /// this test is not compiled (an explicit cfg gate, not a hidden skip) and
 /// docs/e2e-matrix.md records AC-08C-7 as not_run there — a green Linux CI is NOT an
 /// AC-08C-7 measurement.
+///
+/// The denied subtree is the account's home directory from the password database, not
+/// `$HOME`: the documented T1 command runs cargo with `HOME=$(mktemp -d)`, and a profile
+/// built from `$HOME` would then deny only that throwaway directory (Issue #2014,
+/// agent-8 N1). Only the path is read; nothing under the real home is read or written.
 #[cfg(target_os = "macos")]
 #[test]
 fn e2e_never_writes_outside_temp_home() {
-    let real_home = std::env::var("HOME").unwrap();
+    let real_home = passwd_home();
     let dir = TempDir::new().unwrap();
     let profile = dir.path().join("deny-home.sb");
     fs::write(
         &profile,
-        format!("(version 1)\n(allow default)\n(deny file-write* (subpath \"{real_home}\"))\n"),
+        format!(
+            "(version 1)\n(allow default)\n(deny file-write* (subpath \"{}\"))\n",
+            real_home.display()
+        ),
     )
     .unwrap();
     // Probe with the same profile on a no-op command: distinguishes "sandbox-exec
@@ -441,6 +449,14 @@ fn e2e_never_writes_outside_temp_home() {
     }
 
     let f = fixture();
+    // The fixture HOME must lie outside the denied subtree, or a pass would only mean
+    // the sandbox denied nothing the apply touched.
+    assert!(
+        !f.home.starts_with(&real_home),
+        "the fixture HOME {:?} lies under the denied account home {real_home:?}; set \
+         TMPDIR outside it to measure AC-08C-7",
+        f.home
+    );
     let go_before = f.go_digest();
     let plan = f.plan_v2();
     let args = [
@@ -476,6 +492,42 @@ fn e2e_never_writes_outside_temp_home() {
     );
     assert_eq!(f.receipt(HOST)["status"], json!("committed"));
     assert_eq!(f.go_digest(), go_before);
+}
+
+/// The current account's home directory from the password database (`getpwuid_r`),
+/// independent of `$HOME`. Panics when the entry cannot be read: without the real path
+/// the denial check would measure nothing.
+#[cfg(target_os = "macos")]
+fn passwd_home() -> PathBuf {
+    use std::ffi::CStr;
+    use std::os::unix::ffi::OsStrExt as _;
+    let mut buf = vec![0 as libc::c_char; 16 * 1024];
+    let mut pwd: libc::passwd = unsafe { std::mem::zeroed() };
+    let mut found: *mut libc::passwd = std::ptr::null_mut();
+    // SAFETY: every pointer refers to a live local of the stated size; on success
+    // `pw_dir` points into `buf`, which outlives the copy below.
+    let rc = unsafe {
+        libc::getpwuid_r(
+            libc::getuid(),
+            &mut pwd,
+            buf.as_mut_ptr(),
+            buf.len(),
+            &mut found,
+        )
+    };
+    assert!(
+        rc == 0 && !found.is_null() && !pwd.pw_dir.is_null(),
+        "cannot read this account's passwd entry (rc {rc}); the deny-home check \
+         cannot run honestly"
+    );
+    // SAFETY: checked non-null above; NUL-terminated by getpwuid_r.
+    let dir = unsafe { CStr::from_ptr(pwd.pw_dir) };
+    let home = PathBuf::from(std::ffi::OsStr::from_bytes(dir.to_bytes()));
+    assert!(
+        home.is_absolute() && home != Path::new("/"),
+        "unusable passwd home {home:?}"
+    );
+    home
 }
 
 /// AC-08C-8 (HA-04, T1 half): a clean clone carries the full portable asset set for

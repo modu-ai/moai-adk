@@ -3,11 +3,11 @@
 //! statusline also writes `$HOME/.moai/state/last-model.txt` and
 //! `<anchor>/.moai/state/context-usage/*.json`; this port writes nothing.
 //!
-//! HOME state (#2455, user decision 2026-11-11): `last-model.txt` and
-//! `last-session-state.json` are read from `$HOME/.moai-cli/state/` only, never from the
-//! Go folder `$HOME/.moai/`, and `MOAI_HOME` is not consulted. No Rust command writes
-//! those two files yet, so "nothing to read" is the normal state and both segments stay
-//! empty until a producer exists.
+//! HOME state (#2455, user decision 2026-11-11): `last-model.txt` is read from
+//! `$HOME/.moai-cli/state/` only, never from the Go folder `$HOME/.moai/`, and `MOAI_HOME` is
+//! not consulted. No Rust command writes it yet, so "nothing to read" is the normal state. The
+//! session task (`last-session-state.json`, 📋) is not read at all since the three-line layout
+//! (#2376, user decision 3: the task is never shown).
 //!
 //! The only subprocess is `git`, and only when a `.git` entry is found above the
 //! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
@@ -28,7 +28,6 @@ use std::time::{Duration, Instant};
 pub struct Context {
     vars: HashMap<String, String>,
     pub cwd: Option<PathBuf>,
-    pub now_ms: i64,
     /// When the render must be finished; git is stopped at this point.
     pub deadline: Option<Instant>,
     /// The git executable; `git` from PATH outside tests.
@@ -40,23 +39,19 @@ impl Context {
         Context {
             vars: std::env::vars().collect(),
             cwd: std::env::current_dir().ok(),
-            now_ms: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_millis() as i64),
             deadline: Some(Instant::now() + budget),
             git_program: "git".to_string(),
         }
     }
 
     #[cfg(test)]
-    pub fn for_test(vars: &[(&str, &str)], cwd: Option<&Path>, now_ms: i64) -> Context {
+    pub fn for_test(vars: &[(&str, &str)], cwd: Option<&Path>) -> Context {
         Context {
             vars: vars
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
             cwd: cwd.map(Path::to_path_buf),
-            now_ms,
             deadline: None,
             git_program: "git".to_string(),
         }
@@ -97,9 +92,7 @@ pub struct Status {
     pub version: Option<Version>,
     pub claude_version: String,
     pub output_style: String,
-    pub directory: String,
     pub session_name: String,
-    pub agent_name: String,
     /// `Some` when `effort` is present, even with an empty level.
     pub effort: Option<String>,
     pub thinking: Option<bool>,
@@ -110,10 +103,7 @@ pub struct Status {
     pub git: Option<GitStatus>,
     pub repo: Option<(String, String)>,
     pub github: GitHubCounts,
-    pub task: String,
-    pub pr: Option<(i64, String)>,
     pub goal_armed: bool,
-    pub now_ms: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -148,8 +138,6 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         model: collect_model(input, ctx),
         auto_compact,
         version: Some(collect_version(ctx, BINARY_VERSION)),
-        task: collect_task(ctx),
-        now_ms: ctx.now_ms,
         ..Default::default()
     };
     let git_dir = project_root.clone().or_else(|| ctx.cwd.clone());
@@ -163,13 +151,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         .and_then(|c| c.total_duration_ms)
         .unwrap_or(0);
     status.memory = collect_memory(input, ctx, auto_compact);
-    status.directory = directory_name(input, ctx);
     status.session_name = input::text(&input.session_name).to_string();
-    status.agent_name = input
-        .agent
-        .as_ref()
-        .map_or("", |a| input::text(&a.name))
-        .to_string();
     status.output_style = input
         .output_style
         .as_ref()
@@ -195,12 +177,6 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         status.five_hour = limits.five_hour;
         status.seven_day = limits.seven_day;
     }
-    status.pr = input.pr.as_ref().map(|p| {
-        (
-            p.number.unwrap_or(0),
-            input::text(&p.review_state).to_string(),
-        )
-    });
     status.repo = input
         .workspace
         .as_ref()
@@ -593,37 +569,6 @@ fn template_version(ctx: &Context) -> Option<String> {
     None
 }
 
-// ---- directory ----
-
-/// `extractProjectDirectory`: project dir, current dir, legacy cwd, then the process cwd.
-fn directory_name(input: &Input, ctx: &Context) -> String {
-    let ws = input.workspace.as_ref();
-    for candidate in [
-        ws.map_or("", |w| input::text(&w.project_dir)),
-        ws.map_or("", |w| input::text(&w.current_dir)),
-        input::text(&input.cwd),
-    ] {
-        if !candidate.is_empty() {
-            return go_base(candidate);
-        }
-    }
-    ctx.cwd
-        .as_deref()
-        .map_or(String::new(), |p| go_base(&p.to_string_lossy()))
-}
-
-/// Go `filepath.Base`: trailing separators dropped, `/` stays `/`, empty is `.`.
-fn go_base(path: &str) -> String {
-    if path.is_empty() {
-        return ".".into();
-    }
-    let trimmed = path.trim_end_matches('/');
-    if trimmed.is_empty() {
-        return "/".into();
-    }
-    trimmed.rsplit('/').next().unwrap_or(trimmed).to_string()
-}
-
 // ---- git ----
 
 fn collect_git(dir: &Path, ctx: &Context) -> Option<GitStatus> {
@@ -695,54 +640,6 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
 
 // ---- local state files ----
 
-/// `taskCollector.read`: `$HOME/.moai-cli/state/last-session-state.json` `active_task`
-/// (Go read `<MOAI_HOME>/state/`; #2455 moved it).
-fn collect_task(ctx: &Context) -> String {
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    struct Active {
-        command: Option<String>,
-        spec_id: Option<String>,
-        stage: Option<String>,
-    }
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    #[allow(dead_code)]
-    struct SessionState {
-        last_updated: Option<String>,
-        current_branch: Option<String>,
-        uncommitted_changes: Option<String>,
-        uncommitted_files: Option<i64>,
-        specs_in_progress: Option<Vec<String>>,
-        active_task: Option<Active>,
-    }
-    let Some(path) = ctx.home_state().map(|s| s.join("last-session-state.json")) else {
-        return String::new();
-    };
-    let Some(state) = std::fs::read(path)
-        .ok()
-        .and_then(|b| serde_json::from_slice::<SessionState>(&b).ok())
-    else {
-        return String::new();
-    };
-    let Some(task) = state.active_task else {
-        return String::new();
-    };
-    let command = input::text(&task.command);
-    if command.is_empty() {
-        return String::new();
-    }
-    let mut out = format!("[{command}");
-    if let Some(spec) = task.spec_id.as_deref().filter(|s| !s.is_empty()) {
-        out.push_str(&format!(" {spec}"));
-    }
-    if let Some(stage) = task.stage.as_deref().filter(|s| !s.is_empty()) {
-        out.push_str(&format!("-{stage}"));
-    }
-    out.push(']');
-    out
-}
-
 /// `resolveGoalArmed`: `<anchor>/.moai/state/goal/<session_id>.json` has `status: armed`.
 /// A session id carrying a path separator is refused rather than joined.
 fn goal_armed(anchor: &Path, session_id: &str) -> bool {
@@ -810,44 +707,29 @@ mod tests {
     }
 
     #[test]
-    fn go_base_matches_filepath_base() {
-        assert_eq!(go_base("/a/b/demo-project"), "demo-project");
-        assert_eq!(go_base("/a/b/"), "b");
-        assert_eq!(go_base("/"), "/");
-        assert_eq!(go_base(""), ".");
-    }
-
-    #[test]
     fn glm_names_map_only_non_claude_slot_models() {
-        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3")], None, 0);
+        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3")], None);
         assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.3");
         assert_eq!(resolve_glm_model_name("Sonnet", &ctx), "Sonnet");
         assert_eq!(resolve_glm_model_name("gpt-x[1m]", &ctx), "gpt-x");
-        let claude = Context::for_test(
-            &[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")],
-            None,
-            0,
-        );
+        let claude =
+            Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None);
         assert_eq!(resolve_glm_model_name("Opus", &claude), "Opus");
     }
 
     #[test]
     fn context_override_prefers_env_then_longest_builtin_match() {
-        let env = Context::for_test(&[("MOAI_STATUSLINE_CONTEXT_SIZE", "128000")], None, 0);
+        let env = Context::for_test(&[("MOAI_STATUSLINE_CONTEXT_SIZE", "128000")], None);
         assert_eq!(context_window_override(&env), 128_000);
-        let glm = Context::for_test(
-            &[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")],
-            None,
-            0,
-        );
+        let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")], None);
         assert_eq!(context_window_override(&glm), 1_000_000);
-        assert_eq!(context_window_override(&Context::for_test(&[], None, 0)), 0);
+        assert_eq!(context_window_override(&Context::for_test(&[], None)), 0);
     }
 
     #[test]
     fn version_compares_template_with_binary() {
         let tmp = tempfile::tempdir().unwrap();
-        let ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        let ctx = Context::for_test(&[], Some(tmp.path()));
         assert_eq!(
             collect_version(&ctx, "v3.2.1"),
             Version {
@@ -902,7 +784,7 @@ mod tests {
         #[cfg(unix)]
         std::os::unix::fs::symlink(&home, &link).unwrap();
         let at = |home_var: &Path, cwd: &Path| {
-            Context::for_test(&[("HOME", home_var.to_str().unwrap())], Some(cwd), 0)
+            Context::for_test(&[("HOME", home_var.to_str().unwrap())], Some(cwd))
         };
 
         // Below HOME with no nearer project, and HOME itself: HOME's `.moai` is not read.
@@ -959,7 +841,7 @@ mod tests {
     #[test]
     fn statusline_config_reads_moai_cli_first_and_keeps_the_go_file() {
         let tmp = tempfile::tempdir().unwrap();
-        let ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        let ctx = Context::for_test(&[], Some(tmp.path()));
         let go = tmp.path().join(".moai/config/sections");
         std::fs::create_dir_all(&go).unwrap();
         let go_file = go.join("statusline.yaml");
@@ -1083,7 +965,7 @@ mod tests {
     fn git_is_stopped_at_the_render_deadline() {
         let tmp = tempfile::tempdir().unwrap();
         git_init(tmp.path());
-        let mut ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        let mut ctx = Context::for_test(&[], Some(tmp.path()));
         assert!(run_git(tmp.path(), &["status", "--porcelain"], &ctx).is_some());
         ctx.deadline = Some(Instant::now());
         assert_eq!(run_git(tmp.path(), &["status", "--porcelain"], &ctx), None);
@@ -1110,7 +992,7 @@ mod tests {
 
         let plain = tmp.path().join("plain");
         std::fs::create_dir(&plain).unwrap();
-        let mut ctx = Context::for_test(&[], Some(&plain), 0);
+        let mut ctx = Context::for_test(&[], Some(&plain));
         ctx.git_program = wrapper.display().to_string();
         assert!(collect_git(&plain, &ctx).is_none());
         assert_eq!(calls(), 0);

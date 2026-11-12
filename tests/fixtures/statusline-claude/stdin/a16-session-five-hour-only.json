@@ -1,0 +1,7 @@
+{
+  "model": {"display_name": "Opus"},
+  "session_name": "focused-session",
+  "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"},
+  "context_window": {"context_window_size": 200000, "used_percentage": 32},
+  "rate_limits": {"five_hour": {"resets_at": 1738425600}}
+}

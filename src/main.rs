@@ -514,7 +514,7 @@ enum Command {
         /// Comma-separated required check-run names (#2335). The verdict reads these
         /// runs' conclusions; unrelated checks and the combined commit status are
         /// excluded from the judgment.
-        #[arg(long = "required-checks", default_value = "rc-ci")]
+        #[arg(long = "required-checks", default_value = "ci")]
         required_checks: String,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
@@ -529,6 +529,19 @@ enum Command {
     /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
     /// reference. Writes the project settings file and its receipt only; home is refused.
     ClaudeSettingsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
+    CodexConfigPlan {
+        project: PathBuf,
+    },
+    /// Apply a previewed project config with the same stdin, digest and permission reference.
+    /// User HOME and CODEX_HOME config targets are refused; trust is never changed.
+    CodexConfigApply {
         project: PathBuf,
         #[arg(long)]
         plan_digest: String,
@@ -678,6 +691,25 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+    },
+    /// Act on a `worktree-gc-plan` (WT-9, #2498): recomputes the plan with the same inputs,
+    /// refuses before any write unless its digest equals `--plan-digest`, then trims the
+    /// listed cargo output and removes the listed worktrees (no `--force`; branches kept).
+    WorktreeGcApply {
+        project: PathBuf,
+        #[arg(long)]
+        integration_ref: String,
+        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
+        recent_minutes: u64,
+        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
+        budget_ms: u64,
+        /// Test seam: the current time in Unix seconds instead of the clock.
+        #[arg(long, hide = true)]
+        now_unix: Option<u64>,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
     },
     /// Read-only space report of the repository's worktrees, their build folders and the
     /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
@@ -978,6 +1010,40 @@ enum Command {
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
     },
+    /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
+    /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
+    GoStatePlan {
+        /// Project root carrying the Go `.moai/manifest.json`.
+        project: PathBuf,
+    },
+    /// Move the files a confirmed go-state preview offers into
+    /// `.moai-cli/backups/<UTC>/go-state/` (#2561 stage 2), with a receipt. Applies only
+    /// when a fresh preview has the given digest; never overwrites, never copies.
+    GoStateApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Read-only: what reverting one go-state apply would do (#2561 stage 2).
+    GoStateRevertPlan {
+        project: PathBuf,
+        /// The apply's backup stamp (`YYYYMMDDTHHMMSSZ`).
+        #[arg(long)]
+        backup: String,
+    },
+    /// Move one go-state apply's files back (#2561 stage 2). All or nothing: a file that
+    /// came back at its original path, or a changed backup copy, refuses the revert.
+    GoStateRevert {
+        project: PathBuf,
+        #[arg(long)]
+        backup: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
     UpdatePlan {
@@ -1054,6 +1120,24 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
         return Err("input exceeds 64 KiB".into());
     }
     serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+}
+/// The config writer takes an explicit user home. Refuse a project target that is also
+/// the host's relocated user config directory before either preview or apply can run.
+fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .ok_or("home directory missing; config target refused")?;
+    let home = std::fs::canonicalize(home)
+        .map_err(|_| "home directory unavailable; config target refused")?;
+    if let Some(path) = std::env::var_os("CODEX_HOME") {
+        let user = std::fs::canonicalize(path)
+            .map_err(|_| "CODEX_HOME unavailable; user config target refused")?;
+        if std::fs::canonicalize(project.join(".codex")).is_ok_and(|target| target == user) {
+            return Err("project .codex is CODEX_HOME; user config target refused".into());
+        }
+    }
+    Ok(home)
 }
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
@@ -1209,6 +1293,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         ClaudeDoctor { .. } => "claude.doctor",
         ClaudeSettingsApply { .. } => "claude.settings_apply",
         ClaudeSettingsPlan { .. } => "claude.settings_plan",
+        CodexConfigApply { .. } => "codex.config_apply",
+        CodexConfigPlan { .. } => "codex.config_plan",
         CodexDoctor { .. } => "codex.doctor",
         CodexProjectionApply { .. } => "codex.projection_apply",
         CodexProjectionPlan { .. } => "codex.projection_plan",
@@ -1283,11 +1369,16 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
+        GoStatePlan { .. } => "go_state.plan",
+        GoStateApply { .. } => "go_state.apply",
+        GoStateRevertPlan { .. } => "go_state.revert_plan",
+        GoStateRevert { .. } => "go_state.revert",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
         WorktreeReport { .. } => "worktree.report",
         WorktreeGcPlan { .. } => "worktree.gc.plan",
+        WorktreeGcApply { .. } => "worktree.gc.apply",
     })
 }
 
@@ -2043,6 +2134,26 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &permission_reference,
             )
         }
+        Command::CodexConfigPlan { project } => {
+            let home = codex_config_home(&project)?;
+            let desired = input()?;
+            moai_cli::hosts::codex_config::config_plan(&project, &home, &desired)
+        }
+        Command::CodexConfigApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = codex_config_home(&project)?;
+            let desired = input()?;
+            moai_cli::hosts::codex_config::config_apply(
+                &project,
+                &home,
+                &desired,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
         Command::CodexProjectionPlan {
             package,
             target,
@@ -2126,6 +2237,23 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             std::time::Duration::from_millis(budget_ms),
             now_unix,
         ),
+        Command::WorktreeGcApply {
+            project,
+            integration_ref,
+            recent_minutes,
+            budget_ms,
+            now_unix,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::worktree_gc::apply(
+            &project,
+            &integration_ref,
+            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
+            std::time::Duration::from_millis(budget_ms),
+            now_unix,
+            &plan_digest,
+            &permission_reference,
+        ),
         Command::AuditClonePlan {
             project,
             pr,
@@ -2207,6 +2335,36 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
             })
         }
+        Command::GoStatePlan { project } => {
+            serde_json::to_value(moai_cli::go_state::plan(&project)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::GoStateApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => serde_json::to_value(moai_cli::go_state::apply(
+            &project,
+            &plan_digest,
+            &permission_reference,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::GoStateRevertPlan { project, backup } => {
+            serde_json::to_value(moai_cli::go_state::revert_plan(&project, &backup)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::GoStateRevert {
+            project,
+            backup,
+            plan_digest,
+            permission_reference,
+        } => serde_json::to_value(moai_cli::go_state::revert(
+            &project,
+            &backup,
+            &plan_digest,
+            &permission_reference,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             serde_json::to_value(moai_cli::update::plan_update(&home, &staged)?)

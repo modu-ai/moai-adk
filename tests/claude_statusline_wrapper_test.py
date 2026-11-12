@@ -119,6 +119,33 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
         self.assertEqual(self.calls(), [])
 
+    # #2503 (audit N1 on PR #2482): `-x` is true for a searchable directory, so a directory at
+    # either path used to reach `exec` and end with 126 instead of falling through.
+    def test_a_directory_at_the_rust_path_falls_back_to_go(self):
+        self.home.joinpath(*RUST_REL).mkdir(parents=True)
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_a_link_to_a_directory_at_the_rust_path_falls_back_to_go(self):
+        target = self.home / ".moai-cli" / "versions" / "v1"
+        target.mkdir(parents=True)
+        link = self.home.joinpath(*RUST_REL)
+        link.parent.mkdir(parents=True)
+        link.symlink_to(target)
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_directories_at_both_paths_exit_0_silently(self):
+        self.home.joinpath(*RUST_REL).mkdir(parents=True)
+        self.home.joinpath(*GO_REL).mkdir(parents=True)
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
+
     def test_nothing_installed_exits_0_silently_and_never_uses_path(self):
         r = self.run_wrapper()
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))

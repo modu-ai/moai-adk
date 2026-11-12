@@ -1,0 +1,331 @@
+# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The four targets of
+# decision 01:1x(11-09) are Linux x86_64/arm64 and macOS arm64/x86_64. User decision U10
+# (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
+# runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
+# runs all four targets plus windows-build with the same check set. The `ci` job
+# aggregates the targets of its run so one `ci` check reports the result (the
+# integration ruleset requires only `moai/audit`; `ci` is read by name).
+# Runner labels: standard GitHub-hosted runners for public repositories, free and unlimited
+# (https://docs.github.com/en/actions/reference/runners/github-hosted-runners, read 2026-11-09).
+# For `pull_request`, GITHUB_REF is the PR merge branch (refs/pull/<n>/merge), so this runs
+# before the RC branch reaches the default branch; first observed on the 00-E PR (AC-00E-2).
+name: ci
+
+on:
+  pull_request:
+    branches: [v2026.11.0]
+  push:
+    branches: [v2026.11.0]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a PR cancels that PR's older run. Post-merge runs on v2026.11.0 are never
+# cancelled: each one is the full-matrix result of one merge (#2554).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: ci / ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
+    permissions:
+      contents: read
+    strategy:
+      # Every target is a measurement: one failure must not cancel the others.
+      fail-fast: false
+      # #2554 (U10): `pull_request` gets the first list (linux-x86_64), every other event
+      # the second (all four). The linux-arm64 cap is 45 min: 20 runs before #2554 took
+      # 28.1 min (median) and 29.1 min (max) there, 1-2 min under the old 30-min cap.
+      matrix:
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request'
+          && '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
+          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"linux-arm64","runner":"ubuntu-24.04-arm","timeout":45},{"target":"macos-arm64","runner":"macos-15","timeout":45},{"target":"macos-x86_64","runner":"macos-15-intel","timeout":60}]') }}
+    env:
+      CARGO_TERM_COLOR: never
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # `git diff --check` compares against the PR base commit
+      # Docs-only light CI (#2527, design comment 6822993459): classify the diff and
+      # skip the heavy steps when every changed path is under a verified-safe doc root.
+      # Fail-safe: any git or parse failure, or an unrecognized path, keeps scope "full".
+      - name: Scope (docs-only detection)
+        shell: bash
+        run: |
+          CI_SCOPE=full
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          # --no-renames (#2538 B1): a rename must reach the classifier as
+          # delete(old)+add(new) so renaming or deleting a test-consumed doc still
+          # exposes the denied source path; plain --name-only omits the source.
+          if paths="$(git diff --name-only --no-renames "${base}...${GITHUB_SHA}" 2>/dev/null)"; then
+            result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)"
+            CI_SCOPE="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])')"
+            printf '%s\n' "$result" | python3 -c 'import json,sys; [print("scope-reason:", r) for r in json.load(sys.stdin)["reasons"]]'
+          else
+            echo "scope-reason: git diff failed; defaulting to full"
+          fi
+          echo "CI_SCOPE=$CI_SCOPE" >> "$GITHUB_ENV"
+          echo "scope: $CI_SCOPE"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML (tests/github_assets_test.py)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
+      - name: Install and verify ripgrep (C10a baseline)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            case "$RUNNER_OS" in
+              Linux)
+                exec bash tools/ci-install-ripgrep.sh
+                ;;
+              macOS)
+                brew install ripgrep
+                ;;
+              *)
+                echo "ripgrep installation is not configured for $RUNNER_OS" >&2
+                exit 1
+                ;;
+            esac
+          fi
+          rg --version
+      # rustup reads rust-toolchain.toml (#2029). A runner can start with a partially installed
+      # copy of the pinned toolchain (rustup#4724); repairing it in place can fail with a
+      # component file conflict (rustup#2417), so remove it first and install explicitly, with
+      # at most 3 attempts (#2490, user decision 6813237309 item 3 = B; analysis #2457 6812694378).
+      - name: Toolchain (rust-toolchain.toml)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          channel="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          for attempt in 1 2 3; do
+            echo "toolchain install attempt ${attempt}/3 (${channel})"
+            rustup toolchain uninstall "$channel" || true
+            if rustup toolchain install; then break; fi
+            if [ "$attempt" = 3 ]; then
+              echo "toolchain install failed after 3 attempts (${channel})" >&2
+              exit 1
+            fi
+            echo "toolchain install attempt ${attempt}/3 failed; removing ${channel} and retrying" >&2
+            sleep $((attempt * 10))
+          done
+          rustc -V
+          rustup show
+      # Dependency cache (#2554; replaces the RC1 interim strategy B, decisions 2026-11-08
+      # 17:4x, released by the leader in #2554 comment 6827136046). Swatinem/rust-cache keeps
+      # ~/.cargo and the dependencies' build output only — workspace crates are always
+      # rebuilt — keyed by rustc host/version, Cargo.lock/Cargo.toml and the toolchain file.
+      # Only push runs on v2026.11.0 save; a PR run restores the base branch's entry and
+      # cannot write it (GitHub scopes a PR's cache to refs/pull/<n>/merge).
+      - name: Dependency cache
+        id: cache
+        if: ${{ env.CI_SCOPE == 'full' }}
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.event_name == 'push' }}
+      # #2554 2-1 (leader 6827616388): `cargo test` runs the ~120 test binaries one after
+      # another (11-25 min of run time per target); cargo-nextest runs them in parallel with
+      # the same tests. Pinned release assets of nextest-rs/nextest `cargo-nextest-0.9.151`,
+      # checked against the sha256 recorded here (equal to the release's .sha256 files, read
+      # 2026-11-12). A download or checksum failure fails the job; there is no fallback.
+      - name: cargo-nextest (pinned, sha256-checked)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          version=0.9.151
+          case "${{ matrix.target }}" in
+            linux-x86_64) asset=x86_64-unknown-linux-gnu; sum=1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4 ;;
+            linux-arm64) asset=aarch64-unknown-linux-gnu; sum=3e35e8f6913af92558ba09d7155f74e35dd1f0024ef3cd891637433ae4eacbdd ;;
+            macos-arm64|macos-x86_64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
+            *) echo "no pinned cargo-nextest asset for ${{ matrix.target }}" >&2; exit 1 ;;
+          esac
+          file="$RUNNER_TEMP/cargo-nextest-${version}-${asset}.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$file" \
+            "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${version}/cargo-nextest-${version}-${asset}.tar.gz"
+          actual="$( (sha256sum "$file" 2>/dev/null || shasum -a 256 "$file") | cut -d' ' -f1)"
+          if [ "$actual" != "$sum" ]; then
+            echo "cargo-nextest checksum mismatch: expected $sum, got $actual" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.cargo/bin"
+          tar xzf "$file" -C "$HOME/.cargo/bin" cargo-nextest
+          cargo nextest --version
+      - name: Check set
+        shell: bash
+        run: |
+          set -u
+          # Docs-only light CI (#2527, design comment 6822993459): heavy steps are skipped
+          # above via CI_SCOPE; here run only the whitespace check and emit a minimal
+          # summary (runner + scope), then succeed. Fail-safe: anything not classified
+          # docs-only takes the full path below, unchanged.
+          if [ "$CI_SCOPE" = "docs-only" ]; then
+            {
+              echo "## ci / ${{ matrix.target }}"
+              echo
+              echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · scope: \`docs-only\`"
+              echo
+              echo "docs-only: 3 heavy steps skipped (paths all under verified-safe doc roots)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
+            exit 0
+          fi
+          summary="$GITHUB_STEP_SUMMARY"
+          failed=0
+          {
+            echo "## ci / ${{ matrix.target }}"
+            echo
+            echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · rust host \`$(rustc -vV | sed -n 's/^host: //p')\`"
+            echo "- tree: \`${{ github.event.pull_request.head.sha || github.sha }}\` (head) · merge ref \`$GITHUB_SHA\`"
+            echo "- toolchain: \`$(rustc --version)\` · \`$(cargo --version)\` · \`$(python --version)\`"
+            echo
+            echo "| step | command | exit |"
+            echo "| --- | --- | --- |"
+          } >> "$summary"
+          run() {
+            local label="$1"; shift
+            echo "::group::$label"
+            local code=0
+            "$@" || code=$? # the step shell runs with -e -o pipefail; keep going and record the exit
+            echo "::endgroup::"
+            echo "| $label | \`$*\` | $code |" >> "$summary"
+            [ "$code" -eq 0 ] || failed=1
+          }
+          # Fetch once against Cargo.lock, then run the set offline exactly as lanes do
+          # locally; the dependency cache above only saves the download and dependency build.
+          run fetch cargo fetch --locked
+          echo "- dependencies: rust-cache hit \`${{ steps.cache.outputs.cache-hit }}\` (saved by push runs only); fetched with \`cargo fetch --locked\` before the offline steps" >> "$summary"
+          # #2452: test threads get 8 MiB. In debug builds `Cli::command()` needs about 2000 KiB
+          # of the 2 MiB default (measured on #2016 comment 6790101536) and grows about 4 KiB per
+          # subcommand. RUST_MIN_STACK sets the stack of spawned threads, which libtest uses
+          # (https://doc.rust-lang.org/std/thread/index.html, read 2026-11-11).
+          echo "- test threads: \`RUST_MIN_STACK=8388608\` (#2452)" >> "$summary"
+          # #2554 2-1: the test binaries run in parallel under cargo-nextest (each test in its
+          # own process; #[ignore] tests stay skipped). nextest does not run doc-tests, so
+          # `cargo test --doc` runs them right after; together they are the old `cargo test`.
+          run test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --locked --no-fail-fast 2>&1 | tee ci-test.log; exit "${PIPESTATUS[0]}"'
+          run doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee ci-doctest.log; exit "${PIPESTATUS[0]}"'
+          run clippy cargo clippy --offline --locked --all-targets -- -D warnings
+          run fmt cargo fmt --check
+          run unittest bash -c "python -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
+          run diff-check git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
+          # macOS-only cases (#2194): cfg(target_os = "macos") Rust tests are compiled out on
+          # Linux and darwin-gated Python tests are skipped; report per target which of them
+          # ran, so a Linux pass is never read as a macOS-only measurement (AC-08C-7).
+          # The step shell is `bash -eo pipefail`: a grep with no match exits 1, so every
+          # grep below ends in `|| true` (without it the Linux targets failed after a green
+          # check set, CI run 42618040618).
+          {
+            echo
+            echo "### macOS-only cases"
+            echo
+            echo "| case | gate | outcome on this target |"
+            echo "| --- | --- | --- |"
+            for t in e2e_never_writes_outside_temp_home privacy_06_operations_need_no_network; do
+              # nextest line: `PASS [   0.282s] ( 1/25) moai-cli::<binary> <test>`; report its status word.
+              line=$({ grep -E "^ *[A-Z-]+ +\[[^]]*\] +(\([^)]*\) +)?[^ ]+ ${t}\$" ci-test.log || true; } | head -n 1 | awk '{print $1}')
+              echo "| \`${t}\` | \`#[cfg(target_os = \"macos\")]\` | ${line:-not compiled on this target} |"
+            done
+            for t in e2e_host_claude_verdict_test e2e_receipt_not_run_test; do
+              n=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. skipped" ci-unittest.log || true)
+              r=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. ok" ci-unittest.log || true)
+              echo "| \`${t}\` | \`skipUnless(sys.platform == \"darwin\" …)\` | ok ${r} · skipped ${n} |"
+            done
+          } >> "$summary"
+          exit "$failed"
+
+  ci:
+    name: ci
+    # !cancelled() (#2312): a failed target must fail this check, not skip it (a job without
+    # a status function gets the default success() and is skipped, which reads as neutral);
+    # a run cancelled by cancel-in-progress stays cancelled instead of always() reporting it
+    # as a failure. GitHub's recommended alternative to always():
+    # https://docs.github.com/en/actions/reference/workflows-and-actions/expressions (2026-11-09).
+    if: ${{ !cancelled() }}
+    needs: [check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: All targets passed
+        shell: bash
+        run: |
+          echo "check: ${{ needs.check.result }}"
+          echo "## ci: all targets ${{ needs.check.result }}" >> "$GITHUB_STEP_SUMMARY"
+          [ "${{ needs.check.result }}" = "success" ]
+
+  # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
+  # not_run). Compile all targets, including portable test targets, without running tests.
+  # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
+  # remain not_run.
+  # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check.
+  # #2554 (U10): runs after merge (push to v2026.11.0) and on workflow_dispatch, not on PRs.
+  windows-build:
+    name: windows-build
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: windows-2025
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: never
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Docs-only light CI (#2527, design comment 6822993459): same classifier as the
+      # check job; fail-safe to full on any git or parse failure.
+      - name: Scope (docs-only detection)
+        shell: bash
+        run: |
+          CI_SCOPE=full
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          # --no-renames (#2538 B1): a rename must reach the classifier as
+          # delete(old)+add(new) so renaming or deleting a test-consumed doc still
+          # exposes the denied source path; plain --name-only omits the source.
+          if paths="$(git diff --name-only --no-renames "${base}...${GITHUB_SHA}" 2>/dev/null)"; then
+            result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)"
+            CI_SCOPE="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])')"
+            printf '%s\n' "$result" | python3 -c 'import json,sys; [print("scope-reason:", r) for r in json.load(sys.stdin)["reasons"]]'
+          else
+            echo "scope-reason: git diff failed; defaulting to full"
+          fi
+          echo "CI_SCOPE=$CI_SCOPE" >> "$GITHUB_ENV"
+          echo "scope: $CI_SCOPE"
+      - name: Toolchain (rust-toolchain.toml)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          rustc -V
+          rustup show
+      - name: Fetch (Cargo.lock)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: cargo fetch --locked
+      - name: Build all targets (tests compiled, not run)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          cargo build --offline --locked --all-targets
+          {
+            echo "## windows-build"
+            echo
+            echo "- toolchain: \`$(rustc --version)\` on \`$RUNNER_OS\` / \`$RUNNER_ARCH\`"
+            echo "- \`cargo build --offline --locked --all-targets\`: exit 0 — tests compiled, not run"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Docs-only note
+        if: ${{ env.CI_SCOPE == 'docs-only' }}
+        shell: bash
+        run: |
+          echo "docs-only: build skipped (paths all under verified-safe doc roots; #2527)"
+          echo "## windows-build" >> "$GITHUB_STEP_SUMMARY"
+          echo "docs-only: build skipped (paths all under verified-safe doc roots; #2527)" >> "$GITHUB_STEP_SUMMARY"

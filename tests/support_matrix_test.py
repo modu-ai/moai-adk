@@ -92,7 +92,7 @@ class SupportMatrixCheckerTest(unittest.TestCase):
         docs = [
             ROOT / "docs" / "support-matrix.md",
             ROOT / "docs" / "release-checklist.md",
-            ROOT / "docs" / "rc-release-review.md",
+            ROOT / "docs" / "release-review.md",
         ]
         import re
 
