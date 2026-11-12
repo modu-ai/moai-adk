@@ -15,8 +15,22 @@ fn run(
     apply: Option<(&str, &str)>,
     input: &[u8],
 ) -> (i32, Value) {
+    run_vars(project, &[("HOME", home)], codex_home, apply, input)
+}
+
+/// Like `run`, but the caller chooses which home variables (`HOME`, `USERPROFILE`) exist.
+fn run_vars(
+    project: &Path,
+    homes: &[(&str, &Path)],
+    codex_home: Option<&Path>,
+    apply: Option<(&str, &str)>,
+    input: &[u8],
+) -> (i32, Value) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    cmd.env_clear().env("HOME", home);
+    cmd.env_clear();
+    for (name, path) in homes {
+        cmd.env(name, path);
+    }
     if let Some(path) = std::env::var_os("PATH") {
         cmd.env("PATH", path);
     }
@@ -285,6 +299,41 @@ fn unrelated_codex_home_is_preserved_and_unavailable_home_is_refused() {
     assert_eq!(code, 1, "{e}");
     assert_eq!(e["error"]["kind"], "io", "{e}");
     assert!(!missing.exists());
+}
+
+/// Pre-audit FAIL 6812471540 B1: the library's "project is home" check needs a resolved
+/// home, so an unresolvable or missing home must refuse plan and apply before any write.
+#[test]
+fn unresolvable_or_missing_home_is_refused_before_any_write() {
+    let (scratch, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let missing = scratch.path().join("no-such-home");
+    let input = br#"{"project_doc_max_bytes":32768}"#;
+    let unresolvable: [&[(&str, &Path)]; 2] = [
+        &[("HOME", missing.as_path())],
+        &[("USERPROFILE", missing.as_path())],
+    ];
+    for homes in unresolvable {
+        for apply in [None, Some(("any-digest", "fixture-2237"))] {
+            let (code, e) = run_vars(project.path(), homes, None, apply, input);
+            assert_eq!(code, 1, "{homes:?} {e}");
+            assert_eq!(e["ok"], false, "{e}");
+            assert_eq!(e["error"]["kind"], "io", "{e}");
+            assert_eq!(
+                e["error"]["message"], "home directory unavailable; config target refused",
+                "{e}"
+            );
+        }
+    }
+    for apply in [None, Some(("any-digest", "fixture-2237"))] {
+        let (code, e) = run_vars(project.path(), &[], None, apply, input);
+        refused(code, &e);
+        assert_eq!(
+            e["error"]["message"], "home directory missing; config target refused",
+            "{e}"
+        );
+    }
+    assert!(!missing.exists());
+    assert_eq!(fs::read_dir(project.path()).unwrap().count(), 0);
 }
 
 #[test]
