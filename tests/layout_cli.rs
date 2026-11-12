@@ -471,16 +471,26 @@ fn layout_apply_refuses_while_the_claim_journal_is_busy() {
         ],
         None,
     );
-    assert!(!out.status.success(), "a busy journal refuses the apply");
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "a busy journal refuses the apply"
+    );
     let v = envelope(&out);
-    assert_eq!(v["error"]["kind"], json!("conflict"));
-    assert!(
-        v["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("claim journal busy"),
-        "{}",
-        v["error"]["message"]
+    // Literal oracle: changing the production constant must not silently update this contract.
+    let message = "journal busy: the claim journal lock is unavailable (another process holds it); the caller may retry the same command after a bounded wait, within its own cap (REQ-06A-05)";
+    assert_eq!(
+        v,
+        json!({
+            "protocol_version": 1,
+            "operation": "layout.apply",
+            "ok": false,
+            "error": {"kind": "unavailable", "message": message, "retryable": true}
+        })
+    );
+    assert_eq!(
+        String::from_utf8(out.stderr).unwrap(),
+        format!("{message}\n")
     );
     assert_eq!(
         hash_tree(&home),

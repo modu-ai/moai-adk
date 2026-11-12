@@ -1720,3 +1720,38 @@ fn handoff_cli_refuses_stale_request_and_unknown_key() {
     assert_eq!(envelope(&out)["error"]["kind"], json!("invalid_input"));
     assert!(is_key("0123456789abcdef") && !is_key("zz"));
 }
+
+/// #2392 D3-C (decision 6774899518 row 15 = A, test only): an effect whose result was lost
+/// (`uncertain`) must be reconciled before it is sent again. Re-intending it with the same key
+/// and payload today answers `outcome: intended, verdict: passed`, so a caller that sends on a
+/// passed intent sends a second comment (RED). A repair answers without `passed` and points to
+/// `effects-reconcile`; the journal itself stays unchanged either way.
+#[test]
+#[ignore = "#2392 D3-C: RED until re-intending an uncertain effect is not a passed intent"]
+fn d3c_reintending_an_uncertain_effect_is_not_a_fresh_intent() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let (journal, key, _) = reconcile_probe_setup(&repo, "uncertain");
+    let before = journal.read_events().unwrap().len();
+    let out = effect_intend(
+        &journal,
+        &key,
+        1,
+        "comment_post",
+        "acme",
+        "op-9",
+        1,
+        "comment_post",
+        b"payload",
+        &clock,
+    )
+    .unwrap();
+    assert_eq!(out["state"], "uncertain", "{out}");
+    assert_eq!(journal.read_events().unwrap().len(), before, "{out}");
+    assert_ne!(
+        out["verdict"], "passed",
+        "an uncertain effect was answered as a passed intent, inviting a duplicate send: {out}"
+    );
+}

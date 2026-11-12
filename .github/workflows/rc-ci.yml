@@ -55,8 +55,7 @@ jobs:
           if ! command -v rg >/dev/null 2>&1; then
             case "$RUNNER_OS" in
               Linux)
-                sudo apt-get update
-                sudo apt-get install --yes ripgrep
+                exec bash tools/ci-install-ripgrep.sh
                 ;;
               macOS)
                 brew install ripgrep
@@ -104,7 +103,12 @@ jobs:
           # exactly as lanes do locally.
           run fetch cargo fetch --locked
           echo "- dependencies: no cache; fetched with \`cargo fetch --locked\` before the offline steps" >> "$summary"
-          run test bash -c 'cargo test --offline --locked 2>&1 | tee rc-ci-test.log; exit "${PIPESTATUS[0]}"'
+          # #2452: test threads get 8 MiB. In debug builds `Cli::command()` needs about 2000 KiB
+          # of the 2 MiB default (measured on #2016 comment 6790101536) and grows about 4 KiB per
+          # subcommand. RUST_MIN_STACK sets the stack of spawned threads, which libtest uses
+          # (https://doc.rust-lang.org/std/thread/index.html, read 2026-11-11).
+          echo "- test threads: \`RUST_MIN_STACK=8388608\` (#2452)" >> "$summary"
+          run test bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked 2>&1 | tee rc-ci-test.log; exit "${PIPESTATUS[0]}"'
           run clippy cargo clippy --offline --locked --all-targets -- -D warnings
           run fmt cargo fmt --check
           run unittest bash -c "python -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee rc-ci-unittest.log; exit \"\${PIPESTATUS[0]}\""

@@ -148,7 +148,14 @@ class FormsTest(unittest.TestCase):
         assets = (ROOT / "tests/github_assets_test.py").read_text(encoding="utf-8")
         checked = set(re.findall(r'"(\.github/ISSUE_TEMPLATE/[^"]+\.yml)"', assets))
         adopted = {p for p, (_, adoption) in collect.FORM_PATHS.items() if adoption == "adopted"}
-        self.assertEqual(adopted, checked)
+        # The 00-B inventory is a frozen 2026-11-08 record. #2434 added these files after it;
+        # they are checked by the assets test but are not part of that record.
+        added_after_snapshot = {
+            ".github/ISSUE_TEMPLATE/moai-followup.yml",
+            ".github/ISSUE_TEMPLATE/config.yml",
+        }
+        self.assertEqual(adopted, checked - added_after_snapshot)
+        self.assertTrue(added_after_snapshot <= checked)
 
 
 class DuplicateMapTest(unittest.TestCase):

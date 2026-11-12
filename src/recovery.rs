@@ -8,7 +8,7 @@
 //!
 //! - `matches_after`: this request's change, revertible — a created file (`before` none) is
 //!   removed; a replaced file is restored from its known-good copy
-//!   `~/.moai-cli/installations/<id>/hosts/moai-cli/<host>/known-good/<sha256 hex>` (REQ-04C-03),
+//!   `~/.moai-cli/installations/<id>/hosts/moai/<host>/known-good/<sha256 hex>` (REQ-04C-03),
 //!   and without that copy the file is `conflict` (`no_known_good`) instead;
 //! - `matches_before`: never applied, nothing to do;
 //! - `conflict`: anything else (a user edit, a symlink) — preserved;
@@ -96,7 +96,7 @@ pub struct RecoveryPlan {
     pub plan_digest: String,
 }
 
-/// `hosts/moai-cli/<host>/known-good/<hex>` beside the host receipt.
+/// `hosts/moai/<host>/known-good/<hex>` beside the host receipt.
 fn known_good_path(home: &Path, install_id: &str, host: &str, sha: &str) -> Result<PathBuf> {
     let receipt = host_receipt_path(home, install_id, host, false)?;
     let hex = sha.strip_prefix("sha256:").unwrap_or(sha);

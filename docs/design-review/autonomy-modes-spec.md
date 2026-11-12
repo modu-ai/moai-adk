@@ -1,6 +1,6 @@
-# 자율 무중단 개발 모드 SPEC — `/moai --leader-mode` · `/moai --agent-mode` (#2138, DR-02)
+# 자율 무중단 개발 모드 SPEC — `/moai --mode-leader` · `/moai --mode-agent` (#2138, DR-02)
 
-> 현행 상태(#2167): 구현된 형태는 `/moai --mode leader [--autonomy full|semi]`·`/moai --mode agent`(#2160, `skills/moai/SKILL.md`)이고, 제목과 §1의 `--leader-mode`/`--agent-mode` 표기는 설계 당시 이름이다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있고, 그 이전 제안은 `docs/lane-loop-contract.md`(2026-11-08)다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
+> 현행 상태(#2167): 구현된 형태는 `/moai --mode-leader [--autonomy full|semi]`·`/moai --mode-agent`(#2160, `skills/moai/SKILL.md`)다. 이 문서의 표기는 #2286(사용자 결정 Issue #2389 댓글 6774899518 행 36)에서 이 두 형태로 고쳤다. 설계 당시 이름 `--leader-mode`·`--agent-mode`와 그 뒤의 `--mode leader`·`--mode agent`는 더 쓰지 않는다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있고, 그 이전 제안은 `docs/lane-loop-contract.md`(2026-11-08)다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
 
 - 상태: SPEC 초안(Class C, 설계 변경). 이 문서는 구현하지 않는다. 코드·skill 파일은 바꾸지 않았고, 구현은 §10의 후속 카드가 맡는다.
 - 입력: 종합 개선 보고서 §10.4(`references/chatgpt-space/synthesis-improvement-report-2026-11-09.md`, 2026-11-09 작성, 저장소에 아직 tracked 아님). 사용자 결정 2026-11-09 00:0x~00:3x(모드 skill 진입, 완전/반자율, self-claim 기본, 리더 5분 PR 점검·타 에이전트 수리 지시, `/goal` 붙여넣기 안내).
@@ -13,8 +13,8 @@
 
 | 형태 | host | RC1 대조 |
 |---|---|---|
-| `/moai --leader-mode [--autonomy full\|semi]` | Claude Code | **신규**. `skills/moai/SKILL.md`에는 모드 인자가 없고, `skills/moai/references/routes.json`의 route는 8개(`AUDIT PLAN READ RUN SETUP SYNC UPDATE VERIFY`)뿐이다 |
-| `/moai --agent-mode` | Claude Code | **신규**. 위와 같다 |
+| `/moai --mode-leader [--autonomy full\|semi]` | Claude Code | **신규**. `skills/moai/SKILL.md`에는 모드 인자가 없고, `skills/moai/references/routes.json`의 route는 8개(`AUDIT PLAN READ RUN SETUP SYNC UPDATE VERIFY`)뿐이다 |
+| `/moai --mode-agent` | Claude Code | **신규**. 위와 같다 |
 | 같은 인자를 Codex skill 호출로 전달 | Codex CLI | **미확인**. Codex에서 공통 skill에 인자를 넘기는 형태는 이번에 확인하지 않았다(§11) |
 
 지금은 `-l`/`-a` 론처 플래그가 세션 이름과 첫 prompt만 바꾼다(`src/main.rs:85-95`, `src/session.rs:13-15`). 역할 행동은 `AGENTS.local.md` § Lane loop(`AGENTS.local.md:28-39`)와 SessionStart 주입에 기대고 있다. 모드 skill은 이 암묵적 주입을 명시적 진입으로 바꾼다. `-l`/`-a`를 남길지는 §8의 결정 항목이다.
@@ -42,6 +42,14 @@
 | ⑦ 실행·반복 | `EnterWorktree` → 구현·검사 → PR → 영속 보고 → `ExitWorktree(keep)` → 병합을 기다리지 않고 ①로 | **부분** | worktree 생성은 `worktree-apply`(`src/worktree.rs:1-9`, CLI `src/main.rs:966`). 출입 규칙은 `AGENTS.local.md:33`, 반복·대기 금지는 `AGENTS.local.md:32`, `:36`. 이 순서를 스스로 도는 루프 구동부는 없다 | 검사 실패 → PR을 열지 않고 보고한다. 같은 단계가 3번 실패하면 멈춘다(`AGENTS.local.md:37`) |
 
 보고서와 다른 점: 보고서 §10.4는 ⑤에서 "진 쪽은 로컬 기록을 `lost`로 닫는다"고 적었다. RC1에서 진 쪽은 journal에 **아무것도 쓰지 않는다**(`src/claim.rs:906-911` "no journal record was written"). 상태 목록 `ACTIVE_STATES`(`src/claim.rs:50-59`)에도 `lost`가 없다. 이 SPEC은 RC1 동작을 따른다.
+
+### 현재 선택 경계: 지정 handoff (#2390 S4a)
+
+`queue-next`는 유효한 `moai-claim-handoff: comment=<id> to=<session>`의 수신자를 세션 id의 **정확한 문자열 일치**로 구분한다. 지정되지 않은 세션은 그 카드를 `skipped`의 `reason: handed_to_other`로 남기고 다음 후보로 간다. 로컬 journal에 활성 기록이 있어도 새 원격 handoff를 우회하지 못한다. `pr_ready` 카드의 기존 건너뛰기는 유지한다.
+
+handoff는 소유권 부여가 아니다. 지정된 세션도 claim 게시와 재조회·승자 판정을 거쳐야 한다. 일반 release는 누구나 다시 고를 수 있게 하며, 수신자가 새 claim 뒤 release한 과거 handoff가 카드를 영구히 예약하지 않는다. lease 만료만으로는 이전하지 않는다. 원격 댓글의 eventual consistency와 `cross_host_atomic: false` 한계는 그대로다.
+
+이 경계는 기존 댓글을 읽는 후보 선택만 다룬다. 메시지 저장 위치·ACK 경보 시간·host wake 연동·구조화된 resume/checkpoint는 구현하거나 결정하지 않는다.
 
 ## 4. 동시성 논증
 
@@ -94,8 +102,8 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` is a deterministic, sta
 
 ## 9. GEARS 요구와 수용 기준 초안
 
-- REQ-AM-01 (WHEN) 사용자가 세션 안에서 `/moai --agent-mode`를 입력하면, 시스템은 §3의 ①~⑦을 리더 배차 없이 반복해야 한다. 각 회차의 결과(`claimed`, `already_owned`, `busy`, `expired`, `uncertain`, 목록 없음)를 디스크에 기록해야 한다.
-- REQ-AM-02 (WHEN) 사용자가 `/moai --leader-mode [--autonomy full|semi]`를 입력하면, 시스템은 Issue를 직접 배차하지 않아야 한다. 대신 §5 감독 루프와 §6 결정 등급으로 동작해야 하고, `--autonomy`가 없으면 `semi`로 시작해야 한다.
+- REQ-AM-01 (WHEN) 사용자가 세션 안에서 `/moai --mode-agent`를 입력하면, 시스템은 §3의 ①~⑦을 리더 배차 없이 반복해야 한다. 각 회차의 결과(`claimed`, `already_owned`, `busy`, `expired`, `uncertain`, 목록 없음)를 디스크에 기록해야 한다.
+- REQ-AM-02 (WHEN) 사용자가 `/moai --mode-leader [--autonomy full|semi]`를 입력하면, 시스템은 Issue를 직접 배차하지 않아야 한다. 대신 §5 감독 루프와 §6 결정 등급으로 동작해야 하고, `--autonomy`가 없으면 `semi`로 시작해야 한다.
 - REQ-AM-03 (Ubiquitous) 소유권은 claim 댓글의 최소 live id 판정(RC1 `claim-acquire`)으로만 성립해야 한다. label, assignee, 로컬 파일, 메시지는 소유권의 근거가 되지 않아야 한다.
 - REQ-AM-04 (IF … THEN) 같은 `session` 값을 쓰는 살아 있는 다른 세션이 감지되면, 시스템은 claim하지 않고 중복을 보고해야 한다.
 - REQ-AM-05 (IF … THEN) claim 결과가 `uncertain`이면, 시스템은 그 카드에 쓰지 않아야 한다. 판정에 필요한 근거(댓글 id, 다시 읽기 실패 사유)를 보고해야 한다.
@@ -114,7 +122,7 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` is a deterministic, sta
 
 ## 10. 후속 구현 카드 분해
 
-- **(a) skill 인자와 모드 진입 절차.** `skills/moai/SKILL.md`와 `references/routes.json`에 `--leader-mode`, `--agent-mode`, `--autonomy full|semi`를 추가한다. `skills/moai/workflows/`에 모드별 진입 절차를 둔다. 지금 route 8개에는 모드가 없으므로 새 route를 둘지, 기존 route의 인자로 둘지 먼저 정한다. Codex에서 skill 인자를 넘기는 형태를 공식 문서로 확인하는 일이 이 카드의 선행 조사다. REQ-AM-01·02·07을 맡는다.
+- **(a) skill 인자와 모드 진입 절차.** `skills/moai/SKILL.md`와 `references/routes.json`에 `--mode-leader`, `--mode-agent`, `--autonomy full|semi`를 추가한다. `skills/moai/workflows/`에 모드별 진입 절차를 둔다. 지금 route 8개에는 모드가 없으므로 새 route를 둘지, 기존 route의 인자로 둘지 먼저 정한다. Codex에서 skill 인자를 넘기는 형태를 공식 문서로 확인하는 일이 이 카드의 선행 조사다. REQ-AM-01·02·07을 맡는다.
 - **(b) 리더 감독 절차 문서.** §5의 5분 PR 점검, 수리 재배차(원 작성자 제외), 목록 보충, 대기 사유 통지를 factory-dispatch 문서에 넣는다. 리더 상시 점검(`AGENTS.local.md:35`)과 게이트 절차(`:39`)를 바꾸지 않고 참조한다. 깨우기는 Claude는 `ScheduleWakeup`이고, Codex는 D-3 결정에 따른다. REQ-AM-09를 맡는다.
 - **(c) assignments 연동과 self-claim 루프.** §3의 ①(미배차 목록 산출), ②(후보 선택), ⑥(claim 뒤 label·소유 댓글 표시 연결)이 이 카드의 코드 작업이다. ③~⑤는 RC1 `claim-acquire`를 그대로 부른다. 목록 위치는 D-4 결정을 따르고, 원격 Issue가 원본이다. 세션 id 중복 감지(REQ-AM-04)와 `uncertain` 처리(REQ-AM-05)를 함께 넣는다. AC-AM-1~3을 맡는다.
 - **(d) 결정 등급과 결정 사다리 연결.** full/semi를 결정 사다리와 keep-set에 연결한다. semi의 추가 보류 목록(Issue 발행, HOLD 해제, 병합 정책, release)을 gate 목록에 적는다. Jev 사용 여부는 "켜져 있고 질문형이 맞을 때만"으로 두고, 결정 기록 형식은 RC1 `decision.record`(`src/decision.rs`)를 쓴다. 사다리가 지금은 Go 세대 규칙에만 있으므로, RC1 tracked 문서로 옮길지가 이 카드의 결정 항목이다. REQ-AM-08과 AC-AM-5를 맡는다.

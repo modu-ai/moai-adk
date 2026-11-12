@@ -1,8 +1,13 @@
-//! Everything the statusline reads outside stdin: environment, the Go configuration and
-//! state files, and local git. Read-only (#2350): the Go statusline also writes
-//! `$HOME/.moai/state/last-model.txt` and `<anchor>/.moai/state/context-usage/*.json`;
-//! this port writes nothing, so the Go state stays untouched until a later card decides
-//! who owns those records.
+//! Everything the statusline reads outside stdin: environment, the project configuration
+//! and state files, the HOME state files, and local git. Read-only (#2350): the Go
+//! statusline also writes `$HOME/.moai/state/last-model.txt` and
+//! `<anchor>/.moai/state/context-usage/*.json`; this port writes nothing.
+//!
+//! HOME state (#2455, user decision 2026-11-11): `last-model.txt` and
+//! `last-session-state.json` are read from `$HOME/.moai-cli/state/` only, never from the
+//! Go folder `$HOME/.moai/`, and `MOAI_HOME` is not consulted. No Rust command writes
+//! those two files yet, so "nothing to read" is the normal state and both segments stay
+//! empty until a producer exists.
 //!
 //! The only subprocess is `git`, and only when a `.git` entry is found above the
 //! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
@@ -69,12 +74,12 @@ impl Context {
         self.var("HOME").map(PathBuf::from)
     }
 
-    /// `paths.MoaiHome`: an absolute `MOAI_HOME`, else `$HOME/.moai`.
-    fn moai_home(&self) -> Option<PathBuf> {
-        match self.var("MOAI_HOME").map(PathBuf::from) {
-            Some(p) if p.is_absolute() => Some(p),
-            _ => self.home().map(|h| h.join(".moai")),
-        }
+    /// The HOME state folder `$HOME/.moai-cli/state` (Issue #2455, user decision
+    /// 2026-11-11). The Go folder `$HOME/.moai` is never read, and `MOAI_HOME` — the Go
+    /// tool's variable — is not consulted, so a Go setting cannot point back at it.
+    fn home_state(&self) -> Option<PathBuf> {
+        self.home()
+            .map(|h| h.join(crate::HOME_STATE_DIR).join("state"))
     }
 
     pub fn no_color(&self) -> bool {
@@ -218,8 +223,34 @@ pub fn display_config(input: Option<&Input>, ctx: &Context) -> DisplayConfig {
     let root = input
         .and_then(resolve_anchor)
         .or_else(|| find_project_root(ctx));
-    root.map(|r| read_display_config(&r.join(".moai/config/sections/statusline.yaml")))
+    root.map(|r| read_display_config(&config_path(&r, STATUSLINE_YAML)))
         .unwrap_or_default()
+}
+
+/// `statusline.yaml`: the RC location under `.moai-cli/`, then the Go file.
+const STATUSLINE_YAML: (&str, &str) = (
+    ".moai-cli/config/sections/statusline.yaml",
+    ".moai/config/sections/statusline.yaml",
+);
+/// `statusline.local.yaml`: the RC location under `.moai-cli/`, then the Go file.
+const STATUSLINE_LOCAL_YAML: (&str, &str) = (
+    ".moai-cli/statusline.local.yaml",
+    ".moai/statusline.local.yaml",
+);
+
+/// #2350 scope 3 (user decision 6774899518 row 42 = B): a statusline setting is read from
+/// `.moai-cli/` (the Go relative path under the RC folder) when that file exists, else
+/// from the Go file. The Go file is only read — never written, moved or copied — so the
+/// Go state stays as it is. Existence decides, not parsing: an unreadable `.moai-cli/`
+/// file means defaults (as Go treats an unparseable file), never a silent return to the
+/// Go values.
+fn config_path(root: &Path, (rc, go): (&str, &str)) -> PathBuf {
+    let rc = root.join(rc);
+    if rc.exists() {
+        rc
+    } else {
+        root.join(go)
+    }
 }
 
 fn read_display_config(path: &Path) -> DisplayConfig {
@@ -351,7 +382,8 @@ fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
 // ---- model ----
 
 /// `CollectMetrics` model resolution: display name, shortened id or name, then the
-/// `MOAI_LAST_MODEL` / `$HOME/.moai/state/last-model.txt` fallback, then the GLM mapping.
+/// `MOAI_LAST_MODEL` / `$HOME/.moai-cli/state/last-model.txt` fallback (Go read
+/// `$HOME/.moai/state/`; #2455 moved it), then the GLM mapping.
 fn collect_model(input: Option<&Input>, ctx: &Context) -> String {
     let mut name = String::new();
     if let Some(m) = input.and_then(|i| i.model.as_ref()) {
@@ -367,8 +399,8 @@ fn collect_model(input: Option<&Input>, ctx: &Context) -> String {
         name = if let Some(env) = ctx.var("MOAI_LAST_MODEL") {
             segments::shorten_model_name(env)
         } else {
-            ctx.home()
-                .and_then(|h| std::fs::read_to_string(h.join(".moai/state/last-model.txt")).ok())
+            ctx.home_state()
+                .and_then(|s| std::fs::read_to_string(s.join("last-model.txt")).ok())
                 .map(|s| s.trim().to_string())
                 .unwrap_or_default()
         };
@@ -471,12 +503,34 @@ fn match_context_window(model: &str, table: &[(String, i64)]) -> Option<i64> {
         .filter(|size| *size > 0)
 }
 
-/// `readLLMYAMLContextWindows`: the nearest `llm.yaml` above the cwd decides.
-fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
+/// The folders searched upward for project configuration: the cwd and its parents,
+/// stopping before HOME (#2455 AC-5, leader scope 6792437161). HOME's own `.moai` is the
+/// Go tool's home folder, not a project, so it is never read as project configuration and
+/// nothing above HOME is searched from a cwd below it — the same stop as
+/// `find_project_root`. A cwd outside HOME walks up to the root as before. Folders are
+/// compared canonically, so a HOME given through a symlink is still recognised.
+fn project_config_dirs(ctx: &Context) -> Vec<PathBuf> {
     let Some(mut dir) = ctx.cwd.clone() else {
         return Vec::new();
     };
+    let home = ctx.home().map(|h| std::fs::canonicalize(&h).unwrap_or(h));
+    let mut out = Vec::new();
     loop {
+        let here = std::fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone());
+        if home.as_deref() == Some(here.as_path()) {
+            return out;
+        }
+        out.push(dir.clone());
+        if !dir.pop() {
+            return out;
+        }
+    }
+}
+
+/// `readLLMYAMLContextWindows`: the nearest `llm.yaml` above the cwd decides (below HOME
+/// only, see `project_config_dirs`).
+fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
+    for dir in project_config_dirs(ctx) {
         let path = dir.join(".moai/config/sections/llm.yaml");
         if path.exists() {
             let Some(Node::Map(map)) = config::read(&path)
@@ -497,10 +551,8 @@ fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
             }
             return out;
         }
-        if !dir.pop() {
-            return Vec::new();
-        }
     }
+    Vec::new()
 }
 
 // ---- version ----
@@ -524,9 +576,9 @@ fn collect_version(ctx: &Context, binary: &str) -> Version {
     }
 }
 
+/// The nearest `system.yaml` above the cwd, below HOME only (see `project_config_dirs`).
 fn template_version(ctx: &Context) -> Option<String> {
-    let mut dir = ctx.cwd.clone()?;
-    loop {
+    for dir in project_config_dirs(ctx) {
         let path = dir.join(".moai/config/sections/system.yaml");
         if path.exists() {
             let doc = config::read(&path)?;
@@ -537,10 +589,8 @@ fn template_version(ctx: &Context) -> Option<String> {
             };
             return pick("template_version").or_else(|| pick("version"));
         }
-        if !dir.pop() {
-            return None;
-        }
     }
+    None
 }
 
 // ---- directory ----
@@ -645,7 +695,8 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
 
 // ---- local state files ----
 
-/// `taskCollector.read`: `<MOAI_HOME>/state/last-session-state.json` `active_task`.
+/// `taskCollector.read`: `$HOME/.moai-cli/state/last-session-state.json` `active_task`
+/// (Go read `<MOAI_HOME>/state/`; #2455 moved it).
 fn collect_task(ctx: &Context) -> String {
     #[derive(Deserialize, Default)]
     #[serde(default)]
@@ -665,10 +716,7 @@ fn collect_task(ctx: &Context) -> String {
         specs_in_progress: Option<Vec<String>>,
         active_task: Option<Active>,
     }
-    let Some(path) = ctx
-        .moai_home()
-        .map(|h| h.join("state/last-session-state.json"))
-    else {
+    let Some(path) = ctx.home_state().map(|s| s.join("last-session-state.json")) else {
         return String::new();
     };
     let Some(state) = std::fs::read(path)
@@ -736,17 +784,14 @@ fn github_counts(anchor: &Path) -> GitHubCounts {
             open_issues: c.open_issues.unwrap_or(0),
             open_prs: c.open_prs.unwrap_or(0),
         });
-    let forge = [
-        ".moai/statusline.local.yaml",
-        ".moai/config/sections/statusline.yaml",
-    ]
-    .iter()
-    .filter_map(|rel| config::read(&anchor.join(rel)))
-    .filter_map(|doc| {
-        doc.scalar(&["statusline", "forge"])
-            .map(|s| s.trim().to_string())
-    })
-    .find(|v| !v.is_empty());
+    let forge = [STATUSLINE_LOCAL_YAML, STATUSLINE_YAML]
+        .into_iter()
+        .filter_map(|pair| config::read(&config_path(anchor, pair)))
+        .filter_map(|doc| {
+            doc.scalar(&["statusline", "forge"])
+                .map(|s| s.trim().to_string())
+        })
+        .find(|v| !v.is_empty());
     if let Some(forge) = forge {
         if !matches!(forge.to_lowercase().as_str(), "github" | "gitlab") {
             counts.suppressed = true;
@@ -826,6 +871,148 @@ mod tests {
         );
         std::fs::write(sections.join("system.yaml"), "moai:\n  version: 3.2.1\n").unwrap();
         assert_eq!(collect_version(&ctx, "v3.2.1").latest, None);
+    }
+
+    /// #2455 AC-5 (leader scope 6792437161): the upward search for `llm.yaml` and
+    /// `system.yaml` never treats HOME's own `.moai` as project configuration and stops
+    /// there; a project folder below HOME and a cwd outside HOME keep their reads.
+    #[test]
+    fn project_config_walk_stops_at_home() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(tmp.path()).unwrap();
+        let home = root.join("home");
+        let put = |dir: &Path, llm: &str, version: &str| {
+            let s = dir.join(".moai/config/sections");
+            std::fs::create_dir_all(&s).unwrap();
+            std::fs::write(
+                s.join("llm.yaml"),
+                format!("llm:\n  glm:\n    context_windows:\n      glm-marker: {llm}\n"),
+            )
+            .unwrap();
+            std::fs::write(
+                s.join("system.yaml"),
+                format!("moai:\n  template_version: {version}\n"),
+            )
+            .unwrap();
+        };
+        put(&home, "123456", "v9.9.9");
+        let deep = home.join("a/b/c");
+        std::fs::create_dir_all(&deep).unwrap();
+        let link = root.join("home-link");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&home, &link).unwrap();
+        let at = |home_var: &Path, cwd: &Path| {
+            Context::for_test(&[("HOME", home_var.to_str().unwrap())], Some(cwd), 0)
+        };
+
+        // Below HOME with no nearer project, and HOME itself: HOME's `.moai` is not read.
+        for cwd in [&deep, &home] {
+            let ctx = at(&home, cwd);
+            assert_eq!(llm_context_windows(&ctx), Vec::new(), "{cwd:?}");
+            assert_eq!(template_version(&ctx), None, "{cwd:?}");
+        }
+        // The search stops at HOME rather than skipping it: a folder above HOME holding
+        // `.moai` is not reached from below HOME either.
+        put(&root, "999", "v8.8.8");
+        let ctx = at(&home, &deep);
+        assert_eq!(llm_context_windows(&ctx), Vec::new());
+        assert_eq!(template_version(&ctx), None);
+        // HOME is recognised through a symlink, given as HOME or as part of the cwd.
+        #[cfg(unix)]
+        for (home_var, cwd) in [(&link, deep.clone()), (&home, link.join("a/b/c"))] {
+            let ctx = at(home_var, &cwd);
+            assert_eq!(llm_context_windows(&ctx), Vec::new(), "{cwd:?}");
+            assert_eq!(template_version(&ctx), None, "{cwd:?}");
+        }
+
+        // A project folder directly below HOME keeps the #2389 project read, from its
+        // root and from below it.
+        let proj = home.join("proj");
+        put(&proj, "777", "v1.2.3");
+        let sub = proj.join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        for cwd in [&proj, &sub] {
+            let ctx = at(&home, cwd);
+            assert_eq!(
+                llm_context_windows(&ctx),
+                vec![("glm-marker".to_string(), 777)],
+                "{cwd:?}"
+            );
+            assert_eq!(template_version(&ctx).as_deref(), Some("v1.2.3"), "{cwd:?}");
+        }
+
+        // A cwd outside HOME walks up as before.
+        let out = root.join("outside");
+        put(&out, "555", "v4.5.6");
+        let below = out.join("x");
+        std::fs::create_dir_all(&below).unwrap();
+        let ctx = at(&home, &below);
+        assert_eq!(
+            llm_context_windows(&ctx),
+            vec![("glm-marker".to_string(), 555)]
+        );
+        assert_eq!(template_version(&ctx).as_deref(), Some("v4.5.6"));
+    }
+
+    /// #2350 scope 3 (decision 6774899518 row 42 = B): `.moai-cli/` first, else the Go
+    /// file, which is only read.
+    #[test]
+    fn statusline_config_reads_moai_cli_first_and_keeps_the_go_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ctx = Context::for_test(&[], Some(tmp.path()), 0);
+        let go = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&go).unwrap();
+        let go_file = go.join("statusline.yaml");
+        let go_text =
+            "statusline:\n  theme: catppuccin\n  forge: none\n  segments:\n    git: false\n";
+        std::fs::write(&go_file, go_text).unwrap();
+
+        // Only the Go file: it is read.
+        let c = display_config(None, &ctx);
+        assert_eq!(c.theme, "catppuccin");
+        assert_eq!(c.segments.get("git"), Some(&false));
+        assert!(github_counts(tmp.path()).suppressed);
+
+        // A `.moai-cli/` file wins whole; nothing is merged from the Go file.
+        let rc = tmp.path().join(".moai-cli/config/sections");
+        std::fs::create_dir_all(&rc).unwrap();
+        std::fs::write(
+            rc.join("statusline.yaml"),
+            "statusline:\n  theme: nord\n  forge: github\n",
+        )
+        .unwrap();
+        let c = display_config(None, &ctx);
+        assert_eq!(c.theme, "nord");
+        assert!(c.segments.is_empty());
+        assert!(!github_counts(tmp.path()).suppressed);
+
+        // An unreadable `.moai-cli/` file means defaults, not the Go values.
+        std::fs::write(rc.join("statusline.yaml"), "statusline:\n\ttheme: x\n").unwrap();
+        let c = display_config(None, &ctx);
+        assert_eq!(c.theme, "");
+        assert!(c.segments.is_empty());
+
+        // The local file follows the same order.
+        std::fs::write(
+            tmp.path().join(".moai/statusline.local.yaml"),
+            "statusline:\n  forge: github\n",
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join(".moai-cli/statusline.local.yaml"),
+            "statusline:\n  forge: none\n",
+        )
+        .unwrap();
+        assert!(github_counts(tmp.path()).suppressed);
+
+        // The Go file is never written, and nothing new appears under `.moai/`.
+        assert_eq!(std::fs::read_to_string(&go_file).unwrap(), go_text);
+        let mut names: Vec<_> = std::fs::read_dir(tmp.path().join(".moai"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["config", "statusline.local.yaml"]);
     }
 
     #[test]

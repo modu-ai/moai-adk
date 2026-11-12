@@ -5,7 +5,9 @@
 mod common;
 
 use common::{exchange, json_response as resp};
-use moai_cli::claim::{task_key, Journal, Owner, SpecRef, TaskRef, WorktreeId};
+use moai_cli::claim::{
+    acquire, task_key, ClaimRequest, Journal, Owner, SpecRef, TaskRef, WorktreeId,
+};
 use moai_cli::forge::policy::Clock;
 use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::forge::{Client, Config};
@@ -65,6 +67,14 @@ fn claim(id: i64, session: &str) -> Value {
     json!({"id": id, "body": format!("moai-claim: session={session} epoch=1 lease_until={LEASE}")})
 }
 
+fn handoff(id: i64, target: i64, to: &str) -> Value {
+    json!({"id": id, "body": moai_cli::claim_verify::render_handoff_line(target, to, "leader")})
+}
+
+fn release(id: i64, target: i64) -> Value {
+    json!({"id": id, "body": moai_cli::claim_verify::render_release_line(target, "leader")})
+}
+
 fn comments(n: i64) -> String {
     format!("{API}/issues/{n}/comments?per_page=100")
 }
@@ -84,9 +94,18 @@ fn reads(issues: Vec<Value>) -> Vec<Exchange> {
 /// Queue candidate check (empty), acquire pre-check (empty), the one POST, and the re-read
 /// the caller supplies.
 fn attempt(n: i64, posted: i64, reread: Vec<Value>) -> Vec<Exchange> {
+    attempt_with_history(n, posted, vec![], reread)
+}
+
+fn attempt_with_history(
+    n: i64,
+    posted: i64,
+    history: Vec<Value>,
+    reread: Vec<Value>,
+) -> Vec<Exchange> {
     vec![
-        exchange("GET", &comments(n), resp(200, json!([]))),
-        exchange("GET", &comments(n), resp(200, json!([]))),
+        exchange("GET", &comments(n), resp(200, json!(history))),
+        exchange("GET", &comments(n), resp(200, json!(history))),
         exchange(
             "POST",
             &format!("{API}/issues/{n}/comments"),
@@ -355,11 +374,13 @@ fn own_unfinished_card_is_resumed_not_skipped() {
     let (first, _) = run(&root, "session-a", ex);
     assert_eq!(first["record"]["state"], json!("assigned"), "{first}");
 
-    let (again, t) = run(
-        &root,
-        "session-a",
-        reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]),
-    );
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.push(exchange(
+        "GET",
+        &comments(7),
+        resp(200, json!([claim(500, "session-a")])),
+    ));
+    let (again, t) = run(&root, "session-a", ex);
     assert_eq!(again["outcome"], json!("already_owned"), "{again}");
     assert_eq!(again["issue"], json!(7), "{again}");
     assert_eq!(again["skipped"], json!([]), "{again}");
@@ -379,4 +400,344 @@ fn no_candidate_is_idle_and_posts_nothing() {
     assert_eq!(out["outcome"], json!("idle"), "{out}");
     assert_eq!(out["skipped"], json!([{"issue": 2, "reason": "epic"}]));
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+}
+
+/// A retargeted handoff is a literal reservation, not a prefix/substring match or a
+/// claim. The near-named session skips without writing, while the recipient must POST
+/// its own claim and read it back before it owns the card.
+#[test]
+fn handoff_reserves_for_exact_recipient_and_recipient_acquires() {
+    let tmp = tempfile::tempdir().unwrap();
+    let history = vec![
+        claim(100, "source"),
+        handoff(150, 100, "session-target-extra"),
+        handoff(200, 100, "session-target"),
+    ];
+    for session in ["session-target-extra", "session-targe"] {
+        let foreign_root = tmp.path().join(session);
+        let mut ex = reads(vec![card(7, "A1", ""), card(8, "A2", "")]);
+        ex.push(exchange("GET", &comments(7), resp(200, json!(history))));
+        ex.extend(attempt(8, 600, vec![claim(600, session)]));
+        let (out, t) = run(&foreign_root, session, ex);
+        assert_eq!(out["outcome"], json!("claimed"), "{out}");
+        assert_eq!(out["issue"], json!(8));
+        assert_eq!(
+            out["skipped"],
+            json!([{
+                "issue": 7, "reason": "handed_to_other", "to": "session-target",
+                "comment_id": 200, "target": 100,
+            }])
+        );
+        assert_eq!(posts(&t), vec![format!("{API}/issues/8/comments")]);
+        assert!(!record_file(&foreign_root, 7).exists());
+        assert_eq!(
+            fs::read_to_string(foreign_root.join("journal.log"))
+                .unwrap()
+                .lines()
+                .count(),
+            1
+        );
+        assert_eq!(t.remaining(), 0);
+    }
+
+    let recipient_root = tmp.path().join("recipient");
+    let mut ex = reads(vec![card(7, "A1", "")]);
+    let mut reread = history.clone();
+    reread.push(claim(500, "session-target"));
+    ex.extend(attempt_with_history(7, 500, history, reread));
+    let (out, t) = run(&recipient_root, "session-target", ex);
+    assert_eq!(out["outcome"], json!("claimed"), "{out}");
+    assert_eq!(out["issue"], json!(7));
+    assert_eq!(out["record"]["comment_id"], json!(500));
+    assert_eq!(out["record"]["owner"]["id"], json!("session-target"));
+    assert_eq!(out["skipped"], json!([]));
+    assert_eq!(out["cross_host_atomic"], json!(false));
+    assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+    assert!(record_file(&recipient_root, 7).exists());
+    assert_eq!(t.remaining(), 0);
+}
+
+/// Releasing the source cancels its reservation and opens the card to an unrelated
+/// session. Release is not an implicit transfer to the previous handoff recipient.
+#[test]
+fn release_reopens_handed_card_to_any_session() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let history = vec![
+        claim(100, "source"),
+        handoff(150, 100, "recipient"),
+        release(200, 100),
+    ];
+    let mut ex = reads(vec![card(7, "A1", "")]);
+    let mut reread = history.clone();
+    reread.push(claim(500, "unrelated"));
+    ex.extend(attempt_with_history(7, 500, history, reread));
+    let (out, t) = run(&root, "unrelated", ex);
+    assert_eq!(out["outcome"], json!("claimed"), "{out}");
+    assert_eq!(out["issue"], json!(7));
+    assert_eq!(out["skipped"], json!([]));
+    assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+    assert_eq!(t.remaining(), 0);
+}
+
+/// Only a reference to an earlier actual claim creates a reservation. Invalid source
+/// references must neither reserve an unclaimed card nor close a future claim.
+#[test]
+fn handoff_requires_an_earlier_actual_claim() {
+    for (name, history, held) in [
+        ("missing", vec![handoff(200, 99, "other")], false),
+        (
+            "nonclaim",
+            vec![
+                json!({"id": 100, "body": "ordinary comment"}),
+                handoff(200, 100, "other"),
+            ],
+            false,
+        ),
+        (
+            "forward",
+            vec![handoff(100, 200, "other"), claim(200, "source")],
+            true,
+        ),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join(name);
+        let mut ex = reads(vec![card(7, "A1", "")]);
+        if held {
+            ex.push(exchange("GET", &comments(7), resp(200, json!(history))));
+        } else {
+            let mut reread = history.clone();
+            reread.push(claim(500, "session-a"));
+            ex.extend(attempt_with_history(7, 500, history, reread));
+        }
+        let (out, t) = run(&root, "session-a", ex);
+        if held {
+            assert_eq!(out["outcome"], json!("exhausted"), "{name}: {out}");
+            assert_eq!(out["skipped"][0]["reason"], json!("claimed"));
+            assert_eq!(out["skipped"][0]["comment_id"], json!(200));
+            assert!(posts(&t).is_empty());
+            assert!(!record_file(&root, 7).exists());
+        } else {
+            assert_eq!(out["outcome"], json!("claimed"), "{name}: {out}");
+            assert_eq!(out["skipped"], json!([]));
+            assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+        }
+        assert_eq!(t.remaining(), 0, "{name}");
+    }
+}
+
+/// A recipient's later claim consumes the reservation. Releasing that claim leaves
+/// the card open, rather than resurrecting the original source's historical handoff.
+#[test]
+fn recipient_claim_and_release_do_not_leave_a_historical_reservation() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let history = vec![
+        claim(100, "source"),
+        handoff(150, 100, "recipient"),
+        claim(200, "recipient"),
+        release(250, 200),
+    ];
+    let mut ex = reads(vec![card(7, "A1", "")]);
+    let mut reread = history.clone();
+    reread.push(claim(500, "unrelated"));
+    ex.extend(attempt_with_history(7, 500, history, reread));
+    let (out, t) = run(&root, "unrelated", ex);
+    assert_eq!(out["outcome"], json!("claimed"), "{out}");
+    assert_eq!(out["skipped"], json!([]));
+    assert_eq!(out["record"]["comment_id"], json!(500));
+    assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+    assert_eq!(t.remaining(), 0);
+}
+
+/// The reservation can live on a later comment page than its source. Read through
+/// Link pagination before deciding that an expired claim merely blocks the candidate.
+#[test]
+fn handoff_on_later_comment_page_is_respected() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let page2 = format!("{}&page=2", comments(7));
+    let mut ex = reads(vec![card(7, "A1", ""), card(8, "A2", "")]);
+    ex.push(exchange(
+        "GET",
+        &comments(7),
+        resp(
+            200,
+            json!([claim_until(100, "source", "2026-01-01T00:00:00Z")]),
+        )
+        .with_header("link", format!("<{page2}>; rel=\"next\"")),
+    ));
+    ex.push(exchange(
+        "GET",
+        &page2,
+        resp(200, json!([handoff(200, 100, "recipient")])),
+    ));
+    ex.extend(attempt(8, 600, vec![claim(600, "session-a")]));
+    let (out, t) = run(&root, "session-a", ex);
+    assert_eq!(out["outcome"], json!("claimed"), "{out}");
+    assert_eq!(out["issue"], json!(8));
+    assert_eq!(out["skipped"][0]["reason"], json!("handed_to_other"));
+    assert_eq!(out["skipped"][0]["to"], json!("recipient"));
+    assert_eq!(out["skipped"][0]["comment_id"], json!(200));
+    assert_eq!(posts(&t), vec![format!("{API}/issues/8/comments")]);
+    assert!(!record_file(&root, 7).exists());
+    assert_eq!(t.remaining(), 0);
+}
+
+/// Remote reservation wins over a stale assigned journal record. Do not mutate that
+/// record or return already_owned; the lane can claim another free card instead.
+#[test]
+fn stale_own_active_record_cannot_bypass_foreign_handoff() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let mut ex = reads(vec![card(7, "A1", "")]);
+    ex.extend(attempt(7, 100, vec![claim(100, "session-a")]));
+    let (first, _) = run(&root, "session-a", ex);
+    assert_eq!(first["outcome"], json!("claimed"));
+    let original = fs::read(record_file(&root, 7)).unwrap();
+    let mut ex = reads(vec![card(7, "A1", ""), card(8, "A2", "")]);
+    ex.push(exchange(
+        "GET",
+        &comments(7),
+        resp(
+            200,
+            json!([claim(100, "session-a"), handoff(200, 100, "recipient")]),
+        ),
+    ));
+    ex.extend(attempt(8, 600, vec![claim(600, "session-a")]));
+    let (out, t) = run(&root, "session-a", ex);
+    assert_eq!(out["outcome"], json!("claimed"), "{out}");
+    assert_eq!(out["issue"], json!(8));
+    assert_eq!(out["skipped"][0]["reason"], json!("handed_to_other"));
+    assert_eq!(out["skipped"][0]["to"], json!("recipient"));
+    assert_eq!(posts(&t), vec![format!("{API}/issues/8/comments")]);
+    assert_eq!(fs::read(record_file(&root, 7)).unwrap(), original);
+    assert_eq!(
+        fs::read_to_string(root.join("journal.log"))
+            .unwrap()
+            .lines()
+            .count(),
+        2
+    );
+    assert_eq!(t.remaining(), 0);
+}
+
+/// A reservation does not bypass acquire's uncertain readback rule or allow the lane
+/// to touch the free card after posting a claim whose visibility is unresolved.
+#[test]
+fn recipient_with_unseen_claim_readback_stops_uncertain() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let history = vec![claim(100, "source"), handoff(200, 100, "recipient")];
+    let mut ex = reads(vec![card(7, "A1", ""), card(8, "A2", "")]);
+    ex.extend(attempt_with_history(7, 500, history.clone(), history));
+    let (out, t) = run(&root, "recipient", ex);
+    assert_eq!(out["outcome"], json!("uncertain"), "{out}");
+    assert_eq!(out["issue"], json!(7));
+    assert_eq!(out["record"], Value::Null);
+    assert_eq!(out["cross_host_atomic"], json!(false));
+    assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+    assert!(!record_file(&root, 7).exists());
+    assert!(!record_file(&root, 8).exists());
+    assert!(!root.join("journal.log").exists());
+    assert_eq!(t.remaining(), 0);
+}
+
+/// A syntactically complete prior claim is not free just because its lease is invalid.
+/// Preserve the queue's no-automatic-takeover behavior without relying on parser wording.
+#[test]
+fn prior_claim_with_invalid_lease_blocks_without_writing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let mut ex = reads(vec![card(7, "A1", "")]);
+    ex.push(exchange(
+        "GET",
+        &comments(7),
+        resp(200, json!([claim_until(100, "source", "invalid-lease")])),
+    ));
+    let (out, t) = run(&root, "session-a", ex);
+    assert_eq!(out["outcome"], json!("exhausted"), "{out}");
+    assert_eq!(out["skipped"][0]["reason"], json!("claimed"));
+    assert_eq!(out["skipped"][0]["claimed_by"], json!("source"));
+    assert_eq!(out["skipped"][0]["comment_id"], json!(100));
+    assert!(posts(&t).is_empty());
+    assert!(!record_file(&root, 7).exists());
+    assert!(!root.join("journal.log").exists());
+    assert_eq!(t.remaining(), 0);
+}
+
+/// Exercise acquire directly: queue prefiltering would hide invalid closure targets
+/// before the claim consumer could demonstrate its own live-owner safety boundary.
+#[test]
+fn acquire_honors_literal_release_and_handoff_closures() {
+    let template = request("recipient").claim;
+    let req = ClaimRequest::new(
+        1,
+        TaskRef::new("github", "github.com", "acme", "widgets", 101, 7000, 7),
+        "A1".to_string(),
+        template.owner,
+        template.base_revision,
+        template.write_scope,
+        template.spec_ref,
+    )
+    .lease_until(template.lease_until);
+    for kind in ["release", "handoff"] {
+        for (case, source, target, closing_id, closes) in [
+            ("exact", 100, 100, 2000, true),
+            ("shorter_target", 1000, 100, 2000, false),
+            ("longer_target", 100, 1000, 2000, false),
+            ("before_source", 100, 100, 50, false),
+            ("near_marker", 100, 100, 2000, false),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            let root = tmp.path().join("claims");
+            let journal = locked(&root);
+            let mut closing = match kind {
+                "release" => release(closing_id, target),
+                _ => handoff(closing_id, target, "recipient"),
+            };
+            if case == "near_marker" {
+                closing["body"] = json!(format!(
+                    "moai-claim-{kind}-extra: comment={target} to=recipient"
+                ));
+            }
+            let history = vec![claim(source, "source"), closing];
+            let mut ex = vec![exchange("GET", &comments(7), resp(200, json!(history)))];
+            if closes {
+                let mut reread = history;
+                reread.push(claim(3000, "recipient"));
+                ex.push(exchange(
+                    "POST",
+                    &format!("{API}/issues/7/comments"),
+                    resp(201, json!({"id": 3000})),
+                ));
+                ex.push(exchange("GET", &comments(7), resp(200, json!(reread))));
+            }
+            let t = RecordedTransport::new(ex);
+            let clock = FakeClock(Cell::new(CLOCK0));
+            let client = Client::new(&t, &clock, Config::default(), Default::default());
+            let out = acquire(&journal, &req, worktree(), &client, &clock).unwrap();
+            if closes {
+                assert_eq!(out.outcome, "claimed", "{kind}/{case}: {out:?}");
+                let record = out.record.as_ref().unwrap();
+                assert_eq!(record.owner.id, "recipient");
+                assert_eq!(record.comment_id, Some(3000));
+                assert!(out.foreign_owner.is_none());
+                assert_eq!(posts(&t), vec![format!("{API}/issues/7/comments")]);
+                assert!(record_file(&root, 7).exists());
+                assert_eq!(journal.read_events().unwrap().len(), 1);
+            } else {
+                assert_eq!(out.outcome, "already_owned", "{kind}/{case}: {out:?}");
+                assert!(out.record.is_none());
+                let foreign = out.foreign_owner.as_ref().unwrap();
+                assert_eq!(foreign["session"], json!("source"));
+                assert_eq!(foreign["comment_id"], json!(source));
+                assert!(posts(&t).is_empty());
+                assert!(!record_file(&root, 7).exists());
+                assert!(!root.join("journal.log").exists());
+                assert!(journal.read_events().unwrap().is_empty());
+            }
+            assert_eq!(t.remaining(), 0, "{kind}/{case}");
+        }
+    }
 }

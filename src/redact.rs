@@ -5,9 +5,8 @@
 //! mask the same shapes instead of restating the list. The list is the union of the
 //! conservative profile shapes (`crate::SECRET_SHAPES`, lib.rs) and the merged gh
 //! token prefixes (`crate::forge::transport::TOKEN_PREFIXES`) — the prefixes stay
-//! spelled only where they were already merged (#2351). forge::promote and
-//! forge::report consume this module's predicate instead of carrying their own
-//! copies. It is a conservative shape filter, not a secret detector; the common
+//! spelled only where they were already merged (#2351). forge::report consumes
+//! this module's predicate instead of carrying its own copy. It is a conservative shape filter, not a secret detector; the common
 //! redaction policy (what may be logged at all) belongs to the caller.
 
 use crate::forge::transport::TOKEN_PREFIXES;

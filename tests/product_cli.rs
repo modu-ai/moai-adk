@@ -299,7 +299,7 @@ fn profile_v1_file_still_readable_under_v2() {
     // REQ-03A-01: v1 files stay readable with defaulted new fields, and a matching v2
     // input plans the upgrade instead of stalling on the schema marker (audit #2052).
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     let file = root.path().join(".moai-cli/project.yaml");
     fs::create_dir_all(file.parent().unwrap()).unwrap();
     let v1 = json!({
@@ -563,7 +563,7 @@ fn package_inspection_is_stable_and_covers_support_files() {
 // ---- AGENTS.md managed-section generation -------------------------------------------------
 
 fn agents_request(language: &str, local_file: &str) -> Value {
-    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai-cli/workflows/","local_file":local_file})
+    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
 }
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
     cli(&["agents-plan", root.path().to_str().unwrap()], request)
@@ -583,7 +583,7 @@ fn agents_apply(root: &TempDir, plan: &Value) -> std::process::Output {
 }
 fn agents_project(language: &str, local_file: &str) -> (TempDir, Value) {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
     let out = agents_plan(&root, &agents_request(language, local_file));
     assert!(
@@ -617,7 +617,7 @@ fn actions(plan: &Value) -> Vec<(String, String)> {
 #[test]
 fn agents_generation_is_idempotent_and_preserves_user_body() {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
     let user_body = "# My project\r\n\r\nUser rules stay as written.\r\n";
     fs::write(root.path().join("AGENTS.md"), user_body).unwrap();
@@ -642,7 +642,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
     assert!(agents.starts_with(user_body));
     assert!(agents.contains("<!-- moai:managed:begin id=moai-workflow -->"));
-    assert!(agents.contains("skills/moai-cli/workflows/"));
+    assert!(agents.contains("skills/moai/workflows/"));
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
     assert!(ignore.starts_with("target/\n"));
     assert!(ignore.contains("\nAGENTS.local.md\n"));
@@ -808,7 +808,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     assert!(!agents_plan(&root, &agents_request("en", "none"))
         .status
         .success());
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     fs::write(root.path().join("CLAUDE.md"), "existing\n").unwrap();
     fs::write(root.path().join("AGENTS.override.md"), "codex override\n").unwrap();
     let out = agents_plan(&root, &agents_request("en", "none"));
@@ -819,7 +819,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     // Replay in another project is refused.
     let other = TempDir::new().unwrap();
     create(&other, &profile(None));
-    fs::create_dir_all(other.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(other.path().join("skills/moai/workflows")).unwrap();
     assert!(!agents_apply(&other, &plan).status.success());
     assert!(!other.path().join("AGENTS.md").exists());
     // Tampered plan is refused.
@@ -861,7 +861,7 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     use std::os::unix::fs::symlink;
     let root = TempDir::new().unwrap();
     let outside = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
     symlink(outside.path(), root.path().join("AGENTS.md")).unwrap();
     assert!(!agents_plan(&root, &agents_request("en", "none"))
@@ -953,7 +953,7 @@ fn profile_values_cannot_inject_managed_markers() {
         ("purpose", json!("mentions moai:managed: syntax")),
     ] {
         let root = TempDir::new().unwrap();
-        fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
         let mut input = profile(None);
         input[field] = value;
         create(&root, &input);
@@ -1745,7 +1745,7 @@ fn protocol_fixtures_record_current_contract() {
     let e = empty.path().to_str().unwrap().to_string();
     let repo = TempDir::new().unwrap();
     let r = repo.path().to_str().unwrap().to_string();
-    fs::create_dir_all(project.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(project.path().join("skills/moai/workflows")).unwrap();
     fs::write(package.path().join("SKILL.md"), "router\n").unwrap();
     let mut run = FixtureRun {
         roots: [&project, &package, &empty, &repo]
@@ -2250,7 +2250,7 @@ mod skill_package {
     const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
 
     fn root() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
     }
     fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
         for entry in fs::read_dir(dir).unwrap() {
@@ -2489,8 +2489,8 @@ mod skill_package {
         let body = mode_workflow("MODE-LEADER");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
         assert!(
-            skill.contains("`--leader-mode`") && skill.contains("`--autonomy full|semi`"),
-            "the canonical leader flag is --leader-mode (#2286): {skill}"
+            skill.contains("`--mode-leader`") && skill.contains("`--autonomy full|semi`"),
+            "the canonical leader flag is --mode-leader (#2286): {skill}"
         );
         // REQ-A1-01: the loaded mode ignores the other mode's instructions.
         assert!(body.contains("ignore instructions for any other mode"));
@@ -2505,12 +2505,12 @@ mod skill_package {
         let body = mode_workflow("MODE-AGENT");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
         assert!(
-            skill.contains("`--agent-mode`") && skill.contains("`$moai-cli --agent-mode …`"),
-            "the canonical agent flag is --agent-mode (#2286): {skill}"
+            skill.contains("`--mode-agent`") && skill.contains("`$moai --mode-agent …`"),
+            "the canonical agent flag is --mode-agent (#2286): {skill}"
         );
         assert!(body.contains("ignore instructions for any other mode"));
         assert!(
-            body.contains("`$moai-cli --agent-mode`"),
+            body.contains("`$moai --mode-agent`"),
             "Codex may enter agent mode"
         );
         cites_spec_sections_only(&body, "MODE-AGENT");
@@ -2531,26 +2531,71 @@ mod skill_package {
             "{first}"
         );
         assert!(
-            first.contains("`$moai-cli --agent-mode`"),
+            first.contains("`$moai --mode-agent`"),
             "the refusal points to agent mode"
         );
     }
 
-    /// AC-2 (#2286): the routing line must send each spelled flag to its route and
-    /// keep `--mode agent|leader` working as a legacy alias; the routes file must
-    /// carry both MODE routes for those picks to resolve.
+    fn retired_mode_spelling(text: &str) -> Option<&'static str> {
+        // Legacy aliases remain aliases when their operands use tabs or repeated spaces.
+        let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        [
+            "--agent-mode",
+            "--leader-mode",
+            "--mode agent",
+            "--mode leader",
+        ]
+        .into_iter()
+        .find(|retired| normalized.contains(*retired))
+    }
+
+    #[test]
+    fn retired_mode_aliases_cannot_hide_behind_tabs_or_repeated_spaces() {
+        for (text, retired) in [
+            (
+                "For compatibility, `--mode\tagent` also selects MODE-AGENT.",
+                "--mode agent",
+            ),
+            (
+                "For compatibility, `--mode  leader` also selects MODE-LEADER.",
+                "--mode leader",
+            ),
+            ("`--mode  agent`", "--mode agent"),
+            ("`--mode\tleader`", "--mode leader"),
+        ] {
+            assert_eq!(retired_mode_spelling(text), Some(retired), "{text:?}");
+        }
+        assert_eq!(
+            retired_mode_spelling("`--mode-agent` or `--mode-leader`"),
+            None
+        );
+    }
+
+    /// AC-2 (#2286, user decision 2026-11-10): the routing line sends exactly the two
+    /// spellings `--mode-agent` and `--mode-leader` to their routes; the earlier
+    /// spellings (`--agent-mode`, `--leader-mode`, `--mode agent|leader`) appear nowhere in
+    /// the package. The routes file must carry both MODE routes for those picks to resolve.
     #[test]
     fn mode_routing_flags_map_to_routes() {
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
         assert!(
-            skill.contains("`--agent-mode` or `--leader-mode`"),
+            skill.contains("`--mode-agent` or `--mode-leader`"),
             "SKILL.md must route the canonical flags: {skill}"
         );
-        assert!(
-            skill.contains("`--mode agent|leader`"),
-            "SKILL.md must keep the --mode legacy alias: {skill}"
-        );
-        // The canonical picks and the alias must pick the same routes.
+        // Every package file is scanned except the source manifest, whose `reason` strings
+        // keep the history of earlier spellings on purpose (#2286 pre-audit B1).
+        for file in package_files()
+            .into_iter()
+            .filter(|p| p != "references/source-manifest.json")
+        {
+            let text = fs::read_to_string(root().join(&file)).unwrap();
+            assert_eq!(
+                retired_mode_spelling(&text),
+                None,
+                "retired mode spelling is still in the package file {file}"
+            );
+        }
+        // Both canonical picks must resolve to their MODE routes.
         assert!(
             skill.contains("pick the MODE-AGENT or MODE-LEADER route")
                 || (skill.contains("MODE-AGENT") && skill.contains("MODE-LEADER")),
@@ -3330,246 +3375,11 @@ fn claude_doctor_versions_and_user_settings() {
     assert_eq!(env["error"]["kind"], json!("not_found"));
 }
 
-// ---- External skill sources (03-B #1996) -------------------------------------------------
-
-fn cli_env(args: &[&str], input: &Value, home: &std::path::Path) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
-        .args(args)
-        .env("HOME", home)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    match child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.to_string().as_bytes())
-    {
-        Ok(()) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
-        Err(e) => panic!("stdin write failed: {e}"),
-    }
-    child.wait_with_output().unwrap()
-}
-
-fn skill_fixture(name: &str) -> String {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/skills")
-        .join(name)
-        .to_str()
-        .unwrap()
-        .to_string()
-}
-
-fn sources_request(candidates: Value) -> Value {
-    json!({"protocol_version": 1, "search_terms": ["code review"], "candidates": candidates})
-}
-
-fn pinned_revision() -> String {
-    "a".repeat(40)
-}
-
-fn skill_source_plan(root: &TempDir, request: &Value) -> std::process::Output {
-    cli(
-        &["skill-source-plan", root.path().to_str().unwrap()],
-        request,
-    )
-}
-
-fn apply_sources(root: &TempDir, home: &TempDir, plan: &Value) -> std::process::Output {
-    cli_env(
-        &[
-            "skill-source-apply",
-            root.path().to_str().unwrap(),
-            "--plan-digest",
-            plan["plan_digest"].as_str().unwrap(),
-            "--permission-reference",
-            "fixture-approved",
-        ],
-        plan,
-        home.path(),
-    )
-}
-
-#[test]
-fn skill_source_plan_license_gate() {
-    // 03B-AC-1: license evidence decides reviewed versus refused: license_unverified;
-    // the plan is read-only and writes nothing.
-    let root = TempDir::new().unwrap();
-    let request = sources_request(json!([
-        {"source_url": skill_fixture("with-license"), "source_type": "local",
-         "requested_revision": pinned_revision(), "skill_names": ["reviewed-skill"],
-         "host_targets": ["claude", "codex"], "scope": "user"},
-        {"source_url": skill_fixture("no-license"), "source_type": "local",
-         "requested_revision": null, "skill_names": ["unlicensed-skill"],
-         "host_targets": ["claude"], "scope": "user"}
-    ]));
-    let plan = ok_result(&skill_source_plan(&root, &request));
-    let results = plan["results"].as_array().unwrap();
-    assert_eq!(results.len(), 2);
-    assert_eq!(results[0]["decision"], json!("install"));
-    assert_eq!(results[0]["license"]["status"], json!("reviewed"));
-    assert_eq!(results[0]["license"]["spdx"], json!("MIT"));
-    assert_eq!(results[0]["license"]["evidence"], json!("LICENSE"));
-    assert_eq!(results[0]["resolved_revision"], json!(pinned_revision()));
-    assert_eq!(results[0]["install_mode"], json!("copy"));
-    assert!(results[0]["tree_digest"]
-        .as_str()
-        .unwrap()
-        .starts_with("sha256:"));
-    assert_eq!(results[1]["decision"], json!("refused: license_unverified"));
-    assert_eq!(results[1]["license"]["status"], json!("refused"));
-    // Read-only: no manifest, no install, nothing under the project state directory.
-    assert!(!root
-        .path()
-        .join(".moai-cli/manifests/sources.json")
-        .exists());
-    assert!(!root.path().join(".moai-cli").exists());
-}
-
-#[test]
-fn skill_install_exclusive_and_conflict_preserves_existing() {
-    // 03B-AC-2: an approved candidate installs into the temp HOME's official folders
-    // for both hosts; an existing same-name directory is reported as
-    // `existing_skill` and its bytes survive untouched.
-    let root = TempDir::new().unwrap();
-    let home = TempDir::new().unwrap();
-    let request = sources_request(json!([
-        {"source_url": skill_fixture("with-license"), "source_type": "local",
-         "requested_revision": pinned_revision(), "skill_names": ["reviewed-skill"],
-         "host_targets": ["claude", "codex"], "scope": "user"}
-    ]));
-    let plan = ok_result(&skill_source_plan(&root, &request));
-    let applied = ok_result(&apply_sources(&root, &home, &plan));
-    assert_eq!(applied["state"], json!("applied"));
-    // Three fixture files, copied into both host folders: six files installed.
-    assert_eq!(applied["files_installed"], json!(6));
-    assert_eq!(applied["read_complete"], json!(false));
-    assert_eq!(applied["host_loaded"], json!(false));
-    assert_eq!(applied["execution_verified"], json!(false));
-    assert!(home
-        .path()
-        .join(".claude/skills/reviewed-skill/SKILL.md")
-        .exists());
-    assert!(home
-        .path()
-        .join(".agents/skills/reviewed-skill/SKILL.md")
-        .exists());
-    let manifest = root.path().join(".moai-cli/manifests/sources.json");
-    let value: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    assert_eq!(
-        value["sources"][0]["tree_digest"],
-        plan["results"][0]["tree_digest"]
-    );
-    assert_eq!(
-        value["sources"][0]["publisher_trust"],
-        json!("not_verified")
-    );
-    // A pre-existing directory with different bytes is never overwritten.
-    let manifest_bytes = fs::read(&manifest).unwrap();
-    let home2 = TempDir::new().unwrap();
-    let existing = home2.path().join(".claude/skills/reviewed-skill");
-    fs::create_dir_all(&existing).unwrap();
-    fs::write(existing.join("SKILL.md"), b"user's own bytes").unwrap();
-    let plan2 = ok_result(&skill_source_plan(&root, &request));
-    let out = apply_sources(&root, &home2, &plan2);
-    assert!(!out.status.success());
-    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(failure["error"]["kind"], json!("conflict"));
-    assert!(String::from_utf8_lossy(&out.stdout).contains("existing_skill"));
-    assert_eq!(
-        fs::read(existing.join("SKILL.md")).unwrap(),
-        b"user's own bytes"
-    );
-    assert_eq!(fs::read(&manifest).unwrap(), manifest_bytes);
-}
-
-#[cfg(unix)]
-#[test]
-fn skill_read_receipt_is_complete_or_reports_gap() {
-    // 03B-AC-3: the read receipt hashes every installed file and flips to
-    // read_complete:false with the path when one file cannot be read.
-    let root = TempDir::new().unwrap();
-    let home = TempDir::new().unwrap();
-    let request = sources_request(json!([
-        {"source_url": skill_fixture("with-license"), "source_type": "local",
-         "requested_revision": pinned_revision(), "skill_names": ["reviewed-skill"],
-         "host_targets": ["claude"], "scope": "user"}
-    ]));
-    let plan = ok_result(&skill_source_plan(&root, &request));
-    ok_result(&apply_sources(&root, &home, &plan));
-    let installed = home.path().join(".claude/skills/reviewed-skill");
-    let args: Vec<String> = vec![
-        "skill-read-receipt".into(),
-        root.path().to_str().unwrap().into(),
-        "--dir".into(),
-        installed.to_str().unwrap().into(),
-        "--name".into(),
-        "reviewed-skill".into(),
-    ];
-    let run = || {
-        cli(
-            &args.iter().map(String::as_str).collect::<Vec<_>>(),
-            &Value::Null,
-        )
-    };
-    let receipt = ok_result(&run());
-    assert_eq!(receipt["read_complete"], json!(true));
-    assert_eq!(receipt["files_read"], json!(3));
-    assert!(receipt["total_bytes"].as_u64().unwrap() > 0);
-    assert!(root
-        .path()
-        .join(".moai-cli/manifests/read-receipts/reviewed-skill.json")
-        .exists());
-    let sealed = installed.join("LICENSE");
-    use std::os::unix::fs::PermissionsExt;
-    let original = fs::metadata(&sealed).unwrap().permissions();
-    fs::set_permissions(&sealed, fs::Permissions::from_mode(0o000)).unwrap();
-    let receipt = ok_result(&run());
-    fs::set_permissions(&sealed, original).unwrap();
-    assert_eq!(receipt["read_complete"], json!(false));
-    assert!(receipt["unread"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|p| p.as_str().unwrap().contains("LICENSE")));
-}
-
-#[test]
-fn sources_manifest_rerun_is_byte_identical() {
-    // 03B-AC-4 / REQ-03B-09: the same input twice leaves sources.json byte-identical,
-    // and unknown user keys survive between runs.
-    let root = TempDir::new().unwrap();
-    let home = TempDir::new().unwrap();
-    let request = sources_request(json!([
-        {"source_url": skill_fixture("with-license"), "source_type": "local",
-         "requested_revision": pinned_revision(), "skill_names": ["reviewed-skill"],
-         "host_targets": ["claude"], "scope": "user"}
-    ]));
-    let plan = ok_result(&skill_source_plan(&root, &request));
-    ok_result(&apply_sources(&root, &home, &plan));
-    let manifest = root.path().join(".moai-cli/manifests/sources.json");
-    let mut value: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    value["custom"] = json!({"user": true});
-    let mut bytes = serde_json::to_vec_pretty(&value).unwrap();
-    bytes.push(b'\n');
-    fs::write(&manifest, &bytes).unwrap();
-    let plan2 = ok_result(&skill_source_plan(&root, &request));
-    let applied = ok_result(&apply_sources(&root, &home, &plan2));
-    assert_eq!(applied["state"], json!("unchanged"));
-    assert_eq!(applied["files_installed"], json!(0));
-    assert_eq!(fs::read(&manifest).unwrap(), bytes);
-}
-
 // ---- Project-specific generation (03-C #1997) --------------------------------------------
 
 fn generation_project() -> TempDir {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
@@ -3582,7 +3392,7 @@ fn generation_request(local_file: &str) -> Value {
     json!({
         "protocol_version": 1,
         "language": "en",
-        "workflow_reference": "skills/moai-cli/workflows",
+        "workflow_reference": "skills/moai/workflows",
         "local_file": local_file,
         "workflow_id": "review-flow",
         "native_roles": [],

@@ -7,6 +7,12 @@
 //! `record_update_request`; [`check_and_record`] also commits it to the claim journal through
 //! 06-B's `Journal::commit` when the record came from the journal (`--task`).
 //!
+//! A handed-off claim (`pr_ready`) whose PRs have all closed is no longer a conflict candidate
+//! (#2404): [`handed_off_status`] reads the PR state from the forge for the overlapping
+//! `pr_ready` claims only, and [`check_with`] lists an ended one under `skipped_ended`. A state
+//! that cannot be settled keeps the conflict as `uncertain`; nothing of the other claim's
+//! record is written.
+//!
 //! The overlap test is the interface 05-B's private `plan::paths_overlap` is meant to move to
 //! (decision 2026-11-08 19:1x); 06-C does not edit `src/plan.rs`.
 use crate::claim::{ClaimRecord, ACTIVE_STATES};
@@ -22,14 +28,22 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
     "AGENTS.md",
 ];
 
-fn segments(path: &str) -> Vec<&str> {
-    let mut p = path.trim();
-    while let Some(rest) = p.strip_prefix("./") {
-        p = rest;
+/// The path's segments, lowercased and with `.` and `..` resolved lexically; `None` when a
+/// `..` climbs above the repository root. Lowercasing is conservative: on a case-sensitive
+/// file system two spellings are two files, but treating them as one only adds conflicts,
+/// never hides one (#2392, design boundary table row 6).
+fn segments(path: &str) -> Option<Vec<String>> {
+    let mut out: Vec<String> = Vec::new();
+    for s in path.trim().split('/') {
+        match s {
+            "" | "." => {}
+            ".." => {
+                out.pop()?;
+            }
+            _ => out.push(s.to_lowercase()),
+        }
     }
-    p.split('/')
-        .filter(|s| !s.is_empty() && *s != ".")
-        .collect()
+    Some(out)
 }
 
 /// `*` inside one segment matches any run of characters within that segment.
@@ -68,12 +82,17 @@ fn segments_compatible(a: &str, b: &str) -> bool {
 // @MX:DEBT: [AUTO] std-only matching: exact path, directory prefix, `**` (anything below) and
 //   `*` within one segment; no character classes, braces or escapes (Cargo.toml additions are
 //   forbidden for this Issue, so no glob crate)
-// @MX:CEILING: repository-relative paths; symlinks and case-insensitive file systems are not seen
+// @MX:CEILING: repository-relative paths compared as text; case variants and `..` are folded
+//   conservatively (#2392), symlinks are still not resolved
 // @MX:UPGRADE: adopt a standard glob matcher once a dependency decision allows one
 /// True when some path could be written under both `a` and `b`. A plain path also covers
-/// everything below it (as 05-B's prefix rule does), and `**` covers everything below.
+/// everything below it (as 05-B's prefix rule does), and `**` covers everything below. Paths
+/// are compared case-insensitively with `.` and `..` resolved; a `..` that leaves the
+/// repository overlaps everything, because the path it names is unknown.
 pub fn overlap(a: &str, b: &str) -> bool {
-    let (sa, sb) = (segments(a), segments(b));
+    let (Some(sa), Some(sb)) = (segments(a), segments(b)) else {
+        return true;
+    };
     for (x, y) in sa.iter().zip(sb.iter()) {
         if *x == "**" || *y == "**" {
             return true;
@@ -106,6 +125,91 @@ pub fn overlaps(mine: &[String], theirs: &[String]) -> Vec<Value> {
     out
 }
 
+/// The record state a lane leaves once its PR is opened (written by `pr-confirm`).
+const HANDED_OFF_STATE: &str = "pr_ready";
+
+/// The other claims whose PR state decides whether they still count (#2404): active, not
+/// `mine`, `pr_ready`, and overlapping `mine`'s write_scope. Only these are looked up.
+fn handed_off_overlaps<'a>(mine: &ClaimRecord, records: &'a [ClaimRecord]) -> Vec<&'a ClaimRecord> {
+    records
+        .iter()
+        .filter(|o| {
+            o.task_key != mine.task_key
+                && o.state == HANDED_OFF_STATE
+                && !overlaps(&mine.write_scope, &o.write_scope).is_empty()
+        })
+        .collect()
+}
+
+/// Whether a handed-off record's work has ended, judged from its PRs on the forge (#2404).
+/// A record links to its PRs only through `pr_create` effects; the `response_id` of a
+/// confirmed one is read as the PR number when it is all digits. The record has ended only
+/// when it has at least one confirmed `pr_create`, every one of them is `closed` (merged or
+/// not), and none is still `intended` or `uncertain` (#2329: several PRs per epoch).
+/// Anything else that cannot be settled — a lookup failure, a non-GitHub task, a response id
+/// that is not a number, a PR without a `state` — is `uncertain` and keeps the conflict.
+pub fn pr_status<T: crate::forge::transport::Transport, C: crate::forge::policy::Clock>(
+    record: &ClaimRecord,
+    client: &crate::forge::Client<'_, T, C>,
+) -> Value {
+    let uncertain =
+        |reason: String| json!({"ended": false, "pr_state": "uncertain", "reason": reason});
+    let tr = &record.task_ref;
+    if tr.provider != "github" || tr.host != "github.com" {
+        return uncertain(format!("{}/{} is not a GitHub task", tr.provider, tr.host));
+    }
+    let creates: Vec<&Value> = record
+        .effects
+        .iter()
+        .filter(|e| e["kind"] == json!("pr_create"))
+        .collect();
+    if creates.iter().any(|e| e["state"] != json!("confirmed")) {
+        return uncertain("a pr_create effect is not confirmed".into());
+    }
+    if creates.is_empty() {
+        return uncertain("no confirmed pr_create effect".into());
+    }
+    let mut prs = Vec::new();
+    let mut all_closed = true;
+    for e in creates {
+        let Some(number) = e["response_id"]
+            .as_str()
+            .filter(|r| !r.is_empty() && r.bytes().all(|b| b.is_ascii_digit()))
+            .and_then(|r| r.parse::<i64>().ok())
+        else {
+            return uncertain("a pr_create response id is not a PR number".into());
+        };
+        let pr = match crate::flow::fetch_pr(client, &tr.owner, &tr.repo, number) {
+            Ok(pr) => pr,
+            Err(e) => return uncertain(format!("PR #{number} lookup failed: {e}")),
+        };
+        let Some(state) = pr["state"].as_str() else {
+            return uncertain(format!("PR #{number} response has no state"));
+        };
+        all_closed &= state == "closed";
+        prs.push(json!({"number": number, "state": state, "merged_at": pr["merged_at"]}));
+    }
+    json!({"ended": all_closed, "pr_state": if all_closed { "closed" } else { "open" }, "prs": prs})
+}
+
+/// True when some `pr_ready` claim overlaps `mine` — the only case that needs the forge.
+pub fn needs_pr_status(mine: &ClaimRecord, records: &[ClaimRecord]) -> bool {
+    !handed_off_overlaps(mine, records).is_empty()
+}
+
+/// [`pr_status`] for every handed-off record that overlaps `mine`, keyed by task key. No
+/// overlap with a `pr_ready` record means no forge call at all. Read before the journal lock.
+pub fn handed_off_status<T: crate::forge::transport::Transport, C: crate::forge::policy::Clock>(
+    mine: &ClaimRecord,
+    records: &[ClaimRecord],
+    client: &crate::forge::Client<'_, T, C>,
+) -> std::collections::BTreeMap<String, Value> {
+    handed_off_overlaps(mine, records)
+        .into_iter()
+        .map(|o| (o.task_key.clone(), pr_status(o, client)))
+        .collect()
+}
+
 /// The scope decision for `mine` against every other active claim in `records`.
 /// `integration_order` is the task the leader put first; a conflict with it is allowed.
 pub fn check(
@@ -113,7 +217,25 @@ pub fn check(
     records: &[ClaimRecord],
     integration_order: Option<&str>,
 ) -> Value {
+    check_with(
+        mine,
+        records,
+        integration_order,
+        &std::collections::BTreeMap::new(),
+    )
+}
+
+/// [`check`] with the forge view of handed-off records ([`handed_off_status`]): a record whose
+/// PRs have all closed is reported under `skipped_ended` instead of conflicting; an unsettled
+/// one keeps its conflict and carries the `pr_status` that explains why.
+pub fn check_with(
+    mine: &ClaimRecord,
+    records: &[ClaimRecord],
+    integration_order: Option<&str>,
+    handed_off: &std::collections::BTreeMap<String, Value>,
+) -> Value {
     let mut conflicts = Vec::new();
+    let mut skipped_ended = Vec::new();
     for other in records {
         if other.task_key == mine.task_key || !ACTIVE_STATES.contains(&other.state.as_str()) {
             continue;
@@ -122,12 +244,21 @@ pub fn check(
         if overlap.is_empty() {
             continue;
         }
+        let status = handed_off.get(&other.task_key);
+        if status.is_some_and(|s| s["ended"] == json!(true)) {
+            skipped_ended.push(json!({
+                "other_task": other.task_key,
+                "other_issue_number": other.task_ref.issue_number,
+                "pr_status": status,
+            }));
+            continue;
+        }
         let ordered = integration_order.is_some_and(|o| {
             o == other.task_key
                 || o == other.logical_key
                 || o == format!("#{}", other.task_ref.issue_number)
         });
-        conflicts.push(json!({
+        let mut conflict = json!({
             "scope_conflict": {
                 "other_task": other.task_key,
                 "other_logical_key": other.logical_key,
@@ -135,7 +266,11 @@ pub fn check(
                 "overlap": overlap,
             },
             "allowed_by_integration_order": ordered,
-        }));
+        });
+        if let Some(s) = status {
+            conflict["pr_status"] = s.clone();
+        }
+        conflicts.push(conflict);
     }
     let blocked = conflicts
         .iter()
@@ -167,6 +302,7 @@ pub fn check(
         "decision": decision,
         "task_key": mine.task_key,
         "conflicts": conflicts,
+        "skipped_ended": skipped_ended,
         "shared_interface_paths": SHARED_INTERFACE_PATHS,
         "record_update_request": request,
         "record_update_owner": crate::worktree::RECORD_UPDATE_OWNER,
@@ -182,10 +318,11 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
     from_journal: bool,
     records: &[ClaimRecord],
     integration_order: Option<&str>,
+    handed_off: &std::collections::BTreeMap<String, Value>,
     clock: &C,
 ) -> std::result::Result<Value, crate::contract::OpError> {
     use crate::worktree::{commit_update, not_written, open_locked_journal};
-    let mut out = check(mine, records, integration_order);
+    let mut out = check_with(mine, records, integration_order, handed_off);
     let effect = match out["decision"].as_str() {
         Some("blocked") => Some(json!({"kind": "scope_conflict", "conflicts": out["conflicts"]})),
         Some("allowed_with_order") => {

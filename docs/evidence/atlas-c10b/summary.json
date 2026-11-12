@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+  "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+  "source_commit": "98dab71433617ba179c164be8b7ca169e62fe7dc",
+  "source_tree_sha1": "80b40d51b10db15ee732956aedc421f71d0e3301",
+  "generation_id": "gen-36d8ec4c86b7b0b2",
+  "index_build_status": "complete",
+  "arms": [
+    {
+      "arm": "rg",
+      "tasks": 42,
+      "schema_version": 2,
+      "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+      "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+      "passed": true,
+      "metrics": {
+        "retrieval_precision_mean": 0.9212,
+        "retrieval_recall_mean": 0.9697,
+        "graph_relation_file_coverage_mean": 1.0
+      },
+      "thresholds": {
+        "graph_relation_file_coverage_mean": 1.0,
+        "retrieval_precision_mean": 0.9212,
+        "retrieval_recall_mean": 0.9697
+      },
+      "failed_metrics": [],
+      "operation_calls": {
+        "search": 42
+      },
+      "tool_calls": 42,
+      "empty_seed_skips": 0,
+      "response_bytes": 124478,
+      "tokens": "not_run: bytes are not tokens",
+      "citations": 140,
+      "raw_file_citations": 140,
+      "snapshot_stale_ratio": 0.0,
+      "search_span_states": {
+        "fresh": 376
+      },
+      "view_edges_returned": 0,
+      "freshness_mutations": "not_run: #2407"
+    },
+    {
+      "arm": "+Map",
+      "tasks": 42,
+      "schema_version": 2,
+      "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+      "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+      "passed": true,
+      "metrics": {
+        "retrieval_precision_mean": 0.9212,
+        "retrieval_recall_mean": 0.9697,
+        "graph_relation_file_coverage_mean": 1.0
+      },
+      "thresholds": {
+        "graph_relation_file_coverage_mean": 1.0,
+        "retrieval_precision_mean": 0.9212,
+        "retrieval_recall_mean": 0.9697
+      },
+      "failed_metrics": [],
+      "operation_calls": {
+        "search": 42,
+        "atlas-map": 41
+      },
+      "tool_calls": 83,
+      "empty_seed_skips": 1,
+      "response_bytes": 242224,
+      "tokens": "not_run: bytes are not tokens",
+      "citations": 140,
+      "raw_file_citations": 140,
+      "snapshot_stale_ratio": 0.0,
+      "search_span_states": {
+        "fresh": 376
+      },
+      "view_edges_returned": 85,
+      "freshness_mutations": "not_run: #2407"
+    },
+    {
+      "arm": "+Graph",
+      "tasks": 42,
+      "schema_version": 2,
+      "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+      "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+      "passed": true,
+      "metrics": {
+        "retrieval_precision_mean": 0.9212,
+        "retrieval_recall_mean": 0.9697,
+        "graph_relation_file_coverage_mean": 1.0
+      },
+      "thresholds": {
+        "graph_relation_file_coverage_mean": 1.0,
+        "retrieval_precision_mean": 0.9212,
+        "retrieval_recall_mean": 0.9697
+      },
+      "failed_metrics": [],
+      "operation_calls": {
+        "search": 42,
+        "atlas-map": 41,
+        "atlas-graph": 41
+      },
+      "tool_calls": 124,
+      "empty_seed_skips": 2,
+      "response_bytes": 7612796,
+      "tokens": "not_run: bytes are not tokens",
+      "citations": 140,
+      "raw_file_citations": 1805,
+      "snapshot_stale_ratio": 0.0,
+      "search_span_states": {
+        "fresh": 376
+      },
+      "view_edges_returned": 9781,
+      "freshness_mutations": "not_run: #2407"
+    }
+  ],
+  "selection_policy": "literal-evidence-v1",
+  "raw_context_file": "raw-contexts.json",
+  "semantic_graph": "not_measured: file coverage is not relation correctness"
+}

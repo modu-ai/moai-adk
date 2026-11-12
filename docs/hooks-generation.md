@@ -34,7 +34,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 | `Stop` | 없음 | 같음 |
 
 - 두 호스트가 모두 받는 교집합만 쓴다: 이벤트 4개와 handler 필드 `type: "command"`·`command`·`timeout`. `PreToolUse`는 두 호스트 모두 matcher `Bash`, stdin `tool_name`·`tool_input.command`·`cwd`, exit 2 + stderr 사유로 차단한다(§5 출처). guard의 `.`은 project다. 두 호스트 모두 command 훅을 세션의 작업 디렉터리에서 실행한다.
-- guard가 막지 못하는 경우: timeout(10초) 안에 GitHub 조회가 끝나지 않으면 호스트는 훅 실패로 보고 막지 않는다(Claude: timeout은 `onFailure: "block"`이 없으면 차단하지 않음). Codex 문서는 "Treat tool hooks as a useful guardrail, not a complete enforcement boundary"라고 적는다. 그래서 `--mode agent` workflow 6단계의 commit 전 `claim-verify` 실행 규칙은 그대로 유지한다.
+- guard가 막지 못하는 경우: timeout(10초) 안에 GitHub 조회가 끝나지 않으면 호스트는 훅 실패로 보고 막지 않는다(Claude: timeout은 `onFailure: "block"`이 없으면 차단하지 않음). Codex 문서는 "Treat tool hooks as a useful guardrail, not a complete enforcement boundary"라고 적는다. 그래서 MODE-AGENT workflow 6단계의 commit 전 `claim-verify` 실행 규칙은 그대로 유지한다.
 - guard가 알아보는 commit·push 철자(#2306): 명령줄을 글자로 읽어 판정한다.
   - 알아보는 것:
     - 앞에 붙은 래퍼 단어와 그 옵션(`env`·`command`·`nice`·`sudo`·`time`·`timeout`·`nohup`·`xargs` 등)

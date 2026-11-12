@@ -5,7 +5,7 @@
 | 대상 | RC1 출하 (tip `604792666` 실측) | 설계 목표 (P09 미결) |
 | --- | --- | --- |
 | 홈 설치 receipt | `~/.moai-cli/installations/<install_id>.json` | [83f] `<state_root>/installations/`; 상위 §13 `installs/<host>/<version>/` |
-| 홈 호스트 receipt·known-good | `~/.moai-cli/installations/<install_id>/hosts/<host>.json`, `…/known-good/<hex>` | [83f] `<state_root>/skills/moai/<version>/`(버전별 디렉터리 모델) |
+| 홈 호스트 receipt·known-good | `~/.moai-cli/installations/<install_id>/hosts/moai/<host>.json`, `…/hosts/moai/<host>/known-good/<hex>` (#2286: skill 폴더 이름 `moai`를 따름) | [83f] `<state_root>/skills/moai/<version>/`(버전별 디렉터리 모델) |
 | 홈 바이너리 | `~/.moai-cli/bin/moai-cli`(결정 A, 미출하 — 04-A) | 상위 §13 `installs/<host>/<version>/` 하위 |
 | 프로젝트 상태 | `<project>/.moai-cli/{project.yaml, manifests/, receipts/, forge/, decisions/, evidence/, worktrees/}` | [487]·[43fa] `projects/<id>/{registry.json, contracts, artifacts, indexes, runs, retention}` |
 | claim journal | `<common dir>/.moai-cli/claims/` (`src/claim.rs` journal_root — clone 공유) | 상위 §13 `workspaces/<id>/journal.jsonl` |

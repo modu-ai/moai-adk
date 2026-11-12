@@ -899,7 +899,7 @@ mod tests {
     use super::*;
 
     fn package() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
     }
     fn added(pairs: &[(&str, Value)]) -> Map<String, Value> {
         pairs
