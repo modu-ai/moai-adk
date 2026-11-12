@@ -775,6 +775,12 @@ enum Command {
         /// is an already expired budget (no git call is started).
         #[arg(long, hide = true, value_name = "MS")]
         render_budget_ms: Option<u64>,
+        /// #2588: the detached counts refresh a render starts. Hidden; asks `gh` for the
+        /// open Issue and PR counts of `--board-root` and rewrites its cache.
+        #[arg(long, hide = true, requires = "board_root")]
+        refresh_counts: bool,
+        #[arg(long, hide = true, value_name = "DIR")]
+        board_root: Option<PathBuf>,
     },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
@@ -2647,7 +2653,19 @@ fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
-    if let Some(Command::Statusline { render_budget_ms }) = cli.command {
+    if let Some(Command::Statusline {
+        refresh_counts: true,
+        board_root: Some(root),
+        ..
+    }) = &cli.command
+    {
+        moai_cli::statusline::counts::refresh(root);
+        return ExitCode::SUCCESS;
+    }
+    if let Some(Command::Statusline {
+        render_budget_ms, ..
+    }) = cli.command
+    {
         let budget = render_budget_ms
             .map(std::time::Duration::from_millis)
             .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
