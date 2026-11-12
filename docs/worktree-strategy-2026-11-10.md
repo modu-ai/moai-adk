@@ -211,7 +211,7 @@ done ─remove(사용자 확인)→ (없음)
 ### D7. 용량 상한과 관측
 
 - **결정안**:
-  - `moai-cli worktree-report`(읽기 전용)가 분류별 개수와 용량을 보여 준다: worktree checkout, worktree `target/`, `/tmp/moai-rc-target-*`, 감사 clone, 빈 임시 폴더, 로컬 ref. 디스크 여유와 trim·remove 후보도 함께 보여 준다. `du`에는 시간 상한을 걸고, 넘치면 `partial`로 표시한다.
+  - `moai-cli worktree-report`(읽기 전용)가 분류별 개수와 용량을 보여 준다: worktree checkout, worktree `target/`, 세션별 빌드 폴더(`/tmp/moai-target-*`와 #2563 전 이름 `/tmp/moai-rc-target-*`, 출력 필드 `tmp_target`), 감사 clone, 빈 임시 폴더, 로컬 ref. 디스크 여유와 trim·remove 후보도 함께 보여 준다. `du`에는 시간 상한을 걸고, 넘치면 `partial`로 표시한다.
   - `worktree-apply`는 디스크 여유가 하한 미만이면 새 worktree를 거부하고, 프로젝트 합계가 경고선을 넘으면 경고한다. 값은 사용자 결정(Q5)이다. 참고로 오늘 ENOSPC 직전 여유가 49.6 GiB였고, worktree 하나가 빌드 후 1~5 GiB다.
 - **버린 대안**: 상한 없이 주기적으로 정리하기. 오늘 ENOSPC 사고처럼 정리보다 생성이 빠르다.
 

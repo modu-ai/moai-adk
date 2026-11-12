@@ -18,7 +18,7 @@ use super::input::{self, Input};
 use super::segments::{self, ContextReading, GitStatus, Memory};
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
-use std::io::{IsTerminal, Read};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -28,7 +28,6 @@ use std::time::{Duration, Instant};
 pub struct Context {
     vars: HashMap<String, String>,
     pub cwd: Option<PathBuf>,
-    pub stdout_is_terminal: bool,
     /// When the render must be finished; git is stopped at this point.
     pub deadline: Option<Instant>,
     /// The git executable; `git` from PATH outside tests.
@@ -40,7 +39,6 @@ impl Context {
         Context {
             vars: std::env::vars().collect(),
             cwd: std::env::current_dir().ok(),
-            stdout_is_terminal: std::io::stdout().is_terminal(),
             deadline: Some(Instant::now() + budget),
             git_program: "git".to_string(),
         }
@@ -54,7 +52,6 @@ impl Context {
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
             cwd: cwd.map(Path::to_path_buf),
-            stdout_is_terminal: true,
             deadline: None,
             git_program: "git".to_string(),
         }

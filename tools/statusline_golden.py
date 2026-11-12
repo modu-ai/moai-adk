@@ -18,9 +18,10 @@ Isolation, per case and per color variant:
   render is allowed, user decision 2026-11-10).
 
 Variants: `plain` pipes stdout with NO_COLOR=1; `ansi` and `ansi256` attach
-stdout to a real POSIX PTY with and without COLORTERM=truecolor. Every plain
-case also runs through a pipe without NO_COLOR and must produce identical,
-escape-free content. PTY output processing is disabled to preserve raw LF.
+stdout to a real POSIX PTY with and without COLORTERM=truecolor. Claude Code
+reads the statusline through a pipe, so the color contract also requires a pipe
+without NO_COLOR to carry the same palette as the PTY (escape-free output there
+was the #2559 regression) with the same text once the escapes are removed. PTY output processing is disabled to preserve raw LF.
 
 Version token: each recorded case names the actual binary version and SHA-256.
 --check normalizes only the `🗿 v<version>` token on each side.
@@ -70,14 +71,14 @@ def run_git(cwd, *args):
 def apply_setup(step, root, project, moai_home):
     """One setup step from cases.json. Paths are relative to the project unless the
     step says otherwise (`moai_home`: the Go MOAI_HOME the goldens were recorded with;
-    `rc_home`: HOME/.moai-cli, the folder moai-cli reads, #2455); every write lands
+    `cli_home`: HOME/.moai-cli, the folder moai-cli reads, #2455); every write lands
     inside the temporary root."""
     kind = step["kind"]
     if kind == "write":
         under = step.get("under")
         if under == "moai_home":
             base = moai_home
-        elif under == "rc_home":
+        elif under == "cli_home":
             base = moai_home.parent / ".moai-cli"
         elif under is None:
             base = project
@@ -219,8 +220,7 @@ def run_process(cmd, stdin, cwd, env, tty):
             proc.communicate()
 
 
-def run_case(binary, argv, case, variant, stdin_bytes=None, pipe_without_no_color=False,
-             stdout_tty=None):
+def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
     with tempfile.TemporaryDirectory(prefix="sl-golden-") as tmp:
         root = Path(tmp).resolve()
         home = root / "home"
@@ -240,8 +240,6 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, pipe_without_no_colo
         env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "MOAI_HOME": str(moai_home),
                "TZ": "UTC", "LANG": "C.UTF-8"}
         env.update(VARIANTS[variant])
-        if pipe_without_no_color:
-            env.pop("NO_COLOR", None)
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":
             cmd = ["/usr/bin/sandbox-exec", "-p", sandbox_profile(exe), *cmd]
@@ -251,13 +249,16 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, pipe_without_no_colo
 
 
 def check_color_contract(binary, argv):
-    """Native stdout detection, NO_COLOR on a TTY, and both real terminal palettes."""
+    """Color on a pipe (how Claude Code runs it), NO_COLOR on a TTY, and both palettes.
+
+    #2559: a pipe without NO_COLOR must be colored; an escape-free pipe fails here."""
     case = {"stdin": "../statusline/stdin/a02-doc-full.json"}
     code, plain, err = run_case(binary, argv, case, "plain")
     if code or not plain.strip() or "\x1b" in plain:
         raise ValueError(f"plain pipe failed: {code} {plain!r} {err!r}")
     for label, variant, options in [
-        ("non-TTY without NO_COLOR", "plain", {"pipe_without_no_color": True}),
+        ("pipe without NO_COLOR", "ansi256", {"stdout_tty": False}),
+        ("truecolor pipe", "ansi", {"stdout_tty": False}),
         ("TTY with NO_COLOR", "plain", {"stdout_tty": True}),
         ("truecolor TTY", "ansi", {}),
         ("ANSI256 TTY", "ansi256", {}),
@@ -346,12 +347,16 @@ def main():
                 code, out, err = run_case(binary, args.argv.split(), case, variant)
                 if code != 0 or not out.strip():
                     raise ValueError(f"exit {code}, stdout {out!r}, stderr {err.strip()[:200]}")
-                if variant == "plain":
+                if variant == "plain" and "\x1b" in out:
+                    raise ValueError("NO_COLOR output contains terminal escapes")
+                if variant != "plain":
+                    # #2559: Claude Code reads stdout through a pipe; the piped bytes must
+                    # equal the PTY bytes (an escape-free pipe was the regression).
                     pipe_code, pipe_out, pipe_err = run_case(
-                        binary, args.argv.split(), case, variant, pipe_without_no_color=True)
-                    if pipe_code or pipe_out != out or "\x1b" in out:
+                        binary, args.argv.split(), case, variant, stdout_tty=False)
+                    if pipe_code or pipe_out != out:
                         raise ValueError(
-                            f"non-TTY without NO_COLOR differs: {pipe_code} {pipe_out!r} {pipe_err!r}")
+                            f"pipe output differs from the PTY: {pipe_code} {pipe_out!r} {pipe_err!r}")
                 golden = FIXTURES / "golden" / f"{case['name']}.{variant}.txt"
                 if args.write:
                     golden.parent.mkdir(parents=True, exist_ok=True)
