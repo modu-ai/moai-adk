@@ -67,7 +67,12 @@ class HeavyCheckSlotTest(unittest.TestCase):
         os.killpg(holder.pid, signal.SIGKILL)
         holder.communicate(timeout=10)
         nxt = self.acquire(1, "next", "true")
-        out = nxt.communicate(timeout=10)[0]
+        try:
+            out = nxt.communicate(timeout=10)[0]
+        except subprocess.TimeoutExpired:
+            nxt.kill()
+            out = nxt.communicate()[0]
+            self.fail(f"the killed holder's slot was not freed; next caller still waiting: {out!r}")
         self.assertEqual(nxt.returncode, 0, out)
         # "At once": the next caller took the slot on its first try, never queued.
         self.assertNotIn("waiting", out)
