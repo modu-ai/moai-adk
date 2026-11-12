@@ -528,4 +528,88 @@ fn revert_refuses_a_backup_name_that_is_not_a_stamp() {
         let v = revert_plan(&fx, bad);
         assert_eq!(v["ok"], json!(false), "{bad}: {v}");
     }
+    // A name that climbs out of the backup area must be refused for its shape, even when a
+    // well-formed receipt is waiting at the place it points to.
+    let escape = "../../evil";
+    let receipt = json!({"schema_version": 1, "project": fx.root.to_str().unwrap(),
+        "backup": escape, "plan_digest": "sha256:x", "permission_reference": "r",
+        "state": "committed", "moves": []});
+    fx.write("evil/go-state-receipt.json", &receipt.to_string());
+    let v = revert_plan(&fx, escape);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("invalid backup name"), "{v}");
+}
+
+#[test]
+fn a_changed_backup_copy_refuses_the_revert() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fx.write(
+        &format!(".moai-cli/backups/{backup}/go-state/.claude/workflows/w.md"),
+        "# tampered\n",
+    );
+    let rp = revert_plan(&fx, &backup);
+    let rp = &rp["result"];
+    let item = rp["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".claude/workflows/w.md")
+        .unwrap()
+        .clone();
+    assert_eq!(item["action"], json!("missing"), "{rp}");
+    let before = fx.tree();
+    let v = revert(&fx, &backup, rp["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), before);
+}
+
+/// A failure midway leaves a `pending` receipt that names what already moved, and the
+/// revert brings exactly those files back.
+#[test]
+fn a_failure_midway_leaves_a_pending_receipt_the_revert_can_use() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    // Moves run in path order: `.claude/workflows/w.md` first, then
+    // `.moai/config/sections/a.yaml`, whose folder cannot lose a file now.
+    let locked = fx.root.join(".moai/config/sections");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let backups = fx.root.join(".moai-cli/backups");
+    let mut stamps: Vec<String> = fs::read_dir(&backups)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    assert_eq!(stamps.len(), 1);
+    let backup = stamps.pop().unwrap();
+    let receipt: Value = serde_json::from_slice(
+        &fs::read(backups.join(&backup).join("go-state-receipt.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+    let moved: Vec<(&str, bool)> = receipt["moves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| (m["path"].as_str().unwrap(), m["moved"].as_bool().unwrap()))
+        .collect();
+    assert_eq!(
+        moved,
+        vec![
+            (".claude/workflows/w.md", true),
+            (".moai/config/sections/a.yaml", false)
+        ]
+    );
+    assert!(fx.root.join(".moai/config/sections/a.yaml").is_file());
+
+    let rp = revert_plan(&fx, &backup);
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
 }
