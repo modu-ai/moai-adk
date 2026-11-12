@@ -184,6 +184,17 @@ fn journal_of(repo: &Path) -> Journal {
     panic!("journal lock not acquired within 2s");
 }
 
+/// Seeds the journal for a test whose next step is the CLI binary, without taking the
+/// journal lock. A lock held in this multithreaded test binary is an `flock` on an open
+/// file description; any child another test forks in that window keeps a copy of the
+/// descriptor until its `exec`, so the lock outlives our drop and the CLI's `try_lock`
+/// answers `unavailable` (Issue #2572, rc-ci run 43253440881). Nothing else writes this
+/// temporary journal, so the lock buys nothing here.
+fn seed_journal(repo: &Path, event: &str, record: &ClaimRecord) {
+    let journal = Journal::open(&journal_dir(repo)).unwrap();
+    journal.commit(event, record).unwrap();
+}
+
 fn write_probe(dir: &Path, name: &str, script: &str) -> PathBuf {
     let path = dir.join(name);
     common::write_executable(&path, &format!("#!/bin/sh\n{script}\n"));
@@ -303,10 +314,7 @@ fn claim_handoff_with_failing_ps_stays_pending() {
     let (owner, mut child, host) = live_sleep_owner();
     let record = seed_record(&repo, 28, 1, owner, vec![]);
     let key = record.task_key.clone();
-    {
-        let journal = journal_of(&repo);
-        journal.commit("acquire", &record).unwrap();
-    }
+    seed_journal(&repo, "acquire", &record);
     let (bin, _ps) = fake_ps("echo 'ps: permission denied' >&2\nexit 2");
     let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args([
@@ -1481,10 +1489,7 @@ fn handoff_cli_preserves_dirty_worktree_and_records_lock_intent() {
     // the real CLI with an operator owner (liveness not_applicable → no flag needed).
     let record = seed_record(&wt, 26, 1, owner("operator", "leader"), vec![]);
     let key = record.task_key.clone();
-    {
-        let journal = journal_of(&main);
-        journal.commit("acquire", &record).unwrap();
-    }
+    seed_journal(&main, "acquire", &record);
     let out = cli(
         &main,
         &[
@@ -1588,10 +1593,7 @@ fn handoff_cli_preserves_dirty_worktree_and_records_lock_intent() {
     // attach to that active epoch, not to the closed one.
     let next = seed_record(&wt, 26, 2, owner("session", "agent-7"), vec![]);
     assert_eq!(next.task_key, key, "the same task, the fenced epoch");
-    {
-        let journal = journal_of(&main);
-        journal.commit("acquire", &next).unwrap();
-    }
+    seed_journal(&main, "acquire", &next);
     let intend = cli(
         &main,
         &[
@@ -1674,10 +1676,7 @@ fn handoff_cli_refuses_stale_request_and_unknown_key() {
     git_repo(&main);
     let record = seed_record(&main, 27, 4, owner("session", "agent-x"), vec![]);
     let key = record.task_key.clone();
-    {
-        let journal = journal_of(&main);
-        journal.commit("acquire", &record).unwrap();
-    }
+    seed_journal(&main, "acquire", &record);
     // Stale from_epoch: refused with kind conflict and the message names stale_request.
     let out = cli(
         &main,
@@ -1754,4 +1753,92 @@ fn d3c_reintending_an_uncertain_effect_is_not_a_fresh_intent() {
         out["verdict"], "passed",
         "an uncertain effect was answered as a passed intent, inviting a duplicate send: {out}"
     );
+}
+
+/// Issue #2572 made deterministic: a child is forked in another thread and held between
+/// its fork and its `exec` (the window a parallel test's `Command::spawn` opens by chance
+/// under load). The parent learns the fork happened from a byte the child writes, runs
+/// `seed`, and lets the child exec only after the CLI answered. Event-driven, no sleeps.
+#[cfg(unix)]
+fn handoff_while_a_child_sits_between_fork_and_exec(
+    seed: impl FnOnce(&Path, &ClaimRecord) -> Option<Journal>,
+) -> Value {
+    use std::io::Read;
+    use std::os::unix::net::UnixStream;
+    use std::os::unix::process::CommandExt;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let main = tmp.path().join("main");
+    git_repo(&main);
+    let record = seed_record(&main, 33, 4, owner("session", "agent-x"), vec![]);
+    let key = record.task_key.clone();
+    // Seeded (and, for the old helper, still locked) before the fork, as in the flake.
+    let held = seed(&main, &record);
+
+    let (mut forked, child_side) = UnixStream::pair().unwrap();
+    let (release, mut child_wait) = UnixStream::pair().unwrap();
+    let pause = thread::spawn(move || {
+        let mut cmd = Command::new("/usr/bin/true");
+        // SAFETY: the closure only makes write/read system calls on descriptors created
+        // before the fork; it allocates nothing and takes no lock.
+        unsafe {
+            cmd.pre_exec(move || {
+                (&child_side).write_all(&[1])?;
+                let mut b = [0u8; 1];
+                let _ = child_wait.read(&mut b);
+                Ok(())
+            });
+        }
+        cmd.status().unwrap()
+    });
+    let mut b = [0u8; 1];
+    forked.read_exact(&mut b).unwrap();
+    drop(held);
+
+    let out = cli(
+        &main,
+        &[
+            "claim-handoff",
+            ".",
+            "--task",
+            &key,
+            "--from-epoch",
+            "3",
+            "--reason",
+            "late request",
+        ],
+        None,
+    );
+    (&release).write_all(&[1]).unwrap();
+    assert!(pause.join().unwrap().success());
+    envelope(&out)
+}
+
+/// The cause of #2572: a journal lock taken in this process and dropped while a forked
+/// child has not exec'd yet is still held by that child, so the CLI answers busy.
+#[cfg(unix)]
+#[test]
+fn a_lock_held_at_a_fork_outlives_its_drop_until_the_child_execs() {
+    let v = handoff_while_a_child_sits_between_fork_and_exec(|repo, record| {
+        let journal = journal_of(repo);
+        journal.commit("acquire", record).unwrap();
+        Some(journal)
+    });
+    assert_eq!(v["error"]["kind"], json!("unavailable"), "{v}");
+}
+
+/// The repair: `seed_journal` never takes the lock, so a child forked at any moment holds
+/// no lock and the CLI reaches its own answer (here the stale-request conflict).
+#[cfg(unix)]
+#[test]
+fn seed_journal_leaves_no_lock_for_a_forked_child() {
+    let v = handoff_while_a_child_sits_between_fork_and_exec(|repo, record| {
+        seed_journal(repo, "acquire", record);
+        None
+    });
+    assert_eq!(v["error"]["kind"], json!("conflict"), "{v}");
+    assert!(v["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("stale_request"));
 }
