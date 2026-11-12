@@ -43,6 +43,8 @@ A test must not depend on wall-clock time. When an assertion depends on elapsed 
 
 A child-process budget in a test is load-independent: bound the child by progress — an invocation count or a log signal that resets the deadline — plus a hard hang ceiling and an invocation cap, never a bare wall-clock timeout (`ci_install_ripgrep_test` #2469, `mutate_test` #2502). The budget numbers are pinned by tests, and wall-clock appears only as the generous hang guard.
 
+Docs-only PRs get light CI (#2527, design comment 6822993459): when every changed path is under a verified-safe doc root the heavy steps (PyYAML install, ripgrep install, rust toolchain setup, build/test) are skipped and only `git diff --check` runs, but the aggregate `rc-ci` check, the `ci: rc-ci run=<id> head=<sha>` line contract and every citation condition above are unchanged — a light run still counts as the required CI result for that head. The scope classifier is `tools/ci_scope.py`; its verified-safe list is `docs/` with `.md`/`.txt`/`.png`/`.svg` suffixes (minus files tests read) plus `.moai-cli/reports/`. Any failure or unrecognized path fails safe to the full scope.
+
 ## Exceptions and Permissions
 
 A command that was not run is not_run. A missing required guard is blocked before anything runs, and exit code 0 alone does not satisfy every AC. A test-name filter applies to every target named in the same `cargo test` call, so filter one target per call; a result that ran zero tests (`0 passed`) is not_run, never a pass.
