@@ -96,8 +96,10 @@ pub fn is_fresh(cache: &Cache, now: i64) -> bool {
 }
 
 /// The `origin` remote of `anchor` is on github.com, read from `.git/config` alone.
+/// A linked worktree (`.git` is a file) reads the main checkout's config.
 pub fn origin_is_github(anchor: &Path) -> bool {
-    let Ok(text) = fs::read_to_string(anchor.join(".git/config")) else {
+    let checkout = super::state::main_checkout_of(anchor).unwrap_or_else(|| anchor.to_path_buf());
+    let Ok(text) = fs::read_to_string(checkout.join(".git/config")) else {
         return false;
     };
     let mut in_origin = false;
@@ -317,6 +319,24 @@ mod tests {
             "[remote \"fork\"]\n\turl = https://github.com/acme/w.git\n"
         ));
         assert!(!cfg("[core]\n\tbare = false\n"));
+    }
+
+    #[test]
+    fn a_linked_worktree_reads_the_main_checkout_origin() {
+        let tmp = tempfile::tempdir().unwrap();
+        let main = tmp.path().join("main");
+        let gitdir = main.join(".git/worktrees/wt");
+        fs::create_dir_all(&gitdir).unwrap();
+        fs::write(gitdir.join("commondir"), "../..\n").unwrap();
+        fs::write(
+            main.join(".git/config"),
+            "[remote \"origin\"]\n\turl = https://github.com/acme/w.git\n",
+        )
+        .unwrap();
+        let wt = tmp.path().join("wt");
+        fs::create_dir_all(&wt).unwrap();
+        fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
+        assert!(origin_is_github(&wt));
     }
 
     #[test]
