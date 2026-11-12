@@ -201,9 +201,13 @@ fn git_init(dir: &Path) -> Result<(), String> {
 }
 
 /// The `git init` lock of `dir` (canonical): `moai-cli-git-init-<16 hex of sha256(path)>.lock`
-/// in the OS temporary directory, held exclusively while the guard lives. A path that is not a
-/// regular file (a symlink, say) or a lock that cannot be opened gives no lock: the init then
-/// runs as it did before #2489 rather than failing the launch.
+/// in the OS temporary directory, held exclusively while the guard lives. On Linux that folder
+/// can be the shared `/tmp`, where any account can predict the name (PR #2494 audit B1), so the
+/// file is opened without following a symlink (`O_NOFOLLOW`, mode 0600) and locked only when
+/// the opened handle is a regular file owned by the owner of HOME — the key vault's owner rule,
+/// which needs no `unsafe` uid call. Anything else (a symlink, a file of another account, an
+/// unopenable path) gives no lock: the init then runs as it did before #2489 rather than
+/// failing the launch or waiting on a lock another account holds.
 fn init_lock(dir: &Path) -> Option<fs::File> {
     let id = crate::digest(dir.as_os_str().as_encoded_bytes());
     let hex = id.strip_prefix("sha256:").unwrap_or(&id);
@@ -211,15 +215,41 @@ fn init_lock(dir: &Path) -> Option<fs::File> {
     if fs::symlink_metadata(&path).is_ok_and(|m| !m.file_type().is_file()) {
         return None;
     }
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&path)
-        .ok()?;
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+    }
+    let file = options.open(&path).ok()?;
+    if !lock_file_is_ours(&file.metadata().ok()?) {
+        return None;
+    }
     file.lock().ok()?;
     Some(file)
+}
+
+/// Whether an opened lock file may be waited on: a regular file whose owner is HOME's owner.
+#[cfg(unix)]
+fn lock_file_is_ours(meta: &fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let home_owner = crate::key_vault::home()
+        .ok()
+        .and_then(|h| fs::metadata(h).ok())
+        .map(|m| m.uid());
+    owned_regular_file(meta.file_type().is_file(), meta.uid(), home_owner)
+}
+
+#[cfg(not(unix))]
+fn lock_file_is_ours(meta: &fs::Metadata) -> bool {
+    meta.file_type().is_file()
+}
+
+/// The owner rule of [`lock_file_is_ours`] (pure, so it is tested without a second account).
+#[cfg_attr(not(unix), allow(dead_code))]
+fn owned_regular_file(is_file: bool, owner: u32, home_owner: Option<u32>) -> bool {
+    is_file && home_owner == Some(owner)
 }
 
 /// Creates the project settings and, when `AGENTS.md` is absent, the generated workflow and
@@ -376,6 +406,15 @@ mod tests {
         let p = default_profile("___", "codex").unwrap();
         assert_eq!(p.project_id, "project");
         assert_eq!(p.hosts, ["codex"]);
+    }
+
+    #[test]
+    fn a_git_init_lock_is_waited_on_only_when_it_is_a_file_of_the_home_owner() {
+        // PR #2494 audit B1: a lock of another account in a shared /tmp is never waited on.
+        assert!(owned_regular_file(true, 501, Some(501)));
+        assert!(!owned_regular_file(true, 502, Some(501)));
+        assert!(!owned_regular_file(false, 501, Some(501)));
+        assert!(!owned_regular_file(true, 501, None));
     }
 
     #[test]

@@ -438,3 +438,32 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
     // The launch that waited found the repository and ran no `git init` of its own.
     assert_eq!(fs::read_to_string(&calls).unwrap(), "init\n");
 }
+
+/// PR #2494 audit B1: the `git init` lock sits in the OS temporary folder under a predictable
+/// name. A symlink planted there is never followed — its target is not created — and the launch
+/// still succeeds without the lock.
+#[test]
+fn a_symlink_planted_at_the_git_init_lock_is_not_followed() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = tempfile::tempdir().unwrap();
+    let canonical = plain.path().canonicalize().unwrap();
+    let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
+    let lock = tmp.path().join(format!(
+        "moai-cli-git-init-{}.lock",
+        &id.strip_prefix("sha256:").unwrap()[..16]
+    ));
+    let target = tmp.path().join("planted-target");
+    std::os::unix::fs::symlink(&target, &lock).unwrap();
+    let out = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+        .env("TMPDIR", tmp.path())
+        .output()
+        .unwrap();
+    assert_eq!(json(&out)["name"], "agent-1");
+    assert!(plain.path().join(".git").is_dir());
+    assert!(!target.exists(), "the symlink target must not be created");
+    assert!(fs::symlink_metadata(&lock)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}
