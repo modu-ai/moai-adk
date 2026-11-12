@@ -109,12 +109,12 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "78cb6aef37188b87c5bf16fdbabba1097291845df64d03551636431b06556729",
+      "sha256": "cab38e64c4e51d5ef5a1e7cf5ebeb3fa7c7f2a10a5ff9eda92b07e8d005a53ff",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Shell and helper rules (WF-OBS #16, #17, #19) added by #2493."
       }
     },
     "workflows/audit.md": {

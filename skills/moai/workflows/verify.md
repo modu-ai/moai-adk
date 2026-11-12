@@ -41,6 +41,12 @@ Heavy checks are serialised: on one machine, at most one full build or full test
 
 A test must not depend on wall-clock time. When an assertion depends on elapsed time or a time budget, inject the clock or the budget (a seam such as a `--render-budget-ms` style flag or a clock parameter) and fix it in the test. Auditors treat a direct wall-clock budget in a test assertion as a finding.
 
+## Shell and helper rules
+
+- Guard refusal (WF-OBS #17): when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. A refused compound command may be retried split into plain single steps; splitting is not a bypass.
+- Helper authentication failure (WF-OBS #19): when a sub-review helper cannot start because its provider answers 401, record that review as `not_run`; if your own review replaced it, say so. Never record a key or token value.
+- zsh word splitting (WF-OBS #16): zsh does not split an unquoted `$var` holding several words or lines, so iterate an array (`for x in ${=var}` or `for x in a b c`), and never name a shell function after an existing alias.
+
 ## Exceptions and Permissions
 
 A command that was not run is not_run. A missing required guard is blocked before anything runs, and exit code 0 alone does not satisfy every AC. A test-name filter applies to every target named in the same `cargo test` call, so filter one target per call; a result that ran zero tests (`0 passed`) is not_run, never a pass.
