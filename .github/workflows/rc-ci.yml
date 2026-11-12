@@ -67,10 +67,26 @@ jobs:
             esac
           fi
           rg --version
-      # rustup reads rust-toolchain.toml (#2029) and installs the pinned toolchain on first use.
+      # rustup reads rust-toolchain.toml (#2029). A runner can start with a partially installed
+      # copy of the pinned toolchain (rustup#4724); repairing it in place can fail with a
+      # component file conflict (rustup#2417), so remove it first and install explicitly, with
+      # at most 3 attempts (#2490, user decision 6813237309 item 3 = B; analysis #2457 6812694378).
       - name: Toolchain (rust-toolchain.toml)
         shell: bash
         run: |
+          channel="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          for attempt in 1 2 3; do
+            echo "toolchain install attempt ${attempt}/3 (${channel})"
+            rustup toolchain uninstall "$channel" || true
+            if rustup toolchain install; then break; fi
+            if [ "$attempt" = 3 ]; then
+              echo "toolchain install failed after 3 attempts (${channel})" >&2
+              exit 1
+            fi
+            echo "toolchain install attempt ${attempt}/3 failed; removing ${channel} and retrying" >&2
+            sleep $((attempt * 10))
+          done
           rustc -V
           rustup show
       - name: Check set
