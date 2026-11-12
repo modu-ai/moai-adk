@@ -9,6 +9,10 @@
       "reference": "../workflows/setup.md",
       "requires_binary": true
     },
+    "PROJECT": {
+      "reference": "../workflows/project.md",
+      "requires_binary": true
+    },
     "UPDATE": {
       "reference": "../workflows/update.md",
       "requires_binary": true
