@@ -11,5 +11,17 @@ args = ["mcp-server"]
 env_vars = ["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]
 default_tools_approval_mode = "writes"
 
+[mcp_servers.chrome-devtools]
+command = "/bin/bash"
+args = ["-l", "-c", "exec npx -y chrome-devtools-mcp@latest --headless"]
+
+[mcp_servers.context7]
+command = "/bin/bash"
+args = ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
+
+[mcp_servers.playwright]
+command = "/bin/bash"
+args = ["-l", "-c", "exec npx -y @playwright/mcp@latest"]
+
 [tui]
 status_line = ["model-with-reasoning", "codex-version", "context-remaining", "five-hour-limit", "weekly-limit", "current-dir", "git-branch", "branch-changes", "pull-request-number", "run-state", "task-progress", "approval-mode", "fast-mode", "thread-title"]
