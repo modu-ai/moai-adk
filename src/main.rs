@@ -525,6 +525,10 @@ enum Command {
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,
+        /// `project` (default): .claude/settings.json. `local`: .claude/settings.local.json, the
+        /// file Claude Code also reads for sessions in a linked worktree (#2581).
+        #[arg(long, default_value = "project")]
+        scope: String,
     },
     /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
     /// reference. Writes the project settings file and its receipt only; home is refused.
@@ -534,6 +538,9 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// The scope the plan was made for (#2581); the digest binds it.
+        #[arg(long, default_value = "project")]
+        scope: String,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -2149,21 +2156,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 }
             })
         }
-        Command::ClaudeSettingsPlan { project } => {
-            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
-            moai_cli::claude::settings_plan(&project, &desired)
+        Command::ClaudeSettingsPlan { project, scope } => {
+            let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
+            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            moai_cli::claude::settings_plan_in(&project, &desired, scope)
         }
         Command::ClaudeSettingsApply {
             project,
             plan_digest,
             permission_reference,
+            scope,
         } => {
-            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
-            moai_cli::claude::settings_apply(
+            let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
+            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            moai_cli::claude::settings_apply_in(
                 &project,
                 &desired,
                 &plan_digest,
                 &permission_reference,
+                scope,
             )
         }
         Command::CodexConfigPlan { project } => {
