@@ -242,6 +242,66 @@
         "adoption": "new",
         "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
       }
+    },
+    "references/internal/tdd-results.md": {
+      "sha256": "4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-tdd-results",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): the four result classes kept; path frontmatter dropped; an empty selection is not_run (internal/test-design). Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/check-completeness.md": {
+      "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-check-completeness",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/development/verification-completeness.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): cut from 22 KB to the tool-neutral rules (verdict not report, three-part check, continued firing, red for the stated reason, mutant probe, SHA pinning, run both forms); what internal/test-design already says is pointed to, not repeated; .moai/specs, prediction ledger and policy-citation sections dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/development/verification-completeness.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/boundary-checks.md": {
+      "sha256": "e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-boundary-checks",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/quality/boundary-verification.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): method only, framework-specific case studies generalised; third-party origin revfactory/harness qa-agent-guide.md (Apache-2.0) per the Go rules/moai/NOTICE.md, credited in the file. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/quality/boundary-verification.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/doc-claims.md": {
+      "sha256": "edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-doc-claims",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/skills/moai-workflow-docs-claim-check/SKILL.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): scope, evidence inventory, atomic claims, the ordered four labels and the three-part report; Claude Code-only frontmatter and wording dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/skills/moai-workflow-docs-claim-check/SKILL.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/security-checklist.md": {
+      "sha256": "b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-security-checklist",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): OWASP API Security Top 10 table rewritten from https://owasp.org/API-Security/editions/2023/en/0x11-t10/ (read 2026-11-13T15:00:49Z, HTTP 200, sha256 prefix ac00589e1bb28f49; official API1:2023-API10:2023 ids replace the Go A1-A10 ranks); unsourced numbers (hash cost, token lifetimes, lockout counts, header values) dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md",
+        "license": "Apache-2.0"
+      }
     }
   }
 }
