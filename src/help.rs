@@ -6,6 +6,7 @@
 //! root help body is drawn from [`GROUPS`] and handed to clap as the root's help template.
 
 use clap::Command;
+use unicode_width::UnicodeWidthStr;
 
 /// One help group: its heading and its commands, each with whether the root help shows it.
 pub struct Group {
@@ -275,7 +276,7 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
     }
     let name_w = rows
         .iter()
-        .flat_map(|(_, l)| l.iter().map(|(n, _)| n.chars().count()))
+        .flat_map(|(_, l)| l.iter().map(|(n, _)| n.width()))
         .max()
         .unwrap_or(0);
     let indent = 2 + name_w + 2;
@@ -284,7 +285,7 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
         out.push_str(heading);
         out.push('\n');
         for (name, text) in list {
-            let pad = name_w - name.chars().count();
+            let pad = name_w - name.width();
             let row = format!(
                 "  {name}{}  {}",
                 " ".repeat(pad),
@@ -298,13 +299,14 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
     out
 }
 
-/// `text` broken at spaces so no line passes `width`, later lines indented by `indent`.
+/// `text` broken at spaces so no line passes `width` display cells (a wide character counts
+/// two), later lines indented by `indent`.
 fn wrap(text: &str, indent: usize, width: usize) -> String {
     let room = width.saturating_sub(indent).max(20);
     let mut lines: Vec<String> = Vec::new();
     let mut line = String::new();
     for word in text.split_whitespace() {
-        if !line.is_empty() && line.chars().count() + 1 + word.chars().count() > room {
+        if !line.is_empty() && line.width() + 1 + word.width() > room {
             lines.push(std::mem::take(&mut line));
         }
         if !line.is_empty() {
@@ -366,6 +368,17 @@ mod tests {
         }
         assert_eq!(out.split_whitespace().collect::<Vec<_>>().join(" "), text);
         assert_eq!(wrap("short", 24, 60), "short");
+    }
+
+    /// Hangul counts two cells, so a Korean about wraps at half the characters (S6 will need it).
+    #[test]
+    fn wrap_counts_wide_characters_as_two_cells() {
+        let text = "한글 설명 문장은 두 칸씩 차지해요 그래서 더 일찍 줄을 바꿔요";
+        let out = wrap(text, 4, 30);
+        for line in out.lines() {
+            assert!(UnicodeWidthStr::width(line) <= 30, "{line:?}");
+        }
+        assert!(out.lines().count() >= 3, "{out}");
     }
 
     #[test]

@@ -24,10 +24,16 @@ name = "moai"
 path = "src/bin/moai.rs"
 
 [dependencies]
-clap = { version = "=4.6.1", features = ["derive", "wrap_help", "unicode"] }
+# `wrap_help` (Issue #2805, leader decision 6866652365 (가)): help text wraps to the terminal
+# width; it adds `terminal_size` (MIT OR Apache-2.0; its unix `rustix` and windows
+# `windows-sys` are already locked).
+clap = { version = "=4.6.1", features = ["derive", "wrap_help"] }
 # Human output styles (Issue #2803): already locked through clap_builder at this version,
 # so this adds no crate to the tree. MIT OR Apache-2.0.
 anstyle = "=1.0.14"
+# Display width of table cells, Hangul and other wide characters as two cells (Issue #2805,
+# leader decision 6866652365 (가)). MIT OR Apache-2.0, no dependencies.
+unicode-width = "=0.2.2"
 serde = { version = "=1.0.228", features = ["derive"] }
 # preserve_order keeps object keys in file order, so a merged host settings file keeps the
 # user's layout (Issue #1992, leader RC1 decision H1 = B).
