@@ -2911,6 +2911,25 @@ mod skill_package {
         );
     }
 
+    /// #2286 CLOSE-TABLE item 1: the repository's own instruction files carry no retired mode
+    /// spelling either, so a lane reading them types only `--mode-agent` / `--mode-leader`.
+    #[test]
+    fn repository_instruction_files_carry_no_retired_mode_spelling() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        for file in ["AGENTS.md", "AGENTS.local.md"] {
+            let text = fs::read_to_string(repo.join(file)).unwrap();
+            assert_eq!(
+                retired_mode_spelling(&text),
+                None,
+                "retired mode spelling is still in {file}"
+            );
+            assert!(
+                text.contains("--mode-agent") || file == "AGENTS.md",
+                "{file}"
+            );
+        }
+    }
+
     /// #2496 AC-1: `/moai project` is a route, and its workflow carries the three stages —
     /// detect and interview, the index-build suggestion, and detection-only LSP·MCP·DB.
     #[test]

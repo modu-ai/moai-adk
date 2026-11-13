@@ -79,6 +79,7 @@ pub mod verify;
 pub mod worktree;
 pub mod worktree_gc;
 pub mod worktree_include;
+pub mod worktree_move;
 pub mod worktree_report;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
