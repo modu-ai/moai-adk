@@ -53,7 +53,7 @@ const MANIFEST: &str = crate::project_state!("manifests/generation.json");
 const SOURCES_MANIFEST: &str = crate::project_state!("manifests/sources.json");
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
-const PROJECT_PROFILE: &str = ".moai-cli/project.yaml";
+const PROJECT_PROFILE: &str = crate::project_state!("project.yaml");
 /// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
 /// by default, and the managed section must leave room for user content.
 const PURPOSE_LIMIT: usize = 500;
@@ -245,7 +245,18 @@ fn validate(r: &GenerationRequest) -> Result<()> {
             return Err("invalid generation request; no values were logged".into());
         }
     }
+    let mut seen_ids = std::collections::BTreeSet::new();
     for ps in &r.project_skills {
+        if !seen_ids.insert(ps.id.as_str())
+            || ps
+                .hosts
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != ps.hosts.len()
+        {
+            return Err("invalid generation request: a project skill id or host repeats".into());
+        }
         if !valid_skill_name(&ps.id)
             || !ps.id.starts_with("prj-")
             || !bounded_purpose(&ps.purpose)
@@ -405,6 +416,33 @@ fn render_codex_role(role: &NativeRole) -> String {
     )
 }
 
+/// A YAML double-quoted scalar: a purpose such as `Run tests: cargo test` keeps the
+/// frontmatter valid (pre-audit 6854178087 N2). `render_safe` already refused line breaks.
+fn yaml_quoted(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// The first component from `root` down to `rel` (the file included) that is a symbolic link,
+/// if any. Writing or removing through it would act outside the project (pre-audit
+/// 6854178087 B1, 6854760758 B1), so such a path is a conflict, never followed.
+fn link_on_path(root: &Path, rel: &str) -> Option<String> {
+    let mut at = root.to_path_buf();
+    let mut shown = String::new();
+    for part in Path::new(rel).components() {
+        at.push(part);
+        if !shown.is_empty() {
+            shown.push('/');
+        }
+        shown.push_str(&part.as_os_str().to_string_lossy());
+        match fs::symlink_metadata(&at) {
+            Ok(m) if m.file_type().is_symlink() => return Some(shown),
+            Ok(_) => {}
+            Err(_) => return None,
+        }
+    }
+    None
+}
+
 /// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
 /// recorded with `source: default` (an axis left unanswered) is never written.
 fn render_project_skill(
@@ -436,9 +474,9 @@ fn render_project_skill(
         ),
     ];
     let mut body = if ko {
-        format!("# {}\n\n`/moai project` 인터뷰 답으로 만든 프로젝트 스킬이다. 원본은 `.moai-cli/project.yaml`이다.\n", skill.id)
+        format!("# {}\n\n`/moai project` 인터뷰 답으로 만든 프로젝트 스킬이다. 원본은 `{PROJECT_PROFILE}`이다.\n", skill.id)
     } else {
-        format!("# {}\n\nProject skill built from the `/moai project` interview answers; the source is `.moai-cli/project.yaml`.\n", skill.id)
+        format!("# {}\n\nProject skill built from the `/moai project` interview answers; the source is `{PROJECT_PROFILE}`.\n", skill.id)
     };
     for (id, en, kr) in sections {
         for value in answer(id) {
@@ -450,7 +488,7 @@ fn render_project_skill(
     Ok(format!(
         "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
         id = skill.id,
-        desc = skill.purpose,
+        desc = yaml_quoted(&skill.purpose),
     ))
 }
 
@@ -735,11 +773,16 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
                     .parent()
                     .expect("skill parent")
                     .to_path_buf();
-                let current = fs::read(root.join(&rel)).ok();
+                let link = link_on_path(&root, &rel);
+                let current = if link.is_some() {
+                    None
+                } else {
+                    fs::read(root.join(&rel)).ok()
+                };
                 let baseline = generation_baseline(&manifest, &rel);
                 let unclaimed = baseline.is_none()
                     && (current.is_some() || fs::symlink_metadata(&dest_dir).is_ok());
-                let action = if unclaimed {
+                let action = if link.is_some() || unclaimed {
                     "conflict"
                 } else {
                     let decided = three_way_action(
@@ -762,9 +805,15 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
                     rendered_sha256: Some(rendered_digest.clone()),
                     source_refs: vec![PROJECT_PROFILE.into()],
                     kind: Some(format!("generation:project-skill:{host}:{}", ps.id)),
-                    detail: unclaimed.then_some(
-                        "existing skill directory without a manifest baseline".to_string(),
-                    ),
+                    detail: match (&link, unclaimed) {
+                        (Some(l), _) => Some(format!(
+                            "{l} is a symbolic link; a project skill is never written through it"
+                        )),
+                        (None, true) => {
+                            Some("existing skill directory without a manifest baseline".to_string())
+                        }
+                        (None, false) => None,
+                    },
                 });
             }
         }
@@ -919,6 +968,14 @@ pub fn generation_apply(
             }
             if f.action == "unchanged" {
                 continue;
+            }
+            if kind.starts_with("generation:project-skill:") {
+                if let Some(l) = link_on_path(root, &f.path) {
+                    return Err(format!(
+                        "conflict in {}: {l} became a symbolic link after the plan; nothing more applied",
+                        f.path
+                    ));
+                }
             }
             let rendered_text = rendered_text_for(root, &p, f)?;
             let bytes = rendered_text.into_bytes();
