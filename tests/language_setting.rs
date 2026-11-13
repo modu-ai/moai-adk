@@ -391,3 +391,43 @@ fn the_stored_instruction_language_writes_the_managed_section() {
         "{plan}"
     );
 }
+
+/// #2696 C2: in a migrated project (the profile under `.moai/`, marker present) the managed
+/// section's heading names `.moai/project.yaml`, where the setting actually lives.
+#[test]
+fn a_migrated_project_names_its_own_profile_path() {
+    let root = project(Some(json!({"user_chat": "en", "code_comments": "en"})));
+    fs::create_dir(root.path().join(".moai")).unwrap();
+    fs::rename(
+        root.path().join(PROFILE),
+        root.path().join(".moai/project.yaml"),
+    )
+    .unwrap();
+    fs::write(
+        root.path().join(".moai/moai-cli.json"),
+        r#"{"schema_version":1,"generation":"moai-cli","created_by":"moai-cli test"}"#,
+    )
+    .unwrap();
+    plan_then_apply(&root, "agents", &agents_request("en"));
+    let text = agents_md(&root);
+    assert!(
+        text.contains("Writing language by item (`language` in `.moai/project.yaml`):"),
+        "{text}"
+    );
+    assert!(!text.contains(".moai-cli/project.yaml"), "{text}");
+    // AUDIT #2794 B2: the preview renders the same section the apply wrote — a re-plan right
+    // after the apply finds AGENTS.md `unchanged` (a plan that named another profile path
+    // would render a different block and plan an update).
+    let again = ok(&run(
+        &["agents-plan", path(&root)],
+        agents_request("en").to_string().as_bytes(),
+    ));
+    let agents = again["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == "AGENTS.md")
+        .unwrap_or_else(|| panic!("{again}"))
+        .clone();
+    assert_eq!(agents["action"], json!("unchanged"), "{again}");
+}

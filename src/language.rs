@@ -152,17 +152,23 @@ pub fn resolve(settings: &LanguageSettings, conversation: &str) -> Vec<(&'static
 /// The managed-section lines for a set `language` key, written in `ui` (`en` or `ko`).
 /// Items the profile leaves out are rendered with their default, `ui` standing in for the
 /// conversation language.
-pub fn render_lines(settings: &LanguageSettings, ui: &str) -> String {
-    render_lines_in(settings, ui, ui)
+pub fn render_lines(settings: &LanguageSettings, ui: &str, profile_rel: &str) -> String {
+    render_lines_in(settings, ui, ui, profile_rel)
 }
 
 /// [`render_lines`] with the label language (`ui`, the language the surrounding text is in)
 /// apart from the conversation language that conversation-default items resolve to (#2706).
-pub fn render_lines_in(settings: &LanguageSettings, ui: &str, conversation: &str) -> String {
+/// `profile_rel` is where the project keeps `project.yaml` (`state_root::rel`, #2696 C2).
+pub fn render_lines_in(
+    settings: &LanguageSettings,
+    ui: &str,
+    conversation: &str,
+    profile_rel: &str,
+) -> String {
     let mut out = if ui == "ko" {
-        String::from("항목별 작성 언어(`.moai-cli/project.yaml`의 `language`):\n")
+        format!("항목별 작성 언어(`{profile_rel}`의 `language`):\n")
     } else {
-        String::from("Writing language by item (`language` in `.moai-cli/project.yaml`):\n")
+        format!("Writing language by item (`language` in `{profile_rel}`):\n")
     };
     for (item, code) in resolve(settings, conversation) {
         let label = if ui == "ko" {
@@ -434,11 +440,14 @@ mod tests {
     #[test]
     fn render_lines_lists_every_item_in_the_ui_language() {
         let s = settings(&[("code_comments", "ko")]);
-        let en = render_lines(&s, "en");
+        let en = render_lines(&s, "en", ".moai/project.yaml");
         assert_eq!(en.lines().count(), ITEMS.len() + 1);
+        // #2696 C2: the heading names where this project keeps its profile.
+        assert!(en.starts_with("Writing language by item (`language` in `.moai/project.yaml`):\n"));
         assert!(en.contains("- Code comments: Korean (`ko`)\n"));
         assert!(en.contains("- Commit messages: English (`en`)\n"));
-        let ko = render_lines(&s, "ko");
+        let ko = render_lines(&s, "ko", ".moai/project.yaml");
+        assert!(ko.starts_with("항목별 작성 언어(`.moai/project.yaml`의 `language`):\n"));
         assert!(ko.contains("- 코드 주석: 한국어 (`ko`)\n"));
         assert!(ko.contains("- 커밋 메시지: 한국어 (`ko`)\n"));
     }
