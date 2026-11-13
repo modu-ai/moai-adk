@@ -217,6 +217,36 @@ class LabelTaxonomyTest(unittest.TestCase):
         self.assertEqual([n for n in not_used if n not in remote], [], "not_used names a real remote label")
 
 
+    def test_label_scheme_decisions_44_to_49(self):
+        # #2434 decisions 44-49 (6842518327, all A; design 6791931666 Q1-Q5, Q7).
+        data = yaml.safe_load(LABELS.read_text(encoding="utf-8"))
+        added = {i["name"]: i for i in data["added"]}
+        # 44 (Q1): product components get their own area.
+        for name in ("area:launcher", "area:statusline"):
+            self.assertIn(name, added)
+            self.assertEqual(added[name]["color"], "c2e0c6")
+        # 46 (Q3): area:update names the Go migration too.
+        self.assertIn("Go", added["area:update"]["description"])
+        # 48 (Q5): every recorded remote label is listed somewhere; GitHub's own three are reused.
+        self.assertTrue({"good first issue", "help wanted", "question"} <= set(data["reused"]["functional"]))
+        listed = {n for g in data["reused"].values() for n in g} | set(added)
+        listed |= {n for g in data["not_used"].values() for n in g}
+        remote = {item["name"] for item in json.loads(REMOTE_LABELS.read_text(encoding="utf-8"))}
+        self.assertEqual(sorted(remote - listed), [], "remote labels the file does not list")
+        # 45, 46, 47 (Q2-Q4): the rules table carries the new definitions.
+        readme = (ROOT / ".github/moai/README.md").read_text(encoding="utf-8")
+        for text in (
+            "`P1` (must ship in this RC)",
+            "`P2` (this RC's scope, may move to the next rc)",
+            "`area:workflow` | lane flow:",
+            "`area:launcher` |",
+            "`area:statusline` |",
+        ):
+            self.assertIn(text, readme)
+        self.assertNotIn("(current queue)", readme)
+        self.assertNotIn("Remote labels in neither list", readme)
+
+
 WORKFLOWS = ROOT / ".github/workflows"
 PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
