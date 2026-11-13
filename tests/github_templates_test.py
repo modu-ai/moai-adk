@@ -107,10 +107,11 @@ class ManifestTest(unittest.TestCase):
 
 
 class TemplateFormTest(unittest.TestCase):
-    def test_three_forms_are_promoted(self):
+    def test_four_forms_are_promoted(self):
+        # Decision 43 (6842518327): the follow-up form ships as the fourth product form.
         self.assertEqual(
             [p.name for p in FORMS],
-            ["moai-bugfix.yml", "moai-feature.yml", "moai-investigation.yml"],
+            ["moai-bugfix.yml", "moai-feature.yml", "moai-followup.yml", "moai-investigation.yml"],
         )
 
     def test_forms_follow_the_form_schema(self):
