@@ -606,3 +606,31 @@ fn state_and_claim_read_the_free_card_list() {
         &["Take the self-claim candidate from the `free` list of `moai-cli queue-free`"],
     );
 }
+
+/// #2769 (#2554 leader decision 6861024531, item 3): a `LANE-BLOCKED` line names the kind, who
+/// unblocks it and the next check; a resume point says who clears the wait; AGENTS.md points at
+/// the `report` step in one line.
+#[test]
+fn blocked_lines_name_kind_owner_and_next_check() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "report",
+        &[
+            "`LANE-BLOCKED <lane> <target> <reason and state> · kind=<kind> owner=<who> next=<check>`",
+            "A `LANE-BLOCKED` line names the kind (`decision`, `ci`, `audit`, `pr-slot`, `claim`, `tip-red`, `outside`)",
+            "who unblocks it (`owner=<leader|user|lane|author>`)",
+            "the next check (`next=<what, and when or on which event>`), then the lane takes other work in the same turn",
+        ],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &["the wait condition and who clears it (the leader, the user, a lane or the author)"],
+    );
+    let agents_md =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md")).unwrap();
+    assert!(agents_md.contains(
+        "A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step)."
+    ));
+}
