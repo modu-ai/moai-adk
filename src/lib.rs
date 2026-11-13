@@ -365,7 +365,11 @@ mod state_dir_tests {
                 2,
                 "the code walk skips the earlier root",
             ),
-            ("scope.rs", 1, "the shared-interface glob lists both roots"),
+            (
+                "scope.rs",
+                1,
+                "the shared-interface glob (REQ-06C-06, pinned by worktree_cli)",
+            ),
         ];
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut stack = vec![root.clone()];

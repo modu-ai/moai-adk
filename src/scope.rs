@@ -25,8 +25,6 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
     "Cargo.toml",
     ".github/**",
     crate::project_state!("manifests/**"),
-    // #2725 S2b: a migrated project keeps the same manifests under `.moai/`.
-    ".moai/manifests/**",
     "AGENTS.md",
 ];
 
