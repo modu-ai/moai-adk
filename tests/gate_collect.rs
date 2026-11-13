@@ -216,7 +216,7 @@ fn comment_pages_are_followed() {
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
             response: ok(json!([claim(&r.b)]))
-                .with_header("link", &format!("<{page2}>; rel=\"next\"")),
+                .with_header("link", format!("<{page2}>; rel=\"next\"")),
         },
         Exchange {
             request: HttpRequest::new("GET", page2),
