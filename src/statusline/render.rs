@@ -216,9 +216,10 @@ impl Renderer {
             }
         }
         // #2697 (user request 2026-11-13): the session name is the last segment, after the
-        // usage bars. The renderer is given no terminal width and never shortens a segment;
-        // a host that runs out of room cuts the line at its right end, so on a narrow screen
-        // the name goes first and the usage bars stay.
+        // usage bars. The renderer never shortens a segment and does not read `COLUMNS`,
+        // which Claude Code sets. Whether an overlong line is cut or wraps is left open by
+        // the host docs ("may get truncated or wrap awkwardly"); with the name last, a cut
+        // loses the name before any bar.
         if self.enabled("session") && !s.session_name.is_empty() {
             segs.push(format!("🏷️ {}", s.session_name));
         }
@@ -488,11 +489,12 @@ mod tests {
         );
     }
 
-    /// #2697 AC-3: the renderer never shortens for width (it is given none). A host that runs
-    /// out of room cuts the line at its right end, so the name, being last, is cut first and
-    /// the usage bars keep their place: a long name is printed whole, after every bar.
+    /// #2697 AC-3: the renderer never shortens for width and does not read `COLUMNS`. The
+    /// host docs leave open whether an overlong line is cut or wraps; this pins only what the
+    /// renderer decides: a long name is printed whole, after every bar, so a cut would lose
+    /// the name before any bar.
     #[test]
-    fn a_long_name_is_printed_whole_and_last_so_a_narrow_screen_cuts_it_first() {
+    fn a_long_name_is_printed_whole_and_after_every_bar() {
         let long = "x".repeat(200);
         let mut status = full_status();
         status.session_name = long.clone();

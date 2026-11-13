@@ -802,9 +802,12 @@ operation envelope. The main layout replaces the earlier Go-parity layout:
    the last segment, ` | 🏷️ <name>` (user request 2026-11-13, #2697; with no bars the
    name stands alone, with no name there is no tail). Missing rate windows are hidden;
    reset times are not printed. Context handoff warnings and the existing usage
-   calculation are retained. The renderer is given no terminal width and shortens
-   nothing; a host that runs out of room cuts the line at its right end, so on a narrow
-   screen the name is cut first and the bars stay.
+   calculation are retained. The renderer shortens nothing: Claude Code sets `COLUMNS`
+   for the status line command, but the renderer does not read it. When the line is
+   wider than the status bar, the host documentation leaves open whether it is cut or
+   wraps ("may get truncated or wrap awkwardly",
+   https://code.claude.com/docs/en/statusline, read 2026-11-13). The name is last so
+   that, if the host cuts the line, the name is lost before any bar.
 3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
    arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
 
