@@ -73,6 +73,14 @@ pub enum Due {
     Hold,
 }
 
+/// Unix seconds of a `YYYY-MM-DDTHH:MM:SSZ` deadline, only when the text is exactly the
+/// canonical form of that instant: a wrong separator or a day the month lacks
+/// (`2026-02-31`) does not round-trip and is refused (audit note on PR #2623).
+pub fn deadline_secs(text: &str) -> Option<i64> {
+    let secs = crate::forge::policy::parse_utc(text)?;
+    (crate::baseline::utc_from_epoch(secs) == text).then_some(secs)
+}
+
 fn cells(line: &str) -> Option<Vec<String>> {
     let t = line.trim();
     let inner = t.strip_prefix('|')?.strip_suffix('|')?;
@@ -155,6 +163,14 @@ pub fn parse(text: &str) -> (Vec<Row>, Vec<Problem>) {
             bad("`options` needs two or more `<letter>: <text>` items separated by `; `".into());
         }
         let letters = letters.unwrap_or_default();
+        if letters.len()
+            != letters
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+        {
+            bad("`options` repeats a letter".into());
+        }
         if !c[3].is_empty() && !letters.contains(&c[3]) {
             bad(format!("`default` `{}` is not one of the options", c[3]));
         }
@@ -173,7 +189,7 @@ pub fn parse(text: &str) -> (Vec<Row>, Vec<Problem>) {
                 CATEGORIES.join(", ")
             ));
         }
-        if crate::forge::policy::parse_utc(&c[6]).is_none() {
+        if deadline_secs(&c[6]).is_none() {
             bad(format!("`deadline` `{}` is not YYYY-MM-DDTHH:MM:SSZ", c[6]));
         }
         match c[7].as_str() {
@@ -220,7 +236,7 @@ pub fn due(row: &Row, now: i64) -> Option<Due> {
     if !row.answer.is_empty() {
         return None;
     }
-    let deadline = crate::forge::policy::parse_utc(&row.deadline)?;
+    let deadline = deadline_secs(&row.deadline)?;
     Some(if now < deadline {
         Due::Open
     } else if row.reversible && row.category == "none" && row.decider == "user" {
@@ -312,6 +328,15 @@ mod tests {
         let unanswered_leader = LEADER.replace("| leader | A |", "| leader |  |");
         assert!(refused(&unanswered_leader)
             .contains(&"a leader decision is recorded with its `answer`".to_string()));
+        for bad_deadline in ["2026-11-14", "2026-11-14T00-00-00Z", "2026-02-31T00:00:00Z"] {
+            let row = TO_USER.replace("2026-11-14T00:00:00Z", bad_deadline);
+            assert!(
+                refused(&row)[0].starts_with(&format!("`deadline` `{bad_deadline}`")),
+                "{bad_deadline}"
+            );
+        }
+        let repeated = TO_USER.replace("A: 1800 s; B: 300 s", "A: 1800 s; A: 300 s");
+        assert!(refused(&repeated).contains(&"`options` repeats a letter".to_string()));
         let date_only = TO_USER.replace("2026-11-14T00:00:00Z", "2026-11-14");
         assert!(refused(&date_only)[0].starts_with("`deadline` `2026-11-14`"));
         let maybe = TO_USER.replace("| yes | none |", "| maybe | none |");
@@ -337,12 +362,20 @@ mod tests {
     #[test]
     fn past_its_deadline_only_a_reversible_none_user_row_takes_its_default() {
         let (rows, _) = parse(&file(&[LEADER, TO_USER, HOLD]));
-        let deadline = crate::forge::policy::parse_utc("2026-11-14T00:00:00Z").unwrap();
+        let deadline = deadline_secs("2026-11-14T00:00:00Z").unwrap();
         // Boundary: one second before the deadline nothing is due; at the deadline it is.
         assert_eq!(due(&rows[1], deadline - 1), Some(Due::Open));
         assert_eq!(due(&rows[1], deadline), Some(Due::DefaultApplies));
         assert_eq!(due(&rows[2], deadline), Some(Due::Hold));
         assert_eq!(due(&rows[2], deadline + 86_400 * 365), Some(Due::Hold));
+        // Audit B1 on #2623: a reversible row in any of the five categories keeps waiting.
+        for category in ["money", "legal", "external_contract", "secret", "real_data"] {
+            let row = TO_USER.replace("| none |", &format!("| {category} |"));
+            let (r, problems) = parse(&file(&[&row]));
+            assert!(problems.is_empty(), "{category}: {problems:?}");
+            assert!(r[0].reversible);
+            assert_eq!(due(&r[0], deadline), Some(Due::Hold), "{category}");
+        }
         // A guarded setting is reversible, yet it never takes its default either.
         let guarded = TO_USER.replace("| none |", "| guarded |");
         let (g, problems) = parse(&file(&[&guarded]));
