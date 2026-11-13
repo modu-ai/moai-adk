@@ -1074,3 +1074,152 @@ fn a_receipt_restored_path_elsewhere_is_refused() {
     let rp = revert_plan(&fx, &backup);
     assert_eq!(rp["ok"], json!(false), "{rp}");
 }
+
+/// #2561 F2 (comment 6856196324): moving `.moai/` also moves every git worktree registered
+/// under it, and git then loses them. A worktree there keeps the whole folder in place, with
+/// the count in the reason; a worktree elsewhere does not.
+#[test]
+fn a_worktree_registered_under_moai_keeps_the_whole_folder() {
+    let id = [
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+    ];
+    let git = |args: &[&str], fx: &Fx| {
+        let mut all: Vec<&str> = id.to_vec();
+        all.extend_from_slice(args);
+        common::git::git(&fx.root, &all)
+    };
+    // A checkout whose .moai/ holds nothing registered: the folder still moves.
+    let fx = movable_fixture();
+    git(&["init", "-q", "-b", "main"], &fx);
+    fx.write("README.md", "r\n");
+    git(&["add", "README.md"], &fx);
+    git(&["commit", "-q", "-m", "init"], &fx);
+    let outside = fx.root.join("wt-outside");
+    git(
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "o",
+            outside.to_str().unwrap(),
+        ],
+        &fx,
+    );
+    assert_eq!(action(&plan(&fx), ".moai").0, "move");
+
+    // Two worktrees under .moai/: the folder stays, the reason names the count.
+    for (branch, rel) in [
+        ("a", ".moai/worktrees/a"),
+        ("b", ".moai/worktrees/projects/x/b"),
+    ] {
+        let wt = fx.root.join(rel);
+        git(
+            &["worktree", "add", "-q", "-b", branch, wt.to_str().unwrap()],
+            &fx,
+        );
+    }
+    let p = plan(&fx);
+    let (act, why) = action(&p, ".moai");
+    assert_eq!(act, "leave", "{p}");
+    assert!(
+        why.starts_with("2 git worktree(s) are registered under .moai/"),
+        "{why}"
+    );
+    assert_eq!(
+        action(&p, ".moai/config/sections/a.yaml"),
+        ("leave", "the .moai/ folder stays (see the .moai item)")
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(fx.root.join(".moai/worktrees/a/README.md").is_file());
+    let list = git(&["worktree", "list", "--porcelain"], &fx);
+    assert!(!list.contains("prunable"), "{list}");
+}
+
+/// F2: when the project is a git checkout whose worktree list cannot be read, nobody knows
+/// whether a worktree lives under `.moai/`, so the folder stays (fail-closed).
+#[test]
+fn an_unreadable_worktree_list_keeps_the_whole_folder() {
+    let fx = movable_fixture();
+    fx.write(".git", "gitdir: /nonexistent/moai-fixture-gitdir\n");
+    let p = plan(&fx);
+    let (act, why) = action(&p, ".moai");
+    assert_eq!(act, "leave", "{p}");
+    assert!(why.contains("could not be read"), "{why}");
+}
+
+/// #2561 F1 (comment 6856196324): a project's worktrees under `.claude/worktrees/` can hold
+/// hundreds of thousands of files (a preview once ran 14 minutes). A folder holding a `.git`
+/// entry is skipped unread and counted in a warning; a plain folder is still counted.
+#[test]
+fn nested_checkouts_are_skipped_and_counted() {
+    let fx = movable_fixture();
+    for wt in [".claude/worktrees/w1", ".moai/worktrees/w2"] {
+        fx.write(&format!("{wt}/.git"), "gitdir: /elsewhere\n");
+        fx.write(&format!("{wt}/node_modules/x/index.js"), "x\n");
+        fx.write(&format!("{wt}/src/a.rs"), "a\n");
+    }
+    fx.write(".claude/worktrees/plain/notes.md", "n\n");
+    let p = plan(&fx);
+    assert_eq!(p["unrecorded"][".claude/worktrees"], json!(1), "{p}");
+    assert_eq!(p["unrecorded"][".moai/worktrees"], Value::Null, "{p}");
+    let warned: Vec<&str> = p["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|w| w.as_str())
+        .filter(|w| w.contains("nested checkout"))
+        .collect();
+    assert_eq!(warned.len(), 1, "{p}");
+    assert!(
+        warned[0].starts_with("2 nested checkout(s)"),
+        "{}",
+        warned[0]
+    );
+    // Without nested checkouts there is no such warning.
+    let clean = movable_fixture();
+    assert!(!plan(&clean)["warnings"]
+        .to_string()
+        .contains("nested checkout"));
+}
+
+/// F1: the `unrecorded` count stops after a fixed number of entries and says so; at exactly
+/// the limit it does not stop. `.moai/` here holds three entries: `config/`, `manifest.json`
+/// and `config/a.yaml`.
+#[test]
+fn the_unrecorded_count_stops_at_its_entry_limit() {
+    let mut fx = Fx::new();
+    fx.deployed(".moai/config/a.yaml", "a\n");
+    fx.manifest();
+    let with_limit = |n: &str| -> Value {
+        let out = Command::new(EXE)
+            .args(["go-state-plan", fx.root.to_str().unwrap()])
+            .clean_env()
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .env("MOAI_CLI_TEST_UNRECORDED_LIMIT", n)
+            .output()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["ok"], json!(true), "{v}");
+        v["result"].clone()
+    };
+    let stopped = |p: &Value| p["warnings"].to_string().contains("stopped after");
+    assert!(
+        !stopped(&with_limit("3")),
+        "three entries fit a limit of three"
+    );
+    let p = with_limit("2");
+    assert!(stopped(&p), "{p}");
+    assert!(
+        p["warnings"]
+            .to_string()
+            .contains("stopped after 2 entries"),
+        "{p}"
+    );
+    assert!(!stopped(&plan(&fx)), "the default limit is far above three");
+}
