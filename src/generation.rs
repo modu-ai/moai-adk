@@ -55,7 +55,6 @@ fn manifest_rel(root: &Path) -> String {
 }
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
-const PROJECT_PROFILE: &str = crate::project_state!("project.yaml");
 /// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
 /// by default, and the managed section must leave room for user content.
 const PURPOSE_LIMIT: usize = 500;
@@ -447,10 +446,16 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
 
 /// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
 /// recorded with `source: default` (an axis left unanswered) is never written.
+/// The profile a project skill is built from, in the project's state folder (#2725 S2b).
+fn project_profile_rel(root: &Path) -> String {
+    crate::state_root::rel(root, "project.yaml")
+}
+
 fn render_project_skill(
     skill: &ProjectSkill,
     language: &str,
     profile: &crate::Profile,
+    source: &str,
 ) -> Result<String> {
     let ko = language == "ko";
     let answer = |id: &str| {
@@ -476,9 +481,9 @@ fn render_project_skill(
         ),
     ];
     let mut body = if ko {
-        format!("# {}\n\n`/moai project` 인터뷰 답으로 만든 프로젝트 스킬이다. 원본은 `{PROJECT_PROFILE}`이다.\n", skill.id)
+        format!("# {}\n\n`/moai project` 인터뷰 답으로 만든 프로젝트 스킬이다. 원본은 `{source}`이다.\n", skill.id)
     } else {
-        format!("# {}\n\nProject skill built from the `/moai project` interview answers; the source is `{PROJECT_PROFILE}`.\n", skill.id)
+        format!("# {}\n\nProject skill built from the `/moai project` interview answers; the source is `{source}`.\n", skill.id)
     };
     for (id, en, kr) in sections {
         for value in answer(id) {
@@ -767,7 +772,8 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
     if !request.project_skills.is_empty() {
         let (profile, _) = read_profile(&root)?;
         for ps in &request.project_skills {
-            let rendered = render_project_skill(ps, &request.language, &profile)?;
+            let rendered =
+                render_project_skill(ps, &request.language, &profile, &project_profile_rel(&root))?;
             let rendered_digest = digest(rendered.as_bytes());
             for host in project_skill_hosts(ps) {
                 let rel = match host.as_str() {
@@ -809,7 +815,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
                     expected_sha256: current.as_deref().map(digest),
                     baseline_sha256: baseline,
                     rendered_sha256: Some(rendered_digest.clone()),
-                    source_refs: vec![PROJECT_PROFILE.into()],
+                    source_refs: vec![project_profile_rel(&root)],
                     kind: Some(format!("generation:project-skill:{host}:{}", ps.id)),
                     detail: match (&link, unclaimed) {
                         (Some(l), _) => Some(format!(
@@ -880,7 +886,12 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
             .find(|s| s.id == id && project_skill_hosts(s).iter().any(|h| h == host))
             .ok_or("unknown planned path")?;
         let (profile, _) = read_profile(root)?;
-        return render_project_skill(skill, &p.request.language, &profile);
+        return render_project_skill(
+            skill,
+            &p.request.language,
+            &profile,
+            &project_profile_rel(root),
+        );
     }
     if let Some(rest) = kind.strip_prefix("generation:skill-projection:") {
         let Some((host, id)) = rest.split_once(':') else {
