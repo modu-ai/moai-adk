@@ -2724,6 +2724,13 @@ mod skill_package {
         ] {
             assert!(aside.contains(line), "aside adapter lacks: {line}");
         }
+        // User decision #2634 6845653775 (audit 6845704355 B1): no MCP install path in either
+        // adapter — no host command that adds, reads or removes an MCP entry.
+        for (name, text) in [("orca", &orca), ("aside", &aside)] {
+            for gone in ["mcp add", "mcp get", "mcp remove", "mcp_servers"] {
+                assert!(!text.contains(gone), "{name} adapter still names `{gone}`");
+            }
+        }
     }
 
     #[test]
