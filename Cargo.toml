@@ -10,6 +10,19 @@ license = "Apache-2.0"
 repository = "https://github.com/modu-ai/moai-adk"
 homepage = "https://adk.mo.ai.kr"
 
+# The public CLI name is `moai` (user RC2 instruction, Issue #1975 comment 6859326988); the
+# name `moai-cli` stays as an alias that existing hooks, skills and receipts call (#2790 R1,
+# design #2725 comment 6863726387). Both binaries run the one `main` of `src/main.rs`
+# (`src/bin/moai.rs` loads it as a module) and print the same output; the library crate
+# stays `moai_cli`.
+[[bin]]
+name = "moai-cli"
+path = "src/main.rs"
+
+[[bin]]
+name = "moai"
+path = "src/bin/moai.rs"
+
 [dependencies]
 clap = { version = "=4.6.1", features = ["derive"] }
 serde = { version = "=1.0.228", features = ["derive"] }

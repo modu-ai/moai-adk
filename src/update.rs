@@ -944,6 +944,8 @@ pub(crate) fn resolve_host_receipt(
     }
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    // `moai` beside the same build's `moai-cli` reads the receipts under the canonical name.
+    let exe = crate::install::identity_exe(exe);
     let Some((versions, own_folder)) = layout_folder(canonical_home, &exe) else {
         return Ok(plain(own));
     };

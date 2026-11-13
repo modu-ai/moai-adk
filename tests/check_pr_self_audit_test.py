@@ -3,15 +3,13 @@ measured lines passes; a missing section, any missing line, or a mutation line
 that does not report FAILED exits 1; usage exits 2."""
 
 import pathlib
-import subprocess
 import unittest
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from self_audit_parity import run_both  # noqa: E402  (#2708: Python and Rust must agree)
+from self_audit_run import run_check  # noqa: E402  (#2708: the Rust checker)
 
 
-TOOL = pathlib.Path(__file__).resolve().parents[1] / "tools/check_pr_self_audit.py"
 
 FULL = """Refs #2200
 
@@ -32,7 +30,7 @@ UNMEASURED_MUTATION = FULL.replace("-> check FAILED, measured", "-> check passed
 
 class CheckPrSelfAuditTest(unittest.TestCase):
     def run_tool(self, text=None, stdin=True):
-        return run_both((), text, stdin=stdin)
+        return run_check((), text, stdin=stdin)
 
     def test_full_section_passes(self):
         out = self.run_tool(FULL)
@@ -44,7 +42,7 @@ class CheckPrSelfAuditTest(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
             f.write(FULL)
             path = f.name
-        out = run_both(("--file", path))
+        out = run_check(("--file", path))
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("self-audit: pass", out.stdout)
 
@@ -68,7 +66,7 @@ class CheckPrSelfAuditTest(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
 
     def test_usage_exit_2(self):
-        out = run_both(("bogus",), stdin=False)
+        out = run_check(("bogus",), stdin=False)
         self.assertEqual(out.returncode, 2)
 
 
@@ -84,7 +82,7 @@ class CiCitationLineTest(unittest.TestCase):
     """#2385: a `ci:` line needs keyed `run=<digits>` and `head=<40 lowercase hex>`."""
 
     def run_tool(self, text):
-        return run_both((), text)
+        return run_check((), text)
 
     def assert_pass(self, text):
         out = self.run_tool(text)
@@ -278,7 +276,11 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
 
     def test_pr_form_and_checker_use_the_same_ci_format(self):
         self.assertIn(CI_FORMAT, self.read(".github/pull_request_template.md"))
-        self.assertIn(CI_FORMAT, self.read("tools/check_pr_self_audit.py"))
+        # the checker is `moai-cli pr-self-audit-check` (#2708): a line in the form's own
+        # format passes it, the placeholder text does not
+        filled = CI_FORMAT.replace("<run id>", "4242").replace("<40-hex head SHA>", HEAD40)
+        self.assertEqual(run_check((), with_ci("- " + filled)).returncode, 0)
+        self.assertEqual(run_check((), with_ci("- " + CI_FORMAT)).returncode, 1)
 
 
 class NoAuthorCiLineTest(unittest.TestCase):
