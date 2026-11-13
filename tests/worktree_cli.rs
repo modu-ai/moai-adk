@@ -568,6 +568,7 @@ fn shared_interface_paths_default() {
             "Cargo.toml",
             ".github/**",
             ".moai-cli/manifests/**",
+            ".moai/manifests/**",
             "AGENTS.md"
         ]
     );

@@ -716,7 +716,10 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         "interview_revision": p.profile.interview_revision,
         "host_verified": false,
         "receipt": request_id,
-        "next_actions": ["update profile_sha256 and interview_revision in .moai-cli/manifests/generation.json through the 03-C generation apply; project.apply does not write the manifest"]
+        "next_actions": [format!(
+            "update profile_sha256 and interview_revision in {} through the 03-C generation apply; project.apply does not write the manifest",
+            crate::state_root::rel(root, "manifests/generation.json")
+        )]
     }))
 }
 

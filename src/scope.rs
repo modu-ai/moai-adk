@@ -25,6 +25,8 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
     "Cargo.toml",
     ".github/**",
     crate::project_state!("manifests/**"),
+    // #2696 C2: a migrated project keeps its manifests in `.moai/` (state_root `rust`).
+    ".moai/manifests/**",
     "AGENTS.md",
 ];
 

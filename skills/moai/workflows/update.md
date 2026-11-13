@@ -6,7 +6,7 @@ The user layer — the installed skill, the binary and the global instructions u
 
 ## Input
 
-The current project, its `.moai-cli/project.yaml` and the baselines under `.moai-cli/manifests/`, and the user's answers.
+The current project, its `project.yaml` and the baselines under `manifests/` in its state folder (`.moai/` once `state_root.generation` is `rust`, otherwise `.moai-cli/`), and the user's answers.
 
 ## Output
 
@@ -21,7 +21,7 @@ For each step, the preview the user saw and either its applied receipt or the re
    - the AGENTS.md managed section and the REVIEW.md section: `moai agents-plan <project>`, then `moai agents-apply <project> --plan-digest <digest> --permission-reference <ref>`;
    - the generated agent and skill files: `moai generation-plan <project>`, then `moai generation-apply <project> --plan-digest <digest> --permission-reference <ref>`;
    - only when the project opted in to GitHub templates: `moai github-plan <project>`, then `moai github-apply <project> --plan-digest <digest> --permission-reference <ref>`.
-   - the project's Claude Code settings: `moai claude-settings-plan <project>`, then `moai claude-settings-apply <project> --plan-digest <digest> --permission-reference <ref>`. A key MoAI manages that the user set themselves (for example their own `statusLine`) is a conflict and the plan writes nothing. When the plan offers `confirm_replace`, show the user the key with its current and new value, and run `claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation: the existing file is first kept byte for byte under `.moai-cli/settings-backups/`, only that key changes, and the answer names the `cp` command that puts the original back (Issue #2383).
+   - the project's Claude Code settings: `moai claude-settings-plan <project>`, then `moai claude-settings-apply <project> --plan-digest <digest> --permission-reference <ref>`. A key MoAI manages that the user set themselves (for example their own `statusLine`) is a conflict and the plan writes nothing. When the plan offers `confirm_replace`, show the user the key with its current and new value, and run `claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation: the existing file is first kept byte for byte under `settings-backups/` in the state folder (the plan's `backup_root`), only that key changes, and the answer names the `cp` command that puts the original back (Issue #2383).
    A file or managed part the user edited is planned as `conflict` and kept; report it and let the user decide. Text outside the managed markers is never touched.
 5. **Re-run.** Run the plans of steps 2–4 once more. When every one reads `unchanged` (and `go-state-plan` offers no move), report the project as up to date: a re-run plans `unchanged`. Anything else is reported as what is left, never as done.
 

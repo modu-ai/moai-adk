@@ -221,7 +221,7 @@ fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
     Some(format!("{begin}\n{body}{end}\n"))
 }
 
-fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
+fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
     let (begin, end) = markers(AGENTS_SECTION, "html");
     let list = |v: &[String]| v.join(", ");
     let lang = instruction_language(p, r);
@@ -239,7 +239,12 @@ fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
         .map(|l| {
             format!(
                 "{}\n",
-                crate::language::render_lines_in(l, lang, &r.language)
+                crate::language::render_lines_in(
+                    l,
+                    lang,
+                    &r.language,
+                    &crate::state_root::rel(root, "project.yaml"),
+                )
             )
         })
         .unwrap_or_default();
@@ -476,11 +481,11 @@ pub(crate) fn agents_plan_for(
         "html",
         agents.as_deref(),
         baseline_for(m, "AGENTS.md"),
-        &render_agents(&profile, &request),
+        &render_agents(&profile, &request, &root),
     )?);
 
     if let Some(agents_file) = files.first() {
-        let rendered_len = render_agents(&profile, &request).len();
+        let rendered_len = render_agents(&profile, &request, &root).len();
         let (b, e) = markers(AGENTS_SECTION, "html");
         let projected = match &agents {
             Some(bytes) => {
@@ -866,7 +871,7 @@ pub(crate) fn agents_apply_amended_for(
         let (bytes, section) = match f.path.as_str() {
             "AGENTS.md" => {
                 let (b, e) = markers(AGENTS_SECTION, "html");
-                let rendered = render_agents(&profile, &p.request);
+                let rendered = render_agents(&profile, &p.request, &root);
                 let prefix = format!("# {}\n\n", profile.project_id);
                 let out = splice(before.as_deref(), &b, &e, &rendered, &prefix)?;
                 assert_single_block(&out, &b, &e, &rendered)?;
@@ -960,7 +965,7 @@ pub(crate) fn agents_apply_amended_for(
                 &mut owned,
                 &f.path,
                 AGENTS_SECTION,
-                render_agents(&profile, &p.request).as_bytes(),
+                render_agents(&profile, &p.request, &root).as_bytes(),
             ),
             Some(IGNORE_SECTION) => record(
                 &mut owned,

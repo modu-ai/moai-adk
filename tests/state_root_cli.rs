@@ -140,3 +140,34 @@ fn a_mixed_moai_folder_is_left_alone_and_the_earlier_root_is_used() {
     );
     assert!(root.path().join(".moai-cli/project.yaml").is_file());
 }
+
+/// #2696 C2 (audit #2776 N2): what a migrated project is told names `.moai/`, not the earlier
+/// root — the missing-profile step, the generation-manifest step after `project-apply`, and
+/// a project without the marker still hears the earlier root.
+#[test]
+fn guidance_names_the_state_folder_the_project_uses() {
+    let root = TempDir::new().unwrap();
+    fs::create_dir(root.path().join(".moai")).unwrap();
+    fs::write(root.path().join(".moai/moai-cli.json"), MARKER).unwrap();
+    let p = root.path().to_str().unwrap();
+    let detect = cli(&["project-detect", p], &json!({}));
+    let actions = detect["next_actions"].to_string();
+    assert!(actions.contains("no .moai/project.yaml yet"), "{actions}");
+    assert!(!actions.contains(".moai-cli"), "{actions}");
+    let applied = create(root.path());
+    let next = applied["next_actions"].to_string();
+    assert!(next.contains(".moai/manifests/generation.json"), "{next}");
+    assert!(!next.contains(".moai-cli"), "{next}");
+
+    let plain = TempDir::new().unwrap();
+    let detect = cli(
+        &["project-detect", plain.path().to_str().unwrap()],
+        &json!({}),
+    );
+    assert!(
+        detect["next_actions"]
+            .to_string()
+            .contains("no .moai-cli/project.yaml yet"),
+        "{detect}"
+    );
+}
