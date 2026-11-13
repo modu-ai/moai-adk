@@ -2955,6 +2955,11 @@ mod skill_package {
             // #2639: read before asking, three or four at a time, the five common axes, a
             // file preview before approval, and hand edits never overwritten on a re-run.
             "Read before you ask (Issue #2639)",
+            // #2706: the writing language is asked once, stored in project.yaml only, and read.
+            "ask it item by item with `moai-cli language-setup <project>`",
+            "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
+            "A later run reads the stored value and does not ask again",
+            "written in the stored `instruction_files` language",
             "is confirmed with the user, not asked",
             "three or four questions at a time and at most three rounds, one axis per question",
             "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
