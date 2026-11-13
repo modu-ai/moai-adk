@@ -310,6 +310,12 @@ enum Command {
     QueueNext {
         project: PathBuf,
     },
+    /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
+    /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
+    /// epics, blocked); an empty result says `free_count: 0`.
+    QueueFree {
+        project: PathBuf,
+    },
     /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
     QueueQuery {
         project: PathBuf,
@@ -543,6 +549,10 @@ enum Command {
         /// The scope the plan was made for (#2581); the digest binds it.
         #[arg(long, default_value = "project")]
         scope: String,
+        /// The `confirm_token` a conflict plan offered (#2383): after the user confirms, keep
+        /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
+        #[arg(long)]
+        confirm_replace: Option<String>,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -1413,6 +1423,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
         QueueNext { .. } => "queue.next",
+        QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
@@ -1540,6 +1551,11 @@ fn run_internal(
         Command::QueueNext { project } => moai_cli::queue::next_cli(
             &project,
             input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::QueueFree { project: _ } => moai_cli::queue::free_cli(
+            input::<moai_cli::queue::FreeRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
@@ -2182,6 +2198,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             plan_digest,
             permission_reference,
             scope,
+            confirm_replace,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2191,6 +2208,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 scope,
+                confirm_replace.as_deref(),
             )
         }
         Command::CodexConfigPlan { project } => {
