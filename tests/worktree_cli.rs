@@ -115,7 +115,9 @@ fn run(cwd: &Path, args: &[String]) -> Output {
     Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
-        .env("HOME", cwd.join("home"))
+        // A temporary HOME beside the repository: new worktrees go under <HOME>/.moai (#2811),
+        // so a HOME inside the primary checkout would show up in its status.
+        .env("HOME", cwd.parent().unwrap().join("home"))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_AUTHOR_NAME", "test")
@@ -250,10 +252,16 @@ fn worktree_plan_idempotent() {
     assert_eq!(r["branch"], "lane/7-06-C-e1");
     assert_eq!(r["writes"], false);
     assert_eq!(r["base_sha"], f.base);
-    assert!(r["path"]
-        .as_str()
-        .unwrap()
-        .ends_with(".moai-cli/worktrees/7-06-C"));
+    // #2811 AC-2: the default is <HOME>/.moai/worktrees/<project>-<issue>-<logical_key>.
+    assert_eq!(
+        r["path"],
+        f.repo
+            .parent()
+            .unwrap()
+            .join("home/.moai/worktrees/primary-7-06-C")
+            .to_string_lossy()
+            .as_ref()
+    );
     // Planning created nothing.
     let refs = git(&f.repo, &["for-each-ref", "refs/heads"]);
     assert!(!refs.contains("lane/"), "{refs}");
@@ -830,4 +838,78 @@ fn without_flags_the_decided_limits_apply() {
     assert_eq!(limits["floor_bytes"], 32_212_254_720u64, "{limits}");
     assert_eq!(limits["warn_bytes"], 42_949_672_960u64, "{limits}");
     assert_eq!(limits["override"], false, "{limits}");
+}
+
+// ---- #2811 W2: new worktrees under <HOME>/.moai/worktrees ----
+
+/// AC-2: in a temporary HOME the created worktree is `<HOME>/.moai/worktrees/<project>-<id>`;
+/// planning created no folder (D5) and the add created the parents itself.
+#[test]
+fn a_new_worktree_goes_under_the_home_work_folder() {
+    let f = fixture();
+    let home = f.repo.parent().unwrap().join("home");
+    let p = plan(&f, "lane");
+    assert!(!home.join(".moai").exists(), "planning creates nothing");
+    let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    let wt = home.join(".moai/worktrees/primary-7-06-C");
+    assert!(wt.join("README.md").is_file(), "{env}");
+    assert_eq!(
+        fs::canonicalize(git(&wt, &["rev-parse", "--show-toplevel"]).trim()).unwrap(),
+        fs::canonicalize(&wt).unwrap()
+    );
+    // Nothing went to the old place, and the Go folder name was never touched.
+    assert!(!f.repo.join(".moai-cli/worktrees").exists());
+    assert!(!home.join(".moai/worktrees/projects").exists());
+}
+
+/// AC-2: the same name again is refused, never overwritten — a folder already at the path
+/// stays as it was and no branch is made.
+#[test]
+fn a_taken_worktree_name_is_refused() {
+    let f = fixture();
+    let wt = f
+        .repo
+        .parent()
+        .unwrap()
+        .join("home/.moai/worktrees/primary-7-06-C");
+    fs::create_dir_all(&wt).unwrap();
+    fs::write(wt.join("keep.txt"), "user file\n").unwrap();
+    let p = plan(&f, "lane");
+    let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "path_exists", "{env}");
+    assert_eq!(
+        fs::read_to_string(wt.join("keep.txt")).unwrap(),
+        "user file\n"
+    );
+    assert_eq!(fs::read_dir(&wt).unwrap().count(), 1);
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// D1/D6: without a home the default path cannot be named, so the plan is refused; an
+/// explicit `--path` still works and reads no home.
+#[test]
+fn without_a_home_only_an_explicit_path_plans() {
+    let f = fixture();
+    let p = project(&f);
+    let bare = |extra: &[&str]| {
+        let mut a = args(&["worktree-plan", &p, "--branch-prefix", "lane"], &f.source);
+        a.extend(extra.iter().map(|s| s.to_string()));
+        Command::new(crate::common::MOAI_BIN)
+            .args(&a)
+            .current_dir(&f.repo)
+            .env_remove("HOME")
+            .env_remove("USERPROFILE")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap()
+    };
+    let env = envelope(&bare(&[]));
+    assert_eq!(env["ok"], false, "{env}");
+    assert!(env.to_string().contains("home directory missing"), "{env}");
+    let env = envelope(&bare(&["--path", "/tmp/elsewhere-wt"]));
+    assert_eq!(env["ok"], true, "{env}");
+    assert_eq!(env["result"]["path"], "/tmp/elsewhere-wt");
 }

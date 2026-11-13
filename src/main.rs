@@ -683,7 +683,7 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`.
+        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
         #[arg(long)]
         path: Option<PathBuf>,
     },
@@ -1746,6 +1746,7 @@ fn run_internal(
             source.task.is_some(),
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
             &plan_digest,
             moai_cli::worktree::Capacity {
                 floor_bytes: disk_floor_bytes,
@@ -2322,6 +2323,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
         ),
         Command::WorktreeGcPlan {
             project,
