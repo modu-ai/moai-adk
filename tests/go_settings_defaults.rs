@@ -271,3 +271,40 @@ fn bad_or_hostile_input_offers_nothing_and_never_fails() {
         "a linked folder is no backup"
     );
 }
+
+/// #2820 audit B1: a value the profile already stores wins over the Go backup's — in the
+/// suggested answers, the conversation language and the profile `--answers '{}'` returns;
+/// only the items the profile leaves empty take the Go value.
+#[test]
+fn the_profile_value_wins_over_the_go_backup() {
+    let (_d, root) = migrated(
+        Some("language:\n  conversation_language: ko\n  code_comments: zh\n  git_commit_messages: ja\n"),
+        None,
+    );
+    let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"language":{"user_chat":"en","code_comments":"en"}});
+    fs::write(
+        root.join(".moai/project.yaml"),
+        serde_json::to_vec_pretty(&profile).unwrap(),
+    )
+    .unwrap();
+
+    let q = result(&setup(&root, &["--questions"], "").0);
+    assert_eq!(
+        q["questions"]["conversation_language"],
+        json!("en"),
+        "the profile's user_chat, not the Go conversation language: {q}"
+    );
+    let s: std::collections::BTreeMap<_, _> = suggested(&q).into_iter().collect();
+    assert_eq!(s["user_chat"], "en");
+    assert_eq!(s["code_comments"], "en", "profile over Go");
+    assert_eq!(s["commit_messages"], "ja", "empty in the profile: Go value");
+    assert_eq!(
+        s["reports"], "en",
+        "conversation default follows the profile"
+    );
+
+    let r = result(&setup(&root, &["--answers"], "{}").0);
+    assert_eq!(r["language"]["user_chat"], json!("en"), "{r}");
+    assert_eq!(r["language"]["code_comments"], json!("en"));
+    assert_eq!(r["language"]["commit_messages"], json!("ja"));
+}

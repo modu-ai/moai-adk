@@ -101,7 +101,7 @@ fn read_bounded(path: &Path) -> Option<String> {
     String::from_utf8(bytes).ok()
 }
 
-/// One scalar value: unquoted, or wholly in matching single or double quotes with no escape.
+/// One scalar value: unquoted, or in matching single or double quotes (escapes are not decoded).
 fn scalar(raw: &str) -> Option<String> {
     let v = raw.trim();
     for q in ['"', '\''] {
@@ -109,7 +109,8 @@ fn scalar(raw: &str) -> Option<String> {
             // The closing quote, then nothing or a ` #` comment.
             let (inner, after) = rest.split_once(q)?;
             let after = after.trim_start();
-            if !(after.is_empty() || after.starts_with('#')) || inner.contains('\\') {
+            // No escape handling: a value holding `\` is not an accepted code or id anyway.
+            if !(after.is_empty() || after.starts_with('#')) {
                 return None;
             }
             return Some(inner.to_string());
