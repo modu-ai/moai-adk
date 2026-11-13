@@ -2461,7 +2461,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .map(PathBuf::from)
                 .ok_or("home directory missing; install-inspect requires HOME")?;
             let path_env = std::env::var("PATH").unwrap_or_default();
-            moai_cli::install::inspect(&home, &path_env)
+            let env_dir = |k: &str| {
+                std::env::var_os(k)
+                    .filter(|v| !v.is_empty())
+                    .map(PathBuf::from)
+            };
+            let (project_dir, gobin) = (env_dir("CLAUDE_PROJECT_DIR"), env_dir("GOBIN"));
+            let places = moai_cli::install::CandidatePlaces {
+                project_dir: project_dir.as_deref(),
+                gobin: gobin.as_deref(),
+            };
+            moai_cli::install::inspect(&home, &path_env, &places)
         }
         Command::Update { confirm } => {
             let home = std::env::var_os("HOME")
