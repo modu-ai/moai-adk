@@ -112,7 +112,7 @@
       "template_path": "templates/github/labels.yml",
       "derived_from": null,
       "target_path": ".github/moai/labels.yml",
-      "template_sha256": "ab35463d56a911f8688cf38b85e2169dad4a19fe3ec16d175b86b2b3b9030b9f",
+      "template_sha256": "7da8a3a1e273b51105015adb088f47bb7b46330a8857b1576d5e296e3a0656a5",
       "template_version": "2026.11.0-rc.1",
       "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
       "variables": [],
