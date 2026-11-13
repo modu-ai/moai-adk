@@ -32,7 +32,6 @@ READ fans out: split the question into independent parts, give each part a short
 - Claude Code: several agent calls in one message run at once; a background agent reports when it finishes.
 - Codex CLI: spawn one agent per part and wait for all of them.
 - OMP: one task call with one entry per part in its task list.
-- opencode: start one child per part; each reports by its own message when it goes idle, with no collect-all step, so count the answers against the ids.
 - Kiro and Cursor CLI: the documents read for #2592 do not settle starting several at once and collecting them. Fallback: start them one after another.
 
 ## Exceptions and Permissions

@@ -2463,6 +2463,18 @@ mod skill_package {
             assert!(own.contains(&format!("`{agent}`")), "{route} names {agent}");
             // No stand-in for a missing host feature (user correction 2026-11-12T22:3xZ).
             assert!(!own.contains("moai-cli"), "{route}");
+            // Only the five supported hosts (user decision 6841979953, #2592): Claude Code,
+            // Codex CLI, OMP, Kiro, Cursor CLI. Removed hosts never come back here.
+            let words: Vec<String> = own
+                .split(|c: char| !c.is_ascii_alphanumeric())
+                .map(str::to_ascii_lowercase)
+                .collect();
+            for removed in ["opencode", "goose", "zcode", "pi"] {
+                assert!(
+                    !words.iter().any(|w| w == removed),
+                    "{route} names the unsupported host {removed}"
+                );
+            }
         }
     }
 

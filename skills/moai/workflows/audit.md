@@ -80,7 +80,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 
 AUDIT hands the evidence-gathering to `moai-audit`, never to the agent or session that wrote the change. Pass the exact head as `base`. The agent returns findings; you write the verdict line. In the review steps' Find step, you may start one `moai-audit` per dimension at once where the host offers parallel subagents.
 
-- Read-only is enforced by the host only where the installed agent file can carry it: Claude Code (the file denies the editing tools), and the host's own read-only or deny setting on opencode, Kiro and Cursor CLI. Codex CLI subagents inherit the parent's sandbox and OMP subagents run without approvals, so there read-only rests on the instructions alone; say so in the verdict.
+- Read-only is enforced by the host only where the installed agent file can carry it: Claude Code (the file denies the editing tools), and the host's own read-only setting on Kiro and Cursor CLI. Codex CLI subagents inherit the parent's sandbox and OMP subagents run without approvals, so there read-only rests on the instructions alone; say so in the verdict.
 - On every host, confirm after the agent returns that `git status` in its worktree shows no change; a change there makes its findings unusable.
 - Isolation: as in the RUN workflow, a separate worktree only on Claude Code and on OMP with task isolation enabled; elsewhere the agent reads the detached audit worktree you prepared.
 
