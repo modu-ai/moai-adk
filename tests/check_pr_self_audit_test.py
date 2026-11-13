@@ -270,5 +270,38 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         self.assertIn(CI_FORMAT, self.read("tools/check_pr_self_audit.py"))
 
 
+class NoAuthorCiLineTest(unittest.TestCase):
+    """Decision D4 (Issue #1975 comment 6840449133, Issue #2612): the author writes no `ci:`
+    line; the auditor reads the head's CI and cites it in the verdict, and the merge gate reads
+    the head's check runs. During the transition a body with or without the line passes."""
+
+    def read(self, rel):
+        return (ROOT / rel).read_text(encoding="utf-8")
+
+    def test_rules_say_the_auditor_cites_ci(self):
+        verify = self.read("skills/moai/workflows/verify.md")
+        self.assertIn("The auditor reads the run back itself and writes it in the verdict as one line", verify)
+        self.assertIn("the author's `## Self-Audit` section needs no such line, and no verdict waits for one", verify)
+        self.assertIn("passes a body with or without that line", verify)
+        self.assertIn("without waiting for an author's `ci:` line (decision D4",
+                      self.read("skills/moai/workflows/audit.md"))
+        self.assertIn("no author `ci:` line is waited for (decision D4",
+                      self.read("skills/moai/workflows/mode-leader.md"))
+        self.assertIn("it needs no `ci:` line in its body (decision D4",
+                      self.read("skills/moai/workflows/mode-agent.md"))
+        self.assertIn("저자는 `## Self-Audit` 절에 `ci:` 줄을 적지 않아도 된다",
+                      self.read(".github/pull_request_template.md"))
+
+    def test_no_merge_rule_waits_for_an_author_line(self):
+        for rel in ("skills/moai/workflows/mode-agent.md", "skills/moai/workflows/mode-leader.md",
+                    "skills/moai/workflows/sync.md"):
+            text = self.read(rel)
+            self.assertNotIn("its `ci:` line", text, rel)
+            self.assertIn("a non-author PASS that cites that run", text, rel)
+        leader = self.read("skills/moai/workflows/mode-leader.md")
+        self.assertNotIn("top-priority next act", leader)
+        self.assertNotIn("never posts a verdict over a stale `ci:` line", leader)
+
+
 if __name__ == "__main__":
     unittest.main()
