@@ -56,7 +56,8 @@ fn passing() -> Value {
         "tip_files_since_verdict_base": ["src/b.rs"],
         "merge_clean": true,
         "body_check_ok": true,
-        "verdict_base_known": true
+        "verdict_base_known": true,
+        "pr_authors": ["agent-26"]
     })
 }
 
@@ -354,4 +355,44 @@ fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
     let mut s = passing();
     s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "rc-ci / linux-x86_64", "conclusion": "failure"}]);
     assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+}
+
+/// #2674 R1 (leader scope 6850215811): an author never audits its own PR — the verdict's
+/// auditor must not be a session whose claim the PR's commits name; unknown authors stop.
+#[test]
+fn g9_the_auditor_is_not_an_author() {
+    let mut s = passing();
+    s["pr_authors"] = json!(["agent-26", "agent-10"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G9".into()));
+    // Lane names compare without case.
+    s["pr_authors"] = json!(["Agent-10"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G9".into()));
+    // A lane whose name only starts like the auditor's is someone else.
+    s["pr_authors"] = json!(["agent-1", "agent-100"]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+    // No trailer in the PR: nobody to compare, passes.
+    s["pr_authors"] = json!([]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+    // Unknown authors stop rather than pass.
+    s.as_object_mut().unwrap().remove("pr_authors");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G9".into()), "{v}");
+    assert!(
+        v["result"]["reason"].as_str().unwrap().contains("unknown"),
+        "{v}"
+    );
+}
+
+/// Audit 6863303949 B2: G9 reads the auditor of the last verdict, not of an earlier one.
+#[test]
+fn g9_reads_the_last_verdict() {
+    let mut s = passing();
+    // agent-26 holds the lowest claim, so G2 lets its verdict through; it is also an author.
+    s["comments"] = json!([
+        claim(100, "agent-26", H),
+        verdict(200, "agent-10", H, "FAIL"),
+        verdict(300, "agent-26", H, "PASS")
+    ]);
+    s["pr_authors"] = json!(["agent-26"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G9".into()));
 }
