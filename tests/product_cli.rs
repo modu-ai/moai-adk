@@ -2253,6 +2253,8 @@ mod skill_package {
     /// The `/moai project` route (#2496). Kept apart from INTENTS for the same reason as
     /// MODES: the legacy asset map has no rows for it.
     const PROJECT: &str = "PROJECT";
+    /// The `/moai optimize` route (#2724, leader decision A). Apart from INTENTS like PROJECT.
+    const OPTIMIZE: &str = "OPTIMIZE";
     const SPEC: &str = "docs/design-review/autonomy-modes-spec.md";
     const MANIFEST: &str = "references/source-manifest.json";
     // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
@@ -2378,6 +2380,7 @@ mod skill_package {
             .iter()
             .chain(MODES.iter())
             .chain(std::iter::once(&PROJECT))
+            .chain(std::iter::once(&OPTIMIZE))
             .copied()
             .collect();
         want.sort();
@@ -2967,6 +2970,40 @@ mod skill_package {
                 text.contains("--mode-agent") || file == "AGENTS.md",
                 "{file}"
             );
+        }
+    }
+
+    /// #2724 (6): `/moai optimize` is a route whose workflow runs only the read-only preview and
+    /// hands any deletion to the user's yes and the existing apply step.
+    #[test]
+    fn optimize_route_previews_and_applies_nothing() {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let r = &routes["routes"][OPTIMIZE];
+        assert_eq!(r["reference"], json!("../workflows/optimize.md"));
+        assert_eq!(r["requires_binary"], json!(true));
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains("OPTIMIZE"), "SKILL.md lists the route");
+        assert!(
+            skill.contains("`/moai optimize`"),
+            "SKILL.md names the entry"
+        );
+        let body = fs::read_to_string(root().join("workflows/optimize.md")).unwrap();
+        for needle in [
+            "this route deletes, moves and writes nothing",
+            "moai-cli optimize-plan <project> --integration-ref <ref>",
+            "There is no default root",
+            "an audit `PASS` for its exact HEAD",
+            "time alone never makes a worktree a candidate",
+            "Apply nothing in this route.",
+            "wait for their yes",
+            "`moai-cli worktree-gc-apply` with that plan's digest",
+            "never removed by a shell command instead",
+            "Deleting is a `guarded` choice",
+            "reported as unread, never as an empty list",
+        ] {
+            assert!(body.contains(needle), "optimize.md lacks {needle}");
         }
     }
 

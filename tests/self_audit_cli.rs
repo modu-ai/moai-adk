@@ -40,6 +40,38 @@ fn the_shipped_skill_never_runs_the_python_checker() {
     assert!(audit.contains("`moai-cli pr-self-audit-check --reaudit --file BODY.md`"));
 }
 
+/// #2708 3/4 (default A after the 15:00Z deadline of 6854550310): `tools/ci_scope.py` stays
+/// this repository's CI script, so every skill mention of it, or of its test, names the
+/// moai-adk repository within the 300 bytes before it.
+#[test]
+fn every_ci_scope_mention_in_the_skill_names_this_repository() {
+    let mut files = Vec::new();
+    skill_files(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
+        &mut files,
+    );
+    let mut seen = 0;
+    let mut bare = Vec::new();
+    for p in files
+        .iter()
+        .filter(|p| p.extension().is_some_and(|e| e == "md"))
+    {
+        let text = fs::read_to_string(p).unwrap();
+        for (at, _) in text.match_indices("ci_scope") {
+            seen += 1;
+            let mut from = at.saturating_sub(300);
+            while !text.is_char_boundary(from) {
+                from += 1;
+            }
+            if !text[from..at].contains("moai-adk repository") {
+                bare.push(format!("{}: byte {at}", p.display()));
+            }
+        }
+    }
+    assert!(seen >= 3, "the three mentions moved: {seen}");
+    assert_eq!(bare, Vec::<String>::new());
+}
+
 fn run(args: &[&str], body: &str) -> (i32, String) {
     use std::io::Write;
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
