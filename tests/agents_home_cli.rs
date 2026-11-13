@@ -2,6 +2,8 @@
 //! the user's edit preserved, a foreign file never overwritten, symlinks refused, revert.
 //! Temporary folders only; the real HOME is never read or written.
 
+mod common;
+use common::CleanEnv;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 use tempfile::TempDir;
@@ -12,7 +14,7 @@ const PERMISSION: &str = "fixture-approved";
 fn call(args: &[&str]) -> Value {
     let out = Command::new(EXE)
         .args(args)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
         .output()

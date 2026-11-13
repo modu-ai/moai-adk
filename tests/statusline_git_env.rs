@@ -5,6 +5,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 
 use std::{
     fs,
@@ -41,7 +42,7 @@ fn render(home: &Path, project: &Path, extra: &[(&str, &Path)], budget_ms: u64) 
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     cmd.args(["statusline", "--render-budget-ms", &budget_ms.to_string()])
         .current_dir(project)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", home)
         .env("MOAI_HOME", home.join(".moai"))

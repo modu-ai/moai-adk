@@ -26,10 +26,10 @@ bc8798e4cc3209e455e3dc50c6652ae73c057d40122a4a741d8b5b65a041c2f1 providers.md
 1a59b88928be611f04758e8607c96beea91327de803ff696c672c8216996dfc9 environment-variables.md
 ```
 
-재현 명령 (저장소 루트에서):
+재현 스크립트 `measure_pi.py` 는 2026-11-13 #2682 에서 삭제했다 — pi 가 지원 대상에서 빠졌다(#2592 6841920695). 다시 재려면 마지막 판을 꺼낸다: `git show 3495ff9a63:docs/spikes/pi-v1.5.0/measure_pi.py > measure_pi.py`. 당시 재현 명령(저장소 루트에서):
 
 ```bash
-python3 -I docs/spikes/pi-v1.5.0/measure_pi.py --node-bin <node>=22.19 bin 디렉터리> \
+python3 -I measure_pi.py --node-bin <node>=22.19 bin 디렉터리> \
   --install <pi 1.5.0이 설치된 디렉터리> --work <임시 작업 디렉터리>
 ```
 

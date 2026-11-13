@@ -2,6 +2,7 @@
 //! symlink) are repaired and run by default.
 #![cfg(unix)]
 mod common;
+use common::CleanEnv;
 
 use moai_cli::verify::{run_check, CheckResult};
 use serde_json::json;
@@ -144,7 +145,7 @@ fn scope_symlink_escape_must_be_blocked() {
         .arg("scope-check")
         .arg(&root)
         .args(["--task", "aaaaaaaaaaaaaaaa"])
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", root.join("home"))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
