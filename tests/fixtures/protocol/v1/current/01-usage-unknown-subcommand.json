@@ -5,7 +5,16 @@
   ],
   "stdin": null,
   "exit": 2,
-  "stdout": null,
+  "stdout": {
+    "protocol_version": 1,
+    "operation": "cli",
+    "ok": false,
+    "error": {
+      "kind": "usage",
+      "message": "unknown command; see --help",
+      "retryable": false
+    }
+  },
   "stderr": "error: unrecognized subcommand 'no-such-command'\n\nUsage: moai [OPTIONS]\n       moai <COMMAND>\n\nFor more information, try '--help'.\n",
   "masked_keys": [
     "target_binding",
