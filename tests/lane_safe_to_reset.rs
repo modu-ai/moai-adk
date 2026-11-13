@@ -361,6 +361,18 @@ fn the_primary_checkout_as_session_folder_is_not_the_lanes_work() {
         .find(|w| w["matched_by"] == json!(["session_cwd"]))
         .unwrap_or_else(|| panic!("{r}"));
     assert_eq!(primary["attributed"], false);
+    // When the primary checkout is also on a branch the lane claims, it is the lane's work.
+    g(&f.primary, &["switch", "-q", "-c", "issue/9-in-primary"]);
+    let mut obs = clean_obs(&f);
+    obs["session_cwd"]["path"] = json!(f.primary);
+    obs["claims"]["items"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"issue": 9, "claim_comment": 90, "resume_note": 91}));
+    let r = run(&f, "agent-9", Some(obs));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+    assert!(texts(result(&r), "unattributed").is_empty(), "{r}");
+    g(&f.primary, &["switch", "-q", "main"]);
     // The lane's own worktree is still judged.
     fs::write(f.wt7.join("draft.txt"), "x\n").unwrap();
     let mut obs = clean_obs(&f);
