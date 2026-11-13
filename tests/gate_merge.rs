@@ -74,7 +74,7 @@ fn repo() -> (TempDir, String, String) {
         "base",
     );
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
-    let b = commit(d, &[("src/a.rs", "a2\n")], "pr");
+    let b = commit(d, &[("src/a.rs", "a2\n")], "pr\n\nMoai-Claim: 9#555");
     git_ok(d, &["checkout", "-q", "main"]);
     commit(d, &[("src/b.rs", "b2\n")], "tip");
     (dir, a, b)
@@ -84,8 +84,8 @@ fn ok(body: Value) -> HttpResponse {
     HttpResponse::new(200).with_body(body)
 }
 
-/// The four reads `collect` makes: the PR, its comments, its head's check runs and the tip's
-/// push CI (green, #2777).
+/// The five reads `collect` makes: the PR, its comments, its head's check runs, the claim its
+/// commit's trailer names and the tip's push CI (green, #2777).
 fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
     vec![
         Exchange {
@@ -108,6 +108,10 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
                 {"name": "ci", "conclusion": "success"},
                 {"name": "ci / linux-x86_64", "conclusion": "success"}
             ]})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
+            response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
         },
         tip_ci(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ]
@@ -144,7 +148,7 @@ fn tip_of(dir: &TempDir) -> String {
 
 /// Every read up to the status: the gate's three and the remote two, all matching.
 fn passing(dir: &TempDir, head: &str, base: &str) -> Vec<Exchange> {
-    let mut ex = reads(head, base, &tip_of(dir), "SELF-AUDIT-OK");
+    let mut ex = reads(head, base, &tip_of(dir), "SELF-AUDIT-OK\nMoai-Claim: 9#555");
     ex.extend(remote(head, &tip_of(dir)));
     ex
 }
@@ -232,7 +236,7 @@ fn a_stopped_gate_writes_nothing() {
     assert_eq!(out["merged"], json!(false));
     assert_eq!(out["rule"], json!("G4"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 4]);
+    assert_eq!(methods(&t), vec!["GET"; 5]);
 }
 
 /// #2777: on a red tip gate-merge stops at G8 before any write; the same PR merges once its
@@ -241,17 +245,22 @@ fn a_stopped_gate_writes_nothing() {
 fn a_red_tip_stops_the_merge_before_any_write() {
     let (dir, a, b) = repo();
     let tip = tip_of(&dir);
-    let mut ex = reads(&b, &a, &tip, "SELF-AUDIT-OK");
-    ex[3] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    let mut ex = reads(&b, &a, &tip, "SELF-AUDIT-OK\nMoai-Claim: 9#555");
+    ex[4] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G8"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 4]);
+    assert_eq!(methods(&t), vec!["GET"; 5]);
 
-    let mut ex = reads(&b, &a, &tip, "SELF-AUDIT-OK\nmoai-tip-repair: tip run 1\n");
-    ex[3] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    let mut ex = reads(
+        &b,
+        &a,
+        &tip,
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555\nmoai-tip-repair: tip run 1\n",
+    );
+    ex[4] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
     ex.extend(remote(&b, &tip));
     ex.extend(status(&b, 201));
     ex.extend([put(200), record()]);
@@ -343,23 +352,23 @@ fn pr_read_back(merged: bool) -> Exchange {
 fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     let (dir, a, b) = repo();
     // GitHub's base moved past the local tip: the gate judged a stale tip.
-    let mut ex = reads(&b, &a, &tip_of(&dir), "SELF-AUDIT-OK");
+    let mut ex = reads(&b, &a, &tip_of(&dir), "SELF-AUDIT-OK\nMoai-Claim: 9#555");
     ex.extend(remote(&b, &"1".repeat(40)));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G6"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 6]);
+    assert_eq!(methods(&t), vec!["GET"; 7]);
     assert_eq!(t.remaining(), 0);
 
     // The head moved on GitHub after the snapshot.
-    let mut ex = reads(&b, &a, &tip_of(&dir), "SELF-AUDIT-OK");
+    let mut ex = reads(&b, &a, &tip_of(&dir), "SELF-AUDIT-OK\nMoai-Claim: 9#555");
     ex.extend(remote(&"2".repeat(40), &tip_of(&dir)));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["writes"], json!([]), "{out}");
-    assert_eq!(methods(&t), vec!["GET"; 6]);
+    assert_eq!(methods(&t), vec!["GET"; 7]);
 }
 
 #[test]

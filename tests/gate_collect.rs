@@ -65,7 +65,7 @@ fn repo(pr_files: &[(&str, &str)], tip_files: &[(&str, &str)]) -> Repo {
         "base",
     );
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
-    let b = commit(d, pr_files, "pr");
+    let b = commit(d, pr_files, "pr\n\nMoai-Claim: 9#555");
     git_ok(d, &["checkout", "-q", "main"]);
     let c = commit(d, tip_files, "tip");
     Repo { _dir: dir, a, b, c }
@@ -108,6 +108,7 @@ fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> Recorde
                 {"name": "windows-build", "conclusion": "skipped"}
             ]})),
         },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
         tip_runs(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ])
 }
@@ -138,7 +139,7 @@ fn a_clean_pull_request_collects_into_a_passing_snapshot() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "body SELF-AUDIT-OK",
+        "body SELF-AUDIT-OK\nMoai-Claim: 9#555",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
@@ -168,7 +169,7 @@ fn the_checker_unknown_base_and_missing_head_are_read_not_assumed() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, unknown)],
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.verdict_base_known);
@@ -207,7 +208,7 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(s.merge_clean);
@@ -219,7 +220,7 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.merge_clean);
@@ -233,7 +234,7 @@ fn comment_pages_are_followed() {
     let t = RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK\nMoai-Claim: 9#555"})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -251,6 +252,7 @@ fn comment_pages_are_followed() {
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
         tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &t).unwrap();
@@ -347,7 +349,7 @@ fn an_entry_without_a_file_and_a_missing_checker_fail() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.body_check_ok);
@@ -362,13 +364,13 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     let d = r._dir.path();
     // The PR got a second commit after the verdict; the verdict's base is the first PR head.
     git_ok(d, &["checkout", "-q", "pr"]);
-    let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2");
+    let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2\n\nMoai-Claim: 9#555");
     git_ok(d, &["checkout", "-q", "main"]);
     let t = exchanges(
         &b2,
         &r.c,
         vec![claim(&b2), verdict(&b2, &r.b)],
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
@@ -403,6 +405,7 @@ fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> Recorded
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
     ];
     ex.extend(tips);
     RecordedTransport::new(ex)
@@ -423,7 +426,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
     let red = || tip_runs(&r.c, json!([run(Some("failure"), 77)]));
 
-    let t = with_tip(&r.b, "SELF-AUDIT-OK", vec![red()], &r.a);
+    let t = with_tip(&r.b, "SELF-AUDIT-OK\nMoai-Claim: 9#555", vec![red()], &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
     let ci = s.tip_ci.clone().unwrap();
@@ -435,7 +438,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     let reason = g8(&s).expect("G8 stops an ordinary PR on a red tip");
     assert!(reason.contains("run 77"), "{reason}");
 
-    let body = "SELF-AUDIT-OK\nmoai-tip-repair: fixes run 77\n";
+    let body = "SELF-AUDIT-OK\nMoai-Claim: 9#555\nmoai-tip-repair: fixes run 77\n";
     let s = collect(&target(&r), &with_tip(&r.b, body, vec![red()], &r.a)).unwrap();
     assert!(s.tip_repair);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
@@ -443,7 +446,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     // A completed failure with its re-run still running: red, the walk does not go back.
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
         vec![tip_runs(
             &r.c,
             json!([run(Some("failure"), 77), run(None, 78)]),
@@ -454,8 +457,8 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     assert_eq!(t.remaining(), 0);
     assert_eq!(
         t.sent.borrow().len(),
-        4,
-        "the earlier tip commit is not read"
+        5,
+        "PR, comments, checks, claim, tip: the earlier tip commit is not read"
     );
     let ci = s.tip_ci.clone().unwrap();
     assert_eq!(
@@ -467,7 +470,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     // Failure then success on the same tip: flaky, not a stop.
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
         vec![tip_runs(
             &r.c,
             json!([run(Some("failure"), 77), run(Some("success"), 78)]),
@@ -525,7 +528,7 @@ fn running_or_cancelled_tip_ci_is_judged_by_the_last_completed_one() {
     ] {
         let t = with_tip(
             &r.b,
-            "SELF-AUDIT-OK",
+            "SELF-AUDIT-OK\nMoai-Claim: 9#555",
             vec![
                 tip_runs(&r.c, tip_runs_now.clone()),
                 tip_runs(&r.a, parent.clone()),
@@ -557,7 +560,7 @@ fn an_unreadable_tip_ci_is_unknown_and_stops_even_a_repair() {
         ),
         response: HttpResponse::new(502),
     };
-    let body = "SELF-AUDIT-OK\nmoai-tip-repair: x\n";
+    let body = "SELF-AUDIT-OK\nMoai-Claim: 9#555\nmoai-tip-repair: x\n";
     let t = with_tip(&r.b, body, vec![failing], &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
@@ -586,7 +589,7 @@ fn the_tip_walk_stops_at_its_limit() {
         .map(|sha| tip_runs(sha, json!([run(None, 1)])))
         .collect();
     tips.push(tip_runs(&chain[9], json!([run(Some("failure"), 10)])));
-    let t = with_tip(&r.b, "SELF-AUDIT-OK", tips, &r.a);
+    let t = with_tip(&r.b, "SELF-AUDIT-OK\nMoai-Claim: 9#555", tips, &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
     let ci = s.tip_ci.unwrap();
@@ -600,7 +603,7 @@ fn the_tip_walk_stops_at_its_limit() {
         .map(|sha| tip_runs(sha, json!([run(None, 1)])))
         .chain([tip_runs(&r.a, json!([run(Some("success"), 11)]))])
         .collect();
-    let t = with_tip(&r.b, "SELF-AUDIT-OK", tips, &r.a);
+    let t = with_tip(&r.b, "SELF-AUDIT-OK\nMoai-Claim: 9#555", tips, &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 1, "the 11th commit is not read");
     let ci = s.tip_ci.unwrap();
@@ -646,7 +649,7 @@ fn the_tip_check_run_pages_stop_at_ten() {
 
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
         pages(10, false, json!([run(Some("failure"), 10)])),
         &r.a,
     );
@@ -661,7 +664,7 @@ fn the_tip_check_run_pages_stop_at_ten() {
         request: HttpRequest::new("GET", page_url(11)),
         response: ok(json!({ "check_runs": [run(Some("success"), 11)] })),
     });
-    let body = "SELF-AUDIT-OK\nmoai-tip-repair: x\n";
+    let body = "SELF-AUDIT-OK\nMoai-Claim: 9#555\nmoai-tip-repair: x\n";
     let t = with_tip(&r.b, body, tips, &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 1, "the 11th page is never requested");
@@ -729,7 +732,7 @@ fn the_walk_follows_first_parents_not_a_merged_branch() {
 
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        "SELF-AUDIT-OK\nMoai-Claim: 9#555",
         vec![
             tip_runs(&tip, json!([run(None, 90)])),
             tip_runs(&r.c, json!([run(Some("failure"), 80)])),
@@ -796,7 +799,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
     let ex = RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK\nMoai-Claim: 9#555"})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -844,7 +847,9 @@ fn a_trailer_or_claim_line_that_cannot_be_read_stops_the_collection() {
         let mut ex = vec![
             Exchange {
                 request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-                response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+                response: ok(
+                    json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK\nMoai-Claim: 9#555"}),
+                ),
             },
             Exchange {
                 request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -893,7 +898,7 @@ fn three_reads(r: &Repo) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK\nMoai-Claim: 9#555"})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -913,7 +918,8 @@ fn three_reads(r: &Repo) -> Vec<Exchange> {
 /// 21 stop the collection before any claim read.
 #[test]
 fn twenty_claims_are_read_and_twenty_one_are_refused() {
-    let ids: Vec<u64> = (1..=20).map(|i| 1000 + i).collect();
+    // The fixture's first PR commit names claim 555, so 19 more make 20.
+    let ids: Vec<u64> = (1..=19).map(|i| 1000 + i).collect();
     let r = repo_with_claim_ids(&ids);
     let mut ex = three_reads(&r);
     // `git log` lists the newest commit first, so the claims are read in reverse order.
@@ -923,6 +929,7 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
             &format!("moai-claim: session=agent-{i} epoch=1"),
         ));
     }
+    ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=1"));
     ex.push(tip_runs(
         &r.c,
         json!([{"name": "ci", "conclusion": "success"}]),
@@ -932,7 +939,7 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
     assert_eq!(s.pr_authors.as_ref().unwrap().len(), 20);
     assert_eq!(t.remaining(), 0);
 
-    let ids: Vec<u64> = (1..=21).map(|i| 1000 + i).collect();
+    let ids: Vec<u64> = (1..=20).map(|i| 1000 + i).collect();
     let r = repo_with_claim_ids(&ids);
     let t = RecordedTransport::new(three_reads(&r));
     let err = collect(&target(&r), &t).unwrap_err();
@@ -955,4 +962,62 @@ fn one_claim_named_by_several_commits_is_read_once() {
     assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
     assert_eq!(t.remaining(), 0);
     assert_eq!(t.sent.borrow().len(), 5, "three reads, one claim, the tip");
+}
+
+/// Audit 6864692054 B1: G10 and G11 carry over `flow-gate-verdict`'s claim-line checks. A PR
+/// commit with no `Moai-Claim` trailer is listed (a claim line followed by another paragraph is
+/// not a trailer); a merge commit is a record and is not; the body's claim line is read.
+#[test]
+fn commits_without_a_claim_trailer_and_the_body_claim_are_collected() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    let bare = commit(d, &[("src/c.rs", "c\n")], "no claim");
+    let buried = commit(
+        d,
+        &[("src/d.rs", "d\n")],
+        "claim not in the trailer block\n\nMoai-Claim: 9#555\n\nsigned off below",
+    );
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge main",
+            "main",
+        ],
+    );
+    let head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    let t = exchanges(
+        &head,
+        &r.c,
+        vec![claim(&head), verdict(&head, &r.a)],
+        "SELF-AUDIT-OK",
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let mut missing = s.commits_without_claim.clone().unwrap();
+    missing.sort();
+    let mut want = vec![bare, buried];
+    want.sort();
+    assert_eq!(
+        missing, want,
+        "the merge commit and the claimed commit are not listed"
+    );
+    assert!(!s.body_claim);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G10");
+
+    // The same PR with the two commits repaired: only the body is left, and G11 stops it.
+    let mut fixed = s.clone();
+    fixed.commits_without_claim = Some(vec![]);
+    assert_eq!(gate::check(&fixed).unwrap_err().rule, "G11");
+    fixed.body_claim = true;
+    assert!(gate::check(&fixed).is_ok(), "{:?}", gate::check(&fixed));
 }

@@ -64,7 +64,11 @@ fn repo(overlap: bool) -> (TempDir, String, String) {
         "base",
     );
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
-    let b = commit(d, &[("src/a.rs", "one\n2\n3\n4\n5\n6\n7\n")], "pr");
+    let b = commit(
+        d,
+        &[("src/a.rs", "one\n2\n3\n4\n5\n6\n7\n")],
+        "pr\n\nMoai-Claim: 9#555",
+    );
     git_ok(d, &["checkout", "-q", "main"]);
     if overlap {
         commit(d, &[("src/a.rs", "1\n2\n3\n4\n5\n6\nseven\n")], "tip");
@@ -111,12 +115,15 @@ fn tip_ci(dir: &TempDir, runs: Value) -> Exchange {
     }
 }
 
-/// The four reads gate-merge's collect makes for PR 9, the tip's push CI green.
+/// The five reads gate-merge's collect makes for PR 9 (the commit trailer's claim among them),
+/// the tip's push CI green.
 fn reads(dir: &TempDir, head: &str, cs: &Value) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": head}, "body": "SELF-AUDIT-OK"})),
+            response: ok(
+                json!({"head": {"sha": head}, "body": "SELF-AUDIT-OK\nMoai-Claim: 9#555"}),
+            ),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -128,6 +135,10 @@ fn reads(dir: &TempDir, head: &str, cs: &Value) -> Vec<Exchange> {
                 format!("{API}/commits/{head}/check-runs?per_page=100"),
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
+            response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
         },
         tip_ci(dir, json!([{"name": "ci", "conclusion": "success"}])),
     ]
@@ -356,7 +367,7 @@ fn a_red_tip_stops_the_loop_without_any_write() {
             json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
         )];
         ex.extend(reads(&dir, &b, &cs));
-        ex[4] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
+        ex[5] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
         let t = RecordedTransport::new(ex);
         let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
         let row = &out["pull_requests"][0];

@@ -116,6 +116,34 @@ fn pr_authors<T: Transport>(
     Ok(sessions)
 }
 
+/// The PR's own commits (merge base to head, merges skipped) whose message has no
+/// `Moai-Claim` trailer as git reads trailers (G10). A claim line that is not in the
+/// message's trailer block is not read, the same as `pr_authors` and the commit guard.
+fn commits_without_claim(dir: &Path, merge_base: &str, head: &str) -> Result<Vec<String>> {
+    let out = git_ok(
+        dir,
+        &[
+            "log",
+            "--no-merges",
+            "--format=%H%x09%(trailers:key=Moai-Claim,valueonly,separator=%x2C)",
+            &format!("{merge_base}..{head}"),
+        ],
+    )?;
+    Ok(out
+        .lines()
+        .filter_map(|l| {
+            let (sha, claims) = l.split_once('\t')?;
+            claims.trim().is_empty().then(|| sha.to_string())
+        })
+        .collect())
+}
+
+/// Whether a PR body names a claim (G11): the marker the removed `flow-gate-verdict`
+/// `pr_body_claim` check read, anywhere in the body.
+pub fn has_body_claim(body: &str) -> bool {
+    body.contains("Moai-Claim: ")
+}
+
 fn is_commit(dir: &Path, sha: &str) -> Result<bool> {
     Ok(git(dir, &["cat-file", "-e", &format!("{sha}^{{commit}}")])?.0)
 }
@@ -411,6 +439,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         .to_string();
     let pr_files = names(&git_ok(dir, &["diff", "--name-only", &merge_base, &head])?);
     let authors = pr_authors(t, &base_url, dir, &merge_base, &head)?;
+    let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
     // The verdict base is read from the last verdict the gate will judge; without one G1 stops.
     let verdict_base = comments
@@ -478,5 +507,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         pr_authors: Some(authors),
         tip_ci: Some(tip_ci),
         tip_repair: crate::flow::is_tip_repair(&body),
+        commits_without_claim: Some(unclaimed),
+        body_claim: has_body_claim(&body),
     })
 }
