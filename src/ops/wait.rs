@@ -26,7 +26,8 @@ pub struct Args {
     /// Only comments with a larger id count (`comment`).
     #[arg(long, default_value_t = 0)]
     after: u64,
-    /// Only a comment with a line starting with this text counts (`comment`).
+    /// Only a comment with a line starting with this text counts (`comment`; 1..=200
+    /// characters; only the first 4000 characters of a comment are read).
     #[arg(long)]
     prefix: Option<String>,
     /// Pull request number (`pr`).

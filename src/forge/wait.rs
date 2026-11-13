@@ -23,6 +23,8 @@ pub const MIN_INTERVAL_S: u64 = 10;
 const COMMENT_TEXT_LIMIT: usize = 4000;
 /// First-line bytes a matched comment reports.
 const FIRST_LINE_LIMIT: usize = 200;
+/// Longest `--prefix`, in characters (not bytes).
+const PREFIX_LIMIT: usize = 200;
 
 /// What to wait for.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -87,7 +89,10 @@ fn validate(req: &WaitRequest) -> Result<(), ForgeError> {
         ),
         Condition::Comment {
             prefix: Some(p), ..
-        } if p.is_empty() || p.len() > 200 || p.chars().any(char::is_control) => {
+        } if p.is_empty()
+            || p.chars().count() > PREFIX_LIMIT
+            || p.chars().any(char::is_control) =>
+        {
             Err(ForgeError::invalid(
                 "wait prefix must be 1..=200 characters without control characters",
             ))
@@ -565,6 +570,7 @@ mod tests {
         }
         assert!(t.sent.borrow().is_empty());
         assert_eq!(MAX_TIMEOUT_S, 3600);
+        assert_eq!(PREFIX_LIMIT, 200);
         assert_eq!(MIN_INTERVAL_S, 10);
         let edge = req(Condition::Ci { head: HEAD.into() }, MAX_TIMEOUT_S);
         assert!(validate(&edge).is_ok());
@@ -573,5 +579,72 @@ mod tests {
             ..edge
         };
         assert!(validate(&edge).is_ok());
+    }
+
+    /// Right after a push the head may have no workflow run yet: an empty list is not
+    /// "every run completed" and the wait goes on (audit 6849844828 B1, mutation A5).
+    #[test]
+    fn ci_with_no_run_yet_keeps_waiting() {
+        let t = RecordedTransport::new(vec![
+            Exchange {
+                request: get(RUNS, None),
+                response: ok(json!({"workflow_runs": []}), "\"a\"", "10"),
+            },
+            Exchange {
+                request: get(RUNS, Some("\"a\"")),
+                response: ok(runs("completed", json!("success")), "\"b\"", "9"),
+            },
+        ]);
+        let out = wait(&req(Condition::Ci { head: HEAD.into() }, 600), &t, &clock()).unwrap();
+        assert_eq!(out["polls"], 2, "an empty run list is not done");
+        assert_eq!(out["value"]["conclusion"], "success");
+    }
+
+    /// `skipped` and `neutral` runs (this repository skips `windows-build` on pull requests)
+    /// do not turn the answer into `failure` (audit 6849844828 B2, mutation A6).
+    #[test]
+    fn skipped_and_neutral_runs_count_as_success() {
+        let body = json!({"workflow_runs": [
+            {"id": 1, "name": "ci", "status": "completed", "conclusion": "success"},
+            {"id": 2, "name": "windows-build", "status": "completed", "conclusion": "skipped"},
+            {"id": 3, "name": "lint", "status": "completed", "conclusion": "neutral"}
+        ]});
+        let t = RecordedTransport::new(vec![Exchange {
+            request: get(RUNS, None),
+            response: ok(body, "\"a\"", "10"),
+        }]);
+        let out = wait(&req(Condition::Ci { head: HEAD.into() }, 60), &t, &clock()).unwrap();
+        assert_eq!(out["value"]["conclusion"], "success");
+    }
+
+    /// `--prefix` counts characters: 200 Hangul syllables (600 bytes) pass, 201 are refused
+    /// (audit 6849844828 B3, mutation A1).
+    #[test]
+    fn prefix_limit_is_200_characters_on_both_sides() {
+        let with = |n: usize| {
+            req(
+                Condition::Comment {
+                    issue: 1,
+                    after: 0,
+                    prefix: Some("가".repeat(n)),
+                },
+                60,
+            )
+        };
+        assert!(validate(&with(PREFIX_LIMIT)).is_ok());
+        assert!(validate(&with(PREFIX_LIMIT + 1)).is_err());
+    }
+
+    /// The reported first line is cut at 200 bytes, backing off to a character boundary
+    /// instead of panicking inside a multi-byte character (audit 6849844828 B3, A2/A4).
+    #[test]
+    fn first_line_is_cut_at_200_bytes_on_a_character_boundary() {
+        assert_eq!(FIRST_LINE_LIMIT, 200);
+        assert_eq!(first_line(&"a".repeat(300)), "a".repeat(200));
+        assert_eq!(first_line(&"a".repeat(200)), "a".repeat(200));
+        // "가" is 3 bytes at 199..202, straddling the 200-byte cut.
+        let straddle = format!("{}가나\nsecond", "a".repeat(199));
+        assert_eq!(first_line(&straddle), "a".repeat(199));
+        assert_eq!(first_line("short\nsecond"), "short");
     }
 }
