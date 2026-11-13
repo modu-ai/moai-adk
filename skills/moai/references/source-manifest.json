@@ -46,21 +46,21 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "5bd60a7215c42ba6457b547aef7589978e08485b043a7d6b150776a6133e342d",
+      "sha256": "c1de31764e7bf26bb4ebe1a9383dc04d34a29afede648e6f0ce3b9c995b81d29",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678). OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
     "references/routes.json": {
-      "sha256": "b8545ec06b29c55ca328bdc4b677b8cf6cc6bc7b72fc06ec519e414d673797a0",
+      "sha256": "6fd0159994da8440f7afe3a8eb8930a529636289b548a7b451bf0c71bc09dfda",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
     "workflows/read.md": {
@@ -301,6 +301,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md",
         "license": "Apache-2.0"
+      }
+    },
+    "workflows/optimize.md": {
+      "sha256": "f70d4c174ea5f8358d7a58c003c9f5d59f618fc4900d750d1bc0abb90ac45e47",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-optimize",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE."
       }
     }
   }
