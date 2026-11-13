@@ -227,7 +227,7 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
     let plan: Value = serde_json::from_str(&r.stdout).unwrap();
     assert_eq!(plan["ok"], true, "{plan}");
     assert_eq!(plan["result"]["hook_binary"]["state"], "binary_unresolved");
-    assert_eq!(plan["result"]["hook_binary"]["name"], "moai-cli");
+    assert_eq!(plan["result"]["hook_binary"]["name"], "moai");
     assert_eq!(plan["result"]["hooks_active"], false);
 
     let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
@@ -254,10 +254,26 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
     );
     assert_eq!(applied["result"]["hooks_active"], false);
 
-    // With an executable `moai-cli` on that PATH the binary resolves; whether the host runs
-    // the hooks is still unknown until a host receipt says so.
+    // Only the alias `moai-cli` on that PATH: the generated hooks call `moai` (#2812 W3), so
+    // they still do not resolve.
     common::write_executable(&bin.join("moai-cli"), "#!/bin/sh\nexit 0\n");
     let with_binary = bin.to_string_lossy().to_string();
+    let r = run(
+        &["hooks-plan", ".", "--host", "claude"],
+        &root,
+        b"",
+        &[("PATH", &with_binary)],
+    );
+    let plan: Value = serde_json::from_str(&r.stdout).unwrap();
+    assert_eq!(plan["result"]["hook_binary"]["name"], "moai", "{plan}");
+    assert_eq!(
+        plan["result"]["hook_binary"]["state"], "binary_unresolved",
+        "{plan}"
+    );
+
+    // With an executable `moai` on that PATH the binary resolves; whether the host runs
+    // the hooks is still unknown until a host receipt says so.
+    common::write_executable(&bin.join("moai"), "#!/bin/sh\nexit 0\n");
     let r = run(
         &["hooks-plan", ".", "--host", "claude"],
         &root,

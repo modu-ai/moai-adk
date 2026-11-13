@@ -2,7 +2,7 @@
 
 `/moai update` (`$moai update` in Codex CLI) updates the current project: its MoAI-managed files, its settings, and state left by the earlier Go generation of MoAI (user decision of 2026-11-13 on #2634, Issue #2696). Every write goes through a preview the user sees and an apply bound to that preview's digest, through the same commands PROJECT uses; this route adds no writer of its own.
 
-The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai-cli update`, and this route never runs it. When the user asks for that, tell them to run it in a terminal: it previews like `moai-cli update-plan`, asks once, and moves an earlier, Go-era `moai` skill folder aside only after they confirm its backup preview (`moai-cli update-apply --confirm-backup-replace`), with `moai recovery-plan` as the way back for a host left pending.
+The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai update`, and this route never runs it. When the user asks for that, tell them to run it in a terminal: it previews like `moai update-plan`, asks once, and moves an earlier, Go-era `moai` skill folder aside only after they confirm its backup preview (`moai update-apply --confirm-backup-replace`), with `moai recovery-plan` as the way back for a host left pending.
 
 ## Input
 

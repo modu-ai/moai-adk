@@ -114,7 +114,7 @@ pub const ENGINE_ERROR_EXIT: u8 = 1;
 fn engine_error(reason: &str) -> Answer {
     Answer {
         stdout: String::new(),
-        stderr: format!("moai-cli hook-dispatch: engine error: {reason}"),
+        stderr: format!("moai hook-dispatch: engine error: {reason}"),
         exit: ENGINE_ERROR_EXIT,
     }
 }
@@ -398,7 +398,7 @@ pub fn capabilities(host: &str) -> Value {
                                "not_guarded": ["edit/write paths and content: OMP's edit input is not the Claude file_path/content shape, so it is not translated", "writes outside the project unless [hooks.outside_project_writes] is enabled", "MCP and extension tools"],
                                "answer": "{block: true, reason} (reason reaches the model as the tool error)",
                                "confirm": {"answer": "block (OMP has no ask)", "commands": CONFIRM_COMMANDS},
-                               "on_module_error": "the module lets the call through when moai-cli is missing, times out or exits 1, matching the non-blocking engine error of the other hosts; OMP itself treats a throwing handler as a block"},
+                               "on_module_error": "the module lets the call through when moai is missing, times out or exits 1, matching the non-blocking engine error of the other hosts; OMP itself treats a throwing handler as a block"},
             "tool-observe": {"events": ["tool_result"], "records": "observe line", "blocks": false,
                              "outcome": "tool_result.isError"},
             "turn-validation": {"supported": false, "reason": "OMP has no turn-end event; session_shutdown fires on process exit only"},
@@ -478,7 +478,7 @@ fn session_check(cwd: &Path) -> Verdict {
         "absent"
     };
     Verdict::Context(format!(
-        "MoAI session-check (moai-cli {}): project state directory {}: {state_dir}; lane branch: \
+        "MoAI session-check (moai {}): project state directory {}: {state_dir}; lane branch: \
          {lane}; local claim record: {record}. Read locally; no network was used.",
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),

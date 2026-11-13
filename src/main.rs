@@ -39,10 +39,13 @@ impl RecordSource {
 
 #[derive(Parser)]
 #[command(
+    // `--version` prints `<name> <version>`: it stays `moai-cli <ver> (rust)`, the build
+    // signature other tools compare (#2799 D3 decision 2(a), `bin_names` same-build check).
     name = "moai-cli",
-    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1): usage and help name
-    // `moai-cli` whichever name ran, so the two binaries print the same text.
-    bin_name = "moai-cli",
+    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). The default command
+    // name is `moai` (#2812 W3; `moai-cli` stays an alias): usage and help name `moai`
+    // whichever name ran, so the two binaries print the same text.
+    bin_name = "moai",
     version = moai_cli::VERSION_SIGNATURE,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
@@ -2432,7 +2435,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 let mut err = io::stderr();
                 let _ = write!(
                     err,
-                    "moai-cli update preview:\n{}Apply this update? [y/N] ",
+                    "moai update preview:\n{}Apply this update? [y/N] ",
                     summary
                 );
                 let _ = err.flush();
@@ -2743,7 +2746,7 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
         }
         Err(_) => moai_cli::hook_engine::Answer {
             stdout: String::new(),
-            stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
+            stderr: "moai hook-dispatch: engine error: working directory unavailable".into(),
             exit: moai_cli::hook_engine::ENGINE_ERROR_EXIT,
         },
     };
@@ -2856,7 +2859,7 @@ pub(crate) fn main() -> ExitCode {
             }
             let rendered = e.render().to_string();
             eprintln!(
-                "moai-cli hook: {}",
+                "moai hook: {}",
                 rendered.lines().next().unwrap_or("invalid command line")
             );
             return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
@@ -2966,6 +2969,48 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// #2812 W3 AC-4: whatever path started the binary — Windows `moai.exe` or `moai-cli.exe`,
+    /// a Unix `moai`, the alias `moai-cli` — help and usage errors read the same and name the
+    /// default command `moai`; `--version` keeps the build signature `moai-cli <ver> (rust)`.
+    #[test]
+    fn every_binary_name_renders_the_same_moai_help() {
+        let render = |argv0: &str, args: &[&str]| -> String {
+            let mut argv = vec![argv0];
+            argv.extend_from_slice(args);
+            match Cli::try_parse_from(argv) {
+                Ok(_) => String::from("parsed"),
+                Err(e) => e.render().to_string(),
+            }
+        };
+        let names = [
+            r"C:\Users\u\.moai-cli\path\moai.exe",
+            r"C:\Users\u\.moai-cli\path\moai-cli.exe",
+            "/usr/local/bin/moai",
+            "moai-cli",
+        ];
+        for args in [
+            &["--help"][..],
+            &["no-such-command"][..],
+            &["claim-verify", "--help"][..],
+            &["--version"][..],
+        ] {
+            let first = render(names[0], args);
+            for name in &names[1..] {
+                assert_eq!(render(name, args), first, "{name} {args:?}");
+            }
+            if args == ["--version"] {
+                assert_eq!(
+                    first.trim_end(),
+                    format!("moai-cli {}", moai_cli::VERSION_SIGNATURE)
+                );
+            } else {
+                assert!(first.contains("Usage: moai "), "{args:?}: {first}");
+                assert!(!first.contains("moai-cli "), "{args:?}: {first}");
+                assert!(!first.contains(".exe"), "{args:?}: {first}");
+            }
+        }
+    }
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
     const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
 

@@ -45,7 +45,7 @@ fn the_update_route_is_the_project_layer() {
         "moai generation-plan",
         "a re-run plans `unchanged`",
         // The user layer is the shell command, named and never run from this route.
-        "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai-cli update`",
+        "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai update`",
         "this route never runs it",
         // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
         // first, and "nothing to update" holds only without Go state.

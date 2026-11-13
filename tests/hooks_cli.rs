@@ -136,9 +136,9 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
             assert_eq!(handler["timeout"], json!(hooks::HOOK_TIMEOUT_SECS));
             let command = handler["command"].as_str().unwrap();
             let expected = if event == "PreToolUse" {
-                "moai-cli claim-verify . --hook".to_string()
+                "moai claim-verify . --hook".to_string()
             } else {
-                format!("moai-cli hook-receipt --host {host}")
+                format!("moai hook-receipt --host {host}")
             };
             assert_eq!(command, expected);
             assert!(!command.contains('/'), "{command}");
@@ -179,7 +179,7 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
             .unwrap()
             .to_string();
         let mut words = command.split_whitespace();
-        assert_eq!(words.next(), Some("moai-cli"));
+        assert_eq!(words.next(), Some("moai"));
         let args: Vec<&str> = words.collect();
         let run = |tool_command: &str| {
             let mut child = Command::new(crate::common::MOAI_BIN)
@@ -641,9 +641,7 @@ fn omp_plan_apply_writes_the_module_and_replan_is_noop() {
 #[test]
 fn omp_module_wiring_is_pinned() {
     let m = hooks::OMP_MODULE;
-    assert!(
-        m.contains(r#"Bun.spawn(["moai-cli", "hook-dispatch", "--host", "omp", "--event", event]"#)
-    );
+    assert!(m.contains(r#"Bun.spawn(["moai", "hook-dispatch", "--host", "omp", "--event", event]"#));
     // Both the preflight and the observation handler stop at a non-bash tool (mutation H5).
     for handler in ["tool_call", "tool_result"] {
         let start = m.find(&format!(r#"pi.on("{handler}""#)).unwrap();
