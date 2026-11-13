@@ -1428,6 +1428,25 @@ fn a_confirmation_asks_on_claude_and_is_refused_on_codex() {
     assert!(!text.contains("\"kind\":\"deny\""), "{text}");
 }
 
+/// #2633 audit FAIL 6846708858 B1: OMP has no ask either, so a confirmation is a block whose
+/// reason is Claude's ask reason plus the Codex suffix — the module blocks only on
+/// `block === true`, so this is the line that stops `git reset --hard` on OMP.
+#[test]
+fn a_confirmation_is_a_block_on_omp_with_the_codex_suffix() {
+    let (_d, root) = repo("main");
+    let input = pre_tool("git reset --hard HEAD~1", &root);
+    let (_, ask_reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
+    let r = omp("tool-preflight", &root, &input);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
+    assert_eq!(v["block"], json!(true), "{v}");
+    assert_eq!(
+        v["reason"].as_str().unwrap(),
+        format!("{ask_reason} {}", moai_cli::hook_engine::CODEX_ASK_SUFFIX)
+    );
+}
+
 /// A deny anywhere on the line wins over a confirmation (Claude's order deny > ask).
 #[test]
 fn a_deny_on_the_same_line_wins_over_a_confirmation() {
