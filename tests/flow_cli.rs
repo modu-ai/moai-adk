@@ -1070,6 +1070,96 @@ fn gate_verdict_reads_all_tip_attempts() {
     );
 }
 
+/// #2683 audit B1: with two required checks, one red and one still running, red wins —
+/// the run that failed is not hidden behind the one still going.
+#[test]
+fn gate_verdict_red_beats_pending_across_required_checks() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut lint = tip_run("", 900);
+    lint["name"] = json!("lint");
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[
+                check_run("rc-ci", "completed", "success"),
+                check_run("lint", "completed", "success"),
+            ])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[tip_run("failure", 777), lint])),
+        ),
+    ];
+    let mut args = gate_args("pr-5a4b3c2d");
+    args.push("--required-checks".into());
+    args.push("ci,lint".into());
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let (v, out) = run_flow(&gh, &envs, &args);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["tip_ci"]["state"], json!("red"), "{v}");
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+}
+
+/// #2683 audit B2: the repair marker counts only at the start of a line; a sentence that
+/// mentions it (as a PR body explaining the rule does) is not a repair.
+#[test]
+fn gate_verdict_repair_marker_only_at_line_start() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut pr: Value = serde_json::from_str(&pr_body(true)).unwrap();
+    pr["body"] = json!(format!(
+        "{}\n본문에 `moai-tip-repair:` 줄이 있는 PR만 통과한다.\n  - see moai-tip-repair: below",
+        pr["body"].as_str().unwrap()
+    ));
+    let envs = [
+        ("FLOW_PR", http200(&pr.to_string())),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[tip_run("failure", 777)])),
+        ),
+    ];
+    let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["tip_ci"]["repair"], json!(false), "{v}");
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+}
+
+/// #2683 audit N1: a tip run cancelled (for example by a concurrency group) with no
+/// success is red: the tip has no passing CI, so only its repair merges.
+#[test]
+fn gate_verdict_cancelled_tip_is_red() {
+    let v = gate_with_tip(
+        Some(http200(&check_runs_body(&[tip_run("cancelled", 777)]))),
+        false,
+    );
+    assert_eq!(v["tip_ci"]["state"], json!("red"), "{v}");
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+}
+
 // ---- #2680: a CI gate that could not run is not a code failure ----
 
 const BILLING: &str = "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings";

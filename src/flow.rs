@@ -359,7 +359,9 @@ fn run_id(run: &Value) -> Option<u64> {
 }
 
 /// #2665: the tip's own CI, per required check over every attempt on the tip SHA.
-/// `green` all success; `red` a failed attempt and no success and none running;
+/// `green` all success; `red` a failed attempt (failure, timed_out, cancelled — a
+/// concurrency cancel leaves the tip without passing CI too — startup_failure,
+/// action_required) and no success and none running;
 /// `flaky` failure and success on the same SHA (a re-run turned it green — not a stop);
 /// `pending` running or not started yet (push CI can start late — not a stop). The
 /// worst state across required checks wins: red, then pending, flaky, green.
