@@ -2968,6 +2968,8 @@ mod skill_package {
             "**Offer project agents (Issue #2639).**",
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
+            "Offer project skills the same way: each is one `project_skills` entry",
+            "it writes the skill folder Claude Code reads and the one Codex CLI reads",
             "for any other host, say that none is written",
             "apply with `generation-apply` only after the user agrees",
             "planned `unchanged` while the answers stay the same, and `conflict` once they change too",
