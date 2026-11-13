@@ -152,12 +152,15 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         [
             "claim-verify",
             "claim-verify --hook",
+            "goal-plan",
+            "goal-show",
             "labels-apply",
             "labels-plan",
             "pr-confirm",
             "queue-free",
             "queue-next",
-            "scope-check"
+            "scope-check",
+            "usage-limit"
         ],
         "the op list the workflows name"
     );
@@ -526,6 +529,58 @@ fn claim_verify_names_the_worktree_session_without_project_hooks() {
             "The host reads project hooks from the session's working folder",
             "runs none of the project's hooks, so there this step is the only boundary",
             "`worktree_sessions: not_reached`",
+        ],
+    );
+}
+
+/// #2680 AC-2/AC-3: a gate that could not run is recorded with substitute evidence,
+/// merges wait by default, and the merge-on-substitute question is asked once per gate.
+#[test]
+fn gate_unavailable_rules_are_written_where_they_are_used() {
+    let audit = workflow("audit.md");
+    for text in [
+        "ci: gate_unavailable(<cause> since <since>)",
+        "substitute: <command> exit <n> <log>",
+        "Substitute evidence is a record, not a merge",
+        "is not a gate",
+    ] {
+        assert!(audit.contains(text), "audit.md lacks {text:?}");
+    }
+    let leader = workflow("mode-leader.md");
+    for text in [
+        "merges wait for the gate by default",
+        "a user decision for that one gate",
+        "Ask it once per gate and cause",
+    ] {
+        assert!(leader.contains(text), "mode-leader.md lacks {text:?}");
+    }
+}
+
+// #2668 S3: a lane renews its claims before a claude.ai usage limit stops it, leaves the
+// resume to the host's own automatic continue, and the leader treats a `usage_limit` lane as
+// held, not stopped.
+#[test]
+fn usage_limit_rules_are_pinned_in_both_mode_workflows() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "run `moai-cli usage-limit \"$HOME\"`",
+            "before any other write, renew every claim you hold to its `renew_until`",
+            "`LANE-WAIT <lane> usage-limit until <renew_until>`",
+            "Keep Claude Code's own automatic continue on (`autoContinueAtUsageLimit`",
+            "arm no wake of your own for it",
+            "Codex CLI documents neither a usage record nor an automatic continue: report this step `not_run` there",
+        ],
+    );
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "reports idle with cause `usage_limit`",
+            "post no handoff line for its cards before that time",
         ],
     );
 }
