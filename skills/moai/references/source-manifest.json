@@ -260,6 +260,15 @@
         "adoption": "new",
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
       }
+    },
+    "references/home/routing.md": {
+      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-routing",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
+      }
     }
   }
 }

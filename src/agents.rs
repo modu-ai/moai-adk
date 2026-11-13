@@ -113,7 +113,7 @@ fn validate(r: &AgentsRequest) -> Result<()> {
     Ok(())
 }
 
-fn markers(id: &str, comment: &str) -> (String, String) {
+pub(crate) fn markers(id: &str, comment: &str) -> (String, String) {
     match comment {
         "html" => (
             format!("<!-- moai:managed:begin id={id} -->"),

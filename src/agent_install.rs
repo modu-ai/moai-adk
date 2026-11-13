@@ -294,10 +294,8 @@ pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
 }
 
 fn validate_permission(permission: &str) -> Result<()> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    // WF-OBS #24 (#2401): the rule lives once, in `contract::permission_reference_ok`.
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     Ok(())
