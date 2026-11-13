@@ -1831,3 +1831,58 @@ fn omp_observe_outcome_comes_from_is_error_or_is_unknown() {
     assert_eq!(observe(json!({"is_error": "true"})).0, "unknown");
     assert_eq!(observe(json!({})).0, "unknown");
 }
+
+/// #2673 AC-3: a host without a built-in worktree tool commits with `git -C <worktree>` from
+/// the primary checkout (user decision on #2673). The branch is read in the folder `-C` names,
+/// not in the session's own folder, so the commit guard still sees the lane branch.
+#[test]
+fn git_dash_c_names_the_worktree_the_commit_runs_in() {
+    let (_a, primary) = repo("main");
+    git(
+        &primary,
+        &["worktree", "add", "-q", "-b", "issue/77-k", "wt77"],
+    );
+    let wt = primary.join("wt77");
+    // From the primary checkout, a commit in the lane worktree without its token: denied.
+    let r = dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool("git -C wt77 commit -m x", &primary),
+        &[],
+    );
+    assert!(assert_deny(&r).contains("Moai-Claim: 77#"));
+    // The absolute spelling is the same folder.
+    let abs = format!("git -C {} commit -m x", wt.display());
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool(&abs, &primary),
+        &[],
+    ));
+    // With the branch's token: allowed.
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool("git -C wt77 commit -m 'x Moai-Claim: 77#5'", &primary),
+        &[],
+    ));
+    // From the lane worktree, `-C ..` is the primary checkout on `main`: not a lane branch.
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &wt,
+        &pre_tool("git -C .. commit -m x", &wt),
+        &[],
+    ));
+    // Two commits in two folders on one line: denied, so each is checked on its own line.
+    let two = format!(
+        "git -C wt77 commit -m 'x Moai-Claim: 77#5' && git -C {} commit -m y",
+        primary.display()
+    );
+    let reason = assert_deny(&dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool(&two, &primary),
+        &[],
+    ));
+    assert!(reason.contains("more than one folder"), "{reason}");
+}

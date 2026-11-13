@@ -6,6 +6,8 @@
 
 #![cfg(unix)]
 
+mod common;
+use common::CleanEnv;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -163,7 +165,7 @@ impl Fx {
     fn call(&self, args: &[&str]) -> Value {
         let out = Command::new(EXE)
             .args(args)
-            .env_clear()
+            .clean_env()
             .env("HOME", &self.home)
             .env("PATH", "/usr/bin:/bin")
             .env("LC_ALL", "C")

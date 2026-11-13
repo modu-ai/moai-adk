@@ -2,6 +2,7 @@
 //! reaches. Only disposable fixture paths are used; nothing outside the temp dir is touched.
 #![cfg(unix)]
 mod common;
+use common::CleanEnv;
 
 use serde_json::{json, Value};
 use std::{fs, os::unix::fs::symlink, path::Path, process::Command};
@@ -83,7 +84,7 @@ fn scope_check(f: &Fixture, extra: &[&str]) -> Value {
         .arg(&f.root)
         .args(["--task", MINE])
         .args(extra)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", f.root.join("home"))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
