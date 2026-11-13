@@ -43,7 +43,7 @@ fn stub_gh(dir: &Path, subs: u16, deps: u16) -> PathBuf {
 }
 
 fn probe(project: &Path, gh: &Path, input: &Value) -> (std::process::Output, Value) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("forge-links-probe")
         .arg(project)
         .env("MOAI_FORGE_GH_BIN", gh)

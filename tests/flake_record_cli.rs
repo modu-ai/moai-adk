@@ -1,6 +1,7 @@
 //! Issue #2666 F2 (audit 6861988023 B1): the `flake-record` CLI checks its input before any
 //! request — the 16 MiB limit at its edge, JSON, and `--repo` — so these runs never reach gh.
 
+mod common;
 use serde_json::Value;
 use std::fs;
 use std::process::Command;
@@ -9,7 +10,7 @@ use tempfile::TempDir;
 const LIMIT: u64 = 16 * 1024 * 1024;
 
 fn run(file: &std::path::Path, repo: &str) -> Value {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(["flake-record", "--classified"])
         .arg(file)
         .args([

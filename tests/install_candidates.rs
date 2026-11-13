@@ -15,7 +15,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = common::MOAI_BIN;
 
 fn script(dir: &Path, body: &str) -> PathBuf {
     fs::create_dir_all(dir).unwrap();

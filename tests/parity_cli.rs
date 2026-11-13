@@ -3,6 +3,7 @@
 //! extra / value_mismatch / identical) plus an optional doc set; AC-2 asserts the
 //! report shape (envelope, counts by kind, per-key rows with set digests).
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -12,7 +13,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn plant(dir: &Path, rel: &str, body: &str) {
     let p = dir.join(rel);

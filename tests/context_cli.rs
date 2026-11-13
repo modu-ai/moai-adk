@@ -57,7 +57,7 @@ fn repo() -> TempDir {
 }
 /// Runs an internal operation; returns the output and the envelope.
 fn run(args: &[&str], dir: &Path, stdin: Option<&Value>) -> (std::process::Output, Value) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .arg(dir)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")

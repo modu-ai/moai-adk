@@ -683,7 +683,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
 }
 
 fn cli(project: &Path, gh: &Path, input: &str, permission: &str) -> (Value, String) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args([
             "forge-report",
             project.to_str().unwrap(),

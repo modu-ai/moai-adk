@@ -4,6 +4,7 @@
 //! configuration created and no secret leaked (AC-3), and `index-build` suggested but not run
 //! (AC-4).
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -14,7 +15,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const PROFILE: &str = ".moai-cli/project.yaml";
 const TOKEN: &str = "fixture-token-value-not-real-7f3a";
 

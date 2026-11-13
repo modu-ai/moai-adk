@@ -21,7 +21,7 @@ A patch, receipts from actual verification (the internal `run-verify` operation 
 
 Skip this section when you are a base agent yourself: base agents never start other agents.
 
-`moai-cli` installs five base agents into the host's user folder: `moai-plan`, `moai-research`, `moai-impl`, `moai-audit` and `moai-docs`. When this route hands a step to one of them:
+`moai` installs five base agents into the host's user folder: `moai-plan`, `moai-research`, `moai-impl`, `moai-audit` and `moai-docs`. When this route hands a step to one of them:
 
 - Give it one block, `task`, `scope`, `base` and `refs`, and nothing else; it assumes no conversation context.
 - Decide on its first line, `RESULT <role> <ok|blocked|not_run> <target>`, then check the rest yourself: the files it lists and the commands and exit codes it reports. An agent's `ok` is not evidence.

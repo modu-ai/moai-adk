@@ -8,7 +8,7 @@ use common::git::{command, git, git_ok};
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 #[test]
 fn this_repository_review_file_is_read_whole() {

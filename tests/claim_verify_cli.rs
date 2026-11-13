@@ -957,7 +957,7 @@ fn hook_binary_exits_2_on_refusal() {
     .to_string();
     let gh = gh_stub(stub_dir.path(), &body);
     let run = |command: &str| {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let mut child = Command::new(crate::common::MOAI_BIN)
             .args(["claim-verify", root.to_str().unwrap(), "--hook"])
             .current_dir(&root)
             .env("MOAI_FORGE_GH_BIN", &gh)
@@ -1442,7 +1442,7 @@ fn lane_push_works_when_the_integration_branch_is_unrelated_to_the_default_branc
 fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
     let (_d, root) = lane_repo("issue/7-widget");
     let run = |command: &str| {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let mut child = Command::new(crate::common::MOAI_BIN)
             .args(["claim-verify", ".", "--hook"])
             .current_dir(&root)
             // The refusal comes before any GitHub read, so no `gh` stub is needed.
@@ -1473,7 +1473,7 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
     .unwrap();
     let step = text
         .lines()
-        .find(|l| l.contains("moai-cli claim-verify"))
+        .find(|l| l.contains("moai claim-verify"))
         .expect("mode-agent names claim-verify");
     assert!(
         step.contains("Before every commit and every push"),

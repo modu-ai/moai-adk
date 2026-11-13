@@ -8,7 +8,7 @@ use common::git::{command, git, git_ok};
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn package_with_review(text: &str) -> Value {
     let tmp = tempfile::TempDir::new().unwrap();

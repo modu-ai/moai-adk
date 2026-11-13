@@ -17,7 +17,7 @@ fn profile(pin: Option<String>) -> Value {
     v
 }
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -996,7 +996,7 @@ fn legacy_manifest_with_personal_file_in_owned_files_is_still_read() {
 }
 
 fn session(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    Command::new(crate::common::MOAI_BIN)
         .arg("session")
         .args(args)
         .output()
@@ -1065,7 +1065,7 @@ fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
         .status()
         .unwrap()
         .success());
-    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
         .current_dir(project.path())
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
@@ -1430,7 +1430,7 @@ fn baseline_fixture() -> (TempDir, String) {
     (root, commit)
 }
 fn baseline(root: &TempDir, extra: &[&str]) -> (std::process::Output, Value) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .arg("baseline-inventory")
         .arg(root.path())
         .args(extra)
@@ -1681,7 +1681,7 @@ struct FixtureRun {
 impl FixtureRun {
     /// Runs one case and compares (or rewrites) its golden file. Returns parsed stdout.
     fn case(&mut self, name: &str, args: &[&str], stdin: &[u8]) -> Value {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let mut child = Command::new(crate::common::MOAI_BIN)
             .args(args)
             .env("HOME", self.home.path())
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -2516,14 +2516,14 @@ mod skill_package {
 
     /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
     /// generator instead of free-form wording — leader feeds the state it read
-    /// to `moai-cli goal-block` (#2708; formerly tools/gen_goal_block.py) and prints its `leader` line, with the
+    /// to `moai goal-block` (#2708; formerly tools/gen_goal_block.py) and prints its `leader` line, with the
     /// keep-set exclusion rule stated as the generator's rule; agent binds its
     /// card-scoped lines to the generator's `agent` kind.
     #[test]
     fn goal_step_is_bound_to_the_goal_block_generator() {
         let leader = mode_workflow("MODE-LEADER");
         assert!(
-            leader.contains("`moai-cli goal-block`"),
+            leader.contains("`moai goal-block`"),
             "leader workflow must name the generator: {leader}"
         );
         assert!(
@@ -2547,7 +2547,7 @@ mod skill_package {
             );
         }
         assert!(
-            agent.contains("`moai-cli goal-block`"),
+            agent.contains("`moai goal-block`"),
             "agent workflow must name the generator: {agent}"
         );
         assert!(
@@ -2561,7 +2561,7 @@ mod skill_package {
         // The generator itself still enforces the rule: a keep-set entry without
         // a reason is refused, and excluded numbers leave the condition.
         let run = |input: &str| {
-            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            let mut out = std::process::Command::new(crate::common::MOAI_BIN)
                 .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
@@ -2595,7 +2595,7 @@ mod skill_package {
     #[test]
     fn goal_block_stdin_limit_is_one_mib_exactly() {
         let run = |input: &[u8]| {
-            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            let mut out = std::process::Command::new(crate::common::MOAI_BIN)
                 .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
@@ -2992,13 +2992,13 @@ mod skill_package {
         let body = fs::read_to_string(root().join("workflows/optimize.md")).unwrap();
         for needle in [
             "this route deletes, moves and writes nothing",
-            "moai-cli optimize-plan <project> --integration-ref <ref>",
+            "moai optimize-plan <project> --integration-ref <ref>",
             "There is no default root",
             "an audit `PASS` for its exact HEAD",
             "time alone never makes a worktree a candidate",
             "Apply nothing in this route.",
             "wait for their yes",
-            "`moai-cli worktree-gc-apply` with that plan's digest",
+            "`moai worktree-gc-apply` with that plan's digest",
             "never removed by a shell command instead",
             "Deleting is a `guarded` choice",
             "reported as unread, never as an empty list",
@@ -3025,7 +3025,7 @@ mod skill_package {
         );
         let body = fs::read_to_string(root().join("workflows/project.md")).unwrap();
         for stage in [
-            "**Detect.** Run `moai-cli project-detect <project>`",
+            "**Detect.** Run `moai project-detect <project>`",
             "**Interview by kind.**",
             "New project:",
             "Existing project:",
@@ -3052,7 +3052,7 @@ mod skill_package {
             // file preview before approval, and hand edits never overwritten on a re-run.
             "Read before you ask (Issue #2639)",
             // #2706: the writing language is asked once, stored in project.yaml only, and read.
-            "ask it item by item with `moai-cli language-setup <project>`",
+            "ask it item by item with `moai language-setup <project>`",
             "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
             "A later run reads the stored value and does not ask again",
             "written in the stored `instruction_files` language",
@@ -3203,7 +3203,7 @@ fn ident_env(
     path_env: Option<&str>,
     envs: &[(&str, &str)],
 ) -> (std::process::Output, Value) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.arg("identity")
         .arg(path)
         .env("HOME", home)
@@ -3548,7 +3548,7 @@ fn doctor(
     bin: &TempDir,
 ) -> (std::process::Output, Value) {
     let path = format!("{}:/usr/bin:/bin", bin.path().display());
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .arg("claude-doctor")
         .arg(project)
         .env("HOME", home)
@@ -3682,7 +3682,7 @@ fn claude_doctor_cleans_groups_without_trusting_path_kill() {
         let project = TempDir::new().unwrap();
         write_file(project.path(), "AGENTS.md", b"# rules\n");
         let started = std::time::Instant::now();
-        let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let out = Command::new(crate::common::MOAI_BIN)
             .args(["claude-doctor", project.path().to_str().unwrap()])
             .env("HOME", home.path())
             .env("PATH", bin.path())

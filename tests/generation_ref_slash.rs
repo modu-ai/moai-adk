@@ -3,6 +3,7 @@
 //! untouched; the canonical form is the slash-terminated spelling that the recorded
 //! configuration and the existing golden renders already carry.
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -11,7 +12,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn generation_project() -> TempDir {
     let root = TempDir::new().unwrap();

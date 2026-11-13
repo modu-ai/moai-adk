@@ -6,6 +6,7 @@
 //! from an empty project (REQ-1), while a direct `agents-plan` with a reference that does not
 //! exist is still refused (REQ-2).
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -15,7 +16,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 /// An empty user project and a temporary HOME; nothing reaches the real home.
 struct Fixture {

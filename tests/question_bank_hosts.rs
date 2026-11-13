@@ -2,6 +2,7 @@
 //! exactly the hosts the profile accepts. Each offered answer passes `project-plan`, and a
 //! host the row says is not recorded yet is refused, so the bank and the profile cannot drift.
 
+mod common;
 use serde_json::{json, Value};
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -28,7 +29,7 @@ fn plan(hosts: &[&str]) -> Value {
     let profile = json!({"schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
         "tools": ["Rust"], "development_methods": ["TDD"], "hosts": hosts,
         "interview_revision": "r1"});
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["project-plan", root.path().to_str().unwrap()])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

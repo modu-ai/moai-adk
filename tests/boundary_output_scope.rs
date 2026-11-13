@@ -141,7 +141,7 @@ fn scope_symlink_escape_must_be_blocked() {
         format!("{}\n", json!({"event":"claimed", "record":record})),
     )
     .unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let output = Command::new(crate::common::MOAI_BIN)
         .arg("scope-check")
         .arg(&root)
         .args(["--task", "aaaaaaaaaaaaaaaa"])

@@ -17,7 +17,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:2696";
 
 fn skill(rel: &str) -> String {
@@ -39,10 +39,10 @@ fn the_update_route_is_the_project_layer() {
     let update = skill("workflows/update.md");
     for text in [
         "`/moai update` (`$moai update` in Codex CLI) updates the current project",
-        "moai-cli go-state-plan",
-        "moai-cli project-plan",
-        "moai-cli agents-plan",
-        "moai-cli generation-plan",
+        "moai go-state-plan",
+        "moai project-plan",
+        "moai agents-plan",
+        "moai generation-plan",
         "a re-run plans `unchanged`",
         // The user layer is the shell command, named and never run from this route.
         "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai-cli update`",
@@ -59,7 +59,7 @@ fn the_update_route_is_the_project_layer() {
         // #2702 audit N1: the user's edits, unreadable targets and HOLD, and the #2383 step.
         "A file or managed part the user edited is planned as `conflict` and kept",
         "Never write a target whose current state could not be read, nor one under a recorded HOLD",
-        "`moai-cli claude-settings-plan <project>`",
+        "`moai claude-settings-plan <project>`",
         "`claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
@@ -71,13 +71,18 @@ fn the_update_route_is_the_project_layer() {
     );
 }
 
-/// Every `` `moai-cli <op> … --flag` `` span in update.md names an op of this binary with
-/// every flag it shows.
+/// Every `` `moai <op> … --flag` `` span in update.md (and the `` `moai-cli <op>` `` spelling
+/// kept for `moai-cli update`, #2792 R3) names an op of this binary with every flag it shows.
 #[test]
 fn ops_named_by_the_update_route_exist_with_their_flags() {
     let update = skill("workflows/update.md");
     let mut seen = 0;
-    for (i, _) in update.match_indices("`moai-cli ") {
+    let mut starts: Vec<usize> = ["`moai ", "`moai-cli "]
+        .iter()
+        .flat_map(|p| update.match_indices(p).map(|(i, _)| i))
+        .collect();
+    starts.sort_unstable();
+    for i in starts {
         let rest = &update[i + 1..];
         let span = &rest[..rest.find('`').expect("closed code span")];
         let mut words = span.split_whitespace().skip(1);
@@ -90,7 +95,7 @@ fn ops_named_by_the_update_route_exist_with_their_flags() {
             .args([op.as_str(), "--help"])
             .output()
             .unwrap();
-        assert!(out.status.success(), "`moai-cli {op}` is not a subcommand");
+        assert!(out.status.success(), "`moai {op}` is not a subcommand");
         let help = String::from_utf8_lossy(&out.stdout);
         // #2702 audit N1: a whole flag word, so `--plan` never passes as a prefix of
         // `--plan-digest`.
@@ -99,7 +104,7 @@ fn ops_named_by_the_update_route_exist_with_their_flags() {
             .filter(|w| w.starts_with("--"))
             .collect();
         for flag in flags {
-            assert!(known.contains(&flag), "`moai-cli {op}` has no {flag}");
+            assert!(known.contains(&flag), "`moai {op}` has no {flag}");
         }
         seen += 1;
     }

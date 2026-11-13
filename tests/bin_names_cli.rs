@@ -15,8 +15,8 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
-const MOAI: &str = env!("CARGO_BIN_EXE_moai");
+const EXE: &str = common::MOAI_CLI_BIN;
+const MOAI: &str = common::MOAI_BIN;
 const NOW: &str = "2026-11-13T21:00:00Z";
 
 /// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli`; returns (guard, home, exe).

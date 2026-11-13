@@ -1,4 +1,5 @@
 //! PLAN and task DAG admission (Issue #2002, 05-B).
+mod common;
 use moai_cli::plan::{admit, build_plan, current_revision, AdmissionRequest, Approval, Task};
 use moai_cli::spec::{amend, approve, SortedKeys, SpecDocument};
 use serde_json::{json, Value};
@@ -286,7 +287,7 @@ fn plan_admit(project: &Path, input: &[u8]) -> Value {
 }
 /// `plan-admit` with extra caller environment; returns (exit 0, envelope).
 fn plan_admit_env(project: &Path, input: &[u8], envs: &[(&str, &str)]) -> (bool, Value) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("plan-admit")
         .arg(project)
         .envs(envs.iter().copied())

@@ -2,6 +2,7 @@
 //! `decision-due` shows an unanswered reversible decision taking its default once its
 //! deadline passes while a one-way, `guarded` or HOLD-category one keeps waiting.
 
+mod common;
 use serde_json::Value;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -12,7 +13,7 @@ const BUNDLE: &str = concat!(
 );
 
 fn cli(args: &[&str]) -> (Value, i32) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::null())
         .output()

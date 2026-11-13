@@ -2,13 +2,14 @@
 //! The real HOME is never read or written: every case passes `--home <tempdir>`.
 #![cfg(unix)]
 
+mod common;
 use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 const NOW: &str = "2026-11-13T19:00:00Z";
 const LATER: &str = "2026-11-13T19:30:00Z";
 

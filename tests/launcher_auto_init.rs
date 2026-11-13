@@ -46,7 +46,7 @@ fn marker(f: &Fixture) -> PathBuf {
 }
 
 fn command(f: &Fixture, dir: &Path, path_var: &str, args: &[&str]) -> Command {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
         .current_dir(dir)
         .env("PATH", path_var)

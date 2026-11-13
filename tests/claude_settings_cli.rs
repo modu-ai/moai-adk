@@ -14,7 +14,7 @@ use tempfile::TempDir;
 /// Runs one operation with `home` as HOME and CLAUDE_CONFIG_DIR unset; returns the
 /// exit code and the envelope.
 fn run(args: &[&str], home: &Path, stdin: &Value) -> (Option<i32>, Value) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .env("HOME", home)
         .env_remove("CLAUDE_CONFIG_DIR")
@@ -180,7 +180,7 @@ fn home_and_claude_config_dir_are_refused() {
 
     let project = TempDir::new().unwrap();
     fs::create_dir_all(project.path().join(".claude")).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(["claude-settings-plan", project.path().to_str().unwrap()])
         .env("HOME", home.path())
         .env("CLAUDE_CONFIG_DIR", project.path().join(".claude"))
@@ -247,7 +247,7 @@ fn plan_reports_whether_worktree_sessions_read_the_settings_file() {
     // The caller's GIT_DIR does not redirect the check to another repository.
     let other = TempDir::new().unwrap();
     common::git::git_ok(other.path(), &["init", "-q"]);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["claude-settings-plan", p.to_str().unwrap()])
         .env("HOME", home.path())
         .env_remove("CLAUDE_CONFIG_DIR")

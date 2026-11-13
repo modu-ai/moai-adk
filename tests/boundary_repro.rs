@@ -3,6 +3,7 @@
 //! behaviour the fix must establish and fails on the current code; run them with
 //! `cargo test --test boundary_repro -- --ignored`. A fix removes the `ignore` of the
 //! fixture it repairs, so the suite pins the repaired behaviour from then on.
+mod common;
 use moai_cli::audit::{audit, observe, AuditInput, Candidate, Finding, Opinion, Reviewer};
 use moai_cli::plan::{admit, AdmissionRequest, Approval, Decision, Task};
 use moai_cli::run::{
@@ -197,7 +198,7 @@ fn f1a_cost_report_does_not_trust_a_declared_runner_receipt() {
         Summary::Passed,
     ))
     .unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("cost-report")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

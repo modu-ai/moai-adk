@@ -2,6 +2,7 @@
 //! in a child process whose `HOME` and `TMPDIR` point at temporary directories, so no test
 //! here ever names or reads the user's own home.
 
+mod common;
 use moai_cli::migrate::{hash, SYNTHETIC_MARKER, SYNTHETIC_MARKER_TEXT};
 use serde_json::{json, Value};
 use std::{
@@ -40,7 +41,7 @@ impl Env {
         self.run_with(args, stdin, self.user.path(), self.tmp.path())
     }
     fn run_with(&self, args: &[&str], stdin: &Value, home: &Path, tmp: &Path) -> (i32, Value) {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let mut child = Command::new(crate::common::MOAI_BIN)
             .args(args)
             .env("HOME", home)
             .env("TMPDIR", tmp)

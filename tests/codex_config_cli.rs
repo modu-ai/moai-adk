@@ -27,7 +27,7 @@ fn run_vars(
     apply: Option<(&str, &str)>,
     input: &[u8],
 ) -> (i32, Value) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.clean_env();
     for (name, path) in homes {
         cmd.env(name, path);

@@ -91,7 +91,7 @@ fn seed(root: &Path, other: Value) {
 
 /// Runs `scope-check --task KEY_A`; returns the result and the stub's call count.
 fn scope_check(root: &Path) -> (Value, usize) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(["scope-check"])
         .arg(root)
         .args(["--task", KEY_A])
@@ -259,7 +259,7 @@ fn a_github_claim_on_another_host_is_uncertain_without_a_lookup() {
 fn no_handed_off_overlap_needs_no_forge_setup() {
     let (_t, root) = repo();
     seed(&root, record(KEY_B, 2, "running", vec![]));
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(["scope-check"])
         .arg(&root)
         .args(["--task", KEY_A])

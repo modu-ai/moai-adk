@@ -182,7 +182,7 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
         assert_eq!(words.next(), Some("moai-cli"));
         let args: Vec<&str> = words.collect();
         let run = |tool_command: &str| {
-            let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            let mut child = Command::new(crate::common::MOAI_BIN)
                 .args(&args)
                 .current_dir(&root)
                 .env_remove("MOAI_FORGE_GH_BIN")
@@ -456,7 +456,7 @@ fn receipt_refuses_symlinked_log() {
 }
 
 fn cli(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, Value) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
         .env("HOME", home)
@@ -549,7 +549,7 @@ fn cli_round_trip_in_isolated_home() {
 }
 
 fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
         .env("HOME", home)

@@ -4,6 +4,7 @@
 //! the previous generation and marks partial) and AC-2 (mixed generations 0 — the
 //! pointer is the only resolution path, atomic swap, orphan temp dirs ignored) are all
 //! exercised in isolation. No watcher: every case is command-driven.
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -73,7 +74,7 @@ fn setup_project() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn cli_command(project: &Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut command = Command::new(crate::common::MOAI_BIN);
     command
         .current_dir(project)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")

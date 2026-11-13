@@ -8,6 +8,7 @@
 //! (iii) a copy this tool made earlier still plans `replace` (boundary).
 //! Every fixture runs in temporary directories; the real HOME is never touched.
 
+mod common;
 use moai_cli::project_skills::{
     project_skill_apply, project_skill_plan, ProjectSkillRequest, PROJECT_SKILL_SCHEMA_VERSION,
 };
@@ -60,7 +61,7 @@ fn update_plan_reason_names_the_go_era_skill_and_the_user_options() {
     for host_dir in [".claude/skills", ".agents/skills"] {
         write_go_skill(&home.join(host_dir).join("moai"));
     }
-    let out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = std::process::Command::new(crate::common::MOAI_BIN)
         .args([
             "update-plan",
             home.to_str().unwrap(),

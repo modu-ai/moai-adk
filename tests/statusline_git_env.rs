@@ -39,7 +39,7 @@ fn render(home: &Path, project: &Path, extra: &[(&str, &Path)], budget_ms: u64) 
         r#"{{"model":{{"display_name":"Opus"}},"workspace":{{"current_dir":"{0}","project_dir":"{0}"}}}}"#,
         project.display()
     );
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.args(["statusline", "--render-budget-ms", &budget_ms.to_string()])
         .current_dir(project)
         .clean_env()

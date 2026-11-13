@@ -13,7 +13,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 /// The HTTP envelope `parse_gh_output` expects: a status line, an empty header block,
 /// then the JSON body. Status 200 keeps the forge client happy on every read.

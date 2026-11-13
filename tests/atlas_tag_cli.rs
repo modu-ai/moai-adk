@@ -3,6 +3,7 @@
 //! 15-file `@MX:` baseline fixture and asserts the files are byte-identical after
 //! the scan (read-only guarantee, REQ-C2-02) with every node read (REQ-C2-01).
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -11,7 +12,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn scan(path: &Path) -> Value {
     let out = Command::new(EXE)

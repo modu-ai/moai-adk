@@ -51,7 +51,7 @@ fn fixture() -> Fx {
 }
 
 fn run(f: &Fx, args: &[&str]) -> Value {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(&f.root)
         .env("HOME", f.root.join("home"))

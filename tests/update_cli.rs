@@ -5,6 +5,7 @@
 
 #![cfg(unix)]
 
+mod common;
 use moai_cli::tree_digest;
 use serde_json::{json, Value};
 use std::{
@@ -15,7 +16,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn write_pkg(dir: &Path, files: &[(&str, &str)]) {
     for (rel, body) in files {

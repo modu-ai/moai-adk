@@ -842,7 +842,7 @@ fn run_claim(
     gh: &Path,
     stub_body: &str,
 ) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(repo)
         .env("HOME", home)

@@ -316,7 +316,7 @@ fn claim_handoff_with_failing_ps_stays_pending() {
     let key = record.task_key.clone();
     seed_journal(&repo, "acquire", &record);
     let (bin, _ps) = fake_ps("echo 'ps: permission denied' >&2\nexit 2");
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args([
             "claim-handoff",
             ".",
@@ -1393,7 +1393,7 @@ fn effect_confirm_marks_intended_only() {
 // ---- CLI level: real git, dirty worktree preservation (REQ-06B-04, AC-06B-4) ----
 
 fn cli(repo: &Path, args: &[&str], stdin: Option<&str>) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(repo)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")

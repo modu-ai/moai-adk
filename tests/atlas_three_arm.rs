@@ -1,4 +1,5 @@
 //! C10b executes all 42 scored tasks through three cumulative paths.
+mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
@@ -12,7 +13,7 @@ fn frozen_corpus_three_arm_results_are_scored_and_each_stage_runs() {
         .arg("import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('atlas_three_arm',run_name='__main__')")
         .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("tools"))
         .arg("--binary")
-        .arg(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg(crate::common::MOAI_BIN)
         .arg("--output-dir")
         .arg(out.path())
         .output()
