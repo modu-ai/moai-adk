@@ -644,12 +644,13 @@ fn with_stderr_away_from_the_terminal_update_does_not_ask() {
 #[test]
 fn update_links_the_moai_name_in_its_version_folder() {
     use std::os::unix::fs::MetadataExt as _;
-    let f = fx();
-    let a = install_version(&f.home, "a", &v1());
+    // The user layer is already applied: the missing link alone is something to apply.
+    let (f, a) = applied_once();
     let alias = a.with_file_name("moai");
     fs::remove_file(&alias).unwrap();
     let p = preview(&a, &f.home);
     assert_eq!(p["bin_names"]["state"], json!("create"), "{p}");
+    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
     assert!(!alias.exists(), "the preview links nothing");
     let r = confirm(&a, &f.home, &digest(&p));
     assert_eq!(r["bin_names_result"]["state"], json!("applied"), "{r}");
