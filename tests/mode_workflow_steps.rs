@@ -162,6 +162,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "queue-free",
             "queue-next",
             "scope-check",
+            "session-register",
             "usage-limit"
         ],
         "the op list the workflows name"
@@ -517,6 +518,24 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
             );
         }
     }
+}
+
+/// #2592 S-C (leader decision 6856973444): the session-id step registers the lane name before
+/// the first claim, renews it with the same instance at every wake, stops the round on a
+/// conflict and frees the name before the session is cleared.
+#[test]
+fn session_id_registers_renews_and_stops_on_a_held_name() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "session-id",
+        &[
+            "register the id with `moai-cli session-register` before the first claim",
+            "pass it with `--instance` at every wake to renew the lease",
+            "A `conflict` answer means another live session holds the name — stop the round",
+            "never pick another name yourself",
+            "free the name with `--release` and the same `--instance`",
+        ],
+    );
 }
 
 /// #2581: project hooks are read from the session's working folder, so a lane session in a
