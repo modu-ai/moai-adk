@@ -234,6 +234,25 @@ fn run(project: &Path, req: LaneStatusRequest, exchanges: Vec<Exchange>) -> Valu
     out
 }
 
+/// The summary line recomputed from the arrays of one result (#2678).
+fn summary_of(out: &Value) -> String {
+    let named = out["idle"].as_array().unwrap();
+    let idle = named.iter().filter(|l| l["idle"] == json!(true)).count();
+    let rows = out["rows"].as_array().unwrap().len();
+    let ready = out["ready"].as_array().unwrap().len();
+    let counts = format!(
+        "{} lane(s) named, {idle} idle; {ready} ready Issue(s)",
+        named.len()
+    );
+    if rows == 0 {
+        format!(
+            "0 rows: no claim, pull request or worktree was found for the named Issues; {counts}"
+        )
+    } else {
+        format!("{rows} row(s); {counts}")
+    }
+}
+
 fn row<'a>(out: &'a Value, session: &str, issue: i64) -> &'a Value {
     out["rows"]
         .as_array()
@@ -260,6 +279,13 @@ fn lane_status_covers_every_phase_with_its_evidence() {
     let root = fs::canonicalize(tmp.path()).unwrap();
     let p = project(&root);
     let out = run(&p, request(lanes(), decisions()), remote(false));
+    // #2678: every count is said in words, and the idle count is the lanes judged idle, not
+    // the lanes named (audit B1/B2 6850252311): 13 lanes named, 10 of them `idle: true`.
+    assert_eq!(out["summary"], json!(summary_of(&out)));
+    assert_eq!(
+        out["summary"],
+        json!("8 row(s); 13 lane(s) named, 10 idle; 1 ready Issue(s)")
+    );
 
     let r = row(&out, "agent-1", 11);
     assert_eq!(r["phase"], json!("claimed"));
@@ -375,6 +401,44 @@ fn idle_causes_are_classified_from_records_only() {
     let out2 = run(&p, req, ex);
     assert_eq!(idle(&out2, "agent-10")["cause"], json!("no_ready_card"));
     assert_eq!(out2["assignment_drafts"], json!([]));
+    // #2678 audit B2' (6851884321): two ready Issues, so the ready count is not 0 or 1 —
+    // #20 is a second unclaimed Issue with no blocker, read after #19 and before blocker #99.
+    let mut req3 = request(lanes(), decisions());
+    req3.issues.push(20);
+    let mut ex3 = remote(false);
+    let at = ex3
+        .iter()
+        .position(|e| e.request.url.ends_with("/issues/99"))
+        .unwrap();
+    ex3.insert(
+        at,
+        get(&format!("{API}/issues/20/comments?per_page=100"), json!([])),
+    );
+    ex3.insert(
+        at,
+        get(
+            &format!("{API}/issues/20"),
+            issue(20, "상위: #10\nBlocked-By: 없음"),
+        ),
+    );
+    let out3 = run(&p, req3, ex3);
+    assert_eq!(out3["ready"], json!([16, 20]), "{out3}");
+    assert_eq!(out3["summary"], json!(summary_of(&out3)), "{out3}");
+    assert_eq!(
+        out3["summary"],
+        json!("8 row(s); 13 lane(s) named, 10 idle; 2 ready Issue(s)")
+    );
+
+    // #2678: the same counts with no ready Issue left.
+    assert_eq!(out2["summary"], json!(summary_of(&out2)));
+    assert!(
+        out2["summary"]
+            .as_str()
+            .unwrap()
+            .ends_with("; 0 ready Issue(s)"),
+        "{}",
+        out2["summary"]
+    );
 
     // Every idle cause variant appears across the two runs.
     let mut seen: Vec<Value> = Vec::new();

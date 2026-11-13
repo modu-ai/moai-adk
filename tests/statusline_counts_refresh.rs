@@ -6,6 +6,7 @@
 //! logs each call, so no case reaches the network.
 
 mod common;
+use common::CleanEnv;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -89,7 +90,7 @@ fn render(f: &Fixture) -> (String, Duration) {
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args(["statusline", "--render-budget-ms", "3600000"])
         .current_dir(&f.repo)
-        .env_clear()
+        .clean_env()
         .env("PATH", &f.bin)
         .env("HOME", &f.home)
         .env("NO_COLOR", "1")
