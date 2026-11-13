@@ -120,9 +120,9 @@ fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
         .contains("name must be moai-impl"));
 }
 
-/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634), with the
-/// adapters of `moai-research` left to #2636; every entry is a file of the package and every
-/// rendered agent opens with the generated line that names exactly those files.
+/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) —
+/// `moai-research` reads the two adapters #2636 added; every entry is a file of the package and
+/// every rendered agent opens with the generated line that names exactly those files.
 #[test]
 fn reads_lists_match_the_design_and_render_on_every_host() {
     let defs = package_agents(&package()).unwrap();
@@ -139,7 +139,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
         reads("moai-plan"),
         ["internal/decide", "internal/interview"]
     );
-    assert_eq!(reads("moai-research"), Vec::<&str>::new());
+    assert_eq!(reads("moai-research"), ["adapters/aside", "adapters/orca"]);
     assert_eq!(
         reads("moai-impl"),
         ["internal/test-design", "internal/git-safety"]

@@ -507,3 +507,393 @@ fn local_scope_in_a_linked_worktree_names_the_main_checkout() {
     let (code, v) = run_with("claude-settings-plan", &wt, &[], home.path(), &sl());
     assert_eq!(code, Some(0), "{v}");
 }
+
+/// #2383 range 2 (leader decision 6846938102): a `.claude/settings.json` with a user-set
+/// `statusLine` MoAI never owned.
+fn user_status_line(p: &Path) -> Vec<u8> {
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    let bytes = b"{\n  \"model\": \"user-choice\",\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"orca statusline\"\n  }\n}\n".to_vec();
+    fs::write(p.join(".claude/settings.json"), &bytes).unwrap();
+    bytes
+}
+
+fn backups(p: &Path) -> Vec<std::path::PathBuf> {
+    match fs::read_dir(p.join(".moai-cli/settings-backups")) {
+        Err(_) => vec![],
+        Ok(rd) => {
+            // Backup folders only; the root's `.gitignore` (audit 6850258090 B1) is not one.
+            let mut v: Vec<_> = rd
+                .map(|e| e.unwrap().path())
+                .filter(|p| p.is_dir())
+                .collect();
+            v.sort();
+            v
+        }
+    }
+}
+
+/// #2383: a conflict on a key the caller may set previews a confirmed replacement — the key,
+/// its current and new value, the backup folder and a `confirm_token` — and still writes
+/// nothing; the plain apply still refuses.
+#[test]
+fn a_conflicting_key_previews_a_confirmed_replacement_and_writes_nothing() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let before = user_status_line(p);
+    let r = plan(p, home.path(), &sl());
+    assert_eq!(r["action"], json!("conflict"), "{r}");
+    assert_eq!(r["conflicts"], json!(["statusLine"]));
+    let c = &r["confirm_replace"];
+    assert_eq!(c["keys"], json!(["statusLine"]), "{r}");
+    assert_eq!(
+        c["current"]["statusLine"],
+        json!({"type": "command", "command": "orca statusline"})
+    );
+    assert_eq!(c["replace_with"]["statusLine"], sl()["statusLine"]);
+    assert_eq!(c["backup_root"], json!(".moai-cli/settings-backups"));
+    let token = c["confirm_token"].as_str().unwrap();
+    assert!(token.starts_with("settings-replace:project:"), "{token}");
+    assert_eq!(
+        token.len(),
+        "settings-replace:project:".len() + 16,
+        "{token}"
+    );
+    assert_eq!(r["writes"], json!(false));
+
+    let (code, v) = apply(p, home.path(), &sl(), r["plan_digest"].as_str().unwrap());
+    assert_eq!(code, Some(1), "{v}");
+    assert!(v["error"]["message"].as_str().unwrap().contains("conflict"));
+    assert_eq!(fs::read(p.join(".claude/settings.json")).unwrap(), before);
+    assert!(backups(p).is_empty());
+    assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
+}
+
+fn apply_replace(p: &Path, home: &Path, digest: &str, token: &str) -> (Option<i32>, Value) {
+    run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            "test-2383",
+            "--confirm-replace",
+            token,
+        ],
+        home,
+        &sl(),
+    )
+}
+
+/// #2383: with the token, the original file is kept byte for byte in a new backup folder,
+/// only the conflicting key is replaced (other user keys stay), MoAI owns it from now on,
+/// the answer names the backup and the command that puts it back, and a re-plan is a no-op.
+/// Putting the backup back restores the user's file and the plan offers the replacement again.
+#[test]
+fn the_confirmed_replacement_keeps_the_original_then_replaces_only_that_key() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let before = user_status_line(p);
+    let r = plan(p, home.path(), &sl());
+    let token = r["confirm_replace"]["confirm_token"].as_str().unwrap();
+    let (code, v) = apply_replace(p, home.path(), r["plan_digest"].as_str().unwrap(), token);
+    assert_eq!(code, Some(0), "{v}");
+    let out = &v["result"];
+    assert_eq!(out["state"], json!("replaced"), "{out}");
+    assert_eq!(out["replaced_keys"], json!(["statusLine"]));
+
+    let dirs = backups(p);
+    assert_eq!(dirs.len(), 1, "{dirs:?}");
+    let name = dirs[0].file_name().unwrap().to_str().unwrap().to_string();
+    assert!(name.ends_with("-project"), "{name}");
+    assert_eq!(fs::read(dirs[0].join("settings.json")).unwrap(), before);
+    let rel = format!(".moai-cli/settings-backups/{name}");
+    assert_eq!(out["backup_dir"], json!(rel));
+    let revert = out["revert"].as_str().unwrap();
+    assert!(
+        revert.contains(&format!("{rel}/settings.json"))
+            && revert.contains(".claude/settings.json"),
+        "{revert}"
+    );
+
+    let settings: Value =
+        serde_json::from_slice(&fs::read(p.join(".claude/settings.json")).unwrap()).unwrap();
+    assert_eq!(
+        settings["model"],
+        json!("user-choice"),
+        "other user key kept"
+    );
+    assert_eq!(settings["statusLine"], sl()["statusLine"]);
+    let receipt: Value = serde_json::from_slice(
+        &fs::read(p.join(".moai-cli/manifests/claude-settings.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        receipt["owned"]["statusLine"],
+        sl()["statusLine"],
+        "{receipt}"
+    );
+    assert_eq!(plan(p, home.path(), &sl())["action"], json!("unchanged"));
+
+    // The revert the answer names: copy the backup back. The user's value then counts as a
+    // change made after MoAI's (the three-way rule, user drift): the same request leaves it as
+    // it is and writes nothing.
+    fs::copy(
+        dirs[0].join("settings.json"),
+        p.join(".claude/settings.json"),
+    )
+    .unwrap();
+    assert_eq!(fs::read(p.join(".claude/settings.json")).unwrap(), before);
+    let again = plan(p, home.path(), &sl());
+    assert_eq!(again["action"], json!("unchanged"), "{again}");
+    assert!(again.get("confirm_replace").is_none(), "{again}");
+    let (code, v) = apply(
+        p,
+        home.path(),
+        &sl(),
+        again["plan_digest"].as_str().unwrap(),
+    );
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["result"]["state"], json!("unchanged"));
+    assert_eq!(fs::read(p.join(".claude/settings.json")).unwrap(), before);
+}
+
+/// #2383: a request with a conflicting key and a new key replaces the one and adds the other,
+/// exactly as a plan without the conflict would; the file and the receipt agree on both.
+#[test]
+fn a_confirmed_replacement_also_applies_the_requests_other_keys() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    user_status_line(p);
+    let both = desired();
+    let r = plan(p, home.path(), &both);
+    assert_eq!(r["confirm_replace"]["keys"], json!(["statusLine"]), "{r}");
+    let token = r["confirm_replace"]["confirm_token"].as_str().unwrap();
+    let (code, v) = run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--plan-digest",
+            r["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "test-2383",
+            "--confirm-replace",
+            token,
+        ],
+        home.path(),
+        &both,
+    );
+    assert_eq!(code, Some(0), "{v}");
+    let settings: Value =
+        serde_json::from_slice(&fs::read(p.join(".claude/settings.json")).unwrap()).unwrap();
+    assert_eq!(settings["outputStyle"], both["outputStyle"], "{settings}");
+    assert_eq!(settings["statusLine"], both["statusLine"]);
+    assert_eq!(settings["model"], json!("user-choice"));
+    assert_eq!(
+        r["confirm_replace"]["planned_sha256"],
+        v["result"]["settings_sha256_after"]
+    );
+    let receipt: Value = serde_json::from_slice(
+        &fs::read(p.join(".moai-cli/manifests/claude-settings.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(receipt["owned"]["outputStyle"], both["outputStyle"]);
+    assert_eq!(receipt["owned"]["statusLine"], both["statusLine"]);
+    assert_eq!(plan(p, home.path(), &both)["action"], json!("unchanged"));
+}
+
+/// #2383: a token the plan did not offer, or one from before the file changed, refuses the
+/// whole apply before any write — no backup folder, the file and receipt as they were.
+#[test]
+fn a_wrong_or_stale_token_refuses_before_any_write() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let before = user_status_line(p);
+    let r = plan(p, home.path(), &sl());
+    let digest = r["plan_digest"].as_str().unwrap();
+    let token = r["confirm_replace"]["confirm_token"].as_str().unwrap();
+
+    for bad in ["settings-replace:project:0000000000000000", "x", ""] {
+        let (code, v) = apply_replace(p, home.path(), digest, bad);
+        assert_eq!(code, Some(1), "{bad}: {v}");
+        assert!(
+            v["error"]["message"].as_str().unwrap().contains("confirm"),
+            "{bad}: {v}"
+        );
+    }
+    assert_eq!(fs::read(p.join(".claude/settings.json")).unwrap(), before);
+    assert!(backups(p).is_empty());
+
+    // The user edits the key after the preview: the old digest and token no longer apply.
+    let edited = String::from_utf8(before.clone())
+        .unwrap()
+        .replace("orca statusline", "orca statusline --wide");
+    fs::write(p.join(".claude/settings.json"), &edited).unwrap();
+    let (code, v) = apply_replace(p, home.path(), digest, token);
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(
+        fs::read_to_string(p.join(".claude/settings.json")).unwrap(),
+        edited
+    );
+    assert!(backups(p).is_empty());
+    assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
+
+    // A fresh preview of the edited file with the old confirmation: the user confirmed
+    // replacing a different current value, so the old token is refused even with the new
+    // digest, and the new preview offers a new token.
+    let fresh_plan = plan(p, home.path(), &sl());
+    let new_token = fresh_plan["confirm_replace"]["confirm_token"]
+        .as_str()
+        .unwrap();
+    assert_ne!(new_token, token);
+    let (code, v) = apply_replace(
+        p,
+        home.path(),
+        fresh_plan["plan_digest"].as_str().unwrap(),
+        token,
+    );
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(
+        fs::read_to_string(p.join(".claude/settings.json")).unwrap(),
+        edited
+    );
+    assert!(backups(p).is_empty());
+
+    // A token on a plan without any conflict is refused too.
+    let fresh = TempDir::new().unwrap();
+    let f = plan(fresh.path(), home.path(), &sl());
+    assert_eq!(f["action"], json!("create"));
+    assert!(f.get("confirm_replace").is_none(), "{f}");
+    let (code, v) = apply_replace(
+        fresh.path(),
+        home.path(),
+        f["plan_digest"].as_str().unwrap(),
+        token,
+    );
+    assert_eq!(code, Some(1), "{v}");
+    assert!(!fresh.path().join(".claude").exists());
+}
+
+/// #2383: the local scope replaces in `.claude/settings.local.json`, keeps that file in its
+/// own backup folder, and its token names the scope.
+#[test]
+fn the_local_scope_replaces_its_own_file() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    let before =
+        b"{\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"mine\"\n  }\n}\n";
+    fs::write(p.join(".claude/settings.local.json"), before).unwrap();
+    let (code, r) = run_with(
+        "claude-settings-plan",
+        p,
+        &["--scope", "local"],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(0), "{r}");
+    let r = &r["result"];
+    let token = r["confirm_replace"]["confirm_token"].as_str().unwrap();
+    assert!(token.starts_with("settings-replace:local:"), "{token}");
+    let (code, v) = run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--plan-digest",
+            r["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "test-2383",
+            "--scope",
+            "local",
+            "--confirm-replace",
+            token,
+        ],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(0), "{v}");
+    let dirs = backups(p);
+    assert_eq!(dirs.len(), 1);
+    assert!(dirs[0].to_str().unwrap().ends_with("-local"));
+    assert_eq!(
+        fs::read(dirs[0].join("settings.local.json")).unwrap(),
+        before
+    );
+    assert!(!p.join(".claude/settings.json").exists());
+    let local: Value =
+        serde_json::from_slice(&fs::read(p.join(".claude/settings.local.json")).unwrap()).unwrap();
+    assert_eq!(local["statusLine"], sl()["statusLine"]);
+}
+
+/// #2383 audit 6850258090 B1: in a git repository whose `.gitignore` keeps the owner-only
+/// local file out of git, the kept original keeps the file's mode (0600), its folder is
+/// owner-only (0700), and nothing under the backup folder shows up to git — the copy never
+/// becomes a world-readable file git could add. The project scope's backups stay out of git too.
+#[cfg(unix)]
+#[test]
+fn a_kept_original_keeps_its_mode_and_stays_out_of_git() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    common::git::git_ok(p, &["init", "-q"]);
+    fs::write(p.join(".gitignore"), ".claude/settings.local.json\n").unwrap();
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    let local = p.join(".claude/settings.local.json");
+    fs::write(
+        &local,
+        "{\n  \"env\": {\"API_TOKEN\": \"FAKE-PLACEHOLDER\"},\n  \"statusLine\": {\"type\": \"command\", \"command\": \"mine\"}\n}\n",
+    )
+    .unwrap();
+    fs::set_permissions(&local, fs::Permissions::from_mode(0o600)).unwrap();
+    user_status_line(p);
+
+    for scope in ["local", "project"] {
+        let (code, r) = run_with(
+            "claude-settings-plan",
+            p,
+            &["--scope", scope],
+            home.path(),
+            &sl(),
+        );
+        assert_eq!(code, Some(0), "{r}");
+        let r = &r["result"];
+        let (code, v) = run_with(
+            "claude-settings-apply",
+            p,
+            &[
+                "--plan-digest",
+                r["plan_digest"].as_str().unwrap(),
+                "--permission-reference",
+                "test-2383",
+                "--scope",
+                scope,
+                "--confirm-replace",
+                r["confirm_replace"]["confirm_token"].as_str().unwrap(),
+            ],
+            home.path(),
+            &sl(),
+        );
+        assert_eq!(code, Some(0), "{scope}: {v}");
+    }
+    let dirs = backups(p);
+    let dirs: Vec<_> = dirs.iter().filter(|d| d.is_dir()).collect();
+    assert_eq!(dirs.len(), 2, "{dirs:?}");
+    for d in &dirs {
+        let mode = fs::metadata(d).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700, "{} folder mode {mode:o}", d.display());
+    }
+    let local_dir = dirs
+        .iter()
+        .find(|d| d.to_str().unwrap().ends_with("-local"))
+        .unwrap();
+    let kept = local_dir.join("settings.local.json");
+    let mode = fs::metadata(&kept).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600, "kept local original mode {mode:o}");
+
+    let listed = common::git::git(p, &["status", "--porcelain", "--untracked-files=all"]);
+    assert!(
+        !listed.contains("settings-backups"),
+        "backups visible to git:\n{listed}"
+    );
+    assert!(!listed.contains("settings.local.json"), "{listed}");
+}
