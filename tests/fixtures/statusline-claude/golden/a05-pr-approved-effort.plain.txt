@@ -1,2 +1,2 @@
 🤖 Opus | 🧠 xhigh | 🔅 v2.1.300 | 🗿 v2026.11.0-rc.1 | ⏳ 1h 30m
-🏷️ release prep  🔋 CTX: ████░░░░░░ 48%
+🔋 CTX: ████░░░░░░ 48% | 🏷️ release prep

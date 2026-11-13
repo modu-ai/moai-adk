@@ -81,7 +81,7 @@ pub fn store(project: &Path) -> Result<PathBuf> {
         .as_str()
         .ok_or("the goal file requires a git repository")?;
     Ok(Path::new(common)
-        .join(".moai-cli")
+        .join(crate::CLONE_STATE_DIR)
         .join("goal")
         .join("goal.json"))
 }
