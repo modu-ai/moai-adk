@@ -195,7 +195,7 @@ fn listings_follow_the_next_link() {
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues?state=open&per_page=100")),
             response: HttpResponse::new(200)
-                .with_header("link", &format!("<{next}>; rel=\"next\""))
+                .with_header("link", format!("<{next}>; rel=\"next\""))
                 .with_body(json!([{"number": 1, "body": "other"}])),
         },
         get(next, json!([tracked(40, T1)])),
