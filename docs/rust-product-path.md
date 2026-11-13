@@ -802,12 +802,19 @@ The three lines follow the user instruction of 2026-11-13 (#2756), which replace
 name-last order of #2697. Segments on a line are joined by ` | `, and a segment with no
 value is left out together with its separator.
 
-1. Running environment: `🤖` model, `🧠` effort/thinking, `♻️` cache hit, `🔅` Claude
-   Code version and `🗿` MoAI version. The session time (`⏳`) and the output style are
-   not shown; their `session_time` and `output_style` options are still accepted.
+1. Running environment: `🤖` model, `🧠` effort/thinking, `♻️` cache hit with the prompt
+   cache timer (`⏱️ Nm` whole minutes until `prompt_cache.expires_at`, `🧊` once
+   `prompt_cache.warm` is false or the time has passed; user choice 2026-11-13, #2756
+   AC-8), `🔅` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
+   output style are not shown; their `session_time` and `output_style` options are still
+   accepted.
 2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, `🅱️` branch with
-   its behind and dirty counts, then the `💾` file-change counts while `git_status` is
-   on. Ahead arrows are hidden. Missing forge counts are omitted.
+   its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
+   `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
+   branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
+   the URL is plain `http(s)`), then the `💾` file-change counts while `git_status` is
+   on. Ahead arrows are hidden. Missing forge counts are omitted. The `worktree` and `pr`
+   options turn their segments off.
 3. Lane and usage: the optional `🏷️` session name first, then the `CTX`, available `5H`
    and available `Week` bars (with no name the line starts at `CTX`; with no bars the
    name stands alone). Missing rate windows are hidden; reset times are not printed.

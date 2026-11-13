@@ -109,12 +109,12 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "0380ee33efbd0efebb754b73d1312842e360965653537c82937d411eadc4a752",
+      "sha256": "d7753fbfe396705897b30b13cdd9106079f04a350b83d2049fb304eb7ac210e8",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
       }
     },
     "workflows/audit.md": {
@@ -127,7 +127,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "0fbfc2423bc5f57aab105dddd803a0fe1bb51a689d72cbb3d465268f3bd3095f",
+      "sha256": "7d5ab404a47a8a24c7ce1cf316c631e8d76d008011f8ce193264d4660e012a47",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "2a9d997ef07f1a0f70576089cc4bd4379cd2e4aca029362fa2cac84325b33403",
+      "sha256": "3ce8554c9956f527552d3583e95636b3353b8cd95b01b97eac6ed01df3806f2f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -208,12 +208,12 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "45ebc3f2b4801287b604ee2618a688b638dc53f4b2d13ffd5bd01329f3df028c",
+      "sha256": "0e2cbfe5913ca7215c43cba57bedf65f386b6814d133256942f4e0e251cd126b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
       }
     },
     "references/home/routing.md": {

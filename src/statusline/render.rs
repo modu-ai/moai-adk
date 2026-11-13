@@ -4,7 +4,7 @@
 
 use super::color::{hex_rgb, Profile};
 use super::segments::{self, HandoffStage};
-use super::state::{DisplayConfig, Status};
+use super::state::{CacheTimer, DisplayConfig, Status};
 use std::collections::BTreeMap;
 
 const BAR_WIDTH: i64 = 10;
@@ -134,6 +134,15 @@ impl Renderer {
         }
     }
 
+    /// #2756 AC-7: an OSC 8 hyperlink around `text`. Like color it is a terminal escape, so
+    /// the plain output (no color profile) and an empty URL keep the text alone.
+    fn link(&self, url: &str, text: &str) -> String {
+        if self.profile.is_none() || url.is_empty() {
+            return text.to_string();
+        }
+        format!("\x1b]8;;{url}\x1b\\{text}\x1b]8;;\x1b\\")
+    }
+
     fn info_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
         let metrics = !s.model.is_empty();
@@ -152,11 +161,19 @@ impl Renderer {
             }
         }
         if self.enabled("cache_hit") {
-            if let Some(pct) = s
+            let hit = s
                 .cache
                 .and_then(|(read, creation)| segments::cache_hit_percent(read, creation))
-            {
-                segs.push(self.paint(self.theme.cache, &format!("♻️ {pct}%")));
+                .map(|pct| format!(" {pct}%"));
+            // #2756 AC-8 (user choice 2026-11-13): how long the prompt cache stays warm, next
+            // to the hit ratio; `🧊` once it is cold.
+            let timer = s.cache_timer.map(|t| match t {
+                CacheTimer::Warm(minutes) => format!(" ⏱️ {minutes}m"),
+                CacheTimer::Cold => " 🧊".to_string(),
+            });
+            if hit.is_some() || timer.is_some() {
+                let text = format!("♻️{}{}", hit.unwrap_or_default(), timer.unwrap_or_default());
+                segs.push(self.paint(self.theme.cache, &text));
             }
         }
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
@@ -262,6 +279,22 @@ impl Renderer {
         if self.enabled("git_branch") {
             if let Some(rb) = self.repo_branch(s) {
                 segs.push(rb);
+            }
+        }
+        // #2756 AC-9 (user choice 2026-11-13): which worktree the session is in; absent in
+        // the main checkout.
+        if self.enabled("worktree") && !s.worktree.is_empty() {
+            segs.push(self.paint(self.theme.branch, &format!("🌳 {}", s.worktree)));
+        }
+        // #2756 AC-7 (user choice 2026-11-13): this branch's pull request, linked to its URL.
+        if self.enabled("pr") {
+            if let Some(pr) = &s.pr {
+                let mut text = format!("🔗 #{}", pr.number);
+                if !pr.review_state.is_empty() {
+                    text.push(' ');
+                    text.push_str(&pr.review_state);
+                }
+                segs.push(self.link(&pr.url, &self.paint(self.theme.prs, &text)));
             }
         }
         if self.enabled("git_status") {
@@ -585,9 +618,84 @@ mod tests {
             ..Default::default()
         };
         let output = Renderer::new(&config, None).render(&status);
-        for hidden in ["📁", "💌", "👤", "📋", "SENTINEL", "987", "approved"] {
+        for hidden in ["📁", "💌", "👤", "📋", "SENTINEL"] {
             assert!(!output.contains(hidden), "{output:?}");
         }
+        // #2756 AC-7: the pull request now has its own segment (not the Go `💌` one).
+        assert!(output.contains("🔗 #987 approved"), "{output:?}");
+    }
+
+    /// #2756 AC-7–AC-9: the cache timer sits in the `♻️` segment, the worktree and the pull
+    /// request on the repository line, each left out with its separator when absent.
+    #[test]
+    fn cache_timer_worktree_and_pr_segments() {
+        let mut status = full_status();
+        status.cache_timer = Some(CacheTimer::Warm(4));
+        status.worktree = "wt".into();
+        status.pr = Some(state::PrInfo {
+            number: 42,
+            url: "https://github.com/owner/repo/pull/42".into(),
+            review_state: "pending".into(),
+        });
+        let out = plain(&status, &[]);
+        let lines: Vec<_> = out.lines().collect();
+        assert_eq!(
+            lines[0],
+            "🤖 Opus | 🧠 high·t | ♻️ 75% ⏱️ 4m | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+        );
+        assert_eq!(
+            lines[1],
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🌳 wt | 🔗 #42 pending | 💾 +1 M1 ?1"
+        );
+        assert!(
+            !out.contains('\x1b'),
+            "plain output carries no link escape: {out:?}"
+        );
+        status.cache_timer = Some(CacheTimer::Cold);
+        assert!(plain(&status, &[]).starts_with("🤖 Opus | 🧠 high·t | ♻️ 75% 🧊 | "));
+        status.cache = None;
+        assert!(
+            plain(&status, &[]).contains("| ♻️ 🧊 |"),
+            "a timer alone keeps the segment"
+        );
+        status.cache_timer = None;
+        assert!(
+            !plain(&status, &[]).contains('♻'),
+            "neither value: no segment"
+        );
+        status.pr.as_mut().unwrap().review_state.clear();
+        assert!(plain(&status, &[]).contains("| 🔗 #42 | "));
+        assert!(!plain(&status, &["pr"]).contains('🔗'));
+        assert!(!plain(&status, &["worktree"]).contains('🌳'));
+        status.pr = None;
+        status.worktree.clear();
+        assert!(
+            plain(&status, &[]).contains("🅱️ main ↓2 +3 | 💾 +1 M1 ?1"),
+            "no empty `| |`"
+        );
+    }
+
+    /// #2756 AC-7: with color the pull request is an OSC 8 hyperlink to its URL; without a URL
+    /// it is plain text.
+    #[test]
+    fn the_pr_segment_links_to_its_url_only_with_color() {
+        let mut status = full_status();
+        status.pr = Some(state::PrInfo {
+            number: 42,
+            url: "https://github.com/owner/repo/pull/42".into(),
+            review_state: String::new(),
+        });
+        let config = DisplayConfig::default();
+        let colored = Renderer::new(&config, Some(Profile::Ansi256)).render(&status);
+        assert!(
+            colored.contains("\x1b]8;;https://github.com/owner/repo/pull/42\x1b\\"),
+            "{colored:?}"
+        );
+        assert_eq!(colored.matches("\x1b]8;;\x1b\\").count(), 1, "{colored:?}");
+        status.pr.as_mut().unwrap().url.clear();
+        let unlinked = Renderer::new(&config, Some(Profile::Ansi256)).render(&status);
+        assert!(!unlinked.contains("\x1b]8;"), "{unlinked:?}");
+        assert!(unlinked.contains("🔗 #42"), "{unlinked:?}");
     }
 
     #[test]

@@ -35,6 +35,9 @@ pub struct Context {
     pub deadline: Option<Instant>,
     /// The git executable; `git` from PATH outside tests.
     pub git_program: String,
+    /// The current time in Unix seconds, for the cache timer (#2756 AC-8). The hidden
+    /// `--now-unix` seam fixes it so goldens do not depend on the wall clock.
+    pub now: i64,
 }
 
 impl Context {
@@ -44,6 +47,10 @@ impl Context {
             cwd: std::env::current_dir().ok(),
             deadline: Some(Instant::now() + budget),
             git_program: "git".to_string(),
+            now: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0),
         }
     }
 
@@ -57,6 +64,7 @@ impl Context {
             cwd: cwd.map(Path::to_path_buf),
             deadline: None,
             git_program: "git".to_string(),
+            now: 0,
         }
     }
 
@@ -107,6 +115,31 @@ pub struct Status {
     pub repo: Option<(String, String)>,
     pub github: GitHubCounts,
     pub goal_armed: bool,
+    /// #2756 AC-7: the open pull request of the current branch.
+    pub pr: Option<PrInfo>,
+    /// #2756 AC-8: how long the prompt cache stays warm.
+    pub cache_timer: Option<CacheTimer>,
+    /// #2756 AC-9: the worktree name; empty in the main checkout.
+    pub worktree: String,
+}
+
+/// The `pr` fields the status line shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrInfo {
+    pub number: i64,
+    /// Empty when absent or not a plain `http(s)` URL; the number is then shown unlinked.
+    pub url: String,
+    /// Empty when absent.
+    pub review_state: String,
+}
+
+/// The prompt cache state from `prompt_cache` (Unix-second timestamps).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CacheTimer {
+    /// Warm, with whole minutes left until `expires_at` (rounded down).
+    Warm(i64),
+    /// `warm` is false, or `expires_at` has passed.
+    Cold,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,7 +227,63 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         status.github = github_counts(anchor);
         status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
     }
+    status.pr = input.pr.as_ref().and_then(|p| {
+        Some(PrInfo {
+            number: p.number.filter(|n| *n > 0)?,
+            url: safe_link(input::text(&p.url)).to_string(),
+            review_state: input::text(&p.review_state).to_string(),
+        })
+    });
+    status.cache_timer = input
+        .prompt_cache
+        .as_ref()
+        .and_then(|c| cache_timer(c, ctx.now));
+    let worktree = input.worktree.as_ref().map_or("", |w| input::text(&w.name));
+    status.worktree = if worktree.is_empty() {
+        input
+            .workspace
+            .as_ref()
+            .map_or("", |w| input::text(&w.git_worktree))
+            .to_string()
+    } else {
+        worktree.to_string()
+    };
     status
+}
+
+/// #2756 AC-8: `warm: false` is cold; `warm: true` with `expires_at` gives the whole minutes
+/// left (a passed `expires_at` is cold). Anything else — no `warm`, a warm cache without
+/// `expires_at`, a value of another type — shows no timer.
+fn cache_timer(cache: &serde_json::Value, now: i64) -> Option<CacheTimer> {
+    match cache.get("warm").and_then(serde_json::Value::as_bool)? {
+        false => Some(CacheTimer::Cold),
+        true => {
+            // The decoder may hand numbers over as floats (Go `encoding/json` rules).
+            let expires = cache.get("expires_at").and_then(|v| {
+                v.as_i64()
+                    .or_else(|| v.as_f64().filter(|f| f.is_finite()).map(|f| f as i64))
+            })?;
+            let left = expires - now;
+            Some(if left <= 0 {
+                CacheTimer::Cold
+            } else {
+                CacheTimer::Warm(left / 60)
+            })
+        }
+    }
+}
+
+/// #2756 AC-7: a URL usable inside an OSC 8 hyperlink — `http://` or `https://` and no
+/// control character, space or non-ASCII byte (which could end the escape sequence early or
+/// smuggle another one). Anything else is dropped and the number is shown unlinked.
+fn safe_link(url: &str) -> &str {
+    let scheme = url.starts_with("https://") || url.starts_with("http://");
+    let plain = url.bytes().all(|b| b.is_ascii_graphic());
+    if scheme && plain && url.len() <= 2048 {
+        url
+    } else {
+        ""
+    }
 }
 
 /// The configuration root: the state anchor, else the cwd project root (cli/statusline.go).
@@ -1034,5 +1123,116 @@ mod tests {
         ctx.deadline = None;
         assert!(collect_git(&repo, &ctx).is_some());
         assert_eq!(GIT_SPAWNS.with(|n| n.get()), before + 1);
+    }
+}
+
+/// #2756 AC-7–AC-9: the pull request, prompt cache and worktree values the renderer shows.
+#[cfg(test)]
+mod extras_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn collect_json(value: serde_json::Value, now: i64) -> Status {
+        let input = input::parse(value.to_string().as_bytes()).unwrap();
+        let mut ctx = Context::for_test(&[], None);
+        ctx.now = now;
+        collect(Some(&input), &ctx)
+    }
+
+    #[test]
+    fn the_cache_timer_counts_whole_minutes_and_turns_cold_at_expiry() {
+        let at = |cache: serde_json::Value| cache_timer(&cache, 1000);
+        assert_eq!(
+            at(json!({"warm": true, "expires_at": 1000 + 299})),
+            Some(CacheTimer::Warm(4))
+        );
+        assert_eq!(
+            at(json!({"warm": true, "expires_at": 1000 + 60})),
+            Some(CacheTimer::Warm(1))
+        );
+        assert_eq!(
+            at(json!({"warm": true, "expires_at": 1000 + 59})),
+            Some(CacheTimer::Warm(0))
+        );
+        assert_eq!(
+            at(json!({"warm": true, "expires_at": 1000 + 1})),
+            Some(CacheTimer::Warm(0))
+        );
+        assert_eq!(
+            at(json!({"warm": true, "expires_at": 1000})),
+            Some(CacheTimer::Cold)
+        );
+        assert_eq!(
+            at(json!({"warm": false, "expires_at": null})),
+            Some(CacheTimer::Cold)
+        );
+        // No value to show: no `warm`, a warm cache without `expires_at`, other types.
+        assert_eq!(at(json!({"expires_at": 1300})), None);
+        assert_eq!(at(json!({"warm": true, "expires_at": null})), None);
+        assert_eq!(at(json!({"warm": "yes"})), None);
+        assert_eq!(at(json!("warm")), None);
+    }
+
+    #[test]
+    fn a_link_url_must_be_plain_http() {
+        assert_eq!(
+            safe_link("https://github.com/o/r/pull/1"),
+            "https://github.com/o/r/pull/1"
+        );
+        assert_eq!(safe_link("http://example.test/1"), "http://example.test/1");
+        for bad in [
+            "",
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "https://x/\x1b]8;;evil\x1b\\",
+            "https://x/a b",
+            "https://x/\u{7}",
+            "https://x/é",
+        ] {
+            assert_eq!(safe_link(bad), "", "{bad:?}");
+        }
+        let long = format!("https://x/{}", "a".repeat(2048));
+        assert_eq!(safe_link(&long), "");
+    }
+
+    #[test]
+    fn pr_worktree_and_cache_come_from_the_input_or_stay_empty() {
+        let s = collect_json(
+            json!({
+                "pr": {"number": 12, "url": "https://github.com/o/r/pull/12", "review_state": "approved"},
+                "worktree": {"name": "wt-session"},
+                "workspace": {"git_worktree": "linked"},
+                "prompt_cache": {"warm": true, "expires_at": 600}
+            }),
+            0,
+        );
+        assert_eq!(
+            s.pr,
+            Some(PrInfo {
+                number: 12,
+                url: "https://github.com/o/r/pull/12".into(),
+                review_state: "approved".into()
+            })
+        );
+        assert_eq!(
+            s.worktree, "wt-session",
+            "worktree.name wins over git_worktree"
+        );
+        assert_eq!(s.cache_timer, Some(CacheTimer::Warm(10)));
+        let s = collect_json(
+            json!({"workspace": {"git_worktree": "linked"}, "pr": {"number": 3}}),
+            0,
+        );
+        assert_eq!(
+            s.worktree, "linked",
+            "outside a worktree session, git_worktree"
+        );
+        let pr = s.pr.unwrap();
+        assert!(pr.url.is_empty() && pr.review_state.is_empty());
+        let s = collect_json(json!({"pr": {"number": 0}, "workspace": {}}), 0);
+        assert_eq!((s.pr, s.worktree.as_str(), s.cache_timer), (None, "", None));
+        // A mistyped prompt_cache leaves the timer out but keeps the rest of the payload.
+        let s = collect_json(json!({"session_name": "x", "prompt_cache": 7}), 0);
+        assert_eq!((s.session_name.as_str(), s.cache_timer), ("x", None));
     }
 }
