@@ -8,9 +8,11 @@ EXEMPT with a reason. The heuristic sees direct walks only; a scan hidden inside
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -263,6 +265,110 @@ class CliTest(unittest.TestCase):
             self.assertTrue(report["remerge"], (stdin, args))
             self.assertEqual(report["checks"], every, (stdin, args))
             self.assertTrue(report["reasons"][0].startswith("judge internal error"), (stdin, args))
+
+
+GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_DATE": "2026-11-13T00:00:00Z", "GIT_COMMITTER_DATE": "2026-11-13T00:00:00Z"}
+INCIDENT_CHECK = "cargo test --offline --locked --lib permission_reference_rule_has_one_copy"
+
+
+class RefsTableTest(unittest.TestCase):
+    """#2693 audit B1: with --refs the table comes from both refs, not from the checkout that
+    runs the script, so a scan added by the pull request itself is judged."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="repo-scans-refs-")
+        self.repo = Path(self.tmp.name) / "repo"
+        self.repo.mkdir()
+        self.env = dict(os.environ, **GIT_ENV)
+        self.git("init", "-q", "-b", "base")
+        full = repo_scans.load()
+        self.entry = next(s for s in full if s["id"] == "permission-reference-one-copy")
+        self.without = [s for s in full if s["id"] != "permission-reference-one-copy"]
+        self.write("src/lib.rs", "")
+        self.write_table(self.without)
+        self.commit("base")
+        # tip side = #2632: a new file in src/ (the scope)
+        self.git("checkout", "-q", "-b", "tip")
+        self.write("src/agent_install.rs", "// a copy of the rule\n")
+        self.commit("tip")
+        # pull request side = #2642 (a branch named "head" would be HEAD on a case-insensitive disk): the scanning test and its table entry
+        self.git("checkout", "-q", "-b", "pull", "base")
+        self.write("src/contract.rs", "// the walking test\n")
+        self.write_table(self.without + [self.entry])
+        self.commit("head")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def git(self, *args):
+        subprocess.run(["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid",
+                        "-c", "commit.gpgsign=false", *args], cwd=self.repo, env=self.env,
+                       check=True, capture_output=True)
+
+    def write(self, rel, text):
+        path = self.repo / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def write_table(self, scans):
+        self.write("tools/repo_scans.json", json.dumps({"scans": scans}, indent=2) + "\n")
+
+    def commit(self, message):
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", message)
+
+    def judge(self, tip, head):
+        out = subprocess.run([sys.executable, "-I", str(TOOL), "--refs", tip, head],
+                             capture_output=True, text=True, cwd=self.repo, env=self.env)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def test_a_scan_the_pull_request_adds_is_judged_from_any_checkout(self):
+        for checkout in ("tip", "pull", "base"):
+            self.git("checkout", "-q", checkout)
+            report = self.judge("tip", "pull")
+            self.assertTrue(report["remerge"], checkout)
+            self.assertIn("permission-reference-one-copy", [h["id"] for h in report["hits"]],
+                          checkout)
+            self.assertIn(INCIDENT_CHECK, report["checks"], checkout)
+
+    def test_a_scan_only_the_tip_has_is_judged_too(self):
+        # reverse roles: the tip carries the scan, the pull request adds the file
+        report = self.judge("pull", "tip")
+        self.assertIn(INCIDENT_CHECK, report["checks"])
+
+    def test_refs_without_any_table_fall_back_to_the_script_table(self):
+        self.git("checkout", "-q", "-b", "old", "base")
+        self.git("rm", "-q", "tools/repo_scans.json")
+        self.write("src/contract.rs", "// rule\n")
+        self.commit("old head without a table")
+        self.git("checkout", "-q", "-b", "old-tip", "base")
+        self.git("rm", "-q", "tools/repo_scans.json")
+        self.write("src/agent_install.rs", "// copy\n")
+        self.commit("old tip without a table")
+        report = self.judge("old-tip", "old")
+        self.assertIn(INCIDENT_CHECK, report["checks"])
+
+    def test_a_broken_table_at_a_ref_fails_safe(self):
+        self.git("checkout", "-q", "pull")
+        self.write("tools/repo_scans.json", "{ not json")
+        self.commit("broken table")
+        report = self.judge("tip", "pull")
+        self.assertTrue(report["remerge"])
+        self.assertTrue(report["reasons"][0].startswith("judge internal error"))
+        self.assertIn(INCIDENT_CHECK, report["checks"])
+
+    def test_no_readable_table_at_all_says_hold(self):
+        # N1: a judge copy with no table beside it and bad input has nothing to run
+        lone = Path(self.tmp.name) / "lone" / "repo_scans.py"
+        lone.parent.mkdir()
+        lone.write_bytes(TOOL.read_bytes())
+        out = subprocess.run([sys.executable, "-I", str(lone)], input="not json",
+                             capture_output=True, text=True, cwd=self.repo, env=self.env)
+        report = json.loads(out.stdout)
+        self.assertEqual((out.returncode, report["remerge"], report["checks"]), (0, True, []))
+        self.assertTrue(report["reasons"][-1].endswith("hold the merge"), report["reasons"])
 
 
 if __name__ == "__main__":

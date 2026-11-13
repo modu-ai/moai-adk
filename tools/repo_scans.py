@@ -16,6 +16,11 @@ Input, either:
     repo_scans.py --refs <tip> <head>     (git diff --name-only from their merge-base)
     repo_scans.py < {"pr": [...], "tip": [...]}
 
+With --refs the table is the union of the table committed at <head> and at <tip>, read with
+`git show`, so the result does not depend on which checkout runs the script and a scan that
+the pull request itself adds is judged too (#2693 audit B1). Only when neither ref has a
+table, the table next to this script is used; stdin input always uses that one.
+
 Output (JSON on stdout):
 
     {"remerge": bool, "hits": [{"id", "rules_side", "rules", "scope_side", "scope"}],
@@ -24,7 +29,8 @@ Output (JSON on stdout):
 `remerge` keeps its name for the gate: true means "run `checks` on the merge result first".
 Always exits 0. Any internal error fails safe to `remerge: true` with a reason and every check
 in the table, so a broken judge never lets a merge skip the scans (same rule as
-tools/ci_scope.py).
+tools/ci_scope.py). When no table can be read either, `checks` is empty and a reason says
+"hold the merge": `remerge: true` with no checks means hold, never merge (#2693 audit N1).
 """
 
 import json
@@ -33,10 +39,34 @@ import sys
 from pathlib import Path
 
 TABLE = Path(__file__).resolve().parent / "repo_scans.json"
+TABLE_IN_REPO = "tools/repo_scans.json"
 
 
 def load(path=TABLE):
     return json.loads(Path(path).read_text(encoding="utf-8"))["scans"]
+
+
+def load_ref(ref):
+    """The table as committed at `ref`, or None when that commit has no table (older than
+    #2681). A table that exists but does not parse raises, so the caller fails safe."""
+    spec = f"{ref}:{TABLE_IN_REPO}"
+    if subprocess.run(["git", "cat-file", "-e", spec], capture_output=True).returncode != 0:
+        return None
+    text = subprocess.run(["git", "show", spec], capture_output=True, text=True,
+                          check=True).stdout
+    return json.loads(text)["scans"]
+
+
+def union(*tables):
+    """Entries of every table, first table first, each distinct entry once. A pull request
+    adds the entry for a new scan in its own table (tests/repo_scans_test.py makes it), so
+    judging with the tip's table alone misses that scan (#2693 audit B1)."""
+    out = []
+    for table in tables:
+        for scan in table or []:
+            if scan not in out:
+                out.append(scan)
+    return out
 
 
 def in_scope(path, scope):
@@ -104,14 +134,16 @@ def from_refs(tip, head):
 def main(argv):
     scans = []
     try:
-        scans = load()
         if argv[:1] == ["--refs"]:
             if len(argv) != 3:
                 raise ValueError("usage: repo_scans.py --refs <tip> <head>")
             pr, tip = from_refs(argv[1], argv[2])
+            tables = [load_ref(argv[2]), load_ref(argv[1])]
+            scans = union(*tables) if any(t is not None for t in tables) else load()
         elif argv:
             raise ValueError(f"unknown arguments: {argv}")
         else:
+            scans = load()
             data = json.load(sys.stdin)
             pr, tip = data["pr"], data["tip"]
             if not isinstance(pr, list) or not isinstance(tip, list):
@@ -122,6 +154,12 @@ def main(argv):
                    for h in hits]
     except Exception as exc:  # fail safe: any error means run every scan first
         remerge, hits, reasons = True, [], [f"judge internal error: {exc}"]
+        if not scans:
+            try:
+                scans = load()
+            except Exception as table_exc:
+                scans = []
+                reasons.append(f"no table readable ({table_exc}): hold the merge")
         checks = checks_for([{"id": s["id"]} for s in scans], scans)
     json.dump({"remerge": remerge, "hits": hits, "checks": checks, "reasons": reasons}, sys.stdout)
     sys.stdout.write("\n")
