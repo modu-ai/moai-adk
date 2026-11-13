@@ -60,6 +60,9 @@ const UNIT: &str = "moai-cli statusline::tests::piped_stdout_keeps_color";
 
 fn first() -> String {
     [
+        // The same function panicked on another job first: its message stays with that job.
+        line(LINUX, "    thread 'apply_recover_restores_only_unchanged_targets' (7) panicked at tests/apply_receipt.rs:99:1:"),
+        line(LINUX, "    linux-only message"),
         status(MAC, "PASS", 1, "moai-cli::ok always_passes"),
         status(MAC, "FAIL", 2, FLAKY),
         line(MAC, "    thread 'apply_recover_restores_only_unchanged_targets' (21936) panicked at tests/apply_receipt.rs:26:10:"),
@@ -152,4 +155,27 @@ fn a_missing_or_oversized_log_is_refused() {
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["ok"], json!(false));
+}
+
+#[test]
+fn a_panic_line_takes_its_next_line_only_from_the_same_job() {
+    let log = [
+        status(MAC, "FAIL", 1, FLAKY),
+        line(MAC, "thread 'apply_recover_restores_only_unchanged_targets' (1) panicked at tests/a.rs:1:2:"),
+        line(LINUX, "a line of another job in between"),
+        line(MAC, "the mac line that came later"),
+    ]
+    .concat();
+    let c = classify(&log, "", None);
+    assert_eq!(
+        c["not_in_later"][0]["message"],
+        json!("panicked at tests/a.rs:1:2")
+    );
+}
+
+#[test]
+fn a_tabbed_line_without_a_timestamp_keeps_its_first_word() {
+    let log = format!("{MAC}\tstep\tFAIL [   0.1s] ( 1/2) moai-cli::x y\n");
+    let c = classify(&log, "", None);
+    assert_eq!(tests(&c["not_in_later"]), vec!["moai-cli::x y"]);
 }
