@@ -16,9 +16,9 @@ type Result<T> = std::result::Result<T, String>;
 
 /// Where the sources live inside the skill package.
 pub const SOURCE_DIR: &str = "references/agents";
-/// Hosts rendered in S1; the hosts that need an adapter module follow in S3 (user decision
-/// 6840661050, #2592).
-pub const HOSTS: [&str; 2] = ["claude", "codex"];
+/// Hosts rendered: Claude Code and Codex (S1), then opencode, omp and pi (S3, user decision
+/// 6840661050, #2592; research 6842060658).
+pub const HOSTS: [&str; 5] = ["claude", "codex", "opencode", "omp", "pi"];
 const DESCRIPTION_LIMIT: usize = 1024;
 const BODY_LIMIT: usize = 16 * 1024;
 
@@ -235,11 +235,96 @@ fn render_codex(def: &AgentDef) -> Rendered {
     }
 }
 
+const NO_ISOLATION: &str =
+    "isolation: this host documents no worktree isolation for agents; it runs in the parent folder";
+const READONLY_TEXT: &str = "\nRead-only: this host cannot enforce it, so do not write any file.\n";
+
+/// opencode (V2) `agents/<name>.md` (https://opencode.ai/docs/agents/): the file path is the
+/// agent id, `mode: subagent`, and read-only as a `permissions` rule denying `edit`.
+fn render_opencode(def: &AgentDef) -> Rendered {
+    let mut fm = format!(
+        "---\ndescription: {}\nmode: subagent\n",
+        yaml_scalar(&def.description)
+    );
+    if def.readonly {
+        fm.push_str("permissions:\n  - action: edit\n    resource: \"*\"\n    effect: deny\n");
+    }
+    fm.push_str("---\n\n");
+    let mut not_supported = Vec::new();
+    if def.isolation == "worktree" {
+        not_supported.push(NO_ISOLATION.into());
+    }
+    Rendered {
+        host: "opencode".into(),
+        path: format!("agents/{}.md", def.name),
+        text: fm + &def.body,
+        not_supported,
+    }
+}
+
+/// omp `agents/<name>.md` (oh-my-pi docs/task-agent-discovery.md): `name`, `description` and
+/// the body are required; read-only and isolation are not documented, so both are instructions
+/// or notes only.
+fn render_omp(def: &AgentDef) -> Rendered {
+    let mut body = def.body.clone();
+    let mut not_supported = Vec::new();
+    if def.readonly {
+        not_supported.push(
+            "readonly: this host documents no read-only agent setting; it is an instruction only"
+                .into(),
+        );
+        body.push_str(READONLY_TEXT);
+    }
+    if def.isolation == "worktree" {
+        not_supported.push(NO_ISOLATION.into());
+    }
+    Rendered {
+        host: "omp".into(),
+        path: format!("agents/{}.md", def.name),
+        text: format!(
+            "---\nname: {}\ndescription: {}\n---\n\n{body}",
+            def.name,
+            yaml_scalar(&def.description)
+        ),
+        not_supported,
+    }
+}
+
+/// pi `agents/<name>.md` for the subagent example extension (earendil-works/pi
+/// `examples/extensions/subagent`): `name`, `description`, and a read-only role keeps only the
+/// read tools. pi has no built-in subagents, so the file is used only with that extension.
+fn render_pi(def: &AgentDef) -> Rendered {
+    let mut fm = format!(
+        "---\nname: {}\ndescription: {}\n",
+        def.name,
+        yaml_scalar(&def.description)
+    );
+    if def.readonly {
+        fm.push_str("tools: read, grep, find, ls\n");
+    }
+    fm.push_str("---\n\n");
+    let mut not_supported = vec![
+        "subagents: pi runs these only with its subagent example extension, which moai-cli does not install".to_string(),
+    ];
+    if def.isolation == "worktree" {
+        not_supported.push(NO_ISOLATION.into());
+    }
+    Rendered {
+        host: "pi".into(),
+        path: format!("agents/{}.md", def.name),
+        text: fm + &def.body,
+        not_supported,
+    }
+}
+
 /// The agent file for one host.
 pub fn render(def: &AgentDef, host: &str) -> Result<Rendered> {
     match host {
         "claude" => Ok(render_claude(def)),
         "codex" => Ok(render_codex(def)),
+        "opencode" => Ok(render_opencode(def)),
+        "omp" => Ok(render_omp(def)),
+        "pi" => Ok(render_pi(def)),
         other => Err(format!("agent host not supported yet: {other:?}")),
     }
 }
@@ -315,5 +400,43 @@ mod tests {
             .contains("disallowedTools"));
         assert!(render(&writer, "codex").unwrap().not_supported.is_empty());
         assert!(render(&def, "goose").is_err());
+    }
+
+    /// #2592 S3: opencode, omp and pi use only what their documents show (6842060658).
+    #[test]
+    fn adapter_hosts_render_their_documented_fields() {
+        let ro = parse(SAMPLE).unwrap();
+        let oc = render(&ro, "opencode").unwrap();
+        assert_eq!(oc.path, "agents/moai-x.md");
+        assert!(oc.text.starts_with("---\ndescription: \"An agent.\"\nmode: subagent\npermissions:\n  - action: edit\n    resource: \"*\"\n    effect: deny\n---\n\nDo it.\n"), "{}", oc.text);
+        assert!(
+            !oc.text.contains("name:"),
+            "opencode takes the id from the file path"
+        );
+        assert_eq!(oc.not_supported.len(), 1);
+        let omp = render(&ro, "omp").unwrap();
+        assert!(omp
+            .text
+            .starts_with("---\nname: moai-x\ndescription: \"An agent.\"\n---\n\nDo it.\n"));
+        assert!(omp.text.contains("do not write any file"));
+        assert_eq!(omp.not_supported.len(), 2);
+        let pi = render(&ro, "pi").unwrap();
+        assert!(pi.text.starts_with(
+            "---\nname: moai-x\ndescription: \"An agent.\"\ntools: read, grep, find, ls\n---\n"
+        ));
+        assert!(pi.not_supported[0].starts_with("subagents:"));
+        let rw = parse(
+            &SAMPLE
+                .replace("readonly: true", "readonly: false")
+                .replace("isolation: worktree", "isolation: none"),
+        )
+        .unwrap();
+        assert!(!render(&rw, "opencode")
+            .unwrap()
+            .text
+            .contains("permissions"));
+        assert!(render(&rw, "omp").unwrap().not_supported.is_empty());
+        assert!(!render(&rw, "pi").unwrap().text.contains("tools:"));
+        assert_eq!(render(&rw, "pi").unwrap().not_supported.len(), 1);
     }
 }

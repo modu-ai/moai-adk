@@ -34,6 +34,12 @@ fn host_dir(home: &Path, host: &str) -> PathBuf {
     match host {
         "claude" => home.join(".claude").join("agents"),
         "codex" => home.join(".codex").join("agents"),
+        // opencode.ai/docs/agents: "~/.config/opencode/agents/<name>.md".
+        "opencode" => home.join(".config").join("opencode").join("agents"),
+        // oh-my-pi docs/task-agent-discovery.md: "user agents from ~/.omp/agent/agents/*.md".
+        "omp" => home.join(".omp").join("agent").join("agents"),
+        // pi examples/extensions/subagent README: "~/.pi/agent/agents/*.md".
+        "pi" => home.join(".pi").join("agent").join("agents"),
         other => unreachable!("unknown agent host {other}"),
     }
 }

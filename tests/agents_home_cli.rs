@@ -8,6 +8,7 @@ use tempfile::TempDir;
 
 const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
 const PERMISSION: &str = "fixture-approved";
+const HOSTS: [&str; 5] = ["claude", "codex", "opencode", "omp", "pi"];
 
 fn call(args: &[&str]) -> Value {
     let out = Command::new(EXE)
@@ -119,14 +120,14 @@ fn action(plan: &Value, host: &str, file: &str) -> String {
 fn install_then_rerun_is_unchanged() {
     let fx = fx();
     let plan = fx.plan();
-    for host in ["claude", "codex"] {
+    for host in HOSTS {
         let acts = actions(&plan, host);
         assert_eq!(acts.len(), 5, "{host}: {acts:?}");
         assert!(acts.iter().all(|(_, a)| a == "create"), "{acts:?}");
     }
     let v = fx.apply(&plan);
     assert_eq!(v["result"]["state"], "applied", "{v}");
-    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 10);
+    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 25);
     let impl_md = fs::read_to_string(fx.agent(".claude", "moai-impl.md")).unwrap();
     assert!(impl_md.starts_with("---\nname: moai-impl\n"), "{impl_md}");
     let audit_toml = fs::read_to_string(fx.agent(".codex", "moai-audit.toml")).unwrap();
@@ -134,8 +135,15 @@ fn install_then_rerun_is_unchanged() {
         audit_toml.starts_with("name = \"moai-audit\"\n"),
         "{audit_toml}"
     );
+    // S3 hosts, each in its documented user folder (#2592 6842060658).
+    let home = Path::new(&fx.home);
+    let oc = fs::read_to_string(home.join(".config/opencode/agents/moai-audit.md")).unwrap();
+    assert!(oc.contains("mode: subagent\npermissions:"), "{oc}");
+    assert!(home.join(".omp/agent/agents/moai-impl.md").is_file());
+    let pi = fs::read_to_string(home.join(".pi/agent/agents/moai-plan.md")).unwrap();
+    assert!(pi.contains("tools: read, grep, find, ls"), "{pi}");
     let again = fx.plan();
-    for host in ["claude", "codex"] {
+    for host in HOSTS {
         assert!(actions(&again, host).iter().all(|(_, a)| a == "unchanged"));
     }
     let v = fx.apply(&again);
@@ -213,7 +221,7 @@ fn a_symlinked_agent_folder_blocks_only_that_host() {
         .unwrap();
     assert_eq!(claude["preflight"], "blocked", "{plan}");
     let v = fx.apply(&plan);
-    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 5, "{v}");
+    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 20, "{v}");
     assert!(
         fs::read_dir(&outside).unwrap().next().is_none(),
         "wrote through the link"
@@ -250,7 +258,7 @@ fn revert_undoes_only_unchanged_files_and_stale_plans_are_refused() {
         PERMISSION,
     ]);
     assert_eq!(r["result"]["state"], "reverted", "{r}");
-    assert_eq!(r["result"]["reverted"].as_array().unwrap().len(), 9);
+    assert_eq!(r["result"]["reverted"].as_array().unwrap().len(), 24);
     assert_eq!(r["result"]["skipped"][0]["file"], "moai-plan.toml");
     assert!(!fx.agent(".claude", "moai-impl.md").exists());
     assert_eq!(

@@ -57,7 +57,10 @@ fn every_role_renders_for_every_host_deterministically() {
             let a = render(d, host).unwrap();
             assert_eq!(a, render(d, host).unwrap());
             assert!(a.path.starts_with("agents/moai-"), "{}", a.path);
-            assert!(a.text.contains(&d.name));
+            // The file name carries the agent id on every host; opencode takes the id from
+            // the path only, the others also name it in the file.
+            assert!(a.path.contains(&d.name), "{}", a.path);
+            assert_eq!(a.text.contains(&d.name), host != "opencode", "{host}");
         }
         let codex = render(d, "codex").unwrap();
         // Codex cannot enforce read-only or isolation: named, never silently dropped.

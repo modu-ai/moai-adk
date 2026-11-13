@@ -185,11 +185,26 @@ fn no_rust_source_or_test_names_the_removed_host() {
     );
     let hits: Vec<String> = files
         .iter()
-        .filter(|p| words(&fs::read_to_string(p).unwrap()).contains(&removed()))
         .map(|p| p.strip_prefix(root).unwrap().display().to_string())
+        .filter(|rel| !AGENT_HOST_FILES.contains(&rel.as_str()))
+        .filter(|rel| words(&fs::read_to_string(root.join(rel)).unwrap()).contains(&removed()))
         .collect();
     assert!(hits.is_empty(), "files naming the removed host: {hits:?}");
+    // The exempt files must exist, so a rename cannot silently widen the exemption.
+    for rel in AGENT_HOST_FILES {
+        assert!(root.join(rel).is_file(), "exempt file missing: {rel}");
+    }
 }
+
+/// #2592 (user decision 6840661050, 2026-11-13): the host removed from the launcher here is a
+/// first-priority target for the base agent files. Only the agent renderer, the agent install
+/// and their tests may name it; the launcher itself still never starts it (the tests above).
+const AGENT_HOST_FILES: [&str; 4] = [
+    "src/agent_defs.rs",
+    "src/agent_install.rs",
+    "tests/agent_defs_package.rs",
+    "tests/agents_home_cli.rs",
+];
 
 /// The support documents say the host is not supported, once, with the decision date; the
 /// launcher documents list only the three hosts.
