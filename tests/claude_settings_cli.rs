@@ -654,6 +654,50 @@ fn the_confirmed_replacement_keeps_the_original_then_replaces_only_that_key() {
     assert_eq!(fs::read(p.join(".claude/settings.json")).unwrap(), before);
 }
 
+/// #2383: a request with a conflicting key and a new key replaces the one and adds the other,
+/// exactly as a plan without the conflict would; the file and the receipt agree on both.
+#[test]
+fn a_confirmed_replacement_also_applies_the_requests_other_keys() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    user_status_line(p);
+    let both = desired();
+    let r = plan(p, home.path(), &both);
+    assert_eq!(r["confirm_replace"]["keys"], json!(["statusLine"]), "{r}");
+    let token = r["confirm_replace"]["confirm_token"].as_str().unwrap();
+    let (code, v) = run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--plan-digest",
+            r["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "test-2383",
+            "--confirm-replace",
+            token,
+        ],
+        home.path(),
+        &both,
+    );
+    assert_eq!(code, Some(0), "{v}");
+    let settings: Value =
+        serde_json::from_slice(&fs::read(p.join(".claude/settings.json")).unwrap()).unwrap();
+    assert_eq!(settings["outputStyle"], both["outputStyle"], "{settings}");
+    assert_eq!(settings["statusLine"], both["statusLine"]);
+    assert_eq!(settings["model"], json!("user-choice"));
+    assert_eq!(
+        r["confirm_replace"]["planned_sha256"],
+        v["result"]["settings_sha256_after"]
+    );
+    let receipt: Value = serde_json::from_slice(
+        &fs::read(p.join(".moai-cli/manifests/claude-settings.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(receipt["owned"]["outputStyle"], both["outputStyle"]);
+    assert_eq!(receipt["owned"]["statusLine"], both["statusLine"]);
+    assert_eq!(plan(p, home.path(), &both)["action"], json!("unchanged"));
+}
+
 /// #2383: a token the plan did not offer, or one from before the file changed, refuses the
 /// whole apply before any write — no backup folder, the file and receipt as they were.
 #[test]

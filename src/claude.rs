@@ -655,12 +655,16 @@ const SETTINGS_BACKUPS: &str = "settings-backups";
 
 /// The confirmed replacement for a conflict, or `None` when it cannot be offered: no
 /// settings file to keep, or a conflicting key a caller may not set (`hooks` stays with
-/// `hooks-apply`). The token binds the scope, both files, the request, the conflicting keys
-/// and the replaced bytes, so any change after the preview invalidates it.
+/// `hooks-apply`). The replaced file is the ordinary three-way plan with each conflicting key
+/// read as if MoAI owned its current value, so the request's other keys are planned exactly
+/// as without a conflict. The token binds the scope, both files, the request, the conflicting
+/// keys and the replaced bytes, so any change after the preview invalidates it.
+#[allow(clippy::too_many_arguments)]
 fn replacement(
     scope: SettingsScope,
     before: Option<&[u8]>,
     receipt_before: Option<&[u8]>,
+    owned: &Map<String, Value>,
     current: &Map<String, Value>,
     desired: &Map<String, Value>,
     conflicts: &[String],
@@ -674,19 +678,27 @@ fn replacement(
     {
         return None;
     }
-    let mut candidate = current.clone();
+    let mut baseline = owned.clone();
     let (mut now, mut new) = (Map::new(), Map::new());
     for key in conflicts {
-        if let Some(v) = current.get(key) {
-            now.insert(key.clone(), v.clone());
-        }
-        match desired.get(key) {
+        match current.get(key) {
             Some(v) => {
-                new.insert(key.clone(), v.clone());
-                candidate.insert(key.clone(), v.clone());
+                now.insert(key.clone(), v.clone());
+                baseline.insert(key.clone(), v.clone());
             }
-            None => candidate = candidate.into_iter().filter(|(k, _)| k != key).collect(),
+            None => {
+                baseline.remove(key);
+            }
         }
+        if let Some(v) = desired.get(key) {
+            new.insert(key.clone(), v.clone());
+        }
+    }
+    let (Some(candidate), rest) = plan_settings(&baseline, current, desired).ok()? else {
+        return None;
+    };
+    if !rest.is_empty() {
+        return None;
     }
     let mut after = serde_json::to_vec_pretty(&candidate).expect("JSON object");
     after.push(b'\n');
@@ -805,6 +817,7 @@ fn settings_state(
         scope,
         before.as_deref(),
         receipt_before.as_deref(),
+        &owned,
         &current,
         desired,
         &conflicts,
@@ -1374,13 +1387,14 @@ mod tests {
     #[test]
     fn a_replacement_is_offered_only_for_settable_keys_of_an_existing_file() {
         let current = obj(json!({"statusLine": {"command": "mine"}, "hooks": {"x": 1}}));
-        let desired = obj(json!({"statusLine": {"command": "moai"}, "hooks": {"x": 2}}));
+        let desired = obj(json!({"statusLine": {"command": "moai"}, "hooks": {"x": 1}}));
         let offer = |keys: &[&str], before: Option<&[u8]>| {
             let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
             replacement(
                 SettingsScope::Project,
                 before,
                 None,
+                &Map::new(),
                 &current,
                 &desired,
                 &keys,
