@@ -18,6 +18,13 @@ Findings from an independent context and an evidence-bound verdict.
 6. Which checks the auditor runs locally and when an exact-head CI run may be cited follow the check-run rules in the VERIFY workflow (section "Check-run rules"); the auditor reads the head's CI run itself and the verdict cites its run id, head and conclusion, without waiting for an author's `ci:` line (decision D4, Issue #1975 comment 6840449133).
 7. When the head's CI could not run — `flow-gate-verdict` reports `ci_failure_class: gate_unavailable` with its cause and `since` (a billing block, a job GitHub never started) — there is no code to fix and no CI result to cite (Issue #2680). The verdict says so in one line, `ci: gate_unavailable(<cause> since <since>)`, and records the substitute evidence: the pull request's verification commands run on the exact head, each with its exit code and log path, as `substitute: <command> exit <n> <log>`. Substitute evidence is a record, not a merge: the pull request waits for CI unless the user approves merging on it for that gate (leader decision 6849147698). An automated reviewer's own usage limit (for example a "usage limits" comment from Codex code review) is not a gate: the integration gate does not require that review, so report it once and do not wait for it.
 
+8. **Verdict comment.** The comment's first line is the verdict line, `AUDIT #<pr> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`: lowercase hex, the em dash `—` with one space on each side, and nothing after the verdict word. The leader's gate (`moai-cli gate-check`, `gate::parse_verdict`) reads only a comment's first line, takes its last ` head `, and stops the merge when that line does not match `^AUDIT #[0-9]+ .* head [0-9a-f]{40} base [0-9a-f]{40} — verdict: (PASS|FAIL)$`. The next line names the auditing lane and its reservation comment: the gate (`gate::auditor`) takes the first lane name (`agent-N` or `pr-N`) after the first line as the auditor and accepts it only when that lane holds the pull request's lowest `moai-audit-claim`, or the lowest one naming the current head. A verdict without a lane name, or with another lane named first, stops the merge (five gate stops on 2026-11-13: #2716, #2749, #2754, #2767, #2771; Issue #2401 comment 6864204207). For example:
+
+   ```text
+   AUDIT #2786 (#2708 4/4 repo-scans) head 997af563452bfb36f2ce722a66e9068dae191568 base 9c8a8c51c9c059be389deeaebb19a3e45709b273 — verdict: PASS
+   감사: agent-27 (예약 6863193225)
+   ```
+
 The review package and the way a verdict reaches integration are described in the SYNC workflow (procedure steps 7 and 8).
 
 ## Review steps
