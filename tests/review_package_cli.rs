@@ -454,3 +454,28 @@ fn dot_includes_are_skipped_not_followed() {
         ]
     );
 }
+
+/// B2, the layers behind the name rule: `@:` is a pathspec that lists every root entry (only
+/// an entry named exactly `:` would count, and there is none), and `@:!a.md` makes git itself
+/// fail — that skips the one include, never the package.
+#[test]
+fn pathspec_like_includes_are_skipped_not_followed() {
+    let tmp = TempDir::new().unwrap();
+    let repo = tmp.path().join("repo");
+    init(&repo);
+    write(&repo, "a.md", "not an include\n");
+    write(&repo, "REVIEW.md", "# r\n@:\n@:!a.md\n");
+    write(&repo, "a.txt", "a\n");
+    let base = commit(&repo, "base");
+    write(&repo, "a.txt", "b\n");
+    let head = commit(&repo, "head");
+    let r = package(&repo, &base, &head);
+    assert_eq!(paths(&r["review"]), ["REVIEW.md"]);
+    assert_eq!(
+        skipped(&r),
+        [
+            (":".to_string(), "missing".to_string()),
+            (":!a.md".to_string(), "unreadable".to_string()),
+        ]
+    );
+}
