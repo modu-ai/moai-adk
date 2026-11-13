@@ -2,8 +2,9 @@
 //! linked worktrees with a preview of moving each under one common root
 //! `<root>/<project key>/<name>`, and a move that runs only on a fresh, identical preview.
 //!
-//! The root is a required input with no default here: which home folder holds it waits on
-//! the state-path decision of #2725, which will resolve it in one place. The project key is
+//! The root defaults to `$HOME/<HOME_STATE_DIR>/worktrees` ([`default_root`]; user decision
+//! #1975 6859326988 puts it in the HOME state folder, whose name lives only in
+//! `crate::HOME_STATE_DIR`); `--root` names another absolute folder. The project key is
 //! `<repository folder name>-<first 12 hex of clone_id>`, the clone id of `identity` (sha256
 //! of the canonical common git folder), so two projects with the same name on one machine
 //! never share a folder.
@@ -168,8 +169,30 @@ fn has_submodules(wt: &Path) -> Option<bool> {
     Some(staged.lines().any(|l| l.starts_with("160000 ")))
 }
 
-/// The plan for the clone holding `project`.
-pub fn plan(project: &Path, root: &Path, obs: &Observations) -> Result<Value> {
+/// The common root when the caller names none: `$HOME/<HOME_STATE_DIR>/worktrees` (#2723,
+/// user decision #1975 6859326988: the HOME state folder is the one place for it; the folder
+/// name comes only from `crate::HOME_STATE_DIR`, so the switch of #2725 follows by itself).
+pub fn default_root() -> Result<PathBuf> {
+    let home = std::env::var_os("HOME")
+        .filter(|h| !h.is_empty())
+        .map(PathBuf::from)
+        .ok_or("HOME is not set; pass --root")?;
+    if !home.is_absolute() {
+        return Err("HOME is not an absolute path; pass --root".into());
+    }
+    Ok(home.join(crate::HOME_STATE_DIR).join("worktrees"))
+}
+
+/// The plan for the clone holding `project`; `root` defaults to [`default_root`].
+pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<Value> {
+    let owned;
+    let root = match root {
+        Some(r) => r,
+        None => {
+            owned = default_root()?;
+            owned.as_path()
+        }
+    };
     if obs.schema_version != 1 {
         return Err("observations schema_version must be 1".into());
     }
@@ -403,7 +426,7 @@ fn verify(
 /// Act on a plan: recompute, compare digests, then move each `move` item.
 pub fn apply(
     project: &Path,
-    root: &Path,
+    root: Option<&Path>,
     obs: &Observations,
     plan_digest: &str,
     permission_reference: &str,
