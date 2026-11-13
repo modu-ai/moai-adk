@@ -1,0 +1,13 @@
+# cargo-nextest configuration (CI runs `cargo nextest run`, .github/workflows/ci.yml).
+#
+# #2661: every test in tests/ac_command_lint.rs runs tools/check_ac_commands.py, which calls
+# `cargo test --offline --locked --test <name> -- --list`. Even when nothing needs rebuilding,
+# that cargo call removes and re-copies target/debug/moai-cli (on macOS the uplift is a copy,
+# link count 1). A test that spawns `CARGO_BIN_EXE_moai-cli` or reads its own executable in
+# that moment fails with NotFound, "binary metadata unavailable" or "binary path unavailable".
+# These tests therefore take every test thread: nextest starts them only when nothing else
+# runs and starts nothing else until they finish. Plain `cargo test` already runs one test
+# binary at a time, so it needs no rule.
+[[profile.default.overrides]]
+filter = 'binary(ac_command_lint)'
+threads-required = 'num-test-threads'
