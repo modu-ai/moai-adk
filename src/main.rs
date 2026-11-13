@@ -310,6 +310,12 @@ enum Command {
     QueueNext {
         project: PathBuf,
     },
+    /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
+    /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
+    /// epics, blocked); an empty result says `free_count: 0`.
+    QueueFree {
+        project: PathBuf,
+    },
     /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
     QueueQuery {
         project: PathBuf,
@@ -1417,6 +1423,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
         QueueNext { .. } => "queue.next",
+        QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
@@ -1544,6 +1551,11 @@ fn run_internal(
         Command::QueueNext { project } => moai_cli::queue::next_cli(
             &project,
             input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::QueueFree { project: _ } => moai_cli::queue::free_cli(
+            input::<moai_cli::queue::FreeRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
