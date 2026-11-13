@@ -131,7 +131,7 @@ pub struct DisplayConfig {
 }
 
 /// Version this binary reports in the `🗿` segment.
-pub const BINARY_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const BINARY_VERSION: &str = crate::BUILD_VERSION;
 
 pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let project_root = find_project_root(ctx);

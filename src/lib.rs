@@ -49,6 +49,7 @@ pub mod language;
 pub mod launcher_init;
 pub mod layout;
 pub mod leader;
+pub mod local_build;
 pub mod message;
 pub mod migrate;
 pub mod ontology;
@@ -95,6 +96,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
+/// The version this binary reports: the package version, plus `+local.<n>` when the build set
+/// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
+pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
 /// The one spelling of the project state directory (Issue #2725 S1): `project_state!()` is the
 /// directory, `project_state!("sub/path")` a path under it, both `&'static str` so constants
 /// and tables can use them. Every project-tree path in `src` goes through this macro or
