@@ -12,9 +12,9 @@ use std::path::PathBuf;
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
     project: PathBuf,
-    /// The same `--root` the preview read.
+    /// The same `--root` the preview read (default as in the preview).
     #[arg(long)]
-    root: PathBuf,
+    root: Option<PathBuf>,
     /// The same observations file the preview read.
     #[arg(long)]
     observations: Option<PathBuf>,
@@ -32,7 +32,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let obs = moai_cli::worktree_move::read_observations(args.observations.as_deref())?;
     moai_cli::worktree_move::apply(
         &args.project,
-        &args.root,
+        args.root.as_deref(),
         &obs,
         &args.plan_digest,
         &args.permission_reference,
