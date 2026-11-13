@@ -28,6 +28,7 @@ pub mod generation;
 pub mod github_templates;
 pub mod go_state;
 pub mod handoff;
+pub mod heavy_slot;
 pub mod home_routing;
 pub mod hook_config;
 pub mod hook_engine;

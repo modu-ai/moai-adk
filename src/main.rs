@@ -304,6 +304,29 @@ enum Command {
     ClaimAcquire {
         project: PathBuf,
     },
+    /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
+    /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
+    /// waiting and on failure it prints the load averages and free disk space. Unix only.
+    HeavySlotAcquire {
+        /// The machine's slot count; every caller passes the same value (the leader's limit).
+        #[arg(long)]
+        max: usize,
+        /// The caller's name, shown by `heavy-slot-status`.
+        #[arg(long)]
+        name: String,
+        /// Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`).
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// The heavy command and its arguments, after `--`.
+        #[arg(last = true)]
+        command: Vec<String>,
+    },
+    /// List the heavy-run slots held now, the slot paths refused, and the machine's load and
+    /// free disk space (#2677). Reads only.
+    HeavySlotStatus {
+        #[arg(long)]
+        dir: Option<PathBuf>,
+    },
     /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
     /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
     /// candidate through `claim-acquire` under one journal lock.
@@ -1418,6 +1441,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillApply { .. } => "project_skill.apply",
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
+        HeavySlotAcquire { .. } => "heavy_slot.acquire",
+        HeavySlotStatus { .. } => "heavy_slot.status",
         QueueNext { .. } => "queue.next",
         QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
@@ -2184,6 +2209,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 }
             })
         }
+        // Answered in `main` before internal dispatch (no envelope, the command's exit code).
+        Command::HeavySlotAcquire { .. } => {
+            Err("heavy-slot-acquire is answered before internal dispatch".into())
+        }
+        Command::HeavySlotStatus { dir } => {
+            let dir = match dir {
+                Some(d) => d,
+                None => moai_cli::heavy_slot::default_dir()?,
+            };
+            moai_cli::heavy_slot::status(&dir)
+        }
         Command::ClaudeSettingsPlan { project, scope } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2786,6 +2822,27 @@ fn main() -> ExitCode {
     };
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
+    }
+    if let Some(Command::HeavySlotAcquire {
+        max,
+        name,
+        dir,
+        command,
+    }) = &cli.command
+    {
+        // No contract envelope: the wrapped command's own exit code and output (#2677).
+        let dir = match dir
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(moai_cli::heavy_slot::default_dir)
+        {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("heavy-slot: {e}");
+                return ExitCode::from(moai_cli::heavy_slot::USAGE);
+            }
+        };
+        return ExitCode::from(moai_cli::heavy_slot::acquire(&dir, *max, name, command));
     }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.

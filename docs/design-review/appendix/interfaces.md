@@ -107,6 +107,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `go-state-plan`
 - `go-state-revert`
 - `go-state-revert-plan`
+- `heavy-slot-acquire`
+- `heavy-slot-status`
 - `hook-dispatch`
 - `hook-receipt`
 - `hooks-apply`
