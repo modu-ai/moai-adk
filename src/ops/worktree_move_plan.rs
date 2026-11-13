@@ -12,10 +12,10 @@ use std::path::PathBuf;
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
     project: PathBuf,
-    /// Absolute folder that holds one folder per project; required, no default (#2725
-    /// decides the home folder). Must lie outside every worktree.
+    /// Absolute folder that holds one folder per project (default `$HOME/<home state
+    /// folder>/worktrees`, #2723). Must lie outside every worktree.
     #[arg(long)]
-    root: PathBuf,
+    root: Option<PathBuf>,
     /// JSON file: `schema_version` 1 and optional `holds` {source, branches [{branch,
     /// reason: hold|handoff_pending}]}. Without `holds` every worktree is blocked by
     /// `hold_check_not_run`.
@@ -27,5 +27,5 @@ pub const OPERATION: &str = "worktree.move.plan";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let obs = moai_cli::worktree_move::read_observations(args.observations.as_deref())?;
-    moai_cli::worktree_move::plan(&args.project, &args.root, &obs)
+    moai_cli::worktree_move::plan(&args.project, args.root.as_deref(), &obs)
 }

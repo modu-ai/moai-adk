@@ -1,0 +1,12 @@
+{
+  "model": {"display_name": "Opus"},
+  "session_name": "cache-warm",
+  "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"},
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 12,
+    "current_usage": {"input_tokens": 100, "output_tokens": 50, "cache_creation_input_tokens": 1000, "cache_read_input_tokens": 9000}
+  },
+  "prompt_cache": {"warm": true, "hit_ratio": 0.9, "expires_at": 1738429299, "misses": 0, "last_miss_at": null, "last_miss_cause": null},
+  "worktree": {"name": "my-feature", "path": "{PROJECT}", "branch": "worktree-my-feature"}
+}

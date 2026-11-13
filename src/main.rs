@@ -836,6 +836,10 @@ enum Command {
         /// is an already expired budget (no git call is started).
         #[arg(long, hide = true, value_name = "MS")]
         render_budget_ms: Option<u64>,
+        /// Test seam (#2756): the current time in Unix seconds for the prompt cache timer,
+        /// so goldens do not depend on the wall clock. Hidden; Claude Code never passes it.
+        #[arg(long, hide = true, value_name = "SECS")]
+        now_unix: Option<i64>,
         /// #2588: the detached counts refresh a render starts. Hidden; asks `gh` for the
         /// open Issue and PR counts of `--board-root` and rewrites its cache.
         #[arg(long, hide = true, requires = "board_root")]
@@ -2865,13 +2869,15 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     if let Some(Command::Statusline {
-        render_budget_ms, ..
+        render_budget_ms,
+        now_unix,
+        ..
     }) = cli.command
     {
         let budget = render_budget_ms
             .map(std::time::Duration::from_millis)
             .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
-        print!("{}", moai_cli::statusline::run(budget));
+        print!("{}", moai_cli::statusline::run(budget, now_unix));
         return ExitCode::SUCCESS;
     }
     if let Some(Command::PrSelfAuditCheck { reaudit, file }) = &cli.command {
@@ -3242,11 +3248,14 @@ mod operations_doc {
         // The render-budget test seam is documented and hidden from help.
         assert!(DOC.contains("`--render-budget-ms`"));
         let sub = cli.find_subcommand("statusline").unwrap();
-        let seam = sub
-            .get_arguments()
-            .find(|a| a.get_long() == Some("render-budget-ms"))
-            .unwrap();
-        assert!(seam.is_hide_set());
+        for name in ["render-budget-ms", "now-unix"] {
+            assert!(DOC.contains(&format!("`--{name}`")), "{name}");
+            let seam = sub
+                .get_arguments()
+                .find(|a| a.get_long() == Some(name))
+                .unwrap();
+            assert!(seam.is_hide_set(), "{name}");
+        }
     }
 
     #[test]

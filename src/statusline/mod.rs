@@ -54,15 +54,20 @@ fn read_capped(reader: impl std::io::Read) -> Vec<u8> {
 }
 
 /// The CLI entry: stdin is read only when it is not a terminal (a pipe or a file). `budget`
-/// is [`RENDER_BUDGET`] except under the hidden test seam `--render-budget-ms`.
-pub fn run(budget: Duration) -> String {
+/// is [`RENDER_BUDGET`] except under the hidden test seam `--render-budget-ms`; `now`
+/// replaces the wall clock only under the hidden test seam `--now-unix` (#2756).
+pub fn run(budget: Duration, now: Option<i64>) -> String {
     use std::io::IsTerminal;
     let stdin = if std::io::stdin().is_terminal() {
         Vec::new()
     } else {
         read_capped(std::io::stdin())
     };
-    let out = render(&stdin, &state::Context::from_process(budget));
+    let mut ctx = state::Context::from_process(budget);
+    if let Some(now) = now {
+        ctx.now = now;
+    }
+    let out = render(&stdin, &ctx);
     refresh_counts_after_render(&stdin);
     if let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) {
         record_usage_after_render(&stdin, std::path::Path::new(&home), unix_now());
