@@ -644,10 +644,16 @@ fn omp_module_wiring_is_pinned() {
     assert!(
         m.contains(r#"Bun.spawn(["moai-cli", "hook-dispatch", "--host", "omp", "--event", event]"#)
     );
-    assert!(
-        m.contains(r#"pi.on("tool_call""#)
-            && m.contains(r#"if (event.toolName !== "bash") return;"#)
-    );
+    // Both the preflight and the observation handler stop at a non-bash tool (mutation H5).
+    for handler in ["tool_call", "tool_result"] {
+        let start = m.find(&format!(r#"pi.on("{handler}""#)).unwrap();
+        let body = &m[start..];
+        let first_line = body.lines().nth(1).unwrap().trim();
+        assert_eq!(
+            first_line, r#"if (event.toolName !== "bash") return;"#,
+            "{handler}"
+        );
+    }
     assert!(m.contains("systemPrompt: [...event.systemPrompt, answer.context]"));
     assert!(m.contains("if (code !== 0 || out.trim() === \"\") return null;"));
     assert!(m.contains("catch {\n\t\treturn null;"));
