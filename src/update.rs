@@ -1411,6 +1411,48 @@ fn user_layer_plan(home: &Path, package: &Path, staged: &StagedPackage) -> Resul
     })
 }
 
+/// Which hosts get agents and the section after the skill apply, and which are skipped.
+struct SkillGate {
+    agents: Vec<String>,
+    routing: Vec<String>,
+    skipped: Vec<serde_json::Value>,
+}
+
+/// A host whose skill copy did not land — its outcome is `failed` or `blocked`, or it is
+/// missing from the skills result — gets no agents and no section: both point into that copy
+/// (#2638; audit 6847256437 B1).
+fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGate {
+    let landed = |h: &str| {
+        skills["hosts"].as_array().into_iter().flatten().any(|o| {
+            o["host"] == json!(h) && !matches!(o["status"].as_str(), Some("failed" | "blocked"))
+        })
+    };
+    let mut gate = SkillGate {
+        agents: Vec::new(),
+        routing: Vec::new(),
+        skipped: Vec::new(),
+    };
+    for h in &layer.agents.hosts {
+        if landed(skill_host_of(&h.host)) {
+            gate.agents.push(h.host.clone());
+        } else {
+            gate.skipped.push(
+                json!({"part": "agents", "host": h.host, "reason": "the skill copy did not apply"}),
+            );
+        }
+    }
+    for h in &layer.routing.hosts {
+        if landed(&h.host) {
+            gate.routing.push(h.host.clone());
+        } else {
+            gate.skipped.push(
+                json!({"part": "routing", "host": h.host, "reason": "the skill copy did not apply"}),
+            );
+        }
+    }
+    gate
+}
+
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
     p.hosts.iter().any(|h| {
         h.preflight == "ok"
@@ -1528,59 +1570,39 @@ pub fn update_command(
         PERMISSION,
         &[],
     )?;
-    // A host whose skill copy did not land gets no agents and no section: both point into it.
-    let landed = |h: &str| {
-        skills["hosts"].as_array().into_iter().flatten().any(|o| {
-            o["host"] == json!(h) && !matches!(o["status"].as_str(), Some("failed" | "blocked"))
-        })
-    };
+    let gate = gate_on_skills(&skills, &fresh);
     let mut skipped = fresh.skipped.clone();
-    let agent_hosts: Vec<&str> = fresh
-        .agents
-        .hosts
-        .iter()
-        .map(|h| h.host.as_str())
-        .filter(|h| {
-            let ok = landed(skill_host_of(h));
-            if !ok {
-                skipped.push(
-                    json!({"part": "agents", "host": h, "reason": "the skill copy did not apply"}),
-                );
-            }
-            ok
-        })
-        .collect();
-    let routing_hosts: Vec<&str> = fresh
-        .routing
-        .hosts
-        .iter()
-        .map(|h| h.host.as_str())
-        .filter(|h| {
-            let ok = landed(h);
-            if !ok {
-                skipped.push(
-                    json!({"part": "routing", "host": h, "reason": "the skill copy did not apply"}),
-                );
-            }
-            ok
-        })
-        .collect();
-    let agents_plan = crate::agent_install::plan_for(home, &package, &agent_hosts)?;
-    let agents = crate::agent_install::apply_for(
-        home,
-        &package,
-        &agent_hosts,
-        &agents_plan.plan_digest,
-        PERMISSION,
-    )?;
-    let routing_plan = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
-    let routing = crate::home_routing::apply_for(
-        home,
-        &package,
-        &routing_hosts,
-        &routing_plan.plan_digest,
-        PERMISSION,
-    )?;
+    skipped.extend(gate.skipped);
+    let agent_hosts: Vec<&str> = gate.agents.iter().map(String::as_str).collect();
+    let routing_hosts: Vec<&str> = gate.routing.iter().map(String::as_str).collect();
+    // From here the skills are written: a later part's error is reported beside the skills
+    // result instead of hiding it (audit 6847256437 note 3).
+    let part = |r: Result<serde_json::Value>| {
+        r.unwrap_or_else(|e| json!({"state": "error", "message": e}))
+    };
+    let agents = part((|| {
+        let p = crate::agent_install::plan_for(home, &package, &agent_hosts)?;
+        // Same hosts as confirmed: the plan must be the confirmed one (note 2).
+        if agent_hosts.len() == fresh.agents.hosts.len()
+            && p.plan_digest != fresh.agents.plan_digest
+        {
+            return Ok(
+                json!({"state": "refused", "reason": "the agents plan changed after the confirmed preview; nothing written"}),
+            );
+        }
+        crate::agent_install::apply_for(home, &package, &agent_hosts, &p.plan_digest, PERMISSION)
+    })());
+    let routing = part((|| {
+        let p = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
+        if routing_hosts.len() == fresh.routing.hosts.len()
+            && p.plan_digest != fresh.routing.plan_digest
+        {
+            return Ok(
+                json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
+            );
+        }
+        crate::home_routing::apply_for(home, &package, &routing_hosts, &p.plan_digest, PERMISSION)
+    })());
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
@@ -2379,5 +2401,51 @@ mod user_layer_tests {
         assert!(user_layer_plan(&home, &a, &staged).is_ok());
         let e = user_layer_plan(&home, &b, &staged).err().unwrap();
         assert!(e.contains("package changed"), "{e}");
+    }
+
+    /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the
+    /// apply (`failed`), or is missing from the result, gets no agents and no section.
+    #[test]
+    fn a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+        let layer = user_layer_plan(&home, &pkg, &stage_package(&pkg).unwrap()).unwrap();
+        let hosts = |g: &[String]| g.iter().map(String::as_str).collect::<Vec<_>>().join(",");
+        let skipped = |g: &SkillGate| {
+            g.skipped
+                .iter()
+                .map(|s| {
+                    format!(
+                        "{}:{}",
+                        s["part"].as_str().unwrap(),
+                        s["host"].as_str().unwrap()
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        // Both copies landed (applied or already unchanged): every host goes on.
+        let ok = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "unchanged"}]});
+        let g = gate_on_skills(&ok, &layer);
+        assert_eq!(hosts(&g.agents), "claude,codex,omp");
+        assert_eq!(hosts(&g.routing), "claude,codex");
+        assert!(g.skipped.is_empty());
+        // The Codex copy failed during the apply: codex and omp agents and the codex section stop.
+        let failed = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "failed"}]});
+        let g = gate_on_skills(&failed, &layer);
+        assert_eq!(hosts(&g.agents), "claude");
+        assert_eq!(hosts(&g.routing), "claude");
+        assert_eq!(skipped(&g), "agents:codex,agents:omp,routing:codex");
+        assert!(g
+            .skipped
+            .iter()
+            .all(|s| s["reason"] == json!("the skill copy did not apply")));
+        // A host missing from the result counts as not landed.
+        let missing = json!({"hosts": [{"host": "codex", "status": "applied"}]});
+        let g = gate_on_skills(&missing, &layer);
+        assert_eq!(hosts(&g.agents), "codex,omp");
+        assert_eq!(hosts(&g.routing), "codex");
     }
 }
