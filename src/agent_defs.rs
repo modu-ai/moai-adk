@@ -21,14 +21,9 @@ type Result<T> = std::result::Result<T, String>;
 
 /// Where the sources live inside the skill package.
 pub const SOURCE_DIR: &str = "references/agents";
-/// Hosts rendered in S1; the hosts that need an adapter module follow in S3 (user decision
-/// 6840661050, #2592). The home installer (#2592 S2) writes these hosts; OMP joins this list
-/// together with its user folder in the installer (#2633 follow-up), so a host is never listed
-/// here without a folder to write it to.
-pub const HOSTS: [&str; 2] = ["claude", "codex"];
-/// Every host [`render`] accepts: [`HOSTS`] plus OMP (#2633, user decision 6841920695 and the
-/// 2026-11-13 confirmation of five supported hosts).
-pub const RENDERED_HOSTS: [&str; 3] = ["claude", "codex", "omp"];
+/// Hosts the home installer (#2592 S2) writes: Claude Code and Codex (S1), OMP (#2633). A host
+/// is listed here only together with its user folder in `agent_install::host_dir`.
+pub const HOSTS: [&str; 3] = ["claude", "codex", "omp"];
 const DESCRIPTION_LIMIT: usize = 1024;
 const BODY_LIMIT: usize = 16 * 1024;
 
@@ -362,7 +357,7 @@ fn render_omp(def: &AgentDef) -> Rendered {
             def.name,
             yaml_scalar(&def.description),
             tools.join(", "),
-            def.body
+            reads_line(def) + &def.body
         ),
         not_supported,
     }

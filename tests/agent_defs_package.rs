@@ -2,7 +2,7 @@
 //! `references/agents/` (decision A) and render into each host's agent file. Reads the package;
 //! writes nothing.
 
-use moai_cli::agent_defs::{package_agents, render, HOSTS, RENDERED_HOSTS};
+use moai_cli::agent_defs::{package_agents, render, HOSTS};
 use std::path::Path;
 
 fn package() -> std::path::PathBuf {
@@ -51,13 +51,12 @@ fn the_package_holds_the_five_roles_of_the_contract() {
 
 #[test]
 fn every_role_renders_for_every_host_deterministically() {
-    // #2633: OMP is rendered (2026-11-13 confirmation of five supported hosts; Kiro and Cursor
-    // CLI follow) but joins the installed hosts only with its folder in the installer.
-    assert_eq!(RENDERED_HOSTS, ["claude", "codex", "omp"]);
-    assert_eq!(HOSTS, ["claude", "codex"]);
+    // #2633: OMP is rendered and installed (2026-11-13 confirmation of five supported hosts;
+    // Kiro and Cursor CLI follow).
+    assert_eq!(HOSTS, ["claude", "codex", "omp"]);
     let defs = package_agents(&package()).unwrap();
     for d in &defs {
-        for host in RENDERED_HOSTS {
+        for host in HOSTS {
             let a = render(d, host).unwrap();
             assert_eq!(a, render(d, host).unwrap());
             assert!(a.path.starts_with("agents/moai-"), "{}", a.path);
