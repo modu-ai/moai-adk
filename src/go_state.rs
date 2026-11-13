@@ -40,7 +40,7 @@ const MOAI_DIR: &str = ".moai";
 /// unpacked review trees with `node_modules`, and the preview read for over 14 minutes). The
 /// count only informs; nothing moves on its account. Debug builds take
 /// `MOAI_CLI_TEST_UNRECORDED_LIMIT` so a test can reach the limit with a few files.
-fn unrecorded_limit() -> u64 {
+pub(crate) fn unrecorded_limit() -> u64 {
     #[cfg(debug_assertions)]
     if let Some(n) = std::env::var("MOAI_CLI_TEST_UNRECORDED_LIMIT")
         .ok()
@@ -309,7 +309,7 @@ fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<Str
 /// How many nested checkouts (folders holding a `.git` file or folder) are at or under
 /// `<project>/<rel>`, not descending into them; `None` when the walk passes `limit` entries
 /// before it ends (unknown, so the caller stays fail-closed).
-fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> Option<usize> {
+pub(crate) fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> Option<usize> {
     let base = project.join(rel);
     // The folder itself may be a checkout (another repository's worktree at `.moai`, #2753
     // re-audit F2 6859648118): that alone keeps it in place.

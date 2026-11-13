@@ -38,6 +38,7 @@ pub mod goal_block;
 pub mod handoff;
 pub mod heavy_slot;
 pub mod home_routing;
+pub mod home_state;
 pub mod hook_config;
 pub mod hook_engine;
 pub mod hook_guards;
