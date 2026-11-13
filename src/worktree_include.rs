@@ -177,26 +177,40 @@ fn glob_match(pattern: &[u8], text: &[u8]) -> bool {
     }
 }
 
-/// Whether `rule` selects the file at `path` (a `/`-separated path from the project root).
-fn selects(rule: &Rule, path: &str) -> bool {
+/// Whether `rule`'s pattern matches `path` itself (a `/`-separated path from the project root;
+/// `is_file` false for a folder). Folders above `path` are judged by [`deciding_rule`].
+fn matches_at(rule: &Rule, path: &str, is_file: bool) -> bool {
+    if rule.dir_only && is_file {
+        return false;
+    }
+    // Without case: git on the default macOS file system (`core.ignorecase`) matches `.ENV`
+    // to `.env`, so reading case strictly would miss a line that copies it.
+    let glob = rule.glob.to_ascii_lowercase();
+    let path = path.to_ascii_lowercase();
+    if rule.anchored {
+        glob_match(glob.as_bytes(), path.as_bytes())
+    } else {
+        let name = path.rsplit('/').next().unwrap_or(&path);
+        glob_match(glob.as_bytes(), name.as_bytes())
+    }
+}
+
+/// The line that decides whether the file at `path` is selected, as git does (audit FAIL
+/// 6851346525 B1): the folders above it are judged first, from the top; once a folder is
+/// selected (its last matching line is not a `!`), that line decides — "it is not possible to
+/// re-include a file if a parent directory of that file is excluded" (gitignore docs), so a
+/// later `!` for the file does not count. Otherwise the last line matching the file decides.
+fn deciding_rule<'a>(rules: &'a [Rule], path: &str) -> Option<&'a Rule> {
     let parts: Vec<&str> = path.split('/').collect();
-    // A file is selected by a pattern naming it, or naming any folder above it.
-    let candidates = (1..=parts.len()).map(|n| (parts[..n].join("/"), n == parts.len()));
-    candidates.into_iter().any(|(prefix, is_file)| {
-        if rule.dir_only && is_file {
-            return false;
+    for n in 1..parts.len() {
+        let folder = parts[..n].join("/");
+        if let Some(r) = rules.iter().rev().find(|r| matches_at(r, &folder, false)) {
+            if !r.negate {
+                return Some(r);
+            }
         }
-        // Without case: git on the default macOS file system (`core.ignorecase`) matches
-        // `.ENV` to `.env`, so reading case strictly would miss a line that copies it.
-        let glob = rule.glob.to_ascii_lowercase();
-        let prefix = prefix.to_ascii_lowercase();
-        if rule.anchored {
-            glob_match(glob.as_bytes(), prefix.as_bytes())
-        } else {
-            let name = prefix.rsplit('/').next().unwrap_or(&prefix);
-            glob_match(glob.as_bytes(), name.as_bytes())
-        }
-    })
+    }
+    rules.iter().rev().find(|r| matches_at(r, path, true))
 }
 
 /// The lines of an include list that select a secret probe, in line order.
@@ -216,8 +230,9 @@ pub fn secret_lines(text: &str) -> Vec<Finding> {
     }
     let mut findings: Vec<Finding> = Vec::new();
     for probe in probes.iter().map(String::as_str) {
-        // The last matching line decides (`.gitignore` order); a negation un-selects.
-        let Some(last) = rules.iter().rev().find(|r| selects(r, probe)) else {
+        // A selected folder above the file decides; otherwise the last matching line does,
+        // and a negation un-selects (`.gitignore` order).
+        let Some(last) = deciding_rule(&rules, probe) else {
             continue;
         };
         if last.negate {
@@ -360,6 +375,47 @@ mod tests {
         assert!(!secret_name(".key") && !secret_name(".envrc") && !secret_name("env"));
     }
 
+    /// Audit FAIL 6851346525 (agent-29) B1: a `!` cannot re-include a file whose folder is
+    /// selected, as in git. The rows are git's own answers (`git ls-files -o -i
+    /// --exclude-from=list`, measured in the audit): `certs/` then `!` lines still copies both
+    /// files, while `certs/*` then `!certs/server.key` copies only the `.pem`.
+    #[test]
+    fn a_negation_under_a_selected_folder_does_not_re_include_like_git() {
+        let probes = |text: &str| -> Vec<(usize, Vec<String>)> {
+            secret_lines(text)
+                .into_iter()
+                .map(|f| (f.line, f.probes))
+                .collect()
+        };
+        let both = vec![
+            "certs/server.key".to_string(),
+            "certs/server.pem".to_string(),
+            "certs/client.p12".to_string(),
+        ];
+        assert_eq!(
+            probes("certs/\n!certs/server.key\n"),
+            vec![(1, both.clone())]
+        );
+        assert_eq!(
+            probes("certs/\n!certs/server.key\n!certs/server.pem\n"),
+            vec![(1, both)]
+        );
+        assert_eq!(
+            probes("certs/*\n!certs/server.key\n"),
+            vec![(
+                1,
+                vec![
+                    "certs/server.pem".to_string(),
+                    "certs/client.p12".to_string()
+                ]
+            )]
+        );
+        // A negated folder is not selected: the file's own lines decide below it.
+        assert_eq!(probes("certs/\n!certs/\n"), Vec::new());
+        // Non-blocking N2: `?` stays inside one name (anchored, so the whole path is matched).
+        assert_eq!(lines("/certs?server.key\n"), Vec::new());
+    }
+
     #[test]
     fn negation_order_folders_globs_and_crlf_follow_gitignore() {
         // A later negation un-selects; an earlier one is overridden by a later pattern.
@@ -401,6 +457,18 @@ mod tests {
         assert_eq!(fs::read(p.join(FILE)).unwrap(), before, "nothing written");
         fs::write(p.join(FILE), [0xff, 0xfe, b'\n']).unwrap();
         assert!(warnings(p)[0].contains("not readable UTF-8"));
+        // Audit 6851346525 N1: the size limit at its edge — exactly LIMIT bytes is read,
+        // one byte more is named and not read.
+        let mut at_limit = b".env\n".to_vec();
+        at_limit.resize(LIMIT as usize - 1, b'#');
+        at_limit.push(b'\n');
+        assert_eq!(at_limit.len() as u64, LIMIT);
+        fs::write(p.join(FILE), &at_limit).unwrap();
+        let w = warnings(p);
+        assert!(w[0].starts_with(".worktreeinclude line 1 `.env`"), "{w:?}");
+        at_limit.push(b'\n');
+        fs::write(p.join(FILE), &at_limit).unwrap();
+        assert!(warnings(p)[0].contains("not a small regular file"));
         #[cfg(unix)]
         {
             fs::remove_file(p.join(FILE)).unwrap();
