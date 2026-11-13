@@ -274,3 +274,65 @@ fn chains_name_real_routes_agents_and_references() {
     let build = rows.iter().find(|r| r[0] == "Build something new").unwrap();
     assert_eq!(build[2], "moai-plan, moai-impl, moai-audit, moai-docs");
 }
+
+/// The question bank (#2639): one row per question, every always-asked axis of the PROJECT
+/// workflow is in it, and every answer lands in `decisions` or a real profile field.
+#[test]
+fn interview_question_bank_covers_the_project_axes() {
+    let text = std::fs::read_to_string(package().join("references/internal/interview.md")).unwrap();
+    let bank = text
+        .split("## Question bank")
+        .nth(1)
+        .expect("question bank");
+    let rows: Vec<Vec<String>> = bank
+        .lines()
+        .filter(|l| l.starts_with("| `"))
+        .map(|l| {
+            l.trim_matches('|')
+                .split(" | ")
+                .map(|c| c.trim().to_string())
+                .collect()
+        })
+        .collect();
+    let ids: Vec<&str> = rows.iter().map(|r| r[0].trim_matches('`')).collect();
+    assert_eq!(
+        ids,
+        [
+            "purpose",
+            "protected",
+            "done",
+            "review_blocks",
+            "autonomy",
+            "test_command",
+            "build_command",
+            "stack",
+            "method",
+            "hosts"
+        ]
+    );
+    for r in &rows {
+        assert_eq!(r.len(), 4, "{r:?}");
+        let always = r[1] == "always";
+        let id = r[0].trim_matches('`');
+        assert_eq!(
+            always,
+            ["protected", "done", "review_blocks", "autonomy"].contains(&id),
+            "{id}"
+        );
+        let to = r[3].as_str();
+        assert!(
+            to == "decisions"
+                || [
+                    "profile `purpose`",
+                    "profile `tools`",
+                    "profile `development_methods`",
+                    "profile `hosts`"
+                ]
+                .contains(&to),
+            "{id}: {to}"
+        );
+    }
+    assert!(bank.contains("skip every row that reading already answered"));
+    assert!(bank.contains("\"source\": \"repo\""));
+    assert!(bank.contains("\"source\": \"user\""));
+}
