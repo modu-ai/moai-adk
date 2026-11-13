@@ -9,6 +9,8 @@
 # Go Build Artifacts
 # ===========================================
 bin/
+# Rust binary sources (the `moai` binary, #2790) are source, not build output.
+!/src/bin/
 *.exe
 *.exe~
 *.dll
