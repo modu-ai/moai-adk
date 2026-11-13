@@ -111,7 +111,28 @@ fn option_letters(options: &str) -> Option<Vec<String>> {
 pub fn parse(text: &str) -> (Vec<Row>, Vec<Problem>) {
     let mut rows = Vec::new();
     let mut problems = Vec::new();
-    let lines: Vec<&str> = text.lines().collect();
+    // A fenced block (``` or ~~~) is an example, never the table: its lines read as blank,
+    // keeping every other line at its own number (Codex review on #2623).
+    let mut fence: Option<&str> = None;
+    let lines: Vec<&str> = text
+        .lines()
+        .map(|l| {
+            let t = l.trim_start();
+            let marker = ["```", "~~~"].into_iter().find(|m| t.starts_with(m));
+            match (fence, marker) {
+                (None, Some(m)) => {
+                    fence = Some(m);
+                    ""
+                }
+                (Some(open), Some(m)) if m == open => {
+                    fence = None;
+                    ""
+                }
+                (Some(_), _) => "",
+                (None, None) => l,
+            }
+        })
+        .collect();
     let Some(header) = lines.iter().position(|l| {
         cells(l).is_some_and(|c| c.iter().map(String::as_str).eq(COLUMNS.iter().copied()))
     }) else {
@@ -136,8 +157,19 @@ pub fn parse(text: &str) -> (Vec<Row>, Vec<Problem>) {
     }
     let mut seen = std::collections::BTreeSet::new();
     for (i, raw) in lines.iter().enumerate().skip(header + 2) {
-        let Some(c) = cells(raw) else { break };
         let line = i + 1;
+        if !raw.trim_start().starts_with('|') {
+            break;
+        }
+        // A row that starts as one but lacks its closing pipe is refused, not the table's end.
+        let Some(c) = cells(raw) else {
+            problems.push(Problem {
+                line,
+                id: String::new(),
+                reason: "a row does not end with `|`".into(),
+            });
+            continue;
+        };
         let id = c.first().cloned().unwrap_or_default();
         let mut bad = |reason: String| {
             problems.push(Problem {
@@ -341,6 +373,25 @@ mod tests {
         assert!(refused(&date_only)[0].starts_with("`deadline` `2026-11-14`"));
         let maybe = TO_USER.replace("| yes | none |", "| maybe | none |");
         assert!(refused(&maybe)[0].starts_with("`reversible` must be yes or no"));
+    }
+
+    #[test]
+    fn a_broken_row_is_refused_and_a_fenced_example_is_never_the_table() {
+        let broken = LEADER.trim_end_matches('|').to_string();
+        let (rows, problems) = parse(&file(&[TO_USER, &broken, HOLD]));
+        assert_eq!(rows.len(), 2, "the row after the broken one is still read");
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(problems[0].reason, "a row does not end with `|`");
+        assert_eq!(problems[0].line, 6);
+        for fence in ["```", "~~~"] {
+            let example = format!(
+                "# Decisions\n\n{fence}markdown\n{HEAD}| X | x | A: a; B: b | Z | maybe | none | soon | nobody |  | - |\n{fence}\n\n{HEAD}{TO_USER}\n"
+            );
+            let (rows, problems) = parse(&example);
+            assert!(problems.is_empty(), "{fence}: {problems:?}");
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].id, "D2");
+        }
     }
 
     #[test]
