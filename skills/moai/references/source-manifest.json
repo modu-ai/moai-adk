@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "38ac0dc5f4eb2aa986015d3ffee880e3da8b661c28d91bbbe3edc4c289c7c38f",
+      "sha256": "e9746c646ea6b0b4fb844ee9932c663f9d6ac5dbe47170f3bd258d404ccf83a6",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "8351e9fec0e2290a5409c27c6578c6ae8062e77a6111e5ad4fb33f02c2429993",
+      "sha256": "19680d0230fae0ebf3fd7c64ae454a84fe8e5a981a8ae7f76f6027fd98c83254",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -235,7 +235,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "0fcef9733e6e3aa3266d28c8b5159c00f8b863a31f3794ab28d25bf0e91e1eec",
+      "sha256": "df95855aead2baf9c2d9bfd43f0d453a8eaa54ef41b86ee1a986e7bc617c3f79",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
