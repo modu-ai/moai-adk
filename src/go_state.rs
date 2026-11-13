@@ -1004,15 +1004,10 @@ fn move_entry(from: &Path, to: &Path) -> Result<()> {
 /// The marker written last (decision D1): what `state_root` accepts, plus where the Go
 /// folder went.
 fn marker_bytes(go_backup: &str) -> Result<Vec<u8>> {
-    let mut bytes = serde_json::to_vec_pretty(&serde_json::json!({
-        "schema_version": crate::state_root::MARKER_SCHEMA,
-        "generation": "moai-cli",
-        "created_by": format!("moai-cli {} go-state-apply", crate::BUILD_VERSION),
-        "go_backup": go_backup,
-    }))
-    .map_err(|_| "encode failed")?;
-    bytes.push(b'\n');
-    Ok(bytes)
+    Ok(crate::state_root::marker_bytes(
+        "go-state-apply",
+        &[("go_backup", go_backup)],
+    ))
 }
 
 /// Apply the preview whose digest the caller confirmed. Nothing is written unless a fresh

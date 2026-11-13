@@ -539,6 +539,11 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
     {
         return Err("stale or altered plan; re-preview required".into());
     }
+    // #2696 C2b: the first profile of a project with no state makes `.moai/` and its marker
+    // first, so the paths below and every later writer resolve to `.moai`.
+    if p.action == "create" {
+        crate::state_root::adopt_new(root, "project-apply")?;
+    }
     let target_rel = crate::state_root::rel(root, "project.yaml");
     let baseline_rel = crate::state_root::rel(root, "manifests/profile-baseline.json");
     if p.action == "conflict" {

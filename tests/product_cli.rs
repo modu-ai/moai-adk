@@ -55,6 +55,9 @@ fn stdin_broken_pipe_does_not_panic() {
 }
 fn create(root: &TempDir, input: &Value) -> Value {
     let p = root.path().to_str().unwrap();
+    // An earlier-root project: its state stays in `.moai-cli/` (#2696 C2b gives a project
+    // with no state `.moai/`; that layout is pinned in tests/state_root_cli.rs).
+    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let preview = cli(&["project-plan", p], input);
     assert!(preview.status.success(), "{:?}", preview.stderr);
     let plan: Value = ok_result(&preview);
@@ -155,16 +158,15 @@ fn profile_v2_create_and_secret_rejection() {
         .as_str()
         .unwrap()
         .contains("generation.json"));
-    let file = root.path().join(".moai-cli/project.yaml");
+    // #2696 C2b: a project with no state gets `.moai/` and its marker first.
+    assert!(root.path().join(".moai/moai-cli.json").is_file());
+    assert!(!root.path().join(".moai-cli").exists());
+    let file = root.path().join(".moai/project.yaml");
     let value = json_file(&file);
     assert_eq!(value["schema_version"], json!(2));
     assert_eq!(value["interview_revision"], json!("rc1-fixture-1"));
     assert_eq!(value["decisions"][0]["id"], json!("d1"));
-    let baseline = json_file(
-        &root
-            .path()
-            .join(".moai-cli/manifests/profile-baseline.json"),
-    );
+    let baseline = json_file(&root.path().join(".moai/manifests/profile-baseline.json"));
     assert_eq!(baseline["schema_version"], json!(1));
     assert_eq!(
         baseline["profile"]["interview_revision"],
@@ -2158,10 +2160,18 @@ fn envelope_fields_and_error_codes() {
         let word = f["args"][0].as_str().unwrap_or_default();
         let out = &f["stdout"];
         if !OPS.contains(&word) {
-            assert!(
-                out.get("ok").is_none(),
-                "{name}: launcher or unknown word got an envelope"
-            );
+            // #2799 D3 decision 1 (a): an unknown first word gets the `cli` usage envelope; a
+            // launcher still gets none.
+            if f["stderr"]
+                .as_str()
+                .is_some_and(|e| e.starts_with("error: unrecognized subcommand"))
+            {
+                assert_eq!(out["operation"], json!("cli"), "{name}");
+                assert_eq!(out["error"]["kind"], json!("usage"), "{name}");
+                assert_eq!(f["exit"], json!(2), "{name}");
+            } else {
+                assert!(out.get("ok").is_none(), "{name}: launcher got an envelope");
+            }
             continue;
         }
         let op = word.replacen('-', ".", 1);

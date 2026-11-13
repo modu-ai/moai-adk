@@ -299,6 +299,10 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
         let mut n = 0;
         while let Some(u) = url {
             n += 1;
+            if n > 1 {
+                // A read of one page is quick; from the second page on, say which (#2806).
+                crate::progress::note(&format!("reading page {n} of {}", api_path(&u)));
+            }
             if n > self.config.max_pages {
                 return Err(ForgeError::invalid(format!(
                     "page limit exceeded (config.max_pages {})",
@@ -321,6 +325,12 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
         }
         Ok((items, all_cached))
     }
+}
+
+/// The API path of a request URL for a progress line: no host, no query.
+fn api_path(url: &str) -> &str {
+    let path = url.strip_prefix("https://api.github.com").unwrap_or(url);
+    path.split('?').next().unwrap_or(path)
 }
 
 fn valid_name(s: &str) -> bool {

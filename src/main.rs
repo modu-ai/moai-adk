@@ -1575,9 +1575,29 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
 /// Internal operations; `main` wraps the result in the envelope.
 /// Journal-writing operations and message operations return typed errors directly;
 /// the remaining operations keep the classified `String` fallback.
+/// Commands that may run longer than two seconds and print static progress lines on a stderr
+/// terminal (#2806, design #2799 D2 §5). The `wait`, `gate-loop`, `gate-check` and
+/// `labels-check` operations install the same sink in their own files.
+fn shows_progress(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::IndexBuild { .. }
+            | Command::LabelsPlan { .. }
+            | Command::QueueFree { .. }
+            | Command::LeaderTick { .. }
+            | Command::LaneStatus { .. }
+            | Command::ForgeRead { .. }
+            | Command::FlowWipCheck { .. }
+            | Command::DispatchCheck
+    )
+}
+
 fn run_internal(
     command: Command,
 ) -> std::result::Result<serde_json::Value, moai_cli::contract::OpError> {
+    if shows_progress(&command) {
+        moai_cli::progress::install_stderr();
+    }
     match command {
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
@@ -2001,7 +2021,30 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             shared,
         } => {
             let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &scope, &provider, yes)
+            let home = moai_cli::key_vault::home()?;
+            if yes {
+                return moai_cli::key_vault::remove(&home, &scope, &provider, true);
+            }
+            // Without `--yes`: the preview removes nothing. On a terminal (stdin and stderr)
+            // with an entry to delete, ask once (#2806, design #2799 D2 §7); elsewhere the
+            // preview with its `next:` hint is the answer, byte for byte as before.
+            let preview = moai_cli::key_vault::remove(&home, &scope, &provider, false)?;
+            use std::io::IsTerminal as _;
+            let terminal = io::stdin().is_terminal() && io::stderr().is_terminal();
+            if !(terminal && preview["exists"] == serde_json::json!(true)) {
+                return Ok(preview);
+            }
+            let what = format!(
+                "key-remove deletes 1 file\n  {provider} key, {} scope: {}\n",
+                preview["scope"].as_str().unwrap_or("?"),
+                preview["path"].as_str().unwrap_or("?")
+            );
+            if moai_cli::progress::ask_terminal(&what, "Remove it?")? {
+                moai_cli::key_vault::remove(&home, &scope, &provider, true)
+            } else {
+                eprintln!("next: run with --yes to remove it without asking");
+                Ok(preview)
+            }
         }
         Command::KeySet { provider, shared } => {
             use std::io::IsTerminal;
@@ -2426,24 +2469,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
+            // The shared confirm prompt (#2806): same terminal rule and question as before.
             moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                use std::io::{BufRead as _, IsTerminal as _, Write as _};
-                if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
-                    return Ok(false);
-                }
-                let mut err = io::stderr();
-                let _ = write!(
-                    err,
-                    "moai-cli update preview:\n{}Apply this update? [y/N] ",
-                    summary
-                );
-                let _ = err.flush();
-                let mut answer = String::new();
-                io::stdin()
-                    .lock()
-                    .read_line(&mut answer)
-                    .map_err(|_| "could not read the answer".to_string())?;
-                Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
+                moai_cli::progress::ask_terminal(
+                    &format!("moai-cli update preview:\n{summary}"),
+                    "Apply this update?",
+                )
             })
         }
         Command::ReviewCheck { project, head } => {
@@ -2683,11 +2714,42 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
     }
 }
 
+/// The envelope `operation` of a command line whose first word names no command (#2799 D3
+/// decision 1 (a)); no operation ran, so it names the command line itself.
+const UNKNOWN_COMMAND_OPERATION: &str = "cli";
+const UNKNOWN_COMMAND: &str = "unknown command; see --help";
+
+/// True when clap refused `first` as a subcommand and `first` is a bare word that names no
+/// command (nor `help`): `moai no-such-command`. An option, `help <word>` or a known command
+/// followed by a wrong word is not this case and keeps its own handling.
+fn names_no_command(e: &clap::Error, first: &str) -> bool {
+    matches!(e.kind(), ErrorKind::InvalidSubcommand)
+        && !first.starts_with('-')
+        && first != "help"
+        && Cli::command().find_subcommand(first).is_none()
+}
+
 /// A command-line error on an internal operation becomes a `usage` envelope (exit 2) with a
 /// message that echoes no argument; stderr keeps clap's first line for people. Help, version,
 /// the launchers and words that name no operation keep clap's own output.
 fn usage_error(e: clap::Error) -> ExitCode {
-    let op = std::env::args().nth(1).and_then(|w| operation_of(&w));
+    let first = std::env::args().nth(1);
+    if first.as_deref().is_some_and(|w| names_no_command(&e, w)) {
+        // #2799 D3 decision 1 (a): an unknown first word is a usage error like any other, so
+        // stdout carries the `usage` envelope too. Its message echoes no argument (the word
+        // may be anything pasted); stderr and the exit code stay clap's own, byte for byte.
+        let _ = e.print();
+        println!(
+            "{}",
+            contract::failure(
+                UNKNOWN_COMMAND_OPERATION,
+                contract::Kind::Usage,
+                UNKNOWN_COMMAND
+            )
+        );
+        return ExitCode::from(2);
+    }
+    let op = first.and_then(|w| operation_of(&w));
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {

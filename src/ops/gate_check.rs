@@ -35,6 +35,8 @@ pub struct Args {
 pub const OPERATION: &str = "gate.check";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    // Static progress lines on a stderr terminal (#2806); silent on a pipe.
+    moai_cli::progress::install_stderr();
     if let Some(pr) = args.pr {
         let (owner, repo) = args
             .repo
