@@ -67,6 +67,27 @@
       "rejects": "a git fixture call outside the guarded shared helper"
     },
     {
+      "id": "no-fixed-temp-paths",
+      "tests": [
+        "tests/test_isolation_rules.rs::no_test_shares_a_fixed_temporary_path"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_isolation_rules no_test_shares_a_fixed_temporary_path"
+      ],
+      "rules": [
+        "tests/test_isolation_rules.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a fixed temp_dir() or CARGO_TARGET_TMPDIR join name shared across test processes (#2666)"
+    },
+    {
       "id": "recorded-ac-commands",
       "tests": [
         "tests/ac_command_lint.rs::recorded_ac_commands_name_existing_targets_and_select_tests"
