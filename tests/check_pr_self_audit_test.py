@@ -222,8 +222,12 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
                      "Auditor: the audited head changes code", "Delta auditor: merge-only delta",
                      "Author: a skill package file changes"):
             self.assertIn(case, text)
-        # One build folder per worktree, and lanes report instead of deleting (#2385 follow-up).
-        self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
+        # One build folder per lane (leader decision #2677 6859259006), never shared with another
+        # lane, and a run counts only when its `Compiling` line names the checked worktree;
+        # lanes report instead of deleting (#2385 follow-up).
+        self.assertIn("Use one build folder per lane", text)
+        self.assertIn("never share it with another lane", text)
+        self.assertIn("trust only a run whose `Compiling` line names the worktree you are checking", text)
         # WF-OBS repeat findings documented by Issue #2493, each with its ledger number.
         self.assertEqual(text.count("\n## Shell and helper rules\n"), 1)
         # The split retry is bounded (pre-audit FAIL 6814410637 B1): only a refusal of the
