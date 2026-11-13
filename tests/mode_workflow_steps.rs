@@ -159,7 +159,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "pr-confirm",
             "queue-free",
             "queue-next",
-            "scope-check"
+            "scope-check",
+            "usage-limit"
         ],
         "the op list the workflows name"
     );
@@ -553,6 +554,35 @@ fn gate_unavailable_rules_are_written_where_they_are_used() {
     ] {
         assert!(leader.contains(text), "mode-leader.md lacks {text:?}");
     }
+}
+
+// #2668 S3: a lane renews its claims before a claude.ai usage limit stops it, leaves the
+// resume to the host's own automatic continue, and the leader treats a `usage_limit` lane as
+// held, not stopped.
+#[test]
+fn usage_limit_rules_are_pinned_in_both_mode_workflows() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "run `moai-cli usage-limit \"$HOME\"`",
+            "before any other write, renew every claim you hold to its `renew_until`",
+            "`LANE-WAIT <lane> usage-limit until <renew_until>`",
+            "Keep Claude Code's own automatic continue on (`autoContinueAtUsageLimit`",
+            "arm no wake of your own for it",
+            "Codex CLI documents neither a usage record nor an automatic continue: report this step `not_run` there",
+        ],
+    );
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "reports idle with cause `usage_limit`",
+            "post no handoff line for its cards before that time",
+        ],
+    );
 }
 
 /// #2675: the state summary and the self-claim candidate come from `moai-cli queue-free`, and
