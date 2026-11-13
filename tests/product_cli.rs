@@ -2541,6 +2541,48 @@ mod skill_package {
         cites_spec_sections_only(&body, "MODE-AGENT");
     }
 
+    /// #2619: an open question is sorted before anyone is asked — a fact is answered, a
+    /// one-way or five-category choice waits for the user, any other choice is the leader's
+    /// recorded decision, and a handed-over reversible choice runs on its default after its
+    /// deadline. A HOLD may name only the five categories or `irreversible`.
+    #[test]
+    fn open_questions_are_sorted_and_holds_name_five_categories() {
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        let start = skill
+            .find("the five HOLD categories")
+            .expect("SKILL.md names the five HOLD categories");
+        let clause = &skill[start..start + skill[start..].find(", goes to").unwrap()];
+        let named: Vec<&str> = clause.split('`').skip(1).step_by(2).collect();
+        assert_eq!(
+            named,
+            ["money", "legal", "external_contract", "secret", "real_data"],
+            "{clause}"
+        );
+        for line in [
+            "a question that a read, a command or a document answers is not a decision",
+            "goes to the user and waits — no deadline applies it by default",
+            "the leader decides it, records it, and the user may reverse it afterwards",
+            "a lane asks the leader, not the user",
+            "the default applies once the deadline passes unanswered",
+            "A HOLD names one of the five categories or `irreversible`; no other reason declares one.",
+            "Independent audit and the CI gate are never delegated.",
+            "its options, the default, whether it is reversible, its category (`none` or one of the five), its deadline and who decided; a decision without a record does not count.",
+        ] {
+            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+        }
+        let leader = mode_workflow("MODE-LEADER");
+        let agent = mode_workflow("MODE-AGENT");
+        for body in [&leader, &agent] {
+            assert!(
+                body.contains("sort it in the order SKILL.md gives (Issue #2619)")
+                    || body.contains("sort the question in the order SKILL.md gives (Issue #2619)")
+            );
+        }
+        assert!(leader.contains("never decide a HOLD for the lane"));
+        assert!(agent.contains("send a choice to the leader — not to the user"));
+        assert!(agent.contains("never declare a HOLD outside the five categories"));
+    }
+
     /// #2516 (leader decision B, comment 6823474405): the Orca session-control rules live in
     /// both mode workflows as one section, kept identical, with the rules a lane and a leader
     /// rely on pinned by sentence.
