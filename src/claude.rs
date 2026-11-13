@@ -1648,7 +1648,10 @@ mod tests {
         );
         assert_eq!(after, expected);
         // Re-running plans and writes nothing: same bytes, same receipt.
-        let receipt = p.path().join(".moai-cli").join(SETTINGS_RECEIPT);
+        let receipt = p
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join(SETTINGS_RECEIPT);
         let (s1, r1) = (sha(&p.path().join(SETTINGS_FILE)), sha(&receipt));
         assert_eq!(
             settings_plan(p.path(), &line).unwrap()["action"],
@@ -1746,7 +1749,7 @@ mod tests {
                 "{}"
             );
         }
-        assert!(!p.path().join(".moai-cli").exists());
+        assert!(!p.path().join(crate::PROJECT_STATE_DIR).exists());
     }
 
     /// Codex review #2044 (1): an apply interrupted between the settings write and the final
@@ -1769,7 +1772,10 @@ mod tests {
             let p = project_with(None);
             fs::create_dir_all(p.path().join(".claude")).unwrap();
             fs::write(p.path().join(SETTINGS_FILE), settings).unwrap();
-            let receipt = p.path().join(".moai-cli").join(SETTINGS_RECEIPT);
+            let receipt = p
+                .path()
+                .join(crate::PROJECT_STATE_DIR)
+                .join(SETTINGS_RECEIPT);
             fs::create_dir_all(receipt.parent().unwrap()).unwrap();
             fs::write(&receipt, &pending).unwrap();
             (p, receipt)

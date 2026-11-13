@@ -328,7 +328,7 @@ pub struct ProjectSkillRevertRequest {
 }
 
 fn rollback_root(project_root: &Path) -> PathBuf {
-    project_root.join(".moai-cli/project-skill-rollback")
+    project_root.join(crate::project_state!("project-skill-rollback"))
 }
 
 /// Every `after_sha256` our own rollback receipts recorded for `host` — the digests of
