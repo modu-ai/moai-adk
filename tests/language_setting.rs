@@ -271,7 +271,7 @@ fn absent_language_renders_the_earlier_managed_block() {
 fn managed_section_states_each_projects_setting() {
     let korean = project(Some(json!({
         "user_chat": "ko", "reports": "ko", "issue_pr_records": "ko", "commit_messages": "ko",
-        "agent_messages": "en", "instruction_files": "en", "skill_instructions": "en",
+        "agent_messages": "en", "instruction_files": "ko", "skill_instructions": "en",
         "code_comments": "en"
     })));
     let plan = plan_then_apply(&korean, "agents", &agents_request("ko"));
@@ -282,7 +282,7 @@ fn managed_section_states_each_projects_setting() {
 - Issue·PR 기록: 한국어 (`ko`)
 - 커밋 메시지: 한국어 (`ko`)
 - 에이전트 간 메시지: 영어 (`en`)
-- 지침 파일(AGENTS.md, 규칙): 영어 (`en`)
+- 지침 파일(AGENTS.md, 규칙): 한국어 (`ko`)
 - skill 지침: 영어 (`en`)
 - 코드 주석: 영어 (`en`)
 
@@ -293,11 +293,8 @@ fn managed_section_states_each_projects_setting() {
         text.contains("사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다."),
         "{text}"
     );
-    // instruction_files `en` with a `ko` managed section is reported, not refused.
-    assert!(plan["warnings"].as_array().unwrap().iter().any(|w| w
-        .as_str()
-        .unwrap()
-        .contains("language.instruction_files is `en`")));
+    // The managed section follows instruction_files, so nothing is reported.
+    assert!(!plan["warnings"].to_string().contains("instruction_files"));
 
     // A second project, partial setting: unset items fall back to their defaults.
     // Applied through project-apply so the profile has a baseline for the later change.
@@ -334,4 +331,63 @@ Confirm the approved";
     apply_profile(&japanese, &profile);
     plan_then_apply(&japanese, "agents", &agents_request("en"));
     assert!(agents_md(&japanese).contains("- Code comments: Japanese (`ja`)\n"));
+}
+
+/// #2706: the stored `instruction_files` language decides the managed section, ahead of the
+/// request language; a re-run with the stored setting is unchanged and text outside the
+/// markers survives; a code without managed-section text (`ja`) falls back to the request
+/// language with a warning.
+#[test]
+fn the_stored_instruction_language_writes_the_managed_section() {
+    // Stored the way `/moai project` stores it: through project-apply (a baseline exists).
+    let root = project(None);
+    let mut profile = profile_value(root.path());
+    profile["language"] = json!({"instruction_files": "ko"});
+    apply_profile(&root, &profile);
+    plan_then_apply(&root, "agents", &agents_request("en"));
+    let text = agents_md(&root);
+    assert!(text.contains("## MoAI 작업 흐름 (관리 구간)"), "{text}");
+    assert!(!text.contains("## MoAI workflow (managed section)"));
+    // The writing-language lines speak the section's language too (mutation G3).
+    assert!(
+        text.contains("- 지침 파일(AGENTS.md, 규칙): 한국어 (`ko`)"),
+        "{text}"
+    );
+    assert!(!text.contains("Writing language by item"));
+    // User text outside the markers survives a re-run, and the re-run plans unchanged.
+    let with_note = format!("{text}\n## Our notes\n\nkeep me\n");
+    std::fs::write(root.path().join("AGENTS.md"), &with_note).unwrap();
+    let again = plan_then_apply(&root, "agents", &agents_request("en"));
+    assert!(
+        again["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["path"] == json!("AGENTS.md") && f["action"] == json!("unchanged")),
+        "{again}"
+    );
+    assert_eq!(agents_md(&root), with_note);
+
+    // Changing the stored language rewrites only the managed section.
+    let mut profile = profile_value(root.path());
+    profile["language"]["instruction_files"] = json!("en");
+    apply_profile(&root, &profile);
+    plan_then_apply(&root, "agents", &agents_request("ko"));
+    let text = agents_md(&root);
+    assert!(
+        text.contains("## MoAI workflow (managed section)"),
+        "{text}"
+    );
+    assert!(text.ends_with("## Our notes\n\nkeep me\n"));
+
+    // `ja` has no managed-section text: the request language, with a warning.
+    let japanese = project(Some(json!({"instruction_files": "ja"})));
+    let plan = plan_then_apply(&japanese, "agents", &agents_request("ko"));
+    assert!(agents_md(&japanese).contains("## MoAI 작업 흐름 (관리 구간)"));
+    assert!(
+        plan["warnings"]
+            .to_string()
+            .contains("no managed-section text in profile language.instruction_files `ja`"),
+        "{plan}"
+    );
 }
