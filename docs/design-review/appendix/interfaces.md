@@ -120,6 +120,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `key-remove`
 - `key-set`
 - `key-status`
+- `labels-apply`
+- `labels-plan`
 - `lane-handoff-check`
 - `lane-status`
 - `language-setup`
