@@ -26,21 +26,27 @@ fn home(files: &[(&str, &[u8])]) -> tempfile::TempDir {
     home
 }
 
-/// A git project under cargo's test scratch dir, outside HOME: `glm -a` reads and takes its
-/// `agent-N` number there (#2359), never in this repository's own counter.
+/// A git project outside HOME: `glm -a` reads and takes its `agent-N` number there (#2359),
+/// never in this repository's own counter. #2655: one fresh temporary folder per test
+/// process — cargo-nextest runs every test as its own process, and a shared fixed folder made
+/// their `git init` runs collide on `.git/config`'s lock.
 fn project() -> &'static Path {
-    static PROJECT: OnceLock<PathBuf> = OnceLock::new();
-    PROJECT.get_or_init(|| {
-        let p = Path::new(env!("CARGO_TARGET_TMPDIR")).join("launcher-glm-key-file-project");
-        fs::create_dir_all(&p).unwrap();
-        let init = common::git::command()
-            .args(["init", "-q"])
-            .current_dir(&p)
-            .status()
-            .unwrap();
-        assert!(init.success());
-        p
-    })
+    static PROJECT: OnceLock<tempfile::TempDir> = OnceLock::new();
+    PROJECT
+        .get_or_init(|| {
+            let p = tempfile::Builder::new()
+                .prefix("launcher-glm-key-file-project-")
+                .tempdir()
+                .unwrap();
+            let init = common::git::command()
+                .args(["init", "-q"])
+                .current_dir(p.path())
+                .status()
+                .unwrap();
+            assert!(init.success());
+            p
+        })
+        .path()
 }
 
 fn launcher(home: &Path, env_token: Option<&str>) -> Command {

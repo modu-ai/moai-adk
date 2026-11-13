@@ -20,19 +20,26 @@ const SHARED_KEY: &str = "moai-test-shared-key-not-real";
 const LEGACY_KEY: &str = "moai-test-legacy-key-not-real";
 const ENV_KEY: &str = "moai-test-env-key-not-real";
 
+/// #2655: one fresh temporary git project per test process — cargo-nextest runs every test as
+/// its own process, and a shared fixed folder made their `git init` runs collide on
+/// `.git/config`'s lock.
 fn project() -> &'static Path {
-    static PROJECT: OnceLock<PathBuf> = OnceLock::new();
-    PROJECT.get_or_init(|| {
-        let p = Path::new(env!("CARGO_TARGET_TMPDIR")).join("launcher-key-vault-project");
-        fs::create_dir_all(&p).unwrap();
-        let init = common::git::command()
-            .args(["init", "-q"])
-            .current_dir(&p)
-            .status()
-            .unwrap();
-        assert!(init.success());
-        p
-    })
+    static PROJECT: OnceLock<tempfile::TempDir> = OnceLock::new();
+    PROJECT
+        .get_or_init(|| {
+            let p = tempfile::Builder::new()
+                .prefix("launcher-key-vault-project-")
+                .tempdir()
+                .unwrap();
+            let init = common::git::command()
+                .args(["init", "-q"])
+                .current_dir(p.path())
+                .status()
+                .unwrap();
+            assert!(init.success());
+            p
+        })
+        .path()
 }
 
 fn bin(home: &Path) -> Command {
