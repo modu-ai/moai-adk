@@ -46,12 +46,12 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "ffea38ac2fdcad86db67a02697228268cfc78c42e6d76ec180a37396f40a335f",
+      "sha256": "2d5f26c29a3d59986ec4942ed5551d076d83cb6c3ad42493b16507cce195d394",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619."
       }
     },
     "references/routes.json": {
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "d59e9d18275da9a5b7067febde9e42a77f7e63ec14dfd7b2d08dc388922463e1",
+      "sha256": "0b867e731c32ef51729c0841157b834000c43f31ae307ee3f9d01def18f5ee55",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "4764f6896cf18398ac75cfe601828bb469e507a26118f1f24e51a6f100e6a1d2",
+      "sha256": "1341b293bb974dc86d16eb7b784be21066c03c45924dd8b37a3278138373ef52",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",

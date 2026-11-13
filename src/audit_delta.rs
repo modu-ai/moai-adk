@@ -109,7 +109,8 @@ fn null_device() -> &'static str {
 
 /// Strip all caller Git variables, including object redirects, config injection, exec
 /// paths, alternate stores and tracing. Never mutate the process environment or cwd.
-fn command(dir: &Path) -> Command {
+/// Also used by `review-package` (#2614), whose bytes must not depend on the caller.
+pub(crate) fn command(dir: &Path) -> Command {
     let mut cmd = Command::new("git");
     scrub_git_env(&mut cmd);
     for (key, _) in std::env::vars_os() {
