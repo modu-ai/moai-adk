@@ -1,5 +1,6 @@
 //! #2237: expose the existing project config writer without using real host state.
 mod common;
+use common::CleanEnv;
 
 use serde_json::{json, Value};
 use std::{
@@ -27,7 +28,7 @@ fn run_vars(
     input: &[u8],
 ) -> (i32, Value) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    cmd.env_clear();
+    cmd.clean_env();
     for (name, path) in homes {
         cmd.env(name, path);
     }

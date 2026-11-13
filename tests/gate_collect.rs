@@ -263,7 +263,7 @@ fn the_manifest_check_needs_every_file_and_hash() {
         d,
         &[
             ("skills/moai/SKILL.md", "skill\n"),
-            ("skills/moai/extra.md", "x\n"),
+            ("skills/moai/references/routes.json", "x\n"),
         ],
         "file without entry",
     );

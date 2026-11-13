@@ -1,5 +1,7 @@
 //! #2286 row 35 removes the external skill installer, including hidden CLI aliases.
 //! Every invocation uses a synthetic HOME and project; existing Go skill bytes stay intact.
+mod common;
+use common::CleanEnv;
 use std::{
     fs,
     path::Path,
@@ -15,7 +17,7 @@ const REMOVED: [&str; 3] = [
 fn run(home: &Path, project: &Path, args: &[&str]) -> Output {
     let mut command = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     command
-        .env_clear()
+        .clean_env()
         .env("HOME", home)
         .current_dir(project)
         .args(args)
