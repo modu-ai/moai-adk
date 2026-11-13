@@ -84,8 +84,9 @@ fn sections_dir(project: &Path) -> Option<PathBuf> {
 
 /// A regular file of at most `FILE_LIMIT` bytes, read without following a link.
 fn read_bounded(path: &Path) -> Option<String> {
-    let meta = fs::symlink_metadata(path).ok()?;
-    if !meta.file_type().is_file() || meta.len() > FILE_LIMIT {
+    // The size is judged on the bytes read (at most one past the limit), so a file that
+    // grows between the check and the read cannot slip through.
+    if !fs::symlink_metadata(path).ok()?.file_type().is_file() {
         return None;
     }
     let mut bytes = Vec::new();
