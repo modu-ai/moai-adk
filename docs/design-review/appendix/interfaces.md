@@ -149,6 +149,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `queue-query`
 - `recovery-apply`
 - `recovery-plan`
+- `review-check`
 - `review-package`
 - `run-verify`
 - `scope-check`
