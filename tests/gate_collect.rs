@@ -16,6 +16,13 @@ use std::path::Path;
 use tempfile::TempDir;
 
 const API: &str = "https://api.github.com/repos/o/r";
+/// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
+/// gate's body check the binary's own).
+const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+- mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
+- clone: check set from a fresh clone, not the /tmp symlink path\n\
+- host: api.github.com exercised via fake gh executable, no network\n\
+- receipt: receipt digest re-read and matched before PASS recorded\n";
 
 fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> String {
     for (path, text) in files {
@@ -40,8 +47,8 @@ fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> String {
     git(dir, &["rev-parse", "HEAD"]).trim().to_string()
 }
 
-/// A repository with base A, a PR branch B and a tip C. The checker stub passes a body that
-/// holds `SELF-AUDIT-OK`.
+/// A repository with base A, a PR branch B and a tip C. No checker file: the body check is
+/// the binary's own (#2708), so a passing body is [`PASS_BODY`].
 struct Repo {
     _dir: TempDir,
     a: String,
@@ -53,11 +60,9 @@ fn repo(pr_files: &[(&str, &str)], tip_files: &[(&str, &str)]) -> Repo {
     let dir = TempDir::new().unwrap();
     let d = dir.path();
     git_ok(d, &["init", "-q", "-b", "main"]);
-    let checker = "import sys\nsys.exit(0 if 'SELF-AUDIT-OK' in open(sys.argv[2]).read() else 1)\n";
     let a = commit(
         d,
         &[
-            ("tools/check_pr_self_audit.py", checker),
             ("docs/a.md", "one\n\ntwo\n"),
             ("src/a.rs", "a\n"),
             ("src/b.rs", "b\n"),
@@ -138,7 +143,7 @@ fn a_clean_pull_request_collects_into_a_passing_snapshot() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "body SELF-AUDIT-OK",
+        PASS_BODY,
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
@@ -168,7 +173,7 @@ fn the_checker_unknown_base_and_missing_head_are_read_not_assumed() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, unknown)],
-        "SELF-AUDIT-OK",
+        PASS_BODY,
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.verdict_base_known);
@@ -207,7 +212,7 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        PASS_BODY,
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(s.merge_clean);
@@ -219,7 +224,7 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        PASS_BODY,
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.merge_clean);
@@ -233,7 +238,7 @@ fn comment_pages_are_followed() {
     let t = RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -319,10 +324,11 @@ fn a_doc_that_lost_an_added_line_is_not_kept() {
     assert!(!lines_kept(d, &format!("{lost}^{{tree}}"), "docs/a.md", &sides).unwrap());
 }
 
-/// A manifest entry with no file fails (mutation C5); a repository without the Self-Audit
-/// checker never reads as a passing body (mutation C7).
+/// A manifest entry with no file fails (mutation C5); a body without a measured Self-Audit
+/// section never reads as passing (mutation C7; since #2708 the check is the binary's own
+/// `pr-self-audit-check`, so the old stub marker alone is such a body).
 #[test]
-fn an_entry_without_a_file_and_a_missing_checker_fail() {
+fn an_entry_without_a_file_and_a_body_without_the_section_fail() {
     let dir = TempDir::new().unwrap();
     let d = dir.path();
     git_ok(d, &["init", "-q", "-b", "main"]);
@@ -342,12 +348,11 @@ fn an_entry_without_a_file_and_a_missing_checker_fail() {
     assert!(!manifest_matches(d, "HEAD^{tree}").unwrap());
 
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
-    fs::remove_file(r._dir.path().join("tools/check_pr_self_audit.py")).unwrap();
     let t = exchanges(
         &r.b,
         &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        "body SELF-AUDIT-OK",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.body_check_ok);
@@ -364,12 +369,7 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     git_ok(d, &["checkout", "-q", "pr"]);
     let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2");
     git_ok(d, &["checkout", "-q", "main"]);
-    let t = exchanges(
-        &b2,
-        &r.c,
-        vec![claim(&b2), verdict(&b2, &r.b)],
-        "SELF-AUDIT-OK",
-    );
+    let t = exchanges(&b2, &r.c, vec![claim(&b2), verdict(&b2, &r.b)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
@@ -423,7 +423,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
     let red = || tip_runs(&r.c, json!([run(Some("failure"), 77)]));
 
-    let t = with_tip(&r.b, "SELF-AUDIT-OK", vec![red()], &r.a);
+    let t = with_tip(&r.b, PASS_BODY, vec![red()], &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
     let ci = s.tip_ci.clone().unwrap();
@@ -435,7 +435,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     let reason = g8(&s).expect("G8 stops an ordinary PR on a red tip");
     assert!(reason.contains("run 77"), "{reason}");
 
-    let body = "SELF-AUDIT-OK\nmoai-tip-repair: fixes run 77\n";
+    let body = &format!("{PASS_BODY}moai-tip-repair: fixes run 77\n");
     let s = collect(&target(&r), &with_tip(&r.b, body, vec![red()], &r.a)).unwrap();
     assert!(s.tip_repair);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
@@ -443,7 +443,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     // A completed failure with its re-run still running: red, the walk does not go back.
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        PASS_BODY,
         vec![tip_runs(
             &r.c,
             json!([run(Some("failure"), 77), run(None, 78)]),
@@ -467,7 +467,7 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     // Failure then success on the same tip: flaky, not a stop.
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        PASS_BODY,
         vec![tip_runs(
             &r.c,
             json!([run(Some("failure"), 77), run(Some("success"), 78)]),
@@ -525,7 +525,7 @@ fn running_or_cancelled_tip_ci_is_judged_by_the_last_completed_one() {
     ] {
         let t = with_tip(
             &r.b,
-            "SELF-AUDIT-OK",
+            PASS_BODY,
             vec![
                 tip_runs(&r.c, tip_runs_now.clone()),
                 tip_runs(&r.a, parent.clone()),
@@ -557,7 +557,7 @@ fn an_unreadable_tip_ci_is_unknown_and_stops_even_a_repair() {
         ),
         response: HttpResponse::new(502),
     };
-    let body = "SELF-AUDIT-OK\nmoai-tip-repair: x\n";
+    let body = &format!("{PASS_BODY}moai-tip-repair: x\n");
     let t = with_tip(&r.b, body, vec![failing], &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
@@ -586,7 +586,7 @@ fn the_tip_walk_stops_at_its_limit() {
         .map(|sha| tip_runs(sha, json!([run(None, 1)])))
         .collect();
     tips.push(tip_runs(&chain[9], json!([run(Some("failure"), 10)])));
-    let t = with_tip(&r.b, "SELF-AUDIT-OK", tips, &r.a);
+    let t = with_tip(&r.b, PASS_BODY, tips, &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
     let ci = s.tip_ci.unwrap();
@@ -600,7 +600,7 @@ fn the_tip_walk_stops_at_its_limit() {
         .map(|sha| tip_runs(sha, json!([run(None, 1)])))
         .chain([tip_runs(&r.a, json!([run(Some("success"), 11)]))])
         .collect();
-    let t = with_tip(&r.b, "SELF-AUDIT-OK", tips, &r.a);
+    let t = with_tip(&r.b, PASS_BODY, tips, &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 1, "the 11th commit is not read");
     let ci = s.tip_ci.unwrap();
@@ -646,7 +646,7 @@ fn the_tip_check_run_pages_stop_at_ten() {
 
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        PASS_BODY,
         pages(10, false, json!([run(Some("failure"), 10)])),
         &r.a,
     );
@@ -661,7 +661,7 @@ fn the_tip_check_run_pages_stop_at_ten() {
         request: HttpRequest::new("GET", page_url(11)),
         response: ok(json!({ "check_runs": [run(Some("success"), 11)] })),
     });
-    let body = "SELF-AUDIT-OK\nmoai-tip-repair: x\n";
+    let body = &format!("{PASS_BODY}moai-tip-repair: x\n");
     let t = with_tip(&r.b, body, tips, &r.a);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 1, "the 11th page is never requested");
@@ -729,7 +729,7 @@ fn the_walk_follows_first_parents_not_a_merged_branch() {
 
     let t = with_tip(
         &r.b,
-        "SELF-AUDIT-OK",
+        PASS_BODY,
         vec![
             tip_runs(&tip, json!([run(None, 90)])),
             tip_runs(&r.c, json!([run(Some("failure"), 80)])),
@@ -796,7 +796,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
     let ex = RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -844,7 +844,7 @@ fn a_trailer_or_claim_line_that_cannot_be_read_stops_the_collection() {
         let mut ex = vec![
             Exchange {
                 request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-                response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+                response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
             },
             Exchange {
                 request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -893,7 +893,7 @@ fn three_reads(r: &Repo) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
