@@ -1,4 +1,4 @@
-//! Issue #2588: the forge counts cache (`❗ issues / 🔀 PRs`) and its refresh.
+//! Issue #2588: the forge counts cache (`⬇️ issues / 🔀 PRs`) and its refresh.
 //!
 //! The render path stays a file read: it reads the cache and, when the cache is missing
 //! or older than [`TTL`], starts one detached `moai-cli statusline --refresh-counts`
