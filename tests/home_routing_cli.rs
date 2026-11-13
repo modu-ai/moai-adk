@@ -219,10 +219,11 @@ fn a_changed_source_merges_and_its_revert_restores_the_earlier_block() {
 #[test]
 fn a_bad_section_source_is_refused() {
     let (_t, home) = home();
-    let pkg = tempfile::tempdir().unwrap();
-    assert!(plan(&home, pkg.path()).unwrap_err().contains("missing"));
-    let src = pkg.path().join(SOURCE);
-    fs::create_dir_all(src.parent().unwrap()).unwrap();
+    let empty = tempfile::tempdir().unwrap();
+    assert!(plan(&home, empty.path()).unwrap_err().contains("missing"));
+    // A package that is otherwise complete, so only the source check can refuse it.
+    let pkg = temp_package("ok ({invoke})\n");
+    assert!(plan(&home, pkg.path()).is_ok());
     for bad in [
         "no placeholder\n",
         "{invoke} {invoke}\n",
@@ -230,8 +231,9 @@ fn a_bad_section_source_is_refused() {
         "{invoke} moai:managed:end id=moai-routing\n",
         "{invoke} no newline",
     ] {
-        fs::write(&src, bad).unwrap();
-        assert!(plan(&home, pkg.path()).is_err(), "{bad:?}");
+        fs::write(pkg.path().join(SOURCE), bad).unwrap();
+        let e = plan(&home, pkg.path()).unwrap_err();
+        assert!(e.contains("must hold one"), "{bad:?}: {e}");
     }
 }
 
