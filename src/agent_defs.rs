@@ -21,9 +21,9 @@ type Result<T> = std::result::Result<T, String>;
 
 /// Where the sources live inside the skill package.
 pub const SOURCE_DIR: &str = "references/agents";
-/// Hosts rendered in S1; the hosts that need an adapter module follow in S3 (user decision
-/// 6840661050, #2592).
-pub const HOSTS: [&str; 2] = ["claude", "codex"];
+/// Hosts the home installer (#2592 S2) writes: Claude Code and Codex (S1), OMP (#2633). A host
+/// is listed here only together with its user folder in `agent_install::host_dir`.
+pub const HOSTS: [&str; 3] = ["claude", "codex", "omp"];
 const DESCRIPTION_LIMIT: usize = 1024;
 const BODY_LIMIT: usize = 16 * 1024;
 
@@ -312,11 +312,63 @@ fn render_codex(def: &AgentDef) -> Rendered {
     }
 }
 
+/// Built-in tools an OMP agent gets. OMP reads `tools` as an allow-list with no deny form,
+/// and a list holding `task` lets the agent start any other agent even with `spawns: false`
+/// (`discovery/helpers.ts`), so the list is explicit and never holds `task`: the one-level
+/// nesting rule is enforced by the host. Read 2026-11-13 from github.com/can1357/oh-my-pi
+/// (`src/tools/builtin-names.ts`, `docs/task-agent-discovery.md`).
+const OMP_TOOLS: [&str; 8] = [
+    "read",
+    "grep",
+    "glob",
+    "find",
+    "bash",
+    "web_search",
+    "edit",
+    "write",
+];
+/// The tools a read-only OMP agent drops. `bash` stays, as in the Claude Code file, so an
+/// audit can still run checks.
+const OMP_WRITE_TOOLS: [&str; 2] = ["edit", "write"];
+
+/// OMP agent file `agents/<name>.md` under `~/.omp/agent/` (Markdown with YAML frontmatter;
+/// `name`, `description` and an explicit `tools` list). OMP skips `.claude/agents`, so it
+/// needs its own file. Worktree isolation is chosen per task call (`isolated: true` with
+/// `task.isolation.enabled`), not in the agent file, so it is named in `not_supported`.
+fn render_omp(def: &AgentDef) -> Rendered {
+    let tools: Vec<&str> = OMP_TOOLS
+        .iter()
+        .copied()
+        .filter(|t| !(def.readonly && OMP_WRITE_TOOLS.contains(t)))
+        .collect();
+    let mut not_supported = Vec::new();
+    if def.isolation == "worktree" {
+        not_supported.push(
+            "isolation: OMP isolates per task call (isolated: true with task.isolation.enabled), \
+             not in the agent file"
+                .into(),
+        );
+    }
+    Rendered {
+        host: "omp".into(),
+        path: format!("agents/{}.md", def.name),
+        text: format!(
+            "---\nname: {}\ndescription: {}\ntools: {}\n---\n\n{}",
+            def.name,
+            yaml_scalar(&def.description),
+            tools.join(", "),
+            reads_line(def) + &def.body
+        ),
+        not_supported,
+    }
+}
+
 /// The agent file for one host.
 pub fn render(def: &AgentDef, host: &str) -> Result<Rendered> {
     match host {
         "claude" => Ok(render_claude(def)),
         "codex" => Ok(render_codex(def)),
+        "omp" => Ok(render_omp(def)),
         other => Err(format!("agent host not supported yet: {other:?}")),
     }
 }
@@ -444,5 +496,37 @@ mod tests {
             .contains("disallowedTools"));
         assert!(render(&writer, "codex").unwrap().not_supported.is_empty());
         assert!(render(&def, "goose").is_err());
+    }
+
+    /// #2633: the OMP file names an explicit tool list without `task` (one nesting level,
+    /// enforced by the host), drops `edit`/`write` for a read-only role, and names the
+    /// per-call worktree isolation it cannot put in the file.
+    #[test]
+    fn omp_file_has_an_explicit_tool_list_without_task() {
+        let def = parse(SAMPLE).unwrap();
+        let omp = render(&def, "omp").unwrap();
+        assert_eq!(omp.path, "agents/moai-x.md");
+        assert_eq!(
+            omp.text,
+            "---\nname: moai-x\ndescription: \"An agent.\"\ntools: read, grep, glob, find, bash, web_search\n---\n\nDo it.\n"
+        );
+        assert_eq!(omp.not_supported.len(), 1);
+        assert!(omp.not_supported[0].starts_with("isolation:"));
+        let writer = parse(
+            &SAMPLE
+                .replace("readonly: true", "readonly: false")
+                .replace("isolation: worktree", "isolation: none"),
+        )
+        .unwrap();
+        let omp = render(&writer, "omp").unwrap();
+        assert!(omp
+            .text
+            .contains("\ntools: read, grep, glob, find, bash, web_search, edit, write\n"));
+        assert!(omp.not_supported.is_empty());
+        for role in [&def, &writer] {
+            let text = render(role, "omp").unwrap().text;
+            let tools = text.lines().find(|l| l.starts_with("tools: ")).unwrap();
+            assert!(!tools.split(", ").any(|t| t.ends_with("task")), "{tools}");
+        }
     }
 }

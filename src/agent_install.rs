@@ -29,11 +29,13 @@ const STATE_DIR: &str = "agents";
 
 /// The user-level agent folder of a host: Claude Code `~/.claude/agents/`
 /// (code.claude.com/docs/en/sub-agents), Codex `~/.codex/agents/` (learn.chatgpt.com
-/// agent-configuration/subagents).
+/// agent-configuration/subagents), OMP `~/.omp/agent/agents/` (github.com/can1357/oh-my-pi
+/// `docs/task-agent-discovery.md`, read 2026-11-13; #2633).
 fn host_dir(home: &Path, host: &str) -> PathBuf {
     match host {
         "claude" => home.join(".claude").join("agents"),
         "codex" => home.join(".codex").join("agents"),
+        "omp" => home.join(".omp").join("agent").join("agents"),
         other => unreachable!("unknown agent host {other}"),
     }
 }
@@ -125,12 +127,19 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
     }
 }
 
-/// The host folder (`~/.claude`) and its agent folder (`~/.claude/agents`) are each a real
-/// folder or absent — never a link, never a file. Plan, apply and revert all check it.
+/// Every folder from the host folder (`~/.claude`, `~/.omp`) down to its agent folder
+/// (`~/.claude/agents`, `~/.omp/agent/agents`) is a real folder or absent — never a link,
+/// never a file. OMP's agent folder sits two levels below `~/.omp`, so each level is checked
+/// (#2633). Plan, apply and revert all check it.
 fn host_folders_plain(home: &Path, host: &str) -> Result<()> {
     let dir = host_dir(home, host);
-    let parent = dir.parent().expect("host folder parent");
-    plain_dir_or_absent(parent).and_then(|()| plain_dir_or_absent(&dir))
+    let below_home = dir.strip_prefix(home).expect("host folder under HOME");
+    let mut path = home.to_path_buf();
+    for part in below_home.components() {
+        path.push(part);
+        plain_dir_or_absent(&path)?;
+    }
+    Ok(())
 }
 
 /// The current bytes of one agent file: `Ok(None)` when absent; a symlink or a folder in its
