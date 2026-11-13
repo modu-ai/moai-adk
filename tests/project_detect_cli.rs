@@ -650,6 +650,43 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
         r#"{"scripts": {"test": "jest"}}"#,
     );
     assert_eq!(detect(&npm)["commands"]["test"], json!(["npm test"]));
+    // Codex review on #2645: Bun's `bun test` is its own runner, so the script is `bun run test`.
+    for lock in ["bun.lockb", "bun.lock"] {
+        let bun = TempDir::new().unwrap();
+        write(
+            bun.path(),
+            "package.json",
+            r#"{"scripts": {"test": "vitest"}}"#,
+        );
+        write(bun.path(), lock, "");
+        assert_eq!(
+            detect(&bun)["commands"]["test"],
+            json!(["bun run test"]),
+            "{lock}"
+        );
+    }
+    // pytest declared only in a dependency group, an optional extra or a Poetry group.
+    for pyproject in [
+        "[dependency-groups]\ntest = [\"pytest>=8\"]\n",
+        "[project]\nname = \"x\"\n[project.optional-dependencies]\ndev = [\"pytest\"]\n",
+        "[tool.poetry.group.test.dependencies]\npytest = \"^8\"\n",
+        "[tool.poetry.dev-dependencies]\npytest = \"^8\"\n",
+    ] {
+        let py = TempDir::new().unwrap();
+        write(py.path(), "pyproject.toml", pyproject);
+        assert_eq!(
+            detect(&py)["commands"]["test"],
+            json!(["pytest"]),
+            "{pyproject}"
+        );
+    }
+    let no_pytest = TempDir::new().unwrap();
+    write(
+        no_pytest.path(),
+        "pyproject.toml",
+        "[dependency-groups]\nlint = [\"ruff\"]\n",
+    );
+    assert_eq!(detect(&no_pytest)["commands"]["test"], json!([]));
     let yarn = TempDir::new().unwrap();
     write(yarn.path(), "package.json", r#"{"scripts": {"lint": "x"}}"#);
     write(yarn.path(), "yarn.lock", "");
@@ -675,4 +712,42 @@ fn a_symlinked_workflows_folder_is_not_read() {
     )
     .unwrap();
     assert_eq!(detect(&inner)["commands"]["ci_files"], json!([]));
+}
+
+/// Audit B1 on #2645: a workflow file name is a project value, so only recordable names
+/// reach the output (no space, at most 80 bytes) and at most 64 of them. Audit N1: a Makefile
+/// target names only its own command.
+#[test]
+fn ci_file_names_are_filtered_and_capped_and_make_targets_stay_apart() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, ".github/workflows/a b.yml", "on: push\n");
+    write(
+        r,
+        &format!(".github/workflows/{}.yml", "x".repeat(80)),
+        "on: push\n",
+    );
+    write(r, ".github/workflows/ok.yml", "on: push\n");
+    assert_eq!(detect(&root)["commands"]["ci_files"], json!(["ok.yml"]));
+
+    let many = TempDir::new().unwrap();
+    for i in 0..65 {
+        write(
+            many.path(),
+            &format!(".github/workflows/w{i:02}.yml"),
+            "on: push\n",
+        );
+    }
+    let files = detect(&many)["commands"]["ci_files"].clone();
+    let files = files.as_array().unwrap();
+    assert_eq!(files.len(), 64);
+    assert_eq!(files.first().unwrap(), "w00.yml");
+    assert_eq!(files.last().unwrap(), "w63.yml");
+
+    let make = TempDir::new().unwrap();
+    write(make.path(), "Makefile", "test:\n\techo\n");
+    assert_eq!(
+        detect(&make)["commands"],
+        json!({"build": [], "test": ["make test"], "ci_files": []})
+    );
 }

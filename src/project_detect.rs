@@ -424,7 +424,13 @@ fn commands_fact(root: &Path) -> Value {
                 build.insert(format!("{pm} run build"));
             }
             if scripts.contains_key("test") {
-                test.insert(format!("{pm} test"));
+                // `bun test` runs Bun's own test runner, not the script (Codex review on #2645).
+                let run_test = if pm == "bun" {
+                    "bun run test"
+                } else {
+                    &format!("{pm} test")
+                };
+                test.insert(run_test.to_string());
             }
         }
     }
@@ -432,7 +438,7 @@ fn commands_fact(root: &Path) -> Value {
         build.insert("go build ./...".to_string());
         test.insert("go test ./...".to_string());
     }
-    if dependency_names(root).contains("pytest") {
+    if dependency_names(root).contains("pytest") || python_test_names(root).contains("pytest") {
         test.insert("pytest".to_string());
     }
     if let Some(text) = read_in(root, &["Makefile"]) {
@@ -465,6 +471,47 @@ fn commands_fact(root: &Path) -> Value {
         "test": test.into_iter().collect::<Vec<_>>(),
         "ci_files": ci_files(root),
     })
+}
+
+/// Dependency names in the `pyproject.toml` sections that commonly hold test tools and that
+/// `dependency_names` does not read: `[dependency-groups]`, `[project.optional-dependencies]`,
+/// Poetry's `[tool.poetry.group.<name>.dependencies]` and `[tool.poetry.dev-dependencies]`
+/// (Codex review on #2645). Names only.
+fn python_test_names(root: &Path) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    let Some(doc) = read_in(root, &["pyproject.toml"]).and_then(|t| toml_doc(&t)) else {
+        return names;
+    };
+    let mut from_arrays = |item: Option<&toml_edit::Item>| {
+        if let Some(table) = item.and_then(toml_edit::Item::as_table_like) {
+            for (_, list) in table.iter() {
+                if let Some(array) = list.as_array() {
+                    names.extend(
+                        array
+                            .iter()
+                            .filter_map(|v| v.as_str())
+                            .map(requirement_name),
+                    );
+                }
+            }
+        }
+    };
+    from_arrays(doc.get("dependency-groups"));
+    from_arrays(
+        doc.get("project")
+            .and_then(|p| p.get("optional-dependencies")),
+    );
+    let poetry = doc.get("tool").and_then(|t| t.get("poetry"));
+    names.extend(table_keys(poetry.and_then(|p| p.get("dev-dependencies"))));
+    if let Some(groups) = poetry
+        .and_then(|p| p.get("group"))
+        .and_then(toml_edit::Item::as_table_like)
+    {
+        for (_, group) in groups.iter() {
+            names.extend(table_keys(group.get("dependencies")));
+        }
+    }
+    names.into_iter().map(|n| n.to_ascii_lowercase()).collect()
 }
 
 /// Workflow file names under `.github/workflows/`, without following a symbolic link.
