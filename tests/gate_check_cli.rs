@@ -55,7 +55,8 @@ fn passing() -> Value {
         "pr_files": ["src/a.rs", doc()],
         "tip_files_since_verdict_base": ["src/b.rs"],
         "merge_clean": true,
-        "body_check_ok": true
+        "body_check_ok": true,
+        "verdict_base_known": true
     })
 }
 
@@ -253,4 +254,76 @@ fn a_bad_snapshot_is_refused() {
     let mut s = passing();
     s["extra"] = json!(1);
     assert_eq!(gate(&s)["ok"], json!(false));
+}
+
+/// Audit 6850181707 B1: only a comment's first line is a verdict. A later comment quoting a
+/// PASS line further down (a repair note, a merge record) neither becomes the last verdict nor
+/// reverses a FAIL.
+#[test]
+fn a_quoted_verdict_line_is_not_a_verdict() {
+    let quoted = json!({"id": 300, "body": format!("수리 push — agent-10에게\nAUDIT #9 (x) head {H} base {B} — verdict: PASS\nagent-10\n")});
+    let mut s = passing();
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "FAIL"),
+        quoted
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // With the FAIL reversed by a real first-line PASS, a quote after it changes nothing.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(150, "agent-10", H, "FAIL"),
+        verdict(200, "agent-10", H, "PASS"),
+        quoted
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    // A quoted FAIL does not block either.
+    let quoted_fail = json!({"id": 300, "body": format!("note\nAUDIT #9 (x) head {H} base {B} — verdict: FAIL\nagent-27\n")});
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "PASS"),
+        quoted_fail
+    ]);
+    assert!(stopped(&gate(&s)).0);
+}
+
+/// Audit N1–N4: a title containing `head` still parses; `rc-ci` counts as the aggregate; a
+/// withdrawn lowest claim (machine form) hands G2 to the next one, a free-text one does not;
+/// an unknown verdict base stops G1.
+#[test]
+fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
+    let mut s = passing();
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 (fix head recheck) head {H} base {B} — verdict: PASS\n\n감사: agent-10.\n")}]);
+    assert!(stopped(&gate(&s)).0);
+
+    let mut s = passing();
+    s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": "success"}]);
+    assert!(stopped(&gate(&s)).0);
+    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "rc-ci", "conclusion": "failure"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+
+    let mut s = passing();
+    let withdraw =
+        json!({"id": 120, "body": "moai-audit-claim 철회: agent-10 (100) — agent-27 takes it\n"});
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        withdraw,
+        claim(130, "agent-27", H),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    let free_text = json!({"id": 120, "body": "agent-10: 감사 예약 100 철회\n"});
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        free_text,
+        claim(130, "agent-27", OTHER),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+
+    let mut s = passing();
+    s["verdict_base_known"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    s.as_object_mut().unwrap().remove("verdict_base_known");
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
 }

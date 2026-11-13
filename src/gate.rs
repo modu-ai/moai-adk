@@ -48,6 +48,10 @@ pub struct Snapshot {
     pub review_confirmed_prs: Vec<u64>,
     /// Exit status of the PR body Self-Audit checker.
     pub body_check_ok: bool,
+    /// Whether the verdict's base is a commit the repository has (`git cat-file -e`). Absent
+    /// means unknown, and the gate stops (audit 6850181707 N4).
+    #[serde(default)]
+    pub verdict_base_known: bool,
 }
 
 const MANIFEST: &str = "skills/moai/references/source-manifest.json";
@@ -65,14 +69,16 @@ fn is_hex40(s: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-/// The first line of a comment that starts with `AUDIT #`, if any.
+/// A verdict is a comment whose first line starts with `AUDIT #`; a line quoted further down
+/// (a repair note, a merge record) is never a verdict (audit 6850181707 B1).
 fn verdict_line(body: &str) -> Option<&str> {
-    body.lines().find(|l| l.starts_with("AUDIT #"))
+    body.lines().next().filter(|l| l.starts_with("AUDIT #"))
 }
 
 /// `(head, base, verdict)` from a verdict line `… head <40hex> base <40hex> — verdict: <V>`.
 pub fn parse_verdict(line: &str) -> Option<(String, String, String)> {
-    let h = line.find(" head ")? + 6;
+    // The last ` head ` is the verdict's own: a title may contain the word (audit N3).
+    let h = line.rfind(" head ")? + 6;
     let head = line.get(h..h + 40)?;
     let rest = line.get(h + 40..)?;
     let rest = rest.strip_prefix(" base ")?;
@@ -88,7 +94,7 @@ pub fn parse_verdict(line: &str) -> Option<(String, String, String)> {
 /// `-suffix`) after the `AUDIT #` line. A lane named further on is not the author (owner_ok).
 pub fn auditor(body: &str) -> Option<String> {
     let mut lines = body.lines();
-    lines.by_ref().find(|l| l.starts_with("AUDIT #"))?;
+    lines.next().filter(|l| l.starts_with("AUDIT #"))?;
     let rest: String = lines.collect::<Vec<_>>().join("\n");
     let b = rest.as_bytes();
     let mut i = 0;
@@ -128,6 +134,18 @@ pub fn auditor(body: &str) -> Option<String> {
 
 /// `(comment id, lane, head)` of every `moai-audit-claim: lane=<lane> [head=<40hex>]` comment.
 pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
+    // `moai-audit-claim 철회: <lane> (<claim id>)` withdraws that claim (audit N2). A free-text
+    // withdrawal is not read, so the claim keeps counting (the gate stops rather than guesses).
+    let withdrawn: Vec<u64> = comments
+        .iter()
+        .filter_map(|c| {
+            let first = c.body.lines().next()?;
+            let rest = first.strip_prefix("moai-audit-claim 철회: ")?;
+            let open = rest.find('(')?;
+            let close = rest[open..].find(')')? + open;
+            rest[open + 1..close].parse().ok()
+        })
+        .collect();
     let mut out: Vec<_> = comments
         .iter()
         .filter_map(|c| {
@@ -150,6 +168,7 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
             Some((c.id, lane, head))
         })
         .collect();
+    out.retain(|c| !withdrawn.contains(&c.0));
     out.sort();
     out
 }
@@ -176,6 +195,11 @@ fn g1(s: &Snapshot) -> Result<String, Stop> {
     if verdict != "PASS" {
         return Err(stop(format!("the last verdict on this head is {verdict}")));
     }
+    if !s.verdict_base_known {
+        return Err(stop(format!(
+            "the verdict base {base} is not a known commit"
+        )));
+    }
     Ok(base)
 }
 
@@ -196,7 +220,9 @@ fn g2(s: &Snapshot) -> Result<(), Stop> {
         .ok_or_else(|| stop("no verdict".into()))?;
     let mut allowed = vec![&claims[0]];
     if let Some(on_head) = claims.iter().find(|c| c.2 == s.head) {
-        allowed.push(on_head);
+        if on_head.0 != claims[0].0 {
+            allowed.push(on_head);
+        }
     }
     let names = allowed
         .iter()
@@ -253,12 +279,15 @@ fn g3(s: &Snapshot) -> Result<(), Stop> {
 /// G5: the `ci` aggregate succeeded, and every `ci / …` or `windows-build` run succeeded
 /// (`windows-build` may be `skipped` on a pull request: it runs after the merge, U10).
 fn g5(s: &Snapshot) -> Result<(), Stop> {
-    let watched = |n: &str| n == "ci" || n.starts_with("ci / ") || n.starts_with("windows-build");
+    let watched = |n: &str| {
+        n == "ci" || n == "rc-ci" || n.starts_with("ci / ") || n.starts_with("windows-build")
+    };
     let mut bad = Vec::new();
     let mut aggregate = false;
     for c in s.checks.iter().filter(|c| watched(&c.name)) {
         let concl = c.conclusion.as_deref().unwrap_or("pending");
-        if c.name == "ci" && concl == "success" {
+        // `rc-ci` is the aggregate's earlier name (flow.rs `CI_CHECK_NAMES`, audit N1).
+        if (c.name == "ci" || c.name == "rc-ci") && concl == "success" {
             aggregate = true;
         }
         let skipped_windows = c.name.starts_with("windows-build") && concl == "skipped";
