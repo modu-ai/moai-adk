@@ -32,6 +32,7 @@ EXEMPT = {
     "tests/forge_cli.rs": "recursive walks of TempDir only",
     "tests/github_cli.rs": "hashes temp dirs; templates are named include_str! files",
     "tests/mutate_test.py": "ls-files and scandir on temporary clones",
+    "tests/update_route.rs": "walks its TempDir project; reads the named update.md and routes.json",
     "tests/worktree_report.rs": "read_dir of temporary worktrees",
 }
 
