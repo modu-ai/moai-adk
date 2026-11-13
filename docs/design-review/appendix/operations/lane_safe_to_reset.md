@@ -8,3 +8,4 @@ operation `lane.safe_to_reset` · 코드 `src/ops/lane_safe_to_reset.rs`, `src/l
 - worktree 마다 미커밋(`git status --porcelain`), 미push(어느 원격 추적 ref 에도 없는 커밋 — fetch 하지 않음), 그 가지의 stash 수.
 - 관측 파일(호출자가 forge·터미널에서 읽어 출처와 함께 넘김): 열린 claim 과 재개 메모, 세션 폴더, 화면의 배경 작업 수와 관측 시각(600초 넘으면 믿지 않음).
 - 판정: 모든 검사가 돌고 깨끗할 때만 `safe`. 하나라도 남은 일이 있으면 `not_safe`(`findings`). 돌지 못한 검사가 있으면 `unknown`(`unknowns` 에 이유).
+- 주 checkout(첫 worktree)이 세션 폴더라는 이유만으로 잡혔으면 그 변경은 레인 것이 아니다 — `unattributed` 에 적고 판정에 넣지 않는다(레인은 주 checkout 에서 시작해 연결 worktree 에서 일한다, #2669 6851881955).

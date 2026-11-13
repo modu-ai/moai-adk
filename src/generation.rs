@@ -49,8 +49,8 @@ use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
-const SOURCES_MANIFEST: &str = ".moai-cli/manifests/sources.json";
+const MANIFEST: &str = crate::project_state!("manifests/generation.json");
+const SOURCES_MANIFEST: &str = crate::project_state!("manifests/sources.json");
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
 const PROJECT_PROFILE: &str = ".moai-cli/project.yaml";

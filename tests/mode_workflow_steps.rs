@@ -152,8 +152,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         [
             "claim-verify",
             "claim-verify --hook",
+            "goal-block",
             "goal-plan",
             "goal-show",
+            "heavy-slot-acquire",
             "labels-apply",
             "labels-plan",
             "pr-confirm",
@@ -533,6 +535,24 @@ fn claim_verify_names_the_worktree_session_without_project_hooks() {
     );
 }
 
+/// #2592 Codex parity: Codex runs project hooks only for a trusted project and reviewed hooks;
+/// a worktree follows the primary checkout's project trust (measured), and the lane never
+/// bypasses the review itself.
+#[test]
+fn claim_verify_names_the_codex_hook_trust_steps() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim-verify",
+        &[
+            "`projects.<path>.trust_level = \"trusted\"`",
+            "reviewed and trusted in `/hooks`",
+            "a linked worktree follows the primary checkout's project trust",
+            "this step is the only boundary on Codex as well",
+            "never pass `--dangerously-bypass-hook-trust` yourself",
+        ],
+    );
+}
+
 /// #2680 AC-2/AC-3: a gate that could not run is recorded with substitute evidence,
 /// merges wait by default, and the merge-on-substitute question is asked once per gate.
 #[test]
@@ -585,6 +605,25 @@ fn usage_limit_rules_are_pinned_in_both_mode_workflows() {
     );
 }
 
+/// #2592 Codex parity: Codex spawns agents on a skill instruction that requests delegation, so
+/// SKILL.md requests it in words and names each host's own subagent tool.
+#[test]
+fn skill_requests_delegation_with_each_hosts_subagent_tool() {
+    let skill =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"))
+            .unwrap();
+    for needle in [
+        "This skill requests delegation",
+        "`## Base agents`",
+        "`spawn_agent` and then `wait_agent` in Codex CLI",
+        "the agent tool in Claude Code",
+        "the task tool in OMP",
+        "do the step in this session and say so",
+    ] {
+        assert!(skill.contains(needle), "SKILL.md lacks {needle}");
+    }
+}
+
 /// #2675: the state summary and the self-claim candidate come from `moai-cli queue-free`, and
 /// an empty answer is said as `0건`, never inferred from missing output.
 #[test]
@@ -603,4 +642,32 @@ fn state_and_claim_read_the_free_card_list() {
         "claim",
         &["Take the self-claim candidate from the `free` list of `moai-cli queue-free`"],
     );
+}
+
+/// #2769 (#2554 leader decision 6861024531, item 3): a `LANE-BLOCKED` line names the kind, who
+/// unblocks it and the next check; a resume point says who clears the wait; AGENTS.md points at
+/// the `report` step in one line.
+#[test]
+fn blocked_lines_name_kind_owner_and_next_check() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "report",
+        &[
+            "`LANE-BLOCKED <lane> <target> <reason and state> · kind=<kind> owner=<who> next=<check>`",
+            "A `LANE-BLOCKED` line names the kind (`decision`, `ci`, `audit`, `pr-slot`, `claim`, `tip-red`, `outside`)",
+            "who unblocks it (`owner=<leader|user|lane|author>`)",
+            "the next check (`next=<what, and when or on which event>`), then the lane takes other work in the same turn",
+        ],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &["the wait condition and who clears it (the leader, the user, a lane or the author)"],
+    );
+    let agents_md =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md")).unwrap();
+    assert!(agents_md.contains(
+        "A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step)."
+    ));
 }

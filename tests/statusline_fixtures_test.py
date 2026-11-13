@@ -80,5 +80,26 @@ class SandboxProfileTest(unittest.TestCase):
         self.assertIn("Operation not permitted", denied.stderr)
 
 
+class DeveloperEnvTest(unittest.TestCase):
+    """#2699: the sandbox allows the developer folder `xcrun --find git` names in this process,
+    so every child run under the sandbox must resolve git with the same `DEVELOPER_DIR`.
+    Without it the macOS golden cases with git (b01, b02, b08-b10) differed on the tip after
+    `.cargo/config.toml` started setting the variable. Runs on every platform."""
+
+    def test_the_variable_is_carried_only_when_set(self):
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"DEVELOPER_DIR": "/Library/Developer/CommandLineTools"}):
+            self.assertEqual(statusline_golden.developer_env(),
+                             {"DEVELOPER_DIR": "/Library/Developer/CommandLineTools"})
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(statusline_golden.developer_env(), {})
+
+    def test_both_sandboxed_child_environments_carry_it(self):
+        source = TOOL.read_text()
+        # The case run and the `--version` probe are the two children built from scratch.
+        self.assertEqual(source.count('"PATH": "/usr/bin:/bin"'), 2, "two child environments")
+        self.assertEqual(source.count("**developer_env()"), 2, "each carries DEVELOPER_DIR")
+
+
 if __name__ == "__main__":
     unittest.main()

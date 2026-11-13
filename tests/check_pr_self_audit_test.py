@@ -5,6 +5,11 @@ that does not report FAILED exits 1; usage exits 2."""
 import pathlib
 import subprocess
 import unittest
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from self_audit_parity import run_both  # noqa: E402  (#2708: Python and Rust must agree)
+
 
 TOOL = pathlib.Path(__file__).resolve().parents[1] / "tools/check_pr_self_audit.py"
 
@@ -27,13 +32,7 @@ UNMEASURED_MUTATION = FULL.replace("-> check FAILED, measured", "-> check passed
 
 class CheckPrSelfAuditTest(unittest.TestCase):
     def run_tool(self, text=None, stdin=True):
-        return subprocess.run(
-            ["python3", "-I", str(TOOL)],
-            input=text,
-            text=True,
-            capture_output=True,
-            stdin=None if stdin else subprocess.DEVNULL,
-        )
+        return run_both((), text, stdin=stdin)
 
     def test_full_section_passes(self):
         out = self.run_tool(FULL)
@@ -45,10 +44,7 @@ class CheckPrSelfAuditTest(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
             f.write(FULL)
             path = f.name
-        out = subprocess.run(
-            ["python3", "-I", str(TOOL), "--file", path],
-            text=True, capture_output=True,
-        )
+        out = run_both(("--file", path))
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("self-audit: pass", out.stdout)
 
@@ -72,10 +68,7 @@ class CheckPrSelfAuditTest(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
 
     def test_usage_exit_2(self):
-        out = subprocess.run(
-            ["python3", "-I", str(TOOL), "bogus"],
-            text=True, capture_output=True, stdin=subprocess.DEVNULL,
-        )
+        out = run_both(("bogus",), stdin=False)
         self.assertEqual(out.returncode, 2)
 
 
@@ -91,7 +84,7 @@ class CiCitationLineTest(unittest.TestCase):
     """#2385: a `ci:` line needs keyed `run=<digits>` and `head=<40 lowercase hex>`."""
 
     def run_tool(self, text):
-        return subprocess.run(["python3", "-I", str(TOOL)], input=text, text=True, capture_output=True)
+        return run_both((), text)
 
     def assert_pass(self, text):
         out = self.run_tool(text)
@@ -229,8 +222,12 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
                      "Auditor: the audited head changes code", "Delta auditor: merge-only delta",
                      "Author: a skill package file changes"):
             self.assertIn(case, text)
-        # One build folder per worktree, and lanes report instead of deleting (#2385 follow-up).
-        self.assertIn("never share `CARGO_TARGET_DIR` between worktrees", text)
+        # One build folder per lane (leader decision #2677 6859259006), never shared with another
+        # lane, and a run counts only when its `Compiling` line names the checked worktree;
+        # lanes report instead of deleting (#2385 follow-up).
+        self.assertIn("Use one build folder per lane", text)
+        self.assertIn("never share it with another lane", text)
+        self.assertIn("trust only a run whose `Compiling` line names the worktree you are checking", text)
         # WF-OBS repeat findings documented by Issue #2493, each with its ledger number.
         self.assertEqual(text.count("\n## Shell and helper rules\n"), 1)
         # The split retry is bounded (pre-audit FAIL 6814410637 B1): only a refusal of the

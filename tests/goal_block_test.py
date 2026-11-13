@@ -3,6 +3,7 @@
 
 import copy
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -26,10 +27,37 @@ KEPT = {"milestone": "rc.2", "issues": [
                  {"number": 2016, "reason": "운영자 보유"}]}
 
 
+def rust_bin():
+    explicit = os.environ.get("MOAI_CLI_BIN")
+    if explicit:
+        return pathlib.Path(explicit)
+    target = os.environ.get("CARGO_TARGET_DIR")
+    return (pathlib.Path(target) if target else ROOT / "target") / "debug" / "moai-cli"
+
+
 def invoke(fixture):
-    return subprocess.run([sys.executable, "-I", str(GENERATOR)],
-                          input=json.dumps(fixture, ensure_ascii=False),
-                          capture_output=True, text=True)
+    """The Python generator's result, after checking that `moai-cli goal-block` agrees
+    (#2708): the same exit code, and on success its envelope `result` equals the Python
+    output; on failure both name an invalid fixture."""
+    text = json.dumps(fixture, ensure_ascii=False)
+    py = subprocess.run([sys.executable, "-I", str(GENERATOR)],
+                        input=text, capture_output=True, text=True)
+    binary = rust_bin()
+    if not binary.exists():
+        raise AssertionError(f"moai-cli not built at {binary}; run cargo build first")
+    rs = subprocess.run([str(binary), "goal-block"], input=text, capture_output=True, text=True)
+    agree = py.returncode == rs.returncode
+    if agree and py.returncode == 0:
+        envelope = json.loads(rs.stdout)
+        agree = envelope.get("ok") is True and envelope.get("result") == json.loads(py.stdout)
+    elif agree:
+        agree = "invalid fixture" in rs.stdout + rs.stderr
+    if not agree:
+        raise AssertionError(
+            "goal-block disagrees with tools/gen_goal_block.py\n"
+            f"fixture={text}\npython {py.returncode} {py.stdout!r} {py.stderr!r}\n"
+            f"rust {rs.returncode} {rs.stdout!r} {rs.stderr[-300:]!r}")
+    return py
 
 
 def run_generator(fixture):
