@@ -28,6 +28,7 @@ pub mod gate;
 pub mod generation;
 pub mod github_templates;
 pub mod go_state;
+pub mod goal;
 pub mod handoff;
 pub mod home_routing;
 pub mod hook_config;

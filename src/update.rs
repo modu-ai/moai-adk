@@ -1980,7 +1980,7 @@ pub fn apply_update(
 
 /// UTC `YYYYMMDDTHHMMSSZ` for backup directory names. Test seam (#2505): debug builds take
 /// an alphanumeric `MOAI_CLI_TEST_BACKUP_STAMP` instead, so same-second runs reproduce.
-fn compact_stamp() -> String {
+pub(crate) fn compact_stamp() -> String {
     #[cfg(debug_assertions)]
     if let Ok(s) = std::env::var("MOAI_CLI_TEST_BACKUP_STAMP") {
         if !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric()) {
@@ -1998,7 +1998,7 @@ pub(crate) const BACKUP_NAME_TRIES: usize = 16;
 /// Creates the first free backup folder name for `stamp` and `host` (exclusive create, so two
 /// runs never share one). A taken name moves on to the next; any other error, or all names
 /// taken, stops before anything moved and says why.
-fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Result<PathBuf> {
+pub(crate) fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Result<PathBuf> {
     for n in 1..=BACKUP_NAME_TRIES {
         let name = if n == 1 {
             format!("{stamp}-{host}")
