@@ -107,6 +107,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `go-state-plan`
 - `go-state-revert`
 - `go-state-revert-plan`
+- `heavy-slot-acquire`
+- `heavy-slot-status`
 - `hook-dispatch`
 - `hook-receipt`
 - `hooks-apply`
@@ -170,7 +172,9 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 
 한 파일 operation(#2617): `src/ops/<word>.rs` 로 들어온 operation 은 위 목록에 줄을 넣지 않고 [operations/](operations/) 아래 `<word>.md` 조각 하나로 적는다(`<word>`는 하위 명령에서 `-`를 `_`로 바꾼 파일 이름과 같다). 같은 시험이 조각 파일 집합과 `src/ops/` operation 집합이 같은지, 목록과 조각에 같은 이름이 겹치지 않는지 본다. 그래서 서로 다른 가지가 operation 을 하나씩 더해도 이 문서와 `src/main.rs`의 같은 줄을 건드리지 않는다(조각 목록은 폴더 자체이고, 여기에 다시 적지 않는다).
 
-envelope 예외 하위 명령: `statusline`(#2350). Claude Code가 `statusLine` 명령의 stdout을 그대로 화면에 보여 주므로 JSON envelope 대신 상태줄 원문을 출력하고 항상 exit 0으로 끝난다. OPERATIONS에 들어가지 않으므로 위 목록에도 없다. 실행기 `cc`·`glm`·`codex`·`session`도 같은 이유로 목록 밖이다. 숨은 시험용 옵션 `--render-budget-ms`는 렌더 예산(기본 800ms, Go와 같음)을 바꾼다. golden 시험이 부하와 무관하게 결정적으로 돌도록 큰 값을 넘기고, `0`은 이미 지난 예산(git을 시작하지 않음)이다. `src/main.rs`의 시험 `statusline_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
+envelope 예외 하위 명령: `statusline`(#2350). Claude Code가 `statusLine` 명령의 stdout을 그대로 화면에 보여 주므로 JSON envelope 대신 상태줄 원문을 출력하고 항상 exit 0으로 끝난다. OPERATIONS에 들어가지 않으므로 위 목록에도 없다. 실행기 `cc`·`glm`·`codex`·`session`도 같은 이유로 목록 밖이다. 숨은 시험용 옵션 `--render-budget-ms`는 렌더 예산(기본 800ms, Go와 같음)을 바꾼다. golden 시험이 부하와 무관하게 결정적으로 돌도록 큰 값을 넘기고, `0`은 이미 지난 예산(git을 시작하지 않음)이다. 숨은 시험용 옵션 `--now-unix`는 프롬프트 캐시 남은 시간(#2756)을 계산할 현재 시각(Unix 초)을 고정해, golden 이 벽시계와 무관하게 돌게 한다. `src/main.rs`의 시험 `statusline_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
+
+envelope 예외 하위 명령: `pr-self-audit-check`(#2708). `tools/check_pr_self_audit.py`를 옮긴 것으로, PR 본문(`--file BODY.md` 또는 stdin)의 `## Self-Audit` 절을 검사해 stdout에 한 줄(`self-audit: pass (…)` 또는 `self-audit: blocked missing=…`)을 쓰고 exit 0/1로 끝나며, 사용법 오류는 exit 2다. 배포 skill과 PR 양식이 이 줄과 exit를 그대로 읽으므로 JSON envelope을 쓰지 않는다. `--reaudit`는 `## 독립 review` 절도 요구한다. `src/main.rs`의 시험 `pr_self_audit_check_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
 
 `audit-delta [PROJECT] --pass-head SHA --tip SHA --head SHA`는 `audit.delta`로 대응한다.
 로컬 3개 commit의 두 부모 merge 재현 증거만 계산하며 PROJECT 기본값은 `.`이다.

@@ -6,6 +6,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 
 use serde_json::{json, Value};
 use std::{
@@ -60,11 +61,13 @@ fn fx() -> Fx {
     }
 }
 
-/// `~/.moai-cli/versions/<version>/bin/moai-cli` with its package beside it.
+/// `~/.moai-cli/versions/<version>/bin/moai-cli` with its package beside it, and an empty
+/// agent source folder `agents/` (#2721: a release without agent sources installs none).
 fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBuf {
     let folder = home.join(".moai-cli/versions").join(version);
     let bin = folder.join("bin");
     fs::create_dir_all(&bin).unwrap();
+    fs::create_dir_all(folder.join("agents")).unwrap();
     let exe = bin.join("moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
     for (rel, body) in pkg {
@@ -78,7 +81,7 @@ fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBu
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
     let mut child = Command::new(exe)
         .args(args)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
@@ -331,7 +334,7 @@ fn run_in_terminal(exe: &Path, home: &Path, answer: &str) -> String {
         .args(["-q", "/dev/null"])
         .arg(exe)
         .arg("update")
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
@@ -382,7 +385,7 @@ fn a_yes_piped_without_a_terminal_writes_nothing() {
     let before = state(&f.home);
     let mut child = Command::new(&a)
         .arg("update")
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &f.home)
         .env("LC_ALL", "C")
@@ -553,7 +556,7 @@ fn run_in_terminal_unanswered(exe: &Path, home: &Path) -> String {
         .args(["-q", "/dev/null"])
         .arg(exe)
         .arg("update")
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
@@ -613,7 +616,7 @@ fn with_stderr_away_from_the_terminal_update_does_not_ask() {
         ])
         .arg(&a)
         .arg(&err_file)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &f.home)
         .env("LC_ALL", "C")

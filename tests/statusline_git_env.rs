@@ -5,6 +5,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 
 use std::{
     fs,
@@ -41,7 +42,7 @@ fn render(home: &Path, project: &Path, extra: &[(&str, &Path)], budget_ms: u64) 
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     cmd.args(["statusline", "--render-budget-ms", &budget_ms.to_string()])
         .current_dir(project)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", home)
         .env("MOAI_HOME", home.join(".moai"))
@@ -92,7 +93,8 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     let clean = render(&home, &project, &[], WITHIN);
     assert!(clean.contains("🅱️ main"), "{clean}");
     assert!(clean.contains("💾 +0 M0 ?0"), "{clean}");
-    let repository_line = clean.lines().last().unwrap();
+    // #2756: the repository line is the second of the three lines, not the last.
+    let repository_line = clean.lines().find(|l| l.starts_with("🅱️")).unwrap();
     assert_eq!(repository_line, "🅱️ main | 💾 +0 M0 ?0", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
@@ -129,8 +131,9 @@ fn an_expired_render_budget_drops_the_git_segment() {
     git(&project, &["init", "-q", "-b", "main"]);
 
     let within = render(&home, &project, &[], WITHIN);
+    // #2756: the repository line sits between the environment and usage lines.
     assert_eq!(
-        within.lines().last(),
+        within.lines().nth(1),
         Some("🅱️ main | 💾 +0 M0 ?0"),
         "{within}"
     );
@@ -140,8 +143,8 @@ fn an_expired_render_budget_drops_the_git_segment() {
             !over.contains("🅱️") && !over.contains("💾") && !over.contains("📁"),
             "{over}"
         );
-        let within_lines: Vec<_> = within.lines().collect();
+        let within_without_repo: Vec<_> = within.lines().filter(|l| !l.starts_with("🅱️")).collect();
         let over_lines: Vec<_> = over.lines().collect();
-        assert_eq!(over_lines, within_lines[..within_lines.len() - 1], "{over}");
+        assert_eq!(over_lines, within_without_repo, "{over}");
     }
 }

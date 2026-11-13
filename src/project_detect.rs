@@ -591,6 +591,8 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         "profile": profile,
         "profile_written": false,
         "go_state": go_state,
+        // #2725 S2a: whose `.moai/` this is, before anything may write or move it.
+        "state_root": crate::state_root::classify(root).to_json(),
         "commands": commands_fact(root),
         "next_actions": next_actions,
     }))

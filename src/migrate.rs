@@ -501,7 +501,9 @@ impl SyntheticHome {
         let mut seen = BTreeSet::new();
         let mut entries = Vec::new();
         for s in selections {
-            if !s.target.starts_with(".moai-cli/imports/") || !seen.insert(s.target.clone()) {
+            if !s.target.starts_with(crate::project_state!("imports/"))
+                || !seen.insert(s.target.clone())
+            {
                 return Err("distinct import targets required".into());
             }
             let src = self.source(&s.source)?;
@@ -664,7 +666,11 @@ impl SyntheticHome {
         }
         let mut actions = Vec::new();
         for (i, e) in receipt.plan.entries.iter().enumerate() {
-            if !e.selection.target.starts_with(".moai-cli/imports/") {
+            if !e
+                .selection
+                .target
+                .starts_with(crate::project_state!("imports/"))
+            {
                 return Err("invalid recovery target".into());
             }
             let backup = self

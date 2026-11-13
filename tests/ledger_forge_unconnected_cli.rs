@@ -4,6 +4,7 @@
 //! `PATH`); no network is used.
 #![cfg(unix)]
 mod common;
+use common::CleanEnv;
 
 use serde_json::Value;
 use std::fs;
@@ -91,7 +92,7 @@ fn forge_read(fx: &Fixture, request: &str, gh: Option<&Path>) -> (i32, Value) {
     cmd.arg("forge-read")
         .arg(&fx.project)
         .current_dir(&fx.project)
-        .env_clear()
+        .clean_env()
         .env("PATH", &fx.bin)
         .env("HOME", &fx.home)
         .stdin(Stdio::piped())

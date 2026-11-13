@@ -8,6 +8,8 @@
 //! literally on purpose: a test that went through the product constant would follow a
 //! regression instead of catching it.
 
+mod common;
+use common::CleanEnv;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -47,7 +49,7 @@ fn render_in(f: &Fixture, cwd: &Path, extra: &[(&str, &str)]) -> String {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     cmd.args(["statusline", "--render-budget-ms", "3600000"])
         .current_dir(cwd)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", &f.home)
         .env("NO_COLOR", "1")

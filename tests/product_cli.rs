@@ -2253,6 +2253,8 @@ mod skill_package {
     /// The `/moai project` route (#2496). Kept apart from INTENTS for the same reason as
     /// MODES: the legacy asset map has no rows for it.
     const PROJECT: &str = "PROJECT";
+    /// The `/moai optimize` route (#2724, leader decision A). Apart from INTENTS like PROJECT.
+    const OPTIMIZE: &str = "OPTIMIZE";
     const SPEC: &str = "docs/design-review/autonomy-modes-spec.md";
     const MANIFEST: &str = "references/source-manifest.json";
     // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
@@ -2356,18 +2358,12 @@ mod skill_package {
         );
         // One hop: the router names only the route table.
         assert_eq!(package_paths_in(body), vec!["references/routes.json"]);
-        // REQ-02A-05, narrowed by the #2592 user decisions (6840661050, 6840838042): no host
-        // agent files are shipped; the base agents ship only as tool-neutral sources under
-        // references/agents/ (decision A), rendered per host at install time.
+        // REQ-02A-05, narrowed by the #2592 user decisions (6840661050, 6840838042) and #2721:
+        // the skill ships no agent material at all; the base agents ship as tool-neutral
+        // sources in `agents/` beside `skills/`, rendered per host at install time.
         assert!(package_files()
             .iter()
-            .all(|p| !p.starts_with("agents/") && !p.ends_with(".toml")));
-        for p in package_files().iter().filter(|p| p.contains("agents/")) {
-            assert!(
-                p.starts_with("references/agents/") && p.ends_with(".md"),
-                "agent material outside references/agents/: {p}"
-            );
-        }
+            .all(|p| !p.contains("agents/") && !p.ends_with(".toml")));
     }
 
     #[test]
@@ -2384,6 +2380,7 @@ mod skill_package {
             .iter()
             .chain(MODES.iter())
             .chain(std::iter::once(&PROJECT))
+            .chain(std::iter::once(&OPTIMIZE))
             .copied()
             .collect();
         want.sort();
@@ -2428,14 +2425,16 @@ mod skill_package {
                 .expect("shared block ends with the not-installed rule");
             rest[..list_end].to_string()
         };
-        let mut sources: Vec<String> = fs::read_dir(root().join("references/agents"))
-            .unwrap()
-            .map(|e| {
-                let text = fs::read_to_string(e.unwrap().path()).unwrap();
-                let (keys, _) = frontmatter(&text);
-                keys.into_iter().find(|(k, _)| k == "name").unwrap().1
-            })
-            .collect();
+        // #2721: the sources live beside `skills/`, outside the package.
+        let mut sources: Vec<String> =
+            fs::read_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"))
+                .unwrap()
+                .map(|e| {
+                    let text = fs::read_to_string(e.unwrap().path()).unwrap();
+                    let (keys, _) = frontmatter(&text);
+                    keys.into_iter().find(|(k, _)| k == "name").unwrap().1
+                })
+                .collect();
         sources.sort();
         let first = fs::read_to_string(root().join("workflows/run.md")).unwrap();
         let shared = common(&first);
@@ -2517,14 +2516,14 @@ mod skill_package {
 
     /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
     /// generator instead of free-form wording — leader feeds the state it read
-    /// to tools/gen_goal_block.py and prints its `leader` line, with the
+    /// to `moai-cli goal-block` (#2708; formerly tools/gen_goal_block.py) and prints its `leader` line, with the
     /// keep-set exclusion rule stated as the generator's rule; agent binds its
     /// card-scoped lines to the generator's `agent` kind.
     #[test]
     fn goal_step_is_bound_to_the_goal_block_generator() {
         let leader = mode_workflow("MODE-LEADER");
         assert!(
-            leader.contains("`tools/gen_goal_block.py`"),
+            leader.contains("`moai-cli goal-block`"),
             "leader workflow must name the generator: {leader}"
         );
         assert!(
@@ -2540,8 +2539,15 @@ mod skill_package {
             "leader workflow must forbid editing the generated line: {leader}"
         );
         let agent = mode_workflow("MODE-AGENT");
+        // #2708: a user project has no tools/ folder, so neither workflow names the script.
+        for body in [&leader, &agent] {
+            assert!(
+                !body.contains("gen_goal_block"),
+                "a mode workflow names the Python script"
+            );
+        }
         assert!(
-            agent.contains("`tools/gen_goal_block.py`"),
+            agent.contains("`moai-cli goal-block`"),
             "agent workflow must name the generator: {agent}"
         );
         assert!(
@@ -2555,8 +2561,8 @@ mod skill_package {
         // The generator itself still enforces the rule: a keep-set entry without
         // a reason is refused, and excluded numbers leave the condition.
         let run = |input: &str| {
-            let mut out = std::process::Command::new("python3")
-                .args(["-I", "tools/gen_goal_block.py"])
+            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
@@ -2573,7 +2579,7 @@ mod skill_package {
         let good = run(
             r#"{"milestone":"m1","issues":[{"number":1,"state":"open"},{"number":2,"state":"open"}],"prs":[{"number":3,"state":"open"}],"keep_set":[{"number":2,"reason":"operator-held"}]}"#,
         );
-        let v: Value = serde_json::from_slice(&good.stdout).unwrap();
+        let v: Value = serde_json::from_slice::<Value>(&good.stdout).unwrap()["result"].clone();
         // The excluded entry drops out of the counts (2 issues -> 1) and the
         // condition carries its number and reason.
         assert_eq!(v["counts"]["open_issues"], json!(1));
@@ -2582,6 +2588,43 @@ mod skill_package {
         let cond = v["leader"]["condition"].as_str().unwrap();
         assert!(cond.contains("#2(operator-held)"), "{cond}");
         assert!(v["keep_set_excluded"][0]["reason"] == json!("operator-held"));
+    }
+
+    /// #2720 audit F1: the 1 MiB stdin limit `goal-block` added at its N/N+1 edge. The sizes
+    /// are literals on purpose, so a change to the limit in src/ops/goal_block.rs fails here.
+    #[test]
+    fn goal_block_stdin_limit_is_one_mib_exactly() {
+        let run = |input: &[u8]| {
+            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .arg("goal-block")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            crate::common::feed_stdin(&mut out, input);
+            out.wait_with_output().unwrap()
+        };
+        // A valid fixture padded with trailing spaces (JSON whitespace) to an exact size.
+        let sized = |len: usize| {
+            let mut bytes = br#"{"milestone":"m","issues":[],"prs":[],"keep_set":[]}"#.to_vec();
+            bytes.resize(len, b' ');
+            bytes
+        };
+        let at_limit = run(&sized(1048576));
+        assert!(
+            at_limit.status.success(),
+            "1048576 bytes must pass: {}",
+            String::from_utf8_lossy(&at_limit.stderr)
+        );
+        let over = run(&sized(1048577));
+        assert_eq!(over.status.code(), Some(1), "1048577 bytes must be refused");
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&over.stdout),
+            String::from_utf8_lossy(&over.stderr)
+        );
+        assert!(text.contains("larger than 1 MiB"), "{text}");
     }
 
     #[test]
@@ -2911,6 +2954,59 @@ mod skill_package {
         );
     }
 
+    /// #2286 CLOSE-TABLE item 1: the repository's own instruction files carry no retired mode
+    /// spelling either, so a lane reading them types only `--mode-agent` / `--mode-leader`.
+    #[test]
+    fn repository_instruction_files_carry_no_retired_mode_spelling() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        for file in ["AGENTS.md", "AGENTS.local.md"] {
+            let text = fs::read_to_string(repo.join(file)).unwrap();
+            assert_eq!(
+                retired_mode_spelling(&text),
+                None,
+                "retired mode spelling is still in {file}"
+            );
+            assert!(
+                text.contains("--mode-agent") || file == "AGENTS.md",
+                "{file}"
+            );
+        }
+    }
+
+    /// #2724 (6): `/moai optimize` is a route whose workflow runs only the read-only preview and
+    /// hands any deletion to the user's yes and the existing apply step.
+    #[test]
+    fn optimize_route_previews_and_applies_nothing() {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let r = &routes["routes"][OPTIMIZE];
+        assert_eq!(r["reference"], json!("../workflows/optimize.md"));
+        assert_eq!(r["requires_binary"], json!(true));
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains("OPTIMIZE"), "SKILL.md lists the route");
+        assert!(
+            skill.contains("`/moai optimize`"),
+            "SKILL.md names the entry"
+        );
+        let body = fs::read_to_string(root().join("workflows/optimize.md")).unwrap();
+        for needle in [
+            "this route deletes, moves and writes nothing",
+            "moai-cli optimize-plan <project> --integration-ref <ref>",
+            "There is no default root",
+            "an audit `PASS` for its exact HEAD",
+            "time alone never makes a worktree a candidate",
+            "Apply nothing in this route.",
+            "wait for their yes",
+            "`moai-cli worktree-gc-apply` with that plan's digest",
+            "never removed by a shell command instead",
+            "Deleting is a `guarded` choice",
+            "reported as unread, never as an empty list",
+        ] {
+            assert!(body.contains(needle), "optimize.md lacks {needle}");
+        }
+    }
+
     /// #2496 AC-1: `/moai project` is a route, and its workflow carries the three stages —
     /// detect and interview, the index-build suggestion, and detection-only LSP·MCP·DB.
     #[test]
@@ -2955,6 +3051,11 @@ mod skill_package {
             // #2639: read before asking, three or four at a time, the five common axes, a
             // file preview before approval, and hand edits never overwritten on a re-run.
             "Read before you ask (Issue #2639)",
+            // #2706: the writing language is asked once, stored in project.yaml only, and read.
+            "ask it item by item with `moai-cli language-setup <project>`",
+            "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
+            "A later run reads the stored value and does not ask again",
+            "written in the stored `instruction_files` language",
             "is confirmed with the user, not asked",
             "three or four questions at a time and at most three rounds, one axis per question",
             "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",

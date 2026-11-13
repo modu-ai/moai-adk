@@ -4,7 +4,7 @@
 
 use super::color::{hex_rgb, Profile};
 use super::segments::{self, HandoffStage};
-use super::state::{DisplayConfig, Status};
+use super::state::{CacheTimer, DisplayConfig, Status};
 use std::collections::BTreeMap;
 
 const BAR_WIDTH: i64 = 10;
@@ -105,11 +105,13 @@ impl Renderer {
     }
 
     /// `Render`: the layout, or `MoAI` when every line is empty, then the base color.
+    /// #2756 (user instruction 2026-11-13): line 1 is the running environment, line 2 the
+    /// repository, line 3 the lane name and the usage bars.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
-            self.bars_line(status),
             self.git_line(status),
+            self.bars_line(status),
         ]
         .into_iter()
         .filter(|l| !l.is_empty())
@@ -132,6 +134,15 @@ impl Renderer {
         }
     }
 
+    /// #2756 AC-7: an OSC 8 hyperlink around `text`. Like color it is a terminal escape, so
+    /// the plain output (no color profile) and an empty URL keep the text alone.
+    fn link(&self, url: &str, text: &str) -> String {
+        if self.profile.is_none() || url.is_empty() {
+            return text.to_string();
+        }
+        format!("\x1b]8;;{url}\x1b\\{text}\x1b]8;;\x1b\\")
+    }
+
     fn info_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
         let metrics = !s.model.is_empty();
@@ -150,11 +161,19 @@ impl Renderer {
             }
         }
         if self.enabled("cache_hit") {
-            if let Some(pct) = s
+            let hit = s
                 .cache
                 .and_then(|(read, creation)| segments::cache_hit_percent(read, creation))
-            {
-                segs.push(self.paint(self.theme.cache, &format!("♻️ {pct}%")));
+                .map(|pct| format!(" {pct}%"));
+            // #2756 AC-8 (user choice 2026-11-13): how long the prompt cache stays warm, next
+            // to the hit ratio; `🧊` once it is cold.
+            let timer = s.cache_timer.map(|t| match t {
+                CacheTimer::Warm(minutes) => format!(" ⏱️ {minutes}m"),
+                CacheTimer::Cold => " 🧊".to_string(),
+            });
+            if hit.is_some() || timer.is_some() {
+                let text = format!("♻️{}{}", hit.unwrap_or_default(), timer.unwrap_or_default());
+                segs.push(self.paint(self.theme.cache, &text));
             }
         }
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
@@ -169,19 +188,21 @@ impl Renderer {
                 segs.push(self.paint(self.theme.version, &seg));
             }
         }
-        if self.enabled("session_time") && metrics {
-            let t = segments::session_time(s.session_ms);
-            if !t.is_empty() {
-                segs.push(t);
-            }
-        }
-        // #2559 AC-7 (user instruction 2026-11-12): the output style is not shown. The
-        // `output_style` option name is still accepted in configs, it just shows nothing.
+        // #2756 AC-1 (user instruction 2026-11-13): the session time is not shown, and
+        // #2559 AC-7 (user instruction 2026-11-12): nor is the output style. The
+        // `session_time` and `output_style` option names are still accepted in configs,
+        // they just show nothing.
         segs.join(SEPARATOR)
     }
 
     fn bars_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
+        // #2756 AC-3 (user instruction 2026-11-13, replacing #2697's name-last order): the
+        // lane name comes first, then the usage bars; with no name the segment and its
+        // separator are both left out.
+        if self.enabled("session") && !s.session_name.is_empty() {
+            segs.push(format!("🏷️ {}", s.session_name));
+        }
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
                 let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
@@ -215,16 +236,10 @@ impl Renderer {
                 segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
             }
         }
-        let bars = segs.join(SEPARATOR);
-        if self.enabled("session") && !s.session_name.is_empty() {
-            if bars.is_empty() {
-                format!("🏷️ {}", s.session_name)
-            } else {
-                format!("🏷️ {}  {bars}", s.session_name)
-            }
-        } else {
-            bars
-        }
+        // The renderer never shortens a segment and does not read `COLUMNS`, which Claude
+        // Code sets; whether an overlong line is cut or wraps is left open by the host docs
+        // ("may get truncated or wrap awkwardly").
+        segs.join(SEPARATOR)
     }
 
     /// `renderUsageBar`: battery icon, label, gradient bar, percentage.
@@ -264,6 +279,22 @@ impl Renderer {
         if self.enabled("git_branch") {
             if let Some(rb) = self.repo_branch(s) {
                 segs.push(rb);
+            }
+        }
+        // #2756 AC-9 (user choice 2026-11-13): which worktree the session is in; absent in
+        // the main checkout.
+        if self.enabled("worktree") && !s.worktree.is_empty() {
+            segs.push(self.paint(self.theme.branch, &format!("🌳 {}", s.worktree)));
+        }
+        // #2756 AC-7 (user choice 2026-11-13): this branch's pull request, linked to its URL.
+        if self.enabled("pr") {
+            if let Some(pr) = &s.pr {
+                let mut text = format!("🔗 #{}", pr.number);
+                if !pr.review_state.is_empty() {
+                    text.push(' ');
+                    text.push_str(&pr.review_state);
+                }
+                segs.push(self.link(&pr.url, &self.paint(self.theme.prs, &text)));
             }
         }
         if self.enabled("git_status") {
@@ -391,13 +422,15 @@ mod tests {
         }
     }
 
+    /// #2756 AC-1–AC-3 (user instruction 2026-11-13): environment, repository, then the lane
+    /// name and the usage bars, each line joined by ` | `.
     #[test]
     fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
         assert_eq!(
             plain(&full_status(), &[]),
-            "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m\n\
-             🏷️ release  🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%\n\
-             📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
+            "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
+             📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1\n\
+             🏷️ release | 🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%"
         );
     }
 
@@ -410,7 +443,26 @@ mod tests {
         let out = plain(&status, &[]);
         assert!(!out.contains('💬'), "{out}");
         assert!(!out.contains("MoAI"), "{out}");
-        assert!(out.lines().next().unwrap().ends_with("⏳ 1h 30m"), "{out}");
+        assert!(out.lines().next().unwrap().ends_with("🗿 v3.0"), "{out}");
+    }
+
+    /// #2756 AC-1 (user instruction 2026-11-13): the session time is not shown, even with a
+    /// session length in the input and the `session_time` option left enabled.
+    #[test]
+    fn the_session_time_is_never_shown() {
+        let status = full_status();
+        assert_eq!(
+            status.session_ms, 5_400_000,
+            "the input carries a session length"
+        );
+        let out = plain(&status, &[]);
+        assert!(!out.contains('⏳'), "{out}");
+        let config = DisplayConfig {
+            segments: [("session_time".to_string(), true)].into_iter().collect(),
+            ..Default::default()
+        };
+        let enabled = Renderer::new(&config, None).render(&status);
+        assert!(!enabled.contains('⏳'), "{enabled}");
     }
 
     #[test]
@@ -459,17 +511,54 @@ mod tests {
         assert_eq!(at(10.0), "🔋 5H: █░░░░░░░░░ 10%");
     }
 
+    /// #2756 AC-3/AC-4 (replacing #2697's name-last order): the name opens the line and a
+    /// ` | ` follows it; with no bars it stands alone, and with no name (or `session` off)
+    /// the name and its separator are both left out.
     #[test]
-    fn session_prefix_uses_two_spaces_only_when_bars_follow() {
+    fn the_session_name_is_the_first_segment_before_the_bars() {
         let mut status = Status {
             session_name: "focus".into(),
             ..Default::default()
         };
-        assert_eq!(plain(&status, &[]), "🏷️ focus  CTX: ░░░░░░░░░░ n/a");
-        assert_eq!(plain(&status, &["context"]), "🏷️ focus");
-        assert_eq!(plain(&status, &["session"]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &[]), "🏷️ focus | CTX: ░░░░░░░░░░ n/a");
+        status.five_hour = Some(RateWindow::default());
+        assert_eq!(
+            plain(&status, &[]),
+            "🏷️ focus | CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
+        );
+        assert_eq!(
+            plain(&status, &["usage_5h", "context"]),
+            "🏷️ focus",
+            "no bars: the name alone"
+        );
+        assert_eq!(
+            plain(&status, &["session"]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
+        );
         status.session_name.clear();
-        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(
+            plain(&status, &[]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%",
+            "no name: no leading segment and no leading separator"
+        );
+    }
+
+    /// The renderer never shortens for width and does not read `COLUMNS`; the host docs leave
+    /// open whether an overlong line is cut or wraps. A long name is printed whole, before
+    /// every bar, and the bars that follow it are unchanged.
+    #[test]
+    fn a_long_name_is_printed_whole_and_before_every_bar() {
+        let long = "x".repeat(200);
+        let mut status = full_status();
+        status.session_name = long.clone();
+        let line = plain(&status, &[]).lines().nth(2).unwrap().to_string();
+        let head = format!("🏷️ {long} | ");
+        assert!(line.starts_with(&head), "{line}");
+        assert_eq!(
+            &line[head.len()..],
+            "🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%",
+            "the bars follow the name, unchanged by its length"
+        );
     }
 
     #[test]
@@ -502,9 +591,10 @@ mod tests {
     fn hidden_main_segments_cannot_be_enabled_by_configuration() {
         let home = tempfile::tempdir().unwrap();
         // The HOME state folder since #2455 (`$HOME/.moai-cli/state`).
-        std::fs::create_dir_all(home.path().join(".moai-cli/state")).unwrap();
+        let state = home.path().join(crate::HOME_STATE_DIR).join("state");
+        std::fs::create_dir_all(&state).unwrap();
         std::fs::write(
-            home.path().join(".moai-cli/state/last-session-state.json"),
+            state.join("last-session-state.json"),
             r#"{"active_task":{"command":"TASK_SENTINEL","spec_id":"SPEC","stage":"run"}}"#,
         )
         .unwrap();
@@ -528,9 +618,84 @@ mod tests {
             ..Default::default()
         };
         let output = Renderer::new(&config, None).render(&status);
-        for hidden in ["📁", "💌", "👤", "📋", "SENTINEL", "987", "approved"] {
+        for hidden in ["📁", "💌", "👤", "📋", "SENTINEL"] {
             assert!(!output.contains(hidden), "{output:?}");
         }
+        // #2756 AC-7: the pull request now has its own segment (not the Go `💌` one).
+        assert!(output.contains("🔗 #987 approved"), "{output:?}");
+    }
+
+    /// #2756 AC-7–AC-9: the cache timer sits in the `♻️` segment, the worktree and the pull
+    /// request on the repository line, each left out with its separator when absent.
+    #[test]
+    fn cache_timer_worktree_and_pr_segments() {
+        let mut status = full_status();
+        status.cache_timer = Some(CacheTimer::Warm(4));
+        status.worktree = "wt".into();
+        status.pr = Some(state::PrInfo {
+            number: 42,
+            url: "https://github.com/owner/repo/pull/42".into(),
+            review_state: "pending".into(),
+        });
+        let out = plain(&status, &[]);
+        let lines: Vec<_> = out.lines().collect();
+        assert_eq!(
+            lines[0],
+            "🤖 Opus | 🧠 high·t | ♻️ 75% ⏱️ 4m | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+        );
+        assert_eq!(
+            lines[1],
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🌳 wt | 🔗 #42 pending | 💾 +1 M1 ?1"
+        );
+        assert!(
+            !out.contains('\x1b'),
+            "plain output carries no link escape: {out:?}"
+        );
+        status.cache_timer = Some(CacheTimer::Cold);
+        assert!(plain(&status, &[]).starts_with("🤖 Opus | 🧠 high·t | ♻️ 75% 🧊 | "));
+        status.cache = None;
+        assert!(
+            plain(&status, &[]).contains("| ♻️ 🧊 |"),
+            "a timer alone keeps the segment"
+        );
+        status.cache_timer = None;
+        assert!(
+            !plain(&status, &[]).contains('♻'),
+            "neither value: no segment"
+        );
+        status.pr.as_mut().unwrap().review_state.clear();
+        assert!(plain(&status, &[]).contains("| 🔗 #42 | "));
+        assert!(!plain(&status, &["pr"]).contains('🔗'));
+        assert!(!plain(&status, &["worktree"]).contains('🌳'));
+        status.pr = None;
+        status.worktree.clear();
+        assert!(
+            plain(&status, &[]).contains("🅱️ main ↓2 +3 | 💾 +1 M1 ?1"),
+            "no empty `| |`"
+        );
+    }
+
+    /// #2756 AC-7: with color the pull request is an OSC 8 hyperlink to its URL; without a URL
+    /// it is plain text.
+    #[test]
+    fn the_pr_segment_links_to_its_url_only_with_color() {
+        let mut status = full_status();
+        status.pr = Some(state::PrInfo {
+            number: 42,
+            url: "https://github.com/owner/repo/pull/42".into(),
+            review_state: String::new(),
+        });
+        let config = DisplayConfig::default();
+        let colored = Renderer::new(&config, Some(Profile::Ansi256)).render(&status);
+        assert!(
+            colored.contains("\x1b]8;;https://github.com/owner/repo/pull/42\x1b\\"),
+            "{colored:?}"
+        );
+        assert_eq!(colored.matches("\x1b]8;;\x1b\\").count(), 1, "{colored:?}");
+        status.pr.as_mut().unwrap().url.clear();
+        let unlinked = Renderer::new(&config, Some(Profile::Ansi256)).render(&status);
+        assert!(!unlinked.contains("\x1b]8;"), "{unlinked:?}");
+        assert!(unlinked.contains("🔗 #42"), "{unlinked:?}");
     }
 
     #[test]
@@ -553,7 +718,14 @@ mod tests {
         assert_eq!(plain(&full_status(), &disabled), "MoAI");
         let output = plain(&full_status(), &["session", "usage_5h", "usage_7d"]);
         assert_eq!(output.lines().count(), 3);
-        assert_eq!(output.lines().nth(1), Some("🔋 CTX: █████░░░░░ 50%"));
+        assert_eq!(output.lines().nth(2), Some("🔋 CTX: █████░░░░░ 50%"));
+        // #2756: with the repository line hidden, the bars line moves up to second.
+        let output = plain(&full_status(), &["git_branch", "git_status"]);
+        assert_eq!(output.lines().count(), 2);
+        assert!(
+            output.lines().nth(1).unwrap().starts_with("🏷️ release | "),
+            "{output}"
+        );
     }
 
     #[test]

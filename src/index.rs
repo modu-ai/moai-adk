@@ -193,7 +193,7 @@ impl IndexIo {
             ));
         }
         let (owned, name) = self.parent(
-            Path::new(".moai-cli/index/last-build.json"),
+            Path::new(crate::project_state!("index/last-build.json")),
             true,
             &mut |_, _| {},
         )?;
@@ -338,7 +338,9 @@ fn scan_with_hook(
         .split(|b| *b == 0)
         .filter(|e| !e.is_empty())
         .map(|e| String::from_utf8_lossy(e).into_owned())
-        .filter(|p| !p.starts_with(".moai-cli/index/") && p != ".moai-cli/index")
+        .filter(|p| {
+            !p.starts_with(crate::project_state!("index/")) && p != crate::project_state!("index")
+        })
         .collect();
     paths.sort();
     paths.dedup();
@@ -423,7 +425,7 @@ fn untracked(project: &Path) -> Result<Vec<String>> {
             // The tool's own state directory (this index, receipts, claims) is never a
             // project change: the index writes there itself, so counting it would make
             // `fresh` unreachable.
-            if path.starts_with(".moai-cli/") {
+            if path.starts_with(crate::project_state!("")) {
                 continue;
             }
             out.push(path);
@@ -496,7 +498,7 @@ fn orphan_candidates(project: &Path) -> Vec<String> {
 /// Writes the pointer through a temp file plus a rename in the same directory: a reader
 /// either sees the previous pointer or the new one, never a partial write (AC-2).
 fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
-    let pointer = crate::apply::target(project, ".moai-cli/index/current.json")?;
+    let pointer = crate::apply::target(project, crate::project_state!("index/current.json"))?;
     let dir = index_root(project);
     fs::create_dir_all(&dir).map_err(|_| "index directory unavailable".to_string())?;
     let nanos = std::time::SystemTime::now()
@@ -611,7 +613,8 @@ fn stored_views(source: &IndexIo, manifest: &IndexManifest) -> Result<(Vec<Value
     ] {
         let bytes = source
             .read_state(Path::new(&format!(
-                ".moai-cli/index/generations/{}/{view}.jsonl",
+                "{}/index/generations/{}/{view}.jsonl",
+                crate::PROJECT_STATE_DIR,
                 manifest.generation_id
             )))
             .ok()
@@ -748,9 +751,9 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         IndexIo::new(&root).map_err(|_| "index directory handle unavailable".to_string())?;
     let build = || -> Result<Value> {
         for rel in [
-            ".moai-cli/index/generations",
-            ".moai-cli/index/current.json",
-            ".moai-cli/index/last-build.json",
+            crate::project_state!("index/generations"),
+            crate::project_state!("index/current.json"),
+            crate::project_state!("index/last-build.json"),
         ] {
             crate::apply::target(&root, rel)?;
         }
@@ -774,7 +777,10 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         for name in ["manifest.json", "map.jsonl", "graph.jsonl"] {
             crate::apply::target(
                 &root,
-                &format!(".moai-cli/index/generations/{gen_id}/{name}"),
+                &format!(
+                    "{}/index/generations/{gen_id}/{name}",
+                    crate::PROJECT_STATE_DIR
+                ),
             )?;
         }
         let action = if !gen_dir.is_dir() {
@@ -846,7 +852,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             };
             // The failure path must enforce the same target/ancestor rule as the
             // success path, or its marker could overwrite a symlinked source.
-            if crate::apply::target(&root, ".moai-cli/index/last-build.json").is_ok() {
+            if crate::apply::target(&root, crate::project_state!("index/last-build.json")).is_ok() {
                 if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
                     let _ = source.write_marker(&bytes);
                 }
@@ -858,7 +864,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
 
 fn read_pointer(source: &IndexIo) -> Result<Option<String>> {
     let Some(bytes) = source
-        .read_state(Path::new(".moai-cli/index/current.json"))
+        .read_state(Path::new(crate::project_state!("index/current.json")))
         .map_err(|_| "index pointer unreadable".to_string())?
     else {
         return Ok(None);
@@ -888,7 +894,8 @@ fn load_manifest(source: &IndexIo, gen_id: &str) -> Option<IndexManifest> {
     }
     let bytes = source
         .read_state(Path::new(&format!(
-            ".moai-cli/index/generations/{gen_id}/manifest.json"
+            "{}/index/generations/{gen_id}/manifest.json",
+            crate::PROJECT_STATE_DIR
         )))
         .ok()??;
     let m: IndexManifest = serde_json::from_slice(&bytes).ok()?;
@@ -988,7 +995,8 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
     // REQ-C6-01: a recorded failed attempt outranks the pointer — the index is known
     // incomplete until the next successful build clears the marker. The check comes
     // before the scan so the state stays readable even while the source is broken.
-    let marker = match source.read_state(Path::new(".moai-cli/index/last-build.json")) {
+    let marker = match source.read_state(Path::new(crate::project_state!("index/last-build.json")))
+    {
         Ok(Some(bytes)) => match serde_json::from_slice::<BuildFailure>(&bytes) {
             Ok(marker) => Some(marker),
             Err(_) => return unavailable("index failure marker unreadable"),

@@ -27,9 +27,11 @@ Version token: each recorded case names the actual binary version and SHA-256.
 --check normalizes only the `🗿 v<version>` token on each side.
 
 Usage:
-  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write [--variant V] [--case NAME]
+  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv "<arguments>"] --write [--variant V] [--case NAME]
   python3 -I tools/statusline_golden.py --bin <statusline binary> [--binary-version <v>] --check
 (`--binary-version` defaults to the last token `<bin> --version` prints, `v` stripped.)
+(`--argv` defaults to DEFAULT_ARGV: the hidden seams that make the render independent of the
+machine, so recording and checking produce the same text; an explicit `--argv` must carry them too.)
 Exit codes: 0 = all written / all equal, 1 = a mismatch or a failed run, 2 = usage.
 """
 
@@ -102,6 +104,15 @@ def apply_setup(step, root, project, moai_home):
         raise ValueError(f"unknown setup kind {kind!r}")
 
 
+def developer_env():
+    """`DEVELOPER_DIR` from this process, for every child run under the sandbox (#2699).
+    `git_exec_clauses` resolves git with this process's environment, and `cargo test` sets
+    `DEVELOPER_DIR` (.cargo/config.toml); a child without it would resolve git into another
+    developer folder that the sandbox does not allow, and every git case would differ."""
+    value = os.environ.get("DEVELOPER_DIR")
+    return {"DEVELOPER_DIR": value} if value else {}
+
+
 def git_exec_clauses():
     """Sandbox clauses for what a `git` call may exec on macOS: the /usr/bin shim, xcrun,
     and the developer-tools bin directory the shim resolves git into (git runs more than
@@ -130,6 +141,8 @@ def normalize_version(text, version):
 
 
 VERSION_TOKEN = re.compile(r"v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)")
+# An OSC 8 hyperlink opener or closer: ESC ] 8 ; params ; URI ST (ST = ESC \).
+OSC8_LINK = re.compile(r"\x1b\]8;[^;\x1b]*;[^\x1b]*\x1b\\")
 
 
 def parse_version_output(returncode, stdout):
@@ -156,7 +169,8 @@ def detect_binary_version(binary):
             cmd = ["/usr/bin/sandbox-exec", "-p", sandbox_profile(exe), *cmd]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=30,
-                                  env={"PATH": "/usr/bin:/bin", "HOME": str(root / "home")})
+                                  env={"PATH": "/usr/bin:/bin", "HOME": str(root / "home"),
+                                       **developer_env()})
         except OSError:
             return None
     return parse_version_output(proc.returncode, proc.stdout)
@@ -238,7 +252,7 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
                      if stdin_bytes is None else stdin_bytes)
         stdin = stdin_raw.replace(b"{PROJECT}", str(project).encode())
         env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "MOAI_HOME": str(moai_home),
-               "TZ": "UTC", "LANG": "C.UTF-8"}
+               "TZ": "UTC", "LANG": "C.UTF-8", **developer_env()}
         env.update(VARIANTS[variant])
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":
@@ -264,7 +278,8 @@ def check_color_contract(binary, argv):
         ("ANSI256 TTY", "ansi256", {}),
     ]:
         code, out, err = run_case(binary, argv, case, variant, **options)
-        if code or re.sub(r"\x1b\[[0-9;]*m", "", out) != plain:
+        # SGR colors and (#2756 AC-7) OSC 8 hyperlinks are the only escapes color adds.
+        if code or OSC8_LINK.sub("", re.sub(r"\x1b\[[0-9;]*m", "", out)) != plain:
             raise ValueError(f"{label} content differs: {code} {out!r} {err!r}")
         if variant == "plain" and "\x1b" in out:
             raise ValueError(f"{label} contains terminal escapes")
@@ -299,10 +314,16 @@ def check_input_boundaries(binary, argv):
     print("ok   native stdin boundaries")
 
 
+# Recording and checking share these hidden seams. `--render-budget-ms`: the goldens describe the
+# render within budget, so a slow git cannot drop the git segment (#2350). `--now-unix`: the prompt
+# cache timer counts from a fixed clock (#2756 AC-8).
+DEFAULT_ARGV = "statusline --render-budget-ms 3600000 --now-unix 1738429000"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", required=True)
-    ap.add_argument("--argv", default="statusline", help="arguments after the binary, space separated")
+    ap.add_argument("--argv", default=DEFAULT_ARGV, help="arguments after the binary, space separated")
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")

@@ -7,6 +7,23 @@
 
 use std::{env, fs, path::Path};
 
+#[path = "src/local_build.rs"]
+mod local_build;
+
+/// `MOAI_BUILD_VERSION` for `crate::BUILD_VERSION` (#2722 AC-5): the package version, plus
+/// `+local.<n>` from `MOAI_LOCAL_BUILD`. A malformed number stops the build.
+fn build_version() {
+    println!("cargo:rerun-if-env-changed={}", local_build::ENV);
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/local_build.rs");
+    let package = env::var("CARGO_PKG_VERSION").expect("package version");
+    let raw = env::var(local_build::ENV).ok();
+    match local_build::version(&package, raw.as_deref()) {
+        Ok(version) => println!("cargo:rustc-env=MOAI_BUILD_VERSION={version}"),
+        Err(reason) => panic!("{reason}"),
+    }
+}
+
 fn camel(word: &str) -> String {
     word.split('_')
         .map(|part| {
@@ -44,6 +61,7 @@ fn args_doc(text: &str) -> Vec<String> {
 }
 
 fn main() {
+    build_version();
     let root = env::var("CARGO_MANIFEST_DIR").expect("manifest dir");
     let dir = Path::new(&root).join("src/ops");
     println!("cargo:rerun-if-changed=src/ops");

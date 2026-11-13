@@ -3,6 +3,8 @@
 //! homes and fixture links are used; the real HOME and the installed binary are untouched.
 #![cfg(unix)]
 
+mod common;
+use common::CleanEnv;
 use moai_cli::install::{plan_receipt, record_receipt, InstallerOwner};
 use serde_json::{json, Value};
 use std::{
@@ -22,7 +24,7 @@ fn staged_package() -> PathBuf {
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
     Command::new(exe)
         .args(args)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
