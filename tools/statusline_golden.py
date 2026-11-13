@@ -27,9 +27,11 @@ Version token: each recorded case names the actual binary version and SHA-256.
 --check normalizes only the `🗿 v<version>` token on each side.
 
 Usage:
-  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv statusline] --write [--variant V] [--case NAME]
+  python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv "<arguments>"] --write [--variant V] [--case NAME]
   python3 -I tools/statusline_golden.py --bin <statusline binary> [--binary-version <v>] --check
 (`--binary-version` defaults to the last token `<bin> --version` prints, `v` stripped.)
+(`--argv` defaults to DEFAULT_ARGV: the hidden seams that make the render independent of the
+machine, so recording and checking produce the same text; an explicit `--argv` must carry them too.)
 Exit codes: 0 = all written / all equal, 1 = a mismatch or a failed run, 2 = usage.
 """
 
@@ -312,10 +314,16 @@ def check_input_boundaries(binary, argv):
     print("ok   native stdin boundaries")
 
 
+# Recording and checking share these hidden seams. `--render-budget-ms`: the goldens describe the
+# render within budget, so a slow git cannot drop the git segment (#2350). `--now-unix`: the prompt
+# cache timer counts from a fixed clock (#2756 AC-8).
+DEFAULT_ARGV = "statusline --render-budget-ms 3600000 --now-unix 1738429000"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", required=True)
-    ap.add_argument("--argv", default="statusline", help="arguments after the binary, space separated")
+    ap.add_argument("--argv", default=DEFAULT_ARGV, help="arguments after the binary, space separated")
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
