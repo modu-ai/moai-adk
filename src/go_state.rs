@@ -771,6 +771,37 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
             .collect();
         (items, Vec::new())
     };
+    // #2696 C4a: a project whose only state is the earlier `.moai-cli/` (verdict `none`, no
+    // `.moai` of any kind) is offered the same move into a new `.moai/`, without a Go folder.
+    let mut items = items;
+    let legacy_moves = if state.generation == "none" {
+        let (moves, block) = plan_state_moves(&project);
+        let any = moves.iter().any(|m| m.action == "move");
+        if let (true, Some(block)) = (any, &block) {
+            items.push(Item {
+                path: LEGACY_ROOT.into(),
+                action: "leave".into(),
+                reason: block.replace("so the Go folder stays", "so it stays where it is"),
+            });
+            Vec::new()
+        } else if any {
+            items.push(Item {
+                path: LEGACY_ROOT.into(),
+                action: "move".into(),
+                reason: "the earlier root's product state moves into a new .moai/ (#2696 C4a)"
+                    .into(),
+            });
+            warnings.push(format!(
+                "Stop moai-cli commands and agent sessions in this project before the apply: a \
+                 new .moai/ is made and the {LEGACY_ROOT} product state moves into it."
+            ));
+            moves
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
     let moves_folder = items
         .iter()
         .any(|i| i.path == MOAI_DIR && i.action == "move");
@@ -790,7 +821,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
             left,
         )
     } else {
-        (None, Vec::new(), Vec::new(), Vec::new())
+        (None, legacy_moves, Vec::new(), Vec::new())
     };
     let mut plan = GoStatePlan {
         schema_version: SCHEMA_VERSION,
@@ -882,6 +913,10 @@ pub struct Receipt {
     /// #2696: the name a revert gave this generation's `.moai/` before the Go folder came back.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub rust_aside: String,
+    /// #2696 C4a: the apply moved only the earlier `.moai-cli/` state into a new `.moai/`
+    /// (no Go folder).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub legacy_move: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -1043,6 +1078,7 @@ pub fn apply_with_stamp(
         copied: Vec::new(),
         marker: String::new(),
         rust_aside: String::new(),
+        legacy_move: false,
     };
     if planned.is_empty() {
         return Ok(receipt);
@@ -1063,6 +1099,9 @@ pub fn apply_with_stamp(
                 c.to
             )
         });
+    }
+    if planned.iter().any(|i| i.path == LEGACY_ROOT) {
+        return apply_legacy_move(&project, &fresh, receipt, stamp);
     }
     for item in planned.iter().filter(|i| i.path != MOAI_DIR) {
         let h = sha256_file(&project.join(&item.path))?;
@@ -1185,20 +1224,7 @@ fn apply_moving_folder(
         saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     }
     // 4. The earlier root's product state.
-    for i in 0..receipt.moves.len() {
-        if receipt.moves[i].kind != "state" {
-            continue;
-        }
-        let from = receipt.moves[i].path.clone();
-        let entry = from
-            .strip_prefix(&format!("{LEGACY_ROOT}/"))
-            .ok_or("state entry outside the earlier root")?;
-        refuse_linked(project, &from)?;
-        move_entry(&project.join(&from), &project.join(MOAI_DIR).join(entry))
-            .map_err(|e| format!("{from}: {e}"))?;
-        receipt.moves[i].moved = true;
-        saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
-    }
+    saved = move_state_entries(project, &mut receipt, saved)?;
     // 5. SPECs from the backup (the original stays there), never overwriting.
     for r in fresh.restores.iter().filter(|r| r.action == "copy") {
         let inner = r
@@ -1252,15 +1278,86 @@ fn apply_moving_folder(
     }
     // 7. The marker, last: from here `state_root` says `rust`.
     let marker = marker_bytes(&go_backup)?;
+    finish_with_marker(project, receipt, saved, &marker)
+}
+
+/// Step 4 of both moving layouts: each recorded `.moai-cli/<entry>` into `.moai/<entry>`.
+fn move_state_entries(
+    project: &Path,
+    receipt: &mut Receipt,
+    mut saved: Vec<u8>,
+) -> Result<Vec<u8>> {
+    for i in 0..receipt.moves.len() {
+        if receipt.moves[i].kind != "state" {
+            continue;
+        }
+        let from = receipt.moves[i].path.clone();
+        let entry = from
+            .strip_prefix(&format!("{LEGACY_ROOT}/"))
+            .ok_or("state entry outside the earlier root")?;
+        refuse_linked(project, &from)?;
+        move_entry(&project.join(&from), &project.join(MOAI_DIR).join(entry))
+            .map_err(|e| format!("{from}: {e}"))?;
+        receipt.moves[i].moved = true;
+        saved = save_receipt(project, MOAI_DIR, receipt, Some(&saved))?;
+    }
+    Ok(saved)
+}
+
+/// The last step of both moving layouts: publish the marker, record it, commit.
+fn finish_with_marker(
+    project: &Path,
+    mut receipt: Receipt,
+    saved: Vec<u8>,
+    marker: &[u8],
+) -> Result<Receipt> {
     crate::apply::publish_exclusive(
         &project.join(MOAI_DIR).join(crate::state_root::RUST_MARKER),
-        &marker,
+        marker,
     )?;
-    receipt.marker = digest(&marker);
-    saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
+    receipt.marker = digest(marker);
+    let saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     receipt.state = "committed".into();
     save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     Ok(receipt)
+}
+
+/// #2696 C4a: the earlier `.moai-cli/` state alone into a new `.moai/` — the moving layout
+/// without a Go folder: new `.moai/` with the pending receipt, the state entries, the marker
+/// last. A failure before the receipt removes the empty folders it made.
+fn apply_legacy_move(
+    project: &Path,
+    fresh: &GoStatePlan,
+    mut receipt: Receipt,
+    stamp: &str,
+) -> Result<Receipt> {
+    let area = format!("{MOAI_DIR}/backups/{stamp}");
+    receipt.legacy_move = true;
+    for s in fresh.state_moves.iter().filter(|s| s.action == "move") {
+        receipt.moves.push(Moved {
+            path: s.from.clone(),
+            sha256: String::new(),
+            moved: false,
+            kind: "state".into(),
+        });
+    }
+    receipt.state = "pending".into();
+    let made = fs::create_dir(project.join(MOAI_DIR))
+        .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
+        .and_then(|_| make_dirs(project, &area))
+        .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
+    let saved = match made {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            for rel in [area.clone(), format!("{MOAI_DIR}/backups"), MOAI_DIR.into()] {
+                let _ = fs::remove_dir(project.join(rel));
+            }
+            return Err(format!("{e}; nothing else changed"));
+        }
+    };
+    let saved = move_state_entries(project, &mut receipt, saved)?;
+    let marker = crate::state_root::marker_bytes("legacy-move", &[]);
+    finish_with_marker(project, receipt, saved, &marker)
 }
 
 pub fn apply(project: &Path, plan_digest: &str, permission_reference: &str) -> Result<Receipt> {
@@ -1336,9 +1433,13 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     }
     // The receipt is not its own authority: it may only name what an apply can do, and only
     // from the place that layout keeps it.
-    let moving = !receipt.go_backup.is_empty();
+    let go_folder = !receipt.go_backup.is_empty();
+    // Both #2696 layouts keep the receipt under `.moai`: the Go-folder move and the
+    // earlier-root move (C4a); never both at once.
+    let moving = go_folder || receipt.legacy_move;
     if moving != (base != LEGACY_ROOT)
-        || (moving && !crate::state_root::go_backup_name(&receipt.go_backup))
+        || (go_folder && receipt.legacy_move)
+        || (go_folder && !crate::state_root::go_backup_name(&receipt.go_backup))
     {
         return Err("receipt layout does not match where it was found; refused".into());
     }
@@ -1373,8 +1474,12 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     }) {
         return Err("receipt holds an entry of the wrong kind; refused".into());
     }
-    if moving && !receipt.moves.iter().any(|m| m.kind == "folder") {
-        return Err("receipt names a Go backup but no folder move; refused".into());
+    // Under `.moai` a folder move goes with a Go backup name and only then; under the earlier
+    // root a folder entry is the #2561 stage-3 layout (`.moai-cli/backups/<UTC>/go-state/.moai`).
+    if moving && go_folder != receipt.moves.iter().any(|m| m.kind == "folder") {
+        return Err(
+            "receipt has a folder move without a Go backup, or the reverse; refused".into(),
+        );
     }
     let specs = if moving {
         format!("{MOAI_DIR}/specs/")
@@ -1394,7 +1499,7 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     if receipt
         .copied
         .iter()
-        .any(|c| !moving || !plain_relative(&c.path) || !c.path.starts_with(&copies))
+        .any(|c| !go_folder || !plain_relative(&c.path) || !c.path.starts_with(&copies))
     {
         return Err(format!("receipt holds a copy outside {copies}; refused"));
     }
@@ -1414,11 +1519,13 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
     let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
     let (receipt, _, base) = read_receipt(&project, backup)?;
     let moving = !receipt.go_backup.is_empty();
+    // Either #2696 layout: the marker and this generation's `.moai/` are undone the same way.
+    let new_layout = moving || receipt.legacy_move;
     // This generation's `.moai/` is still in place (not yet set aside by a revert).
     let at_moai = base == MOAI_DIR;
     let area = format!("{base}/backups/{backup}");
     let mut items = Vec::new();
-    if moving {
+    if new_layout {
         let marker = format!("{MOAI_DIR}/{}", crate::state_root::RUST_MARKER);
         let action = if !at_moai {
             "skip"
@@ -1546,6 +1653,20 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
             action: action.into(),
         });
     }
+    // C4a: without a Go folder to bring back, this generation's `.moai/` is set aside last.
+    if receipt.legacy_move {
+        let action = if !at_moai {
+            "skip"
+        } else if real_dir(&project, MOAI_DIR) {
+            "set_aside"
+        } else {
+            "missing"
+        };
+        items.push(RevertItem {
+            path: MOAI_DIR.into(),
+            action: action.into(),
+        });
+    }
     let mut plan = RevertPlan {
         schema_version: SCHEMA_VERSION,
         project: receipt.project.clone(),
@@ -1665,6 +1786,14 @@ pub fn revert(
             m.moved = false;
         }
         saved = save_receipt(&project, &base, &receipt, Some(&saved))?;
+    }
+    if fresh.items.iter().any(|i| i.action == "set_aside") {
+        if receipt.rust_aside.is_empty() {
+            receipt.rust_aside = format!("{RUST_ASIDE}{}", stamp_now());
+            saved = save_receipt(&project, &base, &receipt, Some(&saved))?;
+        }
+        move_folder(&project.join(MOAI_DIR), &project.join(&receipt.rust_aside))?;
+        base = receipt.rust_aside.clone();
     }
     receipt.state = "reverted".into();
     save_receipt(&project, &base, &receipt, Some(&saved))?;
