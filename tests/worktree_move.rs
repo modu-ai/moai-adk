@@ -457,3 +457,31 @@ fn a_worktree_moved_by_hand_is_missing_until_git_repairs_it() {
     let p2 = plan(&fx, Some(&obs));
     assert_eq!(item(&p2, &elsewhere)["action"], json!("move"), "{p2}");
 }
+
+#[test]
+fn two_worktrees_with_one_name_block_each_other() {
+    let fx = fixture(&["same"]);
+    pushed(&fx.wt("same"), "issue/1-same");
+    let other = fx.repo.join(".moai-cli/elsewhere/same");
+    git(
+        &fx.repo,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/2-same",
+            other.to_str().unwrap(),
+        ],
+    );
+    pushed(&other, "issue/2-same");
+    let obs = fx.obs(json!({"source": "fixture", "branches": []}));
+    let p = plan(&fx, Some(&obs));
+    assert_eq!(
+        reasons(&p, &fx.wt("same")),
+        ["destination_collision"],
+        "{p}"
+    );
+    assert_eq!(reasons(&p, &other), ["destination_collision"]);
+    assert_eq!(p["totals"]["move"], json!(0));
+}
