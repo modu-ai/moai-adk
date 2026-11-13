@@ -92,15 +92,30 @@ impl Drop for Spawned {
     }
 }
 
+/// Kills one process on drop (a waiter started outside `spawn`), so a failed case leaves none.
+struct KillOnDrop(i32);
+
+impl Drop for KillOnDrop {
+    fn drop(&mut self) {
+        // SAFETY: kill(2) on a pid this test started; ESRCH when it already ended.
+        unsafe { libc::kill(self.0, libc::SIGKILL) };
+    }
+}
+
 /// Runs `c` to the end in its own process group, bounded by the hang guard.
 fn run(mut c: Command) -> Output {
     c.stdout(Stdio::piped()).stderr(Stdio::piped());
     spawn(c).finish()
 }
 
+/// Roomy machine numbers for every case that is not about the limits: the test machine's real
+/// disk (a CI runner has well under 50 GB) must not decide the outcome (debug-only seam).
+const ROOMY: &str = "free_gb=1000,swap_pct=0";
+
 fn acquire(dir: &Path, max: &str, name: &str, cmd: &[&str]) -> Command {
     let mut c = Command::new(EXE);
-    c.args(["heavy-slot-acquire", "--max", max, "--name", name, "--dir"])
+    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .args(["heavy-slot-acquire", "--max", max, "--name", name, "--dir"])
         .arg(dir)
         .arg("--")
         .args(cmd);
@@ -331,6 +346,167 @@ fn bad_arguments_are_refused() {
     let out = run(c);
     assert_eq!(out.status.code(), Some(2), "{}", text(&out));
     assert!(!slots.exists());
+}
+
+/// Item 3 (leader's numbers, #2677 comment 6850581277): below 50 GB free or above 80 % swap
+/// use nothing starts — exit 75 with the measured values, the command does not run and the
+/// slot folder is not even created. The edges 50 GB and 80 % still start; the flags move or
+/// turn off both limits.
+#[test]
+fn a_machine_over_the_limits_starts_nothing() {
+    let m = tempfile::tempdir().unwrap();
+    let ran = m.path().join("ran");
+    let touch = format!("touch '{}'", ran.display());
+    for (machine, extra, starts, says) in [
+        ("free_gb=49,swap_pct=0", &[][..], false, "disk free 49.0 GB"),
+        ("free_gb=50,swap_pct=0", &[][..], true, ""),
+        (
+            "free_gb=1000,swap_pct=81",
+            &[][..],
+            false,
+            "swap use 81% is above 80%",
+        ),
+        ("free_gb=1000,swap_pct=80", &[][..], true, ""),
+        (
+            "free_gb=1,swap_pct=100",
+            &["--min-free-gb", "0", "--max-swap-pct", "100"][..],
+            true,
+            "",
+        ),
+        (
+            "free_gb=60,swap_pct=0",
+            &["--min-free-gb", "61"][..],
+            false,
+            "below 61 GB",
+        ),
+    ] {
+        let _ = fs::remove_file(&ran);
+        let d = tempfile::tempdir().unwrap();
+        let slots = d.path().join("slots");
+        let mut c = Command::new(EXE);
+        c.env("MOAI_CLI_TEST_MACHINE", machine)
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-l",
+                "--dir",
+            ])
+            .arg(&slots)
+            .args(extra)
+            .args(["--", "sh", "-c", &touch]);
+        let out = run(c);
+        if starts {
+            assert_eq!(out.status.code(), Some(0), "{machine}: {}", text(&out));
+            assert!(ran.exists(), "{machine}");
+        } else {
+            assert_eq!(out.status.code(), Some(75), "{machine}: {}", text(&out));
+            let err = String::from_utf8_lossy(&out.stderr);
+            assert!(err.contains(says), "{machine}: {err}");
+            assert!(err.contains("lane-l not started"), "{machine}: {err}");
+            assert!(!ran.exists(), "{machine}: ran anyway");
+            assert!(!slots.exists(), "{machine}: slot folder created");
+        }
+    }
+}
+
+/// The machine is judged again after a wait: a waiter queued while the disk was fine does not
+/// start once the disk ran low meanwhile, and its slot is free for the next caller.
+#[test]
+fn the_limits_are_judged_again_after_a_wait() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1, ran) = (
+        m.path().join("s1"),
+        m.path().join("r1"),
+        m.path().join("ran"),
+    );
+    let machine = m.path().join("machine");
+    fs::write(&machine, ROOMY).unwrap();
+    let mut c = acquire(d.path(), "1", "first", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let first = spawn(c);
+    wait_for("first started", || s1.exists());
+    let mut c = acquire(
+        d.path(),
+        "1",
+        "second",
+        &["sh", "-c", &format!("touch '{}'", ran.display())],
+    );
+    c.env("MOAI_CLI_TEST_MACHINE", format!("@{}", machine.display()))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let second = spawn(c);
+    wait_for("second waiting", || {
+        fs::read_dir(d.path().join("waiting"))
+            .map(|r| r.count() == 1)
+            .unwrap_or(false)
+    });
+    fs::write(&machine, "free_gb=3,swap_pct=0").unwrap();
+    fs::write(&r1, "").unwrap();
+    assert!(first.finish().status.success());
+    let out = second.finish();
+    assert_eq!(out.status.code(), Some(75), "{}", text(&out));
+    assert!(text(&out).contains("disk free 3.0 GB"), "{}", text(&out));
+    assert!(!ran.exists(), "started after the disk ran low");
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
+}
+
+/// Item 4: a waiter whose parent process ends leaves the queue by itself — it removes its
+/// waiting entry and exits without running the command, instead of waiting on for hours.
+#[test]
+fn a_waiter_whose_parent_ended_leaves_the_queue() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1) = (m.path().join("s1"), m.path().join("r1"));
+    let (ran, pidfile, err) = (
+        m.path().join("ran"),
+        m.path().join("pid"),
+        m.path().join("err"),
+    );
+    let mut c = acquire(d.path(), "1", "holder", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::null()).stderr(Stdio::null());
+    let holder = spawn(c);
+    wait_for("holder started", || s1.exists());
+    // A parent shell starts the waiter in the background and ends once the waiter is queued
+    // (ending before the waiter even started would make it a child of pid 1 from the start).
+    let script = format!(
+        "MOAI_CLI_TEST_MACHINE='{ROOMY}' '{EXE}' heavy-slot-acquire --max 1 --name orphan --dir '{dir}' -- touch '{}' 2>'{}' & echo $! > '{}'; while [ -z \"$(ls '{dir}/waiting')\" ]; do sleep 0.05; done",
+        ran.display(),
+        err.display(),
+        pidfile.display(),
+        dir = d.path().display(),
+    );
+    // Not `spawn`: killing the parent's group would kill the waiter too and hide what is tested.
+    let st = Command::new("sh")
+        .args(["-c", &script])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap();
+    assert!(st.success());
+    let pid: i32 = fs::read_to_string(&pidfile)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let _reap = KillOnDrop(pid);
+    // SAFETY: kill(pid, 0) only probes whether the waiter still exists.
+    wait_for(
+        "the orphaned waiter ended",
+        || unsafe { libc::kill(pid, 0) } != 0,
+    );
+    wait_for("its waiting entry is gone", || {
+        fs::read_dir(d.path().join("waiting"))
+            .map(|r| r.count() == 0)
+            .unwrap_or(false)
+    });
+    assert!(!ran.exists(), "the orphan ran its command");
+    let said = fs::read_to_string(&err).unwrap();
+    assert!(said.contains("orphan left the queue"), "{said}");
+    fs::write(&r1, "").unwrap();
+    assert!(holder.finish().status.success());
 }
 
 fn python_tool() -> PathBuf {

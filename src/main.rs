@@ -317,6 +317,13 @@ enum Command {
         /// Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`).
         #[arg(long)]
         dir: Option<PathBuf>,
+        /// Start nothing (exit 75) while the working folder's file system has less free space,
+        /// in decimal GB; 0 turns it off.
+        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.min_free_gb)]
+        min_free_gb: u64,
+        /// Start nothing (exit 75) while swap use is above this percent; 100 turns it off.
+        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.max_swap_pct)]
+        max_swap_pct: u64,
         /// The heavy command and its arguments, after `--`.
         #[arg(last = true)]
         command: Vec<String>,
@@ -2827,6 +2834,8 @@ fn main() -> ExitCode {
         max,
         name,
         dir,
+        min_free_gb,
+        max_swap_pct,
         command,
     }) = &cli.command
     {
@@ -2842,7 +2851,13 @@ fn main() -> ExitCode {
                 return ExitCode::from(moai_cli::heavy_slot::USAGE);
             }
         };
-        return ExitCode::from(moai_cli::heavy_slot::acquire(&dir, *max, name, command));
+        let limits = moai_cli::heavy_slot::Limits {
+            min_free_gb: *min_free_gb,
+            max_swap_pct: *max_swap_pct,
+        };
+        return ExitCode::from(moai_cli::heavy_slot::acquire(
+            &dir, *max, name, command, limits,
+        ));
     }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.

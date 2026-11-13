@@ -9,8 +9,11 @@
 //! is alive and the operating system frees it when both are gone, also after SIGKILL — no
 //! stale slot is left to clean. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
 //! among live waiters by name. While waiting, and when COMMAND fails, the load averages and the
-//! free disk space of the working folder are printed (AC-2); where to stop is not decided
-//! here (load and disk thresholds are a HOLD), only shown.
+//! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
+//! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
+//! values (leader's numbers 50 GB and 80 %, Issue #2677 comment 6850581277), judged before
+//! queueing and again after a wait. A waiter whose parent process ended leaves the queue and
+//! exits 125 without running COMMAND, so no orphan waits on for hours.
 //!
 //! A slot or queue path that is a symlink, FIFO, device, folder or hard link is refused before
 //! anything is written: acquire exits 125 without running COMMAND (`status` lists it under
@@ -26,6 +29,73 @@ type Result<T> = std::result::Result<T, String>;
 pub const REFUSED: u8 = 125;
 /// Usage errors (bad `--max`, no command, unsupported platform).
 pub const USAGE: u8 = 2;
+/// The machine is too short of disk or too deep in swap to start a heavy run now: the
+/// wrapper's own "try again later" code (sysexits `EX_TEMPFAIL`), apart from COMMAND's codes.
+pub const BUSY: u8 = 75;
+
+/// Where a new heavy run is not started (#2677, item 3 of the leader's measurement record,
+/// comment 6850581277: "남은 공간 < 50 GB 또는 swap 사용 > 80% 면 새 빌드·시험을 시작하지 않고
+/// 이유를 출력"). `--min-free-gb 0 --max-swap-pct 100` turns both off.
+#[derive(Clone, Copy, Debug)]
+pub struct Limits {
+    /// Free space (decimal GB, 10^9 bytes) the working folder's file system must keep.
+    pub min_free_gb: u64,
+    /// Highest swap use, in percent of the swap size, at which a run still starts.
+    pub max_swap_pct: u64,
+}
+
+/// The leader's numbers (comment 6850581277).
+pub const DEFAULT_LIMITS: Limits = Limits {
+    min_free_gb: 50,
+    max_swap_pct: 80,
+};
+
+/// The free bytes and swap percent the limits are judged on. Debug builds take
+/// `MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>` instead (or `@<file>` holding that text,
+/// read on every call so a test can change the machine during a wait); release builds never
+/// read it.
+fn measured(folder: &Path) -> (Option<u64>, Option<u64>) {
+    #[cfg(debug_assertions)]
+    if let Ok(mut s) = std::env::var("MOAI_CLI_TEST_MACHINE") {
+        if let Some(file) = s.strip_prefix('@') {
+            s = std::fs::read_to_string(file).unwrap_or_default();
+        }
+        let mut free = None;
+        let mut swap = None;
+        for part in s.trim().split(',') {
+            match part.split_once('=') {
+                Some(("free_gb", v)) => free = v.parse::<u64>().ok().map(|g| g * 1_000_000_000),
+                Some(("swap_pct", v)) => swap = v.parse().ok(),
+                _ => {}
+            }
+        }
+        return (free, swap);
+    }
+    (sys::free_bytes(folder), sys::swap_pct())
+}
+
+/// Why a heavy run must not start now, or `None`. A value the system does not give is not a
+/// reason to refuse (it is shown as `unknown` elsewhere).
+pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
+    let (free, swap) = measured(folder);
+    let mut why = Vec::new();
+    if let Some(b) = free {
+        if b < limits.min_free_gb.saturating_mul(1_000_000_000) {
+            why.push(format!(
+                "disk free {:.1} GB at {} is below {} GB",
+                b as f64 / 1e9,
+                folder.display(),
+                limits.min_free_gb
+            ));
+        }
+    }
+    if let Some(p) = swap {
+        if p > limits.max_swap_pct {
+            why.push(format!("swap use {p}% is above {}%", limits.max_swap_pct));
+        }
+    }
+    (!why.is_empty()).then(|| why.join("; "))
+}
 
 /// `${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/heavy-slots`, the Python tool's folder.
 pub fn default_dir() -> Result<PathBuf> {
@@ -57,7 +127,13 @@ pub fn status(_folder: &Path) -> Result<Value> {
 }
 
 #[cfg(not(unix))]
-pub fn acquire(_folder: &Path, _max: usize, _name: &str, _command: &[String]) -> u8 {
+pub fn acquire(
+    _folder: &Path,
+    _max: usize,
+    _name: &str,
+    _command: &[String],
+    _limits: Limits,
+) -> u8 {
     eprintln!("heavy-slot: flock is unavailable on this platform");
     USAGE
 }
@@ -71,11 +147,16 @@ mod sys {
     pub fn free_bytes(_folder: &Path) -> Option<u64> {
         None
     }
+    pub fn swap_pct() -> Option<u64> {
+        None
+    }
 }
 
 #[cfg(unix)]
 mod sys {
-    use super::{machine_line, Path, PathBuf, Result, Value, REFUSED, USAGE};
+    use super::{
+        machine_line, over_limits, Limits, Path, PathBuf, Result, Value, BUSY, REFUSED, USAGE,
+    };
     use serde_json::json;
     use std::fs::{self, File, OpenOptions, TryLockError};
     use std::io::{Seek, SeekFrom, Write};
@@ -102,6 +183,61 @@ mod sys {
         let rc = unsafe { libc::statvfs(c.as_ptr(), &mut s) };
         #[allow(clippy::unnecessary_cast)]
         (rc == 0).then(|| s.f_bavail as u64 * s.f_frsize as u64)
+    }
+
+    /// Swap in use, in percent of the swap size (0 when there is no swap). macOS: the
+    /// `vm.swapusage` sysctl; Linux: `SwapTotal`/`SwapFree` of `/proc/meminfo`.
+    #[cfg(target_os = "macos")]
+    pub fn swap_pct() -> Option<u64> {
+        // SAFETY: sysctlbyname fills at most `len` bytes of the zeroed struct.
+        let mut u: libc::xsw_usage = unsafe { std::mem::zeroed() };
+        let mut len = std::mem::size_of::<libc::xsw_usage>();
+        let rc = unsafe {
+            libc::sysctlbyname(
+                c"vm.swapusage".as_ptr(),
+                (&mut u as *mut libc::xsw_usage).cast(),
+                &mut len,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if rc != 0 {
+            return None;
+        }
+        Some(if u.xsu_total == 0 {
+            0
+        } else {
+            u.xsu_used.saturating_mul(100) / u.xsu_total
+        })
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn swap_pct() -> Option<u64> {
+        let text = fs::read_to_string("/proc/meminfo").ok()?;
+        let field = |name: &str| -> Option<u64> {
+            text.lines()
+                .find_map(|l| l.strip_prefix(name))
+                .and_then(|r| r.trim().trim_end_matches("kB").trim().parse().ok())
+        };
+        let (total, free) = (field("SwapTotal:")?, field("SwapFree:")?);
+        Some(if total == 0 {
+            0
+        } else {
+            total.saturating_sub(free).saturating_mul(100) / total
+        })
+    }
+
+    fn busy(name: &str, why: &str, cwd: &Path) -> u8 {
+        eprintln!(
+            "heavy-slot: {name} not started — {why}; {}; COMMAND did not run, try again later",
+            machine_line(cwd)
+        );
+        BUSY
+    }
+
+    fn parent() -> libc::pid_t {
+        // SAFETY: getppid has no failure mode.
+        unsafe { libc::getppid() }
     }
 
     /// Why a path cannot be a slot or queue file.
@@ -219,17 +355,29 @@ mod sys {
         REFUSED
     }
 
-    /// Waits for a slot, runs `command` holding it, returns its exit code.
-    pub fn acquire(folder: &Path, max: usize, name: &str, command: &[String]) -> u8 {
+    /// Waits for a slot, runs `command` holding it, returns its exit code. A machine over
+    /// `limits` starts nothing ([`BUSY`]); a waiter whose parent ended leaves the queue without
+    /// running anything ([`REFUSED`]) — nobody is left to take its result (#2677 items 3, 4).
+    pub fn acquire(
+        folder: &Path,
+        max: usize,
+        name: &str,
+        command: &[String],
+        limits: Limits,
+    ) -> u8 {
         if max < 1 || command.is_empty() {
             eprintln!("heavy-slot: acquire needs --max >= 1 and a command after --");
             return USAGE;
         }
+        let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
+        if let Some(why) = over_limits(&cwd, limits) {
+            return busy(name, &why, &cwd);
+        }
+        let ppid = parent();
         let waiting = folder.join("waiting");
         if let Err(e) = fs::create_dir_all(&waiting) {
             return io(&format!("creating {} failed ({e})", waiting.display()));
         }
-        let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
         let (slot, file) = match take_slot(folder, max) {
             Err(Open::NotPlain(p)) => return refused(&p),
             Err(Open::Io(e)) => return io(&e),
@@ -255,8 +403,11 @@ mod sys {
                         last = Some(place);
                     }
                     std::thread::sleep(POLL);
+                    if parent() != ppid {
+                        break Ok(None);
+                    }
                     match take_slot(folder, max) {
-                        Ok(Some(t)) => break Ok(t),
+                        Ok(Some(t)) => break Ok(Some(t)),
                         Ok(None) => continue,
                         Err(e) => break Err(e),
                     }
@@ -264,7 +415,20 @@ mod sys {
                 drop(wait_file);
                 let _ = fs::remove_file(&wait_path);
                 match taken {
-                    Ok(t) => t,
+                    Ok(Some(t)) => {
+                        // The machine may have changed during the wait: judge it again
+                        // before starting; dropping the slot file frees the slot.
+                        if let Some(why) = over_limits(&cwd, limits) {
+                            return busy(name, &why, &cwd);
+                        }
+                        t
+                    }
+                    Ok(None) => {
+                        eprintln!(
+                            "heavy-slot: {name} left the queue: the process that started it (pid {ppid}) has ended; COMMAND did not run"
+                        );
+                        return REFUSED;
+                    }
                     Err(Open::NotPlain(p)) => return refused(&p),
                     Err(Open::Io(e)) => return io(&e),
                 }
