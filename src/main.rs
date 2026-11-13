@@ -1125,9 +1125,10 @@ enum Command {
         /// Project root carrying the Go `.moai/manifest.json`.
         project: PathBuf,
     },
-    /// Move the files a confirmed go-state preview offers into
-    /// `.moai-cli/backups/<UTC>/go-state/` (#2561 stage 2), with a receipt. Applies only
-    /// when a fresh preview has the given digest; never overwrites, never copies.
+    /// Carry out a confirmed go-state preview (#2561, #2696): the Go `.moai/` becomes
+    /// `.moai-backup` (or `.moai-backup-<UTC>`), a new `.moai/` takes the earlier `.moai-cli`
+    /// product state and the marker last; a Go folder that stays keeps the #2561 stage-2 file
+    /// moves. Applies only when a fresh preview has the given digest; never overwrites.
     GoStateApply {
         project: PathBuf,
         #[arg(long)]
@@ -1142,8 +1143,9 @@ enum Command {
         #[arg(long)]
         backup: String,
     },
-    /// Move one go-state apply's files back (#2561 stage 2). All or nothing: a file that
-    /// came back at its original path, or a changed backup copy, refuses the revert.
+    /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
+    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. All or nothing: anything that
+    /// came back at an original path, or a changed backup, refuses the revert.
     GoStateRevert {
         project: PathBuf,
         #[arg(long)]

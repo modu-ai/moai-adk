@@ -562,13 +562,22 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         "suggest only, run after the user agrees: moai-cli index-build {shown} with stdin {{\"protocol_version\":1}}"
     );
     let go_state = go_state_fact(root);
-    let go_step = (go_state["moai_dir"] == "folder").then(|| {
-        format!(
+    let state_root = crate::state_root::classify(root);
+    // #2696: after the move `.moai/` is a folder of this generation too, so the step follows
+    // the classification, not the folder kind.
+    let go_step = match state_root.generation {
+        "go" => Some(format!(
             "Go-generation .moai/ found: ask the user first; only after the user agrees run the \
              read-only preview `moai-cli go-state-plan {shown}`, show it, and apply only after a \
              second agreement (see the PROJECT workflow)"
-        )
-    });
+        )),
+        "interrupted" => Some(format!(
+            "a Go-state move stopped midway: show the read-only `moai-cli go-state-revert-plan \
+             {shown} --backup <UTC>` (the stamp is the folder name under .moai/backups/) and move \
+             nothing else until the user decides"
+        )),
+        _ => None,
+    };
     let (profile, first) = match crate::read_profile(root) {
         Ok((mut profile, _)) => {
             profile.schema_version = 2;
@@ -592,7 +601,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         "profile_written": false,
         "go_state": go_state,
         // #2725 S2a: whose `.moai/` this is, before anything may write or move it.
-        "state_root": crate::state_root::classify(root).to_json(),
+        "state_root": state_root.to_json(),
         "commands": commands_fact(root),
         "next_actions": next_actions,
     }))
