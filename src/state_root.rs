@@ -77,10 +77,10 @@ fn regular_file(root: &Path, parts: &[&str]) -> Option<fs::Metadata> {
     let mut path = root.to_path_buf();
     for (i, part) in parts.iter().enumerate() {
         path.push(part);
+        // `symlink_metadata` describes a link as a link, so neither `is_file` nor `is_dir`
+        // below accepts one: a link at any step ends the walk (mutant K4 showed a separate
+        // `is_symlink` check changed nothing).
         let meta = fs::symlink_metadata(&path).ok()?;
-        if meta.file_type().is_symlink() {
-            return None;
-        }
         let last = i + 1 == parts.len();
         if last {
             return meta.is_file().then_some(meta);
