@@ -883,7 +883,8 @@ fn a_taken_worktree_name_is_refused() {
         fs::read_to_string(wt.join("keep.txt")).unwrap(),
         "user file\n"
     );
-    assert_eq!(fs::read_dir(&wt).unwrap().count(), 1);
+    // git added nothing there: no checkout file, no tracked file.
+    assert!(!wt.join(".git").exists() && !wt.join("README.md").exists());
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 

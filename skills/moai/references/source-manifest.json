@@ -208,12 +208,12 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "fa9686ef07aa02069e38d80b014600382dc00259041e5767c77cac852955595b",
+      "sha256": "bcdec4f3bd1caf2be3fe0e660882b81988fd81f3b9c69d7e3f7bc20dc57ae57b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
       }
     },
     "references/home/routing.md": {
