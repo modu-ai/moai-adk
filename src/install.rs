@@ -241,6 +241,39 @@ fn channel_of(version: &str) -> String {
     }
 }
 
+/// The path an installation is identified by (#2790 R1, impact table B2): the binary under
+/// its canonical name. `moai` and `moai-cli` are built from one `main`; a `moai` (or
+/// `moai.exe`) whose sibling `moai-cli` (`moai-cli.exe`) is a regular file with the same bytes
+/// — a hard link or a copy of the same build — is the same installation, so its receipt and
+/// `install_id` are the sibling's. Any other path, a missing or different sibling included,
+/// is its own identity, as before.
+pub(crate) fn identity_exe(canonical_exe: PathBuf) -> PathBuf {
+    let (Some(stem), ext) = (
+        canonical_exe.file_stem().and_then(|s| s.to_str()),
+        canonical_exe.extension().and_then(|e| e.to_str()),
+    ) else {
+        return canonical_exe;
+    };
+    if stem != "moai" || !matches!(ext, None | Some("exe")) {
+        return canonical_exe;
+    }
+    let name = match ext {
+        Some(ext) => format!("{PRODUCT}.{ext}"),
+        None => PRODUCT.to_string(),
+    };
+    let sibling = canonical_exe.with_file_name(name);
+    let same = fs::symlink_metadata(&sibling).is_ok_and(|m| m.file_type().is_file())
+        && matches!(
+            (sha256_file(&sibling), sha256_file(&canonical_exe)),
+            (Ok(a), Ok(b)) if a == b
+        );
+    if same {
+        sibling
+    } else {
+        canonical_exe
+    }
+}
+
 pub(crate) fn install_id(canonical_exe: &Path) -> Result<String> {
     let bytes = canonical_exe
         .to_str()
@@ -267,6 +300,7 @@ pub fn plan_receipt(
     if !canonical_exe.is_file() {
         return Err("binary path is not a regular file".into());
     }
+    let canonical_exe = identity_exe(canonical_exe);
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let version = env!("CARGO_PKG_VERSION").to_string();
     let receipt = InstallReceipt {
@@ -570,6 +604,8 @@ pub fn inspect(home: &Path, path_env: &str) -> Result<Value> {
     let canonical_exe =
         fs::canonicalize(&exe).map_err(|_| "current executable unavailable".to_string())?;
     let exe_sha256 = sha256_file(&canonical_exe)?;
+    // A `moai` that is the same build as its sibling `moai-cli` matches that receipt (B2).
+    let identity = identity_exe(canonical_exe.clone());
 
     let moai = resolve_on_path(path_env, "moai");
     let moai_cli = resolve_on_path(path_env, "moai-cli");
@@ -580,7 +616,7 @@ pub fn inspect(home: &Path, path_env: &str) -> Result<Value> {
         if entry["status"] == "ok" {
             let receipt: InstallReceipt =
                 serde_json::from_value(entry["receipt"].clone()).map_err(|_| "encode failed")?;
-            let state = match_receipt(&receipt, &canonical_home, &canonical_exe, &exe_sha256);
+            let state = match_receipt(&receipt, &canonical_home, &identity, &exe_sha256);
             if state == "self" {
                 self_state = "self";
             } else if state == "stale_receipt" && self_state == "unrecorded" {
@@ -616,4 +652,56 @@ pub fn inspect(home: &Path, path_env: &str) -> Result<Value> {
         },
         "writes": false,
     }))
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::identity_exe;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    fn write(dir: &Path, name: &str, bytes: &[u8]) -> PathBuf {
+        let p = dir.join(name);
+        fs::write(&p, bytes).unwrap();
+        p
+    }
+
+    /// #2790 R1 (B2): `moai` beside the same build's `moai-cli` is identified as `moai-cli`;
+    /// a different or missing sibling, or any other name, keeps its own path.
+    #[test]
+    fn moai_takes_the_canonical_name_only_beside_the_same_build() {
+        let d = tempfile::TempDir::new().unwrap();
+        let dir = d.path();
+        let moai = write(dir, "moai", b"build-1");
+        assert_eq!(identity_exe(moai.clone()), moai, "no sibling");
+        let cli = write(dir, "moai-cli", b"build-1");
+        assert_eq!(identity_exe(moai.clone()), cli, "same bytes");
+        assert_eq!(
+            identity_exe(cli.clone()),
+            cli,
+            "the canonical name is itself"
+        );
+        write(dir, "moai-cli", b"build-2");
+        assert_eq!(identity_exe(moai.clone()), moai, "a different build");
+
+        let exe = write(dir, "moai.exe", b"w");
+        let cli_exe = write(dir, "moai-cli.exe", b"w");
+        assert_eq!(identity_exe(exe), cli_exe, "Windows names");
+        for other in ["moaix", "moai.old", "xmoai"] {
+            let p = write(dir, other, b"build-2");
+            assert_eq!(identity_exe(p.clone()), p, "{other}");
+        }
+    }
+
+    /// A sibling that is a symlink is not a file of this installation, even to the same bytes.
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_sibling_is_not_the_same_installation() {
+        let d = tempfile::TempDir::new().unwrap();
+        let dir = d.path();
+        let moai = write(dir, "moai", b"build-1");
+        let target = write(dir, "elsewhere", b"build-1");
+        std::os::unix::fs::symlink(&target, dir.join("moai-cli")).unwrap();
+        assert_eq!(identity_exe(moai.clone()), moai);
+    }
 }

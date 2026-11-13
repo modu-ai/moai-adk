@@ -112,6 +112,10 @@ type Result<T> = std::result::Result<T, String>;
 /// The version this binary reports: the package version, plus `+local.<n>` when the build set
 /// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
 pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
+/// What `--version` prints after the command name (#2790 R1): the build version and the
+/// generation mark `(rust)`, so `moai --version` tells this build from the Go `moai`
+/// (`moai version v3…`). Both binary names print the same line, `moai-cli <ver> (rust)`.
+pub const VERSION_SIGNATURE: &str = concat!(env!("MOAI_BUILD_VERSION"), " (rust)");
 /// The one spelling of the project state directory (Issue #2725 S1): `project_state!()` is the
 /// directory, `project_state!("sub/path")` a path under it, both `&'static str` so constants
 /// and tables can use them. Every project-tree path in `src` goes through this macro or
