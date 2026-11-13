@@ -244,6 +244,89 @@ fn a_request_without_project_skills_plans_as_before() {
     assert!(without["request"].get("project_skills").is_none());
 }
 
+fn recover(root: &Path, receipt: &str) -> std::process::Output {
+    cli(
+        &[
+            "apply-recover",
+            root.to_str().unwrap(),
+            "--receipt",
+            receipt,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &json!({}),
+    )
+}
+
+const EXTRA_CLAUDE: &str = ".claude/skills/prj-extra/SKILL.md";
+const EXTRA_CODEX: &str = ".agents/skills/prj-extra/SKILL.md";
+
+fn two() -> Value {
+    json!([{"id": "prj-checks", "purpose": "How this project is checked"},
+           {"id": "prj-extra", "purpose": "Another skill"}])
+}
+
+/// #2706 P2b: a project skill no longer requested is removed — only while nobody edited it,
+/// with its bytes kept in the receipt so `apply-recover` restores it — and leaves the list.
+#[test]
+fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(two())))));
+    let original = fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap();
+
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("remove"));
+    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("remove"));
+    assert_eq!(action(&p, CLAUDE).as_deref(), Some("unchanged"));
+    assert!(r.join(EXTRA_CLAUDE).exists(), "a plan removes nothing");
+    let applied = result(&apply(r, &p));
+    assert!(!r.join(EXTRA_CLAUDE).exists() && !r.join(EXTRA_CODEX).exists());
+    assert!(
+        !r.join(".claude/skills/prj-extra").exists(),
+        "the emptied folder goes too"
+    );
+    assert!(r.join(CLAUDE).exists());
+    let manifest: Value =
+        serde_json::from_slice(&fs::read(r.join(".moai-cli/manifests/generation.json")).unwrap())
+            .unwrap();
+    assert!(
+        !manifest.to_string().contains("prj-extra"),
+        "the list forgets it"
+    );
+    // Nothing more to remove on the next plan.
+    assert_eq!(
+        action(&result(&plan(r, &request(checks()))), EXTRA_CLAUDE),
+        None
+    );
+
+    let receipt = applied["receipt"].as_str().unwrap().to_string();
+    result(&recover(r, &receipt));
+    assert_eq!(fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap(), original);
+    assert!(r.join(EXTRA_CODEX).exists());
+}
+
+/// An edited skill that is no longer requested is a conflict and is never removed.
+#[test]
+fn an_edited_skill_no_longer_requested_is_kept() {
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(two())))));
+    fs::write(r.join(EXTRA_CLAUDE), "my own notes\n").unwrap();
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("conflict"));
+    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("remove"));
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(
+        fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap(),
+        "my own notes\n"
+    );
+    assert!(
+        r.join(EXTRA_CODEX).exists(),
+        "a refused apply removes nothing"
+    );
+}
+
 /// Pre-audit 6854178087 B1: a host folder (or any folder on the way) that is a symbolic link
 /// to somewhere outside the project is never written through — the plan says conflict, apply
 /// refuses, and the outside folder stays empty.
@@ -283,6 +366,41 @@ fn a_linked_host_folder_is_a_conflict_and_nothing_is_written_outside() {
     }
 }
 
+/// AUDIT #2778 nit (6862464116): the skill file itself replaced by a link to an outside file is
+/// a conflict too — both when the answers change (an update) and when the skill is no longer
+/// requested (a remove) — and the outside file keeps its bytes.
+#[cfg(unix)]
+#[test]
+fn a_skill_file_that_became_a_link_is_a_conflict_for_update_and_remove() {
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(checks())))));
+    let outside = TempDir::new().unwrap();
+    let target = outside.path().join("SKILL.md");
+    fs::rename(r.join(CODEX), &target).unwrap();
+    let original = fs::read(&target).unwrap();
+    std::os::unix::fs::symlink(&target, r.join(CODEX)).unwrap();
+
+    let mut changed = answers();
+    changed[0] = decision("test_command", "cargo nextest run", "user");
+    write_profile(r, changed);
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, CODEX).as_deref(), Some("conflict"), "{p}");
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(fs::read(&target).unwrap(), original);
+
+    let p = result(&plan(r, &request(json!([]))));
+    assert_eq!(action(&p, CODEX).as_deref(), Some("conflict"), "{p}");
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(fs::read(&target).unwrap(), original);
+    assert!(r
+        .join(CODEX)
+        .symlink_metadata()
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}
+
 /// Pre-audit 6854178087 N2: a purpose with `: ` keeps the frontmatter one valid value.
 #[test]
 fn a_purpose_with_a_colon_is_quoted_in_the_frontmatter() {
@@ -298,4 +416,68 @@ fn a_purpose_with_a_colon_is_quoted_in_the_frontmatter() {
         text.contains("description: \"Run tests: \\\"cargo test\\\" \\\\ all\"\n"),
         "{text}"
     );
+}
+
+/// Pre-audit 6854760758 B1: removing goes through nothing that is a symbolic link, and only
+/// the path the recorded kind names is ever removed; a file outside stays.
+#[cfg(unix)]
+#[test]
+fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
+    // `.agents` moved outside and linked back after apply: the outside copy stays.
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(two())))));
+    let outside = TempDir::new().unwrap();
+    let moved = outside.path().join("agents");
+    fs::rename(r.join(".agents"), &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, r.join(".agents")).unwrap();
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("conflict"), "{p}");
+    assert!(!apply(r, &p).status.success());
+    // Joined per component: a single `skills/<id>/SKILL.md` string reads as a package
+    // reference to tests/skill_references_test.py.
+    assert!(moved
+        .join("skills")
+        .join("prj-extra")
+        .join("SKILL.md")
+        .exists());
+
+    // A recorded entry whose path is not its skill's path is never removed.
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(two())))));
+    fs::write(r.join("notes.md"), "keep me\n").unwrap();
+    let mpath = r.join(".moai-cli/manifests/generation.json");
+    let text = fs::read_to_string(&mpath).unwrap();
+    // The baseline is spelled exactly as the tool records it (`sha256:<hex>`), so `notes.md`
+    // reads as unedited and only the path check can refuse it.
+    let digest = {
+        use sha2::{Digest, Sha256};
+        format!("sha256:{:x}", Sha256::digest(b"keep me\n"))
+    };
+    let mut m: Value = serde_json::from_str(&text).unwrap();
+    for f in m["owned_files"].as_array_mut().unwrap() {
+        if f["path"] == json!(EXTRA_CLAUDE) {
+            f["path"] = json!("notes.md");
+            f["baseline_sha256"] = json!(digest);
+        }
+    }
+    fs::write(&mpath, serde_json::to_vec_pretty(&m).unwrap()).unwrap();
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, "notes.md").as_deref(), Some("conflict"), "{p}");
+    let f = p["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == json!("notes.md"))
+        .unwrap();
+    assert!(
+        f["detail"]
+            .as_str()
+            .unwrap()
+            .contains("not the path of its skill"),
+        "{f}"
+    );
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(fs::read_to_string(r.join("notes.md")).unwrap(), "keep me\n");
 }
