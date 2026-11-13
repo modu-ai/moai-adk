@@ -179,13 +179,25 @@ fn review_answers(p: &Profile) -> Vec<(&str, &String)> {
 
 /// REVIEW.md managed section (#2639): `None` when the interview gave no review answer, so a
 /// profile without them plans no REVIEW.md at all.
+/// The language the generated instruction text is written in (#2706): the profile's
+/// `language.instruction_files` when it is one the templates exist for (`en`, `ko`), else the
+/// request language. A profile without the choice renders exactly as before.
+fn instruction_language<'a>(p: &'a Profile, r: &'a AgentsRequest) -> &'a str {
+    p.language
+        .as_ref()
+        .and_then(|l| l.get("instruction_files"))
+        .map(String::as_str)
+        .filter(|code| *code == "en" || *code == "ko")
+        .unwrap_or(r.language.as_str())
+}
+
 fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
     let answers = review_answers(p);
     if answers.is_empty() {
         return None;
     }
     let (begin, end) = markers(REVIEW_SECTION, "html");
-    let ko = r.language == "ko";
+    let ko = instruction_language(p, r) == "ko";
     let mut body = if ko {
         "## 프로젝트 리뷰 규칙 (관리 구간)\n\n`/moai project` 인터뷰 답이다. 이 구간 밖에 적은 규칙은 MoAI가 건드리지 않는다.\n\n".to_string()
     } else {
@@ -206,7 +218,8 @@ fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
 fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
     let (begin, end) = markers(AGENTS_SECTION, "html");
     let list = |v: &[String]| v.join(", ");
-    let share = match (r.language.as_str(), r.local_file.as_str()) {
+    let lang = instruction_language(p, r);
+    let share = match (lang, r.local_file.as_str()) {
         ("ko", "tracked") => "credential과 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
         ("ko", _) => "개인 `AGENTS.local.md`, credential, 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
         (_, "tracked") => "Never share credentials or raw secret logs in the repo or in Issues.",
@@ -217,9 +230,14 @@ fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
     let writing = p
         .language
         .as_ref()
-        .map(|l| format!("{}\n", crate::language::render_lines(l, &r.language)))
+        .map(|l| {
+            format!(
+                "{}\n",
+                crate::language::render_lines_in(l, lang, &r.language)
+            )
+        })
         .unwrap_or_default();
-    let body = if r.language == "ko" {
+    let body = if lang == "ko" {
         format!(
             "## MoAI 작업 흐름 (관리 구간)\n\n\
 프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
@@ -470,17 +488,17 @@ pub(crate) fn agents_plan_for(
         if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
             warnings.push(BLOCK_ABSENT.into());
         }
-        // #2293: the managed text is written in the request language; a profile that sets
-        // instruction files to another language is reported, not refused.
+        // #2706: the managed text follows the profile's `instruction_files` when templates
+        // exist for it (`en`, `ko`); another code is reported and the request language used.
         if let Some(code) = profile
             .language
             .as_ref()
             .and_then(|l| l.get("instruction_files"))
-            .filter(|code| **code != request.language)
+            .filter(|code| code.as_str() != instruction_language(&profile, &request))
         {
             warnings.push(format!(
-                "managed section rendered in `{}` while profile language.instruction_files is `{code}`",
-                request.language
+                "managed section rendered in `{}`: no managed-section text in profile language.instruction_files `{code}`",
+                instruction_language(&profile, &request)
             ));
         }
         if agents_file.action != "conflict" && projected > 32 * 1024 {
