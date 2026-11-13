@@ -208,12 +208,12 @@ pub fn display_config(input: Option<&Input>, ctx: &Context) -> DisplayConfig {
 
 /// `statusline.yaml`: the RC location under `.moai-cli/`, then the Go file.
 const STATUSLINE_YAML: (&str, &str) = (
-    ".moai-cli/config/sections/statusline.yaml",
+    crate::project_state!("config/sections/statusline.yaml"),
     ".moai/config/sections/statusline.yaml",
 );
 /// `statusline.local.yaml`: the RC location under `.moai-cli/`, then the Go file.
 const STATUSLINE_LOCAL_YAML: (&str, &str) = (
-    ".moai-cli/statusline.local.yaml",
+    crate::project_state!("statusline.local.yaml"),
     ".moai/statusline.local.yaml",
 );
 
@@ -855,7 +855,7 @@ mod tests {
         assert!(github_counts(tmp.path()).suppressed);
 
         // A `.moai-cli/` file wins whole; nothing is merged from the Go file.
-        let rc = tmp.path().join(".moai-cli/config/sections");
+        let rc = tmp.path().join(crate::project_state!("config/sections"));
         std::fs::create_dir_all(&rc).unwrap();
         std::fs::write(
             rc.join("statusline.yaml"),
@@ -880,7 +880,8 @@ mod tests {
         )
         .unwrap();
         std::fs::write(
-            tmp.path().join(".moai-cli/statusline.local.yaml"),
+            tmp.path()
+                .join(crate::project_state!("statusline.local.yaml")),
             "statusline:\n  forge: none\n",
         )
         .unwrap();
@@ -927,7 +928,7 @@ mod tests {
             (true, 7, 3, false)
         );
         // The cache this tool writes wins over the Go-generation file.
-        let own = tmp.path().join(".moai-cli/state/github");
+        let own = tmp.path().join(crate::project_state!("state/github"));
         std::fs::create_dir_all(&own).unwrap();
         std::fs::write(
             own.join("counts.json"),

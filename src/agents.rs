@@ -19,7 +19,7 @@ pub const IGNORE_SECTION: &str = "moai-local";
 pub const REVIEW_SECTION: &str = "moai-review";
 /// Interview answers the REVIEW.md section carries, in the order it lists them.
 const REVIEW_ANSWERS: [&str; 2] = ["review_blocks", "protected"];
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+const MANIFEST: &str = crate::project_state!("manifests/generation.json");
 const TEMPLATE_VERSION: &str = "rc1";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1131,10 +1131,10 @@ mod tests {
     fn manifest_backup_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1167,7 +1167,11 @@ mod tests {
         let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| {
             let dirs = backups(&receipts);
             assert_eq!(dirs.len(), 1, "this run's backup dir: {dirs:?}");
-            fs::write(dirs[0].join(".moai-cli"), b"blocks the manifest backup").unwrap();
+            fs::write(
+                dirs[0].join(crate::PROJECT_STATE_DIR),
+                b"blocks the manifest backup",
+            )
+            .unwrap();
             Ok(())
         })
         .unwrap_err();
@@ -1221,10 +1225,10 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1290,10 +1294,10 @@ mod tests {
     fn file_backup_failure_row_is_recorded_in_the_receipt_file() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1384,10 +1388,10 @@ mod tests {
     fn amended_manifest_decode_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1475,7 +1479,7 @@ mod tests {
         assert_eq!(parsed.kind, None);
         assert_eq!(parsed.section_id.as_deref(), Some("moai-workflow"));
         let new = json!({
-            "path": ".moai-cli/workflows/review-flow/SKILL.md",
+            "path": crate::project_state!("workflows/review-flow/SKILL.md"),
             "kind": "workflow",
             "section_id": "generation:workflow:review-flow",
             "baseline_sha256": "sha256:971e386609930516d7c92f3ad25ef05793f923f978c6b01a11f5a018e94f5b0b"

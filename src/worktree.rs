@@ -354,8 +354,7 @@ pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>
         Some(p) if p.is_absolute() => p.to_path_buf(),
         Some(p) => primary.join(p),
         None => primary
-            .join(".moai-cli")
-            .join("worktrees")
+            .join(crate::WORKTREES_DIR)
             .join(format!("{issue}-{}", rec.logical_key)),
     };
     let content = json!({
