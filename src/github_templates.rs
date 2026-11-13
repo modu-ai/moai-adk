@@ -255,10 +255,7 @@ pub fn github_apply(
     confirmed: &str,
     permission: &str,
 ) -> Result<Value> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let current = github_plan(root, p.request.clone())?;
