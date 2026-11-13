@@ -79,6 +79,20 @@ fn every_role_renders_for_every_host_deterministically() {
             "{}",
             d.name
         );
+        // #2633: OMP enforces read-only by its tool list and names per-call isolation.
+        let omp = render(d, "omp").unwrap();
+        assert_eq!(
+            omp.text.contains(", edit, write\n"),
+            !d.readonly,
+            "{}",
+            d.name
+        );
+        assert_eq!(
+            omp.not_supported.iter().any(|n| n.starts_with("isolation")),
+            d.isolation == "worktree",
+            "{}",
+            d.name
+        );
     }
 }
 
