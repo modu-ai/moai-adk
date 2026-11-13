@@ -365,6 +365,7 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
         workflow_id: WORKFLOW_ID.into(),
         native_roles: Vec::new(),
         skill_projections: Vec::new(),
+        project_skills: Vec::new(),
     };
     let plan = generation_plan(top, request)?;
     if plan.files.iter().any(|f| f.action == "conflict") {
