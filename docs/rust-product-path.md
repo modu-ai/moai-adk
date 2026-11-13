@@ -795,9 +795,9 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 `moai-cli statusline` reads Claude Code JSON from stdin and prints raw text, not an
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
-The three lines follow the user instruction of 2026-11-13 (#2756), which replaces the
-name-last order of #2697. Segments on a line are joined by ` | `, and a segment with no
-value is left out together with its separator.
+The three lines follow the user instructions of 2026-11-13 (#2756, and #2809 for the
+third line's order). Segments on a line are joined by ` | `, and a segment with no value
+is left out together with its separator.
 
 1. Running environment: `🤖` model, `🧠` effort/thinking, `♻️` cache hit with the prompt
    cache timer (`⏱️ Nm` whole minutes until `prompt_cache.expires_at`, `🧊` once
@@ -813,9 +813,10 @@ value is left out together with its separator.
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
    The `worktree` and `pr` options turn their segments off.
-3. Lane and usage: the optional `🏷️` session name first, then the `CTX` and available
-   `Week` bars (with no name the line starts at `CTX`; with no bars the name stands
-   alone). The five-hour bar is not shown — the user did not choose it (#2756,
+3. Usage and lane: the `CTX` and available `Week` bars, then the optional `🏷️` session
+   name last (#2809, replacing #2756's name-first order; with no name the line ends at
+   the last bar; with no bars the name stands alone). The bar icons (`🔋`/`🪫`) and the
+   `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden; reset times are not printed.
    Context handoff warnings and the existing usage calculation are retained. The
