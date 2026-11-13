@@ -29,6 +29,7 @@ fn http200(body: &str) -> String {
 /// head's; without `FLOW_TIP_CHECK_RUNS` the tip shares the head's runs.
 const STUB_SCRIPT: &str = r##"#!/bin/sh
 case "$*" in
+  *check-runs/*/annotations*) printf '%s' "$FLOW_ANNOTATIONS";;
   *commits/tip-*/check-runs*) printf '%s' "${FLOW_TIP_CHECK_RUNS:-$FLOW_CHECK_RUNS}";;
   *pulls/9/commits*) printf '%s' "$FLOW_COMMITS";;
   *pulls/9*) printf '%s' "$FLOW_PR";;
@@ -325,6 +326,7 @@ fn gate_verdict_ok_with_merge_commit_exempt() {
     assert_eq!(v["head"], json!("pr-5a4b3c2d"));
     assert_eq!(v["tip"], json!("tip-1a2b3c4d"));
     assert_eq!(v["tip_ci"]["state"], json!("green"), "{v}");
+    assert_eq!(v["ci_failure_class"], Value::Null, "{v}");
     assert_eq!(v["writes"], json!(false));
     assert!(v["checks"]
         .as_array()
@@ -1066,4 +1068,105 @@ fn gate_verdict_reads_all_tip_attempts() {
         calls.contains("commits/tip-1a2b3c4d/check-runs?filter=all&per_page=100"),
         "{calls}"
     );
+}
+
+// ---- #2680: a CI gate that could not run is not a code failure ----
+
+const BILLING: &str = "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings";
+
+fn failed_ci_run(annotations: u64) -> Value {
+    let mut r = check_run("rc-ci", "completed", "failure");
+    r["id"] = json!(555);
+    r["started_at"] = json!("2026-11-12T11:16:11Z");
+    r["details_url"] = json!("https://github.com/acme/widgets/actions/runs/43207677557/job/555");
+    r["output"] = json!({"title": null, "summary": null, "annotations_count": annotations});
+    r
+}
+
+/// The head's CI failed with `annotations`; the tip is green. Returns the verdict and
+/// the stub's request log.
+fn gate_with_failed_head(annotations: u64, messages: &[&str]) -> (Value, String) {
+    let tmp = TempDir::new().unwrap();
+    let log = tmp.path().join("calls");
+    let script = format!(
+        "#!/bin/sh\necho \"$*\" >> '{}'\n{}",
+        log.display(),
+        STUB_SCRIPT.trim_start_matches("#!/bin/sh\n")
+    );
+    let gh = install_stub(tmp.path(), &script);
+    let notes: Vec<Value> = messages
+        .iter()
+        .map(|m| json!({"annotation_level": "failure", "message": m}))
+        .collect();
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[failed_ci_run(annotations)])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+        (
+            "FLOW_ANNOTATIONS",
+            http200(&Value::Array(notes).to_string()),
+        ),
+    ];
+    let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (v, std::fs::read_to_string(log).unwrap_or_default())
+}
+
+/// AC-1: a billing-blocked CI is a gate that could not run, with its cause and start.
+#[test]
+fn gate_verdict_classifies_a_billing_blocked_ci_as_gate_unavailable() {
+    let (v, calls) = gate_with_failed_head(1, &[BILLING]);
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+    assert_eq!(v["ci_failure_class"], json!("gate_unavailable"), "{v}");
+    let g = &v["gate_unavailable"][0];
+    assert_eq!(g["gate"], json!("ci"));
+    assert_eq!(g["cause"], json!("ci_billing"));
+    assert_eq!(g["since"], json!("2026-11-12T11:16:11Z"));
+    assert_eq!(g["check"], json!("rc-ci"));
+    assert!(calls.contains("check-runs/555/annotations"), "{calls}");
+    assert!(
+        reasons_of(&v)
+            .iter()
+            .any(|r| r.starts_with("ci_status:") && r.contains("gate unavailable: ci_billing")),
+        "{v}"
+    );
+}
+
+/// Any other job that never started is a gate too; an ordinary failure is code.
+#[test]
+fn gate_verdict_tells_a_job_not_started_from_a_code_failure() {
+    let (v, _) = gate_with_failed_head(
+        1,
+        &["The job was not started because no hosted runner was available"],
+    );
+    assert_eq!(v["ci_failure_class"], json!("gate_unavailable"), "{v}");
+    assert_eq!(v["gate_unavailable"][0]["cause"], json!("ci_not_started"));
+    let (v, _) = gate_with_failed_head(1, &["test review::check failed at src/review.rs:10"]);
+    assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
+    assert_eq!(v["gate_unavailable"], json!([]));
+}
+
+/// No annotations: code, and no annotation request is spent.
+#[test]
+fn gate_verdict_reads_annotations_only_when_there_are_some() {
+    let (v, calls) = gate_with_failed_head(0, &[BILLING]);
+    assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
+    assert!(!calls.contains("annotations"), "{calls}");
 }

@@ -281,6 +281,68 @@ fn required_ci_judgment(runs: &[Value], required: &[String]) -> (bool, String) {
     (true, format!("{}: success", required.join(", ")))
 }
 
+/// #2680: why a required CI check failed when the job never ran. GitHub reports a job
+/// it refused to start as an ordinary `failure` whose only trace is one annotation
+/// (measured on modu-ai/mo.ai.kr, run 43207677557, 2026-11-12: steps 0, no runner,
+/// output title and summary null). Returns the cause, or None for a code failure.
+pub fn gate_cause(annotation: &str) -> Option<&'static str> {
+    if !annotation.contains("The job was not started") {
+        return None;
+    }
+    if annotation.contains("payments have failed") || annotation.contains("spending limit") {
+        Some("ci_billing")
+    } else {
+        Some("ci_not_started")
+    }
+}
+
+/// The required check runs that failed although their job never ran: one annotation
+/// read per failed run that has annotations (none is spent otherwise).
+fn unavailable_gates<T: Transport, C: crate::forge::policy::Clock>(
+    client: &Client<'_, T, C>,
+    owner: &str,
+    repo: &str,
+    runs: &[Value],
+    required: &[String],
+) -> Vec<Value> {
+    let mut out = Vec::new();
+    for r in runs.iter().filter(|r| {
+        r["name"]
+            .as_str()
+            .is_some_and(|n| required.iter().any(|q| check_name_matches(q, n)))
+            && !matches!(
+                r["conclusion"].as_str().unwrap_or_default(),
+                "" | "success" | "neutral" | "skipped"
+            )
+            && r["output"]["annotations_count"].as_u64().unwrap_or(0) > 0
+    }) {
+        let Some(id) = r["id"].as_u64() else { continue };
+        let Ok(resp) = client.get(
+            &api(owner, repo, &format!("check-runs/{id}/annotations")),
+            None,
+        ) else {
+            continue;
+        };
+        let cause = resp
+            .body
+            .as_ref()
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .find_map(|a| a["message"].as_str().and_then(gate_cause));
+        if let Some(cause) = cause {
+            out.push(json!({
+                "gate": "ci",
+                "cause": cause,
+                "check": r["name"],
+                "since": r["started_at"],
+                "url": r["details_url"],
+            }));
+        }
+    }
+    out
+}
+
 /// A PR that repairs a red tip says so with a body line starting `moai-tip-repair:`.
 pub const TIP_REPAIR_MARKER: &str = "moai-tip-repair:";
 
@@ -510,10 +572,47 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
     // #2335: CI is judged from the required check runs' conclusions — the combined
     // commit status is neither consulted nor able to mask or poison the result. A read
     // failure of the check-runs endpoint itself is `unknown`, never a pass.
-    let (ci_ok, ci_detail) = match fetch_check_runs(client, owner, repo, &head) {
-        Ok(runs) => required_ci_judgment(&runs, required_checks),
-        Err(_e) => (false, "check runs unavailable".to_string()),
-    };
+    // #2680: a failed required run is either code or a gate that could not run.
+    let (ci_ok, ci_detail, failure_class, gates) =
+        match fetch_check_runs(client, owner, repo, &head) {
+            Ok(runs) => {
+                let (ok, detail) = required_ci_judgment(&runs, required_checks);
+                let failed = !ok
+                    && runs.iter().any(|r| {
+                        r["name"].as_str().is_some_and(|n| {
+                            required_checks.iter().any(|q| check_name_matches(q, n))
+                        }) && !matches!(
+                            r["conclusion"].as_str().unwrap_or_default(),
+                            "" | "success" | "neutral" | "skipped"
+                        )
+                    });
+                if failed {
+                    let gates = unavailable_gates(client, owner, repo, &runs, required_checks);
+                    let class = if gates.is_empty() {
+                        "code"
+                    } else {
+                        "gate_unavailable"
+                    };
+                    let detail = match gates.first() {
+                        Some(g) => format!(
+                            "{detail}; gate unavailable: {} since {}",
+                            g["cause"].as_str().unwrap_or("?"),
+                            g["since"].as_str().unwrap_or("?")
+                        ),
+                        None => detail,
+                    };
+                    (ok, detail, Some(class), gates)
+                } else {
+                    (ok, detail, None, Vec::new())
+                }
+            }
+            Err(_e) => (
+                false,
+                "check runs unavailable".to_string(),
+                None,
+                Vec::new(),
+            ),
+        };
     let checks4 = GateCheck {
         check: "ci_status",
         pass: ci_ok,
@@ -585,6 +684,8 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
         "audit_head": audit_head,
         "tip": tip,
         "tip_ci": tip_ci,
+        "ci_failure_class": failure_class,
+        "gate_unavailable": gates,
         "changed_since_audit": changed_since_audit,
         "changed_files": changed_files,
         "checks": all.iter().map(|c| json!({
