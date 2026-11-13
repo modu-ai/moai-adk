@@ -1,6 +1,6 @@
 //! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm|codex`
 //! launch in a folder that is not a git repository initializes it without asking — `git init`,
-//! then the MoAI project settings (`.moai-cli/project.yaml`) and `AGENTS.md` through the
+//! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `AGENTS.md` through the
 //! existing `project-apply` and `generation-apply` code — and says so on one stderr line. Files
 //! that already exist are never touched. HOME itself and the file-system root are never
 //! initialized (guidance, exit 1). Without git on PATH the launcher prints the install guidance
@@ -120,7 +120,7 @@ fn entries(dir: &Path) -> Vec<String> {
 }
 
 fn profile(dir: &Path) -> Value {
-    serde_json::from_slice(&fs::read(dir.join(".moai-cli/project.yaml")).unwrap()).unwrap()
+    serde_json::from_slice(&fs::read(dir.join(".moai/project.yaml")).unwrap()).unwrap()
 }
 
 #[test]
@@ -151,12 +151,12 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
         assert_eq!(fs::read(marker(&f)).unwrap(), b"started", "{host}");
 
         // The second launch does not initialize again and keeps every file byte for byte.
-        let yaml = fs::read(dir.join(".moai-cli/project.yaml")).unwrap();
+        let yaml = fs::read(dir.join(".moai/project.yaml")).unwrap();
         let agents = fs::read(dir.join("AGENTS.md")).unwrap();
         let out = run_in(&f, &dir, &[host, "-a"]);
         assert_eq!(json(&out)["name"], "agent-2", "{host}");
         assert_eq!(init_lines(&out), 0, "{host}: {}", text(&out));
-        assert_eq!(fs::read(dir.join(".moai-cli/project.yaml")).unwrap(), yaml);
+        assert_eq!(fs::read(dir.join(".moai/project.yaml")).unwrap(), yaml);
         assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
     }
 }
@@ -171,7 +171,7 @@ fn leader_and_roleless_launches_initialize_too() {
         assert_eq!(init_lines(&out), 1, "{args:?}: {}", text(&out));
         assert!(plain.path().join(".git").is_dir(), "{args:?}");
         assert!(
-            plain.path().join(".moai-cli/project.yaml").is_file(),
+            plain.path().join(".moai/project.yaml").is_file(),
             "{args:?}"
         );
     }
@@ -186,7 +186,7 @@ fn a_repository_without_settings_gets_the_settings_only_and_keeps_its_agents_md(
     let out = run_in(&f, p.path(), &["cc", "-a"]);
     assert_eq!(json(&out)["name"], "agent-1");
     assert_eq!(init_lines(&out), 1, "{}", text(&out));
-    assert!(p.path().join(".moai-cli/project.yaml").is_file());
+    assert!(p.path().join(".moai/project.yaml").is_file());
     assert_eq!(fs::read(p.path().join("AGENTS.md")).unwrap(), b"mine\n");
 }
 
@@ -297,7 +297,7 @@ fn dry_run_creates_nothing_and_reports_what_it_would_initialize() {
     let v = json(&out);
     assert_eq!(v["name"], "agent-1");
     let notes = v["notes"].to_string();
-    for item in ["git init", ".moai-cli/project.yaml", "AGENTS.md"] {
+    for item in ["git init", ".moai/project.yaml", "AGENTS.md"] {
         assert!(notes.contains(item), "{item}: {notes}");
     }
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
@@ -338,7 +338,7 @@ fn concurrent_first_launches_initialize_once_and_never_share_a_number() {
         .collect();
     names.sort();
     assert_eq!(names, ["agent-1", "agent-2", "agent-3", "agent-4"]);
-    assert!(plain.path().join(".moai-cli/project.yaml").is_file());
+    assert!(plain.path().join(".moai/project.yaml").is_file());
     assert!(plain.path().join("AGENTS.md").is_file());
 }
 
@@ -357,6 +357,7 @@ fn a_home_that_already_is_a_repository_starts_the_host_but_gets_no_settings() {
         text(&out)
     );
     assert!(!f.home.path().join(".moai-cli/project.yaml").exists());
+    assert!(!f.home.path().join(".moai").exists());
     assert!(!f.home.path().join("AGENTS.md").exists());
 }
 
@@ -370,7 +371,7 @@ fn dry_run_in_a_repository_without_settings_writes_nothing() {
     let v = json(&run_in(&f, p.path(), &["cc", "-a", "--dry-run"]));
     let notes = v["notes"].to_string();
     assert!(notes.contains("would initialize"), "{notes}");
-    assert!(notes.contains(".moai-cli/project.yaml"), "{notes}");
+    assert!(notes.contains(".moai/project.yaml"), "{notes}");
     assert_eq!(entries(p.path()), before);
     assert_eq!(entries(&p.path().join(".git")), git_before);
 }
@@ -397,7 +398,7 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    let yaml = plain.path().join(".moai-cli/project.yaml");
+    let yaml = plain.path().join(".moai/project.yaml");
     let start = std::time::Instant::now();
     while !yaml.exists() {
         assert!(
@@ -432,7 +433,7 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
         .unwrap();
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(!marker(&f).exists(), "the host must not start");
-    assert!(dir.join(".moai-cli/project.yaml").is_file());
+    assert!(dir.join(".moai/project.yaml").is_file());
     assert!(!dir.join("AGENTS.md").exists());
     assert!(
         marker_file.is_file(),

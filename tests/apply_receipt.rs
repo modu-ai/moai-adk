@@ -85,6 +85,9 @@ fn apply_recover(root: &TempDir, receipt_id: &str) -> std::process::Output {
 /// A project with `project.yaml` in place; the caller runs agents-plan/apply itself.
 fn agents_project_root(root: &TempDir) {
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    // An earlier-root project: its state stays in `.moai-cli/` (#2696 C2b gives a project
+    // with no state `.moai/`; that layout is pinned in tests/state_root_cli.rs).
+    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let p = root.path().to_str().unwrap();
     let preview = cli(&["project-plan", p], &profile());
     assert!(preview.status.success(), "{:?}", preview.stderr);
