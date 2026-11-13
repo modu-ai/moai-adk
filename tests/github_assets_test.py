@@ -328,6 +328,28 @@ class WorkflowTest(unittest.TestCase):
         for job in ("ci", "windows-build"):
             self.assertNotIn("concurrency", flow["jobs"][job])
 
+    def test_every_scope_step_has_the_commit_it_diffs_against(self):
+        """#2554 (decision 6861024531): a job whose docs-only scope step diffs against
+        `HEAD~1` checks out at least two commits (or the full history, 0). With the default
+        depth of 1 the diff failed and windows-build ran full on every push."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        seen = []
+        for name, job in flow["jobs"].items():
+            steps = job.get("steps", [])
+            names = [s.get("name") or "" for s in steps]
+            scope = [i for i, n in enumerate(names) if n.startswith("Scope (docs-only")]
+            if not scope:
+                continue
+            seen.append(name)
+            self.assertIn("HEAD~1", steps[scope[0]]["run"])
+            checkout = [i for i, s in enumerate(steps)
+                        if str(s.get("uses", "")).startswith("actions/checkout@")]
+            with self.subTest(job=name):
+                self.assertTrue(checkout and checkout[0] < scope[0])
+                depth = steps[checkout[0]].get("with", {}).get("fetch-depth", 1)
+                self.assertTrue(depth == 0 or depth >= 2, f"{name} fetch-depth {depth}")
+        self.assertEqual(sorted(seen), ["check", "windows-build"])
+
     def test_rc_ci_dependency_cache_is_written_only_by_post_merge_runs(self):
         """#2554 AC-3: a PR run restores the base branch's dependency cache and never saves
         one; the cache is pinned and sits before the check set."""
