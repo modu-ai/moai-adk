@@ -203,26 +203,64 @@ fn file(path: &str, role: &str, included_by: Option<&str>, text: String) -> File
     }
 }
 
-/// Inline Markdown links `[text](target)` whose target is not `http:`, `https:`, `mailto:` or
-/// a `#` anchor.
+/// Markdown links counted toward [`LINK_LIMIT`]: inline links `[text](destination)` and
+/// reference definitions `[label]: destination` (up to three spaces of indentation). Spaces,
+/// tabs and one line break may come before a destination and a destination may be written in
+/// `<…>`, as CommonMark allows (AC-4 record 6841710561). `http:`, `https:`, `mailto:` and `#`
+/// destinations are not counted.
 fn counted_links(text: &str) -> usize {
     let mut count = 0;
     let mut rest = text;
     while let Some(at) = rest.find("](") {
         let after = &rest[at + 2..];
-        let target = after.split([')', ' ', '\n']).next().unwrap_or("");
-        let lower = target.to_ascii_lowercase();
-        if !target.is_empty()
-            && !lower.starts_with("http:")
-            && !lower.starts_with("https:")
-            && !lower.starts_with("mailto:")
-            && !target.starts_with('#')
-        {
+        if counted_destination(destination(after)) {
             count += 1;
         }
         rest = after;
     }
+    for line in text.lines() {
+        let indent = line.len() - line.trim_start_matches(' ').len();
+        let Some(label) = line[indent..].strip_prefix('[').filter(|_| indent <= 3) else {
+            continue;
+        };
+        let Some(close) = label.find("]:") else {
+            continue;
+        };
+        if !label[..close].contains(']') && counted_destination(destination(&label[close + 2..])) {
+            count += 1;
+        }
+    }
     count
+}
+
+/// The destination that starts `after`: leading spaces and tabs and at most one line break
+/// skipped, then a `<…>` destination unwrapped or a bare one up to `)` or whitespace.
+fn destination(after: &str) -> &str {
+    let mut rest = after;
+    let mut line_breaks = 0;
+    loop {
+        if let Some(r) = rest.strip_prefix([' ', '\t', '\r']) {
+            rest = r;
+        } else if let Some(r) = rest.strip_prefix('\n').filter(|_| line_breaks == 0) {
+            line_breaks += 1;
+            rest = r;
+        } else {
+            break;
+        }
+    }
+    if let Some(inner) = rest.strip_prefix('<') {
+        return inner.split(['>', '\n']).next().unwrap_or("").trim();
+    }
+    rest.split([')', ' ', '\t', '\n']).next().unwrap_or("")
+}
+
+fn counted_destination(destination: &str) -> bool {
+    let lower = destination.to_ascii_lowercase();
+    !destination.is_empty()
+        && !lower.starts_with("http:")
+        && !lower.starts_with("https:")
+        && !lower.starts_with("mailto:")
+        && !destination.starts_with('#')
 }
 
 /// `@name` lines of the root file, in order, without repeats.
@@ -696,6 +734,28 @@ mod tests {
             1
         );
         assert_eq!(counted_links("no links ] ( here"), 0);
+    }
+
+    /// AC-4 record 6841710561 (found by Codex CLI): CommonMark allows spaces, tabs and one
+    /// line break before an inline link's destination, a destination in `<…>`, and reference
+    /// definitions `[label]: destination`. All of them count; the exempt schemes stay exempt.
+    #[test]
+    fn links_with_space_angle_or_reference_destinations_count() {
+        assert_eq!(counted_links("[a]( x.md)"), 1);
+        assert_eq!(counted_links("[a](\tx.md)"), 1);
+        assert_eq!(counted_links("[a](\n  x.md)"), 1);
+        assert_eq!(counted_links("[a](<x y.md>)"), 1);
+        assert_eq!(counted_links("[a]( https://e)"), 0);
+        assert_eq!(counted_links("[a](< mailto:m >)"), 0);
+        assert_eq!(counted_links("[a]( #f)"), 0);
+        assert_eq!(
+            counted_links("[ref]: x.md\n   [two]: <y.md>\n[web]: https://e\n"),
+            2
+        );
+        // Four spaces of indentation is a code block, not a definition.
+        assert_eq!(counted_links("    [ref]: x.md\n"), 0);
+        // Two line breaks end the link: nothing is counted.
+        assert_eq!(counted_links("[a](\n\nx.md)"), 0);
     }
 
     #[test]
