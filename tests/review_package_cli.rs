@@ -371,3 +371,86 @@ fn an_unknown_revision_is_refused() {
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["ok"], json!(false), "{v}");
 }
+
+/// Audit FAIL 6839909483 B1: the repository's own `.git/config` and the uncommitted worktree
+/// `.gitattributes` must not change the package either — only BASE and HEAD do.
+#[test]
+fn repository_settings_and_worktree_attributes_do_not_change_the_package() {
+    let (tmp, base, head) = fixture();
+    let repo = tmp.path().join("repo");
+    let plain = run_in(&repo, &["--base", &base, "--head", &head], &[]);
+    assert!(plain.status.success());
+
+    write(tmp.path(), "order.txt", "tests/*\nREVIEW.md\n");
+    let order = tmp.path().join("order.txt");
+    for (key, value) in [
+        ("diff.orderFile", order.to_str().unwrap()),
+        ("diff.suppressBlankEmpty", "true"),
+        ("diff.interHunkContext", "9"),
+        ("diff.indentHeuristic", "false"),
+        ("diff.noprefix", "true"),
+        ("diff.relative", "true"),
+        ("core.abbrev", "12"),
+        ("core.bigFileThreshold", "1"),
+        ("core.quotePath", "false"),
+        ("diff.fn.xfuncname", "^#"),
+    ] {
+        git_ok(&repo, &["config", key, value]);
+    }
+    // Uncommitted attributes in the worktree: binary for Rust files, a hunk-header driver.
+    write(&repo, ".gitattributes", "*.rs -diff\n*.md diff=fn\n");
+    let other = run_in(&repo, &["--base", &base, "--head", &head], &[]);
+    assert!(
+        other.status.success(),
+        "{}",
+        String::from_utf8_lossy(&other.stdout)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&plain.stdout),
+        String::from_utf8_lossy(&other.stdout)
+    );
+}
+
+/// `.git/info/attributes` is read whatever the attribute source, so a package built under it
+/// could differ; it is refused instead of returned.
+#[test]
+fn repository_info_attributes_are_refused() {
+    let (tmp, base, head) = fixture();
+    let repo = tmp.path().join("repo");
+    write(&repo, ".git/info/attributes", "*.rs -diff\n");
+    let out = run_in(&repo, &["--base", &base, "--head", &head], &[]);
+    assert!(!out.status.success());
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("info/attributes"),
+        "{v}"
+    );
+}
+
+/// Audit FAIL 6839909483 B2: `@.` and `@..` are not includes beside the root file; they are
+/// skipped like any other include that does not name a file there, and never fail the package.
+#[test]
+fn dot_includes_are_skipped_not_followed() {
+    let tmp = TempDir::new().unwrap();
+    let repo = tmp.path().join("repo");
+    init(&repo);
+    write(&repo, ".aaa-first.md", "not an include\n");
+    write(&repo, "REVIEW.md", "# r\n@.\n@..\n");
+    write(&repo, "a.txt", "a\n");
+    let base = commit(&repo, "base");
+    write(&repo, "a.txt", "b\n");
+    let head = commit(&repo, "head");
+    let r = package(&repo, &base, &head);
+    assert_eq!(paths(&r["review"]), ["REVIEW.md"]);
+    assert_eq!(
+        skipped(&r),
+        [
+            (".".to_string(), "include-not-beside-root".to_string()),
+            ("..".to_string(), "include-not-beside-root".to_string()),
+        ]
+    );
+}

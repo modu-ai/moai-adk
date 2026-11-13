@@ -15,7 +15,11 @@
 //!
 //! Git runs with the caller's configuration and environment removed
 //! (`audit_delta::command`) and with fixed diff options, so the same base and head give the
-//! same bytes on every machine and in every tool (AC-2). Reads only; writes nothing.
+//! same bytes on every machine and in every tool (AC-2). The repository's own diff settings are
+//! overridden on the command line, attributes come from an empty tree instead of the worktree,
+//! and a repository with `.git/info/attributes` is refused (audit FAIL 6839909483 B1). Paths and
+//! diff text that are not UTF-8 are carried with U+FFFD replacements (deterministic, and
+//! `diff_sha256` hashes that replaced text). Reads only; writes nothing.
 
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -118,6 +122,33 @@ fn git(repo: &Path, args: &[&str]) -> Result<Vec<u8>> {
     Ok(out.stdout)
 }
 
+fn null_device() -> &'static str {
+    if cfg!(windows) {
+        "NUL"
+    } else {
+        "/dev/null"
+    }
+}
+
+/// `git --attr-source=<empty tree> -c … diff`: the configuration keys a repository could set
+/// and the command line has no option for.
+fn diff_prefix(attr_source: &str) -> Vec<&str> {
+    vec![
+        attr_source,
+        "-c",
+        "core.quotePath=true",
+        "-c",
+        "core.bigFileThreshold=512m",
+        "-c",
+        "diff.suppressBlankEmpty=false",
+        "-c",
+        "diff.noprefix=false",
+        "-c",
+        "diff.mnemonicPrefix=false",
+        "diff",
+    ]
+}
+
 fn commit_of(repo: &Path, rev: &str) -> Result<String> {
     if rev.is_empty() || rev.starts_with('-') {
         return Err(format!("invalid revision {rev:?}"));
@@ -147,7 +178,11 @@ fn blob_text(
         return Ok(None);
     };
     let entry = String::from_utf8_lossy(entry);
-    let (meta, _) = entry.split_once('\t').ok_or("unreadable tree entry")?;
+    let (meta, name) = entry.split_once('\t').ok_or("unreadable tree entry")?;
+    // `ls-tree -- <path>` also answers for `.` and other pathspecs; only the exact entry counts.
+    if name != path {
+        return Ok(None);
+    }
     let fields: Vec<&str> = meta.split(' ').collect();
     if fields.len() != 3 || fields[1] != "blob" || !(fields[0] == "100644" || fields[0] == "100755")
     {
@@ -244,8 +279,39 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
     if merge_base.is_empty() {
         return Err("base and head share no history".into());
     }
+    // Attributes come from an empty tree, never from the worktree, whose `.gitattributes` may
+    // be uncommitted or belong to another branch (B1). `.git/info/attributes` is read whatever
+    // the attribute source, so a repository that has one is refused.
+    let info =
+        String::from_utf8_lossy(&git(repo, &["rev-parse", "--git-path", "info/attributes"])?)
+            .trim()
+            .to_string();
+    let info = if Path::new(&info).is_absolute() {
+        Path::new(&info).to_path_buf()
+    } else {
+        repo.join(&info)
+    };
+    if std::fs::read(&info).is_ok_and(|b| b.iter().any(|c| !c.is_ascii_whitespace())) {
+        return Err(format!(
+            "{} sets attributes that would change the package; remove it or build the package in another clone",
+            info.display()
+        ));
+    }
+    let empty_tree =
+        String::from_utf8_lossy(&git(repo, &["hash-object", "-t", "tree", "--stdin"])?)
+            .trim()
+            .to_string();
+    let attr_source = format!("--attr-source={empty_tree}");
+    // Every diff setting a repository's own `.git/config` could change is fixed here, on the
+    // command line, which wins over that file (audit FAIL 6839909483 B1).
     let fixed = [
         "--no-ext-diff",
+        "--full-index",
+        "--inter-hunk-context=0",
+        "--indent-heuristic",
+        "--no-relative",
+        "--ignore-submodules=none",
+        "--submodule=short",
         "--no-textconv",
         "--no-color",
         "--no-renames",
@@ -254,7 +320,9 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
         "--diff-algorithm=myers",
         "-U3",
     ];
-    let mut args = vec!["-c", "core.quotePath=true", "diff"];
+    let order_none = format!("-O{}", null_device());
+    let mut args = diff_prefix(&attr_source);
+    args.push(&order_none);
     args.extend(["--name-status", "-z"]);
     args.extend(fixed);
     args.extend([merge_base.as_str(), head.as_str()]);
@@ -272,7 +340,8 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
             path: pair[1].clone(),
         })
         .collect();
-    let mut args = vec!["-c", "core.quotePath=true", "diff"];
+    let mut args = diff_prefix(&attr_source);
+    args.push(&order_none);
     args.extend(fixed);
     args.extend([merge_base.as_str(), head.as_str()]);
     let diff = String::from_utf8_lossy(&git(repo, &args)?).to_string();
@@ -302,7 +371,7 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
             for name in include_lines(&root).into_iter().filter(|_| root_read) {
                 let reason = if name.starts_with(".claude/skills/") {
                     Some("skill-include-not-supported")
-                } else if name.contains('/') || name.contains('\\') {
+                } else if name.contains('/') || name.contains('\\') || name == "." || name == ".." {
                     Some("include-not-beside-root")
                 } else if includes >= INCLUDE_LIMIT {
                     Some("include-count")
@@ -316,7 +385,9 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
                     });
                     continue;
                 }
-                match blob_text(repo, &base, &name)? {
+                // A git failure on one include line skips that include, not the package (B2).
+                let found = blob_text(repo, &base, &name).unwrap_or(Some(Err("unreadable")));
+                match found {
                     None => skipped.push(Skipped {
                         path: name,
                         reason: "missing".into(),
