@@ -304,6 +304,25 @@ class WorkflowTest(unittest.TestCase):
                          "${{ github.event_name != 'pull_request' }}")
         self.assertNotIn("if", flow["jobs"]["check"])
 
+    def test_rc_ci_post_merge_macos_waits_are_replaced_by_a_newer_merge(self):
+        """#2554 D8 (a): on a push, only the macOS targets share a group across runs, so a
+        newer merge replaces a macOS job that is still waiting; a running job is never
+        cancelled, and every other target and event keeps a group of its own."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        conc = flow["jobs"]["check"]["concurrency"]
+        self.assertIs(conc["cancel-in-progress"], False)
+        group = " ".join(conc["group"].split())
+        self.assertEqual(group,
+                         "${{ github.event_name == 'push' && startsWith(matrix.target, 'macos-') "
+                         "&& format('ci-push-{0}', matrix.target) "
+                         "|| format('ci-run-{0}-{1}', github.run_id, matrix.target) }}")
+        _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
+        shared = sorted(e["target"] for e in after_merge if e["target"].startswith("macos-"))
+        self.assertEqual(shared, ["macos-arm64", "macos-x86_64"])
+        # The aggregate and windows-build keep the run-level group only.
+        for job in ("ci", "windows-build"):
+            self.assertNotIn("concurrency", flow["jobs"][job])
+
     def test_rc_ci_dependency_cache_is_written_only_by_post_merge_runs(self):
         """#2554 AC-3: a PR run restores the base branch's dependency cache and never saves
         one; the cache is pinned and sits before the check set."""
