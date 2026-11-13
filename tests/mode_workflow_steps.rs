@@ -528,3 +528,26 @@ fn claim_verify_names_the_worktree_session_without_project_hooks() {
         ],
     );
 }
+
+/// #2680 AC-2/AC-3: a gate that could not run is recorded with substitute evidence,
+/// merges wait by default, and the merge-on-substitute question is asked once per gate.
+#[test]
+fn gate_unavailable_rules_are_written_where_they_are_used() {
+    let audit = workflow("audit.md");
+    for text in [
+        "ci: gate_unavailable(<cause> since <since>)",
+        "substitute: <command> exit <n> <log>",
+        "Substitute evidence is a record, not a merge",
+        "is not a gate",
+    ] {
+        assert!(audit.contains(text), "audit.md lacks {text:?}");
+    }
+    let leader = workflow("mode-leader.md");
+    for text in [
+        "merges wait for the gate by default",
+        "a user decision for that one gate",
+        "Ask it once per gate and cause",
+    ] {
+        assert!(leader.contains(text), "mode-leader.md lacks {text:?}");
+    }
+}
