@@ -66,6 +66,24 @@ The #2388 marker repair preserves the reported audit inputs unchanged:
 | Finding classification `차단: TODO.` | 0 | 1 |
 | Finding classification `차단: TBD-` | 0 | 1 |
 
+## Base agents
+
+Skip this section when you are a base agent yourself: base agents never start other agents.
+
+`moai-cli` installs five base agents into the host's user folder: `moai-plan`, `moai-research`, `moai-impl`, `moai-audit` and `moai-docs`. When this route hands a step to one of them:
+
+- Give it one block, `task`, `scope`, `base` and `refs`, and nothing else; it assumes no conversation context.
+- Decide on its first line, `RESULT <role> <ok|blocked|not_run> <target>`, then check the rest yourself: the files it lists and the commands and exit codes it reports. An agent's `ok` is not evidence.
+- Start agents only from this session, one level deep.
+- Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
+- When the agent is not installed on this host, do the step in this session and say so.
+
+AUDIT hands the evidence-gathering to `moai-audit`, never to the agent or session that wrote the change. Pass the exact head as `base`. The agent returns findings; you write the verdict line. In the review steps' Find step, you may start one `moai-audit` per dimension at once where the host offers parallel subagents.
+
+- Read-only is enforced by the host only where the installed agent file can carry it: Claude Code (the file denies the editing tools), and the host's own read-only setting on Kiro and Cursor CLI. Codex CLI subagents inherit the parent's sandbox and OMP subagents run without approvals, so there read-only rests on the instructions alone; say so in the verdict.
+- On every host, confirm after the agent returns that `git status` in its worktree shows no change; a change there makes its findings unusable.
+- Isolation: as in the RUN workflow, a separate worktree only on Claude Code and on OMP with task isolation enabled; elsewhere the agent reads the detached audit worktree you prepared.
+
 ## Web pages
 
 When a step needs to look at a web page, use the browser the project chose: Chrome, aside or Ego Lite. Use only the chosen browser. If none is chosen, ask the user; never pick one by guessing. If the chosen browser is missing on this machine or this host, report the step as not_run and never switch to another browser silently.
