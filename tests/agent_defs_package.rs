@@ -51,6 +51,9 @@ fn the_package_holds_the_five_roles_of_the_contract() {
 
 #[test]
 fn every_role_renders_for_every_host_deterministically() {
+    // #2633: OMP is rendered and installed (2026-11-13 confirmation of five supported hosts;
+    // Kiro and Cursor CLI follow).
+    assert_eq!(HOSTS, ["claude", "codex", "omp"]);
     let defs = package_agents(&package()).unwrap();
     for d in &defs {
         for host in HOSTS {
@@ -75,6 +78,20 @@ fn every_role_renders_for_every_host_deterministically() {
                 .not_supported
                 .iter()
                 .any(|n| n.starts_with("isolation")),
+            d.isolation == "worktree",
+            "{}",
+            d.name
+        );
+        // #2633: OMP enforces read-only by its tool list and names per-call isolation.
+        let omp = render(d, "omp").unwrap();
+        assert_eq!(
+            omp.text.contains(", edit, write\n"),
+            !d.readonly,
+            "{}",
+            d.name
+        );
+        assert_eq!(
+            omp.not_supported.iter().any(|n| n.starts_with("isolation")),
             d.isolation == "worktree",
             "{}",
             d.name

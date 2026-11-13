@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "b8dcd1a1a728dfd027fdf5fdbdd95e78fcf6bd242fc4222b63f47f5157110f96",
+      "sha256": "aa94d2fcec880e20d48cf0d331d9f13571700adaf358611ed9eaa26ebb3c3cfc",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "bd2710203dd0d9ab17e588db7c22b964a67afac9bb6daf8b72e84e2108a4ef1e",
+      "sha256": "35de64036d5fdf44d30f38b5aeb89c051fae3884f50e6571ced5606f8b2b6506",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -259,6 +259,15 @@
         "template_id": "internal-git-safety",
         "adoption": "new",
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/home/routing.md": {
+      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-routing",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
       }
     }
   }
