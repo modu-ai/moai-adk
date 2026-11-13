@@ -34,9 +34,12 @@ const USER_ASSETS_LIMIT: u64 = 16 * 1024 * 1024;
 const GO_MARKER_ENTRIES: &[&str] = &["user-assets.json", "state"];
 /// Names the apply writes into the Rust `~/.moai`: the receipt, the marker and their temporary
 /// files. A Go entry with such a name is never copied (it would be replaced, #2783 audit B1).
+/// Compared without case: on a case-insensitive file system (the macOS default)
+/// `Home-State-Receipt.json` is the same file the receipt is written to (re-audit 6864623190).
 fn is_reserved(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
     name == "home-state-receipt.json"
-        || name == crate::state_root::RUST_MARKER
+        || name == crate::state_root::RUST_MARKER.to_ascii_lowercase()
         || name.ends_with(".tmp-write")
 }
 /// Top-level entries listed as copy candidates; more are counted, not listed.

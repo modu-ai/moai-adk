@@ -281,24 +281,40 @@ fn revert_refuses_without_a_receipt_backup() {
 /// replaced while the receipt still said `copied`. The apply refuses it before anything moves.
 #[test]
 fn a_name_the_tool_writes_is_never_copied() {
-    let (_d, home) = go_home();
     for name in [
         "home-state-receipt.json",
         "home-state-receipt.tmp-write",
         "moai-cli.tmp-write",
+        // Case variants: the same file on a case-insensitive file system (re-audit 6864623190).
+        "Home-State-Receipt.json",
+        "MOAI-CLI.JSON",
+        "x.TMP-WRITE",
     ] {
+        // One HOME per name: on a case-insensitive file system two variants are one file.
+        let (_d, home) = go_home();
         write(&home, &format!(".moai/{name}"), "USER FILE\n");
-    }
-    let p = plan(&home);
-    let cands = p["copy"]["candidates"].as_array().unwrap();
-    for name in [
-        "home-state-receipt.json",
-        "home-state-receipt.tmp-write",
-        "moai-cli.tmp-write",
-    ] {
-        let c = cands
+        let p = plan(&home);
+        if p["action"] == json!("blocked") {
+            // `MOAI-CLI.JSON` on a case-insensitive file system is the Rust marker itself: the
+            // folder reads as not purely Go, the preview is blocked, and apply writes nothing.
+            assert_eq!(name, "MOAI-CLI.JSON", "{p}");
+            let before = tree(&home);
+            let a = apply(
+                &home,
+                p["plan_digest"].as_str().unwrap(),
+                "approved",
+                &[name],
+            );
+            assert!(a.to_string().contains("not `migrate`"), "{a}");
+            assert_eq!(tree(&home), before);
+            continue;
+        }
+        let c = p["copy"]["candidates"]
+            .as_array()
+            .unwrap()
             .iter()
             .find(|c| c["name"] == json!(name))
+            .cloned()
             .unwrap_or_else(|| panic!("{name}"));
         assert_eq!(c["kind"], json!("reserved"), "{name}");
         let before = tree(&home);
