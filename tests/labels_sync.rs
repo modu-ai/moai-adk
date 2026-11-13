@@ -283,7 +283,11 @@ fn a_failed_write_reports_what_was_applied_and_a_rerun_does_the_rest() {
     // It stops at the failed write: names it and its status, and sends nothing after it.
     assert!(err.contains("at priority:P0 (HTTP 422)"), "{err}");
     assert!(err.contains("created [\"type:feature\"]"), "{err}");
-    assert_eq!(t.sent.borrow().len(), 3, "no request after the failed write");
+    assert_eq!(
+        t.sent.borrow().len(),
+        3,
+        "no request after the failed write"
+    );
     // The rerun plans only what is still missing.
     let plan = plan_with(
         &root,
