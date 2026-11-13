@@ -17,7 +17,7 @@ use tempfile::TempDir;
 const API: &str = "https://api.github.com/repos/o/r";
 /// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
 /// gate's body check the binary's own).
-const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+const PASS_BODY: &str = "Refs #2200\nMoai-Claim: 9#555\n\n## Self-Audit\n\n\
 - mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
 - clone: check set from a fresh clone, not the /tmp symlink path\n\
 - host: api.github.com exercised via fake gh executable, no network\n\
@@ -66,7 +66,11 @@ fn repo(overlap: bool) -> (TempDir, String, String) {
         "base",
     );
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
-    let b = commit(d, &[("src/a.rs", "one\n2\n3\n4\n5\n6\n7\n")], "pr");
+    let b = commit(
+        d,
+        &[("src/a.rs", "one\n2\n3\n4\n5\n6\n7\n")],
+        "pr\n\nMoai-Claim: 9#555",
+    );
     git_ok(d, &["checkout", "-q", "main"]);
     if overlap {
         commit(d, &[("src/a.rs", "1\n2\n3\n4\n5\n6\nseven\n")], "tip");
@@ -130,6 +134,10 @@ fn reads(dir: &TempDir, head: &str, cs: &Value) -> Vec<Exchange> {
                 format!("{API}/commits/{head}/check-runs?per_page=100"),
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
+            response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
         },
         tip_ci(dir, json!([{"name": "ci", "conclusion": "success"}])),
     ]
@@ -358,7 +366,7 @@ fn a_red_tip_stops_the_loop_without_any_write() {
             json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
         )];
         ex.extend(reads(&dir, &b, &cs));
-        ex[4] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
+        ex[5] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
         let t = RecordedTransport::new(ex);
         let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
         let row = &out["pull_requests"][0];

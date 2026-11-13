@@ -18,7 +18,7 @@ use tempfile::TempDir;
 const API: &str = "https://api.github.com/repos/o/r";
 /// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
 /// gate's body check the binary's own).
-const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+const PASS_BODY: &str = "Refs #2200\nMoai-Claim: 9#555\n\n## Self-Audit\n\n\
 - mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
 - clone: check set from a fresh clone, not the /tmp symlink path\n\
 - host: api.github.com exercised via fake gh executable, no network\n\
@@ -70,7 +70,7 @@ fn repo(pr_files: &[(&str, &str)], tip_files: &[(&str, &str)]) -> Repo {
         "base",
     );
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
-    let b = commit(d, pr_files, "pr");
+    let b = commit(d, pr_files, "pr\n\nMoai-Claim: 9#555");
     git_ok(d, &["checkout", "-q", "main"]);
     let c = commit(d, tip_files, "tip");
     Repo { _dir: dir, a, b, c }
@@ -113,6 +113,7 @@ fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> Recorde
                 {"name": "windows-build", "conclusion": "skipped"}
             ]})),
         },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
         tip_runs(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ])
 }
@@ -256,6 +257,7 @@ fn comment_pages_are_followed() {
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
         tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &t).unwrap();
@@ -367,7 +369,7 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     let d = r._dir.path();
     // The PR got a second commit after the verdict; the verdict's base is the first PR head.
     git_ok(d, &["checkout", "-q", "pr"]);
-    let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2");
+    let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2\n\nMoai-Claim: 9#555");
     git_ok(d, &["checkout", "-q", "main"]);
     let t = exchanges(&b2, &r.c, vec![claim(&b2), verdict(&b2, &r.b)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
@@ -403,6 +405,7 @@ fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> Recorded
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
     ];
     ex.extend(tips);
     RecordedTransport::new(ex)
@@ -454,8 +457,8 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     assert_eq!(t.remaining(), 0);
     assert_eq!(
         t.sent.borrow().len(),
-        4,
-        "the earlier tip commit is not read"
+        5,
+        "PR, comments, checks, claim, tip: the earlier tip commit is not read"
     );
     let ci = s.tip_ci.clone().unwrap();
     assert_eq!(
@@ -913,7 +916,8 @@ fn three_reads(r: &Repo) -> Vec<Exchange> {
 /// 21 stop the collection before any claim read.
 #[test]
 fn twenty_claims_are_read_and_twenty_one_are_refused() {
-    let ids: Vec<u64> = (1..=20).map(|i| 1000 + i).collect();
+    // The fixture's first PR commit names claim 555, so 19 more make 20.
+    let ids: Vec<u64> = (1..=19).map(|i| 1000 + i).collect();
     let r = repo_with_claim_ids(&ids);
     let mut ex = three_reads(&r);
     // `git log` lists the newest commit first, so the claims are read in reverse order.
@@ -923,6 +927,7 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
             &format!("moai-claim: session=agent-{i} epoch=1"),
         ));
     }
+    ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=1"));
     ex.push(tip_runs(
         &r.c,
         json!([{"name": "ci", "conclusion": "success"}]),
@@ -932,7 +937,7 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
     assert_eq!(s.pr_authors.as_ref().unwrap().len(), 20);
     assert_eq!(t.remaining(), 0);
 
-    let ids: Vec<u64> = (1..=21).map(|i| 1000 + i).collect();
+    let ids: Vec<u64> = (1..=20).map(|i| 1000 + i).collect();
     let r = repo_with_claim_ids(&ids);
     let t = RecordedTransport::new(three_reads(&r));
     let err = collect(&target(&r), &t).unwrap_err();
@@ -955,4 +960,62 @@ fn one_claim_named_by_several_commits_is_read_once() {
     assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
     assert_eq!(t.remaining(), 0);
     assert_eq!(t.sent.borrow().len(), 5, "three reads, one claim, the tip");
+}
+
+/// Audit 6864692054 B1: G10 and G11 carry over `flow-gate-verdict`'s claim-line checks. A PR
+/// commit with no `Moai-Claim` trailer is listed (a claim line followed by another paragraph is
+/// not a trailer); a merge commit is a record and is not; the body's claim line is read.
+#[test]
+fn commits_without_a_claim_trailer_and_the_body_claim_are_collected() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    let bare = commit(d, &[("src/c.rs", "c\n")], "no claim");
+    let buried = commit(
+        d,
+        &[("src/d.rs", "d\n")],
+        "claim not in the trailer block\n\nMoai-Claim: 9#555\n\nsigned off below",
+    );
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge main",
+            "main",
+        ],
+    );
+    let head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    let t = exchanges(
+        &head,
+        &r.c,
+        vec![claim(&head), verdict(&head, &r.a)],
+        &PASS_BODY.replace("Moai-Claim: 9#555\n", ""),
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let mut missing = s.commits_without_claim.clone().unwrap();
+    missing.sort();
+    let mut want = vec![bare, buried];
+    want.sort();
+    assert_eq!(
+        missing, want,
+        "the merge commit and the claimed commit are not listed"
+    );
+    assert!(!s.body_claim);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G10");
+
+    // The same PR with the two commits repaired: only the body is left, and G11 stops it.
+    let mut fixed = s.clone();
+    fixed.commits_without_claim = Some(vec![]);
+    assert_eq!(gate::check(&fixed).unwrap_err().rule, "G11");
+    fixed.body_claim = true;
+    assert!(gate::check(&fixed).is_ok(), "{:?}", gate::check(&fixed));
 }

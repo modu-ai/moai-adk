@@ -30,6 +30,18 @@ use std::path::{Path, PathBuf};
 pub const BACKUP_NAME: &str = ".moai-backup";
 /// The Go user-asset manifest is a list of files with hashes; larger is not one.
 const USER_ASSETS_LIMIT: u64 = 16 * 1024 * 1024;
+/// Top-level entries that hold a Go marker; never copied into the Rust folder.
+const GO_MARKER_ENTRIES: &[&str] = &["user-assets.json", "state"];
+/// Names the apply writes into the Rust `~/.moai`: the receipt, the marker and their temporary
+/// files. A Go entry with such a name is never copied (it would be replaced, #2783 audit B1).
+/// Compared without case: on a case-insensitive file system (the macOS default)
+/// `Home-State-Receipt.json` is the same file the receipt is written to (re-audit 6864623190).
+fn is_reserved(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name == "home-state-receipt.json"
+        || name == crate::state_root::RUST_MARKER.to_ascii_lowercase()
+        || name.ends_with(".tmp-write")
+}
 /// Top-level entries listed as copy candidates; more are counted, not listed.
 const CANDIDATE_LIMIT: usize = 500;
 
@@ -232,6 +244,14 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             if is_secret(n) {
                 json!({"name": n, "kind": "secret", "selected": false,
                        "note": "holds secrets; move it by hand if you need it"})
+            } else if is_reserved(n) {
+                // The tool writes these names into the Rust folder (#2783 audit B1).
+                json!({"name": n, "kind": "reserved", "selected": false,
+                       "note": "the tool writes this name in the new folder; it stays in the backup"})
+            } else if GO_MARKER_ENTRIES.contains(&n.as_str()) {
+                // Copied into the Rust folder it would make the verdict `mixed`.
+                json!({"name": n, "kind": "generation_marker", "selected": false,
+                       "note": "marks the Go generation; it stays in the backup"})
             } else {
                 json!({"name": n, "kind": "entry", "selected": false})
             }
@@ -277,6 +297,287 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "plan_digest": plan_digest,
         "apply": "not yet: the apply is the next step of #2723; on a real HOME it runs only after the user confirms",
         "writes": false,
+    }))
+}
+
+// ---- apply and revert (#2723) ----
+//
+// The apply acts only on an identical fresh preview whose action is `migrate`, with a
+// permission reference and the user's copy selection. It renames `~/.moai` to the planned
+// backup (refusing when that name exists right before), creates the Rust `~/.moai`, copies
+// only the selected entries (plain files and folders; a link or special file refuses the
+// whole apply before the rename), writes the receipt, and writes the Rust marker last
+// (atomically), so a stop in the middle never looks finished. A failure after the rename puts
+// the partial Rust folder aside as `~/.moai.partial-<UTC>` and the Go folder back. Nothing is
+// deleted. The revert moves the Rust `~/.moai` aside to `~/.moai.rust-<UTC>` and the backup
+// named in its receipt back to `~/.moai`.
+
+/// The receipt inside the Rust `~/.moai`.
+pub const RECEIPT: &str = "home-state-receipt.json";
+/// Entries a copy may hold before it refuses (the copy is a convenience, not a full sync).
+const COPY_ENTRY_LIMIT: u64 = 100_000;
+
+/// Plain files and folders only, no links or special files, bounded; `Err` names the problem.
+fn check_copyable(path: &Path, seen: &mut u64) -> Result<(), String> {
+    *seen += 1;
+    if *seen > COPY_ENTRY_LIMIT {
+        return Err(format!(
+            "the selection holds more than {COPY_ENTRY_LIMIT} entries; copy it by hand"
+        ));
+    }
+    let m = fs::symlink_metadata(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if m.is_dir() {
+        for e in fs::read_dir(path).map_err(|e| format!("{}: {e}", path.display()))? {
+            let e = e.map_err(|e| format!("{}: {e}", path.display()))?;
+            check_copyable(&e.path(), seen)?;
+        }
+        Ok(())
+    } else if m.is_file() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{} is a link or a special file; it is never copied",
+            path.display()
+        ))
+    }
+}
+
+fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
+    let m = fs::symlink_metadata(from).map_err(|e| format!("{}: {e}", from.display()))?;
+    if m.is_dir() {
+        fs::create_dir(to).map_err(|e| format!("{}: {e}", to.display()))?;
+        for e in fs::read_dir(from).map_err(|e| format!("{}: {e}", from.display()))? {
+            let e = e.map_err(|e| format!("{}: {e}", from.display()))?;
+            copy_tree(&e.path(), &to.join(e.file_name()))?;
+        }
+        Ok(())
+    } else if m.is_file() {
+        fs::copy(from, to)
+            .map(|_| ())
+            .map_err(|e| format!("{}: {e}", to.display()))
+    } else {
+        Err(format!("{} is not a plain file or folder", from.display()))
+    }
+}
+
+fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    let tmp = path.with_extension("tmp-write");
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .map_err(|e| format!("{}: {e}", tmp.display()))?;
+    f.write_all(bytes)
+        .and_then(|()| f.sync_all())
+        .map_err(|e| format!("{}: {e}", tmp.display()))?;
+    fs::rename(&tmp, path).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Move the Go `~/.moai` aside and create the Rust one (see the section comment).
+pub fn apply(
+    home: &Path,
+    moai_home: Option<&str>,
+    now: &str,
+    plan_digest: &str,
+    permission_reference: &str,
+    copy: &[String],
+) -> Result<Value, String> {
+    if !crate::contract::permission_reference_ok(permission_reference) {
+        return Err("permission reference required".into());
+    }
+    let fresh = plan(home, moai_home, now)?;
+    if fresh["plan_digest"].as_str() != Some(plan_digest) {
+        return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
+    }
+    if fresh["action"] != "migrate" {
+        return Err(format!(
+            "the preview's action is `{}`, not `migrate`; nothing was written",
+            fresh["action"].as_str().unwrap_or("?")
+        ));
+    }
+    let moai = home.join(MOAI_DIR);
+    let candidates = fresh["copy"]["candidates"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let mut seen = 0u64;
+    let mut picked: Vec<String> = Vec::new();
+    for name in copy {
+        let c = candidates
+            .iter()
+            .find(|c| c["name"] == json!(name))
+            .ok_or_else(|| {
+                format!("`{name}` is not a copy candidate of the preview; nothing was written")
+            })?;
+        match c["kind"].as_str() {
+            Some("entry") => {}
+            Some("secret") => {
+                return Err(format!(
+                "`{name}` holds secrets and is never copied; move it by hand. Nothing was written"
+            ))
+            }
+            Some("reserved") => {
+                return Err(format!(
+                    "`{name}` is a name the tool writes in the new folder; it stays in the backup. Nothing was written"
+                ))
+            }
+            _ => {
+                return Err(format!(
+                    "`{name}` marks the Go generation and stays in the backup; nothing was written"
+                ))
+            }
+        }
+        if !picked.contains(name) {
+            check_copyable(&moai.join(name), &mut seen)
+                .map_err(|e| format!("{e}; nothing was written"))?;
+            picked.push(name.clone());
+        }
+    }
+    let backup = PathBuf::from(
+        fresh["backup"]
+            .as_str()
+            .ok_or("no backup name; nothing was written")?,
+    );
+    if exists(&backup) {
+        return Err(format!(
+            "{} appeared after the preview; nothing was written",
+            backup.display()
+        ));
+    }
+    fs::rename(&moai, &backup).map_err(|e| {
+        format!(
+            "moving {} aside failed: {e}; nothing was written",
+            moai.display()
+        )
+    })?;
+
+    let stamp = stamp(now)?;
+    let finish = || -> Result<(), String> {
+        fs::create_dir(&moai).map_err(|e| format!("{}: {e}", moai.display()))?;
+        for name in &picked {
+            copy_tree(&backup.join(name), &moai.join(name))?;
+        }
+        let receipt = json!({
+            "schema_version": 1,
+            "home": home.display().to_string(),
+            "backup": backup.display().to_string(),
+            "copied": picked,
+            "created_at": now,
+            "plan_digest": plan_digest,
+            "permission_reference": permission_reference,
+        });
+        write_new(&moai.join(RECEIPT), format!("{receipt:#}\n").as_bytes())?;
+        let marker = json!({
+            "schema_version": crate::state_root::MARKER_SCHEMA,
+            "generation": "moai-cli",
+            "created_at": now,
+            "go_backup": backup.file_name().map(|n| n.to_string_lossy().into_owned()),
+        });
+        write_new(
+            &moai.join(crate::state_root::RUST_MARKER),
+            format!("{marker}\n").as_bytes(),
+        )
+    };
+    if let Err(e) = finish() {
+        // Put things back without deleting anything.
+        let aside = home.join(format!("{MOAI_DIR}.partial-{stamp}"));
+        let mut back = Vec::new();
+        if exists(&moai) {
+            back.push(match fs::rename(&moai, &aside) {
+                Ok(()) => format!("the partial Rust folder is at {}", aside.display()),
+                Err(e2) => format!("moving the partial Rust folder aside failed: {e2}"),
+            });
+        }
+        if !exists(&moai) {
+            back.push(match fs::rename(&backup, &moai) {
+                Ok(()) => format!("{} is back", moai.display()),
+                Err(e2) => format!(
+                    "putting the Go folder back failed: {e2}; it is at {}",
+                    backup.display()
+                ),
+            });
+        }
+        return Err(format!("apply failed: {e}; {}", back.join("; ")));
+    }
+    Ok(json!({
+        "schema_version": 1,
+        "state": "applied",
+        "home": home.display().to_string(),
+        "backup": backup.display().to_string(),
+        "copied": picked,
+        "receipt": moai.join(RECEIPT).display().to_string(),
+        "revert": "home-state-revert with the same --home and a permission reference",
+        "rerun": "home-state-plan again: the verdict is `rust` and the action `none`",
+    }))
+}
+
+/// Put the Go `~/.moai` back: the Rust folder named by a valid receipt and marker moves
+/// aside to `~/.moai.rust-<UTC>`, the receipt's backup moves to `~/.moai`. Deletes nothing.
+pub fn revert(home: &Path, now: &str, permission_reference: &str) -> Result<Value, String> {
+    if !crate::contract::permission_reference_ok(permission_reference) {
+        return Err("permission reference required".into());
+    }
+    if !home.is_absolute() {
+        return Err("HOME is not an absolute path".into());
+    }
+    let stamp = stamp(now)?;
+    let c = classify_with(home, home_go_markers);
+    if c.generation != "rust" {
+        return Err(format!(
+            "~/.moai is `{}`, not the Rust folder an apply made; nothing was moved",
+            c.generation
+        ));
+    }
+    let moai = home.join(MOAI_DIR);
+    let receipt: Value = read_limited(&moai, &[RECEIPT], 1024 * 1024)
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .ok_or("no readable home-state receipt in ~/.moai; nothing was moved")?;
+    let backup = PathBuf::from(
+        receipt["backup"]
+            .as_str()
+            .ok_or("the receipt names no backup; nothing was moved")?,
+    );
+    if backup.parent() != Some(home)
+        || !backup
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.starts_with(BACKUP_NAME))
+    {
+        return Err("the receipt's backup is not a `.moai-backup*` folder beside ~/.moai; nothing was moved".into());
+    }
+    match fs::symlink_metadata(&backup) {
+        Ok(m) if m.is_dir() => {}
+        _ => {
+            return Err(format!(
+                "{} is not a folder; nothing was moved",
+                backup.display()
+            ))
+        }
+    }
+    let aside = home.join(format!("{MOAI_DIR}.rust-{stamp}"));
+    if exists(&aside) {
+        return Err(format!("{} exists; nothing was moved", aside.display()));
+    }
+    fs::rename(&moai, &aside)
+        .map_err(|e| format!("moving the Rust folder aside failed: {e}; nothing was moved"))?;
+    if let Err(e) = fs::rename(&backup, &moai) {
+        let undo = fs::rename(&aside, &moai);
+        return Err(format!(
+            "putting the Go folder back failed: {e}; the Rust folder {}",
+            if undo.is_ok() {
+                "is back in place"
+            } else {
+                "stays at its aside name"
+            }
+        ));
+    }
+    Ok(json!({
+        "schema_version": 1,
+        "state": "reverted",
+        "home": home.display().to_string(),
+        "rust_folder": aside.display().to_string(),
+        "restored_from": backup.display().to_string(),
     }))
 }
 

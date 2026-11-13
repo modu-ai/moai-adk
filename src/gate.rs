@@ -64,6 +64,15 @@ pub struct Snapshot {
     /// tip lets through.
     #[serde(default)]
     pub tip_repair: bool,
+    /// The PR's own commits (merge base to head, merges skipped) with no `Moai-Claim` trailer
+    /// (G10, the `commit_claim_lines` check `flow-gate-verdict` made). Absent means unknown,
+    /// and the gate stops.
+    #[serde(default)]
+    pub commits_without_claim: Option<Vec<String>>,
+    /// Whether the PR body carries a `Moai-Claim: ` line (G11, the `pr_body_claim` check
+    /// `flow-gate-verdict` made). Absent means no.
+    #[serde(default)]
+    pub body_claim: bool,
 }
 
 /// The tip's push CI for G8: `state` is `green`, `flaky` or `red` from the last completed CI
@@ -86,7 +95,8 @@ pub struct TipCi {
 const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 
 /// A stop: the rule id (G1…G8 of Issue #2674 comment 6849084101, G8 is #2777; G9 of the
-/// leader scope 6850215811) and why.
+/// leader scope 6850215811; G10 and G11 carry over the claim-line checks of the removed
+/// `flow-gate-verdict`, audit 6864692054 B1) and why.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Stop {
     pub rule: &'static str,
@@ -305,6 +315,45 @@ fn g9(s: &Snapshot) -> Result<(), Stop> {
     }
 }
 
+/// G10 (audit 6864692054 B1, was `flow-gate-verdict` `commit_claim_lines`): every commit of
+/// the PR that is not a merge carries a `Moai-Claim` trailer. A commit without one hides its
+/// author from G9. Unknown stops the gate rather than passes it.
+fn g10(s: &Snapshot) -> Result<(), Stop> {
+    let stop = |reason: String| Stop {
+        rule: "G10",
+        reason,
+    };
+    let missing = s
+        .commits_without_claim
+        .as_ref()
+        .ok_or_else(|| stop("the PR's commits were not checked for a claim trailer".into()))?;
+    if missing.is_empty() {
+        return Ok(());
+    }
+    let short: Vec<&str> = missing
+        .iter()
+        .map(|c| c.get(..10).unwrap_or(c.as_str()))
+        .collect();
+    Err(stop(format!(
+        "{} commit(s) of this PR carry no `Moai-Claim` trailer: {}",
+        missing.len(),
+        short.join(", ")
+    )))
+}
+
+/// G11 (audit 6864692054 B1, was `flow-gate-verdict` `pr_body_claim`): the PR body carries a
+/// `Moai-Claim: ` line.
+fn g11(s: &Snapshot) -> Result<(), Stop> {
+    if s.body_claim {
+        Ok(())
+    } else {
+        Err(Stop {
+            rule: "G11",
+            reason: "the PR body carries no `Moai-Claim: ` line".into(),
+        })
+    }
+}
+
 /// G3: a FAIL on the current head blocks unless every FAIL there and the later last PASS
 /// come from the same auditor (it reversed itself).
 fn g3(s: &Snapshot) -> Result<(), Stop> {
@@ -430,7 +479,7 @@ fn g7(s: &Snapshot) -> Result<(), Stop> {
 /// G8 (#2665, #2777): a red tip stops every PR but its repair. The tip's state comes from its
 /// last completed push CI; `unknown` (nothing read, or no completed CI) stops every PR,
 /// a repair included — the gate stops rather than guesses. `flaky` (a re-run turned a failure
-/// green on the same commit) is not a stop, as in `flow-gate-verdict`.
+/// green on the same commit) is not a stop, as [`crate::flow::tip_ci_judgment`] decides.
 fn g8(s: &Snapshot) -> Result<(), Stop> {
     let stop = |reason: String| Stop { rule: "G8", reason };
     let Some(ci) = &s.tip_ci else {
@@ -476,6 +525,7 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
     let base = g1(s)?;
     g2(s)?;
     g9(s)?;
+    g10(s)?;
     g3(s)?;
     if !s.body_check_ok {
         return Err(Stop {
@@ -483,6 +533,7 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
             reason: "the PR body Self-Audit checker did not pass".into(),
         });
     }
+    g11(s)?;
     g5(s)?;
     let overlap = g6(s)?;
     g7(s)?;
