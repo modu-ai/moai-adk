@@ -185,11 +185,30 @@ fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
     repo: &str,
     sha: &str,
 ) -> Result<Vec<Value>> {
+    fetch_runs(client, owner, repo, sha, false)
+}
+
+/// The check runs of `sha`. With `all_attempts` (#2665, the tip watch) the list keeps
+/// every attempt (`filter=all`; GitHub's default is the latest only), so a failure that
+/// a re-run turned green stays visible, and a non-200 page is an error, not an empty
+/// list.
+fn fetch_runs<T: Transport, C: crate::forge::policy::Clock>(
+    client: &Client<'_, T, C>,
+    owner: &str,
+    repo: &str,
+    sha: &str,
+    all_attempts: bool,
+) -> Result<Vec<Value>> {
     let mut out = Vec::new();
+    let query = if all_attempts {
+        "filter=all&per_page=100"
+    } else {
+        "per_page=100"
+    };
     let mut url = Some(api(
         owner,
         repo,
-        &format!("commits/{sha}/check-runs?per_page=100"),
+        &format!("commits/{sha}/check-runs?{query}"),
     ));
     let mut pages = 0;
     while let Some(u) = url {
@@ -198,6 +217,9 @@ fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
             return Err("flow check runs page limit exceeded (10)".to_string());
         }
         let resp = client.get(&u, None)?;
+        if all_attempts && resp.status != 200 {
+            return Err(format!("check runs returned HTTP {}", resp.status));
+        }
         let arr = resp
             .body
             .as_ref()
@@ -260,6 +282,78 @@ fn required_ci_judgment(runs: &[Value], required: &[String]) -> (bool, String) {
         }
     }
     (true, format!("{}: success", required.join(", ")))
+}
+
+/// A PR that repairs a red tip says so with a body line starting `moai-tip-repair:`.
+pub const TIP_REPAIR_MARKER: &str = "moai-tip-repair:";
+
+fn is_tip_repair(body: &str) -> bool {
+    body.lines()
+        .any(|l| l.trim_start().starts_with(TIP_REPAIR_MARKER))
+}
+
+/// The run id in a check run's `details_url` (`…/actions/runs/<id>/job/<job>`).
+fn run_id(run: &Value) -> Option<u64> {
+    let url = run["details_url"].as_str()?;
+    let rest = url.split("/runs/").nth(1)?;
+    rest.split('/').next()?.parse().ok()
+}
+
+/// #2665: the tip's own CI, per required check over every attempt on the tip SHA.
+/// `green` all success; `red` a failed attempt and no success and none running;
+/// `flaky` failure and success on the same SHA (a re-run turned it green — not a stop);
+/// `pending` running or not started yet (push CI can start late — not a stop). The
+/// worst state across required checks wins: red, then pending, flaky, green.
+fn tip_ci_judgment(runs: &[Value], required: &[String]) -> Value {
+    let failed_conclusion = |c: &str| {
+        matches!(
+            c,
+            "failure" | "timed_out" | "cancelled" | "startup_failure" | "action_required"
+        )
+    };
+    let (mut failed, mut flaky, mut pending) = (Vec::new(), Vec::new(), false);
+    for name in required {
+        let mine: Vec<&Value> = runs
+            .iter()
+            .filter(|r| {
+                r["name"]
+                    .as_str()
+                    .is_some_and(|actual| check_name_matches(name, actual))
+            })
+            .collect();
+        let conclusion = |r: &Value| r["conclusion"].as_str().unwrap_or_default().to_string();
+        let success = mine.iter().any(|r| conclusion(r) == "success");
+        let running = mine.iter().any(|r| conclusion(r).is_empty());
+        let fails: Vec<&&Value> = mine
+            .iter()
+            .filter(|r| failed_conclusion(&conclusion(r)))
+            .collect();
+        if mine.is_empty() || (running && !success) {
+            pending = true;
+        } else if !fails.is_empty() && success {
+            flaky.push(name.clone());
+        } else if !fails.is_empty() {
+            for r in fails {
+                failed.push(json!({
+                    "check": r["name"],
+                    "conclusion": conclusion(r),
+                    "run_id": run_id(r),
+                    "url": r["details_url"],
+                    "title": r["output"]["title"],
+                }));
+            }
+        }
+    }
+    let state = if !failed.is_empty() {
+        "red"
+    } else if pending {
+        "pending"
+    } else if !flaky.is_empty() {
+        "flaky"
+    } else {
+        "green"
+    };
+    json!({"state": state, "failed": failed, "flaky": flaky})
 }
 
 // ---- WIP cap (assignment-refusal signal; the refusal itself is the leader's act) ----
@@ -338,7 +432,8 @@ pub struct GateCheck {
 /// tip containment (behind_by 0 — a diverged branch fails even with ahead_by > 0),
 /// files changed since the audited head (advisory count), claim lines on lane-authored
 /// non-merge commits, the PR body claim line, the required check runs' conclusions
-/// (#2335: the combined commit status is not consulted), and a head re-read.
+/// (#2335: the combined commit status is not consulted), a head re-read, and the tip's
+/// own CI (#2665: a red tip passes only a tip-repair PR).
 pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
@@ -436,7 +531,49 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
         detail: format!("head {head} re-read"),
     };
 
-    let all = [checks0, checks1, checks2, checks3, checks4, checks5];
+    // #2665: a red tip stops every merge but its repair. The tip is the integration
+    // branch's own push CI; reading it failed is `unknown`, never a pass.
+    let repair = is_tip_repair(&body);
+    let mut tip_ci = match fetch_runs(client, owner, repo, &tip, true) {
+        Ok(runs) => tip_ci_judgment(&runs, required_checks),
+        Err(e) => json!({"state": "unknown", "failed": [], "flaky": [], "error": e}),
+    };
+    tip_ci["repair"] = json!(repair);
+    let tip_state = tip_ci["state"].as_str().unwrap_or("unknown").to_string();
+    let checks6 = GateCheck {
+        check: "tip_ci",
+        pass: match tip_state.as_str() {
+            "red" => repair,
+            "unknown" => false,
+            _ => true,
+        },
+        detail: match tip_state.as_str() {
+            "red" => format!(
+                "tip {tip} is red ({}); only a PR with a `{TIP_REPAIR_MARKER}` line passes{}",
+                tip_ci["failed"]
+                    .as_array()
+                    .unwrap_or(&Vec::new())
+                    .iter()
+                    .map(|f| format!(
+                        "{} run {}",
+                        f["check"].as_str().unwrap_or("?"),
+                        f["run_id"].as_u64().map_or("?".into(), |n| n.to_string())
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                if repair { " — this PR is one" } else { "" }
+            ),
+            "unknown" => format!(
+                "tip {tip} CI unreadable: {}",
+                tip_ci["error"].as_str().unwrap_or("")
+            ),
+            other => format!("tip {tip} CI {other}"),
+        },
+    };
+
+    let all = [
+        checks0, checks1, checks2, checks3, checks4, checks5, checks6,
+    ];
     let pass = all.iter().all(|c| c.pass);
     let verdict = if pass { "ok" } else { "blocked" };
     let reasons: Vec<String> = all
@@ -450,6 +587,7 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
         "head": head,
         "audit_head": audit_head,
         "tip": tip,
+        "tip_ci": tip_ci,
         "changed_since_audit": changed_since_audit,
         "changed_files": changed_files,
         "checks": all.iter().map(|c| json!({
