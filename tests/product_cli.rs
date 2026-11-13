@@ -2955,6 +2955,11 @@ mod skill_package {
             // #2639: read before asking, three or four at a time, the five common axes, a
             // file preview before approval, and hand edits never overwritten on a re-run.
             "Read before you ask (Issue #2639)",
+            // #2706: the writing language is asked once, stored in project.yaml only, and read.
+            "ask it item by item with `moai-cli language-setup <project>`",
+            "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
+            "A later run reads the stored value and does not ask again",
+            "written in the stored `instruction_files` language",
             "is confirmed with the user, not asked",
             "three or four questions at a time and at most three rounds, one axis per question",
             "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
@@ -2966,7 +2971,8 @@ mod skill_package {
             "an unanswered axis is never written as a rule",
             // #2639 project agents: from the answers, never a base name, host files only.
             "**Offer project agents (Issue #2639).**",
-            "never starts with `moai-`, the prefix of the base agents",
+            "its `role_id` is `prj-<name>` for the project's own job",
+            "a project agent never shadows a user-layer `moai-*` agent",
             "for any other host, say that none is written",
             "apply with `generation-apply` only after the user agrees",
             "planned `unchanged` while the answers stay the same, and `conflict` once they change too",
@@ -3951,9 +3957,9 @@ fn generation_native_roles_render_official_shapes() {
     let root = generation_project();
     let mut request = generation_request("none");
     request["native_roles"] = json!([
-        {"role_id": "fixer", "host": "claude", "purpose": "Fix lint and test failures",
+        {"role_id": "prj-fixer", "host": "claude", "purpose": "Fix lint and test failures",
          "tools": ["Bash", "Edit"]},
-        {"role_id": "watcher", "host": "codex", "purpose": "Review diffs only",
+        {"role_id": "prj-watcher", "host": "codex", "purpose": "Review diffs only",
          "read_only_intent": true}
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
@@ -3962,15 +3968,16 @@ fn generation_native_roles_render_official_shapes() {
         .as_str()
         .contains("cannot create a sandbox"));
     ok_result(&generation_apply_cli(&root, &plan));
-    let claude_role =
-        String::from_utf8_lossy(&fs::read(root.path().join(".claude/agents/fixer.md")).unwrap())
-            .into_owned();
-    assert!(claude_role.contains("name: fixer"));
+    let claude_role = String::from_utf8_lossy(
+        &fs::read(root.path().join(".claude/agents/prj-fixer.md")).unwrap(),
+    )
+    .into_owned();
+    assert!(claude_role.contains("name: prj-fixer"));
     assert!(claude_role.contains("description: Fix lint and test failures"));
     assert!(claude_role.contains("tools: Bash, Edit"));
-    let codex_role_bytes = fs::read(root.path().join(".codex/agents/watcher.toml")).unwrap();
+    let codex_role_bytes = fs::read(root.path().join(".codex/agents/prj-watcher.toml")).unwrap();
     let codex_role = String::from_utf8_lossy(&codex_role_bytes).into_owned();
-    assert!(codex_role.contains("name = \"watcher\""));
+    assert!(codex_role.contains("name = \"prj-watcher\""));
     assert!(codex_role.contains("developer_instructions = \"Review diffs only\""));
     assert!(!codex_role.contains("sandbox_mode"));
     assert!(!codex_role.contains("approval_policy"));
@@ -3986,13 +3993,13 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let mut request = generation_request("none");
     let purpose = "Run `cargo test --locked` and report the first failing test";
     request["native_roles"] = json!([
-        {"role_id": "demo-tester", "host": "claude", "purpose": purpose},
-        {"role_id": "demo-tester", "host": "codex", "purpose": purpose}
+        {"role_id": "prj-demo-tester", "host": "claude", "purpose": purpose},
+        {"role_id": "prj-demo-tester", "host": "codex", "purpose": purpose}
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
-    let claude = root.path().join(".claude/agents/demo-tester.md");
-    let codex = root.path().join(".codex/agents/demo-tester.toml");
+    let claude = root.path().join(".claude/agents/prj-demo-tester.md");
+    let codex = root.path().join(".codex/agents/prj-demo-tester.toml");
     assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
     assert!(fs::read_to_string(&codex)
         .unwrap()
@@ -4000,18 +4007,18 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
 
     let again = ok_result(&generation_plan_cli(&root, &request));
     for (path, action) in actions_of(&again) {
-        if path.ends_with("demo-tester.md") || path.ends_with("demo-tester.toml") {
+        if path.ends_with("prj-demo-tester.md") || path.ends_with("prj-demo-tester.toml") {
             assert_eq!(action, "unchanged", "{path}");
         }
     }
 
-    let edited = "---\nname: demo-tester\ndescription: mine\n---\n\nmine\n";
+    let edited = "---\nname: prj-demo-tester\ndescription: mine\n---\n\nmine\n";
     fs::write(&claude, edited).unwrap();
     // Only the user changed it: the plan keeps the edit and applying writes nothing over it.
     let kept = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&kept)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/demo-tester.md" && a == "unchanged"));
+        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "unchanged"));
     ok_result(&generation_apply_cli(&root, &kept));
     assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
     // The answers changed too: both sides moved, so it is a conflict and nothing is written.
@@ -4019,7 +4026,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let after_edit = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&after_edit)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/demo-tester.md" && a == "conflict"));
+        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "conflict"));
     let out = generation_apply_cli(&root, &after_edit);
     assert!(!out.status.success());
     let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -4032,6 +4039,22 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
         json!([{"role_id": "moai-impl", "host": "claude", "purpose": "Shadow a base agent"}]);
     assert!(!generation_plan_cli(&fresh, &base).status.success());
     assert!(!fresh.path().join(".claude/agents").exists());
+    // #2706: only `prj-<name>` is a project role name; the bare prefix and an unprefixed
+    // name are refused, the shortest prefixed name is accepted.
+    for (id, ok) in [
+        ("prj-x", true),
+        ("prj-", false),
+        ("tester", false),
+        ("xprj-x", false),
+    ] {
+        base["native_roles"] =
+            json!([{"role_id": id, "host": "claude", "purpose": "A project role"}]);
+        assert_eq!(
+            generation_plan_cli(&fresh, &base).status.success(),
+            ok,
+            "{id}"
+        );
+    }
 }
 
 #[test]
@@ -4137,7 +4160,7 @@ fn generation_rejects_frontmatter_delimiter_injection() {
         let root = generation_project();
         let mut request = generation_request("none");
         request["native_roles"] = json!([
-            {"role_id": "injected", "host": "claude", "purpose": purpose}
+            {"role_id": "prj-injected", "host": "claude", "purpose": purpose}
         ]);
         let out = generation_plan_cli(&root, &request);
         assert!(!out.status.success(), "{purpose}");
@@ -4216,7 +4239,7 @@ fn generation_manifest_entries_carry_kind() {
     let root = generation_project();
     let mut request = generation_request("none");
     request["native_roles"] = json!([
-        {"role_id": "fixer", "host": "claude", "purpose": "Fix lint and test failures"}
+        {"role_id": "prj-fixer", "host": "claude", "purpose": "Fix lint and test failures"}
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
@@ -4239,7 +4262,7 @@ fn generation_manifest_entries_carry_kind() {
     assert_eq!(by_kind("native-role").len(), 1);
     assert_eq!(
         by_kind("native-role")[0]["path"],
-        json!(".claude/agents/fixer.md")
+        json!(".claude/agents/prj-fixer.md")
     );
     // The agents-owned entries stay kind-less: their section_id already carries the
     // managed section they belong to.
