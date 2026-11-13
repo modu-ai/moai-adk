@@ -77,13 +77,14 @@ fn the_output_styles_and_their_licenses_are_kept_in_templates() {
 /// Whether `path` still holds something of the removed adapter. A checkout that once ran the
 /// old Python tests keeps the ignored `__pycache__/*.pyc` files, and git never deletes ignored
 /// files, so a folder holding only those counts as removed (#2718 audit N1). A symlink, a file
-/// or any other content counts as present.
+/// or any other content counts as present — a `.pyc` outside `__pycache__` too: Python imports
+/// such a sourceless file from its old location (pre-audit 6857452324 B1).
 fn still_present(path: &Path) -> bool {
     let Ok(m) = fs::symlink_metadata(path) else {
         return false;
     };
     if !m.is_dir() {
-        return !(m.is_file() && path.extension().is_some_and(|x| x == "pyc"));
+        return true;
     }
     let Ok(entries) = fs::read_dir(path) else {
         return true;
@@ -141,6 +142,42 @@ fn only_leftover_python_caches_count_as_removed() {
     let file = tmp.path().join("experiments_plan.py");
     fs::write(&file, b"x").unwrap();
     assert!(still_present(&file), "a removed file that is back counts");
+}
+
+/// Pre-audit 6857452324 B1: only a plain `.pyc` file directly inside a real `__pycache__`
+/// folder is ignored. A sourceless `.pyc` beside the sources is importable code, and a link in
+/// place of a cache file or of the cache folder is not a cache Python wrote.
+#[cfg(unix)]
+#[test]
+fn a_compiled_file_counts_as_removed_only_inside_a_real_cache_folder() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("adapters/claude");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("install.pyc"), b"x").unwrap();
+    assert!(
+        still_present(&dir),
+        "a sourceless .pyc outside __pycache__ counts"
+    );
+    fs::remove_file(dir.join("install.pyc")).unwrap();
+
+    let real = tmp.path().join("real.pyc");
+    fs::write(&real, b"x").unwrap();
+    fs::create_dir_all(dir.join("__pycache__")).unwrap();
+    std::os::unix::fs::symlink(&real, dir.join("__pycache__/install.cpython-313.pyc")).unwrap();
+    assert!(
+        still_present(&dir),
+        "a link in place of a cache file counts"
+    );
+    fs::remove_dir_all(dir.join("__pycache__")).unwrap();
+
+    let elsewhere = tmp.path().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::write(elsewhere.join("install.cpython-313.pyc"), b"x").unwrap();
+    std::os::unix::fs::symlink(&elsewhere, dir.join("__pycache__")).unwrap();
+    assert!(
+        still_present(&dir),
+        "a link in place of the cache folder counts"
+    );
 }
 
 #[test]

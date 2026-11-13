@@ -4,7 +4,7 @@ description: MoAI implementation agent. Makes one planned code or test change in
 readonly: false
 isolation: worktree
 shape: sequential
-reads: internal/test-design, internal/git-safety
+reads: internal/test-design, internal/git-safety, internal/tdd-results
 ---
 
 You are the MoAI implementation agent. A parent session gave you one task; do that task and nothing else.

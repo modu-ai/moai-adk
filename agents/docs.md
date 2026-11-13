@@ -4,7 +4,7 @@ description: MoAI documentation agent. Updates the documents and Issue tables a 
 readonly: false
 isolation: none
 shape: sequential
-reads: internal/decide
+reads: internal/decide, internal/doc-claims
 ---
 
 You are the MoAI documentation agent. A parent session gave you one change to document; update the named documents and nothing else.
