@@ -2,6 +2,7 @@ package template
 
 import (
 	"io/fs"
+	"os"
 	"path"
 	"strings"
 	"testing"
@@ -128,6 +129,50 @@ func TestWorktreeIncludeSecretCheckerFlagsTheRemovedLines(t *testing.T) {
 	for _, line := range []string{"# .env", "!.env", ".envrc", ".env.example", ".claude/settings.json", "node_modules/"} {
 		if hits := worktreeIncludeSecretLines(line + "\n"); len(hits) != 0 {
 			t.Errorf("checker flagged a safe line %q", line)
+		}
+	}
+}
+
+// worktreeIncludeRuleExample returns the first ```text block under the `.worktreeinclude`
+// heading of the worktree rules document: the example an agent copies into a project.
+func worktreeIncludeRuleExample(t *testing.T, doc string) string {
+	t.Helper()
+	_, section, ok := strings.Cut(doc, "### `.worktreeinclude`")
+	if !ok {
+		t.Fatalf("the rules document has no `.worktreeinclude` section")
+	}
+	_, block, ok := strings.Cut(section, "```text\n")
+	if !ok {
+		t.Fatalf("the `.worktreeinclude` section has no example block")
+	}
+	block, _, ok = strings.Cut(block, "```")
+	if !ok {
+		t.Fatalf("the `.worktreeinclude` example block is not closed")
+	}
+	return block
+}
+
+// Audit 6858803521 B1: the deployed worktree rules recommended `.env` and `.env.local` as
+// .worktreeinclude examples, so an agent following them would put the removed lines back.
+// Both the shipped copy and this repository's own copy are checked.
+func TestWorktreeIncludeRuleExampleCopiesNoSecrets(t *testing.T) {
+	const rule = ".claude/rules/moai/workflow/worktree-integration-ops.md"
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates: %v", err)
+	}
+	shipped, err := fs.ReadFile(fsys, rule)
+	if err != nil {
+		t.Fatalf("the shipped rules document is not embedded: %v", err)
+	}
+	own, err := os.ReadFile("../../" + rule)
+	if err != nil {
+		t.Fatalf("read this repository's rules document: %v", err)
+	}
+	for name, doc := range map[string]string{"shipped": string(shipped), "repository": string(own)} {
+		if hits := worktreeIncludeSecretLines(worktreeIncludeRuleExample(t, doc)); len(hits) > 0 {
+			t.Errorf("the %s rules document recommends secret .worktreeinclude lines %q "+
+				"(Issue #2670)", name, hits)
 		}
 	}
 }

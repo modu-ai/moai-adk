@@ -312,13 +312,13 @@ The empty value — the shipped default — means take no action on both paths, 
 
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
 
-A native worktree is a fresh checkout, so untracked files (`.env`, `.env.local`, local config) are not present. Add a `.worktreeinclude` file at the project root to copy them automatically when Claude creates a worktree. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
+A native worktree is a fresh checkout, so gitignored files (local config, build caches) are not present. Add a `.worktreeinclude` file at the project root to copy the ones a worktree needs when Claude creates it. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
 
 ```text
-.env
-.env.local
 .moai/config/sections/*.local.yaml
 ```
+
+Do not list secrets — `.env` files, `.claude/settings.local.json` (in GLM mode the session-start hook writes `ANTHROPIC_AUTH_TOKEN` into it), private keys, credentials: every new worktree, including each subagent's, would get its own copy of them (Issue #2670). When a worktree needs one of these, create it in that worktree by hand.
 
 Applies to `claude --worktree`, subagent `isolation: worktree` worktrees, and desktop parallel sessions. NOT processed when a custom `WorktreeCreate` hook replaces the default git behavior — copy local files inside the hook script instead.
 
