@@ -366,6 +366,41 @@ fn a_linked_host_folder_is_a_conflict_and_nothing_is_written_outside() {
     }
 }
 
+/// AUDIT #2778 nit (6862464116): the skill file itself replaced by a link to an outside file is
+/// a conflict too — both when the answers change (an update) and when the skill is no longer
+/// requested (a remove) — and the outside file keeps its bytes.
+#[cfg(unix)]
+#[test]
+fn a_skill_file_that_became_a_link_is_a_conflict_for_update_and_remove() {
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(checks())))));
+    let outside = TempDir::new().unwrap();
+    let target = outside.path().join("SKILL.md");
+    fs::rename(r.join(CODEX), &target).unwrap();
+    let original = fs::read(&target).unwrap();
+    std::os::unix::fs::symlink(&target, r.join(CODEX)).unwrap();
+
+    let mut changed = answers();
+    changed[0] = decision("test_command", "cargo nextest run", "user");
+    write_profile(r, changed);
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, CODEX).as_deref(), Some("conflict"), "{p}");
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(fs::read(&target).unwrap(), original);
+
+    let p = result(&plan(r, &request(json!([]))));
+    assert_eq!(action(&p, CODEX).as_deref(), Some("conflict"), "{p}");
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(fs::read(&target).unwrap(), original);
+    assert!(r
+        .join(CODEX)
+        .symlink_metadata()
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}
+
 /// Pre-audit 6854178087 N2: a purpose with `: ` keeps the frontmatter one valid value.
 #[test]
 fn a_purpose_with_a_colon_is_quoted_in_the_frontmatter() {
