@@ -1,5 +1,6 @@
 //! Issue #2054: `baseline-inventory` reads PROJECT even when the caller's environment points
 //! git at another repository (`GIT_DIR`, `GIT_WORK_TREE`, injected config).
+mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
@@ -31,7 +32,7 @@ fn repo(dir: &Path, name: &str) -> String {
 }
 
 fn inventory(project: &Path, env: &[(&str, &Path)]) -> (std::process::Output, Value) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.arg("baseline-inventory").arg(project);
     for (k, v) in env {
         cmd.env(k, v);

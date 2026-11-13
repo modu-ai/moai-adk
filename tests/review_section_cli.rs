@@ -3,6 +3,7 @@
 //! a profile without answers plans no REVIEW.md, a re-run never overwrites a hand edit, and an
 //! answer carrying marker syntax is refused.
 
+mod common;
 use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
@@ -11,7 +12,7 @@ use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

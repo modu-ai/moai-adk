@@ -1,5 +1,6 @@
 //! Issue #2072: `apply-recover` that fails part way must say what it already reverted.
 //! The receipts here are written by hand so one backup can be missing on purpose.
+mod common;
 use serde_json::{json, Value};
 use std::{fs, path::Path, process::Command};
 use tempfile::TempDir;
@@ -9,7 +10,7 @@ fn digest(bytes: &[u8]) -> String {
 }
 
 fn recover(root: &Path, id: &str) -> (bool, Value) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args([
             "apply-recover",
             root.to_str().unwrap(),

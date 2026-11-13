@@ -17,7 +17,7 @@ fn profile(pin: Option<String>) -> Value {
     v
 }
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -996,7 +996,7 @@ fn legacy_manifest_with_personal_file_in_owned_files_is_still_read() {
 }
 
 fn session(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    Command::new(crate::common::MOAI_BIN)
         .arg("session")
         .args(args)
         .output()
@@ -1065,7 +1065,7 @@ fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
         .status()
         .unwrap()
         .success());
-    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
         .current_dir(project.path())
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
@@ -1430,7 +1430,7 @@ fn baseline_fixture() -> (TempDir, String) {
     (root, commit)
 }
 fn baseline(root: &TempDir, extra: &[&str]) -> (std::process::Output, Value) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .arg("baseline-inventory")
         .arg(root.path())
         .args(extra)
@@ -1681,7 +1681,7 @@ struct FixtureRun {
 impl FixtureRun {
     /// Runs one case and compares (or rewrites) its golden file. Returns parsed stdout.
     fn case(&mut self, name: &str, args: &[&str], stdin: &[u8]) -> Value {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let mut child = Command::new(crate::common::MOAI_BIN)
             .args(args)
             .env("HOME", self.home.path())
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -2561,7 +2561,7 @@ mod skill_package {
         // The generator itself still enforces the rule: a keep-set entry without
         // a reason is refused, and excluded numbers leave the condition.
         let run = |input: &str| {
-            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            let mut out = std::process::Command::new(crate::common::MOAI_BIN)
                 .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
@@ -2595,7 +2595,7 @@ mod skill_package {
     #[test]
     fn goal_block_stdin_limit_is_one_mib_exactly() {
         let run = |input: &[u8]| {
-            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            let mut out = std::process::Command::new(crate::common::MOAI_BIN)
                 .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
@@ -3203,7 +3203,7 @@ fn ident_env(
     path_env: Option<&str>,
     envs: &[(&str, &str)],
 ) -> (std::process::Output, Value) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.arg("identity")
         .arg(path)
         .env("HOME", home)
@@ -3548,7 +3548,7 @@ fn doctor(
     bin: &TempDir,
 ) -> (std::process::Output, Value) {
     let path = format!("{}:/usr/bin:/bin", bin.path().display());
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .arg("claude-doctor")
         .arg(project)
         .env("HOME", home)
@@ -3682,7 +3682,7 @@ fn claude_doctor_cleans_groups_without_trusting_path_kill() {
         let project = TempDir::new().unwrap();
         write_file(project.path(), "AGENTS.md", b"# rules\n");
         let started = std::time::Instant::now();
-        let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let out = Command::new(crate::common::MOAI_BIN)
             .args(["claude-doctor", project.path().to_str().unwrap()])
             .env("HOME", home.path())
             .env("PATH", bin.path())

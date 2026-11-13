@@ -87,7 +87,7 @@ fn render(f: &Fixture) -> (String, Duration) {
     })
     .to_string();
     let started = Instant::now();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["statusline", "--render-budget-ms", "3600000"])
         .current_dir(&f.repo)
         .clean_env()

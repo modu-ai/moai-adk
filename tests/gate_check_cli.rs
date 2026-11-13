@@ -18,7 +18,7 @@ fn doc() -> String {
 }
 
 fn gate(snapshot: &Value) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("gate-check")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

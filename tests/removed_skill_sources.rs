@@ -15,7 +15,7 @@ const REMOVED: [&str; 3] = [
 ];
 
 fn run(home: &Path, project: &Path, args: &[&str]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut command = Command::new(crate::common::MOAI_BIN);
     command
         .clean_env()
         .env("HOME", home)

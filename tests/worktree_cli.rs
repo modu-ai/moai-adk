@@ -4,6 +4,7 @@
 //! No `gh` is run: `pr-body-render` only renders text (real GitHub writes: not_run).
 //! The file is new per the lane dispatch; the AC commands name `product_cli`, these tests
 //! carry the same function names in `worktree_cli`.
+mod common;
 use moai_cli::forge::outbox::parse_op_markers;
 use moai_cli::pr_link::closing_keywords;
 use serde_json::{json, Value};
@@ -111,7 +112,7 @@ fn seed_journal(repo: &Path, records: &[Value]) {
 }
 
 fn run(cwd: &Path, args: &[String]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd.join("home"))

@@ -17,13 +17,14 @@
 //! seam; the goldens are recorded and checked with the same value. Both seams are the harness's
 //! own default `--argv` (`DEFAULT_ARGV`), so a direct `--check` or `--write` uses them too.
 
+mod common;
 #[cfg(unix)]
 #[test]
 fn statusline_matches_every_claude_golden() {
     let root = env!("CARGO_MANIFEST_DIR");
     let out = std::process::Command::new("python3")
         .args(["-I", "tools/statusline_golden.py", "--bin"])
-        .arg(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg(crate::common::MOAI_BIN)
         .arg("--check")
         .current_dir(root)
         .env("PYTHONDONTWRITEBYTECODE", "1")

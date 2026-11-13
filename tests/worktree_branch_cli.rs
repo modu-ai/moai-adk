@@ -1,6 +1,7 @@
 //! #2131: the worktree identity records the branch checked out at claim time
 //! (`WorktreeId.branch`, the #2130 additive field). Each test builds its own repository in a
 //! temporary directory; no network, no `gh`, and the developer's repository is never touched.
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -70,7 +71,7 @@ fn record(base: &str) -> Value {
 }
 
 fn run(cwd: &Path, args: &[&str]) -> Value {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd.join("home"))

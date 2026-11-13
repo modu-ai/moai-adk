@@ -2,6 +2,7 @@
 //! and sorts every test that failed in the first: passed later (flaky), failed again (still
 //! failing), or absent. Per job; the panic location and the line after it travel along.
 
+mod common;
 use serde_json::{json, Value};
 use std::fs;
 use std::process::Command;
@@ -36,7 +37,7 @@ fn classify(first: &str, later: &str, job: Option<&str>) -> Value {
     if let Some(j) = job {
         args.extend(["--job".into(), j.into()]);
     }
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(&args)
         .output()
         .unwrap();
@@ -169,7 +170,7 @@ fn lines_that_are_not_status_lines_are_ignored() {
 
 #[test]
 fn a_missing_or_oversized_log_is_refused() {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args([
             "flake-classify",
             "--failed",

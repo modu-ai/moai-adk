@@ -79,7 +79,7 @@ fn seed(f: &Fixture, records: &[Value]) {
 }
 
 fn scope_check(f: &Fixture, extra: &[&str]) -> Value {
-    let output = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let output = Command::new(crate::common::MOAI_BIN)
         .arg("scope-check")
         .arg(&f.root)
         .args(["--task", MINE])

@@ -2,12 +2,13 @@
 //! read or written here: every case passes `--home <tempdir>`.
 #![cfg(unix)]
 
+mod common;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 const NOW: &str = "2026-11-13T18:05:09Z";
 
 fn write(root: &Path, rel: &str, body: &str) {

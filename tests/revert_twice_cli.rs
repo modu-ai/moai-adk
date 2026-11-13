@@ -11,7 +11,7 @@ use std::{
     process::Command,
 };
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const PERM: &str = "fixture-approved";
 
 fn call(args: &[&str]) -> (i32, Value) {

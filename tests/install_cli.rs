@@ -29,7 +29,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 // Both fixtures are exec'd by install-inspect, so they are written by a child process (#2283).
 fn cli_copy(dest: &Path) {
@@ -315,10 +315,12 @@ fn install_receipt_self_match_and_stale() {
         result["self"]["current_exe"],
         json!(plan.receipt.binary_path)
     );
+    // The running binary's own name (`moai` since #2792 R4): cargo links `moai` and
+    // `moai-cli` separately, so the two are not byte-identical and `moai` keeps its own path.
     assert!(result["self"]["current_exe"]
         .as_str()
         .unwrap()
-        .ends_with("moai-cli"));
+        .ends_with(exe.file_name().unwrap().to_str().unwrap()));
     assert_eq!(result["installations"].as_array().unwrap().len(), 1);
     assert_eq!(result["installations"][0]["match_state"], json!("self"));
     assert_eq!(result["path_resolution"]["moai"]["found"], json!(true));

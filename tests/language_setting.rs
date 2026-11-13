@@ -3,6 +3,7 @@
 //! `project-plan`/`project-apply` (AC-2) and the AGENTS.md managed section rendered from the
 //! setting through `agents-*` and `generation-*` (AC-3).
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -12,7 +13,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const PROFILE: &str = ".moai-cli/project.yaml";
 
 fn project(language: Option<Value>) -> TempDir {

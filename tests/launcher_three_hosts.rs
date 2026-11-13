@@ -56,7 +56,7 @@ impl Fixture {
     }
 
     fn run(&self, args: &[String]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        Command::new(crate::common::MOAI_BIN)
             .args(args)
             .current_dir(self.project.path())
             .env(

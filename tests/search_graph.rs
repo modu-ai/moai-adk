@@ -36,7 +36,7 @@ fn git(root: &Path, args: &[&str]) {
 }
 
 fn run(root: &Path, op: &str, input: &Value) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg(op)
         .arg(root)
         .stdin(Stdio::piped())

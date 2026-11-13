@@ -13,6 +13,7 @@
 
 #![cfg(unix)]
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -24,7 +25,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const ROOTS: [(&str, &str); 2] = [
     ("claude", ".claude/skills/moai"),
     ("codex", ".agents/skills/moai"),

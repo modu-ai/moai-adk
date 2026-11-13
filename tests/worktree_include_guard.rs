@@ -27,7 +27,7 @@ fn files(dir: &Path, out: &mut Vec<PathBuf>) {
 fn the_update_workflow_reports_the_warning_and_never_edits_the_file() {
     let text = fs::read_to_string(Path::new(ROOT).join("skills/moai/workflows/update.md")).unwrap();
     for line in [
-        "run the read-only `moai-cli go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`",
+        "run the read-only `moai go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`",
         "selects secret files such as `.env`",
         "copy them into every new worktree",
         "`moai-impl` and `moai-audit`",

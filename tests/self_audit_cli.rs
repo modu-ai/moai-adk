@@ -2,6 +2,7 @@
 //! asks a user project to run `tools/check_pr_self_audit.py`, which only this repository has.
 //! Its rules are checked case by case against the Python tool by the three
 //! `tests/check_pr_*_test.py` files (`tests/self_audit_parity.py`).
+mod common;
 use std::{fs, path::Path, process::Command};
 
 fn skill_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
@@ -129,7 +130,7 @@ fn the_shipped_skill_runs_no_repository_python_tool() {
 
 fn run(args: &[&str], body: &str) -> (i32, String) {
     use std::io::Write;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("pr-self-audit-check")
         .args(args)
         .stdin(std::process::Stdio::piped())

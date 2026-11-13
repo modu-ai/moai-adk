@@ -59,7 +59,7 @@ fn fixture() -> Fixture {
 }
 
 fn command(f: &Fixture, dir: &Path, args: &[&str]) -> Command {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
         .current_dir(dir)
         .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))

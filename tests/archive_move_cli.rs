@@ -28,7 +28,7 @@ fn git(dir: &Path, args: &[&str]) {
 }
 
 fn cli(args: &[&str]) -> (i32, Value) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .output()
         .unwrap();

@@ -1,5 +1,6 @@
 //! #2497: the MODE-AGENT and MODE-LEADER workflows as testable step lists, and every
 //! `moai <op> [--flag]` they name checked against the built binary's `--help`.
+mod common;
 use std::{fs, path::Path, process::Command};
 
 fn workflow(name: &str) -> String {
@@ -116,7 +117,7 @@ fn cli_spans(text: &str) -> Vec<(String, Vec<String>)> {
 }
 
 fn help(args: &[&str]) -> String {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .arg("--help")
         .output()

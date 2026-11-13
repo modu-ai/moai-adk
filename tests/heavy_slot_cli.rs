@@ -17,7 +17,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const HANG: Duration = Duration::from_secs(120);
 
 /// A spawned wrapper in a process group of its own. Whatever happens to the test — a failed

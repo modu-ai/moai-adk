@@ -272,7 +272,7 @@ fn forge_read(
     gh: &std::path::Path,
     input: &str,
 ) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("forge-read")
         .arg(project)
         .env("MOAI_FORGE_GH_BIN", gh)

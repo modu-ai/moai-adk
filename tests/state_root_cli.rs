@@ -1,6 +1,7 @@
 //! #2725 S2b: where the project state is written follows `state_root` — `.moai/` once its
 //! marker says this generation owns it, otherwise the earlier `.moai-cli/` (decision D7:
 //! both are read, one writes). Synthetic projects in temporary folders only.
+mod common;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -18,7 +19,7 @@ fn profile() -> Value {
 }
 
 fn cli(args: &[&str], input: &Value) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

@@ -4,6 +4,7 @@
 //! `index-query`, and the query is compared with the case's `expected`. A second test
 //! perturbs each runnable case's expectation and requires the judge to reject it, so a
 //! judge that accepts anything cannot pass.
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -48,7 +49,7 @@ fn git(dir: &Path, args: &[&str]) {
 }
 
 fn cli_output(dir: &Path, op: &str) -> Output {
-    let mut child = with_env(Command::new(env!("CARGO_BIN_EXE_moai-cli")), dir)
+    let mut child = with_env(Command::new(crate::common::MOAI_BIN), dir)
         .args([op, "."])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

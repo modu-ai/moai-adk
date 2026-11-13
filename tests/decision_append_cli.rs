@@ -53,7 +53,7 @@ fn standard_log() -> String {
 }
 
 fn run(dir: &Path, extra: &[&str], request: &Value) -> (i32, Value) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("decision-append")
         .arg(dir)
         .args(["--log", LOG])
@@ -365,7 +365,7 @@ fn log_paths_outside_the_repository_or_untracked_are_refused() {
         ("docs/missing.md", "not tracked"),
     ];
     for &(path, needle) in cases.iter().chain(symlink_case) {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        let mut child = Command::new(crate::common::MOAI_BIN)
             .arg("decision-append")
             .arg(tmp.path())
             .args(["--log", path])

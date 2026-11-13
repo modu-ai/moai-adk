@@ -100,7 +100,7 @@ fn clean_obs(f: &Fixture) -> Value {
 fn run(f: &Fixture, lane: &str, obs: Option<Value>) -> Value {
     let home = f.tmp.path().join("home");
     fs::create_dir_all(&home).unwrap();
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", &home)
@@ -411,7 +411,7 @@ fn a_bare_repositorys_first_worktree_is_not_a_primary_checkout() {
         json!({"schema_version": 1, "session_cwd": {"source": "fixture", "path": wt}}).to_string(),
     )
     .unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", &home)

@@ -1,10 +1,11 @@
 //! #2592 Codex parity: `skills-legacy HOME` lists the Go generation's `moai-*` skills beside
 //! `moai` in a temporary HOME and changes nothing.
+mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
 fn run(home: &Path) -> Value {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(["skills-legacy", &home.to_string_lossy()])
         .env("HOME", home)
         .output()
@@ -154,7 +155,7 @@ fn a_fifo_skill_md_is_reported_and_never_read() {
     fs::create_dir_all(&dir).unwrap();
     let fifo = std::ffi::CString::new(dir.join("SKILL.md").to_string_lossy().as_bytes()).unwrap();
     assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["skills-legacy", &h.to_string_lossy()])
         .env("HOME", h)
         .stdout(std::process::Stdio::piped())

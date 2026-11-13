@@ -17,7 +17,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:2696";
 
 fn skill(rel: &str) -> String {

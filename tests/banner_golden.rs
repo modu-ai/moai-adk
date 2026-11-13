@@ -4,6 +4,7 @@
 //! `UPDATE_GOLDEN=1` convention); without it the rendered bytes must equal the
 //! committed fixtures exactly.
 
+mod common;
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -89,7 +90,7 @@ fn root_help_shape_mirrors_go() {
 
 #[test]
 fn piped_bare_run_prints_no_banner_and_keeps_the_usage_contract() {
-    let child = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let child = std::process::Command::new(crate::common::MOAI_BIN)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

@@ -164,7 +164,7 @@ fn claim_guard_ignores_an_inherited_git_dir() {
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                        "tool_input": {"command": "git commit -m work"}, "cwd": lane})
     .to_string();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["claim-verify", ".", "--hook"])
         .current_dir(&lane)
         // The refusal comes before any GitHub read, so no `gh` stub is needed.

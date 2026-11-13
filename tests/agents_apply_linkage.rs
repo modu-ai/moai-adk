@@ -5,6 +5,7 @@
 //! `interview_revision`) belong to the last generation apply; re-applying only the
 //! AGENTS.md machinery must not reset them to null.
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -13,7 +14,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const MANIFEST: &str = ".moai-cli/manifests/generation.json";
 
 fn generation_project() -> TempDir {
