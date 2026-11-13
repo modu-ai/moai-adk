@@ -797,9 +797,16 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
 1. Model, effort/thinking, cache hit, Claude/MoAI versions, elapsed time and output style.
-2. Optional session name, two spaces, then `CTX`, available `5H`, and available `Week`
-   bars. Missing rate windows are hidden; reset times are not printed. Context handoff
-   warnings and the existing usage calculation are retained.
+2. `CTX`, available `5H`, and available `Week` bars, then the optional session name as
+   the last segment, ` | 🏷️ <name>` (user request 2026-11-13, #2697; with no bars the
+   name stands alone, with no name there is no tail). Missing rate windows are hidden;
+   reset times are not printed. Context handoff warnings and the existing usage
+   calculation are retained. The renderer shortens nothing: Claude Code sets `COLUMNS`
+   for the status line command, but the renderer does not read it. When the line is
+   wider than the status bar, the host documentation leaves open whether it is cut or
+   wraps ("may get truncated or wrap awkwardly",
+   https://code.claude.com/docs/en/statusline, read 2026-11-13). The name is last so
+   that, if the host cuts the line, the name is lost before any bar.
 3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
    arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
 
