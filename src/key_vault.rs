@@ -770,7 +770,7 @@ pub fn remove(home: &Path, scope: &Scope, provider: &str, confirmed: bool) -> Re
 
 /// The legacy GLM key files under HOME, in the launcher's order (#2359). Read only; the
 /// import never changes, renames or removes them (Q7: after the Go tool is gone, #2383).
-pub const LEGACY_GLM_FILES: [&str; 2] = [".moai/.env.glm", ".moai-cli/.env.glm"];
+pub const LEGACY_GLM_FILES: [&str; 2] = [".moai/.env.glm", crate::fixed_state!(".env.glm")];
 /// Names a legacy key file may use for the token.
 pub const LEGACY_KEY_NAMES: [&str; 2] = ["ANTHROPIC_AUTH_TOKEN", "GLM_API_KEY"];
 

@@ -215,8 +215,10 @@ fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
 }
 
 /// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) —
-/// `moai-research` reads the two adapters #2636 added; every entry is a file of the package and
-/// every rendered agent opens with the generated line that names exactly those files.
+/// `moai-research` reads the two adapters #2636 added, and the five Go-generation references
+/// #2582 adopted (leader confirmation 6856677422) go to `moai-impl`, `moai-audit` and
+/// `moai-docs`; every entry is a file of the package and every rendered agent opens with the
+/// generated line that names exactly those files.
 #[test]
 fn reads_lists_match_the_design_and_render_on_every_host() {
     let defs = package_agents(&agents(), &package()).unwrap();
@@ -236,13 +238,26 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     assert_eq!(reads("moai-research"), ["adapters/aside", "adapters/orca"]);
     assert_eq!(
         reads("moai-impl"),
-        ["internal/test-design", "internal/git-safety"]
+        [
+            "internal/test-design",
+            "internal/git-safety",
+            "internal/tdd-results"
+        ]
     );
     assert_eq!(
         reads("moai-audit"),
-        ["internal/review", "internal/test-design"]
+        [
+            "internal/review",
+            "internal/test-design",
+            "internal/check-completeness",
+            "internal/boundary-checks",
+            "internal/security-checklist"
+        ]
     );
-    assert_eq!(reads("moai-docs"), ["internal/decide"]);
+    assert_eq!(
+        reads("moai-docs"),
+        ["internal/decide", "internal/doc-claims"]
+    );
     for d in &defs {
         for entry in &d.reads {
             assert!(
@@ -299,7 +314,19 @@ fn a_reads_entry_without_its_file_is_refused() {
 /// when to read it, and every one of them read by some agent or by a chain.
 #[test]
 fn internal_references_say_when_to_read_them() {
-    let names = ["review", "decide", "interview", "test-design", "git-safety"];
+    let names = [
+        "review",
+        "decide",
+        "interview",
+        "test-design",
+        "git-safety",
+        // #2582: adopted from the Go generation (leader confirmation 6856677422).
+        "tdd-results",
+        "check-completeness",
+        "boundary-checks",
+        "doc-claims",
+        "security-checklist",
+    ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())

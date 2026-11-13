@@ -20,7 +20,11 @@ use std::{
 type Result<T> = std::result::Result<T, String>;
 
 /// Lane worktrees nest inside the primary checkout; they are not part of its state.
-const EXCLUDED_PREFIXES: [&str; 3] = [".claude/worktrees/", ".moai-cli/worktrees/", ".worktrees/"];
+const EXCLUDED_PREFIXES: [&str; 3] = [
+    ".claude/worktrees/",
+    crate::fixed_state!("worktrees/"),
+    ".worktrees/",
+];
 const HOME_ENTRIES: [&str; 3] = [".claude", ".moai", ".agents"];
 const TEMPLATE_PREFIX: &str = "internal/template/templates/";
 
