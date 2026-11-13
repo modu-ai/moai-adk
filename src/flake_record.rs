@@ -31,6 +31,8 @@ pub struct Flaky {
     pub job: String,
     pub test: String,
     pub message: Option<String>,
+    /// The head the job ran on, from the result's `first_heads` (flaky means both runs had it).
+    pub head: Option<String>,
 }
 
 /// The `flaky` rows of a `flake-classify` result (bare, or inside its `{"result": …}` envelope).
@@ -52,6 +54,10 @@ pub fn flaky_rows(classified: &Value) -> Result<Vec<Flaky>> {
                     .ok_or("a flaky row has no usable test name")?
                     .to_string(),
                 message: r["message"].as_str().map(String::from),
+                head: r["job"]
+                    .as_str()
+                    .and_then(|j| c["first_heads"][j].as_str())
+                    .map(String::from),
             })
         })
         .collect()
@@ -92,9 +98,10 @@ fn first_line_is(text: Option<&str>, marker: &str) -> bool {
 fn entry(f: &Flaky, run: u64, run_url: &str) -> String {
     let message = f.message.as_deref().unwrap_or("(no panic line in the log)");
     format!(
-        "{}\n- run: {run_url} (run {run})\n- job: `{}`\n- message: `{}`",
+        "{}\n- run: {run_url} (run {run})\n- job: `{}`\n- head: `{}`\n- message: `{}`",
         run_marker(run, &f.job),
         f.job,
+        f.head.as_deref().unwrap_or("unknown"),
         message.replace('`', "'")
     )
 }

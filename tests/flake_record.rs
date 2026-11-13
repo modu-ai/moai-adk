@@ -17,7 +17,8 @@ fn classified(rows: &[(&str, &str)]) -> Value {
         .iter()
         .map(|(job, test)| json!({"job": job, "test": test, "message": "panicked at tests/x.rs:1:2 boom"}))
         .collect();
-    json!({"flaky": flaky, "still_failing": [{"job": MAC, "test": "moai-cli::real fails"}], "not_in_later": []})
+    json!({"flaky": flaky, "still_failing": [{"job": MAC, "test": "moai-cli::real fails"}], "not_in_later": [],
+        "first_heads": {MAC: "1111111111111111111111111111111111111111"}})
 }
 
 fn get(url: String, body: Value) -> Exchange {
@@ -100,6 +101,7 @@ fn a_test_without_an_open_issue_gets_one() {
     assert_eq!(text.lines().next(), Some(test_marker(T1).as_str()));
     assert!(text.lines().any(|l| l == run_marker(RUN, MAC)));
     assert!(text.contains("panicked at tests/x.rs:1:2 boom"));
+    assert!(text.contains("- head: `1111111111111111111111111111111111111111`"));
     assert!(text.contains(&format!("https://github.com/o/r/actions/runs/{RUN}")));
     // Only flaky rows are recorded.
     assert!(!text.contains("moai-cli::real"));
