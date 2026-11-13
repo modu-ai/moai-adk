@@ -9,9 +9,31 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNNER = ROOT / "tools" / "mutate.py"
+CLT = Path("/Library/Developer/CommandLineTools")
+
+
+def developer_dir(environ=None, clt=None):
+    """The developer folder the fixture's children get (#2554 decision 6861785121).
+
+    Like the Rust tests' `CleanEnv` (#2699): the caller's `DEVELOPER_DIR` when it names a
+    folder that exists, otherwise the Command Line Tools folder when it exists, otherwise
+    none. Under the fixture's fresh HOME and TMPDIR, the macOS `cc` and `git` shims
+    otherwise look the toolchain up cold on every call (`xcodebuild` started twice per
+    `ActualCompilerTests` case, #2554 comment 6861520530); Python unittest runs outside
+    cargo, so `.cargo/config.toml` never sets the variable for it.
+    """
+    environ = os.environ if environ is None else environ
+    clt = CLT if clt is None else clt
+    value = environ.get("DEVELOPER_DIR")
+    if value and Path(value).is_dir():
+        return value
+    return str(clt) if clt.is_dir() else None
+
+
 OLD = "pub fn answer() -> u32 { 41 }"
 NEW = "pub fn answer() -> u32 { 42 }"
 
@@ -235,6 +257,9 @@ class MutationCLI(unittest.TestCase):
                         PATH=str(self.bin) + os.pathsep + os.environ.get("PATH", ""),
                         MUTATION_LOG=str(self.log), SENTINEL=str(self.sentinel),
                         CARGO_TARGET_DIR=str(self.source / "target/mutation-cargo"))
+        self.env.pop("DEVELOPER_DIR", None)
+        if (developer := developer_dir()) is not None:
+            self.env["DEVELOPER_DIR"] = developer
         cargo = self.bin / "cargo"
         cargo.write_text("#!" + sys.executable + "\n" + FAKE_CARGO)
         cargo.chmod(0o755)
@@ -610,6 +635,69 @@ class MutationCLI(unittest.TestCase):
         for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY"):
             self.assertNotIn(key, call["git_env"])
         self.assertEqual(call["code"], NEW + "\npub fn other() -> u32 { 9 }\n")
+
+
+class DeveloperDirTest(unittest.TestCase):
+    """#2554 decision 6861785121: the fixture passes a developer folder like `CleanEnv`."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory(prefix="developer-dir-")
+        self.addCleanup(temp.cleanup)
+        self.base = Path(temp.name)
+        self.outer = self.base / "outer"
+        self.outer.mkdir()
+        self.clt = self.base / "clt"
+        self.clt.mkdir()
+
+    def test_an_existing_caller_folder_wins(self):
+        self.assertEqual(developer_dir({"DEVELOPER_DIR": str(self.outer)}, self.clt),
+                         str(self.outer))
+
+    def test_a_missing_caller_folder_falls_back_to_the_command_line_tools(self):
+        gone = str(self.base / "gone")
+        self.assertEqual(developer_dir({"DEVELOPER_DIR": gone}, self.clt), str(self.clt))
+        self.assertEqual(developer_dir({"DEVELOPER_DIR": ""}, self.clt), str(self.clt))
+        self.assertEqual(developer_dir({}, self.clt), str(self.clt))
+
+    def test_no_folder_at_all_passes_none(self):
+        self.assertIsNone(developer_dir({}, self.base / "no-clt"))
+        self.assertIsNone(developer_dir({"DEVELOPER_DIR": str(self.base / "gone")},
+                                        self.base / "no-clt"))
+
+    def test_the_fixture_env_carries_that_folder_and_drops_a_stale_one(self):
+        stale = {"DEVELOPER_DIR": str(self.base / "gone")}
+        with mock.patch.dict(os.environ, stale):
+            case = MutationCLI("test_malformed_json_is_rejected_without_running_cargo")
+            self.addCleanup(case.doCleanups)
+            case.setUp()
+        want = developer_dir(stale)  # the stale value never reaches the children
+        self.assertNotEqual(case.env.get("DEVELOPER_DIR"), stale["DEVELOPER_DIR"])
+        if want is None:
+            self.assertNotIn("DEVELOPER_DIR", case.env)
+        else:
+            self.assertEqual(case.env["DEVELOPER_DIR"], want)
+        # A caller folder that exists is kept. On macOS the git shim really uses it, so it
+        # must be a working developer folder: the selected one, not an empty stand-in.
+        outer = str(self.outer)
+        if sys.platform == "darwin":
+            selected = subprocess.run(["xcode-select", "-p"], capture_output=True, text=True)
+            if selected.returncode != 0 or not Path(selected.stdout.strip()).is_dir():
+                self.skipTest("no selected developer folder")
+            outer = selected.stdout.strip()
+        with mock.patch.dict(os.environ, {"DEVELOPER_DIR": outer}):
+            kept = MutationCLI("test_malformed_json_is_rejected_without_running_cargo")
+            self.addCleanup(kept.doCleanups)
+            kept.setUp()
+        self.assertEqual(kept.env["DEVELOPER_DIR"], outer)
+
+    def test_without_any_folder_a_stale_caller_value_is_dropped(self):
+        stale = {"DEVELOPER_DIR": str(self.base / "gone")}
+        with mock.patch.dict(os.environ, stale), \
+                mock.patch(f"{__name__}.CLT", self.base / "no-clt"):
+            case = MutationCLI("test_malformed_json_is_rejected_without_running_cargo")
+            self.addCleanup(case.doCleanups)
+            case.setUp()
+        self.assertNotIn("DEVELOPER_DIR", case.env)
 
 
 if __name__ == "__main__":
