@@ -2884,6 +2884,9 @@ mod skill_package {
             "sorted the way SKILL.md sorts an open question",
             "each new file with its first lines and each changed file as its difference",
             "a managed part the user edited by hand is planned as `conflict` and never overwritten",
+            // #2639 REVIEW.md draft from the interview answers.
+            "The same plan carries a `REVIEW.md` section when the interview recorded `review_blocks` or `protected`",
+            "an unanswered axis is never written as a rule",
         ] {
             assert!(body.contains(stage), "project.md lacks: {stage}");
         }
