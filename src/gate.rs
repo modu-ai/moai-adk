@@ -136,14 +136,17 @@ pub fn auditor(body: &str) -> Option<String> {
 pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
     // `moai-audit-claim 철회: <lane> (<claim id>)` withdraws that claim (audit N2). A free-text
     // withdrawal is not read, so the claim keeps counting (the gate stops rather than guesses).
-    let withdrawn: Vec<u64> = comments
+    // `(lane, claim id)`: the withdrawal names both, and only a claim whose lane matches is
+    // withdrawn — a mistyped id never removes another lane's claim (audit 6850638994 B2).
+    let withdrawn: Vec<(String, u64)> = comments
         .iter()
         .filter_map(|c| {
             let first = c.body.lines().next()?;
             let rest = first.strip_prefix("moai-audit-claim 철회: ")?;
             let open = rest.find('(')?;
             let close = rest[open..].find(')')? + open;
-            rest[open + 1..close].parse().ok()
+            let lane = rest[..open].trim().to_string();
+            Some((lane, rest[open + 1..close].parse().ok()?))
         })
         .collect();
     let mut out: Vec<_> = comments
@@ -168,7 +171,11 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
             Some((c.id, lane, head))
         })
         .collect();
-    out.retain(|c| !withdrawn.contains(&c.0));
+    out.retain(|c| {
+        !withdrawn
+            .iter()
+            .any(|(lane, id)| *id == c.0 && *lane == c.1)
+    });
     out.sort();
     out
 }
@@ -280,7 +287,11 @@ fn g3(s: &Snapshot) -> Result<(), Stop> {
 /// (`windows-build` may be `skipped` on a pull request: it runs after the merge, U10).
 fn g5(s: &Snapshot) -> Result<(), Stop> {
     let watched = |n: &str| {
-        n == "ci" || n == "rc-ci" || n.starts_with("ci / ") || n.starts_with("windows-build")
+        n == "ci"
+            || n == "rc-ci"
+            || n.starts_with("ci / ")
+            || n.starts_with("rc-ci / ")
+            || n.starts_with("windows-build")
     };
     let mut bad = Vec::new();
     let mut aggregate = false;

@@ -327,3 +327,31 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     s.as_object_mut().unwrap().remove("verdict_base_known");
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
 }
+
+/// Audit 6850638994 B2: a withdrawal removes a claim only when its lane matches that claim's
+/// lane; a mistyped id naming another lane's claim leaves it in place and G2 stops. N5: a
+/// failed `rc-ci / …` job stops G5 like a `ci / …` one.
+#[test]
+fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
+    let mut s = passing();
+    let wrong = json!({"id": 3, "body": "moai-audit-claim 철회: agent-10 (1)\n"});
+    s["comments"] = json!([
+        claim(1, "agent-22", H),
+        claim(2, "agent-10", H),
+        wrong,
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    let right = json!({"id": 3, "body": "moai-audit-claim 철회: agent-22 (1)\n"});
+    s["comments"] = json!([
+        claim(1, "agent-22", H),
+        claim(2, "agent-10", H),
+        right,
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+
+    let mut s = passing();
+    s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "rc-ci / linux-x86_64", "conclusion": "failure"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+}
