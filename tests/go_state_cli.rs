@@ -249,6 +249,45 @@ fn files_settings_still_reference_stay() {
     assert_eq!(action(&p, ".claude/workflows/free.md").0, "move");
 }
 
+/// #2670: the Go generation's `.worktreeinclude` lists `.env` and `.env.*`, so Claude Code
+/// copies them into every new worktree. The preview names each such line and changes nothing;
+/// a safe list or no file gives no warning.
+#[test]
+fn a_worktreeinclude_that_copies_secrets_is_reported_and_left_alone() {
+    let has = |p: &Value, needle: &str| {
+        p["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains(needle))
+    };
+    let fx = Fx::new();
+    fx.write(".env", "PLACEHOLDER=1\n");
+    fx.write(
+        ".worktreeinclude",
+        "# Environment files\n.claude/settings.local.json\n.env\n.env.*\n",
+    );
+    let p = plan(&fx);
+    assert!(
+        has(&p, ".worktreeinclude line 3 `.env` copies secret files"),
+        "{p}"
+    );
+    assert!(
+        has(&p, ".worktreeinclude line 4 `.env.*` copies secret files"),
+        "{p}"
+    );
+    assert!(!has(&p, "line 2"), "{p}");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".worktreeinclude")).unwrap(),
+        "# Environment files\n.claude/settings.local.json\n.env\n.env.*\n",
+        "never edited"
+    );
+    let safe = Fx::new();
+    safe.write(".worktreeinclude", ".claude/settings.local.json\n.envrc\n");
+    assert!(!has(&plan(&safe), ".worktreeinclude"));
+    assert!(!has(&plan(&Fx::new()), ".worktreeinclude"));
+}
+
 #[test]
 fn without_a_valid_manifest_nothing_moves() {
     for body in [
