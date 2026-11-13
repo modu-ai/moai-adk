@@ -38,6 +38,10 @@
       "reference": "../workflows/sync.md",
       "requires_binary": false
     },
+    "OPTIMIZE": {
+      "reference": "../workflows/optimize.md",
+      "requires_binary": true
+    },
     "MODE-LEADER": {
       "reference": "../workflows/mode-leader.md",
       "requires_binary": false
