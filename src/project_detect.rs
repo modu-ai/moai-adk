@@ -396,6 +396,97 @@ pub fn validate(d: &Detected) -> Result<()> {
     Ok(())
 }
 
+/// Build and test command candidates and CI files as facts (#2639), reported beside
+/// `detected`, never inside it, so the profile is unchanged. Each command is a fixed template
+/// chosen by what a root manifest declares — a script body or a value from the project's files
+/// never enters the output — and nothing is run: the interview confirms them with the user.
+fn commands_fact(root: &Path) -> Value {
+    let mut build = BTreeSet::new();
+    let mut test = BTreeSet::new();
+    if is_file_in(root, &["Cargo.toml"]) {
+        build.insert("cargo build".to_string());
+        test.insert("cargo test".to_string());
+    }
+    if let Some(v) =
+        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+    {
+        let pm = [
+            ("pnpm-lock.yaml", "pnpm"),
+            ("yarn.lock", "yarn"),
+            ("bun.lockb", "bun"),
+            ("bun.lock", "bun"),
+        ]
+        .iter()
+        .find(|(lock, _)| is_file_in(root, &[lock]))
+        .map_or("npm", |(_, pm)| pm);
+        if let Some(scripts) = v["scripts"].as_object() {
+            if scripts.contains_key("build") {
+                build.insert(format!("{pm} run build"));
+            }
+            if scripts.contains_key("test") {
+                test.insert(format!("{pm} test"));
+            }
+        }
+    }
+    if is_file_in(root, &["go.mod"]) {
+        build.insert("go build ./...".to_string());
+        test.insert("go test ./...".to_string());
+    }
+    if dependency_names(root).contains("pytest") {
+        test.insert("pytest".to_string());
+    }
+    if let Some(text) = read_in(root, &["Makefile"]) {
+        for target in ["build", "test"] {
+            if text.lines().any(|l| l.starts_with(&format!("{target}:"))) {
+                let set = if target == "build" {
+                    &mut build
+                } else {
+                    &mut test
+                };
+                set.insert(format!("make {target}"));
+            }
+        }
+    }
+    if is_file_in(root, &["pom.xml"]) {
+        build.insert("mvn package".to_string());
+        test.insert("mvn test".to_string());
+    }
+    if is_file_in(root, &["build.gradle"]) || is_file_in(root, &["build.gradle.kts"]) {
+        let gradle = if is_file_in(root, &["gradlew"]) {
+            "./gradlew"
+        } else {
+            "gradle"
+        };
+        build.insert(format!("{gradle} build"));
+        test.insert(format!("{gradle} test"));
+    }
+    json!({
+        "build": build.into_iter().collect::<Vec<_>>(),
+        "test": test.into_iter().collect::<Vec<_>>(),
+        "ci_files": ci_files(root),
+    })
+}
+
+/// Workflow file names under `.github/workflows/`, without following a symbolic link.
+fn ci_files(root: &Path) -> Vec<String> {
+    let real_dir = |p: &Path| fs::symlink_metadata(p).is_ok_and(|m| m.is_dir());
+    let dir = root.join(".github").join("workflows");
+    if !real_dir(&root.join(".github")) || !real_dir(&dir) {
+        return Vec::new();
+    }
+    let names: BTreeSet<String> = fs::read_dir(&dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
+                .filter_map(|e| e.file_name().into_string().ok())
+                .filter(|n| n.ends_with(".yml") || n.ends_with(".yaml"))
+                .collect()
+        })
+        .unwrap_or_default();
+    capped(names)
+}
+
 /// Go-generation project state as a fact (#2561), read only and without following links:
 /// what `.moai` is (`absent`, `folder`, `link` or `other`) and whether a real folder holds a
 /// regular `manifest.json`. Reported beside `detected`, never inside it, so the profile is
@@ -453,6 +544,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         "profile": profile,
         "profile_written": false,
         "go_state": go_state,
+        "commands": commands_fact(root),
         "next_actions": next_actions,
     }))
 }

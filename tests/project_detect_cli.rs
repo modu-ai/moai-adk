@@ -590,3 +590,89 @@ fn a_linked_moai_folder_is_reported_not_followed() {
         "{result}"
     );
 }
+
+/// #2639 (read before asking): build and test command candidates and CI file names are
+/// reported beside `detected` — fixed templates chosen by what the root manifests declare,
+/// never a script body, never run — so the interview confirms them instead of asking.
+#[test]
+fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
+    let empty = TempDir::new().unwrap();
+    assert_eq!(
+        detect(&empty)["commands"],
+        json!({"build": [], "test": [], "ci_files": []})
+    );
+
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "Cargo.toml", "[package]\nname = \"x\"\n");
+    write(
+        r,
+        "package.json",
+        &format!(
+            r#"{{"scripts": {{"test": "echo {TOKEN}", "build": "tsc"}}, "devDependencies": {{}}}}"#
+        ),
+    );
+    write(r, "pnpm-lock.yaml", "");
+    write(r, "go.mod", "module example.com/x\n");
+    write(r, "requirements.txt", "pytest==8.0\n");
+    write(
+        r,
+        "Makefile",
+        "build:\n\techo\ntest:\n\techo\nlint:\n\techo\n",
+    );
+    write(r, "pom.xml", "<project/>");
+    write(r, "build.gradle", "");
+    write(r, "gradlew", "");
+    write(r, ".github/workflows/ci.yml", "on: push\n");
+    write(r, ".github/workflows/release.yaml", "on: push\n");
+    write(r, ".github/workflows/notes.txt", "not a workflow\n");
+    let before = tree(r);
+    let result = detect(&root);
+    assert_eq!(
+        result["commands"],
+        json!({
+            "build": ["./gradlew build", "cargo build", "go build ./...", "make build", "mvn package", "pnpm run build"],
+            "test": ["./gradlew test", "cargo test", "go test ./...", "make test", "mvn test", "pnpm test", "pytest"],
+            "ci_files": ["ci.yml", "release.yaml"],
+        })
+    );
+    // A script body never reaches the output, nothing is written, and the profile is unchanged.
+    assert!(!result.to_string().contains(TOKEN), "{result}");
+    assert_eq!(tree(r), before);
+    assert!(result["detected"].get("commands").is_none());
+
+    // The package manager follows the lock file; without one it is npm, and a package.json
+    // without the script names no command.
+    let npm = TempDir::new().unwrap();
+    write(
+        npm.path(),
+        "package.json",
+        r#"{"scripts": {"test": "jest"}}"#,
+    );
+    assert_eq!(detect(&npm)["commands"]["test"], json!(["npm test"]));
+    let yarn = TempDir::new().unwrap();
+    write(yarn.path(), "package.json", r#"{"scripts": {"lint": "x"}}"#);
+    write(yarn.path(), "yarn.lock", "");
+    assert_eq!(
+        detect(&yarn)["commands"],
+        json!({"build": [], "test": [], "ci_files": []})
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_workflows_folder_is_not_read() {
+    let outside = TempDir::new().unwrap();
+    write(outside.path(), "workflows/leak.yml", "on: push\n");
+    let root = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(outside.path(), root.path().join(".github")).unwrap();
+    assert_eq!(detect(&root)["commands"]["ci_files"], json!([]));
+    let inner = TempDir::new().unwrap();
+    fs::create_dir_all(inner.path().join(".github")).unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("workflows"),
+        inner.path().join(".github/workflows"),
+    )
+    .unwrap();
+    assert_eq!(detect(&inner)["commands"]["ci_files"], json!([]));
+}
