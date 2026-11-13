@@ -589,7 +589,10 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         }
         Err(e) if e == "project profile missing" => (
             Value::Null,
-            "no .moai-cli/project.yaml yet: create the profile first (a first launch or SETUP), then run project-detect again".to_string(),
+            format!(
+                "no {} yet: create the profile first (a first launch or SETUP), then run project-detect again",
+                crate::state_root::rel(root, "project.yaml")
+            ),
         ),
         Err(e) => return Err(e),
     };
