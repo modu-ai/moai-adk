@@ -260,3 +260,250 @@ fn plan_reports_whether_worktree_sessions_read_the_settings_file() {
     let v: Value = serde_json::from_slice(&child.wait_with_output().unwrap().stdout).unwrap();
     assert_eq!(v["result"]["settings_ignored"], json!("not_ignored"), "{v}");
 }
+
+/// Runs `claude-settings-plan` / `-apply` with extra flags (e.g. `--scope local`).
+fn run_with(
+    op: &str,
+    project: &Path,
+    flags: &[&str],
+    home: &Path,
+    stdin: &Value,
+) -> (Option<i32>, Value) {
+    let mut args = vec![op, project.to_str().unwrap()];
+    args.extend_from_slice(flags);
+    run(&args, home, stdin)
+}
+
+fn sl() -> Value {
+    json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}})
+}
+
+/// #2581: `--scope local` plans and applies `.claude/settings.local.json` — the file Claude
+/// Code also reads for worktree sessions — with its own receipt. Other keys in the local file
+/// (`env`, user permissions) are kept, its 0600 mode stays, `settings.json` is not touched,
+/// and a re-plan is a no-op. The default scope is unchanged (`project`).
+#[test]
+fn local_scope_writes_the_local_file_with_its_own_receipt() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    let local = p.join(".claude/settings.local.json");
+    fs::write(&local, "{\n  \"env\": {\"X\": \"1\"}\n}\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&local, fs::Permissions::from_mode(0o600)).unwrap();
+    }
+
+    let (code, v) = run_with(
+        "claude-settings-plan",
+        p,
+        &["--scope", "local"],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(0), "{v}");
+    let plan = &v["result"];
+    assert_eq!(plan["scope"], json!("local"));
+    assert_eq!(plan["settings_path"], json!(".claude/settings.local.json"));
+    assert_eq!(plan["action"], json!("update"));
+    assert_eq!(
+        plan["worktree_sessions"],
+        json!("reached_from_main_checkout")
+    );
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+
+    let (code, v) = run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--scope",
+            "local",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-2581",
+        ],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(
+        v["result"]["files_changed"],
+        json!([".claude/settings.local.json"])
+    );
+    let written: Value = serde_json::from_slice(&fs::read(&local).unwrap()).unwrap();
+    assert_eq!(
+        written["env"],
+        json!({"X": "1"}),
+        "other local keys are kept"
+    );
+    assert_eq!(written["statusLine"], sl()["statusLine"]);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            fs::metadata(&local).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+    assert!(
+        !p.join(".claude/settings.json").exists(),
+        "the project file is untouched"
+    );
+    assert!(p
+        .join(".moai-cli/manifests/claude-settings-local.json")
+        .is_file());
+    assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
+
+    let (_, again) = run_with(
+        "claude-settings-plan",
+        p,
+        &["--scope", "local"],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(again["result"]["action"], json!("unchanged"), "{again}");
+    let default = plan_of(p, home.path());
+    assert_eq!(default["scope"], json!("project"));
+    assert_eq!(default["settings_path"], json!(".claude/settings.json"));
+}
+
+fn plan_of(p: &Path, home: &Path) -> Value {
+    plan(p, home, &sl())
+}
+
+/// #2581: a local settings file the apply creates is owner-only (0600), like Claude Code's own.
+#[cfg(unix)]
+#[test]
+fn a_created_local_file_is_owner_only() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let (_, v) = run_with(
+        "claude-settings-plan",
+        p,
+        &["--scope", "local"],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(v["result"]["action"], json!("create"), "{v}");
+    let digest = v["result"]["plan_digest"].as_str().unwrap().to_string();
+    let (code, v) = run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--scope",
+            "local",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-2581",
+        ],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(0), "{v}");
+    let mode = fs::metadata(p.join(".claude/settings.local.json"))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o600);
+}
+
+/// #2581 boundary: with no file and no receipt on either side, the project and local plans
+/// still differ in digest, so a digest planned for one scope never applies the other.
+#[test]
+fn the_plan_digest_binds_the_scope() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let project_digest = plan_of(p, home.path())["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let (_, v) = run_with(
+        "claude-settings-plan",
+        p,
+        &["--scope", "local"],
+        home.path(),
+        &sl(),
+    );
+    let local_digest = v["result"]["plan_digest"].as_str().unwrap().to_string();
+    assert_ne!(project_digest, local_digest);
+    let (code, v) = run_with(
+        "claude-settings-apply",
+        p,
+        &[
+            "--scope",
+            "local",
+            "--plan-digest",
+            &project_digest,
+            "--permission-reference",
+            "test-2581",
+        ],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(1), "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("stale or altered plan"),
+        "{v}"
+    );
+    assert!(!p.join(".claude").exists(), "nothing written");
+    let (code, _) = run_with(
+        "claude-settings-plan",
+        p,
+        &["--scope", "home"],
+        home.path(),
+        &sl(),
+    );
+    assert_ne!(code, Some(0), "an unknown scope is refused");
+}
+
+/// #2581: in a linked worktree the local scope is refused and names the main checkout —
+/// Claude Code reads settings.local.json there — and nothing is written in the worktree.
+#[test]
+fn local_scope_in_a_linked_worktree_names_the_main_checkout() {
+    let (home, main) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let m = main.path();
+    common::git::git_ok(m, &["init", "-q"]);
+    fs::write(m.join("README.md"), "x\n").unwrap();
+    common::git::git_ok(m, &["add", "README.md"]);
+    common::git::git_ok(
+        m,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "init",
+        ],
+    );
+    let wt = m.join("wt");
+    common::git::git_ok(m, &["worktree", "add", "-q", wt.to_str().unwrap()]);
+    let (code, v) = run_with(
+        "claude-settings-plan",
+        &wt,
+        &["--scope", "local"],
+        home.path(),
+        &sl(),
+    );
+    assert_eq!(code, Some(1), "{v}");
+    let msg = v["error"]["message"].as_str().unwrap();
+    assert!(
+        msg.contains("local scope refused in a linked worktree"),
+        "{msg}"
+    );
+    let canon = fs::canonicalize(m).unwrap();
+    assert!(msg.contains(canon.to_str().unwrap()), "{msg}");
+    assert!(!wt.join(".claude").exists());
+    // The project scope in the same worktree still plans as before.
+    let (code, v) = run_with("claude-settings-plan", &wt, &[], home.path(), &sl());
+    assert_eq!(code, Some(0), "{v}");
+}
