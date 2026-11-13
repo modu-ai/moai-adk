@@ -190,7 +190,9 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         return Err("invalid generation request; no values were logged".into());
     }
     for role in &r.native_roles {
+        // `moai-` names the base agents (#2639); a project role never shadows one.
         if !valid_skill_name(&role.role_id)
+            || role.role_id.starts_with("moai-")
             || !(role.host == "claude" || role.host == "codex")
             || !bounded_purpose(&role.purpose)
             || role.tools.len() > 32

@@ -2884,6 +2884,12 @@ mod skill_package {
             "sorted the way SKILL.md sorts an open question",
             "each new file with its first lines and each changed file as its difference",
             "a managed part the user edited by hand is planned as `conflict` and never overwritten",
+            // #2639 project agents: from the answers, never a base name, host files only.
+            "**Offer project agents (Issue #2639).**",
+            "never starts with `moai-`, the prefix of the base agents",
+            "for any other host, say that none is written",
+            "apply with `generation-apply` only after the user agrees",
+            "planned `unchanged` while the answers stay the same, and `conflict` once they change too",
         ] {
             assert!(body.contains(stage), "project.md lacks: {stage}");
         }
@@ -3889,6 +3895,63 @@ fn generation_native_roles_render_official_shapes() {
     assert!(!codex_role.contains("sandbox_mode"));
     assert!(!codex_role.contains("approval_policy"));
     assert!(!codex_role.contains("mcp_servers"));
+}
+
+/// #2639 (project agents): a project role carrying the confirmed test command is written for
+/// both hosts, a re-run plans it `unchanged`, a hand edit is kept (`unchanged` while the
+/// answers stay, `conflict` once they change too) and never overwritten, and a role named with the base agents' `moai-` prefix is refused.
+#[test]
+fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
+    let root = generation_project();
+    let mut request = generation_request("none");
+    let purpose = "Run `cargo test --locked` and report the first failing test";
+    request["native_roles"] = json!([
+        {"role_id": "demo-tester", "host": "claude", "purpose": purpose},
+        {"role_id": "demo-tester", "host": "codex", "purpose": purpose}
+    ]);
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let claude = root.path().join(".claude/agents/demo-tester.md");
+    let codex = root.path().join(".codex/agents/demo-tester.toml");
+    assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
+    assert!(fs::read_to_string(&codex)
+        .unwrap()
+        .contains("Run `cargo test --locked`"));
+
+    let again = ok_result(&generation_plan_cli(&root, &request));
+    for (path, action) in actions_of(&again) {
+        if path.ends_with("demo-tester.md") || path.ends_with("demo-tester.toml") {
+            assert_eq!(action, "unchanged", "{path}");
+        }
+    }
+
+    let edited = "---\nname: demo-tester\ndescription: mine\n---\n\nmine\n";
+    fs::write(&claude, edited).unwrap();
+    // Only the user changed it: the plan keeps the edit and applying writes nothing over it.
+    let kept = ok_result(&generation_plan_cli(&root, &request));
+    assert!(actions_of(&kept)
+        .iter()
+        .any(|(p, a)| p == ".claude/agents/demo-tester.md" && a == "unchanged"));
+    ok_result(&generation_apply_cli(&root, &kept));
+    assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
+    // The answers changed too: both sides moved, so it is a conflict and nothing is written.
+    request["native_roles"][0]["purpose"] = json!("Run `cargo test` and report every failure");
+    let after_edit = ok_result(&generation_plan_cli(&root, &request));
+    assert!(actions_of(&after_edit)
+        .iter()
+        .any(|(p, a)| p == ".claude/agents/demo-tester.md" && a == "conflict"));
+    let out = generation_apply_cli(&root, &after_edit);
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], json!("conflict"));
+    assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
+
+    let fresh = generation_project();
+    let mut base = generation_request("none");
+    base["native_roles"] =
+        json!([{"role_id": "moai-impl", "host": "claude", "purpose": "Shadow a base agent"}]);
+    assert!(!generation_plan_cli(&fresh, &base).status.success());
+    assert!(!fresh.path().join(".claude/agents").exists());
 }
 
 #[test]

@@ -64,17 +64,41 @@ Removed paths:
 
 ## Labels and milestones
 
-Taxonomy (Issue #2434, user decisions 1-4 = A, Issue comment 6783612809, 2026-11-11). Source: `labels.yml`.
+Taxonomy (Issue #2434, user decisions 1-4 = A, Issue comment 6783612809, 2026-11-11; scheme decisions 44-49 = A, leader 6842518327 on design 6791931666). Source: `labels.yml`.
 
 | Axis | Rule | Values |
 | --- | --- | --- |
 | `type:` | exactly one | `feature`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`, `design` |
-| `priority:` | exactly one | `P0` (blocks the RC release), `P1` (current queue), `P2` (follow-up), `P3` (later) |
-| `area:` | one or more, prefer one or two | `ci`, `cli`, `config`, `docs-site`, `hooks`, `security`, `templates`, `workflow`, `setup`, `atlas`, `design`, `runtime`, `router`, `update`, `forge` |
+| `priority:` | exactly one, leader only | `P0` (blocks the RC release), `P1` (must ship in this RC), `P2` (this RC's scope, may move to the next rc), `P3` (after the stable release, or optional) |
+| `area:` | one or two: the component that owns the changed files (table below) | `ci`, `cli`, `config`, `docs-site`, `hooks`, `security`, `templates`, `workflow`, `setup`, `atlas`, `design`, `runtime`, `router`, `update`, `forge`, `launcher`, `statusline` |
 | `host:` | when the work must be verified on that host | `host:claude`, `host:codex` (both when both) |
 | gate marker | only while a user decision is pending | `needs:decision` |
 
 Status is not a label: it is reported in the Issue's owned report comment, because labels and assignees are not a distributed lock. `needs:decision` is not a status either: it marks that lanes must not proceed until the user decides. The authority stays the decisions log and the Issue's HOLD line; the label only makes HOLD Issues filterable. Parent tracking uses native sub-issues (no `kind:epic` label) and ordering uses native issue dependencies (no `blocked` label). The REST endpoints are used because `gh` 2.92 has no flag for either; read the link back after the first use.
+
+Areas are chosen by the files a change owns, not by the process it belongs to, so an Issue's file scope and its area say the same thing. A tracking or operations Issue takes the main area of its children. Priority says only how the work relates to the release; whether its prerequisites are met is a state (native dependencies), not a priority.
+
+| Area | Files it owns |
+| --- | --- |
+| `area:atlas` | Core Brain, Code Atlas: map, graph, search, index |
+| `area:hooks` | hook engine, guards, hook settings generation |
+| `area:setup` | project profile, AGENTS.md generation, host projections |
+| `area:router` | common skill router, `routes.json`, workflow files |
+| `area:forge` | GitHub/GitLab Issue ledger, reports, reconciliation |
+| `area:runtime` | model adapters, judge backends, Desktop and Pi runtimes |
+| `area:security` | secrets, permissions, redaction, security boundaries |
+| `area:ci` | `.github/workflows/**`, rulesets, release and platforms |
+| `area:design` | design documents and their consistency with the design Space |
+| `area:docs-site` | the user documentation site |
+| `area:templates` | `templates/**`, `.github/ISSUE_TEMPLATE/**`, `labels.yml` |
+| `area:config` | `.moai-cli/` settings schema and inputs |
+| `area:update` | installed-host preflight, 3-way merge, recovery, Go generation migration |
+| `area:cli` | command surface and output contract not owned by another area |
+| `area:workflow` | lane flow: claim, audit, handoff, queue, lane-status, decisions log (`src/claim*`, `audit*`, `handoff`, `lane_*`, `queue*`, `leader`, `decision_log`) |
+| `area:launcher` | session launcher, key vault, run environment injection (`src/session.rs`, `key_vault.rs`, `claude.rs`) |
+| `area:statusline` | `src/statusline/` and the host status line settings |
+
+The remote descriptions of `area:workflow`, `area:templates`, `area:docs-site`, `area:config` and `area:update` still describe the previous generation until the leader edits them (decisions 45 and 46; `moai-label-sync` never edits). The table above is the definition.
 
 Rules for whoever opens or edits an Issue:
 
@@ -83,7 +107,7 @@ Rules for whoever opens or edits an Issue:
 3. `priority:*` and `needs:decision` are changed by the leader only; a lane asks in its report comment. A lane may correct a wrong `type:` or `area:` and notes it in one line of its report comment.
 4. Web forms set one `type:` label (`type:feature`, `type:fix`, `type:design`; the follow-up form none). GitHub silently drops a form label that does not exist, so `type:design` must be created before the forms reach the default branch. Forms set no issue type: the organization's types (Task, Bug, Feature) cannot be set by `gh` 2.92 and would duplicate the `type:` label.
 
-Previous-generation labels (bare `bug`, `enhancement`, `high`, `priority:high`, `status:*` and the rest listed under `not_used` in `labels.yml`) stay on the remote. They are not applied to RC Issues and are not deleted or renamed: deleting a label removes it from every Issue and PR. They are reviewed after the stable release (decision 3 = A). Remote labels in neither list (for example `question`, `good first issue`) are not applied by lanes.
+Previous-generation labels (bare `bug`, `enhancement`, `high`, `priority:high`, `status:*` and the rest listed under `not_used` in `labels.yml`) stay on the remote. They are not applied to RC Issues and are not deleted or renamed: deleting a label removes it from every Issue and PR. They are reviewed after the stable release (decision 3 = A). Every recorded remote label is in one of the lists (decision 48): GitHub's `good first issue`, `help wanted` and `question` are `reused.functional`, and the other 21 previous-generation labels are `not_used.previous_generation_misc`. The bots of `main` (labeler, stale, welcome) are dealt with in the public-readiness work #2435 (decision 33 = A); until then no RC tool or document reads PR labels.
 
 ## Language rule
 

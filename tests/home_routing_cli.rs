@@ -42,7 +42,7 @@ fn fresh_home_gets_one_block_per_host_and_a_second_run_is_unchanged() {
     assert_eq!(action(&p, "claude"), "create");
     assert_eq!(action(&p, "codex"), "create");
     let hosts: Vec<&str> = p.not_supported.iter().map(|u| u.host.as_str()).collect();
-    assert_eq!(hosts, ["kiro", "cursor"]);
+    assert_eq!(hosts, ["omp", "kiro", "cursor"]);
     assert!(p.not_supported.iter().all(|u| !u.reason.is_empty()));
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "applied");
