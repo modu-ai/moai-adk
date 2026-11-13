@@ -1,4 +1,4 @@
-//! Issue #2588: the forge counts cache (`❗ issues / 🔀 PRs`) and its refresh.
+//! Issue #2588: the forge counts cache (`⬇️ issues / 🔀 PRs`) and its refresh.
 //!
 //! The render path stays a file read: it reads the cache and, when the cache is missing
 //! or older than [`TTL`], starts one detached `moai-cli statusline --refresh-counts`
@@ -125,13 +125,42 @@ fn git_config_path(anchor: &Path) -> Option<PathBuf> {
     Some(common.join("config"))
 }
 
-/// `owner/name` of a github.com URL in any of git's forms (`https://`, `ssh://`,
-/// `git@github.com:`), without a trailing `.git` or slash.
+/// A git config value as git reads it: double quotes removed, `\"` and `\\` unescaped,
+/// and an unquoted `;` or `#` starting a comment.
+fn config_value(raw: &str) -> String {
+    let mut out = String::new();
+    let mut quoted = false;
+    let mut chars = raw.trim().chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => quoted = !quoted,
+            '\\' => out.extend(chars.next()),
+            ';' | '#' if !quoted => break,
+            _ => out.push(c),
+        }
+    }
+    out.trim().to_string()
+}
+
+/// `owner/name` of a github.com URL in any of git's forms: `scheme://[user@]host[:port]/path`
+/// or the scp-like `[user@]host:path`, without a trailing `.git` or slash.
 fn github_owner_name(url: &str) -> Option<(String, String)> {
-    let at = url.find("github.com")?;
-    let rest = &url[at + "github.com".len()..];
-    let path = rest.strip_prefix(':').or_else(|| rest.strip_prefix('/'))?;
-    let path = path.trim_end_matches('/');
+    let (host, path) = match url.split_once("://") {
+        Some((_, rest)) => {
+            let (authority, path) = rest.split_once('/')?;
+            let host = authority.rsplit('@').next()?;
+            // An explicit port belongs to the authority, never to the path.
+            (host.split(':').next()?, path)
+        }
+        None => {
+            let (user_host, path) = url.split_once(':')?;
+            (user_host.rsplit('@').next()?, path)
+        }
+    };
+    if !host.eq_ignore_ascii_case("github.com") {
+        return None;
+    }
+    let path = path.trim_matches('/');
     let path = path.strip_suffix(".git").unwrap_or(path);
     let (owner, name) = path.split_once('/')?;
     (!owner.is_empty() && !name.is_empty() && !name.contains('/'))
@@ -152,7 +181,7 @@ pub fn github_repo(anchor: &Path) -> Option<(String, String)> {
         if in_origin {
             if let Some((key, value)) = line.split_once('=') {
                 if key.trim() == "url" {
-                    return github_owner_name(value.trim());
+                    return github_owner_name(&config_value(value));
                 }
             }
         }
@@ -419,6 +448,44 @@ mod tests {
         assert_eq!(on("https://github.com/acme"), None);
         assert_eq!(on("https://github.com/acme/w/extra"), None);
         assert_eq!(on("https://gitlab.com/acme/w.git"), None);
+        // Codex review on #2608: an explicit port is part of the authority.
+        assert_eq!(on("ssh://git@github.com:22/acme/w.git"), acme);
+        assert_eq!(on("https://github.com:443/acme/w"), acme);
+        assert_eq!(on("ssh://git@notgithub.com/acme/w.git"), None);
+        assert_eq!(on("git@github.com.evil.example:acme/w.git"), None);
+    }
+
+    #[test]
+    fn config_values_are_decoded_like_git() {
+        assert_eq!(
+            config_value(r#" "https://github.com/acme/widgets.git" "#),
+            "https://github.com/acme/widgets.git"
+        );
+        assert_eq!(
+            config_value("git@github.com:acme/w.git ; note"),
+            "git@github.com:acme/w.git"
+        );
+        assert_eq!(
+            config_value("git@github.com:acme/w.git # note"),
+            "git@github.com:acme/w.git"
+        );
+        assert_eq!(config_value(r#""a;b#c""#), "a;b#c");
+        assert_eq!(config_value(r#""a\"b""#), r#"a"b"#);
+    }
+
+    #[test]
+    fn a_quoted_origin_url_names_the_repository() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        fs::write(
+            tmp.path().join(".git/config"),
+            "[remote \"origin\"]\n\turl = \"https://github.com/acme/widgets.git\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            github_repo(tmp.path()),
+            Some(("acme".to_string(), "widgets".to_string()))
+        );
     }
 
     #[test]
