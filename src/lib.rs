@@ -361,6 +361,11 @@ mod state_dir_tests {
                 "`render` without a project keeps the earlier spelling",
             ),
             (
+                "go_state.rs",
+                1,
+                "the Go move carries the earlier root's product state into .moai/ (#2696)",
+            ),
+            (
                 "migrate.rs",
                 2,
                 "HOME migration rehearsal targets (#2459 HOLD)",
