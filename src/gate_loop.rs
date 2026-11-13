@@ -104,11 +104,20 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         ),
     )?;
     let mut rows = Vec::new();
-    for p in list.as_array().ok_or("pull request list is not a list")? {
+    let open = list.as_array().ok_or("pull request list is not a list")?;
+    let ready = open
+        .iter()
+        .filter(|p| p["draft"].as_bool() != Some(true))
+        .count();
+    let mut seen = 0;
+    for p in open {
         if p["draft"].as_bool() == Some(true) {
             continue;
         }
         let pr = p["number"].as_u64().ok_or("pull request without number")?;
+        seen += 1;
+        // One static progress line per pull request (#2806); silent without a stderr sink.
+        crate::progress::note(&format!("checking pull request #{pr} ({seen}/{ready})"));
         let head = p["head"]["sha"].as_str().unwrap_or("").to_string();
         let one = Target {
             dir: target.dir,
