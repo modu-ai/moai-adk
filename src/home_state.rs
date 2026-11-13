@@ -32,6 +32,13 @@ pub const BACKUP_NAME: &str = ".moai-backup";
 const USER_ASSETS_LIMIT: u64 = 16 * 1024 * 1024;
 /// Top-level entries that hold a Go marker; never copied into the Rust folder.
 const GO_MARKER_ENTRIES: &[&str] = &["user-assets.json", "state"];
+/// Names the apply writes into the Rust `~/.moai`: the receipt, the marker and their temporary
+/// files. A Go entry with such a name is never copied (it would be replaced, #2783 audit B1).
+fn is_reserved(name: &str) -> bool {
+    name == "home-state-receipt.json"
+        || name == crate::state_root::RUST_MARKER
+        || name.ends_with(".tmp-write")
+}
 /// Top-level entries listed as copy candidates; more are counted, not listed.
 const CANDIDATE_LIMIT: usize = 500;
 
@@ -234,6 +241,10 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             if is_secret(n) {
                 json!({"name": n, "kind": "secret", "selected": false,
                        "note": "holds secrets; move it by hand if you need it"})
+            } else if is_reserved(n) {
+                // The tool writes these names into the Rust folder (#2783 audit B1).
+                json!({"name": n, "kind": "reserved", "selected": false,
+                       "note": "the tool writes this name in the new folder; it stays in the backup"})
             } else if GO_MARKER_ENTRIES.contains(&n.as_str()) {
                 // Copied into the Rust folder it would make the verdict `mixed`.
                 json!({"name": n, "kind": "generation_marker", "selected": false,
@@ -402,6 +413,11 @@ pub fn apply(
                 return Err(format!(
                 "`{name}` holds secrets and is never copied; move it by hand. Nothing was written"
             ))
+            }
+            Some("reserved") => {
+                return Err(format!(
+                    "`{name}` is a name the tool writes in the new folder; it stays in the backup. Nothing was written"
+                ))
             }
             _ => {
                 return Err(format!(

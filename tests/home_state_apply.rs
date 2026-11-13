@@ -275,3 +275,44 @@ fn revert_refuses_without_a_receipt_backup() {
     // No permission reference: refused.
     assert_eq!(revert(&home, "")["ok"], json!(false));
 }
+
+/// #2783 audit B1 (6863913949): a Go entry named like a file the apply writes (the receipt,
+/// the marker, their temporary files) is listed `reserved` and never copied — it would be
+/// replaced while the receipt still said `copied`. The apply refuses it before anything moves.
+#[test]
+fn a_name_the_tool_writes_is_never_copied() {
+    let (_d, home) = go_home();
+    for name in [
+        "home-state-receipt.json",
+        "home-state-receipt.tmp-write",
+        "moai-cli.tmp-write",
+    ] {
+        write(&home, &format!(".moai/{name}"), "USER FILE\n");
+    }
+    let p = plan(&home);
+    let cands = p["copy"]["candidates"].as_array().unwrap();
+    for name in [
+        "home-state-receipt.json",
+        "home-state-receipt.tmp-write",
+        "moai-cli.tmp-write",
+    ] {
+        let c = cands
+            .iter()
+            .find(|c| c["name"] == json!(name))
+            .unwrap_or_else(|| panic!("{name}"));
+        assert_eq!(c["kind"], json!("reserved"), "{name}");
+        let before = tree(&home);
+        let a = apply(
+            &home,
+            p["plan_digest"].as_str().unwrap(),
+            "approved",
+            &[name],
+        );
+        assert_eq!(a["ok"], json!(false), "{name}: {a}");
+        assert!(
+            a.to_string().contains("name the tool writes"),
+            "{name}: {a}"
+        );
+        assert_eq!(tree(&home), before, "{name}");
+    }
+}
