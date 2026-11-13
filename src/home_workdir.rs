@@ -139,22 +139,39 @@ pub fn worktree_dir(home: &Path, project_root: &Path, id: &str) -> Result<PathBu
 /// worktrees/<name>`), `claude` (`<primary>/.claude/worktrees/<name>`) or `other`. Compares
 /// path components as given; the caller passes canonical paths when links may be involved.
 pub fn location_of(path: &Path, home: &Path, primary: &Path) -> &'static str {
-    let under = |base: PathBuf, depth: usize| {
-        path.strip_prefix(&base)
+    location_in(
+        path,
+        &[worktrees_root(home)],
+        &[go_worktrees_root(home)],
+        primary,
+    )
+}
+
+/// [`location_of`] against given spellings of the work folders: each root may be listed both
+/// as written and resolved (`fs::canonicalize`), so a `~/.moai` or `worktrees/projects` that
+/// is a symbolic link still names its worktrees `home` or `go` (#2557 lesson).
+pub fn location_in(
+    path: &Path,
+    worktrees_roots: &[PathBuf],
+    go_roots: &[PathBuf],
+    primary: &Path,
+) -> &'static str {
+    let under = |base: &Path, depth: usize| {
+        path.strip_prefix(base)
             .is_ok_and(|rest| rest.components().count() == depth)
     };
-    if under(go_worktrees_root(home), 2) {
+    if go_roots.iter().any(|r| under(r, 2)) {
         "go"
-    } else if under(worktrees_root(home), 1)
+    } else if worktrees_roots.iter().any(|r| under(r, 1))
         && path
             .file_name()
             .and_then(|n| n.to_str())
             .is_some_and(|n| !reserved(n))
     {
         "home"
-    } else if under(primary.join(crate::WORKTREES_DIR), 1) {
+    } else if under(&primary.join(crate::WORKTREES_DIR), 1) {
         "project"
-    } else if under(primary.join(".claude").join("worktrees"), 1) {
+    } else if under(&primary.join(".claude").join("worktrees"), 1) {
         "claude"
     } else {
         "other"
