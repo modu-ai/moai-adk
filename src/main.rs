@@ -1038,6 +1038,17 @@ enum Command {
         #[arg(long)]
         head: String,
     },
+    /// Format check of review findings before they are posted (#2614 AC-3): stdin
+    /// `{"schema_version":1,"findings":[…]}`; each finding needs a severity, a `file:line` in
+    /// HEAD, a title, evidence quoted from that line, and a confirmed verification. Prints the
+    /// verdict (any `important` is FAIL), counts, post body and digest. Reads git only.
+    ReviewCheck {
+        /// Repository root.
+        project: PathBuf,
+        /// The head revision the findings cite.
+        #[arg(long)]
+        head: String,
+    },
     /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
     /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
     GoStatePlan {
@@ -1397,6 +1408,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
+        ReviewCheck { .. } => "review.check",
         ReviewPackage { .. } => "review.package",
         GoStatePlan { .. } => "go_state.plan",
         GoStateApply { .. } => "go_state.apply",
@@ -2365,6 +2377,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                     .map_err(|_| "could not read the answer".to_string())?;
                 Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
             })
+        }
+        Command::ReviewCheck { project, head } => {
+            let findings: serde_json::Value = input()?;
+            serde_json::to_value(moai_cli::review::check(&project, &head, &findings)?)
+                .map_err(|_| "encode failed".into())
         }
         Command::ReviewPackage {
             project,
