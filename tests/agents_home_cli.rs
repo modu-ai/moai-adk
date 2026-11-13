@@ -269,3 +269,48 @@ fn revert_undoes_only_unchanged_files_and_stale_plans_are_refused() {
     // After the revert our state no longer owns the removed files: a new plan creates them.
     assert_eq!(action(&fx.plan(), "claude", "moai-impl.md"), "create");
 }
+
+/// Audit FAIL 6842034981 B1: after an apply the agent folder is moved outside HOME and a link
+/// put in its place. Revert must not follow the link: the files outside stay, and every entry
+/// of that host is reported as skipped.
+#[cfg(unix)]
+#[test]
+fn revert_never_writes_through_a_folder_that_became_a_link() {
+    let fx = fx();
+    let v = fx.apply(&fx.plan());
+    let id = v["result"]["receipt"].as_str().unwrap().to_string();
+    let agents = Path::new(&fx.home).join(".claude/agents");
+    let outside = Path::new(&fx.home).parent().unwrap().join("outside");
+    fs::rename(&agents, &outside).unwrap();
+    std::os::unix::fs::symlink(&outside, &agents).unwrap();
+    let r = call(&[
+        "agents-home-revert",
+        &fx.home,
+        "--receipt",
+        &id,
+        "--permission-reference",
+        PERMISSION,
+    ]);
+    assert_eq!(r["ok"], Value::Bool(true), "{r}");
+    let blocked = r["result"]["skipped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| {
+            s["host"] == "claude"
+                && s["reason"]
+                    .as_str()
+                    .unwrap()
+                    .starts_with("agent_folder_not_plain")
+        })
+        .count();
+    assert_eq!(blocked, 5, "{r}");
+    for role in ["impl", "audit", "research", "docs", "plan"] {
+        assert!(
+            outside.join(format!("moai-{role}.md")).is_file(),
+            "{role} removed outside HOME"
+        );
+    }
+    // The other host was not linked and is reverted as usual.
+    assert!(!fx.agent(".codex", "moai-impl.toml").exists());
+}

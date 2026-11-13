@@ -125,6 +125,14 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
     }
 }
 
+/// The host folder (`~/.claude`) and its agent folder (`~/.claude/agents`) are each a real
+/// folder or absent — never a link, never a file. Plan, apply and revert all check it.
+fn host_folders_plain(home: &Path, host: &str) -> Result<()> {
+    let dir = host_dir(home, host);
+    let parent = dir.parent().expect("host folder parent");
+    plain_dir_or_absent(parent).and_then(|()| plain_dir_or_absent(&dir))
+}
+
 /// The current bytes of one agent file: `Ok(None)` when absent; a symlink or a folder in its
 /// place is an error (the host is blocked, never followed).
 fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
@@ -184,8 +192,7 @@ fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
         plan.blocked_reason = Some(reason);
         plan.files.clear();
     };
-    let host_root = dir.parent().expect("host folder parent");
-    if let Err(e) = plain_dir_or_absent(host_root).and_then(|()| plain_dir_or_absent(&dir)) {
+    if let Err(e) = host_folders_plain(home, host) {
         blocked(&mut plan, e);
         return plan;
     }
@@ -355,8 +362,10 @@ pub fn apply(
     let mut written = Vec::new();
     for (host, file) in writes {
         let dir = host_dir(&home, &host.host);
+        // Checked before creating (create_dir_all would follow a linked parent) and after.
+        host_folders_plain(&home, &host.host)?;
         fs::create_dir_all(&dir).map_err(|_| format!("{} unavailable", dir.display()))?;
-        plain_dir_or_absent(&dir)?;
+        host_folders_plain(&home, &host.host)?;
         let target = dir.join(&file.file);
         let text = &rendered[&host.host]
             .iter()
@@ -434,6 +443,12 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
     for e in receipt.entries.iter().rev() {
         if !HOSTS.contains(&e.host.as_str()) || e.file.contains('/') || e.file.contains('\\') {
             return Err("agent receipt names a path outside the agent folders".into());
+        }
+        // Audit FAIL 6842034981 B1: the folders may have turned into links since the apply;
+        // a blocked folder is reported, never written through.
+        if let Err(reason) = host_folders_plain(&home, &e.host) {
+            skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": format!("agent_folder_not_plain: {reason}")}));
+            continue;
         }
         let target = host_dir(&home, &e.host).join(&e.file);
         let current = current_file(&target)?;
