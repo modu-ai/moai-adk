@@ -282,13 +282,23 @@ fn rendered_all(package: &Path) -> Result<BTreeMap<String, Vec<RenderedFile>>> {
     Ok(out)
 }
 
-/// Read-only preview; writes nothing.
+/// Read-only preview of every host; writes nothing.
 pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
+    plan_for(home, package, &HOSTS)
+}
+
+/// Read-only preview of the named hosts only (#2638: `moai-cli update` leaves out a host whose
+/// skill copy is blocked); writes nothing. An unknown host is refused.
+pub fn plan_for(home: &Path, package: &Path, hosts: &[&str]) -> Result<Plan> {
+    if let Some(h) = hosts.iter().find(|h| !HOSTS.contains(h)) {
+        return Err(format!("agent host not supported: {h:?}"));
+    }
     let home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let package_digest = crate::package_digest(package)?;
     let rendered = rendered_all(package)?;
     let hosts = HOSTS
         .iter()
+        .filter(|h| hosts.contains(h))
         .map(|h| host_plan(&home, h, &rendered[*h]))
         .collect();
     let mut plan = Plan {
@@ -336,8 +346,20 @@ pub fn apply(
     plan_digest: &str,
     permission: &str,
 ) -> Result<serde_json::Value> {
+    apply_for(home, package, &HOSTS, plan_digest, permission)
+}
+
+/// [`apply`] for the named hosts only; `plan_digest` must equal a fresh [`plan_for`] of the
+/// same hosts.
+pub fn apply_for(
+    home: &Path,
+    package: &Path,
+    hosts: &[&str],
+    plan_digest: &str,
+    permission: &str,
+) -> Result<serde_json::Value> {
     validate_permission(permission)?;
-    let fresh = plan(home, package)?;
+    let fresh = plan_for(home, package, hosts)?;
     if fresh.plan_digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }

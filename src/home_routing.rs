@@ -37,9 +37,12 @@ pub const HOSTS: [(&str, &str, &str); 2] = [
     ("claude", ".claude/CLAUDE.md", "/moai"),
     ("codex", ".codex/AGENTS.md", "$moai"),
 ];
-/// Hosts not written, each with the reason (#2635 6842183286). The host restored by #2647 is
-/// added there, together with its agent rendering.
-pub const NOT_SUPPORTED: [(&str, &str); 2] = [
+/// Hosts not written, each with the reason (#2635 6842183286).
+pub const NOT_SUPPORTED: [(&str, &str); 3] = [
+    (
+        "omp",
+        "~/.omp/agent/AGENTS.md, once present, shadows every other user context file OMP reads; not created by this tool",
+    ),
     (
         "kiro",
         "~/.kiro/steering is documented but not measured (Kiro not installed); not written",
@@ -264,12 +267,27 @@ fn host_plan(home: &Path, host: &str, rendered: &str) -> HostPlan {
     plan
 }
 
-/// Read-only preview; writes nothing.
+/// Read-only preview of every host; writes nothing.
 pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
+    let all: Vec<&str> = HOSTS.iter().map(|(h, _, _)| *h).collect();
+    plan_for(home, package, &all)
+}
+
+/// Read-only preview of the named hosts only (#2638: `moai-cli update` leaves out a host whose
+/// skill copy is blocked); writes nothing. An unknown host is refused.
+pub fn plan_for(home: &Path, package: &Path, only: &[&str]) -> Result<Plan> {
+    if let Some(h) = only.iter().find(|h| !HOSTS.iter().any(|(k, _, _)| k == *h)) {
+        return Err(format!("routing host not supported: {h:?}"));
+    }
     let home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
-    let src = source(package)?;
+    // No host to write: the source is not needed (a package from before #2638 has none).
+    let src = if only.is_empty() {
+        String::new()
+    } else {
+        source(package)?
+    };
     let mut hosts = Vec::new();
-    for (host, _, _) in HOSTS {
+    for (host, _, _) in HOSTS.iter().filter(|(h, _, _)| only.contains(h)) {
         hosts.push(host_plan(&home, host, &render(&src, host)?));
     }
     let mut plan = Plan {
@@ -326,13 +344,25 @@ pub fn apply(
     plan_digest: &str,
     permission: &str,
 ) -> Result<serde_json::Value> {
+    let all: Vec<&str> = HOSTS.iter().map(|(h, _, _)| *h).collect();
+    apply_for(home, package, &all, plan_digest, permission)
+}
+
+/// [`apply`] for the named hosts only; `plan_digest` must equal a fresh [`plan_for`] of the
+/// same hosts.
+pub fn apply_for(
+    home: &Path,
+    package: &Path,
+    only: &[&str],
+    plan_digest: &str,
+    permission: &str,
+) -> Result<serde_json::Value> {
     validate_permission(permission)?;
-    let fresh = plan(home, package)?;
+    let fresh = plan_for(home, package, only)?;
     if fresh.plan_digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
     let home = PathBuf::from(&fresh.home);
-    let src = source(package)?;
     let writes: Vec<(&HostPlan, &FilePlan)> = fresh
         .hosts
         .iter()
@@ -345,6 +375,7 @@ pub fn apply(
             serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []}),
         );
     }
+    let src = source(package)?;
     let (id, receipt_dir) = new_receipt_dir(&home)?;
     let mut receipt = Receipt {
         schema_version: SCHEMA_VERSION,

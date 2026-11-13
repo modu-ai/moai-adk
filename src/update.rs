@@ -1338,60 +1338,272 @@ pub fn installed_package_dir() -> Result<PathBuf> {
     }
 }
 
-/// #2522: one-line `moai-cli update` over the package installed with this binary.
+/// The skill host whose installed copy an agent host reads (#2638): OMP reads the shared
+/// `~/.agents/skills` that the Codex copy is written to (#2635 6842183286).
+fn skill_host_of(agent_host: &str) -> &'static str {
+    match agent_host {
+        "claude" => "claude",
+        _ => "codex",
+    }
+}
+
+/// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents and
+/// the routing section of the global instruction files, all from one package snapshot.
+pub struct UserLayerPlan {
+    pub skills: UpdatePlan,
+    pub agents: crate::agent_install::Plan,
+    pub routing: crate::home_routing::Plan,
+    /// Agent and routing hosts left out because their skill copy is blocked.
+    pub skipped: Vec<serde_json::Value>,
+    /// One digest over the three plan digests; the only value `--confirm` accepts.
+    pub plan_digest: String,
+}
+
+fn user_layer_plan(home: &Path, package: &Path, staged: &StagedPackage) -> Result<UserLayerPlan> {
+    let skills = plan_update(home, staged)?;
+    let skill_ok = |h: &str| {
+        skills
+            .hosts
+            .iter()
+            .any(|p| p.host == h && p.preflight != "blocked")
+    };
+    let mut skipped = Vec::new();
+    let mut agent_hosts = Vec::new();
+    for h in crate::agent_defs::HOSTS {
+        if skill_ok(skill_host_of(h)) {
+            agent_hosts.push(h);
+        } else {
+            skipped.push(json!({"part": "agents", "host": h, "reason": format!("the {} skill copy is blocked", skill_host_of(h))}));
+        }
+    }
+    let mut routing_hosts = Vec::new();
+    // A package from before #2638 carries no section source: the section is left out, named.
+    let has_section = staged.files.contains_key(crate::home_routing::SOURCE);
+    for (h, _, _) in crate::home_routing::HOSTS {
+        if !has_section {
+            skipped.push(json!({"part": "routing", "host": h, "reason": format!("the package has no {}", crate::home_routing::SOURCE)}));
+        } else if skill_ok(h) {
+            routing_hosts.push(h);
+        } else {
+            skipped.push(json!({"part": "routing", "host": h, "reason": format!("the {h} skill copy is blocked")}));
+        }
+    }
+    let agents = crate::agent_install::plan_for(home, package, &agent_hosts)?;
+    let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
+    // One snapshot: what the agents and the section were rendered from is the staged package.
+    if agents.package_digest != staged.digest || routing.package_digest != staged.digest {
+        return Err("the package changed while it was read; nothing applied, preview again".into());
+    }
+    let plan_digest = crate::digest(
+        &serde_json::to_vec(&json!([
+            skills.plan_digest,
+            agents.plan_digest,
+            routing.plan_digest
+        ]))
+        .map_err(|_| "encode failed")?,
+    );
+    Ok(UserLayerPlan {
+        skills,
+        agents,
+        routing,
+        skipped,
+        plan_digest,
+    })
+}
+
+fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
+    p.hosts.iter().any(|h| {
+        h.preflight == "ok"
+            && h.files
+                .iter()
+                .any(|f| f.action == "create" || f.action == "update")
+    })
+}
+
+fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
+    p.hosts.iter().any(|h| {
+        h.preflight == "ok"
+            && h.section
+                .as_ref()
+                .is_some_and(|s| ["create", "append", "merge"].contains(&s.action.as_str()))
+    })
+}
+
+/// The terminal question's text: every skill host, every agent file action and each global
+/// instruction file (#2638).
+pub fn layer_summary(p: &UserLayerPlan) -> String {
+    let mut out = String::from("skills\n");
+    out.push_str(&plan_summary(&p.skills));
+    out.push_str("agents\n");
+    for h in &p.agents.hosts {
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for f in &h.files {
+            *counts.entry(f.action.as_str()).or_default() += 1;
+        }
+        let counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        out.push_str(&format!(
+            "  {}: {} — {}\n",
+            h.host,
+            h.preflight,
+            counts.join(", ")
+        ));
+    }
+    out.push_str("routing section\n");
+    for h in &p.routing.hosts {
+        let action = h.section.as_ref().map_or("—", |s| s.action.as_str());
+        out.push_str(&format!(
+            "  {}: {} — {action} {}\n",
+            h.host, h.preflight, h.file
+        ));
+    }
+    for s in &p.skipped {
+        out.push_str(&format!(
+            "  skipped {} {}: {}\n",
+            s["part"].as_str().unwrap_or(""),
+            s["host"].as_str().unwrap_or(""),
+            s["reason"].as_str().unwrap_or("")
+        ));
+    }
+    out
+}
+
+/// #2522, #2638: one-line `moai-cli update` over the package installed with this binary — the
+/// user layer: the skill copies, the base agents (`agent_install`) and the routing section of
+/// the global instruction files (`home_routing`).
 ///
-/// Always computes the same preview as `update-plan`. Without a confirmation it writes
-/// nothing and returns the preview with the exact confirming command. `confirm` is the
-/// preview's `plan_digest` (`--confirm`); `ask` is the terminal question, called only when
-/// no digest was given, and answering yes confirms the preview it was shown. A confirmed
-/// run goes through `apply_update` with that digest, so a plan that changed in between is
-/// refused before any write. A backup-then-replace is never confirmed here: it keeps its
-/// explicit `update-apply --confirm-backup-replace` token.
+/// Always computes the three previews from one package snapshot. Without a confirmation it
+/// writes nothing and returns them with the exact confirming command. `confirm` is the
+/// combined `plan_digest` (`--confirm`) — a single part's digest is refused; `ask` is the
+/// terminal question, called only when no digest was given, with the summary it shows. A
+/// confirmed run recomputes all three and compares the combined digest before any write, then
+/// applies the skills, and the agents and the section only for hosts whose skill copy applied.
+/// A backup-then-replace is never confirmed here: it keeps its explicit
+/// `update-apply --confirm-backup-replace` token.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
-    ask: impl FnOnce(&UpdatePlan) -> Result<bool>,
+    ask: impl FnOnce(&str) -> Result<bool>,
 ) -> Result<serde_json::Value> {
+    const PERMISSION: &str = "moai-cli update confirmation";
     let package = installed_package_dir()?;
     let staged = stage_package(&package)?;
-    let plan = plan_update(home, &staged)?;
+    let layer = user_layer_plan(home, &package, &staged)?;
     let package_text = package
         .to_str()
         .ok_or("non UTF-8 package path")?
         .to_string();
     // #2540: a plan that would write nothing (every host blocked or unchanged) is shown, never
     // asked about.
-    let writes = plan_writes_anything(&plan);
+    let writes = plan_writes_anything(&layer.skills)
+        || agents_write_anything(&layer.agents)
+        || routing_writes_anything(&layer.routing);
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if writes && ask(&plan)? => plan.plan_digest.clone(),
+        None if writes && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
         None => {
             return Ok(json!({
                 "mode": "preview",
                 "applied": false,
                 "nothing_to_apply": !writes,
                 "package": package_text,
-                "plan": plan,
-                "confirm_with": format!("moai-cli update --confirm {}", plan.plan_digest),
+                "plan_digest": layer.plan_digest,
+                "plan": layer.skills,
+                "agents": layer.agents,
+                "routing": layer.routing,
+                "skipped": layer.skipped,
+                "confirm_with": format!("moai-cli update --confirm {}", layer.plan_digest),
             }))
         }
     };
-    let result = apply_update(
+    // Verify the whole layer before any write.
+    let fresh = user_layer_plan(home, &package, &staged)?;
+    if fresh.plan_digest != digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let skills = apply_update(
         home,
         &staged,
-        &plan,
-        &digest,
-        "moai-cli update confirmation",
+        &fresh.skills,
+        &fresh.skills.plan_digest,
+        PERMISSION,
         &[],
     )?;
-    // #2540: `applied` says whether files were written, not only that the apply step ran.
-    let applied = matches!(result["status"].as_str(), Some("applied" | "partial"));
+    // A host whose skill copy did not land gets no agents and no section: both point into it.
+    let landed = |h: &str| {
+        skills["hosts"].as_array().into_iter().flatten().any(|o| {
+            o["host"] == json!(h) && !matches!(o["status"].as_str(), Some("failed" | "blocked"))
+        })
+    };
+    let mut skipped = fresh.skipped.clone();
+    let agent_hosts: Vec<&str> = fresh
+        .agents
+        .hosts
+        .iter()
+        .map(|h| h.host.as_str())
+        .filter(|h| {
+            let ok = landed(skill_host_of(h));
+            if !ok {
+                skipped.push(
+                    json!({"part": "agents", "host": h, "reason": "the skill copy did not apply"}),
+                );
+            }
+            ok
+        })
+        .collect();
+    let routing_hosts: Vec<&str> = fresh
+        .routing
+        .hosts
+        .iter()
+        .map(|h| h.host.as_str())
+        .filter(|h| {
+            let ok = landed(h);
+            if !ok {
+                skipped.push(
+                    json!({"part": "routing", "host": h, "reason": "the skill copy did not apply"}),
+                );
+            }
+            ok
+        })
+        .collect();
+    let agents_plan = crate::agent_install::plan_for(home, &package, &agent_hosts)?;
+    let agents = crate::agent_install::apply_for(
+        home,
+        &package,
+        &agent_hosts,
+        &agents_plan.plan_digest,
+        PERMISSION,
+    )?;
+    let routing_plan = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
+    let routing = crate::home_routing::apply_for(
+        home,
+        &package,
+        &routing_hosts,
+        &routing_plan.plan_digest,
+        PERMISSION,
+    )?;
+    // #2540: `applied` says whether files were written, not only that the apply steps ran.
+    let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
+        || agents["state"] == json!("applied")
+        || routing["state"] == json!("applied");
+    let revert = |op: &str, r: &serde_json::Value| {
+        r["receipt"].as_str().map(|id| {
+            format!("moai-cli {op} <HOME> --receipt {id} --permission-reference <reference>")
+        })
+    };
     Ok(json!({
         "mode": "applied",
         "applied": applied,
         "package": package_text,
         "plan_digest": digest,
-        "result": result,
+        "result": skills,
+        "agents_result": agents,
+        "routing_result": routing,
+        "skipped": skipped,
+        "revert": {
+            "agents": revert("agents-home-revert", &agents),
+            "routing": revert("home-routing-revert", &routing),
+            "skills": "recovery-plan / recovery-apply for a host left pending",
+        },
     }))
 }
 

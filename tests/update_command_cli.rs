@@ -146,8 +146,10 @@ fn confirm(exe: &Path, home: &Path, digest: &str) -> Value {
     r
 }
 
+/// #2638: `--confirm` takes the combined digest of the skills, agents and routing plans; the
+/// skill plan's own digest (`plan.plan_digest`) is refused.
 fn digest(r: &Value) -> String {
-    r["plan"]["plan_digest"].as_str().unwrap().to_string()
+    r["plan_digest"].as_str().unwrap().to_string()
 }
 
 fn host<'a>(r: &'a Value, name: &str) -> &'a Value {

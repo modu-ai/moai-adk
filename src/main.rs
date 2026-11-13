@@ -2358,7 +2358,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
-            moai_cli::update::update_command(&home, confirm.as_deref(), |plan| {
+            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
                 use std::io::{BufRead as _, IsTerminal as _, Write as _};
                 if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
                     return Ok(false);
@@ -2367,7 +2367,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 let _ = write!(
                     err,
                     "moai-cli update preview:\n{}Apply this update? [y/N] ",
-                    moai_cli::update::plan_summary(plan)
+                    summary
                 );
                 let _ = err.flush();
                 let mut answer = String::new();
