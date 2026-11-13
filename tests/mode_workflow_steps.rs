@@ -161,6 +161,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "pr-confirm",
             "queue-free",
             "queue-next",
+            "repo-scans --refs",
             "scope-check",
             "session-register",
             "usage-limit"

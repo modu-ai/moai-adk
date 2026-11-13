@@ -576,7 +576,8 @@
       "rules": [
         "tests/repo_scans_test.py",
         "tools/repo_scans.json",
-        "tools/repo_scans.py"
+        "tools/repo_scans.py",
+        "src/repo_scans.rs"
       ],
       "scope": [
         {
@@ -636,6 +637,27 @@
         }
       ],
       "rejects": "a shipped skill mention of tools/ci_scope.py or its test that does not say it belongs to the moai-adk repository (#2708 3/4)"
+    },
+    {
+      "id": "skill-runs-no-repository-python-tool",
+      "tests": [
+        "tests/self_audit_cli.rs::the_shipped_skill_runs_no_repository_python_tool"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test self_audit_cli the_shipped_skill_runs_no_repository_python_tool"
+      ],
+      "rules": [
+        "tests/self_audit_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/",
+          "suffixes": [
+            ".md"
+          ]
+        }
+      ],
+      "rejects": "a shipped skill line that runs python3 on a tools/ path, or a tools/<name>.py mention that does not say it belongs to the moai-adk repository (#2708 AC-1)"
     }
   ]
 }
