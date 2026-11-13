@@ -202,6 +202,11 @@ fn moai_beside_the_same_build_reads_the_moai_cli_receipt() {
     std::fs::hard_link(&cli, &moai).unwrap();
     let plan = plan_receipt(&cli, &home_path, InstallerOwner::Direct).unwrap();
     record_receipt(&home_path, &plan).unwrap();
+    // Planning from the hard link names the same installation: same id, same recorded path.
+    let via_moai = plan_receipt(&moai, &home_path, InstallerOwner::Direct).unwrap();
+    assert_eq!(via_moai.install_id, plan.install_id);
+    assert_eq!(via_moai.receipt.binary_path, "~/bin/moai-cli");
+    assert_eq!(plan.receipt.binary_path, "~/bin/moai-cli");
 
     let inspect = |exe: &std::path::Path| -> serde_json::Value {
         let out = Command::new(exe)
