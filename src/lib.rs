@@ -1,3 +1,4 @@
+pub mod agent_defs;
 pub mod agents;
 pub mod apply;
 pub mod archive;

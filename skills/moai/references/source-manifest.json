@@ -161,6 +161,51 @@
         "adoption": "new",
         "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B)."
       }
+    },
+    "references/agents/audit.md": {
+      "sha256": "8ee0a3d0864fcd994144912416988a8e74f89c71a6fb585922a75c9e6eed7d50",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "agent-audit",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-audit, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+      }
+    },
+    "references/agents/docs.md": {
+      "sha256": "b4fbe10a1ae31d408a333a463f02a4d8027cb4ee4b56c8feb9440141045b8636",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "agent-docs",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-docs, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+      }
+    },
+    "references/agents/impl.md": {
+      "sha256": "09db65f20eea72823cfcb1458f6d386d1947223d90a628e13948b70238bcb126",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "agent-impl",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-impl, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+      }
+    },
+    "references/agents/plan.md": {
+      "sha256": "ad8f6ee831b6ec54fb39f1a53800e51d632e6d102474e9477a87ccb3a2fd986c",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "agent-plan",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-plan, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+      }
+    },
+    "references/agents/research.md": {
+      "sha256": "aaf9ba932218c54eab14359643257c62cdb55845427c2a4262b992c82c393d6c",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "agent-research",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-research, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+      }
     }
   }
 }
