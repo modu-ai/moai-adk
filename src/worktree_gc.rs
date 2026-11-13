@@ -222,7 +222,7 @@ fn merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
 }
 
 /// Working directories of the processes this user can see; `None` without a source.
-fn process_cwds() -> Option<Vec<PathBuf>> {
+pub(crate) fn process_cwds() -> Option<Vec<PathBuf>> {
     if Path::new("/proc/self/cwd").exists() {
         let mut out = Vec::new();
         for e in fs::read_dir("/proc").ok()?.flatten() {
@@ -314,7 +314,7 @@ fn newest_change(wt: &Path, target: &Path, cargo: &[PathBuf]) -> Option<u64> {
 }
 
 /// `(untracked, ignored entries outside target/)` from one porcelain status.
-fn census(wt: &Path) -> Option<(usize, usize, bool)> {
+pub(crate) fn census(wt: &Path) -> Option<(usize, usize, bool)> {
     let s = git_out(
         wt,
         &[
@@ -489,7 +489,7 @@ fn validate_permission(permission: &str) -> Result<()> {
 /// Why `wt` must not be touched right now, re-checked just before each deletion: a process
 /// working inside it, a tracked change, or (for a removal) any untracked file or ignored file
 /// outside the cargo build output. An unknown fact refuses too.
-fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
+pub(crate) fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
     let cwds = match process_cwds() {
         Some(v) => v,
         None => return Some("process_check_unavailable"),

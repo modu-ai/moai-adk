@@ -149,7 +149,7 @@
 | 01:1x(11-09) | Forge 권한·fallback | GitHub 우선 + audit-only GitHub App(status 출처 고정, 운영자 App 등록 1회); sub-issue·dependency는 capability probe 후 사용, 없으면 본문 링크 fallback; GitLab은 adapter 계약(trait+fixture)만, MR 구현 blocked(계정 없음) | rc.2 협업 EP | 사용자 선택(권장) |
 | 01:1x(11-09) | P10 판단 backend | 조사 카드 1장(Jev·OpenAI Decisions·Claude/Codex 구독 credit — 공식 URL+확인일, 비용 호출 0); backend 구현 카드는 발행하되 조사 결과에 blocked; native 판단 유지 | rc.2 후순위 EP | 사용자 선택(권장) |
 | 01:2x(11-09) | rc.2 발행 확정 | 분해안(EP 7 + 카드 50) "이대로 발행"; TOON **도입하지 않음, JSON 정본**(L4450 채택, FORMAT-* 삭제, 상위 §13 L1395 수정); EP-G Space 적용은 리더(ego-browser), 페이지당 적용 전 사용자 확인 | #2153~#2209 | 사용자 AskUserQuestion 3/3 |
-| 01:3x(11-09) | rc.2 발행 완료(기록) | milestone `2026.11.0-rc.2`(#3): EP #2153~#2159, 카드 #2160~#2209. 생성기 `.moai-cli/reports/rc2_issue_gen.py`, 본문 거울 `issue-bodies/<n>-rc2-*.md`. self-claim 가능 24, blocked 22, 리더 전용 5(G1~G4·E5) | — | 리더 |
+| 01:3x(11-09) | rc.2 발행 완료(기록) | milestone `2026.11.0-rc.2`(#3): EP #2153~#2159, 카드 #2160~#2209. 생성기 `.moai-cli/reports/rc2_issue_gen.py`(2026-11-13 #2682 에서 삭제 — 마지막 판 `5f9109829a`), 본문 거울 `issue-bodies/<n>-rc2-*.md`. self-claim 가능 24, blocked 22, 리더 전용 5(G1~G4·E5) | — | 리더 |
 | 01:0x(11-09) | D-4 미배차 목록 | 원격 Issue(claim 댓글 없는 열린 Issue)가 정본, `assignments.json`은 리더만 커밋하는 스냅샷 캐시, 레인은 읽기만 | #2139 schema, rc.2 | 사용자 선택(권장) |
 
 | 01:1x(11-09) | ADK_PERSONAL_CODING_CORE_20261109_01 수신 | 개인 맞춤 AI 코딩 에이전트 정체성: 5단계 기본, AGENTS.md 공통 + `/moai project` → `AGENTS.override.md`, 재귀 자기 개선 루프(권한 확대·보호 우회 아님), 호스트별 공식 배치, ADK 이름 재검토(rename 0). 로컬 설계 수정 ≠ 온라인 게시 | rc.2 EP-H(미발행) | 사용자 지시, 리더 ACK |
