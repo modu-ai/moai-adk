@@ -16,8 +16,8 @@
 # .env files, private keys, credentials: every new worktree, including each
 # subagent's, would get its own copy of them (Issue #2670).
 
-# Per-machine Claude Code settings. Carries env.PATH as an absolute path
-# (Claude Code does not expand $HOME in env values), plus defaultMode and
-# outputStyle. Without this file a worktree session may fail to resolve
-# project binaries from its Bash subprocess.
-.claude/settings.local.json
+# .claude/settings.local.json is deliberately not listed. In GLM mode the
+# session-start hook writes ANTHROPIC_AUTH_TOKEN into it, so copying it would
+# put the token into every new worktree (Issue #2670). If a worktree session
+# needs per-machine settings such as env.PATH, create
+# .claude/settings.local.json in that worktree by hand.

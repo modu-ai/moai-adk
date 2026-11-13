@@ -15,16 +15,30 @@ import (
 
 // worktreeIncludeSecretProbes stand for files a project keeps out of git because they hold
 // credentials: environment files at the root and nested, private keys and certificates,
-// and credential documents.
+// and credential documents. The first eighteen are the Rust product's `SECRET_PROBES`
+// (`src/worktree_include.rs` on v2026.11.0, audit 6857107471 N1); the last is the
+// per-machine Claude Code settings file, which holds ANTHROPIC_AUTH_TOKEN in GLM mode
+// (user decision on #2670, audit S1).
 var worktreeIncludeSecretProbes = []string{
 	".env",
 	".env.local",
 	".env.production",
+	".env.development",
 	"apps/web/.env",
+	"apps/web/.env.local",
 	"id_rsa",
 	"certs/server.key",
 	"certs/server.pem",
+	"certs/client.p12",
+	"config/master.key",
 	"credentials.json",
+	"service-account.json",
+	"config/secrets.yml",
+	"secrets/token",
+	".aws/credentials",
+	".npmrc",
+	".netrc",
+	".claude/settings.local.json",
 }
 
 // worktreeIncludeSecretLines returns the pattern lines of a .worktreeinclude body that
@@ -32,6 +46,8 @@ var worktreeIncludeSecretProbes = []string{
 // comments and blank lines are skipped, a pattern with no inner slash (after a leading
 // `**/`) matches any path component, a pattern with one is anchored at the root, and a
 // trailing slash names a folder. Negations (`!`) are skipped: they can only un-select.
+// Names compare without case, as the Rust check does (git on the default macOS file
+// system).
 func worktreeIncludeSecretLines(body string) []string {
 	var hits []string
 	for _, raw := range strings.Split(body, "\n") {
@@ -39,13 +55,13 @@ func worktreeIncludeSecretLines(body string) []string {
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") {
 			continue
 		}
-		pattern := strings.TrimSuffix(line, "/")
+		pattern := strings.ToLower(strings.TrimSuffix(line, "/"))
 		// A leading `**/` matches in every folder: the same as an unanchored name.
 		pattern = strings.TrimPrefix(pattern, "**/")
 		anchored := strings.Contains(strings.TrimPrefix(pattern, "/"), "/")
 		pattern = strings.TrimPrefix(pattern, "/")
 		for _, probe := range worktreeIncludeSecretProbes {
-			if worktreeIncludeSelects(pattern, anchored, probe) {
+			if worktreeIncludeSelects(pattern, anchored, strings.ToLower(probe)) {
 				hits = append(hits, line)
 				break
 			}
@@ -83,10 +99,6 @@ func TestWorktreeIncludeTemplateCopiesNoSecrets(t *testing.T) {
 		t.Fatalf("the shipped .worktreeinclude selects secret files %q; every new worktree "+
 			"would get a copy of them (Issue #2670)", hits)
 	}
-	if !strings.Contains(string(data), ".claude/settings.local.json") {
-		t.Fatalf("the per-machine settings line is gone from the template; only the secret " +
-			"lines were meant to be removed")
-	}
 }
 
 // The checker must flag the lines the template used to ship, or the test above proves
@@ -97,12 +109,23 @@ func TestWorktreeIncludeSecretCheckerFlagsTheRemovedLines(t *testing.T) {
 	if len(got) != 2 || got[0] != ".env" || got[1] != ".env.*" {
 		t.Fatalf("checker missed the removed template lines: %q", got)
 	}
-	for _, line := range []string{"*.pem", "certs/", "**/.env", "/.env", "credentials.json"} {
+	// The removed per-machine settings line (audit S1, user decision on #2670).
+	if got := worktreeIncludeSecretLines("# Per-machine settings\n.claude/settings.local.json\n"); len(got) != 1 {
+		t.Fatalf("checker missed the removed settings line: %q", got)
+	}
+	for _, line := range []string{
+		"*.pem", "certs/", "**/.env", "/.env", "credentials.json",
+		// Audit 6857107471 N1: lines the eight-probe checker let through.
+		"apps/web/.env.local", ".aws/credentials", "config/secrets.yml", "*.p12",
+		// The rest of the Rust probe list, and case.
+		".env.development", "config/master.key", "service-account.json", "secrets/",
+		".npmrc", ".netrc", ".claude/", ".ENV",
+	} {
 		if len(worktreeIncludeSecretLines(line+"\n")) != 1 {
 			t.Errorf("checker missed %q", line)
 		}
 	}
-	for _, line := range []string{"# .env", "!.env", ".envrc", ".claude/settings.local.json", "node_modules/"} {
+	for _, line := range []string{"# .env", "!.env", ".envrc", ".env.example", ".claude/settings.json", "node_modules/"} {
 		if hits := worktreeIncludeSecretLines(line + "\n"); len(hits) != 0 {
 			t.Errorf("checker flagged a safe line %q", line)
 		}
