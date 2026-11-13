@@ -2712,11 +2712,42 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
     }
 }
 
+/// The envelope `operation` of a command line whose first word names no command (#2799 D3
+/// decision 1 (a)); no operation ran, so it names the command line itself.
+const UNKNOWN_COMMAND_OPERATION: &str = "cli";
+const UNKNOWN_COMMAND: &str = "unknown command; see --help";
+
+/// True when clap refused `first` as a subcommand and `first` is a bare word that names no
+/// command (nor `help`): `moai no-such-command`. An option, `help <word>` or a known command
+/// followed by a wrong word is not this case and keeps its own handling.
+fn names_no_command(e: &clap::Error, first: &str) -> bool {
+    matches!(e.kind(), ErrorKind::InvalidSubcommand)
+        && !first.starts_with('-')
+        && first != "help"
+        && Cli::command().find_subcommand(first).is_none()
+}
+
 /// A command-line error on an internal operation becomes a `usage` envelope (exit 2) with a
 /// message that echoes no argument; stderr keeps clap's first line for people. Help, version,
 /// the launchers and words that name no operation keep clap's own output.
 fn usage_error(e: clap::Error) -> ExitCode {
-    let op = std::env::args().nth(1).and_then(|w| operation_of(&w));
+    let first = std::env::args().nth(1);
+    if first.as_deref().is_some_and(|w| names_no_command(&e, w)) {
+        // #2799 D3 decision 1 (a): an unknown first word is a usage error like any other, so
+        // stdout carries the `usage` envelope too. Its message echoes no argument (the word
+        // may be anything pasted); stderr and the exit code stay clap's own, byte for byte.
+        let _ = e.print();
+        println!(
+            "{}",
+            contract::failure(
+                UNKNOWN_COMMAND_OPERATION,
+                contract::Kind::Usage,
+                UNKNOWN_COMMAND
+            )
+        );
+        return ExitCode::from(2);
+    }
+    let op = first.and_then(|w| operation_of(&w));
     let Some(op) =
         op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
     else {
