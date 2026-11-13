@@ -79,6 +79,7 @@ pub mod session;
 pub mod skills_legacy;
 pub mod spec;
 pub mod spec_links;
+pub mod state_root;
 pub mod statusline;
 pub mod update;
 pub mod usage_limit;
