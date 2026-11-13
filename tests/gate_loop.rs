@@ -218,12 +218,19 @@ fn a_passing_pull_request_is_merged_and_a_draft_is_skipped() {
         },
     ]);
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    // #2806: one static progress line per non-draft pull request, counted without drafts.
+    let seen: std::rc::Rc<std::cell::RefCell<Vec<String>>> = Default::default();
+    let keep = seen.clone();
+    moai_cli::progress::install(Box::new(move |l| keep.borrow_mut().push(l.to_string())));
+    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock);
+    moai_cli::progress::uninstall();
+    let out = out.unwrap();
     assert_eq!(
         out["pull_requests"],
         json!([{"pr": 9, "outcome": "merged", "merge_commit": "9999999999999999999999999999999999999999"}])
     );
     assert_eq!(t.remaining(), 0, "the draft is never read");
+    assert_eq!(*seen.borrow(), ["checking pull request #9 (1/1)"]);
 }
 
 #[test]

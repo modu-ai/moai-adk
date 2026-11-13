@@ -40,6 +40,9 @@ fn project() -> (tempfile::TempDir, PathBuf) {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().join("project");
     fs::create_dir_all(&root).unwrap();
+    // An earlier-root project: its state stays in `.moai-cli/` (#2696 C2b gives a project
+    // with no state `.moai/`; that layout is pinned in tests/state_root_cli.rs).
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
     (tmp, root)
 }
 

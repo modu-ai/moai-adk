@@ -38,7 +38,7 @@
           "detail": null
         },
         {
-          "path": ".moai-cli/manifests/generation.json",
+          "path": ".moai/manifests/generation.json",
           "action": "create",
           "tracked_by_default": true,
           "expected_sha256": null,

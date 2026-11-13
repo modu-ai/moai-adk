@@ -318,6 +318,57 @@ pub fn dir(root: &Path) -> &'static str {
     }
 }
 
+/// #2696 C2b: a project with no MoAI state at all — verdict `none` (no `.moai` of any kind,
+/// no stopped migration) and no earlier `.moai-cli` — starts on this generation's folder.
+pub fn is_new_project(root: &Path) -> bool {
+    fs::symlink_metadata(root.join(crate::PROJECT_STATE_DIR)).is_err()
+        && classify(root).generation == "none"
+}
+
+/// The folder a writer that creates state uses: `.moai` for a new project (which
+/// [`adopt_new`] then marks), otherwise [`dir`]. A preview and its apply both ask this, so the
+/// path the user approved is the path written.
+pub fn create_dir(root: &Path) -> &'static str {
+    if is_new_project(root) {
+        MOAI_DIR
+    } else {
+        dir(root)
+    }
+}
+
+/// The marker this generation writes last (decision D1), with `extra` fields beside the two
+/// that [`classify`] reads.
+pub fn marker_bytes(created_by: &str, extra: &[(&str, &str)]) -> Vec<u8> {
+    let mut map = serde_json::Map::new();
+    map.insert("schema_version".into(), json!(MARKER_SCHEMA));
+    map.insert("generation".into(), json!("moai-cli"));
+    map.insert(
+        "created_by".into(),
+        json!(format!("moai-cli {} {created_by}", crate::BUILD_VERSION)),
+    );
+    for (k, v) in extra {
+        map.insert((*k).into(), json!(v));
+    }
+    let mut bytes = serde_json::to_vec_pretty(&Value::Object(map)).expect("marker encodes");
+    bytes.push(b'\n');
+    bytes
+}
+
+/// Make a new project's `.moai/` and its marker (#2696 C2b), so every later read and write
+/// resolves to `.moai`. Does nothing for any other project and says whether it wrote. The
+/// folder is created exclusively and the marker published without overwriting.
+pub fn adopt_new(root: &Path, created_by: &str) -> Result<bool, String> {
+    if !is_new_project(root) {
+        return Ok(false);
+    }
+    fs::create_dir(root.join(MOAI_DIR)).map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
+    crate::apply::publish_exclusive(
+        &root.join(MOAI_DIR).join(RUST_MARKER),
+        &marker_bytes(created_by, &[]),
+    )?;
+    Ok(true)
+}
+
 /// `root/<dir(root)>/<sub>`; an empty `sub` is the folder itself.
 pub fn path(root: &Path, sub: &str) -> std::path::PathBuf {
     let base = root.join(dir(root));
