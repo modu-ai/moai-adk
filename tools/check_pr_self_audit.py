@@ -15,7 +15,11 @@ A PR body without the section, missing any of the four lines, or a mutation
 line that does not report FAILED exits 1.
 
 Optional CI citation lines (Issue #2385; rules in skills/moai/workflows/
-verify.md, section "Check-run rules"):
+verify.md, section "Check-run rules"). Since decision D4 (Issue #1975 comment
+6840449133, Issue #2612) the author writes no such line: the auditor reads the
+head's CI run and cites it in the verdict. During the transition a body with
+the line and a body without it both pass; a line that is present is still
+judged by the rules below:
 
   ci: ci run=<run id> head=<40-hex head SHA>
   ci: not_run <reason>
@@ -28,8 +32,8 @@ Each `ci:` line in the section is checked. A citation must carry the keyed
 field `run=` with one or more digits and the keyed field `head=` with exactly
 40 lowercase hex characters, each as a whole whitespace-separated token (39 or
 41 hex, or a suffix such as `-dirty`, fail); otherwise it must start with
-`not_run` followed by a reason containing a letter or digit. A body with no `ci:` line is still accepted,
-because citing CI is allowed only for merge-only deltas. This checker reads
+`not_run` followed by a reason containing a letter or digit. A body with no `ci:` line is accepted
+(decision D4: the citation belongs to the verdict). This checker reads
 text only: it cannot tell whether the run exists or whether its head equals
 the PR head; the auditor reads the run back with `gh api`. The independent audit stays in
 place — this tool only pulls the audit evidence forward, before the PR is

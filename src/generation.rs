@@ -710,10 +710,7 @@ pub fn generation_apply(
     confirmed: &str,
     permission: &str,
 ) -> Result<Value> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     // Same canonical form at the apply entry: an old plan recorded before #2095 with

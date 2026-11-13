@@ -814,10 +814,7 @@ pub fn open_cli_home(home: &Path) -> Result<SyntheticHome> {
 
 fn permission(reference: &str) -> Result<()> {
     // Same rule as `apply::recover`: a recorded reference, not an authorization check.
-    if ["", "null", "placeholder"].contains(&reference.trim())
-        || reference.len() > 128
-        || reference.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(reference) {
         return Err("permission reference required".into());
     }
     Ok(())

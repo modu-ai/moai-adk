@@ -36,7 +36,7 @@ Refs #<Issue 번호>
 
 실행하지 않은 명령은 표에서 빼지 말고 exit 칸에 `not_run`과 이유를 적는다.
 
-로컬에서 무엇을 돌리고 언제 정확 head의 CI 결과를 인용할 수 있는지는 `skills/moai/workflows/verify.md`의 "Check-run rules" 절을 따른다(#2385). CI를 인용하면 `## Self-Audit` 절에 `ci: ci run=<run id> head=<40-hex head SHA>` 한 줄을 적고, 실행된 run이 없으면 `ci: not_run`과 이유를 적는다. 검사 도구 `python3 -I tools/check_pr_self_audit.py`가 이 줄의 형식을 확인한다.
+로컬에서 무엇을 돌리고 언제 정확 head의 CI 결과를 인용할 수 있는지는 `skills/moai/workflows/verify.md`의 "Check-run rules" 절을 따른다(#2385). CI 결과는 감사자가 직접 읽어 판정문에 run·head·결론으로 적는다(결정 D4, #1975 comment 6840449133). 저자는 `## Self-Audit` 절에 `ci:` 줄을 적지 않아도 된다. 전환 동안 적으면 `ci: ci run=<run id> head=<40-hex head SHA>` 또는 `ci: not_run <이유>` 형식이어야 하고, 검사 도구 `python3 -I tools/check_pr_self_audit.py`가 그 형식을 확인한다.
 
 ## 독립 review
 

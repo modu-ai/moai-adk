@@ -181,7 +181,7 @@ fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
 목적: {purpose}\n\n\
 {writing}\
 승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
-명확한 허용 범위의 선택은 스스로 진행하고, 권한·비용·범위가 바뀔 때만 확인한다.\n\
+사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다.\n\
 실행하지 않은 검증을 PASS로 보고하지 않는다. passed·failed·not_run·blocked·stale을 구분한다.\n\
 어떤 검사를 로컬에서 돌리고 언제 정확한 head의 CI 결과를 대신 인용할 수 있는지는 VERIFY workflow의 \"Check-run rules\" 절(단일 출처)을 따른다.\n\
 MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필수 gate의 검증된 대체가 없으면 관련 실행·발행을 막고 blocked로 보고한다.\n\
@@ -201,7 +201,7 @@ Project `{id}` · tools: {tools} · methods: {methods} · hosts: {hosts}.\n\
 Purpose: {purpose}\n\n\
 {writing}\
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
-Decide on your own inside the allowed scope; ask only when permission, cost, or scope changes.\n\
+Answer a factual question yourself and cite the evidence. A choice that cannot be undone, that goes beyond the allowed scope (cost, permissions, external transmission), or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings) waits for the user; decide any other choice within the allowed scope and record it.\n\
 Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.\n\
 Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).\n\
 Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.\n\
@@ -617,10 +617,7 @@ pub(crate) fn agents_apply_amended_for(
     amend: &mut dyn FnMut(&Path, &mut Value) -> Result<()>,
 ) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let current = agents_plan_for(root, p.request.clone(), reference_created_here)?;
