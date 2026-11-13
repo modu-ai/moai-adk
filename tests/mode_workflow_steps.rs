@@ -155,6 +155,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "goal-block",
             "goal-plan",
             "goal-show",
+            "heavy-slot-acquire",
             "labels-apply",
             "labels-plan",
             "pr-confirm",

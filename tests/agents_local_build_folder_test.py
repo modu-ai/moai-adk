@@ -11,6 +11,12 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LOCAL = ROOT / "AGENTS.local.md"
 CONTRACT = ROOT / "docs" / "lane-loop-contract.md"
+# How-to commands that once set a per-session /tmp target folder (WT-2 audit N1).
+HOWTO_DOCS = (
+    ROOT / "docs" / "protocol-v1.md",
+    ROOT / "docs" / "message-test-isolation.md",
+    ROOT / "docs" / "e2e-matrix.md",
+)
 
 
 def check_set_block(text: str) -> str:
@@ -43,6 +49,15 @@ class BuildFolderRuleTest(unittest.TestCase):
     def test_lane_loop_contract_row_matches(self):
         contract = CONTRACT.read_text(encoding="utf-8")
         self.assertIn("빌드 폴더는 worktree 안 `target/` 하나(`CARGO_TARGET_DIR` 지정 안 함, #2380 WT-2)", contract)
+
+    def test_howto_commands_do_not_set_a_target_dir(self):
+        # Inside ```sh blocks only: prose that records a past measurement may name it.
+        for doc in HOWTO_DOCS:
+            text = doc.read_text(encoding="utf-8")
+            blocks = re.findall(r"```sh\n(.*?)```", text, re.S)
+            self.assertTrue(blocks, doc.name)
+            for block in blocks:
+                self.assertIsNone(re.search(r"CARGO_TARGET_DIR\s*=", block), doc.name)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ type Result<T> = std::result::Result<T, String>;
 // @MX:DEBT [P09 pending] Project-local receipt directory, HOLD-B1 A user-confirmed 2026-11-08 (ADK_1989_CONFIRMED_20261108_01).
 // @MX:CEILING Worktree deletion loses the receipt with the tree; the recovery gap is documented in docs/rust-product-path.md.
 // @MX:UPGRADE Move to the home-side runs layout when P09 resolves — this constant is the single swap point.
-pub const RECEIPTS_DIR: &str = ".moai-cli/receipts";
+pub const RECEIPTS_DIR: &str = crate::project_state!("receipts");
 const RECEIPT_SCHEMA_VERSION: u32 = 1;
 /// Same bounded-file rule as every other state file.
 const RECEIPT_LIMIT: u64 = 262_144;
@@ -510,7 +510,9 @@ mod tests {
     #[test]
     fn relative_paths_are_bounded() {
         assert!(relative_ok("skills/moai/workflows/"));
-        assert!(relative_ok(".moai-cli/manifests/generation.json"));
+        assert!(relative_ok(crate::project_state!(
+            "manifests/generation.json"
+        )));
         assert!(!relative_ok("/abs"));
         assert!(!relative_ok("../up"));
         assert!(!relative_ok("a/../b"));
@@ -530,10 +532,10 @@ mod tests {
     #[test]
     fn recover_guard_blocks_go_and_receipt_paths() {
         assert!(guard_recoverable_path("AGENTS.md").is_ok());
-        assert!(guard_recoverable_path(".moai-cli/manifests/generation.json").is_ok());
+        assert!(guard_recoverable_path(crate::project_state!("manifests/generation.json")).is_ok());
         assert!(guard_recoverable_path(".moai/state/x.json").is_err());
         assert!(guard_recoverable_path(".moai").is_err());
-        assert!(guard_recoverable_path(".moai-cli/receipts/x.json").is_err());
+        assert!(guard_recoverable_path(crate::project_state!("receipts/x.json")).is_err());
         assert!(guard_recoverable_path("/abs").is_err());
         assert!(guard_recoverable_path("a/../b").is_err());
     }

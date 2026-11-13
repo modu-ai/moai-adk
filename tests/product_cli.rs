@@ -2356,18 +2356,12 @@ mod skill_package {
         );
         // One hop: the router names only the route table.
         assert_eq!(package_paths_in(body), vec!["references/routes.json"]);
-        // REQ-02A-05, narrowed by the #2592 user decisions (6840661050, 6840838042): no host
-        // agent files are shipped; the base agents ship only as tool-neutral sources under
-        // references/agents/ (decision A), rendered per host at install time.
+        // REQ-02A-05, narrowed by the #2592 user decisions (6840661050, 6840838042) and #2721:
+        // the skill ships no agent material at all; the base agents ship as tool-neutral
+        // sources in `agents/` beside `skills/`, rendered per host at install time.
         assert!(package_files()
             .iter()
-            .all(|p| !p.starts_with("agents/") && !p.ends_with(".toml")));
-        for p in package_files().iter().filter(|p| p.contains("agents/")) {
-            assert!(
-                p.starts_with("references/agents/") && p.ends_with(".md"),
-                "agent material outside references/agents/: {p}"
-            );
-        }
+            .all(|p| !p.contains("agents/") && !p.ends_with(".toml")));
     }
 
     #[test]
@@ -2428,14 +2422,16 @@ mod skill_package {
                 .expect("shared block ends with the not-installed rule");
             rest[..list_end].to_string()
         };
-        let mut sources: Vec<String> = fs::read_dir(root().join("references/agents"))
-            .unwrap()
-            .map(|e| {
-                let text = fs::read_to_string(e.unwrap().path()).unwrap();
-                let (keys, _) = frontmatter(&text);
-                keys.into_iter().find(|(k, _)| k == "name").unwrap().1
-            })
-            .collect();
+        // #2721: the sources live beside `skills/`, outside the package.
+        let mut sources: Vec<String> =
+            fs::read_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"))
+                .unwrap()
+                .map(|e| {
+                    let text = fs::read_to_string(e.unwrap().path()).unwrap();
+                    let (keys, _) = frontmatter(&text);
+                    keys.into_iter().find(|(k, _)| k == "name").unwrap().1
+                })
+                .collect();
         sources.sort();
         let first = fs::read_to_string(root().join("workflows/run.md")).unwrap();
         let shared = common(&first);

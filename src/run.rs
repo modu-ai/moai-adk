@@ -541,7 +541,7 @@ fn baseline_store_dir(project: &Path) -> Option<std::path::PathBuf> {
     let common = id["clone_anchor"].as_str()?;
     Some(
         Path::new(common)
-            .join(".moai-cli")
+            .join(crate::CLONE_STATE_DIR)
             .join("receipts")
             .join("run"),
     )

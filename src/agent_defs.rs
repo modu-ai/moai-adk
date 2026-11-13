@@ -1,7 +1,12 @@
 //! Base MoAI agents (#2592, stage 2 S1): one tool-neutral source per role, rendered into each
-//! host's agent file. The sources live in the `moai` skill package under
-//! `references/agents/<role>.md` (decision A: reference documents, never separate skills), so
-//! they ship and update with the package and never show in a user skill list.
+//! host's agent file. The sources live outside the skill tree (#2721): `agents/<role>.md` in
+//! the repository and in the release folder, beside `skills/moai` (`<version folder>/agents/`
+//! next to `<version folder>/skills/moai` and `<version folder>/bin/moai-cli`). A skill holds
+//! only `SKILL.md`, its workflows and its references (code.claude.com/docs/en/skills,
+//! learn.chatgpt.com/docs/build-skills); agents load only from the hosts' agent folders
+//! (code.claude.com/docs/en/sub-agents, learn.chatgpt.com/docs/agent-configuration/subagents,
+//! read 2026-11-13), so the sources are rendered into those folders and never copied with a
+//! skill.
 //!
 //! A source is Markdown with a small frontmatter — `name`, `description`, `readonly`
 //! (`true|false`), `isolation` (`none|worktree`), `shape` (`sequential|fanout`) — and the
@@ -10,7 +15,7 @@
 //! silently but listed in `not_supported`. Pure functions: nothing here reads HOME or writes.
 //!
 //! An optional `reads` key (#2637) lists the internal references the agent reads first, as
-//! `<folder>/<name>` entries of the same package (`references/<folder>/<name>.md`) or `none`;
+//! `<folder>/<name>` entries of the `moai` skill package (`references/<folder>/<name>.md`) or `none`;
 //! a missing key means none. No host has a field for it, so every renderer turns the list into
 //! one generated instruction line ahead of the body; the source body never repeats it.
 
@@ -19,8 +24,8 @@ use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
 
-/// Where the sources live inside the skill package.
-pub const SOURCE_DIR: &str = "references/agents";
+/// The source folder's name, beside `skills/` in the repository and in the release folder.
+pub const SOURCE_DIR: &str = "agents";
 /// Hosts the home installer (#2592 S2) writes: Claude Code and Codex (S1), OMP (#2633). A host
 /// is listed here only together with its user folder in `agent_install::host_dir`.
 pub const HOSTS: [&str; 3] = ["claude", "codex", "omp"];
@@ -202,11 +207,17 @@ fn reads_line(def: &AgentDef) -> String {
     )
 }
 
-/// Every source under `<package>/references/agents/`, sorted by file name. A package without
-/// the folder has no agents.
-pub fn package_agents(package: &Path) -> Result<Vec<AgentDef>> {
-    let dir = package.join(SOURCE_DIR);
-    let entries = match std::fs::read_dir(&dir) {
+/// Every source in the agent folder `dir`, sorted by file name; an absent folder has no
+/// agents. `package` is the skill package whose `references/` the `reads` entries name.
+pub fn package_agents(dir: &Path, package: &Path) -> Result<Vec<AgentDef>> {
+    match std::fs::symlink_metadata(dir) {
+        Ok(m) if m.file_type().is_symlink() => {
+            return Err("agent source folder is a symlink; refused".into())
+        }
+        Ok(m) if !m.is_dir() => return Err("agent source folder is not a folder".into()),
+        _ => {}
+    }
+    let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(_) => return Err("agent source folder unreadable".into()),
@@ -249,6 +260,33 @@ pub fn package_agents(package: &Path) -> Result<Vec<AgentDef>> {
         defs.push(def);
     }
     Ok(defs)
+}
+
+/// Digest of the agent source folder (#2721): every `.md` file name with its bytes' sha256, in
+/// name order; `None` when the folder is absent. Call it after [`package_agents`] accepted the
+/// folder, so only regular `.md` files are in it.
+pub fn source_digest(dir: &Path) -> Result<Option<String>> {
+    if let Err(e) = std::fs::symlink_metadata(dir) {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            return Ok(None);
+        }
+        return Err("agent source folder unreadable".into());
+    }
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .map_err(|_| "agent source folder unreadable")?
+        .map(|e| {
+            e.map(|e| e.file_name().to_string_lossy().into_owned())
+                .map_err(|_| "agent source folder unreadable".to_string())
+        })
+        .collect::<Result<_>>()?;
+    names.sort();
+    let mut listing = String::new();
+    for name in names {
+        let bytes = std::fs::read(dir.join(&name))
+            .map_err(|_| format!("{SOURCE_DIR}/{name}: unreadable"))?;
+        listing.push_str(&format!("{name}\0{}\n", crate::digest(&bytes)));
+    }
+    Ok(Some(crate::digest(listing.as_bytes())))
 }
 
 fn yaml_scalar(s: &str) -> String {

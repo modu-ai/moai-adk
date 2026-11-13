@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "a1705f42485b3b9ea12f363148b3ebeca50187d98c978b2b2afc6468c010265e",
+      "sha256": "640cae5127d4ac8a10da04c70d702f62035d43fc5999a11f4cf43363ed10e2de",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "d18ad049e795e6b4724981ea08f806681c02b12eaf537a3991b41468dfd148f9",
+      "sha256": "84401edc7d878c1cb96e1926ea533a531121f50b5b166795ede4652fd76fa312",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -162,53 +162,8 @@
         "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B)."
       }
     },
-    "references/agents/audit.md": {
-      "sha256": "c7dd1a26ba875807f63b0735a141c9f85ed0a15cf623377135d20cfdcf0a05db",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "agent-audit",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-audit, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
-      }
-    },
-    "references/agents/docs.md": {
-      "sha256": "cf88023c9c0fdab02991a18a186db46a070ef995045b1fd7bad8c49080cbde7c",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "agent-docs",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-docs, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
-      }
-    },
-    "references/agents/impl.md": {
-      "sha256": "8b4965e5547e0288ed5eb8bc39d925a6425eff6fad715ff107a4dec3997968c5",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "agent-impl",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-impl, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
-      }
-    },
-    "references/agents/plan.md": {
-      "sha256": "6b68b40a56946690aa5818dc365308a65e6b470429699b33b69a8006759a9bc2",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "agent-plan",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-plan, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
-      }
-    },
-    "references/agents/research.md": {
-      "sha256": "90cb48fc16d4a9530d603d42f600daa46dd24ffa6cb56c2400e5e13802b5db47",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "agent-research",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-research, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs. moai-research reads adapters/aside and adapters/orca (#2637 CLOSE-TABLE 6847128731 remaining item 1; the files came with #2636)."
-      }
-    },
     "references/chains/index.md": {
-      "sha256": "dc0ca5f0f5c3c7bbdb25974a0d943b3eb2621b860011c03f38cf9e9c44baccd1",
+      "sha256": "122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
