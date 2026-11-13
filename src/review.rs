@@ -524,10 +524,23 @@ pub struct CheckReport {
 
 /// How far (in lines) quoted evidence may sit from the cited line.
 pub const EVIDENCE_WINDOW: u64 = 3;
+/// The marker of the post body's machine-readable line.
+pub const MACHINE_MARKER: &str = "moai-review-severity";
 const SEVERITIES: [&str; 3] = ["important", "nit", "pre_existing"];
 
 fn squash(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Text for one table cell: one line, `|` escaped, and `&`, `<`, `>` as entities so a title or
+/// path can neither split the table nor open an HTML comment that forges the machine line
+/// (pre-audit 6840720403 B1, N1).
+fn table_cell(text: &str) -> String {
+    squash(text)
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('|', "\\|")
 }
 
 fn text_field<'a>(v: &'a serde_json::Value, key: &str) -> Option<&'a str> {
@@ -556,7 +569,9 @@ pub fn check(repo: &Path, head: &str, input: &serde_json::Value) -> Result<Check
             problems.push(format!("finding {i}: severity"));
             continue;
         }
-        let Some(title) = text_field(f, "title") else {
+        // The machine line's marker is reserved; a title naming it could pass for a second
+        // machine line in the posted body (pre-audit 6840720403 B1).
+        let Some(title) = text_field(f, "title").filter(|t| !t.contains(MACHINE_MARKER)) else {
             problems.push(format!("finding {i}: title"));
             continue;
         };
@@ -645,11 +660,15 @@ pub fn check(repo: &Path, head: &str, input: &serde_json::Value) -> Result<Check
             "nit" => "Nit",
             _ => "Pre-existing",
         };
-        let title = squash(&f.title.replace('|', "\\|"));
-        body.push_str(&format!("| {label} | {}:{} | {title} |\n", f.file, f.line));
+        body.push_str(&format!(
+            "| {label} | {}:{} | {} |\n",
+            table_cell(&f.file),
+            f.line,
+            table_cell(&f.title)
+        ));
     }
     body.push_str(&format!(
-        "\n<!-- moai-review-severity: {{\"important\":{},\"nit\":{},\"pre_existing\":{}}} -->\n",
+        "\n<!-- {MACHINE_MARKER}: {{\"important\":{},\"nit\":{},\"pre_existing\":{}}} -->\n",
         counts.important, counts.nit, counts.pre_existing
     ));
     let mut report = CheckReport {

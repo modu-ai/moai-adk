@@ -1026,6 +1026,16 @@ enum Command {
     /// The deterministic review package for an AUDIT (#2614): the diff from the merge base to
     /// HEAD, the changed files, and the review instructions (`REVIEW.md` and its includes) and
     /// context (`AGENTS.md`, `CLAUDE.md`) read from BASE only. Reads git; writes nothing.
+    ReviewPackage {
+        /// Repository root.
+        project: PathBuf,
+        /// The base revision (the pull request's base branch tip).
+        #[arg(long)]
+        base: String,
+        /// The head revision under review.
+        #[arg(long)]
+        head: String,
+    },
     /// Format check of review findings before they are posted (#2614 AC-3): stdin
     /// `{"schema_version":1,"findings":[…]}`; each finding needs a severity, a `file:line` in
     /// HEAD, a title, evidence quoted from that line, and a confirmed verification. Prints the
@@ -1034,16 +1044,6 @@ enum Command {
         /// Repository root.
         project: PathBuf,
         /// The head revision the findings cite.
-        #[arg(long)]
-        head: String,
-    },
-    ReviewPackage {
-        /// Repository root.
-        project: PathBuf,
-        /// The base revision (the pull request's base branch tip).
-        #[arg(long)]
-        base: String,
-        /// The head revision under review.
         #[arg(long)]
         head: String,
     },

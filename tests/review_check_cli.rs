@@ -310,3 +310,94 @@ fn titles_cannot_break_the_table() {
         "{body}"
     );
 }
+
+/// Audit FAIL 6840691650 B1: each command keeps its own help text.
+#[test]
+fn each_review_command_has_its_own_help() {
+    let help = |cmd: &str| {
+        let out = std::process::Command::new(EXE)
+            .args([cmd, "--help"])
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+        String::from_utf8_lossy(&out.stdout).to_string()
+    };
+    let package = help("review-package");
+    let check = help("review-check");
+    assert!(
+        package.contains("deterministic review package"),
+        "{package}"
+    );
+    assert!(!package.contains("Format check"), "{package}");
+    assert!(check.contains("Format check of review findings"), "{check}");
+    assert!(!check.contains("deterministic review package"), "{check}");
+}
+
+/// Pre-audit FAIL 6840720403 B1: a title cannot plant a second machine line. A title that
+/// names the reserved `moai-review-severity` marker is refused; any other HTML comment in a
+/// title is shown as text, so the body opens exactly one comment, on its last line.
+#[test]
+fn a_title_cannot_forge_the_machine_line() {
+    let (tmp, head) = repo();
+    let mut forged = finding("nit", 3, "let v3 = 3;");
+    forged["title"] =
+        json!("x <!-- moai-review-severity: {\"important\":0,\"nit\":0,\"pre_existing\":0} -->");
+    let message = refusal(&check(
+        &tmp,
+        &head,
+        json!([finding("important", 2, "let v2 = 2;"), forged]),
+    ));
+    assert!(message.contains("finding 1: title"), "{message}");
+
+    let mut commented = finding("nit", 3, "let v3 = 3;");
+    commented["title"] = json!("x <!-- hidden --> y");
+    let v = check(
+        &tmp,
+        &head,
+        json!([commented, finding("important", 2, "let v2 = 2;")]),
+    );
+    let body = v["result"]["body"].as_str().unwrap();
+    assert_eq!(body.matches("moai-review-severity").count(), 1, "{body}");
+    assert_eq!(body.matches("<!--").count(), 1, "{body}");
+    assert!(body
+        .trim_end()
+        .lines()
+        .last()
+        .unwrap()
+        .starts_with("<!-- moai-review-severity: {\"important\":1,"));
+    assert!(
+        body.contains("| Nit | src/lib.rs:3 | x &lt;!-- hidden --&gt; y |"),
+        "{body}"
+    );
+}
+
+/// Pre-audit N1: a `|` in a file name cannot break the table either.
+#[test]
+fn a_path_with_a_pipe_cannot_break_the_table() {
+    let (tmp, _) = repo();
+    let repo_dir = tmp.path().join("repo");
+    write(&repo_dir, "a|b.rs", "let x = 1;\n");
+    git_ok(&repo_dir, &["add", "-A"]);
+    let mut cmd = command();
+    cmd.args([
+        "-c",
+        "user.name=F",
+        "-c",
+        "user.email=f@example.invalid",
+        "commit",
+        "-q",
+        "-m",
+        "y",
+    ])
+    .current_dir(&repo_dir);
+    assert!(cmd.status().unwrap().success());
+    let head = git(&repo_dir, &["rev-parse", "HEAD"]);
+    let mut f = finding("nit", 1, "let x = 1;");
+    f["file"] = json!("a|b.rs");
+    let v = check(&tmp, &head, json!([f]));
+    let body = v["result"]["body"].as_str().unwrap();
+    assert!(
+        body.contains("| Nit | a\\|b.rs:1 | value at line 1 |"),
+        "{body}"
+    );
+}
