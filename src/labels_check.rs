@@ -185,6 +185,18 @@ fn get_json<T: Transport>(t: &T, url: &str) -> Result<(Value, Option<String>)> {
 /// Reads every open Issue of `owner/repo` (GET only) and reports the ones that break the axis
 /// rule, with a count per violation kind. Writes nothing anywhere.
 pub fn check<T: Transport>(t: &T, owner: &str, repo: &str, axes: &Axes) -> Result<Value> {
+    // Only plain GitHub names go into the URL path, so no other API path can be read
+    // (#2743 audit N1).
+    let name_ok = |s: &str| {
+        !s.is_empty()
+            && s.len() <= 100
+            && !s.starts_with('.')
+            && s.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
+    };
+    if !name_ok(owner) || !name_ok(repo) {
+        return Err("owner and repo must be GitHub names".into());
+    }
     let mut url = Some(format!(
         "https://api.github.com/repos/{owner}/{repo}/issues?state=open&per_page=100"
     ));
