@@ -82,9 +82,47 @@ fn tree(root: &Path) -> BTreeMap<String, Vec<u8>> {
     out
 }
 
+/// #2696 C2b: a project with no state at all gets `.moai/` and its marker from its first
+/// profile; the earlier root is not created.
+#[test]
+fn a_project_with_no_state_starts_on_moai() {
+    let root = TempDir::new().unwrap();
+    let p = root.path().to_str().unwrap();
+    let plan = cli(&["project-plan", p], &profile());
+    assert_eq!(plan["action"], json!("create"), "{plan}");
+    assert!(
+        !root.path().join(".moai").exists(),
+        "a preview writes nothing"
+    );
+    create(root.path());
+    let marker: Value =
+        serde_json::from_slice(&fs::read(root.path().join(".moai/moai-cli.json")).unwrap())
+            .unwrap();
+    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+    assert_eq!(marker["schema_version"], json!(1), "{marker}");
+    assert!(root.path().join(".moai/project.yaml").is_file());
+    assert!(root
+        .path()
+        .join(".moai/manifests/profile-baseline.json")
+        .is_file());
+    assert!(!root.path().join(".moai-cli").exists());
+    let detect = cli(&["project-detect", p], &json!({}));
+    assert_eq!(
+        detect["state_root"]["generation"],
+        json!("rust"),
+        "{detect}"
+    );
+    // A second run plans `unchanged` against the profile under `.moai/`.
+    let again = cli(&["project-plan", p], &profile());
+    assert_eq!(again["action"], json!("unchanged"), "{again}");
+}
+
+/// A project that already keeps its state in the earlier `.moai-cli/` (no marker) keeps
+/// writing there; nothing appears under `.moai/`.
 #[test]
 fn a_project_without_the_marker_keeps_the_earlier_root() {
     let root = TempDir::new().unwrap();
+    fs::create_dir(root.path().join(".moai-cli")).unwrap();
     create(root.path());
     assert!(root.path().join(".moai-cli/project.yaml").is_file());
     assert!(root
@@ -159,7 +197,20 @@ fn guidance_names_the_state_folder_the_project_uses() {
     assert!(next.contains(".moai/manifests/generation.json"), "{next}");
     assert!(!next.contains(".moai-cli"), "{next}");
 
+    // #2696 C2b: an empty folder's profile will be created under `.moai/`; a folder that
+    // already has the earlier root hears that one.
     let plain = TempDir::new().unwrap();
+    let detect = cli(
+        &["project-detect", plain.path().to_str().unwrap()],
+        &json!({}),
+    );
+    assert!(
+        detect["next_actions"]
+            .to_string()
+            .contains("no .moai/project.yaml yet"),
+        "{detect}"
+    );
+    fs::create_dir(plain.path().join(".moai-cli")).unwrap();
     let detect = cli(
         &["project-detect", plain.path().to_str().unwrap()],
         &json!({}),
