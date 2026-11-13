@@ -6,11 +6,10 @@ import json
 import os
 import pathlib
 import subprocess
-import sys
+import types
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-GENERATOR = ROOT / "tools" / "gen_goal_block.py"
 NOTE = ("Codex /goal의 진행 강제 여부는 미확인 — 효과를 보장하지 않는다"
         "(docs/host-support-matrix.md goal 행, 2026-11-09 확인)")
 ISSUES = {"milestone": "rc.2", "issues": [
@@ -36,28 +35,23 @@ def rust_bin():
 
 
 def invoke(fixture):
-    """The Python generator's result, after checking that `moai-cli goal-block` agrees
-    (#2708): the same exit code, and on success its envelope `result` equals the Python
-    output; on failure both name an invalid fixture."""
+    """`moai-cli goal-block` on `fixture` (#2708; the Python generator tools/gen_goal_block.py
+    is gone, leader decision 6863668555). On success `stdout` is the envelope's `result` as
+    JSON, the object the Python generator printed; on failure `stderr` holds the envelope and
+    the error line."""
     text = json.dumps(fixture, ensure_ascii=False)
-    py = subprocess.run([sys.executable, "-I", str(GENERATOR)],
-                        input=text, capture_output=True, text=True)
     binary = rust_bin()
     if not binary.exists():
         raise AssertionError(f"moai-cli not built at {binary}; run cargo build first")
     rs = subprocess.run([str(binary), "goal-block"], input=text, capture_output=True, text=True)
-    agree = py.returncode == rs.returncode
-    if agree and py.returncode == 0:
+    if rs.returncode == 0:
         envelope = json.loads(rs.stdout)
-        agree = envelope.get("ok") is True and envelope.get("result") == json.loads(py.stdout)
-    elif agree:
-        agree = "invalid fixture" in rs.stdout + rs.stderr
-    if not agree:
-        raise AssertionError(
-            "goal-block disagrees with tools/gen_goal_block.py\n"
-            f"fixture={text}\npython {py.returncode} {py.stdout!r} {py.stderr!r}\n"
-            f"rust {rs.returncode} {rs.stdout!r} {rs.stderr[-300:]!r}")
-    return py
+        if envelope.get("ok") is not True:
+            raise AssertionError(f"goal-block exit 0 without ok: {rs.stdout!r}")
+        return types.SimpleNamespace(returncode=0, stdout=json.dumps(envelope["result"]),
+                                     stderr=rs.stderr)
+    return types.SimpleNamespace(returncode=rs.returncode, stdout="",
+                                 stderr=rs.stdout + rs.stderr)
 
 
 def run_generator(fixture):

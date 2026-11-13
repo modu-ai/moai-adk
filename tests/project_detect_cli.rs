@@ -603,12 +603,33 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
         assert_eq!(state["legacy_root"], json!(".moai-cli"), "{result}");
         assert!(result["detected"].get("state_root").is_none(), "{result}");
         assert!(result["profile"].get("state_root").is_none(), "{result}");
+        // #2696: the Go-state step follows the verdict, not the folder kind (a `rust`
+        // `.moai/` is a folder too).
+        let actions = result["next_actions"].to_string();
+        assert_eq!(
+            actions.contains("moai-cli go-state-plan"),
+            want == "go",
+            "{want}: {actions}"
+        );
     }
-    // The PROJECT workflow moves nothing on the four verdicts that leave the choice to the user.
+    // #2696: a stopped move points at the revert preview and nothing else.
+    let root = with_profile();
+    write(root.path(), ".moai-backup/manifest.json", "{}");
+    let result = detect(&root);
+    assert_eq!(result["state_root"]["generation"], json!("interrupted"));
+    let actions = result["next_actions"].to_string();
+    assert!(
+        actions.contains("moai-cli go-state-revert-plan"),
+        "{actions}"
+    );
+    assert!(!actions.contains("moai-cli go-state-plan"), "{actions}");
+    // The PROJECT workflow moves nothing on the verdicts that leave the choice to the user.
     let workflow = include_str!("../skills/moai/workflows/project.md");
     assert!(workflow.contains(
-        "When `generation` is `mixed`, `unknown`, `refuse` or `interrupted`, move nothing in step 2: show its `reason` and let the user decide."
+        "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and let the user decide. `interrupted` is handled in step 2."
     ));
+    assert!(workflow
+        .contains("2. **Go-generation state (only when `state_root.generation` is `go`).**"));
 }
 
 /// #2561: a linked `.moai` is reported as a link and never followed (its target's manifest is

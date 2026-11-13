@@ -14,13 +14,17 @@
 //! | a folder with neither, empty | `empty` |
 //! | a folder with neither, not empty | `unknown` (nothing moves; the user decides) |
 //! | unreadable or newer Rust marker | `refuse` |
-//! | a `.moai.migrating-<UTC>` beside it | `interrupted` (a stopped migration; recovery first) |
+//! | not `rust`, with a Go backup beside it and `.moai` absent or holding a go-state receipt | `interrupted` (a stopped migration; recovery first) |
 //!
 //! Go markers: `.moai/manifest.json` (the Go deploy manifest), `.moai/config/config.yaml`,
 //! and `.moai/config/sections/system.yaml` with a `moai:` block holding `version:`.
 //! Rust marker: `.moai/moai-cli.json` = `{"schema_version": 1, "generation": "moai-cli", …}`,
 //! written last by a migration (decision D1). Every path is read with `symlink_metadata`;
 //! a link anywhere on the way is not a marker. Writes nothing.
+//!
+//! A Go backup is the Go folder after `go-state-apply` renamed it (#2725 rev2 D2, #2696):
+//! exactly `.moai-backup`, or `.moai-backup-<UTC>` when that name was taken. The Go tool's own
+//! `.moai-backups/` (plural) is not one.
 
 use serde_json::{json, Value};
 use std::{fs, path::Path};
@@ -31,8 +35,10 @@ pub const MOAI_DIR: &str = ".moai";
 pub const RUST_MARKER: &str = "moai-cli.json";
 /// The marker schema this build writes and understands.
 pub const MARKER_SCHEMA: u64 = 1;
-/// The name prefix a migration gives the Go folder while it moves it (design §3).
-pub const MIGRATING_PREFIX: &str = ".moai.migrating-";
+/// The name `go-state-apply` gives the Go folder (#2725 rev2 D2); never overwritten.
+pub const GO_BACKUP: &str = ".moai-backup";
+/// The receipt a `go-state-apply` that moved the Go folder keeps under `.moai/backups/<UTC>/`.
+pub const GO_STATE_RECEIPT: &str = "go-state-receipt.json";
 /// Markers are small JSON objects; anything larger is not one.
 const MARKER_LIMIT: u64 = 64 * 1024;
 /// `system.yaml` is a few KiB; a larger file is not read for the version key.
@@ -48,7 +54,8 @@ pub struct Classified {
     pub go_markers: Vec<String>,
     /// `valid`, `absent`, `newer` or `unreadable`.
     pub rust_marker: &'static str,
-    /// `.moai.migrating-*` entries beside `.moai`, sorted.
+    /// The Go backups beside `.moai` that make the verdict `interrupted`, sorted (empty
+    /// for every other verdict).
     pub interrupted: Vec<String>,
     /// Entries directly inside `.moai/` (0 unless it is a real folder).
     pub entries: u64,
@@ -162,17 +169,49 @@ fn rust_marker(moai: &Path) -> &'static str {
     }
 }
 
-fn migrating_entries(root: &Path) -> Vec<String> {
+/// A UTC stamp `YYYYMMDDTHHMMSSZ`, the only suffix a backup or apply name carries.
+pub fn utc_stamp(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 16
+        && b[8] == b'T'
+        && b[15] == b'Z'
+        && b[..8].iter().chain(&b[9..15]).all(u8::is_ascii_digit)
+}
+
+/// `.moai-backup` or `.moai-backup-<UTC>`, and nothing else (not the Go `.moai-backups`).
+pub fn go_backup_name(name: &str) -> bool {
+    name == GO_BACKUP
+        || name
+            .strip_prefix(GO_BACKUP)
+            .and_then(|r| r.strip_prefix('-'))
+            .is_some_and(utc_stamp)
+}
+
+/// The Go backups directly under `root`, whatever each entry is, sorted.
+fn go_backups(root: &Path) -> Vec<String> {
     let mut out: Vec<String> = fs::read_dir(root)
         .map(|rd| {
             rd.filter_map(|e| e.ok())
                 .filter_map(|e| e.file_name().into_string().ok())
-                .filter(|n| n.starts_with(MIGRATING_PREFIX))
+                .filter(|n| go_backup_name(n))
                 .collect()
         })
         .unwrap_or_default();
     out.sort();
     out
+}
+
+/// `.moai/backups/<UTC>/go-state-receipt.json` exists as a regular file: this `.moai/` is the
+/// one a go-state apply made (or a revert has not finished leaving).
+fn holds_go_state_receipt(moai: &Path) -> bool {
+    fs::read_dir(moai.join("backups"))
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter_map(|e| e.file_name().into_string().ok())
+                .filter(|n| utc_stamp(n))
+                .any(|n| regular_file(moai, &["backups", &n, GO_STATE_RECEIPT]).is_some())
+        })
+        .unwrap_or(false)
 }
 
 /// Classify `root/.moai` (design 6854765655 §2). Reads only.
@@ -194,18 +233,28 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
         Ok(_) => "other",
     };
     let legacy_root = regular_file(root, &[crate::PROJECT_STATE_DIR, "project.yaml"]).is_some();
-    let interrupted = migrating_entries(root);
     let (go, marker, entries) = if moai_dir == "folder" {
         let entries = fs::read_dir(&moai).map(|rd| rd.count() as u64).unwrap_or(0);
         (go_markers(&moai), rust_marker(&moai), entries)
     } else {
         (Vec::new(), "absent", 0)
     };
-    let (generation, reason) = if !interrupted.is_empty() {
+    // #2696: a go-state apply renames the Go folder to a backup, makes a new `.moai/` holding
+    // its receipt and writes the marker last; a revert removes the marker first. A backup
+    // beside a `.moai` that is missing, or that is the apply's own folder without a valid
+    // marker, is a migration stopped midway in either direction. A backup beside the Go
+    // folder or beside any other `.moai/` is not (a finished revert, or the user's folder).
+    let backups = go_backups(root);
+    let stopped = !backups.is_empty()
+        && marker != "valid"
+        && (moai_dir == "absent" || (moai_dir == "folder" && holds_go_state_receipt(&moai)));
+    let interrupted = if stopped { backups } else { Vec::new() };
+    let (generation, reason) = if stopped {
         (
             "interrupted",
             format!(
-                "a stopped migration left {}; run the recovery preview before anything else",
+                "a go-state migration stopped midway ({} beside a .moai that is not this \
+                 generation's); run go-state-revert-plan before anything else",
                 interrupted.join(", ")
             ),
         )
@@ -345,14 +394,90 @@ mod tests {
             "refuse"
         );
         let interrupted = verdict(|r| {
-            fs::create_dir(r.join(".moai.migrating-20261113T150000Z")).unwrap();
-            write(r, ".moai/moai-cli.json", MARKER_V1);
+            write(r, ".moai-backup/manifest.json", "{}");
+            write(
+                r,
+                ".moai/backups/20261113T150000Z/go-state-receipt.json",
+                "{}",
+            );
         });
         assert_eq!(interrupted.generation, "interrupted");
+        assert_eq!(interrupted.interrupted, vec![".moai-backup".to_string()]);
+    }
+
+    /// #2696: which Go backups beside which `.moai` mean a stopped migration.
+    #[test]
+    fn a_go_backup_means_interrupted_only_beside_a_missing_or_unfinished_moai() {
+        const RECEIPT: &str = ".moai/backups/20261113T150000Z/go-state-receipt.json";
+        let backup = |r: &Path| write(r, ".moai-backup/manifest.json", "{}");
+        // Renamed, nothing made yet; and made, marker not yet written (or already removed).
+        assert_eq!(verdict(backup).generation, "interrupted");
+        let c = verdict(|r| {
+            backup(r);
+            write(r, RECEIPT, "{}");
+        });
+        assert_eq!(c.generation, "interrupted");
+        // The stamped name counts too; both are listed.
+        let c = verdict(|r| {
+            backup(r);
+            write(r, ".moai-backup-20261113T150000Z/manifest.json", "{}");
+        });
         assert_eq!(
-            interrupted.interrupted,
-            vec![".moai.migrating-20261113T150000Z".to_string()]
+            c.interrupted,
+            vec![
+                ".moai-backup".to_string(),
+                ".moai-backup-20261113T150000Z".to_string()
+            ]
         );
+        // Finished: the marker is valid.
+        let c = verdict(|r| {
+            backup(r);
+            write(r, RECEIPT, "{}");
+            write(r, ".moai/moai-cli.json", MARKER_V1);
+        });
+        assert_eq!((c.generation, c.interrupted.len()), ("rust", 0));
+        // Beside the Go folder (a finished revert) or a folder without the receipt.
+        let c = verdict(|r| {
+            backup(r);
+            write(r, ".moai/manifest.json", "{}");
+        });
+        assert_eq!((c.generation, c.interrupted.len()), ("go", 0));
+        let c = verdict(|r| {
+            backup(r);
+            write(r, ".moai/notes.txt", "mine");
+        });
+        assert_eq!(c.generation, "unknown");
+        // Not backups: the Go tool's plural folder, other suffixes, a receipt not under a stamp.
+        for other in [
+            ".moai-backups",
+            ".moai-backup-old",
+            ".moai-backup-20261113T150000",
+            ".moai-backup20261113T150000Z",
+        ] {
+            let c = verdict(|r| write(r, &format!("{other}/x"), "x"));
+            assert_eq!(c.generation, "none", "{other}");
+        }
+        let c = verdict(|r| {
+            backup(r);
+            write(r, ".moai/backups/latest/go-state-receipt.json", "{}");
+        });
+        assert_eq!(c.generation, "unknown");
+    }
+
+    #[test]
+    fn utc_stamps_are_exactly_sixteen_characters() {
+        assert!(utc_stamp("20261113T150000Z"));
+        for bad in [
+            "",
+            "20261113T150000",
+            "20261113T150000ZZ",
+            "20261113X150000Z",
+            "2026111aT150000Z",
+            "20261113T15000aZ",
+            "20261113T150000z",
+        ] {
+            assert!(!utc_stamp(bad), "{bad}");
+        }
     }
 
     #[test]

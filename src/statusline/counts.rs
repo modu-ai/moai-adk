@@ -230,15 +230,19 @@ fn take_lock(anchor: &Path, now: i64) -> bool {
     false
 }
 
-/// Called after a render: start one detached refresh child when the cache needs it.
-/// Never waits and never fails the render. `exe` must be the `moai-cli` binary; any
-/// other executable (a test harness) is not re-invoked.
-pub fn maybe_refresh(anchor: &Path, exe: &Path, suppressed: bool) -> bool {
-    let is_cli = exe
-        .file_stem()
+/// Whether `exe` is the product binary: its file stem is `moai-cli` or `moai`.
+fn is_product_binary(exe: &Path) -> bool {
+    exe.file_stem()
         .and_then(|s| s.to_str())
-        .is_some_and(|s| s == "moai-cli");
-    if suppressed || !is_cli || !origin_is_github(anchor) {
+        .is_some_and(|s| s == "moai-cli" || s == "moai")
+}
+
+/// Called after a render: start one detached refresh child when the cache needs it.
+/// Never waits and never fails the render. `exe` must be the product binary under one of
+/// its two names, `moai-cli` or `moai` (#2790 R1, impact table B1); any other executable
+/// (a test harness) is not re-invoked.
+pub fn maybe_refresh(anchor: &Path, exe: &Path, suppressed: bool) -> bool {
+    if suppressed || !is_product_binary(exe) || !origin_is_github(anchor) {
         return false;
     }
     let now = now_unix();
@@ -356,6 +360,31 @@ pub fn refresh(anchor: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// #2790 R1 (B1): the refresh child is started from either product name, with or without
+    /// `.exe`; a test harness or a near-miss name is not re-invoked.
+    #[test]
+    fn both_product_names_refresh_and_other_names_do_not() {
+        for name in ["moai-cli", "moai", "moai-cli.exe", "moai.exe"] {
+            assert!(
+                is_product_binary(Path::new("/x/bin").join(name).as_path()),
+                "{name}"
+            );
+        }
+        for name in [
+            "gate_check_cli-0a1b",
+            "moai-clix",
+            "moaii",
+            "xmoai",
+            "moai-old",
+            "",
+        ] {
+            assert!(
+                !is_product_binary(Path::new("/x/bin").join(name).as_path()),
+                "{name:?}"
+            );
+        }
+    }
 
     #[test]
     fn refresh_is_due_at_the_ttl_and_not_before() {

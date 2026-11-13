@@ -40,7 +40,10 @@ impl RecordSource {
 #[derive(Parser)]
 #[command(
     name = "moai-cli",
-    version = moai_cli::BUILD_VERSION,
+    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1): usage and help name
+    // `moai-cli` whichever name ran, so the two binaries print the same text.
+    bin_name = "moai-cli",
+    version = moai_cli::VERSION_SIGNATURE,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
 )]
@@ -1105,9 +1108,10 @@ enum Command {
         /// Project root carrying the Go `.moai/manifest.json`.
         project: PathBuf,
     },
-    /// Move the files a confirmed go-state preview offers into
-    /// `.moai-cli/backups/<UTC>/go-state/` (#2561 stage 2), with a receipt. Applies only
-    /// when a fresh preview has the given digest; never overwrites, never copies.
+    /// Carry out a confirmed go-state preview (#2561, #2696): the Go `.moai/` becomes
+    /// `.moai-backup` (or `.moai-backup-<UTC>`), a new `.moai/` takes the earlier `.moai-cli`
+    /// product state and the marker last; a Go folder that stays keeps the #2561 stage-2 file
+    /// moves. Applies only when a fresh preview has the given digest; never overwrites.
     GoStateApply {
         project: PathBuf,
         #[arg(long)]
@@ -1122,8 +1126,9 @@ enum Command {
         #[arg(long)]
         backup: String,
     },
-    /// Move one go-state apply's files back (#2561 stage 2). All or nothing: a file that
-    /// came back at its original path, or a changed backup copy, refuses the revert.
+    /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
+    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. All or nothing: anything that
+    /// came back at an original path, or a changed backup, refuses the revert.
     GoStateRevert {
         project: PathBuf,
         #[arg(long)]
@@ -2794,8 +2799,44 @@ fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCod
     }
 }
 
-fn main() -> ExitCode {
+/// The first word of a Go-generation hook call (#2790 R0): the Go `moai` ran project hooks as
+/// `moai hook <event> [args]` (34 events in the Go templates' `.claude/hooks/moai/*.sh`, which
+/// look for `~/go/bin/moai` before PATH).
+const GO_HOOK_WORD: &str = "hook";
+
+/// `moai hook <event> …` from a Go-generation project hook (#2790 R0, impact table C1). This
+/// build has no `hook` command; answering with clap's usage error would exit 2, which hosts
+/// read as "block this tool call". It is a hook call, so it gets hook mode's quiet answer:
+/// the host's input on stdin is read and dropped (bounded, never from a terminal), stdout
+/// stays empty, one line on stderr says what happened, and the exit is 0 — nothing blocked.
+fn go_hook_main(argv: &[String]) -> ExitCode {
+    use std::io::IsTerminal as _;
+    if !io::stdin().is_terminal() {
+        let _ = io::copy(
+            &mut io::stdin().take(moai_cli::hook_engine::STDIN_LIMIT),
+            &mut io::sink(),
+        );
+    }
+    let event = argv
+        .get(2)
+        .map(String::as_str)
+        .filter(|e| {
+            !e.is_empty() && e.len() <= 64 && e.bytes().all(|b| b.is_ascii_lowercase() || b == b'-')
+        })
+        .unwrap_or("?");
+    eprintln!(
+        "moai: ignored a Go-generation hook call (hook {event}); this Rust build does not run Go hooks, nothing was blocked"
+    );
+    ExitCode::SUCCESS
+}
+
+/// Entry point of both binaries: `moai-cli` (this file) and `moai` (`src/bin/moai.rs` loads
+/// this file as a module and calls this function; #2790 R1).
+pub(crate) fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
+    if argv.get(1).is_some_and(|w| w == GO_HOOK_WORD) {
+        return go_hook_main(&argv);
+    }
     let hook_mode = hook_mode_argv(&argv);
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
@@ -2928,7 +2969,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(moai_cli::BUILD_VERSION, expected);
-        assert_eq!(Cli::command().get_version(), Some(moai_cli::BUILD_VERSION));
+        // `--version` prints the build version and the generation mark (#2790 R1).
+        let signature = format!("{} (rust)", moai_cli::BUILD_VERSION);
+        assert_eq!(Cli::command().get_version(), Some(signature.as_str()));
+        assert_eq!(moai_cli::VERSION_SIGNATURE, signature);
         if option_env!("MOAI_LOCAL_BUILD").is_none_or(str::is_empty) {
             assert_eq!(moai_cli::BUILD_VERSION, env!("CARGO_PKG_VERSION"));
         }
