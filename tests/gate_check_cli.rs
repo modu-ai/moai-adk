@@ -1,4 +1,4 @@
-//! Issue #2674 S1: `gate-check` decides the leader merge gate (rules G1–G7, Issue comment
+//! Issue #2674 S1: `gate-check` decides the leader merge gate (rules G1–G8, Issue comment
 //! 6849084101) from a snapshot on stdin. One passing snapshot; every test changes one thing and
 //! sees exactly the rule that stops it, and the boundary that still passes.
 
@@ -57,7 +57,8 @@ fn passing() -> Value {
         "merge_clean": true,
         "body_check_ok": true,
         "verdict_base_known": true,
-        "pr_authors": ["agent-26"]
+        "pr_authors": ["agent-26"],
+        "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"}
     })
 }
 
@@ -355,6 +356,56 @@ fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
     let mut s = passing();
     s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "rc-ci / linux-x86_64", "conclusion": "failure"}]);
     assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+}
+
+/// #2777 G8: the tip's push CI. Green and flaky pass; red stops every PR but one whose body
+/// carries `moai-tip-repair:`; unknown (or no `tip_ci` at all) stops every PR, a repair too.
+#[test]
+fn a_red_tip_stops_all_but_its_repair_and_unknown_stops_everything() {
+    let tip = |state: &str| json!({"state": state, "tip": OTHER, "decided_by": OTHER, "detail": "ci failure run 7"});
+    for (state, repair, want) in [
+        ("green", false, (true, String::new())),
+        ("flaky", false, (true, String::new())),
+        ("red", false, (false, "G8".to_string())),
+        ("red", true, (true, String::new())),
+        ("unknown", false, (false, "G8".to_string())),
+        ("unknown", true, (false, "G8".to_string())),
+        ("pending", false, (false, "G8".to_string())),
+    ] {
+        let mut s = passing();
+        s["tip_ci"] = tip(state);
+        s["tip_repair"] = json!(repair);
+        assert_eq!(stopped(&gate(&s)), want, "{state} repair={repair}");
+    }
+    let mut s = passing();
+    s.as_object_mut().unwrap().remove("tip_ci");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G8".into()), "{v}");
+    assert!(
+        v["result"]["reason"].as_str().unwrap().contains("not read"),
+        "{v}"
+    );
+}
+
+/// G8 comes first: on a red tip the stop names G8 even when a later rule would also stop, so
+/// the merge loop acts on nothing else (no update-branch) while the tip is red. The reason
+/// names the earlier commit whose completed CI decided.
+#[test]
+fn a_red_tip_is_the_first_stop_and_names_the_deciding_commit() {
+    let mut s = passing();
+    s["merge_clean"] = json!(false);
+    s["tip_ci"] =
+        json!({"state": "red", "tip": OTHER, "decided_by": B, "detail": "ci failure run 7"});
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G8".into()), "{v}");
+    let reason = v["result"]["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("last completed CI on 2222222222"),
+        "{reason}"
+    );
+    assert!(reason.contains("moai-tip-repair:"), "{reason}");
+    s["tip_ci"]["state"] = json!("green");
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
 }
 
 /// #2674 R1 (leader scope 6850215811): an author never audits its own PR — the verdict's

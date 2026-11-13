@@ -8,7 +8,7 @@
 //! Provisional decisions (leader RC1, decisions log 18:1x, pending P05 and P12): git runs as a
 //! fixed-argv subprocess, ids are sha256 of canonical paths, the home root is fixed at
 //! `~/.moai-cli`, and the output keeps the current contract (no envelope, exit 0/1).
-use crate::{digest, read_profile, HOME_STATE_DIR, PROJECT_STATE_DIR};
+use crate::{digest, read_profile, HOME_STATE_DIR};
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -221,7 +221,7 @@ pub fn identity(path: &Path) -> Result<Value> {
     };
     let (project_root, project_id, profile_status) = match &work_tree {
         Some(top) => {
-            let root = top.join(PROJECT_STATE_DIR);
+            let root = crate::state_root::path(top, "");
             refuse_symlink(&root, "project state root")?;
             let (id, status) = match fs::symlink_metadata(root.join("project.yaml")) {
                 Err(_) => (Value::Null, "missing"),

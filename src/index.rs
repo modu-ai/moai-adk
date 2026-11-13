@@ -57,12 +57,15 @@ enum ReadPoint {
 /// One operation's authority. Paths below this directory are never reopened ambiently.
 struct IndexIo {
     root: Dir,
+    /// The project's state folder, read once when the handle opens (#2725 S2b).
+    state: &'static str,
 }
 
 impl IndexIo {
     fn new(project: &Path) -> io::Result<Self> {
         Ok(Self {
             root: Dir::open_ambient_dir(project, cap_std::ambient_authority())?,
+            state: crate::state_root::dir(project),
         })
     }
 
@@ -192,11 +195,8 @@ impl IndexIo {
                 "index state byte limit exceeded",
             ));
         }
-        let (owned, name) = self.parent(
-            Path::new(crate::project_state!("index/last-build.json")),
-            true,
-            &mut |_, _| {},
-        )?;
+        let marker = format!("{}/index/last-build.json", self.state);
+        let (owned, name) = self.parent(Path::new(&marker), true, &mut |_, _| {})?;
         let parent = owned.as_ref().unwrap_or(&self.root);
         let (mut file, _) = Self::regular_file(parent, name, true)?;
         // Never truncate until the opened handle itself is known to be regular.
@@ -307,7 +307,7 @@ fn file_sha(f: &mut fs::File) -> Option<(String, u64)> {
 }
 
 fn index_root(project: &Path) -> PathBuf {
-    project.join(crate::PROJECT_STATE_DIR).join("index")
+    crate::state_root::path(project, "index")
 }
 
 fn generations_dir(project: &Path) -> PathBuf {
@@ -334,13 +334,13 @@ fn scan_with_hook(
     mut hook: impl FnMut(ReadPoint, &Path),
 ) -> Result<(String, Vec<IndexedFile>)> {
     let raw = git_out(project, &["ls-files", "-z"])?;
+    let index_dir = format!("{}/index", source.state);
+    let index_prefix = format!("{index_dir}/");
     let mut paths: Vec<String> = raw
         .split(|b| *b == 0)
         .filter(|e| !e.is_empty())
         .map(|e| String::from_utf8_lossy(e).into_owned())
-        .filter(|p| {
-            !p.starts_with(crate::project_state!("index/")) && p != crate::project_state!("index")
-        })
+        .filter(|p| !p.starts_with(&index_prefix) && *p != index_dir)
         .collect();
     paths.sort();
     paths.dedup();
@@ -419,13 +419,14 @@ fn untracked(project: &Path) -> Result<Vec<String>> {
         ],
     )?;
     let mut out = Vec::new();
+    let own = format!("{}/", crate::state_root::dir(project));
     for e in raw.split(|b| *b == 0) {
         if e.len() > 3 && e.starts_with(b"?? ") {
             let path = String::from_utf8_lossy(&e[3..]).into_owned();
             // The tool's own state directory (this index, receipts, claims) is never a
             // project change: the index writes there itself, so counting it would make
             // `fresh` unreachable.
-            if path.starts_with(crate::project_state!("")) {
+            if path.starts_with(&own) {
                 continue;
             }
             out.push(path);
@@ -498,7 +499,10 @@ fn orphan_candidates(project: &Path) -> Vec<String> {
 /// Writes the pointer through a temp file plus a rename in the same directory: a reader
 /// either sees the previous pointer or the new one, never a partial write (AC-2).
 fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
-    let pointer = crate::apply::target(project, crate::project_state!("index/current.json"))?;
+    let pointer = crate::apply::target(
+        project,
+        &crate::state_root::rel(project, "index/current.json"),
+    )?;
     let dir = index_root(project);
     fs::create_dir_all(&dir).map_err(|_| "index directory unavailable".to_string())?;
     let nanos = std::time::SystemTime::now()
@@ -614,8 +618,7 @@ fn stored_views(source: &IndexIo, manifest: &IndexManifest) -> Result<(Vec<Value
         let bytes = source
             .read_state(Path::new(&format!(
                 "{}/index/generations/{}/{view}.jsonl",
-                crate::PROJECT_STATE_DIR,
-                manifest.generation_id
+                source.state, manifest.generation_id
             )))
             .ok()
             .flatten()
@@ -751,11 +754,11 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         IndexIo::new(&root).map_err(|_| "index directory handle unavailable".to_string())?;
     let build = || -> Result<Value> {
         for rel in [
-            crate::project_state!("index/generations"),
-            crate::project_state!("index/current.json"),
-            crate::project_state!("index/last-build.json"),
+            crate::state_root::rel(&root, "index/generations"),
+            crate::state_root::rel(&root, "index/current.json"),
+            crate::state_root::rel(&root, "index/last-build.json"),
         ] {
-            crate::apply::target(&root, rel)?;
+            crate::apply::target(&root, &rel)?;
         }
         let (base_commit, files) = scan(&root, &source)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
@@ -777,10 +780,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         for name in ["manifest.json", "map.jsonl", "graph.jsonl"] {
             crate::apply::target(
                 &root,
-                &format!(
-                    "{}/index/generations/{gen_id}/{name}",
-                    crate::PROJECT_STATE_DIR
-                ),
+                &format!("{}/index/generations/{gen_id}/{name}", source.state),
             )?;
         }
         let action = if !gen_dir.is_dir() {
@@ -852,7 +852,12 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             };
             // The failure path must enforce the same target/ancestor rule as the
             // success path, or its marker could overwrite a symlinked source.
-            if crate::apply::target(&root, crate::project_state!("index/last-build.json")).is_ok() {
+            if crate::apply::target(
+                &root,
+                &crate::state_root::rel(&root, "index/last-build.json"),
+            )
+            .is_ok()
+            {
                 if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
                     let _ = source.write_marker(&bytes);
                 }
@@ -864,7 +869,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
 
 fn read_pointer(source: &IndexIo) -> Result<Option<String>> {
     let Some(bytes) = source
-        .read_state(Path::new(crate::project_state!("index/current.json")))
+        .read_state(Path::new(&format!("{}/index/current.json", source.state)))
         .map_err(|_| "index pointer unreadable".to_string())?
     else {
         return Ok(None);
@@ -895,7 +900,7 @@ fn load_manifest(source: &IndexIo, gen_id: &str) -> Option<IndexManifest> {
     let bytes = source
         .read_state(Path::new(&format!(
             "{}/index/generations/{gen_id}/manifest.json",
-            crate::PROJECT_STATE_DIR
+            source.state
         )))
         .ok()??;
     let m: IndexManifest = serde_json::from_slice(&bytes).ok()?;
@@ -995,8 +1000,10 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
     // REQ-C6-01: a recorded failed attempt outranks the pointer — the index is known
     // incomplete until the next successful build clears the marker. The check comes
     // before the scan so the state stays readable even while the source is broken.
-    let marker = match source.read_state(Path::new(crate::project_state!("index/last-build.json")))
-    {
+    let marker = match source.read_state(Path::new(&format!(
+        "{}/index/last-build.json",
+        source.state
+    ))) {
         Ok(Some(bytes)) => match serde_json::from_slice::<BuildFailure>(&bytes) {
             Ok(marker) => Some(marker),
             Err(_) => return unavailable("index failure marker unreadable"),
