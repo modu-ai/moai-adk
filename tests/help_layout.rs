@@ -143,8 +143,14 @@ fn a_usage_error_envelope_is_byte_identical_under_both_names() {
 fn help_all_lists_every_command_and_the_root_a_subset() {
     let all = String::from_utf8(run(common::MOAI_BIN, &["help", "--all"], &[]).stdout).unwrap();
     let root = String::from_utf8(run(common::MOAI_BIN, &["--help"], &[]).stdout).unwrap();
-    let listed =
-        |text: &str, word: &str| text.lines().any(|l| l.starts_with(&format!("  {word} ")));
+    // A row is `  <word>` then spaces and its about, or `  <word>` alone when it has none.
+    let listed = |text: &str, word: &str| {
+        text.lines().any(|l| {
+            l.strip_prefix("  ")
+                .and_then(|r| r.strip_prefix(word))
+                .is_some_and(|r| r.is_empty() || r.starts_with(' '))
+        })
+    };
     for g in moai_cli::help::GROUPS {
         assert!(all.contains(&format!("\n{}\n", g.heading)), "{}", g.heading);
         for (word, on_root) in g.commands {

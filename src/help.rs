@@ -285,8 +285,13 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
         out.push('\n');
         for (name, text) in list {
             let pad = name_w - name.chars().count();
-            out.push_str(&format!("  {name}{}  ", " ".repeat(pad)));
-            out.push_str(&wrap(&text, indent, width));
+            let row = format!(
+                "  {name}{}  {}",
+                " ".repeat(pad),
+                wrap(&text, indent, width)
+            );
+            // A command without an about leaves no padding at the line end.
+            out.push_str(row.trim_end());
             out.push('\n');
         }
     }

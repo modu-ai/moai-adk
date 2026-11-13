@@ -15,8 +15,8 @@ Project
   language-setup          Choose the writing language item
                           by item
   index-build             Build the code map index
-  agents-plan             
-  agents-apply            
+  agents-plan
+  agents-apply
   generation-plan         Plan project-specific generated
                           files read-only (03-C #1997):
                           typed request on stdin; judgment
@@ -747,8 +747,8 @@ Internal
   snapshot-describe       Read-only: PROJECT's HEAD commit
                           and a digest of its tracked
                           changes (07-D #2011)
-  package-inspect         
-  package-resolve         
+  package-inspect
+  package-resolve
   codex-projection-plan   Plan a Codex projection of the
                           common package into an explicit
                           target; writes nothing
