@@ -222,6 +222,120 @@ fn body_check(dir: &Path, body: &str) -> Result<bool> {
     Ok(status.success())
 }
 
+/// Earlier tip commits read at most when the tip's own push CI has not completed (G8).
+pub const TIP_WALK: usize = 10;
+/// The check the tip must pass (both spellings of the aggregate, `flow::CI_CHECK_NAMES`).
+const TIP_REQUIRED: &str = "ci";
+
+/// G8's judgment of one commit's check runs (every attempt): [`crate::flow::tip_ci_judgment`]
+/// over the runs that completed with something other than `cancelled`. A cancelled run says
+/// nothing about the code (a newer push cancels the older run), and a running attempt has no
+/// result yet: a commit whose CI was only cancelled or is still running has no completed CI
+/// and reads `pending`, while a completed failure stays `red` while its re-run runs.
+pub fn completed_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
+    let kept: Vec<serde_json::Value> = runs
+        .iter()
+        .filter(|r| {
+            r["conclusion"]
+                .as_str()
+                .is_some_and(|c| !c.is_empty() && c != "cancelled")
+        })
+        .cloned()
+        .collect();
+    crate::flow::tip_ci_judgment(&kept, &[TIP_REQUIRED.to_string()])
+}
+
+/// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
+/// visible), at most ten pages.
+fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_json::Value>> {
+    let mut out = Vec::new();
+    let mut url = Some(format!(
+        "{base_url}/commits/{sha}/check-runs?filter=all&per_page=100"
+    ));
+    let mut pages = 0;
+    while let Some(u) = url {
+        pages += 1;
+        if pages > 10 {
+            return Err("more than 10 check run pages".into());
+        }
+        let (page, next) = get_json(t, &u)?;
+        out.extend(
+            page["check_runs"]
+                .as_array()
+                .ok_or("check runs response has no list")?
+                .iter()
+                .cloned(),
+        );
+        url = next;
+    }
+    Ok(out)
+}
+
+/// G8 input: the tip's state from its last completed push CI. The tip is judged first; while
+/// its CI runs or was only cancelled, the earlier tip commits (first parents, at most
+/// [`TIP_WALK`]) are read in turn and the first with completed CI decides. A read that fails,
+/// or no completed CI within the walk, is `unknown`.
+fn tip_ci<T: Transport>(t: &T, base_url: &str, dir: &Path, tip: &str) -> Result<gate::TipCi> {
+    let walk = git_ok(
+        dir,
+        &[
+            "rev-list",
+            "--first-parent",
+            &format!("--max-count={TIP_WALK}"),
+            tip,
+        ],
+    )?;
+    let unknown = |detail: String| gate::TipCi {
+        state: "unknown".into(),
+        tip: tip.to_string(),
+        decided_by: None,
+        detail,
+    };
+    let mut waited = Vec::new();
+    for sha in walk.lines().filter(|l| !l.is_empty()) {
+        let runs = match tip_runs(t, base_url, sha) {
+            Ok(runs) => runs,
+            Err(e) => return Ok(unknown(format!("check runs of {sha} unreadable: {e}"))),
+        };
+        let j = completed_judgment(&runs);
+        let state = j["state"].as_str().unwrap_or("unknown").to_string();
+        if state == "pending" {
+            waited.push(sha.get(..10).unwrap_or(sha).to_string());
+            continue;
+        }
+        let detail = match state.as_str() {
+            "red" => j["failed"]
+                .as_array()
+                .map(|f| {
+                    f.iter()
+                        .map(|r| {
+                            format!(
+                                "{} {} run {}",
+                                r["check"].as_str().unwrap_or("?"),
+                                r["conclusion"].as_str().unwrap_or("?"),
+                                r["run_id"].as_u64().map_or("?".into(), |n| n.to_string())
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default(),
+            other => format!("{other} on {}", sha.get(..10).unwrap_or(sha)),
+        };
+        return Ok(gate::TipCi {
+            state,
+            tip: tip.to_string(),
+            decided_by: Some(sha.to_string()),
+            detail,
+        });
+    }
+    Ok(unknown(format!(
+        "no completed push CI on the last {} tip commit(s) ({} running or only cancelled)",
+        waited.len(),
+        waited.join(", ")
+    )))
+}
+
 /// Reads one pull request into a [`Snapshot`] for [`gate::check`].
 pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     let base_url = format!(
@@ -343,6 +457,10 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         }
     }
 
+    // G8 is read last: every earlier read is unchanged, and a pull request the gate cannot read
+    // locally never costs the tip reads.
+    let tip_ci = tip_ci(t, &base_url, dir, &tip)?;
+
     Ok(Snapshot {
         schema_version: 1,
         pr: target.pr,
@@ -358,5 +476,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         body_check_ok: body_check(dir, &body)?,
         verdict_base_known,
         pr_authors: Some(authors),
+        tip_ci: Some(tip_ci),
+        tip_repair: crate::flow::is_tip_repair(&body),
     })
 }
