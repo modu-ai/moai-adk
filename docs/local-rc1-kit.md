@@ -33,6 +33,8 @@ CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=/tmp/moai-rc1-stage-target cargo build --of
 shasum -a 256 /tmp/moai-rc1-stage-target/release/moai-cli   # 바이너리 hash를 기록
 ```
 
+로컬 시험 빌드마다 번호를 붙이려면 빌드할 때 `MOAI_LOCAL_BUILD=<n>`을 주세요(#2722 AC-5, 리더 결정 6855056793). `MOAI_LOCAL_BUILD=3 cargo build …`로 만든 바이너리는 `moai-cli --version`과 상태줄에 `2026.11.0-rc.1+local.3`으로 보입니다. `+local.<n>`은 semver 빌드 메타데이터라서 릴리스 태그 `rc.<n>`과 섞이지 않습니다. `<n>`은 1부터 4294967295까지의 십진수만 받습니다. 부호, 앞자리 0, 공백이 들어가면 빌드가 멈추고, 비우거나 주지 않으면 지금처럼 메타데이터 없이 빌드됩니다. 설치·갱신 기록의 패키지 버전에는 번호를 붙이지 않습니다.
+
 바이너리는 PATH에 넣지 말고 경로로 부르세요. 이름이 `moai`가 아니라서 Go `moai`와 섞이지 않습니다. `~/.moai-cli/bin/`에 설치하는 것은 04-A installer의 몫이고, 이 키트는 설치하지 않습니다.
 
 ## 2. 격리 시험 (실측)

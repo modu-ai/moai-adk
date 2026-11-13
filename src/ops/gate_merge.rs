@@ -47,12 +47,22 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         tip: &args.tip,
         review_confirmed_prs: args.review_confirmed.clone(),
     };
-    let mut transport = GhTransport::from_env()?;
-    // The status is posted with the audit App token when it is set, like forge-audit-status.
+    // Reads, the merge and the record use gh's own (operator) authentication; only the status
+    // is posted with the audit App token when it is set, like forge-audit-status — the App has
+    // Commit statuses permission only (docs/rust-product-path.md, audit 6856351941 F3).
+    let transport = GhTransport::from_env()?;
+    let mut status_transport = GhTransport::from_env()?;
     let token = std::env::var(APP_TOKEN_VAR)
         .ok()
         .filter(|t| !t.trim().is_empty());
     let app = token.is_some();
-    transport.gh_token = token;
-    moai_cli::gate_merge::merge(&target, &args.permission_reference, app, &transport, &SystemClock)
+    status_transport.gh_token = token;
+    moai_cli::gate_merge::merge(
+        &target,
+        &args.permission_reference,
+        app,
+        &transport,
+        &status_transport,
+        &SystemClock,
+    )
 }

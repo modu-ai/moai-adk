@@ -19,7 +19,7 @@ pub const IGNORE_SECTION: &str = "moai-local";
 pub const REVIEW_SECTION: &str = "moai-review";
 /// Interview answers the REVIEW.md section carries, in the order it lists them.
 const REVIEW_ANSWERS: [&str; 2] = ["review_blocks", "protected"];
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+const MANIFEST: &str = crate::project_state!("manifests/generation.json");
 const TEMPLATE_VERSION: &str = "rc1";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -179,13 +179,25 @@ fn review_answers(p: &Profile) -> Vec<(&str, &String)> {
 
 /// REVIEW.md managed section (#2639): `None` when the interview gave no review answer, so a
 /// profile without them plans no REVIEW.md at all.
+/// The language the generated instruction text is written in (#2706): the profile's
+/// `language.instruction_files` when it is one the templates exist for (`en`, `ko`), else the
+/// request language. A profile without the choice renders exactly as before.
+fn instruction_language<'a>(p: &'a Profile, r: &'a AgentsRequest) -> &'a str {
+    p.language
+        .as_ref()
+        .and_then(|l| l.get("instruction_files"))
+        .map(String::as_str)
+        .filter(|code| *code == "en" || *code == "ko")
+        .unwrap_or(r.language.as_str())
+}
+
 fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
     let answers = review_answers(p);
     if answers.is_empty() {
         return None;
     }
     let (begin, end) = markers(REVIEW_SECTION, "html");
-    let ko = r.language == "ko";
+    let ko = instruction_language(p, r) == "ko";
     let mut body = if ko {
         "## 프로젝트 리뷰 규칙 (관리 구간)\n\n`/moai project` 인터뷰 답이다. 이 구간 밖에 적은 규칙은 MoAI가 건드리지 않는다.\n\n".to_string()
     } else {
@@ -206,7 +218,8 @@ fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
 fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
     let (begin, end) = markers(AGENTS_SECTION, "html");
     let list = |v: &[String]| v.join(", ");
-    let share = match (r.language.as_str(), r.local_file.as_str()) {
+    let lang = instruction_language(p, r);
+    let share = match (lang, r.local_file.as_str()) {
         ("ko", "tracked") => "credential과 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
         ("ko", _) => "개인 `AGENTS.local.md`, credential, 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
         (_, "tracked") => "Never share credentials or raw secret logs in the repo or in Issues.",
@@ -217,9 +230,14 @@ fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
     let writing = p
         .language
         .as_ref()
-        .map(|l| format!("{}\n", crate::language::render_lines(l, &r.language)))
+        .map(|l| {
+            format!(
+                "{}\n",
+                crate::language::render_lines_in(l, lang, &r.language)
+            )
+        })
         .unwrap_or_default();
-    let body = if r.language == "ko" {
+    let body = if lang == "ko" {
         format!(
             "## MoAI 작업 흐름 (관리 구간)\n\n\
 프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
@@ -470,17 +488,17 @@ pub(crate) fn agents_plan_for(
         if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
             warnings.push(BLOCK_ABSENT.into());
         }
-        // #2293: the managed text is written in the request language; a profile that sets
-        // instruction files to another language is reported, not refused.
+        // #2706: the managed text follows the profile's `instruction_files` when templates
+        // exist for it (`en`, `ko`); another code is reported and the request language used.
         if let Some(code) = profile
             .language
             .as_ref()
             .and_then(|l| l.get("instruction_files"))
-            .filter(|code| **code != request.language)
+            .filter(|code| code.as_str() != instruction_language(&profile, &request))
         {
             warnings.push(format!(
-                "managed section rendered in `{}` while profile language.instruction_files is `{code}`",
-                request.language
+                "managed section rendered in `{}`: no managed-section text in profile language.instruction_files `{code}`",
+                instruction_language(&profile, &request)
             ));
         }
         if agents_file.action != "conflict" && projected > 32 * 1024 {
@@ -1131,10 +1149,10 @@ mod tests {
     fn manifest_backup_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1167,7 +1185,11 @@ mod tests {
         let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| {
             let dirs = backups(&receipts);
             assert_eq!(dirs.len(), 1, "this run's backup dir: {dirs:?}");
-            fs::write(dirs[0].join(".moai-cli"), b"blocks the manifest backup").unwrap();
+            fs::write(
+                dirs[0].join(crate::PROJECT_STATE_DIR),
+                b"blocks the manifest backup",
+            )
+            .unwrap();
             Ok(())
         })
         .unwrap_err();
@@ -1221,10 +1243,10 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1290,10 +1312,10 @@ mod tests {
     fn file_backup_failure_row_is_recorded_in_the_receipt_file() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1384,10 +1406,10 @@ mod tests {
     fn amended_manifest_decode_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1475,7 +1497,7 @@ mod tests {
         assert_eq!(parsed.kind, None);
         assert_eq!(parsed.section_id.as_deref(), Some("moai-workflow"));
         let new = json!({
-            "path": ".moai-cli/workflows/review-flow/SKILL.md",
+            "path": crate::project_state!("workflows/review-flow/SKILL.md"),
             "kind": "workflow",
             "section_id": "generation:workflow:review-flow",
             "baseline_sha256": "sha256:971e386609930516d7c92f3ad25ef05793f923f978c6b01a11f5a018e94f5b0b"

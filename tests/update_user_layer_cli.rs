@@ -34,7 +34,8 @@ fn copy_tree(from: &Path, to: &Path) {
     }
 }
 
-/// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli` and the real package beside it.
+/// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli`, the real package beside it and
+/// the agent sources in `agents/` next to `skills/` (#2721).
 fn setup() -> (TempDir, PathBuf, PathBuf, PathBuf) {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
@@ -45,7 +46,93 @@ fn setup() -> (TempDir, PathBuf, PathBuf, PathBuf) {
     common::copy_executable(Path::new(EXE), &exe);
     let pkg = folder.join("skills/moai");
     copy_tree(&package(), &pkg);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &folder.join("agents"),
+    );
     (tmp, home, exe, pkg)
+}
+
+/// #2721 AC-3: an install from a package that still carried the agent sources inside the skill
+/// (`references/agents/`) moves to the new layout. The base agents are found by name, so they
+/// stay unchanged; the five old skill-tree files are reported `remove_blocked` and kept — no
+/// host loads an agent from a skill folder, and the updater never deletes.
+#[test]
+fn an_install_with_agents_inside_the_skill_moves_to_the_new_layout() {
+    let (_t, home, exe, pkg) = setup();
+    let old = pkg.join("references/agents");
+    copy_tree(&Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"), &old);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
+    assert_eq!(r["agents_result"]["state"], json!("applied"), "{r}");
+    let copied = skill_dir(&home, "claude").join("references/agents/impl.md");
+    assert!(copied.is_file());
+    // The next release ships the sources only beside the skill.
+    fs::remove_dir_all(&old).unwrap();
+    let p = result(&run(&exe, &home, &["update"]));
+    for host in p["agents"]["hosts"].as_array().unwrap() {
+        for f in host["files"].as_array().unwrap() {
+            assert_eq!(f["action"], json!("unchanged"), "{f}");
+        }
+    }
+    let claude = p["plan"]["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["host"] == json!("claude"))
+        .unwrap();
+    let stale: Vec<&str> = claude["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| {
+            f["path"]
+                .as_str()
+                .unwrap()
+                .starts_with("references/agents/")
+        })
+        .map(|f| f["action"].as_str().unwrap())
+        .collect();
+    assert_eq!(stale, ["remove_blocked"; 5], "{p}");
+    assert!(copied.is_file(), "a preview deletes nothing");
+}
+
+/// #2721: a release folder without `agents/` (or with a symlink there) is refused with the
+/// expected path; nothing is written.
+#[test]
+fn a_release_without_a_real_agent_folder_is_refused() {
+    let (_t, home, exe, pkg) = setup();
+    let agents = pkg.parent().unwrap().parent().unwrap().join("agents");
+    fs::remove_dir_all(&agents).unwrap();
+    let before = state(&home);
+    let out = run(&exe, &home, &["update"]);
+    assert!(!out.status.success());
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.contains("no agent sources installed"), "{text}");
+    std::os::unix::fs::symlink(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &agents,
+    )
+    .unwrap();
+    let out = run(&exe, &home, &["update"]);
+    assert!(!out.status.success());
+    // Refused where the release folder is resolved, before any source is read.
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("installed agent source folder is a symlink"),
+        "{text}"
+    );
+    // A file in its place is refused the same way.
+    fs::remove_file(&agents).unwrap();
+    fs::write(&agents, "x").unwrap();
+    let out = run(&exe, &home, &["update"]);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("the installed agent source path is not a folder"),
+        "{text}"
+    );
+    assert_eq!(state(&home), before);
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {

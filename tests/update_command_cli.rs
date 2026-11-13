@@ -61,11 +61,13 @@ fn fx() -> Fx {
     }
 }
 
-/// `~/.moai-cli/versions/<version>/bin/moai-cli` with its package beside it.
+/// `~/.moai-cli/versions/<version>/bin/moai-cli` with its package beside it, and an empty
+/// agent source folder `agents/` (#2721: a release without agent sources installs none).
 fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBuf {
     let folder = home.join(".moai-cli/versions").join(version);
     let bin = folder.join("bin");
     fs::create_dir_all(&bin).unwrap();
+    fs::create_dir_all(folder.join("agents")).unwrap();
     let exe = bin.join("moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
     for (rel, body) in pkg {

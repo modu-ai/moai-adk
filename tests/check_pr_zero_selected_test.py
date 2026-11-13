@@ -6,6 +6,11 @@ Self-Audit section and in markdown table rows. Boundaries are literal lines."""
 import pathlib
 import subprocess
 import unittest
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from self_audit_parity import run_both  # noqa: E402  (#2708: Python and Rust must agree)
+
 
 TOOL = pathlib.Path(__file__).resolve().parents[1] / "tools/check_pr_self_audit.py"
 
@@ -26,9 +31,7 @@ def body(extra="", table=""):
 
 class ZeroSelectedTest(unittest.TestCase):
     def run_tool(self, text):
-        return subprocess.run(
-            ["python3", "-I", str(TOOL)], input=text, text=True, capture_output=True
-        )
+        return run_both((), text)
 
     def assert_pass(self, text):
         out = self.run_tool(text)

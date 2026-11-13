@@ -188,7 +188,7 @@ pub fn split_target(target: &Path) -> (Vec<PathBuf>, Vec<String>) {
     (cargo, other)
 }
 
-fn git_out(dir: &Path, args: &[&str]) -> Option<String> {
+pub(crate) fn git_out(dir: &Path, args: &[&str]) -> Option<String> {
     let mut cmd = Command::new("git");
     scrub_git_env(&mut cmd);
     let out = cmd
@@ -221,8 +221,63 @@ fn merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
     }
 }
 
+/// Squash-merge test (#2724), network-free: `Some(true)` when every path the branch changed
+/// since its merge base with `tip` has, at `tip`, exactly the content it has at `head` (a
+/// path the branch deleted is absent at `tip` too). `Some(false)` when one differs or the
+/// branch changed nothing (an empty branch is not "merged by squash"); `None` when git
+/// failed. Renames are off so a renamed file lists both its old and its new path.
+pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
+    let base = git_out(primary, &["merge-base", head, tip])?;
+    let base = base.trim();
+    let changed = git_out(
+        primary,
+        &[
+            "diff",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--name-only",
+            "-z",
+            base,
+            head,
+        ],
+    )?;
+    let paths: Vec<String> = changed
+        .split('\0')
+        .filter(|p| !p.is_empty())
+        .map(|p| format!(":(literal){p}"))
+        .collect();
+    if paths.is_empty() {
+        return Some(false);
+    }
+    let mut cmd = Command::new("git");
+    scrub_git_env(&mut cmd);
+    let st = cmd
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(primary)
+        .args([
+            "diff",
+            "--quiet",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            head,
+            tip,
+            "--",
+        ])
+        .args(&paths)
+        .status()
+        .ok()?;
+    match st.code() {
+        Some(0) => Some(true),
+        Some(1) => Some(false),
+        _ => None,
+    }
+}
+
 /// Working directories of the processes this user can see; `None` without a source.
-fn process_cwds() -> Option<Vec<PathBuf>> {
+pub(crate) fn process_cwds() -> Option<Vec<PathBuf>> {
     if Path::new("/proc/self/cwd").exists() {
         let mut out = Vec::new();
         for e in fs::read_dir("/proc").ok()?.flatten() {
@@ -314,7 +369,7 @@ fn newest_change(wt: &Path, target: &Path, cargo: &[PathBuf]) -> Option<u64> {
 }
 
 /// `(untracked, ignored entries outside target/)` from one porcelain status.
-fn census(wt: &Path) -> Option<(usize, usize, bool)> {
+pub(crate) fn census(wt: &Path) -> Option<(usize, usize, bool)> {
     let s = git_out(
         wt,
         &[
@@ -347,12 +402,29 @@ fn shown(path: &Path, root: &Path) -> String {
 }
 
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
+/// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
+/// recomputes this plan, and a squash merge alone never makes it remove (#2724).
 pub fn plan(
     project: &Path,
     integration_ref: &str,
     recent: Duration,
     budget: Duration,
     now_unix: Option<u64>,
+) -> Result<Value> {
+    plan_with(project, integration_ref, recent, budget, now_unix, false)
+}
+
+/// [`plan`] with the squash-merge test (#2724) on or off. With `squash` on, a worktree whose
+/// HEAD is not an ancestor of the tip but passes [`squash_merged`] counts as merged; every
+/// candidate names `merged_by` (`ancestor`, `squash` or null) either way. Only the read-only
+/// `optimize.plan` turns it on.
+pub fn plan_with(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    squash: bool,
 ) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
@@ -409,10 +481,24 @@ pub fn plan(
             has_build_output: !cargo.is_empty(),
             ..Default::default()
         };
+        let mut merged_by: Option<&str> = None;
         if Instant::now() >= deadline {
             f.budget_spent = true;
         } else if !e.prunable {
             f.merged = e.head.as_deref().and_then(|h| merged(&primary, h, &tip));
+            if f.merged == Some(true) {
+                merged_by = Some("ancestor");
+            } else if squash && f.merged == Some(false) {
+                let sq = e
+                    .head
+                    .as_deref()
+                    .and_then(|h| squash_merged(&primary, h, &tip));
+                if sq == Some(true) {
+                    merged_by = Some("squash");
+                }
+                // a squash test that could not run leaves the worktree unknown, not unmerged
+                f.merged = sq;
+            }
             f.tracked_dirty = git_out(&path, &["status", "--porcelain", "--untracked-files=no"])
                 .map(|s| !s.trim().is_empty());
             if let Some((u, ign, _)) = census(&path) {
@@ -437,6 +523,7 @@ pub fn plan(
             "head": e.head,
             "action": action,
             "reasons": reasons,
+            "merged_by": merged_by,
             "trim_paths": cargo.iter().map(|c| shown(c, &path)).collect::<Vec<_>>(),
             "preserved_in_target": preserved,
             "untracked": f.untracked,
@@ -489,7 +576,7 @@ fn validate_permission(permission: &str) -> Result<()> {
 /// Why `wt` must not be touched right now, re-checked just before each deletion: a process
 /// working inside it, a tracked change, or (for a removal) any untracked file or ignored file
 /// outside the cargo build output. An unknown fact refuses too.
-fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
+pub(crate) fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
     let cwds = match process_cwds() {
         Some(v) => v,
         None => return Some("process_check_unavailable"),

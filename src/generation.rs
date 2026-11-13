@@ -49,8 +49,8 @@ use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
-const SOURCES_MANIFEST: &str = ".moai-cli/manifests/sources.json";
+const MANIFEST: &str = crate::project_state!("manifests/generation.json");
+const SOURCES_MANIFEST: &str = crate::project_state!("manifests/sources.json");
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
 /// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
@@ -190,9 +190,11 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         return Err("invalid generation request; no values were logged".into());
     }
     for role in &r.native_roles {
-        // `moai-` names the base agents (#2639); a project role never shadows one.
+        // A project role is named `prj-<name>` (leader design 6842177115, #2706): it never
+        // shadows a user-layer `moai-*` agent, and a name without the prefix is refused. The
+        // bare `prj-` fails `valid_skill_name` (no trailing `-`).
         if !valid_skill_name(&role.role_id)
-            || role.role_id.starts_with("moai-")
+            || !role.role_id.starts_with("prj-")
             || !(role.host == "claude" || role.host == "codex")
             || !bounded_purpose(&role.purpose)
             || role.tools.len() > 32

@@ -2,6 +2,27 @@
   "about": "Tests whose input is the checked-in tree itself (#2681). Each entry splits into rule files (the test, the code or tool that does the walk, and any expected-set file) and the scope the walk reads. Two branches that touch disjoint files still break when one changes a rule file and the other changes a path in that entry's scope (#2642 + #2632). tools/repo_scans.py judges a pull request against the tip with this table; tests/repo_scans_test.py keeps the table complete.",
   "scans": [
     {
+      "id": "project-state-dir-spelled-once",
+      "tests": [
+        "src/lib.rs::state_dir_tests::project_state_dir_is_spelled_once"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib project_state_dir_is_spelled_once"
+      ],
+      "rules": [
+        "src/lib.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a \".moai-cli\" path spelled as a string literal outside src/lib.rs instead of project_state!/fixed_state! (#2725 S1)"
+    },
+    {
       "id": "permission-reference-one-copy",
       "tests": [
         "src/contract.rs::permission_reference_rule_has_one_copy"
@@ -191,6 +212,9 @@
       "scope": [
         {
           "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
         }
       ],
       "rejects": "a role or internal-reference set other than the decided one, a reads path without a file"
@@ -440,6 +464,108 @@
       "rejects": "a test that clears a child environment itself instead of tests/common CleanEnv (#2699)"
     },
     {
+      "id": "claude-python-adapter-removed",
+      "tests": [
+        "tests/claude_python_adapter_removed.rs::nothing_tells_anyone_to_run_the_removed_files"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test claude_python_adapter_removed"
+      ],
+      "rules": [
+        "tests/claude_python_adapter_removed.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "skills/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "tools/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": ".github/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "adapters/"
+        },
+        {
+          "prefix": "experiments/claude_settings_plan.py"
+        },
+        {
+          "prefix": "README.md"
+        },
+        {
+          "prefix": "AGENTS.md"
+        }
+      ],
+      "rejects": "a file that still says to run the removed Python Claude adapter, the adapter coming back, or the kept output styles leaving templates/claude/output-styles/ (#2709)"
+    },
+    {
       "id": "repo-scans-table",
       "tests": [
         "tests/repo_scans_test.py::RepoScansTableTest"
@@ -468,6 +594,27 @@
         }
       ],
       "rejects": "a test file that walks the tree without an entry in this table or an exemption"
+    },
+    {
+      "id": "skill-never-runs-python-checker",
+      "tests": [
+        "tests/self_audit_cli.rs::the_shipped_skill_never_runs_the_python_checker"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test self_audit_cli the_shipped_skill_never_runs_the_python_checker"
+      ],
+      "rules": [
+        "tests/self_audit_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/",
+          "suffixes": [
+            ".md"
+          ]
+        }
+      ],
+      "rejects": "a shipped skill file that tells a user project to run tools/check_pr_self_audit.py (#2708)"
     }
   ]
 }

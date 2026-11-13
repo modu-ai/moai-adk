@@ -339,3 +339,102 @@ fn a_dashless_lane_name_in_a_folder_or_branch_still_maps() {
         vec![format!("{}: 1 uncommitted change(s)", old.display())]
     );
 }
+
+/// #2669 comment 6851881955 (leader's first use): a lane whose session folder is the primary
+/// checkout does not own that checkout's changes — they are listed as `unattributed` and do not
+/// make the lane not safe; the same changes in a lane's own worktree still do.
+#[test]
+fn the_primary_checkout_as_session_folder_is_not_the_lanes_work() {
+    let f = fixture();
+    fs::write(f.primary.join("user-notes.txt"), "x\n").unwrap();
+    let mut obs = clean_obs(&f);
+    obs["session_cwd"]["path"] = json!(f.primary);
+    let v = run(&f, "agent-9", Some(obs));
+    let r = result(&v);
+    assert_eq!(r["verdict"], "safe", "{r}");
+    let unattributed = texts(r, "unattributed");
+    assert_eq!(unattributed.len(), 1, "{r}");
+    assert!(unattributed[0].ends_with("uncommitted change(s)"), "{r}");
+    let primary = r["worktrees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|w| w["matched_by"] == json!(["session_cwd"]))
+        .unwrap_or_else(|| panic!("{r}"));
+    assert_eq!(primary["attributed"], false);
+    // When the primary checkout is also on a branch the lane claims, it is the lane's work.
+    g(&f.primary, &["switch", "-q", "-c", "issue/9-in-primary"]);
+    let mut obs = clean_obs(&f);
+    obs["session_cwd"]["path"] = json!(f.primary);
+    obs["claims"]["items"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"issue": 9, "claim_comment": 90, "resume_note": 91}));
+    let r = run(&f, "agent-9", Some(obs));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+    assert!(texts(result(&r), "unattributed").is_empty(), "{r}");
+    g(&f.primary, &["switch", "-q", "main"]);
+    // The lane's own worktree is still judged.
+    fs::write(f.wt7.join("draft.txt"), "x\n").unwrap();
+    let mut obs = clean_obs(&f);
+    obs["session_cwd"]["path"] = json!(f.primary);
+    let r = run(&f, "agent-9", Some(obs));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+}
+
+/// Codex review on PR #2715: a bare repository has no primary checkout, so its first linked
+/// worktree, tied to the lane only by the session folder, is still the lane's work.
+#[test]
+fn a_bare_repositorys_first_worktree_is_not_a_primary_checkout() {
+    let f = fixture();
+    let root = f.tmp.path().canonicalize().unwrap();
+    git_ok(&root, &["clone", "-q", "--bare", "remote.git", "bare.git"]);
+    let bare = root.join("bare.git");
+    let wt = root.join("detached-wt");
+    g(
+        &bare,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            wt.to_str().unwrap(),
+            "main",
+        ],
+    );
+    fs::write(wt.join("pending.txt"), "x\n").unwrap();
+    let home = f.tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    let obs = f.tmp.path().join("bare-obs.json");
+    fs::write(
+        &obs,
+        json!({"schema_version": 1, "session_cwd": {"source": "fixture", "path": wt}}).to_string(),
+    )
+    .unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap())
+        .env("HOME", &home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .args([
+            "lane-safe-to-reset",
+            bare.to_str().unwrap(),
+            "--lane",
+            "agent-9",
+            "--now",
+            NOW,
+        ])
+        .arg("--observations")
+        .arg(&obs)
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let r = result(&v);
+    assert_eq!(r["verdict"], "not_safe", "{r}");
+    assert!(texts(r, "unattributed").is_empty(), "{r}");
+    assert!(
+        texts(r, "findings")[0].ends_with("1 uncommitted change(s)"),
+        "{r}"
+    );
+}

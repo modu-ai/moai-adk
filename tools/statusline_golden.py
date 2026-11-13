@@ -102,6 +102,15 @@ def apply_setup(step, root, project, moai_home):
         raise ValueError(f"unknown setup kind {kind!r}")
 
 
+def developer_env():
+    """`DEVELOPER_DIR` from this process, for every child run under the sandbox (#2699).
+    `git_exec_clauses` resolves git with this process's environment, and `cargo test` sets
+    `DEVELOPER_DIR` (.cargo/config.toml); a child without it would resolve git into another
+    developer folder that the sandbox does not allow, and every git case would differ."""
+    value = os.environ.get("DEVELOPER_DIR")
+    return {"DEVELOPER_DIR": value} if value else {}
+
+
 def git_exec_clauses():
     """Sandbox clauses for what a `git` call may exec on macOS: the /usr/bin shim, xcrun,
     and the developer-tools bin directory the shim resolves git into (git runs more than
@@ -156,7 +165,8 @@ def detect_binary_version(binary):
             cmd = ["/usr/bin/sandbox-exec", "-p", sandbox_profile(exe), *cmd]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=30,
-                                  env={"PATH": "/usr/bin:/bin", "HOME": str(root / "home")})
+                                  env={"PATH": "/usr/bin:/bin", "HOME": str(root / "home"),
+                                       **developer_env()})
         except OSError:
             return None
     return parse_version_output(proc.returncode, proc.stdout)
@@ -238,7 +248,7 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
                      if stdin_bytes is None else stdin_bytes)
         stdin = stdin_raw.replace(b"{PROJECT}", str(project).encode())
         env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "MOAI_HOME": str(moai_home),
-               "TZ": "UTC", "LANG": "C.UTF-8"}
+               "TZ": "UTC", "LANG": "C.UTF-8", **developer_env()}
         env.update(VARIANTS[variant])
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":
