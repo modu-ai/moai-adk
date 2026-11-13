@@ -16,6 +16,10 @@ pub struct Args {
     /// `YYYY-MM-DDTHH:MM:SSZ`; the system clock when absent.
     #[arg(long)]
     now: Option<String>,
+    /// Classify each top-level entry instead of moving the whole folder (#2815):
+    /// keep-in-place, move-to-backup, secret-manual (never opened) or unknown (moves nothing).
+    #[arg(long)]
+    selective: bool,
 }
 
 pub const OPERATION: &str = "home_state.plan";
@@ -30,5 +34,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     };
     let moai_home = std::env::var("MOAI_HOME").ok();
     let now = args.now.unwrap_or_else(moai_cli::audit::utc_now);
+    if args.selective {
+        return moai_cli::home_state::plan_selective(&home, moai_home.as_deref(), &now);
+    }
     moai_cli::home_state::plan(&home, moai_home.as_deref(), &now)
 }
