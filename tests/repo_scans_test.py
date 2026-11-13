@@ -287,12 +287,15 @@ class RefsTableTest(unittest.TestCase):
         self.without = [s for s in full if s["id"] != "permission-reference-one-copy"]
         self.write("src/lib.rs", "")
         self.write_table(self.without)
+        # the judge as committed: each checkout runs its own copy next to its own table
+        self.write("tools/repo_scans.py", TOOL.read_text(encoding="utf-8"))
         self.commit("base")
         # tip side = #2632: a new file in src/ (the scope)
         self.git("checkout", "-q", "-b", "tip")
         self.write("src/agent_install.rs", "// a copy of the rule\n")
         self.commit("tip")
-        # pull request side = #2642 (a branch named "head" would be HEAD on a case-insensitive disk): the scanning test and its table entry
+        # pull request side = #2642: the scanning test and its table entry
+        # (a branch named "head" would be HEAD on a case-insensitive disk)
         self.git("checkout", "-q", "-b", "pull", "base")
         self.write("src/contract.rs", "// the walking test\n")
         self.write_table(self.without + [self.entry])
@@ -318,8 +321,10 @@ class RefsTableTest(unittest.TestCase):
         self.git("add", "-A")
         self.git("commit", "-q", "-m", message)
 
-    def judge(self, tip, head):
-        out = subprocess.run([sys.executable, "-I", str(TOOL), "--refs", tip, head],
+    def judge(self, tip, head, tool=None):
+        """Run the checkout's own judge (its table is that checkout's), unless `tool` is given."""
+        tool = tool or self.repo / "tools" / "repo_scans.py"
+        out = subprocess.run([sys.executable, "-I", str(tool), "--refs", tip, head],
                              capture_output=True, text=True, cwd=self.repo, env=self.env)
         self.assertEqual(out.returncode, 0, out.stderr)
         return json.loads(out.stdout)
@@ -347,14 +352,15 @@ class RefsTableTest(unittest.TestCase):
         self.git("rm", "-q", "tools/repo_scans.json")
         self.write("src/agent_install.rs", "// copy\n")
         self.commit("old tip without a table")
-        report = self.judge("old-tip", "old")
+        # the gate's own (current) judge, whose table has the entry
+        report = self.judge("old-tip", "old", tool=TOOL)
         self.assertIn(INCIDENT_CHECK, report["checks"])
 
     def test_a_broken_table_at_a_ref_fails_safe(self):
         self.git("checkout", "-q", "pull")
         self.write("tools/repo_scans.json", "{ not json")
         self.commit("broken table")
-        report = self.judge("tip", "pull")
+        report = self.judge("tip", "pull", tool=TOOL)
         self.assertTrue(report["remerge"])
         self.assertTrue(report["reasons"][0].startswith("judge internal error"))
         self.assertIn(INCIDENT_CHECK, report["checks"])
