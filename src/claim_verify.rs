@@ -236,11 +236,11 @@ pub fn evaluate(comments: &[IssueComment], who: &Verifier<'_>) -> Value {
     // Decision D1 (#1975 comment 6840449133): a later claim of the same session renews
     // the earlier ones without a handoff line, when every open claim before it belongs
     // to that session. Another session's claim in between keeps the old rule. Claims are
-    // in id order, so a chain of renewals closes each earlier line in turn.
+    // in id order, so a chain of renewals closes each earlier line in turn. A renewing line
+    // that a release or handoff closed later still renews: the lane releases, and the leader
+    // hands off, its latest claim, so the line it replaced must not come back as holder
+    // (audit FAIL 6840678988 B1 on #2621).
     for m in &claims {
-        if closed_by(&closed, m.id) {
-            continue;
-        }
         let earlier: Vec<i64> = claims
             .iter()
             .filter(|v| v.id < m.id && !closed_by(&closed, v.id))
