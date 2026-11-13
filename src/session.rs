@@ -206,7 +206,9 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     let Ok(home) = crate::key_vault::home() else {
         return Ok(None);
     };
-    let path = home.join(".moai-cli/config/launcher.yaml");
+    let path = home
+        .join(crate::HOME_STATE_DIR)
+        .join("config/launcher.yaml");
     // Check the entry before reading: directories, symlinks and special files (including
     // FIFOs, which could block a read) are not launcher configuration files.
     match fs::symlink_metadata(&path) {
@@ -340,7 +342,9 @@ pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
     let common = id["clone_anchor"]
         .as_str()
         .ok_or("agent numbering needs a git repository; pass --name")?;
-    Ok(Path::new(common).join(".moai-cli").join("sessions"))
+    Ok(Path::new(common)
+        .join(crate::CLONE_STATE_DIR)
+        .join("sessions"))
 }
 
 fn refuse_symlink(path: &Path) -> Result<(), String> {
