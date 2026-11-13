@@ -21,8 +21,10 @@ on:
 permissions:
   contents: read
 
-# A new push to a PR cancels that PR's older run. Post-merge runs on v2026.11.0 are never
-# cancelled: each one is the full-matrix result of one merge (#2554).
+# A new push to a PR cancels that PR's older run. A post-merge run on v2026.11.0 is never
+# cancelled as a whole: each one is the full-matrix result of one merge (#2554). Only its
+# macOS targets may be skipped while still waiting, when a newer merge queues (job-level
+# concurrency on `check` below, #2554 D8 (a)).
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -34,6 +36,25 @@ jobs:
     timeout-minutes: ${{ matrix.timeout }}
     permissions:
       contents: read
+    # #2554 D8 (a): on a push, each macOS target shares one group across runs. A running
+    # job is never cancelled; a job still waiting is replaced when a newer merge queues
+    # ("any existing pending job ... in the same concurrency group will be canceled",
+    # docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/
+    # control-workflow-concurrency, read 2026-11-13). The newer run's tree contains the
+    # skipped merge, so every merge still gets a macOS result, just later (measured before:
+    # 12-21 min of macOS runner wait when merges piled up, #2554 comment 6831048630).
+    # Only a run's first attempt shares the group: a re-run of an older SHA (the same-SHA
+    # re-run that tells a flaky failure apart) would otherwise queue in it and replace the
+    # current tip's waiting job, and the tip watch counts that cancel as red (#2739 audit
+    # F1, src/flow.rs `tip_ci_judgment`). Every other job gets a group of its own (run id +
+    # target), so nothing else changes.
+    concurrency:
+      group: >-
+        ${{ github.event_name == 'push' && github.run_attempt == '1'
+        && startsWith(matrix.target, 'macos-')
+        && format('ci-push-{0}', matrix.target)
+        || format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.target) }}
+      cancel-in-progress: false
     strategy:
       # Every target is a measurement: one failure must not cancel the others.
       fail-fast: false
