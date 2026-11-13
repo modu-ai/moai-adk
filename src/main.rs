@@ -40,7 +40,7 @@ impl RecordSource {
 #[derive(Parser)]
 #[command(
     name = "moai-cli",
-    version,
+    version = moai_cli::BUILD_VERSION,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
 )]
@@ -2829,6 +2829,22 @@ mod tests {
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
     const RAW_OUTPUT: [&str; 1] = ["statusline"];
+
+    /// #2722 AC-5: `--version` shows the build version, which is the package version plus
+    /// `+local.<n>` exactly when this build set `MOAI_LOCAL_BUILD`.
+    #[test]
+    fn version_flag_reports_the_local_build_number() {
+        let expected = moai_cli::local_build::version(
+            env!("CARGO_PKG_VERSION"),
+            option_env!("MOAI_LOCAL_BUILD"),
+        )
+        .unwrap();
+        assert_eq!(moai_cli::BUILD_VERSION, expected);
+        assert_eq!(Cli::command().get_version(), Some(moai_cli::BUILD_VERSION));
+        if option_env!("MOAI_LOCAL_BUILD").is_none_or(str::is_empty) {
+            assert_eq!(moai_cli::BUILD_VERSION, env!("CARGO_PKG_VERSION"));
+        }
+    }
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
