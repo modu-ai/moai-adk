@@ -734,6 +734,27 @@ fn a_wrong_or_stale_token_refuses_before_any_write() {
     assert!(backups(p).is_empty());
     assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
 
+    // A fresh preview of the edited file with the old confirmation: the user confirmed
+    // replacing a different current value, so the old token is refused even with the new
+    // digest, and the new preview offers a new token.
+    let fresh_plan = plan(p, home.path(), &sl());
+    let new_token = fresh_plan["confirm_replace"]["confirm_token"]
+        .as_str()
+        .unwrap();
+    assert_ne!(new_token, token);
+    let (code, v) = apply_replace(
+        p,
+        home.path(),
+        fresh_plan["plan_digest"].as_str().unwrap(),
+        token,
+    );
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(
+        fs::read_to_string(p.join(".claude/settings.json")).unwrap(),
+        edited
+    );
+    assert!(backups(p).is_empty());
+
     // A token on a plan without any conflict is refused too.
     let fresh = TempDir::new().unwrap();
     let f = plan(fresh.path(), home.path(), &sl());
