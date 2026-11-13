@@ -423,3 +423,32 @@ fn a_path_with_a_pipe_cannot_break_the_table() {
         "{body}"
     );
 }
+
+/// Audit FAIL 6841505327 B1: `review-check` with PROJECT given as a subfolder reads the same
+/// HEAD paths as from the top level, so a correct finding is accepted from either.
+#[test]
+fn review_check_from_a_subfolder_accepts_the_same_findings() {
+    let (tmp, head) = repo();
+    let f = json!([finding("nit", 3, "let v3 = 3;")]);
+    let top = check(&tmp, &head, f.clone());
+    assert_eq!(top["ok"], json!(true), "{top}");
+    let mut child = std::process::Command::new(EXE)
+        .arg("review-check")
+        .arg(tmp.path().join("repo/src"))
+        .args(["--head", &head])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let body = json!({"schema_version": 1, "findings": f}).to_string();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(body.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let sub: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(sub["ok"], json!(true), "{sub}");
+    assert_eq!(sub["result"], top["result"], "{sub}");
+}

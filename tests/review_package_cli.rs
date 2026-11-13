@@ -483,7 +483,8 @@ fn pathspec_like_includes_are_skipped_not_followed() {
 /// Follow-up 6840613078 (agent-25): a fixture where each fixed option changes the bytes when
 /// the repository's own setting wins — two hunks nine lines apart (`diff.interHunkContext`),
 /// a function inserted between similar blocks (`diff.indentHeuristic`), a file with a Korean
-/// name (`core.quotePath`), and PROJECT given as a subfolder (`diff.relative`).
+/// name (`core.quotePath`), and PROJECT given as a subfolder (git must run at the top level;
+/// with that, `diff.relative` has nothing to act on — audit 6841505327 note).
 fn options_fixture() -> (TempDir, String, String) {
     let tmp = TempDir::new().unwrap();
     let repo = tmp.path().join("repo");
