@@ -205,7 +205,15 @@ fn a_live_go_session_blocks_the_move() {
     let _ = child.kill();
     let _ = child.wait();
     assert_eq!(p["action"], json!("blocked"), "{p}");
-    assert_eq!(p["blocks"], json!(["go_session_live"]));
+    // The holder also keeps the lock file open, so the open-file check may name it too.
+    let blocks = p["blocks"].as_array().unwrap();
+    assert!(blocks.contains(&json!("go_session_live")), "{p}");
+    assert!(
+        blocks
+            .iter()
+            .all(|b| b == "go_session_live" || b == "file_open_in_use"),
+        "{p}"
+    );
     // Released: the move is offered again.
     assert_eq!(plan(&home)["action"], json!("migrate"));
 }
@@ -221,7 +229,15 @@ fn a_process_inside_or_a_nested_checkout_blocks_the_move() {
     let p = plan(&home);
     let _ = child.kill();
     let _ = child.wait();
-    assert_eq!(p["blocks"], json!(["in_use"]), "{p}");
+    // `lsof` lists a working folder among open files, so both checks may name it.
+    let blocks = p["blocks"].as_array().unwrap();
+    assert!(blocks.contains(&json!("in_use")), "{p}");
+    assert!(
+        blocks
+            .iter()
+            .all(|b| b == "in_use" || b == "file_open_in_use"),
+        "{p}"
+    );
 
     write(&home, ".moai/worktrees/x/.git", "gitdir: /elsewhere\n");
     let p = plan(&home);
@@ -262,4 +278,59 @@ fn a_relative_home_or_a_bad_clock_is_refused() {
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["ok"], json!(false), "{v}");
+}
+
+/// #2771 audit F1 (6861649871): the Go tool holds the registry lock only while it rewrites the
+/// file, so a live session shows as a row whose `pid` is alive while the lock is free. A dead
+/// pid does not block; a registry that cannot be read as rows of pids blocks (fail-closed).
+#[test]
+fn a_registered_live_pid_blocks_and_a_dead_one_does_not() {
+    let (_d, home) = go_home();
+    let reg = home.join(".moai/state/active-sessions.json");
+    let mut child = Command::new("sleep")
+        .arg("30")
+        .current_dir(&home)
+        .spawn()
+        .unwrap();
+    let live = child.id();
+    fs::write(&reg, format!(r#"[{{"session_id":"s","pid":{live}}}]"#)).unwrap();
+    let p = plan(&home);
+    assert_eq!(p["blocks"], json!(["go_session_live"]), "{p}");
+    let _ = child.kill();
+    let _ = child.wait();
+    // The same pid, now ended: nothing blocks.
+    assert_eq!(plan(&home)["action"], json!("migrate"));
+    for bad in [
+        r#"{"pid": 1}"#,
+        r#"[{"session_id":"s"}]"#,
+        r#"[{"pid": -4}]"#,
+        "not json",
+    ] {
+        fs::write(&reg, bad).unwrap();
+        let p = plan(&home);
+        assert_eq!(
+            p["blocks"],
+            json!(["session_registry_unknown"]),
+            "{bad}: {p}"
+        );
+    }
+}
+
+/// #2771 audit F2: a file inside `~/.moai` held open by a process whose working folder is
+/// elsewhere blocks the move.
+#[test]
+fn a_file_held_open_inside_blocks_the_move() {
+    let (_d, home) = go_home();
+    write(&home, ".moai/logs/run.log", "x\n");
+    let held = fs::File::open(home.join(".moai/logs/run.log")).unwrap();
+    let mut child = Command::new("sleep")
+        .arg("30")
+        .current_dir(std::env::temp_dir())
+        .stdin(held)
+        .spawn()
+        .unwrap();
+    let p = plan(&home);
+    let _ = child.kill();
+    let _ = child.wait();
+    assert_eq!(p["blocks"], json!(["file_open_in_use"]), "{p}");
 }

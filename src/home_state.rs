@@ -51,9 +51,45 @@ pub fn home_go_markers(moai: &Path) -> Vec<String> {
     found
 }
 
-/// A name that holds secrets by convention; never offered for copying.
+/// A name that holds secrets by convention; never offered for copying. Case is ignored: the
+/// default macOS file system does not tell `Credentials.yaml` from `credentials.yaml` (#2771
+/// audit N1).
 pub fn is_secret(name: &str) -> bool {
-    name.starts_with(".env") || name.starts_with("credentials") || name == "secrets"
+    let n = name.to_ascii_lowercase();
+    n.starts_with(".env") || n.starts_with("credentials") || n == "secrets"
+}
+
+/// The Go session registry is a list of rows with a `pid`; a few KiB in practice.
+const REGISTRY_LIMIT: u64 = 4 * 1024 * 1024;
+
+/// How many sessions in `state/active-sessions.json` are alive (the Go census counts them
+/// the same way, `internal/homestate/runtime_census.go`): the Go tool holds the registry lock
+/// only while it rewrites the file, so the lock alone misses a live session (#2771 audit F1).
+/// `None` when the file cannot be read as rows with positive `pid`s or a pid cannot be judged.
+fn live_sessions(moai: &Path) -> Option<usize> {
+    if fs::symlink_metadata(moai.join("state").join("active-sessions.json")).is_err() {
+        return Some(0);
+    }
+    let bytes = read_limited(moai, &["state", "active-sessions.json"], REGISTRY_LIMIT)?;
+    let rows: Vec<Value> = serde_json::from_slice(&bytes).ok()?;
+    let mut live = 0;
+    for row in rows {
+        let pid = row["pid"]
+            .as_i64()
+            .filter(|p| *p > 0 && *p <= i64::from(i32::MAX))?;
+        // SAFETY: signal 0 only checks that the process exists and may be signalled.
+        let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
+        if rc == 0 {
+            live += 1;
+            continue;
+        }
+        match std::io::Error::last_os_error().raw_os_error() {
+            Some(libc::EPERM) => live += 1,
+            Some(libc::ESRCH) => {}
+            _ => return None,
+        }
+    }
+    Some(live)
 }
 
 /// `YYYYMMDDTHHMMSSZ` from `YYYY-MM-DDTHH:MM:SSZ`.
@@ -113,10 +149,14 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         if backup.is_none() {
             blocks.push("backup_name_taken".into());
         }
-        match session_lock_held(&moai) {
-            Some(false) => {}
-            Some(true) => blocks.push("go_session_live".into()),
-            None => blocks.push("session_lock_unknown".into()),
+        let lock = session_lock_held(&moai);
+        let registered = live_sessions(&moai);
+        if lock == Some(true) || registered.is_some_and(|n| n > 0) {
+            blocks.push("go_session_live".into());
+        } else if lock.is_none() {
+            blocks.push("session_lock_unknown".into());
+        } else if registered.is_none() {
+            blocks.push("session_registry_unknown".into());
         }
         let canon = fs::canonicalize(&moai).unwrap_or_else(|_| moai.clone());
         match crate::worktree_gc::process_cwds() {
@@ -130,6 +170,16 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
                 }
             }
             None => blocks.push("process_check_unavailable".into()),
+        }
+        // A process may hold a file inside open from elsewhere (design 6860356009 §3,
+        // #2771 audit F2).
+        match crate::worktree_gc::open_file_paths() {
+            Some(paths) => {
+                if paths.iter().any(|p| p.starts_with(&canon)) {
+                    blocks.push("file_open_in_use".into());
+                }
+            }
+            None => blocks.push("open_file_check_unavailable".into()),
         }
         match crate::go_state::nested_checkouts_under(
             home,
@@ -233,6 +283,9 @@ mod tests {
             "credentials.yaml.bak",
             "secrets",
         ] {
+            assert!(is_secret(s), "{s}");
+        }
+        for s in ["Credentials.yaml.bak", ".ENV", "SECRETS"] {
             assert!(is_secret(s), "{s}");
         }
         for s in ["config", "state", "secrets-notes", "envy"] {
