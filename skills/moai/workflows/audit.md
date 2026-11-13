@@ -16,6 +16,7 @@ Findings from an independent context and an evidence-bound verdict.
 4. Have a deterministic admission step confirm the must-pass conditions and their evidence.
 5. If the reviewer changes code, verify the result again as a new candidate.
 6. Which checks the auditor runs locally and when an exact-head CI run may be cited follow the check-run rules in the VERIFY workflow (section "Check-run rules"); the auditor reads the head's CI run itself and the verdict cites its run id, head and conclusion, without waiting for an author's `ci:` line (decision D4, Issue #1975 comment 6840449133).
+7. When the head's CI could not run — `flow-gate-verdict` reports `ci_failure_class: gate_unavailable` with its cause and `since` (a billing block, a job GitHub never started) — there is no code to fix and no CI result to cite (Issue #2680). The verdict says so in one line, `ci: gate_unavailable(<cause> since <since>)`, and records the substitute evidence: the pull request's verification commands run on the exact head, each with its exit code and log path, as `substitute: <command> exit <n> <log>`. Substitute evidence is a record, not a merge: the pull request waits for CI unless the user approves merging on it for that gate (leader decision 6849147698). An automated reviewer's own usage limit (for example a "usage limits" comment from Codex code review) is not a gate: the integration gate does not require that review, so report it once and do not wait for it.
 
 The review package and the way a verdict reaches integration are described in the SYNC workflow (procedure steps 7 and 8).
 
@@ -40,7 +41,7 @@ Read revisions safely: write a revision path as `"${rev}:path"` (zsh reads `$rev
 
 ## Re-audit PR body check
 
-Save the PR body as UTF-8 `BODY.md` and run `python3 -I tools/check_pr_self_audit.py --reaudit --file BODY.md`. Standard input is also supported: `python3 -I tools/check_pr_self_audit.py --reaudit < BODY.md`. Re-audits must explicitly select `--reaudit`; template text and claim epochs never select it automatically. For an initial audit, omit the two re-audit-only fields and use the existing command.
+Save the PR body as UTF-8 `BODY.md` and run `moai-cli pr-self-audit-check --reaudit --file BODY.md`. Standard input is also supported: `moai-cli pr-self-audit-check --reaudit < BODY.md`. It prints one line, `self-audit: pass (…)` (exit 0) or `self-audit: blocked missing=…` (exit 1). Re-audits must explicitly select `--reaudit`; template text and claim epochs never select it automatically. For an initial audit, omit the two re-audit-only fields and use the existing command.
 
 Use exactly one visible `## 독립 review` section; multiple visible review sections are ambiguous and fail. Inside that section, before the next visible Markdown heading, include each of the following fields exactly once as visible text. HTML comments and fenced or indented code examples do not establish a section, end it or supply its fields. Fill the repair scope with the actual repaired path, boundary and affected scope for F1.
 
@@ -65,6 +66,24 @@ The #2388 marker repair preserves the reported audit inputs unchanged:
 | Repair scope `TBD-` | 0 | 1 |
 | Finding classification `차단: TODO.` | 0 | 1 |
 | Finding classification `차단: TBD-` | 0 | 1 |
+
+## Base agents
+
+Skip this section when you are a base agent yourself: base agents never start other agents.
+
+`moai-cli` installs five base agents into the host's user folder: `moai-plan`, `moai-research`, `moai-impl`, `moai-audit` and `moai-docs`. When this route hands a step to one of them:
+
+- Give it one block, `task`, `scope`, `base` and `refs`, and nothing else; it assumes no conversation context.
+- Decide on its first line, `RESULT <role> <ok|blocked|not_run> <target>`, then check the rest yourself: the files it lists and the commands and exit codes it reports. An agent's `ok` is not evidence.
+- Start agents only from this session, one level deep.
+- Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
+- When the agent is not installed on this host, do the step in this session and say so.
+
+AUDIT hands the evidence-gathering to `moai-audit`, never to the agent or session that wrote the change. Pass the exact head as `base`. The agent returns findings; you write the verdict line. In the review steps' Find step, you may start one `moai-audit` per dimension at once where the host offers parallel subagents.
+
+- Read-only is enforced by the host only where the installed agent file can carry it: Claude Code (the file denies the editing tools), and the host's own read-only setting on Kiro and Cursor CLI. Codex CLI subagents inherit the parent's sandbox and OMP subagents run without approvals, so there read-only rests on the instructions alone; say so in the verdict.
+- On every host, confirm after the agent returns that `git status` in its worktree shows no change; a change there makes its findings unusable.
+- Isolation: as in the RUN workflow, a separate worktree only on Claude Code and on OMP with task isolation enabled; elsewhere the agent reads the detached audit worktree you prepared.
 
 ## Web pages
 

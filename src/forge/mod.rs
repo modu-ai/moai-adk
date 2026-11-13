@@ -10,11 +10,13 @@
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
 pub mod audit_status;
 pub mod gitlab;
+pub mod labels;
 pub mod links;
 pub mod outbox;
 pub mod policy;
 pub mod report;
 pub mod transport;
+pub mod wait;
 pub mod write;
 
 use policy::{format_utc, next_link, parse_utc, Clock, Verdict};

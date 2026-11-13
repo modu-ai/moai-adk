@@ -1,0 +1,357 @@
+//! Issue #2674 S1: `gate-check` decides the leader merge gate (rules G1–G7, Issue comment
+//! 6849084101) from a snapshot on stdin. One passing snapshot; every test changes one thing and
+//! sees exactly the rule that stops it, and the boundary that still passes.
+
+mod common;
+
+use serde_json::{json, Value};
+use std::process::{Command, Stdio};
+
+const H: &str = "1111111111111111111111111111111111111111";
+const B: &str = "2222222222222222222222222222222222222222";
+const OTHER: &str = "3333333333333333333333333333333333333333";
+
+/// A documentation file of the fixture, built at run time so the docs-path scan of
+/// `tools/ci_scope.py` does not read it as a repository document.
+fn doc() -> String {
+    format!("{}/n.md", "docs")
+}
+
+fn gate(snapshot: &Value) -> Value {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg("gate-check")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, snapshot.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)));
+    v
+}
+
+fn verdict(id: u64, lane: &str, head: &str, v: &str) -> Value {
+    json!({"id": id, "body": format!("AUDIT #9 (x) head {head} base {B} — verdict: {v}\n\n감사: {lane} (예약 100).\n")})
+}
+
+fn claim(id: u64, lane: &str, head: &str) -> Value {
+    json!({"id": id, "body": format!("moai-audit-claim: lane={lane} head={head}\n")})
+}
+
+fn passing() -> Value {
+    json!({
+        "schema_version": 1,
+        "pr": 9,
+        "head": H,
+        "comments": [claim(100, "agent-10", H), verdict(200, "agent-10", H, "PASS")],
+        "checks": [
+            {"name": "ci", "conclusion": "success"},
+            {"name": "ci / linux-x86_64", "conclusion": "success"},
+            {"name": "windows-build", "conclusion": "skipped"},
+            {"name": "Vercel Preview Comments", "conclusion": "failure"}
+        ],
+        "pr_files": ["src/a.rs", doc()],
+        "tip_files_since_verdict_base": ["src/b.rs"],
+        "merge_clean": true,
+        "body_check_ok": true,
+        "verdict_base_known": true
+    })
+}
+
+fn stopped(v: &Value) -> (bool, String) {
+    let r = &v["result"];
+    (
+        r["pass"].as_bool().unwrap(),
+        r["rule"].as_str().unwrap_or("").to_string(),
+    )
+}
+
+#[test]
+fn a_complete_snapshot_passes_and_names_its_base() {
+    let v = gate(&passing());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["pass"], json!(true), "{v}");
+    assert_eq!(v["result"]["verdict_base"], json!(B));
+    assert_eq!(v["result"]["overlap"], json!([]));
+}
+
+#[test]
+fn g1_the_last_verdict_must_be_a_pass_on_this_head() {
+    let mut s = passing();
+    s["comments"] = json!([claim(100, "agent-10", H)]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", OTHER, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "FAIL")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // A short base is not a verdict line.
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base 2222 — verdict: PASS\nagent-10")}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // The latest verdict counts: an older PASS on this head does not outlive a newer one elsewhere.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "PASS"),
+        verdict(300, "agent-10", OTHER, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}
+
+#[test]
+fn g2_the_auditor_holds_the_lowest_claim_or_the_lowest_on_this_head() {
+    let mut s = passing();
+    // A lane with no claim wrote the PASS.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    // The PR's lowest claim (on an older head) still owns the re-audit.
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        claim(150, "agent-27", H),
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    // The lowest claim on the current head is allowed too.
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        claim(150, "agent-27", H),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    // Only the lowest on this head: a second claim on the head is not allowed.
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        claim(150, "agent-27", H),
+        claim(160, "agent-8", H),
+        verdict(200, "agent-8", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    // The auditor is the first lane after the AUDIT line, not one mentioned later.
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\n감사: agent-27, 저자 agent-10.\n")}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    // A verdict naming no lane stops.
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\nok\n")}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    // A lane name runs to its end: `agent-10x` is not `agent-10`.
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\n감사: agent-10x.\n")}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    // `agent-100` is not `agent-10`.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-100", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    // No claim at all: nothing to check.
+    s["comments"] = json!([verdict(200, "agent-27", H, "PASS")]);
+    assert!(stopped(&gate(&s)).0);
+}
+
+#[test]
+fn g3_a_fail_on_this_head_needs_the_same_auditor_to_reverse_it() {
+    let mut s = passing();
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(150, "agent-10", H, "FAIL"),
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        claim(120, "agent-27", H),
+        verdict(150, "agent-27", H, "FAIL"),
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G3".into()));
+    // A FAIL on an older head does not block the new head.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(150, "agent-27", OTHER, "FAIL"),
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+}
+
+#[test]
+fn g4_the_self_audit_checker_must_pass() {
+    let mut s = passing();
+    s["body_check_ok"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G4".into()));
+}
+
+#[test]
+fn g5_checks_need_the_aggregate_and_no_other_outcome() {
+    let mut s = passing();
+    s["checks"] = json!([{"name": "ci / linux-x86_64", "conclusion": "success"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": null}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": "skipped"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "windows-build", "conclusion": "failure"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    // Only `windows-build` may be skipped; unrelated checks are not read.
+    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "windows-build", "conclusion": "skipped"}, {"name": "lint", "conclusion": "failure"}]);
+    assert!(stopped(&gate(&s)).0);
+}
+
+#[test]
+fn g6_overlap_is_allowed_only_for_kept_docs_and_a_matching_manifest() {
+    let manifest = "skills/moai/references/source-manifest.json";
+    let mut s = passing();
+    s["merge_clean"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
+    let mut s = passing();
+    s["pr_files"] = json!([]);
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
+    let mut s = passing();
+    s["tip_files_since_verdict_base"] = json!(["src/a.rs"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
+    s["tip_files_since_verdict_base"] = json!([doc()]);
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
+    s["docs_lines_kept"] = json!([doc()]);
+    let v = gate(&s);
+    assert_eq!(v["result"]["pass"], json!(true), "{v}");
+    assert_eq!(v["result"]["overlap"], json!([doc()]));
+    let mut s = passing();
+    s["pr_files"] = json!([manifest]);
+    s["tip_files_since_verdict_base"] = json!([manifest]);
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
+    s["merged_manifest_ok"] = json!(true);
+    assert!(stopped(&gate(&s)).0);
+}
+
+#[test]
+fn g7_a_review_file_waits_for_the_user() {
+    let mut s = passing();
+    s["pr_files"] = json!(["REVIEW.md"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G7".into()));
+    s["review_confirmed_prs"] = json!([8, 10]);
+    assert_eq!(stopped(&gate(&s)), (false, "G7".into()));
+    s["review_confirmed_prs"] = json!([9]);
+    assert!(stopped(&gate(&s)).0);
+    let mut s = passing();
+    s["pr_files"] = json!(["src/x/REVIEW.md"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G7".into()));
+    // A file that only ends in the same letters is not a REVIEW.md.
+    s["pr_files"] = json!(["src/x/MY_REVIEW.md"]);
+    assert!(stopped(&gate(&s)).0);
+}
+
+#[test]
+fn a_bad_snapshot_is_refused() {
+    let mut s = passing();
+    s["head"] = json!("abc");
+    assert_eq!(stopped(&gate(&s)), (false, "input".into()));
+    let mut s = passing();
+    s["extra"] = json!(1);
+    assert_eq!(gate(&s)["ok"], json!(false));
+}
+
+/// Audit 6850181707 B1: only a comment's first line is a verdict. A later comment quoting a
+/// PASS line further down (a repair note, a merge record) neither becomes the last verdict nor
+/// reverses a FAIL.
+#[test]
+fn a_quoted_verdict_line_is_not_a_verdict() {
+    let quoted = json!({"id": 300, "body": format!("수리 push — agent-10에게\nAUDIT #9 (x) head {H} base {B} — verdict: PASS\nagent-10\n")});
+    let mut s = passing();
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "FAIL"),
+        quoted
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // With the FAIL reversed by a real first-line PASS, a quote after it changes nothing.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(150, "agent-10", H, "FAIL"),
+        verdict(200, "agent-10", H, "PASS"),
+        quoted
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    // A quoted FAIL does not block either.
+    let quoted_fail = json!({"id": 300, "body": format!("note\nAUDIT #9 (x) head {H} base {B} — verdict: FAIL\nagent-27\n")});
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "PASS"),
+        quoted_fail
+    ]);
+    assert!(stopped(&gate(&s)).0);
+}
+
+/// Audit N1–N4: a title containing `head` still parses; `rc-ci` counts as the aggregate; a
+/// withdrawn lowest claim (machine form) hands G2 to the next one, a free-text one does not;
+/// an unknown verdict base stops G1.
+#[test]
+fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
+    let mut s = passing();
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 (fix head recheck) head {H} base {B} — verdict: PASS\n\n감사: agent-10.\n")}]);
+    assert!(stopped(&gate(&s)).0);
+
+    let mut s = passing();
+    s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": "success"}]);
+    assert!(stopped(&gate(&s)).0);
+    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "rc-ci", "conclusion": "failure"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+
+    let mut s = passing();
+    let withdraw =
+        json!({"id": 120, "body": "moai-audit-claim 철회: agent-10 (100) — agent-27 takes it\n"});
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        withdraw,
+        claim(130, "agent-27", H),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+    let free_text = json!({"id": 120, "body": "agent-10: 감사 예약 100 철회\n"});
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        free_text,
+        claim(130, "agent-27", OTHER),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+
+    let mut s = passing();
+    s["verdict_base_known"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    s.as_object_mut().unwrap().remove("verdict_base_known");
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}
+
+/// Audit 6850638994 B2: a withdrawal removes a claim only when its lane matches that claim's
+/// lane; a mistyped id naming another lane's claim leaves it in place and G2 stops. N5: a
+/// failed `rc-ci / …` job stops G5 like a `ci / …` one.
+#[test]
+fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
+    let mut s = passing();
+    let wrong = json!({"id": 3, "body": "moai-audit-claim 철회: agent-10 (1)\n"});
+    s["comments"] = json!([
+        claim(1, "agent-22", H),
+        claim(2, "agent-10", H),
+        wrong,
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    let right = json!({"id": 3, "body": "moai-audit-claim 철회: agent-22 (1)\n"});
+    s["comments"] = json!([
+        claim(1, "agent-22", H),
+        claim(2, "agent-10", H),
+        right,
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    assert!(stopped(&gate(&s)).0);
+
+    let mut s = passing();
+    s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "rc-ci / linux-x86_64", "conclusion": "failure"}]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+}

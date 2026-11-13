@@ -104,7 +104,7 @@ fn item(id: &str) -> Option<&'static Item> {
     ITEMS.iter().find(|i| i.id == id)
 }
 
-fn is_code(code: &str) -> bool {
+pub(crate) fn is_code(code: &str) -> bool {
     CODES.iter().any(|(c, _, _)| *c == code)
 }
 
@@ -153,12 +153,18 @@ pub fn resolve(settings: &LanguageSettings, conversation: &str) -> Vec<(&'static
 /// Items the profile leaves out are rendered with their default, `ui` standing in for the
 /// conversation language.
 pub fn render_lines(settings: &LanguageSettings, ui: &str) -> String {
+    render_lines_in(settings, ui, ui)
+}
+
+/// [`render_lines`] with the label language (`ui`, the language the surrounding text is in)
+/// apart from the conversation language that conversation-default items resolve to (#2706).
+pub fn render_lines_in(settings: &LanguageSettings, ui: &str, conversation: &str) -> String {
     let mut out = if ui == "ko" {
         String::from("항목별 작성 언어(`.moai-cli/project.yaml`의 `language`):\n")
     } else {
         String::from("Writing language by item (`language` in `.moai-cli/project.yaml`):\n")
     };
-    for (item, code) in resolve(settings, ui) {
+    for (item, code) in resolve(settings, conversation) {
         let label = if ui == "ko" {
             item.label_ko
         } else {

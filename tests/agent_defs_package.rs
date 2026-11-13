@@ -120,9 +120,9 @@ fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
         .contains("name must be moai-impl"));
 }
 
-/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634), with the
-/// adapters of `moai-research` left to #2636; every entry is a file of the package and every
-/// rendered agent opens with the generated line that names exactly those files.
+/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) —
+/// `moai-research` reads the two adapters #2636 added; every entry is a file of the package and
+/// every rendered agent opens with the generated line that names exactly those files.
 #[test]
 fn reads_lists_match_the_design_and_render_on_every_host() {
     let defs = package_agents(&package()).unwrap();
@@ -139,7 +139,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
         reads("moai-plan"),
         ["internal/decide", "internal/interview"]
     );
-    assert_eq!(reads("moai-research"), Vec::<&str>::new());
+    assert_eq!(reads("moai-research"), ["adapters/aside", "adapters/orca"]);
     assert_eq!(
         reads("moai-impl"),
         ["internal/test-design", "internal/git-safety"]
@@ -290,4 +290,88 @@ fn chains_name_real_routes_agents_and_references() {
     // The build chain runs implementation before the audit, never in the same agent.
     let build = rows.iter().find(|r| r[0] == "Build something new").unwrap();
     assert_eq!(build[2], "moai-plan, moai-impl, moai-audit, moai-docs");
+}
+
+/// The question bank (#2639): one row per question, every always-asked axis of the PROJECT
+/// workflow is in it, and every answer lands in `decisions` or a real profile field.
+#[test]
+fn interview_question_bank_covers_the_project_axes() {
+    let text = std::fs::read_to_string(package().join("references/internal/interview.md")).unwrap();
+    let bank = text
+        .split("## Question bank")
+        .nth(1)
+        .expect("question bank");
+    let rows: Vec<Vec<String>> = bank
+        .lines()
+        .filter(|l| l.starts_with("| `"))
+        .map(|l| {
+            l.trim_matches('|')
+                .split(" | ")
+                .map(|c| c.trim().to_string())
+                .collect()
+        })
+        .collect();
+    let ids: Vec<&str> = rows.iter().map(|r| r[0].trim_matches('`')).collect();
+    assert_eq!(
+        ids,
+        [
+            "purpose",
+            "protected",
+            "done",
+            "review_blocks",
+            "autonomy",
+            "test_command",
+            "build_command",
+            "stack",
+            "method",
+            "hosts"
+        ]
+    );
+    for r in &rows {
+        assert_eq!(r.len(), 4, "{r:?}");
+        let always = r[1] == "always";
+        let id = r[0].trim_matches('`');
+        assert_eq!(
+            always,
+            ["protected", "done", "review_blocks", "autonomy"].contains(&id),
+            "{id}"
+        );
+        let to = r[3].as_str();
+        assert!(
+            to == "decisions"
+                || [
+                    "profile `purpose`",
+                    "profile `tools`",
+                    "profile `development_methods`",
+                    "profile `hosts`"
+                ]
+                .contains(&to),
+            "{id}: {to}"
+        );
+    }
+    assert!(bank.contains("skip every row that reading already answered"));
+    assert!(bank.contains("\"source\": \"repo\""));
+    assert!(bank.contains("\"source\": \"user\""));
+}
+
+/// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
+/// `git -C <worktree>` where there is none — and the Claude Code guard's refused shapes.
+#[test]
+fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
+    let text =
+        std::fs::read_to_string(package().join("references/internal/git-safety.md")).unwrap();
+    for line in [
+        "Enter and leave a worktree with the host's built-in worktree tool where it has one",
+        "name the worktree on every git call as `git -C <worktree> <verb>`, one git command per call",
+        "a line that commits or pushes in two folders is refused",
+        "| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`",
+        "create the worktree with `git worktree add` first and enter it by `path`",
+        "(`$VAR`, `$?`, `$(…)`)",
+        "| Codex CLI |",
+        "| Cursor CLI |",
+        "| OMP | None for the main session",
+        "| Kiro CLI | None documented. | `git -C <worktree> <verb>`. |",
+    ] {
+        assert!(text.contains(line), "git-safety.md lacks: {line}");
+    }
 }

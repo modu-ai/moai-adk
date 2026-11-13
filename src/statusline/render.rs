@@ -439,6 +439,26 @@ mod tests {
         );
     }
 
+    /// #2559 AC-1: the bar's thresholds pinned at N/N+1 — the battery icon turns at 70/71 and
+    /// a cell fills at each tenth (9/10). Plain output, so only the threshold decides.
+    #[test]
+    fn bar_thresholds_hold_at_their_boundaries() {
+        let at = |pct: f64| {
+            let status = Status {
+                five_hour: Some(RateWindow {
+                    used_percentage: Some(pct),
+                    resets_at: None,
+                }),
+                ..Status::default()
+            };
+            plain(&status, &["context"])
+        };
+        assert_eq!(at(70.0), "🔋 5H: ███████░░░ 70%");
+        assert_eq!(at(71.0), "🪫 5H: ███████░░░ 71%");
+        assert_eq!(at(9.0), "🔋 5H: ░░░░░░░░░░ 9%");
+        assert_eq!(at(10.0), "🔋 5H: █░░░░░░░░░ 10%");
+    }
+
     #[test]
     fn session_prefix_uses_two_spaces_only_when_bars_follow() {
         let mut status = Status {

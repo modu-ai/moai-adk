@@ -310,6 +310,12 @@ enum Command {
     QueueNext {
         project: PathBuf,
     },
+    /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
+    /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
+    /// epics, blocked); an empty result says `free_count: 0`.
+    QueueFree {
+        project: PathBuf,
+    },
     /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
     QueueQuery {
         project: PathBuf,
@@ -543,6 +549,10 @@ enum Command {
         /// The scope the plan was made for (#2581); the digest binds it.
         #[arg(long, default_value = "project")]
         scope: String,
+        /// The `confirm_token` a conflict plan offered (#2383): after the user confirms, keep
+        /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
+        #[arg(long)]
+        confirm_replace: Option<String>,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -774,6 +784,18 @@ enum Command {
     AtlasTagScan {
         path: PathBuf,
     },
+    /// Check a PR body's Self-Audit section (#2708, formerly tools/check_pr_self_audit.py):
+    /// the body from --file or stdin; prints one line, `self-audit: pass (…)` (exit 0) or
+    /// `self-audit: blocked missing=…` (exit 1); a usage error exits 2. Raw text, not the
+    /// envelope, so the result and exit code are the ones the Python checker gave.
+    PrSelfAuditCheck {
+        /// Also require the `## 독립 review` section of a re-audit (#2388).
+        #[arg(long)]
+        reaudit: bool,
+        /// Read the PR body from this file (UTF-8) instead of stdin.
+        #[arg(long, value_name = "BODY.md")]
+        file: Option<PathBuf>,
+    },
     /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
     /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
     /// command's stdout as is. Always exits 0.
@@ -921,6 +943,20 @@ enum Command {
     /// (`github_issues` opts in); read-only.
     GithubPlan {
         project: PathBuf,
+    },
+    /// Plan a project's label sync from `.github/moai/labels.yml` (#2434 decision 40): typed
+    /// request `{schema_version, owner, repo}` on stdin; GET only, never deletes.
+    LabelsPlan {
+        project: PathBuf,
+    },
+    /// Apply an approved label sync plan (#2434 decision 40): the exact plan on stdin,
+    /// `--plan-digest` and `--permission-reference`; POST/PATCH only.
+    LabelsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
     },
     /// Apply an approved GitHub template plan (08-B #2013): the exact plan on stdin,
     /// `--plan-digest` and `--permission-reference`.
@@ -1310,7 +1346,12 @@ fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
         // Not envelope operations: the launchers, and the raw-text statusline (#2350).
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
+        Cc(_)
+        | Glm(_)
+        | Codex(_)
+        | Session { .. }
+        | Statusline { .. }
+        | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
@@ -1365,6 +1406,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         KeyImportApply { .. } => "key.import_apply",
+        LabelsApply { .. } => "labels.apply",
+        LabelsPlan { .. } => "labels.plan",
         KeyImportPlan { .. } => "key.import_plan",
         KeyRemove { .. } => "key.remove",
         KeySet { .. } => "key.set",
@@ -1397,6 +1440,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
         QueueNext { .. } => "queue.next",
+        QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
@@ -1524,6 +1568,11 @@ fn run_internal(
         Command::QueueNext { project } => moai_cli::queue::next_cli(
             &project,
             input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::QueueFree { project: _ } => moai_cli::queue::free_cli(
+            input::<moai_cli::queue::FreeRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
@@ -2166,6 +2215,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             plan_digest,
             permission_reference,
             scope,
+            confirm_replace,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2175,6 +2225,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 scope,
+                confirm_replace.as_deref(),
             )
         }
         Command::CodexConfigPlan { project } => {
@@ -2358,7 +2409,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
-            moai_cli::update::update_command(&home, confirm.as_deref(), |plan| {
+            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
                 use std::io::{BufRead as _, IsTerminal as _, Write as _};
                 if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
                     return Ok(false);
@@ -2367,7 +2418,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 let _ = write!(
                     err,
                     "moai-cli update preview:\n{}Apply this update? [y/N] ",
-                    moai_cli::update::plan_summary(plan)
+                    summary
                 );
                 let _ = err.flush();
                 let mut answer = String::new();
@@ -2529,6 +2580,29 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )?)
             .map_err(|_| "encode failed".into())
         }
+        Command::LabelsPlan { project } => moai_cli::forge::labels::labels_plan_cli(
+            &project,
+            input::<moai_cli::forge::labels::LabelsRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::LabelsApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            if !moai_cli::contract::permission_reference_ok(&permission_reference) {
+                return Err("permission reference required".into());
+            }
+            moai_cli::forge::labels::labels_apply_cli(
+                &project,
+                plan_input::<serde_json::Value>()?,
+                &plan_digest,
+                &permission_reference,
+                &moai_cli::forge::transport::GhTransport::from_env()?,
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
         Command::GithubApply {
             project,
             plan_digest,
@@ -2683,6 +2757,43 @@ fn merge_binary_state(out: &mut serde_json::Value) {
 /// as a non-blocking hook error; the reason goes to stderr.
 const HOOK_NON_BLOCKING_ERROR: u8 = 1;
 
+/// `pr-self-audit-check` (#2708): the Python checker's text and exit codes. With no `--file`,
+/// the body comes from stdin; a terminal on stdin is a usage error, as before.
+fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCode {
+    use std::io::IsTerminal as _;
+    let body = match file {
+        Some(path) => match std::fs::read(path) {
+            Ok(bytes) => String::from_utf8(bytes).map_err(|_| "body is not UTF-8".to_string()),
+            Err(e) => Err(format!("{}: {e}", path.display())),
+        },
+        None if io::stdin().is_terminal() => {
+            eprintln!("usage: moai-cli pr-self-audit-check [--reaudit] [--file BODY.md] < BODY.md");
+            return ExitCode::from(2);
+        }
+        None => {
+            let mut bytes = Vec::new();
+            io::stdin()
+                .read_to_end(&mut bytes)
+                .map_err(|e| e.to_string())
+                .and_then(|_| String::from_utf8(bytes).map_err(|_| "body is not UTF-8".into()))
+        }
+    };
+    let body = match body {
+        Ok(body) => body,
+        Err(e) => {
+            eprintln!("pr-self-audit-check: {e}");
+            return ExitCode::from(1);
+        }
+    };
+    let result = moai_cli::self_audit::check(&body, reaudit);
+    println!("{}", moai_cli::self_audit::render(&result));
+    if result.is_ok() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
     let hook_mode = hook_mode_argv(&argv);
@@ -2719,6 +2830,9 @@ fn main() -> ExitCode {
             .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
         print!("{}", moai_cli::statusline::run(budget));
         return ExitCode::SUCCESS;
+    }
+    if let Some(Command::PrSelfAuditCheck { reaudit, file }) = &cli.command {
+        return pr_self_audit_check(*reaudit, file.as_deref());
     }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
@@ -2771,7 +2885,7 @@ mod tests {
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
-    const RAW_OUTPUT: [&str; 1] = ["statusline"];
+    const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -3045,6 +3159,20 @@ mod operations_doc {
             .find(|a| a.get_long() == Some("render-budget-ms"))
             .unwrap();
         assert!(seam.is_hide_set());
+    }
+
+    #[test]
+    fn pr_self_audit_check_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli
+            .get_subcommands()
+            .any(|s| s.get_name() == "pr-self-audit-check"));
+        assert_eq!(operation_of("pr-self-audit-check"), None);
+        assert!(!doc_list(DOC)
+            .unwrap()
+            .iter()
+            .any(|w| w == "pr-self-audit-check"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `pr-self-audit-check`(#2708)"));
     }
 
     fn render(words: &[&str]) -> String {

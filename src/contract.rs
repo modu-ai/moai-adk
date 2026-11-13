@@ -177,6 +177,9 @@ const RULES: &[(&str, Kind)] = &[
     ("changed since plan", Kind::StalePlan),
     ("changed during apply", Kind::StalePlan),
     ("requires preservation review", Kind::Conflict),
+    // #2727: reusing a receipt that was already reverted is a refusal on the target's state,
+    // not an internal error (agents, routing and Go-state reverts).
+    ("already reverted", Kind::Conflict),
     ("exclusive create refused", Kind::Conflict),
     ("malformed managed markers", Kind::Conflict),
     ("not uniquely locatable", Kind::Conflict),
@@ -547,6 +550,10 @@ mod tests {
             // archive move, restore and search (D2 #2188)
             ("readback digest mismatch; move cancelled, original kept", Conflict),
             ("source changed during apply; move cancelled, original kept", StalePlan),
+            // #2727: a reverted receipt used again
+            ("agent receipt already reverted", Conflict),
+            ("routing receipt already reverted", Conflict),
+            ("this apply was already reverted", Conflict),
             ("archive destination already exists; exclusive create refused", Conflict),
             ("archive index entry already exists; exclusive create refused", Conflict),
             ("restore destination already exists; exclusive create refused", Conflict),
@@ -589,7 +596,7 @@ mod tests {
             ("archived copy removal write failed", Io),
             ("search query must be 1 to 256 characters", InvalidInput),
             // hooks-plan / hooks-apply (rc.2 I1 #2238)
-            ("unknown hook host; must be claude or codex", InvalidInput),
+            ("unknown hook host; must be claude, codex or omp", InvalidInput),
             (
                 "home directory refused; hooks are written to a project tree only",
                 InvalidInput,
