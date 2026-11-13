@@ -41,6 +41,53 @@ type Result<T> = std::result::Result<T, String>;
 pub const RECORD_UPDATE_OWNER: &str =
     "06-C via 06-B Journal::commit when the record came from --task; not written for --record";
 
+/// Free-space floor below which `worktree-apply` refuses a new worktree: 30 GiB (WT-5,
+/// #2380 Q5 user decision 2026-11-10, #2389 comment 6774899518 row 3).
+pub const DISK_FLOOR_BYTES: u64 = 30 * 1024 * 1024 * 1024;
+/// Project total (the worktrees' files plus their `target/`) above which a created worktree
+/// carries a warning: 40 GiB (same decision).
+pub const PROJECT_WARN_BYTES: u64 = 40 * 1024 * 1024 * 1024;
+
+/// The capacity limits `worktree-apply` checks; the CLI passes the decided values unless a
+/// hidden test override is given.
+#[derive(Clone, Copy, Debug)]
+pub struct Capacity {
+    pub floor_bytes: u64,
+    pub warn_bytes: u64,
+}
+
+impl Default for Capacity {
+    fn default() -> Self {
+        Capacity {
+            floor_bytes: DISK_FLOOR_BYTES,
+            warn_bytes: PROJECT_WARN_BYTES,
+        }
+    }
+}
+
+impl Capacity {
+    /// True when a limit differs from the decided value (the hidden test flags were used);
+    /// the answer shows it as `capacity.override`.
+    pub fn is_override(&self) -> bool {
+        self.floor_bytes != DISK_FLOOR_BYTES || self.warn_bytes != PROJECT_WARN_BYTES
+    }
+}
+
+/// True when `free` bytes are at or above the floor. An unmeasured free space (`None`: off
+/// Unix, or `df -Pk` failed or was unreadable on Unix) does not block; the answer shows
+/// `free_bytes: null`.
+pub fn disk_floor_ok(free: Option<u64>, floor: u64) -> bool {
+    free.is_none_or(|f| f >= floor)
+}
+
+/// True when the project total is above the warning line (exactly the line is no warning).
+pub fn over_warning(total: u64, warn: u64) -> bool {
+    total > warn
+}
+
+/// Time budget for the project-total measurement behind the warning.
+const CAPACITY_BUDGET: std::time::Duration = std::time::Duration::from_secs(5);
+
 /// The journal of `project`, opened for writing and locked; a held lock is the one
 /// journal lock-busy answer — the explicit `unavailable` kind, retryable (06-A
 /// busy-never-waits, REQ-06A-05; #2345 sets the kind at this raise site).
@@ -110,6 +157,7 @@ pub fn apply_and_record<C: Clock>(
     prefix: &str,
     path: Option<&Path>,
     plan_digest: &str,
+    capacity: Capacity,
     clock: &C,
 ) -> std::result::Result<Value, crate::contract::OpError> {
     let journal = if from_journal {
@@ -117,7 +165,7 @@ pub fn apply_and_record<C: Clock>(
     } else {
         None
     };
-    let mut out = apply(project, rec, prefix, path, plan_digest)?;
+    let mut out = apply(project, rec, prefix, path, plan_digest, capacity)?;
     out["record_update"] = if out["decision"] != "created" {
         json!({"applied": false, "reason": "no worktree was created"})
     } else if let Some(journal) = &journal {
@@ -421,6 +469,7 @@ pub fn apply(
     prefix: &str,
     path: Option<&Path>,
     plan_digest: &str,
+    capacity: Capacity,
 ) -> Result<Value> {
     let p = plan(project, rec, prefix, path)?;
     if p["plan_digest"] != plan_digest {
@@ -468,6 +517,20 @@ pub fn apply(
             .collect();
         return Ok(conflict("path_exists", &p, at));
     }
+    // WT-5: refuse below the free-space floor, measured right before the add.
+    let free = crate::worktree_report::disk_bytes(project).map(|(free, _)| free);
+    if !disk_floor_ok(free, capacity.floor_bytes) {
+        return Ok(conflict(
+            "disk_free_below_floor",
+            &p,
+            vec![json!({
+                "free_bytes": free,
+                "floor_bytes": capacity.floor_bytes,
+                "warn_bytes": capacity.warn_bytes,
+                "override": capacity.is_override(),
+            })],
+        ));
+    }
     let target_s = target.to_string_lossy().to_string();
     let base = p["base_sha"].as_str().unwrap_or_default().to_string();
     git(
@@ -477,8 +540,21 @@ pub fn apply(
         ],
     )?;
     let id = identity(&target)?;
+    // WT-5: warn when the project's worktrees hold more than the warning line. The size
+    // walk is bounded; a partial total is a lower bound and says so.
+    let measured = crate::worktree_report::project_bytes(project, CAPACITY_BUDGET);
+    let capacity_json = json!({
+        "free_bytes": free,
+        "floor_bytes": capacity.floor_bytes,
+        "project_bytes": measured.map(|m| m.0),
+        "project_bytes_partial": measured.map(|m| m.1),
+        "warn_bytes": capacity.warn_bytes,
+        "warning": measured.is_some_and(|m| over_warning(m.0, capacity.warn_bytes)),
+        "override": capacity.is_override(),
+    });
     Ok(json!({
         "decision": "created",
+        "capacity": capacity_json,
         "plan_digest": plan_digest,
         "branch": branch,
         "path": target_s,
@@ -491,4 +567,40 @@ pub fn apply(
         },
         "record_update_owner": RECORD_UPDATE_OWNER,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_floor_is_30_gib_and_exactly_the_floor_is_enough() {
+        assert_eq!(DISK_FLOOR_BYTES, 32_212_254_720);
+        assert_eq!(PROJECT_WARN_BYTES, 42_949_672_960);
+        assert!(disk_floor_ok(Some(32_212_254_720), DISK_FLOOR_BYTES));
+        assert!(!disk_floor_ok(Some(32_212_254_719), DISK_FLOOR_BYTES));
+        // Unmeasured free space does not block.
+        assert!(disk_floor_ok(None, DISK_FLOOR_BYTES));
+    }
+
+    #[test]
+    fn the_warning_starts_one_byte_above_40_gib() {
+        assert!(!over_warning(42_949_672_960, PROJECT_WARN_BYTES));
+        assert!(over_warning(42_949_672_961, PROJECT_WARN_BYTES));
+    }
+
+    #[test]
+    fn only_the_decided_values_are_not_an_override() {
+        assert!(!Capacity::default().is_override());
+        let floor = Capacity {
+            floor_bytes: 0,
+            ..Capacity::default()
+        };
+        assert!(floor.is_override());
+        let warn = Capacity {
+            warn_bytes: 0,
+            ..Capacity::default()
+        };
+        assert!(warn.is_override());
+    }
 }

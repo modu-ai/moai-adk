@@ -55,6 +55,67 @@ fn git_ok(dir: &Path, args: &[&str]) -> Result<String> {
     }
 }
 
+/// Claims named by `Moai-Claim` trailers read at most per pull request.
+const MAX_CLAIMS: usize = 20;
+
+/// The sessions of the claims the PR's own commits name (`Moai-Claim: <issue>#<comment id>`,
+/// merge base to head, merges skipped): each claim comment's first line
+/// `moai-claim: session=<s> …` (G9, #2674 R1).
+fn pr_authors<T: Transport>(
+    t: &T,
+    base_url: &str,
+    dir: &Path,
+    merge_base: &str,
+    head: &str,
+) -> Result<Vec<String>> {
+    let out = git_ok(
+        dir,
+        &[
+            "log",
+            "--no-merges",
+            "--format=%(trailers:key=Moai-Claim,valueonly,separator=%x0A)",
+            &format!("{merge_base}..{head}"),
+        ],
+    )?;
+    let mut ids: Vec<u64> = Vec::new();
+    for value in out.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        let id = value
+            .split_once('#')
+            .and_then(|(_, id)| id.trim().parse::<u64>().ok())
+            .ok_or_else(|| format!("a Moai-Claim trailer does not read `<issue>#<id>`: {value}"))?;
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+    if ids.len() > MAX_CLAIMS {
+        return Err(format!(
+            "more than {MAX_CLAIMS} claims in the PR's trailers; refused"
+        ));
+    }
+    let mut sessions = Vec::new();
+    for id in ids {
+        let (c, _) = get_json(t, &format!("{base_url}/issues/comments/{id}"))?;
+        let first = c["body"]
+            .as_str()
+            .unwrap_or("")
+            .lines()
+            .next()
+            .unwrap_or("");
+        let session = first
+            .strip_prefix("moai-claim: ")
+            .and_then(|rest| {
+                rest.split_whitespace()
+                    .find_map(|w| w.strip_prefix("session="))
+            })
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| format!("claim comment {id} has no `moai-claim: session=` line"))?;
+        if !sessions.iter().any(|s: &String| s == session) {
+            sessions.push(session.to_string());
+        }
+    }
+    Ok(sessions)
+}
+
 fn is_commit(dir: &Path, sha: &str) -> Result<bool> {
     Ok(git(dir, &["cat-file", "-e", &format!("{sha}^{{commit}}")])?.0)
 }
@@ -235,6 +296,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         .trim()
         .to_string();
     let pr_files = names(&git_ok(dir, &["diff", "--name-only", &merge_base, &head])?);
+    let authors = pr_authors(t, &base_url, dir, &merge_base, &head)?;
 
     // The verdict base is read from the last verdict the gate will judge; without one G1 stops.
     let verdict_base = comments
@@ -295,5 +357,6 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         review_confirmed_prs: target.review_confirmed_prs.clone(),
         body_check_ok: body_check(dir, &body)?,
         verdict_base_known,
+        pr_authors: Some(authors),
     })
 }

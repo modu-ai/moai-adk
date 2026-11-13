@@ -722,6 +722,12 @@ enum Command {
         path: Option<PathBuf>,
         #[arg(long)]
         plan_digest: String,
+        /// Test seam (WT-5): the free-space floor in bytes instead of the decided 30 GiB.
+        #[arg(long, hide = true, default_value_t = moai_cli::worktree::DISK_FLOOR_BYTES)]
+        disk_floor_bytes: u64,
+        /// Test seam (WT-5): the project-total warning line in bytes instead of 40 GiB.
+        #[arg(long, hide = true, default_value_t = moai_cli::worktree::PROJECT_WARN_BYTES)]
+        warn_total_bytes: u64,
     },
     /// Read-only removal plan (WT-4, #2380): per linked worktree `remove`, `trim` (cargo
     /// build output only) or `skip` with reasons, and a digest. Deletes nothing.
@@ -1754,6 +1760,8 @@ fn run_internal(
             branch_prefix,
             path,
             plan_digest,
+            disk_floor_bytes,
+            warn_total_bytes,
         } => moai_cli::worktree::apply_and_record(
             &project,
             &source.load(&project)?,
@@ -1761,6 +1769,10 @@ fn run_internal(
             &branch_prefix,
             path.as_deref(),
             &plan_digest,
+            moai_cli::worktree::Capacity {
+                floor_bytes: disk_floor_bytes,
+                warn_bytes: warn_total_bytes,
+            },
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::AtlasMap { project } => serde_json::to_value(moai_cli::atlas_query::atlas_map(

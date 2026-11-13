@@ -6,7 +6,7 @@ use moai_cli::gate_collect::{self, Target};
 use std::io::Read;
 use std::path::PathBuf;
 
-/// The leader merge gate (#2674), read-only: decides whether every rule G1–G7 holds for one pull
+/// The leader merge gate (#2674), read-only: decides whether every rule G1–G7 and G9 holds for one pull
 /// request and prints `pass`, or the rule that stopped and why. With `--pr` it reads the pull
 /// request from GitHub (GET only) and the local repository (the head and tip must already be
 /// fetched); without it, it decides from a snapshot on stdin. Posts nothing, merges nothing.

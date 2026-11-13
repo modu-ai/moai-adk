@@ -344,3 +344,201 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
 }
+
+fn claim_comment(id: u64, first_line: &str) -> Exchange {
+    Exchange {
+        request: HttpRequest::new("GET", format!("{API}/issues/comments/{id}")),
+        response: ok(json!({"id": id, "body": format!("{first_line}\n\nmore text")})),
+    }
+}
+
+/// A PR whose own commit carries `Moai-Claim: 7#555`, then a merge of the tip whose message
+/// names another claim (merges are skipped, so 999 is never read).
+fn repo_with_trailers(trailer: &str) -> Repo {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    commit(d, &[("src/a.rs", "a3\n")], &format!("fix\n\n{trailer}"));
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge main\n\nMoai-Claim: 7#999",
+            "main",
+        ],
+    );
+    let head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    Repo {
+        _dir: r._dir,
+        a: r.a,
+        b: head,
+        c: r.c,
+    }
+}
+
+/// #2674 R1: the authors are the sessions of the claims the PR's own commits name.
+#[test]
+fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
+    let r = repo_with_trailers("Moai-Claim: 7#555");
+    let ex = RecordedTransport::new(vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+            ),
+            response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
+        },
+        claim_comment(
+            555,
+            "moai-claim: session=agent-26 epoch=1 lease_until=2026-11-13T19:00:00Z",
+        ),
+    ]);
+    let s = collect(&target(&r), &ex).unwrap();
+    assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
+    assert_eq!(ex.remaining(), 0, "the merge's claim 999 is never read");
+    // The gate then stops a verdict by that author.
+    let mut by_author = s.clone();
+    by_author.comments = vec![gate::Comment {
+        id: 200,
+        body: format!(
+            "AUDIT #9 (x) head {} base {} — verdict: PASS\n\n감사: agent-26.\n",
+            r.b, r.a
+        ),
+    }];
+    assert_eq!(gate::check(&by_author).unwrap_err().rule, "G9");
+}
+
+#[test]
+fn a_trailer_or_claim_line_that_cannot_be_read_stops_the_collection() {
+    for (trailer, comment_line, needle) in [
+        ("Moai-Claim: not-a-claim", None, "does not read"),
+        (
+            "Moai-Claim: 7#555",
+            Some("just a note"),
+            "no `moai-claim: session=` line",
+        ),
+    ] {
+        let r = repo_with_trailers(trailer);
+        let mut ex = vec![
+            Exchange {
+                request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+                response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            },
+            Exchange {
+                request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+                response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+            },
+            Exchange {
+                request: HttpRequest::new(
+                    "GET",
+                    format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+                ),
+                response: ok(json!({"check_runs": []})),
+            },
+        ];
+        if let Some(line) = comment_line {
+            ex.push(claim_comment(555, line));
+        }
+        let t = RecordedTransport::new(ex);
+        let err = collect(&target(&r), &t).unwrap_err();
+        assert!(err.contains(needle), "{trailer}: {err}");
+    }
+}
+
+/// A PR with `n` commits, commit `i` carrying `Moai-Claim: 7#<ids[i]>`.
+fn repo_with_claim_ids(ids: &[u64]) -> Repo {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    for (i, id) in ids.iter().enumerate() {
+        commit(
+            d,
+            &[("src/a.rs", &format!("a{i}\n"))],
+            &format!("step {i}\n\nMoai-Claim: 7#{id}"),
+        );
+    }
+    let head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    Repo {
+        _dir: r._dir,
+        a: r.a,
+        b: head,
+        c: r.c,
+    }
+}
+
+fn three_reads(r: &Repo) -> Vec<Exchange> {
+    vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+            ),
+            response: ok(json!({"check_runs": []})),
+        },
+    ]
+}
+
+/// Audit 6863303949 B1: at most 20 distinct claims are read — 20 pass with 20 claim reads,
+/// 21 stop the collection before any claim read.
+#[test]
+fn twenty_claims_are_read_and_twenty_one_are_refused() {
+    let ids: Vec<u64> = (1..=20).map(|i| 1000 + i).collect();
+    let r = repo_with_claim_ids(&ids);
+    let mut ex = three_reads(&r);
+    // `git log` lists the newest commit first, so the claims are read in reverse order.
+    for (i, id) in ids.iter().enumerate().rev() {
+        ex.push(claim_comment(
+            *id,
+            &format!("moai-claim: session=agent-{i} epoch=1"),
+        ));
+    }
+    let t = RecordedTransport::new(ex);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.pr_authors.as_ref().unwrap().len(), 20);
+    assert_eq!(t.remaining(), 0);
+
+    let ids: Vec<u64> = (1..=21).map(|i| 1000 + i).collect();
+    let r = repo_with_claim_ids(&ids);
+    let t = RecordedTransport::new(three_reads(&r));
+    let err = collect(&target(&r), &t).unwrap_err();
+    assert!(err.contains("more than 20 claims"), "{err}");
+    assert_eq!(t.sent.borrow().len(), 3, "no claim comment is read");
+}
+
+/// Audit 6863303949 N1: several commits naming one claim read it once.
+#[test]
+fn one_claim_named_by_several_commits_is_read_once() {
+    let r = repo_with_claim_ids(&[555, 555, 555]);
+    let mut ex = three_reads(&r);
+    ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=2"));
+    let t = RecordedTransport::new(ex);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(t.sent.borrow().len(), 4);
+}
