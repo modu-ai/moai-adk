@@ -23,7 +23,7 @@ An update plan covering all hosts, a per-file three-way change preview, and per-
 
 Never force-overwrite user changes, untracked files with the same name, or unknown keys. Never treat a new scope, permission, or channel as implicitly approved. Never hide a partial failure or a recovery conflict.
 
-In a project, show the user every `go-state-plan` warning about `.worktreeinclude`: a line there that selects secret files such as `.env` makes Claude Code copy them into every new worktree, including the worktrees of the `moai-impl` and `moai-audit` agents (Issue #2670). Name the line and let the user decide; never edit that file for them.
+In a project, run the read-only `moai-cli go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`: a line there that selects secret files such as `.env` makes Claude Code copy them into every new worktree, including the worktrees of the `moai-impl` and `moai-audit` agents (Issue #2670). Name the line and let the user decide; never edit that file for them.
 
 ## Completion Check
 

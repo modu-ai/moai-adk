@@ -10,7 +10,11 @@
 //!
 //! The file uses `.gitignore` syntax. A line "selects a secret" when, after every later line
 //! (including `!` negations) is applied, it is the line that selects one of
-//! [`SECRET_PROBES`] — names a project keeps out of git because they hold credentials.
+//! [`SECRET_PROBES`] — names a project keeps out of git because they hold credentials — or a
+//! path the file itself names whose last name is a secret name ([`secret_name`]: the `.env`
+//! family, keys and certificates, credential files), so `.env.development` written out is
+//! caught too (pre-audit FAIL 6851377127). Names compare without case, as git does on the
+//! default macOS file system (`core.ignorecase`).
 
 use std::{fs, path::Path};
 
@@ -21,19 +25,56 @@ const LIMIT: u64 = 1024 * 1024;
 
 /// Probe paths standing for secret files: environment files at the root and nested, private
 /// keys and certificates, and credential or secret documents.
-pub const SECRET_PROBES: [&str; 11] = [
+pub const SECRET_PROBES: [&str; 18] = [
     ".env",
     ".env.local",
     ".env.production",
+    ".env.development",
     "apps/web/.env",
     "apps/web/.env.local",
     "id_rsa",
     "certs/server.key",
     "certs/server.pem",
+    "certs/client.p12",
+    "config/master.key",
     "credentials.json",
+    "service-account.json",
     "config/secrets.yml",
+    "secrets/token",
     ".aws/credentials",
+    ".npmrc",
+    ".netrc",
 ];
+
+/// Example files a project keeps in git on purpose: never a secret name.
+const EXAMPLE_NAMES: [&str; 4] = [".env.example", ".env.sample", ".env.template", ".env.dist"];
+
+/// Whether a file name (no folder) is one a project keeps out of git because it holds
+/// credentials: the `.env` family (not its example files), private keys and certificates, and
+/// the usual credential files. Compared without case.
+pub fn secret_name(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    if EXAMPLE_NAMES.contains(&n.as_str()) {
+        return false;
+    }
+    n == ".env"
+        || n.starts_with(".env.")
+        || [".key", ".pem", ".p12", ".pfx"]
+            .iter()
+            .any(|ext| n.len() > ext.len() && n.ends_with(ext))
+        || matches!(
+            n.as_str(),
+            ".npmrc"
+                | ".netrc"
+                | ".pgpass"
+                | "credentials"
+                | "credentials.json"
+                | "service-account.json"
+                | "id_rsa"
+                | "id_ecdsa"
+                | "id_ed25519"
+        )
+}
 
 /// One line that selects secret files.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -145,11 +186,15 @@ fn selects(rule: &Rule, path: &str) -> bool {
         if rule.dir_only && is_file {
             return false;
         }
+        // Without case: git on the default macOS file system (`core.ignorecase`) matches
+        // `.ENV` to `.env`, so reading case strictly would miss a line that copies it.
+        let glob = rule.glob.to_ascii_lowercase();
+        let prefix = prefix.to_ascii_lowercase();
         if rule.anchored {
-            glob_match(rule.glob.as_bytes(), prefix.as_bytes())
+            glob_match(glob.as_bytes(), prefix.as_bytes())
         } else {
             let name = prefix.rsplit('/').next().unwrap_or(&prefix);
-            glob_match(rule.glob.as_bytes(), name.as_bytes())
+            glob_match(glob.as_bytes(), name.as_bytes())
         }
     })
 }
@@ -157,8 +202,20 @@ fn selects(rule: &Rule, path: &str) -> bool {
 /// The lines of an include list that select a secret probe, in line order.
 pub fn secret_lines(text: &str) -> Vec<Finding> {
     let rules = parse(text);
+    // The fixed probes, plus every path a selecting line names outright whose last name is a
+    // secret name (`.env.development`, `config/master.key`): a list that writes the family
+    // out name by name copies the same secrets as `.env.*`.
+    let mut probes: Vec<String> = SECRET_PROBES.iter().map(|p| p.to_string()).collect();
+    for rule in rules.iter().filter(|r| !r.negate && !r.dir_only) {
+        let path = rule.glob.trim_start_matches("**/");
+        let last = path.rsplit('/').next().unwrap_or(path);
+        let literal = !path.contains(['*', '?', '[']);
+        if literal && secret_name(last) && !probes.iter().any(|p| p.eq_ignore_ascii_case(path)) {
+            probes.push(path.to_string());
+        }
+    }
     let mut findings: Vec<Finding> = Vec::new();
-    for probe in SECRET_PROBES {
+    for probe in probes.iter().map(String::as_str) {
         // The last matching line decides (`.gitignore` order); a negation un-selects.
         let Some(last) = rules.iter().rev().find(|r| selects(r, probe)) else {
             continue;
@@ -260,6 +317,47 @@ mod tests {
         ] {
             assert_eq!(lines(text), Vec::new(), "{text:?}");
         }
+    }
+
+    /// Pre-audit FAIL 6851377127 (agent-25) B1, N1, N2: the `.env` family written out name by
+    /// name, keys and the usual credential files are caught; example files are not; case does
+    /// not matter.
+    #[test]
+    fn named_secret_files_keys_and_any_case_are_flagged_but_examples_are_not() {
+        for line in [
+            ".env.development",
+            ".env.staging",
+            ".env.test",
+            "config/master.key",
+            "deploy/prod.pem",
+            "*.p12",
+            "secrets/",
+            ".npmrc",
+            ".netrc",
+            "service-account.json",
+            "**/.env.staging",
+            ".ENV",
+            ".Env.Local",
+        ] {
+            assert_eq!(
+                lines(&format!("{line}\n")),
+                vec![(1, line.to_string())],
+                "{line:?}"
+            );
+        }
+        for line in [
+            ".env.example",
+            ".env.sample",
+            ".env.template",
+            ".env.dist",
+            "README.md",
+        ] {
+            assert_eq!(lines(&format!("{line}\n")), Vec::new(), "{line:?}");
+        }
+        // A named secret that a later line negates is not flagged.
+        assert_eq!(lines(".env.staging\n!.env.staging\n"), Vec::new());
+        assert!(secret_name(".env.ci") && secret_name("server.KEY"));
+        assert!(!secret_name(".key") && !secret_name(".envrc") && !secret_name("env"));
     }
 
     #[test]
