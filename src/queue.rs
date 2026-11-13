@@ -194,6 +194,17 @@ fn read_claim_comments<T: Transport, C: Clock>(
     repo: &str,
     number: i64,
 ) -> Result<(Vec<ClaimComment>, Option<Handoff>)> {
+    read_claim_history(client, owner, repo, number).map(|(claims, handoff, _)| (claims, handoff))
+}
+
+/// [`read_claim_comments`] plus whether the card ever carried a claim line, so that a card
+/// whose claims were all released can be told apart from one nobody claimed (#2675).
+fn read_claim_history<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    owner: &str,
+    repo: &str,
+    number: i64,
+) -> Result<(Vec<ClaimComment>, Option<Handoff>, bool)> {
     let mut url = Some(format!(
         "{API}/repos/{owner}/{repo}/issues/{number}/comments?per_page=100"
     ));
@@ -272,7 +283,145 @@ fn read_claim_comments<T: Transport, C: Clock>(
             _ => {}
         }
     }
-    Ok((claims, handoffs.pop()))
+    Ok((claims, handoffs.pop(), !known.is_empty()))
+}
+
+/// `queue-free` stdin (typed JSON, unknown keys rejected).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FreeRequest {
+    pub schema_version: u32,
+    pub owner: String,
+    pub repo: String,
+}
+
+fn valid_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 100
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
+        && s != "."
+        && s != ".."
+}
+
+/// Whether a label marks a card that waits for a decision (`needs:decision`, `HOLD`, …).
+fn holds(label: &str) -> bool {
+    let l = label.to_ascii_lowercase();
+    l.contains("needs:decision") || l.contains("hold")
+}
+
+/// `queue-free` (#2675): the open cards a lane may take, read only. Every open Issue is
+/// sorted into exactly one bucket — `held` (a `needs:decision`/`hold` label), `epics`
+/// (title `][EP-`), `blocked` (an open `Blocked-By:` Issue), `reserved` (an outstanding
+/// handoff names its recipient), `claimed` (a live claim), or `free`. A free card says why:
+/// `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only
+/// expired claims remain; taking it over still follows the handoff rules). An empty result
+/// is stated as `free_count: 0` and a `0건` summary, never as missing output; a failed read
+/// is an error, never an empty list.
+pub fn free<T: Transport, C: Clock>(
+    req: &FreeRequest,
+    client: &Client<'_, T, C>,
+    clock: &C,
+) -> Result<Value> {
+    if req.schema_version != 1 {
+        return Err("unsupported request schema_version".into());
+    }
+    if !valid_name(&req.owner) || !valid_name(&req.repo) {
+        return Err("owner and repo must be GitHub names".into());
+    }
+    let issues = read_open_issues(client, &req.owner, &req.repo)?;
+    let open: BTreeSet<i64> = issues.iter().filter_map(|i| i["number"].as_i64()).collect();
+    let now = clock.now();
+    let live = |c: &ClaimComment| parse_utc(&c.lease_until).is_some_and(|t| t > now);
+    let (mut free, mut reserved, mut claimed) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut held, mut epics, mut blocked) = (Vec::new(), Vec::new(), Vec::new());
+    let mut inspected = 0u64;
+    for i in &issues {
+        let Some(number) = i["number"].as_i64() else {
+            continue;
+        };
+        if i.get("pull_request").is_some_and(|p| !p.is_null()) {
+            continue;
+        }
+        inspected += 1;
+        let title = i["title"].as_str().unwrap_or_default();
+        let body = i["body"].as_str().unwrap_or_default();
+        let labels: Vec<&str> = i["labels"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|l| l["name"].as_str()).collect())
+            .unwrap_or_default();
+        let hold: Vec<&str> = labels.iter().copied().filter(|l| holds(l)).collect();
+        if !hold.is_empty() {
+            held.push(json!({"issue": number, "title": title, "labels": hold}));
+            continue;
+        }
+        if title.contains("][EP-") {
+            epics.push(json!({"issue": number, "title": title}));
+            continue;
+        }
+        let open_blockers: Vec<i64> = refs_on(body, "Blocked-By:")
+            .into_iter()
+            .filter(|n| open.contains(n) && *n != number)
+            .collect();
+        if !open_blockers.is_empty() {
+            blocked.push(json!({"issue": number, "title": title, "blocked_by": open_blockers}));
+            continue;
+        }
+        let (claims, handoff, ever) = read_claim_history(client, &req.owner, &req.repo, number)?;
+        if let Some(h) = handoff {
+            reserved.push(json!({"issue": number, "title": title, "to": h.to,
+                                 "handoff_comment_id": h.comment_id}));
+        } else if let Some(c) = claims
+            .iter()
+            .filter(|c| live(c))
+            .min_by_key(|c| c.comment_id)
+        {
+            claimed.push(
+                json!({"issue": number, "title": title, "claimed_by": c.session,
+                                "comment_id": c.comment_id, "lease_until": c.lease_until}),
+            );
+        } else if let Some(c) = claims.iter().min_by_key(|c| c.comment_id) {
+            free.push(json!({"issue": number, "title": title, "why": "expired",
+                             "claimed_by": c.session, "comment_id": c.comment_id,
+                             "lease_until": c.lease_until}));
+        } else {
+            let why = if ever { "released" } else { "unclaimed" };
+            free.push(json!({"issue": number, "title": title, "why": why}));
+        }
+    }
+    let summary = format!(
+        "free {}건 (inspected {inspected}, claimed {}, reserved {}, held {}, epics {}, blocked {})",
+        free.len(),
+        claimed.len(),
+        reserved.len(),
+        held.len(),
+        epics.len(),
+        blocked.len()
+    );
+    Ok(json!({
+        "schema_version": 1,
+        "repository": format!("{}/{}", req.owner, req.repo),
+        "inspected": inspected,
+        "free_count": free.len(),
+        "free": free,
+        "reserved": reserved,
+        "claimed": claimed,
+        "held": held,
+        "epics": epics,
+        "blocked": blocked,
+        "summary": summary,
+        "writes": false,
+    }))
+}
+
+/// `queue-free` with the system transport and clock; GET only, no journal.
+pub fn free_cli<T: Transport, C: Clock>(
+    req: FreeRequest,
+    transport: &T,
+    clock: &C,
+) -> std::result::Result<Value, crate::contract::OpError> {
+    let client = Client::new(transport, clock, Default::default(), Default::default());
+    Ok(free(&req, &client, clock)?)
 }
 
 /// The `skipped` entry of a card that already carries claim comments: the smallest live

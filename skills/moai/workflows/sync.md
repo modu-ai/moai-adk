@@ -33,6 +33,20 @@ A document diff, an Issue report, an integration receipt, and a closure. The rec
    - **Docs-only insertion.** While a code PR waits on a repair, the leader may insert a ready docs-only PR into the gap without a train number. A docs-only PR changes no Rust source, test, tool script, CI workflow definition or schema; Markdown documents, skill workflow text and the PR template are docs.
 9. **Reconcile, then report.** Read every external result back (PR state and head, comment text, merge commit) before announcing it. After a timeout, do not repeat the write: run `effects-reconcile`, which looks the operation marker up and moves the uncertain effect to confirmed or not_performed without ever re-creating it; only a not_performed effect may be attempted again, as a new intent. Report successes, failures, `not_run`, `blocked`, the remaining work and artifact retention.
 
+## Base agents
+
+Skip this section when you are a base agent yourself: base agents never start other agents.
+
+`moai-cli` installs five base agents into the host's user folder: `moai-plan`, `moai-research`, `moai-impl`, `moai-audit` and `moai-docs`. When this route hands a step to one of them:
+
+- Give it one block, `task`, `scope`, `base` and `refs`, and nothing else; it assumes no conversation context.
+- Decide on its first line, `RESULT <role> <ok|blocked|not_run> <target>`, then check the rest yourself: the files it lists and the commands and exit codes it reports. An agent's `ok` is not evidence.
+- Start agents only from this session, one level deep.
+- Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
+- When the agent is not installed on this host, do the step in this session and say so.
+
+SYNC may hand document mismatches (step 3) to one `moai-docs` at a time, with `scope` naming only the document paths. The effects in steps 4 to 9 (push, pull request, comments, merge) stay with this session: the agent writes files and reports, and never sends anything. Step 7's independent review goes to `moai-audit` as the AUDIT workflow describes, not to the agent that wrote the change.
+
 ## Integration receipt fields
 
 One JSON object, `schema_version` 1: `task_id`, `attempt`, `base_sha`, `candidate_sha`, `merge_base`, `spec_digest` (or `null` with "unapproved draft"), `audit_verdict_ref`, `local_checks[]` (`argv`, `exit_code`, `started`, `ended`), `ci_checks[]` (`name`, `head_sha`, `merge_sha`, `status`, `conclusion`, or `not_run`), `effects[]` (`kind`, `operation_id`, `status`), `status` (one of the states above). Generating it twice from the same inputs gives the same bytes and repeats no effect.

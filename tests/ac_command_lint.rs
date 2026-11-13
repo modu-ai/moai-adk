@@ -124,6 +124,34 @@ fn run_lint(args: &[&str]) -> std::process::Output {
     cmd.output().expect("spawn the AC command lint")
 }
 
+/// #2661: the lint calls `cargo test --test <name> -- --list`, and that cargo call re-copies
+/// target/debug/moai-cli even when nothing is rebuilt. Under cargo-nextest every test of this
+/// binary must run alone, or a test spawning the binary in that moment fails with NotFound.
+#[test]
+fn nextest_runs_this_binary_alone() {
+    let config = fs::read_to_string(Path::new(MANIFEST).join(".config/nextest.toml"))
+        .expect(".config/nextest.toml must exist");
+    let alone = config
+        .split("[[profile.default.overrides]]")
+        .skip(1)
+        .any(|block| {
+            let block = block.split("\n[").next().unwrap_or("");
+            let value = |key: &str| {
+                block.lines().find_map(|line| {
+                    let (k, v) = line.split_once('=')?;
+                    (k.trim() == key).then(|| v.trim().trim_matches(['\'', '"']).to_string())
+                })
+            };
+            value("filter").as_deref() == Some("binary(ac_command_lint)")
+                && value("threads-required").as_deref() == Some("num-test-threads")
+        });
+    assert!(
+        alone,
+        "an override with filter = 'binary(ac_command_lint)' and \
+         threads-required = 'num-test-threads' must stay in .config/nextest.toml:\n{config}"
+    );
+}
+
 #[test]
 fn recorded_ac_commands_name_existing_targets_and_select_tests() {
     let out = run_lint(&["--tree", MANIFEST]);

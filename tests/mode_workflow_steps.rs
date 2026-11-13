@@ -152,9 +152,12 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         [
             "claim-verify",
             "claim-verify --hook",
+            "goal-plan",
+            "goal-show",
             "labels-apply",
             "labels-plan",
             "pr-confirm",
+            "queue-free",
             "queue-next",
             "scope-check",
             "usage-limit"
@@ -556,5 +559,25 @@ fn usage_limit_rules_are_pinned_in_both_mode_workflows() {
             "reports idle with cause `usage_limit`",
             "post no handoff line for its cards before that time",
         ],
+    );
+}
+
+/// #2675: the state summary and the self-claim candidate come from `moai-cli queue-free`, and
+/// an empty answer is said as `0건`, never inferred from missing output.
+#[test]
+fn state_and_claim_read_the_free_card_list() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "state",
+        &[
+            "`moai-cli queue-free` returns these buckets in one read-only call (Issue #2675)",
+            "when `free_count` is 0 say `0건`; an empty or failed output is not a count",
+        ],
+    );
+    assert_says(
+        &agent,
+        "claim",
+        &["Take the self-claim candidate from the `free` list of `moai-cli queue-free`"],
     );
 }
