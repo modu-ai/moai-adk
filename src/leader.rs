@@ -339,18 +339,7 @@ pub fn tick<T: Transport, C: Clock>(
         changes.push(json!({"pr": n, "closed": true}));
     }
     // Issue #2678: the count and "no change" are said outright, not left to an empty list.
-    let summary = if changes.is_empty() {
-        format!(
-            "{} open pull request(s) read; no change since the previous tick",
-            next.prs.len()
-        )
-    } else {
-        format!(
-            "{} open pull request(s) read; {} changed since the previous tick",
-            next.prs.len(),
-            changes.len()
-        )
-    };
+    let summary = tick_summary(next.prs.len(), changes.len());
     let report = json!({
         "summary": summary,
         "observed": next.prs.len(),
@@ -359,6 +348,16 @@ pub fn tick<T: Transport, C: Clock>(
         "writes": "none on GitHub; post hints through effect-intend, gh, effect-confirm",
     });
     Ok((report, next))
+}
+
+/// The `summary` line of `leader-tick` (Issue #2678): the count read and the count changed,
+/// with "no change" said in words.
+pub fn tick_summary(observed: usize, changed: usize) -> String {
+    if changed == 0 {
+        format!("{observed} open pull request(s) read; no change since the previous tick")
+    } else {
+        format!("{observed} open pull request(s) read; {changed} changed since the previous tick")
+    }
 }
 
 /// CLI: interval from the profile, previous state, one tick, state replaced on success.

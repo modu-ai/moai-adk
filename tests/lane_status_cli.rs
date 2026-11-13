@@ -231,6 +231,25 @@ fn run(project: &Path, req: LaneStatusRequest, exchanges: Vec<Exchange>) -> Valu
     out
 }
 
+/// The summary line recomputed from the arrays of one result (#2678).
+fn summary_of(out: &Value) -> String {
+    let named = out["idle"].as_array().unwrap();
+    let idle = named.iter().filter(|l| l["idle"] == json!(true)).count();
+    let rows = out["rows"].as_array().unwrap().len();
+    let ready = out["ready"].as_array().unwrap().len();
+    let counts = format!(
+        "{} lane(s) named, {idle} idle; {ready} ready Issue(s)",
+        named.len()
+    );
+    if rows == 0 {
+        format!(
+            "0 rows: no claim, pull request or worktree was found for the named Issues; {counts}"
+        )
+    } else {
+        format!("{rows} row(s); {counts}")
+    }
+}
+
 fn row<'a>(out: &'a Value, session: &str, issue: i64) -> &'a Value {
     out["rows"]
         .as_array()
@@ -257,14 +276,13 @@ fn lane_status_covers_every_phase_with_its_evidence() {
     let root = fs::canonicalize(tmp.path()).unwrap();
     let p = project(&root);
     let out = run(&p, request(lanes(), decisions()), remote(false));
-    // #2678: the row count is said in words next to the rows themselves.
-    let rows = out["rows"].as_array().unwrap().len();
-    let summary = out["summary"].as_str().unwrap();
-    assert!(
-        summary.starts_with(&format!("{rows} row(s); ")),
-        "{summary}"
+    // #2678: every count is said in words, and the idle count is the lanes judged idle, not
+    // the lanes named (audit B1/B2 6850252311): 12 lanes named, 9 of them `idle: true`.
+    assert_eq!(out["summary"], json!(summary_of(&out)));
+    assert_eq!(
+        out["summary"],
+        json!("8 row(s); 12 lane(s) named, 9 idle; 1 ready Issue(s)")
     );
-    assert!(rows > 0);
 
     let r = row(&out, "agent-1", 11);
     assert_eq!(r["phase"], json!("claimed"));
@@ -371,6 +389,16 @@ fn idle_causes_are_classified_from_records_only() {
     let out2 = run(&p, req, ex);
     assert_eq!(idle(&out2, "agent-10")["cause"], json!("no_ready_card"));
     assert_eq!(out2["assignment_drafts"], json!([]));
+    // #2678: the same counts with no ready Issue left.
+    assert_eq!(out2["summary"], json!(summary_of(&out2)));
+    assert!(
+        out2["summary"]
+            .as_str()
+            .unwrap()
+            .ends_with("; 0 ready Issue(s)"),
+        "{}",
+        out2["summary"]
+    );
 
     // Every idle cause variant appears across the two runs.
     let mut seen: Vec<Value> = Vec::new();
