@@ -53,6 +53,7 @@ const MANIFEST: &str = crate::project_state!("manifests/generation.json");
 const SOURCES_MANIFEST: &str = crate::project_state!("manifests/sources.json");
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
+const PROJECT_PROFILE: &str = crate::project_state!("project.yaml");
 /// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
 /// by default, and the managed section must leave room for user content.
 const PURPOSE_LIMIT: usize = 500;
@@ -120,6 +121,20 @@ pub struct SkillProjection {
     pub host_targets: Vec<String>,
 }
 
+/// A project skill (#2706 P2): its body comes from the profile's interview answers, not from
+/// the request, so `project.yaml` stays the one source.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProjectSkill {
+    /// `prj-<name>`; also the skill directory name.
+    pub id: String,
+    /// claude | codex (default: both).
+    #[serde(default)]
+    pub hosts: Vec<String>,
+    /// One line; the skill's `description`.
+    pub purpose: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GenerationRequest {
@@ -136,6 +151,17 @@ pub struct GenerationRequest {
     pub native_roles: Vec<NativeRole>,
     #[serde(default)]
     pub skill_projections: Vec<SkillProjection>,
+    /// Absent when empty, so a request without project skills digests as before.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub project_skills: Vec<ProjectSkill>,
+}
+
+fn project_skill_hosts(s: &ProjectSkill) -> Vec<String> {
+    if s.hosts.is_empty() {
+        vec!["claude".into(), "codex".into()]
+    } else {
+        s.hosts.clone()
+    }
 }
 
 /// One planned file. The agents portion carries the `agents.rs` fields it produced;
@@ -186,6 +212,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         || r.workflow_reference.len() > 256
         || r.native_roles.len() > MAX_ROLES
         || r.skill_projections.len() > MAX_PROJECTIONS
+        || r.project_skills.len() > MAX_PROJECTIONS
     {
         return Err("invalid generation request; no values were logged".into());
     }
@@ -217,6 +244,27 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         {
             return Err("invalid generation request; no values were logged".into());
         }
+    }
+    let mut seen_ids = std::collections::BTreeSet::new();
+    for ps in &r.project_skills {
+        if !seen_ids.insert(ps.id.as_str())
+            || ps
+                .hosts
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != ps.hosts.len()
+        {
+            return Err("invalid generation request: a project skill id or host repeats".into());
+        }
+        if !valid_skill_name(&ps.id)
+            || !ps.id.starts_with("prj-")
+            || !bounded_purpose(&ps.purpose)
+            || ps.hosts.iter().any(|h| h != "claude" && h != "codex")
+        {
+            return Err("invalid generation request; no values were logged".into());
+        }
+        render_safe(&ps.purpose)?;
     }
     for role in &r.native_roles {
         render_safe(&role.purpose)?;
@@ -366,6 +414,91 @@ fn render_codex_role(role: &NativeRole) -> String {
         desc = toml_string(&role.purpose),
         instr = toml_string(&role.purpose),
     )
+}
+
+/// A YAML double-quoted scalar: a purpose such as `Run tests: cargo test` keeps the
+/// frontmatter valid (pre-audit 6854178087 N2). `render_safe` already refused line breaks.
+fn yaml_quoted(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// The first component from `root` down to `rel` (the file included) that is a symbolic link,
+/// if any. Writing or removing through it would act outside the project (pre-audit
+/// 6854178087 B1, 6854760758 B1), so such a path is a conflict, never followed.
+fn link_on_path(root: &Path, rel: &str) -> Option<String> {
+    let mut at = root.to_path_buf();
+    let mut shown = String::new();
+    for part in Path::new(rel).components() {
+        at.push(part);
+        if !shown.is_empty() {
+            shown.push('/');
+        }
+        shown.push_str(&part.as_os_str().to_string_lossy());
+        match fs::symlink_metadata(&at) {
+            Ok(m) if m.file_type().is_symlink() => return Some(shown),
+            Ok(_) => {}
+            Err(_) => return None,
+        }
+    }
+    None
+}
+
+/// Where a project skill of `host` lives; `None` for a host this tool does not write.
+fn project_skill_path(host: &str, id: &str) -> Option<String> {
+    match host {
+        "codex" => Some(format!(".agents/skills/{id}/SKILL.md")),
+        "claude" => Some(format!(".claude/skills/{id}/SKILL.md")),
+        _ => None,
+    }
+}
+
+/// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
+/// recorded with `source: default` (an axis left unanswered) is never written.
+fn render_project_skill(
+    skill: &ProjectSkill,
+    language: &str,
+    profile: &crate::Profile,
+) -> Result<String> {
+    let ko = language == "ko";
+    let answer = |id: &str| {
+        profile
+            .decisions
+            .iter()
+            .filter(|d| d.id == id && d.source != "default")
+            .map(|d| d.value.clone())
+            .collect::<Vec<_>>()
+    };
+    let sections: [(&str, &str, &str); 4] = [
+        ("test_command", "Run the tests", "시험 실행"),
+        ("build_command", "Build", "빌드"),
+        (
+            "review_blocks",
+            "Review always stops",
+            "리뷰에서 항상 막는 것",
+        ),
+        (
+            "protected",
+            "Never change without asking first",
+            "먼저 묻지 않고 바꾸지 않는 것",
+        ),
+    ];
+    let mut body = if ko {
+        format!("# {}\n\n`/moai project` 인터뷰 답으로 만든 프로젝트 스킬이다. 원본은 `{PROJECT_PROFILE}`이다.\n", skill.id)
+    } else {
+        format!("# {}\n\nProject skill built from the `/moai project` interview answers; the source is `{PROJECT_PROFILE}`.\n", skill.id)
+    };
+    for (id, en, kr) in sections {
+        for value in answer(id) {
+            render_safe(&value)?;
+            body.push_str(&format!("\n- {}: {value}", if ko { kr } else { en }));
+        }
+    }
+    body.push('\n');
+    Ok(format!(
+        "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
+        id = skill.id,
+        desc = yaml_quoted(&skill.purpose),
+    ))
 }
 
 fn render_projection_skill(
@@ -632,6 +765,140 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         }
     }
 
+    // Project skills (#2706 P2): one file per host at the host's own skill folder, body from
+    // the profile; an existing folder without a recorded baseline is never claimed.
+    if !request.project_skills.is_empty() {
+        let (profile, _) = read_profile(&root)?;
+        for ps in &request.project_skills {
+            let rendered = render_project_skill(ps, &request.language, &profile)?;
+            let rendered_digest = digest(rendered.as_bytes());
+            for host in project_skill_hosts(ps) {
+                let rel = project_skill_path(&host, &ps.id).ok_or("unknown skill host")?;
+                let dest_dir = root
+                    .join(&rel)
+                    .parent()
+                    .expect("skill parent")
+                    .to_path_buf();
+                let link = link_on_path(&root, &rel);
+                let current = if link.is_some() {
+                    None
+                } else {
+                    fs::read(root.join(&rel)).ok()
+                };
+                let baseline = generation_baseline(&manifest, &rel);
+                let unclaimed = baseline.is_none()
+                    && (current.is_some() || fs::symlink_metadata(&dest_dir).is_ok());
+                let action = if link.is_some() || unclaimed {
+                    "conflict"
+                } else {
+                    let decided = three_way_action(
+                        baseline.as_deref(),
+                        current.as_deref().map(digest).as_deref(),
+                        &rendered_digest,
+                    );
+                    if decided == "merge" && is_create(current.as_ref()) {
+                        "create"
+                    } else {
+                        decided
+                    }
+                };
+                files.push(GenerationFilePlan {
+                    path: rel,
+                    action: action.into(),
+                    tracked_by_default: true,
+                    expected_sha256: current.as_deref().map(digest),
+                    baseline_sha256: baseline,
+                    rendered_sha256: Some(rendered_digest.clone()),
+                    source_refs: vec![PROJECT_PROFILE.into()],
+                    kind: Some(format!("generation:project-skill:{host}:{}", ps.id)),
+                    detail: match (&link, unclaimed) {
+                        (Some(l), _) => Some(format!(
+                            "{l} is a symbolic link; a project skill is never written through it"
+                        )),
+                        (None, true) => {
+                            Some("existing skill directory without a manifest baseline".to_string())
+                        }
+                        (None, false) => None,
+                    },
+                });
+            }
+        }
+    }
+
+    // Project skills no longer requested (#2706 P2b): a file this tool wrote and nobody edited
+    // is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
+    // conflict and stays. A recorded file that is already gone only leaves the list.
+    let requested: Vec<String> = request
+        .project_skills
+        .iter()
+        .flat_map(|ps| {
+            project_skill_hosts(ps)
+                .into_iter()
+                .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
+        })
+        .collect();
+    let owned: Vec<(String, String, String)> = manifest
+        .get("owned_files")
+        .and_then(Value::as_array)
+        .map(|list| {
+            list.iter()
+                .filter_map(|f| {
+                    let kind = f.get("section_id")?.as_str()?;
+                    if !kind.starts_with("generation:project-skill:") {
+                        return None;
+                    }
+                    Some((
+                        kind.to_string(),
+                        f.get("path")?.as_str()?.to_string(),
+                        f.get("baseline_sha256")?.as_str()?.to_string(),
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    for (kind, rel, baseline) in owned {
+        if requested.contains(&kind) || files.iter().any(|f| f.path == rel) {
+            continue;
+        }
+        // Pre-audit 6854760758 B1: the recorded path is trusted only when it is the path the
+        // kind names, and nothing on the way is a symbolic link; otherwise it is a conflict.
+        let named = kind
+            .strip_prefix("generation:project-skill:")
+            .and_then(|rest| rest.split_once(':'))
+            .and_then(|(host, id)| project_skill_path(host, id));
+        let link = link_on_path(&root, &rel);
+        let refused = if named.as_deref() != Some(rel.as_str()) {
+            Some("the recorded path is not the path of its skill; nothing removed".to_string())
+        } else {
+            link.map(|l| format!("{l} is a symbolic link; nothing removed through it"))
+        };
+        let current = if refused.is_some() {
+            None
+        } else {
+            fs::read(root.join(&rel)).ok()
+        };
+        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        let detail = refused.or_else(|| {
+            edited.then_some("no longer requested, but edited after generation; kept".to_string())
+        });
+        files.push(GenerationFilePlan {
+            path: rel,
+            action: if detail.is_some() {
+                "conflict"
+            } else {
+                "remove"
+            }
+            .into(),
+            tracked_by_default: true,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: vec![PROJECT_PROFILE.into()],
+            kind: Some(kind),
+            detail,
+        });
+    }
+
     let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
     let mut plan = GenerationPlan {
         protocol_version: 1,
@@ -676,6 +943,19 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
             _ => Ok(render_codex_role(role)),
         };
     }
+    if let Some(rest) = kind.strip_prefix("generation:project-skill:") {
+        let Some((host, id)) = rest.split_once(':') else {
+            return Err("unknown planned path".into());
+        };
+        let skill = p
+            .request
+            .project_skills
+            .iter()
+            .find(|s| s.id == id && project_skill_hosts(s).iter().any(|h| h == host))
+            .ok_or("unknown planned path")?;
+        let (profile, _) = read_profile(root)?;
+        return render_project_skill(skill, &p.request.language, &profile);
+    }
     if let Some(rest) = kind.strip_prefix("generation:skill-projection:") {
         let Some((host, id)) = rest.split_once(':') else {
             return Err("unknown planned path".into());
@@ -699,6 +979,53 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
         return render_projection_skill(projection, &p.request.language, &source);
     }
     Err("unknown planned path".into())
+}
+
+/// Removes one generated file the plan marked `remove` (#2706 P2b): only while its bytes still
+/// equal the plan's, after saving them in the receipt (so `apply-recover` restores it), then the
+/// folder it leaves empty. A file already gone is recorded and skipped.
+fn remove_owned(
+    root: &Path,
+    request_id: &str,
+    f: &GenerationFilePlan,
+    receipt: &mut Receipt,
+) -> Result<()> {
+    let path_abs = root.join(&f.path);
+    let before = read_opt(&path_abs)?;
+    if before.as_deref().map(digest) != f.expected_sha256 {
+        receipt.status = "partial".into();
+        receipt.entry(
+            &f.path,
+            "remove",
+            before.as_deref().map(digest).as_deref(),
+            None,
+            false,
+            Some("target changed since plan".into()),
+        );
+        let _ = receipt.save(root);
+        return Err(format!(
+            "partial apply: failed at {}: target changed since plan",
+            f.path
+        ));
+    }
+    let Some(bytes) = before else {
+        receipt.entry(
+            &f.path,
+            "remove",
+            None,
+            None,
+            false,
+            Some("already gone".into()),
+        );
+        return Ok(());
+    };
+    save_before_bytes(root, request_id, &f.path, &bytes)?;
+    fs::remove_file(&path_abs).map_err(|_| format!("remove failed: {}", f.path))?;
+    if let Some(dir) = path_abs.parent() {
+        let _ = fs::remove_dir(dir); // only succeeds when the folder is now empty
+    }
+    receipt.entry(&f.path, "remove", Some(&digest(&bytes)), None, true, None);
+    Ok(())
 }
 
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
@@ -767,6 +1094,18 @@ pub fn generation_apply(
                 continue;
             }
             if f.action == "unchanged" {
+                continue;
+            }
+            if kind.starts_with("generation:project-skill:") {
+                if let Some(l) = link_on_path(root, &f.path) {
+                    return Err(format!(
+                        "conflict in {}: {l} became a symbolic link after the plan; nothing more applied",
+                        f.path
+                    ));
+                }
+            }
+            if f.action == "remove" {
+                remove_owned(root, &request_id, f, &mut receipt)?;
                 continue;
             }
             let rendered_text = rendered_text_for(root, &p, f)?;
@@ -883,6 +1222,7 @@ pub fn generation_apply(
                 if !kind.starts_with("generation:") || f.action == "conflict" {
                     continue;
                 }
+                // A `remove` plan carries no rendered digest, so it never re-enters the list.
                 let Some(rendered) = &f.rendered_sha256 else {
                     continue;
                 };

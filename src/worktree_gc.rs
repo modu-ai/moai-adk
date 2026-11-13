@@ -308,7 +308,7 @@ pub(crate) fn process_cwds() -> Option<Vec<PathBuf>> {
 /// Paths of the files the processes this user can see hold open (`/proc/*/fd` on Linux,
 /// `lsof -Fn` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
 /// right before it deletes (#2498; the plan reads working directories only).
-fn open_file_paths() -> Option<Vec<PathBuf>> {
+pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
     let mut out = Vec::new();
     if Path::new("/proc/self/fd").exists() {
         for e in fs::read_dir("/proc").ok()?.flatten() {

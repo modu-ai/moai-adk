@@ -73,7 +73,7 @@ impl Classified {
 }
 
 /// A regular file at `root/parts…`, reached without following any link.
-fn regular_file(root: &Path, parts: &[&str]) -> Option<fs::Metadata> {
+pub(crate) fn regular_file(root: &Path, parts: &[&str]) -> Option<fs::Metadata> {
     let mut path = root.to_path_buf();
     for (i, part) in parts.iter().enumerate() {
         path.push(part);
@@ -92,7 +92,7 @@ fn regular_file(root: &Path, parts: &[&str]) -> Option<fs::Metadata> {
     None
 }
 
-fn read_limited(root: &Path, parts: &[&str], limit: u64) -> Option<Vec<u8>> {
+pub(crate) fn read_limited(root: &Path, parts: &[&str], limit: u64) -> Option<Vec<u8>> {
     let meta = regular_file(root, parts)?;
     if meta.len() > limit {
         return None;
@@ -177,6 +177,15 @@ fn migrating_entries(root: &Path) -> Vec<String> {
 
 /// Classify `root/.moai` (design 6854765655 §2). Reads only.
 pub fn classify(root: &Path) -> Classified {
+    classify_with(root, go_markers)
+}
+
+/// The same verdict table over `root/.moai` with another set of Go markers: the HOME state
+/// folder `~/.moai` has different Go files than a project's (#2723 design 6860356009 §2,
+/// #2725 rev2 — one table and one set of rules for both). `go` returns the markers found,
+/// as paths relative to `root`.
+pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
+    let go_markers = go;
     let moai = root.join(MOAI_DIR);
     let moai_dir = match fs::symlink_metadata(&moai) {
         Err(_) => "absent",
