@@ -279,3 +279,13 @@ fn every_failing_status_counts_and_status_lines_are_counted() {
     let c = classify("not nextest output\n", "", None);
     assert_eq!(c["status_lines"], json!({"first": 0, "later": 0}));
 }
+
+#[test]
+fn a_merge_line_without_two_shas_names_no_head() {
+    let c = pair(
+        &(checkout(MAC, H1) + &line(MAC, "HEAD is now at 9d60f5acd1 Merge feature into main")),
+        &checkout(MAC, H1),
+    );
+    assert_eq!(tests(&c["flaky"]), vec![FLAKY], "{c}");
+    assert_eq!(c["first_heads"], json!({MAC: H1}));
+}
