@@ -16,6 +16,7 @@ pub mod outbox;
 pub mod policy;
 pub mod report;
 pub mod transport;
+pub mod wait;
 pub mod write;
 
 use policy::{format_utc, next_link, parse_utc, Clock, Verdict};
