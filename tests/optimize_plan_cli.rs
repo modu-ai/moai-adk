@@ -372,6 +372,36 @@ fn build_folders_count_only_past_retention_and_only_cargo_output() {
     );
 }
 
+/// #2696 C4d: a project on `.moai/` (marker present) lists the reports of both roots — the
+/// ones a migration left in `.moai-cli/reports` (#2725 D5) and new ones in `.moai/reports` —
+/// each kept, none trimmed.
+#[test]
+fn a_migrated_project_keeps_the_reports_of_both_roots() {
+    let fx = fixture();
+    fs::create_dir_all(fx.root.join(".moai/reports")).unwrap();
+    fs::write(
+        fx.root.join(".moai/moai-cli.json"),
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    )
+    .unwrap();
+    fs::write(fx.root.join(".moai/reports/n.json"), "{}\n").unwrap();
+    let r = optimize(&fx, None, now_plus_days(8), &[]);
+    let paths: Vec<&str> = r["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["kind"] == "report")
+        .map(|x| x["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, [".moai/reports", ".moai-cli/reports"], "{r}");
+    for x in r["rows"].as_array().unwrap() {
+        if x["kind"] == "report" {
+            assert_eq!(x["action"], "keep", "{x}");
+            assert_eq!(x["trim_paths"], json!([]), "{x}");
+        }
+    }
+}
+
 fn snapshot(dir: &Path) -> Vec<(String, u64, std::time::SystemTime)> {
     let mut out = Vec::new();
     let mut stack = vec![dir.to_path_buf()];
