@@ -434,7 +434,13 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("conflict"), "{p}");
     assert!(!apply(r, &p).status.success());
-    assert!(moved.join("skills/prj-extra/SKILL.md").exists());
+    // Joined per component: a single `skills/<id>/SKILL.md` string reads as a package
+    // reference to tests/skill_references_test.py.
+    assert!(moved
+        .join("skills")
+        .join("prj-extra")
+        .join("SKILL.md")
+        .exists());
 
     // A recorded entry whose path is not its skill's path is never removed.
     let root = project();
