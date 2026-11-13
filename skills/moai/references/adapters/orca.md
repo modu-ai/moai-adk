@@ -16,7 +16,7 @@ Run these before relying on any flag, and prefer `--json` for agent calls:
 - `orca agent-context --json` — the machine-readable command schema; when the help text and the schema disagree, the schema wins.
 - `orca status --json` — whether the runtime is reachable.
 
-Never invent a flag from memory. On Linux the executable is `orca-ide`.
+Never invent a flag from memory. Resolve the executable the way Orca's skill stub does: `ORCA_CLI_COMMAND` when set, then `orca-dev`, then `orca-ide` on Linux, otherwise `orca`.
 
 ## Lines MoAI keeps
 

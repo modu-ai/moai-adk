@@ -208,7 +208,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "a028032ee1931aacf73e93a8e2c5cc05d60b29008acafbdc95b94b4c4ebbbc2a",
+      "sha256": "4844d973c1fc8b69acb1841524902cc9b6ab768fc1a83a296f6911f0b546da35",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -217,7 +217,7 @@
       }
     },
     "references/adapters/aside.md": {
-      "sha256": "f2d1682e39be7a52ab241d4ca1f1934f364b1090e766bad87ebd9402ddbd5b92",
+      "sha256": "4d1b767ba201a9994d29e9cc09b4e6557cd336efd963bcd798791fa445aa3517",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-aside",

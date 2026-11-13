@@ -10,7 +10,7 @@ Aside is a Chromium browser that a person and an AI agent share, with a CLI that
 
 ## MCP is an optional install
 
-MoAI never registers `aside mcp` by default (leader decision, Issue #2634 comment 6842315704). Add it only when the user asks for it, through the host's own command, in three steps:
+MoAI never registers `aside mcp` by default (leader recommendation, Issue #2634 comment 6842315704, standing until the user answers otherwise). Add it only when the user asks for it, through the host's own command, in three steps:
 
 1. Preview: show the user the exact command and what it changes before running it — Claude Code `claude mcp add --scope user aside -- aside mcp` (a user-scope entry), Codex CLI `codex mcp add aside -- aside mcp` (an `[mcp_servers.aside]` table in `~/.codex/config.toml`). Check first with `claude mcp get aside` or `codex mcp get aside`; when an entry named `aside` already exists, stop and ask instead of replacing it.
 2. Apply: run the command only after the user confirms, then read it back with the same `get` command.
