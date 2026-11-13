@@ -408,9 +408,11 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     fs::write(r.join("notes.md"), "keep me\n").unwrap();
     let mpath = r.join(".moai-cli/manifests/generation.json");
     let text = fs::read_to_string(&mpath).unwrap();
+    // The baseline is spelled exactly as the tool records it (`sha256:<hex>`), so `notes.md`
+    // reads as unedited and only the path check can refuse it.
     let digest = {
         use sha2::{Digest, Sha256};
-        format!("{:x}", Sha256::digest(b"keep me\n"))
+        format!("sha256:{:x}", Sha256::digest(b"keep me\n"))
     };
     let mut m: Value = serde_json::from_str(&text).unwrap();
     for f in m["owned_files"].as_array_mut().unwrap() {
@@ -422,6 +424,19 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     fs::write(&mpath, serde_json::to_vec_pretty(&m).unwrap()).unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, "notes.md").as_deref(), Some("conflict"), "{p}");
+    let f = p["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == json!("notes.md"))
+        .unwrap();
+    assert!(
+        f["detail"]
+            .as_str()
+            .unwrap()
+            .contains("not the path of its skill"),
+        "{f}"
+    );
     assert!(!apply(r, &p).status.success());
     assert_eq!(fs::read_to_string(r.join("notes.md")).unwrap(), "keep me\n");
 }
