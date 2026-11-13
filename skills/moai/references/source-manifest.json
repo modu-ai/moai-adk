@@ -55,12 +55,12 @@
       }
     },
     "references/routes.json": {
-      "sha256": "aa25666ca00c3d6d4aef12a73733efe67820e599534f3e6b891f2e1fcd5f129f",
+      "sha256": "b8545ec06b29c55ca328bdc4b677b8cf6cc6bc7b72fc06ec519e414d673797a0",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route."
       }
     },
     "workflows/read.md": {
@@ -163,48 +163,102 @@
       }
     },
     "references/agents/audit.md": {
-      "sha256": "8ee0a3d0864fcd994144912416988a8e74f89c71a6fb585922a75c9e6eed7d50",
+      "sha256": "c7dd1a26ba875807f63b0735a141c9f85ed0a15cf623377135d20cfdcf0a05db",
       "origin": {
         "kind": "design-spec",
         "template_id": "agent-audit",
         "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-audit, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-audit, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
       }
     },
     "references/agents/docs.md": {
-      "sha256": "b4fbe10a1ae31d408a333a463f02a4d8027cb4ee4b56c8feb9440141045b8636",
+      "sha256": "cf88023c9c0fdab02991a18a186db46a070ef995045b1fd7bad8c49080cbde7c",
       "origin": {
         "kind": "design-spec",
         "template_id": "agent-docs",
         "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-docs, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-docs, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
       }
     },
     "references/agents/impl.md": {
-      "sha256": "09db65f20eea72823cfcb1458f6d386d1947223d90a628e13948b70238bcb126",
+      "sha256": "8b4965e5547e0288ed5eb8bc39d925a6425eff6fad715ff107a4dec3997968c5",
       "origin": {
         "kind": "design-spec",
         "template_id": "agent-impl",
         "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-impl, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-impl, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
       }
     },
     "references/agents/plan.md": {
-      "sha256": "ad8f6ee831b6ec54fb39f1a53800e51d632e6d102474e9477a87ccb3a2fd986c",
+      "sha256": "6b68b40a56946690aa5818dc365308a65e6b470429699b33b69a8006759a9bc2",
       "origin": {
         "kind": "design-spec",
         "template_id": "agent-plan",
         "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-plan, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-plan, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
       }
     },
     "references/agents/research.md": {
-      "sha256": "aaf9ba932218c54eab14359643257c62cdb55845427c2a4262b992c82c393d6c",
+      "sha256": "e2d747a14221a6b2fd993475582f2a51d0b96d8375003d7c342abaf7853569fe",
       "origin": {
         "kind": "design-spec",
         "template_id": "agent-research",
         "adoption": "new",
-        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-research, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
+        "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-research, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents. #2637: `reads:` list per the final design §3 (#2634); rendered as one generated line by src/agent_defs.rs."
+      }
+    },
+    "references/chains/index.md": {
+      "sha256": "dc0ca5f0f5c3c7bbdb25974a0d943b3eb2621b860011c03f38cf9e9c44baccd1",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "chains-index",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them."
+      }
+    },
+    "references/internal/review.md": {
+      "sha256": "be763f3ca860c74d52ee061e773e7f7d29193d201fc2cf1ce3e0f754a9afb0ff",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-review",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/decide.md": {
+      "sha256": "cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-decide",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/interview.md": {
+      "sha256": "0fcef9733e6e3aa3266d28c8b5159c00f8b863a31f3794ab28d25bf0e91e1eec",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-interview",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/test-design.md": {
+      "sha256": "7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-test-design",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/git-safety.md": {
+      "sha256": "0ef4837dcb670b81956918fad826d1d2d7ad4ee571670d919db8f98af1b5f0a8",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-git-safety",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
       }
     }
   }
