@@ -543,6 +543,10 @@ enum Command {
         /// The scope the plan was made for (#2581); the digest binds it.
         #[arg(long, default_value = "project")]
         scope: String,
+        /// The `confirm_token` a conflict plan offered (#2383): after the user confirms, keep
+        /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
+        #[arg(long)]
+        confirm_replace: Option<String>,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -2166,6 +2170,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             plan_digest,
             permission_reference,
             scope,
+            confirm_replace,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2175,6 +2180,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 scope,
+                confirm_replace.as_deref(),
             )
         }
         Command::CodexConfigPlan { project } => {

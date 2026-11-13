@@ -635,6 +635,87 @@ struct SettingsState {
     /// New settings bytes; `None` when the file stays as it is.
     after: Option<Vec<u8>>,
     digest: String,
+    /// The confirmed replacement a conflict offers (#2383); `None` when there is none.
+    replace: Option<Replace>,
+}
+
+/// #2383 range 2 (leader decision 6846938102): a conflict on keys a caller may set can be
+/// replaced after the user confirms. The existing file is kept byte for byte under
+/// `.moai-cli/settings-backups/<UTC>-<scope>/` first; only the conflicting keys change.
+struct Replace {
+    keys: Vec<String>,
+    current: Map<String, Value>,
+    replace_with: Map<String, Value>,
+    after: Vec<u8>,
+    token: String,
+}
+
+/// Project-relative folder that holds the originals of confirmed replacements (#2383).
+const SETTINGS_BACKUPS: &str = "settings-backups";
+
+/// The confirmed replacement for a conflict, or `None` when it cannot be offered: no
+/// settings file to keep, or a conflicting key a caller may not set (`hooks` stays with
+/// `hooks-apply`). The token binds the scope, both files, the request, the conflicting keys
+/// and the replaced bytes, so any change after the preview invalidates it.
+fn replacement(
+    scope: SettingsScope,
+    before: Option<&[u8]>,
+    receipt_before: Option<&[u8]>,
+    current: &Map<String, Value>,
+    desired: &Map<String, Value>,
+    conflicts: &[String],
+    canonical_desired: &[u8],
+) -> Option<Replace> {
+    let before = before?;
+    if conflicts.is_empty()
+        || conflicts
+            .iter()
+            .any(|k| !USER_SETTINGS.contains(&k.as_str()))
+    {
+        return None;
+    }
+    let mut candidate = current.clone();
+    let (mut now, mut new) = (Map::new(), Map::new());
+    for key in conflicts {
+        if let Some(v) = current.get(key) {
+            now.insert(key.clone(), v.clone());
+        }
+        match desired.get(key) {
+            Some(v) => {
+                new.insert(key.clone(), v.clone());
+                candidate.insert(key.clone(), v.clone());
+            }
+            None => candidate = candidate.into_iter().filter(|(k, _)| k != key).collect(),
+        }
+    }
+    let mut after = serde_json::to_vec_pretty(&candidate).expect("JSON object");
+    after.push(b'\n');
+    if after.len() as u64 > SETTINGS_LIMIT {
+        return None;
+    }
+    let bound = serde_json::to_vec(&(
+        "settings-replace",
+        scope.name(),
+        crate::digest(before),
+        receipt_before.map(crate::digest),
+        crate::digest(canonical_desired),
+        conflicts,
+        crate::digest(&after),
+    ))
+    .expect("replace tuple");
+    let hex = crate::digest(&bound);
+    let token = format!(
+        "settings-replace:{}:{}",
+        scope.name(),
+        &hex["sha256:".len().."sha256:".len() + 16]
+    );
+    Some(Replace {
+        keys: conflicts.to_vec(),
+        current: now,
+        replace_with: new,
+        after,
+        token,
+    })
 }
 
 /// The project's `.claude/settings.json` is the user's own settings file when the project is
@@ -719,9 +800,19 @@ fn settings_state(
     use crate::spec::Canonical;
     let canonical =
         |m: &Map<String, Value>| crate::spec::SortedKeys.bytes(&Value::Object(m.clone()));
+    let canonical_desired = canonical(desired);
+    let replace = replacement(
+        scope,
+        before.as_deref(),
+        receipt_before.as_deref(),
+        &current,
+        desired,
+        &conflicts,
+        &canonical_desired,
+    );
     let tuple = (
         1,
-        crate::digest(&canonical(desired)),
+        crate::digest(&canonical_desired),
         before.as_deref().map(crate::digest),
         receipt_before.as_deref().map(crate::digest),
         after.as_deref().map(crate::digest),
@@ -747,6 +838,7 @@ fn settings_state(
         conflicts,
         after,
         digest,
+        replace,
     })
 }
 
@@ -823,7 +915,7 @@ pub fn settings_plan_in(
         (Some(_), Some(_), None) => "create",
         (Some(_), Some(_), Some(_)) => "update",
     };
-    Ok(json!({
+    let mut out = json!({
         "action": action,
         "settings_path": scope.file(),
         "scope": scope.name(),
@@ -834,7 +926,26 @@ pub fn settings_plan_in(
         "settings_ignored": ignored,
         "worktree_sessions": sessions,
         "writes": false,
-    }))
+    });
+    // #2383: only a conflict that can be replaced carries the field; every other plan is
+    // byte-identical to before.
+    if let Some(r) = &s.replace {
+        out["confirm_replace"] = json!({
+            "keys": r.keys,
+            "current": r.current,
+            "replace_with": r.replace_with,
+            "planned_sha256": crate::digest(&r.after),
+            "backup_root": format!("{}/{SETTINGS_BACKUPS}", crate::PROJECT_STATE_DIR),
+            "backup_layout": format!("<UTC>-{}/{}", scope.name(), settings_name(scope)),
+            "confirm_token": r.token,
+        });
+    }
+    Ok(out)
+}
+
+/// The settings file name inside a backup folder (`settings.json` / `settings.local.json`).
+fn settings_name(scope: SettingsScope) -> &'static str {
+    scope.file().rsplit('/').next().expect("file name")
 }
 
 /// Receipt bytes. `pending` is the ownership MoAI intends once the settings file carries the
@@ -907,25 +1018,42 @@ pub fn settings_apply(
         plan_digest,
         permission,
         SettingsScope::Project,
+        None,
     )
 }
 
 /// [`settings_apply`] for one scope (#2581). A local settings file this apply creates is
 /// made readable by its owner only (0600 on unix), like the one Claude Code writes itself.
+///
+/// `confirm_replace` (#2383) is the `confirm_token` a conflict plan offered; with it the
+/// conflicting keys are replaced after the existing file is kept in a new backup folder. A
+/// token the current plan does not offer refuses the whole apply before any write.
 pub fn settings_apply_in(
     project: &Path,
     desired: &Map<String, Value>,
     plan_digest: &str,
     permission: &str,
     scope: SettingsScope,
+    confirm_replace: Option<&str>,
 ) -> Result<Value> {
     // Authorization stays with the host; the reference is caller metadata, not a verifier.
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let s = settings_state(project, desired, scope)?;
+    let mut s = settings_state(project, desired, scope)?;
     let file = scope.file();
-    if !s.conflicts.is_empty() {
+    let replacing = match confirm_replace {
+        None => None,
+        Some(token) => match s.replace.take() {
+            Some(r) if r.token == token => Some(r),
+            _ => {
+                return Err(format!(
+                    "confirm token is not offered by the current plan of {file}; nothing applied — re-preview and confirm again"
+                ))
+            }
+        },
+    };
+    if replacing.is_none() && !s.conflicts.is_empty() {
         return Err(format!(
             "conflict in {file}: {} changed outside MoAI; nothing applied",
             s.conflicts.join(", ")
@@ -934,6 +1062,13 @@ pub fn settings_apply_in(
     if s.digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
+    let backup = match &replacing {
+        None => None,
+        Some(r) => {
+            s.after = Some(r.after.clone());
+            Some(keep_original(project, scope, s.before.as_deref())?)
+        }
+    };
     let owned: Map<String, Value> = desired
         .iter()
         .filter(|(k, v)| s.owned.contains_key(*k) || s.current.get(*k) != Some(*v))
@@ -979,7 +1114,7 @@ pub fn settings_apply_in(
     } else {
         vec![]
     };
-    Ok(json!({
+    let mut out = json!({
         "state": if files.is_empty() { "unchanged" } else { "applied" },
         "files_changed": files,
         "files_created": created,
@@ -988,7 +1123,67 @@ pub fn settings_apply_in(
         "settings_sha256_after": final_bytes.map(crate::digest),
         "host_loaded": "not_run",
         "execution_verified": "not_run",
-    }))
+    });
+    if let (Some(r), Some(dir)) = (&replacing, &backup) {
+        let kept = format!("{dir}/{}", settings_name(scope));
+        out["state"] = json!("replaced");
+        out["replaced_keys"] = json!(r.keys);
+        out["backup_dir"] = json!(dir);
+        out["revert"] = json!(format!(
+            "from the project folder: cp '{kept}' '{file}' (MoAI then treats the restored value as your change and leaves it as it is)"
+        ));
+    }
+    Ok(out)
+}
+
+/// Keeps the existing settings file byte for byte in a new, exclusively created
+/// `.moai-cli/settings-backups/<UTC>-<scope>/` folder before a confirmed replacement (#2383),
+/// and reads it back. Returns the folder relative to the project.
+fn keep_original(project: &Path, scope: SettingsScope, before: Option<&[u8]>) -> Result<String> {
+    let before = before.ok_or("no settings file to keep; nothing applied")?;
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    let backups = root.join(crate::PROJECT_STATE_DIR).join(SETTINGS_BACKUPS);
+    refuse_symlink_dir(&root.join(crate::PROJECT_STATE_DIR))?;
+    refuse_symlink_dir(&backups)?;
+    fs::create_dir_all(&backups).map_err(|e| {
+        format!(
+            "creating {} failed ({e}); nothing applied",
+            backups.display()
+        )
+    })?;
+    refuse_symlink_dir(&backups)?;
+    let stamp = crate::update::compact_stamp();
+    let dir = crate::update::create_backup_dir(&backups, &stamp, scope.name())?;
+    let kept = dir.join(settings_name(scope));
+    let written = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&kept)
+        .and_then(|mut f| {
+            use std::io::Write;
+            f.write_all(before)?;
+            f.sync_all()
+        });
+    if let Err(e) = written {
+        return Err(format!(
+            "keeping the original in {} failed ({e}); nothing applied",
+            kept.display()
+        ));
+    }
+    if fs::read(&kept).ok().as_deref() != Some(before) {
+        return Err(format!(
+            "the kept original in {} does not match; nothing applied",
+            kept.display()
+        ));
+    }
+    let name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("backup folder name unavailable")?;
+    Ok(format!(
+        "{}/{SETTINGS_BACKUPS}/{name}",
+        crate::PROJECT_STATE_DIR
+    ))
 }
 
 /// Claude-only frontmatter fields a projection may add, with the values each accepts.
@@ -1172,6 +1367,34 @@ mod tests {
         let (result, conflicts) = plan_settings(&Map::new(), &current, &desired).unwrap();
         assert_eq!(result, None);
         assert_eq!(conflicts, ["statusLine"]);
+    }
+
+    /// #2383: a confirmed replacement is offered only for keys a caller may set and only when
+    /// a file exists to keep; `hooks` stays with `hooks-apply`.
+    #[test]
+    fn a_replacement_is_offered_only_for_settable_keys_of_an_existing_file() {
+        let current = obj(json!({"statusLine": {"command": "mine"}, "hooks": {"x": 1}}));
+        let desired = obj(json!({"statusLine": {"command": "moai"}, "hooks": {"x": 2}}));
+        let offer = |keys: &[&str], before: Option<&[u8]>| {
+            let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+            replacement(
+                SettingsScope::Project,
+                before,
+                None,
+                &current,
+                &desired,
+                &keys,
+                b"{}",
+            )
+        };
+        let r = offer(&["statusLine"], Some(b"{}")).expect("offered");
+        assert_eq!(r.keys, ["statusLine"]);
+        assert_eq!(r.replace_with["statusLine"], json!({"command": "moai"}));
+        assert!(r.token.starts_with("settings-replace:project:"));
+        assert!(offer(&["hooks"], Some(b"{}")).is_none());
+        assert!(offer(&["statusLine", "hooks"], Some(b"{}")).is_none());
+        assert!(offer(&["statusLine"], None).is_none());
+        assert!(offer(&[], Some(b"{}")).is_none());
     }
 
     #[test]
