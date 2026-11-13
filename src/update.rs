@@ -1376,9 +1376,11 @@ pub struct UserLayerPlan {
     pub skills: UpdatePlan,
     pub agents: crate::agent_install::Plan,
     pub routing: crate::home_routing::Plan,
+    /// The `moai` hard link in this build's version folder (#2791 AC-1).
+    pub bin_names: crate::bin_names::Plan,
     /// Agent and routing hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the three plan digests; the only value `--confirm` accepts.
+    /// One digest over the four plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
 }
 
@@ -1418,6 +1420,8 @@ fn user_layer_plan(
     }
     let agents = crate::agent_install::plan_for(home, package, agents, &agent_hosts)?;
     let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let bin_names = crate::bin_names::plan_for(home, &exe)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest || routing.package_digest != staged.digest {
         return Err("the package changed while it was read; nothing applied, preview again".into());
@@ -1426,7 +1430,8 @@ fn user_layer_plan(
         &serde_json::to_vec(&json!([
             skills.plan_digest,
             agents.plan_digest,
-            routing.plan_digest
+            routing.plan_digest,
+            bin_names.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
     );
@@ -1434,6 +1439,7 @@ fn user_layer_plan(
         skills,
         agents,
         routing,
+        bin_names,
         skipped,
         plan_digest,
     })
@@ -1526,6 +1532,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
             h.host, h.preflight, h.file
         ));
     }
+    out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1567,7 +1574,8 @@ pub fn update_command(
     // asked about.
     let writes = plan_writes_anything(&layer.skills)
         || agents_write_anything(&layer.agents)
-        || routing_writes_anything(&layer.routing);
+        || routing_writes_anything(&layer.routing)
+        || layer.bin_names.writes();
     let digest = match confirm {
         Some(d) => d.to_string(),
         None if writes && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
@@ -1581,6 +1589,7 @@ pub fn update_command(
                 "plan": layer.skills,
                 "agents": layer.agents,
                 "routing": layer.routing,
+                "bin_names": layer.bin_names.to_json(),
                 "skipped": layer.skipped,
                 "confirm_with": format!("moai-cli update --confirm {}", layer.plan_digest),
             }))
@@ -1639,10 +1648,23 @@ pub fn update_command(
         }
         crate::home_routing::apply_for(home, &package, &routing_hosts, &p.plan_digest, PERMISSION)
     })());
+    // #2791: the `moai` link is independent of the skill copies; its own plan was confirmed.
+    let bin_names = part((|| {
+        let exe =
+            std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+        crate::bin_names::apply_for(
+            home,
+            &exe,
+            &fresh.bin_names.plan_digest,
+            PERMISSION,
+            &crate::audit::utc_now(),
+        )
+    })());
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
-        || routing["state"] == json!("applied");
+        || routing["state"] == json!("applied")
+        || bin_names["state"] == json!("applied");
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"].as_str().map(|id| {
             format!("moai-cli {op} <HOME> --receipt {id} --permission-reference <reference>")
@@ -1656,6 +1678,7 @@ pub fn update_command(
         "result": skills,
         "agents_result": agents,
         "routing_result": routing,
+        "bin_names_result": bin_names,
         "skipped": skipped,
         "revert": {
             "agents": revert("agents-home-revert", &agents),

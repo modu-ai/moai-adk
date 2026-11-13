@@ -11,6 +11,7 @@ pub mod audit_clone;
 pub mod audit_delta;
 pub mod banner;
 pub mod baseline;
+pub mod bin_names;
 pub mod claim;
 pub mod claim_cache;
 pub mod claim_verify;
