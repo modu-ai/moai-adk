@@ -452,6 +452,37 @@ fn a_mixed_moai_folder_moves_nothing_and_says_why() {
     assert_eq!(project_tree(&fx), before, "nothing moved");
 }
 
+/// AUDIT #2776 B1: a stopped migration (`interrupted`) holds the preview the same way — the
+/// Go files would otherwise move (2 moves and a SPEC restore on this fixture). #2696: the
+/// verdict now comes from a Go backup beside a `.moai` that holds a go-state receipt and no
+/// valid marker.
+#[test]
+fn an_interrupted_migration_moves_nothing_and_says_why() {
+    let fx = movable_fixture();
+    fx.write(".moai-backup/manifest.json", "{}");
+    fx.write(".moai/backups/20261113T000000Z/go-state-receipt.json", "{}");
+    let p = plan(&fx);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert_eq!(p["restores"], json!([]), "{p}");
+    assert!(
+        p["warnings"]
+            .to_string()
+            .contains("state_root is `interrupted`"),
+        "{p}"
+    );
+    assert!(
+        p["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["reason"] == "state_root `interrupted`: nothing moves (#2725)"),
+        "{p}"
+    );
+    let before = project_tree(&fx);
+    apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(project_tree(&fx), before, "nothing moved");
+}
+
 #[test]
 fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
     let fx = movable_fixture();
