@@ -278,3 +278,23 @@ fn a_refused_write_is_an_error() {
     .unwrap_err();
     assert!(err.contains("HTTP 403"), "{err}");
 }
+
+#[test]
+fn a_lost_comment_answer_not_found_on_read_back_is_an_error() {
+    let t = RecordedTransport::new(vec![
+        issues(json!([tracked(40, T1)])),
+        comments(40, json!([])),
+        lost(),
+        comments(40, json!([{"body": run_marker(1, MAC)}])), // another run only
+    ]);
+    let err = record(
+        "o",
+        "r",
+        RUN,
+        &classified(&[(MAC, T1)]),
+        "fixture-approved",
+        &t,
+    )
+    .unwrap_err();
+    assert!(err.contains("comment on #40 failed"), "{err}");
+}
