@@ -191,6 +191,9 @@ fn apply(f: &Fixture, prefix: &str, digest: &str) -> Value {
                 prefix,
                 "--plan-digest",
                 digest,
+                // The host's free space must not decide these tests (WT-5 floor).
+                "--disk-floor-bytes",
+                "0",
             ],
             &f.source,
         ),
@@ -342,6 +345,8 @@ fn worktree_one_writer_per_task() {
                 "elsewhere",
                 "--plan-digest",
                 other["plan_digest"].as_str().unwrap(),
+                "--disk-floor-bytes",
+                "0",
             ],
             &f.source,
         ),
@@ -731,4 +736,96 @@ fn pr_body_idempotent() {
         .as_str()
         .unwrap()
         .contains("| (receipt 없음) | not_run |"));
+}
+
+// ---- WT-5 (#2380): free-space floor and project-total warning ----
+
+fn apply_with(f: &Fixture, digest: &str, extra: &[&str]) -> Value {
+    let p = project(f);
+    let mut words = vec![
+        "worktree-apply",
+        p.as_str(),
+        "--branch-prefix",
+        "lane",
+        "--plan-digest",
+        digest,
+    ];
+    words.extend_from_slice(extra);
+    envelope(&run(&f.repo, &args(&words, &f.source)))
+}
+
+#[test]
+fn below_the_free_space_floor_no_worktree_is_created() {
+    let f = fixture();
+    let pl = plan(&f, "lane");
+    let digest = pl["plan_digest"].as_str().unwrap();
+    // No disk has u64::MAX bytes free: the floor refuses deterministically.
+    let env = apply_with(&f, digest, &["--disk-floor-bytes", &u64::MAX.to_string()]);
+    assert_eq!(env["ok"], true, "{env}");
+    let r = &env["result"];
+    assert_eq!(r["decision"], "conflict", "{r}");
+    assert_eq!(r["reason"], "disk_free_below_floor");
+    assert_eq!(r["existing"][0]["floor_bytes"], u64::MAX);
+    assert!(r["existing"][0]["free_bytes"].as_u64().unwrap() > 0, "{r}");
+    assert!(!Path::new(pl["path"].as_str().unwrap()).exists());
+    let branch = pl["branch"].as_str().unwrap();
+    assert_eq!(git(&f.repo, &["branch", "--list", branch]), "");
+}
+
+#[test]
+fn a_created_worktree_reports_capacity_and_the_warning_line() {
+    let f = fixture();
+    let pl = plan(&f, "lane");
+    let env = apply_with(
+        &f,
+        pl["plan_digest"].as_str().unwrap(),
+        &["--disk-floor-bytes", "0", "--warn-total-bytes", "0"],
+    );
+    let r = &env["result"];
+    assert_eq!(r["decision"], "created", "{env}");
+    let c = &r["capacity"];
+    assert_eq!(c["floor_bytes"], 0);
+    assert_eq!(c["warn_bytes"], 0);
+    assert!(c["free_bytes"].as_u64().unwrap() > 0, "{c}");
+    assert!(c["project_bytes"].as_u64().unwrap() > 0, "{c}");
+    assert_eq!(c["warning"], true, "{c}");
+    assert_eq!(c["override"], true, "{c}");
+
+    let g = fixture();
+    let pl = plan(&g, "lane");
+    let env = apply_with(
+        &g,
+        pl["plan_digest"].as_str().unwrap(),
+        &[
+            "--disk-floor-bytes",
+            "0",
+            "--warn-total-bytes",
+            &u64::MAX.to_string(),
+        ],
+    );
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    assert_eq!(env["result"]["capacity"]["warning"], false);
+}
+
+/// Pre-audit FAIL 6775775969 B2: without the hidden flags the real call path uses the
+/// decided limits (30 GiB floor, 40 GiB warning line) and says it is not an override,
+/// whether this host's free space lets the worktree be created or not.
+#[test]
+fn without_flags_the_decided_limits_apply() {
+    let f = fixture();
+    let pl = plan(&f, "lane");
+    let env = apply_with(&f, pl["plan_digest"].as_str().unwrap(), &[]);
+    assert_eq!(env["ok"], true, "{env}");
+    let r = &env["result"];
+    let limits = match r["decision"].as_str() {
+        Some("created") => r["capacity"].clone(),
+        Some("conflict") => {
+            assert_eq!(r["reason"], "disk_free_below_floor", "{r}");
+            r["existing"][0].clone()
+        }
+        other => panic!("unexpected decision {other:?}: {r}"),
+    };
+    assert_eq!(limits["floor_bytes"], 32_212_254_720u64, "{limits}");
+    assert_eq!(limits["warn_bytes"], 42_949_672_960u64, "{limits}");
+    assert_eq!(limits["override"], false, "{limits}");
 }

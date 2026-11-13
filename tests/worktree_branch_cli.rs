@@ -121,6 +121,9 @@ fn worktree_apply_records_the_checked_out_branch() {
         "lane",
         "--plan-digest",
         &digest,
+        // The host's free space must not decide this test (WT-5 floor).
+        "--disk-floor-bytes",
+        "0",
     ];
     apply_args.extend(source);
     let env = run(&repo, &apply_args);
