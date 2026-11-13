@@ -303,6 +303,38 @@ fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<Str
     }
 }
 
+/// How many nested checkouts (folders holding a `.git` file or folder) are at or under
+/// `<project>/<rel>`, not descending into them; `None` when the walk passes `limit` entries
+/// before it ends (unknown, so the caller stays fail-closed).
+fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> Option<usize> {
+    let base = project.join(rel);
+    let mut stack = vec![base];
+    let (mut seen, mut nested) = (0u64, 0usize);
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            seen += 1;
+            if seen > limit {
+                return None;
+            }
+            let p = e.path();
+            match fs::symlink_metadata(&p) {
+                Ok(m) if m.is_dir() => {
+                    if fs::symlink_metadata(p.join(".git")).is_ok() {
+                        nested += 1;
+                    } else {
+                        stack.push(p);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    Some(nested)
+}
+
 /// How many git worktrees of the project's repository are registered at or under
 /// `<project>/<rel>`; `None` when the project is a git checkout whose worktree list cannot be
 /// read. A folder that is not a git checkout has no registered worktrees.
@@ -433,15 +465,23 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let referenced_by_settings = settings.iter().any(|(_, text)| text.contains(".moai/"));
     // Moving `.moai/` also moves every git worktree registered under it, and git then loses
     // them (their recorded paths no longer exist). Unreadable means "maybe": stay.
-    let worktrees_inside = if version.is_some() && folder_is_dir {
+    let checked = version.is_some() && folder_is_dir;
+    let worktrees_inside = if checked {
         registered_worktrees_under(&project, MOAI_DIR)
     } else {
         Some(0)
     };
-    let folder_moves = version.is_some()
-        && folder_is_dir
+    // A worktree of another repository (or any nested checkout) under `.moai/` is not in this
+    // repository's list, yet moving the folder cuts it off too (#2753 audit F1 6858965696).
+    let nested_inside = if checked {
+        nested_checkouts_under(&project, MOAI_DIR, unrecorded_limit())
+    } else {
+        Some(0)
+    };
+    let folder_moves = checked
         && !referenced_by_settings
-        && worktrees_inside == Some(0);
+        && worktrees_inside == Some(0)
+        && nested_inside == Some(0);
     if version.is_some() && folder_is_dir {
         items.push(Item {
             path: MOAI_DIR.into(),
@@ -451,15 +491,25 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
             } else if referenced_by_settings {
                 "settings reference .moai/; the folder stays until they are cleaned (#2581)".into()
             } else {
-                match worktrees_inside {
-                    Some(n) => format!(
+                match (worktrees_inside, nested_inside) {
+                    (Some(n), _) if n > 0 => format!(
                         "{n} git worktree(s) are registered under .moai/; moving the folder would \
                          cut git off from them, so it stays until they are moved out \
                          (worktree-move-plan, #2723)"
                     ),
-                    None => "the git worktree list could not be read, so it is unknown whether \
-                             a worktree lives under .moai/; the folder stays"
+                    (None, _) => "the git worktree list could not be read, so it is unknown \
+                                  whether a worktree lives under .moai/; the folder stays"
                         .into(),
+                    (_, Some(n)) => format!(
+                        "{n} nested checkout(s) (folders holding a .git entry, such as worktrees \
+                         of another repository) are under .moai/; moving the folder would cut \
+                         their repositories off from them, so it stays until they are moved out"
+                    ),
+                    (_, None) => format!(
+                        "the .moai/ folder holds more than {} entries, so it was not fully \
+                         checked for nested checkouts; the folder stays",
+                        unrecorded_limit()
+                    ),
                 }
             },
         });

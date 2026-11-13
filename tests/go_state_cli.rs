@@ -1223,3 +1223,72 @@ fn the_unrecorded_count_stops_at_its_entry_limit() {
     );
     assert!(!stopped(&plan(&fx)), "the default limit is far above three");
 }
+
+/// #2753 audit F1 (6858965696): a worktree that another repository registered under `.moai/`
+/// is not in this project's worktree list, yet moving the folder would cut that repository
+/// off from it. Any nested checkout under `.moai/` keeps the whole folder in place.
+#[test]
+fn a_foreign_worktree_under_moai_keeps_the_whole_folder() {
+    let id = [
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+    ];
+    let git = |dir: &Path, args: &[&str]| {
+        let mut all: Vec<&str> = id.to_vec();
+        all.extend_from_slice(args);
+        common::git::git(dir, &all)
+    };
+    let fx = movable_fixture();
+    let other = fx.root.parent().unwrap().join("other-repo");
+    fs::create_dir_all(&other).unwrap();
+    git(&other, &["init", "-q", "-b", "main"]);
+    fs::write(other.join("o.txt"), "o\n").unwrap();
+    git(&other, &["add", "o.txt"]);
+    git(&other, &["commit", "-q", "-m", "init"]);
+    let foreign = fx.root.join(".moai/worktrees/foreign");
+    git(
+        &other,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "f",
+            foreign.to_str().unwrap(),
+        ],
+    );
+    let p = plan(&fx);
+    let (act, why) = action(&p, ".moai");
+    assert_eq!(act, "leave", "{p}");
+    assert!(why.starts_with("1 nested checkout(s)"), "{why}");
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(foreign.join("o.txt").is_file());
+    let list = git(&other, &["worktree", "list", "--porcelain"]);
+    assert!(!list.contains("prunable"), "{list}");
+}
+
+/// F1 repair: a `.moai/` too large to check within the entry limit stays (fail-closed).
+#[test]
+fn a_moai_folder_past_the_entry_limit_stays() {
+    let fx = movable_fixture();
+    let out = Command::new(EXE)
+        .args(["go-state-plan", fx.root.to_str().unwrap()])
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .env("MOAI_CLI_TEST_UNRECORDED_LIMIT", "2")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let (act, why) = action(&v["result"], ".moai");
+    assert_eq!(act, "leave", "{v}");
+    assert!(why.contains("was not fully checked"), "{why}");
+    assert_eq!(
+        action(&plan(&fx), ".moai").0,
+        "move",
+        "under the default limit it moves"
+    );
+}
