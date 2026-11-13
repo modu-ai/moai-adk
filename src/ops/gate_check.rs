@@ -1,18 +1,53 @@
 //! `gate-check` (#2674 S1): the leader merge gate rules over one pull request snapshot.
 
+use moai_cli::forge::transport::GhTransport;
 use moai_cli::gate::{self, Snapshot};
+use moai_cli::gate_collect::{self, Target};
 use std::io::Read;
+use std::path::PathBuf;
 
-/// The leader merge gate (#2674 S1), read-only: decides from a pull request snapshot on stdin
-/// (comments, check runs, changed files, merge result, Self-Audit result, user-confirmed
-/// REVIEW.md PRs) whether every rule G1–G7 holds. Prints `pass`, or the rule that stopped and
-/// why. Reads nothing else, posts nothing, merges nothing.
+/// The leader merge gate (#2674), read-only: decides whether every rule G1–G7 holds for one pull
+/// request and prints `pass`, or the rule that stopped and why. With `--pr` it reads the pull
+/// request from GitHub (GET only) and the local repository (the head and tip must already be
+/// fetched); without it, it decides from a snapshot on stdin. Posts nothing, merges nothing.
 #[derive(clap::Args)]
-pub struct Args {}
+pub struct Args {
+    /// Pull request number to read live.
+    #[arg(long)]
+    pr: Option<u64>,
+    /// `OWNER/REPO` (with `--pr`).
+    #[arg(long, default_value = "modu-ai/moai-adk")]
+    repo: String,
+    /// Local repository holding the head and the tip (with `--pr`).
+    #[arg(long, default_value = ".")]
+    dir: PathBuf,
+    /// Local ref or SHA of the integration tip (with `--pr`).
+    #[arg(long, default_value = "refs/remotes/origin/v2026.11.0")]
+    tip: String,
+    /// PR numbers whose REVIEW.md draft the user confirmed, comma-separated (with `--pr`).
+    #[arg(long, value_delimiter = ',')]
+    review_confirmed: Vec<u64>,
+}
 
 pub const OPERATION: &str = "gate.check";
 
-pub fn run(_args: Args) -> Result<serde_json::Value, String> {
+pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    if let Some(pr) = args.pr {
+        let (owner, repo) = args
+            .repo
+            .split_once('/')
+            .ok_or("--repo must be OWNER/REPO")?;
+        let target = Target {
+            dir: &args.dir,
+            owner,
+            repo,
+            pr,
+            tip: &args.tip,
+            review_confirmed_prs: args.review_confirmed.clone(),
+        };
+        let snapshot = gate_collect::collect(&target, &GhTransport::from_env()?)?;
+        return Ok(decide(&snapshot));
+    }
     let mut text = String::new();
     std::io::stdin()
         .take(4 * 1024 * 1024 + 1)
@@ -23,7 +58,11 @@ pub fn run(_args: Args) -> Result<serde_json::Value, String> {
     }
     let snapshot: Snapshot =
         serde_json::from_str(&text).map_err(|e| format!("invalid gate snapshot: {e}"))?;
-    Ok(match gate::check(&snapshot) {
+    Ok(decide(&snapshot))
+}
+
+fn decide(snapshot: &Snapshot) -> serde_json::Value {
+    match gate::check(snapshot) {
         Ok((base, overlap)) => serde_json::json!({
             "pr": snapshot.pr,
             "head": snapshot.head,
@@ -38,5 +77,5 @@ pub fn run(_args: Args) -> Result<serde_json::Value, String> {
             "rule": stop.rule,
             "reason": stop.reason,
         }),
-    })
+    }
 }

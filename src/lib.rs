@@ -25,6 +25,7 @@ pub mod dispatch;
 pub mod flow;
 pub mod forge;
 pub mod gate;
+pub mod gate_collect;
 pub mod generation;
 pub mod github_templates;
 pub mod go_state;
