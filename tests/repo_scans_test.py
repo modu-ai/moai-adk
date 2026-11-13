@@ -99,6 +99,12 @@ class RepoScansTableTest(unittest.TestCase):
         missing = sorted(n for n in named_files(self.scans) if not (REPO_ROOT / n).is_file())
         self.assertEqual(missing, [], "rule or test file named in tools/repo_scans.json is gone")
 
+    def test_each_scanning_test_file_is_one_of_its_rule_files(self):
+        # a change to the test itself is a rule change of its scan
+        for scan in self.scans:
+            for test in scan["tests"]:
+                self.assertIn(test.split("::")[0].split(" (")[0], scan["rules"], scan["id"])
+
     def test_every_walking_test_file_is_listed_or_exempt(self):
         unlisted = sorted(flagged() - named_files(self.scans) - set(EXEMPT))
         self.assertEqual(unlisted, [], "a test walks the repository tree: add it to "
@@ -217,6 +223,9 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(repo_scans.checks_for(twice, self.scans),
                          ["python3 -m unittest tests.repo_scans_test"])
         self.assertEqual(repo_scans.checks_for([], self.scans), [])
+        # two scans sharing one command give it once, at its first place
+        shared = [{"id": "a", "checks": ["x", "y"]}, {"id": "b", "checks": ["y", "z"]}]
+        self.assertEqual(repo_scans.checks_for([{"id": "b"}, {"id": "a"}], shared), ["x", "y", "z"])
 
 
 class CliTest(unittest.TestCase):
