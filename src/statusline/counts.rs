@@ -52,7 +52,7 @@ pub fn now_unix() -> i64 {
 }
 
 fn dir(anchor: &Path) -> PathBuf {
-    anchor.join(".moai-cli/state/github")
+    anchor.join(crate::project_state!("state/github"))
 }
 
 /// Where this tool writes the cache.

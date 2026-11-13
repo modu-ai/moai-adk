@@ -16,6 +16,11 @@
 - 재점검(#2405, 2026-11-10, tip `33bfb5e3ca` 병합 뒤): **8행**이 없는 경로를 가리킨다. 위 6행에 2행이 더해졌다.
   - `tests/todo_promotion_cli.rs`와 `tests/promote_digest_order.rs`는 PR #2406(`b0c590c7c9`, 로컬 TODO 승격 코드 제거)에서 삭제됐다.
   - 처리 방식은 위와 같다. 측정은 같은 두 방법으로 했고 결과가 같았다.
+- 재점검(#2709, 2026-11-13, tip `578a5a3e57` 위): **10행**이 없는 경로를 가리킨다. 위 8행 중 지금도 없는 3행에 7행이 더해졌다(위의 `skills/moai/…` 5행은 그 뒤 경로가 다시 생겨 지금은 있다).
+  - `tests/claude_recovery_test.py`·`tests/claude_preview_test.py`·`tests/claude_transaction_boundary_test.py`·`tests/claude_update_test.py`는 PR #2718(`38951fe8c6`, 임시 Python Claude 어댑터 제거)에서 삭제됐다.
+  - `src/sources.rs`와 `tests/sources_cli.rs`는 `7138305106`(#2286 PR3, 외부 스킬 설치 명령 제거)에서 삭제됐다.
+  - `docs/rc-release-review.md`는 `f9cfb40359`(#2563)에서 `docs/release-review.md`로 이름이 바뀌었다.
+  - 처리 방식은 위와 같다. 측정은 두 방법(Python 파싱+`os.path.exists`, `git ls-files`)으로 했고 결과가 같았다.
 
 ## 요약 (측정 트리 기준)
 
@@ -143,19 +148,19 @@
 | `tests/recovery_cli.rs` | 4 | TESTS |
 | `tests/codex_config.rs` | 4 | TESTS |
 | `tests/codex_adapter.rs` | 4 | TESTS |
-| `tests/claude_recovery_test.py` | 4 | TESTS |
-| `tests/claude_preview_test.py` | 4 | TESTS |
+| `tests/claude_recovery_test.py` | 4 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
+| `tests/claude_preview_test.py` | 4 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
 | `tests/banner_golden.rs` | 4 | TESTS |
 | `tests/apply_recover_partial.rs` | 4 | TESTS |
 | `tests/agents_apply_linkage.rs` | 4 | TESTS |
 | `src/update.rs` | 4 | SRC_REST |
-| `src/sources.rs` | 4 | SRC_REST |
+| `src/sources.rs` | 4 | SRC_REST — 측정 뒤 삭제됨(`7138305106`, #2286 PR3 외부 스킬 설치 명령 제거; #2709 확인) |
 | `src/profile.rs` | 4 | SRC_REST |
 | `src/archive.rs` | 4 | SRC_REST |
 | `src/apply.rs` | 4 | SRC_REST |
 | `docs/session-hub-research-2026-11-08.md` | 4 | DOCS_REST |
 | `docs/p07-decision.md` | 4 | DOCS_REST |
-| `tests/sources_cli.rs` | 3 | TESTS |
+| `tests/sources_cli.rs` | 3 | TESTS — 측정 뒤 삭제됨(`7138305106`, #2286 PR3 외부 스킬 설치 명령 제거; #2709 확인) |
 | `tests/plan_admission.rs` | 3 | TESTS |
 | `tests/launcher_roleless.rs` | 3 | PROTECTED(2360-open) |
 | `tests/generation_ref_slash.rs` | 3 | TESTS |
@@ -185,7 +190,7 @@
 | `tests/fixtures/protocol/v1/current/01-usage-unknown-subcommand.json` | 2 | TESTS |
 | `tests/fixtures/github/issues-open.json` | 2 | TESTS |
 | `tests/fixtures/atlas-tag/go-corpus.txt` | 2 | TESTS |
-| `tests/claude_transaction_boundary_test.py` | 2 | TESTS |
+| `tests/claude_transaction_boundary_test.py` | 2 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
 | `src/worktree.rs` | 2 | SRC_REST |
 | `src/migrate.rs` | 2 | SRC_REST |
 | `src/github_templates.rs` | 2 | SRC_REST |
@@ -221,7 +226,7 @@
 | `tests/fixtures/protocol/v1/current/09-project-apply-created.json` | 1 | TESTS |
 | `tests/e2e_receipt_not_run_test.py` | 1 | TESTS |
 | `tests/common/mod.rs` | 1 | TESTS |
-| `tests/claude_update_test.py` | 1 | TESTS |
+| `tests/claude_update_test.py` | 1 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
 | `tests/baseline_git_env.rs` | 1 | TESTS |
 | `tests/atlas_tag_cli.rs` | 1 | TESTS |
 | `src/session.rs` | 1 | PROTECTED(2360-open) |
@@ -240,7 +245,7 @@
 | `skills/moai/workflows/sync.md` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/workflows/sync.md`(PR #2297; #2405 확인) |
 | `skills/moai/workflows/setup.md` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/workflows/setup.md`(PR #2297; #2405 확인) |
 | `skills/moai/references/source-manifest.json` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/references/source-manifest.json`(PR #2297; #2405 확인) |
-| `docs/rc-release-review.md` | 1 | DOCS_REST |
+| `docs/rc-release-review.md` | 1 | DOCS_REST — 측정 뒤 이름 바뀜(`f9cfb40359`, #2563 → `docs/release-review.md`; #2709 확인) |
 | `docs/p02-decision.md` | 1 | DOCS_REST |
 | `docs/design-review/flow-control-2026-11-09.md` | 1 | RECORDS |
 | `docs/code-atlas-name-collision.md` | 1 | DOCS_REST |

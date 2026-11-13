@@ -25,9 +25,13 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// carries the project-root-relative spelling used when the common dir equals the
 /// project's own `.git` (the primary checkout).
 pub const KINDS: &[(&str, &str, &str)] = &[
-    ("receipts", ".moai-cli/receipts", "receipts"),
-    ("outbox", ".moai-cli/forge/outbox", "forge/outbox"),
-    ("claims", ".moai-cli/claims", "claims"),
+    ("receipts", crate::project_state!("receipts"), "receipts"),
+    (
+        "outbox",
+        crate::project_state!("forge/outbox"),
+        "forge/outbox",
+    ),
+    ("claims", crate::fixed_state!("claims"), "claims"),
 ];
 
 /// The default home root: `$HOME/.moai-cli` (the card's fixed location). `None` without
@@ -88,7 +92,11 @@ fn claims_legacy_dir(project: &Path) -> Result<Option<PathBuf>> {
     let Some(common) = id["clone_anchor"].as_str() else {
         return Ok(None);
     };
-    source_dir(Path::new(common).join(".moai-cli").join("claims"))
+    source_dir(
+        Path::new(common)
+            .join(crate::CLONE_STATE_DIR)
+            .join("claims"),
+    )
 }
 
 fn source_dir(dir: PathBuf) -> Result<Option<PathBuf>> {
@@ -440,9 +448,9 @@ mod tests {
     /// the journal lock is taken).
     fn fixture_project(root: &Path) -> PathBuf {
         let project = root.join("project");
-        fs::create_dir_all(project.join(".moai-cli")).unwrap();
+        fs::create_dir_all(project.join(crate::PROJECT_STATE_DIR)).unwrap();
         fs::write(
-            project.join(".moai-cli/project.yaml"),
+            project.join(crate::project_state!("project.yaml")),
             r#"{"schema_version": 1, "project_id": "widgets", "purpose": "layout fixture", "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]}"#,
         )
         .unwrap();
@@ -542,7 +550,7 @@ mod tests {
     fn copying_refuses_a_target_created_after_the_preflight() {
         let tmp = tempfile::tempdir().unwrap();
         let project = fixture_project(tmp.path());
-        let source = project.join(".moai-cli/receipts");
+        let source = project.join(crate::project_state!("receipts"));
         fs::create_dir_all(&source).unwrap();
         fs::write(source.join("old.json"), b"old project data").unwrap();
         let home_root = tmp.path().join("home");

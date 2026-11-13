@@ -38,7 +38,7 @@ use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-pub const MANIFEST: &str = ".moai-cli/manifests/github.json";
+pub const MANIFEST: &str = crate::project_state!("manifests/github.json");
 /// Marker of an unresolved template variable (`placeholder_pattern` in
 /// `templates/github/manifest.json`).
 pub const PLACEHOLDER: &str = "{{";

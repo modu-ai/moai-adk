@@ -38,7 +38,7 @@ const ROOTS: [&str; 2] = [".moai", ".claude"];
 const MOAI_DIR: &str = ".moai";
 /// AC-5: what is restored from the moved folder, and where (Rust reads SPECs there).
 const SPECS_FROM: &str = ".moai/specs";
-const SPECS_TO: &str = ".moai-cli/specs";
+const SPECS_TO: &str = crate::project_state!("specs");
 
 #[derive(Deserialize)]
 struct Manifest {
@@ -441,7 +441,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
 // move) is the preview's; only files proven tool-made move until decision 1 of
 // #2561 comment 6827973256 says otherwise.
 
-const BACKUPS: &str = ".moai-cli/backups";
+const BACKUPS: &str = crate::project_state!("backups");
 const RECEIPT: &str = "go-state-receipt.json";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

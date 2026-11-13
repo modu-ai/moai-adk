@@ -24,7 +24,7 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
     "Cargo.lock",
     "Cargo.toml",
     ".github/**",
-    ".moai-cli/manifests/**",
+    crate::project_state!("manifests/**"),
     "AGENTS.md",
 ];
 
