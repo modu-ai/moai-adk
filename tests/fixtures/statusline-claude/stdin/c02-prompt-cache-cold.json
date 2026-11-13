@@ -1,0 +1,8 @@
+{
+  "model": {"display_name": "Opus"},
+  "session_name": "cache-cold",
+  "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"},
+  "context_window": {"context_window_size": 200000, "used_percentage": 12},
+  "prompt_cache": {"warm": false, "expires_at": null, "misses": 1},
+  "pr": {"number": 77, "url": "https://github.com/modu-ai/moai-adk/pull/77"}
+}

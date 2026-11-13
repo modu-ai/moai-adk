@@ -341,6 +341,9 @@ const STDIN: &[Field] = &[
     Field("pr", Kind::Ptr(PR)),
     Field("agent", Kind::Ptr(NAMED)),
     Field("worktree", Kind::Ptr(WORKTREE)),
+    // #2756 AC-8: not in the Go struct; kept raw so an unexpected value never fails the
+    // payload (the renderer reads only `warm` and `expires_at`).
+    Field("prompt_cache", Kind::Raw),
     Field("exceeds_200k_tokens", Kind::Bool),
     Field("tasks", Kind::Slice(&Kind::Val(TASK))),
 ];
