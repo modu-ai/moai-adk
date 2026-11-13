@@ -23,6 +23,10 @@ class BinaryVersionTest(unittest.TestCase):
         parse = statusline_golden.parse_version_output
         self.assertEqual(parse(0, "moai-cli 2026.11.0-rc.1\n"), "2026.11.0-rc.1")
         self.assertEqual(parse(0, "moai version v3.2.1\n"), "3.2.1")
+        # #2790: the Rust build's line ends with its generation mark.
+        self.assertEqual(parse(0, "moai-cli 2026.11.0-rc.1 (rust)\n"), "2026.11.0-rc.1")
+        self.assertEqual(parse(0, "moai-cli 2026.11.0-rc.1+local.3 (rust)\n"), "2026.11.0-rc.1+local.3")
+        self.assertIsNone(parse(0, "(rust)\n"))
 
     def test_no_version_or_a_failed_run_is_none(self):
         parse = statusline_golden.parse_version_output

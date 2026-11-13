@@ -49,10 +49,13 @@ fn the_update_route_is_the_project_layer() {
         "this route never runs it",
         // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
         // first, and "nothing to update" holds only without Go state.
-        "When `result.profile` is `null` but `result.go_state.moai_dir` is `folder`, do step 2 first",
+        // #2696: after the move `.moai/` is this generation's folder too, so the route follows
+        // the classification, not the folder kind.
+        "When `result.profile` is `null` but `result.state_root.generation` is `go` or `interrupted`, do step 2 first",
         "only when there is no profile and no Go-generation state is there nothing to update",
         // #2702 audit N2: the other Go-state kinds are reported, never written.
-        "`link` or `other` is reported and nothing is moved",
+        "which covers a `.moai` that is a link or not a folder) is reported with its `reason` and nothing is moved",
+        "When it is `interrupted`, a move stopped midway",
         // #2702 audit N1: the user's edits, unreadable targets and HOLD, and the #2383 step.
         "A file or managed part the user edited is planned as `conflict` and kept",
         "Never write a target whose current state could not be read, nor one under a recorded HOLD",
@@ -256,25 +259,31 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
         "--permission-reference",
         REF,
     ]);
-    // The whole `.moai/` folder goes to the backup (#2561 decision 1); a file the user
-    // edited is kept there byte for byte, and the SPECs are copied into `.moai-cli/specs`.
+    // #2696: the whole Go `.moai/` is kept as `.moai-backup`; a file the user edited is kept
+    // there byte for byte, and the SPECs are copied into the new `.moai/specs`.
     let stamp = applied["backup"].as_str().unwrap().to_string();
-    assert!(!fx.root.join(".moai").exists(), "{applied}");
-    let backup = fx
-        .root
-        .join(".moai-cli/backups")
-        .join(&stamp)
-        .join("go-state");
+    assert_eq!(applied["go_backup"], json!(".moai-backup"), "{applied}");
     assert_eq!(
-        fs::read_to_string(backup.join(".moai/config/sections/b.yaml")).unwrap(),
+        fs::read_to_string(fx.root.join(".moai-backup/config/sections/b.yaml")).unwrap(),
         "b: 2 # edited\n",
         "a file the user edited is kept in the backup"
     );
-    assert!(fx.root.join(".moai-cli/specs/SPEC-1/spec.md").exists());
+    assert!(fx.root.join(".moai/specs/SPEC-1/spec.md").exists());
+    assert!(fx.root.join(".moai/moai-cli.json").is_file());
 
-    // A second run of the route finds nothing more to move.
+    // A second run of the route finds nothing more to move, and step 2 is not offered again.
     let again = fx.call(&["go-state-plan", fx.p()]);
     assert_eq!(moves(&again), 0, "{again}");
+    let detect = fx.call(&["project-detect", fx.p()]);
+    assert_eq!(
+        detect["state_root"]["generation"],
+        json!("rust"),
+        "{detect}"
+    );
+    assert!(
+        !detect["next_actions"].to_string().contains("go-state-plan"),
+        "{detect}"
+    );
 
     // The way back the route reports.
     let rplan = fx.call(&["go-state-revert-plan", fx.p(), "--backup", &stamp]);
@@ -289,7 +298,21 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
         "--permission-reference",
         REF,
     ]);
-    assert_eq!(fx.tree(), before, "revert brings the project back");
+    // The new `.moai/` is set aside as `.moai.rust-<UTC>` (kept, never deleted); everything
+    // else is as it was.
+    let outside_aside = |tree: Vec<(PathBuf, Vec<u8>)>| -> Vec<(PathBuf, Vec<u8>)> {
+        tree.into_iter()
+            .filter(|(p, _)| {
+                !p.strip_prefix(&fx.root)
+                    .is_ok_and(|r| r.to_string_lossy().starts_with(".moai.rust-"))
+            })
+            .collect()
+    };
+    assert_eq!(
+        outside_aside(fx.tree()),
+        outside_aside(before),
+        "revert brings the project back"
+    );
     assert!(fx.home_is_empty(), "the project route never writes HOME");
 }
 
