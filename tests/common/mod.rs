@@ -3,6 +3,27 @@ pub mod git;
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse};
 use std::path::Path;
 
+/// #2699: `Command::env_clear` for a test's child that keeps the developer folder the test
+/// process got from `.cargo/config.toml` (`DEVELOPER_DIR`). Without it the macOS `/usr/bin/git`
+/// shim of every git call under the child's fresh temporary HOME starts
+/// `xcodebuild -license check`. The value is passed on only when it names a folder that exists,
+/// so a Mac without that folder keeps its shim's own choice. Tests call `.clean_env()` and never
+/// clear a child's environment themselves (`tests/cargo_env_developer_dir.rs` scans for it).
+#[allow(dead_code)] // test crates that never clear a child's environment include this module too
+pub trait CleanEnv {
+    fn clean_env(&mut self) -> &mut Self;
+}
+
+impl CleanEnv for std::process::Command {
+    fn clean_env(&mut self) -> &mut Self {
+        self.env_clear();
+        if let Some(dir) = std::env::var_os("DEVELOPER_DIR").filter(|d| Path::new(d).is_dir()) {
+            self.env("DEVELOPER_DIR", dir);
+        }
+        self
+    }
+}
+
 /// A recorded response with a JSON body and no headers (#2256). Built through the
 /// constructor, so a new optional `HttpResponse` field never touches the fixtures.
 #[allow(dead_code)] // only the forge/claim test crates replay exchanges

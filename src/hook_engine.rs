@@ -551,6 +551,12 @@ fn tool_preflight_deny(
     let Ok(dir) = std::fs::canonicalize(dir) else {
         return Verdict::Allow;
     };
+    // #2673: the commit runs in the folder `git -C` names, which may be a lane worktree even
+    // when the session sits in the primary checkout.
+    let dir = match crate::claim_verify::git_target_dir(command, &dir, &["commit"]) {
+        Ok(d) => d.unwrap_or(dir),
+        Err(why) => return Verdict::Deny(format!("MoAI tool-preflight: {why}.")),
+    };
     let Some(branch) = crate::claim_verify::current_branch(&dir) else {
         return Verdict::Allow;
     };
