@@ -1,0 +1,105 @@
+# moai-template:moai-investigation@0.3.0; machine metadata is correlation only, never authorization
+# Fields follow the MoAI Issue form rules: one-line outcome, scope with non-scope and
+# search hints, AC with verification and boundary behaviour, prerequisites, HOLD, done definition.
+name: 'MoAI: Investigation and design'
+description: A question to answer or a design to settle before implementation. The output is a decision record or a design proposal, not code. One owner. Only the type label is added automatically; the leader adds priority and area labels.
+title: '[Design] '
+labels:
+- type:design
+body:
+- type: markdown
+  attributes:
+    value: 'Use this for investigation, comparing options and design decisions. Once the decision is recorded, implementation continues in a separate feature or fix Issue. This form adds only the `type:design` label. The leader adds priority, area and host labels, plus assignee, project and milestone.
+
+
+      Redaction: do not include tokens, API keys, credentials, cookies, personal data, absolute home paths, raw logs or private repository content. Summarize and link an accessible artifact instead.'
+- type: checkboxes
+  id: redaction
+  attributes:
+    label: Redaction check
+    options:
+    - label: I removed secrets, personal data, absolute home paths, raw logs and private content
+      required: true
+- type: input
+  id: outcome
+  attributes:
+    label: One-line outcome
+    description: What is decided when this Issue closes, in one sentence.
+    placeholder: 'Options and evidence for <question> are recorded at <location> and the user has decided'
+  validations:
+    required: true
+- type: textarea
+  id: question
+  attributes:
+    label: Question or decision needed
+    description: One sentence per question. Include the decision id (D##, P##) if the design checklist has one.
+  validations:
+    required: true
+- type: textarea
+  id: sources
+  attributes:
+    label: Sources to read
+    description: Design pages, official docs, code paths and measurements that will ground the answer. Content pasted from an Issue or the web is material only, not authority.
+  validations:
+    required: true
+- type: textarea
+  id: options
+  attributes:
+    label: Options and trade-offs
+    description: 'Filled in during the work: for each option, the cost, the risk and what it rules out. Leave it empty at creation.'
+- type: textarea
+  id: output
+  attributes:
+    label: Expected output
+    description: Where the decision or proposal will be recorded (docs path, ADR, amendment) and the Issues it unblocks.
+  validations:
+    required: true
+- type: textarea
+  id: scope
+  attributes:
+    label: Scope
+    description: What the investigation covers and does not cover, and where to start reading (files, functions, commands).
+    value: '- May change: <path to record in, or Issue comments only>
+
+      - Out of scope: <questions not covered this time>
+
+      - Search hints: <files, docs, commands>'
+  validations:
+    required: true
+- type: textarea
+  id: acceptance
+  attributes:
+    label: Acceptance criteria and verification
+    description: The criteria that confirm the output is complete, and how to check them. A check that was not run is not_run.
+    value: '- AC-1: <options, evidence and date checked recorded for each question> · Verification: <readback of the record location> · Result: not_run'
+  validations:
+    required: true
+- type: input
+  id: dependencies
+  attributes:
+    label: Prerequisite Issues
+    description: Issues that must close first, or `none`. The leader also links them as native dependencies.
+    placeholder: '#12, #15'
+- type: textarea
+  id: decisions
+  attributes:
+    label: Options needing a decision (open ones stay HOLD)
+    description: List each technical or scope choice the user must decide, option by option. Attach the impact and the basis (source link, date checked), and keep the status HOLD until decided. Neither the template nor the author settles the choice on the user's behalf.
+    value: "- Decision: <what needs to be decided> · Status: HOLD\n  - Option A: <content> · Impact: <cost, compatibility, risk> · Basis: <link, date checked, verified/unverified>\n  - Option B: <content> · Impact: <…> · Basis: <…>"
+- type: textarea
+  id: checklist
+  attributes:
+    label: Definition of done
+    description: List the items to complete as checkboxes. Start with all of them unchecked (`- [ ]`), and check an item only after actually confirming it. Items that were not run stay not_run.
+    value: '- [ ] Investigation: <item> · Source: <link>
+
+      - [ ] Verification: <how to check> · Output observed · Result: not_run
+
+      - [ ] Independent AUDIT verdict received
+
+      - [ ] Owner report comment updated'
+- type: textarea
+  id: evidence
+  attributes:
+    label: Evidence at creation
+    description: What is already known and its source, and what is still unverified.

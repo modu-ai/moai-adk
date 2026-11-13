@@ -104,7 +104,7 @@ fn item(id: &str) -> Option<&'static Item> {
     ITEMS.iter().find(|i| i.id == id)
 }
 
-fn is_code(code: &str) -> bool {
+pub(crate) fn is_code(code: &str) -> bool {
     CODES.iter().any(|(c, _, _)| *c == code)
 }
 
