@@ -2,7 +2,7 @@
 
 When to read: after `routes.json` picked a route, before the parent session starts any agent.
 
-A chain is the order in which the parent session uses agents for one kind of request. The parent session starts each agent in turn and hands the next one the previous result — the plan table, the test list, the verdict — as its input. An agent never starts another agent. Each agent reads the internal references of its own `reads:` list (`references/agents/<role>.md`); the last column names only what the parent session reads first.
+A chain is the order in which the parent session uses agents for one kind of request. The parent session starts each agent in turn and hands the next one the previous result — the plan table, the test list, the verdict — as its input. An agent never starts another agent. Each agent reads the internal references its installed agent file names first (the `reads:` list of its source, which ships outside this skill); the last column names only what the parent session reads first.
 
 | Request | Route | Agents in order | Parent reads first |
 | --- | --- | --- | --- |
