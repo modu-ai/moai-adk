@@ -100,16 +100,23 @@ fn git(dir: &Path, args: &[&str]) -> Option<String> {
         .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
-/// Whether a worktree folder name carries the lane name as a whole token
-/// (`agent-26-audit-2237` carries `agent-26`, not `agent-2`).
-pub fn name_carries_lane(dir_name: &str, lane: &str) -> bool {
-    let bytes = dir_name.as_bytes();
-    dir_name.match_indices(lane).any(|(i, _)| {
-        let end = i + lane.len();
-        let before = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
-        let after = end == bytes.len() || !bytes[end].is_ascii_alphanumeric();
-        before && after
-    })
+/// Whether a worktree folder or branch name carries the lane name as a whole token
+/// (`agent-26-audit-2237` carries `agent-26`, not `agent-2`). The fleet writes the same lane
+/// with and without its dashes (`2636-adapters-agent22` for `agent-22`; audit FAIL 6850218012
+/// on PR #2689), so the dashless spelling counts too.
+pub fn name_carries_lane(name: &str, lane: &str) -> bool {
+    let dashless = lane.replace('-', "");
+    let bytes = name.as_bytes();
+    let carries = |l: &str| {
+        !l.is_empty()
+            && name.match_indices(l).any(|(i, _)| {
+                let end = i + l.len();
+                let before = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+                let after = end == bytes.len() || !bytes[end].is_ascii_alphanumeric();
+                before && after
+            })
+    };
+    carries(lane) || carries(&dashless)
 }
 
 /// The `issue/<n>-…` number of a branch name.
@@ -143,6 +150,14 @@ fn matched_by(
         .is_some_and(|n| name_carries_lane(&n.to_string_lossy(), lane))
     {
         why.push("folder name".into());
+    }
+    // A branch named for the lane (`issue/2670-worktreeinclude-secrets-agent22`).
+    if entry
+        .branch
+        .as_deref()
+        .is_some_and(|b| name_carries_lane(b, lane))
+    {
+        why.push("branch name".into());
     }
     why
 }
@@ -367,6 +382,15 @@ mod tests {
         assert!(!name_carries_lane("agent-26-audit-2237", "agent-2"));
         assert!(!name_carries_lane("xagent-27", "agent-27"));
         assert!(!name_carries_lane("2669-lane-safe-to-reset", "agent-27"));
+        // The fleet also drops the dash (audit FAIL 6850218012 on PR #2689).
+        assert!(name_carries_lane("2636-adapters-agent22", "agent-22"));
+        assert!(name_carries_lane(
+            "issue/2670-worktreeinclude-secrets-agent22",
+            "agent-22"
+        ));
+        assert!(name_carries_lane("audit-2486-agent29", "agent-29"));
+        assert!(!name_carries_lane("2636-adapters-agent220", "agent-22"));
+        assert!(!name_carries_lane("2636-adapters-agent2", "agent-22"));
     }
 
     #[test]

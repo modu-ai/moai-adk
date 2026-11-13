@@ -299,3 +299,42 @@ fn bad_input_is_refused_as_invalid_input() {
         assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
     }
 }
+
+/// Audit FAIL 6850218012 on PR #2689: a worktree named for the lane without its dash
+/// (`…-agent9` for lane `agent-9`), outside every claim and not the session folder, still
+/// belongs to the lane; its left work makes the lane not safe.
+#[test]
+fn a_dashless_lane_name_in_a_folder_or_branch_still_maps() {
+    let f = fixture();
+    let old = f.primary.join("wt").join("1234-old-agent9");
+    g(
+        &f.primary,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/1234-old-agent9",
+            old.to_str().unwrap(),
+            "main",
+        ],
+    );
+    g(&old, &["push", "-q", "origin", "issue/1234-old-agent9"]);
+    let v = run(&f, "agent-9", Some(clean_obs(&f)));
+    let r = result(&v);
+    let mapped = r["worktrees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|w| w["path"].as_str().unwrap().ends_with("1234-old-agent9"))
+        .unwrap_or_else(|| panic!("not mapped: {r}"));
+    assert_eq!(mapped["matched_by"], json!(["folder name", "branch name"]));
+    assert_eq!(r["verdict"], "safe", "{r}");
+    fs::write(old.join("pending.txt"), "x\n").unwrap();
+    let r = run(&f, "agent-9", Some(clean_obs(&f)));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+    assert_eq!(
+        texts(result(&r), "findings"),
+        vec![format!("{}: 1 uncommitted change(s)", old.display())]
+    );
+}
