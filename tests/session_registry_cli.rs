@@ -368,3 +368,132 @@ fn concurrent_registrations_admit_one() {
         .count();
     assert_eq!((wins, conflicts), (1, 7));
 }
+
+/// A well-formed entry for `name` with `instance`, `lease_until` and `schema_version`, padded
+/// with trailing spaces to exactly `len` bytes when `len` is given.
+fn entry_text(
+    name: &str,
+    instance: &str,
+    lease_until: i64,
+    schema: u64,
+    len: Option<usize>,
+) -> String {
+    let mut s = format!(
+        r#"{{"schema_version":{schema},"name":"{name}","instance":"{instance}","lease_until":{lease_until},"registered_at":0}}"#
+    );
+    if let Some(n) = len {
+        assert!(s.len() <= n);
+        s.push_str(&" ".repeat(n - s.len()));
+    }
+    s
+}
+
+/// Audit B2 A1 (boundary): an entry of 4096 bytes is read; one of 4097 bytes is refused and
+/// kept as it is.
+#[test]
+fn an_entry_over_four_kib_is_refused_and_kept() {
+    let fx = Fixture::new();
+    fs::create_dir_all(fx.sessions()).unwrap();
+    let held = "1".repeat(32);
+    fs::write(
+        fx.entry("lane-a"),
+        entry_text("lane-a", &held, 1, 1, Some(4096)),
+    )
+    .unwrap();
+    assert_eq!(
+        ok(&run(&fx, &["--name", "lane-a", "--now", T0]))["previous"],
+        "expired",
+        "4096 bytes are read"
+    );
+    let big = entry_text("lane-b", &held, 1, 1, Some(4097));
+    fs::write(fx.entry("lane-b"), &big).unwrap();
+    assert_eq!(
+        refused(&run(&fx, &["--name", "lane-b", "--now", T0])).0,
+        "invalid_input"
+    );
+    assert_eq!(fs::read_to_string(fx.entry("lane-b")).unwrap(), big);
+}
+
+/// Audit B2 A2: a registry folder that is a symlink is refused; nothing is written through it.
+#[test]
+fn a_symlinked_registry_folder_is_refused_and_its_target_untouched() {
+    let fx = Fixture::new();
+    let elsewhere = fx.home.join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::create_dir_all(fx.sessions().parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, fx.sessions()).unwrap();
+    let (kind, message) = refused(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("symlink"), "{message}");
+    assert_eq!(
+        fs::read_dir(&elsewhere).unwrap().count(),
+        0,
+        "nothing written there"
+    );
+}
+
+/// Audit B2 A3: a `registry.lock` that is a symlink is refused; its target is not opened for
+/// writing and no entry is written.
+#[test]
+fn a_symlinked_lock_is_refused_and_its_target_untouched() {
+    let fx = Fixture::new();
+    fs::create_dir_all(fx.sessions()).unwrap();
+    let target = fx.home.join("lock-target");
+    fs::write(&target, "keep").unwrap();
+    std::os::unix::fs::symlink(&target, fx.sessions().join("registry.lock")).unwrap();
+    let (kind, message) = refused(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("symlink"), "{message}");
+    assert_eq!(fs::read_to_string(&target).unwrap(), "keep");
+    assert!(!fx.entry("agent-8").exists());
+}
+
+/// Audit B2 A5 and A9: an entry whose `instance` is not 32 lowercase hex, or whose
+/// `schema_version` is not 1, is refused and kept.
+#[test]
+fn an_entry_with_a_bad_instance_or_schema_is_refused_and_kept() {
+    let fx = Fixture::new();
+    fs::create_dir_all(fx.sessions()).unwrap();
+    let cases = [
+        ("lane-i", entry_text("lane-i", &"Z".repeat(32), 1, 1, None)),
+        ("lane-s", entry_text("lane-s", &"1".repeat(32), 1, 2, None)),
+    ];
+    for (name, text) in &cases {
+        fs::write(fx.entry(name), text).unwrap();
+        assert_eq!(
+            refused(&run(&fx, &["--name", name, "--now", T0])).0,
+            "invalid_input",
+            "{name}"
+        );
+        assert_eq!(&fs::read_to_string(fx.entry(name)).unwrap(), text, "{name}");
+    }
+}
+
+/// Audit B2 A7 (boundary): another instance's release is a conflict one second before the
+/// lease ends and `already_free` at the end second.
+#[test]
+fn a_release_sees_the_lease_end_second_as_free() {
+    let fx = Fixture::new();
+    ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let other = "e".repeat(32);
+    let release_at = |now: &str| {
+        run(
+            &fx,
+            &[
+                "--name",
+                "agent-8",
+                "--instance",
+                &other,
+                "--release",
+                "--now",
+                now,
+            ],
+        )
+    };
+    assert_eq!(refused(&release_at("2026-11-13T10:59:59Z")).0, "conflict");
+    assert!(fx.entry("agent-8").exists());
+    assert_eq!(
+        ok(&release_at("2026-11-13T11:00:00Z"))["status"],
+        "already_free"
+    );
+}
