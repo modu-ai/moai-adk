@@ -139,6 +139,8 @@ def normalize_version(text, version):
 
 
 VERSION_TOKEN = re.compile(r"v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)")
+# An OSC 8 hyperlink opener or closer: ESC ] 8 ; params ; URI ST (ST = ESC \).
+OSC8_LINK = re.compile(r"\x1b\]8;[^;\x1b]*;[^\x1b]*\x1b\\")
 
 
 def parse_version_output(returncode, stdout):
@@ -274,7 +276,8 @@ def check_color_contract(binary, argv):
         ("ANSI256 TTY", "ansi256", {}),
     ]:
         code, out, err = run_case(binary, argv, case, variant, **options)
-        if code or re.sub(r"\x1b\[[0-9;]*m", "", out) != plain:
+        # SGR colors and (#2756 AC-7) OSC 8 hyperlinks are the only escapes color adds.
+        if code or OSC8_LINK.sub("", re.sub(r"\x1b\[[0-9;]*m", "", out)) != plain:
             raise ValueError(f"{label} content differs: {code} {out!r} {err!r}")
         if variant == "plain" and "\x1b" in out:
             raise ValueError(f"{label} contains terminal escapes")

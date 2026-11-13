@@ -12,6 +12,9 @@
 //! runs under a concurrent cargo build, re-audit 6765987319). The goldens describe the render
 //! within budget, so this test passes the hidden seam `--render-budget-ms 3600000`; the
 //! over-budget path is pinned on its own in `tests/statusline_git_env.rs`.
+//!
+//! Clock independence (#2756 AC-8): the prompt cache timer counts from `--now-unix`, a hidden
+//! seam; the goldens are recorded and checked with the same value.
 
 #[cfg(unix)]
 #[test]
@@ -20,7 +23,12 @@ fn statusline_matches_every_claude_golden() {
     let out = std::process::Command::new("python3")
         .args(["-I", "tools/statusline_golden.py", "--bin"])
         .arg(env!("CARGO_BIN_EXE_moai-cli"))
-        .args(["--argv", "statusline --render-budget-ms 3600000", "--check"])
+        // `--now-unix` (#2756): the prompt cache timer counts from a fixed clock.
+        .args([
+            "--argv",
+            "statusline --render-budget-ms 3600000 --now-unix 1738429000",
+            "--check",
+        ])
         .current_dir(root)
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .output()
