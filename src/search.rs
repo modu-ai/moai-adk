@@ -49,8 +49,8 @@ pub const MAX_TERMS: usize = 64;
 pub const MAX_TERM_BYTES: usize = 512;
 /// Files larger than this are not scanned (recorded as omitted).
 pub const MAX_FILE_BYTES: u64 = 4 * 1024 * 1024;
-/// Hops of the typed-edge expansion (step 4): design L3026 "작업에 필요한 relation만 1~2 hop부터
-/// 확장한다" — one hop by default, two at most.
+/// Hops of the typed-edge expansion (step 4): design L3026 expands only the relations a task
+/// needs, starting from one or two hops — one hop by default, two at most.
 pub const DEFAULT_MAX_HOPS: usize = 1;
 pub const MAX_HOPS_LIMIT: usize = 2;
 /// Edges followed from one node per hop. The design bounds fan-out without a number

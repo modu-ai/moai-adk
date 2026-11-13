@@ -70,17 +70,18 @@ sleep이나 확률적 지연을 사용하지 않는다.
 
 ```sh
 export CARGO_HOME=$(test -d /tmp/moai-product-cargo/registry/cache && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo)  # prepared cache; the new name once the leader moved it (#2563)
-export CARGO_TARGET_DIR=/tmp/moai-target-your-own-lane
+# Build folder: this worktree's own target/ (do not set CARGO_TARGET_DIR, AGENTS.local.md).
 cargo test --offline --locked --lib --no-run
 # Use the src/lib.rs executable path printed by the successful build.
 case_bin="<printed libtest executable>"
-mkdir -p "$CARGO_TARGET_DIR/2471-repeat"
-cp "$case_bin" "$CARGO_TARGET_DIR/2471-repeat/unit-tests"
-shasum -a 256 "$CARGO_TARGET_DIR/2471-repeat/unit-tests"
+repeat=target/2471-repeat
+mkdir -p "$repeat"
+cp "$case_bin" "$repeat/unit-tests"
+shasum -a 256 "$repeat/unit-tests"
 failed=0
 for n in {1..100}; do
-  RUST_MIN_STACK=8388608 "$CARGO_TARGET_DIR/2471-repeat/unit-tests" --test-threads=32 \
-    > "$CARGO_TARGET_DIR/2471-repeat/$n.log" 2>&1 || failed=$((failed + 1))
+  RUST_MIN_STACK=8388608 "$repeat/unit-tests" --test-threads=32 \
+    > "$repeat/$n.log" 2>&1 || failed=$((failed + 1))
 done
 echo "N=100 failed=$failed"
 test "$failed" -eq 0

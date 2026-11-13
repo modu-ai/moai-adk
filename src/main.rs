@@ -40,7 +40,7 @@ impl RecordSource {
 #[derive(Parser)]
 #[command(
     name = "moai-cli",
-    version,
+    version = moai_cli::BUILD_VERSION,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
 )]
@@ -303,6 +303,36 @@ enum Command {
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
     ClaimAcquire {
         project: PathBuf,
+    },
+    /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
+    /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
+    /// waiting and on failure it prints the load averages and free disk space. Unix only.
+    HeavySlotAcquire {
+        /// The machine's slot count; every caller passes the same value (the leader's limit).
+        #[arg(long)]
+        max: usize,
+        /// The caller's name, shown by `heavy-slot-status`.
+        #[arg(long)]
+        name: String,
+        /// Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`).
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// Start nothing (exit 75) while the working folder's file system has less free space,
+        /// in decimal GB; 0 turns it off.
+        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.min_free_gb)]
+        min_free_gb: u64,
+        /// Start nothing (exit 75) while swap use is above this percent; 100 turns it off.
+        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.max_swap_pct)]
+        max_swap_pct: u64,
+        /// The heavy command and its arguments, after `--`.
+        #[arg(last = true)]
+        command: Vec<String>,
+    },
+    /// List the heavy-run slots held now, the slot paths refused, and the machine's load and
+    /// free disk space (#2677). Reads only.
+    HeavySlotStatus {
+        #[arg(long)]
+        dir: Option<PathBuf>,
     },
     /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
     /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
@@ -1439,6 +1469,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillApply { .. } => "project_skill.apply",
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
+        HeavySlotAcquire { .. } => "heavy_slot.acquire",
+        HeavySlotStatus { .. } => "heavy_slot.status",
         QueueNext { .. } => "queue.next",
         QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
@@ -2205,6 +2237,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 }
             })
         }
+        // Answered in `main` before internal dispatch (no envelope, the command's exit code).
+        Command::HeavySlotAcquire { .. } => {
+            Err("heavy-slot-acquire is answered before internal dispatch".into())
+        }
+        Command::HeavySlotStatus { dir } => {
+            let dir = match dir {
+                Some(d) => d,
+                None => moai_cli::heavy_slot::default_dir()?,
+            };
+            moai_cli::heavy_slot::status(&dir)
+        }
         Command::ClaudeSettingsPlan { project, scope } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2850,6 +2893,35 @@ fn main() -> ExitCode {
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
     }
+    if let Some(Command::HeavySlotAcquire {
+        max,
+        name,
+        dir,
+        min_free_gb,
+        max_swap_pct,
+        command,
+    }) = &cli.command
+    {
+        // No contract envelope: the wrapped command's own exit code and output (#2677).
+        let dir = match dir
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(moai_cli::heavy_slot::default_dir)
+        {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("heavy-slot: {e}");
+                return ExitCode::from(moai_cli::heavy_slot::USAGE);
+            }
+        };
+        let limits = moai_cli::heavy_slot::Limits {
+            min_free_gb: *min_free_gb,
+            max_swap_pct: *max_swap_pct,
+        };
+        return ExitCode::from(moai_cli::heavy_slot::acquire(
+            &dir, *max, name, command, limits,
+        ));
+    }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
     let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
@@ -2886,6 +2958,22 @@ mod tests {
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
     const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
+
+    /// #2722 AC-5: `--version` shows the build version, which is the package version plus
+    /// `+local.<n>` exactly when this build set `MOAI_LOCAL_BUILD`.
+    #[test]
+    fn version_flag_reports_the_local_build_number() {
+        let expected = moai_cli::local_build::version(
+            env!("CARGO_PKG_VERSION"),
+            option_env!("MOAI_LOCAL_BUILD"),
+        )
+        .unwrap();
+        assert_eq!(moai_cli::BUILD_VERSION, expected);
+        assert_eq!(Cli::command().get_version(), Some(moai_cli::BUILD_VERSION));
+        if option_env!("MOAI_LOCAL_BUILD").is_none_or(str::is_empty) {
+            assert_eq!(moai_cli::BUILD_VERSION, env!("CARGO_PKG_VERSION"));
+        }
+    }
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
