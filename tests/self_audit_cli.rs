@@ -1,0 +1,93 @@
+//! #2708: the PR body checker is `moai-cli pr-self-audit-check`, so the shipped skill never
+//! asks a user project to run `tools/check_pr_self_audit.py`, which only this repository has.
+//! Its rules are checked case by case against the Python tool by the three
+//! `tests/check_pr_*_test.py` files (`tests/self_audit_parity.py`).
+use std::{fs, path::Path, process::Command};
+
+fn skill_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+    for e in fs::read_dir(dir).unwrap() {
+        let p = e.unwrap().path();
+        if p.is_dir() {
+            skill_files(&p, out);
+        } else {
+            out.push(p);
+        }
+    }
+}
+
+#[test]
+fn the_shipped_skill_never_runs_the_python_checker() {
+    let mut files = Vec::new();
+    skill_files(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
+        &mut files,
+    );
+    let hits: Vec<String> = files
+        .iter()
+        .filter(|p| p.extension().is_some_and(|e| e == "md"))
+        .filter(|p| {
+            fs::read_to_string(p)
+                .unwrap()
+                .contains("tools/check_pr_self_audit.py")
+        })
+        .map(|p| p.display().to_string())
+        .collect();
+    assert_eq!(hits, Vec::<String>::new());
+    let audit = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
+    )
+    .unwrap();
+    assert!(audit.contains("`moai-cli pr-self-audit-check --reaudit --file BODY.md`"));
+}
+
+fn run(args: &[&str], body: &str) -> (i32, String) {
+    use std::io::Write;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg("pr-self-audit-check")
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(body.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+    )
+}
+
+const FULL: &str = "## Self-Audit\n\n- mutation: guard removed -> check FAILED\n- clone: fresh clone\n- host: fake gh\n- receipt: digest re-read\n";
+
+/// The command's own boundaries, without Python: pass, a missing line, an unmeasured
+/// mutation, a re-audit without its section, and a usage error.
+#[test]
+fn the_command_prints_one_line_and_the_python_exit_codes() {
+    assert_eq!(
+        run(&[], FULL),
+        (
+            0,
+            "self-audit: pass (mutation/clone/host/receipt measured)\n".into()
+        )
+    );
+    assert_eq!(
+        run(&[], &FULL.replace("- receipt: digest re-read\n", "")),
+        (1, "self-audit: blocked missing=receipt\n".into())
+    );
+    assert_eq!(
+        run(&[], &FULL.replace("FAILED", "passed")),
+        (1, "self-audit: blocked missing=mutation:FAILED\n".into())
+    );
+    assert_eq!(
+        run(&["--reaudit"], FULL),
+        (1, "self-audit: blocked missing=## 독립 review\n".into())
+    );
+    assert_eq!(run(&["bogus"], FULL).0, 2);
+    assert_eq!(run(&["--reaudit", "--reaudit"], FULL).0, 2);
+}
