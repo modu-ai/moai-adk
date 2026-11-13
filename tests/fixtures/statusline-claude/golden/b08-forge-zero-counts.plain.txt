@@ -1,3 +1,3 @@
 🤖 Opus | 🧠 high·t | ♻️ 28% | 🔅 v2.1.90 | 🗿 v2026.11.0-rc.1
-📡 anthropics/claude-code | ⬇️ 0 / 🔀 0 | 🅱️ main +1 | 🌳 feature-xyz | 🔗 #1234 pending | 💾 +0 M0 ?1
-🏷️ my-session | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 5H: ██░░░░░░░░ 23% | 🔋 Week: ████░░░░░░ 41%
+📡 anthropics/claude-code | ⬇️ 0 / 🔀 0 | 🅱️ main +1 | 🌳 feature-xyz | 🔗 #1234 pending
+🏷️ my-session | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41%

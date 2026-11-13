@@ -92,10 +92,11 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
 
     let clean = render(&home, &project, &[], WITHIN);
     assert!(clean.contains("🅱️ main"), "{clean}");
-    assert!(clean.contains("💾 +0 M0 ?0"), "{clean}");
-    // #2756: the repository line is the second of the three lines, not the last.
+    // #2756: the repository line is the second of the three lines, not the last. A clean
+    // branch has no `+N` (the other repository's three changes would show as `+3`); there is
+    // no `💾` segment (leader decision 6862179411).
     let repository_line = clean.lines().find(|l| l.starts_with("🅱️")).unwrap();
-    assert_eq!(repository_line, "🅱️ main | 💾 +0 M0 ?0", "{clean}");
+    assert_eq!(repository_line, "🅱️ main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -132,17 +133,10 @@ fn an_expired_render_budget_drops_the_git_segment() {
 
     let within = render(&home, &project, &[], WITHIN);
     // #2756: the repository line sits between the environment and usage lines.
-    assert_eq!(
-        within.lines().nth(1),
-        Some("🅱️ main | 💾 +0 M0 ?0"),
-        "{within}"
-    );
+    assert_eq!(within.lines().nth(1), Some("🅱️ main"), "{within}");
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert!(
-            !over.contains("🅱️") && !over.contains("💾") && !over.contains("📁"),
-            "{over}"
-        );
+        assert!(!over.contains("🅱️") && !over.contains("📁"), "{over}");
         let within_without_repo: Vec<_> = within.lines().filter(|l| !l.starts_with("🅱️")).collect();
         let over_lines: Vec<_> = over.lines().collect();
         assert_eq!(over_lines, within_without_repo, "{over}");

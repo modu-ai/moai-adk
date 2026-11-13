@@ -350,7 +350,10 @@ fn read_display_config(path: &Path) -> DisplayConfig {
 }
 
 /// `findProjectRoot` (cli/glm.go): walk up from the cwd to a directory holding `.moai`,
-/// stopping at HOME.
+/// stopping at HOME — HOME's `.moai` is the tool's home folder, never a project — and at
+/// the git repository (#2756 leader decision 6862179411): a folder with `.git` (a folder,
+/// or the file of a linked worktree) is the last one searched, so a `.moai` above the
+/// repository never becomes the root and the git segments read the repository itself.
 fn find_project_root(ctx: &Context) -> Option<PathBuf> {
     let mut dir = ctx.cwd.clone()?;
     if let Ok(resolved) = std::fs::canonicalize(&dir) {
@@ -364,7 +367,7 @@ fn find_project_root(ctx: &Context) -> Option<PathBuf> {
         if dir.join(".moai").exists() {
             return Some(dir);
         }
-        if !dir.pop() {
+        if dir.join(".git").exists() || !dir.pop() {
             return None;
         }
     }
@@ -1233,5 +1236,70 @@ mod extras_tests {
         // A mistyped prompt_cache leaves the timer out but keeps the rest of the payload.
         let s = collect_json(json!({"session_name": "x", "prompt_cache": 7}), 0);
         assert_eq!((s.session_name.as_str(), s.cache_timer), ("x", None));
+    }
+}
+
+/// #2756 leader decision 6862179411 item 3: the project root search stops at the git
+/// repository, and HOME's `.moai` is never a project marker.
+#[cfg(test)]
+mod project_root_tests {
+    use super::*;
+    use std::fs;
+
+    fn root_from(home: &Path, cwd: &Path) -> Option<PathBuf> {
+        let home = home.to_str().unwrap();
+        find_project_root(&Context::for_test(&[("HOME", home)], Some(cwd)))
+    }
+
+    #[test]
+    fn a_moai_folder_above_the_git_repository_is_not_the_project() {
+        // agent-29 case F (6862215957): outside HOME, a non-git ancestor holds `.moai`.
+        let w = tempfile::tempdir().unwrap();
+        let w = fs::canonicalize(w.path()).unwrap();
+        fs::create_dir_all(w.join("home")).unwrap();
+        fs::create_dir_all(w.join("outside/.moai")).unwrap();
+        fs::create_dir_all(w.join("outside/repo/.git")).unwrap();
+        fs::create_dir_all(w.join("outside/repo/src")).unwrap();
+        assert_eq!(
+            root_from(&w.join("home"), &w.join("outside/repo/src")),
+            None
+        );
+    }
+
+    #[test]
+    fn homes_moai_is_never_the_project() {
+        // agent-29 case E: `~/.moai` exists; a repository below HOME and a plain folder below
+        // HOME both find no project.
+        let w = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(w.path()).unwrap();
+        fs::create_dir_all(home.join(".moai")).unwrap();
+        fs::create_dir_all(home.join("proj/repo/.git")).unwrap();
+        fs::create_dir_all(home.join("notes")).unwrap();
+        assert_eq!(root_from(&home, &home.join("proj/repo")), None);
+        assert_eq!(root_from(&home, &home.join("notes")), None);
+        assert_eq!(root_from(&home, &home), None);
+    }
+
+    #[test]
+    fn the_repository_that_holds_moai_is_found_from_below() {
+        let w = tempfile::tempdir().unwrap();
+        let w = fs::canonicalize(w.path()).unwrap();
+        fs::create_dir_all(w.join("home")).unwrap();
+        fs::create_dir_all(w.join("repo/.git")).unwrap();
+        fs::create_dir_all(w.join("repo/.moai")).unwrap();
+        fs::create_dir_all(w.join("repo/a/b")).unwrap();
+        assert_eq!(
+            root_from(&w.join("home"), &w.join("repo/a/b")),
+            Some(w.join("repo"))
+        );
+        // A linked worktree has a `.git` file; the search stops there too.
+        fs::create_dir_all(w.join("repo/wt/sub")).unwrap();
+        fs::write(w.join("repo/wt/.git"), "gitdir: ../.git/worktrees/wt\n").unwrap();
+        assert_eq!(root_from(&w.join("home"), &w.join("repo/wt/sub")), None);
+        fs::create_dir_all(w.join("repo/wt/.moai")).unwrap();
+        assert_eq!(
+            root_from(&w.join("home"), &w.join("repo/wt/sub")),
+            Some(w.join("repo/wt"))
+        );
     }
 }

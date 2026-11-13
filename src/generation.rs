@@ -444,6 +444,15 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
     None
 }
 
+/// Where a project skill of `host` lives; `None` for a host this tool does not write.
+fn project_skill_path(host: &str, id: &str) -> Option<String> {
+    match host {
+        "codex" => Some(format!(".agents/skills/{id}/SKILL.md")),
+        "claude" => Some(format!(".claude/skills/{id}/SKILL.md")),
+        _ => None,
+    }
+}
+
 /// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
 /// recorded with `source: default` (an axis left unanswered) is never written.
 /// The profile a project skill is built from, in the project's state folder (#2725 S2b).
@@ -776,10 +785,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
                 render_project_skill(ps, &request.language, &profile, &project_profile_rel(&root))?;
             let rendered_digest = digest(rendered.as_bytes());
             for host in project_skill_hosts(ps) {
-                let rel = match host.as_str() {
-                    "codex" => format!(".agents/skills/{}/SKILL.md", ps.id),
-                    _ => format!(".claude/skills/{}/SKILL.md", ps.id),
-                };
+                let rel = project_skill_path(&host, &ps.id).ok_or("unknown skill host")?;
                 let dest_dir = root
                     .join(&rel)
                     .parent()
@@ -829,6 +835,80 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
                 });
             }
         }
+    }
+
+    // Project skills no longer requested (#2706 P2b): a file this tool wrote and nobody edited
+    // is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
+    // conflict and stays. A recorded file that is already gone only leaves the list.
+    let requested: Vec<String> = request
+        .project_skills
+        .iter()
+        .flat_map(|ps| {
+            project_skill_hosts(ps)
+                .into_iter()
+                .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
+        })
+        .collect();
+    let owned: Vec<(String, String, String)> = manifest
+        .get("owned_files")
+        .and_then(Value::as_array)
+        .map(|list| {
+            list.iter()
+                .filter_map(|f| {
+                    let kind = f.get("section_id")?.as_str()?;
+                    if !kind.starts_with("generation:project-skill:") {
+                        return None;
+                    }
+                    Some((
+                        kind.to_string(),
+                        f.get("path")?.as_str()?.to_string(),
+                        f.get("baseline_sha256")?.as_str()?.to_string(),
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    for (kind, rel, baseline) in owned {
+        if requested.contains(&kind) || files.iter().any(|f| f.path == rel) {
+            continue;
+        }
+        // Pre-audit 6854760758 B1: the recorded path is trusted only when it is the path the
+        // kind names, and nothing on the way is a symbolic link; otherwise it is a conflict.
+        let named = kind
+            .strip_prefix("generation:project-skill:")
+            .and_then(|rest| rest.split_once(':'))
+            .and_then(|(host, id)| project_skill_path(host, id));
+        let link = link_on_path(&root, &rel);
+        let refused = if named.as_deref() != Some(rel.as_str()) {
+            Some("the recorded path is not the path of its skill; nothing removed".to_string())
+        } else {
+            link.map(|l| format!("{l} is a symbolic link; nothing removed through it"))
+        };
+        let current = if refused.is_some() {
+            None
+        } else {
+            fs::read(root.join(&rel)).ok()
+        };
+        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        let detail = refused.or_else(|| {
+            edited.then_some("no longer requested, but edited after generation; kept".to_string())
+        });
+        files.push(GenerationFilePlan {
+            path: rel,
+            action: if detail.is_some() {
+                "conflict"
+            } else {
+                "remove"
+            }
+            .into(),
+            tracked_by_default: true,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: vec![PROJECT_PROFILE.into()],
+            kind: Some(kind),
+            detail,
+        });
     }
 
     let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
@@ -918,6 +998,53 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
     Err("unknown planned path".into())
 }
 
+/// Removes one generated file the plan marked `remove` (#2706 P2b): only while its bytes still
+/// equal the plan's, after saving them in the receipt (so `apply-recover` restores it), then the
+/// folder it leaves empty. A file already gone is recorded and skipped.
+fn remove_owned(
+    root: &Path,
+    request_id: &str,
+    f: &GenerationFilePlan,
+    receipt: &mut Receipt,
+) -> Result<()> {
+    let path_abs = root.join(&f.path);
+    let before = read_opt(&path_abs)?;
+    if before.as_deref().map(digest) != f.expected_sha256 {
+        receipt.status = "partial".into();
+        receipt.entry(
+            &f.path,
+            "remove",
+            before.as_deref().map(digest).as_deref(),
+            None,
+            false,
+            Some("target changed since plan".into()),
+        );
+        let _ = receipt.save(root);
+        return Err(format!(
+            "partial apply: failed at {}: target changed since plan",
+            f.path
+        ));
+    }
+    let Some(bytes) = before else {
+        receipt.entry(
+            &f.path,
+            "remove",
+            None,
+            None,
+            false,
+            Some("already gone".into()),
+        );
+        return Ok(());
+    };
+    save_before_bytes(root, request_id, &f.path, &bytes)?;
+    fs::remove_file(&path_abs).map_err(|_| format!("remove failed: {}", f.path))?;
+    if let Some(dir) = path_abs.parent() {
+        let _ = fs::remove_dir(dir); // only succeeds when the folder is now empty
+    }
+    receipt.entry(&f.path, "remove", Some(&digest(&bytes)), None, true, None);
+    Ok(())
+}
+
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
 /// drift, applies the agents portion through the `agents_apply` engine with its own
 /// freshly computed digest, publishes the generation files with the 01-B engine from
@@ -993,6 +1120,10 @@ pub fn generation_apply(
                         f.path
                     ));
                 }
+            }
+            if f.action == "remove" {
+                remove_owned(root, &request_id, f, &mut receipt)?;
+                continue;
             }
             let rendered_text = rendered_text_for(root, &p, f)?;
             let bytes = rendered_text.into_bytes();
@@ -1108,6 +1239,7 @@ pub fn generation_apply(
                 if !kind.starts_with("generation:") || f.action == "conflict" {
                     continue;
                 }
+                // A `remove` plan carries no rendered digest, so it never re-enters the list.
                 let Some(rendered) = &f.rendered_sha256 else {
                     continue;
                 };
