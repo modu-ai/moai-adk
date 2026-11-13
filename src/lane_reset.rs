@@ -186,6 +186,7 @@ fn check_worktree(
     entry: &WorktreeEntry,
     why: Vec<String>,
     stashes: Option<&[String]>,
+    attributed: bool,
     findings: &mut Vec<String>,
     unknowns: &mut Vec<String>,
 ) -> Value {
@@ -215,6 +216,7 @@ fn check_worktree(
         }
     }
     json!({
+        "attributed": attributed,
         "path": shown,
         "branch": entry.branch,
         "head": entry.head,
@@ -291,19 +293,40 @@ pub fn check(project: &Path, lane: &str, obs: &Observations, now: i64) -> Result
             .max_by_key(|e| e.path.components().count())
             .map(|e| e.path.as_path())
     });
+    // The primary checkout is shared: lanes start there and work in linked worktrees, so its
+    // changes belong to the person and the leader, not to a lane whose only tie to it is the
+    // session folder (leader's first use, #2669 comment 6851881955). Its counts are reported
+    // under `unattributed` and do not decide the verdict.
+    // Only a non-bare first entry is a primary checkout; a bare repository has none, and its
+    // first linked worktree is a lane's like any other (Codex review on PR #2715).
+    let primary = entries
+        .first()
+        .filter(|e| !e.bare)
+        .map(|e| e.path.as_path());
     let mut worktrees = Vec::new();
+    let mut unattributed = Vec::new();
     for entry in entries.iter().filter(|e| !e.bare) {
         let why = matched_by(entry, lane, &claimed, cwd_worktree);
         if why.is_empty() {
             continue;
         }
+        let only_cwd = why.iter().all(|w| w == "session_cwd");
+        let attributed = !(only_cwd && primary == Some(entry.path.as_path()));
+        let (mut f, mut u) = (Vec::new(), Vec::new());
         worktrees.push(check_worktree(
             entry,
             why,
             stashes.as_deref(),
-            &mut findings,
-            &mut unknowns,
+            attributed,
+            &mut f,
+            &mut u,
         ));
+        if attributed {
+            findings.extend(f);
+            unknowns.extend(u);
+        } else {
+            unattributed.extend(f.into_iter().chain(u));
+        }
     }
     if let Some(c) = cwd {
         if cwd_worktree.is_none() {
@@ -362,6 +385,7 @@ pub fn check(project: &Path, lane: &str, obs: &Observations, now: i64) -> Result
         "verdict": verdict,
         "findings": findings,
         "unknowns": unknowns,
+        "unattributed": unattributed,
         "worktrees": worktrees,
         "claims": claims,
         "session_cwd": obs.session_cwd.as_ref().map(|c| json!({"source": c.source, "path": c.path})),
