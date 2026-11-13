@@ -2647,6 +2647,90 @@ mod skill_package {
         }
     }
 
+    /// #2636 (parent #2634): the orca and aside adapters carry when to use each tool, the
+    /// commands that print its version-matched guide (never a copied guide), the lines MoAI
+    /// keeps, and the fallback when the tool is missing. Each adapter names its official web
+    /// page and the CLI version it was checked against.
+    #[test]
+    fn adapters_point_to_version_matched_guides_and_keep_the_safety_lines() {
+        let read = |name: &str| {
+            fs::read_to_string(root().join(format!("references/adapters/{name}.md")))
+                .unwrap_or_else(|e| panic!("adapter {name}: {e}"))
+        };
+        let mut adapters: Vec<String> = package_files()
+            .into_iter()
+            .filter(|p| p.starts_with("references/adapters/"))
+            .collect();
+        adapters.sort();
+        assert_eq!(
+            adapters,
+            [
+                "references/adapters/aside.md",
+                "references/adapters/orca.md"
+            ]
+        );
+        for (name, tool) in [("orca", "Orca"), ("aside", "Aside")] {
+            let text = read(name);
+            let missing = format!("## When {tool} is missing");
+            for heading in [
+                "## When to use it",
+                "## Open the version-matched guide first",
+                "## Lines MoAI keeps",
+                missing.as_str(),
+                "## Sources",
+            ] {
+                assert!(text.contains(heading), "{name} lacks {heading}");
+            }
+            assert!(text.contains("MoAI does not copy"), "{name}");
+            assert!(text.contains("Never invent a flag from memory."), "{name}");
+            assert!(text.contains("record"), "{name}");
+            assert!(text.contains("`not_run`"), "{name}");
+            assert!(text.contains("(read 2026-11-13"), "{name}");
+        }
+        let orca = read("orca");
+        for line in [
+            "installed is not chosen",
+            "`orca skills get orca-cli`",
+            "`orca agent-context --json`",
+            "the schema wins",
+            "never overwrite another session's unsubmitted input",
+            "Name every terminal by its handle",
+            "Never answer another session's permission or trust prompt",
+            "never resend on silence",
+            "Use `git worktree` and the host's own terminal instead",
+            "https://orca.dev/docs/cli/overview",
+            "orca 1.4.257",
+        ] {
+            assert!(orca.contains(line), "orca adapter lacks: {line}");
+        }
+        let aside = read("aside");
+        for line in [
+            "`aside guide`",
+            "`aside guide repl` before the first `aside repl`",
+            "`aside skills list`",
+            "Keep the session permission at its default, Guard",
+            "`--permission full-access`",
+            "needs the user's confirmation every time",
+            "`aside session delete`, which cannot be undone",
+            "never edit Aside's memory files",
+            "Never print, upload, commit or share the CLI credential file.",
+            "Use a read-only web fetch instead",
+            // Leader decision #2634 6842315704: CLI by default, MCP only as an optional
+            // install with preview, confirmation and revert through the host's own command.
+            "## MCP is an optional install",
+            "MoAI never registers `aside mcp` by default",
+            "`claude mcp add --scope user aside -- aside mcp`",
+            "`codex mcp add aside -- aside mcp`",
+            "when an entry named `aside` already exists, stop and ask instead of replacing it",
+            "run the command only after the user confirms",
+            "`claude mcp remove --scope user aside` or `codex mcp remove aside`",
+            "https://docs.aside.com/help/security",
+            "Aside CLI 1.26.1111.1046",
+        ] {
+            assert!(aside.contains(line), "aside adapter lacks: {line}");
+        }
+    }
+
     #[test]
     fn mode_leader_refuses_codex_with_decision_d3() {
         // REQ-A1-02: leader mode is Claude Code only (D-3); the refusal comes first.

@@ -206,6 +206,24 @@
         "adoption": "new",
         "reason": "Written for rc.2 #2592 stage 2 S1: the tool-neutral source of the base agent moai-research, from the agent contract draft (#2592 comment 6840103566) and the decisions 6840661050 and 6840838042 (reference documents, decision A); rendered per host by src/agent_defs.rs. No design-22 template exists for agents."
       }
+    },
+    "references/adapters/orca.md": {
+      "sha256": "a028032ee1931aacf73e93a8e2c5cc05d60b29008acafbdc95b94b4c4ebbbc2a",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-orca",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Orca, the commands that print Orca's version-matched guides (orca skills get orca-cli, orca agent-context --json), the lines MoAI keeps and the fallback when Orca is missing. Checked against https://orca.dev/docs/cli/overview and /docs/cli/skills and the orca 1.4.257 CLI help (read 2026-11-13). No design-22 template exists for adapters."
+      }
+    },
+    "references/adapters/aside.md": {
+      "sha256": "f2d1682e39be7a52ab241d4ca1f1934f364b1090e766bad87ebd9402ddbd5b92",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-aside",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation) and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
+      }
     }
   }
 }
