@@ -9,9 +9,10 @@
 //! `binary_path` (its `~` token expanded against the current home) and its
 //! `binary_sha256` against `std::env::current_exe`; a path match with a digest mismatch
 //! is reported as `stale_receipt` and never rewritten here (REQ-04A-06; the explicit
-//! update path belongs to 04-B). Nothing in this module touches the Go generation's
-//! `.moai/`, `~/.moai/` or `~/go/bin/moai` beyond the existence booleans `inspect`
-//! reports (REQ-04A-04).
+//! update path belongs to 04-B). Nothing in this module writes to the Go generation's
+//! `.moai/`, `~/.moai/` or `~/go/bin/moai`: `inspect` reports existence booleans for the
+//! folders (REQ-04A-04) and, since #2791, runs each `moai` candidate (PATH, the Go install
+//! places) once with `--version` to tell Rust from Go.
 //!
 //! The Go generation's updater selection rules are characterized in
 //! `tests/install_cli.rs` against the recorded feed `tests/fixtures/go-releases-sample.json`;
@@ -38,6 +39,16 @@ const BINARY_HASH_LIMIT: u64 = 512 * 1024 * 1024;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 /// `--version` output beyond this is discarded (drained, not stored).
 const PROBE_STDOUT_CAP: usize = 4096;
+/// The only `PATH` a `--version` probe sees (#2800 audit B1).
+const PROBE_PATH: &str = if cfg!(windows) {
+    r"C:\Windows\System32"
+} else {
+    "/usr/bin:/bin"
+};
+/// The longest `--version` first line reported (characters); the rest is cut.
+const PROBE_LINE_CAP: usize = 200;
+/// Every `moai` beyond this many candidates is counted, not probed (#2791 AC-2).
+const CANDIDATE_LIMIT: usize = 64;
 /// How `install_id` is derived; recorded in `inspect` output and docs/rust-product-path.md.
 const INSTALL_ID_DERIVATION: &str = "sha256-canonical-path-hex-v0";
 
@@ -471,27 +482,38 @@ fn match_receipt(
     }
 }
 
-/// `--version` output presence of one PATH entry (REQ-04A-02). Spawns the resolved
-/// binary with the single argument `--version`, stdin closed, stdout capped, killed
-/// after `PROBE_TIMEOUT`; reports only whether any output was produced.
-// @MX:WARN: [AUTO] executes whatever binary the PATH resolves to under the expected name
-// @MX:REASON: REQ-04A-02 requires the `--version` output presence of PATH entries; a hostile PATH entry runs at inspect time
-fn probe_version(path: &Path) -> bool {
-    let Ok(mut child) = std::process::Command::new(path)
+/// `--version` output of one candidate (REQ-04A-02, #2791). Spawns the binary with the
+/// single argument `--version`, stdin closed, stdout capped, killed after
+/// `PROBE_TIMEOUT`; returns `None` when nothing was printed, else the first line (at most
+/// `PROBE_LINE_CAP` characters, trimmed). The child gets a cleared environment — only
+/// `PROBE_PATH`, plus `SYSTEMROOT` on Windows, which process start needs — and the
+/// system temporary folder as its working folder, so no token or key in this process's
+/// environment reaches it and it does not start inside a project (#2800 audit B1).
+// @MX:WARN: [AUTO] executes whatever binary a PATH entry or a Go install place holds under the expected name
+// @MX:REASON: REQ-04A-02 and #2791 AC-2 tell Rust from Go by the `--version` line; a hostile PATH entry runs at inspect time, without this process's environment; project-tree binaries are never run
+pub(crate) fn probe_version(path: &Path) -> Option<String> {
+    let mut cmd = std::process::Command::new(path);
+    cmd.env_clear()
+        .env("PATH", PROBE_PATH)
+        .current_dir(std::env::temp_dir());
+    if let Some(root) = std::env::var_os("SYSTEMROOT") {
+        cmd.env("SYSTEMROOT", root);
+    }
+    let Ok(mut child) = cmd
         .arg("--version")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .spawn()
     else {
-        return false;
+        return None;
     };
     let Some(stdout) = child.stdout.take() else {
         let _ = child.kill();
-        return false;
+        return None;
     };
     let reader = std::thread::spawn(move || {
-        let mut any = false;
+        let mut kept = Vec::new();
         let mut total = 0usize;
         let mut chunk = [0u8; 512];
         let mut handle = stdout;
@@ -499,13 +521,16 @@ fn probe_version(path: &Path) -> bool {
             match handle.read(&mut chunk) {
                 Ok(0) => break,
                 Ok(n) => {
-                    any = true;
+                    if kept.len() < PROBE_STDOUT_CAP {
+                        let room = PROBE_STDOUT_CAP - kept.len();
+                        kept.extend_from_slice(&chunk[..n.min(room)]);
+                    }
                     total += n;
                 }
                 Err(_) => break,
             }
         }
-        any
+        (total > 0).then(|| first_line(&kept))
     });
     let deadline = Instant::now() + PROBE_TIMEOUT;
     let exited = loop {
@@ -520,7 +545,26 @@ fn probe_version(path: &Path) -> bool {
         let _ = child.kill();
         let _ = child.wait();
     }
-    reader.join().unwrap_or(false)
+    reader.join().unwrap_or(None)
+}
+
+/// The first line of `--version` output, trimmed, at most `PROBE_LINE_CAP` characters.
+fn first_line(bytes: &[u8]) -> String {
+    let text = String::from_utf8_lossy(bytes);
+    let line = text.lines().next().unwrap_or("").trim();
+    line.chars().take(PROBE_LINE_CAP).collect()
+}
+
+/// Which generation a `--version` first line names (#2791 AC-2): the Rust CLI prints
+/// `moai-cli <version>` (R1 adds ` (rust)`), the Go `moai` prints `moai-adk <version>`
+/// (moai-adk-go `internal/cli/root.go` version template; older Go builds `moai <version>`).
+/// Anything else, or no output at all, is `unknown` — never guessed.
+pub(crate) fn generation_of(first: Option<&str>) -> &'static str {
+    match first {
+        Some(l) if l.starts_with("moai-cli ") => "rust",
+        Some(l) if l.starts_with("moai-adk ") || l.starts_with("moai ") => "go",
+        _ => "unknown",
+    }
 }
 
 fn is_executable(path: &Path) -> bool {
@@ -548,20 +592,115 @@ pub(crate) fn resolve_on_path(path_env: &str, name: &str) -> Option<PathBuf> {
         if dir.as_os_str().is_empty() {
             continue;
         }
-        let candidate = dir.join(name);
-        if is_executable(&candidate) {
-            return Some(candidate);
-        }
-        #[cfg(windows)]
-        {
-            let mut with_ext = candidate.clone();
-            with_ext.set_extension("exe");
-            if is_executable(&with_ext) {
-                return Some(with_ext);
-            }
+        if let Some(found) = executable_in(&dir, name) {
+            return Some(found);
         }
     }
     None
+}
+
+/// The executable `<dir>/<name>` (on Windows `<name>.exe` after the bare name), if any.
+fn executable_in(dir: &Path, name: &str) -> Option<PathBuf> {
+    let candidate = dir.join(name);
+    if is_executable(&candidate) {
+        return Some(candidate);
+    }
+    #[cfg(windows)]
+    {
+        let mut with_ext = candidate.clone();
+        with_ext.set_extension("exe");
+        if is_executable(&with_ext) {
+            return Some(with_ext);
+        }
+    }
+    None
+}
+
+/// Where a Go-generation `moai` may sit besides PATH (#2791 AC-2, design #2725 C2·C4).
+pub struct CandidatePlaces<'a> {
+    /// `$CLAUDE_PROJECT_DIR`; its `.moai/bin` holds a project-local Go `moai`.
+    pub project_dir: Option<&'a Path>,
+    /// `$GOBIN`.
+    pub gobin: Option<&'a Path>,
+}
+
+/// Every `moai` on PATH and in the Go install places, told apart by `--version` (#2791
+/// AC-2). Report only: nothing is written, linked or reordered. Candidates are listed in
+/// PATH order first, then the fixed places; one file reached twice (same canonical path)
+/// is one item with every source named. Beyond `CANDIDATE_LIMIT` items the rest are
+/// counted in `more`, not probed.
+fn moai_candidates(home: &Path, path_env: &str, places: &CandidatePlaces) -> Value {
+    let mut found: Vec<(PathBuf, String, Option<usize>)> = Vec::new();
+    for (i, dir) in std::env::split_paths(path_env).enumerate() {
+        if dir.as_os_str().is_empty() {
+            continue;
+        }
+        if let Some(p) = executable_in(&dir, "moai") {
+            found.push((p, "path".into(), Some(i)));
+        }
+    }
+    let fixed = [
+        (
+            "claude_project_dir",
+            places.project_dir.map(|d| d.join(".moai").join("bin")),
+        ),
+        ("gobin", places.gobin.map(Path::to_path_buf)),
+        ("go_bin", Some(home.join("go").join("bin"))),
+        ("local_bin", Some(home.join(".local").join("bin"))),
+    ];
+    for (source, dir) in fixed {
+        if let Some(p) = dir.as_deref().and_then(|d| executable_in(d, "moai")) {
+            found.push((p, source.into(), None));
+        }
+    }
+    let first_on_path = resolve_on_path(path_env, "moai").and_then(|p| fs::canonicalize(p).ok());
+    let mut items: Vec<(PathBuf, Value)> = Vec::new();
+    let mut more = 0usize;
+    for (path, source, order) in found {
+        let canonical = fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+        if let Some((_, item)) = items.iter_mut().find(|(c, _)| *c == canonical) {
+            let sources = item["sources"].as_array_mut().expect("sources array");
+            if !sources.contains(&json!(source)) {
+                sources.push(json!(source));
+            }
+            continue;
+        }
+        if items.len() >= CANDIDATE_LIMIT {
+            more += 1;
+            continue;
+        }
+        // A `moai` inside the project tree is repository content, not a place the user
+        // chose: it is reported, never run (#2800 audit B1). Reached through PATH first, the
+        // user's PATH chose it and it is probed like any PATH entry.
+        let probed = source != "claude_project_dir";
+        let line = if probed { probe_version(&path) } else { None };
+        let generation = if probed {
+            generation_of(line.as_deref())
+        } else {
+            "not_probed"
+        };
+        let item = json!({
+            "path": path.to_string_lossy(),
+            "sources": [source],
+            "path_order": order,
+            "first_on_path": first_on_path.as_ref() == Some(&canonical),
+            "sha256": sha256_file(&path).ok(),
+            "probed": probed,
+            "version_line": line,
+            "generation": generation,
+        });
+        items.push((canonical, item));
+    }
+    let first = items
+        .iter()
+        .find(|(_, i)| i["first_on_path"] == json!(true))
+        .map(|(_, i)| i["generation"].clone())
+        .unwrap_or(Value::Null);
+    json!({
+        "items": items.into_iter().map(|(_, i)| i).collect::<Vec<_>>(),
+        "more": more,
+        "first_on_path_generation": first,
+    })
 }
 
 fn path_resolution(found: Option<PathBuf>) -> Value {
@@ -569,7 +708,7 @@ fn path_resolution(found: Option<PathBuf>) -> Value {
         None => json!({"found":false,"path":null,"sha256":null,"version_output":null}),
         Some(path) => {
             let sha256 = sha256_file(&path).ok();
-            let version_output = probe_version(&path);
+            let version_output = probe_version(&path).is_some();
             json!({
                 "found":true,
                 "path":path.to_string_lossy(),
@@ -598,7 +737,7 @@ fn text_or_null(path: &Path) -> Value {
 /// generation's paths. Creates and modifies nothing; the Go paths are only probed with
 /// `symlink_metadata` existence checks (REQ-04A-04). Self-identification follows the
 /// receipts, never the first PATH `moai` (REQ-04A-03).
-pub fn inspect(home: &Path, path_env: &str) -> Result<Value> {
+pub fn inspect(home: &Path, path_env: &str, places: &CandidatePlaces) -> Result<Value> {
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let canonical_exe =
@@ -635,6 +774,7 @@ pub fn inspect(home: &Path, path_env: &str) -> Result<Value> {
             "moai": path_resolution(moai),
             "moai_cli": path_resolution(moai_cli),
         },
+        "moai_candidates": moai_candidates(&canonical_home, path_env, places),
         "installations": installations,
         "self": {
             "current_exe": normalize_home(&canonical_home, &canonical_exe)?,
