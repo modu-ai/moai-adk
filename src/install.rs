@@ -37,6 +37,20 @@ const RECEIPT_LIMIT: u64 = 65536;
 /// A release binary may legitimately be tens of MiB; this only refuses absurd inputs.
 const BINARY_HASH_LIMIT: u64 = 512 * 1024 * 1024;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+/// The probe limit in force. Debug builds take `MOAI_CLI_TEST_PROBE_TIMEOUT_MS=<1..=5000>`
+/// instead, so a test fixes the budget rather than waiting on the wall clock (#2808 audit
+/// B1, `verify.md`); release builds never read it.
+fn probe_timeout() -> Duration {
+    #[cfg(debug_assertions)]
+    if let Some(ms) = std::env::var("MOAI_CLI_TEST_PROBE_TIMEOUT_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|ms| (1..=5000).contains(ms))
+    {
+        return Duration::from_millis(ms);
+    }
+    PROBE_TIMEOUT
+}
 /// After a timed-out probe is killed, how long its already printed output is still awaited.
 const PROBE_GRACE: Duration = Duration::from_millis(200);
 /// `--version` output beyond this is discarded (drained, not stored).
@@ -546,7 +560,7 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
         }
         let _ = tx.send((total > 0).then(|| first_line(&kept)));
     });
-    let deadline = Instant::now() + PROBE_TIMEOUT;
+    let deadline = Instant::now() + probe_timeout();
     let exited = loop {
         match child.try_wait() {
             Ok(Some(_)) => break true,
@@ -876,5 +890,18 @@ mod identity_tests {
         let target = write(dir, "elsewhere", b"build-1");
         std::os::unix::fs::symlink(&target, dir.join("moai-cli")).unwrap();
         assert_eq!(identity_exe(moai.clone()), moai);
+    }
+}
+
+#[cfg(test)]
+mod probe_limit_tests {
+    use std::time::Duration;
+
+    /// The probe budget numbers as literals (#2808 audit B1): the integration test injects a
+    /// short limit, so the real values are pinned here — 5 s per probe, 200 ms of grace.
+    #[test]
+    fn the_probe_limits_are_pinned() {
+        assert_eq!(super::PROBE_TIMEOUT, Duration::from_secs(5));
+        assert_eq!(super::PROBE_GRACE, Duration::from_millis(200));
     }
 }
