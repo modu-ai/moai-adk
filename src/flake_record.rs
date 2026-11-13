@@ -35,6 +35,12 @@ pub struct Flaky {
     pub head: Option<String>,
 }
 
+/// Whether `s` fits on one hidden-marker line: a line break would split the marker (so it
+/// never matches again and every run creates a new Issue) and `-->` would end the comment.
+fn one_marker_line(s: &str) -> bool {
+    !s.contains(['\n', '\r']) && !s.contains("-->")
+}
+
 /// The `flaky` rows of a `flake-classify` result (bare, or inside its `{"result": …}` envelope).
 pub fn flaky_rows(classified: &Value) -> Result<Vec<Flaky>> {
     let c = classified.get("result").unwrap_or(classified);
@@ -46,11 +52,12 @@ pub fn flaky_rows(classified: &Value) -> Result<Vec<Flaky>> {
             Ok(Flaky {
                 job: r["job"]
                     .as_str()
-                    .ok_or("a flaky row has no job")?
+                    .filter(|j| one_marker_line(j))
+                    .ok_or("a flaky row has no usable job name")?
                     .to_string(),
                 test: r["test"]
                     .as_str()
-                    .filter(|t| !t.trim().is_empty() && !t.contains('\n') && !t.contains("-->"))
+                    .filter(|t| !t.trim().is_empty() && one_marker_line(t))
                     .ok_or("a flaky row has no usable test name")?
                     .to_string(),
                 message: r["message"].as_str().map(String::from),

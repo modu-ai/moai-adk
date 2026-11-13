@@ -300,3 +300,92 @@ fn a_lost_comment_answer_not_found_on_read_back_is_an_error() {
     .unwrap_err();
     assert!(err.contains("comment on #40 failed"), "{err}");
 }
+
+/// Audit 6861988023 B2: the file an operator passes is `flake-classify`'s envelope.
+#[test]
+fn the_flake_classify_envelope_is_read() {
+    let t = RecordedTransport::new(vec![issues(json!([])), create(70, T1, MAC)]);
+    let envelope = json!({"protocol_version": 1, "operation": "flake.classify", "ok": true,
+        "result": classified(&[(MAC, T1)])});
+    let out = run(&t, &envelope);
+    assert_eq!(out["created"][0]["issue"], json!(70), "{out}");
+    let posts = sent_posts(&t);
+    let text = posts[0].body.as_ref().unwrap()["body"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        text.contains("- head: `1111111111111111111111111111111111111111`"),
+        "{text}"
+    );
+}
+
+/// Audit 6861988023 B2 (and N2): a test or job name that would break the one-line hidden
+/// marker is refused before anything is read or written.
+#[test]
+fn a_name_that_breaks_the_marker_is_refused_before_any_request() {
+    for (job, test) in [
+        (MAC, "a\nb"),
+        (MAC, "x --> y"),
+        (MAC, " "),
+        (MAC, "a\rb"),
+        ("ci\n/ mac", T1),
+        ("ci --> mac", T1),
+    ] {
+        let t = RecordedTransport::new(vec![]);
+        let c = json!({"flaky": [{"job": job, "test": test, "message": null}]});
+        let err = record("o", "r", RUN, &c, "fixture-approved", &t).unwrap_err();
+        assert!(err.contains("no usable"), "{job:?} {test:?}: {err}");
+        assert!(t.sent.borrow().is_empty(), "{job:?} {test:?}: nothing sent");
+    }
+    // An empty job (a log without tabs) is one line and is accepted.
+    let t = RecordedTransport::new(vec![issues(json!([])), create(70, T1, "")]);
+    let c = json!({"flaky": [{"job": "", "test": T1, "message": null}]});
+    assert_eq!(run(&t, &c)["created"][0]["issue"], json!(70));
+}
+
+/// Audit 6861988023 B1: a listing stops at 20 pages — the 20th page is read, a 21st is never
+/// requested.
+#[test]
+fn a_listing_reads_at_most_twenty_pages() {
+    let page = |n: usize, next: bool| {
+        let url = if n == 1 {
+            format!("{API}/issues?state=open&per_page=100")
+        } else {
+            format!("{API}/issues?state=open&per_page=100&page={n}")
+        };
+        let mut resp = HttpResponse::new(200).with_body(json!([]));
+        if next {
+            resp = resp.with_header(
+                "link",
+                format!(
+                    "<{API}/issues?state=open&per_page=100&page={}>; rel=\"next\"",
+                    n + 1
+                ),
+            );
+        }
+        Exchange {
+            request: HttpRequest::new("GET", url),
+            response: resp,
+        }
+    };
+    // Exactly 20 pages: read to the end.
+    let mut ex: Vec<Exchange> = (1..=20).map(|n| page(n, n < 20)).collect();
+    ex.push(create(70, T1, MAC));
+    let t = RecordedTransport::new(ex);
+    assert_eq!(run(&t, &classified(&[(MAC, T1)]))["writes"], json!(1));
+    // A 20th page that points further: refused before a 21st request.
+    let t = RecordedTransport::new((1..=21).map(|n| page(n, true)).collect());
+    let err = record(
+        "o",
+        "r",
+        RUN,
+        &classified(&[(MAC, T1)]),
+        "fixture-approved",
+        &t,
+    )
+    .unwrap_err();
+    assert!(err.contains("more than 20 pages"), "{err}");
+    assert_eq!(t.sent.borrow().len(), 20);
+    assert!(sent_posts(&t).is_empty());
+}
