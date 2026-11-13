@@ -912,3 +912,29 @@ fn queue_free_refuses_a_bad_request_before_any_read() {
     }
     assert!(t.sent.borrow().is_empty());
 }
+
+/// #2675 audit N4: only whole label names hold a card. `threshold` or `holder` labels leave the
+/// card free; `HOLD`, `status:hold` and `needs:decision` hold it.
+#[test]
+fn queue_free_holds_only_on_whole_label_names() {
+    let labelled = |n: i64, names: &[&str]| {
+        let mut c = card(n, "L", "");
+        c["labels"] = json!(names.iter().map(|l| json!({"name": l})).collect::<Vec<_>>());
+        c
+    };
+    let (out, t) = free_run(vec![
+        open_issues(vec![
+            labelled(1, &["threshold"]),
+            labelled(2, &["area:holder"]),
+            labelled(3, &["HOLD"]),
+            labelled(4, &["status:hold"]),
+            labelled(5, &["Needs:Decision"]),
+        ]),
+        exchange("GET", &comments(1), resp(200, json!([]))),
+        exchange("GET", &comments(2), resp(200, json!([]))),
+    ]);
+    let out = out.unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(numbers(&out, "free"), vec![1, 2]);
+    assert_eq!(numbers(&out, "held"), vec![3, 4, 5]);
+}
