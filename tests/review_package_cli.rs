@@ -479,3 +479,72 @@ fn pathspec_like_includes_are_skipped_not_followed() {
         ]
     );
 }
+
+/// Follow-up 6840613078 (agent-25): a fixture where each fixed option changes the bytes when
+/// the repository's own setting wins — two hunks nine lines apart (`diff.interHunkContext`),
+/// a function inserted between similar blocks (`diff.indentHeuristic`), a file with a Korean
+/// name (`core.quotePath`), and PROJECT given as a subfolder (git must run at the top level;
+/// with that, `diff.relative` has nothing to act on — audit 6841505327 note).
+fn options_fixture() -> (TempDir, String, String) {
+    let tmp = TempDir::new().unwrap();
+    let repo = tmp.path().join("repo");
+    init(&repo);
+    let long: String = (1..=20).map(|i| format!("line {i}\n")).collect();
+    write(&repo, "src/long.rs", &long);
+    write(
+        &repo,
+        "src/blocks.rs",
+        // From git's own indent-heuristic cases: a commented block inserted before a twin.
+        "1\n2\n/* function */\nfoo() {\n    foo\n}\n\n3\n4\n",
+    );
+    write(&repo, "src/한글.rs", "a\n");
+    write(&repo, "REVIEW.md", "root review\n");
+    write(&repo, "src/REVIEW.md", "src review\n");
+    let base = commit(&repo, "base");
+    let long = long
+        .replace("line 3\n", "line three\n")
+        .replace("line 12\n", "line twelve\n");
+    write(&repo, "src/long.rs", &long);
+    write(
+        &repo,
+        "src/blocks.rs",
+        "1\n2\n/* function */\nbar() {\n    foo\n}\n\n/* function */\nfoo() {\n    foo\n}\n\n3\n4\n",
+    );
+    write(&repo, "src/한글.rs", "b\n");
+    let head = commit(&repo, "head");
+    (tmp, base, head)
+}
+
+#[test]
+fn every_fixed_option_holds_against_the_repository_setting() {
+    let (tmp, base, head) = options_fixture();
+    let repo = tmp.path().join("repo");
+    let plain = run_in(&repo, &["--base", &base, "--head", &head], &[]);
+    assert!(plain.status.success());
+    let text = String::from_utf8_lossy(&plain.stdout).to_string();
+    assert!(
+        text.contains("\\\\355\\\\225\\\\234"),
+        "quoted Korean path expected: {text}"
+    );
+    for (key, value) in [
+        ("diff.interHunkContext", "9"),
+        ("diff.indentHeuristic", "false"),
+        ("core.quotePath", "false"),
+        ("diff.relative", "true"),
+    ] {
+        git_ok(&repo, &["config", key, value]);
+    }
+    let configured = run_in(&repo, &["--base", &base, "--head", &head], &[]);
+    assert!(configured.status.success());
+    assert_eq!(text, String::from_utf8_lossy(&configured.stdout));
+
+    // PROJECT given as a subfolder is the same repository: the same bytes, the root REVIEW.md
+    // still the root file.
+    let sub = run_in(&repo.join("src"), &["--base", &base, "--head", &head], &[]);
+    assert!(
+        sub.status.success(),
+        "{}",
+        String::from_utf8_lossy(&sub.stdout)
+    );
+    assert_eq!(text, String::from_utf8_lossy(&sub.stdout));
+}
