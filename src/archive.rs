@@ -129,7 +129,7 @@ pub fn resolve_grace_days(project: &Path, request: Option<u64>) -> Result<(u64, 
     if let Some(d) = request {
         return Ok((d, "request"));
     }
-    let profile_path = project.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+    let profile_path = crate::state_root::path(project, "project.yaml");
     if crate::apply::read_opt(&profile_path)?.is_none() {
         return Ok((DEFAULT_ARCHIVE_GRACE_DAYS, "default"));
     }
@@ -367,7 +367,7 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
         .as_secs();
     let (grace_days, grace_source) = resolve_grace_days(project, grace_request)?;
     let cutoff_secs = now_secs.saturating_sub(grace_days.saturating_mul(DAY_SECS));
-    let specs = project.join(crate::PROJECT_STATE_DIR).join("specs");
+    let specs = crate::state_root::path(project, "specs");
 
     let mut plan = ArchivePlan {
         protocol_version: SCHEMA_VERSION,
@@ -550,8 +550,10 @@ pub fn to_value(plan: &ArchivePlan) -> serde_json::Value {
 //  6. only then remove the source
 // If step 3 or 4 disagrees, the staging copy is removed and the original is kept.
 
-/// Archive root, project-relative.
-pub const ARCHIVE_DIR: &str = crate::project_state!("archive");
+/// Archive root, project-relative, under the project's state folder (#2725 S2b).
+pub fn archive_dir(project: &Path) -> String {
+    crate::state_root::rel(project, "archive")
+}
 const INDEX_SCHEMA_VERSION: u32 = 1;
 /// Maximum search query length, in characters.
 pub const SEARCH_QUERY_CHARS_MAX: usize = 256;
@@ -719,7 +721,7 @@ struct Index {
 }
 
 fn index_path(project: &Path) -> PathBuf {
-    project.join(ARCHIVE_DIR).join("index.json")
+    project.join(archive_dir(project)).join("index.json")
 }
 
 /// The index and its raw bytes (the publish re-checks them). Missing means empty; an
@@ -750,7 +752,7 @@ fn write_index(project: &Path, index: &Index, before: Option<&[u8]>) -> Result<(
 
 fn manifest_path(project: &Path, spec_id: &str) -> PathBuf {
     project
-        .join(ARCHIVE_DIR)
+        .join(archive_dir(project))
         .join("specs")
         .join(format!("{spec_id}.manifest.json"))
 }
@@ -797,7 +799,7 @@ pub fn apply_with_before_remove(
     if current.plan_digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
-    let specs = project.join(crate::PROJECT_STATE_DIR).join("specs");
+    let specs = crate::state_root::path(project, "specs");
     let mut archived: Vec<Value> = Vec::new();
     let mut done: Vec<String> = Vec::new();
     for spec in &current.eligible {
@@ -814,7 +816,7 @@ pub fn apply_with_before_remove(
         };
         let step = (|| -> Result<(IndexEntry, Manifest)> {
             let src = specs.join(id);
-            let rel = format!("{ARCHIVE_DIR}/specs/{id}");
+            let rel = format!("{}/specs/{id}", archive_dir(project));
             let dst = project.join(&rel);
             let (index, before) = read_index(project)?;
             if index.entries.iter().any(|e| &e.spec_id == id) {
@@ -871,7 +873,7 @@ pub fn apply_with_before_remove(
     Ok(json!({
         "state": if archived.is_empty() { "unchanged" } else { "applied" },
         "archived": archived,
-        "index": format!("{ARCHIVE_DIR}/index.json"),
+        "index": format!("{}/index.json", archive_dir(project)),
         "network": "disabled",
     }))
 }
@@ -900,11 +902,11 @@ pub fn restore(project: &Path, spec_id: &str, permission: &str) -> Result<Value>
         .find(|e| e.spec_id == spec_id)
         .cloned()
         .ok_or_else(|| format!("spec not found in archive index: {spec_id}"))?;
-    let src = project.join(ARCHIVE_DIR).join("specs").join(spec_id);
-    let dst = project
-        .join(crate::PROJECT_STATE_DIR)
+    let src = project
+        .join(archive_dir(project))
         .join("specs")
         .join(spec_id);
+    let dst = crate::state_root::path(project, "specs").join(spec_id);
     if fs::symlink_metadata(&dst).is_ok() {
         return Err("restore destination already exists; exclusive create refused".into());
     }
@@ -938,7 +940,7 @@ pub fn restore(project: &Path, spec_id: &str, permission: &str) -> Result<Value>
     Ok(json!({
         "state": "restored",
         "spec_id": spec_id,
-        "path": format!("{}/specs/{spec_id}", crate::PROJECT_STATE_DIR),
+        "path": crate::state_root::rel(project, &format!("specs/{spec_id}")),
         "manifest_digest": entry.manifest_digest,
         "file_count": entry.file_count,
     }))
@@ -969,7 +971,7 @@ pub fn search(project: &Path, query: &str) -> Result<Value> {
         if !spec_id_ok(&e.spec_id) {
             return Err("archive index invalid: invalid spec id".into());
         }
-        let rel = format!("{ARCHIVE_DIR}/specs/{}", e.spec_id);
+        let rel = format!("{}/specs/{}", archive_dir(project), e.spec_id);
         if e.path != rel {
             return Err("archive index invalid: spec path mismatch".into());
         }
@@ -979,7 +981,10 @@ pub fn search(project: &Path, query: &str) -> Result<Value> {
                 break 'outer;
             }
         }
-        let dir = project.join(ARCHIVE_DIR).join("specs").join(&e.spec_id);
+        let dir = project
+            .join(archive_dir(project))
+            .join("specs")
+            .join(&e.spec_id);
         let Ok(m) = manifest(&dir) else {
             continue;
         };

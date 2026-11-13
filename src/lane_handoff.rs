@@ -104,7 +104,7 @@ fn check(name: &'static str, enforcement: &'static str, ok: bool, detail: String
 }
 
 fn uncertain_effects(project: &Path) -> Result<u64> {
-    let dir = project.join(crate::project_state!("forge/outbox"));
+    let dir = crate::state_root::path(project, "forge/outbox");
     let entries = match std::fs::read_dir(&dir) {
         Ok(e) => e,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),

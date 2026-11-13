@@ -244,7 +244,7 @@ pub fn hint(pr: i64, o: &Observation, lanes: &[String]) -> Option<Value> {
 }
 
 fn state_path(project: &Path) -> PathBuf {
-    project.join(crate::PROJECT_STATE_DIR).join(STATE)
+    crate::state_root::path(project, STATE)
 }
 
 /// Loads the previous tick; an absent or foreign file is a first tick.

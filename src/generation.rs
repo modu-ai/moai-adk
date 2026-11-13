@@ -42,15 +42,17 @@ use crate::apply::{
     decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
     save_before_bytes, Decision, Receipt,
 };
-use crate::{digest, read_profile, PROJECT_STATE_DIR};
+use crate::{digest, read_profile};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-const MANIFEST: &str = crate::project_state!("manifests/generation.json");
-const SOURCES_MANIFEST: &str = crate::project_state!("manifests/sources.json");
+/// The generation manifest of `root`, under its state folder (#2725 S2b).
+fn manifest_rel(root: &Path) -> String {
+    crate::state_root::rel(root, "manifests/generation.json")
+}
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
 /// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
@@ -229,7 +231,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
 /// Reads `generation.json` as a Value. agents.rs owns the typed schema; the
 /// generation side only rewrites keys the schema already knows.
 fn manifest_value(root: &Path) -> Result<Value> {
-    let path = root.join(MANIFEST);
+    let path = root.join(manifest_rel(root));
     match fs::metadata(&path) {
         Ok(m) if !m.is_file() || m.len() > 262_144 => {
             Err("target is not a bounded regular file".into())
@@ -263,7 +265,7 @@ fn generation_baseline(manifest: &Value, path: &str) -> Option<String> {
 /// `license.status: reviewed` for anything to reference it. Returns the attribution
 /// pair (resolved revision, license note) when reviewed.
 fn source_reviewed(root: &Path, source_url: &str) -> Result<Option<(String, String)>> {
-    let path = root.join(SOURCES_MANIFEST);
+    let path = crate::state_root::path(root, "manifests/sources.json");
     let bytes = match fs::read(&path) {
         Ok(b) => b,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -458,8 +460,8 @@ fn normalize_workflow_reference(raw: &str) -> String {
 /// The canonical `workflow_reference` names a directory this request's own apply writes:
 /// `.moai-cli/workflows/` or `.moai-cli/workflows/<workflow_id>/` (#2274, REQ-1). Only then
 /// may the agents plan skip its "directory exists" check; any other reference keeps it.
-fn reference_is_own_output(request: &GenerationRequest) -> bool {
-    let base = format!("{PROJECT_STATE_DIR}/workflows/");
+fn reference_is_own_output(root: &Path, request: &GenerationRequest) -> bool {
+    let base = format!("{}/workflows/", crate::state_root::dir(root));
     request.workflow_reference == base
         || request.workflow_reference == format!("{base}{}/", request.workflow_id)
 }
@@ -477,20 +479,24 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         workflow_reference: request.workflow_reference.clone(),
         local_file: request.local_file.clone(),
     };
-    let agents = agents_plan_for(&root, agents_request, reference_is_own_output(&request))?;
+    let agents = agents_plan_for(
+        &root,
+        agents_request,
+        reference_is_own_output(&root, &request),
+    )?;
     let manifest = manifest_value(&root)?;
     let mut files: Vec<GenerationFilePlan> = agents.files.iter().map(file_from_agents).collect();
     let mut warnings: Vec<String> = agents.warnings.clone();
     let host_notes: Vec<String> = agents.host_notes.clone();
 
     // Portable workflow (REQ-03C-01: one workflow per request).
-    let workflow_rel = format!(
-        "{PROJECT_STATE_DIR}/workflows/{}/SKILL.md",
-        request.workflow_id
+    let workflow_rel = crate::state_root::rel(
+        &root,
+        &format!("workflows/{}/SKILL.md", request.workflow_id),
     );
-    let workflow_ref_rel = format!(
-        "{PROJECT_STATE_DIR}/workflows/{}/references/workflow.md",
-        request.workflow_id
+    let workflow_ref_rel = crate::state_root::rel(
+        &root,
+        &format!("workflows/{}/references/workflow.md", request.workflow_id),
     );
     let rendered_skill = render_workflow_skill(&request.workflow_id, &request.language);
     let rendered_ref = render_workflow_reference(&request.workflow_id, &request.language);
@@ -747,7 +753,7 @@ pub fn generation_apply(
         workflow_reference: p.request.workflow_reference.clone(),
         local_file: p.request.local_file.clone(),
     };
-    let own_output = reference_is_own_output(&p.request);
+    let own_output = reference_is_own_output(&root, &p.request);
     let agents_plan: AgentsPlan = agents_plan_for(&root, agents_request.clone(), own_output)?;
     // 2 and 3 run inside the agents hook, after the agents files and before the one
     //    manifest publish (#2114): a failure here leaves the previous manifest intact.
@@ -763,7 +769,7 @@ pub fn generation_apply(
             let Some(kind) = &f.kind else {
                 continue;
             };
-            if !kind.starts_with("generation:") || f.path == MANIFEST {
+            if !kind.starts_with("generation:") || f.path == manifest_rel(root) {
                 continue;
             }
             if f.action == "unchanged" {
@@ -930,7 +936,7 @@ pub fn generation_apply(
         .into_iter()
         .flatten()
         .filter_map(|v| v.as_str().map(str::to_string))
-        .filter(|path| path != MANIFEST)
+        .filter(|path| *path != manifest_rel(&root))
         .collect();
     let mut all_created = agents_applied.clone();
     all_created.extend(files_created.iter().cloned());

@@ -395,6 +395,35 @@ fn moves(plan: &Value) -> usize {
         .count()
 }
 
+/// #2725 (leader condition 6854854683): a `.moai/` that also holds the Rust marker is
+/// `mixed` — the preview moves nothing, restores nothing and says why; the apply then has
+/// nothing to move either.
+#[test]
+fn a_mixed_moai_folder_moves_nothing_and_says_why() {
+    let fx = movable_fixture();
+    assert!(moves(&plan(&fx)) > 0, "the fixture alone is movable");
+    fx.write(
+        ".moai/moai-cli.json",
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    );
+    let p = plan(&fx);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert_eq!(p["restores"], json!([]), "{p}");
+    let warnings = p["warnings"].to_string();
+    assert!(warnings.contains("state_root is `mixed`"), "{warnings}");
+    assert!(
+        p["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["reason"] == "state_root `mixed`: nothing moves (#2725)"),
+        "{p}"
+    );
+    let before = project_tree(&fx);
+    apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(project_tree(&fx), before, "nothing moved");
+}
+
 #[test]
 fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
     let fx = movable_fixture();

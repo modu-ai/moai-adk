@@ -19,6 +19,12 @@ pub const IGNORE_SECTION: &str = "moai-local";
 pub const REVIEW_SECTION: &str = "moai-review";
 /// Interview answers the REVIEW.md section carries, in the order it lists them.
 const REVIEW_ANSWERS: [&str; 2] = ["review_blocks", "protected"];
+/// The generation manifest of `root`, under its state folder (#2725 S2b).
+fn manifest_rel(root: &Path) -> String {
+    crate::state_root::rel(root, "manifests/generation.json")
+}
+/// The manifest path of an earlier-root (`.moai-cli`) fixture project.
+#[cfg(test)]
 const MANIFEST: &str = crate::project_state!("manifests/generation.json");
 const TEMPLATE_VERSION: &str = "rc1";
 
@@ -290,14 +296,14 @@ fn render_local(r: &AgentsRequest) -> String {
     }
 }
 
-fn render_ignore() -> String {
+fn render_ignore(root: &Path) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
     // HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01): apply
     // receipts stay out of git alongside the
-    // personal file; src/apply.rs::RECEIPTS_DIR is the single source of the path.
+    // personal file; src/apply.rs::receipts_rel is the single source of the path.
     format!(
         "{begin}\nAGENTS.local.md\n{}/\n{end}\n",
-        apply::RECEIPTS_DIR
+        apply::receipts_rel(root)
     )
 }
 
@@ -309,7 +315,7 @@ fn ignore_has_rule(text: &str) -> bool {
 }
 
 fn read_manifest(root: &Path, project_id: &str) -> Result<Option<Manifest>> {
-    let Some(bytes) = read_opt(&target(root, MANIFEST)?)? else {
+    let Some(bytes) = read_opt(&target(root, &manifest_rel(root))?)? else {
         return Ok(None);
     };
     let m: Manifest = serde_json::from_slice(&bytes)
@@ -438,6 +444,7 @@ pub(crate) fn agents_plan_for(
 ) -> Result<AgentsPlan> {
     validate(&request)?;
     let root = root_of(root)?;
+    let manifest_rel = manifest_rel(&root);
     let (profile, profile_bytes) = read_profile(&root)?;
     let manifest = read_manifest(&root, &profile.project_id)?;
     let m = manifest.as_ref();
@@ -565,14 +572,14 @@ pub(crate) fn agents_plan_for(
                 "hash",
                 ignore.as_deref(),
                 baseline_for(m, ".gitignore"),
-                &render_ignore(),
+                &render_ignore(&root),
             )?);
         }
     }
 
-    let manifest_bytes = read_opt(&target(&root, MANIFEST)?)?;
+    let manifest_bytes = read_opt(&target(&root, &manifest_rel)?)?;
     files.push(FilePlan {
-        path: MANIFEST.into(),
+        path: manifest_rel.clone(),
         action: if manifest_bytes.is_none() {
             "create"
         } else {
@@ -731,6 +738,7 @@ pub(crate) fn agents_apply_amended_for(
         return Err(message);
     }
     let root = root_of(root)?;
+    let manifest_rel = manifest_rel(&root);
     let request_id = apply::new_request_id("agents.apply", &p.plan_digest);
     let mut receipt = apply::Receipt::new(&request_id, "agents.apply", &root);
     let (profile, profile_bytes) = read_profile(&root)?;
@@ -783,7 +791,7 @@ pub(crate) fn agents_apply_amended_for(
         };
 
     for f in &p.files {
-        if f.path == MANIFEST {
+        if f.path == manifest_rel {
             continue;
         }
         if f.action == "unchanged" {
@@ -880,7 +888,7 @@ pub(crate) fn agents_apply_amended_for(
             }
             ".gitignore" => {
                 let (b, e) = markers(IGNORE_SECTION, "hash");
-                let rendered = render_ignore();
+                let rendered = render_ignore(&root);
                 let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(IGNORE_SECTION))
@@ -958,7 +966,7 @@ pub(crate) fn agents_apply_amended_for(
                 &mut owned,
                 &f.path,
                 IGNORE_SECTION,
-                render_ignore().as_bytes(),
+                render_ignore(&root).as_bytes(),
             ),
             _ => {
                 if !created.contains(&f.path) {
@@ -986,16 +994,16 @@ pub(crate) fn agents_apply_amended_for(
         created_once: created,
         activation_status: "pending-validation".into(),
     };
-    let manifest_path = target(&root, MANIFEST)?;
+    let manifest_path = target(&root, &manifest_rel)?;
     let before = read_opt(&manifest_path)?;
     let manifest_plan = p
         .files
         .iter()
-        .find(|f| f.path == MANIFEST)
+        .find(|f| f.path == manifest_rel)
         .ok_or("manifest missing from plan")?;
     if before.as_deref().map(digest) != manifest_plan.expected_sha256 {
         receipt.entry(
-            MANIFEST,
+            &manifest_rel,
             "stale_target",
             before.as_deref().map(digest).as_deref(),
             None,
@@ -1005,7 +1013,7 @@ pub(crate) fn agents_apply_amended_for(
         return Err(receipt_failure(
             &receipt,
             &root,
-            &step(&applied, MANIFEST, "target changed since plan".into()),
+            &step(&applied, &manifest_rel, "target changed since plan".into()),
         ));
     }
     let mut value = serde_json::to_value(&manifest).expect("typed manifest");
@@ -1019,7 +1027,7 @@ pub(crate) fn agents_apply_amended_for(
             // refused manifest is recorded like any other failed target.
             let e = "amended manifest outside the schema".to_string();
             receipt.entry(
-                MANIFEST,
+                &manifest_rel,
                 &manifest_plan.action,
                 before.as_deref().map(digest).as_deref(),
                 None,
@@ -1029,7 +1037,7 @@ pub(crate) fn agents_apply_amended_for(
             return Err(receipt_failure(
                 &receipt,
                 &root,
-                &step(&applied, MANIFEST, e),
+                &step(&applied, &manifest_rel, e),
             ));
         }
     };
@@ -1037,11 +1045,11 @@ pub(crate) fn agents_apply_amended_for(
     manifest_bytes.push(b'\n');
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
         if let Some(b) = before.as_deref() {
-            if let Err(e) = apply::save_before_bytes(&root, &request_id, MANIFEST, b) {
+            if let Err(e) = apply::save_before_bytes(&root, &request_id, &manifest_rel, b) {
                 // #2123: a failed backup is recorded like the #2119 decode failure,
                 // so the receipt still names the manifest that was not published.
                 receipt.entry(
-                    MANIFEST,
+                    &manifest_rel,
                     &manifest_plan.action,
                     Some(&digest(b)),
                     None,
@@ -1051,7 +1059,7 @@ pub(crate) fn agents_apply_amended_for(
                 return Err(receipt_failure(
                     &receipt,
                     &root,
-                    &step(&applied, MANIFEST, e),
+                    &step(&applied, &manifest_rel, e),
                 ));
             }
         }
@@ -1062,7 +1070,7 @@ pub(crate) fn agents_apply_amended_for(
         };
         if let Err(e) = publish {
             receipt.entry(
-                MANIFEST,
+                &manifest_rel,
                 &manifest_plan.action,
                 before.as_deref().map(digest).as_deref(),
                 None,
@@ -1072,11 +1080,11 @@ pub(crate) fn agents_apply_amended_for(
             return Err(receipt_failure(
                 &receipt,
                 &root,
-                &step(&applied, MANIFEST, e),
+                &step(&applied, &manifest_rel, e),
             ));
         }
         receipt.entry(
-            MANIFEST,
+            &manifest_rel,
             &manifest_plan.action,
             before.as_deref().map(digest).as_deref(),
             Some(&digest(&manifest_bytes)),
@@ -1085,11 +1093,11 @@ pub(crate) fn agents_apply_amended_for(
         );
         if let Err(e) = receipt.save(&root) {
             return Err(format!(
-                "partial apply: applied [{}]; published {MANIFEST} but its receipt was not recorded: {e}",
+                "partial apply: applied [{}]; published {manifest_rel} but its receipt was not recorded: {e}",
                 applied.join(", ")
             ));
         }
-        applied.push(MANIFEST.into());
+        applied.push(manifest_rel.clone());
     }
     receipt.status = "complete".into();
     receipt.save(&root).map_err(|e| {
@@ -1165,7 +1173,7 @@ mod tests {
         let first = agents_plan(root.path(), request("en")).unwrap();
         let digest = first.plan_digest.clone();
         agents_apply(root.path(), first, &digest, "fixture").unwrap();
-        let receipts = root.path().join(apply::RECEIPTS_DIR);
+        let receipts = root.path().join(apply::receipts_rel(root.path()));
         let backups = |dir: &Path| -> Vec<std::path::PathBuf> {
             fs::read_dir(dir)
                 .unwrap()
@@ -1278,7 +1286,7 @@ mod tests {
             &mut |_, _| Ok(()),
         )
         .unwrap();
-        let receipts = root.path().join(apply::RECEIPTS_DIR);
+        let receipts = root.path().join(apply::receipts_rel(root.path()));
         fs::set_permissions(&receipts, fs::Permissions::from_mode(0o555)).unwrap();
         let second = agents_plan(
             root.path(),
@@ -1372,7 +1380,7 @@ mod tests {
 
         // The written agents.apply receipt names the failed file row.
         let mut rows = Vec::new();
-        for entry in fs::read_dir(root.path().join(apply::RECEIPTS_DIR)).unwrap() {
+        for entry in fs::read_dir(root.path().join(apply::receipts_rel(root.path()))).unwrap() {
             let path = entry.unwrap().path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
@@ -1433,7 +1441,7 @@ mod tests {
         );
 
         let mut manifest_rows = Vec::new();
-        for entry in fs::read_dir(root.path().join(apply::RECEIPTS_DIR)).unwrap() {
+        for entry in fs::read_dir(root.path().join(apply::receipts_rel(root.path()))).unwrap() {
             let path = entry.unwrap().path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;

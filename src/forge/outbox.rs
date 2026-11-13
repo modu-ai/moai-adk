@@ -207,10 +207,10 @@ fn outbox_dir(project: &Path, create: bool) -> Result<PathBuf, ForgeError> {
         return Ok(home);
     }
     if !create {
-        return Ok(project.join(crate::PROJECT_STATE_DIR).join("forge/outbox"));
+        return Ok(crate::state_root::path(project, "forge/outbox"));
     }
     let mut dir = project.to_path_buf();
-    for part in [crate::PROJECT_STATE_DIR, "forge", "outbox"] {
+    for part in [crate::state_root::dir(project), "forge", "outbox"] {
         dir.push(part);
         match fs::symlink_metadata(&dir) {
             Ok(m) if m.file_type().is_symlink() || !m.is_dir() => {

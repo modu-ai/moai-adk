@@ -13,7 +13,7 @@
 //! behaviour: edits are refused with "existing YAML requires preservation review"
 //! until the lossless-editing HOLD is decided.
 
-use crate::{digest, PROJECT_STATE_DIR, SECRET_SHAPES};
+use crate::{digest, SECRET_SHAPES};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
@@ -264,7 +264,7 @@ fn state_path(root: &Path, rel: &str) -> Result<PathBuf> {
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
-    let dir = root.join(PROJECT_STATE_DIR);
+    let dir = crate::state_root::path(&root, "");
     let full = dir.join(rel);
     for path in [&dir, &full] {
         match fs::symlink_metadata(path) {
@@ -539,8 +539,8 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
     {
         return Err("stale or altered plan; re-preview required".into());
     }
-    let target_rel = format!("{PROJECT_STATE_DIR}/project.yaml");
-    let baseline_rel = format!("{PROJECT_STATE_DIR}/manifests/profile-baseline.json");
+    let target_rel = crate::state_root::rel(root, "project.yaml");
+    let baseline_rel = crate::state_root::rel(root, "manifests/profile-baseline.json");
     if p.action == "conflict" {
         // REQ-03A-03: the user-edited keys are named, never their values; nothing is
         // written. REQ-01B-01 mirrored: the refused outcome is recorded so 04-C recovery
@@ -859,7 +859,10 @@ mod tests {
         assert!(validate(&with(&[])).is_err());
 
         let tmp = tempfile::tempdir().unwrap();
-        let path = tmp.path().join(PROJECT_STATE_DIR).join("project.yaml");
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         for (bad, _) in [
             (
@@ -883,7 +886,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let mut file = serde_json::to_value(v2()).unwrap();
         file["my_own_key"] = json!("kept in the file");
-        let path = tmp.path().join(PROJECT_STATE_DIR).join("project.yaml");
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
         let (profile, bytes) = read_profile(tmp.path()).unwrap();

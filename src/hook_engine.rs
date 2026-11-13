@@ -459,7 +459,7 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
 
 /// session-check: a short, fixed-vocabulary state summary for the model. Never blocks.
 fn session_check(cwd: &Path) -> Verdict {
-    let state_dir = match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
+    let state_dir = match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => "present",
         Ok(_) => "not a directory",
         Err(_) => "absent",
@@ -481,7 +481,7 @@ fn session_check(cwd: &Path) -> Verdict {
         "MoAI session-check (moai-cli {}): project state directory {}: {state_dir}; lane branch: \
          {lane}; local claim record: {record}. Read locally; no network was used.",
         env!("CARGO_PKG_VERSION"),
-        crate::PROJECT_STATE_DIR,
+        crate::state_root::dir(cwd),
     ))
 }
 
@@ -697,7 +697,7 @@ fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
 fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
     // Cost (audit #2400 N3): a project without a real `.moai-cli/` directory records nothing,
     // so return before spawning `git` for the HEAD commit.
-    match std::fs::symlink_metadata(cwd.join(crate::PROJECT_STATE_DIR)) {
+    match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => {}
         _ => return Verdict::Allow,
     }
@@ -762,10 +762,7 @@ pub const MOAI_STOP_BLOCK_CAP: usize = 2;
 /// line (a tool call resets the count, as Claude Code's own cap does). Reads the bounded log
 /// only; a missing or unreadable log counts as zero.
 fn consecutive_blocks(cwd: &Path, session: &str) -> usize {
-    let log = cwd
-        .join(crate::PROJECT_STATE_DIR)
-        .join("receipts")
-        .join(ENGINE_LOG);
+    let log = crate::state_root::path(cwd, "receipts").join(ENGINE_LOG);
     let Ok(meta) = std::fs::symlink_metadata(&log) else {
         return 0;
     };

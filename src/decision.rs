@@ -163,7 +163,7 @@ pub fn append(
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
-    let state = root.join(crate::PROJECT_STATE_DIR);
+    let state = crate::state_root::path(&root, "");
     let dir = state.join(DECISIONS_DIR);
     let file: PathBuf = dir.join(format!("{run}.jsonl"));
     for p in [&state, &dir, &file] {
@@ -181,7 +181,7 @@ pub fn append(
     f.write_all(&line)
         .and_then(|_| f.sync_all())
         .map_err(|_| "decision write failed")?;
-    let rel = format!("{}/{DECISIONS_DIR}/{run}.jsonl", crate::PROJECT_STATE_DIR);
+    let rel = crate::state_root::rel(&root, &format!("{DECISIONS_DIR}/{run}.jsonl"));
     Ok(json!({
         "path": rel,
         "line_sha256": crate::digest(&line),

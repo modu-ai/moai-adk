@@ -11,7 +11,7 @@
 //! are not installed. HOME itself and the file-system root are never initialized. Without git
 //! on PATH the launcher stops with the install guidance for this OS.
 use crate::generation::{generation_apply, generation_plan, GenerationRequest};
-use crate::{identity::identity, profile, PROJECT_STATE_DIR};
+use crate::{identity::identity, profile};
 use serde_json::{json, Value};
 use std::{
     fs::{self, OpenOptions},
@@ -74,8 +74,9 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
             if dry_run {
                 return Ok(Prepared {
                     note: Some(format!(
-                        "would initialize {}: git init, {PROJECT_STATE_DIR}/project.yaml, AGENTS.md (--dry-run writes nothing)",
-                        dir.display()
+                        "would initialize {}: git init, {}, AGENTS.md (--dry-run writes nothing)",
+                        dir.display(),
+                        crate::state_root::rel(&dir, "project.yaml")
                     )),
                     git_pending: true,
                 });
@@ -96,7 +97,7 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
             let Some(top) = id["work_tree"].as_str().map(PathBuf::from) else {
                 return Ok(Prepared::default()); // bare repository or inside `.git`
             };
-            if exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+            if exists(&crate::state_root::path(&top, "project.yaml")) {
                 let Some(common) = id["clone_anchor"].as_str().map(PathBuf::from) else {
                     return Ok(Prepared::default());
                 };
@@ -143,8 +144,9 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                 };
                 return Ok(Prepared {
                     note: Some(format!(
-                        "would initialize {}: {PROJECT_STATE_DIR}/project.yaml{agents} (--dry-run writes nothing)",
-                        top.display()
+                        "would initialize {}: {}{agents} (--dry-run writes nothing)",
+                        top.display(),
+                        crate::state_root::rel(&top, "project.yaml")
                     )),
                     git_pending: false,
                 });
@@ -308,7 +310,7 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
             pending.display()
         ));
     }
-    if !exists(&top.join(PROJECT_STATE_DIR).join("project.yaml")) {
+    if !exists(&crate::state_root::path(top, "project.yaml")) {
         fs::write(&pending, b"").map_err(|_| format!("{} cannot be written", pending.display()))?;
         let plan = profile::plan(top, default_profile(&primary_name(anchor), host)?)?;
         if plan.action != "create" {
@@ -319,7 +321,7 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         }
         let digest = plan.plan_digest.clone();
         profile::apply(top, plan, &digest, PERMISSION)?;
-        done.push(format!("{PROJECT_STATE_DIR}/project.yaml"));
+        done.push(crate::state_root::rel(top, "project.yaml"));
         if let Some(ms) = std::env::var(INIT_TEST_HOLD_VAR)
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
@@ -358,7 +360,7 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
     let request = GenerationRequest {
         protocol_version: 1,
         language: "en".into(),
-        workflow_reference: format!("{PROJECT_STATE_DIR}/workflows/{WORKFLOW_ID}/"),
+        workflow_reference: format!("{}/workflows/{WORKFLOW_ID}/", crate::state_root::dir(top)),
         local_file: "none".into(),
         workflow_id: WORKFLOW_ID.into(),
         native_roles: Vec::new(),

@@ -4,7 +4,8 @@
     {
       "id": "project-state-dir-spelled-once",
       "tests": [
-        "src/lib.rs::state_dir_tests::project_state_dir_is_spelled_once"
+        "src/lib.rs::state_dir_tests::project_state_dir_is_spelled_once",
+        "src/lib.rs::state_dir_tests::project_state_paths_are_resolved_per_project"
       ],
       "checks": [
         "cargo test --offline --locked --lib project_state_dir_is_spelled_once"
