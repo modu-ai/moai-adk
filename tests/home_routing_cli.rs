@@ -149,6 +149,44 @@ fn a_symlinked_file_or_folder_blocks_its_host() {
     assert!(!elsewhere.join("AGENTS.md").exists());
 }
 
+/// Audit FAIL 6846213349 B1 (#2650): after the apply, both host folders are moved outside HOME
+/// and linked back. Revert must skip them — never remove the created Codex file or restore the
+/// Claude file through the link.
+#[cfg(unix)]
+#[test]
+fn revert_never_writes_through_a_folder_linked_after_the_apply() {
+    let (_t, home) = home();
+    let outside = tempfile::tempdir().unwrap();
+    let outside = fs::canonicalize(outside.path()).unwrap();
+    fs::create_dir_all(home.join(".claude")).unwrap();
+    fs::write(file(&home, "claude"), "mine\n").unwrap();
+    let p = plan(&home, &package()).unwrap();
+    let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    let id = r["receipt"].as_str().unwrap().to_string();
+    let applied_claude = fs::read_to_string(file(&home, "claude")).unwrap();
+    let applied_codex = fs::read_to_string(file(&home, "codex")).unwrap();
+    for dir in [".claude", ".codex"] {
+        fs::rename(home.join(dir), outside.join(dir)).unwrap();
+        std::os::unix::fs::symlink(outside.join(dir), home.join(dir)).unwrap();
+    }
+    let v = revert(&home, &id, PERM).unwrap();
+    assert_eq!(v["reverted"], serde_json::json!([]));
+    let skipped = v["skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 2);
+    assert!(skipped.iter().all(|s| s["reason"]
+        .as_str()
+        .unwrap()
+        .starts_with("host_folder_not_plain")));
+    assert_eq!(
+        fs::read_to_string(outside.join(".claude/CLAUDE.md")).unwrap(),
+        applied_claude
+    );
+    assert_eq!(
+        fs::read_to_string(outside.join(".codex/AGENTS.md")).unwrap(),
+        applied_codex
+    );
+}
+
 #[test]
 fn a_stale_digest_or_a_missing_permission_is_refused() {
     let (_t, home) = home();
