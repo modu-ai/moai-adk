@@ -263,6 +263,38 @@ fn the_codex_entry_escapes_the_path() {
     );
 }
 
+/// #2758 audit N1: a control character in the path (a newline in HOME) is escaped as `\uXXXX`,
+/// so the pasted entry stays one TOML line.
+#[cfg(unix)]
+#[test]
+fn the_codex_entry_escapes_control_characters() {
+    let base = tempfile::tempdir().unwrap();
+    let h = base.path().join("line\nbreak");
+    skill(&h.join(".agents/skills/moai-plan"), "moai-plan");
+    let r = run(&h);
+    let entry = r["codex_disable_entries"][0].as_str().unwrap().to_string();
+    assert!(entry.contains("line\\u000Abreak"), "{entry}");
+    assert_eq!(entry.lines().count(), 3, "{entry}");
+}
+
+/// #2758 audit N2: a file where a folder between HOME and the skill root should be is reported
+/// as `not_a_folder`, not as unreadable.
+#[test]
+fn a_file_in_place_of_a_folder_on_the_way_is_not_a_folder() {
+    let home = tempfile::tempdir().unwrap();
+    let h = home.path();
+    fs::write(h.join(".agents"), "not a folder\n").unwrap();
+    let r = run(h);
+    let agents = r["roots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["root"] == ".agents/skills")
+        .unwrap()
+        .clone();
+    assert_eq!(agents["state"], "not_a_folder", "{agents}");
+}
+
 /// A linked host skill folder is not followed.
 #[cfg(unix)]
 #[test]
