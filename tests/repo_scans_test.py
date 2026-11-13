@@ -202,7 +202,7 @@ class JudgeTest(unittest.TestCase):
 
     def test_an_expected_set_file_counts_as_a_rule(self):
         remerge, hits = self.judge(["skills/moai/references/source-manifest.json"],
-                                   ["skills/moai/workflows/new.md"])
+                                   ["skills/moai/workflows/plan.md"])
         self.assertTrue(remerge)
         self.assertIn("skill-package-files", [h["id"] for h in hits])
 
