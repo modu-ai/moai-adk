@@ -2551,7 +2551,7 @@ mod skill_package {
         let start = skill
             .find("the five HOLD categories")
             .expect("SKILL.md names the five HOLD categories");
-        let clause = &skill[start..start + skill[start..].find(", goes to").unwrap()];
+        let clause = &skill[start..start + skill[start..].find(", or that changes").unwrap()];
         let named: Vec<&str> = clause.split('`').skip(1).step_by(2).collect();
         assert_eq!(
             named,
@@ -2561,12 +2561,17 @@ mod skill_package {
         for line in [
             "a question that a read, a command or a document answers is not a decision",
             "goes to the user and waits — no deadline applies it by default",
-            "the leader decides it, records it, and the user may reverse it afterwards",
+            "the leader decides it within the chosen autonomy level, records it, and the user may reverse it afterwards",
             "a lane asks the leader, not the user",
             "the default applies once the deadline passes unanswered",
-            "A HOLD names one of the five categories or `irreversible`; no other reason declares one.",
+            "A HOLD names one of the five categories, `guarded` or `irreversible`; no other reason declares one.",
+            // Audit B2 on #2620: what stays with the user although it is reversible.
+            "or that changes a `guarded` setting — permissions, keys, the real HOME and global settings, deletions or repository protection settings — goes to the user and waits",
+            "Cost, permissions, external transmission and destructive effects beyond the authorized scope are case (2).",
+            // Audit B1 on #2620: the leader's own decision stays inside the autonomy level.
+            "what the chosen autonomy level still reserves for the user (new Issues, lifting a HOLD, merge-policy changes and releases at `semi`) goes to the user as case (4)",
             "Independent audit and the CI gate are never delegated.",
-            "its options, the default, whether it is reversible, its category (`none` or one of the five), its deadline and who decided; a decision without a record does not count.",
+            "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
         ] {
             assert!(skill.contains(line), "SKILL.md lacks: {line}");
         }
@@ -2579,8 +2584,17 @@ mod skill_package {
             );
         }
         assert!(leader.contains("never decide a HOLD for the lane"));
+        for line in [
+            "within the autonomy level SPEC §6 gives — at `semi` the choices listed below for that level still go to the user",
+            "record it with every field SKILL.md names",
+            "At `semi`, new Issues, lifting a HOLD, merge-policy changes and releases also go to the user.",
+        ] {
+            assert!(leader.contains(line), "mode-leader.md lacks: {line}");
+        }
         assert!(agent.contains("send a choice to the leader — not to the user"));
-        assert!(agent.contains("never declare a HOLD outside the five categories"));
+        assert!(agent.contains(
+            "never declare a HOLD outside the five categories, `guarded` and `irreversible`"
+        ));
     }
 
     /// #2516 (leader decision B, comment 6823474405): the Orca session-control rules live in
