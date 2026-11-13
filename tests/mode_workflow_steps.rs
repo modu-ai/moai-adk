@@ -535,6 +535,24 @@ fn claim_verify_names_the_worktree_session_without_project_hooks() {
     );
 }
 
+/// #2592 Codex parity: Codex runs project hooks only for a trusted project and reviewed hooks;
+/// a worktree follows the primary checkout's project trust (measured), and the lane never
+/// bypasses the review itself.
+#[test]
+fn claim_verify_names_the_codex_hook_trust_steps() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim-verify",
+        &[
+            "`projects.<path>.trust_level = \"trusted\"`",
+            "reviewed and trusted in `/hooks`",
+            "a linked worktree follows the primary checkout's project trust",
+            "this step is the only boundary on Codex as well",
+            "never pass `--dangerously-bypass-hook-trust` yourself",
+        ],
+    );
+}
+
 /// #2680 AC-2/AC-3: a gate that could not run is recorded with substitute evidence,
 /// merges wait by default, and the merge-on-substitute question is asked once per gate.
 #[test]
@@ -585,6 +603,25 @@ fn usage_limit_rules_are_pinned_in_both_mode_workflows() {
             "post no handoff line for its cards before that time",
         ],
     );
+}
+
+/// #2592 Codex parity: Codex spawns agents on a skill instruction that requests delegation, so
+/// SKILL.md requests it in words and names each host's own subagent tool.
+#[test]
+fn skill_requests_delegation_with_each_hosts_subagent_tool() {
+    let skill =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"))
+            .unwrap();
+    for needle in [
+        "This skill requests delegation",
+        "`## Base agents`",
+        "`spawn_agent` and then `wait_agent` in Codex CLI",
+        "the agent tool in Claude Code",
+        "the task tool in OMP",
+        "do the step in this session and say so",
+    ] {
+        assert!(skill.contains(needle), "SKILL.md lacks {needle}");
+    }
 }
 
 /// #2675: the state summary and the self-claim candidate come from `moai-cli queue-free`, and
