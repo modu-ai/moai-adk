@@ -54,6 +54,7 @@ pub mod queue;
 pub mod queue_query;
 pub mod recovery;
 pub mod redact;
+pub mod review;
 pub mod run;
 pub mod scope;
 pub mod search;

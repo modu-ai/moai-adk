@@ -1023,6 +1023,19 @@ enum Command {
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
     },
+    /// The deterministic review package for an AUDIT (#2614): the diff from the merge base to
+    /// HEAD, the changed files, and the review instructions (`REVIEW.md` and its includes) and
+    /// context (`AGENTS.md`, `CLAUDE.md`) read from BASE only. Reads git; writes nothing.
+    ReviewPackage {
+        /// Repository root.
+        project: PathBuf,
+        /// The base revision (the pull request's base branch tip).
+        #[arg(long)]
+        base: String,
+        /// The head revision under review.
+        #[arg(long)]
+        head: String,
+    },
     /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
     /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
     GoStatePlan {
@@ -1382,6 +1395,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
+        ReviewPackage { .. } => "review.package",
         GoStatePlan { .. } => "go_state.plan",
         GoStateApply { .. } => "go_state.apply",
         GoStateRevertPlan { .. } => "go_state.revert_plan",
@@ -2352,6 +2366,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
             })
         }
+        Command::ReviewPackage {
+            project,
+            base,
+            head,
+        } => serde_json::to_value(moai_cli::review::package(&project, &base, &head)?)
+            .map_err(|_| "encode failed".into()),
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
                 .map_err(|_| "encode failed".into())
