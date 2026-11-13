@@ -163,7 +163,7 @@ fn matched_by(
 }
 
 /// Stash entries per branch name (`WIP on <b>:` / `On <b>:`); `(no branch)` for detached.
-fn stash_counts(project: &Path) -> Option<Vec<String>> {
+pub(crate) fn stash_counts(project: &Path) -> Option<Vec<String>> {
     let text = git(project, &["stash", "list", "--format=%gs"])?;
     Some(
         text.lines()
