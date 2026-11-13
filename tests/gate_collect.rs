@@ -58,7 +58,7 @@ fn repo(pr_files: &[(&str, &str)], tip_files: &[(&str, &str)]) -> Repo {
         d,
         &[
             ("tools/check_pr_self_audit.py", checker),
-            ("docs/n.md", "one\n\ntwo\n"),
+            ("docs/a.md", "one\n\ntwo\n"),
             ("src/a.rs", "a\n"),
             ("src/b.rs", "b\n"),
         ],
@@ -180,8 +180,8 @@ fn the_checker_unknown_base_and_missing_head_are_read_not_assumed() {
 fn overlap_and_conflict_are_measured_from_the_merged_tree() {
     // Both sides add different lines to the same doc: the merge keeps both.
     let r = repo(
-        &[("docs/n.md", "one\nPR line\n\ntwo\n")],
-        &[("docs/n.md", "one\n\ntwo\ntip line\n")],
+        &[("docs/a.md", "one\nPR line\n\ntwo\n")],
+        &[("docs/a.md", "one\n\ntwo\ntip line\n")],
     );
     let t = exchanges(
         &r.b,
@@ -190,7 +190,7 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(s.merge_clean);
-    assert_eq!(s.docs_lines_kept, vec!["docs/n.md".to_string()]);
+    assert_eq!(s.docs_lines_kept, vec!["docs/a.md".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
     // Both sides change the same line of code: a conflict.
     let r = repo(&[("src/b.rs", "pr\n")], &[("src/b.rs", "tip\n")]);
@@ -275,24 +275,24 @@ fn the_manifest_check_needs_every_file_and_hash() {
 #[test]
 fn a_doc_that_lost_an_added_line_is_not_kept() {
     let r = repo(
-        &[("docs/n.md", "one\nPR line\n\ntwo\n")],
-        &[("docs/n.md", "one\n\ntwo\ntip line\n")],
+        &[("docs/a.md", "one\nPR line\n\ntwo\n")],
+        &[("docs/a.md", "one\n\ntwo\ntip line\n")],
     );
     let d = r._dir.path();
     let mb = git(d, &["merge-base", &r.b, &r.c]).trim().to_string();
     let sides = [(mb.as_str(), r.b.as_str()), (r.a.as_str(), r.c.as_str())];
     let good = commit(
         d,
-        &[("docs/n.md", "one\nPR line\n\ntwo\ntip line\n")],
+        &[("docs/a.md", "one\nPR line\n\ntwo\ntip line\n")],
         "both",
     );
-    assert!(lines_kept(d, &format!("{good}^{{tree}}"), "docs/n.md", &sides).unwrap());
+    assert!(lines_kept(d, &format!("{good}^{{tree}}"), "docs/a.md", &sides).unwrap());
     let lost = commit(
         d,
-        &[("docs/n.md", "one\n\ntwo\ntip line\n")],
+        &[("docs/a.md", "one\n\ntwo\ntip line\n")],
         "lost the PR line",
     );
-    assert!(!lines_kept(d, &format!("{lost}^{{tree}}"), "docs/n.md", &sides).unwrap());
+    assert!(!lines_kept(d, &format!("{lost}^{{tree}}"), "docs/a.md", &sides).unwrap());
 }
 
 /// A manifest entry with no file fails (mutation C5); a repository without the Self-Audit
