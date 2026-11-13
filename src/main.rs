@@ -926,6 +926,20 @@ enum Command {
     GithubPlan {
         project: PathBuf,
     },
+    /// Plan a project's label sync from `.github/moai/labels.yml` (#2434 decision 40): typed
+    /// request `{schema_version, owner, repo}` on stdin; GET only, never deletes.
+    LabelsPlan {
+        project: PathBuf,
+    },
+    /// Apply an approved label sync plan (#2434 decision 40): the exact plan on stdin,
+    /// `--plan-digest` and `--permission-reference`; POST/PATCH only.
+    LabelsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Apply an approved GitHub template plan (08-B #2013): the exact plan on stdin,
     /// `--plan-digest` and `--permission-reference`.
     GithubApply {
@@ -1369,6 +1383,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         KeyImportApply { .. } => "key.import_apply",
+        LabelsApply { .. } => "labels.apply",
+        LabelsPlan { .. } => "labels.plan",
         KeyImportPlan { .. } => "key.import_plan",
         KeyRemove { .. } => "key.remove",
         KeySet { .. } => "key.set",
@@ -2364,7 +2380,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
-            moai_cli::update::update_command(&home, confirm.as_deref(), |plan| {
+            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
                 use std::io::{BufRead as _, IsTerminal as _, Write as _};
                 if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
                     return Ok(false);
@@ -2373,7 +2389,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 let _ = write!(
                     err,
                     "moai-cli update preview:\n{}Apply this update? [y/N] ",
-                    moai_cli::update::plan_summary(plan)
+                    summary
                 );
                 let _ = err.flush();
                 let mut answer = String::new();
@@ -2534,6 +2550,29 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 input::<moai_cli::github_templates::GithubRequest>()?,
             )?)
             .map_err(|_| "encode failed".into())
+        }
+        Command::LabelsPlan { project } => moai_cli::forge::labels::labels_plan_cli(
+            &project,
+            input::<moai_cli::forge::labels::LabelsRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::LabelsApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            if !moai_cli::contract::permission_reference_ok(&permission_reference) {
+                return Err("permission reference required".into());
+            }
+            moai_cli::forge::labels::labels_apply_cli(
+                &project,
+                plan_input::<serde_json::Value>()?,
+                &plan_digest,
+                &permission_reference,
+                &moai_cli::forge::transport::GhTransport::from_env()?,
+                &moai_cli::forge::policy::SystemClock,
+            )
         }
         Command::GithubApply {
             project,

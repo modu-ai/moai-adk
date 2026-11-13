@@ -7,8 +7,10 @@
 # Axes an Issue carries (rules: `.github/moai/README.md`, section "Labels"):
 #   type:*      exactly one
 #   priority:*  exactly one (P0..P3)
-#   area:*      one or more (prefer one or two)
+#   area:*      one or two: the product component that owns the changed files
 #   host:*      when the work must be verified on that host
+# Definitions per label (scheme decisions 44-49 = A, 6842518327): README section "Labels".
+# Descriptions of `reused` labels live on the remote; the leader edits them there.
 #   needs:decision  gate marker: a user decision is pending, lanes do not proceed.
 #                   The authority is the decisions log and the Issue's HOLD line; the label
 #                   is a search aid only.
@@ -43,6 +45,11 @@ reused:
     - security
     - duplicate
     - wontfix
+    # GitHub's own labels (decision 48): kept for #2435 (good first issue) and the stale
+    # exemption on `main` (help wanted).
+    - good first issue
+    - help wanted
+    - question
 added:
   - name: host:claude
     color: d4a5ff
@@ -73,10 +80,18 @@ added:
     description: Common skill router, routes.json and workflow files
   - name: area:update
     color: c2e0c6
-    description: "UPDATE: installed-host preflight, 3-way merge, partial recovery"
+    description: "UPDATE: installed-host preflight, 3-way merge, recovery, Go generation migration"
   - name: area:forge
     color: c2e0c6
     description: GitHub/GitLab Issues ledger, reports and reconciliation
+  # Decision 44: product components without their own area so far (created by the leader with
+  # a manual `moai-label-sync` apply after this file merges).
+  - name: area:launcher
+    color: c2e0c6
+    description: Session launcher, key vault and the run environment it injects
+  - name: area:statusline
+    color: c2e0c6
+    description: Status line rendering and the host status line settings
 # Every proposed label was promoted to `added` by #2434; new proposals go here first.
 proposed_not_created: []
 # Remote labels from the previous generation that RC Issues do not use (decision 3 = A).
@@ -131,3 +146,26 @@ not_used:
     - area:mx
     - area:harness
     - area:deps
+  # Decision 48: other remote labels of the previous generation, documented, not deleted.
+  previous_generation_misc:
+    - ai-generated
+    - ai-reviewed
+    - api
+    - auth
+    - automerge
+    - breaking-change
+    - coderabbit
+    - database
+    - dependencies
+    - infra
+    - infrastructure
+    - investigating
+    - needs design
+    - needs security review
+    - performance
+    - pinned
+    - reported
+    - requires-testing
+    - sdk
+    - stale
+    - ui

@@ -2411,6 +2411,73 @@ mod skill_package {
         }
     }
 
+    /// #2592 S4: each step workflow says which base agent it hands a step to, with one
+    /// shared rule block, and names only agents that ship as sources.
+    #[test]
+    fn step_workflows_name_their_base_agent() {
+        const HEAD: &str = "## Base agents\n";
+        let common = |body: &str| -> String {
+            let start = body.find(HEAD).expect("Base agents section");
+            let rest = &body[start..];
+            let end = rest.find("\n\n").map(|i| i + 2).unwrap();
+            // The shared block runs to the end of its bullet list.
+            const LAST: &str = "this session and say so.\n";
+            let list_end = rest[end..]
+                .find(LAST)
+                .map(|i| end + i + LAST.len())
+                .expect("shared block ends with the not-installed rule");
+            rest[..list_end].to_string()
+        };
+        let mut sources: Vec<String> = fs::read_dir(root().join("references/agents"))
+            .unwrap()
+            .map(|e| {
+                let text = fs::read_to_string(e.unwrap().path()).unwrap();
+                let (keys, _) = frontmatter(&text);
+                keys.into_iter().find(|(k, _)| k == "name").unwrap().1
+            })
+            .collect();
+        sources.sort();
+        let first = fs::read_to_string(root().join("workflows/run.md")).unwrap();
+        let shared = common(&first);
+        for name in &sources {
+            assert!(shared.contains(&format!("`{name}`")), "{name} listed");
+        }
+        let named = shared.matches("`moai-").count() - shared.matches("`moai-cli`").count();
+        assert_eq!(
+            named,
+            sources.len(),
+            "the shared block lists exactly the sources"
+        );
+        for (route, agent) in [
+            ("plan", "moai-plan"),
+            ("read", "moai-research"),
+            ("run", "moai-impl"),
+            ("audit", "moai-audit"),
+            ("sync", "moai-docs"),
+        ] {
+            let body = fs::read_to_string(root().join(format!("workflows/{route}.md"))).unwrap();
+            assert_eq!(body.matches(HEAD).count(), 1, "{route}");
+            assert_eq!(common(&body), shared, "{route}: shared block drifted");
+            let own = &body[body.find(HEAD).unwrap() + shared.len()..];
+            let own = &own[..own.find("\n## ").unwrap_or(own.len())];
+            assert!(own.contains(&format!("`{agent}`")), "{route} names {agent}");
+            // No stand-in for a missing host feature (user correction 2026-11-12T22:3xZ).
+            assert!(!own.contains("moai-cli"), "{route}");
+            // Only the five supported hosts (user decision 6841979953, #2592): Claude Code,
+            // Codex CLI, OMP, Kiro, Cursor CLI. Removed hosts never come back here.
+            let words: Vec<String> = own
+                .split(|c: char| !c.is_ascii_alphanumeric())
+                .map(str::to_ascii_lowercase)
+                .collect();
+            for removed in ["opencode", "goose", "zcode", "pi"] {
+                assert!(
+                    !words.iter().any(|w| w == removed),
+                    "{route} names the unsupported host {removed}"
+                );
+            }
+        }
+    }
+
     /// The mode workflow behind a route, after checking the route itself (AC-1, #2160).
     fn mode_workflow(route: &str) -> String {
         let routes: Value =
@@ -2884,6 +2951,12 @@ mod skill_package {
             "sorted the way SKILL.md sorts an open question",
             "each new file with its first lines and each changed file as its difference",
             "a managed part the user edited by hand is planned as `conflict` and never overwritten",
+            // #2639 project agents: from the answers, never a base name, host files only.
+            "**Offer project agents (Issue #2639).**",
+            "never starts with `moai-`, the prefix of the base agents",
+            "for any other host, say that none is written",
+            "apply with `generation-apply` only after the user agrees",
+            "planned `unchanged` while the answers stay the same, and `conflict` once they change too",
         ] {
             assert!(body.contains(stage), "project.md lacks: {stage}");
         }
@@ -3889,6 +3962,63 @@ fn generation_native_roles_render_official_shapes() {
     assert!(!codex_role.contains("sandbox_mode"));
     assert!(!codex_role.contains("approval_policy"));
     assert!(!codex_role.contains("mcp_servers"));
+}
+
+/// #2639 (project agents): a project role carrying the confirmed test command is written for
+/// both hosts, a re-run plans it `unchanged`, a hand edit is kept (`unchanged` while the
+/// answers stay, `conflict` once they change too) and never overwritten, and a role named with the base agents' `moai-` prefix is refused.
+#[test]
+fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
+    let root = generation_project();
+    let mut request = generation_request("none");
+    let purpose = "Run `cargo test --locked` and report the first failing test";
+    request["native_roles"] = json!([
+        {"role_id": "demo-tester", "host": "claude", "purpose": purpose},
+        {"role_id": "demo-tester", "host": "codex", "purpose": purpose}
+    ]);
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let claude = root.path().join(".claude/agents/demo-tester.md");
+    let codex = root.path().join(".codex/agents/demo-tester.toml");
+    assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
+    assert!(fs::read_to_string(&codex)
+        .unwrap()
+        .contains("Run `cargo test --locked`"));
+
+    let again = ok_result(&generation_plan_cli(&root, &request));
+    for (path, action) in actions_of(&again) {
+        if path.ends_with("demo-tester.md") || path.ends_with("demo-tester.toml") {
+            assert_eq!(action, "unchanged", "{path}");
+        }
+    }
+
+    let edited = "---\nname: demo-tester\ndescription: mine\n---\n\nmine\n";
+    fs::write(&claude, edited).unwrap();
+    // Only the user changed it: the plan keeps the edit and applying writes nothing over it.
+    let kept = ok_result(&generation_plan_cli(&root, &request));
+    assert!(actions_of(&kept)
+        .iter()
+        .any(|(p, a)| p == ".claude/agents/demo-tester.md" && a == "unchanged"));
+    ok_result(&generation_apply_cli(&root, &kept));
+    assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
+    // The answers changed too: both sides moved, so it is a conflict and nothing is written.
+    request["native_roles"][0]["purpose"] = json!("Run `cargo test` and report every failure");
+    let after_edit = ok_result(&generation_plan_cli(&root, &request));
+    assert!(actions_of(&after_edit)
+        .iter()
+        .any(|(p, a)| p == ".claude/agents/demo-tester.md" && a == "conflict"));
+    let out = generation_apply_cli(&root, &after_edit);
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], json!("conflict"));
+    assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
+
+    let fresh = generation_project();
+    let mut base = generation_request("none");
+    base["native_roles"] =
+        json!([{"role_id": "moai-impl", "host": "claude", "purpose": "Shadow a base agent"}]);
+    assert!(!generation_plan_cli(&fresh, &base).status.success());
+    assert!(!fresh.path().join(".claude/agents").exists());
 }
 
 #[test]
