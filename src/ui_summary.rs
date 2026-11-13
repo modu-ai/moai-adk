@@ -55,9 +55,12 @@ struct Row {
     note: String,
 }
 
+/// A result value as display text. Strings pass through [`crate::ui::visible`] here, where the
+/// data enters the table, so every cell — painted or not — and every width is computed on text
+/// without control characters (#2818 audit B1).
 fn text(v: &Value) -> Option<String> {
     match v {
-        Value::String(s) if !s.is_empty() => Some(s.clone()),
+        Value::String(s) if !s.is_empty() => Some(crate::ui::visible(s).into_owned()),
         Value::Number(n) => Some(n.to_string()),
         Value::Bool(b) => Some(b.to_string()),
         _ => None,
@@ -660,5 +663,54 @@ ACTION   PATH              NOTE
         assert_eq!(output_mode(Some(OsStr::new("quiet"))), OutputMode::Quiet);
         assert_eq!(output_mode(Some(OsStr::new(" plain "))), OutputMode::Plain);
         assert_eq!(output_mode(Some(OsStr::new("json"))), OutputMode::Normal);
+    }
+
+    /// #2818 audit B1 (CWE-150): control characters from the result never reach the terminal,
+    /// in any cell — title target, row name, action word or note — painted or not.
+    #[test]
+    fn control_characters_in_the_result_are_shown_not_sent() {
+        let evil = "h\u{1b}]0;PWNED\u{7}\u{1b}[2Jz\u{9b}31m\r\n\t\u{7f}";
+        let result = json!({"home": format!("/tmp/{evil}"), "plan_digest": "sha256:ab", "items": [
+            {"path": format!("dir/{evil}/f.rs"), "action": format!("create{evil}"),
+             "reason": format!("note {evil}")}]});
+        for p in [
+            utf8(),
+            plain(),
+            Painter {
+                color: true,
+                unicode: true,
+            },
+        ] {
+            let text = render("x.plan", &result, &p, 200, Some("x-apply"));
+            // Remove the painter's own SGR codes; nothing else may be a control character.
+            let mut rest = String::new();
+            let mut chars = text.chars().peekable();
+            while let Some(c) = chars.next() {
+                if c == '\u{1b}' && chars.peek() == Some(&'[') {
+                    for d in chars.by_ref() {
+                        if d == 'm' {
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                rest.push(c);
+            }
+            let bad: Vec<char> = rest
+                .chars()
+                .filter(|c| c.is_control() && *c != '\n')
+                .collect();
+            assert!(bad.is_empty(), "{bad:?} in {text:?}");
+            assert!(
+                text.contains("\\x1b]0;PWNED\\x07\\x1b[2Jz\\x9b31m"),
+                "{text}"
+            );
+            // The table stays one line per row: the CR/LF in the data were made visible.
+            assert_eq!(
+                text.lines().filter(|l| l.contains("dir/")).count(),
+                1,
+                "{text}"
+            );
+        }
     }
 }

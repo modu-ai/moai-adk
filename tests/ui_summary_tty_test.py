@@ -121,6 +121,22 @@ class PlanSummary(unittest.TestCase):
         self.assertIn("home-state-apply", lines[2])
         self.assertTrue(lines[3].strip().startswith("--plan-digest sha256:"), lines[3])
 
+    def test_control_characters_in_a_folder_name_never_reach_the_terminal(self):
+        # #2818 audit B1 (CWE-150): a HOME folder named with a window-title OSC and a
+        # clear-screen CSI; the summary shows them as text, the envelope escapes them as JSON.
+        evil = os.path.join(self.home, "h\x1b]0;PWNED-TITLE\x07\x1b[2Jz")
+        os.makedirs(evil)
+        args = ["home-state-plan", "--home", evil, "--now", "2026-11-13T19:00:00Z"]
+        piped, _, pcode = run(args, env_for(evil), self.home, False)
+        out, err, code = run(args, env_for(evil), self.home, True)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out, piped)
+        self.assertIn("\\u001b]0;PWNED-TITLE", out, "the envelope escapes it as JSON")
+        self.assertNotIn("\x1b]", err)
+        self.assertNotIn("\x1b[2J", err)
+        self.assertNotIn("\x07", err)
+        self.assertIn("\\x1b]0;PWNED-TITLE\\x07\\x1b[2Jz", ESC.sub("", err))
+
     def test_other_operations_print_no_summary(self):
         out, err, code = run(["identity", self.home], env_for(self.home), self.home, True)
         self.assertEqual(code, 0, out)
