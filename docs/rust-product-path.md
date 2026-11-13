@@ -492,7 +492,7 @@ Tests (`tests/claim_cli.rs`) cover: 8-process concurrency (one `claimed`, the re
 
 ### Free cards (`queue-free`, #2675)
 
-`moai-cli queue-free PROJECT` takes `{schema_version, owner, repo}` on stdin and lists, read only, the open cards a lane may take. It reads every open Issue (GET, pages of 100) and puts each one, pull requests excluded, into exactly one bucket, in this order: `held` (a label containing `needs:decision` or `hold`, case ignored), `epics` (title `][EP-`), `blocked` (a `Blocked-By:` line names an Issue that is still open), then — after reading that card's comments with the same claim replay as `queue-next` (releases and handoffs close the claim they name) — `reserved` (an outstanding handoff names its recipient), `claimed` (a live claim; the lowest live comment id is shown) or `free`. A free card carries `why`: `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only expired claims remain; the holder, comment id and lease are shown, and taking it over still needs a handoff line or decision D2's timeout conditions). Held cards, epics and blocked cards cost no comment read. The answer always states its count: `free_count` and a `summary` line `free <n>건 (inspected …, claimed …, reserved …, held …, epics …, blocked …)`, so an empty result reads `free 0건` and is never confused with missing output; a failed read is an error, never an empty list. Tests: `tests/queue_cli.rs` (`queue_free_*`, recorded exchanges); a live GitHub run is not_run.
+`moai-cli queue-free PROJECT` takes `{schema_version, owner, repo}` on stdin and lists, read only, the open cards a lane may take. It reads every open Issue (GET, pages of 100) and puts each one, pull requests excluded, into exactly one bucket, in this order: `held` (a label named `needs:decision`, `hold` or `<axis>:hold`, case ignored — whole names only, so `threshold` does not hold a card), `epics` (title `][EP-`), `blocked` (a `Blocked-By:` line names an Issue that is still open), then — after reading that card's comments with the same claim replay as `queue-next` (releases and handoffs close the claim they name) — `reserved` (an outstanding handoff names its recipient), `claimed` (a live claim; the lowest live comment id is shown) or `free`. A free card carries `why`: `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only expired claims remain; the holder, comment id and lease are shown, and taking it over still needs a handoff line or decision D2's timeout conditions). Held cards, epics and blocked cards cost no comment read. The answer always states its count: `free_count` and a `summary` line `free <n>건 (inspected …, claimed …, reserved …, held …, epics …, blocked …)`, so an empty result reads `free 0건` and is never confused with missing output; a failed read is an error, never an empty list. Tests: `tests/queue_cli.rs` (`queue_free_*`, recorded exchanges); a live GitHub run is not_run.
 
 ### Self-claim of the next card (`queue-next`, rc.2 A2 #2161)
 
@@ -799,9 +799,16 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
 1. Model, effort/thinking, cache hit, Claude/MoAI versions, elapsed time and output style.
-2. Optional session name, two spaces, then `CTX`, available `5H`, and available `Week`
-   bars. Missing rate windows are hidden; reset times are not printed. Context handoff
-   warnings and the existing usage calculation are retained.
+2. `CTX`, available `5H`, and available `Week` bars, then the optional session name as
+   the last segment, ` | 🏷️ <name>` (user request 2026-11-13, #2697; with no bars the
+   name stands alone, with no name there is no tail). Missing rate windows are hidden;
+   reset times are not printed. Context handoff warnings and the existing usage
+   calculation are retained. The renderer shortens nothing: Claude Code sets `COLUMNS`
+   for the status line command, but the renderer does not read it. When the line is
+   wider than the status bar, the host documentation leaves open whether it is cut or
+   wraps ("may get truncated or wrap awkwardly",
+   https://code.claude.com/docs/en/statusline, read 2026-11-13). The name is last so
+   that, if the host cuts the line, the name is lost before any bar.
 3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
    arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
 

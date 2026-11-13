@@ -50,6 +50,7 @@ pub mod language;
 pub mod launcher_init;
 pub mod layout;
 pub mod leader;
+pub mod local_build;
 pub mod message;
 pub mod migrate;
 pub mod ontology;
@@ -79,6 +80,7 @@ pub mod verify;
 pub mod worktree;
 pub mod worktree_gc;
 pub mod worktree_include;
+pub mod worktree_move;
 pub mod worktree_report;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
@@ -95,6 +97,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
+/// The version this binary reports: the package version, plus `+local.<n>` when the build set
+/// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
+pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
 /// Project state directory of the Rust RC. The Go generation keeps `.moai/`; both coexist
 /// untouched until the user performs the final rename in a later step.
 pub const PROJECT_STATE_DIR: &str = ".moai-cli";
