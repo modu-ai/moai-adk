@@ -172,7 +172,7 @@ exit 0
 
 1. **원장·인벤토리 기록**(완료 — §0·§1): 소유·mode·sha256·활성 consumer. 실행 당일 같은 명령으로 다시 측정하고, 이 문서의 값과 다르면 차이를 기록한 뒤 진행 여부를 묻는다.
 2. **격리 HOME 선검증(실제 변경 전)** — 임시 HOME·임시 프로젝트, `PATH=/usr/bin:/bin`(PATH에 `moai` 없음). 하나라도 실패하면 여기서 중단한다. 실제 파일은 아직 무변경이다.
-   - (a) 상태줄: §4.1 스크립트를 임시 프로젝트에 두고 #2374의 `tests/fixtures/statusline/stdin/*.json` 각각에 대해 스크립트 출력과 `moai-cli statusline` 직접 출력이 바이트 동일한지 본다. 그리고 `python3 -I tools/statusline_golden.py --bin "$HOME/.moai-cli/path/moai-cli" --argv statusline --check`가 전부 일치해야 한다(Go 화면 구성 계승 — Issue AC-2).
+   - (a) 상태줄: §4.1 스크립트를 임시 프로젝트에 두고 #2374의 `tests/fixtures/statusline/stdin/*.json` 각각에 대해 스크립트 출력과 `moai-cli statusline` 직접 출력이 바이트 동일한지 본다. 그리고 `python3 -I tools/statusline_golden.py --bin "$HOME/.moai-cli/path/moai-cli" --check`가 전부 일치해야 한다(`--argv` 를 주지 않아 하네스 기본값의 고정 시계·렌더 예산을 쓴다, #2756)(Go 화면 구성 계승 — Issue AC-2).
    - (b) Go 폴백: 임시 HOME에 `moai-cli`가 없을 때 스크립트 출력이 `moai.old statusline` 직접 출력과 같은지 본다. 같은 stdin으로 `.env.glm` 유무 출력도 비교한다(§4.1).
    - (c) Go 훅: 44개 훅을 임시 프로젝트에 시험 fixture로 두고 §2.2의 한 줄을 넣는다. 이것은 교체용 사본이 아니라 시험 입력이며, 시험 뒤 임시 디렉터리와 함께 버린다. 임시 HOME의 `go/hook-bin/moai`는 진짜 `moai.old`를 가리킨다.
      - 차단 13개 각각이 원본에서는 Go를 부르지 않고(대조군 — 가드 꺼짐 재현), 한 줄 넣은 쪽에서는 Go를 부르는지 확인한다.

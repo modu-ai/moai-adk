@@ -303,6 +303,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The scope step below diffs against HEAD~1; with the default depth of 1 that
+          # commit is absent, the diff fails and every push ran full (#2554 comment
+          # 6860912842, decision 6861024531). Two commits are enough for a push.
+          fetch-depth: 2
       # Docs-only light CI (#2527, design comment 6822993459): same classifier as the
       # check job; fail-safe to full on any git or parse failure.
       - name: Scope (docs-only detection)

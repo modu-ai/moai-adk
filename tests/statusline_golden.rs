@@ -10,11 +10,12 @@
 //! Wall-clock independence (#2350 leader decision): the product's 800 ms render budget drops
 //! the git segment when git is slow, which a loaded machine makes happen at random (18 of 20
 //! runs under a concurrent cargo build, re-audit 6765987319). The goldens describe the render
-//! within budget, so this test passes the hidden seam `--render-budget-ms 3600000`; the
+//! within budget, so the harness passes the hidden seam `--render-budget-ms 3600000`; the
 //! over-budget path is pinned on its own in `tests/statusline_git_env.rs`.
 //!
 //! Clock independence (#2756 AC-8): the prompt cache timer counts from `--now-unix`, a hidden
-//! seam; the goldens are recorded and checked with the same value.
+//! seam; the goldens are recorded and checked with the same value. Both seams are the harness's
+//! own default `--argv` (`DEFAULT_ARGV`), so a direct `--check` or `--write` uses them too.
 
 #[cfg(unix)]
 #[test]
@@ -23,12 +24,7 @@ fn statusline_matches_every_claude_golden() {
     let out = std::process::Command::new("python3")
         .args(["-I", "tools/statusline_golden.py", "--bin"])
         .arg(env!("CARGO_BIN_EXE_moai-cli"))
-        // `--now-unix` (#2756): the prompt cache timer counts from a fixed clock.
-        .args([
-            "--argv",
-            "statusline --render-budget-ms 3600000 --now-unix 1738429000",
-            "--check",
-        ])
+        .arg("--check")
         .current_dir(root)
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .output()
