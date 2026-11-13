@@ -1,6 +1,7 @@
 //! #2434 decision 40: `moai-cli` syncs a project's labels from `.github/moai/labels.yml`.
 //! Library tests replay synthetic exchanges through `RecordedTransport` with a fake clock: no
 //! network, no sleeping, no `gh`. Nothing here talks to a real remote (host: not_run).
+use moai_cli::contract::{classify, failure, Kind};
 use moai_cli::forge::{
     labels::{self, LabelsRequest, RemoteLabel},
     policy::Clock,
@@ -138,13 +139,16 @@ fn quoted_scalars_parse_like_plain_ones() {
 fn plan_compares_names_case_insensitively_and_never_deletes() {
     let specs = labels::parse_labels_yml(SMALL).unwrap();
     let remotes: Vec<RemoteLabel> = vec![
-        // same label, different case and an upper-case colour: unchanged
+        // same label, upper-case colour only: unchanged
         serde_json::from_value(remote(
-            "Type:Feature",
+            "type:feature",
             "A2EEEF",
             Some("New feature or behaviour"),
         ))
         .unwrap(),
+        // same label, the remote name differs in case: the file is the source of truth
+        // (decision 40), so an update renames it (#2658 audit N1)
+        serde_json::from_value(remote("Area:Docs", "0075ca", Some("Documentation"))).unwrap(),
         // listed, colour differs: update
         serde_json::from_value(remote("priority:P0", "000000", None)).unwrap(),
         // not listed: reported, never deleted
@@ -158,7 +162,7 @@ fn plan_compares_names_case_insensitively_and_never_deletes() {
         .collect();
     assert_eq!(actions["type:feature"], "unchanged");
     assert_eq!(actions["priority:P0"], "update");
-    assert_eq!(actions["area:docs"], "create");
+    assert_eq!(actions["area:docs"], "update");
     assert_eq!(plan.unlisted, vec!["wontfix".to_string()]);
     let again = labels::plan_labels(&request(), &specs, &remotes);
     assert_eq!(plan.plan_digest, again.plan_digest);
@@ -204,6 +208,7 @@ fn apply_creates_and_updates_with_encoded_names_and_sends_no_delete() {
     let (_tmp, root) = project(SMALL);
     let before = vec![
         remote("priority:P0", "000000", None),
+        remote("Area:Docs", "0075ca", Some("Documentation")),
         remote("wontfix", "ffffff", None),
     ];
     let plan = plan_with(&root, before.clone());
@@ -211,13 +216,13 @@ fn apply_creates_and_updates_with_encoded_names_and_sends_no_delete() {
         list_page(&first_page(), before, None),
         write("POST", BASE, 201),
         write("PATCH", &format!("{BASE}/priority%3AP0"), 200),
-        write("POST", BASE, 201),
+        write("PATCH", &format!("{BASE}/Area%3ADocs"), 200),
     ]);
     let c = clock();
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
     let out = labels::labels_apply_cli(&root, plan, &digest, "test:2434", &t, &c).unwrap();
-    assert_eq!(out["created"], json!(["type:feature", "area:docs"]));
-    assert_eq!(out["updated"], json!(["priority:P0"]));
+    assert_eq!(out["created"], json!(["type:feature"]));
+    assert_eq!(out["updated"], json!(["priority:P0", "area:docs"]));
     let sent = t.sent.borrow();
     assert!(sent.iter().all(|r| r.method != "DELETE"));
     let posts: Vec<&HttpRequest> = sent.iter().filter(|r| r.method == "POST").collect();
@@ -227,6 +232,16 @@ fn apply_creates_and_updates_with_encoded_names_and_sends_no_delete() {
             json!({"name": "type:feature", "color": "a2eeef", "description": "New feature or behaviour"})
         )
     );
+    let rename = sent
+        .iter()
+        .find(|r| r.url.ends_with("/Area%3ADocs"))
+        .unwrap();
+    assert_eq!(rename.body.as_ref().unwrap()["new_name"], "area:docs");
+    let plain = sent
+        .iter()
+        .find(|r| r.url.ends_with("/priority%3AP0"))
+        .unwrap();
+    assert!(plain.body.as_ref().unwrap().get("new_name").is_none());
     // Writes are spaced at least one second apart.
     assert!(
         c.slept.borrow().iter().sum::<u64>() >= 2,
@@ -280,9 +295,13 @@ fn a_failed_write_reports_what_was_applied_and_a_rerun_does_the_rest() {
     ]);
     let err =
         labels::labels_apply_cli(&root, plan, &digest, "test:2434", &t, &clock()).unwrap_err();
-    // It stops at the failed write: names it and its status, and sends nothing after it.
-    assert!(err.contains("at priority:P0 (HTTP 422)"), "{err}");
+    // It stops at the failed write: names it and its status, and sends nothing after it. A
+    // write already sent makes it a partial apply that points at labels.plan (#2658 B1).
+    assert!(err.contains("failed at priority:P0 (HTTP 422)"), "{err}");
     assert!(err.contains("created [\"type:feature\"]"), "{err}");
+    assert_eq!(classify(&err), Kind::Partial, "{err}");
+    let envelope = failure("labels.apply", classify(&err), &err);
+    assert_eq!(envelope["error"]["next_actions"], json!(["labels.plan"]));
     assert_eq!(
         t.sent.borrow().len(),
         3,
@@ -305,6 +324,27 @@ fn a_failed_write_reports_what_was_applied_and_a_rerun_does_the_rest() {
         .map(|c| c["name"].as_str().unwrap())
         .collect();
     assert_eq!(todo, vec!["priority:P0", "area:docs"]);
+}
+
+/// The first write failing with nothing applied means the remote moved since the plan.
+#[test]
+fn a_failed_first_write_is_a_stale_plan() {
+    let (_tmp, root) = project(SMALL);
+    let plan = plan_with(&root, vec![]);
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let t = RecordedTransport::new(vec![
+        list_page(&first_page(), vec![], None),
+        write("POST", BASE, 422),
+    ]);
+    let err =
+        labels::labels_apply_cli(&root, plan, &digest, "test:2434", &t, &clock()).unwrap_err();
+    assert!(err.contains("type:feature (HTTP 422)"), "{err}");
+    assert_eq!(classify(&err), Kind::StalePlan, "{err}");
+    assert_eq!(
+        failure("labels.apply", classify(&err), &err)["error"]["next_actions"],
+        json!(["labels.plan"])
+    );
+    assert_eq!(t.sent.borrow().len(), 2);
 }
 
 /// Runs the CLI with a stub `gh` that only records that it was called.

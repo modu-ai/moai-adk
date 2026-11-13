@@ -220,11 +220,13 @@ fn plan_with_file(
             let action = match found {
                 None => "create",
                 Some(r)
-                    if r.color.trim_start_matches('#').to_ascii_lowercase() == s.color
+                    if r.name == s.name
+                        && r.color.trim_start_matches('#').to_ascii_lowercase() == s.color
                         && r.description.as_deref().unwrap_or("") == s.description =>
                 {
                     "unchanged"
                 }
+                // A colour, a description or the case of the name differs: the file wins.
                 Some(_) => "update",
             };
             LabelChange {
@@ -404,6 +406,11 @@ pub fn labels_apply_cli<T: Transport, C: Clock>(
             r
         } else {
             let remote = c.remote_name.as_deref().unwrap_or(&c.name);
+            let mut body = body;
+            if remote != c.name {
+                // Only the case differs (names compare ignoring case): rename to the file's.
+                body["new_name"] = json!(c.name);
+            }
             let mut r = HttpRequest::new(
                 "PATCH",
                 format!("{}/{}", base(&p.request), encode_segment(remote)),
@@ -419,10 +426,21 @@ pub fn labels_apply_cli<T: Transport, C: Clock>(
             Err(e) => Some(e.message),
         };
         if let Some(why) = failed {
-            return Err(format!(
-                "stale or failed label write at {} ({why}); applied before it: created {:?}, updated {:?}; re-preview required",
-                c.name, created, updated
-            ));
+            // Contract kinds (#2658 B1): with a write already sent the run is a partial apply;
+            // with none, the remote moved since the plan. Both point at `labels.plan`. A
+            // transport failure keeps its own `gh transport:` / `forge blocked:` phrase, which
+            // classifies first.
+            return Err(if created.is_empty() && updated.is_empty() {
+                format!(
+                    "label write at {} ({why}): the remote changed since plan; nothing applied; run labels-plan again",
+                    c.name
+                )
+            } else {
+                format!(
+                    "partial apply: created {created:?}, updated {updated:?}; failed at {} ({why}); run labels-plan again",
+                    c.name
+                )
+            });
         }
         if c.action == "create" {
             created.push(c.name.clone());
