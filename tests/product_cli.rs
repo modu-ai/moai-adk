@@ -2356,10 +2356,18 @@ mod skill_package {
         );
         // One hop: the router names only the route table.
         assert_eq!(package_paths_in(body), vec!["references/routes.json"]);
-        // REQ-02A-05: no fixed agent definitions are shipped.
+        // REQ-02A-05, narrowed by the #2592 user decisions (6840661050, 6840838042): no host
+        // agent files are shipped; the base agents ship only as tool-neutral sources under
+        // references/agents/ (decision A), rendered per host at install time.
         assert!(package_files()
             .iter()
             .all(|p| !p.starts_with("agents/") && !p.ends_with(".toml")));
+        for p in package_files().iter().filter(|p| p.contains("agents/")) {
+            assert!(
+                p.starts_with("references/agents/") && p.ends_with(".md"),
+                "agent material outside references/agents/: {p}"
+            );
+        }
     }
 
     #[test]

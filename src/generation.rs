@@ -302,7 +302,7 @@ fn source_reviewed(root: &Path, source_url: &str) -> Result<Option<(String, Stri
     Ok(None)
 }
 
-fn toml_string(s: &str) -> String {
+pub(crate) fn toml_string(s: &str) -> String {
     let mut out = String::from("\"");
     for c in s.chars() {
         match c {
