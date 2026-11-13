@@ -1,0 +1,402 @@
+{
+  "about": "Tests whose input is the checked-in tree itself (#2681). Each entry splits into rule files (the test, the code or tool that does the walk, and any expected-set file) and the scope the walk reads. Two branches that touch disjoint files still break when one changes a rule file and the other changes a path in that entry's scope (#2642 + #2632). tools/repo_scans.py judges a pull request against the tip with this table; tests/repo_scans_test.py keeps the table complete.",
+  "scans": [
+    {
+      "id": "permission-reference-one-copy",
+      "tests": [
+        "src/contract.rs::permission_reference_rule_has_one_copy"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib permission_reference_rule_has_one_copy"
+      ],
+      "rules": [
+        "src/contract.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a copy of the permission-reference rule outside src/contract.rs (#2642 + #2632)"
+    },
+    {
+      "id": "git-spawns-scrubbed",
+      "tests": [
+        "tests/git_env_scrub.rs::every_git_subprocess_in_src_is_scrubbed"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test git_env_scrub every_git_subprocess_in_src_is_scrubbed"
+      ],
+      "rules": [
+        "tests/git_env_scrub.rs",
+        "src/identity.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a git subprocess in src/ without scrub_git_env"
+    },
+    {
+      "id": "git-fixture-helper",
+      "tests": [
+        "tests/ac_command_lint.rs::git_fixture_calls_live_in_the_shared_helper"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test ac_command_lint git_fixture_calls_live_in_the_shared_helper"
+      ],
+      "rules": [
+        "tests/ac_command_lint.rs",
+        "tests/common/git.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a git fixture call outside the guarded shared helper"
+    },
+    {
+      "id": "recorded-ac-commands",
+      "tests": [
+        "tests/ac_command_lint.rs::recorded_ac_commands_name_existing_targets_and_select_tests"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test ac_command_lint recorded_ac_commands_name_existing_targets_and_select_tests"
+      ],
+      "rules": [
+        "tests/ac_command_lint.rs",
+        "tools/check_ac_commands.py"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/",
+          "suffixes": [
+            ".md"
+          ]
+        },
+        {
+          "prefix": ".moai-cli/reports/",
+          "suffixes": [
+            ".md"
+          ]
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a recorded cargo test command naming a missing target or selecting no test"
+    },
+    {
+      "id": "operation-files",
+      "tests": [
+        "tests/hot_file_ops_merge.rs::the_registry_holds_every_operation_file",
+        "src/main.rs::operations_doc_matches_code",
+        "src/main.rs::fragment_mutations_are_detected"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test hot_file_ops_merge",
+        "cargo test --offline --locked --bin moai-cli -- operations_doc_matches_code fragment_mutations_are_detected"
+      ],
+      "rules": [
+        "build.rs",
+        "tests/hot_file_ops_merge.rs",
+        "src/main.rs",
+        "docs/design-review/appendix/interfaces.md"
+      ],
+      "scope": [
+        {
+          "prefix": "src/ops/"
+        },
+        {
+          "prefix": "docs/design-review/appendix/operations/"
+        }
+      ],
+      "rejects": "an op file without its docs fragment or registry entry, or a non-.md fragment"
+    },
+    {
+      "id": "skill-package-files",
+      "tests": [
+        "tests/product_cli.rs::skill_package::source_manifest_covers_every_package_file",
+        "tests/product_cli.rs::skill_package::skill_package_frontmatter_is_host_neutral",
+        "tests/product_cli.rs::skill_package::adapters_point_to_version_matched_guides_and_keep_the_safety_lines",
+        "tests/product_cli.rs::skill_package::mode_routing_flags_map_to_routes",
+        "tests/product_cli.rs::skill_package::package_inspect_rejects_missing_skill_md"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test product_cli skill_package::"
+      ],
+      "rules": [
+        "tests/product_cli.rs",
+        "skills/moai/references/source-manifest.json"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        }
+      ],
+      "rejects": "a package file without a manifest entry, a stale sha256, an extra adapter, a retired mode spelling"
+    },
+    {
+      "id": "skill-package-agents",
+      "tests": [
+        "tests/agent_defs_package.rs (all 5)",
+        "tests/agents_home_cli.rs (package copy)",
+        "tests/update_user_layer_cli.rs (package copy)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli"
+      ],
+      "rules": [
+        "tests/agent_defs_package.rs",
+        "src/agent_defs.rs",
+        "src/agent_install.rs",
+        "tests/agents_home_cli.rs",
+        "tests/update_user_layer_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        }
+      ],
+      "rejects": "a role or internal-reference set other than the decided one, a reads path without a file"
+    },
+    {
+      "id": "skill-package-whole-tree",
+      "tests": [
+        "tests/codex_adapter.rs (12)",
+        "tests/home_routing_cli.rs (7)",
+        "tests/exe_link_cli.rs::update_plan_through_a_link_matches_the_real_path",
+        "src/claude.rs (2 unit)",
+        "src/update.rs::a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test codex_adapter --test home_routing_cli --test exe_link_cli",
+        "cargo test --offline --locked --lib -- projection_keeps_the_canonical_body_and_records_additions projection_refuses_overrides_grants_and_bad_values a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
+      ],
+      "rules": [
+        "src/lib.rs",
+        "src/update.rs",
+        "src/hosts/codex.rs",
+        "src/claude.rs",
+        "src/home_routing.rs",
+        "tests/codex_adapter.rs",
+        "tests/home_routing_cli.rs",
+        "tests/exe_link_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        }
+      ],
+      "rejects": "a symlink or special file, depth or size limits of package_digest and stage_package, a manifest mismatch"
+    },
+    {
+      "id": "protocol-fixtures",
+      "tests": [
+        "tests/product_cli.rs::protocol_fixtures_record_current_contract",
+        "tests/product_cli.rs::exit_code_table_matches_current_fixtures",
+        "tests/product_cli.rs::envelope_fields_and_error_codes",
+        "tests/product_cli.rs::protocol_schemas_declare_2020_12_and_cover_current_fixtures"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test product_cli -- protocol_fixtures_record_current_contract exit_code_table_matches_current_fixtures envelope_fields_and_error_codes protocol_schemas_declare_2020_12_and_cover_current_fixtures"
+      ],
+      "rules": [
+        "tests/product_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/fixtures/protocol/"
+        },
+        {
+          "prefix": "schemas/protocol/"
+        }
+      ],
+      "rejects": "a fixture set or exit table other than the run case list, a schema not on 2020-12"
+    },
+    {
+      "id": "tracked-skill-references",
+      "tests": [
+        "tests/skill_references_test.py::test_current_tracked_skill_file_references_resolve"
+      ],
+      "checks": [
+        "python3 -m unittest tests.skill_references_test"
+      ],
+      "rules": [
+        "tests/skill_references_test.py"
+      ],
+      "scope": [
+        {
+          "prefix": ""
+        }
+      ],
+      "rejects": "a skills/... reference in any tracked file to a file that does not exist"
+    },
+    {
+      "id": "spec-links-tracked",
+      "tests": [
+        "tests/spec_links_fixture.rs::review_fixture_literal_payloads_do_not_verify_this_repository"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test spec_links_fixture review_fixture_literal_payloads_do_not_verify_this_repository"
+      ],
+      "rules": [
+        "tests/spec_links_fixture.rs",
+        "src/spec_links.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ""
+        }
+      ],
+      "rejects": "a verifies edge from the review fixture in the tracked tree"
+    },
+    {
+      "id": "ci-scope-docs-paths",
+      "tests": [
+        "tests/ci_scope_test.py::test_fragmented_docs_paths_are_denied",
+        "tests/ci_scope_test.py::test_every_referenced_docs_path_is_denied"
+      ],
+      "checks": [
+        "python3 -m unittest tests.ci_scope_test"
+      ],
+      "rules": [
+        "tests/ci_scope_test.py",
+        "tools/ci_scope.py"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/"
+        },
+        {
+          "prefix": "tools/"
+        },
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "a docs/ path read by tests, tools or src that tools/ci_scope.py does not deny"
+    },
+    {
+      "id": "github-templates",
+      "tests": [
+        "tests/github_templates_test.py (6)"
+      ],
+      "checks": [
+        "python3 -m unittest tests.github_templates_test"
+      ],
+      "rules": [
+        "tests/github_templates_test.py",
+        "templates/github/manifest.json"
+      ],
+      "scope": [
+        {
+          "prefix": "templates/github/"
+        }
+      ],
+      "rejects": "a template set other than the manifest, form schema, language or label rules"
+    },
+    {
+      "id": "github-assets",
+      "tests": [
+        "tests/github_assets_test.py (form set + WorkflowTest 8)"
+      ],
+      "checks": [
+        "python3 -m unittest tests.github_assets_test"
+      ],
+      "rules": [
+        "tests/github_assets_test.py"
+      ],
+      "scope": [
+        {
+          "prefix": ".github/"
+        }
+      ],
+      "rejects": "a form set other than the decided four, a workflow set other than ci.yml and moai-label-sync.yml, unpinned actions"
+    },
+    {
+      "id": "design-review-fixes",
+      "tests": [
+        "tests/space_applied_record_test.py (3)"
+      ],
+      "checks": [
+        "python3 -m unittest tests.space_applied_record_test"
+      ],
+      "rules": [
+        "tests/space_applied_record_test.py",
+        "docs/design-review/applied.md"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/design-review/fixes/",
+          "suffixes": [
+            ".md"
+          ]
+        }
+      ],
+      "rejects": "a fix file set other than the applied.md table, a missing tip-recheck section"
+    },
+    {
+      "id": "github-fixtures-private-shapes",
+      "tests": [
+        "tests/github_inventory_test.py::test_fixtures_carry_no_secret_or_personal_shapes"
+      ],
+      "checks": [
+        "python3 -m unittest tests.github_inventory_test"
+      ],
+      "rules": [
+        "tests/github_inventory_test.py"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/fixtures/github/"
+        }
+      ],
+      "rejects": "a token, /Users/ or email shape in a GitHub fixture"
+    },
+    {
+      "id": "repo-scans-table",
+      "tests": [
+        "tests/repo_scans_test.py::RepoScansTableTest"
+      ],
+      "checks": [
+        "python3 -m unittest tests.repo_scans_test"
+      ],
+      "rules": [
+        "tests/repo_scans_test.py",
+        "tools/repo_scans.json",
+        "tools/repo_scans.py"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".py"
+          ]
+        },
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test file that walks the tree without an entry in this table or an exemption"
+    }
+  ]
+}
