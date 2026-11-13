@@ -1149,6 +1149,38 @@ pub fn settings_apply_in(
     Ok(out)
 }
 
+/// Puts a `.gitignore` holding `*` in the backup root (once; an existing regular file is left
+/// as it is), so no kept original under it is ever offered to git.
+fn keep_out_of_git(backups: &Path) -> Result<()> {
+    let ignore = backups.join(".gitignore");
+    match fs::symlink_metadata(&ignore) {
+        Ok(m) if m.is_file() => return Ok(()),
+        Ok(_) => {
+            return Err(format!(
+                "{} is not a regular file; nothing applied",
+                ignore.display()
+            ))
+        }
+        Err(_) => {}
+    }
+    let made = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&ignore)
+        .and_then(|mut f| {
+            use std::io::Write;
+            f.write_all(b"# moai-cli settings backups (#2383): never committed\n*\n")
+        });
+    match made {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(format!(
+            "writing {} failed ({e}); nothing applied",
+            ignore.display()
+        )),
+    }
+}
+
 /// Keeps the existing settings file byte for byte in a new, exclusively created
 /// `.moai-cli/settings-backups/<UTC>-<scope>/` folder before a confirmed replacement (#2383),
 /// and reads it back. Returns the folder relative to the project.
@@ -1165,18 +1197,38 @@ fn keep_original(project: &Path, scope: SettingsScope, before: Option<&[u8]>) ->
         )
     })?;
     refuse_symlink_dir(&backups)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&backups, fs::Permissions::from_mode(0o700));
+    }
+    // Audit 6850258090 B1: the copies never reach git — one `*` ignore file covers every
+    // backup folder — and never become more readable than the file they copy.
+    keep_out_of_git(&backups)?;
     let stamp = crate::update::compact_stamp();
     let dir = crate::update::create_backup_dir(&backups, &stamp, scope.name())?;
     let kept = dir.join(settings_name(scope));
-    let written = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&kept)
-        .and_then(|mut f| {
-            use std::io::Write;
-            f.write_all(before)?;
-            f.sync_all()
-        });
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).map_err(|e| {
+            format!(
+                "making {} owner-only failed ({e}); nothing applied",
+                dir.display()
+            )
+        })?;
+        let mode = fs::symlink_metadata(root.join(scope.file()))
+            .map(|m| m.permissions().mode() & 0o777)
+            .unwrap_or(0o600);
+        options.mode(mode);
+    }
+    let written = options.open(&kept).and_then(|mut f| {
+        use std::io::Write;
+        f.write_all(before)?;
+        f.sync_all()
+    });
     if let Err(e) = written {
         return Err(format!(
             "keeping the original in {} failed ({e}); nothing applied",

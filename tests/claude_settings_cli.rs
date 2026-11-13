@@ -521,7 +521,11 @@ fn backups(p: &Path) -> Vec<std::path::PathBuf> {
     match fs::read_dir(p.join(".moai-cli/settings-backups")) {
         Err(_) => vec![],
         Ok(rd) => {
-            let mut v: Vec<_> = rd.map(|e| e.unwrap().path()).collect();
+            // Backup folders only; the root's `.gitignore` (audit 6850258090 B1) is not one.
+            let mut v: Vec<_> = rd
+                .map(|e| e.unwrap().path())
+                .filter(|p| p.is_dir())
+                .collect();
             v.sort();
             v
         }
@@ -819,4 +823,82 @@ fn the_local_scope_replaces_its_own_file() {
     let local: Value =
         serde_json::from_slice(&fs::read(p.join(".claude/settings.local.json")).unwrap()).unwrap();
     assert_eq!(local["statusLine"], sl()["statusLine"]);
+}
+
+/// #2383 audit 6850258090 B1: in a git repository whose `.gitignore` keeps the owner-only
+/// local file out of git, the kept original keeps the file's mode (0600), its folder is
+/// owner-only (0700), and nothing under the backup folder shows up to git — the copy never
+/// becomes a world-readable file git could add. The project scope's backups stay out of git too.
+#[cfg(unix)]
+#[test]
+fn a_kept_original_keeps_its_mode_and_stays_out_of_git() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    common::git::git_ok(p, &["init", "-q"]);
+    fs::write(p.join(".gitignore"), ".claude/settings.local.json\n").unwrap();
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    let local = p.join(".claude/settings.local.json");
+    fs::write(
+        &local,
+        "{\n  \"env\": {\"API_TOKEN\": \"FAKE-PLACEHOLDER\"},\n  \"statusLine\": {\"type\": \"command\", \"command\": \"mine\"}\n}\n",
+    )
+    .unwrap();
+    fs::set_permissions(&local, fs::Permissions::from_mode(0o600)).unwrap();
+    user_status_line(p);
+
+    for scope in ["local", "project"] {
+        let (code, r) = run_with(
+            "claude-settings-plan",
+            p,
+            &["--scope", scope],
+            home.path(),
+            &sl(),
+        );
+        assert_eq!(code, Some(0), "{r}");
+        let r = &r["result"];
+        let (code, v) = run_with(
+            "claude-settings-apply",
+            p,
+            &[
+                "--plan-digest",
+                r["plan_digest"].as_str().unwrap(),
+                "--permission-reference",
+                "test-2383",
+                "--scope",
+                scope,
+                "--confirm-replace",
+                r["confirm_replace"]["confirm_token"].as_str().unwrap(),
+            ],
+            home.path(),
+            &sl(),
+        );
+        assert_eq!(code, Some(0), "{scope}: {v}");
+    }
+    let dirs = backups(p);
+    let dirs: Vec<_> = dirs.iter().filter(|d| d.is_dir()).collect();
+    assert_eq!(dirs.len(), 2, "{dirs:?}");
+    for d in &dirs {
+        let mode = fs::metadata(d).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700, "{} folder mode {mode:o}", d.display());
+    }
+    let local_dir = dirs
+        .iter()
+        .find(|d| d.to_str().unwrap().ends_with("-local"))
+        .unwrap();
+    let kept = local_dir.join("settings.local.json");
+    let mode = fs::metadata(&kept).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600, "kept local original mode {mode:o}");
+
+    let out = std::process::Command::new("git")
+        .args(["status", "--porcelain", "--untracked-files=all"])
+        .current_dir(p)
+        .output()
+        .unwrap();
+    let listed = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !listed.contains("settings-backups"),
+        "backups visible to git:\n{listed}"
+    );
+    assert!(!listed.contains("settings.local.json"), "{listed}");
 }
