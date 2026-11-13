@@ -1020,15 +1020,18 @@ fn gate_verdict_pending_tip_does_not_block() {
     }
 }
 
-/// An unreadable tip CI is never a pass.
+/// An unreadable tip CI is never a pass: a server error (retried, then a transport
+/// failure) and a status the client hands back as is (404) — not an empty, pending list.
 #[test]
 fn gate_verdict_unreadable_tip_ci_blocks() {
-    let v = gate_with_tip(
-        Some("HTTP/1.1 500 Internal Server Error\n\n{}".into()),
-        false,
-    );
-    assert_eq!(v["verdict"], json!("blocked"), "{v}");
-    assert_eq!(v["tip_ci"]["state"], json!("unknown"));
+    for response in [
+        "HTTP/1.1 500 Internal Server Error\n\n{}",
+        "HTTP/1.1 404 Not Found\n\n{\"message\":\"Not Found\"}",
+    ] {
+        let v = gate_with_tip(Some(response.into()), false);
+        assert_eq!(v["verdict"], json!("blocked"), "{response}: {v}");
+        assert_eq!(v["tip_ci"]["state"], json!("unknown"), "{response}: {v}");
+    }
 }
 
 /// The tip is read with `filter=all`, so an earlier failed attempt stays visible.

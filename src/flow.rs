@@ -190,8 +190,8 @@ fn fetch_check_runs<T: Transport, C: crate::forge::policy::Clock>(
 
 /// The check runs of `sha`. With `all_attempts` (#2665, the tip watch) the list keeps
 /// every attempt (`filter=all`; GitHub's default is the latest only), so a failure that
-/// a re-run turned green stays visible, and a non-200 page is an error, not an empty
-/// list.
+/// a re-run turned green stays visible. A non-2xx page is already an error of
+/// `Client::get`, never an empty list.
 fn fetch_runs<T: Transport, C: crate::forge::policy::Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
@@ -217,9 +217,6 @@ fn fetch_runs<T: Transport, C: crate::forge::policy::Clock>(
             return Err("flow check runs page limit exceeded (10)".to_string());
         }
         let resp = client.get(&u, None)?;
-        if all_attempts && resp.status != 200 {
-            return Err(format!("check runs returned HTTP {}", resp.status));
-        }
         let arr = resp
             .body
             .as_ref()
