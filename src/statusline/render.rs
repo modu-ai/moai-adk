@@ -30,7 +30,7 @@ pub struct Theme {
     pub version: &'static str,
     /// `📡` repository (blue).
     pub repo: &'static str,
-    /// `❗` open Issues (peach).
+    /// `⬇️` open Issues (peach).
     pub issues: &'static str,
     /// `🔀` open pull requests (pink).
     pub prs: &'static str,
@@ -295,10 +295,11 @@ impl Renderer {
             return Some(branch);
         };
         let forge = if self.enabled("github") && s.github.available && !s.github.suppressed {
-            // #2559 (user instruction 2026-11-12): icons instead of letter labels.
+            // #2559 (user instructions 2026-11-12): icons instead of letter labels; the Issue
+            // icon is `⬇️` (U+2B07 U+FE0F) since 23:1xZ, the PR icon stays `🔀`.
             format!(
                 " | {} / {}",
-                self.paint(self.theme.issues, &format!("❗ {}", s.github.open_issues)),
+                self.paint(self.theme.issues, &format!("⬇️ {}", s.github.open_issues)),
                 self.paint(self.theme.prs, &format!("🔀 {}", s.github.open_prs))
             )
         } else {
@@ -396,7 +397,7 @@ mod tests {
             plain(&full_status(), &[]),
             "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m\n\
              🏷️ release  🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%\n\
-             📡 owner/repo | ❗ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
+             📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
         );
     }
 
@@ -459,7 +460,7 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("📡 owner/repo | ❗ 0 / 🔀 0 | 🅱️ main ↓2 +3"));
+        assert!(with_zero.contains("📡 owner/repo | ⬇️ 0 / 🔀 0 | 🅱️ main ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         status.github.available = false;
@@ -614,7 +615,7 @@ mod tests {
                     (t.version, "🔅 v2.1.293"),
                     (t.version, "🗿 v2.0 -> 🗿 v3.0"),
                     (t.repo, "📡 owner/repo"),
-                    (t.issues, "❗ 7"),
+                    (t.issues, "⬇️ 7"),
                     (t.prs, "🔀 3"),
                     (t.branch, "🅱️ main ↓2 +3"),
                 ] {
