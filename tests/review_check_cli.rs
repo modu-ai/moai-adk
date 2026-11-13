@@ -311,6 +311,28 @@ fn titles_cannot_break_the_table() {
     );
 }
 
+/// The AUDIT workflow names both commands and the rules this file pins, so the skill text and
+/// the binary cannot drift apart unnoticed (#2614 scope 3).
+#[test]
+fn the_audit_workflow_describes_the_review_steps() {
+    let text = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
+    )
+    .unwrap();
+    for needle in [
+        "## Review steps",
+        "moai-cli review-package PROJECT --base <base SHA> --head <head SHA>",
+        "moai-cli review-check PROJECT --head <head SHA>",
+        "come from the base commit only",
+        "within three lines",
+        "the result `confirmed`",
+        "Any `important` finding makes the verdict FAIL",
+        "Never start other sessions or tools to imitate parallel work",
+    ] {
+        assert!(text.contains(needle), "audit.md lacks {needle:?}");
+    }
+}
+
 /// Audit FAIL 6840691650 B1: each command keeps its own help text.
 #[test]
 fn each_review_command_has_its_own_help() {
@@ -400,4 +422,33 @@ fn a_path_with_a_pipe_cannot_break_the_table() {
         body.contains("| Nit | a\\|b.rs:1 | value at line 1 |"),
         "{body}"
     );
+}
+
+/// Audit FAIL 6841505327 B1: `review-check` with PROJECT given as a subfolder reads the same
+/// HEAD paths as from the top level, so a correct finding is accepted from either.
+#[test]
+fn review_check_from_a_subfolder_accepts_the_same_findings() {
+    let (tmp, head) = repo();
+    let f = json!([finding("nit", 3, "let v3 = 3;")]);
+    let top = check(&tmp, &head, f.clone());
+    assert_eq!(top["ok"], json!(true), "{top}");
+    let mut child = std::process::Command::new(EXE)
+        .arg("review-check")
+        .arg(tmp.path().join("repo/src"))
+        .args(["--head", &head])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let body = json!({"schema_version": 1, "findings": f}).to_string();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(body.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let sub: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(sub["ok"], json!(true), "{sub}");
+    assert_eq!(sub["result"], top["result"], "{sub}");
 }

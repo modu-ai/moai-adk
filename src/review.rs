@@ -149,6 +149,18 @@ fn diff_prefix(attr_source: &str) -> Vec<&str> {
     ]
 }
 
+/// The repository's top level. Every path in the package is relative to it, and git runs
+/// there, so PROJECT given as a subfolder reads the same root `REVIEW.md` and the same diff
+/// (follow-up 6840613078).
+fn toplevel(repo: &Path) -> Result<std::path::PathBuf> {
+    let out = git(repo, &["rev-parse", "--show-toplevel"])?;
+    let top = String::from_utf8_lossy(&out).trim().to_string();
+    if top.is_empty() {
+        return Err("not inside a git work tree".into());
+    }
+    Ok(std::path::PathBuf::from(top))
+}
+
 fn commit_of(repo: &Path, rev: &str) -> Result<String> {
     if rev.is_empty() || rev.starts_with('-') {
         return Err(format!("invalid revision {rev:?}"));
@@ -309,6 +321,8 @@ fn ancestor_dirs(changed: &[Changed]) -> Vec<String> {
 }
 
 pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
+    let top = toplevel(repo)?;
+    let repo = top.as_path();
     let base = commit_of(repo, base)?;
     let head = commit_of(repo, head)?;
     let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", &base, &head])?)
@@ -591,6 +605,8 @@ fn text_field<'a>(v: &'a serde_json::Value, key: &str) -> Option<&'a str> {
 /// method and the result `confirmed`. Any malformed finding refuses the whole set, naming each
 /// one by index and reason, so nothing unverified is posted. Reads git only.
 pub fn check(repo: &Path, head: &str, input: &serde_json::Value) -> Result<CheckReport> {
+    let top = toplevel(repo)?;
+    let repo = top.as_path();
     if input.get("schema_version").and_then(|v| v.as_u64()) != Some(1) {
         return Err("unsupported schema_version; supported: 1".into());
     }
