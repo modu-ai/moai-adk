@@ -128,13 +128,18 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     let cwd = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
     let cwd = cwd.as_path();
     let Some(host) = Host::parse(host) else {
-        return engine_error("unknown hook host; must be claude or codex");
+        return engine_error("unknown hook host; must be claude, codex or omp");
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
             "unknown hook event; must be session-check, tool-preflight, tool-observe or turn-validation",
         );
     };
+    // OMP has no turn-end event (its `session_shutdown` fires on process exit only), so no
+    // OMP extension can carry this duty; a call is a configuration error, never a guess.
+    if host == Host::Omp && event == Event::TurnValidation {
+        return engine_error("turn-validation has no OMP event");
+    }
     let Ok(Value::Object(input)) = serde_json::from_slice::<Value>(stdin) else {
         // A PostToolUse input carries the whole tool result; one past the stdin bound is cut
         // off and no longer parses. Observation is best-effort and the tool already ran, so
@@ -177,14 +182,46 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     match host {
         Host::Claude => render_claude(event, verdict),
         Host::Codex => render_codex(event, verdict),
+        Host::Omp => render_omp(event, verdict),
     }
 }
 
-/// The hosts with a native adapter.
+/// OMP rendering (#2633). OMP runs no command hooks; the generated extension module calls
+/// `hook-dispatch --host omp` and turns this answer into the extension's own return value
+/// (github.com/can1357/oh-my-pi `docs/extensions.md`, `extensibility/extensions/types.ts`,
+/// read 2026-11-13):
+/// - tool-preflight deny: `{"block": true, "reason": …}` — the `tool_call` result shape; OMP
+///   hands `reason` to the model as the tool's error. OMP has no ask, so a confirmation is a
+///   deny with the same suffix as Codex.
+/// - session-check context: `{"context": …}` — the module adds it to `before_agent_start`'s
+///   `systemPrompt`, because `session_start` returns nothing.
+/// - tool-observe: nothing printed; the observation line is the effect.
+fn render_omp(event: Event, verdict: Verdict) -> Answer {
+    let stdout = match (event, verdict) {
+        (_, Verdict::Allow) => String::new(),
+        (Event::ToolPreflight, Verdict::Ask(reason)) => {
+            json!({"block": true, "reason": format!("{reason} {CODEX_ASK_SUFFIX}")}).to_string()
+        }
+        (Event::ToolPreflight, Verdict::Deny(reason)) => {
+            json!({"block": true, "reason": reason}).to_string()
+        }
+        (Event::SessionCheck, Verdict::Context(text)) => json!({"context": text}).to_string(),
+        _ => return engine_error("policy returned a verdict this duty cannot carry"),
+    };
+    Answer {
+        stdout,
+        stderr: String::new(),
+        exit: 0,
+    }
+}
+
+/// The hosts with a native adapter. OMP (#2633) has no command hooks: its extension module
+/// calls `hook-dispatch --host omp` and reads the small answer [`render_omp`] prints.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Host {
     Claude,
     Codex,
+    Omp,
 }
 
 impl Host {
@@ -192,6 +229,7 @@ impl Host {
         match word {
             "claude" => Some(Host::Claude),
             "codex" => Some(Host::Codex),
+            "omp" => Some(Host::Omp),
             _ => None,
         }
     }
@@ -200,6 +238,7 @@ impl Host {
         match self {
             Host::Claude => "claude",
             Host::Codex => "codex",
+            Host::Omp => "omp",
         }
     }
 }
@@ -347,7 +386,25 @@ pub fn capabilities(host: &str) -> Value {
                                 "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
             "on_engine_error": "exit 1: not documented for command hooks (unverified)",
         }),
-        None => json!({"error": "unknown hook host; must be claude or codex"}),
+        Some(Host::Omp) => json!({
+            "host": "omp",
+            "source": "https://github.com/can1357/oh-my-pi docs/extensions.md, docs/extension-loading.md, extensibility/extensions/types.ts (read 2026-11-13)",
+            "adapter": "extension module .omp/extensions/moai-hooks.ts calling hook-dispatch --host omp (OMP runs no command hooks)",
+            "session-check": {"event": "before_agent_start", "answer": "{context} added to systemPrompt", "blocks": false},
+            "tool-preflight": {"event": "tool_call", "guards": [
+                                   "bash: git commit on an issue/<n> branch without a claim token",
+                                   "bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass"],
+                               "opt_in": OPT_IN_RULES,
+                               "not_guarded": ["edit/write paths and content: OMP's edit input is not the Claude file_path/content shape, so it is not translated", "writes outside the project unless [hooks.outside_project_writes] is enabled", "MCP and extension tools"],
+                               "answer": "{block: true, reason} (reason reaches the model as the tool error)",
+                               "confirm": {"answer": "block (OMP has no ask)", "commands": CONFIRM_COMMANDS},
+                               "on_module_error": "the module lets the call through when moai-cli is missing, times out or exits 1, matching the non-blocking engine error of the other hosts; OMP itself treats a throwing handler as a block"},
+            "tool-observe": {"events": ["tool_result"], "records": "observe line", "blocks": false,
+                             "outcome": "tool_result.isError"},
+            "turn-validation": {"supported": false, "reason": "OMP has no turn-end event; session_shutdown fires on process exit only"},
+            "on_engine_error": "exit 1: the module does not block",
+        }),
+        None => json!({"error": "unknown hook host; must be claude, codex or omp"}),
     }
 }
 
@@ -620,6 +677,13 @@ fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
             (Some("Bash"), Some(0)) => ("success", "tool_response.exit_code (undocumented)"),
             (Some("Bash"), Some(_)) => ("failure", "tool_response.exit_code (undocumented)"),
             _ => ("unknown", "none"),
+        },
+        // OMP `tool_result` carries `isError` (types.ts); the module passes it as
+        // `tool_response.is_error`.
+        Host::Omp => match input["tool_response"]["is_error"].as_bool() {
+            Some(false) => ("success", "tool_result.isError"),
+            Some(true) => ("failure", "tool_result.isError"),
+            None => ("unknown", "none"),
         },
     }
 }
