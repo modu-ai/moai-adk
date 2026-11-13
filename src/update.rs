@@ -1317,14 +1317,7 @@ struct HostOutcome {
 /// (decisions L165), so it is found from the canonical executable path. The folder itself
 /// must be a real directory; `stage_package` then applies the usual package rules.
 pub fn installed_package_dir() -> Result<PathBuf> {
-    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
-    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
-    let dir = exe
-        .parent()
-        .and_then(Path::parent)
-        .ok_or("binary path has no parent folder")?
-        .join("skills")
-        .join(SKILL_DIR);
+    let dir = installed_root()?.join("skills").join(SKILL_DIR);
     match fs::symlink_metadata(&dir) {
         Ok(m) if m.is_dir() => Ok(dir),
         Ok(m) if m.file_type().is_symlink() => {
@@ -1333,6 +1326,34 @@ pub fn installed_package_dir() -> Result<PathBuf> {
         _ => Err(format!(
             "no skill package installed with this binary (expected {}); use update-plan and \
              update-apply with a package folder instead",
+            dir.display()
+        )),
+    }
+}
+
+/// The version folder that holds `bin/moai-cli`, found from the canonical executable path.
+fn installed_root() -> Result<PathBuf> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    let exe = fs::canonicalize(exe).map_err(|_| "binary path unavailable".to_string())?;
+    exe.parent()
+        .and_then(Path::parent)
+        .map(Path::to_path_buf)
+        .ok_or_else(|| "binary path has no parent folder".to_string())
+}
+
+/// #2721: the agent sources installed with this binary, outside the skill tree:
+/// `<version folder>/agents` beside `<version folder>/skills/moai`. A real folder or nothing:
+/// a symlink or a file is refused, and a release without the folder has no agents to install.
+pub fn installed_agents_dir() -> Result<PathBuf> {
+    let dir = installed_root()?.join(crate::agent_defs::SOURCE_DIR);
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => Ok(dir),
+        Ok(m) if m.file_type().is_symlink() => {
+            Err("the installed agent source folder is a symlink; refused".into())
+        }
+        Ok(_) => Err("the installed agent source path is not a folder; refused".into()),
+        Err(_) => Err(format!(
+            "no agent sources installed with this binary (expected {})",
             dir.display()
         )),
     }
@@ -1359,7 +1380,12 @@ pub struct UserLayerPlan {
     pub plan_digest: String,
 }
 
-fn user_layer_plan(home: &Path, package: &Path, staged: &StagedPackage) -> Result<UserLayerPlan> {
+fn user_layer_plan(
+    home: &Path,
+    package: &Path,
+    agents: &Path,
+    staged: &StagedPackage,
+) -> Result<UserLayerPlan> {
     let skills = plan_update(home, staged)?;
     let skill_ok = |h: &str| {
         skills
@@ -1388,7 +1414,7 @@ fn user_layer_plan(home: &Path, package: &Path, staged: &StagedPackage) -> Resul
             skipped.push(json!({"part": "routing", "host": h, "reason": format!("the {h} skill copy is blocked")}));
         }
     }
-    let agents = crate::agent_install::plan_for(home, package, &agent_hosts)?;
+    let agents = crate::agent_install::plan_for(home, package, agents, &agent_hosts)?;
     let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest || routing.package_digest != staged.digest {
@@ -1528,8 +1554,9 @@ pub fn update_command(
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
     let package = installed_package_dir()?;
+    let agents_dir = installed_agents_dir()?;
     let staged = stage_package(&package)?;
-    let layer = user_layer_plan(home, &package, &staged)?;
+    let layer = user_layer_plan(home, &package, &agents_dir, &staged)?;
     let package_text = package
         .to_str()
         .ok_or("non UTF-8 package path")?
@@ -1558,7 +1585,7 @@ pub fn update_command(
         }
     };
     // Verify the whole layer before any write.
-    let fresh = user_layer_plan(home, &package, &staged)?;
+    let fresh = user_layer_plan(home, &package, &agents_dir, &staged)?;
     if fresh.plan_digest != digest {
         return Err("stale or altered plan; re-preview required".into());
     }
@@ -1581,7 +1608,7 @@ pub fn update_command(
         r.unwrap_or_else(|e| json!({"state": "error", "message": e}))
     };
     let agents = part((|| {
-        let p = crate::agent_install::plan_for(home, &package, &agent_hosts)?;
+        let p = crate::agent_install::plan_for(home, &package, &agents_dir, &agent_hosts)?;
         // Same hosts as confirmed: the plan must be the confirmed one (note 2).
         if agent_hosts.len() == fresh.agents.hosts.len()
             && p.plan_digest != fresh.agents.plan_digest
@@ -1590,7 +1617,14 @@ pub fn update_command(
                 json!({"state": "refused", "reason": "the agents plan changed after the confirmed preview; nothing written"}),
             );
         }
-        crate::agent_install::apply_for(home, &package, &agent_hosts, &p.plan_digest, PERMISSION)
+        crate::agent_install::apply_for(
+            home,
+            &package,
+            &agents_dir,
+            &agent_hosts,
+            &p.plan_digest,
+            PERMISSION,
+        )
     })());
     let routing = part((|| {
         let p = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
@@ -2398,8 +2432,9 @@ mod user_layer_tests {
         package(&a, "A ({invoke})\n");
         package(&b, "B ({invoke})\n");
         let staged = stage_package(&a).unwrap();
-        assert!(user_layer_plan(&home, &a, &staged).is_ok());
-        let e = user_layer_plan(&home, &b, &staged).err().unwrap();
+        let agents = tmp.path().join("agents");
+        assert!(user_layer_plan(&home, &a, &agents, &staged).is_ok());
+        let e = user_layer_plan(&home, &b, &agents, &staged).err().unwrap();
         assert!(e.contains("package changed"), "{e}");
     }
 
@@ -2410,8 +2445,10 @@ mod user_layer_tests {
         let tmp = tempfile::tempdir().unwrap();
         let home = tmp.path().join("home");
         fs::create_dir_all(&home).unwrap();
-        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
-        let layer = user_layer_plan(&home, &pkg, &stage_package(&pkg).unwrap()).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let layer = user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
         let hosts = |g: &[String]| g.iter().map(String::as_str).collect::<Vec<_>>().join(",");
         let skipped = |g: &SkillGate| {
             g.skipped
