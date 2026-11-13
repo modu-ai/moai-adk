@@ -338,3 +338,33 @@ fn a_dashless_lane_name_in_a_folder_or_branch_still_maps() {
         vec![format!("{}: 1 uncommitted change(s)", old.display())]
     );
 }
+
+/// #2669 comment 6851881955 (leader's first use): a lane whose session folder is the primary
+/// checkout does not own that checkout's changes — they are listed as `unattributed` and do not
+/// make the lane not safe; the same changes in a lane's own worktree still do.
+#[test]
+fn the_primary_checkout_as_session_folder_is_not_the_lanes_work() {
+    let f = fixture();
+    fs::write(f.primary.join("user-notes.txt"), "x\n").unwrap();
+    let mut obs = clean_obs(&f);
+    obs["session_cwd"]["path"] = json!(f.primary);
+    let v = run(&f, "agent-9", Some(obs));
+    let r = result(&v);
+    assert_eq!(r["verdict"], "safe", "{r}");
+    let unattributed = texts(r, "unattributed");
+    assert_eq!(unattributed.len(), 1, "{r}");
+    assert!(unattributed[0].ends_with("uncommitted change(s)"), "{r}");
+    let primary = r["worktrees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|w| w["matched_by"] == json!(["session_cwd"]))
+        .unwrap_or_else(|| panic!("{r}"));
+    assert_eq!(primary["attributed"], false);
+    // The lane's own worktree is still judged.
+    fs::write(f.wt7.join("draft.txt"), "x\n").unwrap();
+    let mut obs = clean_obs(&f);
+    obs["session_cwd"]["path"] = json!(f.primary);
+    let r = run(&f, "agent-9", Some(obs));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+}
