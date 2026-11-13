@@ -79,19 +79,33 @@ fn live_sessions(moai: &Path) -> Option<usize> {
         let pid = row["pid"]
             .as_i64()
             .filter(|p| *p > 0 && *p <= i64::from(i32::MAX))?;
-        // SAFETY: signal 0 only checks that the process exists and may be signalled.
-        let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
-        if rc == 0 {
+        if pid_alive(pid)? {
             live += 1;
-            continue;
-        }
-        match std::io::Error::last_os_error().raw_os_error() {
-            Some(libc::EPERM) => live += 1,
-            Some(libc::ESRCH) => {}
-            _ => return None,
         }
     }
     Some(live)
+}
+
+/// Whether `pid` is alive; `None` when it cannot be judged.
+#[cfg(unix)]
+fn pid_alive(pid: i64) -> Option<bool> {
+    // SAFETY: signal 0 only checks that the process exists and may be signalled.
+    let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    if rc == 0 {
+        return Some(true);
+    }
+    match std::io::Error::last_os_error().raw_os_error() {
+        Some(libc::EPERM) => Some(true),
+        Some(libc::ESRCH) => Some(false),
+        _ => None,
+    }
+}
+
+/// Without `kill(pid, 0)` a registered pid cannot be judged: the caller blocks (fail-closed;
+/// `libc` is a unix-only dependency, #2771 re-audit F3).
+#[cfg(not(unix))]
+fn pid_alive(_pid: i64) -> Option<bool> {
+    None
 }
 
 /// `YYYYMMDDTHHMMSSZ` from `YYYY-MM-DDTHH:MM:SSZ`.
@@ -384,9 +398,11 @@ pub fn apply(
             })?;
         match c["kind"].as_str() {
             Some("entry") => {}
-            Some("secret") => return Err(format!(
+            Some("secret") => {
+                return Err(format!(
                 "`{name}` holds secrets and is never copied; move it by hand. Nothing was written"
-            )),
+            ))
+            }
             _ => {
                 return Err(format!(
                     "`{name}` marks the Go generation and stays in the backup; nothing was written"
