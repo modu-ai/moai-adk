@@ -163,6 +163,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         [
             "claim-verify",
             "claim-verify --hook",
+            "gate-check",
             "goal-block",
             "goal-plan",
             "goal-show",
