@@ -382,3 +382,17 @@ fn g9_the_auditor_is_not_an_author() {
         "{v}"
     );
 }
+
+/// Audit 6863303949 B2: G9 reads the auditor of the last verdict, not of an earlier one.
+#[test]
+fn g9_reads_the_last_verdict() {
+    let mut s = passing();
+    // agent-26 holds the lowest claim, so G2 lets its verdict through; it is also an author.
+    s["comments"] = json!([
+        claim(100, "agent-26", H),
+        verdict(200, "agent-10", H, "FAIL"),
+        verdict(300, "agent-26", H, "PASS")
+    ]);
+    s["pr_authors"] = json!(["agent-26"]);
+    assert_eq!(stopped(&gate(&s)), (false, "G9".into()));
+}

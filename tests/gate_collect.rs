@@ -460,3 +460,85 @@ fn a_trailer_or_claim_line_that_cannot_be_read_stops_the_collection() {
         assert!(err.contains(needle), "{trailer}: {err}");
     }
 }
+
+/// A PR with `n` commits, commit `i` carrying `Moai-Claim: 7#<ids[i]>`.
+fn repo_with_claim_ids(ids: &[u64]) -> Repo {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    for (i, id) in ids.iter().enumerate() {
+        commit(
+            d,
+            &[("src/a.rs", &format!("a{i}\n"))],
+            &format!("step {i}\n\nMoai-Claim: 7#{id}"),
+        );
+    }
+    let head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    Repo {
+        _dir: r._dir,
+        a: r.a,
+        b: head,
+        c: r.c,
+    }
+}
+
+fn three_reads(r: &Repo) -> Vec<Exchange> {
+    vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+            ),
+            response: ok(json!({"check_runs": []})),
+        },
+    ]
+}
+
+/// Audit 6863303949 B1: at most 20 distinct claims are read — 20 pass with 20 claim reads,
+/// 21 stop the collection before any claim read.
+#[test]
+fn twenty_claims_are_read_and_twenty_one_are_refused() {
+    let ids: Vec<u64> = (1..=20).map(|i| 1000 + i).collect();
+    let r = repo_with_claim_ids(&ids);
+    let mut ex = three_reads(&r);
+    // `git log` lists the newest commit first, so the claims are read in reverse order.
+    for (i, id) in ids.iter().enumerate().rev() {
+        ex.push(claim_comment(
+            *id,
+            &format!("moai-claim: session=agent-{i} epoch=1"),
+        ));
+    }
+    let t = RecordedTransport::new(ex);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.pr_authors.as_ref().unwrap().len(), 20);
+    assert_eq!(t.remaining(), 0);
+
+    let ids: Vec<u64> = (1..=21).map(|i| 1000 + i).collect();
+    let r = repo_with_claim_ids(&ids);
+    let t = RecordedTransport::new(three_reads(&r));
+    let err = collect(&target(&r), &t).unwrap_err();
+    assert!(err.contains("more than 20 claims"), "{err}");
+    assert_eq!(t.sent.borrow().len(), 3, "no claim comment is read");
+}
+
+/// Audit 6863303949 N1: several commits naming one claim read it once.
+#[test]
+fn one_claim_named_by_several_commits_is_read_once() {
+    let r = repo_with_claim_ids(&[555, 555, 555]);
+    let mut ex = three_reads(&r);
+    ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=2"));
+    let t = RecordedTransport::new(ex);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(t.sent.borrow().len(), 4);
+}
