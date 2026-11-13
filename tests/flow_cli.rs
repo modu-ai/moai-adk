@@ -90,9 +90,11 @@ fn install_stub(dir: &Path, script: &str) -> PathBuf {
 }
 
 fn run_flow(gh: &Path, envs: &[(&str, String)], args: &[&str]) -> (Value, std::process::Output) {
-    let home = std::env::temp_dir().join("moai-flow-cli-home");
+    // A fresh HOME per call: parallel test processes never share one folder (#2666).
+    let home_dir = tempfile::TempDir::new().unwrap();
+    let home = home_dir.path();
     let mut cmd = Command::new(EXE);
-    cmd.args(args).env("HOME", &home);
+    cmd.args(args).env("HOME", home);
     for (k, v) in envs {
         cmd.env(k, v);
     }
