@@ -235,7 +235,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "0fcef9733e6e3aa3266d28c8b5159c00f8b863a31f3794ab28d25bf0e91e1eec",
+      "sha256": "df95855aead2baf9c2d9bfd43f0d453a8eaa54ef41b86ee1a986e7bc617c3f79",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
