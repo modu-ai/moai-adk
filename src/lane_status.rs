@@ -67,6 +67,10 @@ pub struct PaneObservation {
     pub state: PaneState,
     pub source: String,
     pub observed_at: String,
+    /// For `usage_limit`: when the caller expects the lane back (the reset the pane shows,
+    /// or the lane's `usage-limit` `renew_until`, #2668), cited as given.
+    #[serde(default)]
+    pub until: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
@@ -76,6 +80,9 @@ pub enum PaneState {
     PermissionPrompt,
     InputPending,
     Unreachable,
+    /// The host stopped the lane at a usage limit and waits for the reset (#2668): the
+    /// lane is held, not stopped, and comes back by itself.
+    UsageLimit,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -125,6 +132,7 @@ pub enum IdleCause {
     Unreachable,
     PermissionPrompt,
     InputPending,
+    UsageLimit,
     UserDecision,
     WaitingPrerequisite,
     WaitingAudit,
@@ -135,10 +143,11 @@ pub enum IdleCause {
 }
 
 impl IdleCause {
-    pub const ALL: [IdleCause; 10] = [
+    pub const ALL: [IdleCause; 11] = [
         IdleCause::Unreachable,
         IdleCause::PermissionPrompt,
         IdleCause::InputPending,
+        IdleCause::UsageLimit,
         IdleCause::UserDecision,
         IdleCause::WaitingPrerequisite,
         IdleCause::WaitingAudit,
@@ -152,6 +161,7 @@ impl IdleCause {
             IdleCause::Unreachable => "unreachable",
             IdleCause::PermissionPrompt => "permission_prompt",
             IdleCause::InputPending => "input_pending",
+            IdleCause::UsageLimit => "usage_limit",
             IdleCause::UserDecision => "user_decision",
             IdleCause::WaitingPrerequisite => "waiting_prerequisite",
             IdleCause::WaitingAudit => "waiting_audit",
@@ -816,6 +826,12 @@ fn idle_entry(
             PaneState::Unreachable => return (IdleCause::Unreachable, Some(true), seen),
             PaneState::PermissionPrompt => return (IdleCause::PermissionPrompt, Some(true), seen),
             PaneState::InputPending => return (IdleCause::InputPending, Some(true), seen),
+            // #2668: held at a usage limit, not stopped; `until` says when it comes back.
+            PaneState::UsageLimit => {
+                let mut seen = seen;
+                seen["until"] = json!(p.until);
+                return (IdleCause::UsageLimit, Some(true), seen);
+            }
             PaneState::Working => {}
         }
     }

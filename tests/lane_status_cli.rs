@@ -171,6 +171,9 @@ fn lanes() -> Value {
         {"session": "agent-11", "pane": pane("unreachable")},
         {"session": "agent-12", "pane": pane("permission_prompt")},
         {"session": "agent-13", "pane": pane("input_pending")},
+        // #2668: held at a usage limit until the reset.
+        {"session": "agent-14", "pane": {"state": "usage_limit", "source": "hc get t6x",
+            "observed_at": "2026-11-10T09:00:00Z", "until": "2026-11-10T11:15:00Z"}},
     ])
 }
 
@@ -366,6 +369,15 @@ fn idle_causes_are_classified_from_records_only() {
     );
     assert_eq!(cause("agent-12"), json!("permission_prompt"));
     assert_eq!(cause("agent-13"), json!("input_pending"));
+    // #2668 AC-4: a lane waiting out a usage limit is idle for that cause, with the time it
+    // comes back — never `unknown` or a stop.
+    assert_eq!(cause("agent-14"), json!("usage_limit"));
+    assert_eq!(idle(&out, "agent-14")["idle"], json!(true));
+    assert_eq!(
+        idle(&out, "agent-14")["evidence"],
+        json!({"source": "hc get t6x", "observed_at": "2026-11-10T09:00:00Z",
+               "until": "2026-11-10T11:15:00Z"})
+    );
     // An active card and no pane observation: nothing says whether the lane is idle.
     assert_eq!(cause("agent-1"), json!("unknown"));
     assert_eq!(idle(&out, "agent-1")["idle"], Value::Null);
