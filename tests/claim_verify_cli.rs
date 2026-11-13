@@ -196,6 +196,39 @@ fn same_session_new_line_renews_without_handoff() {
     );
 }
 
+/// Audit FAIL 6840678988 B1 (#2621): once a renewing line is itself released or handed off,
+/// the line it renewed stays closed — the next session's claim owns.
+#[test]
+fn renewed_line_stays_closed_after_the_renewing_line_is_released_or_handed_off() {
+    let epoch2 = |lease: &str| IssueComment {
+        id: 200,
+        author: "GoosLab".into(),
+        body: format!("moai-claim: session=a epoch=2 lease_until={lease}"),
+    };
+    let released = [
+        claim(100, "a", LIVE),
+        epoch2(LIVE),
+        comment(250, "GoosLab", "moai-claim-release: comment=200 by=a"),
+        claim(300, "c", LIVE),
+    ];
+    let v = verdict(&released, "c", Some(300));
+    assert_eq!(v["status"], json!("owner"), "{v}");
+    assert_eq!(v["holder"], json!(300));
+    let handed = [
+        claim(100, "a", EXPIRED),
+        epoch2(LIVE),
+        comment(
+            250,
+            "GoosLab",
+            "moai-claim-handoff: comment=200 to=c by=leader",
+        ),
+        claim(300, "c", LIVE),
+    ];
+    let v = verdict(&handed, "c", Some(300));
+    assert_eq!(v["status"], json!("owner"), "{v}");
+    assert_eq!(v["holder"], json!(300));
+}
+
 /// Decision D2 (#1975 comment 6840449133): a lane's `by=timeout` handoff closes an expired
 /// lease and the next claim owns; on a live lease the line is ignored and reported.
 #[test]
