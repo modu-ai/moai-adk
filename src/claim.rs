@@ -89,7 +89,9 @@ pub fn journal_root(project: &Path) -> Result<PathBuf> {
     let common = id["clone_anchor"]
         .as_str()
         .ok_or("claim journal requires a git repository")?;
-    Ok(Path::new(common).join(".moai-cli").join("claims"))
+    Ok(Path::new(common)
+        .join(crate::CLONE_STATE_DIR)
+        .join("claims"))
 }
 
 // ---- Request and record ----

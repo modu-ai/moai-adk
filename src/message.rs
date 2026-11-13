@@ -1010,10 +1010,10 @@ mod durability_tests {
             let p = p.borrow();
             for path in [
                 project.to_path_buf(),
-                project.join(".moai-cli"),
-                project.join(".moai-cli/messages"),
-                project.join(".moai-cli/messages/outbox"),
-                project.join(".moai-cli/messages/inbox"),
+                project.join(crate::PROJECT_STATE_DIR),
+                project.join(crate::project_state!("messages")),
+                project.join(crate::project_state!("messages/outbox")),
+                project.join(crate::project_state!("messages/inbox")),
             ] {
                 assert!(
                     p.synced.contains(&path),
@@ -1184,17 +1184,23 @@ mod durability_tests {
             *remote.project.borrow_mut() = project.path().to_path_buf();
         }
         if reused {
-            fs::create_dir_all(project.path().join(".moai-cli/messages/outbox")).unwrap();
-            fs::create_dir_all(project.path().join(".moai-cli/messages/inbox")).unwrap();
+            fs::create_dir_all(
+                project
+                    .path()
+                    .join(crate::project_state!("messages/outbox")),
+            )
+            .unwrap();
+            fs::create_dir_all(project.path().join(crate::project_state!("messages/inbox")))
+                .unwrap();
         }
         reset(None);
         (project, remote)
     }
     fn journal(project: &Path, ack: bool) -> Entry {
         let path = project.join(if ack {
-            ".moai-cli/messages/inbox/r1.json"
+            crate::project_state!("messages/inbox/r1.json")
         } else {
-            ".moai-cli/messages/outbox/r1.json"
+            crate::project_state!("messages/outbox/r1.json")
         });
         serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
     }
@@ -1236,10 +1242,10 @@ mod durability_tests {
             for reused in [false, true] {
                 for relative in [
                     "",
-                    ".moai-cli",
-                    ".moai-cli/messages",
-                    ".moai-cli/messages/outbox",
-                    ".moai-cli/messages/inbox",
+                    crate::PROJECT_STATE_DIR,
+                    crate::project_state!("messages"),
+                    crate::project_state!("messages/outbox"),
+                    crate::project_state!("messages/inbox"),
                 ] {
                     let (project, remote) = setup(ack, reused);
                     let posts = remote.posts.get();
@@ -1271,7 +1277,9 @@ mod durability_tests {
         for skip in [1, 2, 3] {
             let (project, remote) = setup(false, false);
             reset(Some((
-                project.path().join(".moai-cli/messages/outbox"),
+                project
+                    .path()
+                    .join(crate::project_state!("messages/outbox")),
                 skip,
             )));
             assert_eq!(
@@ -1307,7 +1315,10 @@ mod durability_tests {
             // Record has one extra pre-attempt observation save; ACK has none.
             let skip = if ack { 3 } else { 4 };
             reset(Some((
-                project.path().join(".moai-cli/messages").join(leaf),
+                project
+                    .path()
+                    .join(crate::project_state!("messages"))
+                    .join(leaf),
                 skip,
             )));
             assert_eq!(
@@ -1344,7 +1355,9 @@ mod durability_tests {
     fn reconcile_sync_failure_preserves_receipts_and_performs_no_remote_calls_case() {
         let (project, remote) = setup(false, false);
         invoke(project.path(), &remote, false).unwrap();
-        let path = project.path().join(".moai-cli/messages/outbox/r1.json");
+        let path = project
+            .path()
+            .join(crate::project_state!("messages/outbox/r1.json"));
         let before = fs::read(&path).unwrap();
         let calls = remote.calls.get();
         let posts = remote.posts.get();
