@@ -174,6 +174,60 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert_eq!(again["nothing_to_apply"], json!(true), "{again}");
 }
 
+/// Skills already current (installed through `update-plan`/`update-apply`), agents and section
+/// missing: `update` still has something to apply and installs only those two parts.
+#[test]
+fn current_skills_with_missing_agents_still_have_something_to_apply() {
+    let (_t, home, exe, pkg) = setup();
+    let (h, p) = (home.to_str().unwrap(), pkg.to_str().unwrap());
+    let plan = result(&run(&exe, &home, &["update-plan", h, p]));
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let mut child = Command::new(&exe)
+        .args([
+            "update-apply",
+            h,
+            p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ])
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &home)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    use std::io::Write as _;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(plan.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(result(&out)["status"], json!("applied"));
+    let p = result(&run(&exe, &home, &["update"]));
+    for h in p["plan"]["hosts"].as_array().unwrap() {
+        assert!(
+            h["files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|f| f["action"] == json!("unchanged")),
+            "{h}"
+        );
+    }
+    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    assert_eq!(r["agents_result"]["state"], json!("applied"), "{r}");
+    assert!(home.join(".claude/CLAUDE.md").is_file());
+}
+
 #[test]
 fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
     let (_t, home, exe, _) = setup();

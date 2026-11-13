@@ -2350,3 +2350,34 @@ mod version_folder_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod user_layer_tests {
+    use super::*;
+
+    fn package(dir: &Path, routing: &str) {
+        fs::create_dir_all(dir.join("references/home")).unwrap();
+        fs::write(
+            dir.join("SKILL.md"),
+            "---\nname: moai\ndescription: d\n---\nx\n",
+        )
+        .unwrap();
+        fs::write(dir.join("references/home/routing.md"), routing).unwrap();
+    }
+
+    /// #2638: the agents and the section must come from the staged snapshot; a plan whose
+    /// package on disk differs from the staged one is refused before anything is written.
+    #[test]
+    fn a_package_that_differs_from_the_staged_one_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let (a, b) = (tmp.path().join("a"), tmp.path().join("b"));
+        package(&a, "A ({invoke})\n");
+        package(&b, "B ({invoke})\n");
+        let staged = stage_package(&a).unwrap();
+        assert!(user_layer_plan(&home, &a, &staged).is_ok());
+        let e = user_layer_plan(&home, &b, &staged).err().unwrap();
+        assert!(e.contains("package changed"), "{e}");
+    }
+}
