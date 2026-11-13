@@ -49,6 +49,14 @@ A child-process budget in a test is load-independent: bound the child by progres
 
 Docs-only PRs get light CI (#2527, design comment 6822993459): when every changed path is under a verified-safe doc root the heavy steps (PyYAML install, ripgrep install, rust toolchain setup, build/test) are skipped and only `git diff --check` runs, but the aggregate `ci` check, the verdict's CI citation and every citation condition above are unchanged — a light run still counts as the required CI result for that head. The scope classifier is `tools/ci_scope.py`; its verified-safe list is `docs/` with `.md`/`.txt`/`.png`/`.svg` suffixes (minus files tests read) plus `.moai-cli/reports/`. Any failure or unrecognized path fails safe to the full scope.
 
+## Change-specific rules
+
+- Base drift (WF-OBS #9): a pull request's `baseRefOid` can lag behind the branch it targets. Before a verdict or a merge-tree check, read the branch head itself (`git ls-remote origin refs/heads/<base>`) and judge against it; when the two differ, say which one you used.
+- Platform-specific code (WF-OBS #25): a call that exists only on unix passes every macOS check. When a change touches platform-specific code and the Windows target is installed, also run `cargo check --offline --locked --target x86_64-pc-windows-msvc`; when it is not installed, record that check as `not_run` and name the `windows-build` run after merge as the one that will show it.
+- Checker changes (WF-OBS #26): when a change alters a checker or classifier (for example `tools/check_pr_self_audit.py` or `tools/ci_scope.py`), run the old and the new version over recent real inputs (for example the last 25 pull request bodies) and report every verdict that changed.
+- Absence in tests (WF-OBS #29): a test that needs a program, file or variable to be missing creates that absence in its own fixture (a temporary folder, a scrubbed `PATH` or environment); it never relies on the host lacking it.
+- Manifest after a conflict (WF-OBS #30): when a merge conflicts in a package's `source-manifest.json`, take neither side's sha256 — recompute it from the merged file, then check every entry of the manifest against its file.
+
 ## Shell and helper rules
 
 - Guard refusal (WF-OBS #17): when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. Only when the refusal is confirmed to be about the combined form (the guard says the command is too complex to verify, not that its effect is forbidden) may it be retried split into plain single steps: the refused effect itself stays forbidden, and each step must pass the same guard on its own. Splitting is never a bypass.

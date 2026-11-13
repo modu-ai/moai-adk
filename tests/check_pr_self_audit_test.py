@@ -243,6 +243,20 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
                      "Never record a key or token value", "zsh word splitting (WF-OBS #16)",
                      "for x in ${=var}", "never name a shell function after an existing alias"):
             self.assertIn(rule, text)
+        # WF-OBS ledger rows 9, 25, 26, 29 and 30 (Issue #2401 CLOSE-TABLE 6841136693).
+        self.assertEqual(text.count("\n## Change-specific rules\n"), 1)
+        for rule in ("Base drift (WF-OBS #9)", "`git ls-remote origin refs/heads/<base>`",
+                     "say which one you used",
+                     "Platform-specific code (WF-OBS #25)",
+                     "`cargo check --offline --locked --target x86_64-pc-windows-msvc`",
+                     "record that check as `not_run`",
+                     "Checker changes (WF-OBS #26)", "run the old and the new version over recent real inputs",
+                     "report every verdict that changed",
+                     "Absence in tests (WF-OBS #29)", "creates that absence in its own fixture",
+                     "it never relies on the host lacking it",
+                     "Manifest after a conflict (WF-OBS #30)", "take neither side's sha256",
+                     "recompute it from the merged file", "check every entry of the manifest against its file"):
+            self.assertIn(rule, text)
         self.assertNotIn("Reuse the existing target directory instead of creating a new one", text)
         # Cleaning removes cargo output only; `target/` and lane files stay (pre-audit B1).
         # The leader's canonical wording, Issue #2385 comment 6777290466, points 1-4.
