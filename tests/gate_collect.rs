@@ -452,7 +452,11 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
-    assert_eq!(t.sent.borrow().len(), 4, "the earlier tip commit is not read");
+    assert_eq!(
+        t.sent.borrow().len(),
+        4,
+        "the earlier tip commit is not read"
+    );
     let ci = s.tip_ci.clone().unwrap();
     assert_eq!(
         (ci.state.as_str(), ci.decided_by.as_deref()),
@@ -602,4 +606,146 @@ fn the_tip_walk_stops_at_its_limit() {
     let ci = s.tip_ci.unwrap();
     assert_eq!(ci.state, "unknown");
     assert!(ci.detail.contains("last 10 tip commit"), "{}", ci.detail);
+}
+
+/// Audit 6863284751 B2: the tip's check runs are read over at most 10 pages. Ten pages, the
+/// last without `next`, are all read (a failure on page 10 decides red); a tenth page that
+/// points to an 11th stops before the 11th request, and the result is `unknown`, which stops
+/// a repair too.
+#[test]
+fn the_tip_check_run_pages_stop_at_ten() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let first = format!("{API}/commits/{}/check-runs?filter=all&per_page=100", r.c);
+    let page_url = |n: usize| {
+        if n == 1 {
+            first.clone()
+        } else {
+            format!("{API}/tip-pages/{n}")
+        }
+    };
+    // `pages` pages; the last carries `next` to page `pages + 1` when `more`.
+    let pages = |count: usize, more: bool, last_runs: Value| -> Vec<Exchange> {
+        (1..=count)
+            .map(|n| {
+                let runs = if n == count {
+                    last_runs.clone()
+                } else {
+                    json!([run(Some("success"), n as u64)])
+                };
+                let mut resp = ok(json!({ "check_runs": runs }));
+                if n < count || more {
+                    resp = resp.with_header("link", format!("<{}>; rel=\"next\"", page_url(n + 1)));
+                }
+                Exchange {
+                    request: HttpRequest::new("GET", page_url(n)),
+                    response: resp,
+                }
+            })
+            .collect()
+    };
+
+    let t = with_tip(
+        &r.b,
+        "SELF-AUDIT-OK",
+        pages(10, false, json!([run(Some("failure"), 10)])),
+        &r.a,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0, "all ten pages are read");
+    // Success on pages 1–9 and a failure on page 10 on the same commit: flaky, which proves
+    // page 10 was judged together with the others.
+    assert_eq!(s.tip_ci.as_ref().unwrap().state, "flaky");
+
+    let mut tips = pages(10, true, json!([run(Some("success"), 10)]));
+    tips.push(Exchange {
+        request: HttpRequest::new("GET", page_url(11)),
+        response: ok(json!({ "check_runs": [run(Some("success"), 11)] })),
+    });
+    let body = "SELF-AUDIT-OK\nmoai-tip-repair: x\n";
+    let t = with_tip(&r.b, body, tips, &r.a);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 1, "the 11th page is never requested");
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(ci.state, "unknown");
+    assert!(
+        ci.detail.contains("more than 10 check run pages"),
+        "{}",
+        ci.detail
+    );
+    assert!(s.tip_repair);
+    assert!(g8(&s).is_some(), "unknown stops a repair too");
+}
+
+/// Audit 6863284751 B3: the walk follows first parents only. On a tip that merged a PR, the
+/// merged PR branch's head carries that PR's own `ci`; it must never decide the tip. Here the
+/// tip (a merge) is still running, its first parent (the previous tip) is red and the merged
+/// branch head — committed later, so a date-ordered walk would read it first — is green: the
+/// state is red, decided by the first parent, and the branch head is never read.
+#[test]
+fn the_walk_follows_first_parents_not_a_merged_branch() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "-b", "merged-pr", &r.a]);
+    fs::write(d.join("src/m.rs"), "m\n").unwrap();
+    git_ok(d, &["add", "-A"]);
+    let out = common::git::command()
+        .current_dir(d)
+        .env("GIT_COMMITTER_DATE", "2030-01-01T00:00:00Z")
+        .env("GIT_AUTHOR_DATE", "2030-01-01T00:00:00Z")
+        .args([
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "merged pr head",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let branch_head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge merged-pr",
+            "merged-pr",
+        ],
+    );
+    let tip = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    // Without --first-parent, git's date order puts the 2030 branch head right after the tip.
+    let all = git(d, &["rev-list", "--max-count=2", &tip]);
+    assert_eq!(all.lines().nth(1), Some(branch_head.as_str()));
+
+    let t = with_tip(
+        &r.b,
+        "SELF-AUDIT-OK",
+        vec![
+            tip_runs(&tip, json!([run(None, 90)])),
+            tip_runs(&r.c, json!([run(Some("failure"), 80)])),
+        ],
+        &r.a,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(
+        (ci.state.as_str(), ci.decided_by.as_deref()),
+        ("red", Some(r.c.as_str()))
+    );
+    assert!(
+        !t.sent.borrow().iter().any(|q| q.url.contains(&branch_head)),
+        "the merged branch head is never read"
+    );
+    assert!(g8(&s).is_some());
 }
