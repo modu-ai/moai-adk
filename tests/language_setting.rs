@@ -415,4 +415,19 @@ fn a_migrated_project_names_its_own_profile_path() {
         "{text}"
     );
     assert!(!text.contains(".moai-cli/project.yaml"), "{text}");
+    // AUDIT #2794 B2: the preview renders the same section the apply wrote — a re-plan right
+    // after the apply finds AGENTS.md `unchanged` (a plan that named another profile path
+    // would render a different block and plan an update).
+    let again = ok(&run(
+        &["agents-plan", path(&root)],
+        agents_request("en").to_string().as_bytes(),
+    ));
+    let agents = again["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == "AGENTS.md")
+        .unwrap_or_else(|| panic!("{again}"))
+        .clone();
+    assert_eq!(agents["action"], json!("unchanged"), "{again}");
 }
