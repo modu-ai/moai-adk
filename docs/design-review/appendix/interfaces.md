@@ -146,6 +146,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `project-skill-apply`
 - `project-skill-plan`
 - `project-skill-revert`
+- `queue-free`
 - `queue-next`
 - `queue-query`
 - `recovery-apply`
