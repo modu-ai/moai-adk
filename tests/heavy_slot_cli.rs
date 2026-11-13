@@ -1,6 +1,7 @@
 //! #2677 (AC-1, AC-2): `heavy-slot-acquire` / `heavy-slot-status` — a machine-wide limit on
 //! concurrent heavy runs, the product port of `tools/heavy_check_slot.py` (#2491). Every case
-//! uses its own temporary slot folder (`--dir`); nothing under the real HOME cache is touched.
+//! uses its own temporary slot folder (`--dir`, or a temporary HOME and `XDG_CACHE_HOME` for
+//! the default folder); nothing under the real HOME cache is touched.
 //! Waits are bounded by progress markers plus a generous hang guard, never a bare budget.
 #![cfg(unix)]
 
@@ -566,5 +567,94 @@ fn the_python_tool_and_the_command_take_turns_in_one_folder() {
         assert!(x.status.success(), "{}", text(&x));
         assert!(y.status.success(), "{}", text(&y));
         assert!(s2.exists());
+    }
+}
+
+/// B2 of audit 6855554250: without `--dir` the command and the Python tool resolve the same
+/// default folder `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots` — with the variable set,
+/// set but empty (both fall back to `~/.cache`; an empty value must not become a folder
+/// relative to the working directory), and unset — and take turns in it. HOME, the cache
+/// variable and the working directory are all temporary; the real HOME is never read.
+#[test]
+fn without_dir_both_tools_use_the_same_default_folder() {
+    for case in ["set", "empty", "unset"] {
+        let home = tempfile::tempdir().unwrap();
+        let xdg = tempfile::tempdir().unwrap();
+        let work = tempfile::tempdir().unwrap();
+        let m = tempfile::tempdir().unwrap();
+        let expected = match case {
+            "set" => xdg.path().join("moai-cli/heavy-slots"),
+            _ => home.path().join(".cache/moai-cli/heavy-slots"),
+        };
+        let env = |c: &mut Command| {
+            c.env_clear()
+                .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+                .env("HOME", home.path())
+                .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+                .current_dir(work.path());
+            match case {
+                "set" => {
+                    c.env("XDG_CACHE_HOME", xdg.path());
+                }
+                "empty" => {
+                    c.env("XDG_CACHE_HOME", "");
+                }
+                _ => {}
+            }
+        };
+        let (s1, r1, s2) = (
+            m.path().join("s1"),
+            m.path().join("r1"),
+            m.path().join("s2"),
+        );
+
+        let mut st = Command::new(EXE);
+        st.arg("heavy-slot-status");
+        env(&mut st);
+        let out = st.output().unwrap();
+        assert!(out.status.success(), "{case}: {out:?}");
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(
+            v["result"]["folder"].as_str().map(PathBuf::from),
+            Some(expected.clone()),
+            "{case}: status names another default folder"
+        );
+
+        let mut rs = Command::new(EXE);
+        rs.args(["heavy-slot-acquire", "--max", "1", "--name", "rs", "--"])
+            .args(["sh", "-c", &hold(&s1, &r1)]);
+        env(&mut rs);
+        rs.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let holder = spawn(rs);
+        wait_for("holder started", || s1.exists());
+        assert!(
+            expected.join("slot-0").is_file(),
+            "{case}: the slot is not in {}",
+            expected.display()
+        );
+        assert!(
+            !work.path().join("moai-cli").exists(),
+            "{case}: a folder relative to the working directory was used"
+        );
+
+        let mut py = Command::new("python3");
+        py.arg("-I")
+            .arg(python_tool())
+            .args(["acquire", "--max", "1", "--name", "py", "--"])
+            .args(["sh", "-c", &format!("touch '{}'", s2.display())]);
+        env(&mut py);
+        py.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let waiter = spawn(py);
+        wait_for("python waiting in the default folder", || {
+            fs::read_dir(expected.join("waiting"))
+                .map(|r| r.count() == 1)
+                .unwrap_or(false)
+        });
+        assert!(!s2.exists(), "{case}: both ran at once");
+        fs::write(&r1, "").unwrap();
+        let (x, y) = (holder.finish(), waiter.finish());
+        assert!(x.status.success(), "{case}: {}", text(&x));
+        assert!(y.status.success(), "{case}: {}", text(&y));
+        assert!(s2.exists(), "{case}: the python command never ran");
     }
 }
