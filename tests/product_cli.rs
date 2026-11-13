@@ -2443,7 +2443,11 @@ mod skill_package {
             assert!(shared.contains(&format!("`{name}`")), "{name} listed");
         }
         let named = shared.matches("`moai-").count() - shared.matches("`moai-cli`").count();
-        assert_eq!(named, sources.len(), "the shared block lists exactly the sources");
+        assert_eq!(
+            named,
+            sources.len(),
+            "the shared block lists exactly the sources"
+        );
         for (route, agent) in [
             ("plan", "moai-plan"),
             ("read", "moai-research"),
