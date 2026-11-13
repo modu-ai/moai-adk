@@ -920,10 +920,7 @@ pub fn settings_apply_in(
     scope: SettingsScope,
 ) -> Result<Value> {
     // Authorization stays with the host; the reference is caller metadata, not a verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let s = settings_state(project, desired, scope)?;

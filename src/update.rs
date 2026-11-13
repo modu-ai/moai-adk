@@ -1293,10 +1293,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
 // --- apply --------------------------------------------------------------------------
 
 fn validate_permission(permission: &str) -> Result<()> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     Ok(())

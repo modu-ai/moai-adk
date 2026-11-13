@@ -221,10 +221,7 @@ pub(crate) fn validate(message: &mut Message) -> Result<String> {
     Ok(crate::digest(&bytes))
 }
 pub(crate) fn permission_gate(permission: &str) -> Result<()> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err(err(
             Kind::PermissionReferenceMissing,
             "permission reference required",
