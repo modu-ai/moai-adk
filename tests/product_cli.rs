@@ -2160,10 +2160,18 @@ fn envelope_fields_and_error_codes() {
         let word = f["args"][0].as_str().unwrap_or_default();
         let out = &f["stdout"];
         if !OPS.contains(&word) {
-            assert!(
-                out.get("ok").is_none(),
-                "{name}: launcher or unknown word got an envelope"
-            );
+            // #2799 D3 decision 1 (a): an unknown first word gets the `cli` usage envelope; a
+            // launcher still gets none.
+            if f["stderr"]
+                .as_str()
+                .is_some_and(|e| e.starts_with("error: unrecognized subcommand"))
+            {
+                assert_eq!(out["operation"], json!("cli"), "{name}");
+                assert_eq!(out["error"]["kind"], json!("usage"), "{name}");
+                assert_eq!(f["exit"], json!(2), "{name}");
+            } else {
+                assert!(out.get("ok").is_none(), "{name}: launcher got an envelope");
+            }
             continue;
         }
         let op = word.replacen('-', ".", 1);

@@ -197,12 +197,6 @@ impl Renderer {
 
     fn bars_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        // #2756 AC-3 (user instruction 2026-11-13, replacing #2697's name-last order): the
-        // lane name comes first, then the usage bars; with no name the segment and its
-        // separator are both left out.
-        if self.enabled("session") && !s.session_name.is_empty() {
-            segs.push(format!("🏷️ {}", s.session_name));
-        }
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
                 let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
@@ -232,6 +226,12 @@ impl Renderer {
             if let Some(w) = s.seven_day {
                 segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
             }
+        }
+        // #2809 AC-1 (user instruction 2026-11-13T22:3xZ, replacing #2756's name-first order):
+        // the usage bars come first and the lane name last; with no name the segment and its
+        // separator are both left out.
+        if self.enabled("session") && !s.session_name.is_empty() {
+            segs.push(format!("🏷️ {}", s.session_name));
         }
         // The renderer never shortens a segment and does not read `COLUMNS`, which Claude
         // Code sets; whether an overlong line is cut or wraps is left open by the host docs
@@ -417,15 +417,15 @@ mod tests {
         }
     }
 
-    /// #2756 AC-1–AC-3 (user instruction 2026-11-13): environment, repository, then the lane
-    /// name and the usage bars, each line joined by ` | `.
+    /// #2756 AC-1–AC-2 and #2809 AC-1 (user instructions 2026-11-13): environment,
+    /// repository, then the usage bars and the lane name last, each line joined by ` | `.
     #[test]
     fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
         assert_eq!(
             plain(&full_status(), &[]),
             "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
              📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
-             🏷️ release | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+             🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75% | 🏷️ release"
         );
     }
 
@@ -518,20 +518,20 @@ mod tests {
         assert_eq!(at(10.0), "🔋 Week: █░░░░░░░░░ 10%");
     }
 
-    /// #2756 AC-3/AC-4 (replacing #2697's name-last order): the name opens the line and a
-    /// ` | ` follows it; with no bars it stands alone, and with no name (or `session` off)
-    /// the name and its separator are both left out.
+    /// #2809 AC-1 (replacing #2756's name-first order): the name closes the line after a
+    /// ` | `; with no bars it stands alone, and with no name (or `session` off) the name and
+    /// its separator are both left out.
     #[test]
-    fn the_session_name_is_the_first_segment_before_the_bars() {
+    fn the_session_name_is_the_last_segment_after_the_bars() {
         let mut status = Status {
             session_name: "focus".into(),
             ..Default::default()
         };
-        assert_eq!(plain(&status, &[]), "🏷️ focus | CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a | 🏷️ focus");
         status.seven_day = Some(RateWindow::default());
         assert_eq!(
             plain(&status, &[]),
-            "🏷️ focus | CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
+            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0% | 🏷️ focus"
         );
         assert_eq!(
             plain(&status, &["usage_7d", "context"]),
@@ -546,25 +546,25 @@ mod tests {
         assert_eq!(
             plain(&status, &[]),
             "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%",
-            "no name: no leading segment and no leading separator"
+            "no name: no trailing segment and no trailing separator"
         );
     }
 
     /// The renderer never shortens for width and does not read `COLUMNS`; the host docs leave
-    /// open whether an overlong line is cut or wraps. A long name is printed whole, before
-    /// every bar, and the bars that follow it are unchanged.
+    /// open whether an overlong line is cut or wraps. A long name is printed whole, after
+    /// every bar, and the bars before it are unchanged.
     #[test]
-    fn a_long_name_is_printed_whole_and_before_every_bar() {
+    fn a_long_name_is_printed_whole_and_after_every_bar() {
         let long = "x".repeat(200);
         let mut status = full_status();
         status.session_name = long.clone();
         let line = plain(&status, &[]).lines().nth(2).unwrap().to_string();
-        let head = format!("🏷️ {long} | ");
-        assert!(line.starts_with(&head), "{line}");
+        let tail = format!(" | 🏷️ {long}");
+        assert!(line.ends_with(&tail), "{line}");
         assert_eq!(
-            &line[head.len()..],
+            &line[..line.len() - tail.len()],
             "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%",
-            "the bars follow the name, unchanged by its length"
+            "the bars come before the name, unchanged by its length"
         );
     }
 
@@ -734,7 +734,7 @@ mod tests {
         let output = plain(&full_status(), &["git_branch", "git_status"]);
         assert_eq!(output.lines().count(), 2);
         assert!(
-            output.lines().nth(1).unwrap().starts_with("🏷️ release | "),
+            output.lines().nth(1).unwrap().ends_with(" | 🏷️ release"),
             "{output}"
         );
     }
