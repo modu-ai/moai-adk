@@ -1333,6 +1333,8 @@ fn apply_legacy_move(
 ) -> Result<Receipt> {
     let area = format!("{MOAI_DIR}/backups/{stamp}");
     receipt.legacy_move = true;
+    // A C4a receipt carries no Go backup; one that also names a Go backup fails the
+    // folder-entry check in `read_receipt` (a Go backup always goes with a folder move).
     for s in fresh.state_moves.iter().filter(|s| s.action == "move") {
         receipt.moves.push(Moved {
             path: s.from.clone(),
@@ -1345,6 +1347,7 @@ fn apply_legacy_move(
     let made = fs::create_dir(project.join(MOAI_DIR))
         .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
         .and_then(|_| make_dirs(project, &area))
+        .and_then(|_| crate::update::test_fault("go_state_legacy_after_mkdir"))
         .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
     let saved = match made {
         Ok(bytes) => bytes,
@@ -1438,7 +1441,6 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     // earlier-root move (C4a); never both at once.
     let moving = go_folder || receipt.legacy_move;
     if moving != (base != LEGACY_ROOT)
-        || (go_folder && receipt.legacy_move)
         || (go_folder && !crate::state_root::go_backup_name(&receipt.go_backup))
     {
         return Err("receipt layout does not match where it was found; refused".into());

@@ -2062,3 +2062,32 @@ fn an_earlier_root_receipt_with_go_parts_is_refused() {
         assert_eq!(rp["ok"], json!(false), "{name}: {rp}");
     }
 }
+
+/// C4a step 1 fails right after `.moai/` is made (debug-build fault seam): the empty folders it
+/// made are removed and the project is exactly as before.
+#[test]
+fn an_earlier_root_move_failing_after_the_new_folder_leaves_nothing() {
+    let fx = legacy_fixture();
+    let before = fx.tree();
+    let p = plan(&fx);
+    let out = Command::new(EXE)
+        .args([
+            "go-state-apply",
+            fx.root.to_str().unwrap(),
+            "--plan-digest",
+            p["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            REF,
+        ])
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .env("MOAI_CLI_TEST_FAULT", "go_state_legacy_after_mkdir")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("nothing else changed"), "{v}");
+    assert_eq!(fx.tree(), before);
+    assert!(!fx.root.join(".moai").exists());
+}
