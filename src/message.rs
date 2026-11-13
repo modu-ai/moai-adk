@@ -266,13 +266,9 @@ fn directories(project: &Path) -> Result<PathBuf> {
     if !project.is_dir() {
         return Err(invalid("message project must be an existing directory"));
     }
-    let root = project.join(crate::PROJECT_STATE_DIR).join("messages");
-    for path in [
-        project.join(crate::PROJECT_STATE_DIR),
-        root.clone(),
-        root.join("outbox"),
-        root.join("inbox"),
-    ] {
+    let state = crate::state_root::path(project, "");
+    let root = state.join("messages");
+    for path in [state, root.clone(), root.join("outbox"), root.join("inbox")] {
         check_path(&path)?;
         match fs::create_dir(&path) {
             Ok(()) => {
