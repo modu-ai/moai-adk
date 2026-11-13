@@ -390,6 +390,56 @@
       "rejects": "a token, /Users/ or email shape in a GitHub fixture"
     },
     {
+      "id": "no-shipped-worktreeinclude",
+      "tests": [
+        "tests/worktree_include_guard.rs::no_shipped_or_embedded_file_is_a_worktreeinclude"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test worktree_include_guard no_shipped_or_embedded_file_is_a_worktreeinclude"
+      ],
+      "rules": [
+        "tests/worktree_include_guard.rs",
+        "src/worktree_include.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a shipped or embedded .worktreeinclude, or a source other than src/worktree_include.rs naming it (#2670)"
+    },
+    {
+      "id": "clean-env-only",
+      "tests": [
+        "tests/cargo_env_developer_dir.rs::tests_clear_child_environments_only_through_clean_env"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test cargo_env_developer_dir tests_clear_child_environments_only_through_clean_env"
+      ],
+      "rules": [
+        "tests/cargo_env_developer_dir.rs",
+        "tests/common/mod.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test that clears a child environment itself instead of tests/common CleanEnv (#2699)"
+    },
+    {
       "id": "repo-scans-table",
       "tests": [
         "tests/repo_scans_test.py::RepoScansTableTest"

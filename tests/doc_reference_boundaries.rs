@@ -1,5 +1,6 @@
 //! #2450 repair: literal auditor fixtures and adjacent lexical boundaries through CLI.
 mod common;
+use common::CleanEnv;
 use moai_cli::code_refs;
 use serde_json::{json, Value};
 use std::{
@@ -24,7 +25,7 @@ fn run(root: &Path, home: &Path, op: &str, input: Value) -> Value {
         .unwrap_or_else(|| env!("CARGO_BIN_EXE_moai-cli").into());
     let mut child = Command::new(binary)
         .args([op, root.to_str().unwrap()])
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", home)
         .env("USERPROFILE", home)

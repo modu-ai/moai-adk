@@ -5,6 +5,7 @@
 //! and an empty temporary HOME.
 
 mod common;
+use common::CleanEnv;
 
 use common::git::git_ok;
 use serde_json::{json, Value};
@@ -100,7 +101,7 @@ fn run(f: &Fixture, lane: &str, obs: Option<Value>) -> Value {
     let home = f.tmp.path().join("home");
     fs::create_dir_all(&home).unwrap();
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
-    cmd.env_clear()
+    cmd.clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", &home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
