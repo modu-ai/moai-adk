@@ -109,12 +109,12 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "57c99a018d4acfe83af67b99585f2288a85177d3e867dfff97ed35301b701337",
+      "sha256": "de2a1f15765756512348fadf411a6dbcfe132f7a38952b8a775ef33c251a3f34",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401)."
       }
     },
     "workflows/audit.md": {
