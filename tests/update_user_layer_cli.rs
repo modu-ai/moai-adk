@@ -127,7 +127,11 @@ fn a_release_without_a_real_agent_folder_is_refused() {
     fs::remove_file(&agents).unwrap();
     fs::write(&agents, "x").unwrap();
     let out = run(&exe, &home, &["update"]);
-    assert!(String::from_utf8_lossy(&out.stdout).contains("is not a folder"));
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("the installed agent source path is not a folder"),
+        "{text}"
+    );
     assert_eq!(state(&home), before);
 }
 

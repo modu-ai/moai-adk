@@ -191,6 +191,9 @@
       "scope": [
         {
           "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
         }
       ],
       "rejects": "a role or internal-reference set other than the decided one, a reads path without a file"
