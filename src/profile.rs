@@ -528,10 +528,7 @@ fn write_baseline(
 
 pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let current_plan = plan(root, p.profile.clone())?;

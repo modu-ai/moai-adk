@@ -181,10 +181,7 @@ pub fn append(
     }
     if apply {
         let p = permission.unwrap_or("");
-        if ["", "null", "placeholder"].contains(&p.trim())
-            || p.len() > 128
-            || p.chars().any(char::is_control)
-        {
+        if !crate::contract::permission_reference_ok(p) {
             return Err("permission reference required".into());
         }
     }
