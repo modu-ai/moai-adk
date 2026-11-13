@@ -6,6 +6,9 @@
 repository form it derives from (P1), `manifest.json` records each template's own hash (P2), no
 template carries this repository's own state or identity (P3), and every label a form sets
 exists in the product label list, which is itself a subset of this repository's labels (P4).
+Decision 41 (6842518327): the forms ship in one variant per language,
+`templates/github/<lang>/ISSUE_TEMPLATE/`, each derived from the same repository form, and
+`github-plan` picks the project's Issue language; `labels.yml` is one shared list.
 They do not prove GitHub renders the forms: forms are read from the default branch only, so
 rendering stays not_run (REQ-08B-10).
 """
@@ -20,7 +23,10 @@ import yaml
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates/github"
 MANIFEST = TEMPLATES / "manifest.json"
-FORMS = sorted((TEMPLATES / "ISSUE_TEMPLATE").glob("*.yml"))
+LANGS = ("en", "ko")
+FORMS = sorted(TEMPLATES.glob("*/ISSUE_TEMPLATE/*.yml"))
+FORM_NAMES = ["moai-bugfix.yml", "moai-feature.yml", "moai-followup.yml", "moai-investigation.yml"]
+HANGUL = re.compile(r"[\uac00-\ud7a3]")
 ALLOWED_BLOCK_TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes"}
 # `labels` is allowed: each form sets one `type:*` label (#2434 decision 1 = A).
 FORBIDDEN_TOP_KEYS = {"assignees", "projects", "type"}
@@ -38,6 +44,7 @@ REQUIRED_FIELDS = {
     "variables",
     "generation_condition",
     "managed_scope",
+    "language",
 }
 
 
@@ -59,8 +66,18 @@ class ManifestTest(unittest.TestCase):
             str(p.relative_to(ROOT)) for p in TEMPLATES.rglob("*") if p.is_file() and p != MANIFEST
         )
         self.assertEqual(sorted(listed), on_disk)
-        targets = [e["target_path"] for e in data["files"]]
+        # One target per language: the en and ko variants of a form share its target path.
+        targets = [(e["target_path"], e["language"]) for e in data["files"]]
         self.assertEqual(len(targets), len(set(targets)))
+        for entry in data["files"]:
+            with self.subTest(template=entry["template_path"]):
+                if entry["derived_from"]:
+                    self.assertIn(entry["language"], LANGS)
+                    self.assertTrue(
+                        entry["template_path"].startswith(f"templates/github/{entry['language']}/")
+                    )
+                else:
+                    self.assertIsNone(entry["language"])
         for entry in data["files"]:
             with self.subTest(template=entry["template_path"]):
                 self.assertEqual(set(entry), REQUIRED_FIELDS)
@@ -107,11 +124,29 @@ class ManifestTest(unittest.TestCase):
 
 
 class TemplateFormTest(unittest.TestCase):
-    def test_three_forms_are_promoted(self):
+    def test_four_forms_are_promoted_in_each_language(self):
+        # Decision 43: the follow-up form ships as the fourth product form; decision 41: in
+        # each language the product offers.
+        for lang in LANGS:
+            with self.subTest(lang=lang):
+                self.assertEqual(
+                    sorted(p.name for p in (TEMPLATES / lang / "ISSUE_TEMPLATE").glob("*.yml")),
+                    FORM_NAMES,
+                )
         self.assertEqual(
-            [p.name for p in FORMS],
-            ["moai-bugfix.yml", "moai-feature.yml", "moai-investigation.yml"],
+            sorted({p.parent.parent.name for p in FORMS}), sorted(LANGS)
         )
+
+    def test_each_variant_is_written_in_its_language(self):
+        # Decision 41: the en variant carries no Korean text, the ko variant is Korean.
+        for path in FORMS:
+            with self.subTest(form=str(path.relative_to(TEMPLATES))):
+                text = path.read_text(encoding="utf-8")
+                form = yaml.safe_load(text)
+                if path.parent.parent.name == "en":
+                    self.assertIsNone(HANGUL.search(text), HANGUL.search(text))
+                else:
+                    self.assertRegex(form["name"] + form["description"], HANGUL)
 
     def test_forms_follow_the_form_schema(self):
         # AC-08B-3 / REQ-08B-03: the rules of github_assets_test, on the template copies.
@@ -197,6 +232,15 @@ class LabelCoherenceTest(unittest.TestCase):
         repo_names |= {entry["name"] for entry in repo["added"]}
         self.assertFalse(names - repo_names, sorted(names - repo_names))
 
+
+    def test_mode_skills_say_area_labels_are_the_projects_own(self):
+        # Decision 42 = (가) (6845981985): the product list seeds no `area:`, so the lane and
+        # leader instructions must not require an `area:` label from that list (#2651 review).
+        leader = (ROOT / "skills/moai/workflows/mode-leader.md").read_text(encoding="utf-8")
+        agent = (ROOT / "skills/moai/workflows/mode-agent.md").read_text(encoding="utf-8")
+        self.assertIn("one or more `area:` when the project defines them", leader)
+        self.assertIn("plus the `area:` labels the project creates for itself (that list seeds none)", leader)
+        self.assertIn("and the project's own `area:` labels (the file seeds none)", agent)
 
 if __name__ == "__main__":
     unittest.main()

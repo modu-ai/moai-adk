@@ -307,7 +307,7 @@ fn home_directory_is_refused() {
         let err = hooks::apply(home.path(), host, Some(home.path()), "x", PERMISSION).unwrap_err();
         assert!(err.contains("home directory refused"), "{err}");
     }
-    for dir in [".claude", ".codex", ".agents", ".moai-cli"] {
+    for dir in [".claude", ".codex", ".omp", ".agents", ".moai-cli"] {
         let inside = home.path().join(dir).join("p");
         fs::create_dir_all(&inside).unwrap();
         let err = hooks::plan(&inside, "codex", Some(home.path())).unwrap_err();
@@ -596,4 +596,84 @@ fn claude_settings_op_neither_writes_nor_drops_hooks() {
         hooks::plan(p.path(), "claude", None).unwrap()["action"],
         json!("unchanged")
     );
+}
+
+// ---- #2633: OMP — the hooks file is an extension module MoAI owns ----
+
+#[test]
+fn omp_plan_apply_writes_the_module_and_replan_is_noop() {
+    let p = project();
+    let plan = hooks::plan(p.path(), "omp", None).unwrap();
+    assert_eq!(plan["action"], json!("create"));
+    assert_eq!(plan["path"], json!(".omp/extensions/moai-hooks.ts"));
+    assert!(!p.path().join(".omp").exists(), "plan must not write");
+    let (_, applied) = plan_apply(p.path(), "omp");
+    assert_eq!(applied["state"], json!("applied"));
+    assert_eq!(
+        applied["files_created"],
+        json!([".omp/extensions/moai-hooks.ts"])
+    );
+    let module = fs::read_to_string(p.path().join(".omp/extensions/moai-hooks.ts")).unwrap();
+    assert_eq!(module, hooks::OMP_MODULE);
+    let receipt = read_json(&p.path().join(".moai-cli/manifests/omp-hooks.json"));
+    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
+    assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
+    assert!(applied["trust_required"].as_str().unwrap().contains("OMP"));
+    let again = hooks::plan(p.path(), "omp", None).unwrap();
+    assert_eq!(again["action"], json!("unchanged"));
+    assert_eq!(again["engine_capabilities"]["host"], json!("omp"));
+    let st = hooks::status(p.path(), "omp", None, "").unwrap();
+    assert_eq!(st["configured"], json!("yes"), "{st}");
+    // A user's edit is never overwritten and makes status drifted.
+    fs::write(p.path().join(".omp/extensions/moai-hooks.ts"), "// mine\n").unwrap();
+    let err = hooks::plan(p.path(), "omp", None).unwrap_err();
+    assert!(
+        err.contains(".omp/extensions/moai-hooks.ts requires preservation review"),
+        "{err}"
+    );
+    assert_eq!(classify(&err), Kind::Conflict);
+    let st = hooks::status(p.path(), "omp", None, "").unwrap();
+    assert_eq!(st["configured"], json!("drifted"), "{st}");
+}
+
+/// The module calls the engine with the bare binary, guards only `bash`, appends to the
+/// system prompt instead of replacing it, and never blocks on its own failure.
+#[test]
+fn omp_module_wiring_is_pinned() {
+    let m = hooks::OMP_MODULE;
+    assert!(
+        m.contains(r#"Bun.spawn(["moai-cli", "hook-dispatch", "--host", "omp", "--event", event]"#)
+    );
+    // Both the preflight and the observation handler stop at a non-bash tool (mutation H5).
+    for handler in ["tool_call", "tool_result"] {
+        let start = m.find(&format!(r#"pi.on("{handler}""#)).unwrap();
+        let body = &m[start..];
+        let first_line = body.lines().nth(1).unwrap().trim();
+        assert_eq!(
+            first_line, r#"if (event.toolName !== "bash") return;"#,
+            "{handler}"
+        );
+    }
+    assert!(m.contains("systemPrompt: [...event.systemPrompt, answer.context]"));
+    assert!(m.contains("if (code !== 0 || out.trim() === \"\") return null;"));
+    assert!(m.contains("catch {\n\t\treturn null;"));
+    assert!(m.contains("const TIMEOUT_MS = 10000;"));
+    assert!(!m.contains("turn-validation"), "OMP has no turn-end event");
+}
+
+#[cfg(unix)]
+#[test]
+fn omp_symlinked_folders_are_refused() {
+    for linked in [".omp", ".omp/extensions"] {
+        let p = project();
+        let outside = project();
+        let link = p.path().join(linked);
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+        assert!(hooks::plan(p.path(), "omp", None).is_err(), "{linked}");
+        assert!(
+            fs::read_dir(outside.path()).unwrap().next().is_none(),
+            "{linked}: wrote through the link"
+        );
+    }
 }

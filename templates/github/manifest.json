@@ -13,7 +13,7 @@
   "placeholder_pattern": "{{",
   "files": [
     {
-      "template_path": "templates/github/ISSUE_TEMPLATE/moai-feature.yml",
+      "template_path": "templates/github/ko/ISSUE_TEMPLATE/moai-feature.yml",
       "derived_from": ".github/ISSUE_TEMPLATE/moai-feature.yml",
       "target_path": ".github/ISSUE_TEMPLATE/moai-feature.yml",
       "template_sha256": "427a24a6485395da89bcc505eff51c7df80642215203a84b70880c5449e2780c",
@@ -21,10 +21,11 @@
       "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
       "variables": [],
       "generation_condition": "request.github_issues == true",
-      "managed_scope": "whole-file"
+      "managed_scope": "whole-file",
+      "language": "ko"
     },
     {
-      "template_path": "templates/github/ISSUE_TEMPLATE/moai-bugfix.yml",
+      "template_path": "templates/github/ko/ISSUE_TEMPLATE/moai-bugfix.yml",
       "derived_from": ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
       "target_path": ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
       "template_sha256": "51b05f7611f20a6fdc59abef50fad6f41b01e975c07c7354d102140f1741de61",
@@ -32,10 +33,11 @@
       "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
       "variables": [],
       "generation_condition": "request.github_issues == true",
-      "managed_scope": "whole-file"
+      "managed_scope": "whole-file",
+      "language": "ko"
     },
     {
-      "template_path": "templates/github/ISSUE_TEMPLATE/moai-investigation.yml",
+      "template_path": "templates/github/ko/ISSUE_TEMPLATE/moai-investigation.yml",
       "derived_from": ".github/ISSUE_TEMPLATE/moai-investigation.yml",
       "target_path": ".github/ISSUE_TEMPLATE/moai-investigation.yml",
       "template_sha256": "2181fb4eab55c039cc9446686b6165564225d22484c29cab0e19c94e410185ce",
@@ -43,7 +45,68 @@
       "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
       "variables": [],
       "generation_condition": "request.github_issues == true",
-      "managed_scope": "whole-file"
+      "managed_scope": "whole-file",
+      "language": "ko"
+    },
+    {
+      "template_path": "templates/github/ko/ISSUE_TEMPLATE/moai-followup.yml",
+      "derived_from": ".github/ISSUE_TEMPLATE/moai-followup.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/moai-followup.yml",
+      "template_sha256": "cb3d8a9d9faa16eac4dfcac57ff82e77441c540ac1af641fab76083fd70c041e",
+      "template_version": "2026.11.0-rc.1",
+      "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
+      "variables": [],
+      "generation_condition": "request.github_issues == true",
+      "managed_scope": "whole-file",
+      "language": "ko"
+    },
+    {
+      "template_path": "templates/github/en/ISSUE_TEMPLATE/moai-feature.yml",
+      "derived_from": ".github/ISSUE_TEMPLATE/moai-feature.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/moai-feature.yml",
+      "template_sha256": "d2712f507276f91f3ee158313e4e3951305fab4f1c47f440847d7c19cd694a99",
+      "template_version": "2026.11.0-rc.1",
+      "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
+      "variables": [],
+      "generation_condition": "request.github_issues == true",
+      "managed_scope": "whole-file",
+      "language": "en"
+    },
+    {
+      "template_path": "templates/github/en/ISSUE_TEMPLATE/moai-bugfix.yml",
+      "derived_from": ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
+      "template_sha256": "55233de9d40bc6cd15b7afb5d0334ab96bce3916d2d85fee7ebb5d2f794878fe",
+      "template_version": "2026.11.0-rc.1",
+      "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
+      "variables": [],
+      "generation_condition": "request.github_issues == true",
+      "managed_scope": "whole-file",
+      "language": "en"
+    },
+    {
+      "template_path": "templates/github/en/ISSUE_TEMPLATE/moai-investigation.yml",
+      "derived_from": ".github/ISSUE_TEMPLATE/moai-investigation.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/moai-investigation.yml",
+      "template_sha256": "2b471cb683263ced44bf9065ebb38efba53b49c0fcd39817bd4ef1400797386e",
+      "template_version": "2026.11.0-rc.1",
+      "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
+      "variables": [],
+      "generation_condition": "request.github_issues == true",
+      "managed_scope": "whole-file",
+      "language": "en"
+    },
+    {
+      "template_path": "templates/github/en/ISSUE_TEMPLATE/moai-followup.yml",
+      "derived_from": ".github/ISSUE_TEMPLATE/moai-followup.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/moai-followup.yml",
+      "template_sha256": "788c43fc6c671b21c2bad951bea7839082b964e12f2fd9ef67c286101f93bd6a",
+      "template_version": "2026.11.0-rc.1",
+      "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
+      "variables": [],
+      "generation_condition": "request.github_issues == true",
+      "managed_scope": "whole-file",
+      "language": "en"
     },
     {
       "template_path": "templates/github/labels.yml",
@@ -54,7 +117,8 @@
       "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
       "variables": [],
       "generation_condition": "request.github_issues == true",
-      "managed_scope": "whole-file"
+      "managed_scope": "whole-file",
+      "language": null
     }
   ],
   "contract": "#2434 AC-6 (design 6788185980, decisions 6842518327): product templates derive from the repository copies by structure, not bytes; each entry records its own template_sha256."

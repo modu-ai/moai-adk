@@ -1428,6 +1428,25 @@ fn a_confirmation_asks_on_claude_and_is_refused_on_codex() {
     assert!(!text.contains("\"kind\":\"deny\""), "{text}");
 }
 
+/// #2633 audit FAIL 6846708858 B1: OMP has no ask either, so a confirmation is a block whose
+/// reason is Claude's ask reason plus the Codex suffix — the module blocks only on
+/// `block === true`, so this is the line that stops `git reset --hard` on OMP.
+#[test]
+fn a_confirmation_is_a_block_on_omp_with_the_codex_suffix() {
+    let (_d, root) = repo("main");
+    let input = pre_tool("git reset --hard HEAD~1", &root);
+    let (_, ask_reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
+    let r = omp("tool-preflight", &root, &input);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
+    assert_eq!(v["block"], json!(true), "{v}");
+    assert_eq!(
+        v["reason"].as_str().unwrap(),
+        format!("{ask_reason} {}", moai_cli::hook_engine::CODEX_ASK_SUFFIX)
+    );
+}
+
 /// A deny anywhere on the line wins over a confirmation (Claude's order deny > ask).
 #[test]
 fn a_deny_on_the_same_line_wins_over_a_confirmation() {
@@ -1730,4 +1749,85 @@ fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
         assert!(!raw.contains("outside_project_writes"), "no text: {raw}");
     }
     assert!(!outside.exists(), "a hook never writes the file");
+}
+
+// ---- #2633: the OMP adapter (an extension module calls hook-dispatch --host omp) ----
+
+fn omp(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
+    run_program(
+        Path::new(BIN),
+        &["hook-dispatch", "--host", "omp", "--event", event],
+        cwd,
+        stdin,
+        &[],
+    )
+    .unwrap()
+}
+
+/// The answer the module turns into OMP's `tool_call` result: exactly `{block: true, reason}`
+/// on a deny, nothing on an allow, and the reason is the same fixed text as for Claude Code.
+#[test]
+fn omp_tool_preflight_answers_block_and_reason_only() {
+    let (_d, root) = repo("issue/77-k");
+    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
+    let r = omp("tool-preflight", &root, input.to_string().as_bytes());
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
+    assert_eq!(v["block"], true);
+    let claude = dispatch("tool-preflight", &root, input.to_string().as_bytes(), &[]);
+    assert_eq!(v["reason"].as_str().unwrap(), assert_deny(&claude));
+    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
+    assert_allow(&omp("tool-preflight", &root, ok.to_string().as_bytes()));
+}
+
+/// Session context is `{context}` (the module puts it in `before_agent_start`'s systemPrompt);
+/// turn-validation has no OMP event and is an engine error, never a silent allow.
+#[test]
+fn omp_session_check_answers_context_and_turn_validation_is_an_engine_error() {
+    let (_d, root) = repo("issue/77-k");
+    let r = omp(
+        "session-check",
+        &root,
+        br#"{"hook_event_name":"SessionStart"}"#,
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 1, "{v}");
+    assert!(v["context"]
+        .as_str()
+        .unwrap()
+        .contains("lane branch: Issue #77"));
+    let r = omp("turn-validation", &root, br#"{"hook_event_name":"Stop"}"#);
+    assert_engine_error(&r);
+    assert!(r.stderr.contains("no OMP event"), "{}", r.stderr);
+}
+
+/// OMP's `tool_result` carries `isError`; the module passes it as `tool_response.is_error`.
+#[test]
+fn omp_observe_outcome_comes_from_is_error_or_is_unknown() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let observe = |response: Value| {
+        let input = json!({"hook_event_name": "PostToolUse", "tool_name": "Bash",
+                           "tool_input": {"command": "x"}, "tool_response": response});
+        let r = omp("tool-observe", &root, input.to_string().as_bytes());
+        assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
+        let text = fs::read_to_string(engine_log(&root)).unwrap();
+        let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
+        assert_eq!(last["host"], "omp");
+        (
+            last["outcome"].as_str().unwrap().to_string(),
+            last["outcome_source"].as_str().unwrap().to_string(),
+        )
+    };
+    assert_eq!(
+        observe(json!({"is_error": false})),
+        ("success".into(), "tool_result.isError".into())
+    );
+    assert_eq!(observe(json!({"is_error": true})).0, "failure");
+    assert_eq!(observe(json!({"is_error": "true"})).0, "unknown");
+    assert_eq!(observe(json!({})).0, "unknown");
 }

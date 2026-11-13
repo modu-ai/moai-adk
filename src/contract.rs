@@ -589,7 +589,7 @@ mod tests {
             ("archived copy removal write failed", Io),
             ("search query must be 1 to 256 characters", InvalidInput),
             // hooks-plan / hooks-apply (rc.2 I1 #2238)
-            ("unknown hook host; must be claude or codex", InvalidInput),
+            ("unknown hook host; must be claude, codex or omp", InvalidInput),
             (
                 "home directory refused; hooks are written to a project tree only",
                 InvalidInput,

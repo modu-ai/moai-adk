@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "aa94d2fcec880e20d48cf0d331d9f13571700adaf358611ed9eaa26ebb3c3cfc",
+      "sha256": "38ac0dc5f4eb2aa986015d3ffee880e3da8b661c28d91bbbe3edc4c289c7c38f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "35de64036d5fdf44d30f38b5aeb89c051fae3884f50e6571ced5606f8b2b6506",
+      "sha256": "f794738684f8be7300fd86b71b15cae35140d918fc9a59b289ed794814803153",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -268,6 +268,24 @@
         "template_id": "home-routing",
         "adoption": "new",
         "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
+      }
+    },
+    "references/adapters/orca.md": {
+      "sha256": "bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-orca",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Orca, the commands that print Orca's version-matched guides (orca skills get orca-cli, orca agent-context --json), the lines MoAI keeps and the fallback when Orca is missing. Checked against https://orca.dev/docs/cli/overview and /docs/cli/skills and the orca 1.4.257 CLI help (read 2026-11-13). No design-22 template exists for adapters."
+      }
+    },
+    "references/adapters/aside.md": {
+      "sha256": "597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-aside",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
       }
     }
   }

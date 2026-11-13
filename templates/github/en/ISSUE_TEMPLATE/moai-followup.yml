@@ -1,0 +1,93 @@
+# moai-template:moai-followup@0.1.0; machine metadata is correlation only, never authorization
+# Follow-up or repair of an existing Issue or PR. It sets no label: the type follows the
+# original work, chosen by the leader.
+name: 'MoAI: Follow-up and repair'
+description: Work left over from an existing Issue or PR, a repair after an audit FAIL, or a follow-up split off in review. Link the original work and list only what remains. The leader adds labels.
+title: '[Follow-up] '
+body:
+- type: markdown
+  attributes:
+    value: 'Describe one piece of work split off from the original Issue or PR. Do not rewrite the body of the original work; give only the link and what remains. This form adds no labels. The leader adds type, priority, area and host labels, plus assignee, project and milestone.
+
+
+      Redaction: do not include tokens, API keys, credentials, cookies, personal data, absolute home paths, raw logs or private repository content. Summarize and link an accessible artifact instead.'
+- type: checkboxes
+  id: redaction
+  attributes:
+    label: Redaction check
+    options:
+    - label: I removed secrets, personal data, absolute home paths, raw logs and private content
+      required: true
+- type: input
+  id: outcome
+  attributes:
+    label: One-line outcome
+    description: What becomes true when this Issue closes, in one sentence.
+  validations:
+    required: true
+- type: textarea
+  id: origin
+  attributes:
+    label: Original work
+    description: The original Issue and PR numbers, the original acceptance criteria (AC) id, and a link to the verdict or review comment that produced this work, with its head SHA.
+    placeholder: 'Original Issue: #<n> · PR: #<n> · AC: <AC-n> · Basis: <comment URL> · head: <40hex>'
+  validations:
+    required: true
+- type: textarea
+  id: remaining
+  attributes:
+    label: Remaining work
+    description: Only what the original work did not finish. Do not list what is already done.
+  validations:
+    required: true
+- type: textarea
+  id: scope
+  attributes:
+    label: Scope
+    description: Repository-relative paths that may change, paths that must not be touched, what is out of scope this time, and where to start reading (files, functions, commands).
+    value: '- May change: <path>
+
+      - Must not change: <path>
+
+      - Out of scope: <what is not done this time>
+
+      - Search hints: <files, functions, commands>'
+  validations:
+    required: true
+- type: textarea
+  id: acceptance
+  attributes:
+    label: Acceptance criteria and verification
+    description: Pair each criterion line with the real command or check that proves it, and the expected behaviour at boundaries and on failure. A check that was not run is not_run, not passed.
+    value: '- AC-1: <criterion> · Verification: <command or check> · Boundary/failure behaviour: <input → expected> · Result: not_run'
+  validations:
+    required: true
+- type: input
+  id: dependencies
+  attributes:
+    label: Prerequisite Issues
+    description: Issues that must close first, or `none`. The leader also links them as native dependencies.
+    placeholder: '#12, #15'
+- type: textarea
+  id: decisions
+  attributes:
+    label: Options needing a decision (open ones stay HOLD)
+    description: List each technical or scope choice the user must decide, option by option. Attach the impact and the basis (source link, date checked), and keep the status HOLD until decided. Neither the template nor the author settles the choice on the user's behalf.
+    value: "- Decision: <what needs to be decided> · Status: HOLD\n  - Option A: <content> · Impact: <cost, compatibility, risk> · Basis: <link, date checked, verified/unverified>\n  - Option B: <content> · Impact: <…> · Basis: <…>"
+- type: textarea
+  id: checklist
+  attributes:
+    label: Definition of done
+    description: List the items to complete as checkboxes. Start with all of them unchecked (`- [ ]`), and check an item only after actually running the command and seeing its output. Items that were not run stay not_run.
+    value: '- [ ] Implementation: <item> · Scope: <path>
+
+      - [ ] Verification: <command or check> · Output observed · Result: not_run
+
+      - [ ] Independent AUDIT verdict received
+
+      - [ ] Link comment on the original Issue or PR, owner report comment updated'
+- type: textarea
+  id: evidence
+  attributes:
+    label: Evidence at creation
+    description: Commands already run and exit codes, and checks that are not_run or blocked.
