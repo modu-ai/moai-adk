@@ -412,6 +412,12 @@ mod tests {
         );
         // A negated folder is not selected: the file's own lines decide below it.
         assert_eq!(probes("certs/\n!certs/\n"), Vec::new());
+        // Audit 6851794046 N3: below a negated folder a later file line still selects, and
+        // that line (3) is the one reported, not the negated folder (git: `certs/server.key`).
+        assert_eq!(
+            probes("certs/\n!certs/\ncerts/server.key\n"),
+            vec![(3, vec!["certs/server.key".to_string()])]
+        );
         // Non-blocking N2: `?` stays inside one name (anchored, so the whole path is matched).
         assert_eq!(lines("/certs?server.key\n"), Vec::new());
     }
