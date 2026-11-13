@@ -146,11 +146,15 @@ OSC8_LINK = re.compile(r"\x1b\]8;[^;\x1b]*;[^\x1b]*\x1b\\")
 
 
 def parse_version_output(returncode, stdout):
-    """The version in the last token of a `--version` run (`moai-cli 2026.11.0-rc.1`,
-    `moai version v3.2.1`), without a leading `v`; None for a failed run or no version."""
-    tokens = stdout.split()
+    """The version in a `--version` run's first line (`moai-cli 2026.11.0-rc.1 (rust)`,
+    `moai version v3.2.1`): its last token, or the token before a trailing generation mark
+    such as `(rust)` (#2790), without a leading `v`; None for a failed run or no version."""
+    lines = stdout.splitlines()
+    tokens = lines[0].split() if lines else []
     if returncode != 0 or not tokens:
         return None
+    if len(tokens) > 1 and tokens[-1].startswith("(") and tokens[-1].endswith(")"):
+        tokens = tokens[:-1]
     match = VERSION_TOKEN.fullmatch(tokens[-1])
     return match.group(1) if match else None
 
