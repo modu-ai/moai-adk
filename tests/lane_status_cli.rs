@@ -280,11 +280,11 @@ fn lane_status_covers_every_phase_with_its_evidence() {
     let p = project(&root);
     let out = run(&p, request(lanes(), decisions()), remote(false));
     // #2678: every count is said in words, and the idle count is the lanes judged idle, not
-    // the lanes named (audit B1/B2 6850252311): 12 lanes named, 9 of them `idle: true`.
+    // the lanes named (audit B1/B2 6850252311): 13 lanes named, 10 of them `idle: true`.
     assert_eq!(out["summary"], json!(summary_of(&out)));
     assert_eq!(
         out["summary"],
-        json!("8 row(s); 12 lane(s) named, 9 idle; 1 ready Issue(s)")
+        json!("8 row(s); 13 lane(s) named, 10 idle; 1 ready Issue(s)")
     );
 
     let r = row(&out, "agent-1", 11);
