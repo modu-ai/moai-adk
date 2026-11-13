@@ -1292,3 +1292,45 @@ fn a_moai_folder_past_the_entry_limit_stays() {
         "under the default limit it moves"
     );
 }
+
+/// #2753 re-audit F2 (6859648118): `.moai/` itself may be another repository's linked
+/// worktree (`.moai/.git` is a gitdir file). Moving it would cut that repository off, so the
+/// whole folder stays.
+#[test]
+fn a_moai_folder_that_is_itself_a_worktree_stays() {
+    let id = [
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+    ];
+    let git = |dir: &Path, args: &[&str]| {
+        let mut all: Vec<&str> = id.to_vec();
+        all.extend_from_slice(args);
+        common::git::git(dir, &all)
+    };
+    let mut fx = Fx::new();
+    let other = fx.root.parent().unwrap().join("owner-repo");
+    fs::create_dir_all(&other).unwrap();
+    git(&other, &["init", "-q", "-b", "main"]);
+    fs::write(other.join("o.txt"), "o\n").unwrap();
+    git(&other, &["add", "o.txt"]);
+    git(&other, &["commit", "-q", "-m", "init"]);
+    let moai = fx.root.join(".moai");
+    git(
+        &other,
+        &["worktree", "add", "-q", "-b", "m", moai.to_str().unwrap()],
+    );
+    fx.deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    fx.deployed(".claude/workflows/w.md", "# w\n");
+    fx.manifest();
+    let p = plan(&fx);
+    let (act, why) = action(&p, ".moai");
+    assert_eq!(act, "leave", "{p}");
+    assert!(why.starts_with("1 nested checkout(s)"), "{why}");
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(moai.join("o.txt").is_file());
+    let list = git(&other, &["worktree", "list", "--porcelain"]);
+    assert!(!list.contains("prunable"), "{list}");
+}

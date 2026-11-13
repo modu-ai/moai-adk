@@ -308,6 +308,11 @@ fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<Str
 /// before it ends (unknown, so the caller stays fail-closed).
 fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> Option<usize> {
     let base = project.join(rel);
+    // The folder itself may be a checkout (another repository's worktree at `.moai`, #2753
+    // re-audit F2 6859648118): that alone keeps it in place.
+    if fs::symlink_metadata(base.join(".git")).is_ok() {
+        return Some(1);
+    }
     let mut stack = vec![base];
     let (mut seen, mut nested) = (0u64, 0usize);
     while let Some(dir) = stack.pop() {
