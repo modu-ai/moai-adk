@@ -234,3 +234,86 @@ fn a_request_without_project_skills_plans_as_before() {
     assert_eq!(without["plan_digest"], empty["plan_digest"]);
     assert!(without["request"].get("project_skills").is_none());
 }
+
+fn recover(root: &Path, receipt: &str) -> std::process::Output {
+    cli(
+        &[
+            "apply-recover",
+            root.to_str().unwrap(),
+            "--receipt",
+            receipt,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &json!({}),
+    )
+}
+
+const EXTRA_CLAUDE: &str = ".claude/skills/prj-extra/SKILL.md";
+const EXTRA_CODEX: &str = ".agents/skills/prj-extra/SKILL.md";
+
+fn two() -> Value {
+    json!([{"id": "prj-checks", "purpose": "How this project is checked"},
+           {"id": "prj-extra", "purpose": "Another skill"}])
+}
+
+/// #2706 P2b: a project skill no longer requested is removed — only while nobody edited it,
+/// with its bytes kept in the receipt so `apply-recover` restores it — and leaves the list.
+#[test]
+fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(two())))));
+    let original = fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap();
+
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("remove"));
+    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("remove"));
+    assert_eq!(action(&p, CLAUDE).as_deref(), Some("unchanged"));
+    assert!(r.join(EXTRA_CLAUDE).exists(), "a plan removes nothing");
+    let applied = result(&apply(r, &p));
+    assert!(!r.join(EXTRA_CLAUDE).exists() && !r.join(EXTRA_CODEX).exists());
+    assert!(
+        !r.join(".claude/skills/prj-extra").exists(),
+        "the emptied folder goes too"
+    );
+    assert!(r.join(CLAUDE).exists());
+    let manifest: Value =
+        serde_json::from_slice(&fs::read(r.join(".moai-cli/manifests/generation.json")).unwrap())
+            .unwrap();
+    assert!(
+        !manifest.to_string().contains("prj-extra"),
+        "the list forgets it"
+    );
+    // Nothing more to remove on the next plan.
+    assert_eq!(
+        action(&result(&plan(r, &request(checks()))), EXTRA_CLAUDE),
+        None
+    );
+
+    let receipt = applied["receipt"].as_str().unwrap().to_string();
+    result(&recover(r, &receipt));
+    assert_eq!(fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap(), original);
+    assert!(r.join(EXTRA_CODEX).exists());
+}
+
+/// An edited skill that is no longer requested is a conflict and is never removed.
+#[test]
+fn an_edited_skill_no_longer_requested_is_kept() {
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &request(two())))));
+    fs::write(r.join(EXTRA_CLAUDE), "my own notes\n").unwrap();
+    let p = result(&plan(r, &request(checks())));
+    assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("conflict"));
+    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("remove"));
+    assert!(!apply(r, &p).status.success());
+    assert_eq!(
+        fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap(),
+        "my own notes\n"
+    );
+    assert!(
+        r.join(EXTRA_CODEX).exists(),
+        "a refused apply removes nothing"
+    );
+}

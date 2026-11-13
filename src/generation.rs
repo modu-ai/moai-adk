@@ -770,6 +770,57 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         }
     }
 
+    // Project skills no longer requested (#2706 P2b): a file this tool wrote and nobody edited
+    // is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
+    // conflict and stays. A recorded file that is already gone only leaves the list.
+    let requested: Vec<String> = request
+        .project_skills
+        .iter()
+        .flat_map(|ps| {
+            project_skill_hosts(ps)
+                .into_iter()
+                .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
+        })
+        .collect();
+    let owned: Vec<(String, String, String)> = manifest
+        .get("owned_files")
+        .and_then(Value::as_array)
+        .map(|list| {
+            list.iter()
+                .filter_map(|f| {
+                    let kind = f.get("section_id")?.as_str()?;
+                    if !kind.starts_with("generation:project-skill:") {
+                        return None;
+                    }
+                    Some((
+                        kind.to_string(),
+                        f.get("path")?.as_str()?.to_string(),
+                        f.get("baseline_sha256")?.as_str()?.to_string(),
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    for (kind, rel, baseline) in owned {
+        if requested.contains(&kind) || files.iter().any(|f| f.path == rel) {
+            continue;
+        }
+        let current = fs::read(root.join(&rel)).ok();
+        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        files.push(GenerationFilePlan {
+            path: rel,
+            action: if edited { "conflict" } else { "remove" }.into(),
+            tracked_by_default: true,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: vec![PROJECT_PROFILE.into()],
+            kind: Some(kind),
+            detail: edited
+                .then_some("no longer requested, but edited after generation; kept".to_string()),
+        });
+    }
+
     let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
     let mut plan = GenerationPlan {
         protocol_version: 1,
@@ -852,6 +903,53 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
     Err("unknown planned path".into())
 }
 
+/// Removes one generated file the plan marked `remove` (#2706 P2b): only while its bytes still
+/// equal the plan's, after saving them in the receipt (so `apply-recover` restores it), then the
+/// folder it leaves empty. A file already gone is recorded and skipped.
+fn remove_owned(
+    root: &Path,
+    request_id: &str,
+    f: &GenerationFilePlan,
+    receipt: &mut Receipt,
+) -> Result<()> {
+    let path_abs = root.join(&f.path);
+    let before = read_opt(&path_abs)?;
+    if before.as_deref().map(digest) != f.expected_sha256 {
+        receipt.status = "partial".into();
+        receipt.entry(
+            &f.path,
+            "remove",
+            before.as_deref().map(digest).as_deref(),
+            None,
+            false,
+            Some("target changed since plan".into()),
+        );
+        let _ = receipt.save(root);
+        return Err(format!(
+            "partial apply: failed at {}: target changed since plan",
+            f.path
+        ));
+    }
+    let Some(bytes) = before else {
+        receipt.entry(
+            &f.path,
+            "remove",
+            None,
+            None,
+            false,
+            Some("already gone".into()),
+        );
+        return Ok(());
+    };
+    save_before_bytes(root, request_id, &f.path, &bytes)?;
+    fs::remove_file(&path_abs).map_err(|_| format!("remove failed: {}", f.path))?;
+    if let Some(dir) = path_abs.parent() {
+        let _ = fs::remove_dir(dir); // only succeeds when the folder is now empty
+    }
+    receipt.entry(&f.path, "remove", Some(&digest(&bytes)), None, true, None);
+    Ok(())
+}
+
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
 /// drift, applies the agents portion through the `agents_apply` engine with its own
 /// freshly computed digest, publishes the generation files with the 01-B engine from
@@ -918,6 +1016,10 @@ pub fn generation_apply(
                 continue;
             }
             if f.action == "unchanged" {
+                continue;
+            }
+            if f.action == "remove" {
+                remove_owned(root, &request_id, f, &mut receipt)?;
                 continue;
             }
             let rendered_text = rendered_text_for(root, &p, f)?;
@@ -1034,6 +1136,7 @@ pub fn generation_apply(
                 if !kind.starts_with("generation:") || f.action == "conflict" {
                     continue;
                 }
+                // A `remove` plan carries no rendered digest, so it never re-enters the list.
                 let Some(rendered) = &f.rendered_sha256 else {
                     continue;
                 };
