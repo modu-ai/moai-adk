@@ -1473,7 +1473,7 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
     .unwrap();
     let step = text
         .lines()
-        .find(|l| l.contains("moai-cli claim-verify"))
+        .find(|l| l.contains("moai claim-verify"))
         .expect("mode-agent names claim-verify");
     assert!(
         step.contains("Before every commit and every push"),

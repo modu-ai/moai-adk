@@ -37,7 +37,7 @@ fn the_shipped_skill_never_runs_the_python_checker() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
     )
     .unwrap();
-    assert!(audit.contains("`moai-cli pr-self-audit-check --reaudit --file BODY.md`"));
+    assert!(audit.contains("`moai pr-self-audit-check --reaudit --file BODY.md`"));
 }
 
 /// #2708 3/4 (default A after the 15:00Z deadline of 6854550310): `tools/ci_scope.py` stays
@@ -123,7 +123,7 @@ fn the_shipped_skill_runs_no_repository_python_tool() {
     );
     assert_eq!(bad, Vec::<String>::new());
     let leader = fs::read_to_string(root.join("workflows/mode-leader.md")).unwrap();
-    assert!(leader.contains("run `moai-cli repo-scans --refs <tip> <head>` from any checkout"));
+    assert!(leader.contains("run `moai repo-scans --refs <tip> <head>` from any checkout"));
     assert!(leader.contains("when `result.remerge` is `true`"));
 }
 
