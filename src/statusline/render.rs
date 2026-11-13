@@ -226,11 +226,8 @@ impl Renderer {
                 segs.push(self.unknown_bar("CTX:"));
             }
         }
-        if self.enabled("usage_5h") {
-            if let Some(w) = s.five_hour {
-                segs.push(self.usage_bar("5H:", w.used_percentage.unwrap_or(0.0) as i64));
-            }
-        }
+        // #2756 leader decision 6862179411 item 1: the five-hour bar is not shown (the user
+        // did not choose it, 6858992949); the `usage_5h` option is still accepted.
         if self.enabled("usage_7d") {
             if let Some(w) = s.seven_day {
                 segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
@@ -297,11 +294,9 @@ impl Renderer {
                 segs.push(self.link(&pr.url, &self.paint(self.theme.prs, &text)));
             }
         }
-        if self.enabled("git_status") {
-            if let Some(g) = &s.git {
-                segs.push(format!("💾 +{} M{} ?{}", g.staged, g.modified, g.untracked));
-            }
-        }
+        // #2756 leader decision 6862179411 item 2: no `💾` file-change segment (the user's
+        // line 2 ends at the branch, whose `+N` carries the change count); the `git_status`
+        // option is still accepted.
         segs.join(SEPARATOR)
     }
 
@@ -429,8 +424,8 @@ mod tests {
         assert_eq!(
             plain(&full_status(), &[]),
             "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
-             📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1\n\
-             🏷️ release | 🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%"
+             📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
+             🏷️ release | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
     }
 
@@ -465,30 +460,42 @@ mod tests {
         assert!(!enabled.contains('⏳'), "{enabled}");
     }
 
+    /// #2756 leader decision 6862179411 items 1–2: no five-hour bar (the user did not choose
+    /// it) and no `💾` file-change segment, even with both in the input and their
+    /// `usage_5h` / `git_status` options left enabled. The branch keeps its `+N` changes.
+    #[test]
+    fn the_five_hour_bar_and_the_file_change_segment_are_never_shown() {
+        let status = full_status();
+        assert!(
+            status.five_hour.is_some() && status.git.is_some(),
+            "the input has both"
+        );
+        let config = DisplayConfig {
+            segments: [
+                ("usage_5h".to_string(), true),
+                ("git_status".to_string(), true),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        let out = Renderer::new(&config, None).render(&status);
+        assert!(!out.contains("5H"), "{out}");
+        assert!(!out.contains('💾'), "{out}");
+        assert!(out.contains("🅱️ main ↓2 +3"), "{out}");
+    }
+
     #[test]
     fn rate_windows_are_optional_but_present_windows_keep_zero_percent() {
         let mut status = Status::default();
         assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a");
-        status.five_hour = Some(RateWindow::default());
-        assert_eq!(
-            plain(&status, &[]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
-        );
-        status.five_hour = None;
         status.seven_day = Some(RateWindow::default());
         assert_eq!(
             plain(&status, &[]),
             "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
-        status.five_hour = Some(RateWindow::default());
-        assert_eq!(
-            plain(&status, &["context"]),
-            "🔋 5H: ░░░░░░░░░░ 0% | 🔋 Week: ░░░░░░░░░░ 0%"
-        );
-        assert_eq!(
-            plain(&status, &["usage_5h", "usage_7d"]),
-            "CTX: ░░░░░░░░░░ n/a"
-        );
+        assert_eq!(plain(&status, &["context"]), "🔋 Week: ░░░░░░░░░░ 0%");
+        assert_eq!(plain(&status, &["usage_7d"]), "CTX: ░░░░░░░░░░ n/a");
     }
 
     /// #2559 AC-1: the bar's thresholds pinned at N/N+1 — the battery icon turns at 70/71 and
@@ -497,7 +504,7 @@ mod tests {
     fn bar_thresholds_hold_at_their_boundaries() {
         let at = |pct: f64| {
             let status = Status {
-                five_hour: Some(RateWindow {
+                seven_day: Some(RateWindow {
                     used_percentage: Some(pct),
                     resets_at: None,
                 }),
@@ -505,10 +512,10 @@ mod tests {
             };
             plain(&status, &["context"])
         };
-        assert_eq!(at(70.0), "🔋 5H: ███████░░░ 70%");
-        assert_eq!(at(71.0), "🪫 5H: ███████░░░ 71%");
-        assert_eq!(at(9.0), "🔋 5H: ░░░░░░░░░░ 9%");
-        assert_eq!(at(10.0), "🔋 5H: █░░░░░░░░░ 10%");
+        assert_eq!(at(70.0), "🔋 Week: ███████░░░ 70%");
+        assert_eq!(at(71.0), "🪫 Week: ███████░░░ 71%");
+        assert_eq!(at(9.0), "🔋 Week: ░░░░░░░░░░ 9%");
+        assert_eq!(at(10.0), "🔋 Week: █░░░░░░░░░ 10%");
     }
 
     /// #2756 AC-3/AC-4 (replacing #2697's name-last order): the name opens the line and a
@@ -521,24 +528,24 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(plain(&status, &[]), "🏷️ focus | CTX: ░░░░░░░░░░ n/a");
-        status.five_hour = Some(RateWindow::default());
+        status.seven_day = Some(RateWindow::default());
         assert_eq!(
             plain(&status, &[]),
-            "🏷️ focus | CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
+            "🏷️ focus | CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
         assert_eq!(
-            plain(&status, &["usage_5h", "context"]),
+            plain(&status, &["usage_7d", "context"]),
             "🏷️ focus",
             "no bars: the name alone"
         );
         assert_eq!(
             plain(&status, &["session"]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
+            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
         status.session_name.clear();
         assert_eq!(
             plain(&status, &[]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%",
+            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%",
             "no name: no leading segment and no leading separator"
         );
     }
@@ -556,7 +563,7 @@ mod tests {
         assert!(line.starts_with(&head), "{line}");
         assert_eq!(
             &line[head.len()..],
-            "🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%",
+            "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%",
             "the bars follow the name, unchanged by its length"
         );
     }
@@ -574,7 +581,10 @@ mod tests {
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         status.github.available = false;
         let absent = plain(&status, &[]);
-        assert!(absent.contains("📡 owner/repo | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"));
+        assert!(
+            absent.contains("📡 owner/repo | 🅱️ main ↓2 +3\n"),
+            "{absent}"
+        );
         assert!(!absent.contains("-/-"));
         status.github.available = true;
         status.github.suppressed = true;
@@ -584,7 +594,7 @@ mod tests {
         assert!(!plain(&status, &["git_branch"]).contains("📡"));
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         status.repo = None;
-        assert!(plain(&status, &[]).contains("🅱️ main ↓2 +3 | 💾 +1 M1 ?1"));
+        assert!(plain(&status, &[]).contains("\n🅱️ main ↓2 +3\n"));
     }
 
     #[test]
@@ -645,7 +655,7 @@ mod tests {
         );
         assert_eq!(
             lines[1],
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🌳 wt | 🔗 #42 pending | 💾 +1 M1 ?1"
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🌳 wt | 🔗 #42 pending"
         );
         assert!(
             !out.contains('\x1b'),
@@ -664,13 +674,14 @@ mod tests {
             "neither value: no segment"
         );
         status.pr.as_mut().unwrap().review_state.clear();
-        assert!(plain(&status, &[]).contains("| 🔗 #42 | "));
+        assert!(plain(&status, &[]).contains("| 🔗 #42\n"));
         assert!(!plain(&status, &["pr"]).contains('🔗'));
         assert!(!plain(&status, &["worktree"]).contains('🌳'));
         status.pr = None;
         status.worktree.clear();
-        assert!(
-            plain(&status, &[]).contains("🅱️ main ↓2 +3 | 💾 +1 M1 ?1"),
+        assert_eq!(
+            plain(&status, &[]).lines().nth(1),
+            Some("📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3"),
             "no empty `| |`"
         );
     }

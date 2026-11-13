@@ -812,12 +812,15 @@ value is left out together with its separator.
    its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
    `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
-   the URL is plain `http(s)`), then the `💾` file-change counts while `git_status` is
-   on. Ahead arrows are hidden. Missing forge counts are omitted. The `worktree` and `pr`
-   options turn their segments off.
-3. Lane and usage: the optional `🏷️` session name first, then the `CTX`, available `5H`
-   and available `Week` bars (with no name the line starts at `CTX`; with no bars the
-   name stands alone). Missing rate windows are hidden; reset times are not printed.
+   the URL is plain `http(s)`). The branch's `+N` is the only change count: there is no
+   `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
+   option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
+   The `worktree` and `pr` options turn their segments off.
+3. Lane and usage: the optional `🏷️` session name first, then the `CTX` and available
+   `Week` bars (with no name the line starts at `CTX`; with no bars the name stands
+   alone). The five-hour bar is not shown — the user did not choose it (#2756,
+   6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
+   hidden; reset times are not printed.
    Context handoff warnings and the existing usage calculation are retained. The
    renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
    but the renderer does not read it. When a line is wider than the status bar, the
