@@ -2591,6 +2591,43 @@ mod skill_package {
         assert!(v["keep_set_excluded"][0]["reason"] == json!("operator-held"));
     }
 
+    /// #2720 audit F1: the 1 MiB stdin limit `goal-block` added at its N/N+1 edge. The sizes
+    /// are literals on purpose, so a change to the limit in src/ops/goal_block.rs fails here.
+    #[test]
+    fn goal_block_stdin_limit_is_one_mib_exactly() {
+        let run = |input: &[u8]| {
+            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .arg("goal-block")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            crate::common::feed_stdin(&mut out, input);
+            out.wait_with_output().unwrap()
+        };
+        // A valid fixture padded with trailing spaces (JSON whitespace) to an exact size.
+        let sized = |len: usize| {
+            let mut bytes = br#"{"milestone":"m","issues":[],"prs":[],"keep_set":[]}"#.to_vec();
+            bytes.resize(len, b' ');
+            bytes
+        };
+        let at_limit = run(&sized(1048576));
+        assert!(
+            at_limit.status.success(),
+            "1048576 bytes must pass: {}",
+            String::from_utf8_lossy(&at_limit.stderr)
+        );
+        let over = run(&sized(1048577));
+        assert_eq!(over.status.code(), Some(1), "1048577 bytes must be refused");
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&over.stdout),
+            String::from_utf8_lossy(&over.stderr)
+        );
+        assert!(text.contains("larger than 1 MiB"), "{text}");
+    }
+
     #[test]
     fn mode_leader_route_loads_its_workflow() {
         let body = mode_workflow("MODE-LEADER");
