@@ -4,6 +4,11 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from self_audit_parity import run_both  # noqa: E402  (#2708: Python and Rust must agree)
+
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -36,13 +41,7 @@ Repair verification is recorded above.
 
 class CheckPrReauditTest(unittest.TestCase):
     def run_tool(self, text, *args):
-        return subprocess.run(
-            ["python3", "-I", str(TOOL), *args],
-            input=text,
-            text=True,
-            capture_output=True,
-            cwd=ROOT,
-        )
+        return run_both(args, text, cwd=ROOT)
 
     def assert_pass(self, text, *args):
         out = self.run_tool(text, *args)

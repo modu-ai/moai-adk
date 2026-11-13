@@ -591,6 +591,27 @@
         }
       ],
       "rejects": "a test file that walks the tree without an entry in this table or an exemption"
+    },
+    {
+      "id": "skill-never-runs-python-checker",
+      "tests": [
+        "tests/self_audit_cli.rs::the_shipped_skill_never_runs_the_python_checker"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test self_audit_cli the_shipped_skill_never_runs_the_python_checker"
+      ],
+      "rules": [
+        "tests/self_audit_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/",
+          "suffixes": [
+            ".md"
+          ]
+        }
+      ],
+      "rejects": "a shipped skill file that tells a user project to run tools/check_pr_self_audit.py (#2708)"
     }
   ]
 }
