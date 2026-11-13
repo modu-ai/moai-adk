@@ -45,6 +45,17 @@ fn the_update_route_is_the_project_layer() {
         // The user layer is the shell command, named and never run from this route.
         "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai-cli update`",
         "this route never runs it",
+        // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
+        // first, and "nothing to update" holds only without Go state.
+        "When `result.profile` is `null` but `result.go_state.moai_dir` is `folder`, do step 2 first",
+        "only when there is no profile and no Go-generation state is there nothing to update",
+        // #2702 audit N2: the other Go-state kinds are reported, never written.
+        "`link` or `other` is reported and nothing is moved",
+        // #2702 audit N1: the user's edits, unreadable targets and HOLD, and the #2383 step.
+        "A file or managed part the user edited is planned as `conflict` and kept",
+        "Never write a target whose current state could not be read, nor one under a recorded HOLD",
+        "`moai-cli claude-settings-plan <project>`",
+        "`claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }
@@ -66,15 +77,24 @@ fn ops_named_by_the_update_route_exist_with_their_flags() {
         let span = &rest[..rest.find('`').expect("closed code span")];
         let mut words = span.split_whitespace().skip(1);
         let op = words.next().expect("an op").to_string();
-        let flags: Vec<&str> = words.filter(|w| w.starts_with("--")).collect();
+        let flags: Vec<&str> = words
+            .filter(|w| w.starts_with("--"))
+            .map(|w| w.trim_end_matches(|c: char| !(c.is_ascii_alphanumeric() || c == '-')))
+            .collect();
         let out = Command::new(EXE)
             .args([op.as_str(), "--help"])
             .output()
             .unwrap();
         assert!(out.status.success(), "`moai-cli {op}` is not a subcommand");
         let help = String::from_utf8_lossy(&out.stdout);
+        // #2702 audit N1: a whole flag word, so `--plan` never passes as a prefix of
+        // `--plan-digest`.
+        let known: Vec<&str> = help
+            .split(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+            .filter(|w| w.starts_with("--"))
+            .collect();
         for flag in flags {
-            assert!(help.contains(flag), "`moai-cli {op}` has no {flag}");
+            assert!(known.contains(&flag), "`moai-cli {op}` has no {flag}");
         }
         seen += 1;
     }
@@ -209,6 +229,8 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
     let before = fx.tree();
 
     let detect = fx.call(&["project-detect", fx.p()]);
+    // The case step 1 must not stop on (#2702 B1): no profile yet, Go state present.
+    assert_eq!(detect["profile"], Value::Null, "{detect}");
     assert_eq!(detect["go_state"]["moai_dir"], json!("folder"), "{detect}");
     assert_eq!(detect["go_state"]["go_manifest"], json!(true));
 
