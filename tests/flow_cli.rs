@@ -1260,3 +1260,58 @@ fn gate_verdict_reads_annotations_only_when_there_are_some() {
     assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
     assert!(!calls.contains("annotations"), "{calls}");
 }
+
+/// #2695 audit B1: a code failure next to a gate that could not run is a code failure —
+/// `gate_unavailable` only when every failed required run's job never started, and the
+/// reason names the code failure too.
+#[test]
+fn gate_verdict_mixed_gate_and_code_failure_is_code() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut lint = check_run("lint", "completed", "failure");
+    lint["id"] = json!(556);
+    lint["output"] = json!({"annotations_count": 0});
+    let notes = json!([{"annotation_level": "failure", "message": BILLING}]);
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[failed_ci_run(1), lint])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[
+                check_run("rc-ci", "completed", "success"),
+                check_run("lint", "completed", "success"),
+            ])),
+        ),
+        ("FLOW_ANNOTATIONS", http200(&notes.to_string())),
+    ];
+    let mut args = gate_args("pr-5a4b3c2d");
+    args.push("--required-checks".into());
+    args.push("ci,lint".into());
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let (v, out) = run_flow(&gh, &envs, &args);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+    assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
+    // The gate that could not run is still reported, and the code failure is named.
+    assert_eq!(
+        v["gate_unavailable"][0]["cause"],
+        json!("ci_billing"),
+        "{v}"
+    );
+    assert!(
+        reasons_of(&v)
+            .iter()
+            .any(|r| r.starts_with("ci_status:") && r.contains("code failure: lint")),
+        "{v}"
+    );
+}

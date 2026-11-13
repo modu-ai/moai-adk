@@ -334,6 +334,7 @@ fn unavailable_gates<T: Transport, C: crate::forge::policy::Clock>(
             out.push(json!({
                 "gate": "ci",
                 "cause": cause,
+                "run_id": id,
                 "check": r["name"],
                 "since": r["started_at"],
                 "url": r["details_url"],
@@ -579,23 +580,38 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
         match fetch_check_runs(client, owner, repo, &head) {
             Ok(runs) => {
                 let (ok, detail) = required_ci_judgment(&runs, required_checks);
-                let failed = !ok
-                    && runs.iter().any(|r| {
-                        r["name"].as_str().is_some_and(|n| {
-                            required_checks.iter().any(|q| check_name_matches(q, n))
-                        }) && !matches!(
-                            r["conclusion"].as_str().unwrap_or_default(),
-                            "" | "success" | "neutral" | "skipped"
-                        )
-                    });
-                if failed {
+                let failed_runs: Vec<&Value> = if ok {
+                    Vec::new()
+                } else {
+                    runs.iter()
+                        .filter(|r| {
+                            r["name"].as_str().is_some_and(|n| {
+                                required_checks.iter().any(|q| check_name_matches(q, n))
+                            }) && !matches!(
+                                r["conclusion"].as_str().unwrap_or_default(),
+                                "" | "success" | "neutral" | "skipped"
+                            )
+                        })
+                        .collect()
+                };
+                if !failed_runs.is_empty() {
                     let gates = unavailable_gates(client, owner, repo, &runs, required_checks);
-                    let class = if gates.is_empty() {
-                        "code"
-                    } else {
+                    // #2695 audit B1: `gate_unavailable` only when every failed required run's
+                    // job never started; one code failure beside a gate makes the class `code`
+                    // and is named, so it is never reported as "no code to fix".
+                    let gate_ids: Vec<u64> =
+                        gates.iter().filter_map(|g| g["run_id"].as_u64()).collect();
+                    let code: Vec<String> = failed_runs
+                        .iter()
+                        .filter(|r| !r["id"].as_u64().is_some_and(|id| gate_ids.contains(&id)))
+                        .map(|r| r["name"].as_str().unwrap_or("?").to_string())
+                        .collect();
+                    let class = if code.is_empty() {
                         "gate_unavailable"
+                    } else {
+                        "code"
                     };
-                    let detail = match gates.first() {
+                    let mut detail = match gates.first() {
                         Some(g) => format!(
                             "{detail}; gate unavailable: {} since {}",
                             g["cause"].as_str().unwrap_or("?"),
@@ -603,6 +619,9 @@ pub fn gate_verdict<T: Transport, C: crate::forge::policy::Clock>(
                         ),
                         None => detail,
                     };
+                    if !gates.is_empty() && !code.is_empty() {
+                        detail.push_str(&format!("; code failure: {}", code.join(", ")));
+                    }
                     (ok, detail, Some(class), gates)
                 } else {
                     (ok, detail, None, Vec::new())
