@@ -553,6 +553,64 @@ fn go_generation_state_is_reported_and_its_preview_only_suggested() {
     );
 }
 
+/// #2725 S2a: `project-detect` says whose `.moai/` this is (`state_root.generation`) beside
+/// the facts, writes nothing, and names the earlier `.moai-cli` root while it is in use.
+#[test]
+fn the_state_root_generation_is_reported_and_nothing_is_written() {
+    let cases: [(&[(&str, &str)], &str); 5] = [
+        (&[], "none"),
+        (
+            &[(
+                ".moai/manifest.json",
+                "{\"version\":\"1.0.0\",\"files\":{}}\n",
+            )],
+            "go",
+        ),
+        (
+            &[(
+                ".moai/moai-cli.json",
+                "{\"schema_version\":1,\"generation\":\"moai-cli\"}",
+            )],
+            "rust",
+        ),
+        (
+            &[
+                (
+                    ".moai/moai-cli.json",
+                    "{\"schema_version\":1,\"generation\":\"moai-cli\"}",
+                ),
+                (".moai/config/config.yaml", "x: 1\n"),
+            ],
+            "mixed",
+        ),
+        (&[(".moai/notes.md", "mine\n")], "unknown"),
+    ];
+    for (files, want) in cases {
+        let root = with_profile();
+        for (rel, text) in files {
+            write(root.path(), rel, text);
+        }
+        let before = tree(root.path());
+        let result = detect(&root);
+        assert_eq!(
+            tree(root.path()),
+            before,
+            "detection wrote nothing ({want})"
+        );
+        let state = &result["state_root"];
+        assert_eq!(state["generation"], json!(want), "{result}");
+        // `with_profile` keeps its profile in the earlier root.
+        assert_eq!(state["legacy_root"], json!(".moai-cli"), "{result}");
+        assert!(result["detected"].get("state_root").is_none(), "{result}");
+        assert!(result["profile"].get("state_root").is_none(), "{result}");
+    }
+    // The PROJECT workflow moves nothing on the four verdicts that leave the choice to the user.
+    let workflow = include_str!("../skills/moai/workflows/project.md");
+    assert!(workflow.contains(
+        "When `generation` is `mixed`, `unknown`, `refuse` or `interrupted`, move nothing in step 2: show its `reason` and let the user decide."
+    ));
+}
+
 /// #2561: a linked `.moai` is reported as a link and never followed (its target's manifest is
 /// not read), and no preview is suggested for it.
 #[cfg(unix)]
