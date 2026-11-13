@@ -294,7 +294,7 @@ pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
 }
 
 fn validate_permission(permission: &str) -> Result<()> {
-    // WF-OBS #24 (#2401): the rule lives once, in `contract::permission_reference_ok`.
+    // One rule for every operation (#2642 `contract::permission_reference_ok`).
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
