@@ -1,0 +1,121 @@
+# moai-template:moai-bugfix@0.3.0; machine metadata is correlation only, never authorization
+# Fields follow the MoAI Issue form rules: one-line outcome, scope with non-scope and
+# search hints, AC with verification and boundary behaviour, prerequisites, HOLD, done definition.
+name: 'MoAI: Bug fix'
+description: An observed defect. Reproduce it first, then make the smallest fix together with a regression test. One execution owner per Issue. Only the type label is added automatically; the leader adds priority and area labels.
+title: '[Fix] '
+labels:
+- type:fix
+body:
+- type: markdown
+  attributes:
+    value: 'One Issue is one defect and has only one execution owner. This form adds only the `type:fix` label. The leader adds priority, area and host labels, plus assignee, project and milestone.
+
+
+      Write it short and self-contained so an agent can tell what to do, how far to go and how to verify it from this Issue alone.
+
+
+      Redaction: do not include tokens, API keys, credentials, cookies, personal data, absolute home paths, raw logs or private repository content. Summarize and link an accessible artifact instead.'
+- type: checkboxes
+  id: redaction
+  attributes:
+    label: Redaction check
+    options:
+    - label: I removed secrets, personal data, absolute home paths, raw logs and private content
+      required: true
+- type: input
+  id: outcome
+  attributes:
+    label: One-line outcome
+    description: What becomes true when this Issue closes, in one sentence.
+    placeholder: 'Under <condition>, <command> no longer produces <defect> and produces <expected> instead'
+  validations:
+    required: true
+- type: textarea
+  id: observed
+  attributes:
+    label: Observed behaviour
+    description: What actually happens, where (command, host, file) and at which revision.
+  validations:
+    required: true
+- type: textarea
+  id: expected
+  attributes:
+    label: Expected behaviour and its source
+    description: What should happen, and the SPEC, design section or test that says so. If there is no source, say there is none instead of inventing one.
+  validations:
+    required: true
+- type: textarea
+  id: reproduction
+  attributes:
+    label: Reproduction
+    description: The exact steps or commands that reproduce it, with the observed exit code and output. Mark a reproduction that was not run as not_run.
+  validations:
+    required: true
+- type: textarea
+  id: regression-test
+  attributes:
+    label: Regression test
+    description: A test that fails before the fix and passes after it (RED → GREEN). Name the file once it exists.
+- type: textarea
+  id: scope
+  attributes:
+    label: Scope
+    description: Repository-relative paths that may change, paths that must not be touched, what is out of scope this time, and where to start reading (files, functions, commands).
+    value: '- May change: <path>
+
+      - Must not change: <path>
+
+      - Out of scope: <what is not done this time>
+
+      - Search hints: <files, functions, commands>'
+  validations:
+    required: true
+- type: textarea
+  id: acceptance
+  attributes:
+    label: Acceptance criteria and verification
+    description: Pair each criterion line with the real command or check that proves it, and the expected behaviour at boundaries and on failure. A check that was not run is not_run, not passed.
+    value: '- AC-1: <defect is gone> · Verification: <regression test command> · Boundary/failure behaviour: <input → expected> · Result: not_run'
+  validations:
+    required: true
+- type: input
+  id: dependencies
+  attributes:
+    label: Prerequisite Issues
+    description: Issues that must close first, or `none`. The leader also links them as native dependencies.
+    placeholder: '#12, #15'
+- type: textarea
+  id: decisions
+  attributes:
+    label: Options needing a decision (open ones stay HOLD)
+    description: List each technical or scope choice the user must decide, option by option. Attach the impact and the basis (source link, date checked), and keep the status HOLD until decided. Neither the template nor the author settles the choice on the user's behalf.
+    value: "- Decision: <what needs to be decided> · Status: HOLD\n  - Option A: <content> · Impact: <cost, compatibility, risk> · Basis: <link, date checked, verified/unverified>\n  - Option B: <content> · Impact: <…> · Basis: <…>"
+- type: textarea
+  id: checklist
+  attributes:
+    label: Definition of done
+    description: List the items to complete as checkboxes. Start with all of them unchecked (`- [ ]`), and check an item only after actually running the command and seeing its output. Items that were not run stay not_run.
+    value: '- [ ] Implementation: <item> · Scope: <path>
+
+      - [ ] Verification: <command or check> · Output observed · Result: not_run
+
+      - [ ] Independent AUDIT verdict received
+
+      - [ ] Owner report comment updated'
+- type: dropdown
+  id: hosts
+  attributes:
+    label: host scope
+    options:
+    - both (Claude Code and Codex)
+    - claude
+    - codex
+    - host-neutral
+  validations:
+    required: true
+- type: textarea
+  id: evidence
+  attributes:
+    label: Evidence at creation
+    description: Commands already run and exit codes, and checks that are not_run or blocked.

@@ -17,7 +17,7 @@ Issues on `modu-ai/moai-adk` are the official work ledger for `2026.11.0-rc.1` (
 | `workflows/moai-label-sync.yml` | Compares `moai/labels.yml` with the remote labels. Dry run by default; a manual `workflow_dispatch` with `apply: true` only creates missing `added` labels, never edits or deletes (00-E #2020) | Actions workflow. Read-only except the manual apply job (`issues: write`) |
 | `pull_request_template.md` | RC1 PR body contract: `Refs #<n>` (no auto-close keyword), claim token, base/candidate 40-character SHAs, commands with exits, independent review link, not_run/blocked, remaining gaps (00-E #2020; 06-C #2007 extends it) | PR template. Applied automatically only from the default branch |
 
-The three original forms are skeletons decided with the user on 2026-11-08 (new feature, bug fix, investigation or design). Issue #2434 completed their fields and added the follow-up form and `config.yml` under user decisions 1-4 = A (Issue comment 6783612809, 2026-11-11). The fields follow the research recorded on #2434 (comment 6783409806): an agent-ready Issue has a clear outcome, complete acceptance criteria and the files to change, and a limited, self-contained scope; the forms merge fields rather than add more. A SPEC-amendment form was drafted and withdrawn on 2026-11-08; it stays a candidate until the user decides. The verified forms and labels are later ADDED to the Rust project-generation templates; this folder is never moved or removed in that step. The product templates in `templates/github/` are derived from these files, not copies of them (#2434 AC-6, design 6788185980, leader decisions 6842518327): a product form keeps the structure of the form here — the same blocks, ids, required fields and `labels:` — but none of this repository's own text (Issue numbers, the Korean language rule, `moai-cli` examples), and the product `labels.yml` is one list of the axis labels with no `reused`/`not_used` state and no `area:` seeds. `tests/github_templates_test.py` checks that structure parity, each template's own hash in `templates/github/manifest.json`, that no template carries this repository's identity, and that every product label exists here. This repository does not opt in to `github-apply`, so its own `.github/` files are never overwritten by the product templates; the follow-up form ships as the fourth product form (decision 43, 6842518327); `config.yml` is not generated into projects.
+The three original forms are skeletons decided with the user on 2026-11-08 (new feature, bug fix, investigation or design). Issue #2434 completed their fields and added the follow-up form and `config.yml` under user decisions 1-4 = A (Issue comment 6783612809, 2026-11-11). The fields follow the research recorded on #2434 (comment 6783409806): an agent-ready Issue has a clear outcome, complete acceptance criteria and the files to change, and a limited, self-contained scope; the forms merge fields rather than add more. A SPEC-amendment form was drafted and withdrawn on 2026-11-08; it stays a candidate until the user decides. The verified forms and labels are later ADDED to the Rust project-generation templates; this folder is never moved or removed in that step. The product templates in `templates/github/` are derived from these files, not copies of them (#2434 AC-6, design 6788185980, leader decisions 6842518327): a product form keeps the structure of the form here — the same blocks, ids, required fields and `labels:` — but none of this repository's own text (Issue numbers, the Korean language rule, `moai-cli` examples), and the product `labels.yml` is one list of the axis labels with no `reused`/`not_used` state and no `area:` seeds. `tests/github_templates_test.py` checks that structure parity, each template's own hash in `templates/github/manifest.json`, that no template carries this repository's identity, and that every product label exists here. This repository does not opt in to `github-apply`, so its own `.github/` files are never overwritten by the product templates; the follow-up form ships as the fourth product form (decision 43, 6842518327); each product form ships in English and Korean, and `github-plan` picks the project's Issue language (decision 41); `config.yml` is not generated into projects.
 
 Local verification: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.github_assets_test` checks form schema shape (required keys, unique ids, allowed block types, required redaction checkbox, no assignee, project or issue-type keys, at most the one decided `type:*` label and only a label the manifest knows, no secret-shaped strings), the agent-ready fields (#2434), form defaults, the chooser `config.yml`, label-manifest consistency, the workflows (least-privilege permissions, every action pinned to a commit SHA, the `ci` check set, label-sync dry run), the PR template fields, and that no previous-generation file is recreated. Remote verification is a separate `gh label list` cross-check recorded in the Issue report; GitHub form rendering stays not_run until the forms reach the default branch.
 
@@ -64,17 +64,41 @@ Removed paths:
 
 ## Labels and milestones
 
-Taxonomy (Issue #2434, user decisions 1-4 = A, Issue comment 6783612809, 2026-11-11). Source: `labels.yml`.
+Taxonomy (Issue #2434, user decisions 1-4 = A, Issue comment 6783612809, 2026-11-11; scheme decisions 44-49 = A, leader 6842518327 on design 6791931666). Source: `labels.yml`.
 
 | Axis | Rule | Values |
 | --- | --- | --- |
 | `type:` | exactly one | `feature`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`, `design` |
-| `priority:` | exactly one | `P0` (blocks the RC release), `P1` (current queue), `P2` (follow-up), `P3` (later) |
-| `area:` | one or more, prefer one or two | `ci`, `cli`, `config`, `docs-site`, `hooks`, `security`, `templates`, `workflow`, `setup`, `atlas`, `design`, `runtime`, `router`, `update`, `forge` |
+| `priority:` | exactly one, leader only | `P0` (blocks the RC release), `P1` (must ship in this RC), `P2` (this RC's scope, may move to the next rc), `P3` (after the stable release, or optional) |
+| `area:` | one or two: the component that owns the changed files (table below) | `ci`, `cli`, `config`, `docs-site`, `hooks`, `security`, `templates`, `workflow`, `setup`, `atlas`, `design`, `runtime`, `router`, `update`, `forge`, `launcher`, `statusline` |
 | `host:` | when the work must be verified on that host | `host:claude`, `host:codex` (both when both) |
 | gate marker | only while a user decision is pending | `needs:decision` |
 
 Status is not a label: it is reported in the Issue's owned report comment, because labels and assignees are not a distributed lock. `needs:decision` is not a status either: it marks that lanes must not proceed until the user decides. The authority stays the decisions log and the Issue's HOLD line; the label only makes HOLD Issues filterable. Parent tracking uses native sub-issues (no `kind:epic` label) and ordering uses native issue dependencies (no `blocked` label). The REST endpoints are used because `gh` 2.92 has no flag for either; read the link back after the first use.
+
+Areas are chosen by the files a change owns, not by the process it belongs to, so an Issue's file scope and its area say the same thing. A tracking or operations Issue takes the main area of its children. Priority says only how the work relates to the release; whether its prerequisites are met is a state (native dependencies), not a priority.
+
+| Area | Files it owns |
+| --- | --- |
+| `area:atlas` | Core Brain, Code Atlas: map, graph, search, index |
+| `area:hooks` | hook engine, guards, hook settings generation |
+| `area:setup` | project profile, AGENTS.md generation, host projections |
+| `area:router` | common skill router, `routes.json`, workflow files |
+| `area:forge` | GitHub/GitLab Issue ledger, reports, reconciliation |
+| `area:runtime` | model adapters, judge backends, Desktop and Pi runtimes |
+| `area:security` | secrets, permissions, redaction, security boundaries |
+| `area:ci` | `.github/workflows/**`, rulesets, release and platforms |
+| `area:design` | design documents and their consistency with the design Space |
+| `area:docs-site` | the user documentation site |
+| `area:templates` | `templates/**`, `.github/ISSUE_TEMPLATE/**`, `labels.yml` |
+| `area:config` | `.moai-cli/` settings schema and inputs |
+| `area:update` | installed-host preflight, 3-way merge, recovery, Go generation migration |
+| `area:cli` | command surface and output contract not owned by another area |
+| `area:workflow` | lane flow: claim, audit, handoff, queue, lane-status, decisions log (`src/claim*`, `audit*`, `handoff`, `lane_*`, `queue*`, `leader`, `decision_log`) |
+| `area:launcher` | session launcher, key vault, run environment injection (`src/session.rs`, `key_vault.rs`, `claude.rs`) |
+| `area:statusline` | `src/statusline/` and the host status line settings |
+
+The remote descriptions of `area:workflow`, `area:templates`, `area:docs-site`, `area:config` and `area:update` still describe the previous generation until the leader edits them (decisions 45 and 46; `moai-label-sync` never edits). The table above is the definition.
 
 Rules for whoever opens or edits an Issue:
 
@@ -83,7 +107,7 @@ Rules for whoever opens or edits an Issue:
 3. `priority:*` and `needs:decision` are changed by the leader only; a lane asks in its report comment. A lane may correct a wrong `type:` or `area:` and notes it in one line of its report comment.
 4. Web forms set one `type:` label (`type:feature`, `type:fix`, `type:design`; the follow-up form none). GitHub silently drops a form label that does not exist, so `type:design` must be created before the forms reach the default branch. Forms set no issue type: the organization's types (Task, Bug, Feature) cannot be set by `gh` 2.92 and would duplicate the `type:` label.
 
-Previous-generation labels (bare `bug`, `enhancement`, `high`, `priority:high`, `status:*` and the rest listed under `not_used` in `labels.yml`) stay on the remote. They are not applied to RC Issues and are not deleted or renamed: deleting a label removes it from every Issue and PR. They are reviewed after the stable release (decision 3 = A). Remote labels in neither list (for example `question`, `good first issue`) are not applied by lanes.
+Previous-generation labels (bare `bug`, `enhancement`, `high`, `priority:high`, `status:*` and the rest listed under `not_used` in `labels.yml`) stay on the remote. They are not applied to RC Issues and are not deleted or renamed: deleting a label removes it from every Issue and PR. They are reviewed after the stable release (decision 3 = A). Every recorded remote label is in one of the lists (decision 48): GitHub's `good first issue`, `help wanted` and `question` are `reused.functional`, and the other 21 previous-generation labels are `not_used.previous_generation_misc`. The bots of `main` (labeler, stale, welcome) are dealt with in the public-readiness work #2435 (decision 33 = A); until then no RC tool or document reads PR labels.
 
 ## Language rule
 
