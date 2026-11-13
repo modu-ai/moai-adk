@@ -253,6 +253,17 @@ class JudgeTest(unittest.TestCase):
         # one level deeper still counts
         remerge, hits = self.judge(["src/contract.rs"], ["src/forge/new.rs"])
         self.assertIn("permission-reference-one-copy", [h["id"] for h in hits])
+        # the prefix anchors at the start: "src/" inside a path is not "src/" (#2708 mutant M2)
+        remerge, hits = self.judge(["src/contract.rs"], ["docs/src/a.rs"])
+        self.assertNotIn("permission-reference-one-copy", [h["id"] for h in hits])
+
+    def test_hit_paths_are_sorted(self):
+        # input order does not reach the report (#2708 mutant M9)
+        remerge, hits = self.judge(["tools/repo_scans.json", "tests/repo_scans_test.py"],
+                                   ["tests/zz_test.py", "src/b.rs", "src/a.rs"])
+        hit = next(h for h in hits if h["id"] == "repo-scans-table")
+        self.assertEqual(hit["rules"], ["tests/repo_scans_test.py", "tools/repo_scans.json"])
+        self.assertEqual(hit["scope"], ["src/a.rs", "src/b.rs", "tests/zz_test.py"])
 
     def test_an_expected_set_file_counts_as_a_rule(self):
         remerge, hits = self.judge(["skills/moai/references/source-manifest.json"],

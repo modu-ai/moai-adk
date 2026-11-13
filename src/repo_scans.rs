@@ -362,6 +362,15 @@ mod tests {
     }
 
     #[test]
+    fn empty_paths_are_dropped_before_the_judge() {
+        // an empty prefix is every path, but an empty path is no change (#2708 mutant M8)
+        let every = vec![scan("all", &["r"], "", &[], &["c"])];
+        assert!(judge(&s(&["r"]), &s(&[""]), &every).is_empty());
+        assert!(judge(&s(&[""]), &s(&["r"]), &every).is_empty());
+        assert_eq!(judge(&s(&["r"]), &s(&["x"]), &every).len(), 1);
+    }
+
+    #[test]
     fn malformed_tables_are_errors() {
         for bad in [
             "{}",
