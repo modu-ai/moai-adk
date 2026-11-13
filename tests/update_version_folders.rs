@@ -8,6 +8,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 
 use serde_json::{json, Value};
 use std::{
@@ -91,7 +92,7 @@ fn version_exe(home: &Path, version: &str) -> PathBuf {
 fn run(exe: &Path, args: &[&str], stdin: Option<&Value>) -> Output {
     let mut child = Command::new(exe)
         .args(args)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
         .stdin(Stdio::piped())

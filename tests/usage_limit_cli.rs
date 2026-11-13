@@ -2,6 +2,8 @@
 //! them — through the real binary, with HOME pointing at a temporary folder. The real HOME
 //! is never read or written.
 
+mod common;
+use common::CleanEnv;
 use serde_json::Value;
 use std::{
     io::Write,
@@ -24,7 +26,7 @@ fn statusline(home: &Path, cwd: &Path, stdin: &str) {
     let mut child = Command::new(EXE)
         .arg("statusline")
         .current_dir(cwd)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
@@ -50,7 +52,7 @@ fn statusline(home: &Path, cwd: &Path, stdin: &str) {
 fn usage(home: &Path) -> Value {
     let out = Command::new(EXE)
         .args(["usage-limit", home.to_str().unwrap()])
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
         .output()
