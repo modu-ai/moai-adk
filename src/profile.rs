@@ -264,8 +264,7 @@ fn state_path(root: &Path, rel: &str) -> Result<PathBuf> {
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
-    // #2696 C2b: a new project's profile goes under `.moai/` (marked by the apply).
-    let dir = root.join(crate::state_root::create_dir(&root));
+    let dir = crate::state_root::path(&root, "");
     let full = dir.join(rel);
     for path in [&dir, &full] {
         match fs::symlink_metadata(path) {
