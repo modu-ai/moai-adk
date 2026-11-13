@@ -172,6 +172,34 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     // A second run has nothing left to do.
     let again = result(&run(&exe, &home, &["update"]));
     assert_eq!(again["nothing_to_apply"], json!(true), "{again}");
+    // Each part counts on its own: with only the section (then only the agents) reverted, the
+    // preview still has something to apply.
+    let h = home.to_str().unwrap();
+    for (op, part) in [
+        ("home-routing-revert", "routing_result"),
+        ("agents-home-revert", "agents_result"),
+    ] {
+        let receipt = r[part]["receipt"].as_str().unwrap();
+        result(&run(
+            &exe,
+            &home,
+            &[
+                op,
+                h,
+                "--receipt",
+                receipt,
+                "--permission-reference",
+                "fixture",
+            ],
+        ));
+        let p = result(&run(&exe, &home, &["update"]));
+        assert_eq!(p["nothing_to_apply"], json!(false), "{op}: {p}");
+        // Put the part back, so the next case misses only its own part.
+        let top = p["plan_digest"].as_str().unwrap();
+        result(&run(&exe, &home, &["update", "--confirm", top]));
+        let full = result(&run(&exe, &home, &["update"]));
+        assert_eq!(full["nothing_to_apply"], json!(true), "{op}: {full}");
+    }
 }
 
 /// Skills already current (installed through `update-plan`/`update-apply`), agents and section
