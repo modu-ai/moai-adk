@@ -338,7 +338,21 @@ pub fn tick<T: Transport, C: Clock>(
     for n in prev.prs.keys().filter(|n| !next.prs.contains_key(n)) {
         changes.push(json!({"pr": n, "closed": true}));
     }
+    // Issue #2678: the count and "no change" are said outright, not left to an empty list.
+    let summary = if changes.is_empty() {
+        format!(
+            "{} open pull request(s) read; no change since the previous tick",
+            next.prs.len()
+        )
+    } else {
+        format!(
+            "{} open pull request(s) read; {} changed since the previous tick",
+            next.prs.len(),
+            changes.len()
+        )
+    };
     let report = json!({
+        "summary": summary,
         "observed": next.prs.len(),
         "changes": changes,
         "hints": hints,

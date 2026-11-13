@@ -257,6 +257,14 @@ fn lane_status_covers_every_phase_with_its_evidence() {
     let root = fs::canonicalize(tmp.path()).unwrap();
     let p = project(&root);
     let out = run(&p, request(lanes(), decisions()), remote(false));
+    // #2678: the row count is said in words next to the rows themselves.
+    let rows = out["rows"].as_array().unwrap().len();
+    let summary = out["summary"].as_str().unwrap();
+    assert!(
+        summary.starts_with(&format!("{rows} row(s); ")),
+        "{summary}"
+    );
+    assert!(rows > 0);
 
     let r = row(&out, "agent-1", 11);
     assert_eq!(r["phase"], json!("claimed"));

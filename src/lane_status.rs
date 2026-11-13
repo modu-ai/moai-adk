@@ -938,7 +938,20 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
         Ok(list) => json!({"available": true, "count": list.len()}),
         Err(e) => json!({"available": false, "reason": e}),
     };
+    // Issue #2678: say the row count in words, and say "no result" outright, so a reader never
+    // takes an empty list for a count it did not make.
+    let summary = if rows.is_empty() {
+        "0 rows: no claim, pull request or worktree was found for the named Issues".to_string()
+    } else {
+        format!(
+            "{} row(s); {} idle lane(s); {} ready Issue(s)",
+            rows.len(),
+            idle.len(),
+            ready.len()
+        )
+    };
     json!({
+        "summary": summary,
         "rows": rows.into_iter().map(|r| r.value).collect::<Vec<_>>(),
         "idle": idle,
         "ready": ready,
@@ -1395,5 +1408,32 @@ mod tests {
         ];
         assert_eq!(report_after(&list, 4), Some(("blocked".into(), 12)));
         assert_eq!(report_after(&list, 12), None);
+    }
+
+    /// #2678: an empty table says "0 rows" and why, never just `[]`.
+    #[test]
+    fn an_empty_table_says_so_in_words() {
+        let req = LaneStatusRequest {
+            schema_version: 1,
+            owner: "o".into(),
+            repo: "r".into(),
+            base_branch: "main".into(),
+            issues: vec![],
+            lanes: vec![],
+            pending_decisions: vec![],
+        };
+        let snap = Snapshot {
+            issues: vec![],
+            other_open: BTreeMap::new(),
+            prs: vec![],
+            worktrees: Ok(vec![]),
+            now: 0,
+        };
+        let out = build(&req, &snap);
+        assert_eq!(out["rows"], json!([]));
+        assert_eq!(
+            out["summary"],
+            json!("0 rows: no claim, pull request or worktree was found for the named Issues")
+        );
     }
 }

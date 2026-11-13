@@ -87,12 +87,21 @@ fn unchanged_prs_are_not_reported_and_changes_are() {
     assert_eq!(first["changes"].as_array().unwrap().len(), 1, "{first}");
     assert_eq!(first["changes"][0]["now"]["author"], json!("agent-1"));
     assert_eq!(first["changes"][0]["now"]["verdict"], json!("PASS"));
+    // #2678: the count is said in words, and "no change" is said outright.
+    assert_eq!(
+        first["summary"],
+        json!("1 open pull request(s) read; 1 changed since the previous tick")
+    );
     let state = p.join(".moai-cli/forge/leader-tick.json");
     let saved = fs::read(&state).unwrap();
 
     let second = tick(p, &[], one_pr("h1", "agent-1", "PASS", "success"));
     assert_eq!(second["changes"], json!([]), "{second}");
     assert_eq!(second["hints"], json!([]));
+    assert_eq!(
+        second["summary"],
+        json!("1 open pull request(s) read; no change since the previous tick")
+    );
     assert_eq!(fs::read(&state).unwrap(), saved, "state is byte-identical");
 
     let third = tick(p, &[], one_pr("h2", "agent-1", "none", "success"));
