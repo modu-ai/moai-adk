@@ -329,7 +329,8 @@ fn the_round_keeps_going_until_its_end_condition() {
         "handoff-line",
         &[
             "Answer handoff requests, decision requests and `LANE-BLOCKED` lines within the supervision round",
-            "post the handoff line in that round without waiting for a request",
+            // Decision D1 (#1975 comment 6840449133) replaced the leader's renewal handoff.
+            "A same-session renewal needs no handoff line",
         ],
     );
     // Audit 6824297146 F1/N1: self-pick states the same end condition, exclusions included.
@@ -363,40 +364,54 @@ fn the_round_keeps_going_until_its_end_condition() {
 }
 
 /// #2612: the lane and leader rules from the bottleneck study (items 1-16). Each sentence is
-/// pinned so deleting it fails this test; numbers that wait on decisions D1, D5, D6 and D7
-/// (Issue #1975 comment 6839380081) are named as pending, never written as decided.
+/// pinned so deleting it fails this test. The decided values of D1, D2, D5, D6 and D7
+/// (Issue #1975 comment 6840449133) replace the earlier "pending" wording.
 #[test]
 fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
     let agent = workflow("mode-agent.md");
-    // 1. no-op wake backoff, unchanged lines are not reprinted.
+    // 1. no-op wake backoff (D6), unchanged lines are not reprinted.
     assert_says(
         &agent,
         "wake",
         &[
             "After three no-op wakes in a row on the same state, stop polling at the short interval",
-            "whose ceiling is decision D6",
-            "until D6 is recorded the ceiling stays 300 seconds",
+            "arm one longer fallback wake at most 1,800 seconds away (decision D6",
+            "without a running background watch, the wake stays at most 300 seconds away",
             "Do not print a `LANE-BLOCKED` or `LANE-DONE` line whose content is unchanged",
         ],
     );
-    // 2. renewal by editing the own claim comment, before it lapses; a new line does not renew.
+    // 2. renewal by editing the own claim comment, or by a new line of the same session (D1).
     assert_says(
         &agent,
         "claim",
         &[
             "edit the lease time on your own claim comment before it expires",
-            "A new claim line of the same session does not renew",
-            "Renewing by a new line without a handoff is decision D1",
+            "A new claim line of the same session also renews, without a handoff line (decision D1",
+            "when another session's claim stands before it, the new line does not renew",
             "Before arming a wake, read the lease of every claim you hold and extend each one that ends before the next wake",
         ],
     );
     assert!(!agent.contains("this renews the lease and is not a takeover"));
-    // 3. the oldest pr-wait across lanes opens first; N read from one place.
+    // D2: the lane's timeout takeover and its three conditions.
+    assert_says(
+        &agent,
+        "claim-verify",
+        &[
+            "A timeout takeover (decision D2",
+            "the earlier holder's lease has expired",
+            "your handoff request on the Issue has had no answer for 30 minutes",
+            "the earlier holder's session is not in the terminal list",
+            "`moai-claim-handoff: comment=<earlier claim id> to=<your session> by=timeout`",
+            "`claim-verify` ignores a `by=timeout` line whose target lease is still live",
+            "except the `by=timeout` line of decision D2 above",
+        ],
+    );
+    // 3. the oldest pr-wait across lanes opens first; N read from one place (D7).
     assert_says(
         &agent,
         "pr-gate",
         &[
-            "The open-PR limit N is read from one place: the value recorded for decision D7",
+            "The open-PR limit N is read from one place: decision D7 (Issue #1975 comment 6840449133) sets it to eight",
             "post one line `pr-wait: <UTC time>` on its Issue",
             "when another lane's line is older, let that branch open first",
         ],
@@ -454,7 +469,8 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
             "report it as `UNREACHABLE`",
             "record \"found = answered\" with both counts",
             "Before you open a question to the user, finish what is ready",
-            "how the question is asked instead is decision D5",
+            "ask it in writing, on the Issue and on the affected lane's screen, and keep supervising",
+            "open the question window only for an urgent matter that touches money, law, an external contract, secrets or real data (decision D5",
             "A decision you record goes both to the Issue or pull request comment and to the affected lane's screen",
         ],
     );
@@ -465,6 +481,8 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &[
             "post one handoff line per claim id, each as the first line of its own comment",
             "announce the handoff only when it answers `owner`",
+            "except the `by=timeout` line of decision D2",
+            "check each such line against those three conditions",
         ],
     );
     // 15. operating numbers change together; N from D7.
@@ -472,21 +490,22 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &leader,
         "pr-gate",
         &[
-            "Keep the open-PR limit N, read from one place: the value recorded for decision D7",
+            "Keep the open-PR limit N, read from one place: decision D7 (Issue #1975 comment 6840449133) sets it to eight",
             "change the MODE-AGENT and MODE-LEADER text and your announcement in the same round",
         ],
     );
-    // No decided values for the pending decisions.
+    // No pending wording left once the decisions are recorded.
     for (name, text) in [("mode-agent.md", &agent), ("mode-leader.md", &leader)] {
-        for decided in [
-            "1,800 seconds",
-            "1800 seconds",
-            "limit of eight",
-            "Below eight",
+        for pending in [
+            "6839380081",
+            "until D6 is recorded",
+            "until D7 is recorded",
+            "not yet recorded",
+            "four when none was made",
         ] {
             assert!(
-                !text.contains(decided),
-                "{name} decides a pending value: `{decided}`"
+                !text.contains(pending),
+                "{name} still says a decision is pending: `{pending}`"
             );
         }
     }
