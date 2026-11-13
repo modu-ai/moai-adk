@@ -118,7 +118,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "053c672eb065cd248e3337d04fd77bf545e28e1a56cf8ac4f464afb0c947ce6c",
+      "sha256": "8dcb3d5e09c8a3c947b1aa266a5263c68eb180d5ac0a224ad9b28e46ad3c4270",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "5569ac862a992210b8c51f403717dbc21466da37ce6b7e71a6b5f9ba652ec191",
+      "sha256": "ae6356c11919cf6783d1913e22851e8cddb57bebb78eb97796fba12b71c3bd01",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",

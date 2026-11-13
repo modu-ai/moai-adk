@@ -18,7 +18,7 @@ use tempfile::TempDir;
 const API: &str = "https://api.github.com/repos/o/r";
 /// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
 /// gate's body check the binary's own).
-const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+const PASS_BODY: &str = "Refs #2200\nMoai-Claim: 9#555\n\n## Self-Audit\n\n\
 - mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
 - clone: check set from a fresh clone, not the /tmp symlink path\n\
 - host: api.github.com exercised via fake gh executable, no network\n\
@@ -72,7 +72,7 @@ fn repo() -> (TempDir, String, String) {
     git_ok(d, &["init", "-q", "-b", "main"]);
     let a = commit(d, &[("src/a.rs", "a\n"), ("src/b.rs", "b\n")], "base");
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
-    let b = commit(d, &[("src/a.rs", "a2\n")], "pr");
+    let b = commit(d, &[("src/a.rs", "a2\n")], "pr\n\nMoai-Claim: 9#555");
     git_ok(d, &["checkout", "-q", "main"]);
     commit(d, &[("src/b.rs", "b2\n")], "tip");
     (dir, a, b)
@@ -106,6 +106,10 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
                 {"name": "ci", "conclusion": "success"},
                 {"name": "ci / linux-x86_64", "conclusion": "success"}
             ]})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
+            response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
         },
         tip_ci(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ]
@@ -230,7 +234,7 @@ fn a_stopped_gate_writes_nothing() {
     assert_eq!(out["merged"], json!(false));
     assert_eq!(out["rule"], json!("G4"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 4]);
+    assert_eq!(methods(&t), vec!["GET"; 5]);
 }
 
 /// #2777: on a red tip gate-merge stops at G8 before any write; the same PR merges once its
@@ -240,13 +244,13 @@ fn a_red_tip_stops_the_merge_before_any_write() {
     let (dir, a, b) = repo();
     let tip = tip_of(&dir);
     let mut ex = reads(&b, &a, &tip, PASS_BODY);
-    ex[3] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    ex[4] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G8"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 4]);
+    assert_eq!(methods(&t), vec!["GET"; 5]);
 
     let mut ex = reads(
         &b,
@@ -254,7 +258,7 @@ fn a_red_tip_stops_the_merge_before_any_write() {
         &tip,
         &format!("{PASS_BODY}moai-tip-repair: tip run 1\n"),
     );
-    ex[3] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    ex[4] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
     ex.extend(remote(&b, &tip));
     ex.extend(status(&b, 201));
     ex.extend([put(200), record()]);
@@ -353,7 +357,7 @@ fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G6"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 6]);
+    assert_eq!(methods(&t), vec!["GET"; 7]);
     assert_eq!(t.remaining(), 0);
 
     // The head moved on GitHub after the snapshot.
@@ -362,7 +366,7 @@ fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["writes"], json!([]), "{out}");
-    assert_eq!(methods(&t), vec!["GET"; 6]);
+    assert_eq!(methods(&t), vec!["GET"; 7]);
 }
 
 #[test]

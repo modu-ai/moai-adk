@@ -58,7 +58,9 @@ fn passing() -> Value {
         "body_check_ok": true,
         "verdict_base_known": true,
         "pr_authors": ["agent-26"],
-        "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"}
+        "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"},
+        "commits_without_claim": [],
+        "body_claim": true
     })
 }
 
@@ -446,4 +448,54 @@ fn g9_reads_the_last_verdict() {
     ]);
     s["pr_authors"] = json!(["agent-26"]);
     assert_eq!(stopped(&gate(&s)), (false, "G9".into()));
+}
+
+/// Audit 6864692054 B1: G10 carries over `flow-gate-verdict`'s `commit_claim_lines` — every
+/// commit of the PR that is not a merge has a `Moai-Claim` trailer. 0 missing passes, 1 stops,
+/// unknown stops.
+#[test]
+fn g10_every_commit_of_the_pr_carries_a_claim_trailer() {
+    let mut s = passing();
+    s["commits_without_claim"] = json!([OTHER]);
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G10".into()), "{v}");
+    let reason = v["result"]["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("1 commit(s)") && reason.contains(&OTHER[..10]),
+        "{reason}"
+    );
+    s["commits_without_claim"] = json!([OTHER, H]);
+    let v = gate(&s);
+    assert!(
+        v["result"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("2 commit(s)"),
+        "{v}"
+    );
+    s["commits_without_claim"] = json!([]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+    s.as_object_mut().unwrap().remove("commits_without_claim");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G10".into()), "{v}");
+    assert!(
+        v["result"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("not checked"),
+        "{v}"
+    );
+}
+
+/// Audit 6864692054 B1: G11 carries over `flow-gate-verdict`'s `pr_body_claim` — the PR body
+/// names its claim. Absent reads as no.
+#[test]
+fn g11_the_pr_body_carries_a_claim_line() {
+    let mut s = passing();
+    s["body_claim"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G11".into()));
+    s.as_object_mut().unwrap().remove("body_claim");
+    assert_eq!(stopped(&gate(&s)), (false, "G11".into()));
+    s["body_claim"] = json!(true);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
 }
