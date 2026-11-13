@@ -117,7 +117,17 @@ fn a_release_without_a_real_agent_folder_is_refused() {
     .unwrap();
     let out = run(&exe, &home, &["update"]);
     assert!(!out.status.success());
-    assert!(String::from_utf8_lossy(&out.stdout).contains("symlink"));
+    // Refused where the release folder is resolved, before any source is read.
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("installed agent source folder is a symlink"),
+        "{text}"
+    );
+    // A file in its place is refused the same way.
+    fs::remove_file(&agents).unwrap();
+    fs::write(&agents, "x").unwrap();
+    let out = run(&exe, &home, &["update"]);
+    assert!(String::from_utf8_lossy(&out.stdout).contains("is not a folder"));
     assert_eq!(state(&home), before);
 }
 
