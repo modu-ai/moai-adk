@@ -306,12 +306,15 @@ fn valid_name(s: &str) -> bool {
 
 /// Whether a label marks a card that waits for a decision (`needs:decision`, `HOLD`, …).
 fn holds(label: &str) -> bool {
-    let l = label.to_ascii_lowercase();
-    l.contains("needs:decision") || l.contains("hold")
+    // Whole names only (#2675 audit N4): a label that merely contains `hold` (`threshold`)
+    // must not hide a card. `needs:decision` is the label scheme's gate marker
+    // (`.github/moai/labels.yml`); `hold` and a `<axis>:hold` value are the HOLD spellings.
+    let l = label.trim().to_ascii_lowercase();
+    l == "needs:decision" || l == "hold" || l.ends_with(":hold")
 }
 
 /// `queue-free` (#2675): the open cards a lane may take, read only. Every open Issue is
-/// sorted into exactly one bucket — `held` (a `needs:decision`/`hold` label), `epics`
+/// sorted into exactly one bucket — `held` (a label named `needs:decision`, `hold` or `<axis>:hold`), `epics`
 /// (title `][EP-`), `blocked` (an open `Blocked-By:` Issue), `reserved` (an outstanding
 /// handoff names its recipient), `claimed` (a live claim), or `free`. A free card says why:
 /// `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only
