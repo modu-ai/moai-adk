@@ -295,16 +295,14 @@ pub fn display_config(input: Option<&Input>, ctx: &Context) -> DisplayConfig {
         .unwrap_or_default()
 }
 
-/// `statusline.yaml`: the RC location under `.moai-cli/`, then the Go file.
+/// `statusline.yaml`: the RC location under the project's state folder, then the Go file.
 const STATUSLINE_YAML: (&str, &str) = (
-    crate::project_state!("config/sections/statusline.yaml"),
+    "config/sections/statusline.yaml",
     ".moai/config/sections/statusline.yaml",
 );
-/// `statusline.local.yaml`: the RC location under `.moai-cli/`, then the Go file.
-const STATUSLINE_LOCAL_YAML: (&str, &str) = (
-    crate::project_state!("statusline.local.yaml"),
-    ".moai/statusline.local.yaml",
-);
+/// `statusline.local.yaml`: the RC location under the project's state folder, then the Go file.
+const STATUSLINE_LOCAL_YAML: (&str, &str) =
+    ("statusline.local.yaml", ".moai/statusline.local.yaml");
 
 /// #2350 scope 3 (user decision 6774899518 row 42 = B): a statusline setting is read from
 /// `.moai-cli/` (the Go relative path under the RC folder) when that file exists, else
@@ -313,7 +311,8 @@ const STATUSLINE_LOCAL_YAML: (&str, &str) = (
 /// file means defaults (as Go treats an unparseable file), never a silent return to the
 /// Go values.
 fn config_path(root: &Path, (rc, go): (&str, &str)) -> PathBuf {
-    let rc = root.join(rc);
+    // #2725 S2b: `rc` is relative to the project's state folder (`.moai-cli`, or `.moai`).
+    let rc = crate::state_root::path(root, rc);
     if rc.exists() {
         rc
     } else {

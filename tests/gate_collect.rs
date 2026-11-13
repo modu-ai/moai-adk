@@ -9,7 +9,7 @@ mod common;
 use common::git::{git, git_ok};
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
 use moai_cli::gate;
-use moai_cli::gate_collect::{collect, lines_kept, manifest_matches, Target};
+use moai_cli::gate_collect::{self, collect, lines_kept, manifest_matches, Target};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
@@ -80,7 +80,19 @@ fn ok(body: Value) -> HttpResponse {
     HttpResponse::new(200).with_body(body)
 }
 
-fn exchanges(head: &str, comments: Vec<Value>, body: &str) -> RecordedTransport {
+/// The tip's push CI read (every attempt) for `sha`, answering `runs`.
+fn tip_runs(sha: &str, runs: Value) -> Exchange {
+    Exchange {
+        request: HttpRequest::new(
+            "GET",
+            format!("{API}/commits/{sha}/check-runs?filter=all&per_page=100"),
+        ),
+        response: ok(json!({ "check_runs": runs })),
+    }
+}
+
+/// The reads `collect` makes, with a green tip push CI on `tip`.
+fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> RecordedTransport {
     RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
@@ -101,6 +113,7 @@ fn exchanges(head: &str, comments: Vec<Value>, body: &str) -> RecordedTransport 
                 {"name": "windows-build", "conclusion": "skipped"}
             ]})),
         },
+        tip_runs(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ])
 }
 
@@ -126,7 +139,12 @@ fn target(r: &Repo) -> Target<'_> {
 #[test]
 fn a_clean_pull_request_collects_into_a_passing_snapshot() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
-    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], PASS_BODY);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+    );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
     assert_eq!(s.head, r.b);
@@ -142,11 +160,21 @@ fn a_clean_pull_request_collects_into_a_passing_snapshot() {
 fn the_checker_unknown_base_and_missing_head_are_read_not_assumed() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
     // The body fails the checker.
-    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], "no section");
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        "no section",
+    );
     assert!(!collect(&target(&r), &t).unwrap().body_check_ok);
     // A verdict base the repository does not have.
     let unknown = "abababababababababababababababababababab";
-    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, unknown)], PASS_BODY);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, unknown)],
+        PASS_BODY,
+    );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.verdict_base_known);
     assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
@@ -180,14 +208,24 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
         &[("docs/a.md", "one\nPR line\n\ntwo\n")],
         &[("docs/a.md", "one\n\ntwo\ntip line\n")],
     );
-    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], PASS_BODY);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+    );
     let s = collect(&target(&r), &t).unwrap();
     assert!(s.merge_clean);
     assert_eq!(s.docs_lines_kept, vec!["docs/a.md".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
     // Both sides change the same line of code: a conflict.
     let r = repo(&[("src/b.rs", "pr\n")], &[("src/b.rs", "tip\n")]);
-    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], PASS_BODY);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+    );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.merge_clean);
     assert_eq!(gate::check(&s).unwrap_err().rule, "G6");
@@ -218,8 +256,10 @@ fn comment_pages_are_followed() {
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
+        tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
     assert_eq!(s.comments.len(), 2);
     assert!(s.verdict_base_known);
 }
@@ -310,6 +350,7 @@ fn an_entry_without_a_file_and_a_body_without_the_section_fail() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
     let t = exchanges(
         &r.b,
+        &r.c,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
         "body SELF-AUDIT-OK",
     );
@@ -328,10 +369,385 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     git_ok(d, &["checkout", "-q", "pr"]);
     let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2");
     git_ok(d, &["checkout", "-q", "main"]);
-    let t = exchanges(&b2, vec![claim(&b2), verdict(&b2, &r.b)], PASS_BODY);
+    let t = exchanges(&b2, &r.c, vec![claim(&b2), verdict(&b2, &r.b)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+}
+
+// ---- #2777 G8: the tip's push CI ----
+
+fn run(conclusion: Option<&str>, id: u64) -> Value {
+    json!({
+        "name": "ci",
+        "conclusion": conclusion,
+        "details_url": format!("https://github.com/o/r/actions/runs/{id}/job/1"),
+    })
+}
+
+/// The PR reads of `exchanges` followed by the given tip reads instead of one green tip.
+fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> RecordedTransport {
+    let mut ex = vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": head}, "body": body})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(head), verdict(head, base)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{head}/check-runs?per_page=100"),
+            ),
+            response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
+        },
+    ];
+    ex.extend(tips);
+    RecordedTransport::new(ex)
+}
+
+fn g8(s: &gate::Snapshot) -> Option<String> {
+    gate::check(s)
+        .err()
+        .filter(|e| e.rule == "G8")
+        .map(|e| e.reason)
+}
+
+/// AC-3: a red tip stops an ordinary PR and lets a repair through; a green tip passes. A
+/// failure whose re-run is still running stays red (the last completed result), and a
+/// failure a re-run turned green is flaky — not a stop, as in flow-gate-verdict.
+#[test]
+fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let red = || tip_runs(&r.c, json!([run(Some("failure"), 77)]));
+
+    let t = with_tip(&r.b, PASS_BODY, vec![red()], &r.a);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(
+        (ci.state.as_str(), ci.decided_by.as_deref()),
+        ("red", Some(r.c.as_str()))
+    );
+    assert!(!s.tip_repair);
+    let reason = g8(&s).expect("G8 stops an ordinary PR on a red tip");
+    assert!(reason.contains("run 77"), "{reason}");
+
+    let body = &format!("{PASS_BODY}moai-tip-repair: fixes run 77\n");
+    let s = collect(&target(&r), &with_tip(&r.b, body, vec![red()], &r.a)).unwrap();
+    assert!(s.tip_repair);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+
+    // A completed failure with its re-run still running: red, the walk does not go back.
+    let t = with_tip(
+        &r.b,
+        PASS_BODY,
+        vec![tip_runs(
+            &r.c,
+            json!([run(Some("failure"), 77), run(None, 78)]),
+        )],
+        &r.a,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(
+        t.sent.borrow().len(),
+        4,
+        "the earlier tip commit is not read"
+    );
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(
+        (ci.state.as_str(), ci.decided_by.as_deref()),
+        ("red", Some(r.c.as_str()))
+    );
+    assert!(g8(&s).is_some());
+
+    // Failure then success on the same tip: flaky, not a stop.
+    let t = with_tip(
+        &r.b,
+        PASS_BODY,
+        vec![tip_runs(
+            &r.c,
+            json!([run(Some("failure"), 77), run(Some("success"), 78)]),
+        )],
+        &r.a,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.tip_ci.as_ref().unwrap().state, "flaky");
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+}
+
+/// AC-1/AC-3: a running or only-cancelled tip is judged by the earlier tip commit's completed
+/// CI — red there stops, green there passes; cancelled on every commit read is unknown.
+#[test]
+fn running_or_cancelled_tip_ci_is_judged_by_the_last_completed_one() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    // `main` is a → c: the tip c and its first parent a.
+    for (tip_runs_now, parent, want, decided) in [
+        (
+            json!([run(None, 90)]),
+            json!([run(Some("failure"), 80)]),
+            "red",
+            Some(&r.a),
+        ),
+        (
+            json!([run(None, 90)]),
+            json!([run(Some("success"), 80)]),
+            "green",
+            Some(&r.a),
+        ),
+        (
+            json!([run(Some("cancelled"), 90), run(Some("cancelled"), 91)]),
+            json!([run(Some("failure"), 80)]),
+            "red",
+            Some(&r.a),
+        ),
+        (
+            json!([run(Some("cancelled"), 90)]),
+            json!([run(Some("success"), 80)]),
+            "green",
+            Some(&r.a),
+        ),
+        (
+            json!([]),
+            json!([run(Some("success"), 80)]),
+            "green",
+            Some(&r.a),
+        ),
+        (
+            json!([run(Some("cancelled"), 90)]),
+            json!([run(Some("cancelled"), 80)]),
+            "unknown",
+            None,
+        ),
+    ] {
+        let t = with_tip(
+            &r.b,
+            PASS_BODY,
+            vec![
+                tip_runs(&r.c, tip_runs_now.clone()),
+                tip_runs(&r.a, parent.clone()),
+            ],
+            &r.a,
+        );
+        let s = collect(&target(&r), &t).unwrap();
+        assert_eq!(t.remaining(), 0, "{tip_runs_now} / {parent}");
+        let ci = s.tip_ci.clone().unwrap();
+        assert_eq!(ci.state, want, "{tip_runs_now} / {parent}");
+        assert_eq!(ci.decided_by.as_ref(), decided, "{tip_runs_now} / {parent}");
+        assert_eq!(ci.tip, r.c);
+        assert_eq!(
+            g8(&s).is_some(),
+            want != "green",
+            "{tip_runs_now} / {parent}"
+        );
+    }
+}
+
+/// A tip read that fails is unknown and stops, never a pass; so does a repair on it.
+#[test]
+fn an_unreadable_tip_ci_is_unknown_and_stops_even_a_repair() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let failing = Exchange {
+        request: HttpRequest::new(
+            "GET",
+            format!("{API}/commits/{}/check-runs?filter=all&per_page=100", r.c),
+        ),
+        response: HttpResponse::new(502),
+    };
+    let body = &format!("{PASS_BODY}moai-tip-repair: x\n");
+    let t = with_tip(&r.b, body, vec![failing], &r.a);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(ci.state, "unknown");
+    assert!(ci.detail.contains("HTTP 502"), "{}", ci.detail);
+    assert!(g8(&s).is_some());
+}
+
+/// The walk reads at most `TIP_WALK` (10) tip commits: completed CI on the 10th decides; with
+/// none in 10 the 11th is never read and the result is unknown.
+#[test]
+fn the_tip_walk_stops_at_its_limit() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    // Nine more commits on main: c is now the 10th from the tip, a the 11th.
+    let mut chain = vec![r.c.clone()];
+    for i in 0..9 {
+        chain.push(commit(d, &[("src/n.rs", &format!("{i}\n"))], "tip n"));
+    }
+    chain.reverse(); // tip first
+    assert_eq!(gate_collect::TIP_WALK, 10);
+    assert_eq!(chain.len(), 10);
+    let mut tips: Vec<Exchange> = chain[..9]
+        .iter()
+        .map(|sha| tip_runs(sha, json!([run(None, 1)])))
+        .collect();
+    tips.push(tip_runs(&chain[9], json!([run(Some("failure"), 10)])));
+    let t = with_tip(&r.b, PASS_BODY, tips, &r.a);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let ci = s.tip_ci.unwrap();
+    assert_eq!(
+        (ci.state.as_str(), ci.decided_by),
+        ("red", Some(r.c.clone()))
+    );
+
+    let tips: Vec<Exchange> = chain
+        .iter()
+        .map(|sha| tip_runs(sha, json!([run(None, 1)])))
+        .chain([tip_runs(&r.a, json!([run(Some("success"), 11)]))])
+        .collect();
+    let t = with_tip(&r.b, PASS_BODY, tips, &r.a);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 1, "the 11th commit is not read");
+    let ci = s.tip_ci.unwrap();
+    assert_eq!(ci.state, "unknown");
+    assert!(ci.detail.contains("last 10 tip commit"), "{}", ci.detail);
+}
+
+/// Audit 6863284751 B2: the tip's check runs are read over at most 10 pages. Ten pages, the
+/// last without `next`, are all read (a failure on page 10 decides red); a tenth page that
+/// points to an 11th stops before the 11th request, and the result is `unknown`, which stops
+/// a repair too.
+#[test]
+fn the_tip_check_run_pages_stop_at_ten() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let first = format!("{API}/commits/{}/check-runs?filter=all&per_page=100", r.c);
+    let page_url = |n: usize| {
+        if n == 1 {
+            first.clone()
+        } else {
+            format!("{API}/tip-pages/{n}")
+        }
+    };
+    // `pages` pages; the last carries `next` to page `pages + 1` when `more`.
+    let pages = |count: usize, more: bool, last_runs: Value| -> Vec<Exchange> {
+        (1..=count)
+            .map(|n| {
+                let runs = if n == count {
+                    last_runs.clone()
+                } else {
+                    json!([run(Some("success"), n as u64)])
+                };
+                let mut resp = ok(json!({ "check_runs": runs }));
+                if n < count || more {
+                    resp = resp.with_header("link", format!("<{}>; rel=\"next\"", page_url(n + 1)));
+                }
+                Exchange {
+                    request: HttpRequest::new("GET", page_url(n)),
+                    response: resp,
+                }
+            })
+            .collect()
+    };
+
+    let t = with_tip(
+        &r.b,
+        PASS_BODY,
+        pages(10, false, json!([run(Some("failure"), 10)])),
+        &r.a,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0, "all ten pages are read");
+    // Success on pages 1–9 and a failure on page 10 on the same commit: flaky, which proves
+    // page 10 was judged together with the others.
+    assert_eq!(s.tip_ci.as_ref().unwrap().state, "flaky");
+
+    let mut tips = pages(10, true, json!([run(Some("success"), 10)]));
+    tips.push(Exchange {
+        request: HttpRequest::new("GET", page_url(11)),
+        response: ok(json!({ "check_runs": [run(Some("success"), 11)] })),
+    });
+    let body = &format!("{PASS_BODY}moai-tip-repair: x\n");
+    let t = with_tip(&r.b, body, tips, &r.a);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 1, "the 11th page is never requested");
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(ci.state, "unknown");
+    assert!(
+        ci.detail.contains("more than 10 check run pages"),
+        "{}",
+        ci.detail
+    );
+    assert!(s.tip_repair);
+    assert!(g8(&s).is_some(), "unknown stops a repair too");
+}
+
+/// Audit 6863284751 B3: the walk follows first parents only. On a tip that merged a PR, the
+/// merged PR branch's head carries that PR's own `ci`; it must never decide the tip. Here the
+/// tip (a merge) is still running, its first parent (the previous tip) is red and the merged
+/// branch head — committed later, so a date-ordered walk would read it first — is green: the
+/// state is red, decided by the first parent, and the branch head is never read.
+#[test]
+fn the_walk_follows_first_parents_not_a_merged_branch() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "-b", "merged-pr", &r.a]);
+    fs::write(d.join("src/m.rs"), "m\n").unwrap();
+    git_ok(d, &["add", "-A"]);
+    let out = common::git::command()
+        .current_dir(d)
+        .env("GIT_COMMITTER_DATE", "2030-01-01T00:00:00Z")
+        .env("GIT_AUTHOR_DATE", "2030-01-01T00:00:00Z")
+        .args([
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "merged pr head",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let branch_head = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge merged-pr",
+            "merged-pr",
+        ],
+    );
+    let tip = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    // Without --first-parent, git's date order puts the 2030 branch head right after the tip.
+    let all = git(d, &["rev-list", "--max-count=2", &tip]);
+    assert_eq!(all.lines().nth(1), Some(branch_head.as_str()));
+
+    let t = with_tip(
+        &r.b,
+        PASS_BODY,
+        vec![
+            tip_runs(&tip, json!([run(None, 90)])),
+            tip_runs(&r.c, json!([run(Some("failure"), 80)])),
+        ],
+        &r.a,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(
+        (ci.state.as_str(), ci.decided_by.as_deref()),
+        ("red", Some(r.c.as_str()))
+    );
+    assert!(
+        !t.sent.borrow().iter().any(|q| q.url.contains(&branch_head)),
+        "the merged branch head is never read"
+    );
+    assert!(g8(&s).is_some());
 }
 
 fn claim_comment(id: u64, first_line: &str) -> Exchange {
@@ -397,6 +813,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
             555,
             "moai-claim: session=agent-26 epoch=1 lease_until=2026-11-13T19:00:00Z",
         ),
+        tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &ex).unwrap();
     assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
@@ -506,6 +923,10 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
             &format!("moai-claim: session=agent-{i} epoch=1"),
         ));
     }
+    ex.push(tip_runs(
+        &r.c,
+        json!([{"name": "ci", "conclusion": "success"}]),
+    ));
     let t = RecordedTransport::new(ex);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.pr_authors.as_ref().unwrap().len(), 20);
@@ -525,9 +946,13 @@ fn one_claim_named_by_several_commits_is_read_once() {
     let r = repo_with_claim_ids(&[555, 555, 555]);
     let mut ex = three_reads(&r);
     ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=2"));
+    ex.push(tip_runs(
+        &r.c,
+        json!([{"name": "ci", "conclusion": "success"}]),
+    ));
     let t = RecordedTransport::new(ex);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
     assert_eq!(t.remaining(), 0);
-    assert_eq!(t.sent.borrow().len(), 4);
+    assert_eq!(t.sent.borrow().len(), 5, "three reads, one claim, the tip");
 }

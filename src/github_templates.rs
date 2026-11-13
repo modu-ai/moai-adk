@@ -38,7 +38,10 @@ use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-pub const MANIFEST: &str = crate::project_state!("manifests/github.json");
+/// The GitHub templates manifest of `root`, under its state folder (#2725 S2b).
+pub fn manifest_rel(root: &Path) -> String {
+    crate::state_root::rel(root, "manifests/github.json")
+}
 /// Marker of an unresolved template variable (`placeholder_pattern` in
 /// `templates/github/manifest.json`).
 pub const PLACEHOLDER: &str = "{{";
@@ -128,7 +131,7 @@ fn opted_in(root: &Path, request: &GithubRequest) -> Result<(bool, String)> {
     if let Some(flag) = request.github_issues {
         return Ok((flag, format!("opt-in from request.github_issues = {flag}")));
     }
-    let profile_path = root.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+    let profile_path = crate::state_root::path(root, "project.yaml");
     if read_opt(&profile_path)?.is_none() {
         return Ok((
             false,
@@ -153,7 +156,7 @@ fn form_language(root: &Path, request: &GithubRequest) -> Result<(&'static str, 
     let (code, source) = if let Some(code) = &request.language {
         (code.clone(), "request.language")
     } else {
-        let profile_path = root.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+        let profile_path = crate::state_root::path(root, "project.yaml");
         let settings = if read_opt(&profile_path)?.is_some() {
             crate::profile::read_profile(root)?.0.language
         } else {
@@ -229,7 +232,7 @@ pub fn unresolved(templates: &[(&str, &str)]) -> Vec<String> {
 }
 
 fn manifest_baselines(root: &Path) -> Result<Vec<(String, String)>> {
-    let Some(bytes) = read_opt(&root.join(MANIFEST))? else {
+    let Some(bytes) = read_opt(&root.join(manifest_rel(root)))? else {
         return Ok(Vec::new());
     };
     let v: Value = serde_json::from_slice(&bytes)
@@ -443,7 +446,8 @@ pub fn github_apply(
         written.push(f.path.clone());
     }
     // Baselines last: every planned file that is now equal to its rendering.
-    let manifest_path = target(&root, MANIFEST)?;
+    let manifest_rel = manifest_rel(&root);
+    let manifest_path = target(&root, &manifest_rel)?;
     let before = read_opt(&manifest_path)?;
     let owned: Vec<Value> = p
         .files
@@ -463,7 +467,7 @@ pub fn github_apply(
         out.push(b'\n');
         if before.as_deref() != Some(out.as_slice()) {
             if let Some(b) = before.as_deref() {
-                save_before_bytes(&root, &request_id, MANIFEST, b)?;
+                save_before_bytes(&root, &request_id, &manifest_rel, b)?;
             }
             match before.as_deref() {
                 None => publish_exclusive(&manifest_path, &out),
@@ -471,12 +475,12 @@ pub fn github_apply(
             }
             .map_err(|e| {
                 format!(
-                    "partial apply: applied [{}]; failed at {MANIFEST}: {e}",
+                    "partial apply: applied [{}]; failed at {manifest_rel}: {e}",
                     written.join(", ")
                 )
             })?;
             receipt.entry(
-                MANIFEST,
+                &manifest_rel,
                 if before.is_none() { "create" } else { "merge" },
                 before.as_deref().map(digest).as_deref(),
                 Some(&digest(&out)),
@@ -505,7 +509,7 @@ pub fn github_apply(
         "adopted_baselines": adopted,
         "unchanged": p.files.iter().filter(|f| f.action == "unchanged").map(|f| f.path.clone()).collect::<Vec<_>>(),
         "preserved": p.preserved,
-        "manifest": MANIFEST,
+        "manifest": manifest_rel,
         "rendering": "not_run: GitHub reads Issue forms only from the default branch",
     }))
 }

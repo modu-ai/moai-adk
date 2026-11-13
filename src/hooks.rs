@@ -261,7 +261,7 @@ fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
             ".codex",
             ".omp",
             ".agents",
-            crate::PROJECT_STATE_DIR,
+            crate::HOME_STATE_DIR,
         ]
         .iter()
         .any(|d| root.starts_with(home.join(d)));
@@ -327,7 +327,7 @@ fn codex_owned(receipt: &[u8], fh: &FileHost) -> Result<(Option<String>, Option<
 }
 
 fn codex_state(root: &Path, fh: &FileHost) -> Result<CodexState> {
-    let state_dir = root.join(crate::PROJECT_STATE_DIR);
+    let state_dir = crate::state_root::path(root, "");
     let mut dirs: Vec<PathBuf> = fh.dirs.iter().map(|d| root.join(d)).collect();
     dirs.extend([state_dir.clone(), state_dir.join("manifests")]);
     for dir in dirs {
@@ -439,9 +439,9 @@ pub fn apply(
     let mut out = if host == "claude" {
         let mut v =
             crate::claude::settings_apply(&root, &claude_desired(&root)?, plan_digest, permission)?;
-        v["receipt_path"] = json!(format!(
-            "{}/manifests/claude-settings.json",
-            crate::PROJECT_STATE_DIR
+        v["receipt_path"] = json!(crate::state_root::rel(
+            &root,
+            "manifests/claude-settings.json"
         ));
         v
     } else {
@@ -450,7 +450,7 @@ pub fn apply(
         if s.digest != plan_digest {
             return Err("stale or altered plan; re-preview required".into());
         }
-        let rel = format!("{}/{}", crate::PROJECT_STATE_DIR, fh.receipt);
+        let rel = crate::state_root::rel(&root, fh.receipt);
         let rendered_sha = crate::digest(&s.rendered);
         let final_receipt = codex_receipt_bytes(fh, Some(&rendered_sha), None);
         let mut receipt_now = s.receipt_before.clone();
@@ -507,10 +507,7 @@ fn host_config_path(host: &str) -> &'static str {
 /// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
 /// a missing, oversized or non-regular log reads as empty).
 fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
-    let path = root
-        .join(crate::PROJECT_STATE_DIR)
-        .join("receipts")
-        .join(file);
+    let path = crate::state_root::path(root, "receipts").join(file);
     match fs::symlink_metadata(&path) {
         Ok(m) if m.is_file() && m.len() <= RECEIPT_LOG_LIMIT => {}
         _ => return Vec::new(),
@@ -617,7 +614,7 @@ pub fn append_receipt_line(
     file: &str,
     line: &Value,
 ) -> std::result::Result<(), &'static str> {
-    let state_dir = cwd.join(crate::PROJECT_STATE_DIR);
+    let state_dir = crate::state_root::path(cwd, "");
     match fs::symlink_metadata(&state_dir) {
         Ok(m) if m.is_dir() => {}
         _ => return Err("no .moai-cli directory in the working directory"),
@@ -686,7 +683,7 @@ pub fn receipt(host: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Value
     }
     json!({
         "recorded": true,
-        "path": format!("{}/receipts/hooks.jsonl", crate::PROJECT_STATE_DIR),
+        "path": crate::state_root::rel(cwd, "receipts/hooks.jsonl"),
         "fields": fields,
         "dropped": dropped,
     })

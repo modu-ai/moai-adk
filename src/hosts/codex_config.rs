@@ -280,7 +280,7 @@ fn config_state(project: &Path, home: &Path, desired: &Map<String, Value>) -> Re
     if fs::canonicalize(home).is_ok_and(|h| h == root) {
         return Err("project is the home directory; the user codex config is refused".into());
     }
-    let state_dir = root.join(crate::PROJECT_STATE_DIR);
+    let state_dir = crate::state_root::path(&root, "");
     for dir in [
         root.join(".codex"),
         state_dir.clone(),
@@ -465,7 +465,7 @@ pub fn config_apply(
     let before_sha = s.before.as_deref().map(crate::digest);
     let final_bytes = s.after.as_deref().or(s.before.as_deref());
     let receipt = receipt_bytes(&owned, final_bytes.map(crate::digest).as_deref(), None);
-    let rel = format!("{}/{CONFIG_RECEIPT}", crate::PROJECT_STATE_DIR);
+    let rel = crate::state_root::rel(project, CONFIG_RECEIPT);
     let mut files = Vec::new();
     let mut receipt_now = s.receipt_before.clone();
     if let Some(after) = &s.after {

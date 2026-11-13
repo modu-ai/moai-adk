@@ -101,8 +101,20 @@ fn comments(head: &str, base: &str, auditor: &str, extra: Option<&str>) -> Value
     Value::Array(v)
 }
 
-/// The three reads gate-merge's collect makes for PR 9.
-fn reads(head: &str, cs: &Value) -> Vec<Exchange> {
+/// The tip's push CI read (every attempt) on the local `main`, answering `runs` (#2777).
+fn tip_ci(dir: &TempDir, runs: Value) -> Exchange {
+    let tip = git(dir.path(), &["rev-parse", "main"]).trim().to_string();
+    Exchange {
+        request: HttpRequest::new(
+            "GET",
+            format!("{API}/commits/{tip}/check-runs?filter=all&per_page=100"),
+        ),
+        response: ok(json!({ "check_runs": runs })),
+    }
+}
+
+/// The four reads gate-merge's collect makes for PR 9, the tip's push CI green.
+fn reads(dir: &TempDir, head: &str, cs: &Value) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
@@ -119,6 +131,7 @@ fn reads(head: &str, cs: &Value) -> Vec<Exchange> {
             ),
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
+        tip_ci(dir, json!([{"name": "ci", "conclusion": "success"}])),
     ]
 }
 
@@ -176,7 +189,7 @@ fn a_passing_pull_request_is_merged_and_a_draft_is_skipped() {
         {"number": 9, "draft": false, "head": {"sha": b}},
         {"number": 10, "draft": true, "head": {"sha": b}}
     ]))];
-    ex.extend(reads(&b, &cs));
+    ex.extend(reads(&dir, &b, &cs));
     ex.extend(remote(&dir, &b));
     ex.extend([
         Exchange {
@@ -212,7 +225,7 @@ fn a_code_overlap_updates_the_branch_once_per_head() {
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
     )];
-    ex.extend(reads(&b, &cs));
+    ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     ex.push(Exchange {
         request: HttpRequest::new("PUT", format!("{API}/pulls/9/update-branch")),
@@ -249,7 +262,7 @@ fn a_code_overlap_updates_the_branch_once_per_head() {
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
     )];
-    ex.extend(reads(&b, &cs));
+    ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     let t = RecordedTransport::new(ex);
     let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
@@ -264,7 +277,7 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
     )];
-    ex.extend(reads(&b, &cs));
+    ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     ex.push(Exchange {
         request: HttpRequest::new("POST", format!("{API}/issues/9/comments")),
@@ -280,7 +293,7 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
     )];
-    ex.extend(reads(&b, &cs));
+    ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     let t = RecordedTransport::new(ex);
     let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
@@ -296,7 +309,7 @@ fn a_head_not_fetched_is_skipped_and_no_permission_reads_nothing() {
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": missing}}]),
     )];
-    ex.extend(reads(missing, &cs));
+    ex.extend(reads(&dir, missing, &cs));
     let t = RecordedTransport::new(ex);
     let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("skipped"));
@@ -322,7 +335,7 @@ fn a_conflict_is_reported_not_updated() {
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
     )];
-    ex.extend(reads(&b, &cs));
+    ex.extend(reads(&dir, &b, &cs));
     let t = RecordedTransport::new(ex);
     let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
     assert_eq!(
@@ -334,12 +347,34 @@ fn a_conflict_is_reported_not_updated() {
     assert!(writes(&t).is_empty());
 }
 
+/// #2777 AC-2: gate-loop uses the same G8 judgment. On a red tip a passing PR is not merged
+/// and a code-overlap PR gets no update-branch or note — the pass writes nothing.
+#[test]
+fn a_red_tip_stops_the_loop_without_any_write() {
+    for overlap in [false, true] {
+        let (dir, a, b) = repo(overlap);
+        let cs = comments(&b, &a, "agent-10", None);
+        let mut ex = vec![list(
+            json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+        )];
+        ex.extend(reads(&dir, &b, &cs));
+        ex[4] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
+        let t = RecordedTransport::new(ex);
+        let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+        let row = &out["pull_requests"][0];
+        assert_eq!(row["outcome"], json!("stopped"), "overlap={overlap} {out}");
+        assert_eq!(row["rule"], json!("G8"), "overlap={overlap} {out}");
+        assert!(writes(&t).is_empty(), "overlap={overlap}");
+        assert_eq!(t.remaining(), 0);
+    }
+}
+
 fn passing_until_status(dir: &TempDir, a: &str, b: &str) -> Vec<Exchange> {
     let cs = comments(b, a, "agent-10", None);
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
     )];
-    ex.extend(reads(b, &cs));
+    ex.extend(reads(dir, b, &cs));
     ex.extend(remote(dir, b));
     ex
 }

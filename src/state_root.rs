@@ -257,6 +257,37 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
     }
 }
 
+/// The project-relative folder that holds `root`'s state now (#2725 S2b): `.moai` once
+/// [`classify`] says `rust`, otherwise the earlier `.moai-cli` (decision D7: both are read,
+/// one writes). A project gets `.moai/` only through a migration that writes the marker last,
+/// so every project without a valid marker keeps exactly the paths it had before.
+pub fn dir(root: &Path) -> &'static str {
+    if classify(root).generation == "rust" {
+        MOAI_DIR
+    } else {
+        crate::PROJECT_STATE_DIR
+    }
+}
+
+/// `root/<dir(root)>/<sub>`; an empty `sub` is the folder itself.
+pub fn path(root: &Path, sub: &str) -> std::path::PathBuf {
+    let base = root.join(dir(root));
+    if sub.is_empty() {
+        base
+    } else {
+        base.join(sub)
+    }
+}
+
+/// `<dir(root)>/<sub>`, the project-relative spelling receipts and outputs record.
+pub fn rel(root: &Path, sub: &str) -> String {
+    if sub.is_empty() {
+        dir(root).to_string()
+    } else {
+        format!("{}/{sub}", dir(root))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

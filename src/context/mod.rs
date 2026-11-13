@@ -342,7 +342,7 @@ fn resolve_max_bytes(root: &Path, budget: &Budget) -> Result<(u64, &'static str)
     if let Some(m) = budget.max_bytes {
         return Ok((m, "request"));
     }
-    let profile_path = root.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+    let profile_path = crate::state_root::path(root, "project.yaml");
     if crate::apply::read_opt(&profile_path)?.is_none() {
         return Ok((DEFAULT_MAX_BYTES, "default"));
     }

@@ -770,7 +770,7 @@ fn settings_state(
             });
         }
     }
-    let state_dir = root.join(crate::PROJECT_STATE_DIR);
+    let state_dir = crate::state_root::path(&root, "");
     for dir in [
         root.join(".claude"),
         state_dir.clone(),
@@ -948,7 +948,7 @@ pub fn settings_plan_in(
             "current": r.current,
             "replace_with": r.replace_with,
             "planned_sha256": crate::digest(&r.after),
-            "backup_root": format!("{}/{SETTINGS_BACKUPS}", crate::PROJECT_STATE_DIR),
+            "backup_root": crate::state_root::rel(&root, SETTINGS_BACKUPS),
             "backup_layout": format!("<UTC>-{}/{}", scope.name(), settings_name(scope)),
             "confirm_token": r.token,
         });
@@ -1091,7 +1091,7 @@ pub fn settings_apply_in(
     let final_bytes = s.after.as_deref().or(s.before.as_deref());
     let final_sha = final_bytes.map(crate::digest);
     let receipt = receipt_bytes(file, &owned, final_sha.as_deref(), None);
-    let rel = format!("{}/{}", crate::PROJECT_STATE_DIR, scope.receipt());
+    let rel = crate::state_root::rel(project, scope.receipt());
     let mut files = Vec::new();
     let mut receipt_now = s.receipt_before.clone();
     if let Some(after) = &s.after {
@@ -1187,8 +1187,8 @@ fn keep_out_of_git(backups: &Path) -> Result<()> {
 fn keep_original(project: &Path, scope: SettingsScope, before: Option<&[u8]>) -> Result<String> {
     let before = before.ok_or("no settings file to keep; nothing applied")?;
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
-    let backups = root.join(crate::PROJECT_STATE_DIR).join(SETTINGS_BACKUPS);
-    refuse_symlink_dir(&root.join(crate::PROJECT_STATE_DIR))?;
+    let backups = crate::state_root::path(&root, SETTINGS_BACKUPS);
+    refuse_symlink_dir(&crate::state_root::path(&root, ""))?;
     refuse_symlink_dir(&backups)?;
     fs::create_dir_all(&backups).map_err(|e| {
         format!(
@@ -1245,9 +1245,9 @@ fn keep_original(project: &Path, scope: SettingsScope, before: Option<&[u8]>) ->
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or("backup folder name unavailable")?;
-    Ok(format!(
-        "{}/{SETTINGS_BACKUPS}/{name}",
-        crate::PROJECT_STATE_DIR
+    Ok(crate::state_root::rel(
+        &root,
+        &format!("{SETTINGS_BACKUPS}/{name}"),
     ))
 }
 

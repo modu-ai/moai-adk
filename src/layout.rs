@@ -19,19 +19,14 @@ type Result<T> = std::result::Result<T, String>;
 
 pub const SCHEMA_VERSION: u32 = 1;
 /// The three store kinds this layout moves: (kind, project-side directory relative to
-/// the project root, home-side directory relative to
-/// `~/.moai-cli/projects/<project_id>/`). The claim journal's project-side root is the
-/// git common dir (`<common>/.moai-cli/claims`), resolved per clone — the table here
-/// carries the project-root-relative spelling used when the common dir equals the
-/// project's own `.git` (the primary checkout).
+/// the project's state folder — `.moai-cli` or, once migrated, `.moai` (#2725 S2b) —, and
+/// home-side directory relative to `~/.moai-cli/projects/<project_id>/`). The claim
+/// journal's project-side root is the git common dir (`<common>/.moai-cli/claims`),
+/// resolved per clone, so its middle entry is not used.
 pub const KINDS: &[(&str, &str, &str)] = &[
-    ("receipts", crate::project_state!("receipts"), "receipts"),
-    (
-        "outbox",
-        crate::project_state!("forge/outbox"),
-        "forge/outbox",
-    ),
-    ("claims", crate::fixed_state!("claims"), "claims"),
+    ("receipts", "receipts", "receipts"),
+    ("outbox", "forge/outbox", "forge/outbox"),
+    ("claims", "claims", "claims"),
 ];
 
 /// The default home root: `$HOME/.moai-cli` (the card's fixed location). `None` without
@@ -119,7 +114,7 @@ fn legacy_dir(project: &Path, kind: &str) -> Result<Option<PathBuf>> {
     if kind == "claims" {
         return claims_legacy_dir(project);
     }
-    source_dir(project.join(rel))
+    source_dir(crate::state_root::path(project, rel))
 }
 
 fn home_dir(home_root: &Path, project_id: &str, kind: &str) -> PathBuf {

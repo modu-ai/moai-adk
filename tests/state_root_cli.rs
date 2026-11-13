@@ -1,0 +1,141 @@
+//! #2725 S2b: where the project state is written follows `state_root` — `.moai/` once its
+//! marker says this generation owns it, otherwise the earlier `.moai-cli/` (decision D7:
+//! both are read, one writes). Synthetic projects in temporary folders only.
+use serde_json::{json, Value};
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::Write,
+    path::Path,
+    process::{Command, Stdio},
+};
+use tempfile::TempDir;
+
+const MARKER: &str = r#"{"schema_version":1,"generation":"moai-cli","created_by":"moai-cli test"}"#;
+
+fn profile() -> Value {
+    json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"})
+}
+
+fn cli(args: &[&str], input: &Value) -> Value {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    match child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.to_string().as_bytes())
+    {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+        Err(e) => panic!("stdin write failed: {e}"),
+    }
+    let out = child.wait_with_output().unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "not JSON: {} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    });
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+/// `project-plan` then `project-apply` with the plan's result, as PROJECT does.
+fn create(root: &Path) -> Value {
+    let p = root.to_str().unwrap();
+    let plan = cli(&["project-plan", p], &profile());
+    cli(
+        &[
+            "project-apply",
+            p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &plan,
+    )
+}
+
+fn tree(root: &Path) -> BTreeMap<String, Vec<u8>> {
+    let mut out = BTreeMap::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for e in fs::read_dir(&dir).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                let rel = p.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+                out.insert(rel, fs::read(&p).unwrap());
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn a_project_without_the_marker_keeps_the_earlier_root() {
+    let root = TempDir::new().unwrap();
+    create(root.path());
+    assert!(root.path().join(".moai-cli/project.yaml").is_file());
+    assert!(root
+        .path()
+        .join(".moai-cli/manifests/profile-baseline.json")
+        .is_file());
+    assert!(!root.path().join(".moai").exists(), "nothing under .moai/");
+}
+
+#[test]
+fn a_project_with_the_marker_keeps_its_state_in_moai() {
+    let root = TempDir::new().unwrap();
+    fs::create_dir(root.path().join(".moai")).unwrap();
+    fs::write(root.path().join(".moai/moai-cli.json"), MARKER).unwrap();
+    create(root.path());
+    assert!(root.path().join(".moai/project.yaml").is_file());
+    assert!(root
+        .path()
+        .join(".moai/manifests/profile-baseline.json")
+        .is_file());
+    assert!(
+        !root.path().join(".moai-cli").exists(),
+        "the earlier root is not created"
+    );
+    // A second run plans `unchanged` against the profile it finds under `.moai/`.
+    let again = cli(&["project-plan", root.path().to_str().unwrap()], &profile());
+    assert_eq!(again["action"], json!("unchanged"), "{again}");
+    // project-detect reads the same profile and says whose `.moai/` it is.
+    let detect = cli(
+        &["project-detect", root.path().to_str().unwrap()],
+        &json!({}),
+    );
+    assert_eq!(
+        detect["state_root"]["generation"],
+        json!("rust"),
+        "{detect}"
+    );
+    assert_eq!(detect["profile"]["project_id"], json!("demo"), "{detect}");
+}
+
+#[test]
+fn a_mixed_moai_folder_is_left_alone_and_the_earlier_root_is_used() {
+    let root = TempDir::new().unwrap();
+    fs::create_dir_all(root.path().join(".moai/config")).unwrap();
+    fs::write(root.path().join(".moai/moai-cli.json"), MARKER).unwrap();
+    fs::write(root.path().join(".moai/config/config.yaml"), "x: 1\n").unwrap();
+    let moai_before = tree(&root.path().join(".moai"));
+    create(root.path());
+    assert_eq!(
+        tree(&root.path().join(".moai")),
+        moai_before,
+        "a mixed .moai/ is not written"
+    );
+    assert!(root.path().join(".moai-cli/project.yaml").is_file());
+}

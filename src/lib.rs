@@ -331,4 +331,82 @@ mod state_dir_tests {
         assert_eq!(crate::CLONE_STATE_DIR, ".moai-cli");
         assert_eq!(crate::WORKTREES_DIR, ".moai-cli/worktrees");
     }
+
+    /// Production lines (before the file's first test module) that name the earlier project
+    /// root directly instead of asking `state_root`.
+    fn earlier_root_uses(text: &str) -> usize {
+        text.lines()
+            .take_while(|l| !l.starts_with("#[cfg(test)]") && !l.starts_with("#[cfg(all(test"))
+            .filter(|l| {
+                let t = l.trim_start();
+                !(t.starts_with("//") || t.starts_with('*'))
+            })
+            .filter(|l| l.contains("PROJECT_STATE_DIR") || l.contains("project_state!"))
+            .count()
+    }
+
+    #[test]
+    fn project_state_paths_are_resolved_per_project() {
+        // #2725 S2b: production code asks `state_root::{dir, path, rel}` for the project's
+        // state folder. These files keep the earlier root on purpose, each for its reason.
+        let allowed: &[(&str, usize, &str)] = &[
+            (
+                "apply.rs",
+                1,
+                "the earlier receipt store stays out of recovery too",
+            ),
+            (
+                "forge/report.rs",
+                1,
+                "`render` without a project keeps the earlier spelling",
+            ),
+            (
+                "migrate.rs",
+                2,
+                "HOME migration rehearsal targets (#2459 HOLD)",
+            ),
+            (
+                "project_detect.rs",
+                2,
+                "the code walk skips the earlier root",
+            ),
+            (
+                "scope.rs",
+                1,
+                "the shared-interface glob (REQ-06C-06, pinned by worktree_cli)",
+            ),
+        ];
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut stack = vec![root.clone()];
+        let mut found = std::collections::BTreeMap::new();
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let rel = path
+                        .strip_prefix(&root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/");
+                    if rel == "lib.rs" || rel == "state_root.rs" {
+                        continue;
+                    }
+                    let n = earlier_root_uses(&std::fs::read_to_string(&path).unwrap());
+                    if n > 0 {
+                        found.insert(rel, n);
+                    }
+                }
+            }
+        }
+        let want: std::collections::BTreeMap<String, usize> = allowed
+            .iter()
+            .map(|(f, n, _)| (f.to_string(), *n))
+            .collect();
+        assert_eq!(
+            found, want,
+            "ask crate::state_root::{{dir, path, rel}} instead"
+        );
+    }
 }

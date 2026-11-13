@@ -571,7 +571,7 @@ fn state_path(project: &Path) -> Result<PathBuf, ForgeError> {
         return Err(ForgeError::invalid("project must be a directory"));
     }
     let mut dir = project.to_path_buf();
-    for part in [crate::PROJECT_STATE_DIR, "forge"] {
+    for part in [crate::state_root::dir(project), "forge"] {
         dir.push(part);
         match fs::symlink_metadata(&dir) {
             Ok(m) if m.file_type().is_symlink() || !m.is_dir() => {
@@ -584,12 +584,12 @@ fn state_path(project: &Path) -> Result<PathBuf, ForgeError> {
                 .map_err(|_| ForgeError::io("poll state directory unavailable"))?,
         }
     }
-    Ok(project.join(crate::PROJECT_STATE_DIR).join(POLL_STATE))
+    Ok(crate::state_root::path(project, POLL_STATE))
 }
 
 /// Loads the poll state; an unreadable or foreign file is ignored (the next success replaces it).
 pub fn load_state(project: &Path) -> Option<PollState> {
-    let path = project.join(crate::PROJECT_STATE_DIR).join(POLL_STATE);
+    let path = crate::state_root::path(project, POLL_STATE);
     let bytes = fs::read(path).ok()?;
     serde_json::from_slice::<PollState>(&bytes)
         .ok()

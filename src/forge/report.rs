@@ -356,13 +356,23 @@ pub fn validate(p: &ReportPayload) -> Result<IssueRef, ForgeError> {
     Ok(issue)
 }
 
-fn evidence_rel(run: &str, name: &str) -> String {
-    format!("{}/evidence/{run}/{name}", crate::PROJECT_STATE_DIR)
+fn evidence_rel(state_dir: &str, run: &str, name: &str) -> String {
+    format!("{state_dir}/evidence/{run}/{name}")
 }
 
 /// The design-22 `issue-report` template; LF only, no trailing newline, so the digest of
-/// what GitHub returns can be compared with what was sent.
+/// what GitHub returns can be compared with what was sent. Local evidence is named under the
+/// earlier `.moai-cli` root; [`render_in`] names it under the project's own state folder.
 pub fn render(p: &ReportPayload) -> Result<String, ForgeError> {
+    render_with(crate::PROJECT_STATE_DIR, p)
+}
+
+/// [`render`] for `project`: local evidence under its state folder (#2725 S2b).
+pub fn render_in(project: &Path, p: &ReportPayload) -> Result<String, ForgeError> {
+    render_with(crate::state_root::dir(project), p)
+}
+
+fn render_with(state_dir: &str, p: &ReportPayload) -> Result<String, ForgeError> {
     validate(p)?;
     gate(p)?;
     let status = match p.status {
@@ -444,7 +454,7 @@ pub fn render(p: &ReportPayload) -> Result<String, ForgeError> {
                 Access::Private => "private",
             };
             let location = match a.kind {
-                ArtifactKind::Local => evidence_rel(&p.stable_run_id, &a.location),
+                ArtifactKind::Local => evidence_rel(state_dir, &p.stable_run_id, &a.location),
                 _ => clean(&a.location),
             };
             let pin = if a.kind == ArtifactKind::Local {
@@ -475,7 +485,7 @@ pub fn render(p: &ReportPayload) -> Result<String, ForgeError> {
 /// `<project>/.moai-cli/evidence/<run>/`, created on demand; symlinks are refused.
 fn evidence_dir(project: &Path, run: &str) -> Result<PathBuf, ForgeError> {
     let mut dir = project.to_path_buf();
-    for part in [crate::PROJECT_STATE_DIR, "evidence", run] {
+    for part in [crate::state_root::dir(project), "evidence", run] {
         dir.push(part);
         match fs::symlink_metadata(&dir) {
             Ok(m) if m.file_type().is_symlink() || !m.is_dir() => {
@@ -526,10 +536,7 @@ pub fn preserve_local(project: &Path, p: &ReportPayload) -> Result<Vec<Value>, F
     if local.is_empty() {
         return Ok(Vec::new());
     }
-    let target_dir = project
-        .join(crate::PROJECT_STATE_DIR)
-        .join("evidence")
-        .join(&p.stable_run_id);
+    let target_dir = crate::state_root::path(project, "evidence").join(&p.stable_run_id);
     let mut copies = Vec::new();
     for a in &local {
         let from = match &a.source {
@@ -564,7 +571,7 @@ pub fn preserve_local(project: &Path, p: &ReportPayload) -> Result<Vec<Value>, F
         if copy {
             write_atomic(&dir, &a.location, &bytes)?;
         }
-        out.push(json!({"location": evidence_rel(&p.stable_run_id, &a.location), "digest": a.digest, "size_bytes": a.size_bytes}));
+        out.push(json!({"location": evidence_rel(crate::state_root::dir(project), &p.stable_run_id, &a.location), "digest": a.digest, "size_bytes": a.size_bytes}));
     }
     Ok(out)
 }
@@ -620,7 +627,11 @@ fn limits(p: &ReportPayload) -> Value {
 fn save_proposal(project: &Path, run: &str, body: &str) -> Result<String, ForgeError> {
     let dir = evidence_dir(project, run)?;
     write_atomic(&dir, "proposed-comment.md", body.as_bytes())?;
-    Ok(evidence_rel(run, "proposed-comment.md"))
+    Ok(evidence_rel(
+        crate::state_root::dir(project),
+        run,
+        "proposed-comment.md",
+    ))
 }
 
 /// REQ-REPORT-003..008: render, preserve, then create or update the single marker comment.
@@ -638,7 +649,7 @@ pub fn publish<T: Transport, C: Clock>(
         ));
     }
     let issue = validate(payload)?;
-    let body = render(payload)?;
+    let body = render_in(project, payload)?;
     let body_digest = crate::digest(body.as_bytes());
     let run = payload.stable_run_id.as_str();
     let marker = outbox::report_marker(run);

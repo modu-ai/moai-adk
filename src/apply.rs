@@ -26,8 +26,11 @@ type Result<T> = std::result::Result<T, String>;
 /// the receipt with the tree — a documented known gap.
 // @MX:DEBT [P09 pending] Project-local receipt directory, HOLD-B1 A user-confirmed 2026-11-08 (ADK_1989_CONFIRMED_20261108_01).
 // @MX:CEILING Worktree deletion loses the receipt with the tree; the recovery gap is documented in docs/rust-product-path.md.
-// @MX:UPGRADE Move to the home-side runs layout when P09 resolves — this constant is the single swap point.
-pub const RECEIPTS_DIR: &str = crate::project_state!("receipts");
+// @MX:UPGRADE Move to the home-side runs layout when P09 resolves — this function is the single swap point.
+/// The project-relative receipt store of `root` (#2725 S2b: under the project's state folder).
+pub fn receipts_rel(root: &Path) -> String {
+    crate::state_root::rel(root, "receipts")
+}
 const RECEIPT_SCHEMA_VERSION: u32 = 1;
 /// Same bounded-file rule as every other state file.
 const RECEIPT_LIMIT: u64 = 262_144;
@@ -283,7 +286,8 @@ fn receipt_id_ok(s: &str) -> bool {
 /// `layout.json` is switched in the home project directory, receipts resolve there;
 /// otherwise the project-side store stays authoritative (read-compatible fallback).
 fn receipts_dir(root: &Path) -> Result<PathBuf> {
-    Ok(crate::layout::switched_dir(root, "receipts").unwrap_or_else(|| root.join(RECEIPTS_DIR)))
+    Ok(crate::layout::switched_dir(root, "receipts")
+        .unwrap_or_else(|| crate::state_root::path(root, "receipts")))
 }
 
 pub fn receipt_path(root: &Path, request_id: &str) -> Result<PathBuf> {
@@ -360,15 +364,22 @@ fn before_bytes_path(root: &Path, request_id: &str, rel: &str) -> Result<PathBuf
 }
 
 /// REQ-01B-09: no receipt or recovery under Go-generation state; the receipt store
-/// itself is also out of bounds for recovery (a receipt must not be "recovered").
-fn guard_recoverable_path(rel: &str) -> Result<()> {
+/// itself is also out of bounds for recovery (a receipt must not be "recovered"). Once the
+/// project's state lives in `.moai/` (#2725, marker valid), `.moai/` is this generation's
+/// state and only its receipt store stays blocked; the earlier store stays blocked too.
+fn guard_recoverable_path(root: &Path, rel: &str) -> Result<()> {
     if !relative_ok(rel) {
         return Err("receipt path is not a bounded relative path; refused".into());
     }
-    let blocked = [
-        (".moai", "go generation state path"),
-        (RECEIPTS_DIR, "receipt store path"),
+    let current = crate::state_root::rel(root, "receipts");
+    let legacy = format!("{}/receipts", crate::PROJECT_STATE_DIR);
+    let mut blocked = vec![
+        (current.as_str(), "receipt store path"),
+        (legacy.as_str(), "receipt store path"),
     ];
+    if crate::state_root::dir(root) != crate::state_root::MOAI_DIR {
+        blocked.push((crate::state_root::MOAI_DIR, "go generation state path"));
+    }
     for (prefix, why) in blocked {
         if rel == prefix || rel.starts_with(&format!("{prefix}/")) {
             return Err(format!("receipt names a {why}; refused"));
@@ -402,7 +413,7 @@ pub fn recover(root: &Path, receipt_id: &str, permission: &str) -> Result<Value>
         .iter()
         .filter(|e| e.published)
         .map(|e| {
-            guard_recoverable_path(&e.path)?;
+            guard_recoverable_path(&root, &e.path)?;
             Ok((e, target(&root, &e.path)?))
         })
         .collect::<Result<_>>()?;
@@ -531,12 +542,34 @@ mod tests {
 
     #[test]
     fn recover_guard_blocks_go_and_receipt_paths() {
-        assert!(guard_recoverable_path("AGENTS.md").is_ok());
-        assert!(guard_recoverable_path(crate::project_state!("manifests/generation.json")).is_ok());
-        assert!(guard_recoverable_path(".moai/state/x.json").is_err());
-        assert!(guard_recoverable_path(".moai").is_err());
-        assert!(guard_recoverable_path(crate::project_state!("receipts/x.json")).is_err());
-        assert!(guard_recoverable_path("/abs").is_err());
-        assert!(guard_recoverable_path("a/../b").is_err());
+        // An earlier-root project (no `.moai/` marker): `.moai` is Go state.
+        let legacy = tempfile::tempdir().unwrap();
+        let g = |rel: &str| guard_recoverable_path(legacy.path(), rel);
+        assert!(g("AGENTS.md").is_ok());
+        assert!(g(crate::project_state!("manifests/generation.json")).is_ok());
+        assert!(g(".moai/state/x.json").is_err());
+        assert!(g(".moai").is_err());
+        assert!(g(crate::project_state!("receipts/x.json")).is_err());
+        assert!(g("/abs").is_err());
+        assert!(g("a/../b").is_err());
+    }
+
+    #[test]
+    fn recover_guard_in_a_moai_state_project() {
+        // #2725 S2b: with a valid marker `.moai/` is this generation's state: its files are
+        // recoverable, both receipt stores are not.
+        let p = tempfile::tempdir().unwrap();
+        fs::create_dir_all(p.path().join(".moai")).unwrap();
+        fs::write(
+            p.path().join(".moai/moai-cli.json"),
+            r#"{"schema_version":1,"generation":"moai-cli"}"#,
+        )
+        .unwrap();
+        let g = |rel: &str| guard_recoverable_path(p.path(), rel);
+        assert!(g(".moai/manifests/generation.json").is_ok());
+        assert!(g(".moai/receipts/x.json").is_err());
+        assert!(g(".moai/receipts").is_err());
+        assert!(g(crate::project_state!("receipts/x.json")).is_err());
+        assert_eq!(receipts_rel(p.path()), ".moai/receipts");
     }
 }
