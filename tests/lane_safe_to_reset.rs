@@ -169,9 +169,15 @@ fn a_clean_lane_is_safe_and_its_worktrees_are_mapped_with_reasons() {
             ("agent-9-audit-1".to_string(), json!(["folder name"])),
         ]
     );
-    // `agent-90` is another lane: the folder name match is a whole token.
-    let other = run(&f, "agent-90", Some(json!({"schema_version": 1})));
-    assert!(result(&other)["worktrees"].as_array().unwrap().is_empty());
+    // The folder name match is a whole token: `agent-90` is not in `agent-9-audit-1`, and
+    // `gent-9` sits inside it but not on a token boundary.
+    for lane in ["agent-90", "gent-9"] {
+        let other = run(&f, lane, Some(json!({"schema_version": 1})));
+        assert!(
+            result(&other)["worktrees"].as_array().unwrap().is_empty(),
+            "{lane}: {other}"
+        );
+    }
 }
 
 #[test]
