@@ -2541,6 +2541,48 @@ mod skill_package {
         cites_spec_sections_only(&body, "MODE-AGENT");
     }
 
+    /// #2516 (leader decision B, comment 6823474405): the Orca session-control rules live in
+    /// both mode workflows as one section, kept identical, with the rules a lane and a leader
+    /// rely on pinned by sentence.
+    #[test]
+    fn both_modes_carry_the_same_orca_session_control_section() {
+        let section = |route: &str| {
+            let body = mode_workflow(route);
+            let start = body
+                .find("## Session control with Orca")
+                .unwrap_or_else(|| panic!("{route} lacks the Orca section"));
+            let rest = &body[start..];
+            let end = rest[2..].find("\n## ").map_or(rest.len(), |i| i + 2);
+            rest[..end].to_string()
+        };
+        let agent = section("MODE-AGENT");
+        assert_eq!(
+            agent,
+            section("MODE-LEADER"),
+            "the Orca section differs between mode-agent.md and mode-leader.md"
+        );
+        for line in [
+            "installed is not chosen",
+            "report the session-control step `not_run`",
+            "`orca skills get orca-cli`",
+            "`orca agent-context --json`",
+            "the schema wins",
+            "never overwrite another session's unsubmitted input",
+            "`accepted: true` proves only that the input was accepted",
+            "A send you could not confirm is `uncertain`; never resend on silence",
+            "paging while the read is `limited`",
+            "Never answer another session's permission or trust prompt",
+            "without the user's confirmation",
+            "silence, a timeout or an `unverifiable` state never authorises recovery",
+            "Name every terminal by its handle on every command",
+            "never by its title",
+            "never send the same input to an old and a new handle",
+            "Close only a terminal you created",
+        ] {
+            assert!(agent.contains(line), "Orca section lacks: {line}");
+        }
+    }
+
     #[test]
     fn mode_leader_refuses_codex_with_decision_d3() {
         // REQ-A1-02: leader mode is Claude Code only (D-3); the refusal comes first.
