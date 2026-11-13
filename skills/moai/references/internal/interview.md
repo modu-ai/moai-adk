@@ -12,7 +12,7 @@ This note is the procedure only; the PROJECT workflow (`workflows/project.md`) r
 
 ## Question bank (Issue #2639)
 
-Go down the table and skip every row that reading already answered; when reading answered it, record that instead with `"source": "repo"` and the file and line. Ask the rest three or four at a time. A row marked profile fills that profile field; every other answer is a `decisions` entry `{"id": "<id>", "topic": "<id>", "value": "<the user's words>", "source": "user", "scope": "project"}`, and the generated files read it by that id.
+Go down the table and skip every row that reading already answered; when reading answered it, record that instead with `"source": "repo"` and the file and line. Ask the rest three or four at a time. A row marked profile fills that profile field; every other answer is a `decisions` entry `{"id": "<id>", "topic": "<id>", "value": "<the user's words>", "source": "user", "scope": "project"}`. Keep the row id as the decision id, so a later step finds the answer by it.
 
 | id | Ask when | Question | Goes to |
 | --- | --- | --- | --- |
@@ -25,4 +25,4 @@ Go down the table and skip every row that reading already answered; when reading
 | `build_command` | `project-detect` lists no build command, or more than one | Which command builds the project? | decisions |
 | `stack` | a new project | Which languages and frameworks will you start with? | profile `tools` |
 | `method` | the profile has no development method | How do you work: tests first (TDD), or tests around existing code (DDD)? | profile `development_methods` |
-| `hosts` | the profile has no hosts | Which coding tools will you use here: Claude Code, Codex CLI, OMP, Kiro or Cursor CLI? | profile `hosts` |
+| `hosts` | the profile has no hosts | Which of Claude Code and Codex CLI will you use here, one or both? The profile records only these two (`claude`, `codex`); OMP, Kiro and Cursor CLI are not recorded in it yet. | profile `hosts` |
