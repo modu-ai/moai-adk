@@ -2700,6 +2700,7 @@ mod skill_package {
             "Use `git worktree` and the host's own terminal instead",
             "https://orca.dev/docs/cli/overview",
             "orca 1.4.257",
+            "MoAI uses Orca through its CLI only",
         ] {
             assert!(orca.contains(line), "orca adapter lacks: {line}");
         }
@@ -2715,15 +2716,9 @@ mod skill_package {
             "never edit Aside's memory files",
             "Never print, upload, commit or share the CLI credential file.",
             "Use a read-only web fetch instead",
-            // Leader decision #2634 6842315704: CLI by default, MCP only as an optional
-            // install with preview, confirmation and revert through the host's own command.
-            "## MCP is an optional install",
-            "MoAI never registers `aside mcp` by default",
-            "`claude mcp add --scope user aside -- aside mcp`",
-            "`codex mcp add aside -- aside mcp`",
-            "when an entry named `aside` already exists, stop and ask instead of replacing it",
-            "run the command only after the user confirms",
-            "`claude mcp remove --scope user aside` or `codex mcp remove aside`",
+            // User decision #2634 6845653775: Aside through its CLI only, never MCP.
+            "## CLI only, never MCP",
+            "MoAI never runs `aside mcp`, never registers it in a host's MCP settings and offers no path to add it",
             "https://docs.aside.com/help/security",
             "Aside CLI 1.26.1111.1046",
         ] {

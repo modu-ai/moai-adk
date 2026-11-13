@@ -7,6 +7,7 @@ Orca is a desktop app with a CLI that manages git worktrees, terminals, agent se
 - Use Orca only when the user chose it for this project and `orca` answers on this machine; installed is not chosen.
 - Lane worktrees, reading and sending to lane terminals, searching lane sessions (`orca search`), linking Issues and pull requests to a workspace (`orca reference`), and checking a page in Orca's embedded browser.
 - Plain shell, git and HTTP work does not need Orca.
+- MoAI uses Orca through its CLI only (user decision, Issue #2634 comment 6845653775).
 
 ## Open the version-matched guide first
 

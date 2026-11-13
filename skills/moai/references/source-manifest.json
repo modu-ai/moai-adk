@@ -208,7 +208,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "4844d973c1fc8b69acb1841524902cc9b6ab768fc1a83a296f6911f0b546da35",
+      "sha256": "bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -217,12 +217,12 @@
       }
     },
     "references/adapters/aside.md": {
-      "sha256": "4d1b767ba201a9994d29e9cc09b4e6557cd336efd963bcd798791fa445aa3517",
+      "sha256": "597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-aside",
         "adoption": "new",
-        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation) and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
       }
     }
   }

@@ -1,20 +1,16 @@
 # Adapter: aside
 
-Aside is a Chromium browser that a person and an AI agent share, with a CLI that starts browser-agent sessions, runs Playwright-style scripts and serves MCP. MoAI does not copy Aside's instructions: the CLI prints a guide that matches the installed version, so read that guide instead of trusting a stored copy.
+Aside is a Chromium browser that a person and an AI agent share, with a CLI that starts browser-agent sessions and runs Playwright-style scripts. MoAI does not copy Aside's instructions: the CLI prints a guide that matches the installed version, so read that guide instead of trusting a stored copy.
 
 ## When to use it
 
 - Web work that needs the user's own sign-in, a screenshot or DOM as evidence, or a page check that plain HTTP cannot do.
-- `aside exec` hands a whole browsing task to Aside's agent; `aside repl` drives tabs directly when you need the screenshot or DOM yourself. The CLI is the default way in.
+- `aside exec` hands a whole browsing task to Aside's agent; `aside repl` drives tabs directly when you need the screenshot or DOM yourself.
 - A public page that a plain fetch can read does not need Aside.
 
-## MCP is an optional install
+## CLI only, never MCP
 
-MoAI never registers `aside mcp` by default (leader recommendation, Issue #2634 comment 6842315704, standing until the user answers otherwise). Add it only when the user asks for it, through the host's own command, in three steps:
-
-1. Preview: show the user the exact command and what it changes before running it — Claude Code `claude mcp add --scope user aside -- aside mcp` (a user-scope entry), Codex CLI `codex mcp add aside -- aside mcp` (an `[mcp_servers.aside]` table in `~/.codex/config.toml`). Check first with `claude mcp get aside` or `codex mcp get aside`; when an entry named `aside` already exists, stop and ask instead of replacing it.
-2. Apply: run the command only after the user confirms, then read it back with the same `get` command.
-3. Revert: `claude mcp remove --scope user aside` or `codex mcp remove aside` removes exactly that entry; record the command so the user can run it later.
+MoAI uses Aside through its CLI only (user decision, Issue #2634 comment 6845653775). MoAI never runs `aside mcp`, never registers it in a host's MCP settings and offers no path to add it; an MCP entry the user added on their own is theirs, so leave it as it is.
 
 ## Open the version-matched guide first
 
@@ -41,5 +37,4 @@ Use a read-only web fetch instead, and record work that needs the user's sign-in
 ## Sources
 
 - https://docs.aside.com/help/developers and https://docs.aside.com/help/security (read 2026-11-13). The web pages name the modes Read only, Guard and Full access; they do not show `aside guide` or `aside skills`.
-- `aside --help`, `aside guide`, `aside skills` and `aside mcp --help` of Aside CLI 1.26.1111.1046 on this machine (read 2026-11-13).
-- `claude mcp add|get|remove --help` of Claude Code 2.1.323 and `codex mcp --help`, `codex mcp add --help` of codex-cli 0.167.2 on this machine (read 2026-11-13).
+- `aside --help`, `aside guide` and `aside skills` of Aside CLI 1.26.1111.1046 on this machine (read 2026-11-13).
