@@ -52,11 +52,16 @@ pub struct Snapshot {
     /// means unknown, and the gate stops (audit 6850181707 N4).
     #[serde(default)]
     pub verdict_base_known: bool,
+    /// The sessions of the claims the PR's own commits name in `Moai-Claim: <issue>#<id>`
+    /// trailers (merge base to head, merges skipped). Absent means unknown, and G9 stops.
+    #[serde(default)]
+    pub pr_authors: Option<Vec<String>>,
 }
 
 const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 
-/// A stop: the rule id (G1…G7 of Issue #2674 comment 6849084101) and why.
+/// A stop: the rule id (G1…G7 of Issue #2674 comment 6849084101, G9 of the leader scope
+/// 6850215811) and why.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Stop {
     pub rule: &'static str,
@@ -250,6 +255,31 @@ fn g2(s: &Snapshot) -> Result<(), Stop> {
     }
 }
 
+/// G9 (#2674 R1, leader scope 6850215811): the last verdict's auditor is not an author — no
+/// session whose claim a commit of this PR names in its `Moai-Claim` trailer. Unknown authors
+/// stop the gate rather than pass it.
+fn g9(s: &Snapshot) -> Result<(), Stop> {
+    let stop = |reason: String| Stop { rule: "G9", reason };
+    let authors = s
+        .pr_authors
+        .as_ref()
+        .ok_or_else(|| stop("the authors of the PR's commits are unknown".into()))?;
+    let body = s
+        .comments
+        .iter()
+        .filter(|c| verdict_line(&c.body).is_some())
+        .max_by_key(|c| c.id)
+        .map(|c| &c.body)
+        .ok_or_else(|| stop("no verdict".into()))?;
+    let who = auditor(body).ok_or_else(|| stop("the last verdict names no auditor lane".into()))?;
+    match authors.iter().find(|a| a.eq_ignore_ascii_case(&who)) {
+        Some(a) => Err(stop(format!(
+            "the last verdict is by {who}, and {a} wrote commits of this PR (Moai-Claim trailer); an author never audits its own PR"
+        ))),
+        None => Ok(()),
+    }
+}
+
 /// G3: a FAIL on the current head blocks unless every FAIL there and the later last PASS
 /// come from the same auditor (it reversed itself).
 fn g3(s: &Snapshot) -> Result<(), Stop> {
@@ -383,6 +413,7 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
     }
     let base = g1(s)?;
     g2(s)?;
+    g9(s)?;
     g3(s)?;
     if !s.body_check_ok {
         return Err(Stop {
