@@ -215,16 +215,14 @@ impl Renderer {
                 segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
             }
         }
-        let bars = segs.join(SEPARATOR);
+        // #2697 (user request 2026-11-13): the session name is the last segment, after the
+        // usage bars. The renderer is given no terminal width and never shortens a segment;
+        // a host that runs out of room cuts the line at its right end, so on a narrow screen
+        // the name goes first and the usage bars stay.
         if self.enabled("session") && !s.session_name.is_empty() {
-            if bars.is_empty() {
-                format!("🏷️ {}", s.session_name)
-            } else {
-                format!("🏷️ {}  {bars}", s.session_name)
-            }
-        } else {
-            bars
+            segs.push(format!("🏷️ {}", s.session_name));
         }
+        segs.join(SEPARATOR)
     }
 
     /// `renderUsageBar`: battery icon, label, gradient bar, percentage.
@@ -396,7 +394,7 @@ mod tests {
         assert_eq!(
             plain(&full_status(), &[]),
             "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0 | ⏳ 1h 30m\n\
-             🏷️ release  🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%\n\
+             🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75% | 🏷️ release\n\
              📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 💾 +1 M1 ?1"
         );
     }
@@ -459,17 +457,53 @@ mod tests {
         assert_eq!(at(10.0), "🔋 5H: █░░░░░░░░░ 10%");
     }
 
+    /// #2697 AC-1/AC-2: the name follows the usage bars after ` | `; with no bars it stands
+    /// alone, and with no name (or `session` off) the line has no tail segment.
     #[test]
-    fn session_prefix_uses_two_spaces_only_when_bars_follow() {
+    fn the_session_name_is_the_last_segment_after_the_bars() {
         let mut status = Status {
             session_name: "focus".into(),
             ..Default::default()
         };
-        assert_eq!(plain(&status, &[]), "🏷️ focus  CTX: ░░░░░░░░░░ n/a");
-        assert_eq!(plain(&status, &["context"]), "🏷️ focus");
-        assert_eq!(plain(&status, &["session"]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a | 🏷️ focus");
+        status.five_hour = Some(RateWindow::default());
+        assert_eq!(
+            plain(&status, &[]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0% | 🏷️ focus"
+        );
+        assert_eq!(
+            plain(&status, &["usage_5h", "context"]),
+            "🏷️ focus",
+            "no bars: the name alone"
+        );
+        assert_eq!(
+            plain(&status, &["session"]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%"
+        );
         status.session_name.clear();
-        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(
+            plain(&status, &[]),
+            "CTX: ░░░░░░░░░░ n/a | 🔋 5H: ░░░░░░░░░░ 0%",
+            "no name: no tail segment"
+        );
+    }
+
+    /// #2697 AC-3: the renderer never shortens for width (it is given none). A host that runs
+    /// out of room cuts the line at its right end, so the name, being last, is cut first and
+    /// the usage bars keep their place: a long name is printed whole, after every bar.
+    #[test]
+    fn a_long_name_is_printed_whole_and_last_so_a_narrow_screen_cuts_it_first() {
+        let long = "x".repeat(200);
+        let mut status = full_status();
+        status.session_name = long.clone();
+        let line = plain(&status, &[]).lines().nth(1).unwrap().to_string();
+        let tail = format!(" | 🏷️ {long}");
+        assert!(line.ends_with(&tail), "{line}");
+        assert_eq!(
+            &line[..line.len() - tail.len()],
+            "🔋 CTX: █████░░░░░ 50% | 🔋 5H: ██░░░░░░░░ 25% | 🪫 Week: ███████░░░ 75%",
+            "the bars come first, unchanged by the name's length"
+        );
     }
 
     #[test]

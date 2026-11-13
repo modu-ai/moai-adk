@@ -798,9 +798,13 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
 1. Model, effort/thinking, cache hit, Claude/MoAI versions, elapsed time and output style.
-2. Optional session name, two spaces, then `CTX`, available `5H`, and available `Week`
-   bars. Missing rate windows are hidden; reset times are not printed. Context handoff
-   warnings and the existing usage calculation are retained.
+2. `CTX`, available `5H`, and available `Week` bars, then the optional session name as
+   the last segment, ` | 🏷️ <name>` (user request 2026-11-13, #2697; with no bars the
+   name stands alone, with no name there is no tail). Missing rate windows are hidden;
+   reset times are not printed. Context handoff warnings and the existing usage
+   calculation are retained. The renderer is given no terminal width and shortens
+   nothing; a host that runs out of room cuts the line at its right end, so on a narrow
+   screen the name is cut first and the bars stay.
 3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
    arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
 
