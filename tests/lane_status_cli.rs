@@ -401,6 +401,34 @@ fn idle_causes_are_classified_from_records_only() {
     let out2 = run(&p, req, ex);
     assert_eq!(idle(&out2, "agent-10")["cause"], json!("no_ready_card"));
     assert_eq!(out2["assignment_drafts"], json!([]));
+    // #2678 audit B2' (6851884321): two ready Issues, so the ready count is not 0 or 1 —
+    // #20 is a second unclaimed Issue with no blocker, read after #19 and before blocker #99.
+    let mut req3 = request(lanes(), decisions());
+    req3.issues.push(20);
+    let mut ex3 = remote(false);
+    let at = ex3
+        .iter()
+        .position(|e| e.request.url.ends_with("/issues/99"))
+        .unwrap();
+    ex3.insert(
+        at,
+        get(&format!("{API}/issues/20/comments?per_page=100"), json!([])),
+    );
+    ex3.insert(
+        at,
+        get(
+            &format!("{API}/issues/20"),
+            issue(20, "상위: #10\nBlocked-By: 없음"),
+        ),
+    );
+    let out3 = run(&p, req3, ex3);
+    assert_eq!(out3["ready"], json!([16, 20]), "{out3}");
+    assert_eq!(out3["summary"], json!(summary_of(&out3)), "{out3}");
+    assert_eq!(
+        out3["summary"],
+        json!("8 row(s); 13 lane(s) named, 10 idle; 2 ready Issue(s)")
+    );
+
     // #2678: the same counts with no ready Issue left.
     assert_eq!(out2["summary"], json!(summary_of(&out2)));
     assert!(
