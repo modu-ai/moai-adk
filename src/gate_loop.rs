@@ -11,6 +11,9 @@
 //! "Once per head" is kept in the pull request itself: each note carries a hidden marker
 //! `<!-- moai:gate-loop <kind> head=<sha> -->`, and a marker already present means done. No
 //! local state file is written. A head that is not in the local repository is skipped.
+//!
+//! Like gate-merge, everything goes through the operator's transport `t` except the status,
+//! which goes through `status_t` (the audit App token when set; #2735 audit F3).
 
 use crate::forge::policy::{next_link, Clock};
 use crate::forge::transport::{HttpRequest, Transport};
@@ -78,11 +81,12 @@ fn comment<T: Transport>(t: &T, api: &str, pr: u64, body: String) -> Result<()> 
 }
 
 /// One pass over the open pull requests. Returns one row per pull request.
-pub fn once<T: Transport, C: Clock>(
+pub fn once<T: Transport, S: Transport, C: Clock>(
     target: &LoopTarget<'_>,
     permission: &str,
     app: bool,
     t: &T,
+    status_t: &S,
     clock: &C,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
@@ -114,7 +118,7 @@ pub fn once<T: Transport, C: Clock>(
             tip: target.tip,
             review_confirmed_prs: target.review_confirmed_prs.clone(),
         };
-        let out = match crate::gate_merge::merge(&one, permission, app, t, clock) {
+        let out = match crate::gate_merge::merge(&one, permission, app, t, status_t, clock) {
             Ok(out) => out,
             Err(e) => {
                 rows.push(json!({"pr": pr, "outcome": "skipped", "reason": e}));
@@ -123,6 +127,11 @@ pub fn once<T: Transport, C: Clock>(
         };
         if out["merged"] == json!(true) {
             rows.push(json!({"pr": pr, "outcome": "merged", "merge_commit": out["merge_commit"]}));
+            continue;
+        }
+        // A merge whose effect could not be read back: report it, act on nothing else.
+        if out["merged"] == json!("uncertain") {
+            rows.push(json!({"pr": pr, "outcome": "uncertain", "reason": out["reason"]}));
             continue;
         }
         let rule = out["rule"].as_str().unwrap_or("");

@@ -54,11 +54,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         tip: &args.tip,
         review_confirmed_prs: args.review_confirmed.clone(),
     };
-    let mut transport = GhTransport::from_env()?;
+    // Only the status is posted with the audit App token (Commit statuses permission only);
+    // reads, merges, branch updates and notes use gh's own authentication (#2735 audit F3).
+    let transport = GhTransport::from_env()?;
+    let mut status_transport = GhTransport::from_env()?;
     let token = std::env::var(APP_TOKEN_VAR)
         .ok()
         .filter(|t| !t.trim().is_empty());
     let app = token.is_some();
-    transport.gh_token = token;
-    gate_loop::once(&target, &args.permission_reference, app, &transport, &SystemClock)
+    status_transport.gh_token = token;
+    gate_loop::once(
+        &target,
+        &args.permission_reference,
+        app,
+        &transport,
+        &status_transport,
+        &SystemClock,
+    )
 }
