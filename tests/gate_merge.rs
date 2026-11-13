@@ -84,8 +84,9 @@ fn ok(body: Value) -> HttpResponse {
     HttpResponse::new(200).with_body(body)
 }
 
-/// The three reads `collect` makes.
-fn reads(head: &str, base: &str, body: &str) -> Vec<Exchange> {
+/// The four reads `collect` makes: the PR, its comments, its head's check runs and the tip's
+/// push CI (green, #2777).
+fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
@@ -108,7 +109,19 @@ fn reads(head: &str, base: &str, body: &str) -> Vec<Exchange> {
                 {"name": "ci / linux-x86_64", "conclusion": "success"}
             ]})),
         },
+        tip_ci(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ]
+}
+
+/// The tip's push CI read (every attempt) answering `runs`.
+fn tip_ci(tip: &str, runs: Value) -> Exchange {
+    Exchange {
+        request: HttpRequest::new(
+            "GET",
+            format!("{API}/commits/{tip}/check-runs?filter=all&per_page=100"),
+        ),
+        response: ok(json!({ "check_runs": runs })),
+    }
 }
 
 /// The PR and its base branch as GitHub has them, read after the gate passed (audit F1).
@@ -131,7 +144,7 @@ fn tip_of(dir: &TempDir) -> String {
 
 /// Every read up to the status: the gate's three and the remote two, all matching.
 fn passing(dir: &TempDir, head: &str, base: &str) -> Vec<Exchange> {
-    let mut ex = reads(head, base, "SELF-AUDIT-OK");
+    let mut ex = reads(head, base, &tip_of(dir), "SELF-AUDIT-OK");
     ex.extend(remote(head, &tip_of(dir)));
     ex
 }
@@ -214,12 +227,38 @@ fn a_passing_gate_posts_status_merges_with_the_head_and_records() {
 #[test]
 fn a_stopped_gate_writes_nothing() {
     let (dir, a, b) = repo();
-    let t = RecordedTransport::new(reads(&b, &a, "no self-audit section"));
+    let t = RecordedTransport::new(reads(&b, &a, &tip_of(&dir), "no self-audit section"));
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["merged"], json!(false));
     assert_eq!(out["rule"], json!("G4"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET", "GET", "GET"]);
+    assert_eq!(methods(&t), vec!["GET"; 4]);
+}
+
+/// #2777: on a red tip gate-merge stops at G8 before any write; the same PR merges once its
+/// body names it the repair.
+#[test]
+fn a_red_tip_stops_the_merge_before_any_write() {
+    let (dir, a, b) = repo();
+    let tip = tip_of(&dir);
+    let mut ex = reads(&b, &a, &tip, "SELF-AUDIT-OK");
+    ex[3] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(false), "{out}");
+    assert_eq!(out["rule"], json!("G8"));
+    assert_eq!(out["writes"], json!([]));
+    assert_eq!(methods(&t), vec!["GET"; 4]);
+
+    let mut ex = reads(&b, &a, &tip, "SELF-AUDIT-OK\nmoai-tip-repair: tip run 1\n");
+    ex[3] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    ex.extend(remote(&b, &tip));
+    ex.extend(status(&b, 201));
+    ex.extend([put(200), record()]);
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(true), "{out}");
+    assert_eq!(t.remaining(), 0);
 }
 
 #[test]
@@ -245,7 +284,7 @@ fn not_mergeable_is_retried_up_to_three_times_and_never_recorded() {
     assert_eq!(t.remaining(), 0);
     assert_eq!(methods(&t).iter().filter(|m| *m == "PUT").count(), 3);
     assert!(
-        !methods(&t)[7..].contains(&"POST".to_string()),
+        !methods(&t)[8..].contains(&"POST".to_string()),
         "no record after a failed merge"
     );
 }
@@ -304,23 +343,23 @@ fn pr_read_back(merged: bool) -> Exchange {
 fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     let (dir, a, b) = repo();
     // GitHub's base moved past the local tip: the gate judged a stale tip.
-    let mut ex = reads(&b, &a, "SELF-AUDIT-OK");
+    let mut ex = reads(&b, &a, &tip_of(&dir), "SELF-AUDIT-OK");
     ex.extend(remote(&b, &"1".repeat(40)));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G6"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 5]);
+    assert_eq!(methods(&t), vec!["GET"; 6]);
     assert_eq!(t.remaining(), 0);
 
     // The head moved on GitHub after the snapshot.
-    let mut ex = reads(&b, &a, "SELF-AUDIT-OK");
+    let mut ex = reads(&b, &a, &tip_of(&dir), "SELF-AUDIT-OK");
     ex.extend(remote(&"2".repeat(40), &tip_of(&dir)));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["writes"], json!([]), "{out}");
-    assert_eq!(methods(&t), vec!["GET"; 5]);
+    assert_eq!(methods(&t), vec!["GET"; 6]);
 }
 
 #[test]
