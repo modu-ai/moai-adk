@@ -17,7 +17,7 @@ fn dry(args: &[&str], token: Option<&str>) -> (i32, Value, String) {
         .status()
         .unwrap();
     assert!(init.success());
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.args(args)
         .arg("--dry-run")
         .current_dir(project.path())

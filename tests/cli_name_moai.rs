@@ -16,8 +16,8 @@ mod common;
 use std::process::{Command, Output, Stdio};
 use tempfile::TempDir;
 
-const MOAI: &str = env!("CARGO_BIN_EXE_moai");
-const MOAI_CLI: &str = env!("CARGO_BIN_EXE_moai-cli");
+const MOAI: &str = common::MOAI_BIN;
+const MOAI_CLI: &str = common::MOAI_CLI_BIN;
 
 /// The events the Go templates' hook scripts `exec moai hook <event>` with (moai-adk-go
 /// `4fa2aa9db2`, `internal/template/templates/.claude/hooks/moai/*.sh`, 34 scripts).
@@ -128,6 +128,20 @@ fn only_the_first_word_hook_is_taken_and_its_input_never_blocks() {
         assert!(err.contains(&format!("(hook {event})")), "{args:?}: {err}");
         assert!(!err.contains("rm -rf"), "the argument is not echoed: {err}");
     }
+    // #2796 audit nit 1 (#2792): the event name is shown only as `[a-z-]{1,64}` — 64 lowercase
+    // characters pass, 65 or an upper-case letter print `?`.
+    let at_limit = "a".repeat(64);
+    let over = "a".repeat(65);
+    for (event, shown) in [
+        (at_limit.as_str(), at_limit.as_str()),
+        (over.as_str(), "?"),
+        ("Pre-tool", "?"),
+    ] {
+        let out = run(MOAI, &["hook", event], b"{}");
+        let err = text(&out.stderr);
+        assert_eq!(out.status.code(), Some(0), "{event}: {err}");
+        assert!(err.contains(&format!("(hook {shown})")), "{event}: {err}");
+    }
     // A stdin larger than the pipe buffer is read and dropped, not left to block the writer.
     // The writer (the host) sees every byte accepted: no broken pipe.
     let big = vec![b'x'; 1024 * 1024];
@@ -194,12 +208,7 @@ fn moai_beside_the_same_build_reads_the_moai_cli_receipt() {
     use moai_cli::install::{plan_receipt, record_receipt, InstallerOwner};
     let home = TempDir::new().unwrap();
     let home_path = std::fs::canonicalize(home.path()).unwrap();
-    let bin = home_path.join("bin");
-    std::fs::create_dir_all(&bin).unwrap();
-    let cli = bin.join("moai-cli");
-    common::copy_executable(std::path::Path::new(MOAI_CLI), &cli);
-    let moai = bin.join("moai");
-    std::fs::hard_link(&cli, &moai).unwrap();
+    let (cli, moai) = common::install_both_names(&home_path.join("bin"));
     let plan = plan_receipt(&cli, &home_path, InstallerOwner::Direct).unwrap();
     record_receipt(&home_path, &plan).unwrap();
     // Planning from the hard link names the same installation: same id, same recorded path.

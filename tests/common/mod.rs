@@ -1,7 +1,31 @@
 //! Helpers shared by integration tests.
 pub mod git;
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// The `moai` executable this build produced: the public name every test runs (#2792 R4).
+/// One place names it, so a later rename touches this line and not every test.
+#[allow(dead_code)] // every test crate includes this module; not every one runs the binary
+pub const MOAI_BIN: &str = env!("CARGO_BIN_EXE_moai");
+
+/// The `moai-cli` alias of the same `main` (#2790 R1). Only tests about the alias or about the
+/// two names side by side use it.
+#[allow(dead_code)] // only the alias tests run it
+pub const MOAI_CLI_BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+
+/// Installs both names of this build into `dir` the way the design installs them (#2725 R1 B2):
+/// a copy named `moai-cli` and a hard link `moai` to it, so the two are one file and `moai`
+/// identifies as its `moai-cli` sibling. Returns `(moai_cli, moai)`.
+#[allow(dead_code)] // only the two-name tests install both
+pub fn install_both_names(dir: &Path) -> (PathBuf, PathBuf) {
+    std::fs::create_dir_all(dir).unwrap();
+    let suffix = std::env::consts::EXE_SUFFIX;
+    let cli = dir.join(format!("moai-cli{suffix}"));
+    let moai = dir.join(format!("moai{suffix}"));
+    copy_executable(Path::new(MOAI_CLI_BIN), &cli);
+    std::fs::hard_link(&cli, &moai).unwrap();
+    (cli, moai)
+}
 
 /// #2699: `Command::env_clear` for a test's child that keeps the developer folder the test
 /// process got from `.cargo/config.toml` (`DEVELOPER_DIR`). Without it the macOS `/usr/bin/git`

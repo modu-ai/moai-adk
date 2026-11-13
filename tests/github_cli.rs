@@ -13,7 +13,7 @@ use std::{
 };
 
 fn cli(args: &[&str], input: &Value) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

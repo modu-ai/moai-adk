@@ -1,5 +1,6 @@
 //! Issue #2071: the project profile writes through the 01-B apply engine only, and its
 //! receipt digests, plan `expected_sha256` and recovery agree with the files on disk.
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -10,7 +11,7 @@ use std::{
 use tempfile::TempDir;
 
 fn cli(args: &[&str], input: &Value) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

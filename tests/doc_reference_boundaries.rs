@@ -22,7 +22,7 @@ fn write(root: &Path, path: &str, text: &str) {
 fn run(root: &Path, home: &Path, op: &str, input: Value) -> Value {
     // Only the separate mutation runner supplies an alternate freshly built CLI.
     let binary = std::env::var_os("MOAI_C6D_BOUNDARY_BINARY")
-        .unwrap_or_else(|| env!("CARGO_BIN_EXE_moai-cli").into());
+        .unwrap_or_else(|| crate::common::MOAI_BIN.into());
     let mut child = Command::new(binary)
         .args([op, root.to_str().unwrap()])
         .clean_env()

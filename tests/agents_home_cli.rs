@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 const PERMISSION: &str = "fixture-approved";
 
 fn call(args: &[&str]) -> Value {

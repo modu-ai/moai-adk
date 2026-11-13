@@ -1,11 +1,12 @@
 //! Codex adapter fixtures (02-C #1993, Issue body r30). Every tree is built in a TempDir at
 //! run time; nothing touches the real home, `~/.codex` or `~/.agents`.
+mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 use tempfile::TempDir;
 
 fn run(args: &[&str]) -> (bool, Value) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .env_remove("CODEX_HOME")
         .output()

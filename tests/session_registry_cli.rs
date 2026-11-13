@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 const T0: &str = "2026-11-13T10:00:00Z";
 
 fn git(dir: &Path, args: &[&str]) -> String {

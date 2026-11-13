@@ -86,7 +86,7 @@ fn latest(repo: &Path, key: &str) -> Value {
 }
 
 fn run(cwd: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
         .current_dir(cwd)
         .env("HOME", cwd.join("home"))

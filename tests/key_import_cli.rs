@@ -14,7 +14,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 const KEY: &str = "moai-test-import-key-not-real";
 const RUST_KEY: &str = "moai-test-import-rust-key-not-real";
 

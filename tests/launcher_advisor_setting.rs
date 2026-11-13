@@ -73,7 +73,7 @@ fn config(home: &Path, text: &str) {
 }
 
 fn command(f: &Fixture, args: &[&str]) -> Command {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
         .current_dir(f.project.path())
         .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))

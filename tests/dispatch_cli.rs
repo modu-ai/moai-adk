@@ -583,7 +583,7 @@ print('HTTP/2 200'+chr(10)+chr(10)+json.dumps(b))
     );
     fs::write(&bin, script).unwrap();
     fs::set_permissions(&bin, fs::Permissions::from_mode(0o700)).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("dispatch-check")
         .clean_env()
         .env("PATH", "/usr/bin:/bin")

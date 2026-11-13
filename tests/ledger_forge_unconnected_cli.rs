@@ -11,7 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 
 struct Fixture {
     _dir: tempfile::TempDir,

@@ -34,11 +34,11 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 ### 호스트 세션과 역할
 
-호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 MoAI 역할을 정합니다(모드 표기는 이 두 개뿐, 사용자 결정 2026-11-10). 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)을 붙이고 전체 권한(기본값)으로 여는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883; 기본값은 사용자 설정 `launcher.role_access`로 바꿀 수 있습니다 — 아래 세션 론처 문단, Issue #2413). #2164의 deprecated 경고는 없앴습니다.
+호스트 세션은 역할 없이 엽니다 — `moai cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 MoAI 역할을 정합니다(모드 표기는 이 두 개뿐, 사용자 결정 2026-11-10). 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)을 붙이고 전체 권한(기본값)으로 여는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883; 기본값은 사용자 설정 `launcher.role_access`로 바꿀 수 있습니다 — 아래 세션 론처 문단, Issue #2413). #2164의 deprecated 경고는 없앴습니다.
 
 ### 수동 명령 (명시적 fallback)
 
-자연어 진입이 불가능한 환경에서만 내부 실행 도구를 직접 씁니다: `moai-cli generation-plan`, `moai-cli update-plan` 등(각 명령은 plan/apply 2단계이며 plan digest 없이는 아무것도 쓰지 않습니다). 일상 사용 경로가 아닙니다.
+자연어 진입이 불가능한 환경에서만 내부 실행 도구를 직접 씁니다: `moai generation-plan`, `moai update-plan` 등(각 명령은 plan/apply 2단계이며 plan digest 없이는 아무것도 쓰지 않습니다). 일상 사용 경로가 아닙니다.
 
 ### 3.x 명령에 대해 (fallback)
 
@@ -52,9 +52,9 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 | 형태 | 동작 |
 | --- | --- |
-| `moai-cli cc\|glm\|codex` (역할 없음) | 평범한 host 세션. 역할·세션 이름을 붙이지 않는다(#2053). 권한 관련 플래그도 붙이지 않아, Claude Code는 사용자·프로젝트 설정의 모드로, codex는 `~/.codex/config.toml`의 샌드박스·승인 설정으로 시작한다(#2359). Claude 계열은 `--model opus --effort medium` 기본값을 쓰고, `--advisor`는 붙이지 않는다(아래 `launcher.advisor`). |
-| `moai-cli cc\|glm\|codex -l` (`--leader`) | 리더 세션. 이름 `leader`, 전체 권한(기본값; 아래 `launcher.role_access`). |
-| `moai-cli cc\|glm\|codex -a` (`--agent`) | 에이전트 세션, 전체 권한(기본값; 아래 `launcher.role_access`). 이름은 `--name`, 없으면 프로젝트 번호에서 `agent-N`(아래). |
+| `moai cc\|glm\|codex` (역할 없음) | 평범한 host 세션. 역할·세션 이름을 붙이지 않는다(#2053). 권한 관련 플래그도 붙이지 않아, Claude Code는 사용자·프로젝트 설정의 모드로, codex는 `~/.codex/config.toml`의 샌드박스·승인 설정으로 시작한다(#2359). Claude 계열은 `--model opus --effort medium` 기본값을 쓰고, `--advisor`는 붙이지 않는다(아래 `launcher.advisor`). |
+| `moai cc\|glm\|codex -l` (`--leader`) | 리더 세션. 이름 `leader`, 전체 권한(기본값; 아래 `launcher.role_access`). |
+| `moai cc\|glm\|codex -a` (`--agent`) | 에이전트 세션, 전체 권한(기본값; 아래 `launcher.role_access`). 이름은 `--name`, 없으면 프로젝트 번호에서 `agent-N`(아래). |
 | `moai-cli -l` / `moai-cli -a [cc\|glm\|codex]` | 위와 같은 요청의 짧은 형태. 기본 host는 `cc`. |
 | `--name N` | 세션 이름. |
 | `--model M` | 주 모델. Claude 계열 기본 `opus`, codex는 지정했을 때만 `-m M`. |

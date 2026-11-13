@@ -349,7 +349,7 @@ fn a_failed_first_write_is_a_stale_plan() {
 
 /// Runs the CLI with a stub `gh` that only records that it was called.
 fn cli(gh: &Path, args: &[&str], input: &Value) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .env("MOAI_FORGE_GH_BIN", gh)
         .stdin(Stdio::piped())

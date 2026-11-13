@@ -46,7 +46,7 @@ fn render(f: &Fixture, extra: &[(&str, &str)]) -> String {
 }
 
 fn render_in(f: &Fixture, cwd: &Path, extra: &[(&str, &str)]) -> String {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.args(["statusline", "--render-budget-ms", "3600000"])
         .current_dir(cwd)
         .clean_env()

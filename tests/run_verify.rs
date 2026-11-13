@@ -1,4 +1,5 @@
 //! RUN methodology and real VERIFY (Issue #2003, 05-C).
+mod common;
 use moai_cli::plan::{admit, AdmissionRequest, Approval, Task};
 use moai_cli::run::{
     admissible_evidence, budget_exhausted, ingest_self_report, oracle_changes, red_confirmed,
@@ -487,7 +488,7 @@ fn real_runner_receipt() {
     let req = request(&["cargo test --offline"], &[0], &head);
     // A separate target directory: the outer `cargo test` holds the lock on its own.
     let target = tempfile::TempDir::new().unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("run-verify")
         .arg(dir.path())
         .env("CARGO_TARGET_DIR", target.path())

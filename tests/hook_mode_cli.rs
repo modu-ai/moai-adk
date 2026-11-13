@@ -20,7 +20,7 @@ struct Run {
 }
 
 fn run(args: &[&str], cwd: &Path, stdin: &[u8], env: &[(&str, &str)]) -> Run {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.args(args)
         .current_dir(cwd)
         .env("HOME", cwd.join("home"))

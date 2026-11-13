@@ -1,5 +1,6 @@
 //! PLAN → RUN → VERIFY → AUDIT end to end on one fixture SPEC (Issue #2004, AC-05D-8):
 //! 05-A parses and approves, 05-B admits, 05-C runs, 05-D audits through the CLI.
+mod common;
 use moai_cli::audit::{observe, AuditInput, Candidate, Reviewer};
 use moai_cli::plan::{admit, AdmissionRequest, Approval, Task};
 use moai_cli::run::{Method, PinnedRef, RunRequest, VerificationRequest};
@@ -151,7 +152,7 @@ fn audit_input(dir: &Path, refs: &[usize]) -> AuditInput {
 
 /// 05-D through the CLI: `moai-cli audit-reduce PROJECT`.
 fn audit_reduce(dir: &Path, input: &AuditInput) -> Value {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("audit-reduce")
         .arg(dir)
         .stdin(Stdio::piped())

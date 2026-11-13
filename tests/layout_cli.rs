@@ -43,7 +43,7 @@ fn setup_project(home: &Path) -> (PathBuf, PathBuf) {
 }
 
 fn cli(project: &Path, home: &Path, args: &[&str], stdin: Option<&str>) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(project)
         .env("HOME", home)

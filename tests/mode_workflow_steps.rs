@@ -1,5 +1,6 @@
 //! #2497: the MODE-AGENT and MODE-LEADER workflows as testable step lists, and every
-//! `moai-cli <op> [--flag]` they name checked against the built binary's `--help`.
+//! `moai <op> [--flag]` they name checked against the built binary's `--help`.
+mod common;
 use std::{fs, path::Path, process::Command};
 
 fn workflow(name: &str) -> String {
@@ -88,14 +89,24 @@ fn mode_leader_first_run_steps_are_fixed() {
     );
 }
 
-/// Each `` `moai-cli <op> [--flag …]` `` span in a workflow: (op, flags).
+/// Each `` `moai <op> [--flag …]` `` span in a workflow, and the `` `moai-cli <op> …` ``
+/// fallback spelling (#2792 R3), in text order: (op, flags). A span whose first word is an
+/// option (`` `moai --version` ``) names no op and is skipped.
 fn cli_spans(text: &str) -> Vec<(String, Vec<String>)> {
     let mut out = Vec::new();
-    for (i, _) in text.match_indices("`moai-cli ") {
+    let mut starts: Vec<usize> = ["`moai ", "`moai-cli "]
+        .iter()
+        .flat_map(|p| text.match_indices(p).map(|(i, _)| i))
+        .collect();
+    starts.sort_unstable();
+    for i in starts {
         let rest = &text[i + 1..];
         let span = &rest[..rest.find('`').expect("closed code span")];
         let mut words = span.split_whitespace().skip(1);
-        let op = words.next().expect("an op after moai-cli").to_string();
+        let op = words.next().expect("an op after moai").to_string();
+        if op.starts_with('-') {
+            continue;
+        }
         let flags = words
             .take_while(|w| w.starts_with("--"))
             .map(str::to_string)
@@ -106,7 +117,7 @@ fn cli_spans(text: &str) -> Vec<(String, Vec<String>)> {
 }
 
 fn help(args: &[&str]) -> String {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .arg("--help")
         .output()
@@ -130,13 +141,13 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             assert!(
                 top.lines()
                     .any(|l| l.split_whitespace().next() == Some(op.as_str())),
-                "{name}: `moai-cli {op}` is not a subcommand of this binary"
+                "{name}: `moai {op}` is not a subcommand of this binary"
             );
             let sub = help(&[op.as_str()]);
             for flag in &flags {
                 assert!(
                     sub.contains(flag.as_str()),
-                    "{name}: `moai-cli {op}` has no {flag}"
+                    "{name}: `moai {op}` has no {flag}"
                 );
             }
             seen.push(format!(
@@ -174,7 +185,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
 #[test]
 fn spans_parse_ops_and_flags() {
     assert_eq!(
-        cli_spans("run `moai-cli claim-verify --hook` and `moai-cli queue-next`"),
+        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-next` and `moai --version`"),
         [
             ("claim-verify".to_string(), vec!["--hook".to_string()]),
             ("queue-next".to_string(), vec![])
@@ -531,7 +542,7 @@ fn session_id_registers_renews_and_stops_on_a_held_name() {
         &workflow("mode-agent.md"),
         "session-id",
         &[
-            "register the id with `moai-cli session-register` before the first claim",
+            "register the id with `moai session-register` before the first claim",
             "pass it with `--instance` at every wake to renew the lease",
             "A `conflict` answer means another live session holds the name — stop the round",
             "never pick another name yourself",
@@ -607,7 +618,7 @@ fn usage_limit_rules_are_pinned_in_both_mode_workflows() {
         &agent,
         "wake",
         &[
-            "run `moai-cli usage-limit \"$HOME\"`",
+            "run `moai usage-limit \"$HOME\"`",
             "before any other write, renew every claim you hold to its `renew_until`",
             "`LANE-WAIT <lane> usage-limit until <renew_until>`",
             "Keep Claude Code's own automatic continue on (`autoContinueAtUsageLimit`",
@@ -645,7 +656,7 @@ fn skill_requests_delegation_with_each_hosts_subagent_tool() {
     }
 }
 
-/// #2675: the state summary and the self-claim candidate come from `moai-cli queue-free`, and
+/// #2675: the state summary and the self-claim candidate come from `moai queue-free`, and
 /// an empty answer is said as `0건`, never inferred from missing output.
 #[test]
 fn state_and_claim_read_the_free_card_list() {
@@ -654,14 +665,14 @@ fn state_and_claim_read_the_free_card_list() {
         &agent,
         "state",
         &[
-            "`moai-cli queue-free` returns these buckets in one read-only call (Issue #2675)",
+            "`moai queue-free` returns these buckets in one read-only call (Issue #2675)",
             "when `free_count` is 0 say `0건`; an empty or failed output is not a count",
         ],
     );
     assert_says(
         &agent,
         "claim",
-        &["Take the self-claim candidate from the `free` list of `moai-cli queue-free`"],
+        &["Take the self-claim candidate from the `free` list of `moai queue-free`"],
     );
 }
 

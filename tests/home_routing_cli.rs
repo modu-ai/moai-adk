@@ -2,6 +2,7 @@
 //! only — never the real one. Covers create, idempotence, the user's bytes outside the block,
 //! conflicts, symlinks, a stale digest, revert, and the hosts reported as not written.
 
+mod common;
 use moai_cli::home_routing::{apply, plan, render, revert, HOSTS, SECTION, SOURCE};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -298,7 +299,7 @@ fn the_shipped_section_points_at_real_package_files() {
 #[test]
 fn the_operations_run_through_the_binary() {
     let (_t, home) = home();
-    let bin = env!("CARGO_BIN_EXE_moai-cli");
+    let bin = crate::common::MOAI_BIN;
     let run = |args: &[&str]| {
         let out = std::process::Command::new(bin)
             .args(args)

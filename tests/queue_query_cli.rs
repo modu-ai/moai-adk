@@ -360,7 +360,7 @@ fn binary_routes_typed_request_and_envelope_using_fake_gh() {
     let body = ledger(&[]).response.body.unwrap();
     let script=format!("#!/bin/sh\ncase \"$*\" in\n*' -X GET '*) ;;\n*) exit 77 ;;\nesac\nprintf '%s\\n\\n%s\\n' 'HTTP/2 200' '{}'\n",body.to_string().replace('\'',"'\\''"));
     common::write_executable(&fake, &script);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["queue-query", project.to_str().unwrap()])
         .clean_env()
         .env("HOME", tmp.path())

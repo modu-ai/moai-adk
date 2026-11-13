@@ -46,7 +46,7 @@ fn post(
 ) -> (std::process::Output, Value) {
     let project = dir.join("project");
     fs::create_dir_all(&project).unwrap();
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.arg("forge-audit-status")
         .arg(&project)
         .arg("--permission-reference")

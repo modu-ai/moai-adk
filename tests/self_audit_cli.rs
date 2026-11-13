@@ -2,6 +2,7 @@
 //! asks a user project to run `tools/check_pr_self_audit.py`, which only this repository has.
 //! Its rules are checked case by case against the Python tool by the three
 //! `tests/check_pr_*_test.py` files (`tests/self_audit_parity.py`).
+mod common;
 use std::{fs, path::Path, process::Command};
 
 fn skill_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
@@ -37,7 +38,7 @@ fn the_shipped_skill_never_runs_the_python_checker() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
     )
     .unwrap();
-    assert!(audit.contains("`moai-cli pr-self-audit-check --reaudit --file BODY.md`"));
+    assert!(audit.contains("`moai pr-self-audit-check --reaudit --file BODY.md`"));
 }
 
 /// #2708 3/4 (default A after the 15:00Z deadline of 6854550310): `tools/ci_scope.py` stays
@@ -123,13 +124,13 @@ fn the_shipped_skill_runs_no_repository_python_tool() {
     );
     assert_eq!(bad, Vec::<String>::new());
     let leader = fs::read_to_string(root.join("workflows/mode-leader.md")).unwrap();
-    assert!(leader.contains("run `moai-cli repo-scans --refs <tip> <head>` from any checkout"));
+    assert!(leader.contains("run `moai repo-scans --refs <tip> <head>` from any checkout"));
     assert!(leader.contains("when `result.remerge` is `true`"));
 }
 
 fn run(args: &[&str], body: &str) -> (i32, String) {
     use std::io::Write;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .arg("pr-self-audit-check")
         .args(args)
         .stdin(std::process::Stdio::piped())

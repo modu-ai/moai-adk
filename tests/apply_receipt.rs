@@ -2,6 +2,7 @@
 //! concurrent lanes merging tests/product_cli.rs do not collide on its tail. Receipt
 //! paths, statuses and recovery semantics are asserted through the CLI envelope only.
 
+mod common;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -17,7 +18,7 @@ fn profile() -> Value {
 }
 
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

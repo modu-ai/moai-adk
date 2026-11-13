@@ -13,7 +13,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 
 /// A synthetic key that cannot be a real one.
 fn synthetic() -> String {

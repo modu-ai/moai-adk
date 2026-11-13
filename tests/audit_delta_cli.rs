@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 const A: &str = "pass-file.txt";
 const B: &str = "tip-file.txt";
 const PASS: &str = "pass branch change\n";

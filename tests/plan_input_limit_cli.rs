@@ -1,6 +1,7 @@
 //! #2349 (g): a typed `*-plan` result fed back to its `*-apply` on stdin is bounded by the
 //! plan limit (16 MiB), not by the 64 KiB limit of hand-written requests. The plan is not
 //! trusted for its size: each apply still recomputes or checks it against `--plan-digest`.
+mod common;
 use serde_json::Value;
 use std::{
     fs,
@@ -10,7 +11,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn run(args: &[&str], stdin: &[u8], home: &Path) -> Value {
     let mut child = Command::new(EXE)

@@ -1,9 +1,10 @@
 //! #2384 (user decision 2026-11-10): the work ledger is forge Issues only. The local TODO
 //! promotion commands are removed, so they are usage errors and absent from the help.
 
+mod common;
 use std::process::Command;
 
-const BIN: &str = env!("CARGO_BIN_EXE_moai-cli");
+const BIN: &str = crate::common::MOAI_BIN;
 
 fn run(args: &[&str]) -> (i32, String, String) {
     let home = tempfile::tempdir().unwrap();

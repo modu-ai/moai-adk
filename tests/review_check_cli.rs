@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use std::{fs, io::Write, path::Path, process::Stdio};
 use tempfile::TempDir;
 
-const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
+const EXE: &str = crate::common::MOAI_BIN;
 
 fn write(root: &Path, rel: &str, text: &str) {
     let path = root.join(rel);
@@ -321,8 +321,8 @@ fn the_audit_workflow_describes_the_review_steps() {
     .unwrap();
     for needle in [
         "## Review steps",
-        "moai-cli review-package PROJECT --base <base SHA> --head <head SHA>",
-        "moai-cli review-check PROJECT --head <head SHA>",
+        "moai review-package PROJECT --base <base SHA> --head <head SHA>",
+        "moai review-check PROJECT --head <head SHA>",
         "come from the base commit only",
         "within three lines",
         "the result `confirmed`",

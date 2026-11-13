@@ -33,7 +33,7 @@ fn mode_agent_gates_the_opening_exempts_tip_repairs_and_verifies_before_a_merge(
             "A pull request whose body carries a `moai-tip-repair:` line is outside this count",
             "never convert it to a draft",
             // P-E: a tip merge is a commit.
-            "A tip merge is a commit too: run `moai-cli claim-verify` before `git merge`",
+            "A tip merge is a commit too: run `moai claim-verify` before `git merge`",
         ],
     );
 }

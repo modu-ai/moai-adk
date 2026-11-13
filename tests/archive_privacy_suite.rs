@@ -342,7 +342,7 @@ fn privacy_02_symlink_into_another_project_is_never_copied() {
 }
 
 fn cli(args: &[&str], cwd: &Path) -> (i32, String) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+    let out = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
         .output()
@@ -528,7 +528,7 @@ fn privacy_06_operations_need_no_network() {
     let ps = p.to_str().unwrap();
     let run = |args: &[&str]| -> (i32, String) {
         let out = Command::new("/usr/bin/sandbox-exec")
-            .args(["-p", PROFILE, env!("CARGO_BIN_EXE_moai-cli")])
+            .args(["-p", PROFILE, crate::common::MOAI_BIN])
             .args(args)
             .output()
             .unwrap();

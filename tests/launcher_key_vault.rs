@@ -45,7 +45,7 @@ fn project() -> &'static Path {
 }
 
 fn bin(home: &Path) -> Command {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.current_dir(project())
         .env("HOME", home)
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
