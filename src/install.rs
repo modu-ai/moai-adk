@@ -39,6 +39,12 @@ const BINARY_HASH_LIMIT: u64 = 512 * 1024 * 1024;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 /// `--version` output beyond this is discarded (drained, not stored).
 const PROBE_STDOUT_CAP: usize = 4096;
+/// The only `PATH` a `--version` probe sees (#2800 audit B1).
+const PROBE_PATH: &str = if cfg!(windows) {
+    r"C:\Windows\System32"
+} else {
+    "/usr/bin:/bin"
+};
 /// The longest `--version` first line reported (characters); the rest is cut.
 const PROBE_LINE_CAP: usize = 200;
 /// Every `moai` beyond this many candidates is counted, not probed (#2791 AC-2).
@@ -479,11 +485,21 @@ fn match_receipt(
 /// `--version` output of one candidate (REQ-04A-02, #2791). Spawns the binary with the
 /// single argument `--version`, stdin closed, stdout capped, killed after
 /// `PROBE_TIMEOUT`; returns `None` when nothing was printed, else the first line (at most
-/// `PROBE_LINE_CAP` characters, trimmed).
-// @MX:WARN: [AUTO] executes whatever binary a candidate path holds under the expected name
-// @MX:REASON: REQ-04A-02 and #2791 AC-2 tell Rust from Go by the `--version` line; a hostile PATH entry runs at inspect time
+/// `PROBE_LINE_CAP` characters, trimmed). The child gets a cleared environment — only
+/// `PROBE_PATH`, plus `SYSTEMROOT` on Windows, which process start needs — and the
+/// system temporary folder as its working folder, so no token or key in this process's
+/// environment reaches it and it does not start inside a project (#2800 audit B1).
+// @MX:WARN: [AUTO] executes whatever binary a PATH entry or a Go install place holds under the expected name
+// @MX:REASON: REQ-04A-02 and #2791 AC-2 tell Rust from Go by the `--version` line; a hostile PATH entry runs at inspect time, without this process's environment; project-tree binaries are never run
 pub(crate) fn probe_version(path: &Path) -> Option<String> {
-    let Ok(mut child) = std::process::Command::new(path)
+    let mut cmd = std::process::Command::new(path);
+    cmd.env_clear()
+        .env("PATH", PROBE_PATH)
+        .current_dir(std::env::temp_dir());
+    if let Some(root) = std::env::var_os("SYSTEMROOT") {
+        cmd.env("SYSTEMROOT", root);
+    }
+    let Ok(mut child) = cmd
         .arg("--version")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
@@ -653,15 +669,25 @@ fn moai_candidates(home: &Path, path_env: &str, places: &CandidatePlaces) -> Val
             more += 1;
             continue;
         }
-        let line = probe_version(&path);
+        // A `moai` inside the project tree is repository content, not a place the user
+        // chose: it is reported, never run (#2800 audit B1). Reached through PATH first, the
+        // user's PATH chose it and it is probed like any PATH entry.
+        let probed = source != "claude_project_dir";
+        let line = if probed { probe_version(&path) } else { None };
+        let generation = if probed {
+            generation_of(line.as_deref())
+        } else {
+            "not_probed"
+        };
         let item = json!({
             "path": path.to_string_lossy(),
             "sources": [source],
             "path_order": order,
             "first_on_path": first_on_path.as_ref() == Some(&canonical),
             "sha256": sha256_file(&path).ok(),
+            "probed": probed,
             "version_line": line,
-            "generation": generation_of(line.as_deref()),
+            "generation": generation,
         });
         items.push((canonical, item));
     }

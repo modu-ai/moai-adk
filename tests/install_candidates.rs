@@ -113,7 +113,7 @@ fn every_moai_is_listed_in_order_and_told_apart_without_writing() {
                 json!(["claude_project_dir"]),
                 json!(null),
                 json!(false),
-                "go".into()
+                "not_probed".into()
             ),
             (
                 "home/go/bin/moai".into(),
@@ -187,4 +187,68 @@ fn the_line_and_candidate_bounds() {
         assert_eq!(c["items"].as_array().unwrap().len(), 64, "{n}");
         assert_eq!(c["more"], json!(n - 64), "{n}");
     }
+}
+
+/// #2800 audit B1 (leader decision on #2791): a `moai` inside the project tree is repository
+/// content — it is reported with its path and sha256 but never run.
+#[test]
+fn a_project_tree_moai_is_reported_never_run() {
+    let d = TempDir::new().unwrap();
+    let root = fs::canonicalize(d.path()).unwrap();
+    let home = root.join("home");
+    let proj = root.join("proj");
+    fs::create_dir_all(&home).unwrap();
+    let marker = root.join("EXECUTED");
+    script(
+        &proj.join(".moai/bin"),
+        &format!(
+            "#!/bin/sh\nenv > '{}'\necho 'moai-adk 9.9.9'\n",
+            marker.display()
+        ),
+    );
+    let empty = root.join("empty");
+    fs::create_dir_all(&empty).unwrap();
+    let c = inspect(&home, &join(&[&empty]), &[("CLAUDE_PROJECT_DIR", &proj)]);
+    assert!(!marker.exists(), "the project's moai ran");
+    let item = &c["items"][0];
+    assert_eq!(item["sources"], json!(["claude_project_dir"]), "{c}");
+    assert_eq!(item["probed"], json!(false), "{item}");
+    assert_eq!(item["version_line"], json!(null));
+    assert_eq!(item["generation"], json!("not_probed"));
+    assert!(item["sha256"].as_str().unwrap().starts_with("sha256:"));
+}
+
+/// #2800 audit B1: a probed `moai` runs with a cleared environment — no token variable of
+/// this process reaches it — and outside the project and HOME folders.
+#[test]
+fn a_probe_gets_no_token_variable_and_runs_outside_the_project() {
+    let d = TempDir::new().unwrap();
+    let root = fs::canonicalize(d.path()).unwrap();
+    let home = root.join("home");
+    let pathbin = root.join("pathbin");
+    fs::create_dir_all(&home).unwrap();
+    script(
+        &pathbin,
+        "#!/bin/sh\necho \"moai-adk 1.0 token=[${ANTHROPIC_AUTH_TOKEN}${PROBE_TEST_TOKEN}] cwd=[$(pwd)]\"\n",
+    );
+    let c = inspect(
+        &home,
+        &join(&[&pathbin, Path::new("/usr/bin"), Path::new("/bin")]),
+        &[
+            ("ANTHROPIC_AUTH_TOKEN", Path::new("dummy-not-a-real-key")),
+            ("PROBE_TEST_TOKEN", Path::new("dummy-not-a-real-key")),
+        ],
+    );
+    let item = &c["items"][0];
+    assert_eq!(item["probed"], json!(true), "{item}");
+    let line = item["version_line"].as_str().unwrap();
+    assert!(
+        line.contains("token=[]"),
+        "a token reached the probe: {line}"
+    );
+    assert!(
+        !line.contains(home.to_str().unwrap()),
+        "ran in HOME: {line}"
+    );
+    assert_eq!(item["generation"], json!("go"));
 }
