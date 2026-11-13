@@ -9,6 +9,8 @@ use std::{
     process::ExitCode,
 };
 
+mod ops;
+
 /// Where a 06-C command reads its claim record: the local journal, or a record file that must
 /// agree with the Issue claim comment it names (the file is input, not an authority).
 #[derive(Args)]
@@ -102,9 +104,9 @@ struct HostLaunch {
 }
 #[derive(Subcommand)]
 enum Command {
-    PackageInspect {
-        package: PathBuf,
-    },
+    /// The one-file operations under `src/ops/` (#2617): add a file there, not a variant here.
+    #[command(flatten)]
+    Op(ops::Ops),
     ProjectPlan {
         project: PathBuf,
     },
@@ -1278,6 +1280,7 @@ fn operation(command: &Command) -> Option<&'static str> {
     Some(match command {
         // Not envelope operations: the launchers, and the raw-text statusline (#2350).
         Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
+        Op(op) => op.operation(),
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
@@ -1351,7 +1354,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         MigratePlan { .. } => "migrate.plan",
         MigrateRecover { .. } => "migrate.recover",
         MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
-        PackageInspect { .. } => "package.inspect",
         PackageResolve { .. } => "package.resolve",
         ParityCheck { .. } => "parity.check",
         PlanAdmit { .. } => "plan.admit",
@@ -1755,9 +1757,7 @@ fn run_internal(
 
 fn run_internal_classified(command: Command) -> Result<serde_json::Value, String> {
     match command {
-        Command::PackageInspect { package } => Ok(
-            serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
-        ),
+        Command::Op(op) => op.run(),
         Command::ProjectDetect { project } => moai_cli::project_detect::detect_cli(&project),
         Command::ProjectPlan { project } => {
             // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
@@ -2860,12 +2860,124 @@ mod operations_doc {
             .collect()
     }
 
+    /// #2617: the one-file operations are documented by `operations/<word>.md` fragments, not
+    /// by list lines, so two branches that each add one touch no shared line.
+    const FRAGMENT_DIR: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/docs/design-review/appendix/operations"
+    );
+
+    /// Subcommand words of the operations collected from `src/ops/`.
+    fn file_op_words() -> Vec<String> {
+        use clap::Subcommand;
+        super::ops::Ops::augment_subcommands(clap::Command::new("ops"))
+            .get_subcommands()
+            .map(|s| s.get_name().to_string())
+            .collect()
+    }
+
+    /// `(subcommand word, first line)` of every `*.md` fragment, the word being the file stem
+    /// with `_` as `-`.
+    fn fragments(dir: &str) -> Result<Vec<(String, String)>, String> {
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(dir).map_err(|e| format!("{dir}: {e}"))? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            let Some(stem) = name.strip_suffix(".md") else {
+                return Err(format!("not a fragment file: {name}"));
+            };
+            let text = std::fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
+            let first = text.lines().next().unwrap_or_default().to_string();
+            out.push((stem.replace('_', "-"), first));
+        }
+        out.sort();
+        Ok(out)
+    }
+
+    fn compare_fragments(
+        file_ops: &[String],
+        fragments: &[(String, String)],
+        list: &[String],
+    ) -> Result<(), String> {
+        let mut problems = Vec::new();
+        let ops: BTreeSet<&str> = file_ops.iter().map(String::as_str).collect();
+        let docs: BTreeSet<&str> = fragments.iter().map(|(w, _)| w.as_str()).collect();
+        let missing: Vec<_> = ops.difference(&docs).collect();
+        let extra: Vec<_> = docs.difference(&ops).collect();
+        if !missing.is_empty() {
+            problems.push(format!("operation file without a fragment: {missing:?}"));
+        }
+        if !extra.is_empty() {
+            problems.push(format!("fragment without an operation file: {extra:?}"));
+        }
+        for (word, first) in fragments {
+            if *first != format!("# `{word}`") {
+                problems.push(format!("fragment {word}: first line must be # `{word}`"));
+            }
+        }
+        let listed: Vec<_> = list.iter().filter(|w| ops.contains(w.as_str())).collect();
+        if !listed.is_empty() {
+            problems.push(format!("one-file operation also on the list: {listed:?}"));
+        }
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(problems.join("; "))
+        }
+    }
+
     #[test]
     fn operations_doc_matches_code() {
         let cli = Cli::command();
-        if let Err(problems) = compare(&code_words(&cli), DOC) {
+        let file_ops = file_op_words();
+        let listed: Vec<&str> = code_words(&cli)
+            .into_iter()
+            .filter(|w| !file_ops.iter().any(|f| f == w))
+            .collect();
+        if let Err(problems) = compare(&listed, DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
+        let frags = fragments(FRAGMENT_DIR).unwrap();
+        if let Err(problems) = compare_fragments(&file_ops, &frags, &doc_list(DOC).unwrap()) {
+            panic!("interfaces.md operations/ fragments are out of sync with src/ops: {problems}");
+        }
+    }
+
+    /// #2617: every one-file operation is a real operation, and the fragment check names what
+    /// is wrong.
+    #[test]
+    fn fragment_mutations_are_detected() {
+        let file_ops = file_op_words();
+        assert!(
+            file_ops.iter().any(|w| w == "package-inspect"),
+            "{file_ops:?}"
+        );
+        for w in &file_ops {
+            assert!(operation_of(w).is_some(), "{w} maps to no operation");
+        }
+        let frags = fragments(FRAGMENT_DIR).unwrap();
+        let list = doc_list(DOC).unwrap();
+        assert_eq!(compare_fragments(&file_ops, &frags, &list), Ok(()));
+        let mut more = file_ops.clone();
+        more.push("zz-new-op".into());
+        assert!(compare_fragments(&more, &frags, &list)
+            .unwrap_err()
+            .contains("operation file without a fragment: [\"zz-new-op\"]"));
+        let mut ghost = frags.clone();
+        ghost.push(("zz-ghost".into(), "# `zz-ghost`".into()));
+        assert!(compare_fragments(&file_ops, &ghost, &list)
+            .unwrap_err()
+            .contains("fragment without an operation file: [\"zz-ghost\"]"));
+        let mut bad = frags.clone();
+        bad[0].1 = "# wrong".into();
+        assert!(compare_fragments(&file_ops, &bad, &list)
+            .unwrap_err()
+            .contains("first line must be"));
+        let mut both = list.clone();
+        both.push(file_ops[0].clone());
+        assert!(compare_fragments(&file_ops, &frags, &both)
+            .unwrap_err()
+            .contains("also on the list"));
     }
 
     /// #2350: `statusline` prints raw text, so it is a subcommand outside OPERATIONS and the

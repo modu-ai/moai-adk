@@ -45,7 +45,13 @@ EXACT_DENY = frozenset(
 )
 # Directory prefixes that are never docs-only even under docs/.
 # docs/design-review/fixes/: every fix file is hashed by tests/space_applied_record_test.py (#2207).
-PREFIX_DENY = ("docs/e2e-receipts/", "docs/design-review/fixes/")
+# docs/design-review/appendix/operations/: one fragment per one-file operation, read by the
+# operations_doc test in src/main.rs and tests/hot_file_ops_merge.rs (#2617).
+PREFIX_DENY = (
+    "docs/e2e-receipts/",
+    "docs/design-review/fixes/",
+    "docs/design-review/appendix/operations/",
+)
 # Allowed suffixes under docs/ (anything else under docs/ is full scope).
 DOC_SUFFIXES = (".md", ".txt", ".png", ".svg")
 # Report output is safe regardless of suffix.
