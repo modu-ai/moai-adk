@@ -452,6 +452,12 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
+    assert_eq!(t.sent.borrow().len(), 4, "the earlier tip commit is not read");
+    let ci = s.tip_ci.clone().unwrap();
+    assert_eq!(
+        (ci.state.as_str(), ci.decided_by.as_deref()),
+        ("red", Some(r.c.as_str()))
+    );
     assert!(g8(&s).is_some());
 
     // Failure then success on the same tip: flaky, not a stop.
