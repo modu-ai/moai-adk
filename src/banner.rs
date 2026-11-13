@@ -12,6 +12,10 @@
 //!   requires no banner in piped output.
 //! - a non-empty `NO_COLOR` (an empty value counts as unset, per the NO_COLOR
 //!   convention and the Go golden-test intent) downgrades to the plain variant.
+//! - #2803 (design #2799 D2 §3): `TERM=dumb`, a non-UTF-8 locale or a terminal no wider
+//!   than the logo (61 cells) prints one ASCII line `MoAI-ADK <version>` instead; the
+//!   colored logo follows the terminal's depth — 24-bit only with `COLORTERM=truecolor`,
+//!   256 colors through the status line's arithmetic, else the 4-bit accent.
 //! - JSON envelope output never carries the banner: the only print sites are
 //!   the bare no-argument run and the root-help shape; subcommands and
 //!   subcommand help are untouched, so the output contract (envelope,
@@ -87,9 +91,96 @@ pub fn decide(is_tty: bool, no_color: Option<&OsStr>) -> Banner {
     }
 }
 
-fn decide_now() -> Banner {
-    let no_color = std::env::var_os("NO_COLOR");
-    decide(io::stdout().is_terminal(), no_color.as_deref())
+/// The widest logo row, in terminal cells.
+pub const LOGO_WIDTH: usize = 61;
+
+/// What a print site emits once the terminal itself is considered (#2803, design #2799 D2 §3):
+/// nothing, one ASCII line, the plain logo, or the colored logo at a color depth.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Shape {
+    None,
+    /// `TERM=dumb`, a non-UTF-8 locale or a terminal narrower than the logo: `MoAI-ADK <ver>`.
+    Line,
+    Plain,
+    Colored(crate::ui::Depth),
+}
+
+/// [`decide`] plus the terminal: `TERM=dumb`, a non-UTF-8 locale or fewer than
+/// [`LOGO_WIDTH`]` + 1` columns get one ASCII line instead of the block letters, and the
+/// colored logo is drawn at the terminal's color depth instead of always at 24 bits.
+pub fn shape(is_tty: bool, env: &crate::ui::Env, width: Option<usize>) -> Shape {
+    let base = decide(is_tty, env.no_color.as_deref());
+    if base == Banner::None {
+        return Shape::None;
+    }
+    if !crate::ui::unicode_enabled(env) || width.is_some_and(|w| w <= LOGO_WIDTH) {
+        return Shape::Line;
+    }
+    match base {
+        Banner::Plain => Shape::Plain,
+        _ => Shape::Colored(crate::ui::depth(env)),
+    }
+}
+
+fn shape_now() -> Shape {
+    let env = crate::ui::Env::from_process();
+    let width = crate::ui::width(crate::ui::Stream::Stdout, &env);
+    shape(io::stdout().is_terminal(), &env, width)
+}
+
+/// The one-line form: ASCII only, no escapes.
+pub fn render_line() -> String {
+    format!("MoAI-ADK {}\n", crate::BUILD_VERSION)
+}
+
+fn hex(rgb: (u8, u8, u8)) -> String {
+    format!("#{:02x}{:02x}{:02x}", rgb.0, rgb.1, rgb.2)
+}
+
+/// The foreground escape for `rgb` at `depth`: the original 24-bit bytes, the status line's
+/// 256-color arithmetic, or the 4-bit accent (magenta) when only 16 colors exist.
+fn foreground_at(rgb: (u8, u8, u8), depth: crate::ui::Depth) -> String {
+    use crate::ui::Depth;
+    match depth {
+        // Kept on this module's own arithmetic: the recorded goldens pin these bytes.
+        Depth::TrueColor => foreground(rgb),
+        Depth::Ansi256 => {
+            let profile = crate::statusline::color::Profile::Ansi256;
+            format!("\x1b[{}m", profile.foreground(&hex(rgb)))
+        }
+        Depth::Ansi16 => "\x1b[35m".to_string(),
+    }
+}
+
+/// The logo at a color depth; [`crate::ui::Depth::TrueColor`] is byte-identical to
+/// `render_logo(true)`.
+pub fn render_logo_in(depth: crate::ui::Depth) -> String {
+    let rows: Vec<&str> = LOGO_ROWS.lines().collect();
+    let last = rows.len() - 1;
+    rows.iter()
+        .enumerate()
+        .map(|(i, row)| {
+            let t = i as f64 / last as f64;
+            format!("{}{}{RESET}", foreground_at(gradient_stop(t), depth), row)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
+}
+
+/// The banner at a color depth; [`crate::ui::Depth::TrueColor`] is byte-identical to
+/// `render_banner(true)`. With 16 colors the identity text keeps the terminal's own color.
+pub fn render_banner_in(depth: crate::ui::Depth) -> String {
+    let rest = if depth == crate::ui::Depth::Ansi16 {
+        IDENTITY_REST.to_string()
+    } else {
+        format!("{}{IDENTITY_REST}{RESET}", foreground_at(BODY, depth))
+    };
+    let identity = format!(
+        "\x1b[1m{}{IDENTITY_MARK}{RESET} {rest}",
+        foreground_at(ACCENT, depth)
+    );
+    format!("{}{}\n", render_logo_in(depth), identity)
 }
 
 fn emit(text: &str) {
@@ -142,10 +233,11 @@ pub fn is_root_help_args(args: &[String]) -> bool {
 
 /// Bare no-argument run: the banner goes to stdout when the gate allows.
 pub fn maybe_print_banner() {
-    match decide_now() {
-        Banner::None => {}
-        Banner::Plain => emit(&render_banner(false)),
-        Banner::Colored => emit(&render_banner(true)),
+    match shape_now() {
+        Shape::None => {}
+        Shape::Line => emit(&render_line()),
+        Shape::Plain => emit(&render_banner(false)),
+        Shape::Colored(depth) => emit(&render_banner_in(depth)),
     }
 }
 
@@ -154,9 +246,10 @@ pub fn maybe_print_logo_for(args: &[String]) {
     if !is_root_help_args(args) {
         return;
     }
-    match decide_now() {
-        Banner::None => {}
-        Banner::Plain => emit(&render_logo(false)),
-        Banner::Colored => emit(&render_logo(true)),
+    match shape_now() {
+        Shape::None => {}
+        Shape::Line => emit(&render_line()),
+        Shape::Plain => emit(&render_logo(false)),
+        Shape::Colored(depth) => emit(&render_logo_in(depth)),
     }
 }
