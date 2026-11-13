@@ -428,13 +428,13 @@ pub fn plan(req: &Request) -> Result<Value> {
         )?);
     }
 
-    let reports = primary.join(".moai-cli/reports");
+    let reports = primary.join(crate::project_state!("reports"));
     if fs::symlink_metadata(&reports).is_ok_and(|m| m.is_dir()) {
         let (bytes, partial) = bytes_under(std::slice::from_ref(&reports), deadline);
         let modified = mtime(&reports);
         rows.push(json!({
             "kind": "report",
-            "path": ".moai-cli/reports",
+            "path": crate::project_state!("reports"),
             "action": "keep",
             "reasons": ["reports_kept"],
             "trim_paths": [],
