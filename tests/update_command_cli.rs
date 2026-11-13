@@ -63,6 +63,8 @@ fn fx() -> Fx {
 
 /// `~/.moai-cli/versions/<version>/bin/moai-cli` with its package beside it, and an empty
 /// agent source folder `agents/` (#2721: a release without agent sources installs none).
+/// `bin/moai` is already the hard link an installed folder has (#2791), so these cases see
+/// only the user layer's own writes.
 fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBuf {
     let folder = home.join(".moai-cli/versions").join(version);
     let bin = folder.join("bin");
@@ -70,6 +72,7 @@ fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBu
     fs::create_dir_all(folder.join("agents")).unwrap();
     let exe = bin.join("moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
+    fs::hard_link(&exe, bin.join("moai")).unwrap();
     for (rel, body) in pkg {
         let p = folder.join("skills/moai").join(rel);
         fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -634,4 +637,29 @@ fn with_stderr_away_from_the_terminal_update_does_not_ask() {
     );
     assert!(shown.contains("\"mode\":\"preview\""), "{shown}");
     assert_eq!(state(&f.home), before);
+}
+
+// #2791 AC-1: a version folder without `bin/moai` gets the hard link from the same confirmed
+// update; the preview names it and writes nothing.
+#[test]
+fn update_links_the_moai_name_in_its_version_folder() {
+    use std::os::unix::fs::MetadataExt as _;
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let alias = a.with_file_name("moai");
+    fs::remove_file(&alias).unwrap();
+    let p = preview(&a, &f.home);
+    assert_eq!(p["bin_names"]["state"], json!("create"), "{p}");
+    assert!(!alias.exists(), "the preview links nothing");
+    let r = confirm(&a, &f.home, &digest(&p));
+    assert_eq!(r["bin_names_result"]["state"], json!("applied"), "{r}");
+    let (m1, m2) = (fs::metadata(&a).unwrap(), fs::metadata(&alias).unwrap());
+    assert_eq!(
+        (m1.dev(), m1.ino()),
+        (m2.dev(), m2.ino()),
+        "one file, two names"
+    );
+    let again = preview(&a, &f.home);
+    assert_eq!(again["bin_names"]["state"], json!("unchanged"), "{again}");
+    assert_eq!(again["nothing_to_apply"], json!(true), "{again}");
 }

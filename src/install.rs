@@ -482,7 +482,7 @@ fn match_receipt(
 /// `PROBE_LINE_CAP` characters, trimmed).
 // @MX:WARN: [AUTO] executes whatever binary a candidate path holds under the expected name
 // @MX:REASON: REQ-04A-02 and #2791 AC-2 tell Rust from Go by the `--version` line; a hostile PATH entry runs at inspect time
-fn probe_version(path: &Path) -> Option<String> {
+pub(crate) fn probe_version(path: &Path) -> Option<String> {
     let Ok(mut child) = std::process::Command::new(path)
         .arg("--version")
         .stdin(std::process::Stdio::null())
