@@ -849,6 +849,54 @@ pub fn is_commit(command: &str) -> bool {
     runs_git(command, &["commit"])
 }
 
+/// The one folder a command line's `git <verb>` (one of `verbs`) runs in (#2673): `cwd`
+/// changed by each `-C <dir>` before the verb, in order, as git applies them. A host without a
+/// built-in worktree tool commits with `git -C <worktree>` from the primary checkout (user
+/// decision on #2673); reading the branch in `cwd` alone let that commit pass as "not a lane
+/// worktree". `None` when no top-level segment runs such a verb (the caller keeps `cwd`); an
+/// error when the line runs it in more than one folder, so each is checked on its own line.
+pub fn git_target_dir(
+    command: &str,
+    cwd: &Path,
+    verbs: &[&str],
+) -> std::result::Result<Option<PathBuf>, String> {
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        if command_name(&words[i]) != "git" {
+            continue;
+        }
+        for sub in git_subcommands(&words[i + 1..]) {
+            if !verbs.contains(&sub.verb.as_str()) {
+                continue;
+            }
+            let mut dir = cwd.to_path_buf();
+            let mut global = sub.global.iter();
+            while let Some(a) = global.next() {
+                if a == "-C" {
+                    if let Some(d) = global.next() {
+                        dir = dir.join(d);
+                    }
+                }
+            }
+            let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
+            if !dirs.contains(&dir) {
+                dirs.push(dir);
+            }
+        }
+    }
+    match dirs.len() {
+        0 => Ok(None),
+        1 => Ok(dirs.pop()),
+        _ => Err(format!(
+            "one command line runs git {} in more than one folder; run each as its own command",
+            verbs.join(" or ")
+        )),
+    }
+}
+
 /// Why a commit command line on a lane branch carries no usable claim token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CommitTokenGap {
@@ -1026,6 +1074,11 @@ pub fn hook_cli<T: Transport, C: Clock>(
         .and_then(|p| std::fs::canonicalize(p).ok());
     let Some(cwd) = cwd else {
         return allow("working directory unavailable; no claimed worktree to guard");
+    };
+    // #2673: the folder the commit or push runs in, after `git -C`, not only the session's.
+    let cwd = match git_target_dir(command, &cwd, &["commit", "push"]) {
+        Ok(dir) => dir.unwrap_or(cwd),
+        Err(why) => return Err(format!("claim verify: uncertain; {why}")),
     };
     let records = crate::worktree::active_records(project).unwrap_or_default();
     let push = runs_git(command, &["push"]);
