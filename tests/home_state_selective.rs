@@ -96,13 +96,12 @@ fn class_of(plan: &Value, name: &str) -> (String, String) {
 }
 
 fn git(dir: &Path, home: &Path, args: &[&str]) {
-    let st = Command::new("git")
+    // The shared helper adds the gc/maintenance guards and blanks global and system config.
+    let st = crate::common::git::command()
         .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
         .args(args)
         .current_dir(dir)
         .env("HOME", home)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .stdout(Stdio::null())
