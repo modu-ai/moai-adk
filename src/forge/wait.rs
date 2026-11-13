@@ -404,6 +404,31 @@ mod tests {
         assert_eq!(out["elapsed_secs"], 45);
     }
 
+    /// With several workflow runs on the head, one still running keeps the wait going even
+    /// when another has completed (mutation W6).
+    #[test]
+    fn ci_waits_until_every_run_has_completed() {
+        let two = |second: &str| {
+            json!({"workflow_runs": [
+                {"id": 1, "name": "ci", "status": "completed", "conclusion": "success"},
+                {"id": 2, "name": "docs", "status": second, "conclusion": if second == "completed" { json!("success") } else { Value::Null }}
+            ]})
+        };
+        let t = RecordedTransport::new(vec![
+            Exchange {
+                request: get(RUNS, None),
+                response: ok(two("in_progress"), "\"a\"", "10"),
+            },
+            Exchange {
+                request: get(RUNS, Some("\"a\"")),
+                response: ok(two("completed"), "\"b\"", "9"),
+            },
+        ]);
+        let out = wait(&req(Condition::Ci { head: HEAD.into() }, 600), &t, &clock()).unwrap();
+        assert_eq!(out["polls"], 2, "one run still in progress is not done");
+        assert_eq!(out["value"]["runs"].as_array().unwrap().len(), 2);
+    }
+
     /// GitHub's `x-poll-interval` lengthens the pause; it never shortens it.
     #[test]
     fn x_poll_interval_is_a_floor() {
