@@ -527,6 +527,10 @@ enum Command {
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,
+        /// `project` (default): .claude/settings.json. `local`: .claude/settings.local.json, the
+        /// file Claude Code also reads for sessions in a linked worktree (#2581).
+        #[arg(long, default_value = "project")]
+        scope: String,
     },
     /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
     /// reference. Writes the project settings file and its receipt only; home is refused.
@@ -536,6 +540,9 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// The scope the plan was made for (#2581); the digest binds it.
+        #[arg(long, default_value = "project")]
+        scope: String,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -1018,6 +1025,19 @@ enum Command {
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
     },
+    /// The deterministic review package for an AUDIT (#2614): the diff from the merge base to
+    /// HEAD, the changed files, and the review instructions (`REVIEW.md` and its includes) and
+    /// context (`AGENTS.md`, `CLAUDE.md`) read from BASE only. Reads git; writes nothing.
+    ReviewPackage {
+        /// Repository root.
+        project: PathBuf,
+        /// The base revision (the pull request's base branch tip).
+        #[arg(long)]
+        base: String,
+        /// The head revision under review.
+        #[arg(long)]
+        head: String,
+    },
     /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
     /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
     GoStatePlan {
@@ -1377,6 +1397,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
+        ReviewPackage { .. } => "review.package",
         GoStatePlan { .. } => "go_state.plan",
         GoStateApply { .. } => "go_state.apply",
         GoStateRevertPlan { .. } => "go_state.revert_plan",
@@ -2123,21 +2144,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 }
             })
         }
-        Command::ClaudeSettingsPlan { project } => {
-            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
-            moai_cli::claude::settings_plan(&project, &desired)
+        Command::ClaudeSettingsPlan { project, scope } => {
+            let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
+            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            moai_cli::claude::settings_plan_in(&project, &desired, scope)
         }
         Command::ClaudeSettingsApply {
             project,
             plan_digest,
             permission_reference,
+            scope,
         } => {
-            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
-            moai_cli::claude::settings_apply(
+            let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
+            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            moai_cli::claude::settings_apply_in(
                 &project,
                 &desired,
                 &plan_digest,
                 &permission_reference,
+                scope,
             )
         }
         Command::CodexConfigPlan { project } => {
@@ -2341,6 +2366,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
             })
         }
+        Command::ReviewPackage {
+            project,
+            base,
+            head,
+        } => serde_json::to_value(moai_cli::review::package(&project, &base, &head)?)
+            .map_err(|_| "encode failed".into()),
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
                 .map_err(|_| "encode failed".into())
