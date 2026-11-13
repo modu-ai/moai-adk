@@ -254,7 +254,7 @@ class JudgeTest(unittest.TestCase):
         remerge, hits = self.judge(["src/contract.rs"], ["src/forge/new.rs"])
         self.assertIn("permission-reference-one-copy", [h["id"] for h in hits])
         # the prefix anchors at the start: "src/" inside a path is not "src/" (#2708 mutant M2)
-        remerge, hits = self.judge(["src/contract.rs"], ["docs/src/a.rs"])
+        remerge, hits = self.judge(["src/contract.rs"], ["lib/src/a.rs"])
         self.assertNotIn("permission-reference-one-copy", [h["id"] for h in hits])
 
     def test_hit_paths_are_sorted(self):
