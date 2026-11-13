@@ -25,8 +25,6 @@ import repo_scans  # noqa: E402
 EXEMPT = {
     "tests/atlas_query_cli.rs": "walks the TempDir tree it built from named atlas fixtures",
     "tests/ci_install_ripgrep_test.py": "rglob over the test's own temporary runner folder",
-    "tests/claude_preview_test.py": "rglob over a temporary project to compare bytes before and after",
-    "tests/claude_transaction_boundary_test.py": "rglob over a temporary root to compare bytes",
     "tests/decision_append_cli.rs": "read_dir of a TempDir docs folder",
     "tests/e2e_host_fixture.rs": "clones into a temp dir, then checks named route and workflow files",
     "tests/forge_cli.rs": "recursive walks of TempDir only",

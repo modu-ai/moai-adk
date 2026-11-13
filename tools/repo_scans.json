@@ -440,6 +440,108 @@
       "rejects": "a test that clears a child environment itself instead of tests/common CleanEnv (#2699)"
     },
     {
+      "id": "claude-python-adapter-removed",
+      "tests": [
+        "tests/claude_python_adapter_removed.rs::nothing_tells_anyone_to_run_the_removed_files"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test claude_python_adapter_removed"
+      ],
+      "rules": [
+        "tests/claude_python_adapter_removed.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "skills/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "tools/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": ".github/",
+          "suffixes": [
+            ".md",
+            ".rs",
+            ".py",
+            ".yml",
+            ".yaml",
+            ".toml",
+            ".sh"
+          ]
+        },
+        {
+          "prefix": "adapters/"
+        },
+        {
+          "prefix": "experiments/claude_settings_plan.py"
+        },
+        {
+          "prefix": "README.md"
+        },
+        {
+          "prefix": "AGENTS.md"
+        }
+      ],
+      "rejects": "a file that still says to run the removed Python Claude adapter, the adapter coming back, or the kept output styles leaving templates/claude/output-styles/ (#2709)"
+    },
+    {
       "id": "repo-scans-table",
       "tests": [
         "tests/repo_scans_test.py::RepoScansTableTest"
