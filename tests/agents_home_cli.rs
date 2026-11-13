@@ -45,6 +45,8 @@ struct Fx {
     _tmp: TempDir,
     home: String,
     package: String,
+    /// The agent source folder, outside the skill package (#2721).
+    agents: String,
 }
 
 fn fx() -> Fx {
@@ -52,21 +54,22 @@ fn fx() -> Fx {
     let base = fs::canonicalize(tmp.path()).unwrap();
     let home = base.join("home");
     fs::create_dir_all(&home).unwrap();
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
     let package = base.join("package");
-    copy_tree(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
-        &package,
-    );
+    copy_tree(&repo.join("skills/moai"), &package);
+    let agents = base.join("agents");
+    copy_tree(&repo.join("agents"), &agents);
     Fx {
         _tmp: tmp,
         home: home.to_str().unwrap().into(),
         package: package.to_str().unwrap().into(),
+        agents: agents.to_str().unwrap().into(),
     }
 }
 
 impl Fx {
     fn plan(&self) -> Value {
-        let v = call(&["agents-home-plan", &self.home, &self.package]);
+        let v = call(&["agents-home-plan", &self.home, &self.package, &self.agents]);
         assert_eq!(v["ok"], Value::Bool(true), "{v}");
         v["result"].clone()
     }
@@ -75,6 +78,7 @@ impl Fx {
             "agents-home-apply",
             &self.home,
             &self.package,
+            &self.agents,
             "--plan-digest",
             plan["plan_digest"].as_str().unwrap(),
             "--permission-reference",
@@ -126,6 +130,14 @@ fn install_then_rerun_is_unchanged() {
         assert_eq!(acts.len(), 5, "{host}: {acts:?}");
         assert!(acts.iter().all(|(_, a)| a == "create"), "{acts:?}");
     }
+    // #2721: the plan names the source folder's digest beside the skill package's.
+    assert!(
+        plan["agents_digest"]
+            .as_str()
+            .is_some_and(|d| d.starts_with("sha256:") && d.len() == 71),
+        "{plan}"
+    );
+    assert_ne!(plan["agents_digest"], plan["package_digest"]);
     let v = fx.apply(&plan);
     assert_eq!(v["result"]["state"], "applied", "{v}");
     assert_eq!(v["result"]["written"].as_array().unwrap().len(), 15);
@@ -164,7 +176,7 @@ fn a_user_edit_is_preserved_and_a_changed_package_conflicts_only_there() {
     fx.apply(&plan);
     assert_eq!(fs::read_to_string(&mine).unwrap(), "my own impl agent\n");
     for role in ["impl", "audit"] {
-        let src = Path::new(&fx.package).join(format!("references/agents/{role}.md"));
+        let src = Path::new(&fx.agents).join(format!("{role}.md"));
         let text = fs::read_to_string(&src).unwrap() + "\nOne more line.\n";
         fs::write(&src, text).unwrap();
     }

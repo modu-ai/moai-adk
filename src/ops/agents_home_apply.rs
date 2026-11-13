@@ -8,8 +8,10 @@ use std::path::PathBuf;
 pub struct Args {
     /// User home root.
     home: PathBuf,
-    /// Skill package folder carrying `references/agents/`.
+    /// Skill package folder whose `references/` the agents' `reads` lists name.
     package: PathBuf,
+    /// Agent source folder outside the skill (`agents/` beside `skills/`, #2721).
+    agents: PathBuf,
     /// The preview's `plan_digest`.
     #[arg(long)]
     plan_digest: String,
@@ -24,6 +26,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     moai_cli::agent_install::apply(
         &args.home,
         &args.package,
+        &args.agents,
         &args.plan_digest,
         &args.permission_reference,
     )
