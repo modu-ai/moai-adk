@@ -16,6 +16,13 @@ use std::path::Path;
 use tempfile::TempDir;
 
 const API: &str = "https://api.github.com/repos/o/r";
+/// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
+/// gate's body check the binary's own).
+const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+- mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
+- clone: check set from a fresh clone, not the /tmp symlink path\n\
+- host: api.github.com exercised via fake gh executable, no network\n\
+- receipt: receipt digest re-read and matched before PASS recorded\n";
 
 fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> String {
     for (path, text) in files {
@@ -40,8 +47,8 @@ fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> String {
     git(dir, &["rev-parse", "HEAD"]).trim().to_string()
 }
 
-/// A repository with base A, a PR branch B and a tip C. The checker stub passes a body that
-/// holds `SELF-AUDIT-OK`.
+/// A repository with base A, a PR branch B and a tip C. No checker file: the body check is
+/// the binary's own (#2708), so a passing body is [`PASS_BODY`].
 struct Repo {
     _dir: TempDir,
     a: String,
@@ -53,11 +60,9 @@ fn repo(pr_files: &[(&str, &str)], tip_files: &[(&str, &str)]) -> Repo {
     let dir = TempDir::new().unwrap();
     let d = dir.path();
     git_ok(d, &["init", "-q", "-b", "main"]);
-    let checker = "import sys\nsys.exit(0 if 'SELF-AUDIT-OK' in open(sys.argv[2]).read() else 1)\n";
     let a = commit(
         d,
         &[
-            ("tools/check_pr_self_audit.py", checker),
             ("docs/a.md", "one\n\ntwo\n"),
             ("src/a.rs", "a\n"),
             ("src/b.rs", "b\n"),
@@ -121,11 +126,7 @@ fn target(r: &Repo) -> Target<'_> {
 #[test]
 fn a_clean_pull_request_collects_into_a_passing_snapshot() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
-    let t = exchanges(
-        &r.b,
-        vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "body SELF-AUDIT-OK",
-    );
+    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
     assert_eq!(s.head, r.b);
@@ -145,11 +146,7 @@ fn the_checker_unknown_base_and_missing_head_are_read_not_assumed() {
     assert!(!collect(&target(&r), &t).unwrap().body_check_ok);
     // A verdict base the repository does not have.
     let unknown = "abababababababababababababababababababab";
-    let t = exchanges(
-        &r.b,
-        vec![claim(&r.b), verdict(&r.b, unknown)],
-        "SELF-AUDIT-OK",
-    );
+    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, unknown)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.verdict_base_known);
     assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
@@ -183,22 +180,14 @@ fn overlap_and_conflict_are_measured_from_the_merged_tree() {
         &[("docs/a.md", "one\nPR line\n\ntwo\n")],
         &[("docs/a.md", "one\n\ntwo\ntip line\n")],
     );
-    let t = exchanges(
-        &r.b,
-        vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
-    );
+    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert!(s.merge_clean);
     assert_eq!(s.docs_lines_kept, vec!["docs/a.md".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
     // Both sides change the same line of code: a conflict.
     let r = repo(&[("src/b.rs", "pr\n")], &[("src/b.rs", "tip\n")]);
-    let t = exchanges(
-        &r.b,
-        vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
-    );
+    let t = exchanges(&r.b, vec![claim(&r.b), verdict(&r.b, &r.a)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.merge_clean);
     assert_eq!(gate::check(&s).unwrap_err().rule, "G6");
@@ -211,7 +200,7 @@ fn comment_pages_are_followed() {
     let t = RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -295,10 +284,11 @@ fn a_doc_that_lost_an_added_line_is_not_kept() {
     assert!(!lines_kept(d, &format!("{lost}^{{tree}}"), "docs/a.md", &sides).unwrap());
 }
 
-/// A manifest entry with no file fails (mutation C5); a repository without the Self-Audit
-/// checker never reads as a passing body (mutation C7).
+/// A manifest entry with no file fails (mutation C5); a body without a measured Self-Audit
+/// section never reads as passing (mutation C7; since #2708 the check is the binary's own
+/// `pr-self-audit-check`, so the old stub marker alone is such a body).
 #[test]
-fn an_entry_without_a_file_and_a_missing_checker_fail() {
+fn an_entry_without_a_file_and_a_body_without_the_section_fail() {
     let dir = TempDir::new().unwrap();
     let d = dir.path();
     git_ok(d, &["init", "-q", "-b", "main"]);
@@ -318,11 +308,10 @@ fn an_entry_without_a_file_and_a_missing_checker_fail() {
     assert!(!manifest_matches(d, "HEAD^{tree}").unwrap());
 
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
-    fs::remove_file(r._dir.path().join("tools/check_pr_self_audit.py")).unwrap();
     let t = exchanges(
         &r.b,
         vec![claim(&r.b), verdict(&r.b, &r.a)],
-        "SELF-AUDIT-OK",
+        "body SELF-AUDIT-OK",
     );
     let s = collect(&target(&r), &t).unwrap();
     assert!(!s.body_check_ok);
@@ -339,7 +328,7 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     git_ok(d, &["checkout", "-q", "pr"]);
     let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2");
     git_ok(d, &["checkout", "-q", "main"]);
-    let t = exchanges(&b2, vec![claim(&b2), verdict(&b2, &r.b)], "SELF-AUDIT-OK");
+    let t = exchanges(&b2, vec![claim(&b2), verdict(&b2, &r.b)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
@@ -391,7 +380,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
     let ex = RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -438,7 +427,7 @@ fn a_trailer_or_claim_line_that_cannot_be_read_stops_the_collection() {
         let mut ex = vec![
             Exchange {
                 request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-                response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+                response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
             },
             Exchange {
                 request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
@@ -487,7 +476,7 @@ fn three_reads(r: &Repo) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": r.b}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),

@@ -1,18 +1,16 @@
 """Issue #2388 AC-3b: explicit re-audit CLI completeness checks."""
 
 import pathlib
-import subprocess
 import tempfile
 import unittest
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from self_audit_parity import run_both  # noqa: E402  (#2708: Python and Rust must agree)
+from self_audit_run import run_check  # noqa: E402  (#2708: the Rust checker)
 
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-TOOL = ROOT / "tools/check_pr_self_audit.py"
 SCOPE = "tools/check_pr_self_audit.py의 F1 필드 검증과 변경한 CLI 경계를 수리하고 확인했다."
 SCOPE_LINE = "- 수리 확인 범위: " + SCOPE + "\n"
 FINDINGS_LINE = "- 새 지적 분류: 없음\n"
@@ -41,7 +39,7 @@ Repair verification is recorded above.
 
 class CheckPrReauditTest(unittest.TestCase):
     def run_tool(self, text, *args):
-        return run_both(args, text, cwd=ROOT)
+        return run_check(args, text, cwd=ROOT)
 
     def assert_pass(self, text, *args):
         out = self.run_tool(text, *args)

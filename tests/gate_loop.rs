@@ -15,6 +15,13 @@ use std::path::Path;
 use tempfile::TempDir;
 
 const API: &str = "https://api.github.com/repos/o/r";
+/// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
+/// gate's body check the binary's own).
+const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+- mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
+- clone: check set from a fresh clone, not the /tmp symlink path\n\
+- host: api.github.com exercised via fake gh executable, no network\n\
+- receipt: receipt digest re-read and matched before PASS recorded\n";
 
 struct NoClock;
 impl Clock for NoClock {
@@ -53,14 +60,9 @@ fn repo(overlap: bool) -> (TempDir, String, String) {
     let dir = TempDir::new().unwrap();
     let d = dir.path();
     git_ok(d, &["init", "-q", "-b", "main"]);
-    let checker = "import sys\nsys.exit(0 if 'SELF-AUDIT-OK' in open(sys.argv[2]).read() else 1)\n";
     let a = commit(
         d,
-        &[
-            ("tools/check_pr_self_audit.py", checker),
-            ("src/a.rs", "1\n2\n3\n4\n5\n6\n7\n"),
-            ("src/b.rs", "b\n"),
-        ],
+        &[("src/a.rs", "1\n2\n3\n4\n5\n6\n7\n"), ("src/b.rs", "b\n")],
         "base",
     );
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
@@ -104,7 +106,7 @@ fn reads(head: &str, cs: &Value) -> Vec<Exchange> {
     vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
-            response: ok(json!({"head": {"sha": head}, "body": "SELF-AUDIT-OK"})),
+            response: ok(json!({"head": {"sha": head}, "body": PASS_BODY})),
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),

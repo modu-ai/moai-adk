@@ -16,6 +16,13 @@ use std::path::Path;
 use tempfile::TempDir;
 
 const API: &str = "https://api.github.com/repos/o/r";
+/// A PR body that `pr-self-audit-check` passes (the four measured lines, #2279; #2708 made the
+/// gate's body check the binary's own).
+const PASS_BODY: &str = "Refs #2200\n\n## Self-Audit\n\n\
+- mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
+- clone: check set from a fresh clone, not the /tmp symlink path\n\
+- host: api.github.com exercised via fake gh executable, no network\n\
+- receipt: receipt digest re-read and matched before PASS recorded\n";
 
 struct FakeClock {
     slept: RefCell<Vec<u64>>,
@@ -57,22 +64,13 @@ fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> String {
     git(dir, &["rev-parse", "HEAD"]).trim().to_string()
 }
 
-/// Base A, PR head B (changes src/a.rs), tip C (changes src/b.rs); the checker stub passes a
-/// body holding `SELF-AUDIT-OK`.
+/// Base A, PR head B (changes src/a.rs), tip C (changes src/b.rs); the body check is the
+/// binary's own (#2708), so a passing body is [`PASS_BODY`].
 fn repo() -> (TempDir, String, String) {
     let dir = TempDir::new().unwrap();
     let d = dir.path();
     git_ok(d, &["init", "-q", "-b", "main"]);
-    let checker = "import sys\nsys.exit(0 if 'SELF-AUDIT-OK' in open(sys.argv[2]).read() else 1)\n";
-    let a = commit(
-        d,
-        &[
-            ("tools/check_pr_self_audit.py", checker),
-            ("src/a.rs", "a\n"),
-            ("src/b.rs", "b\n"),
-        ],
-        "base",
-    );
+    let a = commit(d, &[("src/a.rs", "a\n"), ("src/b.rs", "b\n")], "base");
     git_ok(d, &["checkout", "-q", "-b", "pr"]);
     let b = commit(d, &[("src/a.rs", "a2\n")], "pr");
     git_ok(d, &["checkout", "-q", "main"]);
@@ -131,7 +129,7 @@ fn tip_of(dir: &TempDir) -> String {
 
 /// Every read up to the status: the gate's three and the remote two, all matching.
 fn passing(dir: &TempDir, head: &str, base: &str) -> Vec<Exchange> {
-    let mut ex = reads(head, base, "SELF-AUDIT-OK");
+    let mut ex = reads(head, base, PASS_BODY);
     ex.extend(remote(head, &tip_of(dir)));
     ex
 }
@@ -304,7 +302,7 @@ fn pr_read_back(merged: bool) -> Exchange {
 fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     let (dir, a, b) = repo();
     // GitHub's base moved past the local tip: the gate judged a stale tip.
-    let mut ex = reads(&b, &a, "SELF-AUDIT-OK");
+    let mut ex = reads(&b, &a, PASS_BODY);
     ex.extend(remote(&b, &"1".repeat(40)));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
@@ -315,7 +313,7 @@ fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     assert_eq!(t.remaining(), 0);
 
     // The head moved on GitHub after the snapshot.
-    let mut ex = reads(&b, &a, "SELF-AUDIT-OK");
+    let mut ex = reads(&b, &a, PASS_BODY);
     ex.extend(remote(&"2".repeat(40), &tip_of(&dir)));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();

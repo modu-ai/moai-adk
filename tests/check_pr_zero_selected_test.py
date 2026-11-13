@@ -4,15 +4,13 @@ that selects more than one target (or cargo's default set), are blocked in the
 Self-Audit section and in markdown table rows. Boundaries are literal lines."""
 
 import pathlib
-import subprocess
 import unittest
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from self_audit_parity import run_both  # noqa: E402  (#2708: Python and Rust must agree)
+from self_audit_run import run_check  # noqa: E402  (#2708: the Rust checker)
 
 
-TOOL = pathlib.Path(__file__).resolve().parents[1] / "tools/check_pr_self_audit.py"
 
 SECTION = """## Self-Audit
 
@@ -31,7 +29,7 @@ def body(extra="", table=""):
 
 class ZeroSelectedTest(unittest.TestCase):
     def run_tool(self, text):
-        return run_both((), text)
+        return run_check((), text)
 
     def assert_pass(self, text):
         out = self.run_tool(text)

@@ -200,26 +200,11 @@ pub fn manifest_matches(dir: &Path, tree: &str) -> Result<bool> {
     Ok(true)
 }
 
-/// Runs the repository's PR body Self-Audit checker on `body`. No checker in the repository
-/// means the check did not pass (G4 stops rather than assumes).
-fn body_check(dir: &Path, body: &str) -> Result<bool> {
-    let tool = dir.join("tools/check_pr_self_audit.py");
-    if !tool.is_file() {
-        return Ok(false);
-    }
-    let tmp = tempfile::NamedTempFile::new().map_err(|e| format!("temp file: {e}"))?;
-    std::fs::write(tmp.path(), body).map_err(|e| format!("temp file: {e}"))?;
-    let status = std::process::Command::new("python3")
-        .arg("-I")
-        .arg(&tool)
-        .arg("--file")
-        .arg(tmp.path())
-        .current_dir(dir)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map_err(|e| format!("cannot run the Self-Audit checker: {e}"))?;
-    Ok(status.success())
+/// The PR body Self-Audit check (`moai-cli pr-self-audit-check`, #2708). It used to run the
+/// repository's `tools/check_pr_self_audit.py` and failed G4 where that file was missing; the
+/// check is now this binary's own, the same in every repository.
+fn body_check(body: &str) -> bool {
+    crate::self_audit::check(body, false).is_ok()
 }
 
 /// Reads one pull request into a [`Snapshot`] for [`gate::check`].
@@ -355,7 +340,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         docs_lines_kept,
         merged_manifest_ok,
         review_confirmed_prs: target.review_confirmed_prs.clone(),
-        body_check_ok: body_check(dir, &body)?,
+        body_check_ok: body_check(&body),
         verdict_base_known,
         pr_authors: Some(authors),
     })
