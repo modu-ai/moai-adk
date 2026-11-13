@@ -41,7 +41,7 @@ Read revisions safely: write a revision path as `"${rev}:path"` (zsh reads `$rev
 
 ## Re-audit PR body check
 
-Save the PR body as UTF-8 `BODY.md` and run `python3 -I tools/check_pr_self_audit.py --reaudit --file BODY.md`. Standard input is also supported: `python3 -I tools/check_pr_self_audit.py --reaudit < BODY.md`. Re-audits must explicitly select `--reaudit`; template text and claim epochs never select it automatically. For an initial audit, omit the two re-audit-only fields and use the existing command.
+Save the PR body as UTF-8 `BODY.md` and run `moai-cli pr-self-audit-check --reaudit --file BODY.md`. Standard input is also supported: `moai-cli pr-self-audit-check --reaudit < BODY.md`. It prints one line, `self-audit: pass (…)` (exit 0) or `self-audit: blocked missing=…` (exit 1). Re-audits must explicitly select `--reaudit`; template text and claim epochs never select it automatically. For an initial audit, omit the two re-audit-only fields and use the existing command.
 
 Use exactly one visible `## 독립 review` section; multiple visible review sections are ambiguous and fail. Inside that section, before the next visible Markdown heading, include each of the following fields exactly once as visible text. HTML comments and fenced or indented code examples do not establish a section, end it or supply its fields. Fill the repair scope with the actual repaired path, boundary and affected scope for F1.
 
