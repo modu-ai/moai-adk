@@ -380,3 +380,60 @@ fn the_primary_checkout_as_session_folder_is_not_the_lanes_work() {
     let r = run(&f, "agent-9", Some(obs));
     assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
 }
+
+/// Codex review on PR #2715: a bare repository has no primary checkout, so its first linked
+/// worktree, tied to the lane only by the session folder, is still the lane's work.
+#[test]
+fn a_bare_repositorys_first_worktree_is_not_a_primary_checkout() {
+    let f = fixture();
+    let root = f.tmp.path().canonicalize().unwrap();
+    git_ok(&root, &["clone", "-q", "--bare", "remote.git", "bare.git"]);
+    let bare = root.join("bare.git");
+    let wt = root.join("detached-wt");
+    g(
+        &bare,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            wt.to_str().unwrap(),
+            "main",
+        ],
+    );
+    fs::write(wt.join("pending.txt"), "x\n").unwrap();
+    let home = f.tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    let obs = f.tmp.path().join("bare-obs.json");
+    fs::write(
+        &obs,
+        json!({"schema_version": 1, "session_cwd": {"source": "fixture", "path": wt}}).to_string(),
+    )
+    .unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .env_clear()
+        .env("PATH", std::env::var_os("PATH").unwrap())
+        .env("HOME", &home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .args([
+            "lane-safe-to-reset",
+            bare.to_str().unwrap(),
+            "--lane",
+            "agent-9",
+            "--now",
+            NOW,
+        ])
+        .arg("--observations")
+        .arg(&obs)
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let r = result(&v);
+    assert_eq!(r["verdict"], "not_safe", "{r}");
+    assert!(texts(r, "unattributed").is_empty(), "{r}");
+    assert!(
+        texts(r, "findings")[0].ends_with("1 uncommitted change(s)"),
+        "{r}"
+    );
+}

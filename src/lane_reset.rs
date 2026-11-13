@@ -297,7 +297,12 @@ pub fn check(project: &Path, lane: &str, obs: &Observations, now: i64) -> Result
     // changes belong to the person and the leader, not to a lane whose only tie to it is the
     // session folder (leader's first use, #2669 comment 6851881955). Its counts are reported
     // under `unattributed` and do not decide the verdict.
-    let primary = entries.iter().find(|e| !e.bare).map(|e| e.path.as_path());
+    // Only a non-bare first entry is a primary checkout; a bare repository has none, and its
+    // first linked worktree is a lane's like any other (Codex review on PR #2715).
+    let primary = entries
+        .first()
+        .filter(|e| !e.bare)
+        .map(|e| e.path.as_path());
     let mut worktrees = Vec::new();
     let mut unattributed = Vec::new();
     for entry in entries.iter().filter(|e| !e.bare) {
