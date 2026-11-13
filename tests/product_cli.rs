@@ -2513,14 +2513,14 @@ mod skill_package {
 
     /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
     /// generator instead of free-form wording — leader feeds the state it read
-    /// to tools/gen_goal_block.py and prints its `leader` line, with the
+    /// to `moai-cli goal-block` (#2708; formerly tools/gen_goal_block.py) and prints its `leader` line, with the
     /// keep-set exclusion rule stated as the generator's rule; agent binds its
     /// card-scoped lines to the generator's `agent` kind.
     #[test]
     fn goal_step_is_bound_to_the_goal_block_generator() {
         let leader = mode_workflow("MODE-LEADER");
         assert!(
-            leader.contains("`tools/gen_goal_block.py`"),
+            leader.contains("`moai-cli goal-block`"),
             "leader workflow must name the generator: {leader}"
         );
         assert!(
@@ -2536,8 +2536,15 @@ mod skill_package {
             "leader workflow must forbid editing the generated line: {leader}"
         );
         let agent = mode_workflow("MODE-AGENT");
+        // #2708: a user project has no tools/ folder, so neither workflow names the script.
+        for body in [&leader, &agent] {
+            assert!(
+                !body.contains("gen_goal_block"),
+                "a mode workflow names the Python script"
+            );
+        }
         assert!(
-            agent.contains("`tools/gen_goal_block.py`"),
+            agent.contains("`moai-cli goal-block`"),
             "agent workflow must name the generator: {agent}"
         );
         assert!(
@@ -2551,8 +2558,8 @@ mod skill_package {
         // The generator itself still enforces the rule: a keep-set entry without
         // a reason is refused, and excluded numbers leave the condition.
         let run = |input: &str| {
-            let mut out = std::process::Command::new("python3")
-                .args(["-I", "tools/gen_goal_block.py"])
+            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
@@ -2569,7 +2576,7 @@ mod skill_package {
         let good = run(
             r#"{"milestone":"m1","issues":[{"number":1,"state":"open"},{"number":2,"state":"open"}],"prs":[{"number":3,"state":"open"}],"keep_set":[{"number":2,"reason":"operator-held"}]}"#,
         );
-        let v: Value = serde_json::from_slice(&good.stdout).unwrap();
+        let v: Value = serde_json::from_slice::<Value>(&good.stdout).unwrap()["result"].clone();
         // The excluded entry drops out of the counts (2 issues -> 1) and the
         // condition carries its number and reason.
         assert_eq!(v["counts"]["open_issues"], json!(1));
@@ -2578,6 +2585,43 @@ mod skill_package {
         let cond = v["leader"]["condition"].as_str().unwrap();
         assert!(cond.contains("#2(operator-held)"), "{cond}");
         assert!(v["keep_set_excluded"][0]["reason"] == json!("operator-held"));
+    }
+
+    /// #2720 audit F1: the 1 MiB stdin limit `goal-block` added at its N/N+1 edge. The sizes
+    /// are literals on purpose, so a change to the limit in src/ops/goal_block.rs fails here.
+    #[test]
+    fn goal_block_stdin_limit_is_one_mib_exactly() {
+        let run = |input: &[u8]| {
+            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .arg("goal-block")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            crate::common::feed_stdin(&mut out, input);
+            out.wait_with_output().unwrap()
+        };
+        // A valid fixture padded with trailing spaces (JSON whitespace) to an exact size.
+        let sized = |len: usize| {
+            let mut bytes = br#"{"milestone":"m","issues":[],"prs":[],"keep_set":[]}"#.to_vec();
+            bytes.resize(len, b' ');
+            bytes
+        };
+        let at_limit = run(&sized(1048576));
+        assert!(
+            at_limit.status.success(),
+            "1048576 bytes must pass: {}",
+            String::from_utf8_lossy(&at_limit.stderr)
+        );
+        let over = run(&sized(1048577));
+        assert_eq!(over.status.code(), Some(1), "1048577 bytes must be refused");
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&over.stdout),
+            String::from_utf8_lossy(&over.stderr)
+        );
+        assert!(text.contains("larger than 1 MiB"), "{text}");
     }
 
     #[test]

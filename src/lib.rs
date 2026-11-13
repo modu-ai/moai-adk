@@ -31,6 +31,7 @@ pub mod generation;
 pub mod github_templates;
 pub mod go_state;
 pub mod goal;
+pub mod goal_block;
 pub mod handoff;
 pub mod heavy_slot;
 pub mod home_routing;
