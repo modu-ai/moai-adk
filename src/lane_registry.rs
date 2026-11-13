@@ -87,7 +87,9 @@ pub fn registry_dir(project: &Path) -> Result<PathBuf, String> {
     let common = id["clone_anchor"]
         .as_str()
         .ok_or("session registry requires a git repository")?;
-    Ok(Path::new(common).join(".moai-cli").join("sessions"))
+    Ok(Path::new(common)
+        .join(crate::CLONE_STATE_DIR)
+        .join("sessions"))
 }
 
 fn refuse_symlink(path: &Path) -> Result<(), String> {
