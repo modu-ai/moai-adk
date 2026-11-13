@@ -7,6 +7,11 @@
 //! comment is not an atomic lock; this module only re-reads every comment and decides, so a
 //! competing claim that became visible late is judged on the re-read.
 //!
+//! Decisions of #1975 comment 6840449133 (Issue #2612): a later claim of the same session
+//! renews that session's earlier open claims without a handoff line when no other session's
+//! claim stands before it (D1, closed as `renewal`); a lane's `by=timeout` handoff line (D2)
+//! closes only an expired lease — its other two conditions are the lane's written record.
+//!
 //! What it adds:
 //! - [`classify_comment`]: one parser for the claim line (the RC1 form plus the appended
 //!   fields `render_claim_line` writes) and for two machine lines that close a claim,
@@ -118,6 +123,14 @@ pub fn classify_comment(body: &str) -> CommentKind {
     CommentKind::Other
 }
 
+/// The `by=` value of the comment's handoff line (`leader`, `timeout`, …), if any.
+fn handoff_by(body: &str) -> Option<&str> {
+    body.lines()
+        .map(str::trim)
+        .find_map(|l| l.strip_prefix(HANDOFF_PREFIX))
+        .and_then(|rest| token(rest, "by"))
+}
+
 /// The release line a leader or operator posts to close a claim (no POST here).
 pub fn render_release_line(claim_comment_id: i64, by: &str) -> String {
     format!("{RELEASE_PREFIX} comment={claim_comment_id} by={by}")
@@ -194,6 +207,17 @@ pub fn evaluate(comments: &[IssueComment], who: &Verifier<'_>) -> Value {
                                         "detail": "closes no earlier claim comment"}));
                     continue;
                 }
+                // Decision D2 (#1975 comment 6840449133): a lane's timeout takeover may
+                // close only an expired lease; the other two conditions are the lane's
+                // record, not visible here.
+                if matches!(kind, CommentKind::Handoff { .. })
+                    && handoff_by(&c.body) == Some("timeout")
+                    && claims.iter().any(|v| v.id == target && v.live)
+                {
+                    invalid.push(json!({"comment_id": c.id, "reason": "malformed",
+                                        "detail": "timeout handoff closes a live lease"}));
+                    continue;
+                }
                 let (by, to) = match &kind {
                     CommentKind::Handoff { to, .. } => ("handoff", Some(to.clone())),
                     _ => ("release", None),
@@ -208,10 +232,40 @@ pub fn evaluate(comments: &[IssueComment], who: &Verifier<'_>) -> Value {
             CommentKind::Other => unreachable!(),
         }
     }
-    let is_closed = |id: i64| closed.iter().any(|c| c["comment_id"] == json!(id));
+    let closed_by = |closed: &[Value], id: i64| closed.iter().any(|c| c["comment_id"] == json!(id));
+    // Decision D1 (#1975 comment 6840449133): a later claim of the same session renews
+    // the earlier ones without a handoff line, when every open claim before it belongs
+    // to that session. Another session's claim in between keeps the old rule. Claims are
+    // in id order, so a chain of renewals closes each earlier line in turn. A renewing line
+    // that a release or handoff closed later still renews: the lane releases, and the leader
+    // hands off, its latest claim, so the line it replaced must not come back as holder
+    // (audit FAIL 6840678988 B1 on #2621).
+    for m in &claims {
+        let earlier: Vec<i64> = claims
+            .iter()
+            .filter(|v| v.id < m.id && !closed_by(&closed, v.id))
+            .map(|v| v.id)
+            .collect();
+        let same = claims
+            .iter()
+            .filter(|v| earlier.contains(&v.id))
+            .all(|v| v.session == m.session);
+        if !earlier.is_empty() && same {
+            for id in earlier {
+                closed.push(json!({"comment_id": id, "by": "renewal", "to": m.session,
+                                   "closing_comment_id": m.id}));
+            }
+        }
+    }
+    let is_closed = |id: i64| closed_by(&closed, id);
     let mine = match who.comment_id {
         Some(id) => claims.iter().find(|v| v.id == id),
-        None => claims.iter().find(|v| v.session == who.session),
+        // Without a known id, the session's latest open claim speaks for it.
+        None => claims
+            .iter()
+            .rev()
+            .find(|v| v.session == who.session && !is_closed(v.id))
+            .or_else(|| claims.iter().find(|v| v.session == who.session)),
     };
     let holder = claims.iter().find(|v| !is_closed(v.id));
     let (status, lost_to) = if let (Some(id), None) = (who.comment_id, mine) {
@@ -929,12 +983,12 @@ fn git_out(cwd: &Path, args: &[&str]) -> Option<String> {
 }
 
 /// The claim tokens a push accepts on the branch's commits: the verifier's own claim and
-/// every earlier claim of the Issue closed by a handoff line, so commits written under a
-/// previous epoch stay valid after the handoff.
+/// every earlier claim of the Issue closed by a handoff line or by a same-session renewal,
+/// so commits written under a previous epoch stay valid after it.
 fn accepted_tokens(issue: i64, verdict: &Value) -> Vec<String> {
     let mut ids: Vec<i64> = verdict["mine"].as_i64().into_iter().collect();
     for c in verdict["closed"].as_array().into_iter().flatten() {
-        if c["by"] == json!("handoff") {
+        if c["by"] == json!("handoff") || c["by"] == json!("renewal") {
             ids.extend(c["comment_id"].as_i64());
         }
     }
