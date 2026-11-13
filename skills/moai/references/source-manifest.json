@@ -64,12 +64,12 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "e4437eed0d9d8ba561531b2beff4ef3a4cf6823b77d2d3e8be1527e74a08b364",
+      "sha256": "936526bbf67450a7a45fe4a5d8470fc6fb73b9ff27ec35de4f320477a93d7bde",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
       }
     },
     "workflows/setup.md": {
@@ -91,21 +91,21 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "665f52f08a9f916d9e7c9fc33d67d9f976b4e530ff0f5306964a69036ce79195",
+      "sha256": "252d3cc899887bc2358110444b7ab545a5b10cd69c5f0b8d461a914fb118aa6a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission). Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
       }
     },
     "workflows/run.md": {
-      "sha256": "f029ccd552df6f0015a63098bdfc9a2d1c67a9647f81eb69b2d2c3d06dfdae74",
+      "sha256": "108a38c095dc4ea05672874e09eda86fd33d8fe59e92154e6ecc64bd89018fea",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
       }
     },
     "workflows/verify.md": {
@@ -118,21 +118,21 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "729b56411a97aeab2a76d595bfc268be574b6f027dbff95377adc879f5ccb20f",
+      "sha256": "bad751356981f0e0cb923af700ae6482d2a8dae81b30492c18e8e6e4bf409ab1",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
       }
     },
     "workflows/sync.md": {
-      "sha256": "6bfb1afb3fcd5f12221418ed21451a3cad16075605f8847d06cc28e127369c40",
+      "sha256": "0fbfc2423bc5f57aab105dddd803a0fe1bb51a689d72cbb3d465268f3bd3095f",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 8 merge-train bullet follows the U6 integration gate — #2515. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 8 merge-train bullet follows the U6 integration gate — #2515. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
       }
     },
     "workflows/mode-leader.md": {

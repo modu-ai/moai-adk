@@ -2411,6 +2411,57 @@ mod skill_package {
         }
     }
 
+    /// #2592 S4: each step workflow says which base agent it hands a step to, with one
+    /// shared rule block, and names only agents that ship as sources.
+    #[test]
+    fn step_workflows_name_their_base_agent() {
+        const HEAD: &str = "## Base agents\n";
+        let common = |body: &str| -> String {
+            let start = body.find(HEAD).expect("Base agents section");
+            let rest = &body[start..];
+            let end = rest.find("\n\n").map(|i| i + 2).unwrap();
+            // The shared block runs to the end of its bullet list.
+            const LAST: &str = "this session and say so.\n";
+            let list_end = rest[end..]
+                .find(LAST)
+                .map(|i| end + i + LAST.len())
+                .expect("shared block ends with the not-installed rule");
+            rest[..list_end].to_string()
+        };
+        let mut sources: Vec<String> = fs::read_dir(root().join("references/agents"))
+            .unwrap()
+            .map(|e| {
+                let text = fs::read_to_string(e.unwrap().path()).unwrap();
+                let (keys, _) = frontmatter(&text);
+                keys.into_iter().find(|(k, _)| k == "name").unwrap().1
+            })
+            .collect();
+        sources.sort();
+        let first = fs::read_to_string(root().join("workflows/run.md")).unwrap();
+        let shared = common(&first);
+        for name in &sources {
+            assert!(shared.contains(&format!("`{name}`")), "{name} listed");
+        }
+        let named = shared.matches("`moai-").count() - shared.matches("`moai-cli`").count();
+        assert_eq!(named, sources.len(), "the shared block lists exactly the sources");
+        for (route, agent) in [
+            ("plan", "moai-plan"),
+            ("read", "moai-research"),
+            ("run", "moai-impl"),
+            ("audit", "moai-audit"),
+            ("sync", "moai-docs"),
+        ] {
+            let body = fs::read_to_string(root().join(format!("workflows/{route}.md"))).unwrap();
+            assert_eq!(body.matches(HEAD).count(), 1, "{route}");
+            assert_eq!(common(&body), shared, "{route}: shared block drifted");
+            let own = &body[body.find(HEAD).unwrap() + shared.len()..];
+            let own = &own[..own.find("\n## ").unwrap_or(own.len())];
+            assert!(own.contains(&format!("`{agent}`")), "{route} names {agent}");
+            // No stand-in for a missing host feature (user correction 2026-11-12T22:3xZ).
+            assert!(!own.contains("moai-cli"), "{route}");
+        }
+    }
+
     /// The mode workflow behind a route, after checking the route itself (AC-1, #2160).
     fn mode_workflow(route: &str) -> String {
         let routes: Value =
