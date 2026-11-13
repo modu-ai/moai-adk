@@ -1,8 +1,22 @@
-# MoAI RC1 label taxonomy for modu-ai/moai-adk.
-# Applied by hand with `gh label create` after a preview, then re-read; no workflow reads this file.
-# Existing remote labels are reused and never deleted, renamed or recoloured.
-# `status` is reported in the Issue's owned report comment, never through labels
-# (labels and assignees are not a distributed lock).
+# MoAI RC label taxonomy for modu-ai/moai-adk (Issue #2434, user decisions 1-4 = A,
+# recorded in Issue comment 6783612809 on 2026-11-11).
+# `moai-label-sync` reads this file: a dry run on every PR that touches it, and a manual apply
+# that only CREATES the missing `added` labels. Nothing here edits, renames, recolours or
+# deletes a remote label.
+#
+# Axes an Issue carries (rules: `.github/moai/README.md`, section "Labels"):
+#   type:*      exactly one
+#   priority:*  exactly one (P0..P3)
+#   area:*      one or two: the product component that owns the changed files
+#   host:*      when the work must be verified on that host
+# Definitions per label (scheme decisions 44-49 = A, 6842518327): README section "Labels".
+# Descriptions of `reused` labels live on the remote; the leader edits them there.
+#   needs:decision  gate marker: a user decision is pending, lanes do not proceed.
+#                   The authority is the decisions log and the Issue's HOLD line; the label
+#                   is a search aid only.
+# Status is never a label: it lives in the Issue's owned report comment (labels and
+# assignees are not a distributed lock). Parent tracking uses native sub-issues and
+# ordering uses native issue dependencies, not labels.
 schema_version: 1
 reused:
   type:
@@ -12,6 +26,7 @@ reused:
     - type:chore
     - type:ci
     - type:test
+    - type:refactor
   priority:
     - priority:P0
     - priority:P1
@@ -22,6 +37,7 @@ reused:
     - area:cli
     - area:config
     - area:docs-site
+    - area:hooks
     - area:security
     - area:templates
     - area:workflow
@@ -29,8 +45,11 @@ reused:
     - security
     - duplicate
     - wontfix
-# `blocked`, `in-progress`, `ready`, `review`, `done` exist on the remote from the previous
-# generation. They are state labels, so RC1 does not apply them; state lives in the report comment.
+    # GitHub's own labels (decision 48): kept for #2435 (good first issue) and the stale
+    # exemption on `main` (help wanted).
+    - good first issue
+    - help wanted
+    - question
 added:
   - name: host:claude
     color: d4a5ff
@@ -41,13 +60,112 @@ added:
   - name: area:setup
     color: c2e0c6
     description: "SETUP: project profile, AGENTS.md generation, host projections"
-proposed_not_created:
+  - name: type:design
+    color: c5def5
+    description: Investigation or design; the output is a decision record, not code
+  - name: needs:decision
+    color: b60205
+    description: A user decision is pending (HOLD); lanes do not proceed until it is recorded
+  - name: area:atlas
+    color: c2e0c6
+    description: Core Brain, Code Atlas, map and graph
+  - name: area:design
+    color: c2e0c6
+    description: Design documents and their consistency with the design Space
+  - name: area:runtime
+    color: c2e0c6
+    description: Model adapters, judge backends, Desktop and Pi runtimes
   - name: area:router
     color: c2e0c6
     description: Common skill router, routes.json and workflow files
   - name: area:update
     color: c2e0c6
-    description: "UPDATE: installed-host preflight, 3-way merge, partial recovery"
+    description: "UPDATE: installed-host preflight, 3-way merge, recovery, Go generation migration"
   - name: area:forge
     color: c2e0c6
     description: GitHub/GitLab Issues ledger, reports and reconciliation
+  # Decision 44: product components without their own area so far (created by the leader with
+  # a manual `moai-label-sync` apply after this file merges).
+  - name: area:launcher
+    color: c2e0c6
+    description: Session launcher, key vault and the run environment it injects
+  - name: area:statusline
+    color: c2e0c6
+    description: Status line rendering and the host status line settings
+# Every proposed label was promoted to `added` by #2434; new proposals go here first.
+proposed_not_created: []
+# Remote labels from the previous generation that RC Issues do not use (decision 3 = A).
+# They are documented, not deleted or renamed; review after the stable release.
+not_used:
+  type_duplicates:
+    - bug
+    - enhancement
+    - feature
+    - feature-request
+    - improvement
+    - documentation
+    - docs
+    - chore
+    - ci
+    - config
+    - test
+    - tests
+    - testing
+    - refactor
+    - hooks
+    - templates
+    - go
+    - spec
+    - type:performance
+    - type:security
+  priority_duplicates:
+    - critical
+    - high
+    - medium
+    - low
+    - priority:critical
+    - priority:high
+    - priority:medium
+    - priority:low
+    - priority:P4
+  state:
+    - blocked
+    - in-progress
+    - ready
+    - review
+    - done
+    - triage
+    - planning
+    - status:blocked
+    - status:in-progress
+    - status:needs-info
+    - status:review
+  previous_generation_area:
+    - area:astgrep
+    - area:lsp
+    - area:mx
+    - area:harness
+    - area:deps
+  # Decision 48: other remote labels of the previous generation, documented, not deleted.
+  previous_generation_misc:
+    - ai-generated
+    - ai-reviewed
+    - api
+    - auth
+    - automerge
+    - breaking-change
+    - coderabbit
+    - database
+    - dependencies
+    - infra
+    - infrastructure
+    - investigating
+    - needs design
+    - needs security review
+    - performance
+    - pinned
+    - reported
+    - requires-testing
+    - sdk
+    - stale
+    - ui

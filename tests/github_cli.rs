@@ -83,20 +83,43 @@ fn template(rel: &str) -> Vec<u8> {
     .unwrap()
 }
 
-const TARGETS: [(&str, &str); 4] = [
+const TARGETS: [(&str, &str); 5] = [
     (
         ".github/ISSUE_TEMPLATE/moai-feature.yml",
-        "ISSUE_TEMPLATE/moai-feature.yml",
+        "ko/ISSUE_TEMPLATE/moai-feature.yml",
+    ),
+    // Decision 43 (#2434 6842518327): the follow-up form ships too.
+    (
+        ".github/ISSUE_TEMPLATE/moai-followup.yml",
+        "ko/ISSUE_TEMPLATE/moai-followup.yml",
     ),
     (
         ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
-        "ISSUE_TEMPLATE/moai-bugfix.yml",
+        "ko/ISSUE_TEMPLATE/moai-bugfix.yml",
     ),
     (
         ".github/ISSUE_TEMPLATE/moai-investigation.yml",
-        "ISSUE_TEMPLATE/moai-investigation.yml",
+        "ko/ISSUE_TEMPLATE/moai-investigation.yml",
     ),
     (".github/moai/labels.yml", "labels.yml"),
+];
+
+/// A plan with an explicit form language in the request (#2434 decision 41).
+fn plan_lang(root: &Path, language: &str) -> Value {
+    let env = cli(
+        &["github-plan", root.to_str().unwrap()],
+        &json!({"protocol_version": 1, "github_issues": true, "language": language}),
+    );
+    assert_eq!(env["ok"], true, "{env}");
+    env["result"].clone()
+}
+
+/// The form targets and their template name, without the language directory.
+const FORMS: [&str; 4] = [
+    "moai-feature.yml",
+    "moai-bugfix.yml",
+    "moai-investigation.yml",
+    "moai-followup.yml",
 ];
 
 fn project() -> (tempfile::TempDir, PathBuf) {
@@ -147,7 +170,7 @@ fn github_clean_project_creates_only_selected_files() {
     let env = apply(&root, &p);
     assert_eq!(env["ok"], true, "{env}");
     let files = hashes(&root.join(".github"));
-    assert_eq!(files.len(), 4, "{:?}", files.keys());
+    assert_eq!(files.len(), TARGETS.len(), "{:?}", files.keys());
     for (target, tpl) in TARGETS {
         assert_eq!(
             fs::read(root.join(target)).unwrap(),
@@ -159,7 +182,10 @@ fn github_clean_project_creates_only_selected_files() {
     let manifest: Value =
         serde_json::from_slice(&fs::read(root.join(".moai-cli/manifests/github.json")).unwrap())
             .unwrap();
-    assert_eq!(manifest["owned_files"].as_array().unwrap().len(), 4);
+    assert_eq!(
+        manifest["owned_files"].as_array().unwrap().len(),
+        TARGETS.len()
+    );
     assert!(env["result"]["rendering"]
         .as_str()
         .unwrap()
@@ -302,7 +328,7 @@ fn github_interrupted_update_recovers_baseline() {
     assert_eq!(env["ok"], true, "{env}");
     assert_eq!(
         env["result"]["adopted_baselines"].as_array().unwrap().len(),
-        4
+        TARGETS.len()
     );
     assert!(root.join(".moai-cli/manifests/github.json").exists());
     let again = plan(&root, true);
@@ -352,4 +378,94 @@ fn github_apply_refuses_stale_or_unpermitted_plans() {
     assert_eq!(stale["ok"], false);
     assert_eq!(stale["error"]["kind"], "stale_plan");
     assert!(!root.join(".github/ISSUE_TEMPLATE").exists());
+}
+
+/// Decision 41: with no `language` key and no request language the forms stay Korean, the
+/// bytes projects received before (no upgrade churn); the plan names the language it chose.
+#[test]
+fn github_default_form_language_is_korean_and_noted() {
+    let (_tmp, root) = project();
+    let p = plan(&root, true);
+    assert!(p["notes"].to_string().contains("form language ko"), "{p}");
+    assert_eq!(apply(&root, &p)["ok"], true);
+    for form in FORMS {
+        assert_eq!(
+            fs::read(root.join(".github/ISSUE_TEMPLATE").join(form)).unwrap(),
+            template(&format!("ko/ISSUE_TEMPLATE/{form}")),
+            "{form}"
+        );
+    }
+}
+
+/// Decision 41: the request language picks the variant; labels.yml is shared.
+#[test]
+fn github_request_language_picks_the_english_forms() {
+    let (_tmp, root) = project();
+    let p = plan_lang(&root, "en");
+    assert!(p["notes"].to_string().contains("form language en"), "{p}");
+    let env = apply(&root, &p);
+    assert_eq!(env["ok"], true, "{env}");
+    for form in FORMS {
+        assert_eq!(
+            fs::read(root.join(".github/ISSUE_TEMPLATE").join(form)).unwrap(),
+            template(&format!("en/ISSUE_TEMPLATE/{form}")),
+            "{form}"
+        );
+    }
+    assert_eq!(
+        fs::read(root.join(".github/moai/labels.yml")).unwrap(),
+        template("labels.yml")
+    );
+    let again = plan_lang(&root, "en");
+    assert!(
+        actions(&again).iter().all(|(_, a)| a == "unchanged"),
+        "{again}"
+    );
+}
+
+/// A language change is an ordinary template change for the 3-way: an untouched form is
+/// replaced, an edited form is kept and reported, and labels.yml does not move.
+#[test]
+fn github_language_change_replaces_untouched_forms_and_keeps_edited_ones() {
+    let (_tmp, root) = project();
+    let p = plan_lang(&root, "ko");
+    assert_eq!(apply(&root, &p)["ok"], true);
+    let edited = root.join(".github/ISSUE_TEMPLATE/moai-bugfix.yml");
+    let mut bytes = fs::read(&edited).unwrap();
+    bytes.extend_from_slice(b"# project note\n");
+    fs::write(&edited, &bytes).unwrap();
+    let p = plan_lang(&root, "en");
+    let acts: BTreeMap<String, String> = actions(&p).into_iter().collect();
+    assert_eq!(
+        acts[".github/ISSUE_TEMPLATE/moai-feature.yml"], "merge",
+        "{p}"
+    );
+    assert_eq!(
+        acts[".github/ISSUE_TEMPLATE/moai-bugfix.yml"], "conflict",
+        "{p}"
+    );
+    assert_eq!(acts[".github/moai/labels.yml"], "unchanged", "{p}");
+    assert_eq!(apply(&root, &p)["ok"], false, "a conflict applies nothing");
+    assert_eq!(fs::read(&edited).unwrap(), bytes);
+}
+
+/// An accepted code without its own variant uses the English forms and says so; a code the
+/// language table does not accept is refused.
+#[test]
+fn github_language_without_a_variant_uses_english_and_bad_codes_are_refused() {
+    let (_tmp, root) = project();
+    let p = plan_lang(&root, "ja");
+    let notes = p["notes"].to_string();
+    assert!(notes.contains("form language en"), "{p}");
+    assert!(notes.contains("ja"), "{p}");
+    assert_eq!(apply(&root, &p)["ok"], true);
+    assert_eq!(
+        fs::read(root.join(".github/ISSUE_TEMPLATE/moai-feature.yml")).unwrap(),
+        template("en/ISSUE_TEMPLATE/moai-feature.yml")
+    );
+    let env = cli(
+        &["github-plan", root.to_str().unwrap()],
+        &json!({"protocol_version": 1, "github_issues": true, "language": "xx"}),
+    );
+    assert_eq!(env["ok"], false, "{env}");
 }

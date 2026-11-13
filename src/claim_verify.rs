@@ -7,6 +7,11 @@
 //! comment is not an atomic lock; this module only re-reads every comment and decides, so a
 //! competing claim that became visible late is judged on the re-read.
 //!
+//! Decisions of #1975 comment 6840449133 (Issue #2612): a later claim of the same session
+//! renews that session's earlier open claims without a handoff line when no other session's
+//! claim stands before it (D1, closed as `renewal`); a lane's `by=timeout` handoff line (D2)
+//! closes only an expired lease — its other two conditions are the lane's written record.
+//!
 //! What it adds:
 //! - [`classify_comment`]: one parser for the claim line (the RC1 form plus the appended
 //!   fields `render_claim_line` writes) and for two machine lines that close a claim,
@@ -118,6 +123,14 @@ pub fn classify_comment(body: &str) -> CommentKind {
     CommentKind::Other
 }
 
+/// The `by=` value of the comment's handoff line (`leader`, `timeout`, …), if any.
+fn handoff_by(body: &str) -> Option<&str> {
+    body.lines()
+        .map(str::trim)
+        .find_map(|l| l.strip_prefix(HANDOFF_PREFIX))
+        .and_then(|rest| token(rest, "by"))
+}
+
 /// The release line a leader or operator posts to close a claim (no POST here).
 pub fn render_release_line(claim_comment_id: i64, by: &str) -> String {
     format!("{RELEASE_PREFIX} comment={claim_comment_id} by={by}")
@@ -194,6 +207,17 @@ pub fn evaluate(comments: &[IssueComment], who: &Verifier<'_>) -> Value {
                                         "detail": "closes no earlier claim comment"}));
                     continue;
                 }
+                // Decision D2 (#1975 comment 6840449133): a lane's timeout takeover may
+                // close only an expired lease; the other two conditions are the lane's
+                // record, not visible here.
+                if matches!(kind, CommentKind::Handoff { .. })
+                    && handoff_by(&c.body) == Some("timeout")
+                    && claims.iter().any(|v| v.id == target && v.live)
+                {
+                    invalid.push(json!({"comment_id": c.id, "reason": "malformed",
+                                        "detail": "timeout handoff closes a live lease"}));
+                    continue;
+                }
                 let (by, to) = match &kind {
                     CommentKind::Handoff { to, .. } => ("handoff", Some(to.clone())),
                     _ => ("release", None),
@@ -208,10 +232,40 @@ pub fn evaluate(comments: &[IssueComment], who: &Verifier<'_>) -> Value {
             CommentKind::Other => unreachable!(),
         }
     }
-    let is_closed = |id: i64| closed.iter().any(|c| c["comment_id"] == json!(id));
+    let closed_by = |closed: &[Value], id: i64| closed.iter().any(|c| c["comment_id"] == json!(id));
+    // Decision D1 (#1975 comment 6840449133): a later claim of the same session renews
+    // the earlier ones without a handoff line, when every open claim before it belongs
+    // to that session. Another session's claim in between keeps the old rule. Claims are
+    // in id order, so a chain of renewals closes each earlier line in turn. A renewing line
+    // that a release or handoff closed later still renews: the lane releases, and the leader
+    // hands off, its latest claim, so the line it replaced must not come back as holder
+    // (audit FAIL 6840678988 B1 on #2621).
+    for m in &claims {
+        let earlier: Vec<i64> = claims
+            .iter()
+            .filter(|v| v.id < m.id && !closed_by(&closed, v.id))
+            .map(|v| v.id)
+            .collect();
+        let same = claims
+            .iter()
+            .filter(|v| earlier.contains(&v.id))
+            .all(|v| v.session == m.session);
+        if !earlier.is_empty() && same {
+            for id in earlier {
+                closed.push(json!({"comment_id": id, "by": "renewal", "to": m.session,
+                                   "closing_comment_id": m.id}));
+            }
+        }
+    }
+    let is_closed = |id: i64| closed_by(&closed, id);
     let mine = match who.comment_id {
         Some(id) => claims.iter().find(|v| v.id == id),
-        None => claims.iter().find(|v| v.session == who.session),
+        // Without a known id, the session's latest open claim speaks for it.
+        None => claims
+            .iter()
+            .rev()
+            .find(|v| v.session == who.session && !is_closed(v.id))
+            .or_else(|| claims.iter().find(|v| v.session == who.session)),
     };
     let holder = claims.iter().find(|v| !is_closed(v.id));
     let (status, lost_to) = if let (Some(id), None) = (who.comment_id, mine) {
@@ -546,7 +600,22 @@ fn shell_script(args: &[String]) -> Option<&str> {
 /// the same command line (`git -c alias.ci=commit ci`). An alias defined in git config is not
 /// visible here.
 fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
-    let mut aliases: Vec<&str> = Vec::new();
+    let aliases = inline_aliases(args);
+    // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
+    // names the word as an argument of a read command, not as the command (#2399 review).
+    git_subcommand_candidates(args).iter().any(|w| {
+        verbs.contains(w)
+            || aliases.iter().any(|(name, words)| {
+                name == w && words.first().is_some_and(|v| verbs.contains(&v.as_str()))
+            })
+    })
+}
+
+/// Aliases defined on the same command line (`git -c alias.ci=commit ci`, also the attached
+/// `-calias.ci=commit` form), as (name, expansion words). A `!` shell alias that runs `git`
+/// expands to the words after `git`. An alias defined in git config is not visible here.
+fn inline_aliases(args: &[String]) -> Vec<(String, Vec<String>)> {
+    let mut out = Vec::new();
     let mut i = 0;
     while i < args.len() {
         let config = match args[i].as_str() {
@@ -560,24 +629,19 @@ fn git_runs_verb(args: &[String], verbs: &[&str]) -> bool {
             .and_then(|c| c.strip_prefix("alias."))
             .and_then(|c| c.split_once('='))
         {
-            let mut target = value.trim_start_matches('!').split_whitespace();
-            let first = target.next().unwrap_or("");
-            let verb = if command_name(first) == "git" {
-                target.next().unwrap_or("")
-            } else {
-                first
-            };
-            if verbs.contains(&verb) {
-                aliases.push(name);
+            let mut words: Vec<String> = value
+                .trim_start_matches('!')
+                .split_whitespace()
+                .map(str::to_string)
+                .collect();
+            if words.first().is_some_and(|w| command_name(w) == "git") {
+                words.remove(0);
             }
+            out.push((name.to_string(), words));
         }
         i += 1;
     }
-    // Only the subcommand position counts: `git log --grep commit` or `git log -- commit`
-    // names the word as an argument of a read command, not as the command (#2399 review).
-    git_subcommand_candidates(args)
-        .iter()
-        .any(|w| verbs.contains(w) || aliases.contains(w))
+    out
 }
 
 /// git(1) OPTIONS (git 2.54.0, read 2026-11-10) that take their value as the next word.
@@ -626,6 +690,15 @@ const GIT_GLOBAL_FLAGS: &[&str] = &[
 /// unknown option ends the scan, so the arguments of a subcommand that was already a
 /// candidate (`git --new log --grep commit`) are not read as a subcommand.
 fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
+    git_subcommand_positions(args)
+        .into_iter()
+        .map(|i| args[i].as_str())
+        .collect()
+}
+
+/// The indexes in `args` of [`git_subcommand_candidates`] (the one parser; the hook guards of
+/// #2391 stage 5 read each subcommand's own arguments from these positions).
+fn git_subcommand_positions(args: &[String]) -> Vec<usize> {
     let mut out = Vec::new();
     let mut seen_unknown = false;
     let mut i = 0;
@@ -634,7 +707,7 @@ fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
         if GIT_GLOBAL_OPTIONS_WITH_VALUE.contains(&w) {
             i += 2;
         } else if !w.starts_with('-') {
-            out.push(w);
+            out.push(i);
             return out;
         } else if GIT_GLOBAL_FLAGS.contains(&w) || w.contains('=') || w.starts_with("-c") {
             // `--opt=value` and the attached `-c<name>=<value>` form carry their own value.
@@ -644,13 +717,102 @@ fn git_subcommand_candidates(args: &[String]) -> Vec<&str> {
         } else {
             // Unknown option: its next word is either its value or the subcommand.
             seen_unknown = true;
-            if let Some(next) = args.get(i + 1).filter(|n| !n.starts_with('-')) {
-                out.push(next.as_str());
+            if args.get(i + 1).is_some_and(|n| !n.starts_with('-')) {
+                out.push(i + 1);
             }
             i += 2;
         }
     }
     out
+}
+
+/// Every command a shell line runs, as (name without its path, arguments), past assignments
+/// and wrapper words, with a shell's `-c` script expanded one level deep — the same reading
+/// `runs_git` uses. Quoted text stays one argument and is never a command.
+pub(crate) fn shell_commands(command: &str) -> Vec<(String, Vec<String>)> {
+    let mut out = Vec::new();
+    collect_commands(command, 0, &mut out);
+    out
+}
+
+fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>)>) {
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        let name = command_name(&words[i]).to_string();
+        let args = words[i + 1..].to_vec();
+        if depth == 0 {
+            if let Some(script) = script_run_by(&name, &args) {
+                collect_commands(&script, depth + 1, out);
+            }
+        }
+        out.push((name, args));
+    }
+}
+
+/// The script a command runs as shell code: a shell's `-c` script, or `eval`'s arguments
+/// joined with spaces. The one place that decides which quoted text is code, shared by the
+/// command reading above and [`executed_scripts`].
+fn script_run_by(name: &str, args: &[String]) -> Option<String> {
+    if SHELLS.contains(&name) {
+        return shell_script(args).map(str::to_string);
+    }
+    (name == "eval" && !args.is_empty()).then(|| args.join(" "))
+}
+
+/// The shell text a command line runs: the line itself, then every script it hands to a
+/// shell (`sh -c '…'`) or to `eval`, one level deep — the same reading as
+/// [`shell_commands`]. A check that reads raw text (a fork bomb is punctuation, not a
+/// command word) looks at each of these, so quoting a script for `sh -c` does not hide it.
+pub(crate) fn executed_scripts(command: &str) -> Vec<String> {
+    let mut out = vec![command.to_string()];
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        if let Some(script) = script_run_by(command_name(&words[i]), &words[i + 1..]) {
+            out.push(script);
+        }
+    }
+    out
+}
+
+/// One git subcommand a `git` argument list may run: the verb, its arguments, and git's own
+/// arguments before it. An alias defined on the same line (`-c alias.ci=commit ci`) is
+/// resolved to its verb, with the words the alias carries put before the call's arguments.
+pub(crate) struct GitSub {
+    pub verb: String,
+    pub rest: Vec<String>,
+    pub global: Vec<String>,
+}
+
+/// Each git subcommand a `git` argument list may run (see [`GitSub`]).
+pub(crate) fn git_subcommands(args: &[String]) -> Vec<GitSub> {
+    let aliases = inline_aliases(args);
+    git_subcommand_positions(args)
+        .into_iter()
+        .map(|i| {
+            let global = args[..i].to_vec();
+            let rest = &args[i + 1..];
+            match aliases.iter().find(|(name, _)| *name == args[i]) {
+                Some((_, words)) if !words.is_empty() => GitSub {
+                    verb: words[0].clone(),
+                    rest: words[1..]
+                        .iter()
+                        .cloned()
+                        .chain(rest.iter().cloned())
+                        .collect(),
+                    global,
+                },
+                _ => GitSub {
+                    verb: args[i].clone(),
+                    rest: rest.to_vec(),
+                    global,
+                },
+            }
+        })
+        .collect()
 }
 
 /// True when one segment of a shell command line runs `git <verb>`. The segment's command is
@@ -685,6 +847,54 @@ pub fn is_commit_or_push(command: &str) -> bool {
 /// True when a shell command line runs `git commit` in any of its segments.
 pub fn is_commit(command: &str) -> bool {
     runs_git(command, &["commit"])
+}
+
+/// The one folder a command line's `git <verb>` (one of `verbs`) runs in (#2673): `cwd`
+/// changed by each `-C <dir>` before the verb, in order, as git applies them. A host without a
+/// built-in worktree tool commits with `git -C <worktree>` from the primary checkout (user
+/// decision on #2673); reading the branch in `cwd` alone let that commit pass as "not a lane
+/// worktree". `None` when no top-level segment runs such a verb (the caller keeps `cwd`); an
+/// error when the line runs it in more than one folder, so each is checked on its own line.
+pub fn git_target_dir(
+    command: &str,
+    cwd: &Path,
+    verbs: &[&str],
+) -> std::result::Result<Option<PathBuf>, String> {
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        if command_name(&words[i]) != "git" {
+            continue;
+        }
+        for sub in git_subcommands(&words[i + 1..]) {
+            if !verbs.contains(&sub.verb.as_str()) {
+                continue;
+            }
+            let mut dir = cwd.to_path_buf();
+            let mut global = sub.global.iter();
+            while let Some(a) = global.next() {
+                if a == "-C" {
+                    if let Some(d) = global.next() {
+                        dir = dir.join(d);
+                    }
+                }
+            }
+            let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
+            if !dirs.contains(&dir) {
+                dirs.push(dir);
+            }
+        }
+    }
+    match dirs.len() {
+        0 => Ok(None),
+        1 => Ok(dirs.pop()),
+        _ => Err(format!(
+            "one command line runs git {} in more than one folder; run each as its own command",
+            verbs.join(" or ")
+        )),
+    }
 }
 
 /// Why a commit command line on a lane branch carries no usable claim token.
@@ -821,12 +1031,12 @@ fn git_out(cwd: &Path, args: &[&str]) -> Option<String> {
 }
 
 /// The claim tokens a push accepts on the branch's commits: the verifier's own claim and
-/// every earlier claim of the Issue closed by a handoff line, so commits written under a
-/// previous epoch stay valid after the handoff.
+/// every earlier claim of the Issue closed by a handoff line or by a same-session renewal,
+/// so commits written under a previous epoch stay valid after it.
 fn accepted_tokens(issue: i64, verdict: &Value) -> Vec<String> {
     let mut ids: Vec<i64> = verdict["mine"].as_i64().into_iter().collect();
     for c in verdict["closed"].as_array().into_iter().flatten() {
-        if c["by"] == json!("handoff") {
+        if c["by"] == json!("handoff") || c["by"] == json!("renewal") {
             ids.extend(c["comment_id"].as_i64());
         }
     }
@@ -864,6 +1074,11 @@ pub fn hook_cli<T: Transport, C: Clock>(
         .and_then(|p| std::fs::canonicalize(p).ok());
     let Some(cwd) = cwd else {
         return allow("working directory unavailable; no claimed worktree to guard");
+    };
+    // #2673: the folder the commit or push runs in, after `git -C`, not only the session's.
+    let cwd = match git_target_dir(command, &cwd, &["commit", "push"]) {
+        Ok(dir) => dir.unwrap_or(cwd),
+        Err(why) => return Err(format!("claim verify: uncertain; {why}")),
     };
     let records = crate::worktree::active_records(project).unwrap_or_default();
     let push = runs_git(command, &["push"]);

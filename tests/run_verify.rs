@@ -84,6 +84,7 @@ fn request(commands: &[&str], refs: &[usize], revision: &str) -> RunRequest {
             timeout_ms: 30_000,
         },
         baseline: None,
+        baseline_ref: None,
         diff_paths: vec![],
     }
 }
@@ -548,11 +549,13 @@ fn real_runner_receipt() {
 #[test]
 fn timeout_bounds_runtime_even_with_grandchildren() {
     let dir = project();
-    fs::write(dir.path().join("grand.sh"), "sleep 30 &\nsleep 30\n").unwrap();
+    // #2511: the bound proves only that the runner did not wait for the 120 s grandchildren;
+    // it is far above the timeout so machine load cannot fail it, and far below their life.
+    fs::write(dir.path().join("grand.sh"), "sleep 120 &\nsleep 120\n").unwrap();
     let started = std::time::Instant::now();
     let c = run_check(dir.path(), 0, "sh grand.sh", Duration::from_millis(500));
     let took = started.elapsed();
-    assert!(took < Duration::from_secs(6), "took {took:?}");
+    assert!(took < Duration::from_secs(60), "took {took:?}");
     assert!(c.timed_out);
     assert_eq!(c.result, CheckResult::Failed);
     assert_eq!(c.failure_class, Some(FailureClass::EnvironmentFailure));
@@ -560,11 +563,11 @@ fn timeout_bounds_runtime_even_with_grandchildren() {
     assert_eq!(c.output_complete, Some(true));
 
     // A command that exits but leaves a background child holding its output returns too.
-    fs::write(dir.path().join("daemon.sh"), "sleep 30 &\necho started\n").unwrap();
+    fs::write(dir.path().join("daemon.sh"), "sleep 120 &\necho started\n").unwrap();
     let started = std::time::Instant::now();
-    let c = run_check(dir.path(), 0, "sh daemon.sh", Duration::from_secs(20));
+    let c = run_check(dir.path(), 0, "sh daemon.sh", Duration::from_secs(90));
     let took = started.elapsed();
-    assert!(took < Duration::from_secs(6), "took {took:?}");
+    assert!(took < Duration::from_secs(60), "took {took:?}");
     assert!(!c.timed_out);
     assert_eq!(c.result, CheckResult::Passed);
 }

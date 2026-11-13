@@ -1,53 +1,61 @@
-# MoAI RC1 label taxonomy for modu-ai/moai-adk.
-# Applied by hand with `gh label create` after a preview, then re-read; no workflow reads this file.
-# Existing remote labels are reused and never deleted, renamed or recoloured.
-# `status` is reported in the Issue's owned report comment, never through labels
-# (labels and assignees are not a distributed lock).
-schema_version: 1
-reused:
-  type:
-    - type:feature
-    - type:fix
-    - type:docs
-    - type:chore
-    - type:ci
-    - type:test
-  priority:
-    - priority:P0
-    - priority:P1
-    - priority:P2
-    - priority:P3
-  area:
-    - area:ci
-    - area:cli
-    - area:config
-    - area:docs-site
-    - area:security
-    - area:templates
-    - area:workflow
-  functional:
-    - security
-    - duplicate
-    - wontfix
-# `blocked`, `in-progress`, `ready`, `review`, `done` exist on the remote from the previous
-# generation. They are state labels, so RC1 does not apply them; state lives in the report comment.
-added:
-  - name: host:claude
-    color: d4a5ff
-    description: Must be verified on Claude Code
-  - name: host:codex
-    color: 74d2ff
-    description: Must be verified on Codex
-  - name: area:setup
-    color: c2e0c6
-    description: "SETUP: project profile, AGENTS.md generation, host projections"
-proposed_not_created:
-  - name: area:router
-    color: c2e0c6
-    description: Common skill router, routes.json and workflow files
-  - name: area:update
-    color: c2e0c6
-    description: "UPDATE: installed-host preflight, 3-way merge, partial recovery"
-  - name: area:forge
-    color: c2e0c6
-    description: GitHub/GitLab Issues ledger, reports and reconciliation
+# MoAI label list for a project that uses MoAI's Issue forms.
+# Every label an Issue form sets is in this list: GitHub drops a form label that does not
+# exist in the repository. This file is the source of truth: create and update the
+# repository's labels from it with `moai-cli labels-plan` and `labels-apply` before the forms
+# are used; labels it does not list are kept, never deleted.
+#
+# Axes an Issue carries:
+#   type:*      exactly one (the form sets it)
+#   priority:*  exactly one (P0..P3)
+#   area:*      one or more, defined by the project itself (no area is seeded here)
+#   host:*      when the work must be verified on that host
+#   needs:decision  a user decision is pending; work waits for it
+# Status is never a label: it lives in the Issue's own report comment. Parent tracking uses
+# native sub-issues and ordering uses native issue dependencies, not labels.
+schema_version: 2
+labels:
+- name: type:feature
+  color: a2eeef
+  description: New feature or behaviour
+- name: type:fix
+  color: d73a4a
+  description: Defect fix
+- name: type:docs
+  color: 0075ca
+  description: Documentation only
+- name: type:chore
+  color: ededed
+  description: Maintenance with no behaviour change
+- name: type:ci
+  color: 5319e7
+  description: CI and release automation
+- name: type:test
+  color: bfd4f2
+  description: Tests only
+- name: type:refactor
+  color: c5def5
+  description: Restructure with no behaviour change
+- name: type:design
+  color: f9d0c4
+  description: Investigation or design before implementation
+- name: priority:P0
+  color: b60205
+  description: Blocks the current release
+- name: priority:P1
+  color: d93f0b
+  description: Needed for the current release
+- name: priority:P2
+  color: fbca04
+  description: Planned, can move to the next release
+- name: priority:P3
+  color: c2e0c6
+  description: Nice to have
+- name: host:claude
+  color: d4a5ff
+  description: Must be verified on Claude Code
+- name: host:codex
+  color: 74d2ff
+  description: Must be verified on Codex
+- name: needs:decision
+  color: fef2c0
+  description: A user decision is pending; work waits for it

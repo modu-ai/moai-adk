@@ -125,6 +125,151 @@ fn concurrent_claims_lowest_id_holds() {
     assert!(refusal(&verdict(&c, "a", Some(100))).is_none());
 }
 
+/// Decision D1 (#1975 comment 6840449133, Issue #2612): a new claim line of the same session
+/// renews without a handoff line when every open claim before it is that session's; another
+/// session's claim in between keeps the lowest-open rule. Editing the own lease still works.
+#[test]
+fn same_session_new_line_renews_without_handoff() {
+    let epoch = |id: i64, n: u64, lease: &str| IssueComment {
+        id,
+        author: "GoosLab".into(),
+        body: format!("moai-claim: session=a epoch={n} lease_until={lease}"),
+    };
+    // Both live: the new line holds, the old id reads closed by renewal.
+    let both_live = [claim(100, "a", LIVE), epoch(200, 2, LIVE)];
+    let v = verdict(&both_live, "a", Some(200));
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["holder"], json!(200));
+    assert_eq!(v["closed"][0]["comment_id"], json!(100));
+    assert_eq!(v["closed"][0]["by"], json!("renewal"));
+    assert_eq!(
+        verdict(&both_live, "a", Some(100))["status"],
+        json!("closed")
+    );
+    // The first lapsed: still owner, no handoff line needed.
+    let lapsed = [claim(100, "a", EXPIRED), epoch(200, 2, LIVE)];
+    assert_eq!(verdict(&lapsed, "a", Some(200))["status"], json!("owner"));
+    // Without a known id, the session's latest open claim speaks for it.
+    assert_eq!(verdict(&lapsed, "a", None)["status"], json!("owner"));
+    // A chain of renewals ends on the last line.
+    let chain = [
+        claim(100, "a", EXPIRED),
+        epoch(200, 2, EXPIRED),
+        epoch(300, 3, LIVE),
+    ];
+    let v = verdict(&chain, "a", Some(300));
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["closed"].as_array().unwrap().len(), 2);
+    // The renewing line itself lapsed: stale, never owner through an older lease.
+    let renewed_lapsed = [claim(100, "a", LIVE), epoch(200, 2, EXPIRED)];
+    assert_eq!(
+        verdict(&renewed_lapsed, "a", Some(200))["status"],
+        json!("stale")
+    );
+    // Another session's claim before the new line: no renewal, whether live or not.
+    for lease in [LIVE, EXPIRED] {
+        let between = [
+            claim(100, "a", EXPIRED),
+            claim(150, "b", lease),
+            epoch(200, 2, LIVE),
+        ];
+        let v = verdict(&between, "a", Some(200));
+        assert_ne!(v["status"], json!("owner"), "b lease {lease}");
+        assert_eq!(v["holder"], json!(100), "b lease {lease}");
+    }
+    let other_first = [
+        claim(50, "b", LIVE),
+        claim(100, "a", LIVE),
+        epoch(200, 2, LIVE),
+    ];
+    let v = verdict(&other_first, "a", Some(200));
+    assert_eq!(v["status"], json!("not_owner"));
+    assert_eq!(v["lost_to"], json!(50));
+    // Editing the own comment's lease (same id, later time) keeps owner.
+    assert_eq!(
+        verdict(&[claim(100, "a", LIVE)], "a", Some(100))["status"],
+        json!("owner")
+    );
+    assert_eq!(
+        verdict(&[claim(100, "a", EXPIRED)], "a", Some(100))["status"],
+        json!("stale")
+    );
+}
+
+/// Audit FAIL 6840678988 B1 (#2621): once a renewing line is itself released or handed off,
+/// the line it renewed stays closed — the next session's claim owns.
+#[test]
+fn renewed_line_stays_closed_after_the_renewing_line_is_released_or_handed_off() {
+    let epoch2 = |lease: &str| IssueComment {
+        id: 200,
+        author: "GoosLab".into(),
+        body: format!("moai-claim: session=a epoch=2 lease_until={lease}"),
+    };
+    let released = [
+        claim(100, "a", LIVE),
+        epoch2(LIVE),
+        comment(250, "GoosLab", "moai-claim-release: comment=200 by=a"),
+        claim(300, "c", LIVE),
+    ];
+    let v = verdict(&released, "c", Some(300));
+    assert_eq!(v["status"], json!("owner"), "{v}");
+    assert_eq!(v["holder"], json!(300));
+    let handed = [
+        claim(100, "a", EXPIRED),
+        epoch2(LIVE),
+        comment(
+            250,
+            "GoosLab",
+            "moai-claim-handoff: comment=200 to=c by=leader",
+        ),
+        claim(300, "c", LIVE),
+    ];
+    let v = verdict(&handed, "c", Some(300));
+    assert_eq!(v["status"], json!("owner"), "{v}");
+    assert_eq!(v["holder"], json!(300));
+}
+
+/// Decision D2 (#1975 comment 6840449133): a lane's `by=timeout` handoff closes an expired
+/// lease and the next claim owns; on a live lease the line is ignored and reported.
+#[test]
+fn timeout_handoff_closes_only_an_expired_lease() {
+    let timeout = |id: i64| {
+        comment(
+            id,
+            "GoosLab",
+            "moai-claim-handoff: comment=100 to=b by=timeout",
+        )
+    };
+    let expired = [
+        claim(100, "a", EXPIRED),
+        timeout(150),
+        claim(200, "b", LIVE),
+    ];
+    let v = verdict(&expired, "b", Some(200));
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["closed"][0]["by"], json!("handoff"));
+    let live = [claim(100, "a", LIVE), timeout(150), claim(200, "b", LIVE)];
+    let v = verdict(&live, "b", Some(200));
+    assert_eq!(v["status"], json!("not_owner"));
+    assert_eq!(v["lost_to"], json!(100));
+    assert_eq!(v["invalid"][0]["comment_id"], json!(150));
+    assert_eq!(
+        v["invalid"][0]["detail"],
+        json!("timeout handoff closes a live lease")
+    );
+    // A leader's handoff on a live lease still closes it.
+    let leader = [
+        claim(100, "a", LIVE),
+        comment(
+            150,
+            "GoosLab",
+            "moai-claim-handoff: comment=100 to=b by=leader",
+        ),
+        claim(200, "b", LIVE),
+    ];
+    assert_eq!(verdict(&leader, "b", Some(200))["status"], json!("owner"));
+}
+
 /// AC-1 late-visible competitor: the first read showed only our claim; the re-read shows a
 /// lower id and the verdict flips to not_owner.
 #[test]
@@ -963,6 +1108,25 @@ fn push_accepts_tokens_of_claims_closed_by_handoff() {
     let t = RecordedTransport::new(vec![get(claims(false))]);
     let err = hook_cli(&root, &hook_input("git push", &root), &t, &clock).unwrap_err();
     assert_eq!(classify(&err), Kind::Conflict, "{err}");
+
+    // Decision D1: the same session's epoch 1 renewed by its epoch 2 line, no handoff line;
+    // the epoch-1 commit's token is still accepted on push.
+    let renewed = json!([
+        raw(
+            100,
+            "GoosLab",
+            &format!("moai-claim: session=b epoch=1 lease_until={EXPIRED}"),
+        ),
+        raw(
+            300,
+            "GoosLab",
+            &format!("moai-claim: session=b epoch=2 lease_until={LIVE}"),
+        ),
+    ]);
+    let t = RecordedTransport::new(vec![get(renewed)]);
+    let v = hook_cli(&root, &hook_input("git push", &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["trailer_checked"], json!(2));
 }
 
 /// A lane worktree with no claim record: branch `issue/7-x`, origin on GitHub, the default
@@ -1299,12 +1463,12 @@ fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
     assert_eq!(run("cargo test").status.code(), Some(0));
 }
 
-/// AC-2 (workflow text): the `--mode agent` workflow names the boundary before commit and
+/// AC-2 (workflow text): the MODE-AGENT workflow names the boundary before commit and
 /// push, and the guard that enforces it; the binary test above is the mechanical half.
 #[test]
 fn mode_agent_workflow_names_claim_verify_before_writes() {
     let text = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli/workflows/mode-agent.md"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/mode-agent.md"),
     )
     .unwrap();
     let step = text
@@ -1319,5 +1483,62 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
     assert!(
         step.contains("never take the Issue over by time alone"),
         "{step}"
+    );
+}
+
+/// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the
+/// folder `git -C` names. Before, a commit sent from the primary checkout with
+/// `git -C <lane worktree>` read the primary's branch and passed as "not a lane worktree".
+#[test]
+fn hook_reads_the_folder_git_dash_c_names() {
+    let clock = FixedClock(now());
+    let (_d, root) = lane_repo("leader/docs");
+    git(
+        &root,
+        &["worktree", "add", "-q", "-b", "issue/7-widget", "wt7"],
+    );
+
+    // No token, commit in the lane worktree from the primary checkout: uncertain, refused
+    // before any GitHub read.
+    let t = RecordedTransport::new(vec![]);
+    let err = hook_cli(
+        &root,
+        &hook_input("git -C wt7 commit -m work", &root),
+        &t,
+        &clock,
+    )
+    .unwrap_err();
+    assert!(err.contains("`Moai-Claim: 7#<id>`"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+    assert!(t.sent.borrow().is_empty());
+
+    // With the token: verified against Issue 7, the lane worktree's branch.
+    let t = RecordedTransport::new(vec![get(owner_100())]);
+    let cmd = "git -C wt7 commit -m \"work\n\nMoai-Claim: 7#100\"";
+    let v = hook_cli(&root, &hook_input(cmd, &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["source"], json!("branch"));
+    assert_eq!(v["issue"], json!(7));
+
+    // Two folders on one line: uncertain, nothing read.
+    let t = RecordedTransport::new(vec![]);
+    let err = hook_cli(
+        &root,
+        &hook_input("git -C wt7 commit -m a && git commit -m b", &root),
+        &t,
+        &clock,
+    )
+    .unwrap_err();
+    assert!(err.contains("more than one folder"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+    assert!(t.sent.borrow().is_empty());
+
+    // From the lane worktree, `-C ..` names the primary checkout: not a lane branch, allowed.
+    let wt = root.join("wt7");
+    let v = hook_cli(&root, &hook_input("git -C .. commit -m x", &wt), &t, &clock).unwrap();
+    assert_eq!(v["allowed"], json!(true));
+    assert!(
+        v["reason"].as_str().unwrap().contains("not issue/<n>"),
+        "{v}"
     );
 }

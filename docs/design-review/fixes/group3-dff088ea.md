@@ -35,3 +35,9 @@
 - 1번·시험 ID 표: hook 계열을 HA-05·07·08로 바로잡았다(사본 L644·670·683 정의 확인). rc.2 hook 생성(#2238)이 들어와 "시험 대상 없음(not_applicable)"이 아니라 "host 로딩 미실측(not_run)"이 됐다. MCP 계열은 HA-09 하나만 not_applicable로 남겼다.
 - 2번·6번: "hook 0개" 배너를 83f의 rc.1/rc.2 공통 배너 인용으로 바꿨다. 근거 "No hooks are generated." 문장은 지금 `docs/rust-product-path.md`에 없다.
 - decisions 인용을 줄 번호(L51·L66·L67·L121)로 명시했다.
+
+## 현재 tip 재확인 (#2207, 2026-11-12, tip `325cc2bf03`)
+
+- 인용 대조(`86762b8e1` → `325cc2bf03`, 같은 줄 범위의 글자 비교): 2건 중 그대로 1, 줄만 이동 1, 내용 바뀜 0, 모호 0, 고정 tip에 없던 파일 0(뒤 base `8c5732615` 근거). 인용은 각자 적힌 고정 tip 기준이라 그대로 두고, 교체문에 옮겨지는 사실만 다시 확인했다.
+- 교체문에서 바뀐 사실 없음.
+- 교체문에 들어간 다음 사실은 tip에서 다시 확인했고 그대로다: claim lease 기본 4시간·heartbeat 없음 (`src/claim.rs` `DEFAULT_LEASE`), `Budget`은 `max_attempts` 하나·기본값 없음(`src/run.rs`), E2E receipt 9건(6 passed + 3 not_run, `docs/e2e-receipts/receipts.jsonl`), GitLab은 capability 선언만 (`src/forge/gitlab.rs`, 호출 경로 없음), hook 생성의 host 로딩 `not_run`(`docs/rust-product-path.md` `hooks.apply` 행), `capabilities` 명령 없음, Codex config CLI 없음(#2237 PR #2534 미병합), #2197·#2014 OPEN. OPERATIONS 전수는 지금 99개다(고정 근거 `86762b8e1`에서는 70개). 70을 적은 근거 열은 그 고정 tip 기준이며, 교체문에는 개수가 없다.

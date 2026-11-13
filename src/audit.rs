@@ -179,6 +179,9 @@ pub struct Verdict {
     pub observed: Observed,
     pub reviewer: Reviewer,
     pub independence: Independence,
+    /// What `independence` was judged from: `self-declared` while the reviewer fields are the
+    /// caller's own words (#2392 decision 6774899518 row 14, stage 1).
+    pub independence_basis: &'static str,
     pub pr_binding: PrBinding,
     pub run_decision: Decision,
     pub run_reasons: Vec<String>,
@@ -215,6 +218,10 @@ const INDEPENDENCE: [(&str, &str, Option<&str>); 6] = [
     ),
 ];
 
+/// The reviewer fields are taken as the caller states them; stage 2 of #2392 D2 derives them
+/// from the candidate's claim trailer and the host session id instead.
+const INDEPENDENCE_BASIS: &str = "self-declared";
+
 pub fn independence(r: &Reviewer) -> Independence {
     match INDEPENDENCE
         .iter()
@@ -232,6 +239,16 @@ pub fn independence(r: &Reviewer) -> Independence {
             limitation: None,
         },
     }
+}
+
+/// Severities that do not hold admission; any other value — `critical`, `high`, or a word this
+/// table does not know — does (#2392 decision 6774899518 row 17 = A). Case-insensitive.
+const OPEN_SEVERITIES: [&str; 3] = ["medium", "low", "info"];
+
+/// Whether an open finding of this severity holds admission.
+pub fn blocking_severity(severity: &str) -> bool {
+    let s = severity.trim().to_ascii_lowercase();
+    !OPEN_SEVERITIES.contains(&s.as_str())
 }
 
 /// The PR's `head.sha` against the audited commit; a failed lookup is `unknown`.
@@ -520,6 +537,13 @@ pub fn reduce(input: &AuditInput, observed: &Observed, outcome: &RunOutcome, now
     } else if !evidence_ok {
         reasons.push("must-pass-not-met");
         (worst(), Admission::Rejected)
+    } else if input
+        .findings
+        .iter()
+        .any(|f| blocking_severity(&f.severity))
+    {
+        reasons.push("blocking-finding-open");
+        (Status::Unknown, Admission::Held)
     } else {
         (Status::Passed, Admission::Admitted)
     };
@@ -533,6 +557,7 @@ pub fn reduce(input: &AuditInput, observed: &Observed, outcome: &RunOutcome, now
         observed: observed.clone(),
         reviewer: input.reviewer.clone(),
         independence,
+        independence_basis: INDEPENDENCE_BASIS,
         pr_binding: pr,
         run_decision: outcome.decision,
         run_reasons: outcome.reasons.clone(),
@@ -552,5 +577,9 @@ pub fn audit(project: &Path, input: &AuditInput) -> Result<Verdict> {
     }
     let observed = observe(project)?;
     let outcome = run::run(project, &input.run, &observed.commit)?;
-    Ok(reduce(input, &observed, &outcome, &utc_now()))
+    // #2392 F8: judge the project as it is after the checks ran. A check that changed the
+    // tree (or the commit) while it ran then meets the same `candidate-changed` rejection as
+    // a change made before the audit, instead of an admission of a tree nobody checked.
+    let after = observe(project)?;
+    Ok(reduce(input, &after, &outcome, &utc_now()))
 }

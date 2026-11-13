@@ -87,12 +87,21 @@ fn unchanged_prs_are_not_reported_and_changes_are() {
     assert_eq!(first["changes"].as_array().unwrap().len(), 1, "{first}");
     assert_eq!(first["changes"][0]["now"]["author"], json!("agent-1"));
     assert_eq!(first["changes"][0]["now"]["verdict"], json!("PASS"));
+    // #2678: the count is said in words, and "no change" is said outright.
+    assert_eq!(
+        first["summary"],
+        json!("1 open pull request(s) read; 1 changed since the previous tick")
+    );
     let state = p.join(".moai-cli/forge/leader-tick.json");
     let saved = fs::read(&state).unwrap();
 
     let second = tick(p, &[], one_pr("h1", "agent-1", "PASS", "success"));
     assert_eq!(second["changes"], json!([]), "{second}");
     assert_eq!(second["hints"], json!([]));
+    assert_eq!(
+        second["summary"],
+        json!("1 open pull request(s) read; no change since the previous tick")
+    );
     assert_eq!(fs::read(&state).unwrap(), saved, "state is byte-identical");
 
     let third = tick(p, &[], one_pr("h2", "agent-1", "none", "success"));
@@ -153,4 +162,85 @@ fn interval_comes_from_the_profile_or_the_default() {
     let out = tick(tmp.path(), &[], one_pr("h1", "agent-1", "PASS", "success"));
     assert_eq!(out["interval_secs"], json!(60));
     assert_eq!(out["interval_source"], json!("profile"));
+}
+
+/// #2563: the CI check renamed `rc-ci` → `ci`. The tick reads either spelling and the
+/// newest run (largest id) decides, whatever order the API lists them in; a matrix job
+/// name never counts.
+#[test]
+fn ci_reads_both_names_and_the_newest_run_decides() {
+    let with_runs = |runs: Value| {
+        let mut ex = one_pr("h1", "agent-1", "PASS", "success");
+        ex[3] = get(
+            &format!("{API}/commits/h1/check-runs"),
+            json!({ "check_runs": runs }),
+        );
+        ex
+    };
+    let run = |id: i64, name: &str, c: &str| json!({"id": id, "name": name, "status": "completed", "conclusion": c});
+    for (runs, ci) in [
+        (json!([run(1, "ci", "success")]), "success"),
+        (json!([run(1, "rc-ci", "failure")]), "failure"),
+        (
+            json!([run(2, "ci", "failure"), run(1, "rc-ci", "success")]),
+            "failure",
+        ),
+        (
+            json!([run(1, "rc-ci", "success"), run(2, "ci", "failure")]),
+            "failure",
+        ),
+        (
+            json!([run(1, "ci", "failure"), run(2, "rc-ci", "success")]),
+            "success",
+        ),
+        (json!([run(1, "ci / linux-x86_64", "success")]), "none"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tick(tmp.path(), &[], with_runs(runs.clone()));
+        assert_eq!(out["changes"][0]["now"]["ci"], json!(ci), "{runs} → {out}");
+    }
+}
+
+/// #2678 audit B2: two pull requests and two changes, so neither count can be a constant.
+#[test]
+fn the_summary_counts_every_pull_request_and_change() {
+    let tmp = tempfile::tempdir().unwrap();
+    let p = tmp.path();
+    let mut two = vec![get(
+        &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
+        json!([
+            {"number": 5, "head": {"sha": "h5"}, "body": "x\n\nRefs #7\n"},
+            {"number": 6, "head": {"sha": "h6"}, "body": "x\n\nRefs #8\n"}
+        ]),
+    )];
+    for (n, issue, head) in [(5, 7, "h5"), (6, 8, "h6")] {
+        two.push(get(
+            &format!("{API}/pulls/{n}"),
+            json!({"mergeable_state": "clean"}),
+        ));
+        two.push(get(
+            &format!("{API}/commits/{head}/status"),
+            json!({"statuses": [{"context": "moai/audit", "state": "success"}]}),
+        ));
+        two.push(get(
+            &format!("{API}/commits/{head}/check-runs"),
+            json!({"check_runs": [{"name": "ci", "status": "completed", "conclusion": "success"}]}),
+        ));
+        two.push(get(
+            &format!("{API}/issues/{issue}/comments?per_page=100"),
+            json!([{"id": 100, "body": format!("moai-claim: session=agent-1 epoch=1 lease_until={LEASE}")}]),
+        ));
+    }
+    let first = tick(p, &[], two.clone());
+    assert_eq!(
+        first["summary"],
+        json!("2 open pull request(s) read; 2 changed since the previous tick"),
+        "{first}"
+    );
+    let second = tick(p, &[], two);
+    assert_eq!(
+        second["summary"],
+        json!("2 open pull request(s) read; no change since the previous tick"),
+        "{second}"
+    );
 }

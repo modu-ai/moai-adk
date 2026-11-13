@@ -8,6 +8,20 @@
   1. `git grep -Iio 'moai[ _-]cli'`(tracked 파일 스캔) → **1,684매치 / 189파일** — 본 문서의 전수 표는 이 값
   2. BSD `grep -RIioE 'moai[ _-]cli'`(모든 파일, 위 디렉터리 제외) → **1,683매치** — 1매치 차이는 엔진 파일 범위 차이(tracked 한정 vs 무시 파일 포함)이며 교차 확인으로 충분하다. `rg --count-matches` 병행 실행은 이 문서 작성 시점에 미완료(3차 확인 not_run — 2개 독립 계수로 충분).
 
+- 참조 점검(#2405, 2026-11-10, tip `b87e3d7d9c`): 전수 표 189행 중 **6행**이 지금은 없는 경로를 가리킨다.
+  - `tests/omp_adapter.rs`는 PR #2381에서 삭제됐다.
+  - `skills/moai/…` 5개는 PR #2297이 `skills/moai-cli/…`로 옮겼다.
+  - 행과 매치 수는 측정 트리의 값이라 그대로 두고, 각 행의 마지막 칸에 현재 상태를 적었다.
+  - 측정은 두 방법으로 했다(Python 파싱, `grep`+`test -e`). 결과가 같았다.
+- 재점검(#2405, 2026-11-10, tip `33bfb5e3ca` 병합 뒤): **8행**이 없는 경로를 가리킨다. 위 6행에 2행이 더해졌다.
+  - `tests/todo_promotion_cli.rs`와 `tests/promote_digest_order.rs`는 PR #2406(`b0c590c7c9`, 로컬 TODO 승격 코드 제거)에서 삭제됐다.
+  - 처리 방식은 위와 같다. 측정은 같은 두 방법으로 했고 결과가 같았다.
+- 재점검(#2709, 2026-11-13, tip `578a5a3e57` 위): **10행**이 없는 경로를 가리킨다. 위 8행 중 지금도 없는 3행에 7행이 더해졌다(위의 `skills/moai/…` 5행은 그 뒤 경로가 다시 생겨 지금은 있다).
+  - `tests/claude_recovery_test.py`·`tests/claude_preview_test.py`·`tests/claude_transaction_boundary_test.py`·`tests/claude_update_test.py`는 PR #2718(`38951fe8c6`, 임시 Python Claude 어댑터 제거)에서 삭제됐다.
+  - `src/sources.rs`와 `tests/sources_cli.rs`는 `7138305106`(#2286 PR3, 외부 스킬 설치 명령 제거)에서 삭제됐다.
+  - `docs/rc-release-review.md`는 `f9cfb40359`(#2563)에서 `docs/release-review.md`로 이름이 바뀌었다.
+  - 처리 방식은 위와 같다. 측정은 두 방법(Python 파싱+`os.path.exists`, `git ls-files`)으로 했고 결과가 같았다.
+
 ## 요약 (측정 트리 기준)
 
 - 총계: **1,684매치 / 189파일**(방법 1; 방법 2는 1,683)
@@ -99,7 +113,7 @@
 | `docs/design-review/fixes/plan-43faf222.md` | 9 | RECORDS |
 | `docs/design-review/fixes/group3-83f162ef.md` | 9 | RECORDS |
 | `docs/design-review/appendix/paths.md` | 9 | RECORDS |
-| `tests/todo_promotion_cli.rs` | 8 | TESTS |
+| `tests/todo_promotion_cli.rs` | 8 | TESTS — 측정 뒤 삭제됨(`b0c590c7c9`, PR #2406 로컬 TODO 승격 제거; #2405 확인) |
 | `tests/lane_handoff_cli.rs` | 8 | TESTS |
 | `docs/design-review/autonomy-modes-spec.md` | 8 | RECORDS |
 | `tools/host_live_harness.py` | 7 | SCRIPTSTOOLS |
@@ -134,19 +148,19 @@
 | `tests/recovery_cli.rs` | 4 | TESTS |
 | `tests/codex_config.rs` | 4 | TESTS |
 | `tests/codex_adapter.rs` | 4 | TESTS |
-| `tests/claude_recovery_test.py` | 4 | TESTS |
-| `tests/claude_preview_test.py` | 4 | TESTS |
+| `tests/claude_recovery_test.py` | 4 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
+| `tests/claude_preview_test.py` | 4 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
 | `tests/banner_golden.rs` | 4 | TESTS |
 | `tests/apply_recover_partial.rs` | 4 | TESTS |
 | `tests/agents_apply_linkage.rs` | 4 | TESTS |
 | `src/update.rs` | 4 | SRC_REST |
-| `src/sources.rs` | 4 | SRC_REST |
+| `src/sources.rs` | 4 | SRC_REST — 측정 뒤 삭제됨(`7138305106`, #2286 PR3 외부 스킬 설치 명령 제거; #2709 확인) |
 | `src/profile.rs` | 4 | SRC_REST |
 | `src/archive.rs` | 4 | SRC_REST |
 | `src/apply.rs` | 4 | SRC_REST |
 | `docs/session-hub-research-2026-11-08.md` | 4 | DOCS_REST |
 | `docs/p07-decision.md` | 4 | DOCS_REST |
-| `tests/sources_cli.rs` | 3 | TESTS |
+| `tests/sources_cli.rs` | 3 | TESTS — 측정 뒤 삭제됨(`7138305106`, #2286 PR3 외부 스킬 설치 명령 제거; #2709 확인) |
 | `tests/plan_admission.rs` | 3 | TESTS |
 | `tests/launcher_roleless.rs` | 3 | PROTECTED(2360-open) |
 | `tests/generation_ref_slash.rs` | 3 | TESTS |
@@ -158,7 +172,7 @@
 | `src/lib.rs` | 3 | SRC_REST |
 | `src/forge/report.rs` | 3 | SRC_REST |
 | `src/claude.rs` | 3 | SRC_REST |
-| `skills/moai/workflows/mode-agent.md` | 3 | SKILLS(2297-pending) |
+| `skills/moai/workflows/mode-agent.md` | 3 | SKILLS(2297-pending) — 현재 `skills/moai-cli/workflows/mode-agent.md`(`36739b90da`, PR #2297; #2405 확인) |
 | `schemas/e2e-receipt.schema.json` | 3 | OTHER |
 | `docs/host-live-session-checklist.md` | 3 | DOCS_REST |
 | `docs/design-review/statusline-rust-stage1-2026-11-10.md` | 3 | RECORDS |
@@ -176,7 +190,7 @@
 | `tests/fixtures/protocol/v1/current/01-usage-unknown-subcommand.json` | 2 | TESTS |
 | `tests/fixtures/github/issues-open.json` | 2 | TESTS |
 | `tests/fixtures/atlas-tag/go-corpus.txt` | 2 | TESTS |
-| `tests/claude_transaction_boundary_test.py` | 2 | TESTS |
+| `tests/claude_transaction_boundary_test.py` | 2 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
 | `src/worktree.rs` | 2 | SRC_REST |
 | `src/migrate.rs` | 2 | SRC_REST |
 | `src/github_templates.rs` | 2 | SRC_REST |
@@ -194,11 +208,11 @@
 | `.gitignore` | 2 | OTHER |
 | `tests/sync_marker_form.rs` | 1 | TESTS |
 | `tests/support_matrix_test.py` | 1 | TESTS |
-| `tests/promote_digest_order.rs` | 1 | TESTS |
+| `tests/promote_digest_order.rs` | 1 | TESTS — 측정 뒤 삭제됨(`b0c590c7c9`, PR #2406 로컬 TODO 승격 제거; #2405 확인) |
 | `tests/plan_input_limit_cli.rs` | 1 | TESTS |
 | `tests/parity_cli.rs` | 1 | TESTS |
 | `tests/ontology_schema.rs` | 1 | TESTS |
-| `tests/omp_adapter.rs` | 1 | TESTS |
+| `tests/omp_adapter.rs` | 1 | TESTS — 측정 뒤 삭제됨(`571c2e6476`, PR #2381 OMP 제거; #2405 확인) |
 | `tests/launcher_permissions_setting.rs` | 1 | PROTECTED(2360-open) |
 | `tests/host_live_harness_test.py` | 1 | TESTS |
 | `tests/gitlab_forge_contract.rs` | 1 | TESTS |
@@ -212,7 +226,7 @@
 | `tests/fixtures/protocol/v1/current/09-project-apply-created.json` | 1 | TESTS |
 | `tests/e2e_receipt_not_run_test.py` | 1 | TESTS |
 | `tests/common/mod.rs` | 1 | TESTS |
-| `tests/claude_update_test.py` | 1 | TESTS |
+| `tests/claude_update_test.py` | 1 | TESTS — 측정 뒤 삭제됨(`38951fe8c6`, PR #2718 임시 Python Claude 어댑터 제거; #2709 확인) |
 | `tests/baseline_git_env.rs` | 1 | TESTS |
 | `tests/atlas_tag_cli.rs` | 1 | TESTS |
 | `src/session.rs` | 1 | PROTECTED(2360-open) |
@@ -227,11 +241,11 @@
 | `src/decision.rs` | 1 | SRC_REST |
 | `src/baseline.rs` | 1 | SRC_REST |
 | `src/banner.rs` | 1 | SRC_REST |
-| `skills/moai/workflows/update.md` | 1 | SKILLS(2297-pending) |
-| `skills/moai/workflows/sync.md` | 1 | SKILLS(2297-pending) |
-| `skills/moai/workflows/setup.md` | 1 | SKILLS(2297-pending) |
-| `skills/moai/references/source-manifest.json` | 1 | SKILLS(2297-pending) |
-| `docs/rc-release-review.md` | 1 | DOCS_REST |
+| `skills/moai/workflows/update.md` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/workflows/update.md`(PR #2297; #2405 확인) |
+| `skills/moai/workflows/sync.md` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/workflows/sync.md`(PR #2297; #2405 확인) |
+| `skills/moai/workflows/setup.md` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/workflows/setup.md`(PR #2297; #2405 확인) |
+| `skills/moai/references/source-manifest.json` | 1 | SKILLS(2297-pending) — 현재 `skills/moai-cli/references/source-manifest.json`(PR #2297; #2405 확인) |
+| `docs/rc-release-review.md` | 1 | DOCS_REST — 측정 뒤 이름 바뀜(`f9cfb40359`, #2563 → `docs/release-review.md`; #2709 확인) |
 | `docs/p02-decision.md` | 1 | DOCS_REST |
 | `docs/design-review/flow-control-2026-11-09.md` | 1 | RECORDS |
 | `docs/code-atlas-name-collision.md` | 1 | DOCS_REST |

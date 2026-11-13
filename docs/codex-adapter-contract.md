@@ -1,6 +1,6 @@
 # Codex adapter 계약 (02-C #1993)
 
-공통 skill package(`skills/moai-cli/`, 02-A #1991; #2286에서 `moai-cli`로 개명)를 OpenAI Codex(Desktop 앱, CLI, IDE 확장)에 연결하는 adapter의 계약이다. RC1에서는 projection을 계획하고 설치 상태를 진단하는 데까지만 했다. rc.2 I4 #2241이 계획한 projection을 호출자가 정한 대상에 설치하는 `codex.projection_apply`를 더했다(아래 Operation 절). 설치 위치는 여전히 정하지 않는다. 02-C 범위의 확인일은 2026-11-08이고, I4가 다시 확인한 항목은 2026-11-09(#2286 개명 갱신 동일일)로 따로 적는다. 지원표 행은 `docs/host-support-matrix.md`의 Codex 절에 있다.
+공통 skill package(`skills/moai/`, 02-A #1991; #2286에서 skill 이름 `moai`로 확정, 실행 파일은 `moai-cli`)를 OpenAI Codex(Desktop 앱, CLI, IDE 확장)에 연결하는 adapter의 계약이다. RC1에서는 projection을 계획하고 설치 상태를 진단하는 데까지만 했다. rc.2 I4 #2241이 계획한 projection을 호출자가 정한 대상에 설치하는 `codex.projection_apply`를 더했다(아래 Operation 절). 설치 위치는 여전히 정하지 않는다. 02-C 범위의 확인일은 2026-11-08이고, I4가 다시 확인한 항목은 2026-11-09(#2286 개명 갱신 동일일)로 따로 적는다. 지원표 행은 `docs/host-support-matrix.md`의 Codex 절에 있다.
 
 ## 결정 (리더 RC1 임시, 2026-11-08, Issue 본문 r30)
 
@@ -78,7 +78,7 @@ MoAI가 쓰는 키는 이 중 `interface.display_name`·`short_description`·`de
 - `agents_override_created: false`다. 개인 보충용 override를 만들지 않는다(REQ-02C-05).
 - `trust`: `{status: "not_evaluated", reason, consequence}`. config.toml을 읽지 않으므로 untrusted여서 생기는 `blocked_by_trust`를 판정할 수 없고, trust 상태를 바꾸지도 않는다(REQ-02C-06).
 - `codex_layer`: `.codex/config.toml`과 `.codex/hooks.json`이 있는지만 본다. `inline_hooks`와 `status_line`은 `not_evaluated`다.
-- `skills.moai-cli`(key renamed by #2286): cwd → root의 `.agents/skills/moai-cli`, `$HOME/.agents/skills/moai-cli`, `/etc/codex/skills/moai-cli` 중 있는 것을 모두 보여 준다. 둘 이상이면 병합되지 않는다는 경고를 낸다(REQ-02C-04). Go `moai` skill 디렉터리는 읽지 않는다(#2286 REQ-3).
+- `skills.moai-cli`(key renamed by #2286): cwd → root의 `.agents/skills/moai`, `$HOME/.agents/skills/moai`, `/etc/codex/skills/moai` 중 있는 것을 모두 보여 준다. 둘 이상이면 병합되지 않는다는 경고를 낸다(REQ-02C-04). Go `moai` skill 디렉터리는 읽지 않는다(#2286 REQ-3).
 - 결과: `writes: []`, `host_loaded: false`, `execution_verified: false`.
 
 ## AC와 시험 (Issue 본문 r30)
@@ -123,7 +123,9 @@ MoAI가 쓰는 키는 이 중 `interface.display_name`·`short_description`·`de
 
 ## config.toml 생성 (Issue #2240, rc.2 I3)
 
-`moai_cli::hosts::codex_config::{config_plan, config_apply}`(라이브러리 표면; CLI op은 Claude settings와 같이 후속)가 프로젝트 `.codex/config.toml`만 다룬다. Claude `settings.json`과 같은 baseline/current/desired 3-way(REQ-I3-01): 소유 receipt는 `.moai-cli/manifests/codex-config.json`, 사용자가 MoAI가 둔 값을 바꾼 키는 `conflict`로 아무것도 쓰지 않고, 사용자가 이미 같은 값을 갖고 있던 키는 소유하지 않는다. managed 키 밖의 키·표·주석·빈 줄·순서는 그대로다(`toml_edit`). 바꾼 키도 앞뒤 주석을 유지한다.
+`moai_cli::hosts::codex_config::{config_plan, config_apply}`가 프로젝트 `.codex/config.toml`만 다룬다. #2237의 `codex-config-plan PROJECT` / `codex-config-apply PROJECT --plan-digest D --permission-reference R`가 이 라이브러리를 연결한다. stdin은 아래 managed dotted key의 JSON object이며 두 명령 모두 64 KiB 상한이다. plan은 무쓰기이고 apply는 같은 입력·digest·permission reference를 다시 검증한다. HOME(Windows에서는 USERPROFILE도 지원)과 같은 project, 또는 project의 `.codex`가 CODEX_HOME인 대상은 거부한다. CODEX_HOME이 설정됐지만 경로를 확인할 수 없는 경우도 거부한다. HOME·USERPROFILE이 모두 없거나 그 경로를 확인할 수 없으면 home 비교를 할 수 없으므로 plan·apply 모두 쓰기 전에 거부한다. 설정 키·기본값·상한은 기존 writer와 같고 trust·host load는 판정하지 않는다.
+
+Claude `settings.json`과 같은 baseline/current/desired 3-way(REQ-I3-01): 소유 receipt는 `.moai-cli/manifests/codex-config.json`, 사용자가 MoAI가 둔 값을 바꾼 키는 `conflict`로 아무것도 쓰지 않고, 사용자가 이미 같은 값을 갖고 있던 키는 소유하지 않는다. managed 키 밖의 키·표·주석·빈 줄·순서는 그대로다(`toml_edit`). 바꾼 키도 앞뒤 주석을 유지한다. `tests/codex_config_cli.rs`는 합성 HOME/project에서 CLI 왕복·거부 경로를 검사하며 실제 host 설정이나 실세션은 사용하지 않는다. P04/C5와 MCP 결정은 이 CLI 연결로 해제되지 않는다.
 
 | managed 키 | 받는 값 | 근거 |
 | --- | --- | --- |

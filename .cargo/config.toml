@@ -1,0 +1,16 @@
+# #2452 AC-3: local `cargo test` gets the same 8 MiB test-thread stack as CI.
+# In debug builds `Cli::command()` needs about 2000 KiB of the 2 MiB default and grows
+# about 4 KiB per subcommand (#2016 comment 6790101536). Without `force`, an existing
+# RUST_MIN_STACK in the environment wins (measured on #2452). rustc also receives it;
+# 8 MiB equals rustc's own default (`DEFAULT_STACK_SIZE`, rustc_interface 1.94.1).
+#
+# #2699: on macOS `/usr/bin/git` is an Xcode shim that starts `xcodebuild -license check` on
+# every call made under an unfamiliar HOME, and most tests run moai-cli with a fresh temporary
+# HOME. With the Command Line Tools as the developer folder the shim skips that check
+# (measured: tests/worktree_cli.rs 27 → 0 xcodebuild processes, 7.1 s → 3.3 s). Other systems
+# ignore the variable; without `force` an existing DEVELOPER_DIR in the environment wins. A Mac
+# without /Library/Developer/CommandLineTools must set DEVELOPER_DIR itself, or every git call
+# of a test fails with an invalid-developer-folder error.
+[env]
+RUST_MIN_STACK = "8388608"
+DEVELOPER_DIR = "/Library/Developer/CommandLineTools"

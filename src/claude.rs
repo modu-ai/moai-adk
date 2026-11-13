@@ -401,12 +401,91 @@ pub fn user_settings_desired(
     project: &Path,
     desired: &Map<String, Value>,
 ) -> Result<Map<String, Value>> {
+    user_settings_desired_in(project, desired, SettingsScope::Project)
+}
+
+/// [`user_settings_desired`] for one scope. Only the project file carries the generated hook
+/// set (`hooks-apply` writes `settings.json`), so the local scope never carries `hooks` over.
+pub fn user_settings_desired_in(
+    project: &Path,
+    desired: &Map<String, Value>,
+    scope: SettingsScope,
+) -> Result<Map<String, Value>> {
     refuse_unlisted(desired.keys().map(String::as_str), USER_SETTINGS)?;
     let mut out = desired.clone();
-    if let Some(hooks) = owned_settings(project)?.get("hooks") {
-        out.insert("hooks".into(), hooks.clone());
+    if scope == SettingsScope::Project {
+        if let Some(hooks) = owned_settings(project)?.get("hooks") {
+            out.insert("hooks".into(), hooks.clone());
+        }
     }
     Ok(out)
+}
+
+/// Which Claude Code settings file a `claude-settings-plan` / `-apply` writes (#2581).
+/// `Project` is the shared `.claude/settings.json` (the default, unchanged). `Local` is
+/// `.claude/settings.local.json`, the file Claude Code also reads for sessions started in a
+/// linked worktree of the repository (leader observation, #2581 comment 6839995170 for the
+/// status line), so a git-ignored `.claude/` can still reach worktree sessions. Each scope has
+/// its own ownership receipt, and the plan digest binds the scope.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SettingsScope {
+    Project,
+    Local,
+}
+
+impl SettingsScope {
+    pub fn parse(s: &str) -> Result<Self> {
+        match s {
+            "project" => Ok(Self::Project),
+            "local" => Ok(Self::Local),
+            _ => Err("scope must be project or local".into()),
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Project => "project",
+            Self::Local => "local",
+        }
+    }
+
+    fn file(self) -> &'static str {
+        match self {
+            Self::Project => SETTINGS_FILE,
+            Self::Local => SETTINGS_LOCAL_FILE,
+        }
+    }
+
+    fn receipt(self) -> &'static str {
+        match self {
+            Self::Project => SETTINGS_RECEIPT,
+            Self::Local => SETTINGS_LOCAL_RECEIPT,
+        }
+    }
+}
+
+/// The main checkout of a linked worktree, read from its `.git` file (`gitdir: <main>/.git/
+/// worktrees/<name>`); `None` when PROJECT is not a linked worktree.
+fn linked_worktree_main(root: &Path) -> Option<Option<PathBuf>> {
+    let dotgit = root.join(".git");
+    let meta = fs::symlink_metadata(&dotgit).ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+    let text = fs::read_to_string(&dotgit).ok();
+    let main = text
+        .as_deref()
+        .and_then(|t| t.trim().strip_prefix("gitdir:"))
+        .map(|g| PathBuf::from(g.trim()))
+        .and_then(|g| {
+            let parts: Vec<_> = g.components().collect();
+            let n = parts.len();
+            (n >= 3
+                && parts[n - 2].as_os_str() == "worktrees"
+                && parts[n - 3].as_os_str() == ".git")
+                .then(|| parts[..n - 3].iter().collect::<PathBuf>())
+        });
+    Some(main)
 }
 
 /// Permission modes a managed `permissions.defaultMode` may take. `auto` and
@@ -514,6 +593,9 @@ pub fn plan_settings(
 const SETTINGS_FILE: &str = ".claude/settings.json";
 /// Ownership receipt under the project state root; 04-B UPDATE reads it as the baseline.
 const SETTINGS_RECEIPT: &str = "manifests/claude-settings.json";
+/// The local scope (#2581): Claude Code's personal project settings file and its own receipt.
+const SETTINGS_LOCAL_FILE: &str = ".claude/settings.local.json";
+const SETTINGS_LOCAL_RECEIPT: &str = "manifests/claude-settings-local.json";
 
 /// Size bound for the settings file and its receipt, the same as `agents::write_replace`
 /// re-reads, so a plan this module offers is one the writer accepts.
@@ -553,6 +635,99 @@ struct SettingsState {
     /// New settings bytes; `None` when the file stays as it is.
     after: Option<Vec<u8>>,
     digest: String,
+    /// The confirmed replacement a conflict offers (#2383); `None` when there is none.
+    replace: Option<Replace>,
+}
+
+/// #2383 range 2 (leader decision 6846938102): a conflict on keys a caller may set can be
+/// replaced after the user confirms. The existing file is kept byte for byte under
+/// `.moai-cli/settings-backups/<UTC>-<scope>/` first; only the conflicting keys change.
+struct Replace {
+    keys: Vec<String>,
+    current: Map<String, Value>,
+    replace_with: Map<String, Value>,
+    after: Vec<u8>,
+    token: String,
+}
+
+/// Project-relative folder that holds the originals of confirmed replacements (#2383).
+const SETTINGS_BACKUPS: &str = "settings-backups";
+
+/// The confirmed replacement for a conflict, or `None` when it cannot be offered: no
+/// settings file to keep, or a conflicting key a caller may not set (`hooks` stays with
+/// `hooks-apply`). The replaced file is the ordinary three-way plan with each conflicting key
+/// read as if MoAI owned its current value, so the request's other keys are planned exactly
+/// as without a conflict. The token binds the scope, both files, the request, the conflicting
+/// keys and the replaced bytes, so any change after the preview invalidates it.
+#[allow(clippy::too_many_arguments)]
+fn replacement(
+    scope: SettingsScope,
+    before: Option<&[u8]>,
+    receipt_before: Option<&[u8]>,
+    owned: &Map<String, Value>,
+    current: &Map<String, Value>,
+    desired: &Map<String, Value>,
+    conflicts: &[String],
+    canonical_desired: &[u8],
+) -> Option<Replace> {
+    let before = before?;
+    if conflicts.is_empty()
+        || conflicts
+            .iter()
+            .any(|k| !USER_SETTINGS.contains(&k.as_str()))
+    {
+        return None;
+    }
+    let mut baseline = owned.clone();
+    let (mut now, mut new) = (Map::new(), Map::new());
+    for key in conflicts {
+        match current.get(key) {
+            Some(v) => {
+                now.insert(key.clone(), v.clone());
+                baseline.insert(key.clone(), v.clone());
+            }
+            None => {
+                baseline.remove(key);
+            }
+        }
+        if let Some(v) = desired.get(key) {
+            new.insert(key.clone(), v.clone());
+        }
+    }
+    let (Some(candidate), rest) = plan_settings(&baseline, current, desired).ok()? else {
+        return None;
+    };
+    if !rest.is_empty() {
+        return None;
+    }
+    let mut after = serde_json::to_vec_pretty(&candidate).expect("JSON object");
+    after.push(b'\n');
+    if after.len() as u64 > SETTINGS_LIMIT {
+        return None;
+    }
+    let bound = serde_json::to_vec(&(
+        "settings-replace",
+        scope.name(),
+        crate::digest(before),
+        receipt_before.map(crate::digest),
+        crate::digest(canonical_desired),
+        conflicts,
+        crate::digest(&after),
+    ))
+    .expect("replace tuple");
+    let hex = crate::digest(&bound);
+    let token = format!(
+        "settings-replace:{}:{}",
+        scope.name(),
+        &hex["sha256:".len().."sha256:".len() + 16]
+    );
+    Some(Replace {
+        keys: conflicts.to_vec(),
+        current: now,
+        replace_with: new,
+        after,
+        token,
+    })
 }
 
 /// The project's `.claude/settings.json` is the user's own settings file when the project is
@@ -571,12 +746,30 @@ fn refuse_user_scope(root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<SettingsState> {
+fn settings_state(
+    project: &Path,
+    desired: &Map<String, Value>,
+    scope: SettingsScope,
+) -> Result<SettingsState> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
     refuse_user_scope(&root)?;
+    // #2581: Claude Code reads settings.local.json from the main checkout for a session in a
+    // linked worktree, so a local file written inside the worktree would not be the one read.
+    // The plan never writes outside PROJECT: it names the main checkout instead.
+    if scope == SettingsScope::Local {
+        if let Some(main) = linked_worktree_main(&root) {
+            return Err(match main {
+                Some(m) => format!(
+                    "local scope refused in a linked worktree: Claude Code reads settings.local.json from the main checkout; plan it on {}",
+                    m.display()
+                ),
+                None => "local scope refused in a linked worktree: Claude Code reads settings.local.json from the main checkout".into(),
+            });
+        }
+    }
     let state_dir = root.join(crate::PROJECT_STATE_DIR);
     for dir in [
         root.join(".claude"),
@@ -585,7 +778,7 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
     ] {
         refuse_symlink_dir(&dir)?;
     }
-    let (settings, receipt) = (root.join(SETTINGS_FILE), state_dir.join(SETTINGS_RECEIPT));
+    let (settings, receipt) = (root.join(scope.file()), state_dir.join(scope.receipt()));
     let before = read_existing(&settings)?;
     let receipt_before = read_existing(&receipt)?;
     let owned = match &receipt_before {
@@ -596,7 +789,12 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
         None => Map::new(),
         Some(bytes) => match serde_json::from_slice::<Value>(bytes) {
             Ok(Value::Object(m)) => m,
-            _ => return Err("existing settings.json requires preservation review".into()),
+            _ => {
+                return Err(format!(
+                    "existing {} requires preservation review",
+                    scope.file()
+                ))
+            }
         },
     };
     let (candidate, conflicts) = plan_settings(&owned, &current, desired)?;
@@ -614,15 +812,32 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
     use crate::spec::Canonical;
     let canonical =
         |m: &Map<String, Value>| crate::spec::SortedKeys.bytes(&Value::Object(m.clone()));
+    let canonical_desired = canonical(desired);
+    let replace = replacement(
+        scope,
+        before.as_deref(),
+        receipt_before.as_deref(),
+        &owned,
+        &current,
+        desired,
+        &conflicts,
+        &canonical_desired,
+    );
+    let tuple = (
+        1,
+        crate::digest(&canonical_desired),
+        before.as_deref().map(crate::digest),
+        receipt_before.as_deref().map(crate::digest),
+        after.as_deref().map(crate::digest),
+        &conflicts,
+    );
+    // The project scope keeps its digest as before; the local scope binds its name, so a
+    // digest planned for one file never applies to the other (#2581).
     let digest = crate::digest(
-        &serde_json::to_vec(&(
-            1,
-            crate::digest(&canonical(desired)),
-            before.as_deref().map(crate::digest),
-            receipt_before.as_deref().map(crate::digest),
-            after.as_deref().map(crate::digest),
-            &conflicts,
-        ))
+        &match scope {
+            SettingsScope::Project => serde_json::to_vec(&tuple),
+            SettingsScope::Local => serde_json::to_vec(&(scope.name(), tuple)),
+        }
         .expect("plan tuple"),
     );
     Ok(SettingsState {
@@ -636,6 +851,7 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
         conflicts,
         after,
         digest,
+        replace,
     })
 }
 
@@ -643,40 +859,119 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
 /// when there is none). A caller that changes one key starts from this, so its plan never drops
 /// another key MoAI already owns.
 pub fn owned_settings(project: &Path) -> Result<Map<String, Value>> {
-    Ok(settings_state(project, &Map::new())?.owned)
+    Ok(settings_state(project, &Map::new(), SettingsScope::Project)?.owned)
+}
+
+/// Whether git ignores `PROJECT/.claude/settings.json` (#2581): `ignored`, `not_ignored`, or
+/// `unknown` when PROJECT is not in a git work tree or git fails. Index-aware (the default of
+/// `git check-ignore`): a tracked file that matches an ignore pattern is `not_ignored`. The
+/// caller's git environment is scrubbed so PROJECT is the repository read (#2054).
+fn settings_ignored(root: &Path, file: &str) -> &'static str {
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks")
+        .arg("-C")
+        .arg(root)
+        .args(["check-ignore", "-q", "--", file]);
+    crate::identity::scrub_git_env(&mut cmd);
+    let status = cmd
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    match status.ok().and_then(|s| s.code()) {
+        Some(0) => "ignored",
+        Some(1) => "not_ignored",
+        _ => "unknown",
+    }
+}
+
+/// What a session started in a linked worktree of this repository sees of the settings file
+/// (#2581). Claude Code reads the shared project settings from the session's working folder
+/// (https://code.claude.com/docs/en/settings, read 2026-11-12), and a linked worktree carries
+/// only the files git checks out, so an ignored settings file never reaches it.
+fn worktree_sessions(ignored: &str) -> &'static str {
+    match ignored {
+        "ignored" => "not_reached",
+        "not_ignored" => "reached_when_committed",
+        _ => "unknown",
+    }
 }
 
 /// Previews setting `desired` (managed keys only) in `PROJECT/.claude/settings.json`. Never
 /// writes. The returned `plan_digest` binds the current file, the receipt and the result.
+/// `settings_ignored` and `worktree_sessions` report whether the file reaches sessions started
+/// in a linked worktree (#2581); they are facts for the caller and do not change the plan.
 pub fn settings_plan(project: &Path, desired: &Map<String, Value>) -> Result<Value> {
-    let s = settings_state(project, desired)?;
+    settings_plan_in(project, desired, SettingsScope::Project)
+}
+
+/// [`settings_plan`] for one scope (#2581). The local scope reports `worktree_sessions:
+/// reached_from_main_checkout`: Claude Code reads the main checkout's settings.local.json for
+/// a worktree session (leader observation for the status line; other keys not yet observed).
+pub fn settings_plan_in(
+    project: &Path,
+    desired: &Map<String, Value>,
+    scope: SettingsScope,
+) -> Result<Value> {
+    let s = settings_state(project, desired, scope)?;
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    let ignored = settings_ignored(&root, scope.file());
+    let sessions = match scope {
+        SettingsScope::Project => worktree_sessions(ignored),
+        SettingsScope::Local => "reached_from_main_checkout",
+    };
     let action = match (&s.candidate, &s.after, &s.before) {
         (None, _, _) => "conflict",
         (Some(_), None, _) => "unchanged",
         (Some(_), Some(_), None) => "create",
         (Some(_), Some(_), Some(_)) => "update",
     };
-    Ok(json!({
+    let mut out = json!({
         "action": action,
-        "settings_path": SETTINGS_FILE,
+        "settings_path": scope.file(),
+        "scope": scope.name(),
         "conflicts": s.conflicts,
         "expected_sha256": s.before.as_deref().map(crate::digest),
         "planned_sha256": s.after.as_deref().map(crate::digest),
         "plan_digest": s.digest,
+        "settings_ignored": ignored,
+        "worktree_sessions": sessions,
         "writes": false,
-    }))
+    });
+    // #2383: only a conflict that can be replaced carries the field; every other plan is
+    // byte-identical to before.
+    if let Some(r) = &s.replace {
+        out["confirm_replace"] = json!({
+            "keys": r.keys,
+            "current": r.current,
+            "replace_with": r.replace_with,
+            "planned_sha256": crate::digest(&r.after),
+            "backup_root": format!("{}/{SETTINGS_BACKUPS}", crate::PROJECT_STATE_DIR),
+            "backup_layout": format!("<UTC>-{}/{}", scope.name(), settings_name(scope)),
+            "confirm_token": r.token,
+        });
+    }
+    Ok(out)
+}
+
+/// The settings file name inside a backup folder (`settings.json` / `settings.local.json`).
+fn settings_name(scope: SettingsScope) -> &'static str {
+    scope.file().rsplit('/').next().expect("file name")
 }
 
 /// Receipt bytes. `pending` is the ownership MoAI intends once the settings file carries the
 /// given sha256; it is written before the settings file and cleared after.
 fn receipt_bytes(
+    settings_path: &str,
     owned: &Map<String, Value>,
     settings_sha256: Option<&str>,
     pending: Option<(&Map<String, Value>, &str)>,
 ) -> Vec<u8> {
     let mut r = json!({
         "schema_version": 1,
-        "settings_path": SETTINGS_FILE,
+        "settings_path": settings_path,
         "owned": owned,
         "settings_sha256": settings_sha256,
     });
@@ -730,23 +1025,63 @@ pub fn settings_apply(
     plan_digest: &str,
     permission: &str,
 ) -> Result<Value> {
+    settings_apply_in(
+        project,
+        desired,
+        plan_digest,
+        permission,
+        SettingsScope::Project,
+        None,
+    )
+}
+
+/// [`settings_apply`] for one scope (#2581). A local settings file this apply creates is
+/// made readable by its owner only (0600 on unix), like the one Claude Code writes itself.
+///
+/// `confirm_replace` (#2383) is the `confirm_token` a conflict plan offered; with it the
+/// conflicting keys are replaced after the existing file is kept in a new backup folder. A
+/// token the current plan does not offer refuses the whole apply before any write.
+pub fn settings_apply_in(
+    project: &Path,
+    desired: &Map<String, Value>,
+    plan_digest: &str,
+    permission: &str,
+    scope: SettingsScope,
+    confirm_replace: Option<&str>,
+) -> Result<Value> {
     // Authorization stays with the host; the reference is caller metadata, not a verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let s = settings_state(project, desired)?;
-    if !s.conflicts.is_empty() {
+    let mut s = settings_state(project, desired, scope)?;
+    let file = scope.file();
+    let replacing = match confirm_replace {
+        None => None,
+        Some(token) => match s.replace.take() {
+            Some(r) if r.token == token => Some(r),
+            _ => {
+                return Err(format!(
+                    "confirm token is not offered by the current plan of {file}; nothing applied — re-preview and confirm again"
+                ))
+            }
+        },
+    };
+    if replacing.is_none() && !s.conflicts.is_empty() {
         return Err(format!(
-            "conflict in {SETTINGS_FILE}: {} changed outside MoAI; nothing applied",
+            "conflict in {file}: {} changed outside MoAI; nothing applied",
             s.conflicts.join(", ")
         ));
     }
     if s.digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
+    let backup = match &replacing {
+        None => None,
+        Some(r) => {
+            s.after = Some(r.after.clone());
+            Some(keep_original(project, scope, s.before.as_deref())?)
+        }
+    };
     let owned: Map<String, Value> = desired
         .iter()
         .filter(|(k, v)| s.owned.contains_key(*k) || s.current.get(*k) != Some(*v))
@@ -755,24 +1090,35 @@ pub fn settings_apply(
     let before_sha = s.before.as_deref().map(crate::digest);
     let final_bytes = s.after.as_deref().or(s.before.as_deref());
     let final_sha = final_bytes.map(crate::digest);
-    let receipt = receipt_bytes(&owned, final_sha.as_deref(), None);
-    let rel = format!("{}/{SETTINGS_RECEIPT}", crate::PROJECT_STATE_DIR);
+    let receipt = receipt_bytes(file, &owned, final_sha.as_deref(), None);
+    let rel = format!("{}/{}", crate::PROJECT_STATE_DIR, scope.receipt());
     let mut files = Vec::new();
     let mut receipt_now = s.receipt_before.clone();
     if let Some(after) = &s.after {
         let after_sha = crate::digest(after);
-        let pending = receipt_bytes(&s.owned, before_sha.as_deref(), Some((&owned, &after_sha)));
+        let pending = receipt_bytes(
+            file,
+            &s.owned,
+            before_sha.as_deref(),
+            Some((&owned, &after_sha)),
+        );
         crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &pending)?;
         receipt_now = Some(pending);
         crate::agents::write_replace(&s.settings, s.before.as_deref(), after)?;
-        files.push(SETTINGS_FILE);
+        #[cfg(unix)]
+        if scope == SettingsScope::Local && s.before.is_none() {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&s.settings, fs::Permissions::from_mode(0o600))
+                .map_err(|_| "local settings permission change failed".to_string())?;
+        }
+        files.push(file);
     }
     if receipt_now.as_deref() != Some(receipt.as_slice()) {
         if let Err(e) = crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &receipt) {
             return Err(if files.is_empty() {
                 e
             } else {
-                format!("partial apply: applied [{SETTINGS_FILE}]; failed at {rel}: {e}")
+                format!("partial apply: applied [{file}]; failed at {rel}: {e}")
             });
         }
     }
@@ -781,7 +1127,7 @@ pub fn settings_apply(
     } else {
         vec![]
     };
-    Ok(json!({
+    let mut out = json!({
         "state": if files.is_empty() { "unchanged" } else { "applied" },
         "files_changed": files,
         "files_created": created,
@@ -790,7 +1136,119 @@ pub fn settings_apply(
         "settings_sha256_after": final_bytes.map(crate::digest),
         "host_loaded": "not_run",
         "execution_verified": "not_run",
-    }))
+    });
+    if let (Some(r), Some(dir)) = (&replacing, &backup) {
+        let kept = format!("{dir}/{}", settings_name(scope));
+        out["state"] = json!("replaced");
+        out["replaced_keys"] = json!(r.keys);
+        out["backup_dir"] = json!(dir);
+        out["revert"] = json!(format!(
+            "from the project folder: cp '{kept}' '{file}' (MoAI then treats the restored value as your change and leaves it as it is)"
+        ));
+    }
+    Ok(out)
+}
+
+/// Puts a `.gitignore` holding `*` in the backup root (once; an existing regular file is left
+/// as it is), so no kept original under it is ever offered to git.
+fn keep_out_of_git(backups: &Path) -> Result<()> {
+    let ignore = backups.join(".gitignore");
+    match fs::symlink_metadata(&ignore) {
+        Ok(m) if m.is_file() => return Ok(()),
+        Ok(_) => {
+            return Err(format!(
+                "{} is not a regular file; nothing applied",
+                ignore.display()
+            ))
+        }
+        Err(_) => {}
+    }
+    let made = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&ignore)
+        .and_then(|mut f| {
+            use std::io::Write;
+            f.write_all(b"# moai-cli settings backups (#2383): never committed\n*\n")
+        });
+    match made {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(format!(
+            "writing {} failed ({e}); nothing applied",
+            ignore.display()
+        )),
+    }
+}
+
+/// Keeps the existing settings file byte for byte in a new, exclusively created
+/// `.moai-cli/settings-backups/<UTC>-<scope>/` folder before a confirmed replacement (#2383),
+/// and reads it back. Returns the folder relative to the project.
+fn keep_original(project: &Path, scope: SettingsScope, before: Option<&[u8]>) -> Result<String> {
+    let before = before.ok_or("no settings file to keep; nothing applied")?;
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    let backups = root.join(crate::PROJECT_STATE_DIR).join(SETTINGS_BACKUPS);
+    refuse_symlink_dir(&root.join(crate::PROJECT_STATE_DIR))?;
+    refuse_symlink_dir(&backups)?;
+    fs::create_dir_all(&backups).map_err(|e| {
+        format!(
+            "creating {} failed ({e}); nothing applied",
+            backups.display()
+        )
+    })?;
+    refuse_symlink_dir(&backups)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&backups, fs::Permissions::from_mode(0o700));
+    }
+    // Audit 6850258090 B1: the copies never reach git — one `*` ignore file covers every
+    // backup folder — and never become more readable than the file they copy.
+    keep_out_of_git(&backups)?;
+    let stamp = crate::update::compact_stamp();
+    let dir = crate::update::create_backup_dir(&backups, &stamp, scope.name())?;
+    let kept = dir.join(settings_name(scope));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).map_err(|e| {
+            format!(
+                "making {} owner-only failed ({e}); nothing applied",
+                dir.display()
+            )
+        })?;
+        let mode = fs::symlink_metadata(root.join(scope.file()))
+            .map(|m| m.permissions().mode() & 0o777)
+            .unwrap_or(0o600);
+        options.mode(mode);
+    }
+    let written = options.open(&kept).and_then(|mut f| {
+        use std::io::Write;
+        f.write_all(before)?;
+        f.sync_all()
+    });
+    if let Err(e) = written {
+        return Err(format!(
+            "keeping the original in {} failed ({e}); nothing applied",
+            kept.display()
+        ));
+    }
+    if fs::read(&kept).ok().as_deref() != Some(before) {
+        return Err(format!(
+            "the kept original in {} does not match; nothing applied",
+            kept.display()
+        ));
+    }
+    let name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("backup folder name unavailable")?;
+    Ok(format!(
+        "{}/{SETTINGS_BACKUPS}/{name}",
+        crate::PROJECT_STATE_DIR
+    ))
 }
 
 /// Claude-only frontmatter fields a projection may add, with the values each accepts.
@@ -898,8 +1356,15 @@ pub fn projection(package: &Path, skills_root: &Path, added: &Map<String, Value>
 mod tests {
     use super::*;
 
+    /// #2511: the documented five-second `claude --version` probe is pinned here, by value,
+    /// so the CLI tests in `tests/product_cli.rs` can bound wall time generously under load.
+    #[test]
+    fn version_probe_deadline_is_five_seconds() {
+        assert_eq!(VERSION_TIMEOUT, Duration::from_secs(5));
+    }
+
     fn package() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
     }
     fn added(pairs: &[(&str, Value)]) -> Map<String, Value> {
         pairs
@@ -967,6 +1432,35 @@ mod tests {
         let (result, conflicts) = plan_settings(&Map::new(), &current, &desired).unwrap();
         assert_eq!(result, None);
         assert_eq!(conflicts, ["statusLine"]);
+    }
+
+    /// #2383: a confirmed replacement is offered only for keys a caller may set and only when
+    /// a file exists to keep; `hooks` stays with `hooks-apply`.
+    #[test]
+    fn a_replacement_is_offered_only_for_settable_keys_of_an_existing_file() {
+        let current = obj(json!({"statusLine": {"command": "mine"}, "hooks": {"x": 1}}));
+        let desired = obj(json!({"statusLine": {"command": "moai"}, "hooks": {"x": 1}}));
+        let offer = |keys: &[&str], before: Option<&[u8]>| {
+            let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+            replacement(
+                SettingsScope::Project,
+                before,
+                None,
+                &Map::new(),
+                &current,
+                &desired,
+                &keys,
+                b"{}",
+            )
+        };
+        let r = offer(&["statusLine"], Some(b"{}")).expect("offered");
+        assert_eq!(r.keys, ["statusLine"]);
+        assert_eq!(r.replace_with["statusLine"], json!({"command": "moai"}));
+        assert!(r.token.starts_with("settings-replace:project:"));
+        assert!(offer(&["hooks"], Some(b"{}")).is_none());
+        assert!(offer(&["statusLine", "hooks"], Some(b"{}")).is_none());
+        assert!(offer(&["statusLine"], None).is_none());
+        assert!(offer(&[], Some(b"{}")).is_none());
     }
 
     #[test]
@@ -1154,7 +1648,10 @@ mod tests {
         );
         assert_eq!(after, expected);
         // Re-running plans and writes nothing: same bytes, same receipt.
-        let receipt = p.path().join(".moai-cli").join(SETTINGS_RECEIPT);
+        let receipt = p
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join(SETTINGS_RECEIPT);
         let (s1, r1) = (sha(&p.path().join(SETTINGS_FILE)), sha(&receipt));
         assert_eq!(
             settings_plan(p.path(), &line).unwrap()["action"],
@@ -1252,7 +1749,7 @@ mod tests {
                 "{}"
             );
         }
-        assert!(!p.path().join(".moai-cli").exists());
+        assert!(!p.path().join(crate::PROJECT_STATE_DIR).exists());
     }
 
     /// Codex review #2044 (1): an apply interrupted between the settings write and the final
@@ -1266,6 +1763,7 @@ mod tests {
         landed_bytes.push(b'\n');
         let user_sha = crate::digest(USER_FILE.as_bytes());
         let pending = receipt_bytes(
+            SETTINGS_FILE,
             &Map::new(),
             Some(&user_sha),
             Some((&line, &crate::digest(&landed_bytes))),
@@ -1274,7 +1772,10 @@ mod tests {
             let p = project_with(None);
             fs::create_dir_all(p.path().join(".claude")).unwrap();
             fs::write(p.path().join(SETTINGS_FILE), settings).unwrap();
-            let receipt = p.path().join(".moai-cli").join(SETTINGS_RECEIPT);
+            let receipt = p
+                .path()
+                .join(crate::PROJECT_STATE_DIR)
+                .join(SETTINGS_RECEIPT);
             fs::create_dir_all(receipt.parent().unwrap()).unwrap();
             fs::write(&receipt, &pending).unwrap();
             (p, receipt)

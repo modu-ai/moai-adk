@@ -1,164 +1,346 @@
-//! #2359 (user decision 2026-11-10, comment 6760976883): a role session (`-l`, `-a`) starts
-//! with full access on every host — `--dangerously-skip-permissions` on `cc`/`glm` whatever the
-//! project's `permissions` key says (this replaces #2244), `-s danger-full-access -a never` on
-//! `codex` — and `--permissions` keeps the prompts. A roleless session gets no permission flag
-//! at all, so the host's own settings choose its mode. Every case is `--dry-run` in a temporary
-//! git project (the `-a` name preview reads that project's counter); no host is started.
+//! User-only launcher access configuration; all homes and credentials are synthetic.
 mod common;
 use serde_json::Value;
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::Path,
+    process::{Command, Output},
+};
 
-const SKIP: &str = "--dangerously-skip-permissions";
-const CODEX_FULL: [&str; 4] = ["-s", "danger-full-access", "-a", "never"];
-const CODEX_ASK: [&str; 4] = ["-s", "workspace-write", "-a", "on-request"];
+const HOSTS: [&str; 3] = ["cc", "glm", "codex"];
+const ROLES: [&[&str]; 3] = [&["-l"], &["-a"], &[]];
+const INVALID: [&str; 17] = [
+    r#"{"launcher":{"role_access":"SECRET-invalid-access"}}"#,
+    r#"{"launcher":{"role_access":null}}"#,
+    r#"{"launcher":{"role_access":7}}"#,
+    r#"{"launcher":{"role_access":true}}"#,
+    r#"{"launcher":{"role_access":[]}}"#,
+    r#"{"launcher":{"role_access":{}}}"#,
+    r#"{"launcher":null}"#,
+    r#"{"launcher":[]}"#,
+    r#"{"launcher":"SECRET-invalid-structure"}"#,
+    "null",
+    "[]",
+    "7",
+    "{ SECRET-malformed",
+    r#"{"launcher":false}"#,
+    r#"{"launcher":7}"#,
+    r#""SECRET-invalid-root""#,
+    "true",
+];
 
-fn dry(dir: &Path, args: &[&str]) -> (i32, Vec<String>, String, String) {
-    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
-        .args(args)
-        .arg("--dry-run")
-        .current_dir(dir)
-        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-        // A dummy token so `glm` composes; no host is started in this file.
-        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
-        .output()
-        .unwrap();
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
-    let argv: Vec<String> = serde_json::from_value(v["argv"].clone()).unwrap_or_default();
-    (
-        out.status.code().unwrap_or(-1),
-        argv,
-        v["notes"].to_string(),
-        String::from_utf8_lossy(&out.stderr).to_string(),
-    )
-}
-
-fn project(settings: Option<&str>) -> tempfile::TempDir {
+fn project() -> tempfile::TempDir {
     let p = tempfile::tempdir().unwrap();
-    let init = common::git::command()
+    assert!(common::git::command()
         .args(["init", "-q"])
         .current_dir(p.path())
         .status()
-        .unwrap();
-    assert!(init.success());
-    if let Some(text) = settings {
-        fs::create_dir(p.path().join(".claude")).unwrap();
-        fs::write(p.path().join(".claude/settings.json"), text).unwrap();
-    }
+        .unwrap()
+        .success());
     p
 }
 
-/// No file, a file with a `permissions` key (the #2244 case) and an unreadable file.
-const SETTINGS: [Option<&str>; 3] = [
-    None,
-    Some(r#"{"permissions":{"allow":["Bash(cargo test *)"]}}"#),
-    Some("{ not json"),
-];
-const HOSTS: [&str; 3] = ["cc", "glm", "codex"];
-const ROLES: [&[&str]; 3] = [&["-l"], &["-a"], &["-a", "--name", "agent-7"]];
+fn config(home: &Path, text: &str) {
+    fs::create_dir_all(home.join(".moai-cli/config")).unwrap();
+    fs::write(home.join(".moai-cli/config/launcher.yaml"), text).unwrap();
+}
 
-/// Any permission-related flag the launcher could add, on either host family.
-fn has_permission_flag(argv: &[String]) -> bool {
-    argv.iter()
-        .any(|a| a == SKIP || a == "-s" || a == "--sandbox" || a == "--ask-for-approval")
-        // `-a` is codex's approval flag; on the host argv (not the launcher's) it only
-        // appears in the codex pair.
-        || (argv.first().map(String::as_str) == Some("codex") && argv.iter().any(|a| a == "-a"))
+fn command(project: &Path, home: &Path, args: &[&str]) -> Command {
+    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    c.args(args)
+        .current_dir(project)
+        .env("HOME", home)
+        .env("USERPROFILE", home)
+        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
+        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real");
+    c
 }
-fn full_access(host: &str, argv: &[String]) -> bool {
-    if host == "codex" {
-        argv.len() >= 5 && argv[1..5] == CODEX_FULL
-    } else {
-        argv.iter().any(|a| a == SKIP)
-    }
+
+fn dry(project: &Path, home: &Path, args: &[&str]) -> Value {
+    let out = command(project, home, args)
+        .arg("--dry-run")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    serde_json::from_slice(&out.stdout).unwrap()
 }
-fn asks(host: &str, argv: &[String]) -> bool {
-    if host == "codex" {
-        argv.len() >= 5 && argv[1..5] == CODEX_ASK
-    } else {
-        !argv.iter().any(|a| a == SKIP)
+
+// Literal complete host argv snapshots: order and defaults are part of the contract.
+fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
+    match (host, role, prompt) {
+        ("cc", 0, false) => vec![
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions",
+        ],
+        ("cc", 1, false) => vec![
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions",
+        ],
+        ("cc", 0, true) => vec![
+            "claude", "--name", "leader", "--model", "opus", "--effort", "medium",
+        ],
+        ("cc", 1, true) => vec![
+            "claude", "--name", "agent-1", "--model", "opus", "--effort", "medium",
+        ],
+        ("cc", 2, _) => vec!["claude", "--model", "opus", "--effort", "medium"],
+        ("glm", 0, false) => vec![
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions",
+        ],
+        ("glm", 1, false) => vec![
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions",
+        ],
+        ("glm", 0, true) => vec![
+            "claude", "--name", "leader", "--model", "opus", "--effort", "medium",
+        ],
+        ("glm", 1, true) => vec![
+            "claude", "--name", "agent-1", "--model", "opus", "--effort", "medium",
+        ],
+        ("glm", 2, _) => vec!["claude", "--model", "opus", "--effort", "medium"],
+        ("codex", 0, false) => vec![
+            "codex",
+            "-s",
+            "danger-full-access",
+            "-a",
+            "never",
+            "MoAI session name: leader",
+        ],
+        ("codex", 1, false) => vec![
+            "codex",
+            "-s",
+            "danger-full-access",
+            "-a",
+            "never",
+            "MoAI session name: agent-1",
+        ],
+        ("codex", 0, true) => vec![
+            "codex",
+            "-s",
+            "workspace-write",
+            "-a",
+            "on-request",
+            "MoAI session name: leader",
+        ],
+        ("codex", 1, true) => vec![
+            "codex",
+            "-s",
+            "workspace-write",
+            "-a",
+            "on-request",
+            "MoAI session name: agent-1",
+        ],
+        ("codex", 2, _) => vec!["codex"],
+        _ => unreachable!(),
     }
 }
 
 #[test]
-fn a_role_session_has_full_access_whatever_the_project_settings() {
-    for settings in SETTINGS {
-        let p = project(settings);
+fn access_matrix_and_cli_precedence_preserve_complete_host_argv() {
+    for setting in [None, Some("full"), Some("prompt")] {
+        let home = tempfile::tempdir().unwrap();
+        if let Some(value) = setting {
+            config(
+                home.path(),
+                &format!(r#"{{"launcher":{{"role_access":"{value}"}}}}"#),
+            );
+        }
+        let p = project();
         for host in HOSTS {
-            for role in ROLES {
-                let args: Vec<&str> = std::iter::once(host).chain(role.iter().copied()).collect();
-                let (code, argv, notes, stderr) = dry(p.path(), &args);
-                assert_eq!(code, 0, "{args:?} {settings:?}: {stderr}");
-                assert!(full_access(host, &argv), "{args:?} {settings:?}: {argv:?}");
-                assert!(notes.contains("role session"), "{args:?}: {notes}");
-                // The project file is not consulted, so nothing reports on it.
-                assert!(!stderr.contains("permissions key"), "{args:?}: {stderr}");
-                assert!(!notes.contains("permissions key"), "{args:?}: {notes}");
+            for (role, flags) in ROLES.iter().enumerate() {
+                for cli in [false, true] {
+                    let mut args = vec![host];
+                    args.extend_from_slice(flags);
+                    if cli {
+                        args.push("--permissions");
+                    }
+                    let v = dry(p.path(), home.path(), &args);
+                    assert_eq!(
+                        v["argv"],
+                        serde_json::json!(expected(host, role, cli || setting == Some("prompt"))),
+                        "{args:?} {setting:?}"
+                    );
+                }
             }
         }
     }
 }
 
 #[test]
-fn a_roleless_session_gets_no_permission_flag_at_all() {
-    for settings in SETTINGS {
-        let p = project(settings);
-        for host in HOSTS {
-            for extra in [&[][..], &["--permissions"][..], &["--name", "mine"][..]] {
-                let args: Vec<&str> = std::iter::once(host).chain(extra.iter().copied()).collect();
-                let (code, argv, notes, stderr) = dry(p.path(), &args);
-                assert_eq!(code, 0, "{args:?}: {stderr}");
-                assert!(
-                    !has_permission_flag(&argv),
-                    "{args:?} {settings:?}: {argv:?}"
-                );
-                assert!(
-                    notes.contains("no permission flag")
-                        || notes.contains("no sandbox or approval flag"),
-                    "{args:?}: {notes}"
-                );
-            }
-        }
-        // Byte-exact for codex: nothing between the binary and the prompt.
-        let (_, argv, _, _) = dry(p.path(), &["codex"]);
-        assert_eq!(argv, ["codex"]);
-        let (_, argv, _, _) = dry(p.path(), &["codex", "review the diff"]);
-        assert_eq!(argv, ["codex", "review the diff"]);
-    }
-}
-
-#[test]
-fn the_permissions_flag_keeps_the_prompts_on_a_role_session() {
-    for settings in [None, SETTINGS[1]] {
-        let p = project(settings);
-        for host in HOSTS {
-            for role in ROLES {
-                let args: Vec<&str> = std::iter::once(host)
-                    .chain(role.iter().copied())
-                    .chain(["--permissions"])
-                    .collect();
-                let (code, argv, notes, stderr) = dry(p.path(), &args);
-                assert_eq!(code, 0, "{args:?}: {stderr}");
-                assert!(asks(host, &argv), "{args:?} {settings:?}: {argv:?}");
-                assert!(
-                    !notes.contains("role session, user decision"),
-                    "{args:?}: {notes}"
-                );
+fn absent_key_retains_byte_identical_output_and_project_config_is_ignored() {
+    let p = project();
+    // #2481: the baseline runs with a settings file too; without one the dry run reports the
+    // first-launch initialization it would do, and the outputs would differ for that alone.
+    fs::create_dir_all(p.path().join(".moai-cli")).unwrap();
+    fs::write(p.path().join(".moai-cli/project.yaml"), "{}").unwrap();
+    let home = tempfile::tempdir().unwrap();
+    for host in HOSTS {
+        for flags in ROLES {
+            let mut args = vec![host];
+            args.extend_from_slice(flags);
+            let baseline = command(p.path(), home.path(), &args)
+                .arg("--dry-run")
+                .output()
+                .unwrap();
+            assert!(baseline.status.success());
+            for text in [
+                "{}",
+                r#"{"launcher":{}}"#,
+                r#"{"unrelated":"SECRET-ignored"}"#,
+            ] {
+                let alternate = tempfile::tempdir().unwrap();
+                config(alternate.path(), text);
+                fs::create_dir_all(p.path().join(".moai-cli")).unwrap();
+                fs::write(
+                    p.path().join(".moai-cli/project.yaml"),
+                    r#"{"launcher":{"role_access":"prompt"}}"#,
+                )
+                .unwrap();
+                let out = command(p.path(), alternate.path(), &args)
+                    .arg("--dry-run")
+                    .output()
+                    .unwrap();
+                assert!(out.status.success());
+                assert_eq!(out.stdout, baseline.stdout);
+                assert_eq!(out.stderr, baseline.stderr);
             }
         }
     }
 }
 
 #[test]
-fn the_old_top_level_role_form_has_full_access_too() {
-    let p = project(None);
-    let (code, argv, _, stderr) = dry(p.path(), &["-l"]);
-    assert_eq!(code, 0, "{stderr}");
-    assert!(full_access("cc", &argv), "{argv:?}");
-    for word in HOSTS {
-        let (code, argv, _, stderr) = dry(p.path(), &["-a", word]);
-        assert_eq!(code, 0, "{word}: {stderr}");
-        assert!(full_access(word, &argv), "{word}: {argv:?}");
-        let (_, argv, _, _) = dry(p.path(), &["-a", word, "--permissions"]);
-        assert!(asks(word, &argv), "{word}: {argv:?}");
+fn project_setting_cannot_override_either_user_setting() {
+    for (user, project_value) in [("full", "prompt"), ("prompt", "full")] {
+        let home = tempfile::tempdir().unwrap();
+        config(
+            home.path(),
+            &format!(r#"{{"launcher":{{"role_access":"{user}"}}}}"#),
+        );
+        for claude_settings in [
+            None,
+            Some(r#"{"permissions":{"allow":["Bash(cargo test *)"]}}"#),
+            Some("{ not json"),
+        ] {
+            let p = project();
+            fs::create_dir_all(p.path().join(".moai-cli")).unwrap();
+            fs::write(
+                p.path().join(".moai-cli/project.yaml"),
+                format!(r#"{{"launcher":{{"role_access":"{project_value}"}}}}"#),
+            )
+            .unwrap();
+            if let Some(text) = claude_settings {
+                fs::create_dir(p.path().join(".claude")).unwrap();
+                fs::write(p.path().join(".claude/settings.json"), text).unwrap();
+            }
+            for host in HOSTS {
+                for (role, flags) in ROLES.iter().enumerate() {
+                    let mut args = vec![host];
+                    args.extend_from_slice(flags);
+                    assert_eq!(
+                        dry(p.path(), home.path(), &args)["argv"],
+                        serde_json::json!(expected(host, role, user == "prompt"))
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn rejected(out: &Output) {
+    assert_eq!(out.status.code(), Some(1));
+    assert!(out.stdout.is_empty());
+    assert!(!String::from_utf8_lossy(&out.stderr).contains("SECRET"));
+}
+
+#[test]
+fn invalid_config_is_refused_even_for_roleless_and_cli_override() {
+    for bad in INVALID {
+        let p = project();
+        let home = tempfile::tempdir().unwrap();
+        config(home.path(), bad);
+        for host in HOSTS {
+            for flags in ROLES {
+                for cli in [false, true] {
+                    let mut args = vec![host];
+                    args.extend_from_slice(flags);
+                    if cli {
+                        args.push("--permissions");
+                    }
+                    rejected(
+                        &command(p.path(), home.path(), &args)
+                            .arg("--dry-run")
+                            .output()
+                            .unwrap(),
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn nonregular_user_config_is_refused() {
+    let p = project();
+    let home = tempfile::tempdir().unwrap();
+    fs::create_dir_all(home.path().join(".moai-cli/config/launcher.yaml")).unwrap();
+    for host in HOSTS {
+        for args in [vec![host, "-a"], vec![host, "--permissions"]] {
+            rejected(
+                &command(p.path(), home.path(), &args)
+                    .arg("--dry-run")
+                    .output()
+                    .unwrap(),
+            );
+        }
+    }
+}
+
+#[test]
+fn legacy_top_level_roles_use_the_same_access_resolution() {
+    let p = project();
+    let home = tempfile::tempdir().unwrap();
+    for setting in ["full", "prompt"] {
+        config(
+            home.path(),
+            &format!(r#"{{"launcher":{{"role_access":"{setting}"}}}}"#),
+        );
+        assert_eq!(
+            dry(p.path(), home.path(), &["-l"])["argv"],
+            serde_json::json!(expected("cc", 0, setting == "prompt"))
+        );
+        for host in HOSTS {
+            assert_eq!(
+                dry(p.path(), home.path(), &["-a", host])["argv"],
+                serde_json::json!(expected(host, 1, setting == "prompt"))
+            );
+        }
     }
 }

@@ -8,7 +8,7 @@
 //! 06-A's [`crate::claim::acquire`] under one journal lock for the whole run.
 //!
 //! - `already_owned` against a live foreign claim → the card is recorded in `lost_to` and the
-//!   next candidate is tried. The loser writes nothing to the journal (`claim.rs`, unchanged).
+//!   next candidate is tried. The loser writes nothing to the journal.
 //! - `claimed` → stop. `uncertain` → stop: the comment is posted and this session may be the
 //!   winner (SPEC §4 item 4), so no further candidate is touched. `expired`, or an active
 //!   record of this session, → stop and return it.
@@ -16,11 +16,10 @@
 //!   (`.github/moai/labels.yml`, "state lives in the report comment"), and the owned report
 //!   comment belongs to `forge-report` with its own gates, so both are `not_run` here.
 //!
-//! - A candidate whose comments already carry any `moai-claim:` line — live or expired —
-//!   is left out before acquire and recorded in `skipped` with `claimed_by` and `expired`
-//!   (REQ-A2-01 "only Issues without a claim comment", REQ-A2-02 / REQ-A7-02 "no automatic
-//!   takeover"): nothing is posted to it. The one exception is a card this journal already
-//!   holds an active record for, which acquire returns unchanged.
+//! - A candidate with an unclosed claim (live or expired) is skipped before acquire;
+//!   an active local record can resume it, but cannot override a remote handoff.
+//! - An outstanding handoff reserves a card for its literal recipient, not ownership:
+//!   the recipient still goes through acquire and its claim readback.
 //!
 //! Not handled here: a local assignments file is not read (the remote is authoritative);
 //! live GitHub runs are not part of the tests (fixtures only).
@@ -150,7 +149,7 @@ pub fn select(issues: &[Value], milestone: i64) -> (Vec<Candidate>, Vec<Value>) 
     (picked, skipped)
 }
 
-fn get_json<T: Transport, C: Clock>(
+pub(crate) fn get_json<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     url: &str,
 ) -> Result<(Value, Option<String>)> {
@@ -182,18 +181,34 @@ fn read_open_issues<T: Transport, C: Clock>(
     Ok(out)
 }
 
-/// Every `moai-claim:` comment of one Issue (GET only, `Link` pagination).
+struct Handoff {
+    comment_id: i64,
+    target: i64,
+    to: String,
+}
+
+/// Read all pages before replaying claim-family comments in comment-id order.
 fn read_claim_comments<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
     repo: &str,
     number: i64,
-) -> Result<Vec<ClaimComment>> {
+) -> Result<(Vec<ClaimComment>, Option<Handoff>)> {
+    read_claim_history(client, owner, repo, number).map(|(claims, handoff, _)| (claims, handoff))
+}
+
+/// [`read_claim_comments`] plus whether the card ever carried a claim line, so that a card
+/// whose claims were all released can be told apart from one nobody claimed (#2675).
+fn read_claim_history<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    owner: &str,
+    repo: &str,
+    number: i64,
+) -> Result<(Vec<ClaimComment>, Option<Handoff>, bool)> {
     let mut url = Some(format!(
         "{API}/repos/{owner}/{repo}/issues/{number}/comments?per_page=100"
     ));
-    let mut out = Vec::new();
-    let mut closed = Vec::new();
+    let mut comments = Vec::new();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -201,25 +216,215 @@ fn read_claim_comments<T: Transport, C: Clock>(
             return Err("queue claim comment page limit exceeded (50)".into());
         }
         let (body, next) = get_json(client, &u)?;
-        for c in body.as_array().cloned().unwrap_or_default() {
-            let (Some(id), Some(text)) = (c["id"].as_i64(), c["body"].as_str()) else {
-                continue;
-            };
-            if let Some(mut line) = parse_claim_line(text) {
-                line.comment_id = id;
-                out.push(line);
-            }
-            // #2255: a claim closed by a release or handoff line no longer holds the card.
-            match crate::claim_verify::classify_comment(text) {
-                crate::claim_verify::CommentKind::Release { target }
-                | crate::claim_verify::CommentKind::Handoff { target, .. } => closed.push(target),
-                _ => {}
+        if let Value::Array(page) = body {
+            for c in page {
+                let (Some(id), Some(text)) = (c["id"].as_i64(), c["body"].as_str()) else {
+                    continue;
+                };
+                let mut kind = crate::claim_verify::classify_comment(text);
+                if matches!(kind, crate::claim_verify::CommentKind::Malformed(_)) {
+                    // Keep the queue's existing no-takeover boundary: a complete claim
+                    // with an invalid lease still blocks until it is explicitly closed.
+                    if let Some(line) = parse_claim_line(text) {
+                        kind = crate::claim_verify::CommentKind::Claim {
+                            session: line.session,
+                            epoch: line.epoch,
+                            lease_until: line.lease_until,
+                        };
+                    }
+                }
+                if matches!(
+                    kind,
+                    crate::claim_verify::CommentKind::Claim { .. }
+                        | crate::claim_verify::CommentKind::Release { .. }
+                        | crate::claim_verify::CommentKind::Handoff { .. }
+                ) {
+                    comments.push((id, kind));
+                }
             }
         }
         url = next;
     }
-    out.retain(|c| !closed.contains(&c.comment_id));
-    Ok(out)
+    comments.sort_unstable_by_key(|(id, _)| *id);
+    let mut claims = Vec::new();
+    let mut known = BTreeSet::new();
+    let mut handoffs: Vec<Handoff> = Vec::new();
+    for (id, kind) in comments {
+        match kind {
+            crate::claim_verify::CommentKind::Claim {
+                session,
+                epoch,
+                lease_until,
+            } => {
+                // Taking up a handoff consumes its reservation, even if that new claim
+                // is subsequently released. Historical handoffs must not reserve forever.
+                handoffs.retain(|h| h.to != session);
+                known.insert(id);
+                claims.push(ClaimComment {
+                    comment_id: id,
+                    session,
+                    epoch,
+                    lease_until,
+                });
+            }
+            crate::claim_verify::CommentKind::Release { target } if known.contains(&target) => {
+                claims.retain(|c| c.comment_id != target);
+                handoffs.retain(|h| h.target != target);
+            }
+            crate::claim_verify::CommentKind::Handoff { target, to } if known.contains(&target) => {
+                claims.retain(|c| c.comment_id != target);
+                handoffs.retain(|h| h.target != target);
+                handoffs.push(Handoff {
+                    comment_id: id,
+                    target,
+                    to,
+                });
+            }
+            _ => {}
+        }
+    }
+    Ok((claims, handoffs.pop(), !known.is_empty()))
+}
+
+/// `queue-free` stdin (typed JSON, unknown keys rejected).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FreeRequest {
+    pub schema_version: u32,
+    pub owner: String,
+    pub repo: String,
+}
+
+fn valid_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 100
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
+        && s != "."
+        && s != ".."
+}
+
+/// Whether a label marks a card that waits for a decision (`needs:decision`, `HOLD`, …).
+fn holds(label: &str) -> bool {
+    // Whole names only (#2675 audit N4): a label that merely contains `hold` (`threshold`)
+    // must not hide a card. `needs:decision` is the label scheme's gate marker
+    // (`.github/moai/labels.yml`); `hold` and a `<axis>:hold` value are the HOLD spellings.
+    let l = label.trim().to_ascii_lowercase();
+    l == "needs:decision" || l == "hold" || l.ends_with(":hold")
+}
+
+/// `queue-free` (#2675): the open cards a lane may take, read only. Every open Issue is
+/// sorted into exactly one bucket — `held` (a label named `needs:decision`, `hold` or `<axis>:hold`), `epics`
+/// (title `][EP-`), `blocked` (an open `Blocked-By:` Issue), `reserved` (an outstanding
+/// handoff names its recipient), `claimed` (a live claim), or `free`. A free card says why:
+/// `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only
+/// expired claims remain; taking it over still follows the handoff rules). An empty result
+/// is stated as `free_count: 0` and a `0건` summary, never as missing output; a failed read
+/// is an error, never an empty list.
+pub fn free<T: Transport, C: Clock>(
+    req: &FreeRequest,
+    client: &Client<'_, T, C>,
+    clock: &C,
+) -> Result<Value> {
+    if req.schema_version != 1 {
+        return Err("unsupported request schema_version".into());
+    }
+    if !valid_name(&req.owner) || !valid_name(&req.repo) {
+        return Err("owner and repo must be GitHub names".into());
+    }
+    let issues = read_open_issues(client, &req.owner, &req.repo)?;
+    let open: BTreeSet<i64> = issues.iter().filter_map(|i| i["number"].as_i64()).collect();
+    let now = clock.now();
+    let live = |c: &ClaimComment| parse_utc(&c.lease_until).is_some_and(|t| t > now);
+    let (mut free, mut reserved, mut claimed) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut held, mut epics, mut blocked) = (Vec::new(), Vec::new(), Vec::new());
+    let mut inspected = 0u64;
+    for i in &issues {
+        let Some(number) = i["number"].as_i64() else {
+            continue;
+        };
+        if i.get("pull_request").is_some_and(|p| !p.is_null()) {
+            continue;
+        }
+        inspected += 1;
+        let title = i["title"].as_str().unwrap_or_default();
+        let body = i["body"].as_str().unwrap_or_default();
+        let labels: Vec<&str> = i["labels"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|l| l["name"].as_str()).collect())
+            .unwrap_or_default();
+        let hold: Vec<&str> = labels.iter().copied().filter(|l| holds(l)).collect();
+        if !hold.is_empty() {
+            held.push(json!({"issue": number, "title": title, "labels": hold}));
+            continue;
+        }
+        if title.contains("][EP-") {
+            epics.push(json!({"issue": number, "title": title}));
+            continue;
+        }
+        let open_blockers: Vec<i64> = refs_on(body, "Blocked-By:")
+            .into_iter()
+            .filter(|n| open.contains(n) && *n != number)
+            .collect();
+        if !open_blockers.is_empty() {
+            blocked.push(json!({"issue": number, "title": title, "blocked_by": open_blockers}));
+            continue;
+        }
+        let (claims, handoff, ever) = read_claim_history(client, &req.owner, &req.repo, number)?;
+        if let Some(h) = handoff {
+            reserved.push(json!({"issue": number, "title": title, "to": h.to,
+                                 "handoff_comment_id": h.comment_id}));
+        } else if let Some(c) = claims
+            .iter()
+            .filter(|c| live(c))
+            .min_by_key(|c| c.comment_id)
+        {
+            claimed.push(
+                json!({"issue": number, "title": title, "claimed_by": c.session,
+                                "comment_id": c.comment_id, "lease_until": c.lease_until}),
+            );
+        } else if let Some(c) = claims.iter().min_by_key(|c| c.comment_id) {
+            free.push(json!({"issue": number, "title": title, "why": "expired",
+                             "claimed_by": c.session, "comment_id": c.comment_id,
+                             "lease_until": c.lease_until}));
+        } else {
+            let why = if ever { "released" } else { "unclaimed" };
+            free.push(json!({"issue": number, "title": title, "why": why}));
+        }
+    }
+    let summary = format!(
+        "free {}건 (inspected {inspected}, claimed {}, reserved {}, held {}, epics {}, blocked {})",
+        free.len(),
+        claimed.len(),
+        reserved.len(),
+        held.len(),
+        epics.len(),
+        blocked.len()
+    );
+    Ok(json!({
+        "schema_version": 1,
+        "repository": format!("{}/{}", req.owner, req.repo),
+        "inspected": inspected,
+        "free_count": free.len(),
+        "free": free,
+        "reserved": reserved,
+        "claimed": claimed,
+        "held": held,
+        "epics": epics,
+        "blocked": blocked,
+        "summary": summary,
+        "writes": false,
+    }))
+}
+
+/// `queue-free` with the system transport and clock; GET only, no journal.
+pub fn free_cli<T: Transport, C: Clock>(
+    req: FreeRequest,
+    transport: &T,
+    clock: &C,
+) -> std::result::Result<Value, crate::contract::OpError> {
+    let client = Client::new(transport, clock, Default::default(), Default::default());
+    Ok(free(&req, &client, clock)?)
 }
 
 /// The `skipped` entry of a card that already carries claim comments: the smallest live
@@ -305,8 +510,9 @@ pub fn next<T: Transport, C: Clock>(
         let own = events.iter().rev().find(|e| e.record.task_key == key);
         // #2344: a card this lane already handed to the gate (`pr_ready`, written by
         // pr-confirm) stays open until the merge, but it is not work to pick up again. Skip
-        // it here only; the record itself stays active so a repair handoff, worktree ops and
-        // scope-check keep treating it as owned.
+        // it here only; the record itself stays active so a repair handoff and worktree ops
+        // keep treating it as owned. scope-check drops it from its conflict candidates once the
+        // forge shows every PR of the claim closed (#2404).
         if let Some(e) = own.filter(|e| e.record.state == HANDED_OFF_STATE) {
             skipped.push(json!({
                 "issue": c.number,
@@ -317,8 +523,18 @@ pub fn next<T: Transport, C: Clock>(
             continue;
         }
         let own_active = own.is_some_and(|e| is_active(&e.record.state));
+        let (claims, handoff) = read_claim_comments(client, &req.owner, &req.repo, c.number)?;
+        if let Some(h) = handoff.filter(|h| h.to != req.claim.owner.id) {
+            skipped.push(json!({
+                "issue": c.number,
+                "reason": "handed_to_other",
+                "to": h.to,
+                "comment_id": h.comment_id,
+                "target": h.target,
+            }));
+            continue;
+        }
         if !own_active {
-            let claims = read_claim_comments(client, &req.owner, &req.repo, c.number)?;
             if let Some(entry) = claimed_entry(c.number, &claims, clock.now()) {
                 skipped.push(entry);
                 continue;
@@ -362,7 +578,7 @@ pub fn next<T: Transport, C: Clock>(
         "notes": [if candidates.is_empty() {
             "no candidate: record the idle line once and stop (SPEC §3 step 2)"
         } else {
-            "every candidate already carries a claim comment or is owned by a live foreign claim"
+            "every candidate carries a claim, is reserved for another session, or was handed to the gate"
         }],
     }))
 }
@@ -437,8 +653,8 @@ mod tests {
         assert_eq!(logical_key("[only] one", 7), "issue-7");
     }
 
-    /// #2255: a claim closed by a release or handoff line no longer counts, so the card can
-    /// be a candidate again; an open claim still does.
+    /// #2255: release and handoff close the source claim; a recipient's subsequent
+    /// claim holds the card in its own right.
     #[test]
     fn released_claims_do_not_hold_the_card() {
         use crate::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
@@ -472,8 +688,12 @@ mod tests {
         let client = Client::new(&t, &Fixed, Default::default(), Default::default());
         assert!(read_claim_comments(&client, "acme", "widgets", 7)
             .unwrap()
+            .0
             .is_empty());
         let open = read_claim_comments(&client, "acme", "widgets", 7).unwrap();
-        assert_eq!(open.iter().map(|c| c.comment_id).collect::<Vec<_>>(), [200]);
+        assert_eq!(
+            open.0.iter().map(|c| c.comment_id).collect::<Vec<_>>(),
+            [200]
+        );
     }
 }

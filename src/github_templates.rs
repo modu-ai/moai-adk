@@ -1,14 +1,17 @@
 //! GitHub templates for a generated project (Issue #2013, 08-B).
 //!
-//! The verified development copies under `.github/` were added (never moved) as
-//! `templates/github/`; this module embeds those bytes and plans and applies them into a
-//! project with the 01-B 3-way engine (`decide`, `publish_exclusive`/`publish_replace`,
-//! `save_before_bytes`, `Receipt`).
+//! The product templates under `templates/github/` are derived from this repository's
+//! `.github/` forms by structure, without the repository's own text (#2434 AC-6; the byte
+//! parity of 08-B is replaced, checked by `tests/github_templates_test.py`); this module
+//! embeds those bytes and plans and applies them into a project with the 01-B 3-way engine
+//! (`decide`, `publish_exclusive`/`publish_replace`, `save_before_bytes`, `Receipt`).
+//! The forms ship in one variant per form language (#2434 decision 41): the request's
+//! `language`, else the profile's `language.issue_pr_records`, else `DEFAULT_FORM_LANGUAGE`.
 //!
 //! Decisions (leader, under the user's "lift only the HOLD" rule, recorded on #2013):
 //! - template bytes are embedded in the binary with `include_str!` (①A, as generation.rs
 //!   renders its files from strings in the binary);
-//! - Rust handles byte parity and the 3-way only; form structure is checked by the Python
+//! - Rust handles the installed bytes and the 3-way only; form structure is checked by the Python
 //!   static tests (②A: no YAML crate, Cargo.toml keeps its dependencies);
 //! - `config.yml` is not a template (③B: the development copy has none).
 //!
@@ -35,30 +38,74 @@ use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-pub const MANIFEST: &str = ".moai-cli/manifests/github.json";
+pub const MANIFEST: &str = crate::project_state!("manifests/github.json");
 /// Marker of an unresolved template variable (`placeholder_pattern` in
 /// `templates/github/manifest.json`).
 pub const PLACEHOLDER: &str = "{{";
 
-/// `(target path, embedded bytes)` of every template, in manifest order.
-pub const TEMPLATES: &[(&str, &str)] = &[
+/// `(target path, embedded bytes)` of every template with the Korean forms, in manifest
+/// order (#2434 decision 41: one variant per form language; `labels.yml` is shared).
+pub const TEMPLATES_KO: &[(&str, &str)] = &[
     (
         ".github/ISSUE_TEMPLATE/moai-feature.yml",
-        include_str!("../templates/github/ISSUE_TEMPLATE/moai-feature.yml"),
+        include_str!("../templates/github/ko/ISSUE_TEMPLATE/moai-feature.yml"),
     ),
     (
         ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
-        include_str!("../templates/github/ISSUE_TEMPLATE/moai-bugfix.yml"),
+        include_str!("../templates/github/ko/ISSUE_TEMPLATE/moai-bugfix.yml"),
     ),
     (
         ".github/ISSUE_TEMPLATE/moai-investigation.yml",
-        include_str!("../templates/github/ISSUE_TEMPLATE/moai-investigation.yml"),
+        include_str!("../templates/github/ko/ISSUE_TEMPLATE/moai-investigation.yml"),
+    ),
+    (
+        ".github/ISSUE_TEMPLATE/moai-followup.yml",
+        include_str!("../templates/github/ko/ISSUE_TEMPLATE/moai-followup.yml"),
     ),
     (
         ".github/moai/labels.yml",
         include_str!("../templates/github/labels.yml"),
     ),
 ];
+
+/// The same targets with the English forms.
+pub const TEMPLATES_EN: &[(&str, &str)] = &[
+    (
+        ".github/ISSUE_TEMPLATE/moai-feature.yml",
+        include_str!("../templates/github/en/ISSUE_TEMPLATE/moai-feature.yml"),
+    ),
+    (
+        ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
+        include_str!("../templates/github/en/ISSUE_TEMPLATE/moai-bugfix.yml"),
+    ),
+    (
+        ".github/ISSUE_TEMPLATE/moai-investigation.yml",
+        include_str!("../templates/github/en/ISSUE_TEMPLATE/moai-investigation.yml"),
+    ),
+    (
+        ".github/ISSUE_TEMPLATE/moai-followup.yml",
+        include_str!("../templates/github/en/ISSUE_TEMPLATE/moai-followup.yml"),
+    ),
+    (
+        ".github/moai/labels.yml",
+        include_str!("../templates/github/labels.yml"),
+    ),
+];
+
+/// Form languages with their own variant. Any other accepted code uses the English forms.
+pub const FORM_LANGUAGES: &[&str] = &["en", "ko"];
+/// The form language when neither the request nor the profile names one: Korean, the bytes
+/// generated before #2434 decision 41, so a project that applied them sees no change.
+pub const DEFAULT_FORM_LANGUAGE: &str = "ko";
+
+/// The templates for a form language from `FORM_LANGUAGES`.
+pub fn templates(language: &str) -> &'static [(&'static str, &'static str)] {
+    if language == "ko" {
+        TEMPLATES_KO
+    } else {
+        TEMPLATES_EN
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -68,6 +115,11 @@ pub struct GithubRequest {
     /// when present, it wins over the profile.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_issues: Option<bool>,
+    /// Issue form language for this run (#2434 decision 41), an accepted language code.
+    /// When absent, the profile's `language.issue_pr_records` decides (with that item's
+    /// default), then `DEFAULT_FORM_LANGUAGE`; the request wins over the profile.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 /// Resolves the opt-in: the request flag first, then the profile key. A missing profile
@@ -91,6 +143,52 @@ fn opted_in(root: &Path, request: &GithubRequest) -> Result<(bool, String)> {
             "opt-in: request.github_issues and profile github_issues both absent".into(),
         ),
     })
+}
+
+/// Resolves the form language: the request, then the profile's Issue/PR record language,
+/// then `DEFAULT_FORM_LANGUAGE`. Returns the variant to render and a note naming the choice;
+/// an accepted code without its own variant renders the English forms. An unreadable profile
+/// or a code the language table does not accept is an error, never a guess.
+fn form_language(root: &Path, request: &GithubRequest) -> Result<(&'static str, String)> {
+    let (code, source) = if let Some(code) = &request.language {
+        (code.clone(), "request.language")
+    } else {
+        let profile_path = root.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+        let settings = if read_opt(&profile_path)?.is_some() {
+            crate::profile::read_profile(root)?.0.language
+        } else {
+            None
+        };
+        match settings {
+            Some(settings) => {
+                let conversation = crate::language::conversation_language(None, Some(&settings))?;
+                let code = crate::language::resolve(&settings, &conversation)
+                    .into_iter()
+                    .find(|(item, _)| item.id == "issue_pr_records")
+                    .map(|(_, code)| code)
+                    .ok_or("language item issue_pr_records missing")?;
+                (code, "profile language.issue_pr_records")
+            }
+            None => (
+                DEFAULT_FORM_LANGUAGE.to_string(),
+                "default, no language set",
+            ),
+        }
+    };
+    if !crate::language::is_code(&code) {
+        return Err("invalid language setting: unsupported language code for the forms".into());
+    }
+    let variant = FORM_LANGUAGES
+        .iter()
+        .find(|l| **l == code)
+        .copied()
+        .unwrap_or("en");
+    let note = if variant == code {
+        format!("form language {variant} from {source}")
+    } else {
+        format!("form language {variant} from {source} = {code}: no {code} forms, English used")
+    };
+    Ok((variant, note))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -164,7 +262,7 @@ fn preserved(root: &Path) -> Vec<String> {
                 stack.push(path);
             } else if let Ok(rel) = path.strip_prefix(root) {
                 let rel = rel.to_string_lossy().replace('\\', "/");
-                if !TEMPLATES.iter().any(|(t, _)| *t == rel) {
+                if !TEMPLATES_KO.iter().any(|(t, _)| *t == rel) {
                     out.push(rel);
                 }
             }
@@ -193,7 +291,9 @@ pub fn github_plan(root: &Path, request: GithubRequest) -> Result<GithubPlan> {
         notes.push("not generated: not opted in; an existing .github/ never opts in".into());
     } else {
         let baselines = manifest_baselines(&root)?;
-        for (rel, text) in TEMPLATES {
+        let (language, language_note) = form_language(&root, &request)?;
+        notes.push(language_note);
+        for (rel, text) in templates(language) {
             let current = read_opt(&target(&root, rel)?)?;
             let current_digest = current.as_deref().map(digest);
             let baseline = baselines
@@ -255,10 +355,7 @@ pub fn github_apply(
     confirmed: &str,
     permission: &str,
 ) -> Result<Value> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let current = github_plan(root, p.request.clone())?;
@@ -276,12 +373,15 @@ pub fn github_apply(
             f.detail.as_deref().unwrap_or("review required")
         ));
     }
-    if let Some(path) = unresolved(TEMPLATES).first() {
+    let root = root_of(root)?;
+    // The same resolution as the plan just re-checked above: a language change since the
+    // plan already made it stale.
+    let (language, _) = form_language(&root, &p.request)?;
+    if let Some(path) = unresolved(templates(language)).first() {
         return Err(format!(
             "conflict in {path}: unresolved template placeholder; nothing applied"
         ));
     }
-    let root = root_of(root)?;
     let request_id = new_request_id("github.apply", &p.plan_digest);
     let mut receipt = Receipt::new(&request_id, "github.apply", &root);
     let mut written: Vec<String> = Vec::new();
@@ -290,7 +390,7 @@ pub fn github_apply(
         .iter()
         .filter(|f| f.action == "create" || f.action == "merge")
     {
-        let text = TEMPLATES
+        let text = templates(language)
             .iter()
             .find(|(t, _)| *t == f.path)
             .map(|(_, text)| *text)
@@ -416,7 +516,8 @@ mod tests {
 
     #[test]
     fn placeholder_scan_finds_unresolved_markers() {
-        assert!(unresolved(TEMPLATES).is_empty());
+        assert!(unresolved(TEMPLATES_KO).is_empty());
+        assert!(unresolved(TEMPLATES_EN).is_empty());
         assert_eq!(
             unresolved(&[("a.yml", "name: {{project}}"), ("b.yml", "ok")]),
             vec!["a.yml".to_string()]

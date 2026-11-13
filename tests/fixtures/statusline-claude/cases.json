@@ -1,0 +1,1093 @@
+{
+  "schema": 1,
+  "source": "Approved Issue #2376 Claude three-line Rust layout; tools/statusline_golden.py records actual Rust binary output. Historical Go fixtures are read-only stdin provenance, not the main layout contract.",
+  "recording": "Actual native binary outputs; provenance is recorded per case and variant.",
+  "cases": [
+    {
+      "name": "a01-minimal",
+      "class": "a",
+      "stdin": "../statusline/stdin/a01-minimal.json",
+      "covers": [
+        "model",
+        "CTX n/a without context_window",
+        "absent usage windows hidden",
+        "no directory row"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a02-doc-full",
+      "class": "a",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "L1 model/effort/thinking/cache/versions/duration/style unchanged",
+        "session prefix then exactly two spaces before CTX",
+        "CTX -> 5H -> Week order",
+        "reset timestamps hidden",
+        "repo identity hidden without git",
+        "main PR state and agent hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a03-context-null",
+      "class": "a",
+      "stdin": "../statusline/stdin/a03-context-null.json",
+      "covers": [
+        "context_window null -> CTX n/a",
+        "absent usage windows hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a04-context-high",
+      "class": "a",
+      "stdin": "../statusline/stdin/a04-context-high.json",
+      "covers": [
+        "context above the hard ceiling -> /clear marker"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a05-pr-approved-effort",
+      "class": "a",
+      "stdin": "../statusline/stdin/a05-pr-approved-effort.json",
+      "covers": [
+        "PR state hidden",
+        "effort xhigh without thinking",
+        "1M window",
+        "session time hours",
+        "output style in the input is not shown (#2559 AC-7)",
+        "session prefix on context row"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a06-invalid-json",
+      "class": "a",
+      "stdin": "../statusline/stdin/a06-invalid-json.json",
+      "covers": [
+        "invalid stdin JSON degrades instead of failing"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a07-subagent-tasks",
+      "class": "a",
+      "stdin": "../statusline/stdin/a07-subagent-tasks.json",
+      "covers": [
+        "tasks[] -> JSONL subagent rows",
+        "row with empty id skipped"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a08-model-string-pr-changes",
+      "class": "a",
+      "stdin": "../statusline/stdin/a08-model-string-pr-changes.json",
+      "covers": [
+        "model as a plain string",
+        "context from current_usage without used_percentage",
+        "PR changes_requested hidden",
+        "agent hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a09-top-level-null",
+      "class": "a",
+      "stdin": "../statusline/stdin/a09-top-level-null.json",
+      "covers": [
+        "top-level null decodes to an empty payload, not invalid input (#2350 audit F1)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a10-unpaired-surrogate",
+      "class": "a",
+      "stdin": "../statusline/stdin/a10-unpaired-surrogate.json",
+      "covers": [
+        "unpaired surrogate escape in a string becomes U+FFFD (#2350 audit F1)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a11-surrogate-session-name",
+      "class": "a",
+      "stdin": "../statusline/stdin/a11-surrogate-session-name.json",
+      "covers": [
+        "one unpaired surrogate in session_name keeps every other segment (#2350 audit F1)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a12-invalid-utf8",
+      "class": "a",
+      "stdin": "../statusline/stdin/a12-invalid-utf8.json",
+      "covers": [
+        "invalid UTF-8 bytes in a string become one U+FFFD each (#2350 audit F1)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a13-duplicate-top-level-keys",
+      "class": "a",
+      "stdin": "../statusline/stdin/a13-duplicate-top-level-keys.json",
+      "covers": [
+        "duplicate top-level keys: the later model replaces, a later null leaves a plain string (#2350 audit 2)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a14-duplicate-nested-keys",
+      "class": "a",
+      "stdin": "../statusline/stdin/a14-duplicate-nested-keys.json",
+      "covers": [
+        "duplicate pointer-struct keys merge field by field; a nested duplicate takes the later value (#2350 audit 2)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a15-case-folded-keys",
+      "class": "a",
+      "stdin": "../statusline/stdin/a15-case-folded-keys.json",
+      "covers": [
+        "keys match case-insensitively with Go foldName (long s), -0 is an integer (#2350 audit 2)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b01-git-clean",
+      "class": "b",
+      "stdin": "../statusline/stdin/b-git.json",
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "git_commit_all"
+        }
+      ],
+      "covers": [
+        "git branch",
+        "repo identity with git",
+        "git status clean"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b02-git-dirty-ahead",
+      "class": "b",
+      "stdin": "../statusline/stdin/b-git.json",
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "git_upstream",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "second.txt",
+          "content": "ahead\n"
+        },
+        {
+          "kind": "git_commit_all",
+          "message": "ahead"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "modified\n"
+        },
+        {
+          "kind": "write",
+          "path": "untracked.txt",
+          "content": "new\n"
+        }
+      ],
+      "covers": [
+        "ahead remains hidden despite local commit",
+        "dirty branch suffix",
+        "modified and untracked counts"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b03-config-latte-subset",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "setup": [
+        {
+          "kind": "write",
+          "path": ".moai/config/sections/statusline.yaml",
+          "content": "statusline:\n  theme: catppuccin-latte\n  segments:\n    model: true\n    context: true\n    usage_5h: false\n    usage_7d: false\n    cache_hit: false\n    effort_thinking: false\n    pr: false\n    session: false\n"
+        }
+      ],
+      "covers": [
+        "statusline.yaml theme latte",
+        "segments map disables keys"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b04-template-version",
+      "class": "b",
+      "stdin": "../statusline/stdin/a01-minimal.json",
+      "setup": [
+        {
+          "kind": "write",
+          "path": ".moai/config/sections/system.yaml",
+          "content": "moai:\n  template_version: v2.0.0\n"
+        }
+      ],
+      "covers": [
+        "MoAI version from system.yaml template_version vs binary version"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b05-task-state",
+      "class": "b",
+      "stdin": "../statusline/stdin/a01-minimal.json",
+      "setup": [
+        {
+          "kind": "write",
+          "under": "moai_home",
+          "path": "state/last-session-state.json",
+          "content": "{\"active_task\": {\"command\": \"run\", \"spec_id\": \"SPEC-DEMO-001\", \"stage\": \"green\"}}\n"
+        }
+      ],
+      "covers": [
+        "main active task hidden even when MOAI_HOME state exists"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b06-goal-armed",
+      "class": "b",
+      "stdin": "../statusline/stdin/b-goal.json",
+      "setup": [
+        {
+          "kind": "write",
+          "path": ".moai/state/goal/fixture-goal.json",
+          "content": "{\"status\": \"armed\"}\n"
+        }
+      ],
+      "covers": [
+        "armed goal suppresses the /clear marker (compare a04)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b07-goal-not-armed",
+      "class": "b",
+      "stdin": "../statusline/stdin/b-goal.json",
+      "setup": [
+        {
+          "kind": "write",
+          "path": ".moai/state/goal/fixture-goal.json",
+          "content": "{\"status\": \"done\"}\n"
+        }
+      ],
+      "covers": [
+        "non-armed goal keeps the /clear marker (control for b06)"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a16-session-five-hour-only",
+      "class": "a",
+      "stdin": "stdin/a16-session-five-hour-only.json",
+      "covers": [
+        "session prefix followed by exactly two spaces",
+        "present 5H window missing percentage -> 0%",
+        "absent Week hidden",
+        "reset timestamp hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a17-week-only",
+      "class": "a",
+      "stdin": "stdin/a17-week-only.json",
+      "covers": [
+        "absent session has no prefix or padding",
+        "absent 5H hidden",
+        "present Week label retains usage_7d semantics",
+        "reset timestamp hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b08-forge-zero-counts",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "available zero counts display \u2757 0 / \ud83d\udd00 0",
+        "three-line full layout with repository -> counts -> branch -> file counts"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      },
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "write",
+          "path": ".moai/state/github/counts.json",
+          "content": "{\"open_issues\":0,\"open_prs\":0,\"fetched_at\":4102444800}\n"
+        }
+      ]
+    },
+    {
+      "name": "b09-forge-counts-hidden-fields-enabled",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "available normal counts display \u2757 7 / \ud83d\udd00 3",
+        "directory, PR state, agent and active task remain absent even when explicitly enabled"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      },
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "write",
+          "path": ".moai/state/github/counts.json",
+          "content": "{\"open_issues\":7,\"open_prs\":3,\"fetched_at\":4102444800}\n"
+        },
+        {
+          "kind": "write",
+          "path": ".moai/config/sections/statusline.yaml",
+          "content": "statusline:\n  segments:\n    directory: true\n    pr: true\n    agent: true\n    task: true\n"
+        },
+        {
+          "kind": "write",
+          "path": "state/last-session-state.json",
+          "content": "{\"active_task\":{\"command\":\"run\",\"spec_id\":\"SPEC-HIDDEN-001\",\"stage\":\"green\"}}\n",
+          "under": "moai_home"
+        }
+      ]
+    },
+    {
+      "name": "b10-forge-suppressed",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "suppressed cache hides the entire forge segment rather than -/-",
+        "repository and branch remain visible"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      },
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "write",
+          "path": ".moai/state/github/counts.json",
+          "content": "{\"open_issues\":7,\"open_prs\":3,\"suppressed\":true}\n"
+        }
+      ]
+    },
+    {
+      "name": "b11-all-segments-disabled",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "all surviving segment switches disabled yields nonempty MoAI fallback",
+        "obsolete main segment switches cannot restore hidden fields"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      },
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "write",
+          "path": ".moai/config/sections/statusline.yaml",
+          "content": "statusline:\n  segments:\n    model: false\n    effort_thinking: false\n    cache_hit: false\n    claude_version: false\n    moai_version: false\n    session_time: false\n    output_style: false\n    context: false\n    usage_5h: false\n    usage_7d: false\n    session: false\n    git_branch: false\n    git_status: false\n    github: false\n    directory: true\n    pr: true\n    agent: true\n    task: true\n"
+        }
+      ]
+    },
+    {
+      "name": "b12-session-without-bars",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "session-only second row has no trailing padding or separator",
+        "disabled CTX and usage windows omitted"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      },
+      "setup": [
+        {
+          "kind": "write",
+          "path": ".moai/config/sections/statusline.yaml",
+          "content": "statusline:\n  segments:\n    context: false\n    usage_5h: false\n    usage_7d: false\n"
+        }
+      ]
+    },
+    {
+      "name": "c01-prompt-cache-warm",
+      "class": "a",
+      "stdin": "stdin/c01-prompt-cache-warm.json",
+      "covers": [
+        "#2756 AC-8: warm prompt cache shows whole minutes left next to the hit ratio",
+        "#2756 AC-9: worktree.name on the repository line",
+        "no repository: the line holds the worktree alone"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "c02-prompt-cache-cold",
+      "class": "a",
+      "stdin": "stdin/c02-prompt-cache-cold.json",
+      "covers": [
+        "#2756 AC-8: warm false shows the cold mark without a hit ratio",
+        "#2756 AC-7: pull request without review_state; OSC 8 link only in the color variants"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "b2c8118e912ff43a81da6318400627d731b7692aeaaa5c9014c83934bb94d464",
+            "stdout": "PTY"
+          }
+        }
+      }
+    }
+  ]
+}

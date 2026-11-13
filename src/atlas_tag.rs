@@ -33,7 +33,7 @@ use std::{
 type Result<T> = std::result::Result<T, String>;
 
 pub const PARSER_VERSION: u32 = 1;
-const FILE_LIMIT: u64 = 262_144;
+pub(crate) const FILE_LIMIT: u64 = 262_144;
 const WALK_DEPTH: usize = 16;
 const WALK_FILES: usize = 512;
 
@@ -186,6 +186,12 @@ fn scan_file(path: &Path) -> Result<Value> {
         return Err("tag file exceeds the size limit".into());
     }
     let text = String::from_utf8(bytes).map_err(|_| "tag file is not UTF-8".to_string())?;
+    Ok(scan_text(&text))
+}
+
+/// Parses already-read text with the same grammar as `scan_file`, so a caller that
+/// holds verified bytes (the C6b index build) never re-reads the file by path.
+pub(crate) fn scan_text(text: &str) -> Value {
     let mut nodes = Vec::new();
     let mut invalid = Vec::new();
     for (idx, line) in text.lines().enumerate() {
@@ -196,7 +202,7 @@ fn scan_file(path: &Path) -> Result<Value> {
             }
         }
     }
-    Ok(json!({
+    json!({
         "nodes": nodes.into_iter().map(|(line, raw, p)| json!({
             "namespace": p.namespace,
             "kind": p.kind,
@@ -210,7 +216,7 @@ fn scan_file(path: &Path) -> Result<Value> {
         "invalid": invalid.into_iter().map(|(line, raw, reason)| json!({
             "line": line, "raw": raw, "raw_untrusted": true, "reason": reason,
         })).collect::<Vec<_>>(),
-    }))
+    })
 }
 
 fn walk_files(root: &Path, out: &mut Vec<PathBuf>, depth: usize) -> Result<()> {

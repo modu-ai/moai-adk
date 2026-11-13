@@ -3,13 +3,13 @@
 //! supervision).
 //!
 //! One call reads every open pull request into the base branch and, per PR, its merge state,
-//! the `moai/audit` status and the `rc-ci` check run on the current head, and the claim and
+//! the `moai/audit` status and the CI check run (`ci`, or `rc-ci` before #2563) on the current head, and the claim and
 //! audit-verdict comments of the Issue it `Refs`. It compares that with the previous tick
 //! (`<project>/.moai-cli/forge/leader-tick.json`) and reports only the PRs whose observation
 //! changed (REQ-A3-01; an unchanged PR is not reported, so polling does not multiply reports).
 //!
 //! It is GET-only on GitHub. For a PR that needs a repair (a `FAIL` verdict on the current
-//! head, a failed `rc-ci`, or a `dirty` merge state) it drafts an `assignee-hint` comment for
+//! head, a failed CI check, or a `dirty` merge state) it drafts an `assignee-hint` comment for
 //! the first caller-supplied free lane that is not the PR's author (REQ-A3-02; ownership still
 //! comes only from a claim comment) and a one-line repair Issue title. Posting either is the
 //! leader's act through `effect-intend` → `gh` → `effect-confirm` (leader decision 2026-11-09).
@@ -155,7 +155,17 @@ fn observe<T: Transport, C: Clock>(
         .to_string();
     let ci = runs["check_runs"]
         .as_array()
-        .and_then(|a| a.iter().find(|r| r["name"] == "rc-ci"))
+        // #2563: either spelling of the CI check; the newest run (largest id) decides,
+        // so the answer does not depend on the order the API lists the runs in.
+        .and_then(|a| {
+            a.iter()
+                .filter(|r| {
+                    r["name"]
+                        .as_str()
+                        .is_some_and(|actual| crate::flow::check_name_matches("ci", actual))
+                })
+                .max_by_key(|r| r["id"].as_i64().unwrap_or(0))
+        })
         .map(|r| {
             r["conclusion"]
                 .as_str()
@@ -195,7 +205,7 @@ fn repair_reasons(o: &Observation) -> Vec<&'static str> {
         r.push("audit verdict FAIL on the current head");
     }
     if ["failure", "timed_out"].contains(&o.ci.as_str()) {
-        r.push("rc-ci failed");
+        r.push("ci failed");
     }
     if o.mergeable_state == "dirty" {
         r.push("merge conflict with the base");
@@ -328,13 +338,26 @@ pub fn tick<T: Transport, C: Clock>(
     for n in prev.prs.keys().filter(|n| !next.prs.contains_key(n)) {
         changes.push(json!({"pr": n, "closed": true}));
     }
+    // Issue #2678: the count and "no change" are said outright, not left to an empty list.
+    let summary = tick_summary(next.prs.len(), changes.len());
     let report = json!({
+        "summary": summary,
         "observed": next.prs.len(),
         "changes": changes,
         "hints": hints,
         "writes": "none on GitHub; post hints through effect-intend, gh, effect-confirm",
     });
     Ok((report, next))
+}
+
+/// The `summary` line of `leader-tick` (Issue #2678): the count read and the count changed,
+/// with "no change" said in words.
+pub fn tick_summary(observed: usize, changed: usize) -> String {
+    if changed == 0 {
+        format!("{observed} open pull request(s) read; no change since the previous tick")
+    } else {
+        format!("{observed} open pull request(s) read; {changed} changed since the previous tick")
+    }
 }
 
 /// CLI: interval from the profile, previous state, one tick, state replaced on success.

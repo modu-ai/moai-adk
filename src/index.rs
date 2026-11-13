@@ -29,6 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::BTreeMap,
     ffi::OsStr,
     fs,
     io::{self, Read, Write},
@@ -170,6 +171,20 @@ impl IndexIo {
         Ok(Some(bytes))
     }
 
+    /// Reads a tracked source file through the same handle walk as the scan (no symlink
+    /// is followed), bounded by `limit`.
+    fn read_source(&self, relative: &Path, limit: u64) -> io::Result<Vec<u8>> {
+        let (owned, name) = self.parent(relative, false, &mut |_, _| {})?;
+        let parent = owned.as_ref().unwrap_or(&self.root);
+        let (file, _) = Self::regular_file(parent, name, false)?;
+        let mut bytes = Vec::new();
+        file.take(limit + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > limit {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "source grew"));
+        }
+        Ok(bytes)
+    }
+
     fn write_marker(&self, bytes: &[u8]) -> io::Result<()> {
         if bytes.len() as u64 > STATE_BYTE_LIMIT {
             return Err(io::Error::new(
@@ -178,7 +193,7 @@ impl IndexIo {
             ));
         }
         let (owned, name) = self.parent(
-            Path::new(".moai-cli/index/last-build.json"),
+            Path::new(crate::project_state!("index/last-build.json")),
             true,
             &mut |_, _| {},
         )?;
@@ -214,6 +229,23 @@ pub struct IndexManifest {
     pub base_commit: String,
     pub files: Vec<IndexedFile>,
     pub built_at: String,
+    /// The Map/Graph views stored beside this manifest (C6b #2347); absent in a
+    /// generation built before them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub records: Option<RecordsRef>,
+}
+
+/// Digests and counts of `map.jsonl` / `graph.jsonl` — a reader rejects a view whose
+/// bytes do not match, so Map and Graph always come from the same generation.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RecordsRef {
+    pub version: String,
+    pub file_set: String,
+    pub observed_at: String,
+    pub map_sha256: String,
+    pub graph_sha256: String,
+    pub map_records: usize,
+    pub graph_records: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -306,7 +338,9 @@ fn scan_with_hook(
         .split(|b| *b == 0)
         .filter(|e| !e.is_empty())
         .map(|e| String::from_utf8_lossy(e).into_owned())
-        .filter(|p| !p.starts_with(".moai-cli/index/") && p != ".moai-cli/index")
+        .filter(|p| {
+            !p.starts_with(crate::project_state!("index/")) && p != crate::project_state!("index")
+        })
         .collect();
     paths.sort();
     paths.dedup();
@@ -391,7 +425,7 @@ fn untracked(project: &Path) -> Result<Vec<String>> {
             // The tool's own state directory (this index, receipts, claims) is never a
             // project change: the index writes there itself, so counting it would make
             // `fresh` unreachable.
-            if path.starts_with(".moai-cli/") {
+            if path.starts_with(crate::project_state!("")) {
                 continue;
             }
             out.push(path);
@@ -416,11 +450,23 @@ fn canonical_manifest_bytes(m: &IndexManifest) -> Result<Vec<u8>> {
 /// the sorted file table) — same content, same id, so an identical rebuild dedupes into
 /// the existing immutable directory. `built_at` and the carried id are excluded: a
 /// timestamp is not content.
-fn content_id(base_commit: &str, files: &[IndexedFile]) -> String {
+///
+/// `history` is the digest of the Graph's history part (`build_history`): the same HEAD
+/// and files can reach a different commit history (a shallow clone later unshallowed),
+/// and that changes the Graph, so it must change the id — an immutable generation never
+/// stands for two different Graphs.
+fn content_id(base_commit: &str, files: &[IndexedFile], history: &str) -> String {
     let mut sorted: Vec<&IndexedFile> = files.iter().collect();
     sorted.sort_by(|a, b| a.path.cmp(&b.path));
     let mut h = Sha256::new();
-    h.update(b"moai-index-generation-v1\0");
+    // v2: a generation also carries the Map/Graph views, so the record and extractor
+    // versions are content — a generation built by older extractors is never reused.
+    h.update(b"moai-index-generation-v2\0");
+    let versions = crate::index_records::versions();
+    for part in [versions.as_str(), history] {
+        h.update((part.len() as u64).to_be_bytes());
+        h.update(part.as_bytes());
+    }
     h.update((base_commit.len() as u64).to_be_bytes());
     h.update(base_commit.as_bytes());
     for f in sorted {
@@ -452,7 +498,7 @@ fn orphan_candidates(project: &Path) -> Vec<String> {
 /// Writes the pointer through a temp file plus a rename in the same directory: a reader
 /// either sees the previous pointer or the new one, never a partial write (AC-2).
 fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
-    let pointer = crate::apply::target(project, ".moai-cli/index/current.json")?;
+    let pointer = crate::apply::target(project, crate::project_state!("index/current.json"))?;
     let dir = index_root(project);
     fs::create_dir_all(&dir).map_err(|_| "index directory unavailable".to_string())?;
     let nanos = std::time::SystemTime::now()
@@ -476,6 +522,14 @@ fn swap_pointer(project: &Path, generation_id: &str) -> Result<()> {
     fs::rename(&tmp, &pointer).map_err(|_| "index pointer replace failed".to_string())
 }
 
+/// Same content and the same views: the only condition under which an existing
+/// generation directory may stand for this build.
+fn same_snapshot(stored: &IndexManifest, expected: &IndexManifest) -> bool {
+    stored.base_commit == expected.base_commit
+        && stored.files == expected.files
+        && stored.records == expected.records
+}
+
 /// A simultaneous publisher may win the rename. Reuse only a validated identical
 /// snapshot; keep this attempt's staging directory as an orphan, never delete data.
 fn publish_staged(
@@ -489,7 +543,7 @@ fn publish_staged(
         Ok(()) => Ok("created"),
         Err(e) => {
             if load_manifest(source, generation_id).is_some_and(|stored| {
-                stored.base_commit == expected.base_commit && stored.files == expected.files
+                same_snapshot(&stored, expected) && stored_views(source, &stored).is_ok()
             }) {
                 Ok("unchanged")
             } else {
@@ -497,6 +551,191 @@ fn publish_staged(
             }
         }
     }
+}
+
+/// The commit time of `base` in UTC — the records' `observed_at`. Time is content: the
+/// same snapshot always yields the same records (INCREMENTAL EQUIVALENCE).
+/// Read from the commit object itself (`committer <ident> <secs> <tz>`), so a damaged
+/// history beyond the base commit cannot block the scan.
+fn commit_time(dir: &Path, base: &str) -> Result<String> {
+    let unreadable = || "index source unavailable: base commit time unreadable".to_string();
+    let raw = git_out(dir, &["cat-file", "commit", base]).map_err(|_| unreadable())?;
+    let text = String::from_utf8_lossy(&raw);
+    let header = text.split("\n\n").next().unwrap_or("");
+    let secs: i64 = header
+        .lines()
+        .find_map(|l| l.strip_prefix("committer "))
+        .and_then(|l| l.rsplit(' ').nth(1))
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(unreadable)?;
+    Ok(crate::baseline::utc_from_epoch(secs))
+}
+
+/// Per-origin record lines of the published generation and its file digests, for
+/// reuse. Anything unreadable or mismatched means no reuse — a cache loss is a
+/// performance loss only.
+type Reusable = (
+    BTreeMap<String, String>,
+    BTreeMap<Option<String>, Vec<Value>>,
+    BTreeMap<Option<String>, Vec<Value>>,
+);
+
+fn reusable_records(source: &IndexIo) -> Option<Reusable> {
+    let gen_id = read_pointer(source).ok()??;
+    let manifest = load_manifest(source, &gen_id)?;
+    if manifest.records.as_ref()?.version != crate::index_records::versions() {
+        return None;
+    }
+    let (map, graph) = stored_views(source, &manifest).ok()?;
+    let files = manifest
+        .files
+        .iter()
+        .map(|f| (f.path.clone(), f.sha256.clone()))
+        .collect();
+    Some((
+        files,
+        crate::index_records::by_origin(map),
+        crate::index_records::by_origin(graph),
+    ))
+}
+
+/// Reads both views of a generation and checks them against its manifest: digests,
+/// header generation id, base commit and file set. Returns the record lines.
+fn stored_views(source: &IndexIo, manifest: &IndexManifest) -> Result<(Vec<Value>, Vec<Value>)> {
+    let records = manifest
+        .records
+        .as_ref()
+        .ok_or("generation has no map/graph records")?;
+    let mut out = Vec::new();
+    for (view, sha) in [
+        ("map", &records.map_sha256),
+        ("graph", &records.graph_sha256),
+    ] {
+        let bytes = source
+            .read_state(Path::new(&format!(
+                "{}/index/generations/{}/{view}.jsonl",
+                crate::PROJECT_STATE_DIR,
+                manifest.generation_id
+            )))
+            .ok()
+            .flatten()
+            .ok_or("map/graph records unreadable")?;
+        if &crate::digest(&bytes) != sha {
+            return Err("map/graph records do not match the generation".into());
+        }
+        let (header, lines) = crate::index_records::parse_view(&bytes)?;
+        let expected = crate::index_records::header(
+            view,
+            &manifest.generation_id,
+            &manifest.base_commit,
+            &records.file_set,
+        );
+        if header != expected["header"]
+            || records.file_set != crate::index_records::file_set_digest(&manifest.files)
+        {
+            return Err("map/graph records do not match the generation".into());
+        }
+        out.push(lines);
+    }
+    let graph = out.pop().unwrap_or_default();
+    let map = out.pop().unwrap_or_default();
+    Ok((map, graph))
+}
+
+/// Builds both views for a scan: reuses the stored fragments of unchanged files, reads
+/// every other file through the scan's handle walk and refuses the build when its bytes
+/// no longer match the manifest digest (Map and Graph never describe a file set the
+/// manifest does not). Returns the views, their reference and the reuse counts.
+fn build_views(
+    root: &Path,
+    source: &IndexIo,
+    gen_id: &str,
+    base_commit: &str,
+    files: &[IndexedFile],
+    history: crate::spec_links::Builder,
+) -> Result<(crate::index_records::Views, RecordsRef, usize, usize)> {
+    use crate::index_records::{self as rec, Content};
+    let observed_at = commit_time(root, base_commit)?;
+    let file_set = rec::file_set_digest(files);
+    let mut previous = reusable_records(source);
+    let (mut reused, mut extracted) = (0usize, 0usize);
+    let mut fragments = BTreeMap::new();
+    for f in files {
+        let key = Some(f.path.clone());
+        let stored = previous.as_mut().and_then(|(old, map, graph)| {
+            (old.get(&f.path) == Some(&f.sha256)).then(|| {
+                let m = map.remove(&key).unwrap_or_default();
+                let g = graph.remove(&key).unwrap_or_default();
+                rec::fragment_from_lines(&m, &g).ok()
+            })?
+        });
+        if let Some(frag) = stored {
+            reused += 1;
+            fragments.insert(f.path.clone(), frag);
+            continue;
+        }
+        extracted += 1;
+        let frag = if !f.sha256.starts_with("sha256:") {
+            rec::extract_file(&f.path, &f.sha256, Content::NotRegular)
+        } else if !rec::needs_bytes(&f.path, f.bytes) {
+            rec::extract_file(&f.path, &f.sha256, Content::Oversize)
+        } else {
+            let bytes = source
+                .read_source(Path::new(&f.path), f.bytes)
+                .ok()
+                .filter(|b| crate::digest(b) == f.sha256)
+                .ok_or_else(|| format!("index source changed during build: {}", f.path))?;
+            rec::extract_file(&f.path, &f.sha256, Content::Bytes(&bytes))
+        };
+        fragments.insert(f.path.clone(), frag);
+    }
+    let views = rec::assemble(
+        fragments,
+        history,
+        (gen_id, base_commit, &file_set),
+        &observed_at,
+    )?;
+    for bytes in [&views.map, &views.graph] {
+        rec::within_limit(bytes.len() as u64, STATE_BYTE_LIMIT)?;
+    }
+    let records = RecordsRef {
+        version: rec::versions(),
+        file_set,
+        observed_at,
+        map_sha256: crate::digest(&views.map),
+        graph_sha256: crate::digest(&views.graph),
+        map_records: views.map_records,
+        graph_records: views.graph_records,
+    };
+    Ok((views, records, reused, extracted))
+}
+
+/// The Graph's history part for `base` — commit → issue mentions reachable from the base
+/// commit in this clone — and its digest. Coverage limits are recorded, never hidden: an
+/// unreadable history (a git failure) is `history_unavailable` and a shallow clone is
+/// `history_shallow`; neither fails a build that the file scan completed. The digest
+/// enters the generation id (`content_id`).
+fn build_history(root: &Path, base: &str) -> (crate::spec_links::Builder, String) {
+    let mut history = crate::spec_links::Builder::default();
+    if let Err(reason) = crate::spec_links::commit_links(&mut history, root, Some(base)) {
+        history = crate::spec_links::Builder::default();
+        history.miss("history_unavailable", json!({"reason": reason}));
+    }
+    if git_line(root, &["rev-parse", "--is-shallow-repository"]).as_deref() == Some("true") {
+        history.miss(
+            "history_shallow",
+            json!({"reason": "commits beyond the shallow boundary are not read"}),
+        );
+    }
+    let edges: Vec<_> = history.edges.iter().collect();
+    let digest = serde_json::to_vec(&json!({
+        "nodes": history.nodes,
+        "edges": edges,
+        "missing": history.missing,
+    }))
+    .map(|bytes| crate::digest(&bytes))
+    .unwrap_or_default();
+    (history, digest)
 }
 
 /// Builds a new generation from the current scan and publishes it with the atomic
@@ -512,29 +751,38 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         IndexIo::new(&root).map_err(|_| "index directory handle unavailable".to_string())?;
     let build = || -> Result<Value> {
         for rel in [
-            ".moai-cli/index/generations",
-            ".moai-cli/index/current.json",
-            ".moai-cli/index/last-build.json",
+            crate::project_state!("index/generations"),
+            crate::project_state!("index/current.json"),
+            crate::project_state!("index/last-build.json"),
         ] {
             crate::apply::target(&root, rel)?;
         }
         let (base_commit, files) = scan(&root, &source)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
-        let gen_id = content_id(&base_commit, &files);
+        let (history, history_digest) = build_history(&root, &base_commit);
+        let gen_id = content_id(&base_commit, &files, &history_digest);
+        let (views, records, reused, extracted) =
+            build_views(&root, &source, &gen_id, &base_commit, &files, history)?;
         let manifest = IndexManifest {
             schema_version: SCHEMA_VERSION,
             generation_id: gen_id.clone(),
             base_commit: base_commit.clone(),
             files: files.clone(),
             built_at: utc_now(),
+            records: Some(records.clone()),
         };
         let gens = generations_dir(&root);
         fs::create_dir_all(&gens).map_err(|_| "index directory unavailable".to_string())?;
         let gen_dir = gens.join(&gen_id);
-        crate::apply::target(
-            &root,
-            &format!(".moai-cli/index/generations/{gen_id}/manifest.json"),
-        )?;
+        for name in ["manifest.json", "map.jsonl", "graph.jsonl"] {
+            crate::apply::target(
+                &root,
+                &format!(
+                    "{}/index/generations/{gen_id}/{name}",
+                    crate::PROJECT_STATE_DIR
+                ),
+            )?;
+        }
         let action = if !gen_dir.is_dir() {
             let nanos = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -544,22 +792,29 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             fs::create_dir(&tmp)
                 .map_err(|_| "index generation staging write failed".to_string())?;
             let bytes = canonical_manifest_bytes(&manifest)?;
-            let mut staged = fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(tmp.join("manifest.json"))
-                .map_err(|e| format!("index generation staging write failed: {e}"))?;
-            staged
-                .write_all(&bytes)
-                .map_err(|e| format!("index generation staging write failed: {e}"))?;
-            drop(staged);
+            // All three files land in the staging directory before the one rename, so a
+            // published generation never holds a manifest without its views.
+            for (name, body) in [
+                ("map.jsonl", &views.map),
+                ("graph.jsonl", &views.graph),
+                ("manifest.json", &bytes),
+            ] {
+                let mut staged = fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(tmp.join(name))
+                    .map_err(|e| format!("index generation staging write failed: {e}"))?;
+                staged
+                    .write_all(body)
+                    .map_err(|e| format!("index generation staging write failed: {e}"))?;
+            }
             publish_staged(&root, &source, &tmp, &gen_id, &manifest)?
         } else {
             // Reuse is successful only when the immutable manifest still describes
             // this snapshot. Never publish a damaged cache or overwrite it in place.
             let stored = load_manifest(&source, &gen_id)
                 .ok_or("index generation manifest invalid; refusing reuse")?;
-            if stored.base_commit != base_commit || stored.files != files {
+            if !same_snapshot(&stored, &manifest) || stored_views(&source, &stored).is_err() {
                 return Err("index generation manifest invalid; refusing reuse".into());
             }
             "unchanged"
@@ -574,6 +829,12 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             "files": files.len(),
             "bytes": total_bytes,
             "action": action,
+            "records": {
+                "map_records": records.map_records,
+                "graph_records": records.graph_records,
+                "reused_files": reused,
+                "extracted_files": extracted,
+            },
             "status": "complete",
             "swap": "atomic",
             "orphan_candidates": orphan_candidates(&root),
@@ -591,7 +852,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             };
             // The failure path must enforce the same target/ancestor rule as the
             // success path, or its marker could overwrite a symlinked source.
-            if crate::apply::target(&root, ".moai-cli/index/last-build.json").is_ok() {
+            if crate::apply::target(&root, crate::project_state!("index/last-build.json")).is_ok() {
                 if let Ok(bytes) = serde_json::to_vec_pretty(&marker) {
                     let _ = source.write_marker(&bytes);
                 }
@@ -603,7 +864,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
 
 fn read_pointer(source: &IndexIo) -> Result<Option<String>> {
     let Some(bytes) = source
-        .read_state(Path::new(".moai-cli/index/current.json"))
+        .read_state(Path::new(crate::project_state!("index/current.json")))
         .map_err(|_| "index pointer unreadable".to_string())?
     else {
         return Ok(None);
@@ -633,7 +894,8 @@ fn load_manifest(source: &IndexIo, gen_id: &str) -> Option<IndexManifest> {
     }
     let bytes = source
         .read_state(Path::new(&format!(
-            ".moai-cli/index/generations/{gen_id}/manifest.json"
+            "{}/index/generations/{gen_id}/manifest.json",
+            crate::PROJECT_STATE_DIR
         )))
         .ok()??;
     let m: IndexManifest = serde_json::from_slice(&bytes).ok()?;
@@ -691,6 +953,17 @@ fn is_empty_changes(c: &Value) -> bool {
         && c["branch_switched"] == json!(false)
 }
 
+/// The published generation id and its indexed file list, for read-only consumers such as
+/// `search` (C7 #2183). `None` when no generation is published or it cannot be read; the
+/// caller reports that through `index_query`'s freshness answer instead of guessing.
+pub(crate) fn published_files(project: &Path) -> Option<(String, Vec<IndexedFile>)> {
+    let root = fs::canonicalize(project).ok()?;
+    let source = IndexIo::new(&root).ok()?;
+    let gen_id = read_pointer(&source).ok()??;
+    let manifest = load_manifest(&source, &gen_id)?;
+    Some((manifest.generation_id, manifest.files))
+}
+
 /// Read-only query: resolves the published generation, scans the current state, and
 /// reports one of the four freshness states with the detected changes. Never guesses a
 /// state it cannot ground: anything unresolvable is `unavailable` with a reason — a
@@ -722,7 +995,8 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
     // REQ-C6-01: a recorded failed attempt outranks the pointer — the index is known
     // incomplete until the next successful build clears the marker. The check comes
     // before the scan so the state stays readable even while the source is broken.
-    let marker = match source.read_state(Path::new(".moai-cli/index/last-build.json")) {
+    let marker = match source.read_state(Path::new(crate::project_state!("index/last-build.json")))
+    {
         Ok(Some(bytes)) => match serde_json::from_slice::<BuildFailure>(&bytes) {
             Ok(marker) => Some(marker),
             Err(_) => return unavailable("index failure marker unreadable"),
@@ -786,6 +1060,52 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
     }))
 }
 
+/// Read-only Map/Graph query (C6b #2347): the `index_query` freshness answer plus the
+/// records of the same generation. Both views are verified against the manifest
+/// (digest, header generation id, base commit, file set); any mismatch, a generation
+/// built before the views, or a pointer that moved during the query is `unavailable`
+/// — never one view from another snapshot.
+pub fn index_records(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
+    let mut answer = index_query(project, req)?;
+    let unavailable = |mut answer: Value, reason: &str| {
+        answer["state"] = json!("unavailable");
+        answer["reason"] = json!(reason);
+        answer["map"] = Value::Null;
+        answer["graph"] = Value::Null;
+        Ok(answer)
+    };
+    let Some(gen_id) = answer["generation_id"].as_str().map(str::to_string) else {
+        answer["map"] = Value::Null;
+        answer["graph"] = Value::Null;
+        return Ok(answer);
+    };
+    let root = fs::canonicalize(project).map_err(|_| "path unavailable".to_string())?;
+    let Ok(source) = IndexIo::new(&root) else {
+        return unavailable(answer, "index directory handle unavailable");
+    };
+    if read_pointer(&source).ok().flatten().as_deref() != Some(gen_id.as_str()) {
+        return unavailable(answer, "generation changed during the query");
+    }
+    let Some(manifest) = load_manifest(&source, &gen_id) else {
+        return unavailable(answer, "generation manifest unavailable");
+    };
+    let views = stored_views(&source, &manifest).and_then(|(map, graph)| {
+        Ok((
+            crate::index_records::document(&map)?,
+            crate::index_records::document(&graph)?,
+        ))
+    });
+    match views {
+        Ok((map, graph)) => {
+            answer["records"] = json!(manifest.records);
+            answer["map"] = map;
+            answer["graph"] = graph;
+            Ok(answer)
+        }
+        Err(e) => unavailable(answer, &e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -829,6 +1149,7 @@ mod tests {
                 },
             ],
             built_at: "2026-11-10T00:00:00Z".into(),
+            records: None,
         };
         let now = vec![
             IndexedFile {
@@ -874,39 +1195,86 @@ mod tests {
         };
         // Same base and files give the same id regardless of order; any content or
         // base change moves the id.
-        let a = content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]));
-        let b = content_id("base1", &files(&[("b.md", "s2"), ("a.md", "s1")]));
+        let a = content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h");
+        let b = content_id("base1", &files(&[("b.md", "s2"), ("a.md", "s1")]), "h");
         assert_eq!(a, b, "file order must not change identity");
         assert_ne!(
             a,
-            content_id("base2", &files(&[("a.md", "s1"), ("b.md", "s2")]))
+            content_id("base2", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h")
         );
         assert_ne!(
             a,
-            content_id("base1", &files(&[("a.md", "OTHER"), ("b.md", "s2")]))
+            content_id("base1", &files(&[("a.md", "OTHER"), ("b.md", "s2")]), "h")
         );
-        assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")])));
+        assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")]), "h"));
+        // Same base and files, different reachable history: a different Graph.
+        assert_ne!(
+            a,
+            content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h2")
+        );
     }
 
     #[test]
     fn racing_publication_reuses_only_an_identical_winner() {
-        for matching in [true, false] {
+        // A winner is reusable only with the same base, files and views: a different
+        // base, a missing or different records reference (its own views intact), or a
+        // tampered view refuses it.
+        for case in [
+            "matching",
+            "other_base",
+            "no_records",
+            "other_records",
+            "tampered_view",
+        ] {
+            let matching = case == "matching";
             let tmp = tempfile::tempdir().unwrap();
+            let gen_id = content_id("base", &[], "h");
+            let file_set = crate::index_records::file_set_digest(&[]);
+            let views = crate::index_records::assemble(
+                Default::default(),
+                Default::default(),
+                (&gen_id, "base", &file_set),
+                "2026-11-10T00:00:00Z",
+            )
+            .unwrap();
             let expected = IndexManifest {
                 schema_version: SCHEMA_VERSION,
-                generation_id: content_id("base", &[]),
+                generation_id: gen_id.clone(),
                 base_commit: "base".into(),
                 files: vec![],
                 built_at: "2026-11-10T00:00:00Z".into(),
+                records: Some(RecordsRef {
+                    version: crate::index_records::versions(),
+                    file_set,
+                    observed_at: "2026-11-10T00:00:00Z".into(),
+                    map_sha256: crate::digest(&views.map),
+                    graph_sha256: crate::digest(&views.graph),
+                    map_records: views.map_records,
+                    graph_records: views.graph_records,
+                }),
             };
             let winner = generations_dir(tmp.path()).join(&expected.generation_id);
             let staging = generations_dir(tmp.path()).join(".tmp-loser");
             fs::create_dir_all(&winner).unwrap();
             fs::create_dir(&staging).unwrap();
             let mut stored = expected.clone();
-            if !matching {
-                stored.base_commit = "other".into();
+            let mut winner_map = views.map.clone();
+            match case {
+                "other_base" => stored.base_commit = "other".into(),
+                "no_records" => stored.records = None,
+                "other_records" => {
+                    if let Some(r) = stored.records.as_mut() {
+                        r.observed_at = "2026-11-11T00:00:00Z".into();
+                    }
+                }
+                "tampered_view" => winner_map.extend_from_slice(b"{}\n"),
+                _ => {}
             }
+            for dir in [&winner, &staging] {
+                fs::write(dir.join("graph.jsonl"), &views.graph).unwrap();
+            }
+            fs::write(winner.join("map.jsonl"), &winner_map).unwrap();
+            fs::write(staging.join("map.jsonl"), &views.map).unwrap();
             let winner_bytes = canonical_manifest_bytes(&stored).unwrap();
             let staged_bytes = canonical_manifest_bytes(&expected).unwrap();
             fs::write(winner.join("manifest.json"), &winner_bytes).unwrap();
@@ -922,7 +1290,10 @@ mod tests {
             if matching {
                 assert_eq!(result.unwrap(), "unchanged");
             } else {
-                assert!(result.is_err(), "a mismatched winner cannot be reused");
+                assert!(
+                    result.is_err(),
+                    "{case}: a mismatched winner cannot be reused"
+                );
             }
             assert_eq!(
                 fs::read(winner.join("manifest.json")).unwrap(),
@@ -963,6 +1334,35 @@ mod handle_io_tests {
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
+    }
+
+    /// AC-3: the views are extracted only from bytes that still match the manifest
+    /// digest. A file rewritten after the scan (same length, so only the digest can
+    /// tell) refuses the build instead of describing content the manifest does not.
+    #[cfg(unix)]
+    #[test]
+    fn source_rewritten_after_the_scan_refuses_the_views() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("project");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("a.rs"), b"// @MOAI:REQ REQ-C6B-01\n").unwrap();
+        fixture_git(&project, &["init", "-q"]);
+        fixture_git(&project, &["add", "a.rs"]);
+        fixture_git(&project, &["commit", "-q", "-m", "first"]);
+        let root = fs::canonicalize(&project).unwrap();
+        let source = IndexIo::new(&root).unwrap();
+        let (base, files) = scan(&root, &source).unwrap();
+        let views = |root: &Path| {
+            let (history, digest) = build_history(root, &base);
+            let id = content_id(&base, &files, &digest);
+            build_views(root, &source, &id, &base, &files, history)
+        };
+        assert!(views(&root).is_ok());
+        fs::write(project.join("a.rs"), b"// @MOAI:REQ REQ-C6B-09\n").unwrap();
+        let err = views(&root)
+            .err()
+            .expect("a rewritten source must refuse the views");
+        assert_eq!(err, "index source changed during build: a.rs");
     }
 
     #[cfg(unix)]

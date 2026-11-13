@@ -68,10 +68,49 @@ pub struct CheckRun {
     pub output_complete: Option<bool>,
 }
 
+/// Splits on ASCII whitespace; single and double quotes group words and are removed, the other
+/// quote is literal inside them, and adjacent parts join into one word. No escapes, no
+/// expansion. An unterminated quote is refused (#2392 decision 6774899518 row 18: simple
+/// quotes now, a structured argv input later).
+fn split_words(command: &str) -> Result<Vec<String>> {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut in_word = false;
+    let mut quote: Option<char> = None;
+    for ch in command.chars() {
+        match quote {
+            Some(q) if ch == q => quote = None,
+            Some(_) => word.push(ch),
+            None if ch == '\'' || ch == '"' => {
+                quote = Some(ch);
+                in_word = true;
+            }
+            None if ch.is_ascii_whitespace() => {
+                if in_word {
+                    words.push(std::mem::take(&mut word));
+                    in_word = false;
+                }
+            }
+            None => {
+                word.push(ch);
+                in_word = true;
+            }
+        }
+    }
+    if quote.is_some() {
+        return Err("command not runnable: unterminated quote".into());
+    }
+    if in_word {
+        words.push(word);
+    }
+    Ok(words)
+}
+
 /// Splits a snapshot command into argv. No shell: a leading `VAR=value`, an option before the
-/// executable, and an executable with a path separator are refused (#2003 leader decision I1).
+/// executable, and an executable with a path separator are refused (#2003 leader decision I1),
+/// judged on the executable word after quote removal.
 pub fn parse_argv(command: &str) -> Result<Vec<String>> {
-    let argv: Vec<String> = command.split_ascii_whitespace().map(String::from).collect();
+    let argv = split_words(command)?;
     let Some(exe) = argv.first() else {
         return Err("command not runnable: empty".into());
     };
@@ -88,7 +127,9 @@ pub fn parse_argv(command: &str) -> Result<Vec<String>> {
 }
 
 /// Words that mark a failure of the environment rather than of the code under test.
-const ENVIRONMENT_SIGNS: [&str; 8] = [
+/// Cargo first, then Python (pytest, unittest): a test module that cannot be imported tested
+/// nothing (#2392 decision 6774899518 row 20 = A; other runners stay `Unclassified`).
+const ENVIRONMENT_SIGNS: [&str; 10] = [
     "could not compile",
     "error[e",
     "failed to download",
@@ -97,9 +138,20 @@ const ENVIRONMENT_SIGNS: [&str; 8] = [
     "spurious network error",
     "failed to load manifest",
     "no such command",
+    "importerror",
+    "modulenotfounderror",
 ];
-/// Words that mark an assertion failure in the tests.
-const TEST_SIGNS: [&str; 2] = ["test result: failed", "panicked at"];
+/// Words that mark an assertion failure in the tests: cargo, then Python's `AssertionError`
+/// (unittest, and pytest without assertion rewriting).
+const TEST_SIGNS: [&str; 3] = ["test result: failed", "panicked at", "assertionerror"];
+
+/// pytest's rewritten assertion: an `E` detail line whose text starts with `assert`.
+fn pytest_assert_line(lower: &str) -> bool {
+    lower.lines().any(|l| {
+        l.strip_prefix('e')
+            .is_some_and(|rest| rest.starts_with(' ') && rest.trim_start().starts_with("assert"))
+    })
+}
 
 /// Failure class of a finished check; `None` when it passed. Environment signs win over test
 /// signs, so a run that could not build is never counted as RED. Text-based (libtest JSON is
@@ -119,7 +171,7 @@ pub fn classify(
     let lower = output.to_ascii_lowercase();
     Some(if ENVIRONMENT_SIGNS.iter().any(|s| lower.contains(s)) {
         FailureClass::EnvironmentFailure
-    } else if TEST_SIGNS.iter().any(|s| lower.contains(s)) {
+    } else if TEST_SIGNS.iter().any(|s| lower.contains(s)) || pytest_assert_line(&lower) {
         FailureClass::TestFailure
     } else {
         FailureClass::Unclassified
@@ -308,12 +360,29 @@ pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duratio
     (rec.tests_passed, rec.tests_failed) = test_counts(&text);
     let success = status.is_some_and(|s| s.success());
     rec.failure_class = classify(None, rec.timed_out, success, &text);
-    rec.result = if success && !rec.timed_out {
-        CheckResult::Passed
-    } else {
-        CheckResult::Failed
-    };
+    let ran_zero = rec.tests_passed == Some(0) && rec.tests_failed == Some(0);
+    rec.result = check_result(success, rec.timed_out, ran_zero, rec.output_complete);
     rec
+}
+
+/// The result of a check that was spawned. A failed or timed-out command is `Failed`. A command
+/// that exited 0 is `not_run` when its evidence cannot prove a test ran: its `test result:`
+/// lines sum to zero tests (#2392 decision 6774899518 row 19 = A), or its output was not fully
+/// collected (`output_complete` not true; #2392 F5c, user decision = A). Only cargo `test
+/// result:` lines are counted; a complete output without them keeps its exit-code result.
+fn check_result(
+    success: bool,
+    timed_out: bool,
+    ran_zero: bool,
+    output_complete: Option<bool>,
+) -> CheckResult {
+    if !success || timed_out {
+        CheckResult::Failed
+    } else if ran_zero || output_complete != Some(true) {
+        CheckResult::NotRun
+    } else {
+        CheckResult::Passed
+    }
 }
 
 /// `rustc -V` and `cargo -V` as seen from `dir` (a project toolchain file applies there).
@@ -332,5 +401,35 @@ pub fn toolchain(dir: &Path) -> Toolchain {
     Toolchain {
         rustc: first_line("rustc"),
         cargo: first_line("cargo"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check_result, CheckResult};
+
+    // #2392 F5c: every input of the result rule, as literals.
+    #[test]
+    fn check_result_matrix() {
+        use CheckResult::{Failed, NotRun, Passed};
+        let cases = [
+            // (success, timed_out, ran_zero, output_complete) -> result
+            ((true, false, false, Some(true)), Passed),
+            ((true, false, false, Some(false)), NotRun),
+            ((true, false, false, None), NotRun),
+            ((true, false, true, Some(true)), NotRun),
+            ((true, false, true, Some(false)), NotRun),
+            ((true, true, false, Some(true)), Failed),
+            ((false, false, false, Some(true)), Failed),
+            ((false, false, false, Some(false)), Failed),
+            ((false, true, true, None), Failed),
+        ];
+        for ((success, timed_out, ran_zero, complete), want) in cases {
+            assert_eq!(
+                check_result(success, timed_out, ran_zero, complete),
+                want,
+                "{success} {timed_out} {ran_zero} {complete:?}"
+            );
+        }
     }
 }

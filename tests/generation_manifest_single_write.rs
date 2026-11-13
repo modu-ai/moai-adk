@@ -25,7 +25,7 @@ const WORKFLOW_DIR: &str = ".moai-cli/workflows/review-flow";
 
 fn generation_project() -> TempDir {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
@@ -38,7 +38,7 @@ fn request(language: &str) -> Value {
     json!({
         "protocol_version": 1,
         "language": language,
-        "workflow_reference": "skills/moai-cli/workflows/",
+        "workflow_reference": "skills/moai/workflows/",
         "local_file": "tracked",
         "workflow_id": "review-flow",
         "native_roles": [],

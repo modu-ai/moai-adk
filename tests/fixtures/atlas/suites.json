@@ -244,7 +244,7 @@
      "mutation": {"operation": "add_untracked", "path": "scratch.txt", "contents": "scratch"},
      "expected": {
       "state": "stale",
-      "changes": {"untracked": ["scratch.txt"], "deleted": [], "modified": []},
+      "changes": {"new_files": ["scratch.txt"], "deleted": [], "modified": []},
       "generation_unchanged": true
      }
     },
@@ -264,7 +264,7 @@
     {
      "case_id": "F-06",
      "scenario": "rename",
-     "c6_status": "not_run: C6 integration fixture pending",
+     "c6_status": "covered by PR #2427 (tests/freshness_fixture.rs)",
      "task_ref": "TF-06",
      "setup": {"tracked_files": {"a.txt": "alpha"}, "build_index": true},
      "mutation": {"operation": "git_mv", "from": "a.txt", "to": "renamed.txt"},
@@ -277,7 +277,7 @@
     {
      "case_id": "F-07",
      "scenario": "two worktrees of one repository",
-     "c6_status": "not_run: C6 integration fixture pending",
+     "c6_status": "covered by PR #2427 (tests/freshness_fixture.rs)",
      "task_ref": "TF-07",
      "setup": {"tracked_files": {"a.txt": "alpha"}, "worktrees": ["first", "second"], "build_index": true},
      "mutation": {"operation": "modify_worktree", "worktree": "first", "path": "a.txt", "contents": "changed"},
@@ -292,7 +292,7 @@
     {
      "case_id": "F-08",
      "scenario": "scan failure removes an edge while the file remains",
-     "c6_status": "not_run: C6 integration fixture pending",
+     "c6_status": "covered by PR #2472 (tests/freshness_fixture.rs); runs on Linux and macOS, not_run on Windows (no Unix permission fault)",
      "task_ref": "TF-08",
      "setup": {"tracked_files": {"a.rs": "fn caller() { callee(); }\n"}, "build_index": true},
      "mutation": {"operation": "fail_scan", "path": "a.rs", "file_removed": false},

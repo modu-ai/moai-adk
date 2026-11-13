@@ -105,7 +105,7 @@ claim record(`src/claim.rs` `ClaimRecord`)과 handoff가 운반하는 동일 레
 ## 검증 명령
 
 ```sh
-export CARGO_HOME=/tmp/moai-rc-product-cargo CARGO_TARGET_DIR=/tmp/moai-rc-target-<세션라벨>
+export CARGO_HOME=$(test -d /tmp/moai-product-cargo/registry/cache && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo)  # 빌드 폴더는 worktree 안 target/(CARGO_TARGET_DIR 지정 안 함, AGENTS.local.md)
 cargo test --offline --locked protocol_fixtures      # 00D-AC-1
 cargo test --offline --locked exit_code_table        # 00D-AC-2
 for v in A B; do jq -e --arg v $v '.variants[$v] | ([.rows[]|select(.canonical==null and .no_map_reason==null)]|length)==0 and ([.rows[]|select((.source_token|IN("not_run","unknown","blocked","stale")) and (.canonical|IN("passed","applied","host_verified")))]|length)==0' schemas/protocol/v1/status-crosswalk.json; done   # 00D-AC-3

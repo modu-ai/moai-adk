@@ -13,7 +13,7 @@
     "request": {
       "protocol_version": 1,
       "language": "ko",
-      "workflow_reference": "skills/moai-cli/workflows/",
+      "workflow_reference": "skills/moai/workflows/",
       "local_file": "none"
     },
     "project_id": "demo",
@@ -27,7 +27,7 @@
         "expected_sha256": null,
         "section_id": "moai-workflow",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:25dbe37c3fc473b7780fe59c47026654a7ef6e9ae95d5cee85bfe6879a313f10",
+        "rendered_sha256": "sha256:b4d025dccf10ef233d8fc860e93949dc06df6dd243203732d257480a50906e10",
         "detail": null
       },
       {
@@ -58,7 +58,7 @@
         ".moai-cli/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:e7790614f73da04cc280ff0088495de6245e2e2df3aa93a5cb4edc81670326e4",
+      "manifest_sha256": "sha256:f1fae6ea9efe4f613cb5d786f52602b564bdad63972d469e70335bc7b9d6327a",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

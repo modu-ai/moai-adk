@@ -38,8 +38,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.db
-*.sqlite
-*.sqlite3
 *.rdb
 *.dbm
 
@@ -347,18 +345,21 @@ dist-ssr/
 
 # ===========================================
 # RC1 development repository policy (user decision, 2026-11-08)
-# .claude/ and .moai/ are local installed copies, not product source;
-# AGENTS.md is generated per machine by moai-cli and stays local.
-# AGENTS.local.md is explicitly allowed to be tracked in this repository.
+# .claude/ and .moai/ are local installed copies, not product source.
+# AGENTS.md and AGENTS.local.md are tracked: hosts read AGENTS.md only inside the
+# session's own working tree, so a lane worktree needs the tracked copy (user
+# decision 2026-11-13, Issue #2667; replaces the per-machine rule of 2026-11-08).
 # ===========================================
 /.claude/
 /.moai/
-/AGENTS.md
 # Rust build output of the root package (isolated builds use CARGO_TARGET_DIR)
 /target/
 # Lane worktrees for every host (user decision 2026-11-08): inside the primary checkout so the Go hook allows
 # edits, outside .claude/; a nested worktree holds a .git file, so git lists it as untracked unless ignored here
 /.moai-cli/worktrees/
+# Apply receipts and their before-bytes stay local (#2590, docs/rust-product-path.md "Per-file receipts
+# and recovery"); the profile baseline .moai-cli/manifests/profile-baseline.json is tracked with project.yaml
+/.moai-cli/receipts/
 # Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary)
 .claude/
 .moai/

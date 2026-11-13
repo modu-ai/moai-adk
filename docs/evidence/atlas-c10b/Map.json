@@ -1,0 +1,1637 @@
+{
+  "report": {
+    "schema_version": 2,
+    "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+    "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+    "source_commit": "98dab71433617ba179c164be8b7ca169e62fe7dc",
+    "source_tree_sha1": "80b40d51b10db15ee732956aedc421f71d0e3301",
+    "tasks": [
+      {
+        "id": "T-001",
+        "hits": [
+          "src/forge/outbox.rs",
+          "src/forge/promote.rs",
+          "src/handoff.rs",
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 4398,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:ce83bb4dab53347d1b11562123f50de08efa2223766e9b56d6572e4e7aa4af68",
+            "files": [
+              "src/forge/outbox.rs",
+              "src/forge/promote.rs",
+              "src/handoff.rs",
+              "src/pr_link.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/forge/outbox.rs",
+            "src/forge/promote.rs",
+            "src/handoff.rs",
+            "src/pr_link.rs"
+          ],
+          "eligible": [
+            "src/forge/outbox.rs",
+            "src/forge/promote.rs",
+            "src/handoff.rs",
+            "src/pr_link.rs"
+          ],
+          "support": {
+            "src/forge/outbox.rs": [],
+            "src/forge/promote.rs": [],
+            "src/handoff.rs": [],
+            "src/pr_link.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-002",
+        "hits": [
+          "src/claim.rs",
+          "src/handoff.rs",
+          "src/queue.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 7769,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:264ab04e2ddd5fe8f175310a758b53bf42b43edadb6e7e4ef9a454db0a37902a",
+            "files": [
+              "src/claim.rs",
+              "src/handoff.rs",
+              "src/queue.rs",
+              "src/worktree.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim.rs",
+            "src/handoff.rs",
+            "src/queue.rs",
+            "src/worktree.rs"
+          ],
+          "eligible": [
+            "src/claim.rs",
+            "src/handoff.rs",
+            "src/queue.rs",
+            "src/worktree.rs"
+          ],
+          "support": {
+            "src/claim.rs": [],
+            "src/handoff.rs": [],
+            "src/queue.rs": [],
+            "src/worktree.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-003",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 2195,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:55272330af158e8d57d1dfbe012b1ab6f48e89985a49debdb9e5b4ee81d2fd88",
+            "files": [
+              "src/ontology.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/ontology.rs"
+          ],
+          "eligible": [
+            "src/ontology.rs"
+          ],
+          "support": {
+            "src/ontology.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-004",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 2477,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:55272330af158e8d57d1dfbe012b1ab6f48e89985a49debdb9e5b4ee81d2fd88",
+            "files": [
+              "src/ontology.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/ontology.rs"
+          ],
+          "eligible": [
+            "src/ontology.rs"
+          ],
+          "support": {
+            "src/ontology.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-005",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1637,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:55272330af158e8d57d1dfbe012b1ab6f48e89985a49debdb9e5b4ee81d2fd88",
+            "files": [
+              "src/ontology.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/ontology.rs"
+          ],
+          "eligible": [
+            "src/ontology.rs"
+          ],
+          "support": {
+            "src/ontology.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-006",
+        "hits": [
+          "src/atlas_tag.rs",
+          "src/main.rs"
+        ],
+        "response_bytes": 9053,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:036bf9a1569b17d39dfd42224586dac34587753c07b67731fd9003f1e6e91fac",
+            "files": [
+              "src/atlas_tag.rs",
+              "src/main.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/atlas_tag.rs",
+            "src/main.rs"
+          ],
+          "eligible": [
+            "src/atlas_tag.rs",
+            "src/main.rs"
+          ],
+          "support": {
+            "src/atlas_tag.rs": [],
+            "src/main.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-007",
+        "hits": [
+          "src/claim_verify.rs",
+          "src/contract.rs",
+          "src/parity.rs",
+          "src/recovery.rs",
+          "src/verify.rs"
+        ],
+        "response_bytes": 6561,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:c1646b75a701475dd2fa17e9e1366c1bc479ec4cd89c8757959ed4fdb513776d",
+            "files": [
+              "src/claim_verify.rs",
+              "src/contract.rs",
+              "src/parity.rs",
+              "src/recovery.rs",
+              "src/verify.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim_verify.rs",
+            "src/contract.rs",
+            "src/parity.rs",
+            "src/recovery.rs",
+            "src/verify.rs"
+          ],
+          "eligible": [
+            "src/claim_verify.rs",
+            "src/contract.rs",
+            "src/parity.rs",
+            "src/recovery.rs",
+            "src/verify.rs"
+          ],
+          "support": {
+            "src/claim_verify.rs": [],
+            "src/contract.rs": [],
+            "src/parity.rs": [],
+            "src/recovery.rs": [],
+            "src/verify.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-008",
+        "hits": [
+          "src/agents.rs",
+          "src/archive.rs",
+          "src/claude.rs",
+          "src/contract.rs",
+          "src/forge/promote.rs",
+          "src/generation.rs",
+          "src/github_templates.rs",
+          "src/hooks.rs",
+          "src/hosts/codex.rs",
+          "src/hosts/codex_config.rs",
+          "src/profile.rs",
+          "src/recovery.rs",
+          "src/sources.rs",
+          "src/update.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 16730,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:bc4900c723aec6f62f4b95d1855808f6efdf8641dfd56b9858e23025dd8a6044",
+            "files": [
+              "src/agents.rs",
+              "src/archive.rs",
+              "src/claude.rs",
+              "src/contract.rs",
+              "src/forge/promote.rs",
+              "src/generation.rs",
+              "src/github_templates.rs",
+              "src/hooks.rs",
+              "src/hosts/codex.rs",
+              "src/hosts/codex_config.rs",
+              "src/profile.rs",
+              "src/recovery.rs",
+              "src/sources.rs",
+              "src/update.rs",
+              "src/worktree.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/agents.rs",
+            "src/archive.rs",
+            "src/claude.rs",
+            "src/contract.rs",
+            "src/forge/promote.rs",
+            "src/generation.rs",
+            "src/github_templates.rs",
+            "src/hooks.rs",
+            "src/hosts/codex.rs",
+            "src/hosts/codex_config.rs",
+            "src/profile.rs",
+            "src/recovery.rs",
+            "src/sources.rs",
+            "src/update.rs",
+            "src/worktree.rs"
+          ],
+          "eligible": [
+            "src/agents.rs",
+            "src/archive.rs",
+            "src/claude.rs",
+            "src/contract.rs",
+            "src/forge/promote.rs",
+            "src/generation.rs",
+            "src/github_templates.rs",
+            "src/hooks.rs",
+            "src/hosts/codex.rs",
+            "src/hosts/codex_config.rs",
+            "src/profile.rs",
+            "src/recovery.rs",
+            "src/sources.rs",
+            "src/update.rs",
+            "src/worktree.rs"
+          ],
+          "support": {
+            "src/agents.rs": [],
+            "src/archive.rs": [],
+            "src/claude.rs": [],
+            "src/contract.rs": [],
+            "src/forge/promote.rs": [],
+            "src/generation.rs": [],
+            "src/github_templates.rs": [],
+            "src/hooks.rs": [],
+            "src/hosts/codex.rs": [],
+            "src/hosts/codex_config.rs": [],
+            "src/profile.rs": [],
+            "src/recovery.rs": [],
+            "src/sources.rs": [],
+            "src/update.rs": [],
+            "src/worktree.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-009",
+        "hits": [
+          "src/forge/promote.rs",
+          "src/forge/report.rs",
+          "src/install.rs",
+          "src/lib.rs",
+          "src/profile.rs",
+          "src/redact.rs",
+          "src/sources.rs"
+        ],
+        "response_bytes": 7158,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:d267fe6791bd6ecb7e628f9babdcde8e6835237bbba21a201b26460840b9b37e",
+            "files": [
+              "src/forge/promote.rs",
+              "src/forge/report.rs",
+              "src/install.rs",
+              "src/lib.rs",
+              "src/profile.rs",
+              "src/redact.rs",
+              "src/sources.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/forge/promote.rs",
+            "src/forge/report.rs",
+            "src/install.rs",
+            "src/lib.rs",
+            "src/profile.rs",
+            "src/redact.rs",
+            "src/sources.rs"
+          ],
+          "eligible": [
+            "src/forge/promote.rs",
+            "src/forge/report.rs",
+            "src/install.rs",
+            "src/lib.rs",
+            "src/profile.rs",
+            "src/redact.rs",
+            "src/sources.rs"
+          ],
+          "support": {
+            "src/forge/promote.rs": [],
+            "src/forge/report.rs": [],
+            "src/install.rs": [],
+            "src/lib.rs": [],
+            "src/profile.rs": [],
+            "src/redact.rs": [],
+            "src/sources.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-010",
+        "hits": [
+          "src/profile.rs"
+        ],
+        "response_bytes": 3024,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:98b789b59e89763dcd8095b49216b90ad5396ab460fadd27a5a19e425fb11209",
+            "files": [
+              "src/profile.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/profile.rs"
+          ],
+          "eligible": [
+            "src/profile.rs"
+          ],
+          "support": {
+            "src/profile.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-011",
+        "hits": [
+          "src/profile.rs"
+        ],
+        "response_bytes": 2468,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:98b789b59e89763dcd8095b49216b90ad5396ab460fadd27a5a19e425fb11209",
+            "files": [
+              "src/profile.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/profile.rs"
+          ],
+          "eligible": [
+            "src/profile.rs"
+          ],
+          "support": {
+            "src/profile.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-012",
+        "hits": [
+          "src/flow.rs"
+        ],
+        "response_bytes": 1345,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:d464863c7e98610afd2ad1995ec5063098b01756baea959c8c06b52e493ce70c",
+            "files": [
+              "src/flow.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/flow.rs"
+          ],
+          "eligible": [
+            "src/flow.rs"
+          ],
+          "support": {
+            "src/flow.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-013",
+        "hits": [
+          "src/claim_verify.rs"
+        ],
+        "response_bytes": 1649,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:e19786ee13aac7c692998703dc1253205df35c616f274f8f995cca551492a42f",
+            "files": [
+              "src/claim_verify.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim_verify.rs"
+          ],
+          "eligible": [
+            "src/claim_verify.rs"
+          ],
+          "support": {
+            "src/claim_verify.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-014",
+        "hits": [
+          "src/recovery.rs",
+          "src/self_update.rs",
+          "src/update.rs"
+        ],
+        "response_bytes": 9816,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:5bd2005b08279a88f4b45b5c01cb39eadb74729fd274ff0dbeef27841be32ae3",
+            "files": [
+              "src/recovery.rs",
+              "src/self_update.rs",
+              "src/update.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/recovery.rs",
+            "src/self_update.rs",
+            "src/update.rs"
+          ],
+          "eligible": [
+            "src/recovery.rs",
+            "src/self_update.rs",
+            "src/update.rs"
+          ],
+          "support": {
+            "src/recovery.rs": [],
+            "src/self_update.rs": [],
+            "src/update.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-015",
+        "hits": [
+          "src/contract.rs",
+          "src/leader.rs",
+          "src/profile.rs"
+        ],
+        "response_bytes": 5330,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:da1f5e48aa2277d53fa108465331ddff0c0ef74fcae4ebb2971c852cf9827ba3",
+            "files": [
+              "src/contract.rs",
+              "src/leader.rs",
+              "src/profile.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/contract.rs",
+            "src/leader.rs",
+            "src/profile.rs"
+          ],
+          "eligible": [
+            "src/contract.rs",
+            "src/leader.rs",
+            "src/profile.rs"
+          ],
+          "support": {
+            "src/contract.rs": [],
+            "src/leader.rs": [],
+            "src/profile.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-016",
+        "hits": [
+          "src/audit.rs",
+          "src/baseline.rs",
+          "src/lib.rs",
+          "src/run.rs",
+          "src/sources.rs"
+        ],
+        "response_bytes": 9809,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:9a8ca65433cc0e8027fc5a8205fb6bda11591553ebcb3fcdcf4015e80d0f7c59",
+            "files": [
+              "src/audit.rs",
+              "src/baseline.rs",
+              "src/lib.rs",
+              "src/run.rs",
+              "src/sources.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/audit.rs",
+            "src/baseline.rs",
+            "src/lib.rs",
+            "src/run.rs",
+            "src/sources.rs"
+          ],
+          "eligible": [
+            "src/audit.rs",
+            "src/baseline.rs",
+            "src/lib.rs",
+            "src/run.rs",
+            "src/sources.rs"
+          ],
+          "support": {
+            "src/audit.rs": [],
+            "src/baseline.rs": [],
+            "src/lib.rs": [],
+            "src/run.rs": [],
+            "src/sources.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-017",
+        "hits": [
+          "src/main.rs",
+          "src/recovery.rs"
+        ],
+        "response_bytes": 3057,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:f4d4744c674b5a11b3b60154f3323f6c589efb673ec71cc373ae185be9227ba9",
+            "files": [
+              "src/main.rs",
+              "src/recovery.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/main.rs",
+            "src/recovery.rs"
+          ],
+          "eligible": [
+            "src/main.rs",
+            "src/recovery.rs"
+          ],
+          "support": {
+            "src/main.rs": [],
+            "src/recovery.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-018",
+        "hits": [
+          "src/main.rs",
+          "src/session.rs"
+        ],
+        "response_bytes": 2197,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:8e84eaca87eba5fedf0b224ba8283261ed46e50ac8cf64ac596e4dee1ac36679",
+            "files": [
+              "src/main.rs",
+              "src/session.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/main.rs",
+            "src/session.rs"
+          ],
+          "eligible": [
+            "src/main.rs",
+            "src/session.rs"
+          ],
+          "support": {
+            "src/main.rs": [],
+            "src/session.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-019",
+        "hits": [
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 1633,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:d5d593757dcdeee55903c272723c65621e5e948b43bd5258940b1311d410dae1",
+            "files": [
+              "src/pr_link.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/pr_link.rs"
+          ],
+          "eligible": [
+            "src/pr_link.rs"
+          ],
+          "support": {
+            "src/pr_link.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-020",
+        "hits": [
+          "src/archive.rs"
+        ],
+        "response_bytes": 1633,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:6963fdc2d0aa9bf61d1bb6ecc0c0690dafd063233954a431730b22035a027f0d",
+            "files": [
+              "src/archive.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/archive.rs"
+          ],
+          "eligible": [
+            "src/archive.rs"
+          ],
+          "support": {
+            "src/archive.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-021",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1637,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:55272330af158e8d57d1dfbe012b1ab6f48e89985a49debdb9e5b4ee81d2fd88",
+            "files": [
+              "src/ontology.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/ontology.rs"
+          ],
+          "eligible": [
+            "src/ontology.rs"
+          ],
+          "support": {
+            "src/ontology.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-022",
+        "hits": [
+          "src/ontology.rs"
+        ],
+        "response_bytes": 1357,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:55272330af158e8d57d1dfbe012b1ab6f48e89985a49debdb9e5b4ee81d2fd88",
+            "files": [
+              "src/ontology.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/ontology.rs"
+          ],
+          "eligible": [
+            "src/ontology.rs"
+          ],
+          "support": {
+            "src/ontology.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-023",
+        "hits": [
+          "src/claim.rs",
+          "src/handoff.rs",
+          "src/queue.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 7222,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:264ab04e2ddd5fe8f175310a758b53bf42b43edadb6e7e4ef9a454db0a37902a",
+            "files": [
+              "src/claim.rs",
+              "src/handoff.rs",
+              "src/queue.rs",
+              "src/worktree.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim.rs",
+            "src/handoff.rs",
+            "src/queue.rs",
+            "src/worktree.rs"
+          ],
+          "eligible": [
+            "src/claim.rs",
+            "src/handoff.rs",
+            "src/queue.rs",
+            "src/worktree.rs"
+          ],
+          "support": {
+            "src/claim.rs": [],
+            "src/handoff.rs": [],
+            "src/queue.rs": [],
+            "src/worktree.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-024",
+        "hits": [
+          "src/hosts/codex.rs",
+          "src/main.rs"
+        ],
+        "response_bytes": 3057,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:2a7cd0c6074c6f31a59541422f72d585de7c9d03c0f7bf4d554acd4d6bb6ac95",
+            "files": [
+              "src/hosts/codex.rs",
+              "src/main.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/hosts/codex.rs",
+            "src/main.rs"
+          ],
+          "eligible": [
+            "src/hosts/codex.rs",
+            "src/main.rs"
+          ],
+          "support": {
+            "src/hosts/codex.rs": [],
+            "src/main.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-025",
+        "hits": [
+          "src/flow.rs"
+        ],
+        "response_bytes": 3001,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:d464863c7e98610afd2ad1995ec5063098b01756baea959c8c06b52e493ce70c",
+            "files": [
+              "src/flow.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/flow.rs"
+          ],
+          "eligible": [
+            "src/flow.rs"
+          ],
+          "support": {
+            "src/flow.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-026",
+        "hits": [
+          "src/context/mod.rs"
+        ],
+        "response_bytes": 1366,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:4e218d2520e566a55c1be408fa038b1266f1418a8d173d28d69d137518f64a98",
+            "files": [
+              "src/context/mod.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/context/mod.rs"
+          ],
+          "eligible": [
+            "src/context/mod.rs"
+          ],
+          "support": {
+            "src/context/mod.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-027",
+        "hits": [
+          "src/main.rs"
+        ],
+        "response_bytes": 1754,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:84db5b697ca1b3c2a76d54dc75fae76924a5c6efc7e8e518ea3a286233a9f885",
+            "files": [
+              "src/main.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/main.rs"
+          ],
+          "eligible": [
+            "src/main.rs"
+          ],
+          "support": {
+            "src/main.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-028",
+        "hits": [
+          "src/forge/promote.rs",
+          "src/forge/transport.rs",
+          "src/redact.rs"
+        ],
+        "response_bytes": 3176,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:b35921ad455be9b12152a768b59573c1c2698147e82d71a624dbbbbaabb70967",
+            "files": [
+              "src/forge/promote.rs",
+              "src/forge/transport.rs",
+              "src/redact.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/forge/promote.rs",
+            "src/forge/transport.rs",
+            "src/redact.rs"
+          ],
+          "eligible": [
+            "src/forge/promote.rs",
+            "src/forge/transport.rs",
+            "src/redact.rs"
+          ],
+          "support": {
+            "src/forge/promote.rs": [],
+            "src/forge/transport.rs": [],
+            "src/redact.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-029",
+        "hits": [
+          "src/claim.rs",
+          "src/lib.rs",
+          "src/main.rs",
+          "src/queue.rs"
+        ],
+        "response_bytes": 5294,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:c445b5721f5539c402179d818f997afdcb6913123b46c88ad20cb819cc1b221b",
+            "files": [
+              "src/claim.rs",
+              "src/lib.rs",
+              "src/main.rs",
+              "src/queue.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim.rs",
+            "src/lib.rs",
+            "src/main.rs",
+            "src/queue.rs"
+          ],
+          "eligible": [
+            "src/claim.rs",
+            "src/lib.rs",
+            "src/main.rs",
+            "src/queue.rs"
+          ],
+          "support": {
+            "src/claim.rs": [],
+            "src/lib.rs": [],
+            "src/main.rs": [],
+            "src/queue.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-030",
+        "hits": [
+          "src/run.rs"
+        ],
+        "response_bytes": 1342,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:c3015c271dd1e6081812c764519acc408db8244ab29eddad17db9067513751d8",
+            "files": [
+              "src/run.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/run.rs"
+          ],
+          "eligible": [
+            "src/run.rs"
+          ],
+          "support": {
+            "src/run.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-031",
+        "hits": [
+          "src/sources.rs"
+        ],
+        "response_bytes": 1912,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:b57b6438bf2ae6581a78fe359ba90e29bc1c5815382ebfe379eb00ff6210952e",
+            "files": [
+              "src/sources.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/sources.rs"
+          ],
+          "eligible": [
+            "src/sources.rs"
+          ],
+          "support": {
+            "src/sources.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-032",
+        "hits": [
+          "src/contract.rs",
+          "src/install.rs",
+          "src/main.rs",
+          "src/recovery.rs",
+          "src/update.rs"
+        ],
+        "response_bytes": 12275,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:c1d6dbf15d4e4fa6247f648209acdea02fdcbd38cda6addbb829525bf845f20f",
+            "files": [
+              "src/contract.rs",
+              "src/install.rs",
+              "src/main.rs",
+              "src/recovery.rs",
+              "src/update.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/contract.rs",
+            "src/install.rs",
+            "src/main.rs",
+            "src/recovery.rs",
+            "src/update.rs"
+          ],
+          "eligible": [
+            "src/contract.rs",
+            "src/install.rs",
+            "src/main.rs",
+            "src/recovery.rs",
+            "src/update.rs"
+          ],
+          "support": {
+            "src/contract.rs": [],
+            "src/install.rs": [],
+            "src/main.rs": [],
+            "src/recovery.rs": [],
+            "src/update.rs": []
+          }
+        }
+      },
+      {
+        "id": "T-033",
+        "hits": [],
+        "response_bytes": 466,
+        "raw_context": {},
+        "selection": null
+      },
+      {
+        "id": "G-001",
+        "hits": [
+          "src/archive.rs",
+          "src/context/mod.rs",
+          "src/github_templates.rs"
+        ],
+        "response_bytes": 2283,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:7707dd6accf9c982215dd13df89f0a8d785ea2fa6617dadcba4142492f7353a4",
+            "files": [
+              "src/archive.rs",
+              "src/context/mod.rs",
+              "src/github_templates.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/archive.rs",
+            "src/context/mod.rs",
+            "src/github_templates.rs"
+          ],
+          "eligible": [
+            "src/archive.rs",
+            "src/context/mod.rs",
+            "src/github_templates.rs"
+          ],
+          "support": {
+            "src/archive.rs": [],
+            "src/context/mod.rs": [],
+            "src/github_templates.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-002",
+        "hits": [
+          "src/forge/outbox.rs",
+          "src/forge/promote.rs",
+          "src/handoff.rs",
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 4398,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:ce83bb4dab53347d1b11562123f50de08efa2223766e9b56d6572e4e7aa4af68",
+            "files": [
+              "src/forge/outbox.rs",
+              "src/forge/promote.rs",
+              "src/handoff.rs",
+              "src/pr_link.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/forge/outbox.rs",
+            "src/forge/promote.rs",
+            "src/handoff.rs",
+            "src/pr_link.rs"
+          ],
+          "eligible": [
+            "src/forge/outbox.rs",
+            "src/forge/promote.rs",
+            "src/handoff.rs",
+            "src/pr_link.rs"
+          ],
+          "support": {
+            "src/forge/outbox.rs": [],
+            "src/forge/promote.rs": [],
+            "src/handoff.rs": [],
+            "src/pr_link.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-003",
+        "hits": [
+          "src/forge/outbox.rs",
+          "src/forge/promote.rs",
+          "src/handoff.rs",
+          "src/pr_link.rs"
+        ],
+        "response_bytes": 4398,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:ce83bb4dab53347d1b11562123f50de08efa2223766e9b56d6572e4e7aa4af68",
+            "files": [
+              "src/forge/outbox.rs",
+              "src/forge/promote.rs",
+              "src/handoff.rs",
+              "src/pr_link.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/forge/outbox.rs",
+            "src/forge/promote.rs",
+            "src/handoff.rs",
+            "src/pr_link.rs"
+          ],
+          "eligible": [
+            "src/forge/outbox.rs",
+            "src/forge/promote.rs",
+            "src/handoff.rs",
+            "src/pr_link.rs"
+          ],
+          "support": {
+            "src/forge/outbox.rs": [],
+            "src/forge/promote.rs": [],
+            "src/handoff.rs": [],
+            "src/pr_link.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-004",
+        "hits": [
+          "src/apply.rs",
+          "src/archive.rs",
+          "src/audit.rs",
+          "src/baseline.rs",
+          "src/claim.rs",
+          "src/claude.rs",
+          "src/decision.rs",
+          "src/forge/promote.rs",
+          "src/forge/report.rs",
+          "src/forge/write.rs",
+          "src/github_templates.rs",
+          "src/hooks.rs",
+          "src/hosts/codex_config.rs",
+          "src/install.rs",
+          "src/plan.rs",
+          "src/pr_link.rs",
+          "src/recovery.rs",
+          "src/run.rs",
+          "src/self_update.rs",
+          "src/spec.rs",
+          "src/update.rs",
+          "src/verify.rs",
+          "src/worktree.rs"
+        ],
+        "response_bytes": 45975,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:0cfd6094acc07effcf7aa52698c3082b381ef6e904de006658c75208efbe4b74",
+            "files": [
+              "src/apply.rs",
+              "src/archive.rs",
+              "src/audit.rs",
+              "src/baseline.rs",
+              "src/claim.rs",
+              "src/claude.rs",
+              "src/decision.rs",
+              "src/forge/promote.rs",
+              "src/forge/report.rs",
+              "src/forge/write.rs",
+              "src/github_templates.rs",
+              "src/hooks.rs",
+              "src/hosts/codex_config.rs",
+              "src/install.rs",
+              "src/plan.rs",
+              "src/pr_link.rs",
+              "src/recovery.rs",
+              "src/run.rs",
+              "src/self_update.rs",
+              "src/spec.rs",
+              "src/update.rs",
+              "src/verify.rs",
+              "src/worktree.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/apply.rs",
+            "src/archive.rs",
+            "src/audit.rs",
+            "src/baseline.rs",
+            "src/claim.rs",
+            "src/claude.rs",
+            "src/decision.rs",
+            "src/forge/promote.rs",
+            "src/forge/report.rs",
+            "src/forge/write.rs",
+            "src/github_templates.rs",
+            "src/hooks.rs",
+            "src/hosts/codex_config.rs",
+            "src/install.rs",
+            "src/plan.rs",
+            "src/pr_link.rs",
+            "src/recovery.rs",
+            "src/run.rs",
+            "src/self_update.rs",
+            "src/spec.rs",
+            "src/update.rs",
+            "src/verify.rs",
+            "src/worktree.rs"
+          ],
+          "eligible": [
+            "src/apply.rs",
+            "src/archive.rs",
+            "src/audit.rs",
+            "src/baseline.rs",
+            "src/claim.rs",
+            "src/claude.rs",
+            "src/decision.rs",
+            "src/forge/promote.rs",
+            "src/forge/report.rs",
+            "src/forge/write.rs",
+            "src/github_templates.rs",
+            "src/hooks.rs",
+            "src/hosts/codex_config.rs",
+            "src/install.rs",
+            "src/plan.rs",
+            "src/pr_link.rs",
+            "src/recovery.rs",
+            "src/run.rs",
+            "src/self_update.rs",
+            "src/spec.rs",
+            "src/update.rs",
+            "src/verify.rs",
+            "src/worktree.rs"
+          ],
+          "support": {
+            "src/apply.rs": [],
+            "src/archive.rs": [],
+            "src/audit.rs": [],
+            "src/baseline.rs": [],
+            "src/claim.rs": [],
+            "src/claude.rs": [],
+            "src/decision.rs": [],
+            "src/forge/promote.rs": [],
+            "src/forge/report.rs": [],
+            "src/forge/write.rs": [],
+            "src/github_templates.rs": [],
+            "src/hooks.rs": [],
+            "src/hosts/codex_config.rs": [],
+            "src/install.rs": [],
+            "src/plan.rs": [],
+            "src/pr_link.rs": [],
+            "src/recovery.rs": [],
+            "src/run.rs": [],
+            "src/self_update.rs": [],
+            "src/spec.rs": [],
+            "src/update.rs": [],
+            "src/verify.rs": [],
+            "src/worktree.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-005",
+        "hits": [
+          "src/audit.rs",
+          "src/baseline.rs",
+          "src/lib.rs",
+          "src/run.rs",
+          "src/sources.rs"
+        ],
+        "response_bytes": 9809,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:9a8ca65433cc0e8027fc5a8205fb6bda11591553ebcb3fcdcf4015e80d0f7c59",
+            "files": [
+              "src/audit.rs",
+              "src/baseline.rs",
+              "src/lib.rs",
+              "src/run.rs",
+              "src/sources.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/audit.rs",
+            "src/baseline.rs",
+            "src/lib.rs",
+            "src/run.rs",
+            "src/sources.rs"
+          ],
+          "eligible": [
+            "src/audit.rs",
+            "src/baseline.rs",
+            "src/lib.rs",
+            "src/run.rs",
+            "src/sources.rs"
+          ],
+          "support": {
+            "src/audit.rs": [],
+            "src/baseline.rs": [],
+            "src/lib.rs": [],
+            "src/run.rs": [],
+            "src/sources.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-006",
+        "hits": [
+          "src/claim_verify.rs"
+        ],
+        "response_bytes": 1649,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:e19786ee13aac7c692998703dc1253205df35c616f274f8f995cca551492a42f",
+            "files": [
+              "src/claim_verify.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim_verify.rs"
+          ],
+          "eligible": [
+            "src/claim_verify.rs"
+          ],
+          "support": {
+            "src/claim_verify.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-007",
+        "hits": [
+          "src/claim.rs",
+          "src/claim_verify.rs",
+          "src/flow.rs",
+          "src/handoff.rs",
+          "src/leader.rs",
+          "src/main.rs",
+          "src/queue.rs"
+        ],
+        "response_bytes": 8586,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:276050d8b43480cb6ed024448038ce86cf948e928f6ed40fcd757bcecefc941d",
+            "files": [
+              "src/claim.rs",
+              "src/claim_verify.rs",
+              "src/flow.rs",
+              "src/handoff.rs",
+              "src/leader.rs",
+              "src/main.rs",
+              "src/queue.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/claim.rs",
+            "src/claim_verify.rs",
+            "src/flow.rs",
+            "src/handoff.rs",
+            "src/leader.rs",
+            "src/main.rs",
+            "src/queue.rs"
+          ],
+          "eligible": [
+            "src/claim.rs",
+            "src/claim_verify.rs",
+            "src/flow.rs",
+            "src/handoff.rs",
+            "src/leader.rs",
+            "src/main.rs",
+            "src/queue.rs"
+          ],
+          "support": {
+            "src/claim.rs": [],
+            "src/claim_verify.rs": [],
+            "src/flow.rs": [],
+            "src/handoff.rs": [],
+            "src/leader.rs": [],
+            "src/main.rs": [],
+            "src/queue.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-008",
+        "hits": [
+          "src/atlas_tag.rs",
+          "src/main.rs"
+        ],
+        "response_bytes": 9053,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:036bf9a1569b17d39dfd42224586dac34587753c07b67731fd9003f1e6e91fac",
+            "files": [
+              "src/atlas_tag.rs",
+              "src/main.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/atlas_tag.rs",
+            "src/main.rs"
+          ],
+          "eligible": [
+            "src/atlas_tag.rs",
+            "src/main.rs"
+          ],
+          "support": {
+            "src/atlas_tag.rs": [],
+            "src/main.rs": []
+          }
+        }
+      },
+      {
+        "id": "G-009",
+        "hits": [
+          "src/contract.rs",
+          "src/install.rs",
+          "src/main.rs",
+          "src/recovery.rs",
+          "src/update.rs"
+        ],
+        "response_bytes": 12275,
+        "raw_context": {
+          "atlas-map": {
+            "document": "sha256:c1d6dbf15d4e4fa6247f648209acdea02fdcbd38cda6addbb829525bf845f20f",
+            "files": [
+              "src/contract.rs",
+              "src/install.rs",
+              "src/main.rs",
+              "src/recovery.rs",
+              "src/update.rs"
+            ]
+          }
+        },
+        "selection": {
+          "policy": "literal-evidence-v1",
+          "hits": [
+            "src/contract.rs",
+            "src/install.rs",
+            "src/main.rs",
+            "src/recovery.rs",
+            "src/update.rs"
+          ],
+          "eligible": [
+            "src/contract.rs",
+            "src/install.rs",
+            "src/main.rs",
+            "src/recovery.rs",
+            "src/update.rs"
+          ],
+          "support": {
+            "src/contract.rs": [],
+            "src/install.rs": [],
+            "src/main.rs": [],
+            "src/recovery.rs": [],
+            "src/update.rs": []
+          }
+        }
+      }
+    ]
+  },
+  "judge": {
+    "schema_version": 2,
+    "corpus_sha256": "88fc899e2aaffab7ada2b9cbd57a9f49fe49c59e29b235f1effe649232736cf8",
+    "source_snapshot_sha256": "13940b0db86d2d31dcc04ee9e5ad3f76ef25cb6a1dd292217399a40abb9b2a9a",
+    "passed": true,
+    "metrics": {
+      "retrieval_precision_mean": 0.9212,
+      "retrieval_recall_mean": 0.9697,
+      "graph_relation_file_coverage_mean": 1.0
+    },
+    "thresholds": {
+      "graph_relation_file_coverage_mean": 1.0,
+      "retrieval_precision_mean": 0.9212,
+      "retrieval_recall_mean": 0.9697
+    },
+    "failed_metrics": []
+  }
+}

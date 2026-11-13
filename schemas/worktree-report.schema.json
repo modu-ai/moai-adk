@@ -30,7 +30,7 @@
         "enum": [
           "worktree_checkout",
           "worktree_target",
-          "tmp_rc_target",
+          "tmp_target",
           "tmp_audit_clone",
           "tmp_empty_dir",
           "tmp_other"
@@ -54,7 +54,7 @@
       "required": [
         "worktree_checkout",
         "worktree_target",
-        "tmp_rc_target",
+        "tmp_target",
         "tmp_audit_clone",
         "tmp_empty_dir",
         "tmp_other",
@@ -63,7 +63,7 @@
       "properties": {
         "worktree_checkout": { "$ref": "#/$defs/class" },
         "worktree_target": { "$ref": "#/$defs/class" },
-        "tmp_rc_target": { "$ref": "#/$defs/class" },
+        "tmp_target": { "$ref": "#/$defs/class" },
         "tmp_audit_clone": { "$ref": "#/$defs/class" },
         "tmp_empty_dir": { "$ref": "#/$defs/class" },
         "tmp_other": { "$ref": "#/$defs/class" },

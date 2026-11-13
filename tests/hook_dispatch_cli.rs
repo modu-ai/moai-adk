@@ -410,6 +410,171 @@ fn a_missing_binary_is_non_blocking_by_the_host_rules() {
     assert_eq!(commit_count(&root), before + 1);
 }
 
+/// A host that cancels a hook at `timeout` (https://code.claude.com/docs/en/hooks, read
+/// 2026-11-12: "Claude Code cancels a `command` … hook that reaches its timeout, discarding the
+/// hook's output"; "On `PreToolUse`, a timed-out … hook doesn't block the tool call"); `None`
+/// waits for the hook. The hook runs with `path_prefix` first on PATH; the tool command runs
+/// with the normal PATH. Returns (tool ran, hook was cancelled).
+fn host_runs_tool_with_timeout(
+    root: &Path,
+    path_prefix: &Path,
+    command: &str,
+    timeout: Option<std::time::Duration>,
+) -> (bool, bool) {
+    let path = format!(
+        "{}:{}",
+        path_prefix.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let mut child = Command::new(BIN)
+        .args([
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ])
+        .current_dir(root)
+        .env("HOME", root.join("home"))
+        .env("PATH", path)
+        .env_remove("MOAI_FORGE_GH_BIN")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        // A cancelled hook's children may outlive it; no pipe of theirs is waited on.
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, &pre_tool(command, root));
+    let start = std::time::Instant::now();
+    let cancelled = loop {
+        if child.try_wait().unwrap().is_some() {
+            break false;
+        }
+        if timeout.is_some_and(|t| start.elapsed() >= t) {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            break true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    };
+    let proceed = if cancelled {
+        // Output discarded; a timeout is a non-blocking error on PreToolUse.
+        true
+    } else {
+        let mut stdout = String::new();
+        use std::io::Read as _;
+        child
+            .stdout
+            .take()
+            .unwrap()
+            .read_to_string(&mut stdout)
+            .unwrap();
+        serde_json::from_str::<Value>(stdout.trim())
+            .map(|v| v["hookSpecificOutput"]["permissionDecision"] != "deny")
+            .unwrap_or(true)
+    };
+    if proceed {
+        let status = Command::new("sh")
+            .args(["-c", command])
+            .current_dir(root)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("HOME", root.join("home"))
+            .status()
+            .unwrap();
+        assert!(status.success(), "tool command failed: {command}");
+    }
+    (proceed, cancelled)
+}
+
+/// Writes an executable `git` into `dir` running `body` (a POSIX sh script body).
+fn git_shim(dir: &Path, body: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    fs::create_dir_all(dir).unwrap();
+    let path = dir.join("git");
+    fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+/// R1 timeout (#2391): the engine has no deadline of its own; the host's timeout bounds it
+/// and, by decision D1 (fail-open, `docs/decisions-2026-11-08.md` 17:52Z(11-10)), a timed-out
+/// tool-preflight lets the tool run. The engine is held past the host timeout by a `git` on
+/// the hook's PATH that sleeps (a lane commit makes the engine read the branch with `git`).
+/// Control: a shim that only forwards to the real git, waited for without a timeout (a loaded
+/// machine took 5–7 s here, so no wall-clock bound is put on it), denies with no side effect.
+/// The sleeping shim never answers, so the host timeout decides whatever its value.
+#[test]
+fn a_timed_out_preflight_is_non_blocking_by_the_host_rules() {
+    let host_timeout = std::time::Duration::from_secs(3);
+    let (_d, root) = repo("issue/77-k");
+    fs::write(root.join("a.txt"), "c\n").unwrap();
+    git(&root, &["add", "a.txt"]);
+    let real_git = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    let real_git = real_git.trim();
+    assert!(real_git.starts_with('/'), "{real_git}");
+    let fast = root.join("home/fast-bin");
+    git_shim(&fast, &format!("exec '{real_git}' \"$@\""));
+    let slow = root.join("home/slow-bin");
+    // The sleeping git outlives the cancelled engine, so it waits on a release file and also
+    // ends once the temporary directory is gone (pre-audit 6812063964 N2: no orphan sleeper).
+    let release = root.join("home/release-slow-git");
+    git_shim(
+        &slow,
+        &format!(
+            "while [ -d '{dir}' ] && [ ! -e '{rel}' ]; do sleep 0.1; done; exit 1",
+            dir = slow.display(),
+            rel = release.display()
+        ),
+    );
+    struct Release(PathBuf);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            let _ = fs::write(&self.0, "");
+        }
+    }
+    let _release = Release(release);
+    let before = commit_count(&root);
+
+    let (ran, cancelled) =
+        host_runs_tool_with_timeout(&root, &fast, "git commit -q -m 'no token'", None);
+    assert!(!cancelled);
+    assert!(
+        !ran,
+        "the engine reached git through the shim PATH and denied"
+    );
+    assert_eq!(commit_count(&root), before, "no side effect despite deny");
+
+    let start = std::time::Instant::now();
+    let (ran, cancelled) = host_runs_tool_with_timeout(
+        &root,
+        &slow,
+        "git commit -q -m 'no token'",
+        Some(host_timeout),
+    );
+    assert!(
+        cancelled,
+        "the sleeping git holds the engine past the host timeout"
+    );
+    assert!(
+        ran,
+        "a timed-out PreToolUse hook does not block (D1 fail-open)"
+    );
+    assert_eq!(commit_count(&root), before + 1, "the tool ran");
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(90),
+        "the host timeout, not the engine, ended the hook"
+    );
+}
+
 // ---- audit #2399 (6770112093) B1-B4: guards pinned by tests ----
 
 /// A PreToolUse input for a lane commit without a claim token, padded to exactly `total`
@@ -770,7 +935,8 @@ fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
     let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                     "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
     assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
-    // apply_patch edits files and cannot commit: not guarded (capability `not_guarded`).
+    // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
+    // only .git internals, credential paths and secret content in patches).
     let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
                        "tool_input": {"command": "*** Begin Patch\n*** git commit\n*** End Patch"},
                        "cwd": root});
@@ -866,9 +1032,16 @@ fn hooks_plan_reports_per_host_engine_capabilities() {
         assert_eq!(caps["host"], json!(host));
         seen.push(caps);
     }
+    let guards = |c: &Value| c["tool-preflight"]["guards"].to_string();
     let not_guarded = |c: &Value| c["tool-preflight"]["not_guarded"].to_string();
-    assert!(not_guarded(&seen[1]).contains("apply_patch"));
-    assert!(!not_guarded(&seen[0]).contains("apply_patch"));
+    // Codex file edits arrive as apply_patch, Claude's as Write/Edit/MultiEdit/NotebookEdit.
+    assert!(guards(&seen[1]).contains("apply_patch"));
+    assert!(!guards(&seen[0]).contains("apply_patch"));
+    assert!(guards(&seen[0]).contains("NotebookEdit"));
+    for caps in &seen {
+        assert!(not_guarded(caps).contains("outside the project"));
+        assert!(not_guarded(caps).contains("MCP tools"));
+    }
     assert_eq!(seen[1]["tool-observe"]["events"], json!(["PostToolUse"]));
     assert_eq!(
         seen[0]["tool-observe"]["events"],
@@ -1073,4 +1246,643 @@ fn codex_observe_outcome_comes_from_the_tool_response_or_is_unknown() {
         observe("claude", "PostToolUseFailure", "Bash", json!({})).0,
         "failure"
     );
+}
+
+// ---- stage 4: cost ----
+
+/// Audit #2400 N3: tool-observe spawns `git` only when it will record. A fake `git` first on
+/// PATH leaves a marker; without `.moai-cli/` there is no marker, with it there is one (the
+/// control proves the fake is the `git` the engine would run).
+#[test]
+fn tool_observe_spawns_no_git_without_a_state_dir() {
+    let (_d, root) = repo("main");
+    let bin = root.join("home/fakebin");
+    fs::create_dir_all(&bin).unwrap();
+    let marker = root.join("home/git-called");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\ntouch '{}'\necho 0123456789abcdef0123456789abcdef01234567\n",
+            marker.display()
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let post = post_tool("PostToolUse", "Read", "a.txt", "x");
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(!marker.exists(), "git ran although nothing is recorded");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    dispatch("tool-observe", &root, &post, &env);
+    assert!(marker.exists(), "control: the fake git is the one run");
+    let text = fs::read_to_string(engine_log(&root)).unwrap();
+    assert!(text.contains("0123456789abcdef0123456789abcdef01234567"));
+}
+
+/// Cost (#2391 stage 4, measured): a lane commit that carries its token is decided after one
+/// `git` call (the branch); only a commit without it pays the two `rev-parse` calls of the
+/// local-record lookup. Counted, not timed: a logging `git` wrapper execs the real one.
+#[test]
+fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
+    let (_d, root) = repo("issue/77-k");
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_string();
+    let bin = root.join("home/wrapbin");
+    fs::create_dir_all(&bin).unwrap();
+    let log = root.join("home/git-calls");
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n",
+            log.display(),
+            real
+        ),
+    );
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let env = [("PATH", path.as_str())];
+    let calls = |cmd: &str| {
+        let _ = fs::remove_file(&log);
+        let r = dispatch("tool-preflight", &root, &pre_tool(cmd, &root), &env);
+        let n = fs::read_to_string(&log).map_or(0, |t| t.lines().count());
+        (n, r)
+    };
+    let (n, r) = calls("git commit -m 'x\n\nMoai-Claim: 77#5'");
+    assert_allow(&r);
+    assert_eq!(n, 1, "token present: the branch lookup only");
+    let (n, r) = calls("git commit -m x");
+    assert_deny(&r);
+    assert_eq!(n, 3, "no token: branch + two rev-parse for the journal");
+    let (n, r) = calls("ls");
+    assert_allow(&r);
+    assert_eq!(n, 0, "not a commit: no git at all");
+}
+
+// ---- stage 5: minimal guard bundle (A1–A4) ----
+
+/// The refused removal leaves the fixture's `.git` in place; the allowed control really runs.
+/// Both commands stay inside the temporary fixture repository.
+#[test]
+fn a_refused_removal_runs_nothing_and_an_allowed_one_runs() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join("build")).unwrap();
+    assert!(!host_runs_tool(Path::new(BIN), &root, "rm -rf .git"));
+    assert!(root.join(".git").is_dir(), "refused: .git must survive");
+    assert!(host_runs_tool(Path::new(BIN), &root, "rm -rf build"));
+    assert!(!root.join("build").exists(), "allowed control must run");
+}
+
+#[test]
+fn stage_five_reasons_are_fixed_text_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let marker = "UNIQUEMARK7";
+    let cmd = format!("git push --force origin main # {marker}");
+    for host in ["claude", "codex"] {
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
+            &root,
+            &pre_tool(&cmd, &root),
+            &[],
+        )
+        .unwrap();
+        let reason = assert_deny(&r);
+        assert!(reason.contains("force push"), "{reason}");
+        assert!(!reason.contains(marker), "{reason}");
+    }
+}
+
+#[test]
+fn file_writes_into_git_internals_are_refused_for_both_hosts() {
+    let (_d, root) = repo("main");
+    let write = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                       "tool_input": {"file_path": ".git/hooks/pre-commit", "content": "x"}, "cwd": root});
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &root,
+        write.to_string().as_bytes(),
+        &[],
+    ));
+    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                       "tool_input": {"command": "*** Begin Patch\n*** Update File: .git/config\n@@\n-a\n+b\n*** End Patch"},
+                       "cwd": root});
+    assert_deny(&codex(
+        "tool-preflight",
+        &root,
+        patch.to_string().as_bytes(),
+    ));
+    let fine = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                      "tool_input": {"file_path": "src/ok.rs", "content": "x"}, "cwd": root});
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        fine.to_string().as_bytes(),
+        &[],
+    ));
+}
+
+// ---- stage 6: the confirmation class (B2 = A) ----
+
+/// The PreToolUse object's decision and reason.
+fn decision(r: &Run) -> (String, String) {
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).expect("one JSON object");
+    let h = &v["hookSpecificOutput"];
+    assert_eq!(h["hookEventName"], "PreToolUse");
+    (
+        h["permissionDecision"].as_str().unwrap().to_string(),
+        h["permissionDecisionReason"].as_str().unwrap().to_string(),
+    )
+}
+
+/// Decision B2 = A (Issue #2389 c6774899518 row 25): Claude asks, Codex refuses with a fixed
+/// suffix; nothing is recorded as a deny for an ask. Strings only, nothing is executed.
+#[test]
+fn a_confirmation_asks_on_claude_and_is_refused_on_codex() {
+    let (_d, root) = repo("main");
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
+    let input = pre_tool("git reset --hard HEAD~1", &root);
+    let (d, reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
+    assert_eq!(d, "ask");
+    assert!(reason.contains("discards uncommitted changes"), "{reason}");
+    let (d, reason) = decision(&codex("tool-preflight", &root, &input));
+    assert_eq!(d, "deny");
+    assert!(reason.contains("Codex cannot ask"), "{reason}");
+    // An ask leaves no deny line (the user's answer is unknown).
+    let log = root.join(".moai-cli/receipts/hook-engine.jsonl");
+    let text = fs::read_to_string(&log).unwrap_or_default();
+    assert!(!text.contains("\"kind\":\"deny\""), "{text}");
+}
+
+/// #2633 audit FAIL 6846708858 B1: OMP has no ask either, so a confirmation is a block whose
+/// reason is Claude's ask reason plus the Codex suffix — the module blocks only on
+/// `block === true`, so this is the line that stops `git reset --hard` on OMP.
+#[test]
+fn a_confirmation_is_a_block_on_omp_with_the_codex_suffix() {
+    let (_d, root) = repo("main");
+    let input = pre_tool("git reset --hard HEAD~1", &root);
+    let (_, ask_reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
+    let r = omp("tool-preflight", &root, &input);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
+    assert_eq!(v["block"], json!(true), "{v}");
+    assert_eq!(
+        v["reason"].as_str().unwrap(),
+        format!("{ask_reason} {}", moai_cli::hook_engine::CODEX_ASK_SUFFIX)
+    );
+}
+
+/// A deny anywhere on the line wins over a confirmation (Claude's order deny > ask).
+#[test]
+fn a_deny_on_the_same_line_wins_over_a_confirmation() {
+    let (_d, root) = repo("issue/77-x");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard && git push --force origin main", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "deny");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard; git commit -m no-token", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "deny");
+    let r = dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git reset --hard", &root),
+        &[],
+    );
+    assert_eq!(decision(&r).0, "ask");
+}
+
+// ---- stage 7: opt-in rules from ~/.moai-cli/config (B3, B9) ----
+
+fn config(home: &Path, text: &str) {
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    fs::write(home.join(".moai-cli/config"), text).unwrap();
+}
+
+fn write_input(path: &Path, cwd: &Path) -> Vec<u8> {
+    json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+           "tool_input": {"file_path": path, "content": "x"}, "cwd": cwd})
+    .to_string()
+    .into_bytes()
+}
+
+/// B9 is off without a config (and with a broken one), and refuses a write outside the
+/// project once `[hooks.outside_project_writes]` turns it on; an `allow` folder passes.
+#[test]
+fn outside_project_writes_follow_the_config() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(
+        &home,
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\n",
+    );
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(
+        &home,
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n",
+    );
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(reason.contains("outside the project"), "{reason}");
+    let reason = assert_deny(&codex("tool-preflight", &root, &input));
+    assert!(reason.is_empty() || reason.contains("MoAI"), "{reason}");
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &write_input(&root.join("src.rs"), &root),
+        &env,
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &write_input(&home.join(".claude/settings.json"), &root),
+        &env,
+    ));
+    assert!(!outside.exists(), "a hook never writes the file");
+}
+
+/// B3 is off unless the repo is listed; then a switch in a primary checkout with a linked
+/// worktree is refused, and an `allow_commands` line passes.
+#[test]
+fn a_listed_shared_primary_checkout_is_protected() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let lane_dir = format!("../{}-b3-lane", root.file_name().unwrap().to_string_lossy());
+    git(&root, &["worktree", "add", "-q", "-b", "lane", &lane_dir]);
+    let env = [("HOME", home.to_str().unwrap())];
+    let switch = pre_tool("git switch lane", &root);
+    assert_allow(&dispatch("tool-preflight", &root, &switch, &env));
+    config(
+        &home,
+        &format!(
+            "[hooks.primary_checkout]\nenabled = true\nrepos = [\"{}\"]\nallow_commands = [\"git switch main\"]\n",
+            root.display()
+        ),
+    );
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &switch, &env));
+    assert!(reason.contains("primary checkout"), "{reason}");
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git switch main", &root),
+        &env,
+    ));
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &root,
+        &pre_tool("git status", &root),
+        &env,
+    ));
+    // The linked worktree itself is not the primary checkout.
+    let lane = std::fs::canonicalize(root.join(&lane_dir)).unwrap();
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &lane,
+        &pre_tool("git switch main", &lane),
+        &env,
+    ));
+    git(&root, &["worktree", "remove", "--force", &lane_dir]);
+}
+
+/// A B9 config that turns the rule on, padded with an ASCII comment to exactly `len` bytes.
+fn padded_b9_config(len: usize) -> String {
+    let rule = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    let pad = len - rule.len() - 2;
+    format!("{rule}#{}\n", "x".repeat(pad))
+}
+
+/// The config read stops at 65,536 bytes (pre-audit FAIL 6780344159 B1): a valid config of
+/// exactly 65,536 bytes turns B9 on (deny), the same config one byte longer is off (allow).
+#[test]
+fn a_config_of_65536_bytes_is_read_and_65537_bytes_is_off() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-size-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let path = home.join(".moai-cli/config");
+    config(&home, &padded_b9_config(65_536));
+    assert_eq!(fs::metadata(&path).unwrap().len(), 65_536);
+    let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(reason.contains("outside the project"), "{reason}");
+    config(&home, &padded_b9_config(65_537));
+    assert_eq!(fs::metadata(&path).unwrap().len(), 65_537);
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}
+
+/// A config that is a symlink is not followed (pre-audit FAIL 6780344159 B1): the same text
+/// denies as a regular file and is off when `config` only points at it.
+#[test]
+fn a_symlinked_config_is_off() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-link-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let text = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    config(&home, text);
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    let path = home.join(".moai-cli/config");
+    let target = home.join("elsewhere.toml");
+    fs::write(&target, text).unwrap();
+    fs::remove_file(&path).unwrap();
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+    assert!(fs::symlink_metadata(&path)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+}
+
+/// The `config_error` lines of the engine log, in order.
+fn config_errors(root: &Path) -> Vec<Value> {
+    fs::read_to_string(engine_log(root))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str::<Value>(l).unwrap())
+        .filter(|l| l["kind"] == json!("config_error"))
+        .collect()
+}
+
+/// Whether this process can read a file it made unreadable (root can).
+fn reads_through_mode_000() -> bool {
+    let out = Command::new("id").arg("-u").output().unwrap();
+    String::from_utf8_lossy(&out.stdout).trim() == "0"
+}
+
+/// N1 (pre-audit FAIL 6780344159, design 6777574227): an unusable config turns both rules
+/// off and leaves exactly one `config_error` line with a fixed reason in the engine log — no
+/// path, no config text. An absent config and a usable one leave none.
+#[test]
+fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-b9-n1-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let path = home.join(".moai-cli/config");
+    let text = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    config(&home, text);
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(
+        config_errors(&root).is_empty(),
+        "absent and usable: no line"
+    );
+
+    type Setup<'a> = Box<dyn Fn() + 'a>;
+    let mut cases: Vec<(&str, Setup<'_>)> = vec![
+        (
+            "invalid_toml",
+            Box::new(|| {
+                config(
+                    &home,
+                    "[hooks.outside_project_writes]\nenabled = true\nallow = [\n",
+                )
+            }),
+        ),
+        (
+            "invalid_toml",
+            Box::new(|| {
+                fs::write(
+                    &path,
+                    b"[hooks.outside_project_writes]\nenabled = true # \xff\n",
+                )
+                .unwrap()
+            }),
+        ),
+        (
+            "too_large",
+            Box::new(|| config(&home, &padded_b9_config(65_537))),
+        ),
+        (
+            "not_regular_file",
+            Box::new(|| {
+                let target = home.join("elsewhere.toml");
+                fs::write(&target, text).unwrap();
+                fs::remove_file(&path).unwrap();
+                std::os::unix::fs::symlink(&target, &path).unwrap();
+            }),
+        ),
+        (
+            "not_regular_file",
+            Box::new(|| {
+                fs::remove_file(&path).unwrap();
+                fs::create_dir(&path).unwrap();
+            }),
+        ),
+    ];
+    if !reads_through_mode_000() {
+        cases.push((
+            "unreadable",
+            Box::new(|| {
+                use std::os::unix::fs::PermissionsExt;
+                fs::remove_dir(&path).unwrap();
+                config(&home, text);
+                fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+            }),
+        ));
+    }
+    for (n, (reason, make)) in cases.iter().enumerate() {
+        make();
+        assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+        let lines = config_errors(&root);
+        assert_eq!(lines.len(), n + 1, "{reason}: one line per run");
+        let line = &lines[n];
+        assert_eq!(line["reason"], json!(reason), "{line}");
+        assert_eq!(line["host"], json!("claude"), "{line}");
+        let mut keys: Vec<&String> = line.as_object().unwrap().keys().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            [
+                "host",
+                "kind",
+                "reason",
+                "schema_version",
+                "session",
+                "unix_ms"
+            ],
+            "{line}"
+        );
+        let raw = line.to_string();
+        assert!(!raw.contains(home.to_str().unwrap()), "no path: {raw}");
+        assert!(!raw.contains("outside_project_writes"), "no text: {raw}");
+    }
+    assert!(!outside.exists(), "a hook never writes the file");
+}
+
+// ---- #2633: the OMP adapter (an extension module calls hook-dispatch --host omp) ----
+
+fn omp(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
+    run_program(
+        Path::new(BIN),
+        &["hook-dispatch", "--host", "omp", "--event", event],
+        cwd,
+        stdin,
+        &[],
+    )
+    .unwrap()
+}
+
+/// The answer the module turns into OMP's `tool_call` result: exactly `{block: true, reason}`
+/// on a deny, nothing on an allow, and the reason is the same fixed text as for Claude Code.
+#[test]
+fn omp_tool_preflight_answers_block_and_reason_only() {
+    let (_d, root) = repo("issue/77-k");
+    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
+    let r = omp("tool-preflight", &root, input.to_string().as_bytes());
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
+    assert_eq!(v["block"], true);
+    let claude = dispatch("tool-preflight", &root, input.to_string().as_bytes(), &[]);
+    assert_eq!(v["reason"].as_str().unwrap(), assert_deny(&claude));
+    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
+    assert_allow(&omp("tool-preflight", &root, ok.to_string().as_bytes()));
+}
+
+/// Session context is `{context}` (the module puts it in `before_agent_start`'s systemPrompt);
+/// turn-validation has no OMP event and is an engine error, never a silent allow.
+#[test]
+fn omp_session_check_answers_context_and_turn_validation_is_an_engine_error() {
+    let (_d, root) = repo("issue/77-k");
+    let r = omp(
+        "session-check",
+        &root,
+        br#"{"hook_event_name":"SessionStart"}"#,
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    assert_eq!(v.as_object().unwrap().len(), 1, "{v}");
+    assert!(v["context"]
+        .as_str()
+        .unwrap()
+        .contains("lane branch: Issue #77"));
+    let r = omp("turn-validation", &root, br#"{"hook_event_name":"Stop"}"#);
+    assert_engine_error(&r);
+    assert!(r.stderr.contains("no OMP event"), "{}", r.stderr);
+}
+
+/// OMP's `tool_result` carries `isError`; the module passes it as `tool_response.is_error`.
+#[test]
+fn omp_observe_outcome_comes_from_is_error_or_is_unknown() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let observe = |response: Value| {
+        let input = json!({"hook_event_name": "PostToolUse", "tool_name": "Bash",
+                           "tool_input": {"command": "x"}, "tool_response": response});
+        let r = omp("tool-observe", &root, input.to_string().as_bytes());
+        assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
+        let text = fs::read_to_string(engine_log(&root)).unwrap();
+        let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
+        assert_eq!(last["host"], "omp");
+        (
+            last["outcome"].as_str().unwrap().to_string(),
+            last["outcome_source"].as_str().unwrap().to_string(),
+        )
+    };
+    assert_eq!(
+        observe(json!({"is_error": false})),
+        ("success".into(), "tool_result.isError".into())
+    );
+    assert_eq!(observe(json!({"is_error": true})).0, "failure");
+    assert_eq!(observe(json!({"is_error": "true"})).0, "unknown");
+    assert_eq!(observe(json!({})).0, "unknown");
+}
+
+/// #2673 AC-3: a host without a built-in worktree tool commits with `git -C <worktree>` from
+/// the primary checkout (user decision on #2673). The branch is read in the folder `-C` names,
+/// not in the session's own folder, so the commit guard still sees the lane branch.
+#[test]
+fn git_dash_c_names_the_worktree_the_commit_runs_in() {
+    let (_a, primary) = repo("main");
+    git(
+        &primary,
+        &["worktree", "add", "-q", "-b", "issue/77-k", "wt77"],
+    );
+    let wt = primary.join("wt77");
+    // From the primary checkout, a commit in the lane worktree without its token: denied.
+    let r = dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool("git -C wt77 commit -m x", &primary),
+        &[],
+    );
+    assert!(assert_deny(&r).contains("Moai-Claim: 77#"));
+    // The absolute spelling is the same folder.
+    let abs = format!("git -C {} commit -m x", wt.display());
+    assert_deny(&dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool(&abs, &primary),
+        &[],
+    ));
+    // With the branch's token: allowed.
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool("git -C wt77 commit -m 'x Moai-Claim: 77#5'", &primary),
+        &[],
+    ));
+    // From the lane worktree, `-C ..` is the primary checkout on `main`: not a lane branch.
+    assert_allow(&dispatch(
+        "tool-preflight",
+        &wt,
+        &pre_tool("git -C .. commit -m x", &wt),
+        &[],
+    ));
+    // Two commits in two folders on one line: denied, so each is checked on its own line.
+    let two = format!(
+        "git -C wt77 commit -m 'x Moai-Claim: 77#5' && git -C {} commit -m y",
+        primary.display()
+    );
+    let reason = assert_deny(&dispatch(
+        "tool-preflight",
+        &primary,
+        &pre_tool(&two, &primary),
+        &[],
+    ));
+    assert!(reason.contains("more than one folder"), "{reason}");
 }

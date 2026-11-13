@@ -47,6 +47,8 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("leader", true),
     ("context_max_bytes", true),
     ("archive_grace_days", true),
+    ("language", true),
+    ("detected", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -113,6 +115,16 @@ pub struct Profile {
     /// before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive_grace_days: Option<u64>,
+    /// Writing language per item (#2293): item id → language code, both checked against the
+    /// tables in `crate::language`. Absent means no choice was recorded; a profile written
+    /// before this key reads unchanged and the managed section renders as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<crate::language::LanguageSettings>,
+    /// Project facts `project-detect` found (#2496): new or existing, manifests, languages,
+    /// language servers, MCP server names and databases. Absent means detection never ran; a
+    /// profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detected: Option<crate::project_detect::Detected>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -144,6 +156,13 @@ pub struct Plan {
     /// create | update | unchanged | conflict
     pub action: String,
     pub delta: Delta,
+    /// Managed keys whose value in the current file differs from the baseline the last
+    /// `project-apply` recorded, sorted (#2590). A hand edit after an apply shows here even
+    /// when the input agrees with the baseline and `action` stays `unchanged` (the edit is
+    /// kept, never overwritten). Empty — and left out of the JSON — without a baseline or a
+    /// file, or when the file still matches the baseline.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub drift: Vec<String>,
     pub plan_digest: String,
 }
 
@@ -193,6 +212,12 @@ fn validate(p: &Profile) -> Result<()> {
         .is_some_and(|l| l.pr_check_interval_secs == 0)
     {
         return Err("leader pr_check_interval_secs must be a positive number".into());
+    }
+    if let Some(language) = &p.language {
+        crate::language::validate(language)?;
+    }
+    if let Some(detected) = &p.detected {
+        crate::project_detect::validate(detected)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -361,6 +386,24 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
     delta
 }
 
+/// Managed keys where the current file and the baseline disagree (#2590). Needs both: with
+/// no baseline every key is already treated as user-edited, and with no file there is
+/// nothing to drift. An additive key absent from both is skipped like in the delta.
+fn compute_drift(baseline: Option<&Value>, current: Option<&Value>) -> Vec<String> {
+    let (Some(b), Some(c)) = (
+        baseline.and_then(Value::as_object),
+        current.and_then(Value::as_object),
+    ) else {
+        return Vec::new();
+    };
+    let mut drift: Vec<String> = managed_keys()
+        .filter(|key| b.get(*key) != c.get(*key))
+        .map(String::from)
+        .collect();
+    drift.sort();
+    drift
+}
+
 fn plan_digest(p: &Plan) -> String {
     digest(
         &serde_json::to_vec(&(
@@ -370,6 +413,7 @@ fn plan_digest(p: &Plan) -> String {
             &p.target_binding,
             &p.action,
             &p.delta,
+            &p.drift,
         ))
         .expect("typed plan"),
     )
@@ -395,6 +439,7 @@ pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
     let baseline = read_baseline(root)?;
     let desired = serde_json::to_value(&profile).expect("typed profile");
     let delta = compute_delta(baseline.as_ref(), current.as_ref(), &desired);
+    let drift = compute_drift(baseline.as_ref(), current.as_ref());
     let action = if !delta.conflict.is_empty() {
         "conflict"
     } else if old.is_none() {
@@ -417,6 +462,7 @@ pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
         expected_sha256: old.as_deref().map(digest),
         action: action.into(),
         delta,
+        drift,
         plan_digest: String::new(),
     };
     p.plan_digest = plan_digest(&p);
@@ -482,10 +528,7 @@ fn write_baseline(
 
 pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let current_plan = plan(root, p.profile.clone())?;
@@ -727,6 +770,8 @@ mod tests {
             leader: None,
             context_max_bytes: None,
             archive_grace_days: None,
+            language: None,
+            detected: None,
         }
     }
 
@@ -742,6 +787,11 @@ mod tests {
             }),
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
+            language: Some([("code_comments".to_string(), "en".to_string())].into()),
+            detected: Some(crate::project_detect::Detected {
+                project_kind: "new".into(),
+                ..Default::default()
+            }),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -767,9 +817,63 @@ mod tests {
                 "github_issues",
                 "leader",
                 "context_max_bytes",
-                "archive_grace_days"
+                "archive_grace_days",
+                "language",
+                "detected"
             ]
         );
+    }
+
+    /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
+    /// refused by `validate` and by `read_profile` on a hand-edited file.
+    #[test]
+    fn language_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let all = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"language".to_string()))
+        };
+        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        let mut desired = base.clone();
+        desired["language"] = serde_json::json!({"code_comments": "en"});
+        assert_eq!(
+            compute_delta(Some(&base), Some(&base), &desired).added,
+            vec!["language"]
+        );
+        let with = |pairs: &[(&str, &str)]| Profile {
+            language: Some(
+                pairs
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect(),
+            ),
+            ..v2()
+        };
+        assert!(validate(&with(&[("code_comments", "ko")])).is_ok());
+        assert!(validate(&with(&[("code_coments", "ko")])).is_err());
+        assert!(validate(&with(&[("code_comments", "kr")])).is_err());
+        assert!(validate(&with(&[])).is_err());
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join(PROJECT_STATE_DIR).join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for (bad, _) in [
+            (
+                json!({"code_comments": "en", "emoji": "en"}),
+                "unknown item",
+            ),
+            (json!({"code_comments": "english"}), "unsupported code"),
+            (json!({"code_comments": 1}), "non-string code"),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["language"] = bad;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            assert!(read_profile(tmp.path()).is_err());
+        }
     }
 
     /// `read_profile` keeps the `PROFILE_KEYS` and leaves a user's own key out, so the

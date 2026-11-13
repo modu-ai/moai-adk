@@ -25,9 +25,12 @@ fn http200(body: &str) -> String {
 /// The stub `gh` every fixture uses. It dispatches on the request URL (the full
 /// `gh api -X GET -i … <url>` argument list arrives as `$*`) and prints the
 /// environment-supplied envelope for the matched endpoint. Pattern order matters:
-/// `pulls/9/commits` must win over `pulls/9`.
+/// `pulls/9/commits` must win over `pulls/9`, and the tip's check runs (#2665) over the
+/// head's; without `FLOW_TIP_CHECK_RUNS` the tip shares the head's runs.
 const STUB_SCRIPT: &str = r##"#!/bin/sh
 case "$*" in
+  *check-runs/*/annotations*) printf '%s' "$FLOW_ANNOTATIONS";;
+  *commits/tip-*/check-runs*) printf '%s' "${FLOW_TIP_CHECK_RUNS:-$FLOW_CHECK_RUNS}";;
   *pulls/9/commits*) printf '%s' "$FLOW_COMMITS";;
   *pulls/9*) printf '%s' "$FLOW_PR";;
   *pulls?state=open*) printf '%s' "$FLOW_OPEN_PRS";;
@@ -46,6 +49,7 @@ n=$(cat "$FLOW_COUNT_FILE" 2>/dev/null || echo 0)
 n=$((n + 1))
 printf '%s' "$n" > "$FLOW_COUNT_FILE"
 case "$*" in
+  *commits/tip-*/check-runs*) printf '%s' "${FLOW_TIP_CHECK_RUNS:-$FLOW_CHECK_RUNS}";;
   *pulls/9/commits*) printf '%s' "$FLOW_COMMITS";;
   *pulls/9*) if [ "$n" -ge 2 ]; then printf '%s' "$FLOW_PR2"; else printf '%s' "$FLOW_PR"; fi;;
   *pulls?state=open*) printf '%s' "$FLOW_OPEN_PRS";;
@@ -60,6 +64,7 @@ esac
 /// ten-page response or accepting an eleven-page response changes the verdict.
 const PAGINATED_CHECKS_STUB: &str = r##"#!/bin/sh
 case "$*" in
+  *commits/tip-*/check-runs*) printf 'HTTP/1.1 200 OK\n\n%s' "$FLOW_LAST_CHECKS";;
   *pulls/9/commits*) printf '%s' "$FLOW_COMMITS";;
   *pulls/9*) printf '%s' "$FLOW_PR";;
   *compare/*) printf '%s' "$FLOW_COMPARE";;
@@ -85,9 +90,11 @@ fn install_stub(dir: &Path, script: &str) -> PathBuf {
 }
 
 fn run_flow(gh: &Path, envs: &[(&str, String)], args: &[&str]) -> (Value, std::process::Output) {
-    let home = std::env::temp_dir().join("moai-flow-cli-home");
+    // A fresh HOME per call: parallel test processes never share one folder (#2666).
+    let home_dir = tempfile::TempDir::new().unwrap();
+    let home = home_dir.path();
     let mut cmd = Command::new(EXE);
-    cmd.args(args).env("HOME", &home);
+    cmd.args(args).env("HOME", home);
     for (k, v) in envs {
         cmd.env(k, v);
     }
@@ -320,6 +327,8 @@ fn gate_verdict_ok_with_merge_commit_exempt() {
     assert_eq!(v["verdict"], json!("ok"), "{}", v);
     assert_eq!(v["head"], json!("pr-5a4b3c2d"));
     assert_eq!(v["tip"], json!("tip-1a2b3c4d"));
+    assert_eq!(v["tip_ci"]["state"], json!("green"), "{v}");
+    assert_eq!(v["ci_failure_class"], Value::Null, "{v}");
     assert_eq!(v["writes"], json!(false));
     assert!(v["checks"]
         .as_array()
@@ -500,7 +509,11 @@ fn gate_verdict_ignores_poisoned_combined_status() {
         .clone();
     assert_eq!(ci["pass"], json!(true));
     assert!(
-        ci["detail"].as_str().unwrap().contains("rc-ci"),
+        // #2563: the default required name is the renamed `ci` check.
+        ci["detail"]
+            .as_str()
+            .unwrap()
+            .contains("required check runs: ci: success"),
         "{}",
         ci["detail"]
     );
@@ -587,8 +600,7 @@ fn gate_verdict_missing_required_check_blocks() {
     assert_eq!(v["verdict"], json!("blocked"), "{}", v);
     let rs = reasons_of(&v);
     assert!(
-        rs.iter()
-            .any(|r| r.contains("rc-ci") && r.contains("not found")),
+        rs.iter().any(|r| r.contains("ci check run not found")),
         "{:?}",
         rs
     );
@@ -839,4 +851,469 @@ fn gate_verdict_blocks_eleven_check_run_pages() {
         json!("required check runs: check runs unavailable")
     );
     assert_eq!(v["writes"], json!(false));
+}
+
+/// #2563: the aggregate CI check is renamed `rc-ci` → `ci`. Through the transition the
+/// two spellings are one required check: a run under either name is found, and a
+/// failed or pending run under either name still blocks (the union of both names keeps
+/// the every-run-succeeds rule). A matrix job name (`ci / linux-x86_64`) is not the
+/// aggregate and never satisfies it. Both `--required-checks` spellings behave the same.
+#[test]
+fn gate_verdict_reads_both_ci_check_names_without_weakening() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let gate = |required: Option<&str>, runs: &[Value]| {
+        let envs = [
+            ("FLOW_PR", http200(&pr_body(true))),
+            ("FLOW_COMMITS", http200(&commit_list(true))),
+            ("FLOW_TIP", http200(&tip_body())),
+            ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+            ("FLOW_CHECK_RUNS", http200(&check_runs_body(runs))),
+            ("FLOW_STATUS", http200(&status_body("success"))),
+        ];
+        let mut owned = gate_args("pr-5a4b3c2d");
+        if let Some(r) = required {
+            owned.push("--required-checks".into());
+            owned.push(r.into());
+        }
+        let args: Vec<&str> = owned.iter().map(|s| s.as_str()).collect();
+        run_flow(&gh, &envs, &args).0
+    };
+    let ok = |name: &str| check_run(name, "completed", "success");
+    let failed = |name: &str| check_run(name, "completed", "failure");
+    let pending = |name: &str| check_run(name, "in_progress", "");
+    for required in [None, Some("rc-ci"), Some("ci")] {
+        for (runs, verdict) in [
+            (vec![ok("ci")], "ok"),
+            (vec![ok("rc-ci")], "ok"),
+            (vec![ok("rc-ci"), ok("ci")], "ok"),
+            (vec![failed("rc-ci"), ok("ci")], "blocked"),
+            (vec![ok("rc-ci"), failed("ci")], "blocked"),
+            (vec![ok("rc-ci"), pending("ci")], "blocked"),
+            (vec![ok("ci / linux-x86_64")], "blocked"),
+            (
+                vec![ok("rc-ci / linux-x86_64"), ok("cii"), ok("CI")],
+                "blocked",
+            ),
+        ] {
+            let v = gate(required, &runs);
+            assert_eq!(v["verdict"], json!(verdict), "{required:?} {runs:?} → {v}");
+        }
+    }
+}
+
+// ---- #2665: the tip's own CI (tip watch) ----
+
+fn tip_run(conclusion: &str, run: u64) -> Value {
+    let status = if conclusion.is_empty() {
+        "in_progress"
+    } else {
+        "completed"
+    };
+    let mut r = check_run("rc-ci", status, conclusion);
+    r["details_url"] = json!(format!(
+        "https://github.com/acme/widgets/actions/runs/{run}/job/{}",
+        run + 1
+    ));
+    r["output"] = json!({"title": format!("rc-ci {conclusion}")});
+    r
+}
+
+/// A green PR against a tip whose own CI is `tip_runs`; `repair` adds the tip-repair line.
+fn gate_with_tip(tip: Option<String>, repair: bool) -> Value {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut pr: Value = serde_json::from_str(&pr_body(true)).unwrap();
+    if repair {
+        pr["body"] = json!(format!(
+            "{}\nmoai-tip-repair: tip-1a2b3c4d run 777",
+            pr["body"].as_str().unwrap()
+        ));
+    }
+    let mut envs = vec![
+        ("FLOW_PR", http200(&pr.to_string())),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+        ("FLOW_STATUS", http200(&status_body("success"))),
+    ];
+    if let Some(t) = tip {
+        envs.push(("FLOW_TIP_CHECK_RUNS", t));
+    }
+    let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    v
+}
+
+/// AC-1/AC-2/AC-4: a red tip stops every merge but a tip repair, and names the run.
+#[test]
+fn gate_verdict_red_tip_blocks_and_names_the_run() {
+    let v = gate_with_tip(
+        Some(http200(&check_runs_body(&[tip_run("failure", 777)]))),
+        false,
+    );
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+    assert_eq!(v["tip_ci"]["state"], json!("red"));
+    let failed = &v["tip_ci"]["failed"][0];
+    assert_eq!(failed["check"], json!("rc-ci"));
+    assert_eq!(failed["run_id"], json!(777));
+    assert_eq!(failed["title"], json!("rc-ci failure"));
+    let reasons = reasons_of(&v);
+    assert!(
+        reasons
+            .iter()
+            .any(|r| r.starts_with("tip_ci:") && r.contains("777")),
+        "{reasons:?}"
+    );
+    // Only the tip_ci check fails: the PR itself is fine.
+    assert_eq!(reasons.len(), 1, "{reasons:?}");
+}
+
+/// AC-1: a PR marked as the tip repair passes a red tip.
+#[test]
+fn gate_verdict_red_tip_passes_a_tip_repair() {
+    let v = gate_with_tip(
+        Some(http200(&check_runs_body(&[tip_run("failure", 777)]))),
+        true,
+    );
+    assert_eq!(v["verdict"], json!("ok"), "{v}");
+    assert_eq!(v["tip_ci"]["state"], json!("red"));
+    assert_eq!(v["tip_ci"]["repair"], json!(true));
+}
+
+/// AC-3: a failure re-run green on the same SHA is flaky, not a stop.
+#[test]
+fn gate_verdict_flaky_tip_does_not_block() {
+    let v = gate_with_tip(
+        Some(http200(&check_runs_body(&[
+            tip_run("failure", 777),
+            tip_run("success", 778),
+        ]))),
+        false,
+    );
+    assert_eq!(v["verdict"], json!("ok"), "{v}");
+    assert_eq!(v["tip_ci"]["state"], json!("flaky"));
+    // Named by the required check (the default `ci` covers both spellings, #2563).
+    assert_eq!(v["tip_ci"]["flaky"], json!(["ci"]));
+}
+
+/// A tip CI still running (or not started) is not a stop; a re-run in progress after a
+/// failure is not red either.
+#[test]
+fn gate_verdict_pending_tip_does_not_block() {
+    for runs in [
+        vec![tip_run("", 777)],
+        vec![],
+        vec![tip_run("failure", 777), tip_run("", 778)],
+    ] {
+        let v = gate_with_tip(Some(http200(&check_runs_body(&runs))), false);
+        assert_eq!(v["verdict"], json!("ok"), "{v}");
+        assert_eq!(v["tip_ci"]["state"], json!("pending"), "{v}");
+    }
+}
+
+/// An unreadable tip CI is never a pass: a server error (retried, then a transport
+/// failure) and a status the client hands back as is (404) — not an empty, pending list.
+#[test]
+fn gate_verdict_unreadable_tip_ci_blocks() {
+    for response in [
+        "HTTP/1.1 500 Internal Server Error\n\n{}",
+        "HTTP/1.1 404 Not Found\n\n{\"message\":\"Not Found\"}",
+    ] {
+        let v = gate_with_tip(Some(response.into()), false);
+        assert_eq!(v["verdict"], json!("blocked"), "{response}: {v}");
+        assert_eq!(v["tip_ci"]["state"], json!("unknown"), "{response}: {v}");
+    }
+}
+
+/// The tip is read with `filter=all`, so an earlier failed attempt stays visible.
+#[test]
+fn gate_verdict_reads_all_tip_attempts() {
+    let tmp = TempDir::new().unwrap();
+    let log = tmp.path().join("calls");
+    let script = format!(
+        "#!/bin/sh\necho \"$*\" >> '{}'\n{}",
+        log.display(),
+        STUB_SCRIPT.trim_start_matches("#!/bin/sh\n")
+    );
+    let gh = install_stub(tmp.path(), &script);
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+    ];
+    let (v, _) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert_eq!(v["verdict"], json!("ok"), "{v}");
+    let calls = std::fs::read_to_string(log).unwrap();
+    assert!(
+        calls.contains("commits/tip-1a2b3c4d/check-runs?filter=all&per_page=100"),
+        "{calls}"
+    );
+}
+
+/// #2683 audit B1: with two required checks, one red and one still running, red wins —
+/// the run that failed is not hidden behind the one still going.
+#[test]
+fn gate_verdict_red_beats_pending_across_required_checks() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut lint = tip_run("", 900);
+    lint["name"] = json!("lint");
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[
+                check_run("rc-ci", "completed", "success"),
+                check_run("lint", "completed", "success"),
+            ])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[tip_run("failure", 777), lint])),
+        ),
+    ];
+    let mut args = gate_args("pr-5a4b3c2d");
+    args.push("--required-checks".into());
+    args.push("ci,lint".into());
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let (v, out) = run_flow(&gh, &envs, &args);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["tip_ci"]["state"], json!("red"), "{v}");
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+}
+
+/// #2683 audit B2: the repair marker counts only at the start of a line; a sentence that
+/// mentions it (as a PR body explaining the rule does) is not a repair.
+#[test]
+fn gate_verdict_repair_marker_only_at_line_start() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut pr: Value = serde_json::from_str(&pr_body(true)).unwrap();
+    pr["body"] = json!(format!(
+        "{}\n본문에 `moai-tip-repair:` 줄이 있는 PR만 통과한다.\n  - see moai-tip-repair: below",
+        pr["body"].as_str().unwrap()
+    ));
+    let envs = [
+        ("FLOW_PR", http200(&pr.to_string())),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[tip_run("failure", 777)])),
+        ),
+    ];
+    let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["tip_ci"]["repair"], json!(false), "{v}");
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+}
+
+/// #2683 audit N1: a tip run cancelled (for example by a concurrency group) with no
+/// success is red: the tip has no passing CI, so only its repair merges.
+#[test]
+fn gate_verdict_cancelled_tip_is_red() {
+    let v = gate_with_tip(
+        Some(http200(&check_runs_body(&[tip_run("cancelled", 777)]))),
+        false,
+    );
+    assert_eq!(v["tip_ci"]["state"], json!("red"), "{v}");
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+}
+
+// ---- #2680: a CI gate that could not run is not a code failure ----
+
+const BILLING: &str = "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings";
+
+fn failed_ci_run(annotations: u64) -> Value {
+    let mut r = check_run("rc-ci", "completed", "failure");
+    r["id"] = json!(555);
+    r["started_at"] = json!("2026-11-12T11:16:11Z");
+    r["details_url"] = json!("https://github.com/acme/widgets/actions/runs/43207677557/job/555");
+    r["output"] = json!({"title": null, "summary": null, "annotations_count": annotations});
+    r
+}
+
+/// The head's CI failed with `annotations`; the tip is green. Returns the verdict and
+/// the stub's request log.
+fn gate_with_failed_head(annotations: u64, messages: &[&str]) -> (Value, String) {
+    let tmp = TempDir::new().unwrap();
+    let log = tmp.path().join("calls");
+    let script = format!(
+        "#!/bin/sh\necho \"$*\" >> '{}'\n{}",
+        log.display(),
+        STUB_SCRIPT.trim_start_matches("#!/bin/sh\n")
+    );
+    let gh = install_stub(tmp.path(), &script);
+    let notes: Vec<Value> = messages
+        .iter()
+        .map(|m| json!({"annotation_level": "failure", "message": m}))
+        .collect();
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[failed_ci_run(annotations)])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[check_run(
+                "rc-ci",
+                "completed",
+                "success",
+            )])),
+        ),
+        (
+            "FLOW_ANNOTATIONS",
+            http200(&Value::Array(notes).to_string()),
+        ),
+    ];
+    let (v, out) = run_gate(&gh, &envs, "pr-5a4b3c2d");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (v, std::fs::read_to_string(log).unwrap_or_default())
+}
+
+/// AC-1: a billing-blocked CI is a gate that could not run, with its cause and start.
+#[test]
+fn gate_verdict_classifies_a_billing_blocked_ci_as_gate_unavailable() {
+    let (v, calls) = gate_with_failed_head(1, &[BILLING]);
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+    assert_eq!(v["ci_failure_class"], json!("gate_unavailable"), "{v}");
+    let g = &v["gate_unavailable"][0];
+    assert_eq!(g["gate"], json!("ci"));
+    assert_eq!(g["cause"], json!("ci_billing"));
+    assert_eq!(g["since"], json!("2026-11-12T11:16:11Z"));
+    assert_eq!(g["check"], json!("rc-ci"));
+    assert!(calls.contains("check-runs/555/annotations"), "{calls}");
+    assert!(
+        reasons_of(&v)
+            .iter()
+            .any(|r| r.starts_with("ci_status:") && r.contains("gate unavailable: ci_billing")),
+        "{v}"
+    );
+}
+
+/// Any other job that never started is a gate too; an ordinary failure is code.
+#[test]
+fn gate_verdict_tells_a_job_not_started_from_a_code_failure() {
+    let (v, _) = gate_with_failed_head(
+        1,
+        &["The job was not started because no hosted runner was available"],
+    );
+    assert_eq!(v["ci_failure_class"], json!("gate_unavailable"), "{v}");
+    assert_eq!(v["gate_unavailable"][0]["cause"], json!("ci_not_started"));
+    let (v, _) = gate_with_failed_head(1, &["test review::check failed at src/review.rs:10"]);
+    assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
+    assert_eq!(v["gate_unavailable"], json!([]));
+}
+
+/// No annotations: code, and no annotation request is spent.
+#[test]
+fn gate_verdict_reads_annotations_only_when_there_are_some() {
+    let (v, calls) = gate_with_failed_head(0, &[BILLING]);
+    assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
+    assert!(!calls.contains("annotations"), "{calls}");
+}
+
+/// #2695 audit B1: a code failure next to a gate that could not run is a code failure —
+/// `gate_unavailable` only when every failed required run's job never started, and the
+/// reason names the code failure too.
+#[test]
+fn gate_verdict_mixed_gate_and_code_failure_is_code() {
+    let tmp = TempDir::new().unwrap();
+    let gh = install_stub(tmp.path(), STUB_SCRIPT);
+    let mut lint = check_run("lint", "completed", "failure");
+    lint["id"] = json!(556);
+    lint["output"] = json!({"annotations_count": 0});
+    let notes = json!([{"annotation_level": "failure", "message": BILLING}]);
+    let envs = [
+        ("FLOW_PR", http200(&pr_body(true))),
+        ("FLOW_COMMITS", http200(&commit_list(true))),
+        ("FLOW_TIP", http200(&tip_body())),
+        ("FLOW_COMPARE", http200(&compare_body(3, 0, &[]))),
+        (
+            "FLOW_CHECK_RUNS",
+            http200(&check_runs_body(&[failed_ci_run(1), lint])),
+        ),
+        (
+            "FLOW_TIP_CHECK_RUNS",
+            http200(&check_runs_body(&[
+                check_run("rc-ci", "completed", "success"),
+                check_run("lint", "completed", "success"),
+            ])),
+        ),
+        ("FLOW_ANNOTATIONS", http200(&notes.to_string())),
+    ];
+    let mut args = gate_args("pr-5a4b3c2d");
+    args.push("--required-checks".into());
+    args.push("ci,lint".into());
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let (v, out) = run_flow(&gh, &envs, &args);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["verdict"], json!("blocked"), "{v}");
+    assert_eq!(v["ci_failure_class"], json!("code"), "{v}");
+    // The gate that could not run is still reported, and the code failure is named.
+    assert_eq!(
+        v["gate_unavailable"][0]["cause"],
+        json!("ci_billing"),
+        "{v}"
+    );
+    assert!(
+        reasons_of(&v)
+            .iter()
+            .any(|r| r.starts_with("ci_status:") && r.contains("code failure: lint")),
+        "{v}"
+    );
 }

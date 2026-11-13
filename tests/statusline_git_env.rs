@@ -5,6 +5,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 
 use std::{
     fs,
@@ -41,7 +42,7 @@ fn render(home: &Path, project: &Path, extra: &[(&str, &Path)], budget_ms: u64) 
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     cmd.args(["statusline", "--render-budget-ms", &budget_ms.to_string()])
         .current_dir(project)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", home)
         .env("MOAI_HOME", home.join(".moai"))
@@ -92,6 +93,10 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     let clean = render(&home, &project, &[], WITHIN);
     assert!(clean.contains("🅱️ main"), "{clean}");
     assert!(clean.contains("💾 +0 M0 ?0"), "{clean}");
+    // #2756: the repository line is the second of the three lines, not the last.
+    let repository_line = clean.lines().find(|l| l.starts_with("🅱️")).unwrap();
+    assert_eq!(repository_line, "🅱️ main | 💾 +0 M0 ?0", "{clean}");
+    assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
     let index = git_dir.join("index");
@@ -113,8 +118,8 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
 const WITHIN: u64 = 3_600_000;
 
 /// The over-budget path, deterministically: with an already expired budget no git is
-/// started and the line ends at the directory, the same line a slow git gives under the
-/// product's 800 ms budget. Without the seam (budget ignored) git would run and this fails.
+/// started, so the repository row is omitted entirely. Without the seam (budget ignored)
+/// git would run and this fails.
 #[test]
 fn an_expired_render_budget_drops_the_git_segment() {
     let tmp = tempfile::tempdir().unwrap();
@@ -126,15 +131,20 @@ fn an_expired_render_budget_drops_the_git_segment() {
     git(&project, &["init", "-q", "-b", "main"]);
 
     let within = render(&home, &project, &[], WITHIN);
-    assert!(within.contains("🅱️ main"), "{within}");
+    // #2756: the repository line sits between the environment and usage lines.
+    assert_eq!(
+        within.lines().nth(1),
+        Some("🅱️ main | 💾 +0 M0 ?0"),
+        "{within}"
+    );
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert!(!over.contains("🅱️") && !over.contains("💾"), "{over}");
-        assert!(over.contains("📁 project"), "{over}");
-        assert_eq!(
-            over,
-            within.replace(" | 🅱️ main | 💾 +0 M0 ?0", ""),
+        assert!(
+            !over.contains("🅱️") && !over.contains("💾") && !over.contains("📁"),
             "{over}"
         );
+        let within_without_repo: Vec<_> = within.lines().filter(|l| !l.starts_with("🅱️")).collect();
+        let over_lines: Vec<_> = over.lines().collect();
+        assert_eq!(over_lines, within_without_repo, "{over}");
     }
 }

@@ -1,8 +1,4 @@
-#[path = "../src/migrate.rs"]
-mod migrate;
-
-use migrate::*;
-use moai_cli::apply;
+use moai_cli::migrate::*;
 use std::fs;
 use tempfile::TempDir;
 
@@ -514,7 +510,7 @@ fn fixture() -> (TempDir, SyntheticHome, Selection) {
 
 fn preview(h: &SyntheticHome, items: &[Selection]) -> Plan {
     h.plan(
-        &[Host::Claude, Host::Codex, Host::Glm, Host::OnPrem],
+        &[Host::Claude, Host::Codex, Host::Glm],
         Mode::Default,
         items,
     )
@@ -680,11 +676,7 @@ fn secrets_traversal_duplicates_and_unsafe_mode_are_not_silently_applied() {
         )
         .is_err());
     let automatic = h
-        .plan(
-            &[Host::OnPrem],
-            Mode::Automatic,
-            std::slice::from_ref(&item),
-        )
+        .plan(&[Host::Codex], Mode::Automatic, std::slice::from_ref(&item))
         .unwrap();
     assert!(automatic.summary.contains("isolation"));
     assert!(automatic.summary.contains("does not change"));
@@ -729,4 +721,161 @@ fn symlinks_special_files_and_corrupt_backups_are_refused() {
 #[cfg(unix)]
 fn preview_result(h: &SyntheticHome, item: Selection) -> Result<Plan, String> {
     h.plan(&[Host::Claude], Mode::Default, &[item])
+}
+
+fn release(hashes: &[String]) -> GoRelease {
+    GoRelease {
+        version: "v3.2.1".into(),
+        sha256: hashes.to_vec(),
+    }
+}
+
+/// #2016 decision 6784520717: `owned` needs the recorded hash AND the Go release list.
+#[test]
+fn release_list_ownership_grades_are_conservative() {
+    let (d, h, item) = fixture();
+    let src = hash(b"{\"language\":\"ko\"}");
+    let other = hash(b"another release file");
+    let grade = |rel: &GoRelease, s: &Selection| {
+        let p = h
+            .plan_release(&[Host::Claude], Mode::Default, rel, std::slice::from_ref(s))
+            .unwrap();
+        (p.entries[0].ownership.clone(), p.entries[0].action.clone())
+    };
+    // recorded + listed: the only importable grade.
+    assert_eq!(
+        grade(&release(std::slice::from_ref(&src)), &item),
+        ("owned".into(), "create".into())
+    );
+    // recorded but not shipped by the release: preserved.
+    assert_eq!(
+        grade(&release(std::slice::from_ref(&other)), &item),
+        ("unreleased".into(), "preserved".into())
+    );
+    // shipped by the release but no install record: preserved, reported only.
+    let unrecorded = Selection {
+        recorded_sha256: None,
+        ..item.clone()
+    };
+    assert_eq!(
+        grade(&release(std::slice::from_ref(&src)), &unrecorded),
+        ("release_match_unrecorded".into(), "preserved".into())
+    );
+    assert_eq!(
+        grade(&release(std::slice::from_ref(&other)), &unrecorded),
+        ("unknown".into(), "preserved".into())
+    );
+    let modified = Selection {
+        recorded_sha256: Some(other.clone()),
+        ..item.clone()
+    };
+    assert_eq!(
+        grade(&release(&[src.clone(), other.clone()]), &modified),
+        ("modified".into(), "preserved".into())
+    );
+    // The list is bound into the digest: a plan whose list is swapped is refused.
+    let before = moai_cli::tree_digest(d.path(), &[]).unwrap();
+    let p = h
+        .plan_release(
+            &[Host::Claude],
+            Mode::Default,
+            &release(std::slice::from_ref(&src)),
+            std::slice::from_ref(&item),
+        )
+        .unwrap();
+    let mut swapped = p.clone();
+    swapped.go_release = Some(release(&[src.clone(), other.clone()]));
+    assert!(h.apply(&swapped, &p.digest).is_err());
+    let unreleased = h
+        .plan_release(
+            &[Host::Claude],
+            Mode::Default,
+            &release(&[other]),
+            std::slice::from_ref(&item),
+        )
+        .unwrap();
+    assert!(h.apply(&unreleased, &unreleased.digest).is_err());
+    assert_eq!(before, moai_cli::tree_digest(d.path(), &[]).unwrap());
+    h.apply(&p, &p.digest).unwrap();
+    assert!(d.path().join(&item.target).is_file());
+}
+
+#[test]
+fn release_list_bounds_and_format_are_checked() {
+    let (_d, h, item) = fixture();
+    let ok = hash(b"x");
+    let mut bad = vec![
+        release(&[]),
+        release(&[ok.clone(), ok.clone()]),
+        release(&[ok.to_uppercase()]),
+        release(&[ok[..63].to_string()]),
+        GoRelease {
+            version: String::new(),
+            ..release(std::slice::from_ref(&ok))
+        },
+        GoRelease {
+            version: "v3/../x".into(),
+            ..release(std::slice::from_ref(&ok))
+        },
+        GoRelease {
+            version: "v".repeat(65),
+            ..release(std::slice::from_ref(&ok))
+        },
+    ];
+    // 768 / 769 distinct hashes (RELEASE_HASH_LIMIT, written as literals).
+    let many: Vec<String> = (0..769u32).map(|i| hash(&i.to_le_bytes())).collect();
+    bad.push(release(&many));
+    for rel in &bad {
+        assert!(h
+            .plan_release(
+                &[Host::Claude],
+                Mode::Default,
+                rel,
+                std::slice::from_ref(&item)
+            )
+            .is_err());
+    }
+    let edge = GoRelease {
+        version: "v".repeat(64),
+        ..release(&many[..768])
+    };
+    assert!(h
+        .plan_release(
+            &[Host::Claude],
+            Mode::Default,
+            &edge,
+            std::slice::from_ref(&item)
+        )
+        .is_ok());
+}
+
+#[test]
+fn onprem_host_and_duplicate_hosts_are_refused() {
+    let (_d, h, item) = fixture();
+    assert!(serde_json::from_str::<Host>("\"OnPrem\"").is_err());
+    assert!(h
+        .plan(
+            &[Host::Claude, Host::Claude],
+            Mode::Default,
+            std::slice::from_ref(&item)
+        )
+        .is_err());
+}
+
+/// #2449 audit F2: an existing backup folder is a conflict (exclusive create), not an I/O
+/// error worth retrying; nothing is imported.
+#[test]
+fn an_existing_backup_folder_is_a_conflict() {
+    let (d, h, item) = fixture();
+    let p = h
+        .plan(&[Host::Claude], Mode::Default, std::slice::from_ref(&item))
+        .unwrap();
+    fs::create_dir_all(d.path().join(".moai-go-backup").join(&p.digest)).unwrap();
+    let err = h.apply(&p, &p.digest).unwrap_err();
+    assert!(err.contains("backup already exists"), "{err}");
+    assert_eq!(
+        moai_cli::contract::classify(&err),
+        moai_cli::contract::Kind::Conflict
+    );
+    assert!(!d.path().join(&item.target).exists());
 }

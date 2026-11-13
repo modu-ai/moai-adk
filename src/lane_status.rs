@@ -13,10 +13,11 @@
 //! here: the caller passes them with a source and a time, and they are cited as given.
 //! Not done here: host session events (#A12), posting the assignment drafts, live runs.
 use crate::claim_verify::{classify_comment, evaluate, CommentKind, IssueComment, Verifier};
-use crate::forge::policy::{next_link, Clock};
-use crate::forge::transport::Transport;
+use crate::forge::policy::{next_link, parse_utc, Clock};
+use crate::forge::transport::{HttpRequest, HttpResponse, Transport};
 use crate::forge::Client;
-use serde::Deserialize;
+use crate::message::Message;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -66,6 +67,10 @@ pub struct PaneObservation {
     pub state: PaneState,
     pub source: String,
     pub observed_at: String,
+    /// For `usage_limit`: when the caller expects the lane back (the reset the pane shows,
+    /// or the lane's `usage-limit` `renew_until`, #2668), cited as given.
+    #[serde(default)]
+    pub until: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
@@ -75,6 +80,9 @@ pub enum PaneState {
     PermissionPrompt,
     InputPending,
     Unreachable,
+    /// The host stopped the lane at a usage limit and waits for the reset (#2668): the
+    /// lane is held, not stopped, and comes back by itself.
+    UsageLimit,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -124,6 +132,7 @@ pub enum IdleCause {
     Unreachable,
     PermissionPrompt,
     InputPending,
+    UsageLimit,
     UserDecision,
     WaitingPrerequisite,
     WaitingAudit,
@@ -134,10 +143,11 @@ pub enum IdleCause {
 }
 
 impl IdleCause {
-    pub const ALL: [IdleCause; 10] = [
+    pub const ALL: [IdleCause; 11] = [
         IdleCause::Unreachable,
         IdleCause::PermissionPrompt,
         IdleCause::InputPending,
+        IdleCause::UsageLimit,
         IdleCause::UserDecision,
         IdleCause::WaitingPrerequisite,
         IdleCause::WaitingAudit,
@@ -151,6 +161,7 @@ impl IdleCause {
             IdleCause::Unreachable => "unreachable",
             IdleCause::PermissionPrompt => "permission_prompt",
             IdleCause::InputPending => "input_pending",
+            IdleCause::UsageLimit => "usage_limit",
             IdleCause::UserDecision => "user_decision",
             IdleCause::WaitingPrerequisite => "waiting_prerequisite",
             IdleCause::WaitingAudit => "waiting_audit",
@@ -186,6 +197,11 @@ pub struct PrData {
     pub issue: Option<i64>,
     /// The PR's commits in the API's order (oldest first, at most 250).
     pub commits: Vec<String>,
+    /// Claim comment ids from `Moai-Claim: <issue>#<id>` lines in the PR's commit messages,
+    /// for this PR's own Issue only, in commit order without repeats (#2403 item 3).
+    pub claim_ids: Vec<i64>,
+    /// The PR's own conversation comments (audit reservations and verdicts; #2403 item 3).
+    pub comments: Vec<Comment>,
 }
 
 #[derive(Clone, Debug)]
@@ -238,7 +254,20 @@ fn validate(req: &LaneStatusRequest) -> Result<()> {
     Ok(())
 }
 
-fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Result<Vec<Value>> {
+pub(crate) fn pages<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    first: String,
+) -> Result<Vec<Value>> {
+    // Shared readers follow GitHub's Link verbatim, including numeric repository URLs.
+    pages_with_evidence(client, first, None).map(|(values, _)| values)
+}
+
+fn pages_with_evidence<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    first: String,
+    mut source_urls: Option<&mut Vec<String>>,
+) -> Result<(Vec<Value>, bool)> {
+    let mut complete = true;
     let (mut url, mut out, mut n) = (Some(first), Vec::new(), 0);
     while let Some(u) = url {
         n += 1;
@@ -246,19 +275,130 @@ fn pages<T: Transport, C: Clock>(client: &Client<'_, T, C>, first: String) -> Re
             return Err("lane status page limit exceeded (50)".into());
         }
         let resp = client.get(&u, None).map_err(String::from)?;
-        url = next_link(resp.header("link"));
-        out.extend(
-            resp.body
-                .and_then(|b| b.as_array().cloned())
-                .unwrap_or_default(),
-        );
+        if let Some(urls) = &mut source_urls {
+            urls.push(u);
+        }
+        let link = resp.header("link");
+        url = next_link(link);
+        if link.is_some_and(|link| link.contains("rel=\"next\"")) && url.is_none() {
+            complete = false;
+        }
+        match resp.body {
+            Some(Value::Array(values)) => out.extend(values),
+            _ => complete = false,
+        }
     }
-    Ok(out)
+    Ok((out, complete))
 }
 
-fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
+pub(crate) fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) -> Result<Value> {
     let resp = client.get(url, None).map_err(String::from)?;
     Ok(resp.body.unwrap_or(Value::Null))
+}
+
+/// Issue or PR comments from the API, sorted by id without repeats.
+pub(crate) fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
+    comments_from(&raw)
+}
+
+fn comments_from(raw: &[Value]) -> Vec<Comment> {
+    let mut comments: Vec<Comment> = raw
+        .iter()
+        .filter_map(|c| {
+            Some(Comment {
+                id: c["id"].as_i64()?,
+                created_at: c["created_at"].as_str().unwrap_or_default().into(),
+                body: c["body"].as_str().unwrap_or_default().into(),
+            })
+        })
+        .collect();
+    comments.sort_by_key(|c| c.id);
+    comments.dedup_by_key(|c| c.id);
+    comments
+}
+
+/// Claim comment ids from whole-line `Moai-Claim: <issue>#<id>` trailers naming `issue`.
+pub(crate) fn claim_ids_in(message: &str, issue: i64) -> Vec<i64> {
+    message
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("Moai-Claim:"))
+        .filter_map(|t| t.trim().split_once('#'))
+        .filter(|(n, _)| n.parse::<i64>().ok() == Some(issue))
+        .filter_map(|(_, id)| id.parse::<i64>().ok())
+        .collect()
+}
+
+/// A whole-line `moai-audit-claim: lane=<lane> head=<40 lowercase hex>` reservation.
+pub(crate) fn reservation_in(body: &str) -> Option<(String, String)> {
+    body.lines().find_map(|l| {
+        let rest = l.trim().strip_prefix("moai-audit-claim:")?;
+        let mut words = rest.split_whitespace();
+        let lane = words.next()?.strip_prefix("lane=")?;
+        let head = words.next()?.strip_prefix("head=")?;
+        let hex40 =
+            head.len() == 40 && head.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+        (words.next().is_none() && !lane.is_empty() && hex40)
+            .then(|| (lane.to_string(), head.to_string()))
+    })
+}
+
+/// The audit columns of a PR row (#2403 item 3): reservations with the current-head winner,
+/// the verdict on the current head (PR comments first, then the Issue's), and the sessions
+/// whose claim tokens appear in the PR's commits — the authors, who may not audit it.
+pub(crate) fn audit_value(issue: &IssueData, pr: &PrData) -> Value {
+    let reservations: Vec<Value> = pr
+        .comments
+        .iter()
+        .filter_map(|c| {
+            let (lane, head) = reservation_in(&c.body)?;
+            let current = head == pr.head;
+            let state = if current { "current" } else { "stale" };
+            Some(json!({"lane": lane, "comment_id": c.id, "head": head, "current": current, "state": state}))
+        })
+        .collect();
+    // The same holder rule as `audit-claim` (#2499): lowest current-head reservation, moved by
+    // the last leader handoff line that names it.
+    let holder = crate::audit_claim::holder_of(&pr.comments, &pr.head);
+    let winner = holder
+        .as_ref()
+        .map(|h| json!({"lane": h.lane, "comment_id": h.comment_id}));
+    let verdict = verdict_on(&pr.comments, &pr.head)
+        .map(|(v, id)| json!({"verdict": v, "comment_id": id, "source": "pr"}))
+        .or_else(|| {
+            verdict_on(&issue.comments, &pr.head)
+                .map(|(v, id)| json!({"verdict": v, "comment_id": id, "source": "issue"}))
+        });
+    let mut authors = Vec::new();
+    let mut unresolved = Vec::new();
+    for id in &pr.claim_ids {
+        let session = issue.comments.iter().find(|c| c.id == *id).and_then(|c| {
+            match classify_comment(&c.body) {
+                CommentKind::Claim { session, .. } => Some(session),
+                _ => None,
+            }
+        });
+        match session {
+            Some(s) => authors.push(json!({"session": s, "claim_comment_id": id})),
+            None => unresolved.push(*id),
+        }
+    }
+    let winner_is_author = holder.as_ref().map(|h| {
+        authors.iter().any(|a| {
+            crate::audit_claim::same_lane(a["session"].as_str().unwrap_or_default(), &h.lane)
+        })
+    });
+    json!({
+        "head": pr.head,
+        "reservations": reservations,
+        "winner_on_head": winner,
+        "winner_via": holder.as_ref().map(|h| if h.via_handoff { "handoff" } else { "reservation" }),
+        "winner_reservation_id": holder.as_ref().map(|h| h.reservation_id),
+        "winner_is_author": winner_is_author,
+        "lane_name_rule": crate::audit_claim::NAME_RULE,
+        "verdict_on_head": verdict,
+        "author_sessions": authors,
+        "unresolved_claim_ids": unresolved,
+    })
 }
 
 /// Reads everything for `req` (GET only) and the local worktree list of `project`.
@@ -268,6 +408,23 @@ pub fn collect<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     clock: &C,
 ) -> Result<Snapshot> {
+    collect_with_raw(project, req, client, clock).map(|(snapshot, _)| snapshot)
+}
+
+struct ReadIssue {
+    number: i64,
+    issue: Value,
+    comments: Value,
+    complete: bool,
+    source_urls: Vec<String>,
+}
+
+fn collect_with_raw<T: Transport, C: Clock>(
+    project: &Path,
+    req: &LaneStatusRequest,
+    client: &Client<'_, T, C>,
+    clock: &C,
+) -> Result<(Snapshot, Vec<ReadIssue>)> {
     validate(req)?;
     let repo = format!("{API}/repos/{}/{}", req.owner, req.repo);
     let wanted: BTreeSet<i64> = req.issues.iter().copied().collect();
@@ -279,26 +436,28 @@ pub fn collect<T: Transport, C: Clock>(
         ),
     )?;
     let mut issues = Vec::new();
+    let mut raw = Vec::new();
     for n in &wanted {
         let issue = one(client, &format!("{repo}/issues/{n}"))?;
-        let mut comments: Vec<Comment> =
-            pages(client, format!("{repo}/issues/{n}/comments?per_page=100"))?
-                .iter()
-                .filter_map(|c| {
-                    Some(Comment {
-                        id: c["id"].as_i64()?,
-                        created_at: c["created_at"].as_str().unwrap_or_default().into(),
-                        body: c["body"].as_str().unwrap_or_default().into(),
-                    })
-                })
-                .collect();
-        comments.sort_by_key(|c| c.id);
-        comments.dedup_by_key(|c| c.id);
+        let mut source_urls = Vec::new();
+        let (raw_comments, complete) = pages_with_evidence(
+            client,
+            format!("{repo}/issues/{n}/comments?per_page=100"),
+            Some(&mut source_urls),
+        )?;
+        let comments = comments_from(&raw_comments);
         issues.push(IssueData {
             number: *n,
             open: issue["state"].as_str() != Some("closed"),
             body: issue["body"].as_str().unwrap_or_default().into(),
             comments,
+        });
+        raw.push(ReadIssue {
+            number: *n,
+            issue,
+            comments: Value::Array(raw_comments),
+            complete,
+            source_urls,
         });
     }
     let others: BTreeSet<i64> = issues
@@ -320,6 +479,8 @@ pub fn collect<T: Transport, C: Clock>(
                 branch: p["head"]["ref"].as_str().unwrap_or_default().into(),
                 issue: crate::leader::refs_issue(p["body"].as_str().unwrap_or_default()),
                 commits: Vec::new(),
+                claim_ids: Vec::new(),
+                comments: Vec::new(),
             })
         })
         .filter(|p| p.issue.is_some_and(|i| wanted.contains(&i)))
@@ -327,13 +488,26 @@ pub fn collect<T: Transport, C: Clock>(
     prs.sort_by_key(|p| p.number);
     prs.dedup_by_key(|p| p.number);
     for pr in prs.iter_mut() {
-        pr.commits = pages(
+        let commits = pages(
             client,
             format!("{repo}/pulls/{}/commits?per_page=100", pr.number),
-        )?
-        .iter()
-        .filter_map(|c| c["sha"].as_str().map(str::to_string))
-        .collect();
+        )?;
+        pr.commits = commits
+            .iter()
+            .filter_map(|c| c["sha"].as_str().map(str::to_string))
+            .collect();
+        let issue = pr.issue.unwrap_or_default();
+        for c in &commits {
+            for id in claim_ids_in(c["commit"]["message"].as_str().unwrap_or_default(), issue) {
+                if !pr.claim_ids.contains(&id) {
+                    pr.claim_ids.push(id);
+                }
+            }
+        }
+        pr.comments = read_comments(pages(
+            client,
+            format!("{repo}/issues/{}/comments?per_page=100", pr.number),
+        )?);
     }
     let worktrees = crate::worktree::worktrees(project).map(|list| {
         list.into_iter()
@@ -346,13 +520,16 @@ pub fn collect<T: Transport, C: Clock>(
             })
             .collect()
     });
-    Ok(Snapshot {
-        issues,
-        other_open,
-        prs,
-        worktrees,
-        now: clock.now(),
-    })
+    Ok((
+        Snapshot {
+            issues,
+            other_open,
+            prs,
+            worktrees,
+            now: clock.now(),
+        },
+        raw,
+    ))
 }
 
 /// Every 40-hex token in `text`, in order of appearance, without repeats.
@@ -600,6 +777,7 @@ fn rows_for(issue: &IssueData, snap: &Snapshot, names: &BTreeMap<&str, Option<&s
         "open_blockers": open_blockers,
         "last_event_at": last_event_at,
         "events": pr.map(|p| events(&issue.comments, p)),
+        "audit": pr.map(|p| audit_value(issue, p)),
     });
     vec![Row {
         session,
@@ -648,6 +826,12 @@ fn idle_entry(
             PaneState::Unreachable => return (IdleCause::Unreachable, Some(true), seen),
             PaneState::PermissionPrompt => return (IdleCause::PermissionPrompt, Some(true), seen),
             PaneState::InputPending => return (IdleCause::InputPending, Some(true), seen),
+            // #2668: held at a usage limit, not stopped; `until` says when it comes back.
+            PaneState::UsageLimit => {
+                let mut seen = seen;
+                seen["until"] = json!(p.until);
+                return (IdleCause::UsageLimit, Some(true), seen);
+            }
             PaneState::Working => {}
         }
     }
@@ -731,6 +915,19 @@ fn idle_entry(
     }
 }
 
+/// The `summary` line of `lane-status` (Issue #2678): rows, named lanes, idle lanes (only
+/// those judged idle) and ready Issues, with "0 rows" said in words.
+pub fn summary_line(rows: usize, named: usize, idle: usize, ready: usize) -> String {
+    let counts = format!("{named} lane(s) named, {idle} idle; {ready} ready Issue(s)");
+    if rows == 0 {
+        format!(
+            "0 rows: no claim, pull request or worktree was found for the named Issues; {counts}"
+        )
+    } else {
+        format!("{rows} row(s); {counts}")
+    }
+}
+
 /// The table, idle classification and assignment drafts for one snapshot (no I/O).
 pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
     let names: BTreeMap<&str, Option<&str>> = req
@@ -770,7 +967,13 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
         Ok(list) => json!({"available": true, "count": list.len()}),
         Err(e) => json!({"available": false, "reason": e}),
     };
+    // Issue #2678: say the counts in words, and say "no result" outright, so a reader never
+    // takes an empty list for a count it did not make. `idle` lists every named lane with
+    // `idle: true | false | null`; only `true` is an idle lane (audit B1 6850252311).
+    let idle_true = idle.iter().filter(|l| l["idle"] == json!(true)).count();
+    let summary = summary_line(rows.len(), idle.len(), idle_true, ready.len());
     json!({
+        "summary": summary,
         "rows": rows.into_iter().map(|r| r.value).collect::<Vec<_>>(),
         "idle": idle,
         "ready": ready,
@@ -779,6 +982,390 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
         "writes": "none",
         "note": "pane states and pending decisions are the caller's records, cited as given",
     })
+}
+
+// S6 consumes the same complete Issue snapshot as the original table. It never opens
+// the message journal: reading status must not create a lock, receipt or directory.
+#[derive(Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct MessageWire {
+    schema_version: u32,
+    kind: String,
+    message: Message,
+    payload_digest: String,
+}
+
+struct ReportObservation {
+    message: Message,
+    record: Option<(u64, i64)>,
+    ack: Option<(u64, i64)>,
+}
+
+#[derive(Default, Serialize)]
+struct CommunicationLane {
+    session: String,
+    sent_reports: Vec<Value>,
+    received_acks: Vec<Value>,
+    unacknowledged_report_ids: Vec<String>,
+    dispatches: Vec<Value>,
+}
+
+struct ObservationClock<'a, C> {
+    now: i64,
+    source: &'a C,
+}
+
+impl<C: Clock> Clock for ObservationClock<'_, C> {
+    fn now(&self) -> i64 {
+        self.now
+    }
+
+    fn sleep(&self, secs: u64) {
+        self.source.sleep(secs);
+    }
+}
+
+// S2 retains ownership of dispatch revision/decision validation. Its GET-only checker
+// receives this frozen, already-paginated snapshot, not a second live network read.
+struct MessageSnapshot<'a> {
+    base: String,
+    repository: &'a Value,
+    issue: &'a ReadIssue,
+}
+
+impl Transport for MessageSnapshot<'_> {
+    fn send(&self, req: &HttpRequest) -> Result<HttpResponse> {
+        if req.method != "GET" || req.body.is_some() {
+            return Err("lane status snapshot permits GET only".into());
+        }
+        let body = if req.url == self.base {
+            self.repository
+        } else if req.url == format!("{}/issues/{}", self.base, self.issue.number) {
+            &self.issue.issue
+        } else if req.url
+            == format!(
+                "{}/issues/{}/comments?per_page=100",
+                self.base, self.issue.number
+            )
+        {
+            &self.issue.comments
+        } else {
+            return Err("lane status snapshot target unavailable".into());
+        };
+        Ok(HttpResponse::new(200).with_body(body.clone()))
+    }
+}
+
+fn has_message(comment: &Value) -> bool {
+    comment["body"].as_str().is_some_and(|body| {
+        body.split('\n')
+            .next()
+            .unwrap_or_default()
+            .split("<!--")
+            .skip(1)
+            .any(|inner| {
+                let inner = inner.trim_start();
+                inner
+                    .strip_prefix("moai:op ")
+                    .or_else(|| inner.strip_prefix("moai-op "))
+                    .is_some_and(|operation| {
+                        let operation = operation.trim_start();
+                        operation.starts_with("message-record:")
+                            || operation.starts_with("message-ack:")
+                    })
+            })
+    })
+}
+
+fn message_observations(
+    req: &LaneStatusRequest,
+    issue: &ReadIssue,
+    repository: &Value,
+    now: i64,
+) -> Result<Vec<ReportObservation>> {
+    let invalid = || "message publication evidence unavailable".to_string();
+    let mut reports: BTreeMap<String, ReportObservation> = BTreeMap::new();
+    let mut comments: BTreeMap<u64, (MessageWire, i64)> = BTreeMap::new();
+    for comment in issue.comments.as_array().ok_or_else(invalid)? {
+        if !has_message(comment) {
+            continue;
+        }
+        let body = comment["body"].as_str().ok_or_else(invalid)?;
+        let mut wire: MessageWire = body
+            .split('\n')
+            .nth(1)
+            .and_then(|line| serde_json::from_str(line).ok())
+            .ok_or_else(invalid)?;
+        let digest = crate::message::validate(&mut wire.message).map_err(|_| invalid())?;
+        let ack = wire.kind == "ack";
+        let m = &wire.message;
+        let task = &m.task;
+        let operation = if ack { "message-ack" } else { "message-record" };
+        let marker = crate::forge::outbox::op_marker(operation, &m.project_id, &m.report_id, 1);
+        let rendered = format!(
+            "{marker}\n{}\n<!-- moai:message:end -->",
+            serde_json::to_string(&wire).map_err(|_| invalid())?
+        );
+        if wire.schema_version != 1
+            || !matches!(wire.kind.as_str(), "record" | "ack")
+            || wire.payload_digest != digest
+            || body != rendered
+            || task.owner != req.owner
+            || task.repo != req.repo
+            || repository["id"].as_u64() != Some(task.repository_id)
+            || task.issue_number != issue.number as u64
+            || issue.issue["number"].as_u64() != Some(task.issue_number)
+            || issue.issue["id"].as_u64() != Some(task.issue_id)
+            || issue.issue["node_id"].as_str() != Some(task.issue_node_id.as_str())
+            || issue
+                .issue
+                .get("pull_request")
+                .is_some_and(|v| !v.is_null())
+            || comment["user"]["id"].as_u64()
+                != Some(if ack {
+                    m.receiver.actor_id
+                } else {
+                    m.sender.actor_id
+                })
+        {
+            return Err(invalid());
+        }
+        let id = comment["id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .ok_or_else(invalid)?;
+        let at = comment["created_at"]
+            .as_str()
+            .and_then(parse_utc)
+            .filter(|at| now.checked_sub(*at).is_some_and(|age| age >= 0))
+            .ok_or_else(invalid)?;
+        if let Some((previous, previous_at)) = comments.get(&id) {
+            if previous != &wire || *previous_at != at {
+                return Err(invalid());
+            }
+            continue;
+        }
+        let report = reports
+            .entry(m.report_id.clone())
+            .or_insert_with(|| ReportObservation {
+                message: m.clone(),
+                record: None,
+                ack: None,
+            });
+        if report.message != *m {
+            return Err(invalid());
+        }
+        let slot = if ack {
+            &mut report.ack
+        } else {
+            &mut report.record
+        };
+        if slot.is_none_or(|(old, _)| id < old) {
+            *slot = Some((id, at));
+        }
+        comments.insert(id, (wire, at));
+    }
+    for report in reports.values() {
+        let (_, record_at) = report.record.ok_or_else(invalid)?;
+        if report.ack.is_some_and(|(_, at)| at < record_at) {
+            return Err(invalid());
+        }
+    }
+    Ok(reports.into_values().collect())
+}
+
+fn communication_lane<'a>(
+    lanes: &'a mut BTreeMap<String, CommunicationLane>,
+    session: &str,
+) -> &'a mut CommunicationLane {
+    lanes
+        .entry(session.to_string())
+        .or_insert_with(|| CommunicationLane {
+            session: session.to_string(),
+            ..Default::default()
+        })
+}
+
+// Collection identity belongs to the S6 observation, never to shared pagination.
+// Numeric aliases are accepted only for the repository whose metadata was verified.
+fn comment_collection_matches(issue: &ReadIssue, repository_id: Option<u64>) -> bool {
+    let Some(first) = issue.source_urls.first() else {
+        return false;
+    };
+    let collection = first.split('?').next().unwrap_or_default();
+    let same_slug = |url: &str| {
+        url.strip_prefix(collection)
+            .is_some_and(|suffix| suffix.starts_with('?'))
+    };
+    if issue.source_urls.iter().all(|url| same_slug(url)) {
+        return true;
+    }
+    let Some(repository_id) = repository_id.filter(|id| *id > 0) else {
+        return false;
+    };
+    let numeric = format!(
+        "{API}/repositories/{repository_id}/issues/{}/comments?",
+        issue.number
+    );
+    issue
+        .source_urls
+        .iter()
+        .all(|url| same_slug(url) || url.starts_with(&numeric))
+}
+
+fn communication<T: Transport, C: Clock>(
+    req: &LaneStatusRequest,
+    raw: &[ReadIssue],
+    client: &Client<'_, T, C>,
+    clock: &C,
+    now: i64,
+) -> Value {
+    let mut lanes = BTreeMap::new();
+    for lane in &req.lanes {
+        communication_lane(&mut lanes, &lane.session);
+    }
+    let mut errors: Vec<Value> = raw
+        .iter()
+        .filter(|issue| !issue.complete)
+        .map(|issue| {
+            json!({"issue":issue.number,
+            "reason":"message comments snapshot incomplete"})
+        })
+        .collect();
+    let has_packets = raw.iter().any(|i| {
+        i.comments
+            .as_array()
+            .is_some_and(|comments| comments.iter().any(has_message))
+    });
+    if !has_packets
+        && raw
+            .iter()
+            .all(|issue| comment_collection_matches(issue, None))
+    {
+        return json!({"available":errors.is_empty(), "observed_at":now,
+            "lanes":lanes.into_values().collect::<Vec<_>>(), "errors":errors});
+    }
+    let base = format!("{API}/repos/{}/{}", req.owner, req.repo);
+    let repository = match one(client, &base) {
+        Ok(repository) => repository,
+        Err(_) => {
+            return json!({"available":false, "observed_at":now,
+            "lanes":lanes.into_values().collect::<Vec<_>>(),
+            "errors":[{"issue":null,"reason":"message repository evidence unavailable"}]})
+        }
+    };
+    let observation_clock = ObservationClock { now, source: clock };
+    let mut report_ids = BTreeSet::new();
+    for issue in raw {
+        if !issue.complete {
+            continue;
+        }
+        let observations = (|| {
+            if !comment_collection_matches(issue, repository["id"].as_u64()) {
+                return Err("message comments collection mismatch".to_string());
+            }
+            let reports = message_observations(req, issue, &repository, now)?;
+            // A report cannot change its task by moving to another inspected Issue.
+            if reports
+                .iter()
+                .any(|report| report_ids.contains(&report.message.report_id))
+            {
+                return Err("message immutable identity conflict".to_string());
+            }
+            let frozen = MessageSnapshot {
+                base: base.clone(),
+                repository: &repository,
+                issue,
+            };
+            let mut dispatches = BTreeMap::new();
+            for report in &reports {
+                if report.message.event == "dispatch" {
+                    let view = crate::dispatch::check_cli(
+                        crate::dispatch::CheckRequest {
+                            dispatch: report.message.clone(),
+                        },
+                        &frozen,
+                        &observation_clock,
+                    )
+                    .map_err(|_| "dispatch observation unavailable".to_string())?;
+                    dispatches.insert(report.message.report_id.clone(), view);
+                }
+            }
+            // Route every referenced decision into the same S2 task group for validation.
+            for report in &reports {
+                if report.message.event == "dispatch-decision"
+                    && !reports.iter().any(|r| {
+                        r.message.event == "dispatch"
+                            && r.message.project_id == report.message.project_id
+                            && r.message.task == report.message.task
+                            && r.message.report_id == report.message.payload["dispatch_report_id"]
+                    })
+                {
+                    return Err("dispatch observation unavailable".to_string());
+                }
+            }
+            Ok::<_, String>((reports, dispatches))
+        })();
+        let (reports, mut dispatches) = match observations {
+            Ok(observations) => observations,
+            Err(reason) => {
+                errors.push(json!({"issue":issue.number,"reason":reason}));
+                continue;
+            }
+        };
+        for report in reports {
+            let m = report.message;
+            report_ids.insert(m.report_id.clone());
+            let (record_id, at) = report.record.expect("validated record");
+            let elapsed = now.checked_sub(at);
+            let alert = if report.ack.is_some() {
+                "received"
+            } else if elapsed.is_some_and(|n| n >= 300) {
+                "unacknowledged"
+            } else {
+                "waiting"
+            };
+            communication_lane(&mut lanes, &m.receiver.session_id);
+            let lane = communication_lane(&mut lanes, &m.sender.session_id);
+            lane.sent_reports.push(json!({
+                "report_id":m.report_id,"issue":issue.number,"event":m.event,
+                "to":m.receiver.session_id,"record_comment_id":record_id,
+                "ack_comment_id":report.ack.map(|(id,_)|id),"received_ack":report.ack.is_some(),
+                "ack_alert":alert,"elapsed_secs":elapsed,
+            }));
+            if let Some((id, _)) = report.ack {
+                lane.received_acks.push(json!({"report_id":m.report_id,
+                    "issue":issue.number,"ack_comment_id":id}));
+            }
+            if alert == "unacknowledged" {
+                lane.unacknowledged_report_ids.push(m.report_id.clone());
+            }
+            if let Some(mut dispatch) = dispatches.remove(&m.report_id) {
+                dispatch["issue"] = json!(issue.number);
+                dispatch["from"] = json!(m.sender.session_id);
+                dispatch["to"] = json!(m.receiver.session_id);
+                // A self-addressed packet appears once, not twice in the same lane.
+                if m.sender.session_id != m.receiver.session_id {
+                    communication_lane(&mut lanes, &m.receiver.session_id)
+                        .dispatches
+                        .push(dispatch.clone());
+                }
+                communication_lane(&mut lanes, &m.sender.session_id)
+                    .dispatches
+                    .push(dispatch);
+            }
+        }
+    }
+    if !errors.is_empty() {
+        for lane in lanes.values_mut() {
+            lane.sent_reports.clear();
+            lane.received_acks.clear();
+            lane.unacknowledged_report_ids.clear();
+            lane.dispatches.clear();
+        }
+    }
+    json!({"available":errors.is_empty(),"observed_at":now,
+        "lanes":lanes.into_values().collect::<Vec<_>>(),"errors":errors})
 }
 
 /// CLI: validate, read (GET only), build. Writes nothing.
@@ -790,8 +1377,10 @@ pub fn status_cli<T: Transport, C: Clock>(
 ) -> Result<Value> {
     validate(&req)?;
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    let snap = collect(project, &req, &client, clock)?;
-    Ok(build(&req, &snap))
+    let (snap, raw) = collect_with_raw(project, &req, &client, clock)?;
+    let mut table = build(&req, &snap);
+    table["communication"] = communication(&req, &raw, &client, clock, snap.now);
+    Ok(table)
 }
 
 #[cfg(test)]
@@ -841,5 +1430,45 @@ mod tests {
         ];
         assert_eq!(report_after(&list, 4), Some(("blocked".into(), 12)));
         assert_eq!(report_after(&list, 12), None);
+    }
+
+    /// #2678: an empty table says "0 rows" and why, never just `[]`.
+    #[test]
+    fn an_empty_table_says_so_in_words() {
+        let req = LaneStatusRequest {
+            schema_version: 1,
+            owner: "o".into(),
+            repo: "r".into(),
+            base_branch: "main".into(),
+            issues: vec![],
+            lanes: vec![],
+            pending_decisions: vec![],
+        };
+        let snap = Snapshot {
+            issues: vec![],
+            other_open: BTreeMap::new(),
+            prs: vec![],
+            worktrees: Ok(vec![]),
+            now: 0,
+        };
+        let out = build(&req, &snap);
+        assert_eq!(out["rows"], json!([]));
+        assert_eq!(
+            out["summary"],
+            json!("0 rows: no claim, pull request or worktree was found for the named Issues; 0 lane(s) named, 0 idle; 0 ready Issue(s)")
+        );
+    }
+
+    /// #2678 audit B2: every number of the line is its own argument.
+    #[test]
+    fn summary_line_says_each_count() {
+        assert_eq!(
+            summary_line(8, 12, 9, 2),
+            "8 row(s); 12 lane(s) named, 9 idle; 2 ready Issue(s)"
+        );
+        assert_eq!(
+            summary_line(0, 3, 1, 4),
+            "0 rows: no claim, pull request or worktree was found for the named Issues; 3 lane(s) named, 1 idle; 4 ready Issue(s)"
+        );
     }
 }

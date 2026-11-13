@@ -551,7 +551,7 @@ pub fn to_value(plan: &ArchivePlan) -> serde_json::Value {
 // If step 3 or 4 disagrees, the staging copy is removed and the original is kept.
 
 /// Archive root, project-relative.
-pub const ARCHIVE_DIR: &str = ".moai-cli/archive";
+pub const ARCHIVE_DIR: &str = crate::project_state!("archive");
 const INDEX_SCHEMA_VERSION: u32 = 1;
 /// Maximum search query length, in characters.
 pub const SEARCH_QUERY_CHARS_MAX: usize = 256;
@@ -757,10 +757,7 @@ fn manifest_path(project: &Path, spec_id: &str) -> PathBuf {
 
 fn permission_ok(permission: &str) -> Result<()> {
     // Authorization stays with the host; the reference is caller metadata, not a verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     Ok(())

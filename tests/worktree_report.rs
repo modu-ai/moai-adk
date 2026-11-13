@@ -102,9 +102,14 @@ fn fixture() -> Fixture {
     fs::write(a.join("ignored.bin"), vec![1u8; 262_144]).unwrap();
     fs::write(b.join("untracked.txt"), "dirty\n").unwrap();
 
+    // #2563: a session building in the former `moai-rc-target-` folder and one in the new
+    // `moai-target-` folder are both build folders; neither may drop out of the totals.
     let rc = tmp.join("moai-rc-target-agent-2-t61-audit-2326");
     fs::create_dir_all(rc.join(".git")).unwrap();
     blob(&rc.join("x.bin"));
+    let new_target = tmp.join("moai-target-agent-7");
+    fs::create_dir_all(&new_target).unwrap();
+    blob(&new_target.join("x.bin"));
     let audit = tmp.join("moai-audit-2369-x");
     fs::create_dir_all(audit.join(".git")).unwrap();
     blob(&audit.join(".git/pack.bin"));
@@ -122,11 +127,15 @@ fn fixture() -> Fixture {
 }
 
 fn report(fx: &Fixture, budget_ms: &str) -> Value {
+    report_with_tmp(fx, &fx.tmp, budget_ms)
+}
+
+fn report_with_tmp(fx: &Fixture, tmp: &Path, budget_ms: &str) -> Value {
     let out = Command::new(BIN)
         .args(["worktree-report"])
         .arg(&fx.root)
         .arg("--tmp-root")
-        .arg(&fx.tmp)
+        .arg(tmp)
         .args(["--budget-ms", budget_ms])
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -165,8 +174,8 @@ fn classes_and_worktree_facts_match_the_fixture() {
     let c = &r["classes"];
     assert_eq!(c["worktree_checkout"]["count"], 3);
     assert_eq!(c["worktree_target"]["count"], 2);
-    // The build-folder prefix wins over the audit pattern in its name.
-    assert_eq!(c["tmp_rc_target"]["count"], 1);
+    // The build-folder prefix wins over the audit pattern in its name; both prefixes count.
+    assert_eq!(c["tmp_target"]["count"], 2);
     assert_eq!(c["tmp_audit_clone"]["count"], 1);
     assert_eq!(c["tmp_empty_dir"]["count"], 1);
     assert_eq!(
@@ -174,7 +183,7 @@ fn classes_and_worktree_facts_match_the_fixture() {
         "other-tool is not a moai-* folder"
     );
     assert_eq!(c["local_refs"]["branches"], 2);
-    assert!(c["tmp_rc_target"]["bytes"].as_u64().unwrap() >= 65_536);
+    assert!(c["tmp_target"]["bytes"].as_u64().unwrap() >= 2 * 65_536);
 
     let primary = by_path(&r, ".");
     let a = by_path(&r, ".moai-cli/worktrees/a");
@@ -215,7 +224,7 @@ fn an_expired_budget_marks_every_sized_class_partial() {
     for cls in [
         "worktree_checkout",
         "worktree_target",
-        "tmp_rc_target",
+        "tmp_target",
         "tmp_audit_clone",
         "tmp_other",
     ] {
@@ -260,6 +269,125 @@ fn the_report_writes_nothing() {
     report(&fx, "600000");
     let after = (snapshot(&fx.root), snapshot(&fx.tmp));
     assert_eq!(before, after);
+}
+
+fn partial_set(r: &Value) -> BTreeSet<String> {
+    r["partial_classes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect()
+}
+
+/// 4 MiB of bytes that do not compress (a fixed linear congruential sequence), so a git
+/// object holding them stays about 4 MiB.
+fn noise(path: &Path) {
+    let mut x: u32 = 0x2380_2380;
+    let bytes: Vec<u8> = (0..4 * 1024 * 1024)
+        .map(|_| {
+            x = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            (x >> 24) as u8
+        })
+        .collect();
+    fs::write(path, bytes).unwrap();
+}
+
+const FOUR_MIB: u64 = 4 * 1024 * 1024;
+
+/// Pre-audit FAIL 6775068725 B1: symlinks are never followed — not a directory symlink to a
+/// large outside folder, not a self loop, not a `moai-*` symlink in the temporary root.
+#[test]
+fn symlinks_are_never_followed() {
+    let fx = fixture();
+    let outside = fx.root.parent().unwrap().join("outside");
+    fs::create_dir(&outside).unwrap();
+    noise(&outside.join("big.dat"));
+    let b = fx.root.join(".moai-cli/worktrees/b");
+    std::os::unix::fs::symlink(&outside, b.join("outside-link")).unwrap();
+    std::os::unix::fs::symlink(".", b.join("loop")).unwrap();
+    std::os::unix::fs::symlink(&outside, fx.tmp.join("moai-link")).unwrap();
+
+    let r = report(&fx, "600000");
+    assert_eq!(r["partial"], false, "{r}");
+    let b = by_path(&r, ".moai-cli/worktrees/b");
+    assert!(b["checkout_bytes"].as_u64().unwrap() < FOUR_MIB, "{b}");
+    // The symlink is not a temporary folder: the counts of the plain fixture stay.
+    let c = &r["classes"];
+    assert_eq!(c["tmp_other"]["count"], 1, "{c}");
+    let tmp_total: u64 = [
+        "tmp_target",
+        "tmp_audit_clone",
+        "tmp_empty_dir",
+        "tmp_other",
+    ]
+    .iter()
+    .map(|k| c[*k]["bytes"].as_u64().unwrap())
+    .sum();
+    assert!(tmp_total < FOUR_MIB, "{c}");
+}
+
+/// Pre-audit FAIL 6775068725 B2: a folder that cannot be read marks its class partial, and
+/// an unreadable temporary root marks every temporary class partial.
+#[test]
+fn unreadable_folders_mark_their_class_partial() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = fixture();
+    let locked = fx.tmp.join("moai-locked");
+    fs::create_dir(&locked).unwrap();
+    fs::write(locked.join("f"), "f\n").unwrap();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let readable = fs::read_dir(&locked).is_ok();
+    let r = report(&fx, "600000");
+    // Restore before asserting so the temporary directory can always be removed.
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    if readable {
+        eprintln!("skipped: this user can read a 000 folder (root)");
+        return;
+    }
+    assert_eq!(r["partial"], true, "{r}");
+    assert_eq!(partial_set(&r), BTreeSet::from(["tmp_other".to_string()]));
+    assert_eq!(r["classes"]["tmp_other"]["partial"], true);
+
+    let missing = fx.root.parent().unwrap().join("no-such-tmp");
+    let r = report_with_tmp(&fx, &missing, "600000");
+    assert_eq!(r["partial"], true, "{r}");
+    let want: BTreeSet<String> = [
+        "tmp_target",
+        "tmp_audit_clone",
+        "tmp_empty_dir",
+        "tmp_other",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+    assert_eq!(partial_set(&r), want);
+}
+
+/// Pre-audit FAIL 6775068725 B3: a checkout's bytes leave out its git directory, measured
+/// with a `.git` far larger than the checkout. Non-blocking N3: `refs/remotes/pr/*` counted.
+#[test]
+fn the_checkout_excludes_its_git_directory_and_pr_refs_are_counted() {
+    let fx = fixture();
+    noise(&fx.root.join("big.dat"));
+    git(&fx.root, &["add", "-f", "big.dat"]);
+    git(&fx.root, &["commit", "-q", "-m", "big object"]);
+    git(&fx.root, &["rm", "-q", "big.dat"]);
+    git(
+        &fx.root,
+        &["commit", "-q", "-m", "drop it from the checkout"],
+    );
+    git(&fx.root, &["update-ref", "refs/remotes/pr/1", "HEAD"]);
+    let git_bytes: u64 = snapshot(&fx.root.join(".git")).iter().map(|e| e.1).sum();
+    assert!(git_bytes >= FOUR_MIB, "fixture .git is {git_bytes} bytes");
+
+    let r = report(&fx, "600000");
+    let primary = by_path(&r, ".");
+    assert!(
+        primary["checkout_bytes"].as_u64().unwrap() < FOUR_MIB,
+        "{primary}"
+    );
+    assert_eq!(r["classes"]["local_refs"]["remote_pr_refs"], 1);
 }
 
 fn keys(v: &Value) -> BTreeSet<String> {

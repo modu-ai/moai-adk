@@ -353,6 +353,17 @@ pub fn effect_intend<C: Clock>(
     let intent_digest = digest(payload);
     if let Some((_, existing)) = publish_effect(current, &operation_id) {
         if existing["intent_digest"] == json!(intent_digest) {
+            // #2392 D3-C: an effect whose result was lost may already be on the remote. A
+            // passed intent would invite a second send, so it is blocked until
+            // `effects-reconcile` settles it; the journal is unchanged.
+            if existing["state"] == json!("uncertain") {
+                return Ok(json!({
+                    "outcome": "needs_reconcile", "verdict": "blocked",
+                    "operation_id": operation_id, "marker": existing["marker"],
+                    "intent_digest": intent_digest, "epoch": epoch, "state": "uncertain",
+                    "notes": ["this effect's result was lost (uncertain); run effects-reconcile before sending it again"],
+                }));
+            }
             return Ok(json!({
                 "outcome": "intended", "verdict": "passed",
                 "operation_id": operation_id, "marker": existing["marker"],

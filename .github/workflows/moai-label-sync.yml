@@ -1,0 +1,94 @@
+# RC1 label sync (00-E #2020). Input is `.github/moai/labels.yml` only.
+# Default is a dry run that prints the difference. Creating labels needs a manual
+# `workflow_dispatch` run with `apply: true`, and even then this workflow only CREATES the
+# missing labels listed under `added`. It never edits, renames, recolours or deletes a label
+# (HOLD-00B-1: the label taxonomy is undecided).
+name: moai-label-sync
+
+on:
+  pull_request:
+    branches: [v2026.11.0]
+    paths: [".github/moai/labels.yml", ".github/workflows/moai-label-sync.yml"]
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Create the missing `added` labels (no edit, no delete)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moai-label-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      create: ${{ steps.diff.outputs.create }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML
+        run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
+      - name: Read remote labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh label list --repo "$GITHUB_REPOSITORY" --limit 1000 --json name,color,description > "$RUNNER_TEMP/remote-labels.json"
+      - name: Diff against the manifest (dry run)
+        id: diff
+        run: |
+          python - <<'PY'
+          import json, os, yaml
+          manifest = yaml.safe_load(open(".github/moai/labels.yml", encoding="utf-8"))
+          remote = {l["name"]: l for l in json.load(open(os.environ["RUNNER_TEMP"] + "/remote-labels.json"))}
+          rows, create = [], []
+          for name in (n for group in manifest["reused"].values() for n in group):
+              rows.append(("reused", name, "present" if name in remote else "MISSING (reused labels are never created here)"))
+          for item in manifest["added"]:
+              have = remote.get(item["name"])
+              if have is None:
+                  create.append({k: item[k] for k in ("name", "color", "description")})
+                  state = "missing (created only by a manual apply run)"
+              elif (have["color"].lower(), have["description"]) != (item["color"].lower(), item["description"]):
+                  state = "differs (left unchanged: no edits)"
+              else:
+                  state = "present"
+              rows.append(("added", item["name"], state))
+          for item in manifest["proposed_not_created"]:
+              rows.append(("proposed", item["name"], "present remotely" if item["name"] in remote else "not created (by design)"))
+          text = ["## moai-label-sync (dry run)", "", "| group | label | state |", "| --- | --- | --- |"]
+          text += [f"| {g} | `{n}` | {s} |" for g, n, s in rows]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+              fh.write("\n".join(text) + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write("create=" + json.dumps(create, ensure_ascii=False) + "\n")
+          print("\n".join(text))
+          PY
+
+  apply:
+    needs: plan
+    if: github.event_name == 'workflow_dispatch' && inputs.apply && needs.plan.outputs.create != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - name: Create missing `added` labels only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CREATE: ${{ needs.plan.outputs.create }}
+        run: |
+          printf '%s' "$CREATE" | jq -c '.[]' | while read -r item; do
+            gh label create "$(jq -r .name <<<"$item")" --repo "$GITHUB_REPOSITORY" \
+              --color "$(jq -r .color <<<"$item")" --description "$(jq -r .description <<<"$item")"
+          done

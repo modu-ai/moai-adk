@@ -4,18 +4,19 @@
 //! GETs, a `since` cursor and `Link` pagination, serially, and returns stable references
 //! `(provider, host, project{owner, repo, repository_id}, issue{id, node_id, number})`. Poll
 //! state lives in `<project>/.moai-cli/forge/poll-state.json` (REQ-FORGE-009). The read path
-//! sends GET only; the write helpers in [`write`] are library functions for 07-B/07-C.
+//! sends GET only; the write helpers in [`write`] are library functions for 07-C.
 //!
 //! The CLI wraps the result in the 01-C envelope (`crate::contract`); errors become messages
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
 pub mod audit_status;
 pub mod gitlab;
+pub mod labels;
 pub mod links;
 pub mod outbox;
 pub mod policy;
-pub mod promote;
 pub mod report;
 pub mod transport;
+pub mod wait;
 pub mod write;
 
 use policy::{format_utc, next_link, parse_utc, Clock, Verdict};

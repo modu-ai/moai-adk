@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "covers": "every file under skills/moai/ except this manifest",
+  "design_source": {
+    "id": "design-22",
+    "title": "MoAI 생성 파일 원문 템플릿과 적용 계약",
+    "url": "https://chatgpt.com/space/page_396f36aa5d588191b92f8572bccc3bab",
+    "updated_at": "2026-11-08T04:19:15.740708Z",
+    "snapshot": "design-snapshot/22-page_396f36aa5d588191b92f8572bccc3bab.md",
+    "snapshot_sha256": "62bc9bcaa8661731e377c50512d44be7272c81c6e45a36e9f69b55993800c394",
+    "snapshot_check": "matches SHA256SUMS.txt of the RC1 handoff bundle (read 2026-11-08)"
+  },
+  "legacy_source": {
+    "repository": "modu-ai/moai-adk",
+    "revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+    "license": "Apache-2.0",
+    "license_evidence": "LICENSE at the revision begins 'Apache License Version 2.0, January 2004' (read 2026-11-08)",
+    "inventory": "asset-inventory/moai-skills-rules-inventory-20261108.csv",
+    "inventory_sha256": "1c772fda6290e2a39643acf15e9d4702d8b72923671336a9b4f4d8f25f969f8b",
+    "blob_check": {
+      "method": "git ls-tree -r <revision>, compared with each row's git_blob_sha1",
+      "rows": 1107,
+      "matched": 1107,
+      "mismatched": [],
+      "missing_at_revision": []
+    },
+    "note": "Pointers only: no legacy bytes are copied into the package.",
+    "asset_map": {
+      "path": ".moai-cli/manifests/legacy-asset-map.json",
+      "location": "repository only; not part of the installed package",
+      "sha256": "24cb01bcb32dc9fa9b94fc5138c9f312ff0400c4f80c385ddd2d3ff09fff16fa",
+      "rows": 1107,
+      "status": "all unchecked",
+      "rows_by_intent": {
+        "read": 359,
+        "setup": 328,
+        "update": 218,
+        "plan": 202,
+        "run": 543,
+        "verify": 288,
+        "audit": 292,
+        "sync": 383
+      },
+      "rows_without_intent": 28
+    }
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "81b344ae5b8139b0d6d51cf69f9c2447db225864e39964f38cdd678973f1c34f",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-core",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678). OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13). Codex parity (#2592): the skill requests delegation in words and names each host's subagent tool (Codex spawn_agent/wait_agent), since Codex spawns agents on a skill instruction that requests delegation."
+      }
+    },
+    "references/routes.json": {
+      "sha256": "6fd0159994da8440f7afe3a8eb8930a529636289b548a7b451bf0c71bc09dfda",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-routes",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
+      }
+    },
+    "workflows/read.md": {
+      "sha256": "f41b4c518b5fab2a6e7d1eaa97e677abdbc974bf8e67c714980bbb3ce2041ae0",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-read",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/setup.md": {
+      "sha256": "c55fee86b38ff1fffa48c9a3c539fb399040ece6cdc50111de42ced9145836da",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-setup",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/update.md": {
+      "sha256": "d4a21a75111a4119b2b99005b451198a3d23ff46f90220cb33fe1706b3a1cc3f",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-update",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22)."
+      }
+    },
+    "workflows/plan.md": {
+      "sha256": "252d3cc899887bc2358110444b7ab545a5b10cd69c5f0b8d461a914fb118aa6a",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-plan",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission). Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/run.md": {
+      "sha256": "eabaca5c51d76fcf686b3332f38c66feebb4359dcbb103b7d29d479f022454d0",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-run",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/verify.md": {
+      "sha256": "d7753fbfe396705897b30b13cdd9106079f04a350b83d2049fb304eb7ac210e8",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-verify",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
+      }
+    },
+    "workflows/audit.md": {
+      "sha256": "968cc5f58fe3e150c8c52ff7c9ff79482232ae62118c74453b9d6118d4882fd0",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-audit",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/sync.md": {
+      "sha256": "7d5ab404a47a8a24c7ce1cf316c631e8d76d008011f8ce193264d4660e012a47",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-sync",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 8 merge-train bullet follows the U6 integration gate — #2515. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/mode-leader.md": {
+      "sha256": "9659a3bb1529c67be8fbf373bddef2e9f6f6ad701d75298755ec3ef663c14dfd",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-leader",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8 and 9: lanes open their own pull requests and the leader names a lane only when the order matters; the U6 integration gate (merge without re-merging the tip when nothing conflicts or overlaps) — #2515. Step 7 restart (not dispatch) of stopped lanes, step 10 same-round answers and same-session handoff lines, step 9 docs-only overlap exception — #2515. Step 7 sorts open Issues and hands ownerless ones (no claim or a dead session's expired claim) to idle lanes (cause 8, #2515). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): read the screen before a restart (no line to a lane with a wake, an answer to `LANE-BLOCKED`, no repeated restart), `UNREACHABLE` lanes, found = answered on every return, finish ready work before a user question (method: decision D5), decisions to comment and screen, one handoff line per claim id confirmed by `owner`, the open-PR limit N from decision D7 and operating numbers changed together. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show; the goal-line step feeds its exclusions into keep_set and writes a new standing instruction once through goal-plan/goal-apply, asking the person only when asks_person is true. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Report figures name their command; an empty output is not zero (#2678). Step 9 repo-wide scan check (#2681, leader decision 6848942944): no re-merge for disjoint files, but when tools/repo_scans.py reports a scan whose rule files changed on one side and scope on the other, its checks run on the git merge-tree result before the merge. The judge reads the tables of both refs and an empty check list holds the merge (#2693 audit B1, N1)."
+      }
+    },
+    "workflows/mode-agent.md": {
+      "sha256": "7d8e23d4c07d7a11d09db2eb9b3ba3b596fee514dd87de9b37243028913ae0df",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-agent",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8, 9, 12 and 13: lanes open their own pull requests below four non-draft ones and settle a simultaneous opening by the four lowest numbers (others become drafts), the U6 integration gate (no tip chasing), the one-line round, and the waiting-branch suffix — #2515. Steps 12 keep-going and 14 wake added, report/pr-gate/heavy-checks/claim/goal-lines/self-pick changed so a round never stops on LANE-DONE, a full open-PR count, a wait or a leader request (#2515 comment 6823975793). Step 3 four-way Issue counts and step 13 LANE-BLOCKED for expired foreign claims (cause 8, #2515 comment 6824158448). Step 13 end condition matches keep-going (audit 6824297146 N1). Worktree sessions without the project settings file run no project hook, so claim-verify is the only boundary there (#2581). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): renewal by editing the own claim comment, every earlier claim id in a handoff request, a fresh branch for an unread trailer, the open-PR limit N from decision D7 with cross-lane `pr-wait` order, pre-push checks, a slot wait is no wake reason, a lost reservation posts no verdict, no-op wake backoff and no reprint of unchanged lines, the poll interval only for unchanged state. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show (one file per clone, read from every worktree); an active goal's end condition and exclusions hold after a restart without the person repeating it; lanes only read it. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Codex hook trust (#2592): claim-verify names the primary checkout's trust_level and the /hooks review, the measured worktree inheritance of project trust, and that a lane never bypasses hook trust. LANE-BLOCKED kind/owner/next fields and the resume point's who-clears-it (#2769, #2554 leader decision 6861024531)."
+      }
+    },
+    "workflows/project.md": {
+      "sha256": "bb1dabc241aaec0a3ac9b92640ecb566aa5dc167f28e10bf3f2eaa86583a5b66",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-project",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B)."
+      }
+    },
+    "references/chains/index.md": {
+      "sha256": "122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "chains-index",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them."
+      }
+    },
+    "references/internal/review.md": {
+      "sha256": "be763f3ca860c74d52ee061e773e7f7d29193d201fc2cf1ce3e0f754a9afb0ff",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-review",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/decide.md": {
+      "sha256": "cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-decide",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/interview.md": {
+      "sha256": "df95855aead2baf9c2d9bfd43f0d453a8eaa54ef41b86ee1a986e7bc617c3f79",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-interview",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/test-design.md": {
+      "sha256": "7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-test-design",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/git-safety.md": {
+      "sha256": "0e2cbfe5913ca7215c43cba57bedf65f386b6814d133256942f4e0e251cd126b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-git-safety",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
+      }
+    },
+    "references/home/routing.md": {
+      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-routing",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
+      }
+    },
+    "references/adapters/orca.md": {
+      "sha256": "bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-orca",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Orca, the commands that print Orca's version-matched guides (orca skills get orca-cli, orca agent-context --json), the lines MoAI keeps and the fallback when Orca is missing. Checked against https://orca.dev/docs/cli/overview and /docs/cli/skills and the orca 1.4.257 CLI help (read 2026-11-13). No design-22 template exists for adapters."
+      }
+    },
+    "references/adapters/aside.md": {
+      "sha256": "597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-aside",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
+      }
+    },
+    "references/internal/tdd-results.md": {
+      "sha256": "4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-tdd-results",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): the four result classes kept; path frontmatter dropped; an empty selection is not_run (internal/test-design). Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/check-completeness.md": {
+      "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-check-completeness",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/development/verification-completeness.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): cut from 22 KB to the tool-neutral rules (verdict not report, three-part check, continued firing, red for the stated reason, mutant probe, SHA pinning, run both forms); what internal/test-design already says is pointed to, not repeated; .moai/specs, prediction ledger and policy-citation sections dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/development/verification-completeness.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/boundary-checks.md": {
+      "sha256": "e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-boundary-checks",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/quality/boundary-verification.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): method only, framework-specific case studies generalised; third-party origin revfactory/harness qa-agent-guide.md (Apache-2.0) per the Go rules/moai/NOTICE.md, credited in the file. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/quality/boundary-verification.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/doc-claims.md": {
+      "sha256": "edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-doc-claims",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/skills/moai-workflow-docs-claim-check/SKILL.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): scope, evidence inventory, atomic claims, the ordered four labels and the three-part report; Claude Code-only frontmatter and wording dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/skills/moai-workflow-docs-claim-check/SKILL.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/security-checklist.md": {
+      "sha256": "b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-security-checklist",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): OWASP API Security Top 10 table rewritten from https://owasp.org/API-Security/editions/2023/en/0x11-t10/ (read 2026-11-13T15:00:49Z, HTTP 200, sha256 prefix ac00589e1bb28f49; official API1:2023-API10:2023 ids replace the Go A1-A10 ranks); unsourced numbers (hash cost, token lifetimes, lockout counts, header values) dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "workflows/optimize.md": {
+      "sha256": "f70d4c174ea5f8358d7a58c003c9f5d59f618fc4900d750d1bc0abb90ac45e47",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-optimize",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE."
+      }
+    }
+  }
+}

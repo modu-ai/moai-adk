@@ -1,0 +1,1 @@
+[22m[38;5;189m[38;5;151m🌳 feature-xyz[0m[38;5;189m | ]8;;https://github.com/anthropics/claude-code/pull/1234\[38;5;218m🔗 #1234 pending[0m[38;5;189m]8;;\[0m

@@ -15,7 +15,11 @@ type Result<T> = std::result::Result<T, String>;
 
 pub const AGENTS_SECTION: &str = "moai-workflow";
 pub const IGNORE_SECTION: &str = "moai-local";
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+/// The REVIEW.md section the PROJECT interview fills (#2639).
+pub const REVIEW_SECTION: &str = "moai-review";
+/// Interview answers the REVIEW.md section carries, in the order it lists them.
+const REVIEW_ANSWERS: [&str; 2] = ["review_blocks", "protected"];
+const MANIFEST: &str = crate::project_state!("manifests/generation.json");
 const TEMPLATE_VERSION: &str = "rc1";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -113,7 +117,7 @@ fn validate(r: &AgentsRequest) -> Result<()> {
     Ok(())
 }
 
-fn markers(id: &str, comment: &str) -> (String, String) {
+pub(crate) fn markers(id: &str, comment: &str) -> (String, String) {
     match comment {
         "html" => (
             format!("<!-- moai:managed:begin id={id} -->"),
@@ -155,26 +159,94 @@ fn injects_markers(p: &Profile, r: &AgentsRequest) -> bool {
         .chain(&p.development_methods)
         .chain(&p.hosts)
         .chain(std::iter::once(&r.workflow_reference))
+        .chain(review_answers(p).into_iter().map(|(_, v)| v))
         .any(|v| tokens.iter().any(|t| v.contains(t)))
+}
+
+/// The answers REVIEW.md carries: `review_blocks` and `protected` decisions the user or the
+/// repository gave. A default (an axis left unanswered, `HOLD`) is never written as a rule.
+fn review_answers(p: &Profile) -> Vec<(&str, &String)> {
+    REVIEW_ANSWERS
+        .iter()
+        .flat_map(|id| {
+            p.decisions
+                .iter()
+                .filter(move |d| d.id == *id && d.source != "default")
+                .map(|d| (d.id.as_str(), &d.value))
+        })
+        .collect()
+}
+
+/// REVIEW.md managed section (#2639): `None` when the interview gave no review answer, so a
+/// profile without them plans no REVIEW.md at all.
+/// The language the generated instruction text is written in (#2706): the profile's
+/// `language.instruction_files` when it is one the templates exist for (`en`, `ko`), else the
+/// request language. A profile without the choice renders exactly as before.
+fn instruction_language<'a>(p: &'a Profile, r: &'a AgentsRequest) -> &'a str {
+    p.language
+        .as_ref()
+        .and_then(|l| l.get("instruction_files"))
+        .map(String::as_str)
+        .filter(|code| *code == "en" || *code == "ko")
+        .unwrap_or(r.language.as_str())
+}
+
+fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
+    let answers = review_answers(p);
+    if answers.is_empty() {
+        return None;
+    }
+    let (begin, end) = markers(REVIEW_SECTION, "html");
+    let ko = instruction_language(p, r) == "ko";
+    let mut body = if ko {
+        "## 프로젝트 리뷰 규칙 (관리 구간)\n\n`/moai project` 인터뷰 답이다. 이 구간 밖에 적은 규칙은 MoAI가 건드리지 않는다.\n\n".to_string()
+    } else {
+        "## Project review rules (managed section)\n\nFrom the `/moai project` interview. Rules written outside this section are never touched by MoAI.\n\n".to_string()
+    };
+    for (id, value) in answers {
+        let line = match (id, ko) {
+            ("review_blocks", false) => "Always stop in review",
+            ("review_blocks", true) => "리뷰에서 항상 막는다",
+            (_, false) => "Never change without asking first",
+            (_, true) => "먼저 묻지 않고 바꾸지 않는다",
+        };
+        body.push_str(&format!("- {line}: {value}\n"));
+    }
+    Some(format!("{begin}\n{body}{end}\n"))
 }
 
 fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
     let (begin, end) = markers(AGENTS_SECTION, "html");
     let list = |v: &[String]| v.join(", ");
-    let share = match (r.language.as_str(), r.local_file.as_str()) {
+    let lang = instruction_language(p, r);
+    let share = match (lang, r.local_file.as_str()) {
         ("ko", "tracked") => "credential과 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
         ("ko", _) => "개인 `AGENTS.local.md`, credential, 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
         (_, "tracked") => "Never share credentials or raw secret logs in the repo or in Issues.",
         _ => "Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.",
     };
-    let body = if r.language == "ko" {
+    // #2293: the writing-language lines appear only when the profile sets `language`, so a
+    // profile without it renders byte-identical to the earlier template.
+    let writing = p
+        .language
+        .as_ref()
+        .map(|l| {
+            format!(
+                "{}\n",
+                crate::language::render_lines_in(l, lang, &r.language)
+            )
+        })
+        .unwrap_or_default();
+    let body = if lang == "ko" {
         format!(
             "## MoAI 작업 흐름 (관리 구간)\n\n\
 프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
 목적: {purpose}\n\n\
+{writing}\
 승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
-명확한 허용 범위의 선택은 스스로 진행하고, 권한·비용·범위가 바뀔 때만 확인한다.\n\
+사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다.\n\
 실행하지 않은 검증을 PASS로 보고하지 않는다. passed·failed·not_run·blocked·stale을 구분한다.\n\
+어떤 검사를 로컬에서 돌리고 언제 정확한 head의 CI 결과를 대신 인용할 수 있는지는 VERIFY workflow의 \"Check-run rules\" 절(단일 출처)을 따른다.\n\
 MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필수 gate의 검증된 대체가 없으면 관련 실행·발행을 막고 blocked로 보고한다.\n\
 상세 절차는 `{wf}`에서 필요한 workflow만 읽는다.\n\
 {share}\n",
@@ -190,9 +262,11 @@ MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필�
             "## MoAI workflow (managed section)\n\n\
 Project `{id}` · tools: {tools} · methods: {methods} · hosts: {hosts}.\n\
 Purpose: {purpose}\n\n\
+{writing}\
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
-Decide on your own inside the allowed scope; ask only when permission, cost, or scope changes.\n\
+Answer a factual question yourself and cite the evidence. A choice that cannot be undone, that goes beyond the allowed scope (cost, permissions, external transmission), or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings) waits for the user; decide any other choice within the allowed scope and record it.\n\
 Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.\n\
+Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).\n\
 Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.\n\
 Read only the workflow you need from `{wf}`.\n\
 {share}\n",
@@ -414,10 +488,36 @@ pub(crate) fn agents_plan_for(
         if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
             warnings.push(BLOCK_ABSENT.into());
         }
+        // #2706: the managed text follows the profile's `instruction_files` when templates
+        // exist for it (`en`, `ko`); another code is reported and the request language used.
+        if let Some(code) = profile
+            .language
+            .as_ref()
+            .and_then(|l| l.get("instruction_files"))
+            .filter(|code| code.as_str() != instruction_language(&profile, &request))
+        {
+            warnings.push(format!(
+                "managed section rendered in `{}`: no managed-section text in profile language.instruction_files `{code}`",
+                instruction_language(&profile, &request)
+            ));
+        }
         if agents_file.action != "conflict" && projected > 32 * 1024 {
             warnings
                 .push("AGENTS.md may exceed the 32 KiB default instruction budget of Codex".into());
         }
+    }
+
+    if let Some(review) = render_review(&profile, &request) {
+        let current = read_opt(&target(&root, "REVIEW.md")?)?;
+        files.push(section_plan(
+            "REVIEW.md",
+            true,
+            REVIEW_SECTION,
+            "html",
+            current.as_deref(),
+            baseline_for(m, "REVIEW.md"),
+            &review,
+        )?);
     }
 
     if request.local_file != "none" {
@@ -593,10 +693,7 @@ pub(crate) fn agents_apply_amended_for(
     amend: &mut dyn FnMut(&Path, &mut Value) -> Result<()>,
 ) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let current = agents_plan_for(root, p.request.clone(), reference_created_here)?;
@@ -766,6 +863,20 @@ pub(crate) fn agents_apply_amended_for(
                 let out = splice(before.as_deref(), &b, &e, &rendered, &prefix)?;
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(AGENTS_SECTION))
+            }
+            "REVIEW.md" => {
+                let (b, e) = markers(REVIEW_SECTION, "html");
+                let rendered =
+                    render_review(&profile, &p.request).ok_or("review section has no answers")?;
+                let out = splice(
+                    before.as_deref(),
+                    &b,
+                    &e,
+                    &rendered,
+                    "# Review instructions\n\n",
+                )?;
+                assert_single_block(&out, &b, &e, &rendered)?;
+                (out, Some(REVIEW_SECTION))
             }
             ".gitignore" => {
                 let (b, e) = markers(IGNORE_SECTION, "hash");
@@ -1038,10 +1149,10 @@ mod tests {
     fn manifest_backup_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1074,7 +1185,11 @@ mod tests {
         let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| {
             let dirs = backups(&receipts);
             assert_eq!(dirs.len(), 1, "this run's backup dir: {dirs:?}");
-            fs::write(dirs[0].join(".moai-cli"), b"blocks the manifest backup").unwrap();
+            fs::write(
+                dirs[0].join(crate::PROJECT_STATE_DIR),
+                b"blocks the manifest backup",
+            )
+            .unwrap();
             Ok(())
         })
         .unwrap_err();
@@ -1128,10 +1243,10 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1197,10 +1312,10 @@ mod tests {
     fn file_backup_failure_row_is_recorded_in_the_receipt_file() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1291,10 +1406,10 @@ mod tests {
     fn amended_manifest_decode_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
         fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(root.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
         fs::write(
-            root.path().join(".moai-cli/project.yaml"),
+            root.path().join(crate::project_state!("project.yaml")),
             serde_json::to_vec_pretty(&profile).unwrap(),
         )
         .unwrap();
@@ -1382,7 +1497,7 @@ mod tests {
         assert_eq!(parsed.kind, None);
         assert_eq!(parsed.section_id.as_deref(), Some("moai-workflow"));
         let new = json!({
-            "path": ".moai-cli/workflows/review-flow/SKILL.md",
+            "path": crate::project_state!("workflows/review-flow/SKILL.md"),
             "kind": "workflow",
             "section_id": "generation:workflow:review-flow",
             "baseline_sha256": "sha256:971e386609930516d7c92f3ad25ef05793f923f978c6b01a11f5a018e94f5b0b"

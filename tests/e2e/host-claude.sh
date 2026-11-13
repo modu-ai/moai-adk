@@ -36,15 +36,19 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 WORK="$(mktemp -d /tmp/e2e-claude-XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
-SKILL_DIGEST="$(shasum -a 256 "$REPO/skills/moai-cli/SKILL.md" | awk '{print $1}')"
+SKILL_DIGEST="$(shasum -a 256 "$REPO/skills/moai/SKILL.md" | awk '{print $1}')"
 CLI_SHA="$(command -v moai-cli >/dev/null 2>&1 && shasum -a 256 "$(command -v moai-cli)" | awk '{print $1}' || echo absent)"
-HOST_VERSION="$(claude --version 2>/dev/null | head -1 || echo unknown)"
+# Every claude call, the static ones included, runs with HOME in the temporary work dir:
+# the version probe and `plugin validate` need no user state, so the operator's real
+# HOME is never read or written (#2014 agent-8 N4).
+mkdir -p "$WORK/home"
+HOST_VERSION="$(HOME="$WORK/home" claude --version 2>/dev/null < /dev/null | head -1 || echo unknown)"
 
 # Pre-step: project the skill into the temporary project for both host layouts, and
 # give the -p runs an isolated HOME (no personal-skill shadowing, no real-HOME writes).
 mkdir -p "$WORK/project/.claude/skills" "$WORK/project/.agents/skills" "$WORK/home"
-cp -R "$REPO/skills/moai-cli" "$WORK/project/.claude/skills/moai-cli"
-cp -R "$REPO/skills/moai-cli" "$WORK/project/.agents/skills/moai-cli"
+cp -R "$REPO/skills/moai" "$WORK/project/.claude/skills/moai"
+cp -R "$REPO/skills/moai" "$WORK/project/.agents/skills/moai"
 
 receipt() { # receipt <name> <result> <detail>
   printf '{"ac":"%s","os":"%s","arch":"%s","host":"claude-code","host_exact_version":"%s","mode":"local","skill_digest":"%s","moai_cli_sha":"%s","result":"%s","ran_at":"%s","detail":"%s"}\n' \
@@ -60,7 +64,7 @@ keep() {
 }
 
 # AC-08C-5: static validity — local frontmatter validation, no credentials needed.
-if claude plugin validate "$WORK/project/.claude/skills" > "$WORK/ac5.out" 2>&1; then
+if HOME="$WORK/home" claude plugin validate "$WORK/project/.claude/skills" < /dev/null > "$WORK/ac5.out" 2>&1; then
   receipt "AC-08C-5" passed "$(keep ac5.out)"
 else
   receipt "AC-08C-5" failed "$(keep ac5.out)"
@@ -78,7 +82,7 @@ if [ -z "$(printenv ANTHROPIC_API_KEY || true)" ]; then
   receipt "AC-08C-3" not_run "credential ANTHROPIC_API_KEY not set; command not executed"
 else
   (cd "$WORK/project" && HOME="$WORK/home" claude --bare \
-      -p '/moai-cli 프로젝트 설정 미리보기만 해줘' \
+      -p '/moai 프로젝트 설정 미리보기만 해줘' \
       --add-dir "$WORK/project" \
       --output-format stream-json --verbose \
       --permission-mode dontAsk --permission-prompts none \
@@ -88,10 +92,10 @@ else
   # host may report either form. HOME is isolated, so no personal copy can match.
   if [ "$RC3" -eq 0 ] \
      && jq -se 'any(.[]; .type == "result" and .is_error == false)' "$WORK/ac3.jsonl" >/dev/null 2>&1 \
-     && jq -se --arg p ".claude/skills/moai-cli/references/routes.json" \
+     && jq -se --arg p ".claude/skills/moai/references/routes.json" \
           'any(.[] | .. | objects | select(.type? == "tool_use") | .input | tostring; contains($p))' \
           "$WORK/ac3.jsonl" >/dev/null 2>&1 \
-     && jq -se --arg p ".claude/skills/moai-cli/workflows/setup.md" \
+     && jq -se --arg p ".claude/skills/moai/workflows/setup.md" \
           'any(.[] | .. | objects | select(.type? == "tool_use") | .input | tostring; contains($p))' \
           "$WORK/ac3.jsonl" >/dev/null 2>&1; then
     receipt "AC-08C-3" passed "$(keep ac3.jsonl)"
@@ -110,7 +114,7 @@ if [ -z "$(printenv ANTHROPIC_API_KEY || true)" ]; then
 else
   BEFORE="$(find "$WORK/project" -type f -print0 2>/dev/null | sort -z | xargs -0 shasum -a 256)"
   (cd "$WORK/project" && HOME="$WORK/home" claude --bare \
-      -p '/moai-cli 설정 적용까지 진행해줘' \
+      -p '/moai 설정 적용까지 진행해줘' \
       --add-dir "$WORK/project" \
       --output-format stream-json --verbose \
       --permission-mode dontAsk --permission-prompts none \

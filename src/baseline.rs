@@ -20,7 +20,11 @@ use std::{
 type Result<T> = std::result::Result<T, String>;
 
 /// Lane worktrees nest inside the primary checkout; they are not part of its state.
-const EXCLUDED_PREFIXES: [&str; 3] = [".claude/worktrees/", ".moai-cli/worktrees/", ".worktrees/"];
+const EXCLUDED_PREFIXES: [&str; 3] = [
+    ".claude/worktrees/",
+    crate::fixed_state!("worktrees/"),
+    ".worktrees/",
+];
 const HOME_ENTRIES: [&str; 3] = [".claude", ".moai", ".agents"];
 const TEMPLATE_PREFIX: &str = "internal/template/templates/";
 
@@ -120,10 +124,16 @@ fn content(root: &Path, rel: &str) -> Result<(&'static str, Option<String>)> {
 
 /// RFC 3339 UTC seconds from the system clock (civil-from-days, no external crate).
 pub(crate) fn utc_now() -> String {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+    utc_from_epoch(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0),
+    )
+}
+
+/// RFC 3339 UTC seconds for a Unix timestamp (civil-from-days, no external crate).
+pub(crate) fn utc_from_epoch(secs: i64) -> String {
     let (days, rem) = (secs.div_euclid(86400), secs.rem_euclid(86400));
     let z = days + 719_468;
     let era = z.div_euclid(146_097);

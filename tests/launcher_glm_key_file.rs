@@ -1,7 +1,9 @@
-//! Issue #2359: without `ANTHROPIC_AUTH_TOKEN` in the environment, `glm` takes the token from
-//! `~/.moai/.env.glm` (the global store shared with the Go tool), then `~/.moai-cli/.env.glm`.
-//! Both are read only. The value reaches the host process only and never appears in the
-//! launcher's own output.
+//! Issue #2359, changed by #2393 (user decision, Issue #2393 comment 6778150969): `glm` takes
+//! `ANTHROPIC_AUTH_TOKEN` from the environment, then from the moai-cli vault. The legacy key
+//! files `~/.moai/.env.glm` and `~/.moai-cli/.env.glm` are never opened or read: with no
+//! vault entry, the presence of one ends `blocked: legacy_key_only`, naming the file and the
+//! way to move the key, and the file is left as it is. The value reaches the host process
+//! only and never appears in the launcher's own output.
 mod common;
 use serde_json::{json, Value};
 use std::{
@@ -14,31 +16,39 @@ use std::{
 const TOKEN: &str = "moai-test-file-token-not-real";
 const ENV_TOKEN: &str = "moai-test-env-token-not-real";
 
-fn home(files: &[(&str, &str)]) -> tempfile::TempDir {
+fn home(files: &[(&str, &[u8])]) -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
-    for (name, text) in files {
+    for (name, bytes) in files {
         let path = home.path().join(name);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path, text).unwrap();
+        fs::write(path, bytes).unwrap();
     }
     home
 }
 
 /// A git project under cargo's test scratch dir, outside HOME: `glm -a` reads and takes its
-/// `agent-N` number there (#2359), never in this repository's own counter.
+/// `agent-N` number there (#2359), never in this repository's own counter. #2655: one fresh
+/// folder per test process — cargo-nextest runs every test as its own process, and a shared
+/// fixed folder made their `git init` runs collide on `.git/config`'s lock. A `static` is never
+/// dropped, so the folder stays; it is made under `CARGO_TARGET_TMPDIR` so what stays is inside
+/// `target/` (cleared by `cargo clean`), never in the system temp folder (audit 6847550852 B1).
 fn project() -> &'static Path {
-    static PROJECT: OnceLock<PathBuf> = OnceLock::new();
-    PROJECT.get_or_init(|| {
-        let p = Path::new(env!("CARGO_TARGET_TMPDIR")).join("launcher-glm-key-file-project");
-        fs::create_dir_all(&p).unwrap();
-        let init = common::git::command()
-            .args(["init", "-q"])
-            .current_dir(&p)
-            .status()
-            .unwrap();
-        assert!(init.success());
-        p
-    })
+    static PROJECT: OnceLock<tempfile::TempDir> = OnceLock::new();
+    PROJECT
+        .get_or_init(|| {
+            let p = tempfile::Builder::new()
+                .prefix("launcher-glm-key-file-project-")
+                .tempdir_in(env!("CARGO_TARGET_TMPDIR"))
+                .unwrap();
+            let init = common::git::command()
+                .args(["init", "-q"])
+                .current_dir(p.path())
+                .status()
+                .unwrap();
+            assert!(init.success());
+            p
+        })
+        .path()
 }
 
 fn launcher(home: &Path, env_token: Option<&str>) -> Command {
@@ -68,112 +78,79 @@ fn dry(home: &Path, env_token: Option<&str>) -> (i32, Value, String) {
     )
 }
 
+/// Every file under HOME with its bytes (a snapshot that shows nothing was created or changed).
+fn snapshot(home: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut out = Vec::new();
+    let mut stack = vec![home.to_path_buf()];
+    while let Some(p) = stack.pop() {
+        let m = fs::symlink_metadata(&p).unwrap();
+        if m.is_dir() {
+            for e in fs::read_dir(&p).unwrap() {
+                stack.push(e.unwrap().path());
+            }
+        } else {
+            out.push((p.clone(), fs::read(&p).unwrap_or_default()));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// A legacy file is named, never read: a valid key, an empty or malformed one, a value with a
+/// control character, a file over 64 KiB — all end `legacy_key_only` with the same answer,
+/// the value is not shown, and HOME is unchanged.
 #[test]
-fn key_file_stands_in_for_the_variable_without_showing_the_value() {
-    for (file, line) in [
-        (
-            ".moai-cli/.env.glm",
-            format!("ANTHROPIC_AUTH_TOKEN={TOKEN}\n"),
-        ),
-        (".moai-cli/.env.glm", format!("GLM_API_KEY={TOKEN}\n")),
-        (".moai/.env.glm", format!("# z.ai\nGLM_API_KEY={TOKEN}\n")),
-        (
-            ".moai/.env.glm",
-            format!("export GLM_API_KEY=\"{TOKEN}\"\n"),
-        ),
-    ] {
-        let h = home(&[(file, &line)]);
-        let (code, v, text) = dry(h.path(), None);
-        assert_eq!(code, 0, "{file} {line:?}: {text}");
-        assert!(!text.contains(TOKEN), "token value echoed for {file}");
-        assert_eq!(
-            v["env_keys"],
-            json!([
-                "ANTHROPIC_BASE_URL",
-                "API_TIMEOUT_MS",
-                "ANTHROPIC_DEFAULT_OPUS_MODEL",
-                "ANTHROPIC_DEFAULT_SONNET_MODEL",
-                "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-                "ANTHROPIC_DEFAULT_FABLE_MODEL",
-                "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
-                "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
-                "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
-                "ANTHROPIC_AUTH_TOKEN",
-                "Z_AI_API_KEY"
-            ])
-        );
-        assert!(v["notes"].to_string().contains("key file"), "{text}");
-        // Read only: the key file is byte-identical and nothing was added to the home.
-        assert_eq!(fs::read_to_string(h.path().join(file)).unwrap(), line);
-        assert_eq!(fs::read_dir(h.path()).unwrap().count(), 1);
+fn a_legacy_key_file_is_named_and_never_read() {
+    let mut big = format!("GLM_API_KEY={TOKEN}\n#").into_bytes();
+    big.resize(65_537, b'x');
+    for file in [".moai/.env.glm", ".moai-cli/.env.glm"] {
+        for bytes in [
+            format!("GLM_API_KEY={TOKEN}\n").into_bytes(),
+            format!("export ANTHROPIC_AUTH_TOKEN=\"{TOKEN}\"\n").into_bytes(),
+            b"GLM_API_KEY=\n".to_vec(),
+            b"OTHER_KEY=value\n".to_vec(),
+            b"GLM_API_KEY=\xff\xfebad\n".to_vec(),
+            format!("GLM_API_KEY={TOKEN}\x1bx\n").into_bytes(),
+            big.clone(),
+        ] {
+            let h = home(&[(file, &bytes)]);
+            let before = snapshot(h.path());
+            let (code, v, text) = dry(h.path(), None);
+            assert_eq!(code, 1, "{file}: {text}");
+            assert_eq!(v, Value::Null, "{file}");
+            assert!(text.contains("blocked: legacy_key_only"), "{file}: {text}");
+            assert!(text.contains(file), "{file}: {text}");
+            assert!(text.contains("moai-cli key-set glm"), "{text}");
+            assert!(!text.contains(TOKEN), "value shown for {file}");
+            assert!(!text.contains("panicked"), "{text}");
+            assert_eq!(snapshot(h.path()), before, "{file} changed");
+        }
     }
 }
 
+/// Entries that cannot be read as files still count as present and are never opened: a
+/// directory, a file with mode 000, and a FIFO with no writer (opening it would block).
+#[cfg(unix)]
 #[test]
-fn no_usable_key_anywhere_is_blocked() {
-    for files in [
-        vec![],
-        vec![(".moai-cli/.env.glm", "GLM_API_KEY=\n")],
-        vec![(".moai/.env.glm", "GLM_API_KEY=\"\"\n")],
-        vec![(".moai/.env.glm", "OTHER_KEY=value\n")],
-        vec![(".moai/.env.glm", "# GLM_API_KEY=commented\n")],
-    ] {
-        let h = home(&files);
-        let (code, v, text) = dry(h.path(), None);
-        assert_ne!(code, 0, "{files:?}");
-        assert_eq!(v, Value::Null, "{files:?}");
-        assert!(
-            text.contains("blocked") && text.contains("ANTHROPIC_AUTH_TOKEN"),
-            "{text}"
-        );
-        assert!(text.contains(".moai-cli/.env.glm"), "{text}");
-    }
-}
-
-#[test]
-fn an_unreadable_or_malformed_key_file_is_blocked_without_a_panic_or_an_echo() {
-    // A directory where the file should be.
+fn an_unreadable_entry_at_the_legacy_path_is_named_without_opening_it() {
+    use std::os::unix::fs::PermissionsExt;
     let h = tempfile::tempdir().unwrap();
     fs::create_dir_all(h.path().join(".moai-cli/.env.glm")).unwrap();
     let (code, _, text) = dry(h.path(), None);
     assert_eq!(code, 1, "{text}");
-    assert!(
-        text.contains("blocked") && !text.contains("panicked"),
-        "{text}"
-    );
-    // Bytes that are not UTF-8, and a value carrying a control character.
-    for bytes in [
-        b"GLM_API_KEY=\xff\xfebad\n".to_vec(),
-        b"GLM_API_KEY=bad\x1bvalue-not-shown\n".to_vec(),
-    ] {
-        let h = tempfile::tempdir().unwrap();
-        fs::create_dir(h.path().join(".moai")).unwrap();
-        fs::write(h.path().join(".moai/.env.glm"), bytes).unwrap();
-        let (code, _, text) = dry(h.path(), None);
-        assert_eq!(code, 1, "{text}");
-        assert!(
-            text.contains("blocked") && !text.contains("panicked"),
-            "{text}"
-        );
-        assert!(!text.contains("value-not-shown") && !text.contains("bad"));
-    }
-}
+    assert!(text.contains("blocked: legacy_key_only"), "{text}");
 
-#[cfg(unix)]
-#[test]
-fn an_empty_global_file_falls_through_to_the_rust_home_one() {
-    let h = home(&[
-        (".moai/.env.glm", "GLM_API_KEY=\n"),
-        (".moai-cli/.env.glm", "GLM_API_KEY=from-rust-home\n"),
-    ]);
-    assert_eq!(host_token(h.path(), None), "from-rust-home");
-}
+    let h = home(&[(
+        ".moai/.env.glm",
+        format!("GLM_API_KEY={TOKEN}\n").as_bytes(),
+    )]);
+    let file = h.path().join(".moai/.env.glm");
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o000)).unwrap();
+    let (code, _, text) = dry(h.path(), None);
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+    assert_eq!(code, 1, "{text}");
+    assert!(text.contains("blocked: legacy_key_only"), "{text}");
 
-/// A FIFO at the key path has no writer: opening it would block for ever. The launcher must
-/// skip it and end `blocked` at once.
-#[cfg(unix)]
-#[test]
-fn a_fifo_at_the_key_path_does_not_hang_the_launcher() {
     let h = tempfile::tempdir().unwrap();
     fs::create_dir(h.path().join(".moai")).unwrap();
     let made = Command::new("mkfifo")
@@ -192,7 +169,8 @@ fn a_fifo_at_the_key_path_does_not_hang_the_launcher() {
         if let Some(status) = child.try_wait().unwrap() {
             break status;
         }
-        if started.elapsed() > std::time::Duration::from_secs(20) {
+        // #2511: a hang guard (a FIFO read blocks forever), so the bound is generous.
+        if started.elapsed() > std::time::Duration::from_secs(120) {
             child.kill().unwrap();
             child.wait().unwrap();
             panic!("the launcher hung on a FIFO key file");
@@ -202,40 +180,55 @@ fn a_fifo_at_the_key_path_does_not_hang_the_launcher() {
     assert_eq!(status.code(), Some(1));
 }
 
-/// The size limit is 65536 bytes: a file of exactly that size is read, one byte more is not.
+/// With both legacy files present, the Go tool's global one is named.
 #[test]
-fn the_key_file_size_limit_is_65536_bytes() {
-    let line = format!("GLM_API_KEY={TOKEN}\n");
-    for (size, code) in [(65536usize, 0), (65537usize, 1)] {
-        let mut text = line.clone();
-        text.push('#');
-        text.push_str(&"x".repeat(size - line.len() - 2));
-        text.push('\n');
-        assert_eq!(text.len(), size);
-        let h = home(&[(".moai/.env.glm", &text)]);
-        let (got, _, out) = dry(h.path(), None);
-        assert_eq!(got, code, "size {size}: {out}");
-        assert!(!out.contains(TOKEN));
-    }
+fn the_global_file_is_named_first() {
+    let h = home(&[
+        (".moai-cli/.env.glm", b"GLM_API_KEY=a\n"),
+        (".moai/.env.glm", b"GLM_API_KEY=b\n"),
+    ]);
+    let (_, _, text) = dry(h.path(), None);
+    assert!(text.contains("~/.moai/.env.glm"), "{text}");
+    assert!(!text.contains(".moai-cli/.env.glm"), "{text}");
+}
+
+/// No variable, no vault entry and no legacy file: `key_absent`, naming the vault command.
+#[test]
+fn no_key_anywhere_is_blocked() {
+    let h = home(&[]);
+    let (code, v, text) = dry(h.path(), None);
+    assert_eq!(code, 1, "{text}");
+    assert_eq!(v, Value::Null);
+    assert!(text.contains("blocked: key_absent"), "{text}");
+    assert!(text.contains("ANTHROPIC_AUTH_TOKEN") && text.contains("key-set glm"));
+    assert!(!text.contains(".env.glm"), "{text}");
 }
 
 #[test]
-fn the_variable_wins_and_the_file_is_not_reported() {
-    let h = home(&[(".moai-cli/.env.glm", "GLM_API_KEY=file-value-unused\n")]);
+fn the_variable_wins_and_the_legacy_file_is_not_touched() {
+    let h = home(&[(".moai-cli/.env.glm", b"GLM_API_KEY=file-value-unused\n")]);
+    let before = snapshot(h.path());
     let (code, v, text) = dry(h.path(), Some(ENV_TOKEN));
     assert_eq!(code, 0, "{text}");
     assert!(!text.contains(ENV_TOKEN) && !text.contains("file-value-unused"));
-    assert!(!v["notes"].to_string().contains("key file"));
-}
-
-#[cfg(unix)]
-#[test]
-fn the_global_file_is_read_before_the_rust_home_one() {
-    let h = home(&[
-        (".moai-cli/.env.glm", "GLM_API_KEY=from-rust-home\n"),
-        (".moai/.env.glm", "GLM_API_KEY=from-global\n"),
-    ]);
-    assert_eq!(host_token(h.path(), None), "from-global");
+    assert_eq!(v["key_source"], "env:ANTHROPIC_AUTH_TOKEN");
+    assert_eq!(
+        v["env_keys"],
+        json!([
+            "ANTHROPIC_BASE_URL",
+            "API_TIMEOUT_MS",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "ANTHROPIC_DEFAULT_FABLE_MODEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+            "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "ANTHROPIC_AUTH_TOKEN",
+            "Z_AI_API_KEY"
+        ])
+    );
+    assert_eq!(snapshot(h.path()), before);
 }
 
 /// Starts a stand-in `claude` that records the token it was given, and returns that record.
@@ -275,8 +268,6 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
             "https://api.z.ai/api/anthropic|3000000|glm-5.3|glm-5.3|glm-5.3-flash|glm-5.3|1000000|1000000|1|{token}"
         )
     );
-    // A one-character boundary token occurs in ordinary output words, so the echo check only
-    // applies to tokens long enough to be distinctive.
     if token.len() >= 8 {
         assert!(!text.contains(token), "token value echoed by the launcher");
     }
@@ -297,60 +288,30 @@ fn an_empty_or_blank_variable_is_no_token_and_one_character_is_one() {
             "env {value:?}: {text}"
         );
     }
-    let (code, v, text) = dry(bare.path(), Some("k"));
+    let (code, _, text) = dry(bare.path(), Some("k"));
     assert_eq!(code, 0, "env \"k\": {text}");
-    assert!(!v["notes"].to_string().contains("key file"), "{text}");
 }
 
-/// An empty or whitespace-only variable must not hide a key file: the file value reaches the
-/// host under both names, never the blank one.
-#[cfg(unix)]
+/// A blank variable is no token, and a legacy file behind it is still only named.
 #[test]
-fn a_blank_variable_falls_through_to_each_key_file() {
+fn a_blank_variable_with_a_legacy_file_is_legacy_key_only() {
     for file in [".moai/.env.glm", ".moai-cli/.env.glm"] {
-        let h = home(&[(file, "GLM_API_KEY=from-file\n")]);
+        let h = home(&[(file, b"GLM_API_KEY=from-file\n")]);
         for value in ["", "   "] {
-            assert_eq!(
-                host_token(h.path(), Some(value)),
-                "from-file",
-                "{file} env {value:?}"
-            );
-            let (code, v, text) = dry(h.path(), Some(value));
-            assert_eq!(code, 0, "{file} env {value:?}: {text}");
-            assert!(v["notes"].to_string().contains("key file"), "{text}");
+            let (code, _, text) = dry(h.path(), Some(value));
+            assert_eq!(code, 1, "{file} env {value:?}: {text}");
+            assert!(text.contains("blocked: legacy_key_only"), "{text}");
         }
-        assert_eq!(host_token(h.path(), Some("k")), "k", "{file}");
-    }
-}
-
-/// AC4 boundary for each key file: empty and whitespace-only values are blocked, a
-/// one-character value is used.
-#[cfg(unix)]
-#[test]
-fn each_key_file_blocks_empty_and_blank_values_and_takes_one_character() {
-    for file in [".moai/.env.glm", ".moai-cli/.env.glm"] {
-        for line in [
-            "GLM_API_KEY=\n",
-            "GLM_API_KEY=   \n",
-            "GLM_API_KEY=\" \"\n",
-            "ANTHROPIC_AUTH_TOKEN=\t\n",
-        ] {
-            let h = home(&[(file, line)]);
-            let (code, v, text) = dry(h.path(), None);
-            assert_eq!(code, 1, "{file} {line:?}: {text}");
-            assert_eq!(v, Value::Null, "{file} {line:?}");
-            assert!(text.contains("blocked"), "{file} {line:?}: {text}");
-        }
-        let h = home(&[(file, "GLM_API_KEY=k\n")]);
-        assert_eq!(host_token(h.path(), None), "k", "{file}");
     }
 }
 
 #[cfg(unix)]
 #[test]
-fn the_host_process_receives_the_token() {
-    let h = home(&[(".moai/.env.glm", &format!("GLM_API_KEY={TOKEN}\n"))]);
-    assert_eq!(host_token(h.path(), None), TOKEN);
-    // With the variable set the child inherits it and the file is ignored.
+fn the_host_process_receives_the_variable() {
+    let h = home(&[(
+        ".moai/.env.glm",
+        format!("GLM_API_KEY={TOKEN}\n").as_bytes(),
+    )]);
     assert_eq!(host_token(h.path(), Some(ENV_TOKEN)), ENV_TOKEN);
+    assert_eq!(host_token(h.path(), Some("k")), "k");
 }

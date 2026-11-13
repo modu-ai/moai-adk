@@ -1,6 +1,6 @@
 """SYNC drift detection fixtures for the four kinds added by #2168 (REQ-B1-01).
 
-The normative procedure is skills/moai-cli/workflows/sync.md step 3: drift beyond
+The normative procedure is skills/moai/workflows/sync.md step 3: drift beyond
 the original three kinds (omission, amendment, document mismatch) is classified
 as `(kind, ground, proposed_action)`, reported separately, and the approved
 SPEC is never auto-weakened. This file is the DETECTION FIXTURE for the four
@@ -9,11 +9,12 @@ asserts the classification plus that the SPEC bytes are untouched. The
 procedure itself stays prose executed by the host; nothing here is product
 code.
 
-Fixture states mirror the design's seven-way classification wording:
-- spec_oracle_conflict       "SPEC 문구와 테스트 oracle이 충돌함"
-- broken_reference           "삭제·이름 변경으로 참조가 끊김"
-- done_but_stale_evidence    "Issue는 완료인데 검증 증거가 없거나 stale임"
-- explicit_link_unreviewed   "명시 link는 있으나 의미가 맞는지 검토되지 않음"
+Fixture states mirror the design's seven-way classification wording (original text:
+docs/design-review/appendix/state-vocabulary-crosswalk.md):
+- spec_oracle_conflict       the SPEC wording and a test oracle contradict each other
+- broken_reference           a deletion or rename severed a reference
+- done_but_stale_evidence    the Issue is done but its verification evidence is missing or stale
+- explicit_link_unreviewed   an explicit link exists but its meaning was never reviewed
 """
 
 import os
@@ -22,7 +23,7 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SYNC = os.path.join(ROOT, "skills", "moai-cli", "workflows", "sync.md")
+SYNC = os.path.join(ROOT, "skills", "moai", "workflows", "sync.md")
 CROSSWALK_REL = "docs/design-review/appendix/state-vocabulary-crosswalk.md"
 ORIGINAL_THREE = ("omission", "amendment", "document mismatch")
 

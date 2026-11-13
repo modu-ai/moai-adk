@@ -1,8 +1,11 @@
 //! #2016 isolated migration rehearsal. No live HOME discovery, launcher, key,
 //! PATH, host configuration, binary replacement or Go removal is implemented.
-//! The leader owns CLI registration. Filesystem execution is deliberately confined
-//! to an explicitly supplied temporary synthetic home; production admission remains
-//! a separate integration gate. Callers must serialize access to that fixture.
+//! The CLI (`migrate-plan`, `migrate-apply`, `migrate-recovery-plan`,
+//! `migrate-recover`; user decision 2026-11-11, #2016 comment 6784520717) reaches
+//! this module only through `open_cli_home`, which admits an explicitly supplied
+//! temporary synthetic home carrying the `SYNTHETIC_MARKER` file and refuses the
+//! user's own home. A run against a real home remains a separate confirmed gate.
+//! Callers must serialize access to that fixture.
 
 use crate::apply;
 use serde::{Deserialize, Serialize};
@@ -200,7 +203,7 @@ fn toml_table_sensitive(table: &toml_edit::Table) -> bool {
 // is intentionally limited to a flat scalar map: tags, aliases, nested/multiline
 // values and non-JSON escapes are refused rather than guessed. Plain SPEC text
 // may pass the same policy, but ambiguous escape sequences are never copied.
-fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
+pub(crate) fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
     let text = std::str::from_utf8(bytes).map_err(|_| "text source required")?;
     if sensitive_text(text) {
         return Ok(true);
@@ -261,12 +264,58 @@ fn sensitive_content(bytes: &[u8], is_spec: bool) -> Result<bool> {
     Ok(false)
 }
 
+/// Host choices for a migration. The on-prem host (`OnPrem`) was removed by the user decision of
+/// 2026-11-10 10:07Z; an `OnPrem` request is refused as an unknown variant.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Host {
     Claude,
     Codex,
     Glm,
-    OnPrem,
+}
+
+/// The file hashes one Go MoAI release shipped (#2016 decision 6784520717: ownership
+/// also needs the release list). It travels in the request today, so it is a statement
+/// of the caller, not an independent proof; where the real list comes from is HOLD.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct GoRelease {
+    pub version: String,
+    pub sha256: Vec<String>,
+}
+/// Reachable through `migrate-plan`: 768 hashes are about 51 KiB of the 64 KiB request
+/// (67 bytes each), which leaves room for the selections and covers a Go release of 663
+/// template files (measured 2026-11-11).
+pub const RELEASE_HASH_LIMIT: usize = 768;
+impl GoRelease {
+    fn check(&self) -> Result<()> {
+        let v = &self.version;
+        if v.is_empty()
+            || v.len() > 64
+            || !v
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+' | '_'))
+        {
+            return Err("invalid Go release version".into());
+        }
+        if self.sha256.is_empty() || self.sha256.len() > RELEASE_HASH_LIMIT {
+            return Err("bounded Go release hash list required".into());
+        }
+        let mut seen = BTreeSet::new();
+        for h in &self.sha256 {
+            if h.len() != 64
+                || !h
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+                || !seen.insert(h)
+            {
+                return Err("Go release hashes must be distinct lowercase sha256".into());
+            }
+        }
+        Ok(())
+    }
+    fn contains(&self, h: &str) -> bool {
+        self.sha256.iter().any(|x| x == h)
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Mode {
@@ -297,6 +346,10 @@ pub struct Plan {
     pub home: PathBuf,
     pub hosts: Vec<Host>,
     pub mode: Mode,
+    /// Bound into `digest`, so apply re-derives ownership from the same list. `None`
+    /// only for library rehearsals; the CLI refuses a plan without it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub go_release: Option<GoRelease>,
     pub summary: String,
     pub entries: Vec<Entry>,
     pub digest: String,
@@ -306,6 +359,9 @@ pub struct Plan {
 pub struct Receipt {
     pub plan: Plan,
     pub published: Vec<bool>,
+    /// The CLI's `--permission-reference`, recorded as given (not an authorization).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission_reference: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -323,7 +379,10 @@ impl SyntheticHome {
         let root = fs::canonicalize(root).map_err(|_| "synthetic root unavailable")?;
         let temp = fs::canonicalize(std::env::temp_dir()).map_err(|_| "temp unavailable")?;
         if root == temp || !root.starts_with(&temp) || !root.is_dir() {
-            return Err("only an explicit temporary synthetic home is allowed".into());
+            return Err(
+                "synthetic home refused: only a directory under the system temp directory is allowed"
+                    .into(),
+            );
         }
         Ok(Self { root })
     }
@@ -393,7 +452,10 @@ impl SyntheticHome {
             .iter()
             .any(|s| lower.contains(s))
         {
-            return Err("only selected non-secret Go config and SPEC files are allowed".into());
+            return Err(
+                "selection refused: only selected non-secret Go config and SPEC files are allowed"
+                    .into(),
+            );
         }
         let bytes = self.read(rel)?.ok_or("source missing")?;
         let text = std::str::from_utf8(&bytes)
@@ -404,14 +466,44 @@ impl SyntheticHome {
         }
         Ok(bytes)
     }
+    /// Library rehearsal without release evidence: ownership rests on the recorded hash
+    /// alone. The CLI uses `plan_release`.
     pub fn plan(&self, hosts: &[Host], mode: Mode, selections: &[Selection]) -> Result<Plan> {
+        self.plan_with(hosts, mode, None, selections)
+    }
+    /// `owned` needs the recorded hash to match AND the hash to be in the Go release
+    /// list; a recorded file outside the list is `unreleased` and an unrecorded file in
+    /// the list is `release_match_unrecorded`. Both are preserved, never imported.
+    pub fn plan_release(
+        &self,
+        hosts: &[Host],
+        mode: Mode,
+        release: &GoRelease,
+        selections: &[Selection],
+    ) -> Result<Plan> {
+        release.check()?;
+        self.plan_with(hosts, mode, Some(release), selections)
+    }
+    fn plan_with(
+        &self,
+        hosts: &[Host],
+        mode: Mode,
+        release: Option<&GoRelease>,
+        selections: &[Selection],
+    ) -> Result<Plan> {
         if hosts.is_empty() || selections.is_empty() || selections.len() > 128 {
             return Err("bounded explicit selection required".into());
+        }
+        let distinct: BTreeSet<_> = hosts.iter().map(|h| format!("{h:?}")).collect();
+        if distinct.len() != hosts.len() {
+            return Err("distinct hosts required".into());
         }
         let mut seen = BTreeSet::new();
         let mut entries = Vec::new();
         for s in selections {
-            if !s.target.starts_with(".moai-cli/imports/") || !seen.insert(s.target.clone()) {
+            if !s.target.starts_with(crate::project_state!("imports/"))
+                || !seen.insert(s.target.clone())
+            {
                 return Err("distinct import targets required".into());
             }
             let src = self.source(&s.source)?;
@@ -425,12 +517,15 @@ impl SyntheticHome {
                 {
                     self.read(path)?.map(|b| hash(&b))
                 }
-                Some(_) => return Err("project comparison must name config or SPEC".into()),
+                Some(_) => return Err("invalid project comparison: name config or SPEC".into()),
             };
-            let ownership = match &s.recorded_sha256 {
-                None => "unknown",
-                Some(h) if h == &source_sha256 => "owned",
-                Some(_) => "modified",
+            let released = release.map(|r| r.contains(&source_sha256));
+            let ownership = match (&s.recorded_sha256, released) {
+                (None, Some(true)) => "release_match_unrecorded",
+                (None, _) => "unknown",
+                (Some(h), Some(false)) if h == &source_sha256 => "unreleased",
+                (Some(h), _) if h == &source_sha256 => "owned",
+                (Some(_), _) => "modified",
             };
             let action = if sensitive_content(&src, s.source.starts_with(".moai/specs/"))? {
                 "excluded_secret"
@@ -454,11 +549,12 @@ impl SyntheticHome {
                 action: action.into(),
             });
         }
-        let summary = format!("Hosts: {hosts:?}; mode: {mode:?}. Default requests confirmation; automatic mode can reduce permission prompts and isolation in a host adapter. This rehearsal does not change security modes, keys, PATH or host settings. GLM/OnPrem adapter support is unverified. Global .moai is the source baseline; existing project imports are conflicts. Final summary confirmation must bind this entire plan.");
+        let summary = format!("Hosts: {hosts:?}; mode: {mode:?}. Default requests confirmation; automatic mode can reduce permission prompts and isolation in a host adapter. This rehearsal does not change security modes, keys, PATH or host settings. GLM adapter support is unverified. Global .moai is the source baseline; existing project imports are conflicts. Final summary confirmation must bind this entire plan.");
         let mut plan = Plan {
             home: self.root.clone(),
             hosts: hosts.to_vec(),
             mode,
+            go_release: release.cloned(),
             summary,
             entries,
             digest: String::new(),
@@ -477,15 +573,29 @@ impl SyntheticHome {
         apply::publish_replace(&p, old.as_deref(), &bytes)
     }
     pub fn apply(&self, plan: &Plan, confirmed: &str) -> Result<Receipt> {
+        self.apply_recorded(plan, confirmed, None)
+    }
+    /// `apply` that records the caller's permission reference in the durable receipt.
+    pub fn apply_recorded(
+        &self,
+        plan: &Plan,
+        confirmed: &str,
+        permission_reference: Option<String>,
+    ) -> Result<Receipt> {
         let selections: Vec<_> = plan.entries.iter().map(|e| e.selection.clone()).collect();
-        let fresh = self.plan(&plan.hosts, plan.mode.clone(), &selections)?;
+        let fresh = match &plan.go_release {
+            Some(r) => self.plan_release(&plan.hosts, plan.mode.clone(), r, &selections)?,
+            None => self.plan(&plan.hosts, plan.mode.clone(), &selections)?,
+        };
         if plan != &fresh || confirmed != fresh.digest {
-            return Err("stale, altered or unconfirmed summary".into());
+            return Err("stale or altered plan: unconfirmed summary; rerun migrate-plan".into());
         }
         if plan.entries.iter().any(|e| {
             e.action == "conflict" || e.action == "excluded_secret" || e.ownership != "owned"
         }) {
-            return Err("conflict or preserved source; reselect before apply".into());
+            return Err(
+                "conflict in selection: conflict or preserved source; reselect before apply".into(),
+            );
         }
         let root = self
             .path(&Self::backup_rel(plan, "backup"))?
@@ -494,7 +604,13 @@ impl SyntheticHome {
             .to_path_buf();
         fs::create_dir_all(root.parent().ok_or("backup parent")?)
             .map_err(|_| "backup unavailable")?;
-        fs::create_dir(&root).map_err(|_| "backup already exists or unavailable")?;
+        fs::create_dir(&root).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                "exclusive create refused: backup already exists"
+            } else {
+                "backup unavailable"
+            }
+        })?;
         for (i, e) in plan.entries.iter().enumerate() {
             let bytes = self.source(&e.selection.source)?;
             if hash(&bytes) != e.source_sha256 {
@@ -509,6 +625,7 @@ impl SyntheticHome {
         let mut receipt = Receipt {
             plan: plan.clone(),
             published: vec![false; plan.entries.len()],
+            permission_reference,
         };
         self.save_receipt(&receipt)?;
         for (i, e) in plan.entries.iter().enumerate() {
@@ -549,7 +666,11 @@ impl SyntheticHome {
         }
         let mut actions = Vec::new();
         for (i, e) in receipt.plan.entries.iter().enumerate() {
-            if !e.selection.target.starts_with(".moai-cli/imports/") {
+            if !e
+                .selection
+                .target
+                .starts_with(crate::project_state!("imports/"))
+            {
                 return Err("invalid recovery target".into());
             }
             let backup = self
@@ -588,7 +709,9 @@ impl SyntheticHome {
     pub fn recover(&self, plan: &RecoveryPlan, confirmed: &str) -> Result<Vec<String>> {
         let fresh = self.recovery_plan(&plan.receipt)?;
         if plan != &fresh || confirmed != fresh.digest {
-            return Err("stale or unconfirmed recovery".into());
+            return Err(
+                "stale or altered plan: unconfirmed recovery; rerun migrate-recovery-plan".into(),
+            );
         }
         for (e, a) in fresh.receipt.plan.entries.iter().zip(&fresh.actions) {
             if a == "removed_import" {
@@ -604,4 +727,192 @@ impl SyntheticHome {
         }
         Ok(fresh.actions)
     }
+    /// The durable receipt of one apply, read from its backup folder.
+    pub fn receipt(&self, backup: &str) -> Result<Receipt> {
+        if backup.len() != 64 || !backup.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err("invalid backup id; refused".into());
+        }
+        let bytes = self
+            .read(&format!(".moai-go-backup/{backup}/manifest.json"))?
+            .ok_or("backup manifest not found")?;
+        let receipt: Receipt = serde_json::from_slice(&bytes).map_err(|_| "invalid manifest")?;
+        if receipt.plan.digest != backup {
+            return Err("backup manifest digest mismatch".into());
+        }
+        Ok(receipt)
+    }
+}
+
+// ---- CLI surface (#2016 decision 6784520717: synthetic HOME only) ----
+
+/// File that marks a directory as a prepared synthetic home. The temporary-directory
+/// test alone trusts `TMPDIR`; this marker is the positive proof that the caller set
+/// the directory up for a rehearsal, so a redirected `TMPDIR` cannot admit a real home.
+pub const SYNTHETIC_MARKER: &str = ".moai-cli-synthetic-home";
+pub const SYNTHETIC_MARKER_TEXT: &[u8] = b"moai-cli synthetic home v1\n";
+
+/// Typed `migrate-plan` request (stdin). The release list is required here.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PlanRequest {
+    pub hosts: Vec<Host>,
+    pub mode: Mode,
+    pub go_release: GoRelease,
+    pub selections: Vec<Selection>,
+}
+
+/// One entry the update-conflict preview shows before any confirmation.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Conflict {
+    pub source: String,
+    pub target: String,
+    pub project_current: Option<String>,
+    /// `project_differs`: the project setting differs from the global `.moai` source;
+    /// `target_exists`: an import with other bytes is already there.
+    pub reason: String,
+}
+
+pub fn conflict_preview(plan: &Plan) -> Vec<Conflict> {
+    plan.entries
+        .iter()
+        .filter(|e| e.action == "conflict")
+        .map(|e| Conflict {
+            source: e.selection.source.clone(),
+            target: e.selection.target.clone(),
+            project_current: e.selection.project_current.clone(),
+            reason: if e
+                .project_sha256
+                .as_ref()
+                .is_some_and(|h| h != &e.source_sha256)
+            {
+                "project_differs"
+            } else {
+                "target_exists"
+            }
+            .into(),
+        })
+        .collect()
+}
+
+/// Admits HOME for the CLI: a temporary directory (`SyntheticHome::new`) that carries
+/// the exact marker file and is neither the user's `$HOME` nor one of its ancestors.
+pub fn open_cli_home(home: &Path) -> Result<SyntheticHome> {
+    let h = SyntheticHome::new(home)?;
+    let marker = h.root.join(SYNTHETIC_MARKER);
+    let ok = fs::symlink_metadata(&marker)
+        .map(|m| m.is_file() && m.len() == SYNTHETIC_MARKER_TEXT.len() as u64)
+        .unwrap_or(false)
+        && fs::read(&marker).ok().as_deref() == Some(SYNTHETIC_MARKER_TEXT);
+    if !ok {
+        return Err(format!(
+            "migrate refused: {SYNTHETIC_MARKER} marker missing; only a prepared synthetic home is allowed"
+        ));
+    }
+    if let Some(user) = std::env::var_os("HOME").filter(|v| !v.is_empty()) {
+        if let Ok(user) = fs::canonicalize(user) {
+            if user.starts_with(&h.root) {
+                return Err("migrate refused: HOME is the user's home or contains it".into());
+            }
+        }
+    }
+    Ok(h)
+}
+
+fn permission(reference: &str) -> Result<()> {
+    // Same rule as `apply::recover`: a recorded reference, not an authorization check.
+    if !crate::contract::permission_reference_ok(reference) {
+        return Err("permission reference required".into());
+    }
+    Ok(())
+}
+
+fn encode<T: Serialize>(v: &T) -> Result<serde_json::Value> {
+    serde_json::to_value(v).map_err(|_| "encode failed".into())
+}
+
+/// `migrate-plan HOME`: writes nothing.
+pub fn plan_cli(home: &Path, request: &PlanRequest) -> Result<serde_json::Value> {
+    let h = open_cli_home(home)?;
+    let plan = h.plan_release(
+        &request.hosts,
+        request.mode.clone(),
+        &request.go_release,
+        &request.selections,
+    )?;
+    let conflicts = conflict_preview(&plan);
+    let applicable = plan
+        .entries
+        .iter()
+        .all(|e| e.ownership == "owned" && matches!(e.action.as_str(), "create" | "unchanged"));
+    Ok(serde_json::json!({
+        "plan_digest": plan.digest,
+        "applicable": applicable,
+        "conflict_preview": encode(&conflicts)?,
+        "plan": encode(&plan)?,
+        "writes": 0,
+        "next": "migrate-apply HOME --plan-digest <plan_digest> --permission-reference <ref> with the plan on stdin",
+    }))
+}
+
+/// `migrate-apply HOME`: the plan on stdin must equal a fresh recompute and the digest.
+pub fn apply_cli(
+    home: &Path,
+    plan: &Plan,
+    plan_digest: &str,
+    reference: &str,
+) -> Result<serde_json::Value> {
+    permission(reference)?;
+    let h = open_cli_home(home)?;
+    let release = plan
+        .go_release
+        .as_ref()
+        .ok_or("stale or altered plan: Go release list missing; rerun migrate-plan")?;
+    let selections: Vec<_> = plan.entries.iter().map(|e| e.selection.clone()).collect();
+    let fresh = h.plan_release(&plan.hosts, plan.mode.clone(), release, &selections)?;
+    if plan != &fresh || plan.digest != plan_digest {
+        return Err("stale or altered plan; rerun migrate-plan".into());
+    }
+    let receipt = h.apply_recorded(plan, plan_digest, Some(reference.into()))?;
+    Ok(serde_json::json!({
+        "backup": receipt.plan.digest,
+        "published": receipt.published,
+        "imports": receipt.plan.entries.iter().zip(&receipt.published)
+            .filter(|(_, p)| **p).map(|(e, _)| e.selection.target.clone()).collect::<Vec<_>>(),
+        "permission_reference": reference,
+        "source_kept": true,
+    }))
+}
+
+/// `migrate-recovery-plan HOME --backup D`: writes nothing.
+pub fn recovery_plan_cli(home: &Path, backup: &str) -> Result<serde_json::Value> {
+    let h = open_cli_home(home)?;
+    let plan = h.recovery_plan(&h.receipt(backup)?)?;
+    Ok(serde_json::json!({
+        "plan_digest": plan.digest,
+        "actions": plan.actions,
+        "plan": encode(&plan)?,
+        "writes": 0,
+    }))
+}
+
+/// `migrate-recover HOME --backup D`: removes only imports this apply published.
+pub fn recover_cli(
+    home: &Path,
+    backup: &str,
+    plan: &RecoveryPlan,
+    plan_digest: &str,
+    reference: &str,
+) -> Result<serde_json::Value> {
+    permission(reference)?;
+    let h = open_cli_home(home)?;
+    let fresh = h.recovery_plan(&h.receipt(backup)?)?;
+    if plan != &fresh || plan.digest != plan_digest {
+        return Err("stale or altered plan; rerun migrate-recovery-plan".into());
+    }
+    let actions = h.recover(plan, plan_digest)?;
+    Ok(serde_json::json!({
+        "actions": actions,
+        "permission_reference": reference,
+        "backup_kept": true,
+    }))
 }

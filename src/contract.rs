@@ -11,6 +11,20 @@ use serde_json::{json, Value};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
+/// Longest permission reference, in bytes, that a write operation accepts.
+pub const PERMISSION_REFERENCE_MAX_BYTES: usize = 128;
+
+/// Whether a caller-supplied permission reference is usable (WF-OBS #24, Issue #2401).
+///
+/// A reference is refused when it is empty, `null` or `placeholder` after trimming, longer than
+/// [`PERMISSION_REFERENCE_MAX_BYTES`] bytes, or carries a control character. Caller
+/// authorization remains host-owned; this check is not an authorization verifier.
+pub fn permission_reference_ok(reference: &str) -> bool {
+    !(["", "null", "placeholder"].contains(&reference.trim())
+        || reference.len() > PERMISSION_REFERENCE_MAX_BYTES
+        || reference.chars().any(char::is_control))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Usage,
@@ -120,6 +134,18 @@ const RULES: &[(&str, Kind)] = &[
     ("claim verify: not owner", Kind::Conflict),
     ("claim verify: closed", Kind::Conflict),
     ("claim verify: no claim", Kind::Conflict),
+    // audit-claim (rc.2 #2403 item 1): ahead of the generic words its messages quote.
+    ("audit claim refused: ", Kind::InvalidInput),
+    ("audit claim conflict: ", Kind::Conflict),
+    ("audit claim blocked: ", Kind::Blocked),
+    // audit-delta (#2403): explicit prefixes precede generic Git/input phrases.
+    ("audit delta refused: ", Kind::InvalidInput),
+    ("audit delta blocked: ", Kind::Blocked),
+    ("audit delta git failed: ", Kind::GitFailed),
+    ("audit delta I/O failed: ", Kind::Io),
+    // decision-append (rc.2 #2403): ahead of the generic words its messages may contain.
+    ("decision append blocked: ", Kind::Blocked),
+    ("decision append refused: ", Kind::InvalidInput),
     ("claim verify: stale", Kind::Blocked),
     ("claim verify: uncertain", Kind::Blocked),
     ("claim verify: trailer missing", Kind::InvalidInput),
@@ -151,6 +177,9 @@ const RULES: &[(&str, Kind)] = &[
     ("changed since plan", Kind::StalePlan),
     ("changed during apply", Kind::StalePlan),
     ("requires preservation review", Kind::Conflict),
+    // #2727: reusing a receipt that was already reverted is a refusal on the target's state,
+    // not an internal error (agents, routing and Go-state reverts).
+    ("already reverted", Kind::Conflict),
     ("exclusive create refused", Kind::Conflict),
     ("malformed managed markers", Kind::Conflict),
     ("not uniquely locatable", Kind::Conflict),
@@ -186,6 +215,8 @@ const RULES: &[(&str, Kind)] = &[
     // incremental index (rc.2 C6 #2182): a failed build is plain I/O trouble; the
     // previous generation is kept and the query state turns partial.
     ("index build failed", Kind::Io),
+    // search (rc.2 C7 #2183): every refusal is about the request itself.
+    ("search refused: ", Kind::InvalidInput),
     ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
@@ -240,6 +271,60 @@ pub fn failure(operation: &str, kind: Kind, message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn permission_reference_boundaries() {
+        // Accepted: an ordinary reference, exactly 128 bytes, multi-byte text at 128 bytes.
+        assert!(permission_reference_ok("lane-approval-42"));
+        assert!(permission_reference_ok(&"a".repeat(128)));
+        let multi = format!("{}aa", "가".repeat(42));
+        assert_eq!(multi.len(), 128);
+        assert!(permission_reference_ok(&multi));
+        assert!(permission_reference_ok(" nullable "));
+        // Refused: empty or placeholder words after trimming.
+        for word in [
+            "",
+            "   ",
+            "null",
+            " null ",
+            "placeholder",
+            "\u{a0}placeholder",
+        ] {
+            assert!(!permission_reference_ok(word), "{word:?}");
+        }
+        // Refused: one byte over the limit, also when the overflow is a multi-byte character.
+        assert!(!permission_reference_ok(&"a".repeat(129)));
+        assert!(!permission_reference_ok(&format!("{}가", "a".repeat(126))));
+        // Refused: any control character, including inside the text.
+        for bad in ["ref\n", "re\u{7}f", "\tref", "ref\u{85}"] {
+            assert!(!permission_reference_ok(bad), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn permission_reference_rule_has_one_copy() {
+        // WF-OBS #24 (#2401): the rule lives only in `permission_reference_ok`.
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut stack = vec![root];
+        let mut copies = Vec::new();
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    let n = text.matches("\"placeholder\"].contains(").count();
+                    if n > 0 {
+                        copies.push((path, n));
+                    }
+                }
+            }
+        }
+        assert_eq!(copies.len(), 1, "{copies:?}");
+        assert!(copies[0].0.ends_with("src/contract.rs"), "{copies:?}");
+        assert_eq!(copies[0].1, 1, "{copies:?}");
+    }
 
     #[test]
     fn every_current_message_has_a_deliberate_kind() {
@@ -355,6 +440,37 @@ mod tests {
             ("lane status base_branch must be a plain branch name", InvalidInput),
             ("lane status evidence must be given with a session, a source and a time", InvalidInput),
             ("lane status page limit exceeded (50)", InvalidInput),
+            // audit-claim (rc.2 #2403 item 1)
+            ("audit claim refused: head must be 40 lowercase hex", InvalidInput),
+            ("audit claim refused: lane must be a plain name (letters, digits, - _ .)", InvalidInput),
+            ("audit claim conflict: PR #7 is not open", Conflict),
+            ("audit claim conflict: head is not the current head of PR #7 (aaaa); re-read the PR and reserve its current head", Conflict),
+            ("audit claim conflict: lane x is an author of PR #7 (claim comment 1); an author or repairer never audits its own PR", Conflict),
+            ("audit claim blocked: PR #7 names no Refs #<issue>, so its authors cannot be read", Blocked),
+            ("audit claim blocked: claim comment 1 named by a Moai-Claim trailer is not a claim line on Issue #3; authors cannot be ruled out", Blocked),
+            ("audit claim blocked: the comment POST returned HTTP 403; nothing was posted", Blocked),
+            // decision-append (rc.2 #2403)
+            ("decision append blocked: the project has no HEAD commit", Blocked),
+            ("decision append blocked: HEAD is not the given base (HEAD 0123); fetch the tip and work from a worktree at it", Blocked),
+            ("decision append blocked: the log differs from HEAD in the worktree or the index; commit or discard local edits first", Blocked),
+            ("decision append refused: give at least one row", InvalidInput),
+            ("decision append refused: base must be a 40-hex commit", InvalidInput),
+            ("decision append refused: --log must be a relative path inside the repository", InvalidInput),
+            ("decision append refused: --log passes through a symlink", InvalidInput),
+            ("decision append refused: --log must be UTF-8", InvalidInput),
+            ("decision append refused: PROJECT must be the repository top directory", InvalidInput),
+            ("decision append refused: --log is not tracked at HEAD", InvalidInput),
+            ("decision append refused: the log is not UTF-8", InvalidInput),
+            ("decision append refused: the log must hold exactly one table (found 2)", InvalidInput),
+            ("decision append refused: the table's last line has no line terminator", InvalidInput),
+            ("decision append refused: row 1 has 4 cells; the table has 5", InvalidInput),
+            ("decision append refused: row 1 cell 3 holds a bare | or a line break", InvalidInput),
+            ("decision append git failed to start", Io),
+            ("decision append project unreadable", Io),
+            ("decision append log unreadable", Io),
+            ("decision append log unreadable after write", Io),
+            ("decision append log replace failed; the log is unchanged", Io),
+            ("decision append log replace failed: read-back differs", Io),
             // identity (01-A #1988)
             ("path unavailable", NotFound),
             ("path must be a directory", InvalidInput),
@@ -434,6 +550,10 @@ mod tests {
             // archive move, restore and search (D2 #2188)
             ("readback digest mismatch; move cancelled, original kept", Conflict),
             ("source changed during apply; move cancelled, original kept", StalePlan),
+            // #2727: a reverted receipt used again
+            ("agent receipt already reverted", Conflict),
+            ("routing receipt already reverted", Conflict),
+            ("this apply was already reverted", Conflict),
             ("archive destination already exists; exclusive create refused", Conflict),
             ("archive index entry already exists; exclusive create refused", Conflict),
             ("restore destination already exists; exclusive create refused", Conflict),
@@ -476,7 +596,7 @@ mod tests {
             ("archived copy removal write failed", Io),
             ("search query must be 1 to 256 characters", InvalidInput),
             // hooks-plan / hooks-apply (rc.2 I1 #2238)
-            ("unknown hook host; must be claude or codex", InvalidInput),
+            ("unknown hook host; must be claude, codex or omp", InvalidInput),
             (
                 "home directory refused; hooks are written to a project tree only",
                 InvalidInput,
@@ -492,6 +612,22 @@ mod tests {
             ("index pointer write failed", Io),
             ("index pointer replace failed", Io),
             ("index pointer encode failed", Internal),
+            // search (rc.2 C7 #2183); every current message of the module
+            ("search refused: give at least one path or literal", InvalidInput),
+            ("search refused: too many query terms", InvalidInput),
+            (
+                "search refused: a path must be relative inside the repository",
+                InvalidInput,
+            ),
+            (
+                "search refused: a literal must be non-empty, one line, at most 512 bytes",
+                InvalidInput,
+            ),
+            ("search refused: max_files must be 1..=2000", InvalidInput),
+            (
+                "search refused: max_spans_per_file must be 1..=1000",
+                InvalidInput,
+            ),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

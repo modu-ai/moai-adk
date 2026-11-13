@@ -3,13 +3,15 @@
 //! naming it is a usage error that starts no host process and takes no `agent-N` number; the
 //! legacy top-level `-a <name>` keeps its `unknown host` error (exit 1). Runs in a temporary git
 //! project with a stub of that host on PATH that leaves a trace when it is started; no real host
-//! starts. The name is assembled at run time so that the whole-word scan below stays clean.
+//! starts. The name is assembled at run time; it was once kept out of every Rust file, but the
+//! 2026-11-13 user confirmation of five supported hosts (Issue #2633) brings the host back as
+//! an agent-file target, so only the launcher stays closed to it.
 #![cfg(unix)]
 mod common;
 use std::os::unix::fs::PermissionsExt;
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::Path,
     process::{Command, Output, Stdio},
 };
 
@@ -157,38 +159,6 @@ fn root_help_lists_cc_glm_and_codex_and_never_the_removed_host() {
         assert!(commands.contains(&host), "{host} missing from:\n{help}");
     }
     assert!(!words(&help).contains(&removed()), "{help}");
-}
-
-fn files_under(dir: &Path, out: &mut Vec<PathBuf>) {
-    for entry in fs::read_dir(dir).unwrap() {
-        let path = entry.unwrap().path();
-        if path.is_dir() {
-            files_under(&path, out);
-        } else if path.extension().is_some_and(|e| e == "rs") {
-            out.push(path);
-        }
-    }
-}
-
-/// AC3 for the code: no Rust source or test names the removed host (whole words, any case).
-/// The decision record and earlier history documents are listed as exceptions in the PR.
-#[test]
-fn no_rust_source_or_test_names_the_removed_host() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let mut files = Vec::new();
-    files_under(&root.join("src"), &mut files);
-    files_under(&root.join("tests"), &mut files);
-    assert!(
-        files.len() > 50,
-        "scan found too few files: {}",
-        files.len()
-    );
-    let hits: Vec<String> = files
-        .iter()
-        .filter(|p| words(&fs::read_to_string(p).unwrap()).contains(&removed()))
-        .map(|p| p.strip_prefix(root).unwrap().display().to_string())
-        .collect();
-    assert!(hits.is_empty(), "files naming the removed host: {hits:?}");
 }
 
 /// The support documents say the host is not supported, once, with the decision date; the

@@ -90,9 +90,21 @@ pub struct RunRequest {
     pub verification: VerificationRequest,
     /// A baseline receipt for `preserve`; arrives as JSON, so it is a self-report.
     pub baseline: Option<Value>,
+    /// A baseline receipt `run-verify` stored, named by attempt id and digest (#2392 D1).
+    #[serde(default)]
+    pub baseline_ref: Option<BaselineRef>,
     /// Paths the change touches, for the oracle-change check.
     #[serde(default)]
     pub diff_paths: Vec<String>,
+}
+
+/// Names a baseline receipt `run-verify` stored under the git common dir: the attempt id it
+/// was stored under and the sha256 `run-verify` reported for the file.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BaselineRef {
+    pub attempt_id: String,
+    pub digest: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -317,14 +329,25 @@ pub fn budget_exhausted(budget: Option<&Budget>, attempts: &[Receipt]) -> bool {
 }
 
 /// Required evidence the attempts have not produced yet: what is left to report at a stop.
+///
+/// Only a receipt this runner produced counts (a self-report is never evidence). The RED step
+/// of `tdd` / `bugfix` (`red`, `repro-fail`) is settled by an intended assertion failure —
+/// that step's receipt with `red_confirmed: Some(true)` — and not by a pass; a compile,
+/// network or no-selection failure leaves it open (#2392, design boundary table row 2). Every
+/// other step is settled by a passed receipt of that step.
 pub fn remaining_evidence(required: &[String], attempts: &[Receipt]) -> Vec<String> {
+    let settles = |r: &Receipt, step: &str| {
+        r.producer.kind == ProducerKind::RunnerReceipt
+            && r.phase.as_deref() == Some(step)
+            && if matches!(step, "red" | "repro-fail") {
+                r.red_confirmed == Some(true)
+            } else {
+                r.result == Summary::Passed
+            }
+    };
     required
         .iter()
-        .filter(|e| {
-            !attempts
-                .iter()
-                .any(|r| r.phase.as_deref() == Some(e.as_str()) && r.result == Summary::Passed)
-        })
+        .filter(|e| !attempts.iter().any(|r| settles(r, e.as_str())))
         .cloned()
         .collect()
 }
@@ -361,6 +384,12 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
     }
     let method = resolve_method(&req.method)?;
     let evidence = required_evidence(&method);
+    // Under `preserve`, a run without a phase is the baseline step (#2392 decision 6774899518
+    // row 13, F1b = B), so it can never stand in for a later step.
+    let phase: Option<String> = match (method.change_strategy.as_str(), &req.phase) {
+        ("preserve", None) => Some("baseline".into()),
+        (_, p) => p.clone(),
+    };
     if let Some(p) = &req.phase {
         if !evidence.iter().any(|e| e == p) || p == DOMAIN_EVIDENCE {
             return Err("invalid run request: phase is not a step of the change strategy".into());
@@ -402,13 +431,26 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
         ));
     }
 
-    // REQ-05C-04: improving under `preserve` needs a trusted baseline first.
-    if method.change_strategy == "preserve"
-        && !matches!(req.phase.as_deref(), None | Some("baseline"))
-    {
-        let reason = match &req.baseline {
-            None => "baseline-missing",
-            Some(v) => match ingest_self_report(v.clone()) {
+    let snapshot = req
+        .admission
+        .spec
+        .snapshot
+        .as_ref()
+        .expect("admitted spec is approved");
+
+    // REQ-05C-04: improving under `preserve` needs a trusted baseline first: one this runner
+    // stored (#2392 D1). A baseline handed in as JSON is a self-report and never unlocks it.
+    if method.change_strategy == "preserve" && phase.as_deref() != Some("baseline") {
+        let reason = match (&req.baseline_ref, &req.baseline) {
+            (Some(r), _) => stored_baseline_reason(
+                project,
+                r,
+                &req.task_id,
+                &snapshot.digest,
+                &admitted.plan.plan_digest,
+            ),
+            (None, None) => "baseline-missing",
+            (None, Some(v)) => match ingest_self_report(v.clone()) {
                 Ok(r) if admissible_evidence(&r) => "",
                 _ => "baseline-untrusted",
             },
@@ -444,12 +486,6 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
         })
         .collect();
     let oracle = oracle_changes(&req.diff_paths);
-    let snapshot = req
-        .admission
-        .spec
-        .snapshot
-        .as_ref()
-        .expect("admitted spec is approved");
     let receipt = Receipt {
         producer: Producer {
             kind: ProducerKind::RunnerReceipt,
@@ -468,10 +504,10 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
             .as_ref()
             .map(|p| digest(p.as_bytes())),
         toolchain,
-        red_confirmed: red_confirmed(&method, req.phase.as_deref(), &checks),
+        red_confirmed: red_confirmed(&method, phase.as_deref(), &checks),
         result: summarize(&checks, &oracle),
         method,
-        phase: req.phase.clone(),
+        phase,
         required_evidence: evidence,
         checks,
         oracle_changes: oracle,
@@ -480,6 +516,148 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
         decision: Decision::Ready,
         reasons: Vec::new(),
         receipt: Some(receipt),
+    })
+}
+
+/// What a stored baseline proves, said with every store and in the docs: the file is unsigned,
+/// so a writer on this host can replace it together with its reference.
+pub const BASELINE_TRUST: &str =
+    "local file under the git common dir, checked by sha256; unsigned, so same-host tampering is not prevented";
+
+/// An attempt id that is safe as a file name: 1 to 128 of `A-Z a-z 0-9 . _ -`, not starting
+/// with a dot.
+fn safe_attempt_id(id: &str) -> bool {
+    (1..=128).contains(&id.len())
+        && !id.starts_with('.')
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+}
+
+/// `<git common dir>/.moai-cli/receipts/run`, beside the claim journal and outside every
+/// tree digest; None outside a git repository.
+fn baseline_store_dir(project: &Path) -> Option<std::path::PathBuf> {
+    let id = crate::identity::identity(project).ok()?;
+    let common = id["clone_anchor"].as_str()?;
+    Some(
+        Path::new(common)
+            .join(crate::CLONE_STATE_DIR)
+            .join("receipts")
+            .join("run"),
+    )
+}
+
+/// Why a referenced stored baseline does not unlock a later `preserve` step; empty when it
+/// does. The file must hash to the reference and say what a passed runner baseline of this
+/// task, spec and plan says.
+fn stored_baseline_reason(
+    project: &Path,
+    r: &BaselineRef,
+    task_id: &str,
+    spec_digest: &str,
+    plan_digest: &str,
+) -> &'static str {
+    if !safe_attempt_id(&r.attempt_id) {
+        return "baseline-untrusted";
+    }
+    let Some(dir) = baseline_store_dir(project) else {
+        return "baseline-missing";
+    };
+    let bytes = match std::fs::read(dir.join(format!("{}.json", r.attempt_id))) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return "baseline-missing",
+        Err(_) => return "baseline-untrusted",
+    };
+    if digest(&bytes) != r.digest {
+        return "baseline-digest-mismatch";
+    }
+    let Ok(b) = serde_json::from_slice::<Receipt>(&bytes) else {
+        return "baseline-untrusted";
+    };
+    let binds = b.producer.kind == ProducerKind::RunnerReceipt
+        && b.method.change_strategy == "preserve"
+        && b.phase.as_deref() == Some("baseline")
+        && b.result == Summary::Passed
+        && b.attempt_id == r.attempt_id
+        && b.task_id == task_id
+        && b.spec_digest == spec_digest
+        && b.plan_digest == plan_digest;
+    if binds {
+        ""
+    } else {
+        "baseline-untrusted"
+    }
+}
+
+/// Stores a baseline receipt under its attempt id, never replacing one: written to a temporary
+/// file in the store and published by a hard link, which fails when the name exists.
+fn store_baseline(project: &Path, receipt: &Receipt) -> Value {
+    let refuse = |reason: &str| json!({"stored": false, "reason": reason});
+    if !safe_attempt_id(&receipt.attempt_id) {
+        return refuse("attempt-id-not-a-safe-file-name");
+    }
+    let Some(dir) = baseline_store_dir(project) else {
+        return refuse("not-a-git-repository");
+    };
+    let Ok(bytes) = serde_json::to_vec_pretty(receipt) else {
+        return refuse("encode-failed");
+    };
+    if std::fs::create_dir_all(&dir).is_err() {
+        return refuse("store-unwritable");
+    }
+    let target = dir.join(format!("{}.json", receipt.attempt_id));
+    let tmp = dir.join(format!(
+        ".{}.{}.tmp",
+        receipt.attempt_id,
+        std::process::id()
+    ));
+    if std::fs::write(&tmp, &bytes).is_err() {
+        let _ = std::fs::remove_file(&tmp);
+        return refuse("store-unwritable");
+    }
+    let linked = std::fs::hard_link(&tmp, &target);
+    let _ = std::fs::remove_file(&tmp);
+    match linked {
+        Ok(()) => json!({
+            "stored": true,
+            "attempt_id": receipt.attempt_id,
+            "path": target.to_string_lossy(),
+            "digest": digest(&bytes),
+            "trust": BASELINE_TRUST,
+        }),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => refuse("attempt-id-exists"),
+        Err(_) => refuse("store-unwritable"),
+    }
+}
+
+/// `run-verify`'s answer: the run, plus the stored baseline when this run was one.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct VerifyOutcome {
+    #[serde(flatten)]
+    pub outcome: RunOutcome,
+    /// Set for a `preserve` baseline run that produced a receipt; null otherwise.
+    pub baseline_store: Option<Value>,
+}
+
+/// `run-verify`: [`run`], then the baseline receipt is stored when the run was the baseline
+/// step of `preserve` (#2392 decision 6774899518 row 13 = A). The auditor's run calls [`run`]
+/// and stores nothing.
+pub fn run_verify(
+    project: &Path,
+    req: &RunRequest,
+    current_revision: &str,
+) -> Result<VerifyOutcome> {
+    let outcome = run(project, req, current_revision)?;
+    let baseline_store = outcome
+        .receipt
+        .as_ref()
+        .filter(|r| {
+            r.method.change_strategy == "preserve" && r.phase.as_deref() == Some("baseline")
+        })
+        .map(|r| store_baseline(project, r));
+    Ok(VerifyOutcome {
+        outcome,
+        baseline_store,
     })
 }
 
@@ -527,6 +705,9 @@ pub fn cost_report(req: CostRequest) -> Result<Value> {
             "self-report": producer_group(&self_report, ProducerKind::SelfReport),
         },
         "per_receipt": per_receipt,
+        // Every receipt here arrived as caller JSON, so its `producer.kind` is what the caller
+        // declared; the groups keep #2191's aggregation (#2392 decision 6774899518 row 16 = B).
+        "producer_declared_by": PRODUCER_DECLARED_BY,
         "tokens": {
             "basis": "absent",
             "note": "receipts carry no token source; nothing is estimated"
@@ -536,6 +717,9 @@ pub fn cost_report(req: CostRequest) -> Result<Value> {
         "writes": "none"
     }))
 }
+
+/// Who stated a cost-report receipt's `producer.kind`: the caller, never re-verified here.
+const PRODUCER_DECLARED_BY: &str = "caller";
 
 /// Evidence basis of a receipt's own numbers: measured by the runner, or claimed
 /// by a self-report.
@@ -572,6 +756,7 @@ fn receipt_row(r: &Receipt) -> Value {
         "task_id": r.task_id,
         "attempt_id": r.attempt_id,
         "producer_kind": r.producer.kind,
+        "producer_declared_by": PRODUCER_DECLARED_BY,
         "basis": producer_basis(r.producer.kind),
         "checks_total": r.checks.len(),
         "duration_ms": if missing == 0 { json!(duration as u64) } else { json!(null) },

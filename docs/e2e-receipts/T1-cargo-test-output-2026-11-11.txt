@@ -1,0 +1,26 @@
+# T1 re-run on tip 2449d26eae + #2014 agent-8 N1 (passwd-home deny profile), Darwin arm64.
+# Command (lane worktree, own target dir; HOME is a throwaway directory as in docs/e2e-matrix.md,
+# CARGO_HOME/RUSTUP_HOME point at the existing toolchain):
+#   HOME=$(mktemp -d) CARGO_TARGET_DIR=<worktree>/target timeout 900 \
+#     cargo test --offline --locked --test e2e_host_fixture -- --nocapture
+# Started 2026-11-11T23:40:34Z, log finished 2026-11-11T23:55:18Z (date -u / log mtime).
+# moai-cli (target/debug) sha256 8971970ce0ac12aec96f44c4e5eb2a91ab292692bfe7bb43f2502c180936b744
+# skills/moai/SKILL.md sha256 25081f6c1492d1cf3b21792f4fd73b5d48983a89f02d2f910aa12993b974937e
+# Test section of the cargo output, verbatim (compile lines omitted: they carry a personal path):
+     Running tests/e2e_host_fixture.rs (target/debug/deps/e2e_host_fixture-8883b02eb7fe7b0f)
+
+running 6 tests
+test e2e_clean_clone_keeps_exact_attached_and_detached_revision ... ok
+test e2e_clean_clone_carries_portable_read_plan_assets ... ok
+test e2e_digest_mismatch_is_fail_closed has been running for over 60 seconds
+test e2e_never_writes_outside_temp_home has been running for over 60 seconds
+test e2e_second_update_is_diff_zero has been running for over 60 seconds
+test e2e_setup_update_interrupt_restore_preserves_user_edits has been running for over 60 seconds
+test e2e_digest_mismatch_is_fail_closed ... ok
+test e2e_never_writes_outside_temp_home ... ok
+test e2e_setup_update_interrupt_restore_preserves_user_edits ... ok
+test e2e_second_update_is_diff_zero ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 353.85s
+
+exit=0

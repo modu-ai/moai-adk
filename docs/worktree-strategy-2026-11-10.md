@@ -53,7 +53,7 @@ Issue #2380 (rc.2 WT). 사용자 요청 2026-11-10T10:15Z. 작성: agent-5-t64 (
 
 ### 1.3 기존 기록
 
-- `src/worktree.rs`: `worktree-plan`/`worktree-apply`가 claim 하나에 worktree 하나를 잠금과 함께 만든다. 기본 위치 `.moai-cli/worktrees/<issue>-<key>`는 사용자 결정 16:5x→17:0x(11-08)이고, branch 접두어는 HOLD다.
+- `src/worktree.rs`: `worktree-plan`/`worktree-apply`가 claim 하나에 worktree 하나를 잠금과 함께 만든다. 기본 위치 `.moai-cli/worktrees/<issue>-<key>`는 사용자 결정 16:5x→17:0x(11-08)이고, branch 접두어는 현재 구현값 `issue/<number>-<key>`로 확정됐다(리더 확정 2026-11-12, `docs/decisions-2026-11-08.md` 90행 절차, #2380 댓글 6816161048).
 - `src/lane_handoff.rs`: worktree를 떠나기 전의 읽기 전용 점검이다(clean, head=remote, PR, trailer, 보고, 불확실 효과 없음).
 - **정리·용량을 다루는 기능은 없다.**
 - 결정 22:0x(11-08): EnterWorktree로 들어가고, ExitWorktree(keep)로 나오며, **삭제 금지**.
@@ -128,7 +128,7 @@ git -C exp/single-gh config --get extensions.worktreeConfig                     
 
 ### D1. checkout에 무엇을 넣는가
 
-- **결정안**: 1단계에서는 sparse-checkout을 쓰지 않는다. 추적 원장(`.moai-cli/reports/issue-bodies/**`, `.moai-cli/manifests/issue-design-research*.json`, `.moai-cli/reports/rc1-issue-design-2026-11-08.html`, `rc2_issue_gen.py`, 합계 약 4.2 MB)을 추적에서 뺄지는 사용자에게 묻는다(Q2). 근거:
+- **결정안**: 1단계에서는 sparse-checkout을 쓰지 않는다. 추적 원장(`.moai-cli/reports/issue-bodies/**`, `.moai-cli/manifests/issue-design-research*.json`, `.moai-cli/reports/rc1-issue-design-2026-11-08.html`, `rc2_issue_gen.py`(2026-11-13 #2682 에서 삭제 — 마지막 판 `5f9109829a`), 합계 약 4.2 MB)을 추적에서 뺄지는 사용자에게 묻는다(Q2). 근거:
   - 이득이 작다. worktree 하나에 5.5 MiB, 58개면 약 310 MiB로, 낭비 전체의 0.2%다.
   - `src/agents.rs`, `src/apply.rs`, `src/generation.rs`, `src/scope.rs`, `src/sources.rs`, `src/github_templates.rs`와 시험 10여 개가 `.moai-cli/manifests` 경로를 읽는다(그중 저장소 자체 파일을 읽는지, fixture 경로만 쓰는지는 카드에서 파일별로 확인해야 한다). 그래서 sparse로 빼면 검사 묶음이 깨질 위험이 있다.
   - sparse-checkout은 공식 문서가 "EXPERIMENTAL"로 표시한다.
@@ -211,7 +211,7 @@ done ─remove(사용자 확인)→ (없음)
 ### D7. 용량 상한과 관측
 
 - **결정안**:
-  - `moai-cli worktree-report`(읽기 전용)가 분류별 개수와 용량을 보여 준다: worktree checkout, worktree `target/`, `/tmp/moai-rc-target-*`, 감사 clone, 빈 임시 폴더, 로컬 ref. 디스크 여유와 trim·remove 후보도 함께 보여 준다. `du`에는 시간 상한을 걸고, 넘치면 `partial`로 표시한다.
+  - `moai-cli worktree-report`(읽기 전용)가 분류별 개수와 용량을 보여 준다: worktree checkout, worktree `target/`, 세션별 빌드 폴더(`/tmp/moai-target-*`와 #2563 전 이름 `/tmp/moai-rc-target-*`, 출력 필드 `tmp_target`), 감사 clone, 빈 임시 폴더, 로컬 ref. 디스크 여유와 trim·remove 후보도 함께 보여 준다. `du`에는 시간 상한을 걸고, 넘치면 `partial`로 표시한다.
   - `worktree-apply`는 디스크 여유가 하한 미만이면 새 worktree를 거부하고, 프로젝트 합계가 경고선을 넘으면 경고한다. 값은 사용자 결정(Q5)이다. 참고로 오늘 ENOSPC 직전 여유가 49.6 GiB였고, worktree 하나가 빌드 후 1~5 GiB다.
 - **버린 대안**: 상한 없이 주기적으로 정리하기. 오늘 ENOSPC 사고처럼 정리보다 생성이 빠르다.
 

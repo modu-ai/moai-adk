@@ -25,9 +25,13 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// carries the project-root-relative spelling used when the common dir equals the
 /// project's own `.git` (the primary checkout).
 pub const KINDS: &[(&str, &str, &str)] = &[
-    ("receipts", ".moai-cli/receipts", "receipts"),
-    ("outbox", ".moai-cli/forge/outbox", "forge/outbox"),
-    ("claims", ".moai-cli/claims", "claims"),
+    ("receipts", crate::project_state!("receipts"), "receipts"),
+    (
+        "outbox",
+        crate::project_state!("forge/outbox"),
+        "forge/outbox",
+    ),
+    ("claims", crate::fixed_state!("claims"), "claims"),
 ];
 
 /// The default home root: `$HOME/.moai-cli` (the card's fixed location). `None` without
@@ -88,7 +92,11 @@ fn claims_legacy_dir(project: &Path) -> Result<Option<PathBuf>> {
     let Some(common) = id["clone_anchor"].as_str() else {
         return Ok(None);
     };
-    source_dir(Path::new(common).join(".moai-cli").join("claims"))
+    source_dir(
+        Path::new(common)
+            .join(crate::CLONE_STATE_DIR)
+            .join("claims"),
+    )
 }
 
 fn source_dir(dir: PathBuf) -> Result<Option<PathBuf>> {
@@ -341,25 +349,15 @@ pub fn apply_at(
     home_root: &Path,
     confirmed: &str,
     permission: &str,
-) -> Result<Value> {
+) -> std::result::Result<Value, crate::contract::OpError> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     check_destinations(project, home_root)?;
     // The journal lock spans plan→copy→switch so the window closes for claimants.
-    let claims_root = crate::claim::journal_root(project)?;
-    let journal_lock = crate::claim::Journal::open(&claims_root)?;
-    if !journal_lock.try_lock()? {
-        return Err(
-            "conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied"
-                .into(),
-        );
-    }
-    apply_locked(project, home_root, confirmed, &journal_lock)
+    let journal_lock = crate::worktree::open_locked_journal(project)?;
+    Ok(apply_locked(project, home_root, confirmed, &journal_lock)?)
 }
 
 fn apply_locked(
@@ -422,7 +420,11 @@ pub fn plan_cli(project: &Path) -> Result<Value> {
     serde_json::to_value(&plan).map_err(|_| "encode failed".to_string())
 }
 
-pub fn apply_cli(project: &Path, confirmed: &str, permission: &str) -> Result<Value> {
+pub fn apply_cli(
+    project: &Path,
+    confirmed: &str,
+    permission: &str,
+) -> std::result::Result<Value, crate::contract::OpError> {
     let home_root = default_home_root().ok_or("home root unavailable; HOME is not set")?;
     apply_at(project, &home_root, confirmed, permission)
 }
@@ -446,9 +448,9 @@ mod tests {
     /// the journal lock is taken).
     fn fixture_project(root: &Path) -> PathBuf {
         let project = root.join("project");
-        fs::create_dir_all(project.join(".moai-cli")).unwrap();
+        fs::create_dir_all(project.join(crate::PROJECT_STATE_DIR)).unwrap();
         fs::write(
-            project.join(".moai-cli/project.yaml"),
+            project.join(crate::project_state!("project.yaml")),
             r#"{"schema_version": 1, "project_id": "widgets", "purpose": "layout fixture", "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]}"#,
         )
         .unwrap();
@@ -472,7 +474,8 @@ mod tests {
         let confirmed = plan(&project, &home_root).unwrap().plan_digest;
         let err = apply_at(&project, &home_root, &confirmed, "test:layout").unwrap_err();
         assert!(
-            err.contains("home target for receipts already exists"),
+            err.message
+                .contains("home target for receipts already exists"),
             "{err}"
         );
         assert_eq!(
@@ -494,7 +497,10 @@ mod tests {
         let confirmed = plan(&project, &home_root).unwrap().plan_digest;
         for permission in ["", "null", "placeholder"] {
             let err = apply_at(&project, &home_root, &confirmed, permission).unwrap_err();
-            assert_eq!(err, "permission reference required", "{permission:?}");
+            assert_eq!(
+                err.message, "permission reference required",
+                "{permission:?}"
+            );
         }
         assert!(
             !home_root.join("projects").exists(),
@@ -544,7 +550,7 @@ mod tests {
     fn copying_refuses_a_target_created_after_the_preflight() {
         let tmp = tempfile::tempdir().unwrap();
         let project = fixture_project(tmp.path());
-        let source = project.join(".moai-cli/receipts");
+        let source = project.join(crate::project_state!("receipts"));
         fs::create_dir_all(&source).unwrap();
         fs::write(source.join("old.json"), b"old project data").unwrap();
         let home_root = tmp.path().join("home");

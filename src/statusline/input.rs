@@ -34,6 +34,9 @@ pub struct Input {
     pub pr: Option<Pr>,
     pub agent: Option<Named>,
     pub worktree: Option<Worktree>,
+    /// #2756 AC-8: the main conversation's prompt cache (Claude Code 2.1.251+). Read loosely:
+    /// an unexpected value here leaves the cache timer out instead of failing the payload.
+    pub prompt_cache: Option<Value>,
     pub exceeds_200k_tokens: Option<bool>,
     /// Subagent status-line rows. Present (even `[]`) switches the output to JSONL rows;
     /// absent or `null` keeps the multi-line bar.
