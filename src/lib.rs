@@ -23,6 +23,7 @@ pub mod decision_file;
 pub mod decision_log;
 pub mod dispatch;
 pub mod flake;
+pub mod flake_record;
 pub mod flow;
 pub mod forge;
 pub mod gate;
