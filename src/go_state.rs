@@ -941,7 +941,10 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>)> {
     if receipt.restored.iter().any(|r| {
         !plain_relative(&r.path) || !r.path.starts_with(&format!("{}/", specs_to(project)))
     }) {
-        return Err("receipt holds a restored path outside .moai-cli/specs/; refused".into());
+        return Err(format!(
+            "receipt holds a restored path outside {}/; refused",
+            specs_to(project)
+        ));
     }
     Ok((receipt, text.into_bytes()))
 }
