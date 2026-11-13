@@ -5,6 +5,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 
 use serde_json::{json, Value};
 use std::{
@@ -50,7 +51,7 @@ fn setup() -> (TempDir, PathBuf, PathBuf, PathBuf) {
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
     Command::new(exe)
         .args(args)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
@@ -220,7 +221,7 @@ fn current_skills_with_missing_agents_still_have_something_to_apply() {
             "--permission-reference",
             "fixture-approved",
         ])
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &home)
         .stdin(Stdio::piped())

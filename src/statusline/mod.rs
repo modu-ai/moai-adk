@@ -64,7 +64,49 @@ pub fn run(budget: Duration) -> String {
     };
     let out = render(&stdin, &state::Context::from_process(budget));
     refresh_counts_after_render(&stdin);
+    if let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) {
+        record_usage_after_render(&stdin, std::path::Path::new(&home), unix_now());
+    }
     out
+}
+
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+/// #2668 S1: keep the usage windows Claude Code gave this render in
+/// `$HOME/.moai-cli/state/usage-limits.json`, so a lane can renew its leases before a limit
+/// stops it. Subagent rows and inputs without `rate_limits` write nothing; a failed write
+/// never changes the rendered line.
+fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> bool {
+    let Some(input) = (stdin.len() <= STDIN_CAP as usize)
+        .then(|| input::parse(stdin))
+        .flatten()
+        .filter(|i| i.tasks.is_none())
+    else {
+        return false;
+    };
+    let Some(limits) = input.rate_limits.as_ref() else {
+        return false;
+    };
+    let pair = |name, w: Option<input::RateWindow>| {
+        (
+            name,
+            w.and_then(|w| w.used_percentage),
+            w.and_then(|w| w.resets_at),
+        )
+    };
+    let windows = crate::usage_limit::windows_from(
+        &[
+            pair("five_hour", limits.five_hour),
+            pair("seven_day", limits.seven_day),
+        ],
+        now,
+    );
+    crate::usage_limit::record(home, windows, now).unwrap_or(false)
 }
 
 /// #2588: after a render, start the detached counts refresh when the cache needs one.
@@ -87,6 +129,32 @@ fn refresh_counts_after_render(stdin: &[u8]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// #2668 S1: a render with `rate_limits` leaves the record a lane reads; subagent rows,
+    /// inputs without the field and garbage leave none.
+    #[test]
+    fn render_input_with_rate_limits_records_the_usage_windows() {
+        let now = 1_800_000_000;
+        let home = tempfile::TempDir::new().unwrap();
+        let none: [&[u8]; 3] = [
+            br#"{"model":{"display_name":"Opus"}}"#,
+            br#"{"tasks":[],"rate_limits":{"five_hour":{"used_percentage":95,"resets_at":1800003600}}}"#,
+            b"not json",
+        ];
+        for stdin in none {
+            assert!(!record_usage_after_render(stdin, home.path(), now));
+        }
+        assert!(!crate::usage_limit::record_path(home.path()).exists());
+        let stdin = br#"{"rate_limits":{"five_hour":{"used_percentage":95,"resets_at":1800003600},"seven_day":{"used_percentage":40,"resets_at":1800600000}}}"#;
+        assert!(record_usage_after_render(stdin, home.path(), now));
+        let v = crate::usage_limit::evaluate(home.path(), now);
+        assert_eq!(v["state"], "near");
+        assert_eq!(v["window"], "five_hour");
+        assert_eq!(
+            v["windows"].as_object().unwrap().keys().collect::<Vec<_>>(),
+            vec!["five_hour", "seven_day"]
+        );
+    }
 
     #[test]
     fn stdin_boundary_accepts_the_cap_and_rejects_valid_prefixes_above_it() {

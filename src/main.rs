@@ -579,6 +579,10 @@ enum Command {
         /// The scope the plan was made for (#2581); the digest binds it.
         #[arg(long, default_value = "project")]
         scope: String,
+        /// The `confirm_token` a conflict plan offered (#2383): after the user confirms, keep
+        /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
+        #[arg(long)]
+        confirm_replace: Option<String>,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -809,6 +813,18 @@ enum Command {
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan {
         path: PathBuf,
+    },
+    /// Check a PR body's Self-Audit section (#2708, formerly tools/check_pr_self_audit.py):
+    /// the body from --file or stdin; prints one line, `self-audit: pass (…)` (exit 0) or
+    /// `self-audit: blocked missing=…` (exit 1); a usage error exits 2. Raw text, not the
+    /// envelope, so the result and exit code are the ones the Python checker gave.
+    PrSelfAuditCheck {
+        /// Also require the `## 독립 review` section of a re-audit (#2388).
+        #[arg(long)]
+        reaudit: bool,
+        /// Read the PR body from this file (UTF-8) instead of stdin.
+        #[arg(long, value_name = "BODY.md")]
+        file: Option<PathBuf>,
     },
     /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
     /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
@@ -1360,7 +1376,12 @@ fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
         // Not envelope operations: the launchers, and the raw-text statusline (#2350).
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
+        Cc(_)
+        | Glm(_)
+        | Codex(_)
+        | Session { .. }
+        | Statusline { .. }
+        | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
@@ -2237,6 +2258,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             plan_digest,
             permission_reference,
             scope,
+            confirm_replace,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2246,6 +2268,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 scope,
+                confirm_replace.as_deref(),
             )
         }
         Command::CodexConfigPlan { project } => {
@@ -2777,6 +2800,43 @@ fn merge_binary_state(out: &mut serde_json::Value) {
 /// as a non-blocking hook error; the reason goes to stderr.
 const HOOK_NON_BLOCKING_ERROR: u8 = 1;
 
+/// `pr-self-audit-check` (#2708): the Python checker's text and exit codes. With no `--file`,
+/// the body comes from stdin; a terminal on stdin is a usage error, as before.
+fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCode {
+    use std::io::IsTerminal as _;
+    let body = match file {
+        Some(path) => match std::fs::read(path) {
+            Ok(bytes) => String::from_utf8(bytes).map_err(|_| "body is not UTF-8".to_string()),
+            Err(e) => Err(format!("{}: {e}", path.display())),
+        },
+        None if io::stdin().is_terminal() => {
+            eprintln!("usage: moai-cli pr-self-audit-check [--reaudit] [--file BODY.md] < BODY.md");
+            return ExitCode::from(2);
+        }
+        None => {
+            let mut bytes = Vec::new();
+            io::stdin()
+                .read_to_end(&mut bytes)
+                .map_err(|e| e.to_string())
+                .and_then(|_| String::from_utf8(bytes).map_err(|_| "body is not UTF-8".into()))
+        }
+    };
+    let body = match body {
+        Ok(body) => body,
+        Err(e) => {
+            eprintln!("pr-self-audit-check: {e}");
+            return ExitCode::from(1);
+        }
+    };
+    let result = moai_cli::self_audit::check(&body, reaudit);
+    println!("{}", moai_cli::self_audit::render(&result));
+    if result.is_ok() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
     let hook_mode = hook_mode_argv(&argv);
@@ -2813,6 +2873,9 @@ fn main() -> ExitCode {
             .unwrap_or(moai_cli::statusline::RENDER_BUDGET);
         print!("{}", moai_cli::statusline::run(budget));
         return ExitCode::SUCCESS;
+    }
+    if let Some(Command::PrSelfAuditCheck { reaudit, file }) = &cli.command {
+        return pr_self_audit_check(*reaudit, file.as_deref());
     }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
@@ -2894,7 +2957,7 @@ mod tests {
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
-    const RAW_OUTPUT: [&str; 1] = ["statusline"];
+    const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -3168,6 +3231,20 @@ mod operations_doc {
             .find(|a| a.get_long() == Some("render-budget-ms"))
             .unwrap();
         assert!(seam.is_hide_set());
+    }
+
+    #[test]
+    fn pr_self_audit_check_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli
+            .get_subcommands()
+            .any(|s| s.get_name() == "pr-self-audit-check"));
+        assert_eq!(operation_of("pr-self-audit-check"), None);
+        assert!(!doc_list(DOC)
+            .unwrap()
+            .iter()
+            .any(|w| w == "pr-self-audit-check"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `pr-self-audit-check`(#2708)"));
     }
 
     fn render(words: &[&str]) -> String {

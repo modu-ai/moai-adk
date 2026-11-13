@@ -345,6 +345,9 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         None => None,
         Some(text) => serde_json::from_str::<Manifest>(&text).ok(),
     };
+    // #2670: the Go generation's worktree include list copies `.env*` into every new Claude
+    // Code worktree. Reported, never edited (a line may be deliberate).
+    warnings.extend(crate::worktree_include::warnings(&project));
     let mut settings = Vec::new();
     for file in [SETTINGS, SETTINGS_LOCAL] {
         let text = read_bounded_text(&project, file, MANIFEST_LIMIT)?.unwrap_or_default();
