@@ -310,3 +310,25 @@ fn titles_cannot_break_the_table() {
         "{body}"
     );
 }
+
+/// The AUDIT workflow names both commands and the rules this file pins, so the skill text and
+/// the binary cannot drift apart unnoticed (#2614 scope 3).
+#[test]
+fn the_audit_workflow_describes_the_review_steps() {
+    let text = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
+    )
+    .unwrap();
+    for needle in [
+        "## Review steps",
+        "moai-cli review-package PROJECT --base <base SHA> --head <head SHA>",
+        "moai-cli review-check PROJECT --head <head SHA>",
+        "come from the base commit only",
+        "within three lines",
+        "the result `confirmed`",
+        "Any `important` finding makes the verdict FAIL",
+        "Never start other sessions or tools to imitate parallel work",
+    ] {
+        assert!(text.contains(needle), "audit.md lacks {needle:?}");
+    }
+}
