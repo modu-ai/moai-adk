@@ -890,12 +890,7 @@ fn a_kept_original_keeps_its_mode_and_stays_out_of_git() {
     let mode = fs::metadata(&kept).unwrap().permissions().mode() & 0o777;
     assert_eq!(mode, 0o600, "kept local original mode {mode:o}");
 
-    let out = std::process::Command::new("git")
-        .args(["status", "--porcelain", "--untracked-files=all"])
-        .current_dir(p)
-        .output()
-        .unwrap();
-    let listed = String::from_utf8_lossy(&out.stdout);
+    let listed = common::git::git(p, &["status", "--porcelain", "--untracked-files=all"]);
     assert!(
         !listed.contains("settings-backups"),
         "backups visible to git:\n{listed}"
