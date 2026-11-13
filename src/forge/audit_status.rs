@@ -55,10 +55,7 @@ fn valid_name(s: &str) -> bool {
 }
 
 fn validate(req: &AuditStatusRequest, permission: &str) -> Result<(), ForgeError> {
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err(ForgeError::of(
             "permission_reference_missing",
             "permission reference required",

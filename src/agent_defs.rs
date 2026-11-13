@@ -8,6 +8,11 @@
 //! instructions as the body. Rendering only uses what the host itself offers (#2592: no
 //! substitute implementation); a source field the host cannot express is never dropped
 //! silently but listed in `not_supported`. Pure functions: nothing here reads HOME or writes.
+//!
+//! An optional `reads` key (#2637) lists the internal references the agent reads first, as
+//! `<folder>/<name>` entries of the same package (`references/<folder>/<name>.md`) or `none`;
+//! a missing key means none. No host has a field for it, so every renderer turns the list into
+//! one generated instruction line ahead of the body; the source body never repeats it.
 
 use serde::Serialize;
 use std::path::Path;
@@ -36,7 +41,41 @@ pub struct AgentDef {
     pub isolation: String,
     /// `sequential` or `fanout`; how a parent starts it, recorded for the workflows (S4).
     pub shape: String,
+    /// Internal references read first, `<folder>/<name>` each (#2637); empty for `none`.
+    pub reads: Vec<String>,
     pub body: String,
+}
+
+fn valid_read(entry: &str) -> bool {
+    let part = |s: &str| {
+        !s.is_empty()
+            && s.len() <= 32
+            && s.bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+    };
+    entry
+        .split_once('/')
+        .is_some_and(|(folder, name)| part(folder) && part(name))
+}
+
+/// The `reads` value: `none`, or `<folder>/<name>` entries separated by commas, no repeats.
+fn parse_reads(name: &str, value: &str) -> Result<Vec<String>> {
+    if value == "none" {
+        return Ok(Vec::new());
+    }
+    let mut out: Vec<String> = Vec::new();
+    for entry in value.split(',').map(str::trim) {
+        if !valid_read(entry) {
+            return Err(format!(
+                "{name}: reads entries are <folder>/<name> in lowercase, or none: {entry:?}"
+            ));
+        }
+        if out.iter().any(|e| e == entry) {
+            return Err(format!("{name}: reads entry repeated: {entry}"));
+        }
+        out.push(entry.to_string());
+    }
+    Ok(out)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -59,7 +98,8 @@ fn valid_name(name: &str) -> bool {
     })
 }
 
-/// Parses one source file. Every key is required and appears once; nothing else is allowed.
+/// Parses one source file. Every key but `reads` is required; each appears once; nothing else
+/// is allowed.
 pub fn parse(text: &str) -> Result<AgentDef> {
     let rest = text
         .strip_prefix("---\n")
@@ -78,7 +118,14 @@ pub fn parse(text: &str) -> Result<AgentDef> {
         }
         keys.push((k, v.trim().to_string()));
     }
-    const KNOWN: [&str; 5] = ["name", "description", "readonly", "isolation", "shape"];
+    const KNOWN: [&str; 6] = [
+        "name",
+        "description",
+        "readonly",
+        "isolation",
+        "shape",
+        "reads",
+    ];
     if let Some((k, _)) = keys.iter().find(|(k, _)| !KNOWN.contains(&k.as_str())) {
         return Err(format!("unknown frontmatter key: {k}"));
     }
@@ -120,6 +167,10 @@ pub fn parse(text: &str) -> Result<AgentDef> {
     if !["sequential", "fanout"].contains(&shape.as_str()) {
         return Err(format!("{name}: shape must be sequential or fanout"));
     }
+    let reads = match keys.iter().find(|(k, _)| k == "reads") {
+        Some((_, v)) => parse_reads(&name, v)?,
+        None => Vec::new(),
+    };
     let body = rest[end + 5..].trim_start_matches('\n').to_string();
     if body.trim().is_empty() || body.len() > BODY_LIMIT {
         return Err(format!(
@@ -135,8 +186,25 @@ pub fn parse(text: &str) -> Result<AgentDef> {
         readonly,
         isolation,
         shape,
+        reads,
         body,
     })
+}
+
+/// The generated instruction line for `reads`, or nothing when the list is empty.
+fn reads_line(def: &AgentDef) -> String {
+    if def.reads.is_empty() {
+        return String::new();
+    }
+    let list: Vec<String> = def
+        .reads
+        .iter()
+        .map(|r| format!("`references/{r}.md`"))
+        .collect();
+    format!(
+        "Read first, from the `moai` skill package: {}. Read no other internal reference.\n\n",
+        list.join(", ")
+    )
 }
 
 /// Every source under `<package>/references/agents/`, sorted by file name. A package without
@@ -174,6 +242,15 @@ pub fn package_agents(package: &Path) -> Result<Vec<AgentDef>> {
         if def.name != format!("moai-{role}") {
             return Err(format!("{SOURCE_DIR}/{file}: name must be moai-{role}"));
         }
+        // Every `reads` entry names a regular file of this package (#2637).
+        for entry in &def.reads {
+            let target = package.join("references").join(format!("{entry}.md"));
+            if !std::fs::symlink_metadata(&target).is_ok_and(|m| m.is_file()) {
+                return Err(format!(
+                    "{SOURCE_DIR}/{file}: reads entry {entry} has no file references/{entry}.md"
+                ));
+            }
+        }
         defs.push(def);
     }
     Ok(defs)
@@ -202,7 +279,7 @@ fn render_claude(def: &AgentDef) -> Rendered {
     Rendered {
         host: "claude".into(),
         path: format!("agents/{}.md", def.name),
-        text: fm + &def.body,
+        text: fm + &reads_line(def) + &def.body,
         not_supported: Vec::new(),
     }
 }
@@ -213,7 +290,7 @@ fn render_claude(def: &AgentDef) -> Rendered {
 fn render_codex(def: &AgentDef) -> Rendered {
     use crate::generation::toml_string;
     let mut not_supported = Vec::new();
-    let mut body = def.body.clone();
+    let mut body = reads_line(def) + &def.body;
     if def.readonly {
         not_supported.push(
             "readonly: a Codex agent inherits the parent sandbox; read-only is an instruction only"
@@ -341,6 +418,58 @@ mod tests {
             let e = parse(&bad).unwrap_err();
             assert!(e.contains(why), "{why}: {e}");
         }
+    }
+
+    #[test]
+    fn reads_is_optional_and_strict_when_present() {
+        assert!(parse(SAMPLE).unwrap().reads.is_empty());
+        let with = |v: &str| {
+            SAMPLE.replace(
+                "shape: sequential",
+                &format!("shape: sequential\nreads: {v}"),
+            )
+        };
+        assert!(parse(&with("none")).unwrap().reads.is_empty());
+        assert_eq!(
+            parse(&with("internal/decide, internal/test-design"))
+                .unwrap()
+                .reads,
+            ["internal/decide", "internal/test-design"]
+        );
+        for (bad, why) in [
+            ("", "reads entries"),
+            ("decide", "reads entries"),
+            ("internal/Decide", "reads entries"),
+            ("internal/../x", "reads entries"),
+            ("internal/decide, none", "reads entries"),
+            ("internal/decide, internal/decide", "repeated"),
+        ] {
+            let e = parse(&with(bad)).unwrap_err();
+            assert!(e.contains(why), "{bad:?}: {e}");
+        }
+    }
+
+    #[test]
+    fn reads_render_as_one_generated_line_on_every_host() {
+        let def = parse(&SAMPLE.replace(
+            "shape: sequential",
+            "shape: sequential\nreads: internal/review, internal/test-design",
+        ))
+        .unwrap();
+        let line = "Read first, from the `moai` skill package: `references/internal/review.md`, `references/internal/test-design.md`. Read no other internal reference.\n\nDo it.\n";
+        assert!(render(&def, "claude").unwrap().text.ends_with(line));
+        let codex = render(&def, "codex").unwrap();
+        assert!(codex.text.contains("references/internal/review.md"));
+        assert_eq!(
+            codex.not_supported.len(),
+            2,
+            "reads is rendered, not dropped"
+        );
+        // Without reads the output is unchanged.
+        assert!(!render(&parse(SAMPLE).unwrap(), "claude")
+            .unwrap()
+            .text
+            .contains("Read first"));
     }
 
     #[test]

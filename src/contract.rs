@@ -11,6 +11,20 @@ use serde_json::{json, Value};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
+/// Longest permission reference, in bytes, that a write operation accepts.
+pub const PERMISSION_REFERENCE_MAX_BYTES: usize = 128;
+
+/// Whether a caller-supplied permission reference is usable (WF-OBS #24, Issue #2401).
+///
+/// A reference is refused when it is empty, `null` or `placeholder` after trimming, longer than
+/// [`PERMISSION_REFERENCE_MAX_BYTES`] bytes, or carries a control character. Caller
+/// authorization remains host-owned; this check is not an authorization verifier.
+pub fn permission_reference_ok(reference: &str) -> bool {
+    !(["", "null", "placeholder"].contains(&reference.trim())
+        || reference.len() > PERMISSION_REFERENCE_MAX_BYTES
+        || reference.chars().any(char::is_control))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Usage,
@@ -254,6 +268,60 @@ pub fn failure(operation: &str, kind: Kind, message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn permission_reference_boundaries() {
+        // Accepted: an ordinary reference, exactly 128 bytes, multi-byte text at 128 bytes.
+        assert!(permission_reference_ok("lane-approval-42"));
+        assert!(permission_reference_ok(&"a".repeat(128)));
+        let multi = format!("{}aa", "가".repeat(42));
+        assert_eq!(multi.len(), 128);
+        assert!(permission_reference_ok(&multi));
+        assert!(permission_reference_ok(" nullable "));
+        // Refused: empty or placeholder words after trimming.
+        for word in [
+            "",
+            "   ",
+            "null",
+            " null ",
+            "placeholder",
+            "\u{a0}placeholder",
+        ] {
+            assert!(!permission_reference_ok(word), "{word:?}");
+        }
+        // Refused: one byte over the limit, also when the overflow is a multi-byte character.
+        assert!(!permission_reference_ok(&"a".repeat(129)));
+        assert!(!permission_reference_ok(&format!("{}가", "a".repeat(126))));
+        // Refused: any control character, including inside the text.
+        for bad in ["ref\n", "re\u{7}f", "\tref", "ref\u{85}"] {
+            assert!(!permission_reference_ok(bad), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn permission_reference_rule_has_one_copy() {
+        // WF-OBS #24 (#2401): the rule lives only in `permission_reference_ok`.
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut stack = vec![root];
+        let mut copies = Vec::new();
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    let n = text.matches("\"placeholder\"].contains(").count();
+                    if n > 0 {
+                        copies.push((path, n));
+                    }
+                }
+            }
+        }
+        assert_eq!(copies.len(), 1, "{copies:?}");
+        assert!(copies[0].0.ends_with("src/contract.rs"), "{copies:?}");
+        assert_eq!(copies[0].1, 1, "{copies:?}");
+    }
 
     #[test]
     fn every_current_message_has_a_deliberate_kind() {

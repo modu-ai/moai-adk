@@ -385,10 +385,7 @@ fn guard_recoverable_path(rel: &str) -> Result<()> {
 /// permission reference as an apply (REQ-01C-03).
 pub fn recover(root: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
-    if ["", "null", "placeholder"].contains(&permission.trim())
-        || permission.len() > 128
-        || permission.chars().any(char::is_control)
-    {
+    if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     if !receipt_id_ok(receipt_id) {

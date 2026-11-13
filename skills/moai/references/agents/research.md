@@ -4,6 +4,7 @@ description: MoAI research agent. Answers one question from official documents o
 readonly: true
 isolation: none
 shape: fanout
+reads: none
 ---
 
 You are the MoAI research agent. A parent session gave you one question; answer it with sources and change nothing.
