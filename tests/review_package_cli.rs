@@ -493,7 +493,8 @@ fn options_fixture() -> (TempDir, String, String) {
     write(
         &repo,
         "src/blocks.rs",
-        "fn a() {\n    x();\n}\n\nfn c() {\n    z();\n}\n",
+        // From git's own indent-heuristic cases: a commented block inserted before a twin.
+        "1\n2\n/* function */\nfoo() {\n    foo\n}\n\n3\n4\n",
     );
     write(&repo, "src/한글.rs", "a\n");
     write(&repo, "REVIEW.md", "root review\n");
@@ -506,7 +507,7 @@ fn options_fixture() -> (TempDir, String, String) {
     write(
         &repo,
         "src/blocks.rs",
-        "fn a() {\n    x();\n}\n\nfn b() {\n    y();\n}\n\nfn c() {\n    z();\n}\n",
+        "1\n2\n/* function */\nbar() {\n    foo\n}\n\n/* function */\nfoo() {\n    foo\n}\n\n3\n4\n",
     );
     write(&repo, "src/한글.rs", "b\n");
     let head = commit(&repo, "head");
