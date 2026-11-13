@@ -905,7 +905,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
             expected_sha256: current.as_deref().map(digest),
             baseline_sha256: Some(baseline),
             rendered_sha256: None,
-            source_refs: vec![PROJECT_PROFILE.into()],
+            source_refs: vec![project_profile_rel(&root)],
             kind: Some(kind),
             detail,
         });
