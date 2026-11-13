@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "chains": "chains/index.md",
   "routes": {
     "READ": {
       "reference": "../workflows/read.md",
