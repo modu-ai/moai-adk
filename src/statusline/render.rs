@@ -538,9 +538,10 @@ mod tests {
     fn hidden_main_segments_cannot_be_enabled_by_configuration() {
         let home = tempfile::tempdir().unwrap();
         // The HOME state folder since #2455 (`$HOME/.moai-cli/state`).
-        std::fs::create_dir_all(home.path().join(".moai-cli/state")).unwrap();
+        let state = home.path().join(crate::HOME_STATE_DIR).join("state");
+        std::fs::create_dir_all(&state).unwrap();
         std::fs::write(
-            home.path().join(".moai-cli/state/last-session-state.json"),
+            state.join("last-session-state.json"),
             r#"{"active_task":{"command":"TASK_SENTINEL","spec_id":"SPEC","stage":"run"}}"#,
         )
         .unwrap();

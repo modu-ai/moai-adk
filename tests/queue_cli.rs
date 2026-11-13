@@ -938,3 +938,58 @@ fn queue_free_holds_only_on_whole_label_names() {
     assert_eq!(numbers(&out, "free"), vec![1, 2]);
     assert_eq!(numbers(&out, "held"), vec![3, 4, 5]);
 }
+
+/// #2675 audit N1–N3: the edges of `queue-free` — a card naming itself in `Blocked-By:` is not
+/// blocked; a lease that ends exactly now is expired (live only when it ends later, the same
+/// `t > now` as `queue-next`); with several live claims the lowest comment id is the holder.
+#[test]
+fn queue_free_edges_self_block_lease_now_and_lowest_live_claim() {
+    const NOW: &str = "2026-11-06T21:20:00Z"; // CLOCK0
+    const NOW_PLUS_1: &str = "2026-11-06T21:20:01Z";
+    let (out, t) = free_run(vec![
+        open_issues(vec![
+            card(1, "S", "Blocked-By: #1"),
+            card(2, "N", ""),
+            card(3, "P", ""),
+            card(4, "M", ""),
+        ]),
+        exchange("GET", &comments(1), resp(200, json!([]))),
+        exchange(
+            "GET",
+            &comments(2),
+            resp(200, json!([claim_until(20, "agent-2", NOW)])),
+        ),
+        exchange(
+            "GET",
+            &comments(3),
+            resp(200, json!([claim_until(30, "agent-3", NOW_PLUS_1)])),
+        ),
+        exchange(
+            "GET",
+            &comments(4),
+            resp(
+                200,
+                json!([
+                    claim_until(41, "agent-b", LEASE),
+                    claim_until(40, "agent-a", LEASE)
+                ]),
+            ),
+        ),
+    ]);
+    let out = out.unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(
+        numbers(&out, "blocked"),
+        Vec::<i64>::new(),
+        "self reference is not a blocker"
+    );
+    assert_eq!(numbers(&out, "free"), vec![1, 2]);
+    assert_eq!(
+        out["free"][1]["why"],
+        json!("expired"),
+        "a lease ending now is expired"
+    );
+    assert_eq!(numbers(&out, "claimed"), vec![3, 4]);
+    assert_eq!(out["claimed"][1]["claimed_by"], json!("agent-a"));
+    assert_eq!(out["claimed"][1]["comment_id"], json!(40));
+}

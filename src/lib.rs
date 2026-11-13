@@ -26,6 +26,7 @@ pub mod flow;
 pub mod forge;
 pub mod gate;
 pub mod gate_collect;
+pub mod gate_merge;
 pub mod generation;
 pub mod github_templates;
 pub mod go_state;
@@ -43,6 +44,7 @@ pub mod index;
 pub mod index_records;
 pub mod install;
 pub mod key_vault;
+pub mod labels_check;
 pub mod lane_handoff;
 pub mod lane_reset;
 pub mod lane_status;
@@ -101,9 +103,39 @@ type Result<T> = std::result::Result<T, String>;
 /// The version this binary reports: the package version, plus `+local.<n>` when the build set
 /// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
 pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
+/// The one spelling of the project state directory (Issue #2725 S1): `project_state!()` is the
+/// directory, `project_state!("sub/path")` a path under it, both `&'static str` so constants
+/// and tables can use them. Every project-tree path in `src` goes through this macro or
+/// [`PROJECT_STATE_DIR`]; the move to `.moai/` (#2725 S2) then changes one place.
+#[macro_export]
+macro_rules! project_state {
+    () => {
+        ".moai-cli"
+    };
+    ($sub:literal) => {
+        concat!(".moai-cli/", $sub)
+    };
+}
+/// Paths that keep the `.moai-cli` name when the project state moves (#2725 decisions
+/// 6854854683): the clone-shared state under the git common dir (D3), files under HOME (D4),
+/// the lane worktrees until #2723 moves them (D6) and the earlier project root read as a
+/// legacy location (D7).
+#[macro_export]
+macro_rules! fixed_state {
+    () => {
+        ".moai-cli"
+    };
+    ($sub:literal) => {
+        concat!(".moai-cli/", $sub)
+    };
+}
 /// Project state directory of the Rust RC. The Go generation keeps `.moai/`; both coexist
 /// untouched until the user performs the final rename in a later step.
-pub const PROJECT_STATE_DIR: &str = ".moai-cli";
+pub const PROJECT_STATE_DIR: &str = project_state!();
+/// Clone-shared state under the git common dir: claims, goal, sessions, run baselines (#2725 D3).
+pub const CLONE_STATE_DIR: &str = fixed_state!();
+/// Lane worktrees of the primary checkout, relative to it; they stay here until #2723 (#2725 D6).
+pub const WORKTREES_DIR: &str = fixed_state!("worktrees");
 /// User-home install root of the Rust RC (`~/.moai-cli`). The Go generation keeps `~/.moai`.
 /// No command writes there yet; the constant fixes the destination for later install code.
 pub const HOME_STATE_DIR: &str = ".moai-cli";
@@ -219,4 +251,75 @@ pub fn resolve(root: &Path, repo: Option<&Path>, user: Option<&Path>) -> Result<
     Ok(
         json!({"source":source,"digest":actual,"digest_algorithm":"moai-package-tree-v1","host_loaded":false,"publisher_trust":"not_verified"}),
     )
+}
+
+#[cfg(test)]
+mod state_dir_tests {
+    /// Code lines outside this file that spell a `.moai-cli` path as a string literal.
+    /// Comments are skipped; a literal counts when it is `".moai-cli"` or starts with
+    /// `".moai-cli/` (`.moai-cli-synthetic-home` is another name).
+    fn spelled_outside_lib(text: &str) -> Vec<String> {
+        text.lines()
+            .filter(|l| {
+                let t = l.trim_start();
+                !(t.starts_with("//") || t.starts_with('*') || t.starts_with("/*"))
+            })
+            .filter(|l| l.contains("\".moai-cli\"") || l.contains("\".moai-cli/"))
+            .map(str::to_string)
+            .collect()
+    }
+
+    #[test]
+    fn project_state_dir_is_spelled_once() {
+        // #2725 S1: every `.moai-cli` path in src goes through `project_state!`, `fixed_state!`
+        // or the constants built from them; only src/lib.rs spells the name.
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let lib = root.join("lib.rs");
+        let mut stack = vec![root];
+        let mut found = Vec::new();
+        let mut files = 0;
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") && path != lib {
+                    files += 1;
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    for line in spelled_outside_lib(&text) {
+                        found.push(format!("{}: {}", path.display(), line.trim()));
+                    }
+                }
+            }
+        }
+        assert!(files > 100, "the walk saw {files} files; src moved?");
+        assert!(
+            found.is_empty(),
+            "spell these through project_state!/fixed_state!:\n{}",
+            found.join("\n")
+        );
+    }
+
+    #[test]
+    fn the_spelling_check_sees_literals_and_skips_comments() {
+        let cases = [
+            ("let p = root.join(\".moai-cli\");", 1),
+            ("const M: &str = \".moai-cli/manifests/x.json\";", 1),
+            ("    // the old \".moai-cli/receipts\" folder", 0),
+            ("/// see `.moai-cli/receipts`", 0),
+            (" * \".moai-cli/x\"", 0),
+            ("const S: &str = \".moai-cli-synthetic-home\";", 0),
+            ("format!(\"{}/x\", crate::PROJECT_STATE_DIR)", 0),
+        ];
+        for (line, want) in cases {
+            assert_eq!(spelled_outside_lib(line).len(), want, "{line}");
+        }
+        assert_eq!(
+            crate::project_state!("manifests/a.json"),
+            ".moai-cli/manifests/a.json"
+        );
+        assert_eq!(crate::PROJECT_STATE_DIR, ".moai-cli");
+        assert_eq!(crate::CLONE_STATE_DIR, ".moai-cli");
+        assert_eq!(crate::WORKTREES_DIR, ".moai-cli/worktrees");
+    }
 }
