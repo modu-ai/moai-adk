@@ -2,7 +2,8 @@
 //! existing fixtures and goldens stay untouched.
 //!
 //! An ordinary project has no `skills/moai/workflows/`. Generation writes
-//! `.moai-cli/workflows/<id>/` itself, so naming that as the `workflow_reference` must work
+//! `<state folder>/workflows/<id>/` itself (`.moai/` for a project created from nothing,
+//! #2696 C2b; the earlier `.moai-cli/` otherwise), so naming that as the `workflow_reference` must work
 //! from an empty project (REQ-1), while a direct `agents-plan` with a reference that does not
 //! exist is still refused (REQ-2).
 
@@ -111,13 +112,13 @@ fn agents_md(project: &Path) -> String {
 }
 
 /// AC-1: empty project → project → generation → agents, every step exit 0, and AGENTS.md
-/// points at the generated `.moai-cli/workflows/review-flow/`.
+/// points at the generated `.moai/workflows/review-flow/`.
 #[test]
 fn an_empty_project_generates_into_its_own_workflow_location() {
     let f = fixture();
     assert!(!f.project.join("skills").exists());
     plan_apply(&f, "project", &profile());
-    let reference = ".moai-cli/workflows/review-flow/";
+    let reference = ".moai/workflows/review-flow/";
     assert!(!f.project.join(reference).exists(), "not there before");
     plan_apply(&f, "generation", &generation(reference));
     assert!(f.project.join(reference).join("SKILL.md").is_file());
@@ -135,16 +136,16 @@ fn an_empty_project_generates_into_its_own_workflow_location() {
     );
 }
 
-/// The parent location `.moai-cli/workflows/` is generation's output too, with or without
+/// The parent location `.moai/workflows/` is generation's output too, with or without
 /// the trailing slash.
 #[test]
 fn the_workflows_parent_is_also_generations_own_location() {
-    for reference in [".moai-cli/workflows/", ".moai-cli/workflows"] {
+    for reference in [".moai/workflows/", ".moai/workflows"] {
         let f = fixture();
         plan_apply(&f, "project", &profile());
         plan_apply(&f, "generation", &generation(reference));
         assert!(
-            agents_md(&f.project).contains(".moai-cli/workflows/"),
+            agents_md(&f.project).contains(".moai/workflows/"),
             "{reference}"
         );
     }
@@ -157,8 +158,8 @@ fn a_missing_reference_is_still_refused_outside_generations_own_location() {
     let f = fixture();
     plan_apply(&f, "project", &profile());
     for reference in [
-        ".moai-cli/workflows/review-flow/",
-        ".moai-cli/workflows/",
+        ".moai/workflows/review-flow/",
+        ".moai/workflows/",
         "skills/moai/workflows/",
     ] {
         let (ok, v) = cli(&f, &["agents-plan", p(&f)], &agents(reference));
@@ -173,13 +174,13 @@ fn a_missing_reference_is_still_refused_outside_generations_own_location() {
         );
     }
     // A generation reference that is not its own output (another id, another tree) keeps the check.
-    for reference in [".moai-cli/workflows/other-flow/", "docs/workflows/"] {
+    for reference in [".moai/workflows/other-flow/", "docs/workflows/"] {
         let (ok, v) = cli(&f, &["generation-plan", p(&f)], &generation(reference));
         assert!(!ok, "{reference}: {v}");
         assert_eq!(v["error"]["kind"], json!("not_found"), "{reference}: {v}");
     }
     assert!(!f.project.join("AGENTS.md").exists());
-    assert!(!f.project.join(".moai-cli/workflows").exists());
+    assert!(!f.project.join(".moai/workflows").exists());
 }
 
 /// REQ-3: with generation's own location (the exception applies), the managed-marker

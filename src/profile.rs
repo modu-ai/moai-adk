@@ -264,7 +264,8 @@ fn state_path(root: &Path, rel: &str) -> Result<PathBuf> {
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
-    let dir = crate::state_root::path(&root, "");
+    // #2696 C2b: a new project's profile goes under `.moai/` (marked by the apply).
+    let dir = root.join(crate::state_root::create_dir(&root));
     let full = dir.join(rel);
     for path in [&dir, &full] {
         match fs::symlink_metadata(path) {
@@ -538,6 +539,11 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         || current_plan.plan_digest != p.plan_digest
     {
         return Err("stale or altered plan; re-preview required".into());
+    }
+    // #2696 C2b: the first profile of a project with no state makes `.moai/` and its marker
+    // first, so the paths below and every later writer resolve to `.moai`.
+    if p.action == "create" {
+        crate::state_root::adopt_new(root, "project-apply")?;
     }
     let target_rel = crate::state_root::rel(root, "project.yaml");
     let baseline_rel = crate::state_root::rel(root, "manifests/profile-baseline.json");

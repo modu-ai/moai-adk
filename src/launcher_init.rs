@@ -76,7 +76,8 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                     note: Some(format!(
                         "would initialize {}: git init, {}, AGENTS.md (--dry-run writes nothing)",
                         dir.display(),
-                        crate::state_root::rel(&dir, "project.yaml")
+                        // The path a first launch creates (#2696 C2b), not the one read now.
+                        format!("{}/project.yaml", crate::state_root::create_dir(&dir))
                     )),
                     git_pending: true,
                 });
@@ -146,7 +147,8 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                     note: Some(format!(
                         "would initialize {}: {}{agents} (--dry-run writes nothing)",
                         top.display(),
-                        crate::state_root::rel(&top, "project.yaml")
+                        // The path a first launch creates (#2696 C2b), not the one read now.
+                        format!("{}/project.yaml", crate::state_root::create_dir(&top))
                     )),
                     git_pending: false,
                 });

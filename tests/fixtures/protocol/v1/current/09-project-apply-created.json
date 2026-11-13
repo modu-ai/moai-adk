@@ -61,7 +61,7 @@
       "host_verified": false,
       "receipt": "<masked>",
       "next_actions": [
-        "update profile_sha256 and interview_revision in .moai-cli/manifests/generation.json through the 03-C generation apply; project.apply does not write the manifest"
+        "update profile_sha256 and interview_revision in .moai/manifests/generation.json through the 03-C generation apply; project.apply does not write the manifest"
       ]
     }
   },
