@@ -53,3 +53,5 @@ Not run yet: running this mode in a real Claude Code session waits on replacing 
 ## Completion Check
 
 Judge completion only from evidence on the remote (merged pull requests, verdicts), never from a message or an idle notice. Never report a verification or external effect that was not performed as complete.
+
+Every row of a status, close or decision table you post carries a source: the command whose output gave its number or state, and its time when it reads the remote (SKILL.md, Issue #2678). A row whose command printed nothing says "no result" and why, never a bare 0.

@@ -915,6 +915,19 @@ fn idle_entry(
     }
 }
 
+/// The `summary` line of `lane-status` (Issue #2678): rows, named lanes, idle lanes (only
+/// those judged idle) and ready Issues, with "0 rows" said in words.
+pub fn summary_line(rows: usize, named: usize, idle: usize, ready: usize) -> String {
+    let counts = format!("{named} lane(s) named, {idle} idle; {ready} ready Issue(s)");
+    if rows == 0 {
+        format!(
+            "0 rows: no claim, pull request or worktree was found for the named Issues; {counts}"
+        )
+    } else {
+        format!("{rows} row(s); {counts}")
+    }
+}
+
 /// The table, idle classification and assignment drafts for one snapshot (no I/O).
 pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
     let names: BTreeMap<&str, Option<&str>> = req
@@ -954,7 +967,13 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
         Ok(list) => json!({"available": true, "count": list.len()}),
         Err(e) => json!({"available": false, "reason": e}),
     };
+    // Issue #2678: say the counts in words, and say "no result" outright, so a reader never
+    // takes an empty list for a count it did not make. `idle` lists every named lane with
+    // `idle: true | false | null`; only `true` is an idle lane (audit B1 6850252311).
+    let idle_true = idle.iter().filter(|l| l["idle"] == json!(true)).count();
+    let summary = summary_line(rows.len(), idle.len(), idle_true, ready.len());
     json!({
+        "summary": summary,
         "rows": rows.into_iter().map(|r| r.value).collect::<Vec<_>>(),
         "idle": idle,
         "ready": ready,
@@ -1411,5 +1430,45 @@ mod tests {
         ];
         assert_eq!(report_after(&list, 4), Some(("blocked".into(), 12)));
         assert_eq!(report_after(&list, 12), None);
+    }
+
+    /// #2678: an empty table says "0 rows" and why, never just `[]`.
+    #[test]
+    fn an_empty_table_says_so_in_words() {
+        let req = LaneStatusRequest {
+            schema_version: 1,
+            owner: "o".into(),
+            repo: "r".into(),
+            base_branch: "main".into(),
+            issues: vec![],
+            lanes: vec![],
+            pending_decisions: vec![],
+        };
+        let snap = Snapshot {
+            issues: vec![],
+            other_open: BTreeMap::new(),
+            prs: vec![],
+            worktrees: Ok(vec![]),
+            now: 0,
+        };
+        let out = build(&req, &snap);
+        assert_eq!(out["rows"], json!([]));
+        assert_eq!(
+            out["summary"],
+            json!("0 rows: no claim, pull request or worktree was found for the named Issues; 0 lane(s) named, 0 idle; 0 ready Issue(s)")
+        );
+    }
+
+    /// #2678 audit B2: every number of the line is its own argument.
+    #[test]
+    fn summary_line_says_each_count() {
+        assert_eq!(
+            summary_line(8, 12, 9, 2),
+            "8 row(s); 12 lane(s) named, 9 idle; 2 ready Issue(s)"
+        );
+        assert_eq!(
+            summary_line(0, 3, 1, 4),
+            "0 rows: no claim, pull request or worktree was found for the named Issues; 3 lane(s) named, 1 idle; 4 ready Issue(s)"
+        );
     }
 }
