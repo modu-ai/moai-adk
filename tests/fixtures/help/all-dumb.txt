@@ -91,6 +91,16 @@ Update and move
                           folder on the way, an entry or its `SKILL.md`); a `SKILL.md` is read only
                           when it is a regular file of at most 64 KiB, so a FIFO never blocks the
                           check. Reads only; moves, deletes and edits nothing
+  bin-names-plan          Preview the two command names (#2791 AC-1): in the version folder this
+                          binary runs from, `~/.moai-cli/versions/<version>/bin/`, `moai` should be
+                          a hard link to `moai-cli`. Says `create`, `unchanged`, `replace_copy` (a
+                          separate copy of this same build is moved aside), `blocked` (a link, a
+                          folder or another program named `moai`) or `outside_layout`. Writes
+                          nothing; PATH and shell files are never touched
+  bin-names-apply         Make the `moai` hard link `bin-names-plan` previewed (#2791 AC-1). The
+                          digest must match a fresh preview; only `create` and `replace_copy` write.
+                          A separate copy is moved aside to `moai.replaced-<UTC>`, never deleted,
+                          and moved back if the link fails
   agents-home-plan        Preview installing the base MoAI agents into HOME's host agent folders
                           (#2592): per file create, update, unchanged, preserved (your edit),
                           conflict or remove_blocked. Writes nothing

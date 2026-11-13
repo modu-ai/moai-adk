@@ -70,6 +70,8 @@ pub const GROUPS: &[Group] = &[
             ("migrate-recovery-plan", false),
             ("migrate-recover", false),
             ("skills-legacy", false),
+            ("bin-names-plan", false),
+            ("bin-names-apply", false),
             ("agents-home-plan", false),
             ("agents-home-apply", false),
             ("agents-home-revert", false),

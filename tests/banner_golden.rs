@@ -108,3 +108,145 @@ fn piped_bare_run_prints_no_banner_and_keeps_the_usage_contract() {
     );
     assert_eq!(out.status.code(), Some(1), "bare run keeps exit 1");
 }
+
+// ---- #2803 (design #2799 D2 §3): the terminal decides the banner's shape and depth ----
+
+fn ui_env(pairs: &[(&str, &str)]) -> moai_cli::ui::Env {
+    let mut e = moai_cli::ui::Env::default();
+    for (k, v) in pairs {
+        let v = Some(std::ffi::OsString::from(v));
+        match *k {
+            "NO_COLOR" => e.no_color = v,
+            "TERM" => e.term = v,
+            "COLORTERM" => e.colorterm = v,
+            "LANG" => e.lang = v,
+            other => panic!("unknown key {other}"),
+        }
+    }
+    e
+}
+
+#[test]
+fn the_shape_follows_tty_no_color_term_locale_and_width() {
+    use banner::Shape;
+    use moai_cli::ui::Depth;
+    let wide = Some(banner::LOGO_WIDTH + 1);
+    assert_eq!(banner::shape(false, &ui_env(&[]), wide), Shape::None);
+    assert_eq!(
+        banner::shape(false, &ui_env(&[("TERM", "dumb")]), wide),
+        Shape::None
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[("TERM", "xterm")]), wide),
+        Shape::Colored(Depth::Ansi16)
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[("TERM", "xterm-256color")]), wide),
+        Shape::Colored(Depth::Ansi256)
+    );
+    assert_eq!(
+        banner::shape(
+            true,
+            &ui_env(&[("TERM", "xterm-256color"), ("COLORTERM", "truecolor")]),
+            wide
+        ),
+        Shape::Colored(Depth::TrueColor)
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[("NO_COLOR", "1")]), wide),
+        Shape::Plain
+    );
+    // TERM=dumb and a non-UTF-8 locale get the one ASCII line, NO_COLOR or not.
+    assert_eq!(
+        banner::shape(true, &ui_env(&[("TERM", "dumb")]), wide),
+        Shape::Line
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[("TERM", "dumb"), ("NO_COLOR", "1")]), wide),
+        Shape::Line
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[("LANG", "C")]), wide),
+        Shape::Line
+    );
+    // Width: the logo needs LOGO_WIDTH + 1 columns (61 → line, 62 → logo); unknown → logo.
+    assert_eq!(
+        banner::shape(true, &ui_env(&[]), Some(banner::LOGO_WIDTH)),
+        Shape::Line
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[]), Some(banner::LOGO_WIDTH + 1)),
+        Shape::Colored(Depth::Ansi16)
+    );
+    assert_eq!(
+        banner::shape(true, &ui_env(&[]), None),
+        Shape::Colored(Depth::Ansi16)
+    );
+}
+
+#[test]
+fn logo_width_is_the_widest_row() {
+    let widest = banner::LOGO_ROWS
+        .lines()
+        .map(|r| r.chars().count())
+        .max()
+        .unwrap();
+    assert_eq!(widest, banner::LOGO_WIDTH);
+}
+
+#[test]
+fn truecolor_depth_keeps_the_recorded_bytes() {
+    use moai_cli::ui::Depth;
+    assert_eq!(
+        banner::render_logo_in(Depth::TrueColor),
+        banner::render_logo(true)
+    );
+    assert_eq!(
+        banner::render_banner_in(Depth::TrueColor),
+        banner::render_banner(true)
+    );
+    check("banner-color", &banner::render_banner_in(Depth::TrueColor));
+}
+
+#[test]
+fn lower_depths_never_send_24_bit_sequences() {
+    use moai_cli::ui::Depth;
+    let c256 = banner::render_banner_in(Depth::Ansi256);
+    assert!(c256.contains("\x1b[38;5;"), "{c256:?}");
+    assert!(!c256.contains("38;2;"), "{c256:?}");
+    // The 256-color stops are the status line's conversion of the same coral colors.
+    let accent = moai_cli::statusline::color::Profile::Ansi256.foreground("#d97757");
+    assert!(c256.contains(&format!("\x1b[{accent}m")), "{c256:?}");
+    let c16 = banner::render_banner_in(Depth::Ansi16);
+    assert!(!c16.contains("38;"), "{c16:?}");
+    assert!(c16.contains("\x1b[35m"), "{c16:?}");
+    for text in [&c256, &c16] {
+        let plain: String = strip_ansi(text);
+        assert_eq!(plain, banner::render_banner(false));
+    }
+}
+
+#[test]
+fn the_line_form_is_ascii_without_escapes() {
+    let line = banner::render_line();
+    assert!(line.is_ascii() && !line.contains('\x1b'), "{line:?}");
+    assert!(line.starts_with("MoAI-ADK ") && line.ends_with('\n'));
+    assert_eq!(line.lines().count(), 1);
+}
+
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::new();
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for d in chars.by_ref() {
+                if d == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
