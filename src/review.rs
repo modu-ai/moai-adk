@@ -216,7 +216,8 @@ fn file(path: &str, role: &str, included_by: Option<&str>, text: String) -> File
 }
 
 /// Markdown links counted toward [`LINK_LIMIT`]: inline links `[text](destination)` and
-/// reference definitions `[label]: destination` (up to three spaces of indentation). Spaces,
+/// reference definitions `[label]: destination` (up to three spaces of indentation, also inside
+/// block quotes and list items, destination on the same or the next line). Spaces,
 /// tabs and one line break may come before a destination and a destination may be written in
 /// `<…>`, as CommonMark allows (AC-4 record 6841710561). `http:`, `https:`, `mailto:` and `#`
 /// destinations are not counted.
@@ -230,19 +231,55 @@ fn counted_links(text: &str) -> usize {
         }
         rest = after;
     }
-    for line in text.lines() {
-        let indent = line.len() - line.trim_start_matches(' ').len();
-        let Some(label) = line[indent..].strip_prefix('[').filter(|_| indent <= 3) else {
+    // Definitions: the destination is read from the text itself, not from the line, so one
+    // that sits on the next line counts (audit FAIL 6841945971 B1).
+    let mut offset = 0;
+    for line in text.split_inclusive('\n') {
+        let start = offset;
+        offset += line.len();
+        let body = strip_containers(line);
+        let indent = body.len() - body.trim_start_matches(' ').len();
+        let Some(label) = body[indent..].strip_prefix('[').filter(|_| indent <= 3) else {
             continue;
         };
         let Some(close) = label.find("]:") else {
             continue;
         };
-        if !label[..close].contains(']') && counted_destination(destination(&label[close + 2..])) {
+        let after = start + (line.len() - label.len()) + close + 2;
+        if !label[..close].contains(']') && counted_destination(destination(&text[after..])) {
             count += 1;
         }
     }
     count
+}
+
+/// A line without its block-quote markers (`>`) and list-item markers (`-`, `*`, `+`, `1.`,
+/// `1)`), each with up to three spaces before it: a definition inside them still counts.
+fn strip_containers(line: &str) -> &str {
+    let mut rest = line;
+    loop {
+        let indent = rest.len() - rest.trim_start_matches(' ').len();
+        if indent > 3 {
+            return rest;
+        }
+        let body = &rest[indent..];
+        if let Some(r) = body.strip_prefix('>') {
+            rest = r.strip_prefix(' ').unwrap_or(r);
+            continue;
+        }
+        let digits = body.len() - body.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        let marker = if body.starts_with(['-', '*', '+']) {
+            1
+        } else if (1..=9).contains(&digits) && body[digits..].starts_with(['.', ')']) {
+            digits + 1
+        } else {
+            0
+        };
+        match body[marker..].chars().next() {
+            Some(' ' | '\t') if marker > 0 => rest = &body[marker + 1..],
+            _ => return rest,
+        }
+    }
 }
 
 /// The destination that starts `after`: leading spaces and tabs and at most one line break
@@ -772,6 +809,24 @@ mod tests {
         assert_eq!(counted_links("    [ref]: x.md\n"), 0);
         // Two line breaks end the link: nothing is counted.
         assert_eq!(counted_links("[a](\n\nx.md)"), 0);
+    }
+
+    /// Audit FAIL 6841945971 B1: a definition's destination may sit on the next line, and a
+    /// definition inside a block quote or a list item is a definition too.
+    #[test]
+    fn definitions_on_the_next_line_or_in_containers_count() {
+        assert_eq!(counted_links("[ref]:\nx.md\n"), 1);
+        assert_eq!(counted_links("[ref]:\n   x.md\n"), 1);
+        assert_eq!(counted_links("[ref]:\n\nx.md\n"), 0);
+        assert_eq!(counted_links("[ref]:\tx.md\n"), 1);
+        assert_eq!(counted_links("[ref]: x.md \"t\"\n"), 1);
+        assert_eq!(counted_links("[ref]: x.md\r\n"), 1);
+        assert_eq!(counted_links("> [ref]: x.md\n"), 1);
+        assert_eq!(counted_links(">> [ref]: x.md\n"), 1);
+        assert_eq!(counted_links("- [ref]: x.md\n"), 1);
+        assert_eq!(counted_links("12. [ref]: x.md\n"), 1);
+        assert_eq!(counted_links("> - [ref]: x.md\n"), 1);
+        assert_eq!(counted_links("> [web]: https://e\n"), 0);
     }
 
     #[test]

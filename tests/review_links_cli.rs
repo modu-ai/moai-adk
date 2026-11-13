@@ -61,6 +61,8 @@ fn every_link_spelling_counts_toward_the_limit() {
         ("space", "[l{i}]( sub/l{i}.md)\n"),
         ("angle", "[l{i}](<sub/l{i}.md>)\n"),
         ("reference", "[l{i}]: sub/l{i}.md\n"),
+        ("reference on the next line", "[l{i}]:\nsub/l{i}.md\n"),
+        ("reference in a quote", "> [l{i}]: sub/l{i}.md\n"),
     ] {
         let at: String = (0..64)
             .map(|i| link.replace("{i}", &i.to_string()))
