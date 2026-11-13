@@ -29,8 +29,8 @@
 
 ## opt-in 절차 (REQ-B8-01)
 
-1. `moai-cli layout-plan PROJECT` — 세 store를 측정(파일 수·바이트·`moai-tree-v1` digest)해 plan_digest로 묶는다. 아무것도 쓰지 않는다.
-2. `moai-cli layout-apply PROJECT --plan-digest <digest> --permission-reference <approved-ref>` — 권한 참조와 digest를 검증하고 claim journal 잠금을 잡는다. 잠금 전과 획득 뒤에 전환 상태·모든 홈 대상의 존재를 검사한다. 일치하면: (a) 원본을 **지우지 않고** 배타적으로 생성한 대상에 복사, (b) 대상 트리 digest가 원본과 일치하는지 검증, (c) 검증 통과 뒤 `layout.json` 포인터를 쓴다. 기존 대상은 덮어쓰거나 실패 정리로 삭제하지 않는다.
+1. `moai layout-plan PROJECT` — 세 store를 측정(파일 수·바이트·`moai-tree-v1` digest)해 plan_digest로 묶는다. 아무것도 쓰지 않는다.
+2. `moai layout-apply PROJECT --plan-digest <digest> --permission-reference <approved-ref>` — 권한 참조와 digest를 검증하고 claim journal 잠금을 잡는다. 잠금 전과 획득 뒤에 전환 상태·모든 홈 대상의 존재를 검사한다. 일치하면: (a) 원본을 **지우지 않고** 배타적으로 생성한 대상에 복사, (b) 대상 트리 digest가 원본과 일치하는지 검증, (c) 검증 통과 뒤 `layout.json` 포인터를 쓴다. 기존 대상은 덮어쓰거나 실패 정리로 삭제하지 않는다.
    - 원본의 디렉터리 열기·항목 조회·metadata·digest 읽기 오류는 store별로 집계해 plan/apply를 거부한다. 읽지 못한 store를 빈 것으로 확인하거나 건너뛰어 포인터를 전환하지 않는다.
 3. 되돌리기 = `layout.json` 삭제. 프로젝트 쪽의 전환 시점 원본으로 복귀하며, 전환 중 홈에 새로 기록한 데이터는 홈에 남고 자동 병합하지 않는다. 기존 홈 대상이 남아 있으면 재적용을 거부하므로 새 데이터를 별도로 보존·병합한 뒤 다시 확인한다.
 

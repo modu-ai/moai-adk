@@ -4,10 +4,10 @@
 
 ## 본문은 렌더러가 만든다
 
-GitHub는 기본 브랜치(`main`)에 있는 PR 템플릿만 자동으로 채운다. 그래서 `v2026.11.0` 대상 PR에는 `.github/pull_request_template.md`가 적용되지 않는다. 본문은 `moai-cli pr-body-render`로 만들고, 그 결과를 파일로 저장해 `gh pr create --body-file <파일>`로 연다. 렌더러 출력의 절 구성은 템플릿과 같다.
+GitHub는 기본 브랜치(`main`)에 있는 PR 템플릿만 자동으로 채운다. 그래서 `v2026.11.0` 대상 PR에는 `.github/pull_request_template.md`가 적용되지 않는다. 본문은 `moai pr-body-render`로 만들고, 그 결과를 파일로 저장해 `gh pr create --body-file <파일>`로 연다. 렌더러 출력의 절 구성은 템플릿과 같다.
 
 ```text
-moai-cli pr-body-render <worktree> (--task <key> | --record <file> --claim-comment <file>) \
+moai pr-body-render <worktree> (--task <key> | --record <file> --claim-comment <file>) \
   --receipts <receipts.json> --base-sha <40자> --base-branch v2026.11.0 --default-branch main \
   [--not-run <항목>]... [--review-link <url>]
 ```
