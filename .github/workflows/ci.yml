@@ -43,12 +43,17 @@ jobs:
     # control-workflow-concurrency, read 2026-11-13). The newer run's tree contains the
     # skipped merge, so every merge still gets a macOS result, just later (measured before:
     # 12-21 min of macOS runner wait when merges piled up, #2554 comment 6831048630).
-    # Every other job gets a group of its own (run id + target), so nothing else changes.
+    # Only a run's first attempt shares the group: a re-run of an older SHA (the same-SHA
+    # re-run that tells a flaky failure apart) would otherwise queue in it and replace the
+    # current tip's waiting job, and the tip watch counts that cancel as red (#2739 audit
+    # F1, src/flow.rs `tip_ci_judgment`). Every other job gets a group of its own (run id +
+    # target), so nothing else changes.
     concurrency:
       group: >-
-        ${{ github.event_name == 'push' && startsWith(matrix.target, 'macos-')
+        ${{ github.event_name == 'push' && github.run_attempt == '1'
+        && startsWith(matrix.target, 'macos-')
         && format('ci-push-{0}', matrix.target)
-        || format('ci-run-{0}-{1}', github.run_id, matrix.target) }}
+        || format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.target) }}
       cancel-in-progress: false
     strategy:
       # Every target is a measurement: one failure must not cancel the others.

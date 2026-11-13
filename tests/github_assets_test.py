@@ -307,15 +307,20 @@ class WorkflowTest(unittest.TestCase):
     def test_rc_ci_post_merge_macos_waits_are_replaced_by_a_newer_merge(self):
         """#2554 D8 (a): on a push, only the macOS targets share a group across runs, so a
         newer merge replaces a macOS job that is still waiting; a running job is never
-        cancelled, and every other target and event keeps a group of its own."""
+        cancelled, and every other target and event keeps a group of its own. Only a run's
+        first attempt shares the group: a re-run of an older SHA must not replace the
+        current tip's waiting job, which the tip watch would read as red (#2739 audit F1)."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         conc = flow["jobs"]["check"]["concurrency"]
         self.assertIs(conc["cancel-in-progress"], False)
         group = " ".join(conc["group"].split())
         self.assertEqual(group,
-                         "${{ github.event_name == 'push' && startsWith(matrix.target, 'macos-') "
+                         "${{ github.event_name == 'push' && github.run_attempt == '1' "
+                         "&& startsWith(matrix.target, 'macos-') "
                          "&& format('ci-push-{0}', matrix.target) "
-                         "|| format('ci-run-{0}-{1}', github.run_id, matrix.target) }}")
+                         "|| format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, "
+                         "matrix.target) }}")
+        self.assertIn("github.run_attempt == '1'", group.split("||")[0])
         _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
         shared = sorted(e["target"] for e in after_merge if e["target"].startswith("macos-"))
         self.assertEqual(shared, ["macos-arm64", "macos-x86_64"])
