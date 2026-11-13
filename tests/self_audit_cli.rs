@@ -72,6 +72,61 @@ fn every_ci_scope_mention_in_the_skill_names_this_repository() {
     assert_eq!(bare, Vec::<String>::new());
 }
 
+/// #2708 AC-1: a user project has no `tools/`, so the shipped skill never tells a session to
+/// run a repository Python tool. No `python3 … tools/…` command, and every `tools/<name>.py`
+/// mention names the moai-adk repository within the 300 bytes before it. The leader's scan
+/// judge is the `moai-cli repo-scans` command (#2708 4/4).
+#[test]
+fn the_shipped_skill_runs_no_repository_python_tool() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+    let mut files = Vec::new();
+    skill_files(&root, &mut files);
+    let mut mentions = 0;
+    let mut bad = Vec::new();
+    for p in files
+        .iter()
+        .filter(|p| p.extension().is_some_and(|e| e == "md"))
+    {
+        let text = fs::read_to_string(p).unwrap();
+        for (at, _) in text.match_indices("python3") {
+            let rest = &text[at..];
+            let end = rest.find(['`', '\n']).unwrap_or(rest.len());
+            if rest[..end].contains("tools/") {
+                bad.push(format!("{}: byte {at}: runs {}", p.display(), &rest[..end]));
+            }
+        }
+        for (at, _) in text.match_indices("tools/") {
+            let name = &text[at + "tools/".len()..];
+            let stem = name
+                .find(|c: char| !(c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_'))
+                .unwrap_or(name.len());
+            if stem == 0 || !name[stem..].starts_with(".py") {
+                continue;
+            }
+            mentions += 1;
+            let mut from = at.saturating_sub(300);
+            while !text.is_char_boundary(from) {
+                from += 1;
+            }
+            if !text[from..at].contains("moai-adk repository") {
+                bad.push(format!(
+                    "{}: byte {at}: bare tools/{}.py",
+                    p.display(),
+                    &name[..stem]
+                ));
+            }
+        }
+    }
+    assert!(
+        mentions >= 3,
+        "the moai-adk repository mentions moved: {mentions}"
+    );
+    assert_eq!(bad, Vec::<String>::new());
+    let leader = fs::read_to_string(root.join("workflows/mode-leader.md")).unwrap();
+    assert!(leader.contains("run `moai-cli repo-scans --refs <tip> <head>` from any checkout"));
+    assert!(leader.contains("when `result.remerge` is `true`"));
+}
+
 fn run(args: &[&str], body: &str) -> (i32, String) {
     use std::io::Write;
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))

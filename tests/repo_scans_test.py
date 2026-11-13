@@ -1,4 +1,10 @@
-"""Tests for tools/repo_scans.json and tools/repo_scans.py (#2681).
+"""Tests for tools/repo_scans.json, tools/repo_scans.py (#2681) and `moai-cli repo-scans` (#2708).
+
+Every case that runs the judge runs both: `both()` feeds the same arguments and stdin to the
+Python script and to the Rust command with the script's own table as `--table`, and fails unless
+the exit codes match and the envelope `result` equals the Python output (the text of an internal
+error reason may differ; its kind may not). Unknown options are the one stated difference: the
+Rust command refuses them as a usage error (exit 2) instead of a fail-safe report.
 
 The table lists tests whose input is the checked-in tree. RepoScansTableTest keeps it complete:
 a test file that names the repository root and walks a directory must be in the table or in
@@ -81,9 +87,51 @@ def named_files(scans):
     return names
 
 
+def rust_bin():
+    explicit = os.environ.get("MOAI_CLI_BIN")
+    if explicit:
+        return Path(explicit)
+    target = os.environ.get("CARGO_TARGET_DIR")
+    return (Path(target) if target else REPO_ROOT / "target") / "debug" / "moai-cli"
+
+
+def reason_kinds(report):
+    """An internal error's text differs between the two judges; its kind and count may not."""
+    out = dict(report)
+    if report["reasons"] and report["reasons"][0].startswith("judge internal error"):
+        out["reasons"] = ["hold" if r.endswith("hold the merge") else r.split(":")[0]
+                          for r in report["reasons"]]
+    return out
+
+
+def run_rust(args, stdin, cwd, env, table):
+    binary = rust_bin()
+    if not binary.exists():
+        raise AssertionError(f"moai-cli not built at {binary}; run cargo build first")
+    return subprocess.run([str(binary), "repo-scans", "--repo", str(cwd), "--table", str(table),
+                           *args], input=stdin, capture_output=True, text=True, cwd=cwd, env=env)
+
+
+def both(args=(), stdin="", cwd=REPO_ROOT, env=None, tool=TOOL):
+    """The Python judge's run, after checking that `moai-cli repo-scans` agrees (#2708)."""
+    py = subprocess.run([sys.executable, "-I", str(tool), *args], input=stdin,
+                        capture_output=True, text=True, cwd=cwd, env=env)
+    rs = run_rust(args, stdin, cwd, env, Path(tool).parent / "repo_scans.json")
+    agree = py.returncode == rs.returncode == 0
+    if agree:
+        envelope = json.loads(rs.stdout)
+        agree = (envelope.get("ok") is True
+                 and reason_kinds(envelope["result"]) == reason_kinds(json.loads(py.stdout)))
+    if not agree:
+        raise AssertionError(
+            "moai-cli repo-scans disagrees with tools/repo_scans.py\n"
+            f"args={list(args)} stdin={stdin[:200]!r}\npython {py.returncode} {py.stdout!r} "
+            f"{py.stderr[-300:]!r}\nrust {rs.returncode} {rs.stdout!r} {rs.stderr[-300:]!r}")
+    return py
+
+
 def run_tool(stdin):
-    return subprocess.run([sys.executable, "-I", str(TOOL)], input=stdin,
-                          capture_output=True, text=True, cwd=REPO_ROOT)
+    return both(stdin=stdin)
 
 
 class RepoScansTableTest(unittest.TestCase):
@@ -173,7 +221,10 @@ class JudgeTest(unittest.TestCase):
         self.scans = repo_scans.load()
 
     def judge(self, pr, tip):
-        return repo_scans.judge(pr, tip, self.scans)
+        result = repo_scans.judge(pr, tip, self.scans)
+        report = json.loads(both(stdin=json.dumps({"pr": pr, "tip": tip})).stdout)
+        self.assertEqual((report["remerge"], report["hits"]), result)
+        return result
 
     def test_the_2642_2632_incident_requires_a_remerge_either_way_round(self):
         for pr, tip, rules_side in ((PR_2642, PR_2632, "pr"), (PR_2632, PR_2642, "tip")):
@@ -202,6 +253,17 @@ class JudgeTest(unittest.TestCase):
         # one level deeper still counts
         remerge, hits = self.judge(["src/contract.rs"], ["src/forge/new.rs"])
         self.assertIn("permission-reference-one-copy", [h["id"] for h in hits])
+        # the prefix anchors at the start: "src/" inside a path is not "src/" (#2708 mutant M2)
+        remerge, hits = self.judge(["src/contract.rs"], ["lib/src/a.rs"])
+        self.assertNotIn("permission-reference-one-copy", [h["id"] for h in hits])
+
+    def test_hit_paths_are_sorted(self):
+        # input order does not reach the report (#2708 mutant M9)
+        remerge, hits = self.judge(["tools/repo_scans.json", "tests/repo_scans_test.py"],
+                                   ["tests/zz_test.py", "src/b.rs", "src/a.rs"])
+        hit = next(h for h in hits if h["id"] == "repo-scans-table")
+        self.assertEqual(hit["rules"], ["tests/repo_scans_test.py", "tools/repo_scans.json"])
+        self.assertEqual(hit["scope"], ["src/a.rs", "src/b.rs", "tests/zz_test.py"])
 
     def test_an_expected_set_file_counts_as_a_rule(self):
         remerge, hits = self.judge(["skills/moai/references/source-manifest.json"],
@@ -246,8 +308,7 @@ class CliTest(unittest.TestCase):
 
     def test_refs_read_the_change_sets_from_git(self):
         # the same commit on both sides: nothing changed since the merge-base
-        out = subprocess.run([sys.executable, "-I", str(TOOL), "--refs", "HEAD", "HEAD"],
-                             capture_output=True, text=True, cwd=REPO_ROOT)
+        out = both(["--refs", "HEAD", "HEAD"])
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(json.loads(out.stdout),
                          {"remerge": False, "hits": [], "checks": [], "reasons": []})
@@ -257,15 +318,43 @@ class CliTest(unittest.TestCase):
         every = [c for i, c in enumerate(every) if c not in every[:i]]
         cases = [("", []), ("not json", []), (json.dumps({"pr": "src/a.rs", "tip": []}), []),
                  (json.dumps({"pr": []}), []), ("", ["--refs", "HEAD"]),
-                 ("", ["--refs", "no-such-ref-2681", "HEAD"]), ("", ["--bogus"])]
+                 ("", ["--refs", "no-such-ref-2681", "HEAD"]),
+                 ("", ["--refs", "HEAD", "HEAD", "HEAD"])]
         for stdin, args in cases:
-            out = subprocess.run([sys.executable, "-I", str(TOOL), *args], input=stdin,
-                                 capture_output=True, text=True, cwd=REPO_ROOT)
+            out = both(args, stdin)
             self.assertEqual(out.returncode, 0, (stdin, args))
             report = json.loads(out.stdout)
             self.assertTrue(report["remerge"], (stdin, args))
             self.assertEqual(report["checks"], every, (stdin, args))
             self.assertTrue(report["reasons"][0].startswith("judge internal error"), (stdin, args))
+
+    def test_an_unknown_option(self):
+        # the stated difference: the script reports an unknown option (or a ref that looks like
+        # one) fail-safe, the command refuses it as a usage error, so the gate gets no report
+        for args in (["--bogus"], ["--refs", "-x", "HEAD"]):
+            py = subprocess.run([sys.executable, "-I", str(TOOL), *args], input="",
+                                capture_output=True, text=True, cwd=REPO_ROOT)
+            self.assertTrue(json.loads(py.stdout)["remerge"], args)
+            rs = run_rust(args, "", REPO_ROOT, None, REPO_ROOT / "tools/repo_scans.json")
+            envelope = json.loads(rs.stdout)
+            self.assertEqual((rs.returncode, envelope["ok"], envelope["error"]["kind"]),
+                             (2, False, "usage"), args)
+            self.assertNotIn("result", envelope, args)
+
+    def test_two_scans_sharing_a_command_through_both_judges(self):
+        # JudgeTest's shared-command case, end to end: both scans hit, "y" once at its first place
+        with tempfile.TemporaryDirectory(prefix="repo-scans-shared-") as tmp:
+            lone = Path(tmp) / "repo_scans.py"
+            lone.write_bytes(TOOL.read_bytes())
+            scope = [{"prefix": "s/"}]
+            (Path(tmp) / "repo_scans.json").write_text(json.dumps({"scans": [
+                {"id": "a", "rules": ["r"], "scope": scope, "checks": ["x", "y"]},
+                {"id": "b", "rules": ["r"], "scope": scope, "checks": ["y", "z"]}]}))
+            out = both(stdin=json.dumps({"pr": ["s/1"], "tip": ["r"]}), cwd=Path(tmp), tool=lone)
+            report = json.loads(out.stdout)
+            self.assertEqual(report["checks"], ["x", "y", "z"])
+            self.assertEqual([(h["id"], h["rules_side"]) for h in report["hits"]],
+                             [("a", "tip"), ("b", "tip")])
 
 
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
@@ -325,8 +414,7 @@ class RefsTableTest(unittest.TestCase):
     def judge(self, tip, head, tool=None):
         """Run the checkout's own judge (its table is that checkout's), unless `tool` is given."""
         tool = tool or self.repo / "tools" / "repo_scans.py"
-        out = subprocess.run([sys.executable, "-I", str(tool), "--refs", tip, head],
-                             capture_output=True, text=True, cwd=self.repo, env=self.env)
+        out = both(["--refs", tip, head], cwd=self.repo, env=self.env, tool=tool)
         self.assertEqual(out.returncode, 0, out.stderr)
         return json.loads(out.stdout)
 
@@ -371,8 +459,7 @@ class RefsTableTest(unittest.TestCase):
         lone = Path(self.tmp.name) / "lone" / "repo_scans.py"
         lone.parent.mkdir()
         lone.write_bytes(TOOL.read_bytes())
-        out = subprocess.run([sys.executable, "-I", str(lone)], input="not json",
-                             capture_output=True, text=True, cwd=self.repo, env=self.env)
+        out = both(stdin="not json", cwd=self.repo, env=self.env, tool=lone)
         report = json.loads(out.stdout)
         self.assertEqual((out.returncode, report["remerge"], report["checks"]), (0, True, []))
         self.assertTrue(report["reasons"][-1].endswith("hold the merge"), report["reasons"])

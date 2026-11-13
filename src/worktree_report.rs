@@ -224,12 +224,13 @@ pub fn parse_worktree_list(text: &str) -> Vec<WorktreeEntry> {
     out
 }
 
-/// Free and total bytes of the file system holding `path`, from POSIX `df -Pk`.
-fn disk(path: &Path) -> Value {
+/// `(free, total)` bytes of the file system holding `path`, from POSIX `df -Pk`; `None` off
+/// Unix or when `df` cannot be read.
+pub fn disk_bytes(path: &Path) -> Option<(u64, u64)> {
     if !cfg!(unix) {
-        return json!({"free_bytes": null, "total_bytes": null, "reason": "not measured on this platform"});
+        return None;
     }
-    let parsed = Command::new("df")
+    Command::new("df")
         .arg("-Pk")
         .arg(path)
         .env("LC_ALL", "C")
@@ -243,8 +244,29 @@ fn disk(path: &Path) -> Value {
             let total = f.get(1)?.parse::<u64>().ok()?;
             let avail = f.get(3)?.parse::<u64>().ok()?;
             Some((avail * 1024, total * 1024))
-        });
-    match parsed {
+        })
+}
+
+/// Bytes held by the repository's worktrees (their files plus their `target/`), and whether
+/// the bounded walk was cut short (then the total is a lower bound). Used by the WT-5
+/// warning of `worktree-apply`. `None` when the report cannot run.
+pub fn project_bytes(project: &Path, budget: Duration) -> Option<(u64, bool)> {
+    // No temporary root is scanned for this total.
+    let r = report(project, Path::new("/nonexistent-moai-tmp-root"), budget).ok()?;
+    let c = &r["classes"];
+    let bytes = c["worktree_checkout"]["bytes"].as_u64().unwrap_or(0)
+        + c["worktree_target"]["bytes"].as_u64().unwrap_or(0);
+    let partial =
+        c["worktree_checkout"]["partial"] == true || c["worktree_target"]["partial"] == true;
+    Some((bytes, partial))
+}
+
+/// Free and total bytes of the file system holding `path`, as the report's `disk` object.
+fn disk(path: &Path) -> Value {
+    if !cfg!(unix) {
+        return json!({"free_bytes": null, "total_bytes": null, "reason": "not measured on this platform"});
+    }
+    match disk_bytes(path) {
         Some((free, total)) => json!({"free_bytes": free, "total_bytes": total, "reason": null}),
         None => {
             json!({"free_bytes": null, "total_bytes": null, "reason": "df -Pk unavailable or unreadable"})
