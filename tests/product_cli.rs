@@ -2517,14 +2517,14 @@ mod skill_package {
 
     /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
     /// generator instead of free-form wording — leader feeds the state it read
-    /// to tools/gen_goal_block.py and prints its `leader` line, with the
+    /// to `moai-cli goal-block` (#2708; formerly tools/gen_goal_block.py) and prints its `leader` line, with the
     /// keep-set exclusion rule stated as the generator's rule; agent binds its
     /// card-scoped lines to the generator's `agent` kind.
     #[test]
     fn goal_step_is_bound_to_the_goal_block_generator() {
         let leader = mode_workflow("MODE-LEADER");
         assert!(
-            leader.contains("`tools/gen_goal_block.py`"),
+            leader.contains("`moai-cli goal-block`"),
             "leader workflow must name the generator: {leader}"
         );
         assert!(
@@ -2540,8 +2540,15 @@ mod skill_package {
             "leader workflow must forbid editing the generated line: {leader}"
         );
         let agent = mode_workflow("MODE-AGENT");
+        // #2708: a user project has no tools/ folder, so neither workflow names the script.
+        for body in [&leader, &agent] {
+            assert!(
+                !body.contains("gen_goal_block"),
+                "a mode workflow names the Python script"
+            );
+        }
         assert!(
-            agent.contains("`tools/gen_goal_block.py`"),
+            agent.contains("`moai-cli goal-block`"),
             "agent workflow must name the generator: {agent}"
         );
         assert!(
@@ -2555,8 +2562,8 @@ mod skill_package {
         // The generator itself still enforces the rule: a keep-set entry without
         // a reason is refused, and excluded numbers leave the condition.
         let run = |input: &str| {
-            let mut out = std::process::Command::new("python3")
-                .args(["-I", "tools/gen_goal_block.py"])
+            let mut out = std::process::Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .arg("goal-block")
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
@@ -2573,7 +2580,7 @@ mod skill_package {
         let good = run(
             r#"{"milestone":"m1","issues":[{"number":1,"state":"open"},{"number":2,"state":"open"}],"prs":[{"number":3,"state":"open"}],"keep_set":[{"number":2,"reason":"operator-held"}]}"#,
         );
-        let v: Value = serde_json::from_slice(&good.stdout).unwrap();
+        let v: Value = serde_json::from_slice::<Value>(&good.stdout).unwrap()["result"].clone();
         // The excluded entry drops out of the counts (2 issues -> 1) and the
         // condition carries its number and reason.
         assert_eq!(v["counts"]["open_issues"], json!(1));
