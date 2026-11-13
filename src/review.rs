@@ -491,6 +491,200 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
     Ok(package)
 }
 
+/// One finding accepted by [`check`].
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct Finding {
+    pub severity: String,
+    pub file: String,
+    pub line: u64,
+    pub title: String,
+    pub evidence: String,
+    pub method: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct Counts {
+    pub important: usize,
+    pub nit: usize,
+    pub pre_existing: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct CheckReport {
+    pub schema_version: u32,
+    pub head: String,
+    /// `FAIL` when any finding is `important` (design D3), else `PASS`.
+    pub verdict: String,
+    pub counts: Counts,
+    pub findings: Vec<Finding>,
+    /// The post body: a `Severity | File:Line | Issue` table and a machine line.
+    pub body: String,
+    pub digest: String,
+}
+
+/// How far (in lines) quoted evidence may sit from the cited line.
+pub const EVIDENCE_WINDOW: u64 = 3;
+/// The marker of the post body's machine-readable line.
+pub const MACHINE_MARKER: &str = "moai-review-severity";
+const SEVERITIES: [&str; 3] = ["important", "nit", "pre_existing"];
+
+fn squash(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Text for one table cell: one line, `|` escaped, and `&`, `<`, `>` as entities so a title or
+/// path can neither split the table nor open an HTML comment that forges the machine line
+/// (pre-audit 6840720403 B1, N1).
+fn table_cell(text: &str) -> String {
+    squash(text)
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('|', "\\|")
+}
+
+fn text_field<'a>(v: &'a serde_json::Value, key: &str) -> Option<&'a str> {
+    v.get(key)?.as_str().filter(|s| !s.trim().is_empty())
+}
+
+/// `review-check` (#2614 AC-3): every finding needs a known severity, a `file` that is a
+/// regular file in HEAD, a `line` inside it, a title, evidence quoted from the code within
+/// [`EVIDENCE_WINDOW`] lines of that line (whitespace-insensitive), and a verification with a
+/// method and the result `confirmed`. Any malformed finding refuses the whole set, naming each
+/// one by index and reason, so nothing unverified is posted. Reads git only.
+pub fn check(repo: &Path, head: &str, input: &serde_json::Value) -> Result<CheckReport> {
+    if input.get("schema_version").and_then(|v| v.as_u64()) != Some(1) {
+        return Err("unsupported schema_version; supported: 1".into());
+    }
+    let list = input
+        .get("findings")
+        .and_then(|v| v.as_array())
+        .ok_or("findings must be an array")?;
+    let head = commit_of(repo, head)?;
+    let mut problems = Vec::new();
+    let mut accepted: Vec<Finding> = Vec::new();
+    for (i, f) in list.iter().enumerate() {
+        let severity = f.get("severity").and_then(|v| v.as_str()).unwrap_or("");
+        if !SEVERITIES.contains(&severity) {
+            problems.push(format!("finding {i}: severity"));
+            continue;
+        }
+        // The machine line's marker is reserved; a title naming it could pass for a second
+        // machine line in the posted body (pre-audit 6840720403 B1).
+        let Some(title) = text_field(f, "title").filter(|t| !t.contains(MACHINE_MARKER)) else {
+            problems.push(format!("finding {i}: title"));
+            continue;
+        };
+        let Some(evidence) = text_field(f, "evidence") else {
+            problems.push(format!("finding {i}: evidence"));
+            continue;
+        };
+        let verification = f.get("verification");
+        let method = verification.and_then(|v| text_field(v, "method"));
+        let result = verification
+            .and_then(|v| v.get("result"))
+            .and_then(|v| v.as_str());
+        let Some(method) = method.filter(|_| result == Some("confirmed")) else {
+            problems.push(format!("finding {i}: not-verified"));
+            continue;
+        };
+        let file = f.get("file").and_then(|v| v.as_str()).unwrap_or("");
+        let plain = !file.is_empty()
+            && !file.starts_with('/')
+            && !file.contains('\\')
+            && file
+                .split('/')
+                .all(|p| !p.is_empty() && p != "." && p != "..");
+        let text = match plain.then(|| blob_text(repo, &head, file)) {
+            Some(Ok(Some(Ok(text)))) => text,
+            _ => {
+                problems.push(format!("finding {i}: file-not-in-head"));
+                continue;
+            }
+        };
+        let lines: Vec<&str> = text.lines().collect();
+        let line = f.get("line").and_then(|v| v.as_u64()).unwrap_or(0);
+        if line == 0 || line > lines.len() as u64 {
+            problems.push(format!("finding {i}: line-out-of-range"));
+            continue;
+        }
+        let from = line.saturating_sub(EVIDENCE_WINDOW).max(1) as usize - 1;
+        let to = (line + EVIDENCE_WINDOW).min(lines.len() as u64) as usize;
+        if !squash(&lines[from..to].join("\n")).contains(&squash(evidence)) {
+            problems.push(format!("finding {i}: evidence-not-at-line"));
+            continue;
+        }
+        let finding = Finding {
+            severity: severity.into(),
+            file: file.into(),
+            line,
+            title: title.into(),
+            evidence: evidence.into(),
+            method: method.into(),
+        };
+        if accepted
+            .iter()
+            .any(|a| a.file == finding.file && a.line == finding.line && a.title == finding.title)
+        {
+            problems.push(format!("finding {i}: duplicate"));
+            continue;
+        }
+        accepted.push(finding);
+    }
+    if !problems.is_empty() {
+        return Err(format!("review findings refused: {}", problems.join("; ")));
+    }
+    let rank = |s: &str| {
+        SEVERITIES
+            .iter()
+            .position(|x| *x == s)
+            .unwrap_or(SEVERITIES.len())
+    };
+    accepted.sort_by(|a, b| {
+        rank(&a.severity)
+            .cmp(&rank(&b.severity))
+            .then(a.file.cmp(&b.file))
+            .then(a.line.cmp(&b.line))
+            .then(a.title.cmp(&b.title))
+    });
+    let count = |s: &str| accepted.iter().filter(|f| f.severity == s).count();
+    let counts = Counts {
+        important: count("important"),
+        nit: count("nit"),
+        pre_existing: count("pre_existing"),
+    };
+    let mut body = String::from("| Severity | File:Line | Issue |\n| --- | --- | --- |\n");
+    for f in &accepted {
+        let label = match f.severity.as_str() {
+            "important" => "Important",
+            "nit" => "Nit",
+            _ => "Pre-existing",
+        };
+        body.push_str(&format!(
+            "| {label} | {}:{} | {} |\n",
+            table_cell(&f.file),
+            f.line,
+            table_cell(&f.title)
+        ));
+    }
+    body.push_str(&format!(
+        "\n<!-- {MACHINE_MARKER}: {{\"important\":{},\"nit\":{},\"pre_existing\":{}}} -->\n",
+        counts.important, counts.nit, counts.pre_existing
+    ));
+    let mut report = CheckReport {
+        schema_version: 1,
+        head,
+        verdict: if counts.important > 0 { "FAIL" } else { "PASS" }.into(),
+        counts,
+        findings: accepted,
+        body,
+        digest: String::new(),
+    };
+    let bytes = serde_json::to_vec(&report).map_err(|_| "encode failed".to_string())?;
+    report.digest = crate::digest(&bytes);
+    Ok(report)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
