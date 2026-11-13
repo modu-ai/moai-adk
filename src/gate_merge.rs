@@ -1,12 +1,18 @@
 //! `gate-merge` (Issue #2674 S2): the leader's merge, after the gate passes — what the end of
 //! `target/leader/gate_merge.sh` did. Four steps, each only after the one before succeeded:
 //!
-//! 1. collect the snapshot and run every gate rule ([`crate::gate::check`]); a stop writes nothing;
+//! 1. collect the snapshot and run every gate rule ([`crate::gate::check`]), then read the PR's
+//!    base branch on GitHub: when it is not the local `--tip` (or the head moved), the gate was
+//!    judged on a stale tip and nothing is written (audit 6856351941 F1);
 //! 2. post the `moai/audit` success status on the head ([`crate::forge::audit_status::post`]);
 //! 3. merge with `sha` set to the head, so GitHub refuses if the head moved; a refusal that may
 //!    only mean the new status is not registered yet is retried, at most three attempts;
 //! 4. post the merge record comment — only when the pull request is merged.
 //!
+//! A transport error after a write may hide its effect, so the PR is read back and the result
+//! says what is known (`merged`, `merge_commit`, `record_posted: "uncertain"`) instead of a bare
+//! error (audit F2). Reads, the merge and the record go through the operator's transport; only
+//! the status goes through `status_transport`, which may carry the audit App token (audit F3).
 //! Every write needs a permission reference; authorization stays with the operator.
 
 use crate::forge::audit_status::{self, AuditStatusRequest};
@@ -26,12 +32,24 @@ fn short(s: &str) -> &str {
     s.get(..10).unwrap_or(s)
 }
 
-/// Runs the four steps for `target`. `app` says whether the audit App token posts the status.
-pub fn merge<T: Transport, C: Clock>(
+/// `(merged, merge_commit_sha)` read back from the pull request; `None` when the read fails.
+fn read_back<T: Transport>(transport: &T, url: &str) -> Option<(bool, Option<String>)> {
+    let resp = transport.send(&HttpRequest::new("GET", url)).ok()?;
+    let body = resp.body.filter(|_| resp.status == 200)?;
+    Some((
+        body["merged"].as_bool()?,
+        body["merge_commit_sha"].as_str().map(String::from),
+    ))
+}
+
+/// Runs the four steps for `target`. `transport` (the operator's) reads, merges and records;
+/// `status_transport` posts the status, and `app` says whether it carries the audit App token.
+pub fn merge<T: Transport, S: Transport, C: Clock>(
     target: &Target<'_>,
     permission: &str,
     app: bool,
     transport: &T,
+    status_transport: &S,
     clock: &C,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
@@ -71,6 +89,37 @@ pub fn merge<T: Transport, C: Clock>(
         .map_err(|e| format!("cannot execute git: {e}"))
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
 
+    // The gate judged the local tip; GitHub merges onto the remote base. Read both back.
+    let pr_url = format!("https://api.github.com/repos/{owner}/{repo}/pulls/{pr}");
+    let resp = transport.send(&HttpRequest::new("GET", &pr_url))?;
+    let pr_body = resp
+        .body
+        .filter(|_| resp.status == 200)
+        .ok_or_else(|| format!("reading the pull request returned HTTP {}", resp.status))?;
+    let base_ref = pr_body["base"]["ref"]
+        .as_str()
+        .ok_or("the pull request has no base ref")?;
+    let resp = transport.send(&HttpRequest::new(
+        "GET",
+        format!("https://api.github.com/repos/{owner}/{repo}/git/ref/heads/{base_ref}"),
+    ))?;
+    let remote_tip = resp
+        .body
+        .filter(|_| resp.status == 200)
+        .and_then(|b| b["object"]["sha"].as_str().map(String::from))
+        .ok_or_else(|| format!("reading the base branch returned HTTP {}", resp.status))?;
+    let remote_head = pr_body["head"]["sha"].as_str().unwrap_or_default();
+    if remote_tip != tip || remote_head != head {
+        return Ok(json!({
+            "pr": pr, "head": head, "merged": false, "rule": "G6",
+            "reason": format!(
+                "the gate judged tip {} and head {}, but GitHub has base {base_ref} at {} and head {}; fetch and run again",
+                short(&tip), short(&head), short(&remote_tip), short(remote_head)
+            ),
+            "writes": [],
+        }));
+    }
+
     let status = AuditStatusRequest {
         schema_version: 1,
         owner: owner.into(),
@@ -87,16 +136,37 @@ pub fn merge<T: Transport, C: Clock>(
             overlap.len()
         ),
     };
-    audit_status::post(&status, permission, app, transport, clock).map_err(|e| e.message)?;
+    audit_status::post(&status, permission, app, status_transport, clock).map_err(|e| e.message)?;
     let mut writes = vec![json!("status")];
 
     let url = format!("https://api.github.com/repos/{owner}/{repo}/pulls/{pr}/merge");
     let mut merged_sha = None;
     let mut last = 0;
     for attempt in 1..=MERGE_ATTEMPTS {
-        let resp = transport.send(
+        let resp = match transport.send(
             &HttpRequest::new("PUT", &url).with_body(json!({"merge_method": "merge", "sha": head})),
-        )?;
+        ) {
+            Ok(resp) => resp,
+            // The PUT may have merged before the error: read the effect back.
+            Err(e) => match read_back(transport, &pr_url) {
+                Some((true, sha)) => {
+                    merged_sha = Some(sha.unwrap_or_default());
+                    break;
+                }
+                Some((false, _)) => {
+                    return Ok(json!({
+                        "pr": pr, "head": head, "merged": false, "writes": writes,
+                        "reason": format!("merge PUT failed ({e}); read back: not merged; no merge record posted"),
+                    }))
+                }
+                None => {
+                    return Ok(json!({
+                        "pr": pr, "head": head, "merged": "uncertain", "writes": writes,
+                        "reason": format!("merge PUT failed ({e}) and the pull request could not be read back; check it before anything else"),
+                    }))
+                }
+            },
+        };
         last = resp.status;
         match resp.status {
             200 => {
@@ -139,19 +209,29 @@ pub fn merge<T: Transport, C: Clock>(
         overlap.len(),
         short(&merge_sha),
     );
-    let resp = transport.send(
+    let sent = transport.send(
         &HttpRequest::new(
             "POST",
             format!("https://api.github.com/repos/{owner}/{repo}/issues/{pr}/comments"),
         )
         .with_body(json!({"body": record})),
-    )?;
-    if resp.status == 201 {
+    );
+    // A transport error may still have posted the comment: say so instead of guessing.
+    let (record_posted, record_error) = match sent {
+        Ok(resp) if resp.status == 201 => (json!(true), None),
+        Ok(resp) => (json!(false), Some(format!("HTTP {}", resp.status))),
+        Err(e) => (json!("uncertain"), Some(e)),
+    };
+    if record_posted == json!(true) {
         writes.push(json!("record"));
     }
-    Ok(json!({
+    let mut out = json!({
         "pr": pr, "head": head, "merged": true, "merge_commit": merge_sha,
         "verdict": verdict_id, "verdict_base": base, "overlap": overlap,
-        "record_posted": resp.status == 201, "writes": writes,
-    }))
+        "record_posted": record_posted, "writes": writes,
+    });
+    if let Some(e) = record_error {
+        out["record_error"] = json!(e);
+    }
+    Ok(out)
 }
