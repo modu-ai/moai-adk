@@ -7,7 +7,7 @@ use moai_cli::gate_collect::Target;
 use std::path::PathBuf;
 
 /// Merge one pull request only when the leader merge gate passes (#2674 S2): checks every rule
-/// G1–G7 like `gate-check --pr`, then posts the `moai/audit` success status on the head, merges
+/// G1–G8 like `gate-check --pr`, then posts the `moai/audit` success status on the head, merges
 /// with the head pinned (at most three attempts) and posts the merge record. A stopped gate
 /// writes nothing. Needs a permission reference.
 #[derive(clap::Args)]

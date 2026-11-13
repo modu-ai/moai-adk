@@ -347,7 +347,7 @@ fn unavailable_gates<T: Transport, C: crate::forge::policy::Clock>(
 /// A PR that repairs a red tip says so with a body line starting `moai-tip-repair:`.
 pub const TIP_REPAIR_MARKER: &str = "moai-tip-repair:";
 
-fn is_tip_repair(body: &str) -> bool {
+pub fn is_tip_repair(body: &str) -> bool {
     body.lines()
         .any(|l| l.trim_start().starts_with(TIP_REPAIR_MARKER))
 }
@@ -366,7 +366,7 @@ fn run_id(run: &Value) -> Option<u64> {
 /// `flaky` failure and success on the same SHA (a re-run turned it green — not a stop);
 /// `pending` running or not started yet (push CI can start late — not a stop). The
 /// worst state across required checks wins: red, then pending, flaky, green.
-fn tip_ci_judgment(runs: &[Value], required: &[String]) -> Value {
+pub fn tip_ci_judgment(runs: &[Value], required: &[String]) -> Value {
     let failed_conclusion = |c: &str| {
         matches!(
             c,

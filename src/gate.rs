@@ -52,11 +52,36 @@ pub struct Snapshot {
     /// means unknown, and the gate stops (audit 6850181707 N4).
     #[serde(default)]
     pub verdict_base_known: bool,
+    /// The integration tip's push CI as G8 reads it (#2777). Absent means it was not read,
+    /// and the gate stops (unknown is never a pass).
+    #[serde(default)]
+    pub tip_ci: Option<TipCi>,
+    /// Whether the PR body carries a `moai-tip-repair:` line (#2665): the one kind of PR a red
+    /// tip lets through.
+    #[serde(default)]
+    pub tip_repair: bool,
+}
+
+/// The tip's push CI for G8: `state` is `green`, `flaky` or `red` from the last completed CI
+/// (`decided_by` names the commit it ran on), or `unknown` when none could be read.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TipCi {
+    pub state: String,
+    /// The tip commit the gate judged, 40 hex.
+    pub tip: String,
+    /// The commit whose completed CI decided `state`: the tip, or an earlier tip commit when
+    /// the tip's own CI is still running or was only cancelled.
+    #[serde(default)]
+    pub decided_by: Option<String>,
+    /// What was found, for the stop reason (failed checks with run ids, or why unknown).
+    #[serde(default)]
+    pub detail: String,
 }
 
 const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 
-/// A stop: the rule id (G1…G7 of Issue #2674 comment 6849084101) and why.
+/// A stop: the rule id (G1…G8 of Issue #2674 comment 6849084101; G8 is #2777) and why.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Stop {
     pub rule: &'static str,
@@ -372,8 +397,44 @@ fn g7(s: &Snapshot) -> Result<(), Stop> {
     Ok(())
 }
 
-/// The gate: every rule in order, stopping at the first that fails. On success returns the
-/// verdict base and the accepted overlap.
+/// G8 (#2665, #2777): a red tip stops every PR but its repair. The tip's state comes from its
+/// last completed push CI; `unknown` (nothing read, or no completed CI) stops every PR,
+/// a repair included — the gate stops rather than guesses. `flaky` (a re-run turned a failure
+/// green on the same commit) is not a stop, as in `flow-gate-verdict`.
+fn g8(s: &Snapshot) -> Result<(), Stop> {
+    let stop = |reason: String| Stop { rule: "G8", reason };
+    let Some(ci) = &s.tip_ci else {
+        return Err(stop(
+            "the tip's push CI was not read; the gate stops".into(),
+        ));
+    };
+    let short = |x: &str| x.get(..10).unwrap_or(x).to_string();
+    let decided = ci
+        .decided_by
+        .as_deref()
+        .filter(|d| *d != ci.tip)
+        .map(|d| format!(" (last completed CI on {})", short(d)))
+        .unwrap_or_default();
+    match ci.state.as_str() {
+        "green" | "flaky" => Ok(()),
+        "red" if s.tip_repair => Ok(()),
+        "red" => Err(stop(format!(
+            "tip {} is red{decided}: {}; only a PR with a `{}` line passes",
+            short(&ci.tip),
+            ci.detail,
+            crate::flow::TIP_REPAIR_MARKER
+        ))),
+        _ => Err(stop(format!(
+            "tip {} CI unknown: {}; the gate stops",
+            short(&ci.tip),
+            ci.detail
+        ))),
+    }
+}
+
+/// The gate: every rule in order, stopping at the first that fails. G8 (a red tip) comes
+/// first: it stops every PR alike, so nothing else is acted on while the tip is red. On
+/// success returns the verdict base and the accepted overlap.
 pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
     if s.schema_version != 1 || !is_hex40(&s.head) {
         return Err(Stop {
@@ -381,6 +442,7 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
             reason: "schema_version 1 and a 40-hex head are required".into(),
         });
     }
+    g8(s)?;
     let base = g1(s)?;
     g2(s)?;
     g3(s)?;
