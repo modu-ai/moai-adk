@@ -250,9 +250,16 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         Some(b) => is_commit(dir, b)?,
         None => false,
     };
-    let tip_files = match (&verdict_base, verdict_base_known) {
-        (Some(b), true) => names(&git_ok(dir, &["diff", "--name-only", b, &tip])?),
-        _ => Vec::new(),
+    // What the tip changed since the verdict: measured from where the verdict's base meets the
+    // tip. A verdict base that is an earlier PR head (not on the tip) would otherwise count the
+    // PR's own changes, undone, as tip changes — a false overlap.
+    let tip_since = match (&verdict_base, verdict_base_known) {
+        (Some(b), true) => Some(git_ok(dir, &["merge-base", b, &tip])?.trim().to_string()),
+        _ => None,
+    };
+    let tip_files = match &tip_since {
+        Some(from) => names(&git_ok(dir, &["diff", "--name-only", from, &tip])?),
+        None => Vec::new(),
     };
 
     let mut docs_lines_kept = Vec::new();
@@ -262,10 +269,10 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
             if f == MANIFEST {
                 merged_manifest_ok = manifest_matches(dir, &merged_tree)?;
             } else if f.starts_with("docs/") {
-                let base = verdict_base.clone().unwrap_or_default();
+                let from = tip_since.clone().unwrap_or_default();
                 let sides = [
                     (merge_base.as_str(), head.as_str()),
-                    (base.as_str(), tip.as_str()),
+                    (from.as_str(), tip.as_str()),
                 ];
                 if lines_kept(dir, &merged_tree, f, &sides)? {
                     docs_lines_kept.push(f.clone());

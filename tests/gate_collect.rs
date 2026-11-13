@@ -328,3 +328,19 @@ fn an_entry_without_a_file_and_a_missing_checker_fail() {
     assert!(!s.body_check_ok);
     assert_eq!(gate::check(&s).unwrap_err().rule, "G4");
 }
+
+/// A verdict whose base is an earlier PR head (not on the tip) must not count the PR's own
+/// changes as tip changes: the tip side is measured from where that base meets the tip.
+#[test]
+fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    // The PR got a second commit after the verdict; the verdict's base is the first PR head.
+    git_ok(d, &["checkout", "-q", "pr"]);
+    let b2 = commit(d, &[("src/c.rs", "c\n")], "pr 2");
+    git_ok(d, &["checkout", "-q", "main"]);
+    let t = exchanges(&b2, vec![claim(&b2), verdict(&b2, &r.b)], "SELF-AUDIT-OK");
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+}
