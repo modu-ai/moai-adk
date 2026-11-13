@@ -2789,6 +2789,15 @@ mod skill_package {
             "has no baseline yet",
             "Apply in two steps",
             "Never edit `project.yaml` by hand to get past the conflict",
+            // #2639: read before asking, three or four at a time, the five common axes, a
+            // file preview before approval, and hand edits never overwritten on a re-run.
+            "Read before you ask (Issue #2639)",
+            "is confirmed with the user, not asked",
+            "three or four questions at a time and at most three rounds, one axis per question",
+            "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
+            "sorted the way SKILL.md sorts an open question",
+            "each new file with its first lines and each changed file as its difference",
+            "a managed part the user edited by hand is planned as `conflict` and never overwritten",
         ] {
             assert!(body.contains(stage), "project.md lacks: {stage}");
         }
