@@ -4,7 +4,9 @@
 //! the default folder); nothing under the real HOME cache is touched.
 //! Waits are bounded by progress markers plus a generous hang guard, never a bare budget.
 #![cfg(unix)]
+mod common;
 
+use common::CleanEnv;
 use serde_json::Value;
 use std::{
     fs,
@@ -587,7 +589,7 @@ fn without_dir_both_tools_use_the_same_default_folder() {
             _ => home.path().join(".cache/moai-cli/heavy-slots"),
         };
         let env = |c: &mut Command| {
-            c.env_clear()
+            c.clean_env()
                 .env("PATH", std::env::var_os("PATH").unwrap_or_default())
                 .env("HOME", home.path())
                 .env("MOAI_CLI_TEST_MACHINE", ROOMY)
