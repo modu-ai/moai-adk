@@ -252,3 +252,29 @@ fn a_probe_gets_no_token_variable_and_runs_outside_the_project() {
     );
     assert_eq!(item["generation"], json!("go"));
 }
+
+/// #2791 pre-audit 6865400825 B1: the 5 s limit holds even when a shell wrapper's own child
+/// keeps stdout open — a wrapper stuck in `sleep 60`, and one that prints its line and exits
+/// while a background child still holds the pipe. Both probes end near the limit (not after
+/// 60 s); the first reports nothing, the second keeps the line printed before the limit.
+#[test]
+fn the_probe_limit_holds_when_a_wrapper_child_keeps_stdout_open() {
+    let d = TempDir::new().unwrap();
+    let root = fs::canonicalize(d.path()).unwrap();
+    let home = root.join("home");
+    fs::create_dir_all(&home).unwrap();
+    let stuck = root.join("stuck");
+    let left = root.join("left");
+    script(&stuck, "#!/bin/sh\nsleep 60\n");
+    script(&left, "#!/bin/sh\n(sleep 60) &\necho 'moai-adk 1.0'\n");
+    let started = std::time::Instant::now();
+    let c = inspect(&home, &join(&[&stuck, &left]), &[]);
+    let took = started.elapsed();
+    // Three probes of at most 5 s each (`stuck` is also the first PATH `moai` of
+    // `path_resolution`), plus start-up; far below the 60 s each child would hold the pipe.
+    assert!(took < std::time::Duration::from_secs(25), "took {took:?}");
+    assert_eq!(c["items"][0]["version_line"], json!(null), "{c}");
+    assert_eq!(c["items"][0]["generation"], json!("unknown"));
+    assert_eq!(c["items"][1]["version_line"], json!("moai-adk 1.0"), "{c}");
+    assert_eq!(c["items"][1]["generation"], json!("go"));
+}

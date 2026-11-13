@@ -37,6 +37,8 @@ const RECEIPT_LIMIT: u64 = 65536;
 /// A release binary may legitimately be tens of MiB; this only refuses absurd inputs.
 const BINARY_HASH_LIMIT: u64 = 512 * 1024 * 1024;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+/// After a timed-out probe is killed, how long its already printed output is still awaited.
+const PROBE_GRACE: Duration = Duration::from_millis(200);
 /// `--version` output beyond this is discarded (drained, not stored).
 const PROBE_STDOUT_CAP: usize = 4096;
 /// The only `PATH` a `--version` probe sees (#2800 audit B1).
@@ -489,6 +491,12 @@ fn match_receipt(
 /// `PROBE_PATH`, plus `SYSTEMROOT` on Windows, which process start needs — and the
 /// system temporary folder as its working folder, so no token or key in this process's
 /// environment reaches it and it does not start inside a project (#2800 audit B1).
+///
+/// The limit holds for the whole probe, not only the direct child (#2791 pre-audit
+/// 6865400825 B1): a shell wrapper's own children may keep stdout open after the wrapper is
+/// killed. On unix the child leads a process group of its own and the whole group is killed
+/// when the time is up; on every platform the output is awaited only for the time left, so a
+/// pipe some leftover process still holds never keeps this call waiting.
 // @MX:WARN: [AUTO] executes whatever binary a PATH entry or a Go install place holds under the expected name
 // @MX:REASON: REQ-04A-02 and #2791 AC-2 tell Rust from Go by the `--version` line; a hostile PATH entry runs at inspect time, without this process's environment; project-tree binaries are never run
 pub(crate) fn probe_version(path: &Path) -> Option<String> {
@@ -498,6 +506,11 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
         .current_dir(std::env::temp_dir());
     if let Some(root) = std::env::var_os("SYSTEMROOT") {
         cmd.env("SYSTEMROOT", root);
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt as _;
+        cmd.process_group(0);
     }
     let Ok(mut child) = cmd
         .arg("--version")
@@ -512,7 +525,8 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
         let _ = child.kill();
         return None;
     };
-    let reader = std::thread::spawn(move || {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
         let mut kept = Vec::new();
         let mut total = 0usize;
         let mut chunk = [0u8; 512];
@@ -530,7 +544,7 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
                 Err(_) => break,
             }
         }
-        (total > 0).then(|| first_line(&kept))
+        let _ = tx.send((total > 0).then(|| first_line(&kept)));
     });
     let deadline = Instant::now() + PROBE_TIMEOUT;
     let exited = loop {
@@ -541,11 +555,30 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
             Err(_) => break false,
         }
     };
-    if !exited {
-        let _ = child.kill();
-        let _ = child.wait();
+    // The output is complete once every holder of the pipe closed it; wait only the time left.
+    let output = rx.recv_timeout(deadline.saturating_duration_since(Instant::now()));
+    if !exited || output.is_err() {
+        kill_probe(&mut child);
     }
-    reader.join().unwrap_or(None)
+    match output {
+        Ok(line) => line,
+        // Killed: what was printed before the limit, if the reader still finishes promptly.
+        Err(_) => rx.recv_timeout(PROBE_GRACE).unwrap_or(None),
+    }
+}
+
+/// Ends a probe that ran out of time, with the process group it leads on unix, and reaps it.
+fn kill_probe(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    if let Ok(pid) = i32::try_from(child.id()) {
+        // SAFETY: `kill` takes plain integers; `-pid` names only the group this child leads
+        // (`process_group(0)` at spawn), never this process's own group.
+        unsafe {
+            libc::kill(-pid, libc::SIGKILL);
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 /// The first line of `--version` output, trimmed, at most `PROBE_LINE_CAP` characters.
