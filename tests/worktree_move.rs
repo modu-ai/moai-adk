@@ -485,3 +485,38 @@ fn two_worktrees_with_one_name_block_each_other() {
     assert_eq!(reasons(&p, &other), ["destination_collision"]);
     assert_eq!(p["totals"]["move"], json!(0));
 }
+
+/// #2723: without `--root` the common root is the HOME state folder's `worktrees`; the
+/// folder name is not spelled here, so a rename of the HOME state folder needs no test edit.
+#[test]
+fn without_root_the_home_state_folder_holds_the_worktrees() {
+    let fx = fixture(&["clean"]);
+    pushed(&fx.wt("clean"), "issue/1-clean");
+    let out = run(&fx, &["worktree-move-plan", fx.repo.to_str().unwrap()]);
+    let v = envelope(&out);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let r = &v["result"];
+    let root = PathBuf::from(r["root"].as_str().unwrap());
+    assert_eq!(root.parent().unwrap().parent().unwrap(), fx.home, "{r}");
+    assert_eq!(root.file_name().unwrap(), "worktrees");
+    let key = r["project_key"].as_str().unwrap();
+    assert_eq!(
+        PathBuf::from(r["project_root"].as_str().unwrap()),
+        root.join(key)
+    );
+    // Without HOME, or with a relative HOME, nothing is guessed.
+    for home in [None, Some("relative/home")] {
+        let mut c = Command::new(BIN);
+        c.args(["worktree-move-plan", fx.repo.to_str().unwrap()])
+            .current_dir(&fx.repo)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null");
+        match home {
+            None => c.env_remove("HOME"),
+            Some(h) => c.env("HOME", h),
+        };
+        let v = envelope(&c.output().unwrap());
+        assert_eq!(v["ok"], json!(false), "{home:?}: {v}");
+        assert!(v.to_string().contains("pass --root"), "{v}");
+    }
+}
