@@ -56,6 +56,7 @@ pub mod local_build;
 pub mod message;
 pub mod migrate;
 pub mod ontology;
+pub mod optimize;
 pub mod parity;
 pub mod plan;
 pub mod pr_link;
