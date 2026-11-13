@@ -430,7 +430,7 @@ fn g7(s: &Snapshot) -> Result<(), Stop> {
 /// G8 (#2665, #2777): a red tip stops every PR but its repair. The tip's state comes from its
 /// last completed push CI; `unknown` (nothing read, or no completed CI) stops every PR,
 /// a repair included — the gate stops rather than guesses. `flaky` (a re-run turned a failure
-/// green on the same commit) is not a stop, as in `flow-gate-verdict`.
+/// green on the same commit) is not a stop, as [`crate::flow::tip_ci_judgment`] decides.
 fn g8(s: &Snapshot) -> Result<(), Stop> {
     let stop = |reason: String| Stop { rule: "G8", reason };
     let Some(ci) = &s.tip_ci else {

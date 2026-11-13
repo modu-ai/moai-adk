@@ -417,7 +417,7 @@ fn g8(s: &gate::Snapshot) -> Option<String> {
 
 /// AC-3: a red tip stops an ordinary PR and lets a repair through; a green tip passes. A
 /// failure whose re-run is still running stays red (the last completed result), and a
-/// failure a re-run turned green is flaky — not a stop, as in flow-gate-verdict.
+/// failure a re-run turned green is flaky — not a stop, as `flow::tip_ci_judgment` decides.
 #[test]
 fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);

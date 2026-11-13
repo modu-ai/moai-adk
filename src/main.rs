@@ -529,32 +529,6 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
         total_cap: u64,
     },
-    /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
-    /// tip containment (behind_by 0), changed-since-audit, claim lines, required check
-    /// runs' conclusions, head stability. Status posting and merging stay with the
-    /// leader flow.
-    FlowGateVerdict {
-        /// GitHub owner.
-        #[arg(long)]
-        owner: String,
-        /// GitHub repository name.
-        #[arg(long)]
-        repo: String,
-        /// The pull request number to judge.
-        #[arg(long)]
-        pr: i64,
-        /// The head the last PASS audit was measured on.
-        #[arg(long = "audit-head")]
-        audit_head: String,
-        /// The base ref the tip is read from (e.g. v2026.11.0).
-        #[arg(long = "base-ref", default_value = "v2026.11.0")]
-        base_ref: String,
-        /// Comma-separated required check-run names (#2335). The verdict reads these
-        /// runs' conclusions; unrelated checks and the combined commit status are
-        /// excluded from the judgment.
-        #[arg(long = "required-checks", default_value = "ci")]
-        required_checks: String,
-    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
@@ -1427,7 +1401,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
         EffectsReconcile { .. } => "effects.reconcile",
-        FlowGateVerdict { .. } => "flow.gate_verdict",
         FlowWipCheck { .. } => "flow.wip_check",
         ForgeAuditStatus { .. } => "forge.audit_status",
         ForgeLinksProbe { .. } => "forge.links_probe",
@@ -2173,38 +2146,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 Default::default(),
             );
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
-        }
-        Command::FlowGateVerdict {
-            owner,
-            repo,
-            pr,
-            audit_head,
-            base_ref,
-            required_checks,
-        } => {
-            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
-            let clock = moai_cli::forge::policy::SystemClock;
-            let client = moai_cli::forge::Client::new(
-                &transport,
-                &clock,
-                Default::default(),
-                Default::default(),
-            );
-            let checks: Vec<String> = required_checks
-                .split(',')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .collect();
-            moai_cli::flow::gate_verdict(
-                &client,
-                &owner,
-                &repo,
-                pr,
-                &audit_head,
-                &base_ref,
-                &checks,
-            )
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan { project, host } => {
