@@ -590,3 +590,164 @@ fn a_linked_moai_folder_is_reported_not_followed() {
         "{result}"
     );
 }
+
+/// #2639 (read before asking): build and test command candidates and CI file names are
+/// reported beside `detected` — fixed templates chosen by what the root manifests declare,
+/// never a script body, never run — so the interview confirms them instead of asking.
+#[test]
+fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
+    let empty = TempDir::new().unwrap();
+    assert_eq!(
+        detect(&empty)["commands"],
+        json!({"build": [], "test": [], "ci_files": []})
+    );
+
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "Cargo.toml", "[package]\nname = \"x\"\n");
+    write(
+        r,
+        "package.json",
+        &format!(
+            r#"{{"scripts": {{"test": "echo {TOKEN}", "build": "tsc"}}, "devDependencies": {{}}}}"#
+        ),
+    );
+    write(r, "pnpm-lock.yaml", "");
+    write(r, "go.mod", "module example.com/x\n");
+    write(r, "requirements.txt", "pytest==8.0\n");
+    write(
+        r,
+        "Makefile",
+        "build:\n\techo\ntest:\n\techo\nlint:\n\techo\n",
+    );
+    write(r, "pom.xml", "<project/>");
+    write(r, "build.gradle", "");
+    write(r, "gradlew", "");
+    write(r, ".github/workflows/ci.yml", "on: push\n");
+    write(r, ".github/workflows/release.yaml", "on: push\n");
+    write(r, ".github/workflows/notes.txt", "not a workflow\n");
+    let before = tree(r);
+    let result = detect(&root);
+    assert_eq!(
+        result["commands"],
+        json!({
+            "build": ["./gradlew build", "cargo build", "go build ./...", "make build", "mvn package", "pnpm run build"],
+            "test": ["./gradlew test", "cargo test", "go test ./...", "make test", "mvn test", "pnpm test", "pytest"],
+            "ci_files": ["ci.yml", "release.yaml"],
+        })
+    );
+    // A script body never reaches the output, nothing is written, and the profile is unchanged.
+    assert!(!result.to_string().contains(TOKEN), "{result}");
+    assert_eq!(tree(r), before);
+    assert!(result["detected"].get("commands").is_none());
+
+    // The package manager follows the lock file; without one it is npm, and a package.json
+    // without the script names no command.
+    let npm = TempDir::new().unwrap();
+    write(
+        npm.path(),
+        "package.json",
+        r#"{"scripts": {"test": "jest"}}"#,
+    );
+    assert_eq!(detect(&npm)["commands"]["test"], json!(["npm test"]));
+    // Codex review on #2645: Bun's `bun test` is its own runner, so the script is `bun run test`.
+    for lock in ["bun.lockb", "bun.lock"] {
+        let bun = TempDir::new().unwrap();
+        write(
+            bun.path(),
+            "package.json",
+            r#"{"scripts": {"test": "vitest"}}"#,
+        );
+        write(bun.path(), lock, "");
+        assert_eq!(
+            detect(&bun)["commands"]["test"],
+            json!(["bun run test"]),
+            "{lock}"
+        );
+    }
+    // pytest declared only in a dependency group, an optional extra or a Poetry group.
+    for pyproject in [
+        "[dependency-groups]\ntest = [\"pytest>=8\"]\n",
+        "[project]\nname = \"x\"\n[project.optional-dependencies]\ndev = [\"pytest\"]\n",
+        "[tool.poetry.group.test.dependencies]\npytest = \"^8\"\n",
+        "[tool.poetry.dev-dependencies]\npytest = \"^8\"\n",
+    ] {
+        let py = TempDir::new().unwrap();
+        write(py.path(), "pyproject.toml", pyproject);
+        assert_eq!(
+            detect(&py)["commands"]["test"],
+            json!(["pytest"]),
+            "{pyproject}"
+        );
+    }
+    let no_pytest = TempDir::new().unwrap();
+    write(
+        no_pytest.path(),
+        "pyproject.toml",
+        "[dependency-groups]\nlint = [\"ruff\"]\n",
+    );
+    assert_eq!(detect(&no_pytest)["commands"]["test"], json!([]));
+    let yarn = TempDir::new().unwrap();
+    write(yarn.path(), "package.json", r#"{"scripts": {"lint": "x"}}"#);
+    write(yarn.path(), "yarn.lock", "");
+    assert_eq!(
+        detect(&yarn)["commands"],
+        json!({"build": [], "test": [], "ci_files": []})
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_workflows_folder_is_not_read() {
+    let outside = TempDir::new().unwrap();
+    write(outside.path(), "workflows/leak.yml", "on: push\n");
+    let root = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(outside.path(), root.path().join(".github")).unwrap();
+    assert_eq!(detect(&root)["commands"]["ci_files"], json!([]));
+    let inner = TempDir::new().unwrap();
+    fs::create_dir_all(inner.path().join(".github")).unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("workflows"),
+        inner.path().join(".github/workflows"),
+    )
+    .unwrap();
+    assert_eq!(detect(&inner)["commands"]["ci_files"], json!([]));
+}
+
+/// Audit B1 on #2645: a workflow file name is a project value, so only recordable names
+/// reach the output (no space, at most 80 bytes) and at most 64 of them. Audit N1: a Makefile
+/// target names only its own command.
+#[test]
+fn ci_file_names_are_filtered_and_capped_and_make_targets_stay_apart() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, ".github/workflows/a b.yml", "on: push\n");
+    write(
+        r,
+        &format!(".github/workflows/{}.yml", "x".repeat(80)),
+        "on: push\n",
+    );
+    write(r, ".github/workflows/ok.yml", "on: push\n");
+    assert_eq!(detect(&root)["commands"]["ci_files"], json!(["ok.yml"]));
+
+    let many = TempDir::new().unwrap();
+    for i in 0..65 {
+        write(
+            many.path(),
+            &format!(".github/workflows/w{i:02}.yml"),
+            "on: push\n",
+        );
+    }
+    let files = detect(&many)["commands"]["ci_files"].clone();
+    let files = files.as_array().unwrap();
+    assert_eq!(files.len(), 64);
+    assert_eq!(files.first().unwrap(), "w00.yml");
+    assert_eq!(files.last().unwrap(), "w63.yml");
+
+    let make = TempDir::new().unwrap();
+    write(make.path(), "Makefile", "test:\n\techo\n");
+    assert_eq!(
+        detect(&make)["commands"],
+        json!({"build": [], "test": ["make test"], "ci_files": []})
+    );
+}

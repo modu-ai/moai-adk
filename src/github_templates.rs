@@ -1,14 +1,15 @@
 //! GitHub templates for a generated project (Issue #2013, 08-B).
 //!
-//! The verified development copies under `.github/` were added (never moved) as
-//! `templates/github/`; this module embeds those bytes and plans and applies them into a
-//! project with the 01-B 3-way engine (`decide`, `publish_exclusive`/`publish_replace`,
-//! `save_before_bytes`, `Receipt`).
+//! The product templates under `templates/github/` are derived from this repository's
+//! `.github/` forms by structure, without the repository's own text (#2434 AC-6; the byte
+//! parity of 08-B is replaced, checked by `tests/github_templates_test.py`); this module
+//! embeds those bytes and plans and applies them into a project with the 01-B 3-way engine
+//! (`decide`, `publish_exclusive`/`publish_replace`, `save_before_bytes`, `Receipt`).
 //!
 //! Decisions (leader, under the user's "lift only the HOLD" rule, recorded on #2013):
 //! - template bytes are embedded in the binary with `include_str!` (①A, as generation.rs
 //!   renders its files from strings in the binary);
-//! - Rust handles byte parity and the 3-way only; form structure is checked by the Python
+//! - Rust handles the installed bytes and the 3-way only; form structure is checked by the Python
 //!   static tests (②A: no YAML crate, Cargo.toml keeps its dependencies);
 //! - `config.yml` is not a template (③B: the development copy has none).
 //!

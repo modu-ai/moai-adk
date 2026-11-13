@@ -396,6 +396,144 @@ pub fn validate(d: &Detected) -> Result<()> {
     Ok(())
 }
 
+/// Build and test command candidates and CI files as facts (#2639), reported beside
+/// `detected`, never inside it, so the profile is unchanged. Each command is a fixed template
+/// chosen by what a root manifest declares — a script body or a value from the project's files
+/// never enters the output — and nothing is run: the interview confirms them with the user.
+fn commands_fact(root: &Path) -> Value {
+    let mut build = BTreeSet::new();
+    let mut test = BTreeSet::new();
+    if is_file_in(root, &["Cargo.toml"]) {
+        build.insert("cargo build".to_string());
+        test.insert("cargo test".to_string());
+    }
+    if let Some(v) =
+        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+    {
+        let pm = [
+            ("pnpm-lock.yaml", "pnpm"),
+            ("yarn.lock", "yarn"),
+            ("bun.lockb", "bun"),
+            ("bun.lock", "bun"),
+        ]
+        .iter()
+        .find(|(lock, _)| is_file_in(root, &[lock]))
+        .map_or("npm", |(_, pm)| pm);
+        if let Some(scripts) = v["scripts"].as_object() {
+            if scripts.contains_key("build") {
+                build.insert(format!("{pm} run build"));
+            }
+            if scripts.contains_key("test") {
+                // `bun test` runs Bun's own test runner, not the script (Codex review on #2645).
+                let run_test = if pm == "bun" {
+                    "bun run test"
+                } else {
+                    &format!("{pm} test")
+                };
+                test.insert(run_test.to_string());
+            }
+        }
+    }
+    if is_file_in(root, &["go.mod"]) {
+        build.insert("go build ./...".to_string());
+        test.insert("go test ./...".to_string());
+    }
+    if dependency_names(root).contains("pytest") || python_test_names(root).contains("pytest") {
+        test.insert("pytest".to_string());
+    }
+    if let Some(text) = read_in(root, &["Makefile"]) {
+        for target in ["build", "test"] {
+            if text.lines().any(|l| l.starts_with(&format!("{target}:"))) {
+                let set = if target == "build" {
+                    &mut build
+                } else {
+                    &mut test
+                };
+                set.insert(format!("make {target}"));
+            }
+        }
+    }
+    if is_file_in(root, &["pom.xml"]) {
+        build.insert("mvn package".to_string());
+        test.insert("mvn test".to_string());
+    }
+    if is_file_in(root, &["build.gradle"]) || is_file_in(root, &["build.gradle.kts"]) {
+        let gradle = if is_file_in(root, &["gradlew"]) {
+            "./gradlew"
+        } else {
+            "gradle"
+        };
+        build.insert(format!("{gradle} build"));
+        test.insert(format!("{gradle} test"));
+    }
+    json!({
+        "build": build.into_iter().collect::<Vec<_>>(),
+        "test": test.into_iter().collect::<Vec<_>>(),
+        "ci_files": ci_files(root),
+    })
+}
+
+/// Dependency names in the `pyproject.toml` sections that commonly hold test tools and that
+/// `dependency_names` does not read: `[dependency-groups]`, `[project.optional-dependencies]`,
+/// Poetry's `[tool.poetry.group.<name>.dependencies]` and `[tool.poetry.dev-dependencies]`
+/// (Codex review on #2645). Names only.
+fn python_test_names(root: &Path) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    let Some(doc) = read_in(root, &["pyproject.toml"]).and_then(|t| toml_doc(&t)) else {
+        return names;
+    };
+    let mut from_arrays = |item: Option<&toml_edit::Item>| {
+        if let Some(table) = item.and_then(toml_edit::Item::as_table_like) {
+            for (_, list) in table.iter() {
+                if let Some(array) = list.as_array() {
+                    names.extend(
+                        array
+                            .iter()
+                            .filter_map(|v| v.as_str())
+                            .map(requirement_name),
+                    );
+                }
+            }
+        }
+    };
+    from_arrays(doc.get("dependency-groups"));
+    from_arrays(
+        doc.get("project")
+            .and_then(|p| p.get("optional-dependencies")),
+    );
+    let poetry = doc.get("tool").and_then(|t| t.get("poetry"));
+    names.extend(table_keys(poetry.and_then(|p| p.get("dev-dependencies"))));
+    if let Some(groups) = poetry
+        .and_then(|p| p.get("group"))
+        .and_then(toml_edit::Item::as_table_like)
+    {
+        for (_, group) in groups.iter() {
+            names.extend(table_keys(group.get("dependencies")));
+        }
+    }
+    names.into_iter().map(|n| n.to_ascii_lowercase()).collect()
+}
+
+/// Workflow file names under `.github/workflows/`, without following a symbolic link.
+fn ci_files(root: &Path) -> Vec<String> {
+    let real_dir = |p: &Path| fs::symlink_metadata(p).is_ok_and(|m| m.is_dir());
+    let dir = root.join(".github").join("workflows");
+    if !real_dir(&root.join(".github")) || !real_dir(&dir) {
+        return Vec::new();
+    }
+    let names: BTreeSet<String> = fs::read_dir(&dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
+                .filter_map(|e| e.file_name().into_string().ok())
+                .filter(|n| n.ends_with(".yml") || n.ends_with(".yaml"))
+                .collect()
+        })
+        .unwrap_or_default();
+    capped(names)
+}
+
 /// Go-generation project state as a fact (#2561), read only and without following links:
 /// what `.moai` is (`absent`, `folder`, `link` or `other`) and whether a real folder holds a
 /// regular `manifest.json`. Reported beside `detected`, never inside it, so the profile is
@@ -453,6 +591,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         "profile": profile,
         "profile_written": false,
         "go_state": go_state,
+        "commands": commands_fact(root),
         "next_actions": next_actions,
     }))
 }

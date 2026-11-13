@@ -1,5 +1,5 @@
 # moai-template:moai-feature@0.3.0; machine metadata is correlation only, never authorization
-# Fields follow Issue #2434 (decisions 1-4 = A): one-line outcome, scope with non-scope and
+# Fields follow the MoAI Issue form rules: one-line outcome, scope with non-scope and
 # search hints, AC with verification and boundary behaviour, prerequisites, HOLD, done definition.
 name: 'MoAI: 새 기능'
 description: 새 기능 또는 동작. Issue 하나에 실행 owner 한 명, 진행은 소유 댓글 하나로 보고. type 라벨만 자동으로 붙고 priority·area 라벨은 리더가 붙입니다.
@@ -15,10 +15,7 @@ body:
       에이전트가 이 Issue만 읽고 무엇을·어디까지·어떻게 검증할지 알 수 있게 짧고 자기완결적으로 씁니다. 다른 Issue나 대화를 읽어야만 알 수 있는 내용은 여기에 요약합니다.
 
 
-      비밀값 제거: 토큰·API 키·자격증명·쿠키·개인정보·절대 홈 경로·원문 로그·비공개 저장소 내용은 쓰지 않습니다. 요약하고 접근 가능한 artifact를 링크합니다.
-
-
-      언어 규칙: 제목·본문·SPEC·체크리스트·설명 문구는 한국어로 쓰고, 코드 식별자·명령·경로·파일명은 원형을 유지합니다.'
+      비밀값 제거: 토큰·API 키·자격증명·쿠키·개인정보·절대 홈 경로·원문 로그·비공개 저장소 내용은 쓰지 않습니다. 요약하고 접근 가능한 artifact를 링크합니다.'
 - type: checkboxes
   id: redaction
   attributes:
@@ -31,7 +28,7 @@ body:
   attributes:
     label: 한 줄 결과
     description: 이 Issue가 닫히면 무엇이 참이 되는가, 한 문장.
-    placeholder: '`moai-cli <명령>`이 <조건>에서 <결과>를 낸다'
+    placeholder: '`<명령>`이 <조건>에서 <결과>를 낸다'
   validations:
     required: true
 - type: textarea

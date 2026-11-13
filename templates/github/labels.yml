@@ -1,133 +1,59 @@
-# MoAI RC label taxonomy for modu-ai/moai-adk (Issue #2434, user decisions 1-4 = A,
-# recorded in Issue comment 6783612809 on 2026-11-11).
-# `moai-label-sync` reads this file: a dry run on every PR that touches it, and a manual apply
-# that only CREATES the missing `added` labels. Nothing here edits, renames, recolours or
-# deletes a remote label.
+# MoAI label list for a project that uses MoAI's Issue forms.
+# Every label an Issue form sets is in this list: GitHub drops a form label that does not
+# exist in the repository, so create these labels before the forms are used.
 #
-# Axes an Issue carries (rules: `.github/moai/README.md`, section "Labels"):
-#   type:*      exactly one
+# Axes an Issue carries:
+#   type:*      exactly one (the form sets it)
 #   priority:*  exactly one (P0..P3)
-#   area:*      one or more (prefer one or two)
+#   area:*      one or more, defined by the project itself (no area is seeded here)
 #   host:*      when the work must be verified on that host
-#   needs:decision  gate marker: a user decision is pending, lanes do not proceed.
-#                   The authority is the decisions log and the Issue's HOLD line; the label
-#                   is a search aid only.
-# Status is never a label: it lives in the Issue's owned report comment (labels and
-# assignees are not a distributed lock). Parent tracking uses native sub-issues and
-# ordering uses native issue dependencies, not labels.
-schema_version: 1
-reused:
-  type:
-    - type:feature
-    - type:fix
-    - type:docs
-    - type:chore
-    - type:ci
-    - type:test
-    - type:refactor
-  priority:
-    - priority:P0
-    - priority:P1
-    - priority:P2
-    - priority:P3
-  area:
-    - area:ci
-    - area:cli
-    - area:config
-    - area:docs-site
-    - area:hooks
-    - area:security
-    - area:templates
-    - area:workflow
-  functional:
-    - security
-    - duplicate
-    - wontfix
-added:
-  - name: host:claude
-    color: d4a5ff
-    description: Must be verified on Claude Code
-  - name: host:codex
-    color: 74d2ff
-    description: Must be verified on Codex
-  - name: area:setup
-    color: c2e0c6
-    description: "SETUP: project profile, AGENTS.md generation, host projections"
-  - name: type:design
-    color: c5def5
-    description: Investigation or design; the output is a decision record, not code
-  - name: needs:decision
-    color: b60205
-    description: A user decision is pending (HOLD); lanes do not proceed until it is recorded
-  - name: area:atlas
-    color: c2e0c6
-    description: Core Brain, Code Atlas, map and graph
-  - name: area:design
-    color: c2e0c6
-    description: Design documents and their consistency with the design Space
-  - name: area:runtime
-    color: c2e0c6
-    description: Model adapters, judge backends, Desktop and Pi runtimes
-  - name: area:router
-    color: c2e0c6
-    description: Common skill router, routes.json and workflow files
-  - name: area:update
-    color: c2e0c6
-    description: "UPDATE: installed-host preflight, 3-way merge, partial recovery"
-  - name: area:forge
-    color: c2e0c6
-    description: GitHub/GitLab Issues ledger, reports and reconciliation
-# Every proposed label was promoted to `added` by #2434; new proposals go here first.
-proposed_not_created: []
-# Remote labels from the previous generation that RC Issues do not use (decision 3 = A).
-# They are documented, not deleted or renamed; review after the stable release.
-not_used:
-  type_duplicates:
-    - bug
-    - enhancement
-    - feature
-    - feature-request
-    - improvement
-    - documentation
-    - docs
-    - chore
-    - ci
-    - config
-    - test
-    - tests
-    - testing
-    - refactor
-    - hooks
-    - templates
-    - go
-    - spec
-    - type:performance
-    - type:security
-  priority_duplicates:
-    - critical
-    - high
-    - medium
-    - low
-    - priority:critical
-    - priority:high
-    - priority:medium
-    - priority:low
-    - priority:P4
-  state:
-    - blocked
-    - in-progress
-    - ready
-    - review
-    - done
-    - triage
-    - planning
-    - status:blocked
-    - status:in-progress
-    - status:needs-info
-    - status:review
-  previous_generation_area:
-    - area:astgrep
-    - area:lsp
-    - area:mx
-    - area:harness
-    - area:deps
+#   needs:decision  a user decision is pending; work waits for it
+# Status is never a label: it lives in the Issue's own report comment. Parent tracking uses
+# native sub-issues and ordering uses native issue dependencies, not labels.
+schema_version: 2
+labels:
+- name: type:feature
+  color: a2eeef
+  description: New feature or behaviour
+- name: type:fix
+  color: d73a4a
+  description: Defect fix
+- name: type:docs
+  color: 0075ca
+  description: Documentation only
+- name: type:chore
+  color: ededed
+  description: Maintenance with no behaviour change
+- name: type:ci
+  color: 5319e7
+  description: CI and release automation
+- name: type:test
+  color: bfd4f2
+  description: Tests only
+- name: type:refactor
+  color: c5def5
+  description: Restructure with no behaviour change
+- name: type:design
+  color: f9d0c4
+  description: Investigation or design before implementation
+- name: priority:P0
+  color: b60205
+  description: Blocks the current release
+- name: priority:P1
+  color: d93f0b
+  description: Needed for the current release
+- name: priority:P2
+  color: fbca04
+  description: Planned, can move to the next release
+- name: priority:P3
+  color: c2e0c6
+  description: Nice to have
+- name: host:claude
+  color: d4a5ff
+  description: Must be verified on Claude Code
+- name: host:codex
+  color: 74d2ff
+  description: Must be verified on Codex
+- name: needs:decision
+  color: fef2c0
+  description: A user decision is pending; work waits for it

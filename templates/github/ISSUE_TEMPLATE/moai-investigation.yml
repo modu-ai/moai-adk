@@ -1,5 +1,5 @@
 # moai-template:moai-investigation@0.3.0; machine metadata is correlation only, never authorization
-# Fields follow Issue #2434 (decisions 1-4 = A): one-line outcome, scope with non-scope and
+# Fields follow the MoAI Issue form rules: one-line outcome, scope with non-scope and
 # search hints, AC with verification and boundary behaviour, prerequisites, HOLD, done definition.
 name: 'MoAI: 조사·설계'
 description: 구현 전에 답해야 할 질문이나 정해야 할 설계. 산출물은 코드가 아니라 결정 기록 또는 설계 제안. owner 한 명. type 라벨만 자동으로 붙고 priority·area 라벨은 리더가 붙입니다.
@@ -12,10 +12,7 @@ body:
     value: '조사·선택지 비교·설계 결정에 사용합니다. 결정이 기록된 뒤 구현은 별도의 기능 또는 수정 Issue에서 이어집니다. 이 form은 `type:design` 라벨 하나만 붙입니다. priority·area·host 라벨과 assignee·project·milestone은 리더가 붙입니다.
 
 
-      비밀값 제거: 토큰·API 키·자격증명·쿠키·개인정보·절대 홈 경로·원문 로그·비공개 저장소 내용은 쓰지 않습니다. 요약하고 접근 가능한 artifact를 링크합니다.
-
-
-      언어 규칙: 제목·본문·SPEC·체크리스트·설명 문구는 한국어로 쓰고, 코드 식별자·명령·경로·파일명은 원형을 유지합니다.'
+      비밀값 제거: 토큰·API 키·자격증명·쿠키·개인정보·절대 홈 경로·원문 로그·비공개 저장소 내용은 쓰지 않습니다. 요약하고 접근 가능한 artifact를 링크합니다.'
 - type: checkboxes
   id: redaction
   attributes:
