@@ -36,6 +36,20 @@ const FILE_LIMIT: u64 = 64 * 1024 * 1024;
 const ROOTS: [&str; 2] = [".moai", ".claude"];
 /// Decision 1 (#2561 comment 6831345102): `.moai/` moves as a whole folder.
 const MOAI_DIR: &str = ".moai";
+/// Entries the `unrecorded` count reads before it stops (#2561 F1: a project's `.moai/` held
+/// unpacked review trees with `node_modules`, and the preview read for over 14 minutes). The
+/// count only informs; nothing moves on its account. Debug builds take
+/// `MOAI_CLI_TEST_UNRECORDED_LIMIT` so a test can reach the limit with a few files.
+fn unrecorded_limit() -> u64 {
+    #[cfg(debug_assertions)]
+    if let Some(n) = std::env::var("MOAI_CLI_TEST_UNRECORDED_LIMIT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+    {
+        return n;
+    }
+    200_000
+}
 /// AC-5: what is restored from the moved folder, and where (Rust reads SPECs there).
 const SPECS_FROM: &str = ".moai/specs";
 const SPECS_TO: &str = crate::project_state!("specs");
@@ -289,8 +303,82 @@ fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<Str
     }
 }
 
-fn count_unrecorded(project: &Path, recorded: &HashMap<String, Entry>) -> BTreeMap<String, u64> {
+/// How many nested checkouts (folders holding a `.git` file or folder) are at or under
+/// `<project>/<rel>`, not descending into them; `None` when the walk passes `limit` entries
+/// before it ends (unknown, so the caller stays fail-closed).
+fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> Option<usize> {
+    let base = project.join(rel);
+    // The folder itself may be a checkout (another repository's worktree at `.moai`, #2753
+    // re-audit F2 6859648118): that alone keeps it in place.
+    if fs::symlink_metadata(base.join(".git")).is_ok() {
+        return Some(1);
+    }
+    let mut stack = vec![base];
+    let (mut seen, mut nested) = (0u64, 0usize);
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            seen += 1;
+            if seen > limit {
+                return None;
+            }
+            let p = e.path();
+            match fs::symlink_metadata(&p) {
+                Ok(m) if m.is_dir() => {
+                    if fs::symlink_metadata(p.join(".git")).is_ok() {
+                        nested += 1;
+                    } else {
+                        stack.push(p);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    Some(nested)
+}
+
+/// How many git worktrees of the project's repository are registered at or under
+/// `<project>/<rel>`; `None` when the project is a git checkout whose worktree list cannot be
+/// read. A folder that is not a git checkout has no registered worktrees.
+fn registered_worktrees_under(project: &Path, rel: &str) -> Option<usize> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(project)
+        .args(["worktree", "list", "--porcelain"])
+        .output();
+    let listing = match out {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).into_owned(),
+        _ if fs::symlink_metadata(project.join(".git")).is_err() => return Some(0),
+        _ => return None,
+    };
+    let base = project.join(rel);
+    Some(
+        crate::worktree_report::parse_worktree_list(&listing)
+            .iter()
+            .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
+            .filter(|p| p.starts_with(&base))
+            .count(),
+    )
+}
+
+/// Files under `.moai/` and `.claude/` the manifest does not record, per second-level folder,
+/// and how many nested checkouts (a folder holding a `.git` entry, such as a worktree under
+/// `.claude/worktrees/`) were skipped unread. A project's worktrees can hold hundreds of
+/// thousands of files; they are never the Go tool's (#2561 F1, comment 6856196324).
+fn count_unrecorded(
+    project: &Path,
+    recorded: &HashMap<String, Entry>,
+    limit: u64,
+) -> (BTreeMap<String, u64>, u64, bool) {
     let mut counts = BTreeMap::new();
+    let mut nested = 0u64;
+    let mut seen = 0u64;
     for root in ROOTS {
         let base = project.join(root);
         let Ok(m) = fs::symlink_metadata(&base) else {
@@ -305,12 +393,21 @@ fn count_unrecorded(project: &Path, recorded: &HashMap<String, Entry>) -> BTreeM
                 continue;
             };
             for e in entries.flatten() {
+                // Bounded by entries, not time, so one tree always gives one answer.
+                seen += 1;
+                if seen > limit {
+                    return (counts, nested, true);
+                }
                 let p = e.path();
                 let Ok(m) = fs::symlink_metadata(&p) else {
                     continue;
                 };
                 if m.is_dir() {
-                    stack.push(p);
+                    if fs::symlink_metadata(p.join(".git")).is_ok() {
+                        nested += 1;
+                    } else {
+                        stack.push(p);
+                    }
                     continue;
                 }
                 if !m.is_file() {
@@ -328,7 +425,7 @@ fn count_unrecorded(project: &Path, recorded: &HashMap<String, Entry>) -> BTreeM
             }
         }
     }
-    counts
+    (counts, nested, false)
 }
 
 /// The read-only preview over one project folder.
@@ -371,17 +468,55 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         .map(|m| m.is_dir())
         .unwrap_or(false);
     let referenced_by_settings = settings.iter().any(|(_, text)| text.contains(".moai/"));
-    let folder_moves = version.is_some() && folder_is_dir && !referenced_by_settings;
+    // Moving `.moai/` also moves every git worktree registered under it, and git then loses
+    // them (their recorded paths no longer exist). Unreadable means "maybe": stay.
+    let checked = version.is_some() && folder_is_dir;
+    let worktrees_inside = if checked {
+        registered_worktrees_under(&project, MOAI_DIR)
+    } else {
+        Some(0)
+    };
+    // A worktree of another repository (or any nested checkout) under `.moai/` is not in this
+    // repository's list, yet moving the folder cuts it off too (#2753 audit F1 6858965696).
+    let nested_inside = if checked {
+        nested_checkouts_under(&project, MOAI_DIR, unrecorded_limit())
+    } else {
+        Some(0)
+    };
+    let folder_moves = checked
+        && !referenced_by_settings
+        && worktrees_inside == Some(0)
+        && nested_inside == Some(0);
     if version.is_some() && folder_is_dir {
         items.push(Item {
             path: MOAI_DIR.into(),
             action: if folder_moves { "move" } else { "leave" }.into(),
             reason: if folder_moves {
-                "the Go .moai/ folder as a whole (decision 1, #2561 comment 6831345102)"
+                "the Go .moai/ folder as a whole (decision 1, #2561 comment 6831345102)".into()
+            } else if referenced_by_settings {
+                "settings reference .moai/; the folder stays until they are cleaned (#2581)".into()
             } else {
-                "settings reference .moai/; the folder stays until they are cleaned (#2581)"
-            }
-            .into(),
+                match (worktrees_inside, nested_inside) {
+                    (Some(n), _) if n > 0 => format!(
+                        "{n} git worktree(s) are registered under .moai/; moving the folder would \
+                         cut git off from them, so it stays until they are moved out \
+                         (worktree-move-plan, #2723)"
+                    ),
+                    (None, _) => "the git worktree list could not be read, so it is unknown \
+                                  whether a worktree lives under .moai/; the folder stays"
+                        .into(),
+                    (_, Some(n)) => format!(
+                        "{n} nested checkout(s) (folders holding a .git entry, such as worktrees \
+                         of another repository) are under .moai/; moving the folder would cut \
+                         their repositories off from them, so it stays until they are moved out"
+                    ),
+                    (_, None) => format!(
+                        "the .moai/ folder holds more than {} entries, so it was not fully \
+                         checked for nested checkouts; the folder stays",
+                        unrecorded_limit()
+                    ),
+                }
+            },
         });
     }
     if folder_moves {
@@ -402,7 +537,23 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         });
     }
     let unrecorded = if version.is_some() {
-        count_unrecorded(&project, &recorded)
+        let limit = unrecorded_limit();
+        let (counts, nested, stopped) = count_unrecorded(&project, &recorded, limit);
+        if stopped {
+            warnings.push(format!(
+                "the count of files the manifest does not record stopped after \
+                 {limit} entries under .moai/ and .claude/; the numbers in \
+                 `unrecorded` are lower bounds (no file is moved on their account)"
+            ));
+        }
+        if nested > 0 {
+            warnings.push(format!(
+                "{nested} nested checkout(s) under .moai/ or .claude/ (folders holding a .git \
+                 entry, such as worktrees) were not read; their files are not counted and \
+                 none of them is offered for moving"
+            ));
+        }
+        counts
     } else {
         BTreeMap::new()
     };

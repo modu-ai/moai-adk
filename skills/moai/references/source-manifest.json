@@ -46,21 +46,21 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "5bd60a7215c42ba6457b547aef7589978e08485b043a7d6b150776a6133e342d",
+      "sha256": "c1de31764e7bf26bb4ebe1a9383dc04d34a29afede648e6f0ce3b9c995b81d29",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678). OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
     "references/routes.json": {
-      "sha256": "b8545ec06b29c55ca328bdc4b677b8cf6cc6bc7b72fc06ec519e414d673797a0",
+      "sha256": "6fd0159994da8440f7afe3a8eb8930a529636289b548a7b451bf0c71bc09dfda",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
     "workflows/read.md": {
@@ -109,12 +109,12 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "640cae5127d4ac8a10da04c70d702f62035d43fc5999a11f4cf43363ed10e2de",
+      "sha256": "d7753fbfe396705897b30b13cdd9106079f04a350b83d2049fb304eb7ac210e8",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
       }
     },
     "workflows/audit.md": {
@@ -127,7 +127,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "0fbfc2423bc5f57aab105dddd803a0fe1bb51a689d72cbb3d465268f3bd3095f",
+      "sha256": "7d5ab404a47a8a24c7ce1cf316c631e8d76d008011f8ce193264d4660e012a47",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "84401edc7d878c1cb96e1926ea533a531121f50b5b166795ede4652fd76fa312",
+      "sha256": "960106764f3351494ea7d1156ed9533e0b142847629a9a5af1d6aea60fc87609",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "92196bbacfc451cd3208c0a450328ffd8d688b43db7dcacd5551e2c87996a5ee",
+      "sha256": "0056d60ed2ef17160e1da6623aa00633f344fb4039cac36390a2a62da693e1c2",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -208,12 +208,12 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "45ebc3f2b4801287b604ee2618a688b638dc53f4b2d13ffd5bd01329f3df028c",
+      "sha256": "0e2cbfe5913ca7215c43cba57bedf65f386b6814d133256942f4e0e251cd126b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
       }
     },
     "references/home/routing.md": {
@@ -301,6 +301,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md",
         "license": "Apache-2.0"
+      }
+    },
+    "workflows/optimize.md": {
+      "sha256": "f70d4c174ea5f8358d7a58c003c9f5d59f618fc4900d750d1bc0abb90ac45e47",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-optimize",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE."
       }
     }
   }

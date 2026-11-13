@@ -798,19 +798,31 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 `moai-cli statusline` reads Claude Code JSON from stdin and prints raw text, not an
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
-1. Model, effort/thinking, cache hit, Claude/MoAI versions, elapsed time and output style.
-2. `CTX`, available `5H`, and available `Week` bars, then the optional session name as
-   the last segment, ` | 🏷️ <name>` (user request 2026-11-13, #2697; with no bars the
-   name stands alone, with no name there is no tail). Missing rate windows are hidden;
-   reset times are not printed. Context handoff warnings and the existing usage
-   calculation are retained. The renderer shortens nothing: Claude Code sets `COLUMNS`
-   for the status line command, but the renderer does not read it. When the line is
-   wider than the status bar, the host documentation leaves open whether it is cut or
-   wraps ("may get truncated or wrap awkwardly",
-   https://code.claude.com/docs/en/statusline, read 2026-11-13). The name is last so
-   that, if the host cuts the line, the name is lost before any bar.
-3. Repository, available `I: N / PR: N` counts, branch and file-change counts. Ahead
-   arrows are hidden; behind and dirty counts remain. Missing forge counts are omitted.
+The three lines follow the user instruction of 2026-11-13 (#2756), which replaces the
+name-last order of #2697. Segments on a line are joined by ` | `, and a segment with no
+value is left out together with its separator.
+
+1. Running environment: `🤖` model, `🧠` effort/thinking, `♻️` cache hit with the prompt
+   cache timer (`⏱️ Nm` whole minutes until `prompt_cache.expires_at`, `🧊` once
+   `prompt_cache.warm` is false or the time has passed; user choice 2026-11-13, #2756
+   AC-8), `🔅` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
+   output style are not shown; their `session_time` and `output_style` options are still
+   accepted.
+2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, `🅱️` branch with
+   its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
+   `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
+   branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
+   the URL is plain `http(s)`), then the `💾` file-change counts while `git_status` is
+   on. Ahead arrows are hidden. Missing forge counts are omitted. The `worktree` and `pr`
+   options turn their segments off.
+3. Lane and usage: the optional `🏷️` session name first, then the `CTX`, available `5H`
+   and available `Week` bars (with no name the line starts at `CTX`; with no bars the
+   name stands alone). Missing rate windows are hidden; reset times are not printed.
+   Context handoff warnings and the existing usage calculation are retained. The
+   renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
+   but the renderer does not read it. When a line is wider than the status bar, the
+   host documentation leaves open whether it is cut or wraps ("may get truncated or wrap
+   awkwardly", https://code.claude.com/docs/en/statusline, read 2026-11-13).
 
 Directory, PR review state, agent name and active task segments are never rendered in
 the main layout, including when their old segment options are enabled. Remaining
