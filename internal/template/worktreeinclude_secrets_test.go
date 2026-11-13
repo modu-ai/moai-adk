@@ -2,7 +2,9 @@ package template
 
 import (
 	"io/fs"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -98,6 +100,30 @@ func TestWorktreeIncludeTemplateCopiesNoSecrets(t *testing.T) {
 	if hits := worktreeIncludeSecretLines(string(data)); len(hits) > 0 {
 		t.Fatalf("the shipped .worktreeinclude selects secret files %q; every new worktree "+
 			"would get a copy of them (Issue #2670)", hits)
+	}
+}
+
+// The repository's own copy at the root (user decision on #2670, audit 6857107471 N2):
+// the worktrees of this repository must not get secrets either, and the copy stays the
+// same as the template so the two cannot drift apart again.
+func TestRepositoryWorktreeIncludeCopiesNoSecrets(t *testing.T) {
+	root, err := os.ReadFile(filepath.Join("..", "..", ".worktreeinclude"))
+	if err != nil {
+		t.Fatalf("the repository .worktreeinclude is unreadable: %v", err)
+	}
+	if hits := worktreeIncludeSecretLines(string(root)); len(hits) > 0 {
+		t.Fatalf("the repository .worktreeinclude selects secret files %q (Issue #2670)", hits)
+	}
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates: %v", err)
+	}
+	tmpl, err := fs.ReadFile(fsys, ".worktreeinclude")
+	if err != nil {
+		t.Fatalf("the template .worktreeinclude is not embedded: %v", err)
+	}
+	if string(root) != string(tmpl) {
+		t.Fatalf("the repository .worktreeinclude differs from the template; keep them identical")
 	}
 }
 
