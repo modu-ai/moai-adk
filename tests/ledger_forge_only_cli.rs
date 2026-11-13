@@ -36,7 +36,9 @@ fn removed_todo_promotion_commands_are_usage_errors() {
 
 #[test]
 fn help_lists_no_todo_promotion_command() {
-    let (code, stdout, stderr) = run(&["--help"]);
+    // `help --all` is the full command list (#2802 S1); the root help lists only the commands
+    // a person types.
+    let (code, stdout, stderr) = run(&["help", "--all"]);
     assert_eq!(code, 0, "{stderr}");
     // The help is the real command list (a known forge command is in it).
     assert!(stdout.contains("forge-read"), "{stdout}");

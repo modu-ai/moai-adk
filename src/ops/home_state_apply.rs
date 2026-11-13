@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Move a previewed Go-era ~/.moai folder
+///
 /// Move the Go `~/.moai` aside to the backup the preview named (never overwriting), create
 /// the Rust `~/.moai`, copy only the entries named with `--copy` (never secrets or Go
 /// markers), write the receipt and then the Rust marker (#2723). Runs only when the preview

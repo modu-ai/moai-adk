@@ -1,0 +1,830 @@
+MoAI-ADK 2026.11.0-rc.1 — agentic development kit
+
+Usage: moai <command> [options]
+       moai cc|codex|glm -l|-a    lead or agent session
+
+Start
+  cc                      Start a Claude Code session
+  codex                   Start a Codex CLI session
+  glm                     Start a Claude Code session on
+                          z.ai GLM
+Project
+  project-detect          Detect the project's facts
+  project-plan            Preview the project profile
+  project-apply           Write a previewed project profile
+  language-setup          Choose the writing language item
+                          by item
+  index-build             Build the code map index
+  agents-plan             
+  agents-apply            
+  generation-plan         Plan project-specific generated
+                          files read-only (03-C #1997):
+                          typed request on stdin; judgment
+                          envelope on stdout; writes nothing
+  generation-apply        Apply an approved generation plan
+                          (03-C #1997): the exact plan on
+                          stdin, `--plan-digest` and
+                          `--permission-reference`
+  github-plan             Plan the GitHub templates of a
+                          project (08-B #2013): typed
+                          request on stdin (`github_issues`
+                          opts in); read-only
+  github-apply            Apply an approved GitHub template
+                          plan (08-B #2013): the exact plan
+                          on stdin, `--plan-digest` and
+                          `--permission-reference`
+  labels-plan             Plan a project's label sync from
+                          `.github/moai/labels.yml` (#2434
+                          decision 40): typed request
+                          `{schema_version, owner, repo}` on
+                          stdin; GET only, never deletes
+  labels-apply            Apply an approved label sync plan
+                          (#2434 decision 40): the exact
+                          plan on stdin, `--plan-digest` and
+                          `--permission-reference`;
+                          POST/PATCH only
+  claude-settings-plan    Preview a three-way merge of the
+                          managed keys (`outputStyle`,
+                          `statusLine`, `permissions`) on
+                          stdin into
+                          PROJECT/.claude/settings.json
+                          (#2239); other keys are refused.
+                          Writes nothing
+  claude-settings-apply   Apply a previewed settings merge:
+                          same stdin, the preview's digest
+                          and a permission reference. Writes
+                          the project settings file and its
+                          receipt only; home is refused
+  codex-config-plan       Preview managed dotted keys from
+                          stdin in
+                          PROJECT/.codex/config.toml; never
+                          writes
+  codex-config-apply      Apply a previewed project config
+                          with the same stdin, digest and
+                          permission reference. User HOME
+                          and CODEX_HOME config targets are
+                          refused; trust is never changed
+  hooks-plan              Preview the MoAI hook set for one
+                          host in PROJECT (rc.2 I1 #2238);
+                          writes nothing
+  hooks-apply             Write a previewed hook set and its
+                          receipt; requires the plan digest
+Update and move
+  update                  Update MoAI from the installed
+                          package
+  go-state-plan           Preview moving the Go-era .moai
+                          folder
+  go-state-apply          Move a previewed Go-era .moai
+                          folder
+  go-state-revert-plan    Preview undoing a Go-era folder
+                          move
+  go-state-revert         Undo a Go-era folder move
+  home-state-plan         Preview moving the Go-era ~/.moai
+                          folder
+  home-state-apply        Move a previewed Go-era ~/.moai
+                          folder
+  home-state-revert       Undo a ~/.moai folder move
+  worktree-move-plan      Preview moving this clone's
+                          worktrees
+  worktree-move-apply     Move the previewed worktrees
+  update-plan             Read-only UPDATE preview over
+                          every host projection (04-B #1999;
+                          the command name is P06 HOLD).
+                          HOME is the user home root; STAGE
+                          is the package directory to apply
+  update-apply            Apply a previewed UPDATE host by
+                          host (04-B #1999;
+                          pending→committed receipts). The
+                          previewed plan travels on stdin
+                          and must match a fresh recompute
+  recovery-plan           Read-only recovery plan for UPDATE
+                          hosts left `pending` (04-C #2000;
+                          names P06 HOLD)
+  recovery-apply          Revert only this request's changes
+                          on pending hosts (04-C #2000). The
+                          previewed plan travels on stdin
+                          and must match a fresh recompute
+  apply-recover           Revert exactly the files one apply
+                          request published, from its
+                          receipt (Issue #1989, 01-B). Files
+                          changed since the apply are
+                          skipped, never overwritten
+  layout-plan             P09 opt-in home layout (#2175):
+                          measure the receipt/outbox/claim
+                          stores and bind a move plan to
+                          `~/.moai-cli/projects/<project_id>/`.
+                          Writes nothing
+  layout-apply            Execute a confirmed layout plan:
+                          copy without deleting the
+                          originals, verify the copy, then
+                          switch the pointer
+                          (`layout.json`). The default stays
+                          project-side
+  migrate-plan            Go MoAI migration preview (#2016)
+                          on a prepared synthetic HOME only:
+                          typed request on stdin (`hosts`,
+                          `mode`, `go_release`,
+                          `selections`); shows ownership,
+                          the update-conflict preview and
+                          the plan digest. Writes nothing
+  migrate-apply           Apply a previewed migration
+                          (#2016): the exact plan on stdin
+                          must equal a fresh recompute and
+                          `--plan-digest`. Backs up, then
+                          copies only the selected owned
+                          files to `.moai-cli/imports/`; the
+                          Go source is kept
+  migrate-recovery-plan   Read-only recovery plan for one
+                          migration apply (#2016), from its
+                          backup manifest
+  migrate-recover         Remove only the imports one
+                          migration apply published (#2016);
+                          changed files are kept. The
+                          recovery plan travels on stdin and
+                          must match a fresh recompute
+  skills-legacy           List legacy `moai-*` skill folders
+                          (every `moai-` entry except `moai`
+                          itself) under the user skill
+                          folders of the supported hosts in
+                          HOME (the list is
+                          `skills_legacy::ROOTS`), with
+                          `count` and a `summary` line that
+                          says `0건` when there are none,
+                          plus the Codex `[[skills.config]]`
+                          entry that turns each Codex-read
+                          one off. Links are reported, never
+                          followed (a folder on the way, an
+                          entry or its `SKILL.md`); a
+                          `SKILL.md` is read only when it is
+                          a regular file of at most 64 KiB,
+                          so a FIFO never blocks the check.
+                          Reads only; moves, deletes and
+                          edits nothing
+  agents-home-plan        Preview installing the base MoAI
+                          agents into HOME's host agent
+                          folders (#2592): per file create,
+                          update, unchanged, preserved (your
+                          edit), conflict or remove_blocked.
+                          Writes nothing
+  agents-home-apply       Apply a previewed base agent
+                          install (#2592): only create and
+                          update are written, with a receipt
+                          holding the before bytes. The
+                          digest must match a fresh preview
+  agents-home-revert      Undo one base agent install
+                          (#2592) for the files that still
+                          hold the bytes it wrote: a created
+                          file is removed, an updated one
+                          gets its before bytes back; a
+                          changed file is skipped
+  home-routing-plan       Preview the MoAI routing section
+                          in HOME's global instruction files
+                          (#2638): per host create, append,
+                          merge, unchanged or conflict, and
+                          the hosts not written with the
+                          reason. Writes nothing
+  home-routing-apply      Apply a previewed MoAI routing
+                          section (#2638): only the managed
+                          block changes, with a receipt
+                          holding the before bytes. The
+                          digest must match a fresh preview
+  home-routing-revert     Undo one routing section apply
+                          (#2638) for the files that still
+                          hold the bytes it wrote; a file
+                          changed since is skipped and
+                          reported
+Keys
+  key-set                 Store a provider key in the vault
+  key-status              Check a provider key without
+                          showing it
+  key-remove              Remove a provider key from the
+                          vault
+  key-import-plan         Preview importing an old key file
+  key-import-apply        Import a previewed old key file
+Diagnose
+  claude-doctor           Check that Claude Code reads
+                          AGENTS.md
+  codex-doctor            Check the Codex instructions and
+                          skills
+  install-inspect         Show the installed MoAI binaries
+  identity                Show where a path sits in its
+                          clone
+  worktree-report         Report the space worktrees use
+  optimize-plan           Preview space that can be freed
+  baseline-inventory      List a checkout's baseline facts
+Lane and leader
+  claim-acquire           Claim a task (06-A #2005): typed
+                          JSON request on stdin; posts
+                          exactly one claim comment (⑤)
+                          behind the same-host journal
+                          serialization (①) and records the
+                          record
+  claim-verify            Re-verify claim ownership before a
+                          commit or push (rc.2 A9 #2255);
+                          GET only. Typed request on stdin,
+                          or `--hook` with a host PreToolUse
+                          input (refusal exits 2)
+  claim-show              Read the current claim record of a
+                          task key; byte-identical when
+                          repeated
+  claim-release           Close the active claim as
+                          `cancelled`; the epoch must match
+                          the current record
+  claim-handoff           Explicit leader handoff (06-B
+                          #2006): liveness probe, worktree
+                          evidence, close as `handed_off`;
+                          an alive or indeterminate owner
+                          needs --force-explicit
+  queue-next              Self-claim the next card (rc.2 A2
+                          #2161): typed JSON request on
+                          stdin; re-reads the open Issues,
+                          skips epics, pull requests and
+                          open-blocked cards, and claims the
+                          first candidate through
+                          `claim-acquire` under one journal
+                          lock
+  queue-free              List the open cards a lane may
+                          take (#2675): typed JSON
+                          `{schema_version, owner, repo}` on
+                          stdin; GET only. Every open Issue
+                          lands in one bucket (free,
+                          reserved, claimed, held, epics,
+                          blocked); an empty result says
+                          `free_count: 0`
+  queue-query             Read the merge train in a pinned
+                          leader Issue comment; GET only, no
+                          local store
+  leader-tick             Leader supervision tick (rc.2 A3
+                          #2162): typed JSON request on
+                          stdin; GET-only read of open PRs,
+                          reports only what changed since
+                          the last tick, drafts assignee
+                          hints
+  lane-status             Lane status table (rc.2 A11
+                          #2265): typed JSON request on
+                          stdin; GET-only read of the named
+                          Issues, their open PRs and the
+                          local worktrees; writes nothing
+  lane-handoff-check      Lane handoff gate (rc.2 A10
+                          #2264): typed JSON request on
+                          stdin; read-only verification that
+                          the worktree is safe to exit —
+                          status clean, HEAD == observed
+                          remote == PR head, claim trailers
+                          on lane-authored non-merge
+                          commits, leader report record
+                          present, no publish_unknown outbox
+                          effects. A failed status blocks
+                          the exit (kind blocked, exit 1)
+                          with a preservation note
+  lane-safe-to-reset      Before a lane's session is cleared
+                          or its card dispatched elsewhere
+                          (#2669): map the lane to its
+                          worktrees, count their
+                          uncommitted, unpushed and stashed
+                          work, and check the caller's
+                          observations of the lane's open
+                          claims (each with a resume note),
+                          session folder and screen
+                          (background jobs). `safe` only
+                          when every check ran clean; any
+                          finding is `not_safe`; a check
+                          that could not run is `unknown`
+                          with its reason. Reads only
+  session-register        Register this session's lane name
+                          in the clone's registry (`<clone
+                          common dir>/
+                          .moai-cli/sessions/<name>.json`)
+                          before claiming (#2592 S-C). A
+                          name another instance holds under
+                          a live lease is refused
+                          (`conflict`); the first call
+                          returns a fresh `instance`, and
+                          later calls with `--instance`
+                          renew the lease. `--release` frees
+                          the name before the session is
+                          cleared
+  usage-limit             Read
+                          `<HOME>/.moai-cli/state/usage-limits.json`,
+                          which the Claude Code status line
+                          writes on each render, and report
+                          `ok`, `near` (a window at 90% or
+                          more), `reached` or `unknown`,
+                          with `renew_until` (reset + 15
+                          minutes) for near and reached.
+                          Writes nothing
+  heavy-slot-acquire      Wait for one of N machine-wide
+                          heavy-run slots, run COMMAND
+                          holding it, and exit with
+                          COMMAND's code (#2677). Same
+                          folder and lock as
+                          `tools/heavy_check_slot.py`; while
+                          waiting and on failure it prints
+                          the load averages and free disk
+                          space. Unix only
+  heavy-slot-status       List the heavy-run slots held now,
+                          the slot paths refused, and the
+                          machine's load and free disk space
+                          (#2677). Reads only
+  goal-show               Show the standing goal of this
+                          clone (#2679): `state` is
+                          `active`, `cleared` or `none`,
+                          with the stored text, end
+                          condition, exclusions, source,
+                          start time and revision. The
+                          leader and every lane read it at
+                          the start of a round. Reads only
+  goal-plan               Preview a change of the standing
+                          goal (#2679): `change` is
+                          `create`, `update`, `clear`,
+                          `unchanged` or `none`, with the
+                          changed fields and the
+                          `plan_digest` that `goal-apply`
+                          needs. `asks_person` is true only
+                          when something would change.
+                          Writes nothing
+  goal-apply              Write a previewed change of the
+                          standing goal (#2679), only with
+                          the `plan_digest` of a fresh
+                          `goal-plan` for the same request
+                          and the same file. An `unchanged`
+                          or `none` plan writes nothing
+  goal-block              Build the `/goal` paste block from
+                          the state on stdin (#2163; #2708
+                          moved it from
+                          tools/gen_goal_block.py):
+                          `{milestone, issues, prs,
+                          keep_set}` in, the leader line,
+                          the agent's lane-wide loop line
+                          and card lines, and the Codex line
+                          out. Reads only stdin
+  gate-check              The leader merge gate (#2674),
+                          read-only: decides whether every
+                          rule G1–G11 holds for one pull
+                          request (G8: the tip's last
+                          completed push CI is not red, or
+                          this PR is its repair, #2777; G9:
+                          the auditor is not an author; G10:
+                          every PR commit but a merge has a
+                          `Moai-Claim` trailer; G11: the PR
+                          body has a `Moai-Claim: ` line)
+                          and prints `pass`, or the rule
+                          that stopped and why. With `--pr`
+                          it reads the pull request from
+                          GitHub (GET only) and the local
+                          repository (the head and tip must
+                          already be fetched); without it,
+                          it decides from a snapshot on
+                          stdin. Posts nothing, merges
+                          nothing
+  gate-merge              Merge one pull request only when
+                          the leader merge gate passes
+                          (#2674 S2): checks every rule
+                          G1–G11 like `gate-check --pr`,
+                          then posts the `moai/audit`
+                          success status on the head, merges
+                          with the head pinned (at most
+                          three attempts) and posts the
+                          merge record. A stopped gate
+                          writes nothing. Needs a permission
+                          reference
+  gate-loop               One pass of the leader's merge
+                          loop (#2674 S4): runs `gate-merge`
+                          on every open, non-draft pull
+                          request into the integration
+                          branch, and once per head updates
+                          the branch on a code overlap with
+                          the tip (G6) or asks the claim
+                          holder when the verdict's author
+                          holds no allowed claim (G2). The
+                          leader or a scheduler calls it
+                          instead of a shell loop. Needs a
+                          permission reference; the heads
+                          must already be fetched (a missing
+                          one is skipped)
+  wait                    Wait until a condition holds on
+                          GitHub, then end. KIND is `ci`
+                          (every workflow run of `--head`
+                          completed), `comment` (a comment
+                          on `--issue` newer than `--after`,
+                          optionally with a line starting
+                          `--prefix`) or `pr` (pull request
+                          `--pr` no longer at `--head`, or
+                          closed). Polls are conditional
+                          requests (an unchanged answer is a
+                          304), one at a time, at least
+                          `--interval` and GitHub's
+                          `x-poll-interval` apart. A timeout
+                          answers `matched: false`
+  scope-check             write_scope overlap of a claim
+                          against the other active claims
+                          (06-C #2007)
+  worktree-plan           Plan the branch and worktree of a
+                          claim (06-C #2007). Writes nothing
+  worktree-apply          Create the planned worktree with
+                          `git worktree add --lock -b` (06-C
+                          #2007); refuses without `--force`
+                          when the branch, path or task
+                          already has a worktree
+  pr-body-render          Render the PR body of a claim
+                          (06-C #2007): Refs, exact SHAs,
+                          receipts, op marker
+  pr-confirm              Record the PR's ACK (06-C #2007,
+                          REQ-06C-11): confirm the
+                          `pr_create` intent and, once it is
+                          confirmed, move the claim record
+                          to `pr_ready`
+  audit-claim             Reserve the independent audit of
+                          one exact PR head (rc.2 #2403 item
+                          1): typed JSON `{schema_version,
+                          owner, repo, pr, head, lane}` on
+                          stdin. Reads the PR, its commits
+                          and comments (GET); refuses a
+                          stale head or an author lane;
+                          posts at most one
+                          `moai-audit-claim` comment, then
+                          re-reads. The lowest reservation
+                          id on the head wins (user decision
+                          #2403 c6784520362). Start the
+                          audit only when `outcome` is
+                          `reserved`
+  audit-clone-plan        Read-only plan of an independent
+                          audit clone (WT-3, #2380): the
+                          single-branch, no-checkout clone
+                          commands for an exact PR head and
+                          where the evidence is kept. Runs
+                          nothing, no network
+  labels-check            Report the open Issues whose
+                          labels break the axis rule of the
+                          project's
+                          `.github/moai/labels.yml` (exactly
+                          one `type:*`, exactly one
+                          `priority:*`, one or two `area:*`,
+                          no `not_used` or unlisted label).
+                          Reads GitHub with GET only and
+                          never adds or removes a label
+  decision-due            Sort the unanswered decisions of
+                          one bundle at `--now` (default:
+                          the clock): still open, default
+                          applies (reversible, category
+                          `none`, the user's, past its
+                          deadline), or on hold (one-way,
+                          `guarded` or a HOLD category, past
+                          its deadline). Reads only; applies
+                          nothing
+  decision-file-check     Check one decision bundle under
+                          `docs/decisions/` (#2619): the
+                          table, every field, and that a
+                          one-way, `guarded` or
+                          HOLD-category decision is the
+                          user's. Reads only
+  decision-append         Add rows (stdin) after the last
+                          row of the user-decisions log's
+                          single table (#2403). The log must
+                          equal HEAD in the worktree and
+                          index, and HEAD the given base;
+                          existing rows are never edited or
+                          removed. Preview by default;
+                          `--apply` writes. Rows go to the
+                          end of the table, so read the log
+                          by its time column, not by row
+                          order. The remote is not checked
+                          (`remote_checked: false`): fetch
+                          the tip first and pass it as
+                          `base`
+  flow-wip-check          Flow control (A13 #2279): WIP cap
+                          check over the open pull requests
+                          of the repository — the
+                          assignment-refusal signal (the
+                          refusal itself is the leader's
+                          act). GET-only
+  dispatch-record         Record a dispatch revision over
+                          durable S1 messages (typed JSON
+                          stdin)
+  dispatch-ack            Record received ACK and explicit
+                          accepted/deferred/rejected
+                          decision, separately
+  dispatch-check          Observe dispatch revisions,
+                          decisions and the five-minute ACK
+                          alert (GET only). Never authorizes
+                          a claim or an audit gate
+  message-record          Publish a durable message from
+                          typed JSON on stdin; queued is not
+                          receiver ACK or business
+                          acceptance
+  message-ack             Publish an explicit receiver ACK
+                          from typed JSON on stdin; not
+                          business acceptance or completion
+  message-reconcile       Reconcile messages from typed JSON
+                          on stdin: remote GET only, with
+                          local reconciliation writes; never
+                          publishes messages or ACKs
+  effect-intend           Record an external-write intent
+                          before it is sent (REQ-06B-06);
+                          payload JSON on stdin gives the
+                          intent digest. A stale epoch is
+                          fenced (REQ-06B-08)
+  effect-confirm          Confirm an intended effect after
+                          the write returned, or mark it
+                          uncertain
+  effects-reconcile       Reconcile uncertain effects
+                          against the remote by their stable
+                          marker (GET only, never
+                          re-creates). `--remote-probe`
+                          replaces the built-in comment
+                          lookup (tests)
+Checks
+  review-package          The deterministic review package
+                          for an AUDIT (#2614): the diff
+                          from the merge base to HEAD, the
+                          changed files, and the review
+                          instructions (`REVIEW.md` and its
+                          includes) and context
+                          (`AGENTS.md`, `CLAUDE.md`) read
+                          from BASE only. Reads git; writes
+                          nothing
+  review-check            Format check of review findings
+                          before they are posted (#2614
+                          AC-3): stdin
+                          `{"schema_version":1,"findings":[…]}`;
+                          each finding needs a severity, a
+                          `file:line` in HEAD, a title,
+                          evidence quoted from that line,
+                          and a confirmed verification.
+                          Prints the verdict (any
+                          `important` is FAIL), counts, post
+                          body and digest. Reads git only
+  repo-scans              List the repo-wide scan tests a
+                          merge must run first (#2681; #2708
+                          moved it from
+                          tools/repo_scans.py). With `--refs
+                          <tip> <head>` the change sets are
+                          `git diff --name-only` from their
+                          merge-base and the table is the
+                          union of `tools/repo_scans.json`
+                          at both refs; without it, stdin
+                          `{"pr": [...], "tip": [...]}` is
+                          judged with the fallback table.
+                          The result is `{remerge, hits,
+                          checks, reasons}`; any internal
+                          error fails safe to `remerge:
+                          true` with every check, and no
+                          readable table means hold the
+                          merge. Reads only
+  pr-self-audit-check     Check a PR body's Self-Audit
+                          section (#2708, formerly
+                          tools/check_pr_self_audit.py): the
+                          body from --file or stdin; prints
+                          one line, `self-audit: pass (…)`
+                          (exit 0) or `self-audit: blocked
+                          missing=…` (exit 1); a usage error
+                          exits 2. Raw text, not the
+                          envelope, so the result and exit
+                          code are the ones the Python
+                          checker gave
+  flake-classify          Classify flaky tests (#2666):
+                          given the log of a failed CI run
+                          and the log of a later run of the
+                          same head (`gh run view <id>
+                          --log` saved to a file), list the
+                          tests that failed first and passed
+                          later (flaky), failed in both
+                          (still failing), or are absent
+                          from the later log. Reads the two
+                          files only; writes nothing
+  flake-record            Record flaky tests (#2666): for
+                          every flaky row of a
+                          `flake-classify` result, comment
+                          on the open Issue that tracks the
+                          test (hidden marker on its first
+                          line), or create `[flake] <test>`
+                          when none is open. A run and job
+                          already recorded writes nothing.
+                          Needs a permission reference
+  audit-delta             Compare one local two-parent merge
+                          with a controlled replay; evidence
+                          only, not AUDIT PASS
+  audit-reduce            Temporary (05-D #2004; the name is
+                          fixed after P06): independent
+                          audit of PROJECT. Re-runs the
+                          approved verification itself and
+                          decides admission; receipts on
+                          stdin never count
+  parity-check            Semantic parity of TEMPLATE vs
+                          GENERATED (optional third DOC set,
+                          D6 #2192): per-key classification
+                          with the 00-A vocabulary (missing
+                          / extra / value_mismatch /
+                          identical / doc_only). Read-only
+  plan-admit              Temporary (05-B #2002; the name is
+                          fixed after P06): RUN admission of
+                          an approved plan. Typed request on
+                          stdin; reads the project's
+                          `HEAD^{commit}` with git, writes
+                          nothing
+  run-verify              Temporary (05-C #2003; the name is
+                          fixed after P06): re-check the
+                          pinned contract and run the
+                          approved verification commands in
+                          PROJECT as argv; returns a receipt
+Internal
+  statusline              Render the Claude Code status line
+                          from the session JSON on stdin
+                          (#2350). The one operation that
+                          prints raw text instead of the
+                          JSON envelope: Claude Code shows
+                          the command's stdout as is. Always
+                          exits 0
+  hook-receipt            Hook handler: record one
+                          allow-listed receipt line from the
+                          host's hook stdin under
+                          ./.moai-cli/receipts/; never fails
+                          the hook
+  hook-dispatch           Hook engine (#2391): run one MoAI
+                          hook duty for a host and print the
+                          host's native answer; reads the
+                          host's hook JSON on stdin, no
+                          network
+  forge-read              Read GitHub Issues and comments as
+                          TODO (GET only; typed JSON request
+                          on stdin, envelope on stdout).
+                          Poll state:
+                          `<PROJECT>/.moai-cli/forge/poll-state.json`
+  forge-links-probe       Probe whether the sub-issue and
+                          dependency APIs answer for one
+                          Issue and plan the links: API
+                          write intents, or
+                          `Parent:`/`Blocked-By:` body lines
+                          (GET only; #2172)
+  forge-report            Create or update the one report
+                          comment of a run on its Issue
+                          (typed JSON payload on stdin;
+                          envelope on stdout). Large output
+                          goes to artifact references, not
+                          the body
+  forge-audit-status      Post the `moai/audit` commit
+                          status on an exact SHA (typed JSON
+                          on stdin). Uses the audit App
+                          token from `MOAI_AUDIT_APP_TOKEN`
+                          when set, else warns (#2173)
+  index-query             Query the incremental index (C6
+                          #2182): read-only — resolves the
+                          published generation and reports
+                          one of
+                          fresh/stale/partial/unavailable
+                          with the detected changes
+                          (additions, deletions,
+                          modifications, untracked new
+                          files, branch switch)
+  atlas-map               Code Map query (C9 #2185):
+                          read-only — the published
+                          generation's map records (file and
+                          tag nodes, `annotated_by` edges,
+                          missing coverage) of the requested
+                          paths or directory prefixes;
+                          `unavailable` when no index
+                          records can be read
+  atlas-graph             Code Graph query (C9 #2185):
+                          read-only — a bounded-hop walk
+                          over the same generation's map and
+                          graph records from the given node
+                          ids; `unavailable` when no index
+                          records can be read
+  atlas-tag-scan          Read-only dual-read scan of
+                          `@MOAI:` / `@MX:` tag markers (C2
+                          #2178): both namespaces normalize
+                          into one node shape, duplicates
+                          are diagnosed only, nothing is
+                          written. PATH is a file or a
+                          directory
+  search                  Non-vector-first search (C7
+                          #2183): read-only — exact paths
+                          first, then literal matches over
+                          the published index generation (or
+                          the tracked files), each result
+                          with a source citation; the
+                          typed-edge step is reported
+                          unavailable (#2408)
+  context-bundle          Read-only: requested file ranges
+                          with digests and a budget (typed
+                          request on stdin)
+  context-verify          Read-only: re-check a bundle's
+                          ranges against the files now
+                          (typed request on stdin)
+  decision-record         Append one native decision record
+                          (stdin) to
+                          `.moai-cli/decisions/<RUN>.jsonl`
+  cost-report             Aggregate cost items across
+                          run/verify receipts (D5 #2191):
+                          typed request (receipt array) on
+                          stdin; breakdown envelope on
+                          stdout; writes nothing. External
+                          backend calls are structurally
+                          zero; tokens are absent, never
+                          estimated (REQ-D5-01)
+  snapshot-describe       Read-only: PROJECT's HEAD commit
+                          and a digest of its tracked
+                          changes (07-D #2011)
+  package-inspect         
+  package-resolve         
+  codex-projection-plan   Plan a Codex projection of the
+                          common package into an explicit
+                          target; writes nothing
+  codex-projection-apply  Install a planned Codex projection
+                          into its explicit target (I4
+                          #2241). Refuses a stale plan, a
+                          source-manifest mismatch or a
+                          conflicting target file before
+                          writing
+  project-skill-plan      Plan project-unit `moai` skill
+                          copies read-only (I5 #2242, P04
+                          HOLD): typed request on stdin;
+                          judgment envelope on stdout;
+                          writes nothing
+  project-skill-apply     Copy the staged `moai` skill
+                          package into the project host
+                          folders (I5 #2242): the exact
+                          request on stdin; requires
+                          `opt_in` and writes only under the
+                          caller-supplied project root
+  project-skill-revert    Revert one applied project-skill
+                          copy from its rollback receipt (I5
+                          #2242): typed request on stdin
+  archive-plan            Dry-run (D1 #2187, REQ-D1-01):
+                          which SPEC directories under
+                          `.moai-cli/specs/` are
+                          archive-eligible and why the rest
+                          are excluded. Writes nothing.
+                          `--grace-days` overrides the
+                          profile's inactivity window
+  archive-apply           Move the archive-eligible SPECs
+                          (D2 #2188, REQ-D2-01): recomputes
+                          the plan and requires its
+                          `plan_digest`; each SPEC is
+                          hashed, copied, read back and
+                          indexed before its source is
+                          removed. Any mismatch cancels the
+                          move and keeps the source
+  archive-restore         Restore one archived SPEC to
+                          `.moai-cli/specs/<id>` after
+                          verifying its manifest (D2 #2188)
+  archive-search          Read-only, non-vector search over
+                          the archive index and archived
+                          text (D2 #2188)
+  worktree-gc-plan        Read-only removal plan (WT-4,
+                          #2380): per linked worktree
+                          `remove`, `trim` (cargo build
+                          output only) or `skip` with
+                          reasons, and a digest. Deletes
+                          nothing
+  worktree-gc-apply       Act on a `worktree-gc-plan` (WT-9,
+                          #2498): recomputes the plan with
+                          the same inputs, refuses before
+                          any write unless its digest equals
+                          `--plan-digest`, then trims the
+                          listed cargo output and removes
+                          the listed worktrees (no
+                          `--force`; branches kept)
+  session                 Legacy Claude-only launcher kept
+                          for compatibility; prefer `-l|-a`
+                          or `cc|glm|codex`
+
+Options:
+  -l, --leader
+          Start a leader session on the default host (cc)
+  -a, --agent [<HOST>]
+          Start an agent session on HOST (cc|glm|codex;
+          default cc)
+      --name <NAME>
+          Session name (default `leader` for -l, the
+          project's next `agent-N` for -a; none without a
+          role)
+      --model <MODEL>
+          Main model (Claude hosts default `opus`; codex
+          uses its own default unless set)
+      --effort <EFFORT>
+          Claude effort (default `medium`)
+      --advisor <ADVISOR>
+          Advisor model on Claude hosts (fable|opus|sonnet
+          or a full claude-* id). None by default; the user
+          setting `launcher.advisor` can turn it on. May
+          bill to usage credits
+      --no-advisor
+          Pass no `--advisor` even when the user setting
+          `launcher.advisor` turns it on
+      --permissions
+          Keep permission prompts: no
+          `--dangerously-skip-permissions` (Claude hosts)
+          and the `workspace-write` / `on-request` sandbox
+          on codex. Without it a -l|-a session has full
+          access; a session without a role never gets a
+          permission flag
+      --dry-run
+          Print the composed command as JSON instead of
+          starting the host
+  -h, --help
+          Print help
+  -V, --version
+          Print version
+
+Run 'moai <command> --help' for details and examples.

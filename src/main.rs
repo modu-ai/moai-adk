@@ -1,4 +1,4 @@
-use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, Parser, Subcommand};
+use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use moai_cli::{
     agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
     AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
@@ -110,15 +110,19 @@ enum Command {
     /// The one-file operations under `src/ops/` (#2617): add a file there, not a variant here.
     #[command(flatten)]
     Op(ops::Ops),
+    /// Preview the project profile
     ProjectPlan {
         project: PathBuf,
     },
+    /// Detect the project's facts
+    ///
     /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
     /// manifests, languages, language servers, configured MCP server names, databases. Reads
     /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
     ProjectDetect {
         project: PathBuf,
     },
+    /// Write a previewed project profile
     ProjectApply {
         project: PathBuf,
         #[arg(long)]
@@ -154,6 +158,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// List a checkout's baseline facts
+    ///
     /// Read-only baseline inventory of a checkout (typed JSON on stdout).
     BaselineInventory {
         project: PathBuf,
@@ -188,10 +194,14 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Show where a path sits in its clone
+    ///
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
     },
+    /// Build the code map index
+    ///
     /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
     /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
     /// build keeps the previous generation and marks partial (REQ-C6-01).
@@ -204,6 +214,8 @@ enum Command {
     IndexQuery {
         project: PathBuf,
     },
+    /// Import a previewed old key file
+    ///
     /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
     /// preview's digest and a permission reference; the read-back must match; the legacy file
     /// is kept. Destination: the current project's folder, or `_shared` with `--shared`.
@@ -217,6 +229,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Preview importing an old key file
+    ///
     /// Preview of moving a legacy key file into the encrypted vault (#2393 S3): which file,
     /// which destination folder, never the value. Writes nothing.
     KeyImportPlan {
@@ -225,6 +239,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Remove a provider key from the vault
+    ///
     /// Remove a provider's key from the vault (#2393): the current project's entry, or the
     /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
     /// machine key and any legacy key file are never touched.
@@ -236,6 +252,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Store a provider key in the vault
+    ///
     /// Store a provider's key, encrypted, in the vault (#2393): for the current project, or
     /// for every project with `--shared`. The value is read from stdin only (never argv); an
     /// interactive terminal is refused. The answer never contains the value.
@@ -245,6 +263,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Check a provider key without showing it
+    ///
     /// Whether a provider's entry (current project, or `--shared`) exists, is safe and
     /// decrypts (#2393). Never the value, its length or a fingerprint.
     KeyStatus {
@@ -405,6 +425,8 @@ enum Command {
     LaneStatus {
         project: PathBuf,
     },
+    /// Choose the writing language item by item
+    ///
     /// Per-item writing-language setup (#2293): asks one question per item and returns a
     /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
     /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
@@ -532,6 +554,8 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
         total_cap: u64,
     },
+    /// Check that Claude Code reads AGENTS.md
+    ///
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
@@ -655,6 +679,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Check the Codex instructions and skills
+    ///
     /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
     CodexDoctor {
         /// Project root (Codex walks from here down to the working directory).
@@ -743,6 +769,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Report the space worktrees use
+    ///
     /// Read-only space report of the repository's worktrees, their build folders and the
     /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
     /// evaluated. Writes nothing.
@@ -874,6 +902,8 @@ enum Command {
         #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
         pr_seq: u32,
     },
+    /// Show the installed MoAI binaries
+    ///
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
     InstallInspect {
@@ -1070,6 +1100,8 @@ enum Command {
     AuditReduce {
         project: PathBuf,
     },
+    /// Update MoAI from the installed package
+    ///
     /// Update the skill from the package installed with this binary (#2522): previews like
     /// update-plan and writes nothing unless confirmed — in a terminal it asks once; elsewhere
     /// pass the preview's digest with --confirm. HOME comes from the environment.
@@ -1102,12 +1134,16 @@ enum Command {
         #[arg(long)]
         head: String,
     },
+    /// Preview moving the Go-era .moai folder
+    ///
     /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
     /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
     GoStatePlan {
         /// Project root carrying the Go `.moai/manifest.json`.
         project: PathBuf,
     },
+    /// Move a previewed Go-era .moai folder
+    ///
     /// Carry out a confirmed go-state preview (#2561, #2696): the Go `.moai/` becomes
     /// `.moai-backup` (or `.moai-backup-<UTC>`), a new `.moai/` takes the earlier `.moai-cli`
     /// product state and the marker last; a Go folder that stays keeps the #2561 stage-2 file
@@ -1119,6 +1155,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview undoing a Go-era folder move
+    ///
     /// Read-only: what reverting one go-state apply would do (#2561 stage 2).
     GoStateRevertPlan {
         project: PathBuf,
@@ -1126,6 +1164,8 @@ enum Command {
         #[arg(long)]
         backup: String,
     },
+    /// Undo a Go-era folder move
+    ///
     /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
     /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. All or nothing: anything that
     /// came back at an original path, or a changed backup, refuses the revert.
@@ -1174,10 +1214,16 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Start a Claude Code session
+    ///
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
+    /// Start a Claude Code session on z.ai GLM
+    ///
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
     Glm(HostLaunch),
+    /// Start a Codex CLI session
+    ///
     /// Codex CLI session launcher: `codex -l|-a`.
     Codex(HostLaunch),
     /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex`.
@@ -2838,7 +2884,18 @@ pub(crate) fn main() -> ExitCode {
         return go_hook_main(&argv);
     }
     let hook_mode = hook_mode_argv(&argv);
-    let cli = match Cli::try_parse() {
+    let bin = moai_cli::help::bin_name(argv.first().map(String::as_str).unwrap_or(""));
+    // `help --all` (#2802 S1): every command in its group. clap's `help` takes command names
+    // only, so this form is answered before parsing.
+    if argv.len() == 3 && argv[1] == "help" && argv[2] == "--all" {
+        let mut cmd = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, true);
+        print!("{}", cmd.render_help());
+        return ExitCode::SUCCESS;
+    }
+    let parsed = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, false)
+        .try_get_matches_from(&argv)
+        .and_then(|m| Cli::from_arg_matches(&m));
+    let cli = match parsed {
         Ok(cli) => cli,
         Err(e) if hook_mode => {
             if matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
@@ -3324,5 +3381,228 @@ mod operations_doc {
         assert!(
             err(&code, &render(&sorted).replacen(HEADING, "## Other", 1)).contains("not found")
         );
+    }
+}
+
+#[cfg(test)]
+mod help_rules {
+    //! #2802 S1 (design #2799 D2 sections 9 and 11): the people-facing help layout and its
+    //! static rules. Each rule has a `*_DONE` list that must equal the set of commands meeting it
+    //! exactly, so every later S1 pull request moves names in and none can slip back; when a list
+    //! names every command, the rule holds for all.
+    use super::Cli;
+    use clap::CommandFactory;
+    use std::collections::BTreeSet;
+
+    /// Commands whose one-line `about` follows the rule (S1a: the root help's 30 plus the three
+    /// launchers it shows on one line).
+    const ABOUT_DONE: &[&str] = &[
+        "baseline-inventory",
+        "cc",
+        "claude-doctor",
+        "codex",
+        "codex-doctor",
+        "glm",
+        "go-state-apply",
+        "go-state-plan",
+        "go-state-revert",
+        "go-state-revert-plan",
+        "home-state-apply",
+        "home-state-plan",
+        "home-state-revert",
+        "identity",
+        "index-build",
+        "install-inspect",
+        "key-import-apply",
+        "key-import-plan",
+        "key-remove",
+        "key-set",
+        "key-status",
+        "language-setup",
+        "optimize-plan",
+        "project-apply",
+        "project-detect",
+        "project-plan",
+        "update",
+        "worktree-move-apply",
+        "worktree-move-plan",
+        "worktree-report",
+    ];
+
+    /// Commands whose every shown argument and option has a description (#2799 A 6865611250:
+    /// 48 at the S1a base).
+    const ARGS_DONE: &[&str] = &[
+        "agents-home-apply",
+        "agents-home-plan",
+        "agents-home-revert",
+        "audit-claim",
+        "cc",
+        "codex",
+        "codex-doctor",
+        "cost-report",
+        "dispatch-check",
+        "flake-classify",
+        "flake-record",
+        "flow-wip-check",
+        "gate-check",
+        "gate-loop",
+        "gate-merge",
+        "glm",
+        "go-state-plan",
+        "goal-apply",
+        "goal-block",
+        "goal-plan",
+        "goal-show",
+        "heavy-slot-acquire",
+        "home-routing-apply",
+        "home-routing-plan",
+        "home-routing-revert",
+        "home-state-apply",
+        "home-state-plan",
+        "home-state-revert",
+        "hook-dispatch",
+        "install-inspect",
+        "labels-check",
+        "lane-safe-to-reset",
+        "migrate-plan",
+        "optimize-plan",
+        "pr-self-audit-check",
+        "recovery-plan",
+        "repo-scans",
+        "review-check",
+        "review-package",
+        "session-register",
+        "skills-legacy",
+        "statusline",
+        "update",
+        "update-plan",
+        "usage-limit",
+        "wait",
+        "worktree-move-apply",
+        "worktree-move-plan",
+    ];
+
+    /// Commands whose `--help` carries an `Examples:` section (none yet at S1a).
+    const EXAMPLES_DONE: &[&str] = &[];
+
+    fn words() -> Vec<String> {
+        Cli::command()
+            .get_subcommands()
+            .map(|s| s.get_name().to_string())
+            .filter(|w| w != "help")
+            .collect()
+    }
+
+    /// D2 section 9: an upper-case verb phrase, no closing period, at most 60 characters, no
+    /// Issue number and no backtick.
+    fn about_ok(about: &str) -> bool {
+        about.chars().count() <= 60
+            && about.chars().next().is_some_and(char::is_uppercase)
+            && !about.ends_with('.')
+            && !about.contains('#')
+            && !about.contains('`')
+    }
+
+    fn meeting(rule: impl Fn(&clap::Command) -> bool) -> BTreeSet<String> {
+        let cli = Cli::command();
+        cli.get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .filter(|s| rule(s))
+            .map(|s| s.get_name().to_string())
+            .collect()
+    }
+
+    fn set(list: &[&str]) -> BTreeSet<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn help_table_names_every_command_once() {
+        let mut listed = Vec::new();
+        for g in moai_cli::help::GROUPS {
+            listed.extend(g.commands.iter().map(|(w, _)| w.to_string()));
+        }
+        let unique: BTreeSet<_> = listed.iter().cloned().collect();
+        assert_eq!(unique.len(), listed.len(), "a command is listed twice");
+        let all: BTreeSet<_> = words().into_iter().collect();
+        assert_eq!(unique, all, "the help table and the command list differ");
+    }
+
+    #[test]
+    fn the_root_help_shows_only_conforming_abouts() {
+        // Every command the root help shows has a conforming one-line about.
+        for g in moai_cli::help::GROUPS {
+            for (word, root) in g.commands {
+                if *root {
+                    assert!(ABOUT_DONE.contains(word), "{word} is on the root help");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn one_line_abouts_follow_the_rule_exactly_where_listed() {
+        let ok = meeting(|s| about_ok(&s.get_about().map(|a| a.to_string()).unwrap_or_default()));
+        assert_eq!(
+            ok,
+            set(ABOUT_DONE),
+            "ABOUT_DONE must list exactly the conforming abouts"
+        );
+    }
+
+    #[test]
+    fn argument_descriptions_are_complete_exactly_where_listed() {
+        let ok = meeting(|s| {
+            s.get_arguments()
+                .filter(|a| !a.is_hide_set())
+                .filter(|a| !matches!(a.get_id().as_str(), "help" | "version"))
+                .all(|a| a.get_help().is_some() || a.get_long_help().is_some())
+        });
+        assert_eq!(
+            ok,
+            set(ARGS_DONE),
+            "ARGS_DONE must list exactly the fully described commands"
+        );
+    }
+
+    #[test]
+    fn examples_are_present_exactly_where_listed() {
+        let ok = meeting(|s| {
+            [s.get_after_help(), s.get_after_long_help()]
+                .into_iter()
+                .flatten()
+                .any(|t| t.to_string().contains("Examples:"))
+        });
+        assert_eq!(
+            ok,
+            set(EXAMPLES_DONE),
+            "EXAMPLES_DONE must list exactly the commands with examples"
+        );
+    }
+
+    /// The grouped list goes into clap's help template, where `{name}` is a tag; no about may
+    /// carry one of clap's tags (an unknown `{…}` is printed as it is).
+    #[test]
+    fn help_text_has_no_template_braces() {
+        const TAGS: [&str; 12] = [
+            "{name}",
+            "{bin}",
+            "{version}",
+            "{author}",
+            "{about}",
+            "{usage}",
+            "{usage-heading}",
+            "{all-args}",
+            "{options}",
+            "{positionals}",
+            "{subcommands}",
+            "{after-help}",
+        ];
+        for s in Cli::command().get_subcommands() {
+            let about = s.get_about().map(|a| a.to_string()).unwrap_or_default();
+            for tag in TAGS {
+                assert!(!about.contains(tag), "{}: {tag}", s.get_name());
+            }
+        }
     }
 }
