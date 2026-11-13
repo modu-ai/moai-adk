@@ -11,7 +11,7 @@ use moai_cli::claim::{
 use moai_cli::forge::policy::Clock;
 use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::forge::{Client, Config};
-use moai_cli::queue::{next, ClaimTemplate, QueueRequest};
+use moai_cli::queue::{free, next, ClaimTemplate, FreeRequest, QueueRequest};
 use serde_json::{json, Value};
 use std::{cell::Cell, fs, path::Path, thread, time::Duration};
 
@@ -740,4 +740,175 @@ fn acquire_honors_literal_release_and_handoff_closures() {
             assert_eq!(t.remaining(), 0, "{kind}/{case}");
         }
     }
+}
+
+// ---- queue-free (#2675) ----
+
+const EXPIRED: &str = "2026-11-01T00:00:00Z";
+
+fn free_run(exchanges: Vec<Exchange>) -> (Result<Value, String>, RecordedTransport) {
+    let t = RecordedTransport::new(exchanges);
+    let clock = FakeClock(Cell::new(CLOCK0));
+    let client = Client::new(&t, &clock, Config::default(), Default::default());
+    let req = FreeRequest {
+        schema_version: 1,
+        owner: "acme".into(),
+        repo: "widgets".into(),
+    };
+    let out = free(&req, &client, &clock);
+    (out, t)
+}
+
+fn open_issues(issues: Vec<Value>) -> Exchange {
+    exchange(
+        "GET",
+        &format!("{API}/issues?state=open&per_page=100"),
+        resp(200, json!(issues)),
+    )
+}
+
+fn numbers(v: &Value, key: &str) -> Vec<i64> {
+    v[key]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["issue"].as_i64().unwrap())
+        .collect()
+}
+
+/// Every open Issue lands in exactly one bucket; held cards, epics and blocked cards cost no
+/// comment read (the recorded transport fails on any request it does not expect), and the
+/// run writes nothing.
+#[test]
+fn queue_free_sorts_every_card_into_one_bucket() {
+    let mut held = card(1, "H", "");
+    held["labels"] = json!([{"name": "type:feature"}, {"name": "needs:decision"}]);
+    let epic = json!({"number": 2, "id": 2000, "title": "[rc.2][EP-X] epic", "body": ""});
+    let blocked = card(3, "B", "Blocked-By: #1");
+    let pr = json!({"number": 4, "id": 4000, "title": "pr", "body": "",
+                    "pull_request": {"url": "x"}});
+    let (out, t) = free_run(vec![
+        open_issues(vec![
+            held,
+            epic,
+            blocked,
+            pr,
+            card(5, "U", ""),
+            card(6, "R", ""),
+            card(7, "E", ""),
+            card(8, "C", ""),
+            card(9, "V", ""),
+            card(10, "D", "Blocked-By: #999"),
+        ]),
+        exchange("GET", &comments(5), resp(200, json!([]))),
+        exchange(
+            "GET",
+            &comments(6),
+            resp(200, json!([claim(60, "agent-6"), release(61, 60)])),
+        ),
+        exchange(
+            "GET",
+            &comments(7),
+            resp(200, json!([claim_until(70, "agent-7", EXPIRED)])),
+        ),
+        exchange(
+            "GET",
+            &comments(8),
+            resp(200, json!([claim(80, "agent-8")])),
+        ),
+        exchange(
+            "GET",
+            &comments(9),
+            resp(
+                200,
+                json!([claim(90, "agent-1"), handoff(91, 90, "agent-9")]),
+            ),
+        ),
+        exchange("GET", &comments(10), resp(200, json!([]))),
+    ]);
+    let out = out.unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+    assert_eq!(out["writes"], json!(false));
+    assert_eq!(out["inspected"], json!(9), "{out}");
+    assert_eq!(numbers(&out, "free"), vec![5, 6, 7, 10]);
+    let why: Vec<&str> = out["free"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["why"].as_str().unwrap())
+        .collect();
+    assert_eq!(why, vec!["unclaimed", "released", "expired", "unclaimed"]);
+    assert_eq!(out["free"][2]["claimed_by"], json!("agent-7"));
+    assert_eq!(out["free"][2]["lease_until"], json!(EXPIRED));
+    assert_eq!(out["free_count"], json!(4));
+    assert_eq!(numbers(&out, "claimed"), vec![8]);
+    assert_eq!(out["claimed"][0]["claimed_by"], json!("agent-8"));
+    assert_eq!(numbers(&out, "reserved"), vec![9]);
+    assert_eq!(out["reserved"][0]["to"], json!("agent-9"));
+    assert_eq!(numbers(&out, "held"), vec![1]);
+    assert_eq!(out["held"][0]["labels"], json!(["needs:decision"]));
+    assert_eq!(numbers(&out, "epics"), vec![2]);
+    assert_eq!(numbers(&out, "blocked"), vec![3]);
+    assert_eq!(out["blocked"][0]["blocked_by"], json!([1]));
+    assert_eq!(
+        out["summary"],
+        json!("free 4건 (inspected 9, claimed 1, reserved 1, held 1, epics 1, blocked 1)")
+    );
+}
+
+/// An empty answer states its count (#2675 AC-2): `free_count: 0`, an empty list, and a
+/// summary that begins `free 0건`.
+#[test]
+fn queue_free_says_zero_when_nothing_is_free() {
+    let mut held = card(1, "H", "");
+    held["labels"] = json!([{"name": "HOLD"}]);
+    let (out, t) = free_run(vec![
+        open_issues(vec![held, card(2, "C", "")]),
+        exchange(
+            "GET",
+            &comments(2),
+            resp(200, json!([claim(20, "agent-2")])),
+        ),
+    ]);
+    let out = out.unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(out["free_count"], json!(0));
+    assert_eq!(out["free"], json!([]));
+    assert!(
+        out["summary"].as_str().unwrap().starts_with("free 0건 "),
+        "{out}"
+    );
+}
+
+/// A failed read is an error, never an empty list (#2675: an empty output was once read as
+/// "0 cards").
+#[test]
+fn queue_free_read_failure_is_an_error_not_an_empty_list() {
+    let (out, _t) = free_run(vec![
+        open_issues(vec![card(5, "U", "")]),
+        exchange(
+            "GET",
+            &comments(5),
+            resp(404, json!({"message": "Not Found"})),
+        ),
+    ]);
+    assert!(out.is_err(), "{out:?}");
+}
+
+/// Request shape: only schema version 1 and GitHub owner/repo names are read.
+#[test]
+fn queue_free_refuses_a_bad_request_before_any_read() {
+    let t = RecordedTransport::new(vec![]);
+    let clock = FakeClock(Cell::new(CLOCK0));
+    let client = Client::new(&t, &clock, Config::default(), Default::default());
+    for (v, owner) in [(2, "acme"), (1, "../acme"), (1, "")] {
+        let req = FreeRequest {
+            schema_version: v,
+            owner: owner.into(),
+            repo: "widgets".into(),
+        };
+        assert!(free(&req, &client, &clock).is_err(), "{v} {owner}");
+    }
+    assert!(t.sent.borrow().is_empty());
 }
