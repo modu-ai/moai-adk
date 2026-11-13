@@ -249,7 +249,7 @@ Project `demo` · tools: Rust · methods: TDD · hosts: claude, codex.
 Purpose: Build a small editor
 
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.
-Answer a factual question yourself and cite the evidence. Only a choice that cannot be undone, or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings), waits for the user; decide any other choice within the allowed scope and record it.
+Answer a factual question yourself and cite the evidence. A choice that cannot be undone, that goes beyond the allowed scope (cost, permissions, external transmission), or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings) waits for the user; decide any other choice within the allowed scope and record it.
 Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.
 Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).
 Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.
@@ -290,7 +290,7 @@ fn managed_section_states_each_projects_setting() {
     assert!(text.contains(block), "{text}");
     // #2619: the Korean section carries the same sorting order as the English one.
     assert!(
-        text.contains("사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택만 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다."),
+        text.contains("사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다."),
         "{text}"
     );
     // instruction_files `en` with a `ko` managed section is reported, not refused.
