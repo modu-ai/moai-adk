@@ -46,6 +46,17 @@
       "managed_scope": "whole-file"
     },
     {
+      "template_path": "templates/github/ISSUE_TEMPLATE/moai-followup.yml",
+      "derived_from": ".github/ISSUE_TEMPLATE/moai-followup.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/moai-followup.yml",
+      "template_sha256": "cb3d8a9d9faa16eac4dfcac57ff82e77441c540ac1af641fab76083fd70c041e",
+      "template_version": "2026.11.0-rc.1",
+      "license": "unspecified: the moai-adk repository has no LICENSE file; recorded, not decided",
+      "variables": [],
+      "generation_condition": "request.github_issues == true",
+      "managed_scope": "whole-file"
+    },
+    {
       "template_path": "templates/github/labels.yml",
       "derived_from": null,
       "target_path": ".github/moai/labels.yml",

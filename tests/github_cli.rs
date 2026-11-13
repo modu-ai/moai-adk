@@ -83,10 +83,15 @@ fn template(rel: &str) -> Vec<u8> {
     .unwrap()
 }
 
-const TARGETS: [(&str, &str); 4] = [
+const TARGETS: [(&str, &str); 5] = [
     (
         ".github/ISSUE_TEMPLATE/moai-feature.yml",
         "ISSUE_TEMPLATE/moai-feature.yml",
+    ),
+    // Decision 43 (#2434 6842518327): the follow-up form ships too.
+    (
+        ".github/ISSUE_TEMPLATE/moai-followup.yml",
+        "ISSUE_TEMPLATE/moai-followup.yml",
     ),
     (
         ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
@@ -147,7 +152,7 @@ fn github_clean_project_creates_only_selected_files() {
     let env = apply(&root, &p);
     assert_eq!(env["ok"], true, "{env}");
     let files = hashes(&root.join(".github"));
-    assert_eq!(files.len(), 4, "{:?}", files.keys());
+    assert_eq!(files.len(), TARGETS.len(), "{:?}", files.keys());
     for (target, tpl) in TARGETS {
         assert_eq!(
             fs::read(root.join(target)).unwrap(),
@@ -159,7 +164,10 @@ fn github_clean_project_creates_only_selected_files() {
     let manifest: Value =
         serde_json::from_slice(&fs::read(root.join(".moai-cli/manifests/github.json")).unwrap())
             .unwrap();
-    assert_eq!(manifest["owned_files"].as_array().unwrap().len(), 4);
+    assert_eq!(
+        manifest["owned_files"].as_array().unwrap().len(),
+        TARGETS.len()
+    );
     assert!(env["result"]["rendering"]
         .as_str()
         .unwrap()
@@ -302,7 +310,7 @@ fn github_interrupted_update_recovers_baseline() {
     assert_eq!(env["ok"], true, "{env}");
     assert_eq!(
         env["result"]["adopted_baselines"].as_array().unwrap().len(),
-        4
+        TARGETS.len()
     );
     assert!(root.join(".moai-cli/manifests/github.json").exists());
     let again = plan(&root, true);

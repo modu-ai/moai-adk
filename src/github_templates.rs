@@ -56,6 +56,10 @@ pub const TEMPLATES: &[(&str, &str)] = &[
         include_str!("../templates/github/ISSUE_TEMPLATE/moai-investigation.yml"),
     ),
     (
+        ".github/ISSUE_TEMPLATE/moai-followup.yml",
+        include_str!("../templates/github/ISSUE_TEMPLATE/moai-followup.yml"),
+    ),
+    (
         ".github/moai/labels.yml",
         include_str!("../templates/github/labels.yml"),
     ),
