@@ -1,5 +1,6 @@
 //! AC-1c: a real temporary repository, remote ledger/PR fixtures, GET-only transport.
 mod common;
+use common::CleanEnv;
 use moai_cli::forge::{
     policy::Clock,
     transport::{Exchange, RecordedTransport},
@@ -361,7 +362,7 @@ fn binary_routes_typed_request_and_envelope_using_fake_gh() {
     common::write_executable(&fake, &script);
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args(["queue-query", project.to_str().unwrap()])
-        .env_clear()
+        .clean_env()
         .env("HOME", tmp.path())
         .env("PATH", "/usr/bin:/bin")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")

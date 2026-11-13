@@ -29,6 +29,8 @@ For each step, the preview the user saw and either its applied receipt or the re
 
 A running session that reads `.claude/` or writes `.moai/` cannot be detected: ask the user to close such sessions before an apply. Never write a target whose current state could not be read, nor one under a recorded HOLD. A changed project refuses an old digest; preview again instead of retrying. Never edit `project.yaml`, a managed section or a Go-era file by hand to get past a conflict, and never delete what a step moves: it goes to `.moai-cli/backups/`.
 
+In a project, run the read-only `moai-cli go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`: a line there that selects secret files such as `.env` makes Claude Code copy them into every new worktree, including the worktrees of the `moai-impl` and `moai-audit` agents (Issue #2670). Name the line and let the user decide; never edit that file for them.
+
 ## Completion Check
 
 Report each step as applied (with its receipt), skipped (with the reason, including the user's no) or conflicted (with the files). The project is up to date only when the re-run plans read `unchanged`. Host use of `/moai update` for this route is verified only after the installed skill carries this version (not_run until then).

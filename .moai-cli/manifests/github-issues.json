@@ -6198,7 +6198,7 @@
   "milestone_number": 3,
   "milestone": "2026.11.0-rc.2",
   "issued_at_utc": "2026-11-09T01:3xZ",
-  "generator": ".moai-cli/reports/rc2_issue_gen.py",
+  "generator": ".moai-cli/reports/rc2_issue_gen.py (removed 2026-11-13 by #2682; last version at 5f9109829a)",
   "plan": ".moai-cli/reports/rc2-issue-plan.md",
   "numbers": {
    "EP-A": 2153,
