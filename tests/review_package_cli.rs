@@ -208,10 +208,17 @@ fn the_package_is_byte_identical_across_environments() {
     assert!(plain.status.success());
 
     let home = tmp.path().join("home");
+    // `diff.orderFile` has no command-line override in the package's fixed options, so it
+    // shows whether the caller's configuration is ignored at all.
+    let order = tmp.path().join("order.txt");
+    write(tmp.path(), "order.txt", "tests/*\nREVIEW.md\n");
     write(
         &home,
         ".gitconfig",
-        "[diff]\n\tnoprefix = true\n\tcontext = 9\n\trenames = copies\n\talgorithm = histogram\n\tmnemonicPrefix = true\n[color]\n\tui = always\n[core]\n\tquotePath = false\n",
+        &format!(
+            "[diff]\n\tnoprefix = true\n\tcontext = 9\n\trenames = copies\n\talgorithm = histogram\n\tmnemonicPrefix = true\n\torderFile = {}\n[color]\n\tui = always\n[core]\n\tquotePath = false\n",
+            order.display()
+        ),
     );
     let other = run_in(
         &repo,
