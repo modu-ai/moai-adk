@@ -24,9 +24,12 @@ pub const COLUMNS: [&str; 10] = [
     "evidence",
 ];
 
-/// The five HOLD categories (SKILL.md, #2619); `none` is every other decision.
-pub const CATEGORIES: [&str; 6] = [
+/// `none`, `guarded` (permissions, keys, the real HOME and global settings, deletions,
+/// repository protection settings — reversible, yet the user's) and the five HOLD categories
+/// (SKILL.md, #2619; leader decision 6840688551 on PR #2620).
+pub const CATEGORIES: [&str; 7] = [
     "none",
+    "guarded",
     "money",
     "legal",
     "external_contract",
@@ -285,15 +288,21 @@ mod tests {
         let one_way = LEADER.replace("| yes | none |", "| no | none |");
         assert!(refused(&one_way)
             .contains(&"a one-way or HOLD-category decision has `decider` user".to_string()));
-        let money = LEADER.replace("| yes | none |", "| yes | money |");
-        assert!(refused(&money)
-            .contains(&"a one-way or HOLD-category decision has `decider` user".to_string()));
+        for category in ["money", "guarded"] {
+            let row = LEADER.replace("| yes | none |", &format!("| yes | {category} |"));
+            assert!(
+                refused(&row).contains(
+                    &"a one-way or HOLD-category decision has `decider` user".to_string()
+                ),
+                "{category}"
+            );
+        }
     }
 
     #[test]
     fn categories_options_answers_and_deadlines_are_checked() {
-        let sixth = TO_USER.replace("| none |", "| reputation |");
-        assert!(refused(&sixth)[0].starts_with("`category` `reputation`"));
+        let eighth = TO_USER.replace("| none |", "| reputation |");
+        assert!(refused(&eighth)[0].starts_with("`category` `reputation`"));
         let one_option = TO_USER.replace("A: 1800 s; B: 300 s", "A: 1800 s");
         assert!(refused(&one_option)[0].starts_with("`options` needs two or more"));
         let wrong_default = TO_USER.replace("| B | yes |", "| C | yes |");
@@ -334,6 +343,11 @@ mod tests {
         assert_eq!(due(&rows[1], deadline), Some(Due::DefaultApplies));
         assert_eq!(due(&rows[2], deadline), Some(Due::Hold));
         assert_eq!(due(&rows[2], deadline + 86_400 * 365), Some(Due::Hold));
+        // A guarded setting is reversible, yet it never takes its default either.
+        let guarded = TO_USER.replace("| none |", "| guarded |");
+        let (g, problems) = parse(&file(&[&guarded]));
+        assert!(problems.is_empty(), "{problems:?}");
+        assert_eq!(due(&g[0], deadline), Some(Due::Hold));
         // An answered row is never due.
         assert_eq!(due(&rows[0], deadline), None);
     }
