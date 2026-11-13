@@ -208,9 +208,11 @@ fn self_opening_rules_are_pinned_in_both_mode_workflows() {
         &agent,
         "pr-gate",
         &[
-            "Below four, open one yourself; no leader nomination is needed",
+            // #2612: the limit is N, read from decision D7 (until recorded, the leader's
+            // latest announcement), no longer a literal four.
+            "Below N, open one yourself; no leader nomination is needed",
             "`git merge-tree`",
-            "among the four lowest open non-draft numbers",
+            "among the N lowest open non-draft numbers",
             "`gh pr ready --undo`",
             "the author of the lowest-numbered draft marks it ready",
         ],
@@ -358,6 +360,136 @@ fn the_round_keeps_going_until_its_end_condition() {
         fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"))
             .unwrap();
     assert!(skill.contains("reporting a finished card and then stopping is not completion"));
+}
+
+/// #2612: the lane and leader rules from the bottleneck study (items 1-16). Each sentence is
+/// pinned so deleting it fails this test; numbers that wait on decisions D1, D5, D6 and D7
+/// (Issue #1975 comment 6839380081) are named as pending, never written as decided.
+#[test]
+fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
+    let agent = workflow("mode-agent.md");
+    // 1. no-op wake backoff, unchanged lines are not reprinted.
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "After three no-op wakes in a row on the same state, stop polling at the short interval",
+            "whose ceiling is decision D6",
+            "until D6 is recorded the ceiling stays 300 seconds",
+            "Do not print a `LANE-BLOCKED` or `LANE-DONE` line whose content is unchanged",
+        ],
+    );
+    // 2. renewal by editing the own claim comment, before it lapses; a new line does not renew.
+    assert_says(
+        &agent,
+        "claim",
+        &[
+            "edit the lease time on your own claim comment before it expires",
+            "A new claim line of the same session does not renew",
+            "Renewing by a new line without a handoff is decision D1",
+            "Before arming a wake, read the lease of every claim you hold and extend each one that ends before the next wake",
+        ],
+    );
+    assert!(!agent.contains("this renews the lease and is not a takeover"));
+    // 3. the oldest pr-wait across lanes opens first; N read from one place.
+    assert_says(
+        &agent,
+        "pr-gate",
+        &[
+            "The open-PR limit N is read from one place: the value recorded for decision D7",
+            "post one line `pr-wait: <UTC time>` on its Issue",
+            "when another lane's line is older, let that branch open first",
+        ],
+    );
+    // 4. a slot wait is not a wake reason.
+    assert_says(
+        &agent,
+        "self-pick",
+        &["Waiting for a pull request slot alone is never a reason to arm a wake"],
+    );
+    // 5. the poll interval covers only unchanged state.
+    assert!(agent.contains(
+        "That interval applies only to re-reading a state that has not changed: claim, `claim-verify`, push and pull request follow one another in the same turn"
+    ));
+    // 6. a lost reservation posts no verdict.
+    assert_says(
+        &agent,
+        "self-pick",
+        &["when an earlier reservation names the same head, that lane holds it — withdraw and post no verdict"],
+    );
+    // 7. pre-push checks that only CI caught.
+    assert_says(
+        &agent,
+        "pr-gate",
+        &[
+            "`python3 -m unittest tests.ci_scope_test`",
+            "`cargo test --offline --locked --test ac_command_lint`",
+            "`git interpret-trailers --parse` on each new commit message",
+        ],
+    );
+    // 8. an unread trailer is fixed by a fresh branch, not by the leader.
+    assert_says(
+        &agent,
+        "claim-verify",
+        &[
+            "commit the same change again on a new branch with a readable trailer and open a new pull request",
+            "\"the same diff plus the trailer\"",
+        ],
+    );
+    // 9. a handoff request names every open claim id before yours.
+    assert_says(
+        &agent,
+        "claim-verify",
+        &["A handoff request names every open claim id that stands before yours on the Issue"],
+    );
+    let leader = workflow("mode-leader.md");
+    // 10, 11, 13, 14, 16 in supervise.
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "a lane that armed a wake has not ended its round, so send it nothing",
+            "a lane whose last line is `LANE-BLOCKED` gets an answer to that line, never the restart line",
+            "never send the same restart sentence twice in a row",
+            "report it as `UNREACHABLE`",
+            "record \"found = answered\" with both counts",
+            "Before you open a question to the user, finish what is ready",
+            "how the question is asked instead is decision D5",
+            "A decision you record goes both to the Issue or pull request comment and to the affected lane's screen",
+        ],
+    );
+    // 12. one handoff line per claim id, announced only after `owner`.
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "post one handoff line per claim id, each as the first line of its own comment",
+            "announce the handoff only when it answers `owner`",
+        ],
+    );
+    // 15. operating numbers change together; N from D7.
+    assert_says(
+        &leader,
+        "pr-gate",
+        &[
+            "Keep the open-PR limit N, read from one place: the value recorded for decision D7",
+            "change the MODE-AGENT and MODE-LEADER text and your announcement in the same round",
+        ],
+    );
+    // No decided values for the pending decisions.
+    for (name, text) in [("mode-agent.md", &agent), ("mode-leader.md", &leader)] {
+        for decided in [
+            "1,800 seconds",
+            "1800 seconds",
+            "limit of eight",
+            "Below eight",
+        ] {
+            assert!(
+                !text.contains(decided),
+                "{name} decides a pending value: `{decided}`"
+            );
+        }
+    }
 }
 
 /// #2581: project hooks are read from the session's working folder, so a lane session in a
