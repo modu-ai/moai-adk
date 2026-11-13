@@ -62,7 +62,7 @@ Rules that apply to every change:
 - **Commit messages:** a short imperative summary line, Conventional Commits style is welcome (`fix: …`, `docs: …`, `feat(scope): …`), followed by a body that explains why.
 - **Keep the pull request focused** on one Issue. Unrelated cleanups belong in their own pull request.
 - **Describe what you verified:** the commands you ran and their results.
-- **Allow edits from maintainers** on your pull request. The integration branch must be up to date before a merge, and this lets a maintainer update your branch for you.
+- **Allow edits from maintainers** on your pull request. If your branch conflicts with the integration branch, or changes a file that the integration branch has also changed since you branched, it takes the latest integration branch once before the merge, and this lets a maintainer do that for you.
 
 You do **not** need to use the internal pull request template, claim comments, commit trailers or the `## Self-Audit` section. Those belong to the maintainers' agent workflow, and maintainers fill them in for external contributions (see below).
 
@@ -73,7 +73,7 @@ MoAI ADK is developed with coding-agent sessions that follow the same workflow t
 1. **Claim on your behalf.** A maintainer records a claim for your work on the linked Issue, so that no agent session starts the same work.
 2. **CI approval.** For a first-time contributor, GitHub holds the workflow run of a pull request from a fork until a maintainer approves it. After approval, `ci` runs the check set. It runs with read-only permissions and no secrets.
 3. **Independent audit.** A reviewer session that did not write the change audits the exact head commit against the Issue, the diff and the evidence. It posts a verdict on the pull request, either PASS or FAIL. A FAIL lists what to fix.
-4. **Merge gate.** Only a maintainer posts the `moai/audit` commit status on the audited head and merges. The branch ruleset requires that status, and the branch must be up to date.
+4. **Merge gate.** Only a maintainer posts the `moai/audit` commit status on the audited head and merges. The branch ruleset requires that status. It does not require the branch to be up to date: a branch without conflicts and without a file that both sides changed merges as it is, without an update that would invalidate its audit. Otherwise the branch takes the latest integration branch once, and the new head needs its CI and a new audit.
 5. **New pushes need a new audit.** Any new commit after the verdict invalidates it, and the audit runs again on the new head.
 
 Expect review comments in English or Korean. A response-time target for first replies has not been set yet (**pending maintainer decision**).
