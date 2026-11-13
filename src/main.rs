@@ -40,7 +40,7 @@ impl RecordSource {
 #[derive(Parser)]
 #[command(
     name = "moai-cli",
-    version,
+    version = moai_cli::BUILD_VERSION,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
 )]
@@ -304,6 +304,36 @@ enum Command {
     ClaimAcquire {
         project: PathBuf,
     },
+    /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
+    /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
+    /// waiting and on failure it prints the load averages and free disk space. Unix only.
+    HeavySlotAcquire {
+        /// The machine's slot count; every caller passes the same value (the leader's limit).
+        #[arg(long)]
+        max: usize,
+        /// The caller's name, shown by `heavy-slot-status`.
+        #[arg(long)]
+        name: String,
+        /// Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`).
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// Start nothing (exit 75) while the working folder's file system has less free space,
+        /// in decimal GB; 0 turns it off.
+        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.min_free_gb)]
+        min_free_gb: u64,
+        /// Start nothing (exit 75) while swap use is above this percent; 100 turns it off.
+        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.max_swap_pct)]
+        max_swap_pct: u64,
+        /// The heavy command and its arguments, after `--`.
+        #[arg(last = true)]
+        command: Vec<String>,
+    },
+    /// List the heavy-run slots held now, the slot paths refused, and the machine's load and
+    /// free disk space (#2677). Reads only.
+    HeavySlotStatus {
+        #[arg(long)]
+        dir: Option<PathBuf>,
+    },
     /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
     /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
     /// candidate through `claim-acquire` under one journal lock.
@@ -549,6 +579,10 @@ enum Command {
         /// The scope the plan was made for (#2581); the digest binds it.
         #[arg(long, default_value = "project")]
         scope: String,
+        /// The `confirm_token` a conflict plan offered (#2383): after the user confirms, keep
+        /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
+        #[arg(long)]
+        confirm_replace: Option<String>,
     },
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
     CodexConfigPlan {
@@ -779,6 +813,18 @@ enum Command {
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan {
         path: PathBuf,
+    },
+    /// Check a PR body's Self-Audit section (#2708, formerly tools/check_pr_self_audit.py):
+    /// the body from --file or stdin; prints one line, `self-audit: pass (…)` (exit 0) or
+    /// `self-audit: blocked missing=…` (exit 1); a usage error exits 2. Raw text, not the
+    /// envelope, so the result and exit code are the ones the Python checker gave.
+    PrSelfAuditCheck {
+        /// Also require the `## 독립 review` section of a re-audit (#2388).
+        #[arg(long)]
+        reaudit: bool,
+        /// Read the PR body from this file (UTF-8) instead of stdin.
+        #[arg(long, value_name = "BODY.md")]
+        file: Option<PathBuf>,
     },
     /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
     /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
@@ -1330,7 +1376,12 @@ fn operation(command: &Command) -> Option<&'static str> {
     use Command::*;
     Some(match command {
         // Not envelope operations: the launchers, and the raw-text statusline (#2350).
-        Cc(_) | Glm(_) | Codex(_) | Session { .. } | Statusline { .. } => return None,
+        Cc(_)
+        | Glm(_)
+        | Codex(_)
+        | Session { .. }
+        | Statusline { .. }
+        | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
@@ -1418,6 +1469,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectSkillApply { .. } => "project_skill.apply",
         ProjectSkillPlan { .. } => "project_skill.plan",
         ProjectSkillRevert { .. } => "project_skill.revert",
+        HeavySlotAcquire { .. } => "heavy_slot.acquire",
+        HeavySlotStatus { .. } => "heavy_slot.status",
         QueueNext { .. } => "queue.next",
         QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
@@ -2184,6 +2237,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 }
             })
         }
+        // Answered in `main` before internal dispatch (no envelope, the command's exit code).
+        Command::HeavySlotAcquire { .. } => {
+            Err("heavy-slot-acquire is answered before internal dispatch".into())
+        }
+        Command::HeavySlotStatus { dir } => {
+            let dir = match dir {
+                Some(d) => d,
+                None => moai_cli::heavy_slot::default_dir()?,
+            };
+            moai_cli::heavy_slot::status(&dir)
+        }
         Command::ClaudeSettingsPlan { project, scope } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2194,6 +2258,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             plan_digest,
             permission_reference,
             scope,
+            confirm_replace,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
@@ -2203,6 +2268,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 scope,
+                confirm_replace.as_deref(),
             )
         }
         Command::CodexConfigPlan { project } => {
@@ -2734,6 +2800,43 @@ fn merge_binary_state(out: &mut serde_json::Value) {
 /// as a non-blocking hook error; the reason goes to stderr.
 const HOOK_NON_BLOCKING_ERROR: u8 = 1;
 
+/// `pr-self-audit-check` (#2708): the Python checker's text and exit codes. With no `--file`,
+/// the body comes from stdin; a terminal on stdin is a usage error, as before.
+fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCode {
+    use std::io::IsTerminal as _;
+    let body = match file {
+        Some(path) => match std::fs::read(path) {
+            Ok(bytes) => String::from_utf8(bytes).map_err(|_| "body is not UTF-8".to_string()),
+            Err(e) => Err(format!("{}: {e}", path.display())),
+        },
+        None if io::stdin().is_terminal() => {
+            eprintln!("usage: moai-cli pr-self-audit-check [--reaudit] [--file BODY.md] < BODY.md");
+            return ExitCode::from(2);
+        }
+        None => {
+            let mut bytes = Vec::new();
+            io::stdin()
+                .read_to_end(&mut bytes)
+                .map_err(|e| e.to_string())
+                .and_then(|_| String::from_utf8(bytes).map_err(|_| "body is not UTF-8".into()))
+        }
+    };
+    let body = match body {
+        Ok(body) => body,
+        Err(e) => {
+            eprintln!("pr-self-audit-check: {e}");
+            return ExitCode::from(1);
+        }
+    };
+    let result = moai_cli::self_audit::check(&body, reaudit);
+    println!("{}", moai_cli::self_audit::render(&result));
+    if result.is_ok() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
     let hook_mode = hook_mode_argv(&argv);
@@ -2771,6 +2874,9 @@ fn main() -> ExitCode {
         print!("{}", moai_cli::statusline::run(budget));
         return ExitCode::SUCCESS;
     }
+    if let Some(Command::PrSelfAuditCheck { reaudit, file }) = &cli.command {
+        return pr_self_audit_check(*reaudit, file.as_deref());
+    }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {
@@ -2786,6 +2892,35 @@ fn main() -> ExitCode {
     };
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
+    }
+    if let Some(Command::HeavySlotAcquire {
+        max,
+        name,
+        dir,
+        min_free_gb,
+        max_swap_pct,
+        command,
+    }) = &cli.command
+    {
+        // No contract envelope: the wrapped command's own exit code and output (#2677).
+        let dir = match dir
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(moai_cli::heavy_slot::default_dir)
+        {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("heavy-slot: {e}");
+                return ExitCode::from(moai_cli::heavy_slot::USAGE);
+            }
+        };
+        let limits = moai_cli::heavy_slot::Limits {
+            min_free_gb: *min_free_gb,
+            max_swap_pct: *max_swap_pct,
+        };
+        return ExitCode::from(moai_cli::heavy_slot::acquire(
+            &dir, *max, name, command, limits,
+        ));
     }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
@@ -2822,7 +2957,23 @@ mod tests {
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
-    const RAW_OUTPUT: [&str; 1] = ["statusline"];
+    const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
+
+    /// #2722 AC-5: `--version` shows the build version, which is the package version plus
+    /// `+local.<n>` exactly when this build set `MOAI_LOCAL_BUILD`.
+    #[test]
+    fn version_flag_reports_the_local_build_number() {
+        let expected = moai_cli::local_build::version(
+            env!("CARGO_PKG_VERSION"),
+            option_env!("MOAI_LOCAL_BUILD"),
+        )
+        .unwrap();
+        assert_eq!(moai_cli::BUILD_VERSION, expected);
+        assert_eq!(Cli::command().get_version(), Some(moai_cli::BUILD_VERSION));
+        if option_env!("MOAI_LOCAL_BUILD").is_none_or(str::is_empty) {
+            assert_eq!(moai_cli::BUILD_VERSION, env!("CARGO_PKG_VERSION"));
+        }
+    }
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
     /// word whose required arguments cannot be filled, or two words with one name, fail here.
@@ -3096,6 +3247,20 @@ mod operations_doc {
             .find(|a| a.get_long() == Some("render-budget-ms"))
             .unwrap();
         assert!(seam.is_hide_set());
+    }
+
+    #[test]
+    fn pr_self_audit_check_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli
+            .get_subcommands()
+            .any(|s| s.get_name() == "pr-self-audit-check"));
+        assert_eq!(operation_of("pr-self-audit-check"), None);
+        assert!(!doc_list(DOC)
+            .unwrap()
+            .iter()
+            .any(|w| w == "pr-self-audit-check"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `pr-self-audit-check`(#2708)"));
     }
 
     fn render(words: &[&str]) -> String {

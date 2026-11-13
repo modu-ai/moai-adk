@@ -1,17 +1,111 @@
-//! #2592 S1: the base agents ship in the `moai` skill package as tool-neutral sources under
-//! `references/agents/` (decision A) and render into each host's agent file. Reads the package;
-//! writes nothing.
+//! #2592 S1, #2721: the base agents ship as tool-neutral sources in `agents/`, outside the
+//! `moai` skill tree, and render into each host's agent file. Reads the sources and the
+//! package; writes nothing.
 
-use moai_cli::agent_defs::{package_agents, render, HOSTS};
+use moai_cli::agent_defs::{package_agents, render, HOSTS, SOURCE_DIR};
 use std::path::Path;
 
 fn package() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
 }
 
+fn agents() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join(SOURCE_DIR)
+}
+
+/// #2721 AC-1: the skill tree carries no agent definition — no `agents/` folder at any depth
+/// and no file with agent frontmatter — and every source sits in the folder beside `skills/`.
+#[test]
+fn the_skill_tree_carries_no_agent_definition() {
+    fn walk(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+        for e in std::fs::read_dir(dir).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                assert_ne!(
+                    p.file_name().unwrap(),
+                    "agents",
+                    "agent folder inside the skill: {}",
+                    p.display()
+                );
+                walk(&p, out);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(&package(), &mut files);
+    assert!(files.iter().any(|p| p.ends_with("SKILL.md")));
+    for p in &files {
+        let text = std::fs::read_to_string(p).unwrap_or_default();
+        assert!(
+            !(text.starts_with("---\nname: moai-") && text.contains("\nshape: ")),
+            "agent source inside the skill: {}",
+            p.display()
+        );
+    }
+    let manifest =
+        std::fs::read_to_string(package().join("references/source-manifest.json")).unwrap();
+    assert!(!manifest.contains("references/agents/"));
+    assert_eq!(package_agents(&agents(), &package()).unwrap().len(), 5);
+}
+
+/// #2721 (scope comment 6854556046): every base agent defines its purpose, when to use it and
+/// when not, its input, its boundaries (write scope and tools), its steps, its verification,
+/// its output and its handoff, in English, and the description says both when to use it and
+/// when not to.
+#[test]
+fn every_agent_defines_purpose_boundaries_verification_and_handoff() {
+    const SECTIONS: [&str; 8] = [
+        "## Purpose\n",
+        "## When to use\n",
+        "## Input\n",
+        "## Boundaries\n",
+        "## Steps\n",
+        "## Verification\n",
+        "## Output\n",
+        "## Handoff\n",
+    ];
+    for d in package_agents(&agents(), &package()).unwrap() {
+        let mut at = 0;
+        for s in SECTIONS {
+            let found = d.body[at..]
+                .find(s)
+                .unwrap_or_else(|| panic!("{}: {s:?} missing or out of order", d.name));
+            at += found + s.len();
+        }
+        assert!(d.body.contains("- Write scope: "), "{}", d.name);
+        assert!(d.body.contains("- Tools: "), "{}", d.name);
+        assert!(d.description.contains(" Use "), "{}", d.name);
+        assert!(d.description.contains("Do not use "), "{}", d.name);
+        assert!(
+            d.body.is_ascii() && d.description.is_ascii(),
+            "{}: agent text is English ASCII",
+            d.name
+        );
+    }
+}
+
+/// #2721: a symlinked or non-folder source path is refused, never followed.
+#[cfg(unix)]
+#[test]
+fn a_symlinked_or_file_source_folder_is_refused() {
+    let tmp = tempfile::tempdir().unwrap();
+    let link = tmp.path().join("agents");
+    std::os::unix::fs::symlink(agents(), &link).unwrap();
+    assert!(package_agents(&link, &package())
+        .unwrap_err()
+        .contains("symlink"));
+    let file = tmp.path().join("file");
+    std::fs::write(&file, "x").unwrap();
+    assert!(package_agents(&file, &package())
+        .unwrap_err()
+        .contains("not a folder"));
+}
+
 #[test]
 fn the_package_holds_the_five_roles_of_the_contract() {
-    let defs = package_agents(&package()).unwrap();
+    let defs = package_agents(&agents(), &package()).unwrap();
     let names: Vec<&str> = defs.iter().map(|d| d.name.as_str()).collect();
     assert_eq!(
         names,
@@ -54,7 +148,7 @@ fn every_role_renders_for_every_host_deterministically() {
     // #2633: OMP is rendered and installed (2026-11-13 confirmation of five supported hosts;
     // Kiro and Cursor CLI follow).
     assert_eq!(HOSTS, ["claude", "codex", "omp"]);
-    let defs = package_agents(&package()).unwrap();
+    let defs = package_agents(&agents(), &package()).unwrap();
     for d in &defs {
         for host in HOSTS {
             let a = render(d, host).unwrap();
@@ -102,11 +196,11 @@ fn every_role_renders_for_every_host_deterministically() {
 #[test]
 fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
     let tmp = tempfile::tempdir().unwrap();
-    assert!(package_agents(tmp.path()).unwrap().is_empty());
-    let dir = tmp.path().join("references/agents");
+    let dir = tmp.path().join("agents");
+    assert!(package_agents(&dir, tmp.path()).unwrap().is_empty());
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("notes.txt"), "x").unwrap();
-    assert!(package_agents(tmp.path())
+    assert!(package_agents(&dir, tmp.path())
         .unwrap_err()
         .contains("only regular .md files"));
     std::fs::remove_file(dir.join("notes.txt")).unwrap();
@@ -115,17 +209,17 @@ fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
         "---\nname: moai-other\ndescription: d\nreadonly: false\nisolation: none\nshape: sequential\n---\n\nx\n",
     )
     .unwrap();
-    assert!(package_agents(tmp.path())
+    assert!(package_agents(&dir, tmp.path())
         .unwrap_err()
         .contains("name must be moai-impl"));
 }
 
-/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634), with the
-/// adapters of `moai-research` left to #2636; every entry is a file of the package and every
-/// rendered agent opens with the generated line that names exactly those files.
+/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) —
+/// `moai-research` reads the two adapters #2636 added; every entry is a file of the package and
+/// every rendered agent opens with the generated line that names exactly those files.
 #[test]
 fn reads_lists_match_the_design_and_render_on_every_host() {
-    let defs = package_agents(&package()).unwrap();
+    let defs = package_agents(&agents(), &package()).unwrap();
     let reads = |n: &str| {
         defs.iter()
             .find(|d| d.name == n)
@@ -139,7 +233,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
         reads("moai-plan"),
         ["internal/decide", "internal/interview"]
     );
-    assert_eq!(reads("moai-research"), Vec::<&str>::new());
+    assert_eq!(reads("moai-research"), ["adapters/aside", "adapters/orca"]);
     assert_eq!(
         reads("moai-impl"),
         ["internal/test-design", "internal/git-safety"]
@@ -179,19 +273,26 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
 #[test]
 fn a_reads_entry_without_its_file_is_refused() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = tmp.path().join("references/agents");
+    let dir = tmp.path().join("agents");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("impl.md"),
         "---\nname: moai-impl\ndescription: d\nreadonly: false\nisolation: none\nshape: sequential\nreads: internal/test-design\n---\n\nx\n",
     )
     .unwrap();
-    assert!(package_agents(tmp.path())
+    let pkg = tmp.path().join("skills/moai");
+    assert!(package_agents(&dir, &pkg)
         .unwrap_err()
         .contains("reads entry internal/test-design has no file"));
+    // A file beside the source folder does not count: the entry resolves in the skill package.
     std::fs::create_dir_all(tmp.path().join("references/internal")).unwrap();
     std::fs::write(tmp.path().join("references/internal/test-design.md"), "t").unwrap();
-    assert_eq!(package_agents(tmp.path()).unwrap().len(), 1);
+    assert!(package_agents(&dir, &pkg)
+        .unwrap_err()
+        .contains("reads entry internal/test-design has no file"));
+    std::fs::create_dir_all(pkg.join("references/internal")).unwrap();
+    std::fs::write(pkg.join("references/internal/test-design.md"), "t").unwrap();
+    assert_eq!(package_agents(&dir, &pkg).unwrap().len(), 1);
 }
 
 /// The internal references (#2637): one short note each, opening with the line that says
@@ -207,7 +308,7 @@ fn internal_references_say_when_to_read_them() {
     let mut want: Vec<String> = names.iter().map(|n| format!("{n}.md")).collect();
     want.sort();
     assert_eq!(found, want);
-    let defs = package_agents(&package()).unwrap();
+    let defs = package_agents(&agents(), &package()).unwrap();
     let chains = std::fs::read_to_string(package().join("references/chains/index.md")).unwrap();
     for n in names {
         let text =
@@ -235,7 +336,7 @@ fn chains_name_real_routes_agents_and_references() {
             .unwrap();
     assert_eq!(routes["chains"], "chains/index.md");
     let text = std::fs::read_to_string(package().join("references/chains/index.md")).unwrap();
-    let agents: Vec<String> = package_agents(&package())
+    let agents: Vec<String> = package_agents(&agents(), &package())
         .unwrap()
         .into_iter()
         .map(|d| d.name)
@@ -352,4 +453,26 @@ fn interview_question_bank_covers_the_project_axes() {
     assert!(bank.contains("skip every row that reading already answered"));
     assert!(bank.contains("\"source\": \"repo\""));
     assert!(bank.contains("\"source\": \"user\""));
+}
+
+/// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
+/// `git -C <worktree>` where there is none — and the Claude Code guard's refused shapes.
+#[test]
+fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
+    let text =
+        std::fs::read_to_string(package().join("references/internal/git-safety.md")).unwrap();
+    for line in [
+        "Enter and leave a worktree with the host's built-in worktree tool where it has one",
+        "name the worktree on every git call as `git -C <worktree> <verb>`, one git command per call",
+        "a line that commits or pushes in two folders is refused",
+        "| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`",
+        "create the worktree with `git worktree add` first and enter it by `path`",
+        "(`$VAR`, `$?`, `$(…)`)",
+        "| Codex CLI |",
+        "| Cursor CLI |",
+        "| OMP | None for the main session",
+        "| Kiro CLI | None documented. | `git -C <worktree> <verb>`. |",
+    ] {
+        assert!(text.contains(line), "git-safety.md lacks: {line}");
+    }
 }

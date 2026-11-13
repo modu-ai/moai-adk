@@ -1485,3 +1485,60 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
         "{step}"
     );
 }
+
+/// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the
+/// folder `git -C` names. Before, a commit sent from the primary checkout with
+/// `git -C <lane worktree>` read the primary's branch and passed as "not a lane worktree".
+#[test]
+fn hook_reads_the_folder_git_dash_c_names() {
+    let clock = FixedClock(now());
+    let (_d, root) = lane_repo("leader/docs");
+    git(
+        &root,
+        &["worktree", "add", "-q", "-b", "issue/7-widget", "wt7"],
+    );
+
+    // No token, commit in the lane worktree from the primary checkout: uncertain, refused
+    // before any GitHub read.
+    let t = RecordedTransport::new(vec![]);
+    let err = hook_cli(
+        &root,
+        &hook_input("git -C wt7 commit -m work", &root),
+        &t,
+        &clock,
+    )
+    .unwrap_err();
+    assert!(err.contains("`Moai-Claim: 7#<id>`"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+    assert!(t.sent.borrow().is_empty());
+
+    // With the token: verified against Issue 7, the lane worktree's branch.
+    let t = RecordedTransport::new(vec![get(owner_100())]);
+    let cmd = "git -C wt7 commit -m \"work\n\nMoai-Claim: 7#100\"";
+    let v = hook_cli(&root, &hook_input(cmd, &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["source"], json!("branch"));
+    assert_eq!(v["issue"], json!(7));
+
+    // Two folders on one line: uncertain, nothing read.
+    let t = RecordedTransport::new(vec![]);
+    let err = hook_cli(
+        &root,
+        &hook_input("git -C wt7 commit -m a && git commit -m b", &root),
+        &t,
+        &clock,
+    )
+    .unwrap_err();
+    assert!(err.contains("more than one folder"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+    assert!(t.sent.borrow().is_empty());
+
+    // From the lane worktree, `-C ..` names the primary checkout: not a lane branch, allowed.
+    let wt = root.join("wt7");
+    let v = hook_cli(&root, &hook_input("git -C .. commit -m x", &wt), &t, &clock).unwrap();
+    assert_eq!(v["allowed"], json!(true));
+    assert!(
+        v["reason"].as_str().unwrap().contains("not issue/<n>"),
+        "{v}"
+    );
+}

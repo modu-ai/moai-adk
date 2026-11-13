@@ -24,10 +24,14 @@ pub mod decision_log;
 pub mod dispatch;
 pub mod flow;
 pub mod forge;
+pub mod gate;
+pub mod gate_collect;
 pub mod generation;
 pub mod github_templates;
 pub mod go_state;
+pub mod goal;
 pub mod handoff;
+pub mod heavy_slot;
 pub mod home_routing;
 pub mod hook_config;
 pub mod hook_engine;
@@ -40,11 +44,13 @@ pub mod index_records;
 pub mod install;
 pub mod key_vault;
 pub mod lane_handoff;
+pub mod lane_reset;
 pub mod lane_status;
 pub mod language;
 pub mod launcher_init;
 pub mod layout;
 pub mod leader;
+pub mod local_build;
 pub mod message;
 pub mod migrate;
 pub mod ontology;
@@ -62,6 +68,7 @@ pub mod review;
 pub mod run;
 pub mod scope;
 pub mod search;
+pub mod self_audit;
 pub mod self_update;
 pub mod session;
 pub mod skills_legacy;
@@ -73,6 +80,8 @@ pub mod usage_limit;
 pub mod verify;
 pub mod worktree;
 pub mod worktree_gc;
+pub mod worktree_include;
+pub mod worktree_move;
 pub mod worktree_report;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
@@ -89,6 +98,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
+/// The version this binary reports: the package version, plus `+local.<n>` when the build set
+/// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
+pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
 /// Project state directory of the Rust RC. The Go generation keeps `.moai/`; both coexist
 /// untouched until the user performs the final rename in a later step.
 pub const PROJECT_STATE_DIR: &str = ".moai-cli";
