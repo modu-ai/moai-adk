@@ -139,6 +139,11 @@ fn reads(dir: &TempDir, head: &str, cs: &Value) -> Vec<Exchange> {
             request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
             response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
         },
+        // #2859: the open pull requests (only this one), read before the tip.
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls?state=open&per_page=100")),
+            response: ok(json!([{"number": 9}])),
+        },
         tip_ci(dir, json!([{"name": "ci", "conclusion": "success"}])),
     ]
 }
@@ -434,7 +439,7 @@ fn a_red_tip_stops_the_loop_without_any_write() {
             json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
         )];
         ex.extend(reads(&dir, &b, &cs));
-        ex[5] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
+        ex[6] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
         let t = RecordedTransport::new(ex);
         let out = once(
             &target(&dir),

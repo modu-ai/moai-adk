@@ -80,6 +80,14 @@ fn ok(body: Value) -> HttpResponse {
     HttpResponse::new(200).with_body(body)
 }
 
+/// #2859: the open pull request list `collect` reads before the tip; only this PR is open.
+fn open_prs() -> Exchange {
+    Exchange {
+        request: HttpRequest::new("GET", format!("{API}/pulls?state=open&per_page=100")),
+        response: ok(json!([{"number": 9}])),
+    }
+}
+
 /// The tip's push CI read (every attempt) for `sha`, answering `runs`.
 fn tip_runs(sha: &str, runs: Value) -> Exchange {
     Exchange {
@@ -114,6 +122,7 @@ fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> Recorde
             ]})),
         },
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
         tip_runs(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ])
 }
@@ -258,6 +267,7 @@ fn comment_pages_are_followed() {
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
         tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &t).unwrap();
@@ -406,6 +416,7 @@ fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> Recorded
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
     ];
     ex.extend(tips);
     RecordedTransport::new(ex)
@@ -457,8 +468,8 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     assert_eq!(t.remaining(), 0);
     assert_eq!(
         t.sent.borrow().len(),
-        5,
-        "PR, comments, checks, claim, tip: the earlier tip commit is not read"
+        6,
+        "PR, comments, checks, claim, open PRs (#2859), tip: the earlier tip commit is not read"
     );
     let ci = s.tip_ci.clone().unwrap();
     assert_eq!(
@@ -816,6 +827,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
             555,
             "moai-claim: session=agent-26 epoch=1 lease_until=2026-11-13T19:00:00Z",
         ),
+        open_prs(),
         tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &ex).unwrap();
@@ -928,6 +940,7 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
         ));
     }
     ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=1"));
+    ex.push(open_prs());
     ex.push(tip_runs(
         &r.c,
         json!([{"name": "ci", "conclusion": "success"}]),
@@ -951,6 +964,7 @@ fn one_claim_named_by_several_commits_is_read_once() {
     let r = repo_with_claim_ids(&[555, 555, 555]);
     let mut ex = three_reads(&r);
     ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=2"));
+    ex.push(open_prs());
     ex.push(tip_runs(
         &r.c,
         json!([{"name": "ci", "conclusion": "success"}]),
@@ -959,7 +973,11 @@ fn one_claim_named_by_several_commits_is_read_once() {
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
     assert_eq!(t.remaining(), 0);
-    assert_eq!(t.sent.borrow().len(), 5, "three reads, one claim, the tip");
+    assert_eq!(
+        t.sent.borrow().len(),
+        6,
+        "three reads, one claim, the open PRs (#2859), the tip"
+    );
 }
 
 /// Audit 6864692054 B1: G10 and G11 carry over `flow-gate-verdict`'s claim-line checks. A PR
