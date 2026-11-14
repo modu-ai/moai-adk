@@ -2,7 +2,7 @@
 //! `by=timeout` handoff line. Reads GitHub with GET only; the logic is
 //! `moai_cli::claim_timeout`.
 
-use moai_cli::forge::policy::{parse_utc, SystemClock};
+use moai_cli::forge::policy::{parse_utc, Clock, SystemClock};
 use moai_cli::forge::transport::GhTransport;
 
 /// Check the three timeout takeover conditions of a claim
@@ -31,17 +31,31 @@ pub struct Args {
     /// `OWNER/REPO` (default: the project's `origin` remote).
     #[arg(long)]
     repo: Option<String>,
-    /// `YYYY-MM-DDTHH:MM:SSZ` to judge against; the system clock when absent.
+    /// `YYYY-MM-DDTHH:MM:SSZ` to judge against, at most 300 s after the system clock; the
+    /// system clock when absent.
     #[arg(long)]
     now: Option<String>,
 }
 
 pub const OPERATION: &str = "claim.timeout_check";
 
+/// How far `--now` may stand after the system clock: a later one would let every wait pass.
+const MAX_NOW_AHEAD_SECS: i64 = 300;
+
+fn now_not_ahead(now_text: &str, now: i64, clock: i64) -> Result<(), String> {
+    if now > clock + MAX_NOW_AHEAD_SECS {
+        return Err(format!(
+            "invalid --now `{now_text}`: later than the system clock by more than {MAX_NOW_AHEAD_SECS} s"
+        ));
+    }
+    Ok(())
+}
+
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let now_text = args.now.unwrap_or_else(moai_cli::audit::utc_now);
     let now = parse_utc(&now_text)
         .ok_or_else(|| format!("invalid --now `{now_text}`: expected YYYY-MM-DDTHH:MM:SSZ"))?;
+    now_not_ahead(&now_text, now, SystemClock.now())?;
     if args.issue <= 0 || args.claim <= 0 || args.request <= 0 || args.lane.is_empty() {
         return Err("invalid claim-timeout-check: --issue, --claim, --request and --lane are required".into());
     }
@@ -68,4 +82,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         &SystemClock,
         now,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::now_not_ahead;
+
+    /// N3: `--now` up to 300 s after the system clock passes, 301 s is refused; a past value
+    /// (the fixed `--now` of the tests) passes.
+    #[test]
+    fn now_ahead_of_the_clock_boundary() {
+        let clock = 1_000_000;
+        assert!(now_not_ahead("t", clock - 86_400, clock).is_ok());
+        assert!(now_not_ahead("t", clock + 300, clock).is_ok());
+        let err = now_not_ahead("t", clock + 301, clock).unwrap_err();
+        assert!(err.contains("--now `t`"), "{err}");
+        assert!(err.contains("system clock"), "{err}");
+    }
 }
