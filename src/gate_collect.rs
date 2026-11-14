@@ -541,6 +541,45 @@ pub fn has_body_claim(body: &str) -> bool {
     body.contains("Moai-Claim: ")
 }
 
+const LIB_RS: &str = "src/lib.rs";
+
+/// A module declaration line, `mod x;` or `pub mod x;` (lowercase name).
+fn is_mod_line(line: &str) -> bool {
+    let rest = line.strip_prefix("pub ").unwrap_or(line);
+    let Some(name) = rest.strip_prefix("mod ").and_then(|r| r.strip_suffix(';')) else {
+        return false;
+    };
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_ascii_lowercase() || c == '_')
+        && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// #2860 rule 2 (shell gate_merge.sh): the PR's own change to `src/lib.rs` is only added module
+/// lines (`mod x;` / `pub mod x;`, any number, nothing removed or changed), and the merged tree
+/// still has every one of them. Then a tip change to the same file is not a code overlap.
+fn lib_mods_only_kept(dir: &Path, tree: &str, merge_base: &str, head: &str) -> Result<bool> {
+    let diff = git_ok(
+        dir,
+        &["diff", "--no-color", "-U0", merge_base, head, "--", LIB_RS],
+    )?;
+    let changed: Vec<&str> = diff
+        .lines()
+        .filter(|l| {
+            (l.starts_with('+') || l.starts_with('-'))
+                && !l.starts_with("+++")
+                && !l.starts_with("---")
+        })
+        .collect();
+    let added: Vec<&str> = changed.iter().filter_map(|l| l.strip_prefix('+')).collect();
+    if changed.is_empty() || added.len() != changed.len() || !added.iter().all(|l| is_mod_line(l)) {
+        return Ok(false);
+    }
+    let (ok, merged) = git(dir, &["show", &format!("{tree}:{LIB_RS}")])?;
+    Ok(ok && added.iter().all(|l| merged.lines().any(|m| m == *l)))
+}
+
 fn is_commit(dir: &Path, sha: &str) -> Result<bool> {
     Ok(git(dir, &["cat-file", "-e", &format!("{sha}^{{commit}}")])?.0)
 }
@@ -655,6 +694,75 @@ pub fn completed_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
     crate::flow::tip_ci_judgment(&kept, &[TIP_REQUIRED.to_string()])
 }
 
+/// #2554 D8(a) (#2860, the judgment #2856 `lane-next` uses too): the aggregate check
+/// (`ci`/`rc-ci`) is not judged on its own — a newer push cancels the older run's waiting jobs
+/// and the aggregate then reads `failure` with every real job passed or cancelled — and a
+/// cancelled job says nothing about the code. The remaining jobs are judged with
+/// [`crate::flow::tip_ci_judgment`]: `red` only when a job itself failed with no success on the
+/// same commit; no job left reads `pending`.
+pub fn d8a_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
+    let kept: Vec<serde_json::Value> = runs
+        .iter()
+        .filter(|r| {
+            let name = r["name"].as_str().unwrap_or("");
+            !crate::flow::CI_CHECK_NAMES.contains(&name)
+                && r["conclusion"].as_str() != Some("cancelled")
+        })
+        .cloned()
+        .collect();
+    let mut names: Vec<String> = kept
+        .iter()
+        .filter_map(|r| r["name"].as_str().map(str::to_string))
+        .collect();
+    names.sort();
+    names.dedup();
+    if names.is_empty() {
+        return serde_json::json!({"state": "pending"});
+    }
+    crate::flow::tip_ci_judgment(&kept, &names)
+}
+
+/// G8's judgment of one commit: [`d8a_judgment`] whenever the commit has any job besides the
+/// aggregate (a cancelled one included). A commit whose CI is the aggregate alone — a project
+/// whose workflow has a single job named `ci` — is judged by that check ([`completed_judgment`]),
+/// so D8(a) never reads such a project as forever pending.
+fn g8_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
+    let has_jobs = runs.iter().any(|r| {
+        r["name"]
+            .as_str()
+            .is_some_and(|n| !crate::flow::CI_CHECK_NAMES.contains(&n))
+    });
+    if has_jobs {
+        d8a_judgment(runs)
+    } else {
+        completed_judgment(runs)
+    }
+}
+
+/// The cancelled jobs on one commit that D8(a) does not excuse for the merge gate (#2860,
+/// leader tool `green_tip.py`): a cancelled job with no success on the same commit counts only
+/// when it is a macOS job that succeeded on a newer tip commit (`newer_ok`); anything else
+/// leaves the commit undecided, and G8 reads the next older one.
+fn unexcused_cancels(runs: &[serde_json::Value], newer_ok: &[String]) -> Vec<String> {
+    let succeeded = |name: &str| {
+        runs.iter().any(|r| {
+            r["name"].as_str() == Some(name) && r["conclusion"].as_str() == Some("success")
+        })
+    };
+    let mut out: Vec<String> = runs
+        .iter()
+        .filter(|r| r["conclusion"].as_str() == Some("cancelled"))
+        .filter_map(|r| r["name"].as_str())
+        .filter(|n| !crate::flow::CI_CHECK_NAMES.contains(n))
+        .filter(|n| !succeeded(n))
+        .filter(|n| !(n.contains("macos") && newer_ok.iter().any(|ok| ok == n)))
+        .map(str::to_string)
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
 /// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
 /// visible), at most ten pages.
 pub(crate) fn tip_runs<T: Transport>(
@@ -711,13 +819,26 @@ pub(crate) fn tip_ci<T: Transport>(
         detail,
     };
     let mut waited = Vec::new();
+    // Jobs that succeeded on a newer tip commit already read (newest first): a macOS job a
+    // newer push cancelled here counts as passed when one of these is it (#2860, D8(a)).
+    let mut newer_ok: Vec<String> = Vec::new();
     for sha in walk.lines().filter(|l| !l.is_empty()) {
         let runs = match tip_runs(t, base_url, sha) {
             Ok(runs) => runs,
             Err(e) => return Ok(unknown(format!("check runs of {sha} unreadable: {e}"))),
         };
-        let j = completed_judgment(&runs);
-        let state = j["state"].as_str().unwrap_or("unknown").to_string();
+        // #2860: D8(a) instead of the aggregate `ci` — the aggregate fails whenever a newer
+        // push cancels a waiting macOS job, which would read a green tip as red.
+        let j = g8_judgment(&runs);
+        let mut state = j["state"].as_str().unwrap_or("unknown").to_string();
+        if state != "red" && !unexcused_cancels(&runs, &newer_ok).is_empty() {
+            state = "pending".into();
+        }
+        newer_ok.extend(
+            runs.iter()
+                .filter(|r| r["conclusion"].as_str() == Some("success"))
+                .filter_map(|r| r["name"].as_str().map(str::to_string)),
+        );
         if state == "pending" {
             waited.push(sha.get(..10).unwrap_or(sha).to_string());
             continue;
@@ -833,14 +954,37 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
     // The verdict base is read from the last verdict the gate will judge; without one G1 stops.
-    let last_verdict = comments
+    let last_line = comments
         .iter()
         .filter_map(|c| {
             let first = c.body.lines().next()?;
             first.starts_with("AUDIT #").then_some((c.id, first))
         })
         .max_by_key(|(id, _)| *id)
-        .and_then(|(_, line)| gate::parse_verdict(line));
+        .map(|(_, line)| line);
+    // #2860 rule 3 (shell gate_merge.sh): a short verdict base counts when it names exactly one
+    // commit here. `rev-parse --verify --quiet <b>^{commit}` refuses an ambiguous or unknown
+    // prefix; the full SHA then stands for the base everywhere the gate reads it.
+    let mut verdict_base_full = None;
+    let mut last_verdict = last_line.and_then(gate::parse_verdict);
+    if last_verdict.is_none() {
+        if let Some((vh, short, v)) = last_line.and_then(gate::parse_verdict_short_base) {
+            let (ok, out) = git(
+                dir,
+                &[
+                    "rev-parse",
+                    "--verify",
+                    "--quiet",
+                    &format!("{short}^{{commit}}"),
+                ],
+            )?;
+            let full = out.trim().to_string();
+            if ok && full.len() == 40 && full.starts_with(&short) {
+                verdict_base_full = Some(full.clone());
+                last_verdict = Some((vh, full, v));
+            }
+        }
+    }
     let verdict_base = last_verdict.as_ref().map(|(_, base, _)| base.clone());
     // #2833: a PASS on an earlier head may still count when the current head only merged the
     // base branch into it. Measured only then; any other case leaves it absent.
@@ -873,10 +1017,13 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
 
     let mut docs_lines_kept = Vec::new();
     let mut merged_manifest_ok = false;
+    let mut lib_mod_only_kept = false;
     if merge_clean {
         for f in pr_files.iter().filter(|f| tip_files.contains(f)) {
             if f == MANIFEST {
                 merged_manifest_ok = manifest_matches(dir, &merged_tree)?;
+            } else if f == LIB_RS {
+                lib_mod_only_kept = lib_mods_only_kept(dir, &merged_tree, &merge_base, &head)?;
             } else if f.starts_with("docs/") {
                 let from = tip_since.clone().unwrap_or_default();
                 let sides = [
@@ -908,9 +1055,11 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         merge_clean,
         docs_lines_kept,
         merged_manifest_ok,
+        lib_mod_only_kept,
         review_confirmed_prs: target.review_confirmed_prs.clone(),
         body_check_ok: body_check(&body),
         verdict_base_known,
+        verdict_base_full,
         pr_authors: Some(authors),
         tip_ci: Some(tip_ci),
         tip_repair: crate::flow::is_tip_repair(&body),
@@ -919,4 +1068,65 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         auto_delta,
         stacked_below: Some(stacked),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git_in(dir: &Path, args: &[&str]) -> String {
+        // Every git subprocess in src/ is scrubbed (#2337; tests/git_env_scrub.rs).
+        let mut cmd = Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.invalid",
+                "-c",
+                "gc.auto=0",
+                "-c",
+                "maintenance.auto=false",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    fn commit_lib(dir: &Path, text: &str, msg: &str) -> String {
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("src/lib.rs"), text).unwrap();
+        git_in(dir, &["add", "-A"]);
+        git_in(dir, &["commit", "-q", "-m", msg]);
+        git_in(dir, &["rev-parse", "HEAD"])
+    }
+
+    /// #2869 audit B2: the PR's added module lines count only while the tree they are checked
+    /// against still has them. Checked against a tree without the PR's `pub mod b;` (the tip's,
+    /// standing in for a merge that lost the line), the overlap is not excused.
+    #[test]
+    fn a_module_line_missing_from_the_tree_is_not_kept() {
+        let tmp = tempfile::tempdir().unwrap();
+        let d = tmp.path();
+        git_in(d, &["init", "-q", "-b", "main"]);
+        let base = commit_lib(d, "pub mod a;\n\npub mod z;\n", "base");
+        git_in(d, &["checkout", "-q", "-b", "pr"]);
+        let head = commit_lib(d, "pub mod a;\npub mod b;\n\npub mod z;\n", "pr");
+        git_in(d, &["checkout", "-q", "main"]);
+        let tip = commit_lib(d, "pub mod a;\n\npub mod z;\npub mod zz;\n", "tip");
+        let tree_of = |c: &str| git_in(d, &["rev-parse", &format!("{c}^{{tree}}")]);
+        // The head's own tree has the line: kept.
+        assert!(lib_mods_only_kept(d, &tree_of(&head), &base, &head).unwrap());
+        // The tip's tree lacks it: not kept, so G6 stops on the overlap.
+        assert!(!lib_mods_only_kept(d, &tree_of(&tip), &base, &head).unwrap());
+    }
 }

@@ -87,6 +87,13 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 - Codex: `.moai-cli/manifests/codex-hooks.json` — `schema_version`, `hooks_path`, `sha256`, `hooks`(event·matcher·command·timeout 목록). apply는 먼저 `pending_sha256`을 적고 파일을 쓴 뒤 영수증을 확정한다. 중간에 끊기면 다음 plan이 sha256으로 판정한다.
 - `hook-receipt` 실행 기록: `.moai-cli/receipts/hooks.jsonl` 한 줄에 `schema_version`·`host`·`unix_ms`와 허용 필드 `hook_event_name`·`tool_name`·`source`만 남긴다. 128자 초과·제어 문자·비밀 모양 값은 버리고 `dropped`로 알린다. `.moai-cli/`가 없는 디렉터리에서는 아무것도 쓰지 않는다. 로그가 4 MiB를 넘으면 더 쓰지 않는다(자르지 않는다).
 
+## 4a. `moai update` 의 훅 층 (#2853)
+
+- 대상: `moai update` 를 실행한 폴더가 속한 git 작업 트리 하나, 그중 MoAI 훅 집합이 **이미 설치된** host 만(Claude 는 settings 영수증이 `hooks` 를 소유, Codex·OMP 는 소유 영수증이 있음). `update` 는 훅을 새로 설치하지 않는다 — 설치는 계속 `hooks-plan` → `hooks-apply`. 프로젝트 밖이거나 설치된 host 가 없으면 `hooks.skipped` 에 이유 한 줄.
+- 미리보기: host 마다 `hooks-plan` 과 같은 규칙으로 `create`·`update`·`unchanged`·`conflict`. 생성 명령은 `moai-cli`(#2812 결정 (나)). 사용자가 바꾼 항목은 덮지 않는다 — MoAI 가 바꿀 것이 없으면 그대로 두고(`unchanged`), 바꿀 것이 있으면 `conflict` 로 보고만 한다. Codex·OMP 파일을 손으로 바꿨으면 `conflict`(이유: preservation review).
+- 확인: 훅 층의 digest 는 `moai update --confirm` 이 받는 하나의 `plan_digest` 에 들어간다. 확인 때 host 마다 `hooks-apply` 규칙으로 쓰고, 바꾼 두 파일(host 파일·소유 영수증)의 앞 바이트를 `.moai-cli/receipts/hooks-<id>/` 에 남긴다. 결과는 `hooks_result`, 되돌리기 명령은 `revert.hooks`.
+- 되돌리기: `moai hooks-revert <PROJECT> --receipt <id> --permission-reference <ref>` — host 의 두 파일이 모두 update 가 쓴 바이트 그대로일 때만 앞 바이트로 되돌린다(만든 파일은 지움). 하나라도 바뀌었으면 그 host 는 `user_changed_since_apply` 로 건너뛴다. 영수증은 한 번만 되돌린다.
+
 ## 5. 출처 (확인일 2026-11-09)
 
 | 문서 | URL | 이번에 쓴 사실 |

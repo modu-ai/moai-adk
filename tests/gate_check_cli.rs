@@ -622,3 +622,125 @@ fn the_audit_rules_apply_to_the_verdict_head_of_a_delta() {
     ]);
     assert_eq!(stopped(&gate(&s)), (true, String::new()));
 }
+
+fn note(id: u64, body: &str) -> Value {
+    json!({"id": id, "body": body})
+}
+
+/// #2860 rule 1 (shell owner_ok.py): a leader handoff whose first line names an allowed claim
+/// moves it to the named lane; the handoff must come after the claim, name an allowed claim,
+/// say `by=leader`, and sit on the first line. The latest handoff wins.
+#[test]
+fn g2_a_leader_handoff_moves_an_allowed_claim() {
+    let mut s = passing();
+    let handoff = "moai-claim-handoff: comment=100 to=agent-27 by=leader\n\nleader";
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        note(150, handoff),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, "".into()), "{}", gate(&s));
+    // Not on the first line, not by the leader, before the claim, or naming another claim:
+    // the claim stays with agent-10 and agent-27's verdict stops at G2.
+    for (id, body) in [
+        (
+            150,
+            "leader note\nmoai-claim-handoff: comment=100 to=agent-27 by=leader",
+        ),
+        (
+            150,
+            "moai-claim-handoff: comment=100 to=agent-27 by=agent-8",
+        ),
+        (90, handoff),
+        (150, "moai-claim-handoff: comment=101 to=agent-27 by=leader"),
+        (150, "moai-claim-handoff: comment=100 to=agent 27 by=leader"),
+    ] {
+        s["comments"] = json!([
+            claim(100, "agent-10", H),
+            note(id, body),
+            verdict(200, "agent-27", H, "PASS")
+        ]);
+        assert_eq!(stopped(&gate(&s)), (false, "G2".into()), "{body}");
+    }
+    // The latest handoff wins: moved to agent-27, then on to agent-9.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        note(150, handoff),
+        note(160, "moai-claim-handoff: comment=100 to=agent-9 by=leader"),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        note(150, handoff),
+        note(160, "moai-claim-handoff: comment=100 to=agent-9 by=leader"),
+        verdict(200, "agent-9", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, "".into()));
+}
+
+/// #2860 rule 3 (shell gate_merge.sh): a verdict whose base is a short SHA passes only when the
+/// collector resolved it to exactly one commit (`verdict_base_full`) that starts with it. Too
+/// short, unresolved, or resolved to another commit stops at G1; the head stays 40 hex.
+#[test]
+fn g1_a_short_base_counts_only_when_resolved_to_one_commit() {
+    let short = &B[..12];
+    let line = |base: &str, head: &str| json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")});
+    let mut s = passing();
+    s["comments"] = json!([claim(100, "agent-10", H), line(short, H)]);
+    s["verdict_base_full"] = json!(B);
+    assert_eq!(stopped(&gate(&s)), (true, "".into()), "{}", gate(&s));
+    // Not resolved by the collector.
+    s["verdict_base_full"] = Value::Null;
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // Resolved to a commit the short base does not name.
+    s["verdict_base_full"] = json!(OTHER);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // Six hex digits are too short even when "resolved"; a short head never counts.
+    s["verdict_base_full"] = json!(B);
+    s["comments"] = json!([claim(100, "agent-10", H), line(&B[..6], H)]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    s["comments"] = json!([claim(100, "agent-10", H), line(B, &H[..12])]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}
+
+/// #2860 scope add 6872037464 (shell owner_ok.py, #2831): a first-line withdrawal gives the PR
+/// up for that lane; its claims before the withdrawal no longer count, so another lane's
+/// claim on the current head and its PASS pass G2. A withdrawal of another lane, one not on the
+/// first line, or one posted before the claim changes nothing.
+#[test]
+fn g2_a_withdrawn_lane_no_longer_holds_the_audit() {
+    let mut s = passing();
+    for line in [
+        "moai-audit-withdraw: lane=agent-10",
+        "moai-audit-claim-withdraw: lane=agent-10",
+    ] {
+        // agent-27's claim names an older head, so only the withdrawal makes it the lowest
+        // claim (without it agent-10 holds the audit; mutant W1).
+        s["comments"] = json!([
+            claim(100, "agent-10", OTHER),
+            note(150, &format!("{line}\n\nhanding the re-audit over")),
+            claim(160, "agent-27", OTHER),
+            verdict(200, "agent-27", H, "PASS")
+        ]);
+        assert_eq!(
+            stopped(&gate(&s)),
+            (true, "".into()),
+            "{line}: {}",
+            gate(&s)
+        );
+    }
+    for (id, body) in [
+        (150, "moai-audit-withdraw: lane=agent-9"),
+        (150, "note\nmoai-audit-withdraw: lane=agent-10"),
+        (90, "moai-audit-withdraw: lane=agent-10"),
+    ] {
+        s["comments"] = json!([
+            claim(100, "agent-10", OTHER),
+            note(id, body),
+            claim(160, "agent-27", OTHER),
+            verdict(200, "agent-27", H, "PASS")
+        ]);
+        assert_eq!(stopped(&gate(&s)), (false, "G2".into()), "{body}");
+    }
+}
