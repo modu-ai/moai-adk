@@ -16,6 +16,8 @@ Project
                           in one view
   language-setup          Choose the writing language item
                           by item
+  language-set            Record the conversation language
+                          in HOME
   index-build             Build the code map index
   agents-plan             Preview the AGENTS.md managed
                           section
