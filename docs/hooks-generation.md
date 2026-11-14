@@ -19,7 +19,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 1. **두 호스트 모두 project 훅을 신뢰 뒤에만 실행한다.**
    - Codex: "Project-local hooks load only when the project `.codex/` layer is trusted." "Non-managed hooks must be reviewed and trusted before they run." "Codex records trust against the hook's current hash, so new or changed hooks are marked for review and skipped until trusted." 즉 MoAI가 쓴 훅도 사용자가 `/hooks`에서 검토하기 전에는 돌지 않는다.
    - Claude Code: "Frontmatter hooks in a project skill follow the same workspace trust rule as hooks in settings files." "Project subagent hooks run only after you accept the workspace trust dialog." settings 파일 훅의 신뢰 규칙 본문은 permissions 문서에 있고, 이번에는 그 문서를 읽지 않았다(아래 §6 미확인).
-2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅 4개만 쓴다. 요청으로 훅을 더하거나 바꿀 수 없다.
+2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅만 쓴다(Codex 4개, Claude Code 5개). 요청으로 훅을 더하거나 바꿀 수 없다.
 3. **기록 훅 3개는 기록만 하고, 차단 훅은 하나뿐이다.** 기록 훅은 `moai-cli hook-receipt`를 부르고 차단하지 않는다(항상 exit 0). 도구 입력·출력·prompt는 저장하지 않는다. 차단 훅은 `PreToolUse`(Bash)의 `moai-cli claim-verify . --hook` 하나다(rc.2 A9 #2255 AC-2). Bash 구간의 첫 단어가 `git`이고 `commit`이나 `push`를 실행하는데, 그 레인 worktree의 claim이 확인되지 않을 때만 exit 2로 막는다. 나머지 호출은 모두 통과시킨다. 권한을 넓히지 않고 쓰기 경계를 좁히기만 한다.
 4. **사용자 설정을 덮어쓰지 않는다.** Claude는 기존 3-way 소유 규칙을 그대로 쓴다. 사용자가 이미 `hooks` 키를 두었으면 plan이 `conflict`가 되고 아무것도 쓰지 않는다. Codex는 MoAI 영수증과 sha256이 맞지 않는 `.codex/hooks.json`을 만나면 `requires preservation review`로 멈춘다.
 5. **홈은 쓰지 않는다.** project가 HOME 자체이거나 HOME의 `.claude`·`.codex`·`.agents`·`.moai-cli` 안이면 거부한다. 훅은 project 트리에만 생긴다.
@@ -30,6 +30,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 | --- | --- | --- |
 | `SessionStart` | 없음 | `moai-cli hook-receipt --host <host>`, timeout 10초 |
 | `PreToolUse` | `Bash` | `moai-cli claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
+| `PreToolUse`(Claude Code 만) | `Bash\|Write\|Edit\|MultiEdit\|NotebookEdit` | `moai-cli hook-dispatch --host claude --event tool-preflight`, timeout 10초 — 훅 엔진의 위험 Bash·`.git`·자격 증명 폴더·개인 키·토큰 쓰기 가드, 문서화된 PreToolUse `deny` 로만 답함(#2877 리더 Q1: Go 세대 hook 을 바꾼 뒤에도 그 보호가 남게) |
 | `PostToolUse` | `Bash` | `moai-cli hook-receipt --host <host>`, timeout 10초 |
 | `Stop` | 없음 | 같음 |
 
