@@ -750,6 +750,36 @@ fn moai_candidates(home: &Path, path_env: &str, places: &CandidatePlaces) -> Val
     })
 }
 
+/// The note a person sees when the first `moai` on PATH is not this generation's (#2867).
+pub const PATH_FIRST_NOTE: &str = "hooks are generated with moai-cli until R5; put a Rust moai \
+     first on PATH to let them use moai (nothing was changed)";
+
+/// #2867 (R5a): the first `moai` on PATH — its path, generation and the evidence for it, read
+/// from the R2 candidates (`moai_candidates`) without probing again. A `go` or `unknown` first
+/// `moai` carries [`PATH_FIRST_NOTE`]: a hook that called `moai` would reach it. Reports only.
+pub fn path_first_moai(candidates: &Value) -> Value {
+    let first = candidates["items"]
+        .as_array()
+        .and_then(|items| items.iter().find(|i| i["first_on_path"] == json!(true)));
+    let Some(item) = first else {
+        return json!({"path": null, "generation": "absent", "probed": false,
+            "basis": "no moai on PATH", "note": null});
+    };
+    let generation = item["generation"].as_str().unwrap_or("unknown");
+    let basis = match item["version_line"].as_str() {
+        Some(line) => format!("--version: {line}"),
+        None if item["probed"] == json!(false) => "not probed: repository content".to_string(),
+        None => "--version gave no line".to_string(),
+    };
+    json!({
+        "path": item["path"],
+        "generation": generation,
+        "probed": item["probed"],
+        "basis": basis,
+        "note": matches!(generation, "go" | "unknown" | "not_probed").then_some(PATH_FIRST_NOTE),
+    })
+}
+
 fn path_resolution(found: Option<PathBuf>) -> Value {
     match found {
         None => json!({"found":false,"path":null,"sha256":null,"version_output":null}),
@@ -814,6 +844,7 @@ pub fn inspect(home: &Path, path_env: &str, places: &CandidatePlaces) -> Result<
     }
 
     let cwd = std::env::current_dir().map_err(|_| "project directory unavailable")?;
+    let candidates = moai_candidates(&canonical_home, path_env, places);
     Ok(json!({
         "install_id_derivation": INSTALL_ID_DERIVATION,
         "home_state_root": text_or_null(&crate::home_root::path(&canonical_home)),
@@ -821,7 +852,8 @@ pub fn inspect(home: &Path, path_env: &str, places: &CandidatePlaces) -> Result<
             "moai": path_resolution(moai),
             "moai_cli": path_resolution(moai_cli),
         },
-        "moai_candidates": moai_candidates(&canonical_home, path_env, places),
+        "path_first_moai": path_first_moai(&candidates),
+        "moai_candidates": candidates,
         "installations": installations,
         "self": {
             "current_exe": normalize_home(&canonical_home, &canonical_exe)?,
