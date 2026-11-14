@@ -9,7 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "tools" / "source_manifest.py"
-MANIFEST = Path("skills/moai/references/source-manifest.json")
+PKG = Path("skills") / "moai"
+MANIFEST = "references/source-manifest.json"  # package-relative, like every path below
 sys.path.insert(0, str(ROOT / "tools"))
 import source_manifest as sm  # noqa: E402
 
@@ -21,7 +22,8 @@ def origin(name, reason="first"):
 
 
 class Repo:
-    """A repository with a three-file package under skills/moai and a scrubbed git setup."""
+    """A repository with a three-file package and a scrubbed git setup. Paths given to `put`,
+    `read` and `edit_line` are relative to the package folder."""
 
     def __init__(self, tmp):
         self.root = Path(tmp) / "repo"
@@ -29,12 +31,12 @@ class Repo:
         self.home.mkdir()
         self.root.mkdir()
         self.git("init", "-q", "-b", "main")
-        self.put("skills/moai/SKILL.md", "# moai\n")
-        self.put("skills/moai/workflows/a.md", LINES)
-        self.put("skills/moai/workflows/b.md", LINES)
+        self.put("SKILL.md", "# moai\n")
+        self.put("workflows/a.md", LINES)
+        self.put("workflows/b.md", LINES)
         self.manifest({
             "schema_version": 1,
-            "covers": "every file under skills/moai/ except this manifest",
+            "covers": "every package file except this manifest",
             "files": {
                 rel: {"sha256": "0" * 64, "origin": origin(rel)}
                 for rel in ["SKILL.md", "workflows/a.md", "workflows/b.md"]
@@ -57,17 +59,17 @@ class Repo:
                               capture_output=True, text=True, check=check)
 
     def put(self, rel, text):
-        path = self.root / rel
+        path = self.root / PKG / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
 
     def read(self, rel):
-        return (self.root / rel).read_text(encoding="utf-8")
+        return (self.root / PKG / rel).read_text(encoding="utf-8")
 
     def manifest(self, data=None):
         if data is not None:
-            self.put(str(MANIFEST), json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-        return json.loads(self.read(str(MANIFEST)))
+            self.put(MANIFEST, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+        return json.loads(self.read(MANIFEST))
 
     def set_reason(self, rel, reason):
         data = self.manifest()
@@ -113,12 +115,12 @@ class Repo:
                     dest = copy / path.relative_to(self.root)
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_bytes(path.read_bytes())
-            data = json.loads((copy / MANIFEST).read_text(encoding="utf-8"))
+            data = json.loads((copy / PKG / MANIFEST).read_text(encoding="utf-8"))
             for entry in data["files"].values():
                 entry["sha256"] = "0" * 64
-            (copy / MANIFEST).write_text(sm.render(data), encoding="utf-8")
+            (copy / PKG / MANIFEST).write_text(sm.render(data), encoding="utf-8")
             sm.write(copy)
-            return (copy / MANIFEST).read_text(encoding="utf-8")
+            return (copy / PKG / MANIFEST).read_text(encoding="utf-8")
 
 
 def edit_line(rel, n, text):
@@ -147,55 +149,55 @@ class SourceManifestTest(unittest.TestCase):
     def test_check_names_a_stale_entry_and_write_fixes_it(self):
         r = self.repo
         self.assertTrue(r.assert_tool("check", 0)["ok"])
-        r.put("skills/moai/workflows/a.md", LINES + "more\n")
+        r.put("workflows/a.md", LINES + "more\n")
         report = r.assert_tool("check", 1)
         self.assertEqual(report["changed"], ["workflows/a.md"])
-        before = r.read(str(MANIFEST))
+        before = r.read(MANIFEST)
         self.assertTrue(r.assert_tool("write", 0)["written"])
-        self.assertNotEqual(r.read(str(MANIFEST)), before)
+        self.assertNotEqual(r.read(MANIFEST), before)
         self.assertFalse(r.assert_tool("write", 0)["written"])
         r.assert_tool("check", 0)
 
     def test_ac1_different_skill_files_on_each_side(self):
         r = self.repo
-        merge = r.branches(edit_line("skills/moai/workflows/a.md", 1, "ours"),
-                           edit_line("skills/moai/workflows/b.md", 20, "theirs"))
+        merge = r.branches(edit_line("workflows/a.md", 1, "ours"),
+                           edit_line("workflows/b.md", 20, "theirs"))
         if merge.returncode != 0:
             r.assert_tool("write", 0)
         r.assert_tool("check", 0)
-        self.assertEqual(r.read(str(MANIFEST)), r.fresh())
+        self.assertEqual(r.read(MANIFEST), r.fresh())
 
     def test_ac1_same_skill_file_conflicts_only_in_its_hash_and_one_write_resolves_it(self):
         r = self.repo
-        merge = r.branches(edit_line("skills/moai/workflows/a.md", 1, "ours"),
-                           edit_line("skills/moai/workflows/a.md", 20, "theirs"))
+        merge = r.branches(edit_line("workflows/a.md", 1, "ours"),
+                           edit_line("workflows/a.md", 20, "theirs"))
         self.assertNotEqual(merge.returncode, 0, "the hash line conflicts")
-        self.assertIn("<<<<<<< ", r.read(str(MANIFEST)))
-        self.assertNotIn("<<<<<<< ", r.read("skills/moai/workflows/a.md"))
+        self.assertIn("<<<<<<< ", r.read(MANIFEST))
+        self.assertNotIn("<<<<<<< ", r.read("workflows/a.md"))
         report = r.assert_tool("write", 0)
         self.assertTrue(report["conflicted"])
-        self.assertEqual(r.read(str(MANIFEST)), r.fresh())
+        self.assertEqual(r.read(MANIFEST), r.fresh())
         r.assert_tool("check", 0)
 
     def test_an_unmerged_manifest_is_read_from_the_index_stages(self):
         r = self.repo
-        r.branches(edit_line("skills/moai/workflows/a.md", 1, "ours"),
-                   edit_line("skills/moai/workflows/a.md", 20, "theirs"))
+        r.branches(edit_line("workflows/a.md", 1, "ours"),
+                   edit_line("workflows/a.md", 20, "theirs"))
         stages = sm.index_stages(r.root)
         self.assertIsNotNone(stages)
-        want = tuple(r.git("show", f":{n}:{MANIFEST.as_posix()}").stdout for n in (1, 2, 3))
+        want = tuple(r.git("show", f":{n}:{(PKG / MANIFEST).as_posix()}").stdout for n in (1, 2, 3))
         self.assertEqual(stages, want)
         self.assertEqual(len({json.loads(t)["files"]["workflows/a.md"]["sha256"] for t in want}), 3)
         r.assert_tool("write", 0)
-        r.git("add", str(MANIFEST))
+        r.git("add", str(PKG / MANIFEST))
         self.assertIsNone(sm.index_stages(r.root), "a resolved manifest has no stages")
 
     def test_an_origin_changed_on_one_side_is_kept_three_way(self):
         r = self.repo
         merge = r.branches(
-            both(edit_line("skills/moai/workflows/a.md", 1, "ours"),
+            both(edit_line("workflows/a.md", 1, "ours"),
                  lambda repo: repo.set_reason("workflows/a.md", "first, then ours")),
-            edit_line("skills/moai/workflows/a.md", 20, "theirs"),
+            edit_line("workflows/a.md", 20, "theirs"),
         )
         self.assertNotEqual(merge.returncode, 0)
         r.assert_tool("write", 0)
@@ -206,32 +208,32 @@ class SourceManifestTest(unittest.TestCase):
     def test_an_origin_changed_on_both_sides_is_left_to_a_person(self):
         r = self.repo
         r.branches(
-            both(edit_line("skills/moai/workflows/a.md", 1, "ours"),
+            both(edit_line("workflows/a.md", 1, "ours"),
                  lambda repo: repo.set_reason("workflows/a.md", "first, ours")),
-            both(edit_line("skills/moai/workflows/a.md", 20, "theirs"),
+            both(edit_line("workflows/a.md", 20, "theirs"),
                  lambda repo: repo.set_reason("workflows/a.md", "first, theirs")),
         )
-        before = r.read(str(MANIFEST))
+        before = r.read(MANIFEST)
         report = r.assert_tool("write", 2)
         self.assertIn("workflows/a.md", report["needs_person"])
         self.assertIn("reason", report["needs_person"])
-        self.assertEqual(r.read(str(MANIFEST)), before, "nothing is written")
+        self.assertEqual(r.read(MANIFEST), before, "nothing is written")
 
     def test_a_skill_file_still_in_conflict_stops_the_write(self):
         r = self.repo
-        r.branches(edit_line("skills/moai/workflows/a.md", 10, "ours"),
-                   edit_line("skills/moai/workflows/a.md", 10, "theirs"))
-        before = r.read(str(MANIFEST))
+        r.branches(edit_line("workflows/a.md", 10, "ours"),
+                   edit_line("workflows/a.md", 10, "theirs"))
+        before = r.read(MANIFEST)
         report = r.assert_tool("write", 2)
         self.assertIn("conflict markers remain in: workflows/a.md", report["needs_person"])
-        self.assertEqual(r.read(str(MANIFEST)), before)
+        self.assertEqual(r.read(MANIFEST), before)
 
     def test_entries_added_on_both_sides_are_joined(self):
         r = self.repo
 
         def add(name):
             def run(repo):
-                repo.put(f"skills/moai/references/{name}.md", f"{name}\n")
+                repo.put(f"references/{name}.md", f"{name}\n")
                 data = repo.manifest()
                 data["files"][f"references/{name}.md"] = {"sha256": "", "origin": origin(name)}
                 repo.manifest(data)
@@ -245,24 +247,24 @@ class SourceManifestTest(unittest.TestCase):
 
     def test_a_new_file_without_an_entry_and_a_deleted_file(self):
         r = self.repo
-        r.put("skills/moai/references/new.md", "new\n")
+        r.put("references/new.md", "new\n")
         report = r.assert_tool("write", 2)
         self.assertIn("no entry (write its origin first): references/new.md", report["needs_person"])
-        (r.root / "skills/moai/references/new.md").unlink()
-        (r.root / "skills/moai/workflows/b.md").unlink()
+        (r.root / PKG / "references/new.md").unlink()
+        (r.root / PKG / "workflows/b.md").unlink()
         report = r.assert_tool("write", 0)
         self.assertEqual(report["dropped"], ["workflows/b.md"])
         self.assertNotIn("workflows/b.md", r.manifest()["files"])
 
     def test_a_link_in_the_package_is_refused(self):
         r = self.repo
-        os.symlink("a.md", r.root / "skills/moai/workflows/link.md")
+        os.symlink("a.md", r.root / PKG / "workflows/link.md")
         report = r.assert_tool("write", 2)
         self.assertIn("workflows/link.md is a link", report["needs_person"])
 
     def test_a_markdown_heading_underline_is_not_a_conflict(self):
         r = self.repo
-        r.put("skills/moai/workflows/a.md", "Title\n=======\n")
+        r.put("workflows/a.md", "Title\n=======\n")
         r.assert_tool("write", 0)
         r.assert_tool("check", 0)
 
