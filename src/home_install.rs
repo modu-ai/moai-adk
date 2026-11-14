@@ -202,8 +202,10 @@ fn alias_table(home: &Path, old: &Path) -> (BTreeMap<String, String>, Vec<String
 }
 
 /// How each `path` entry would follow the move: a link into the old `versions` folder must be
-/// pointed at the new one; a file moves as it is.
-fn stub_plan(old: &Path) -> Vec<Value> {
+/// pointed at the new one; a file moves as it is. `versions_moves` says that `versions` and
+/// `path` both move: a link is re-pointed only then, since a `versions` that stays (a link, say)
+/// leaves the old target valid and the new one would not exist.
+fn stub_plan(old: &Path, versions_moves: bool) -> Vec<Value> {
     let dir = old.join("path");
     if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
         return Vec::new();
@@ -224,9 +226,10 @@ fn stub_plan(old: &Path) -> Vec<Value> {
             } else {
                 Value::Null
             };
-            let repoint = target
-                .as_str()
-                .is_some_and(|t| Path::new(t).starts_with(&old_versions));
+            let repoint = versions_moves
+                && target
+                    .as_str()
+                    .is_some_and(|t| Path::new(t).starts_with(&old_versions));
             json!({"name": n, "kind": kind, "target": target, "repoint": repoint})
         })
         .collect()
@@ -460,8 +463,13 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     } else {
         (BTreeMap::new(), Vec::new())
     };
+    let moves = |n: &str| {
+        entries
+            .iter()
+            .any(|e| e["name"] == n && e["action"] == "move")
+    };
     let stub = if listed && !moved {
-        stub_plan(&old)
+        stub_plan(&old, moves("versions") && moves("path"))
     } else {
         Vec::new()
     };
@@ -497,8 +505,11 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
 
     // The digest of what the preview decided, without the clock; the confirmation token is its
     // first sixteen hex digits, and the apply recomputes it before it moves anything.
+    // The install journal folder is left out: the apply creates it (for its lock and manifest)
+    // before it re-plans, and its arrival must not make the plan look stale.
     let identities = entries
         .iter()
+        .filter(|e| e["reason"] != "install_journal")
         .map(|e| {
             json!({
                 "name": e["name"], "kind": e["kind"], "action": e["action"],
@@ -558,8 +569,8 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     }))
 }
 
-/// The most install journals read; a journal folder with more is read newest-name last up to
-/// this many and the rest ignored (the reader is a lookup, never a gate).
+/// The most install journals read; a journal folder with more is read for its newest this many
+/// and the older ones ignored (the reader is a lookup, never a gate).
 const ALIAS_JOURNAL_LIMIT: usize = 64;
 
 /// An install id as `install::install_id` makes it: the lower-case hex of a SHA-256, 64 digits.
@@ -593,7 +604,10 @@ pub fn committed_aliases(home: &Path) -> BTreeMap<String, String> {
         .filter(|n| n.starts_with(move_journal::PREFIX) && n.ends_with(".json"))
         .collect();
     names.sort();
-    for n in names.iter().take(ALIAS_JOURNAL_LIMIT) {
+    // The newest journals count: a name is `move-journal-<stamp>`, so the sort is by time, and the
+    // aliases a recent move made are the ones a receipt lookup needs.
+    let oldest_kept = names.len().saturating_sub(ALIAS_JOURNAL_LIMIT);
+    for n in names.iter().skip(oldest_kept) {
         let Ok(j) = move_journal::read_journal(&dir.join(n)) else {
             continue;
         };
@@ -860,9 +874,10 @@ mod tests {
         assert!(committed_aliases(linked.path()).is_empty());
     }
 
-    /// The reader is a lookup with a bound: past the limit, the rest are ignored.
+    /// The reader is a lookup with a bound: past the limit, the OLDEST journals are ignored, since
+    /// the aliases of a recent move are what a receipt lookup needs (#2871 U3c-pre, plan 5.3).
     #[test]
-    fn committed_aliases_read_at_most_the_journal_limit() {
+    fn committed_aliases_read_the_newest_journals_up_to_the_limit() {
         use move_journal::JournalState::Committed;
         let t = tempfile::tempdir().unwrap();
         let dir = old_dir(t.path()).join(JOURNAL_DIR);
@@ -879,9 +894,11 @@ mod tests {
         assert_eq!(
             got.len(),
             ALIAS_JOURNAL_LIMIT,
-            "the {}th is ignored",
+            "the oldest of {} is ignored",
             ALIAS_JOURNAL_LIMIT + 1
         );
-        assert!(got.contains_key(&hid("old063")) && !got.contains_key(&hid("old064")));
+        assert!(!got.contains_key(&hid("old000")), "the oldest was read");
+        assert!(got.contains_key(&hid("old001")), "the 2nd oldest is the first kept");
+        assert!(got.contains_key(&hid("old064")), "the newest was not read");
     }
 }
