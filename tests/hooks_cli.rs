@@ -53,8 +53,8 @@ fn claude_plan_apply_replan_is_noop() {
     .unwrap();
     assert_eq!(applied["state"], json!("applied"));
     assert_eq!(applied["host_loaded"], json!("not_run"));
-    // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 4).
-    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 5);
+    // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 3).
+    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 4);
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(
         settings["hooks"],
@@ -99,7 +99,7 @@ fn codex_plan_apply_replan_is_noop() {
     );
     assert!(file["description"].as_str().unwrap().contains("MoAI"));
     let receipt = read_json(&p.path().join(".moai-cli/manifests/codex-hooks.json"));
-    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 4);
+    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
     assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
     assert!(receipt.get("pending_sha256").is_none(), "pending cleared");
 
@@ -116,35 +116,51 @@ fn codex_plan_apply_replan_is_noop() {
     assert_eq!(noop["state"], json!("unchanged"));
 }
 
-/// The hook set itself: four events, an explicit timeout on every handler, and bare command
-/// names (no absolute path). Three are receipts; `PreToolUse` on Bash runs the claim guard
-/// (#2255 AC-2), the same command for both hosts.
+/// The hook set itself (#2936 R9 S1, selection table of Issue #2936 comment 6881107273): three
+/// events and no `Stop`, an explicit timeout on every handler, and bare command names (no
+/// absolute path). `SessionStart` answers the session context for the model, `PreToolUse` on
+/// Bash runs the claim guard (#2255 AC-2) and `PostToolUse` on Bash is a receipt, the same
+/// commands for every host.
 #[test]
 fn hook_set_has_explicit_timeouts_and_bare_commands() {
     for host in hooks::HOSTS {
         let obj = hooks::hooks_object(host).unwrap();
         let events: Vec<&String> = obj.keys().collect();
-        assert_eq!(
-            events,
-            ["SessionStart", "PreToolUse", "PostToolUse", "Stop"]
-        );
+        assert_eq!(events, ["SessionStart", "PreToolUse", "PostToolUse"]);
+        assert!(obj.get("Stop").is_none(), "{host}: Stop has no reader");
+        assert!(obj["SessionStart"][0].get("matcher").is_none());
         assert_eq!(obj["PreToolUse"][0]["matcher"], json!("Bash"));
         assert_eq!(obj["PostToolUse"][0]["matcher"], json!("Bash"));
-        assert!(obj["Stop"][0].get("matcher").is_none());
         for (event, groups) in &obj {
             let handler = &groups[0]["hooks"][0];
             assert_eq!(handler["type"], json!("command"));
             assert_eq!(handler["timeout"], json!(hooks::HOOK_TIMEOUT_SECS));
             let command = handler["command"].as_str().unwrap();
-            let expected = if event == "PreToolUse" {
-                "moai-cli claim-verify . --hook".to_string()
-            } else {
-                format!("moai-cli hook-receipt --host {host}")
+            let expected = match event.as_str() {
+                "PreToolUse" => "moai-cli claim-verify . --hook".to_string(),
+                "SessionStart" => {
+                    format!("moai-cli hook-dispatch --host {host} --event session-check")
+                }
+                _ => format!("moai-cli hook-receipt --host {host}"),
             };
             assert_eq!(command, expected);
             assert!(!command.contains('/'), "{command}");
         }
     }
+}
+
+/// #2936 R9 S1 AC-6: the OMP coverage report names `session_stop` as the turn-end event (OMP
+/// 18.18.7, extensions.md `session_stop`) and says it is not wired, instead of claiming OMP has
+/// no turn-end event.
+#[test]
+fn omp_coverage_names_session_stop_and_says_it_is_not_wired() {
+    let caps = moai_cli::hook_engine::capabilities("omp");
+    let tv = &caps["turn-validation"];
+    assert_eq!(tv["supported"], json!(false), "{tv}");
+    assert_eq!(tv["event"], json!("session_stop"), "{tv}");
+    let reason = tv["reason"].as_str().unwrap();
+    assert!(reason.contains("not wired"), "{reason}");
+    assert!(!reason.contains("no turn-end event"), "{reason}");
 }
 
 /// #2255 AC-2 (wiring): the command `hooks-apply` writes for `PreToolUse` is the guard, and
@@ -699,7 +715,10 @@ fn omp_module_wiring_is_pinned() {
     assert!(m.contains("if (code !== 0 || out.trim() === \"\") return null;"));
     assert!(m.contains("catch {\n\t\treturn null;"));
     assert!(m.contains("const TIMEOUT_MS = 10000;"));
-    assert!(!m.contains("turn-validation"), "OMP has no turn-end event");
+    assert!(
+        !m.contains("turn-validation") && !m.contains("session_stop"),
+        "the module does not subscribe to OMP's session_stop (the turn-validation rules are empty)"
+    );
 }
 
 #[cfg(unix)]
@@ -721,7 +740,8 @@ fn omp_symlinked_folders_are_refused() {
 
 /// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
-/// into `.git`, and lets an ordinary call through. Codex keeps its four hooks.
+/// into `.git`, and lets an ordinary call through. Codex keeps its three hooks and has no
+/// preflight guard, only the session-check context.
 #[test]
 fn claude_runs_the_preflight_guard_and_codex_does_not() {
     let claude = hooks::hooks_object("claude").unwrap();
@@ -746,7 +766,11 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
     assert_eq!(codex["PreToolUse"].as_array().unwrap().len(), 1);
     assert!(!codex
         .values()
-        .any(|v| v.to_string().contains("hook-dispatch")));
+        .any(|v| v.to_string().contains("tool-preflight")));
+    assert_eq!(
+        codex["SessionStart"][0]["hooks"][0]["command"],
+        json!("moai-cli hook-dispatch --host codex --event session-check")
+    );
 
     // Run it the way Claude Code would: the command's words, our binary for `moai-cli`.
     let dir = tempfile::TempDir::new().unwrap();

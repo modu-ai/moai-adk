@@ -95,7 +95,7 @@ fn configured_is_yes_after_apply_and_drifted_after_an_edit() {
         );
         let mut v: Value =
             serde_json::from_str(&fs::read_to_string(root.join(file)).unwrap()).unwrap();
-        v["hooks"]["Stop"] = json!([]);
+        v["hooks"]["PostToolUse"] = json!([]);
         fs::write(root.join(file), v.to_string()).unwrap();
         assert_eq!(
             status(&root, host, "")["configured"],
