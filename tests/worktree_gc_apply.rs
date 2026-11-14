@@ -305,6 +305,42 @@ fn apply_acts_only_on_the_planned_paths() {
     );
 }
 
+/// `--worktree` reaches the apply too (#2879; kept when the command moved to `src/ops/`,
+/// #2834 R2c): a plan and an apply limited to `a` remove `a` and leave `b`'s cargo output.
+#[test]
+fn apply_with_worktree_acts_only_on_that_worktree() {
+    let fx = fixture();
+    let now = later() - 86_400 + 3 * 3_600;
+    let a = fx.wt("a");
+    let only = ["--worktree".to_string(), a.to_str().unwrap().to_string()];
+    let args = plan_args(&fx, now, &only);
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let r = envelope(&run(&fx, &refs));
+    assert_eq!(r["ok"], true, "{r}");
+    let digest = r["result"]["plan_digest"].as_str().unwrap().to_string();
+    let now_s = now.to_string();
+    let v = envelope(&run(
+        &fx,
+        &[
+            "worktree-gc-apply",
+            fx.root.to_str().unwrap(),
+            "--integration-ref",
+            "integ",
+            "--now-unix",
+            &now_s,
+            "--worktree",
+            a.to_str().unwrap(),
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    ));
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(!a.exists(), "{v}");
+    assert!(fx.wt("b").join("target/debug").exists(), "{v}");
+}
+
 // AC-3: a worktree that comes into use after the plan (a process working in it) is not
 // touched — the recomputed plan differs, so the apply refuses before writing.
 #[test]

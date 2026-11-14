@@ -1,7 +1,7 @@
 use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use moai_cli::{
-    agents_apply, agents_plan, apply, contract, hosts::codex, plan, session_launch, AgentsPlan,
-    AgentsRequest, Plan, Profile, SessionRequest,
+    agents_apply, agents_plan, apply, contract, plan, session_launch, AgentsPlan, AgentsRequest,
+    Plan, Profile, SessionRequest,
 };
 use std::{
     io::{self, Read},
@@ -178,87 +178,12 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// List a checkout's baseline facts
-    ///
-    /// Read-only baseline inventory of a checkout (typed JSON on stdout).
-    BaselineInventory {
-        project: PathBuf,
-        /// Go-generation baseline commit whose `.claude` trees are compared (read with ls-tree only).
-        #[arg(long)]
-        go_baseline_commit: Option<String>,
-        /// Extra repository to look up the baseline commit in when the project lacks it.
-        #[arg(long)]
-        go_repo: Option<PathBuf>,
-    },
-    /// Show where a path sits in its clone
-    ///
-    /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
-    Identity { path: PathBuf },
     /// Build the code map index
     ///
     /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
     /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
     /// build keeps the previous generation and marks partial (REQ-C6-01).
     IndexBuild { project: PathBuf },
-    /// Import a previewed old key file
-    ///
-    /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
-    /// preview's digest and a permission reference; the read-back must match; the legacy file
-    /// is kept. Destination: the current project's folder, or `_shared` with `--shared`.
-    KeyImportApply {
-        provider: String,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Preview importing an old key file
-    ///
-    /// Preview of moving a legacy key file into the encrypted vault (#2393 S3): which file,
-    /// which destination folder, never the value. Writes nothing.
-    KeyImportPlan {
-        provider: String,
-        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Remove a provider key from the vault
-    ///
-    /// Remove a provider's key from the vault (#2393): the current project's entry, or the
-    /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
-    /// machine key and any legacy key file are never touched.
-    KeyRemove {
-        provider: String,
-        #[arg(long)]
-        yes: bool,
-        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Store a provider key in the vault
-    ///
-    /// Store a provider's key, encrypted, in the vault (#2393): for the current project, or
-    /// for every project with `--shared`. The value is read from stdin only (never argv); an
-    /// interactive terminal is refused. The answer never contains the value.
-    KeySet {
-        provider: String,
-        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Check a provider key without showing it
-    ///
-    /// Whether a provider's entry (current project, or `--shared`) exists, is safe and
-    /// decrypts (#2393). Never the value, its length or a fingerprint.
-    KeyStatus {
-        provider: String,
-        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
-        #[arg(long)]
-        shared: bool,
-    },
     /// Preview moving MoAI state into the home layout
     ///
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
@@ -590,10 +515,6 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
         total_cap: u64,
     },
-    /// Check that Claude Code reads AGENTS.md
-    ///
-    /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
-    ClaudeDoctor { project: PathBuf },
     /// Preview the managed Claude Code settings keys
     ///
     /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
@@ -709,28 +630,6 @@ enum Command {
         #[arg(long)]
         event: String,
     },
-    /// Check the Codex instructions and skills
-    ///
-    /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
-    CodexDoctor {
-        /// Project root (Codex walks from here down to the working directory).
-        project: PathBuf,
-        /// Working directory inside the project (default: the project root).
-        #[arg(long)]
-        cwd: Option<PathBuf>,
-        /// Codex home holding the global AGENTS files (default: $CODEX_HOME, else ~/.codex).
-        #[arg(long)]
-        codex_home: Option<PathBuf>,
-        /// Home holding `.agents/skills` (default: $HOME).
-        #[arg(long)]
-        home: Option<PathBuf>,
-        /// `project_doc_fallback_filenames` entry (repeatable; config.toml is not read).
-        #[arg(long)]
-        fallback: Vec<String>,
-        /// `project_doc_max_bytes` (default 32768; config.toml is not read).
-        #[arg(long)]
-        max_bytes: Option<u64>,
-    },
     /// Preview the branch and worktree of a claim
     ///
     /// Plan the branch and worktree of a claim (06-C #2007). Writes nothing.
@@ -766,20 +665,6 @@ enum Command {
         /// Test seam (WT-5): the project-total warning line in bytes instead of 40 GiB.
         #[arg(long, hide = true, default_value_t = moai_cli::worktree::PROJECT_WARN_BYTES)]
         warn_total_bytes: u64,
-    },
-    /// Report the space worktrees use
-    ///
-    /// Read-only space report of the repository's worktrees, their build folders and the
-    /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
-    /// evaluated. Writes nothing.
-    WorktreeReport {
-        project: PathBuf,
-        /// Folder whose `moai-*` children are classified (default `/tmp`).
-        #[arg(long)]
-        tmp_root: Option<PathBuf>,
-        /// Time budget in milliseconds for the size walk; past it a class is `partial`.
-        #[arg(long, default_value_t = moai_cli::worktree_report::DEFAULT_BUDGET_MS)]
-        budget_ms: u64,
     },
     /// Show the code map
     ///
@@ -910,15 +795,6 @@ enum Command {
         /// original marker; N >= 2 gives a further PR its own operation and marker.
         #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
         pr_seq: u32,
-    },
-    /// Show the installed MoAI binaries
-    ///
-    /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
-    /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
-    InstallInspect {
-        /// Accepted for the REQ-04A-02 invocation form; output is always the JSON envelope.
-        #[arg(long)]
-        json: bool,
     },
     /// Preview the project's generated agent and skill files
     ///
@@ -1335,18 +1211,15 @@ fn operation(command: &Command) -> Option<&'static str> {
         ApplyRecover { .. } => "apply.recover",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
-        BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
         ClaimHandoff { .. } => "claim.handoff",
         ClaimRelease { .. } => "claim.release",
         ClaimShow { .. } => "claim.show",
         ClaimVerify { .. } => "claim.verify",
-        ClaudeDoctor { .. } => "claude.doctor",
         ClaudeSettingsApply { .. } => "claude.settings_apply",
         ClaudeSettingsPlan { .. } => "claude.settings_plan",
         CodexConfigApply { .. } => "codex.config_apply",
         CodexConfigPlan { .. } => "codex.config_plan",
-        CodexDoctor { .. } => "codex.doctor",
         DecisionAppend { .. } => "decision.append",
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
@@ -1360,16 +1233,9 @@ fn operation(command: &Command) -> Option<&'static str> {
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         HooksRevert { .. } => "hooks.revert",
-        Identity { .. } => "identity",
         IndexBuild { .. } => "index.build",
-        InstallInspect { .. } => "install.inspect",
-        KeyImportApply { .. } => "key.import_apply",
         LabelsApply { .. } => "labels.apply",
         LabelsPlan { .. } => "labels.plan",
-        KeyImportPlan { .. } => "key.import_plan",
-        KeyRemove { .. } => "key.remove",
-        KeySet { .. } => "key.set",
-        KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
         LaneStopHook { .. } => "lane.stop_hook",
@@ -1411,7 +1277,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
-        WorktreeReport { .. } => "worktree.report",
     })
 }
 
@@ -1845,103 +1710,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             receipt,
             permission_reference,
         } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
-        Command::BaselineInventory {
-            project,
-            go_baseline_commit,
-            go_repo,
-        } => moai_cli::baseline::inventory(
-            &project,
-            go_baseline_commit.as_deref(),
-            go_repo.as_deref(),
-        ),
-        Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
             &project,
             &input::<moai_cli::index::IndexBuildRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
-        Command::KeyImportApply {
-            provider,
-            plan_digest,
-            permission_reference,
-            shared,
-        } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::import_apply(
-                &moai_cli::key_vault::home()?,
-                &scope,
-                &provider,
-                &plan_digest,
-                &permission_reference,
-            )
-        }
-        Command::KeyImportPlan { provider, shared } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::import_plan(&moai_cli::key_vault::home()?, &scope, &provider)
-        }
-        Command::KeyRemove {
-            provider,
-            yes,
-            shared,
-        } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            let home = moai_cli::key_vault::home()?;
-            if yes {
-                return moai_cli::key_vault::remove(&home, &scope, &provider, true);
-            }
-            // Without `--yes`: the preview removes nothing. On a terminal (stdin and stderr)
-            // with an entry to delete, ask once (#2806, design #2799 D2 §7); elsewhere the
-            // preview with its `next:` hint is the answer, byte for byte as before.
-            let preview = moai_cli::key_vault::remove(&home, &scope, &provider, false)?;
-            use std::io::IsTerminal as _;
-            let terminal = io::stdin().is_terminal() && io::stderr().is_terminal();
-            if !(terminal && preview["exists"] == serde_json::json!(true)) {
-                return Ok(preview);
-            }
-            use moai_cli::ui_text::Msg;
-            let what = |p: &moai_cli::ui::Painter| {
-                format!(
-                    "{}\n  {}\n",
-                    p.text(Msg::KeyRemoveDeletes),
-                    p.fill(
-                        Msg::KeyRemoveWhich,
-                        &[
-                            ("provider", provider.as_str()),
-                            ("scope", preview["scope"].as_str().unwrap_or("?")),
-                            ("path", preview["path"].as_str().unwrap_or("?")),
-                        ],
-                    )
-                )
-            };
-            if moai_cli::progress::ask_terminal(what, Msg::RemoveIt)? {
-                moai_cli::key_vault::remove(&home, &scope, &provider, true)
-            } else {
-                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
-                eprintln!(
-                    "{}: {}",
-                    moai_cli::ui::Token::Info.word_in(lang),
-                    moai_cli::ui_text::text(Msg::RemoveWithYes, lang)
-                );
-                Ok(preview)
-            }
-        }
-        Command::KeySet { provider, shared } => {
-            use std::io::IsTerminal;
-            if io::stdin().is_terminal() {
-                return Err(
-                    "key-set reads the value from stdin and refuses a terminal (the \
-                            value would be echoed); pipe it in instead"
-                        .into(),
-                );
-            }
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            let value = moai_cli::key_vault::read_value(io::stdin())?;
-            moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &scope, &provider, &value)
-        }
-        Command::KeyStatus { provider, shared } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &scope, &provider)
-        }
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -2097,7 +1870,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             );
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
-        Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan {
             project,
             host,
@@ -2199,23 +1971,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &permission_reference,
             )
         }
-        Command::CodexDoctor {
-            project,
-            cwd,
-            codex_home,
-            home,
-            fallback,
-            max_bytes,
-        } => {
-            let home = home
-                .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
-                .ok_or("home directory missing; pass --home")?;
-            let codex_home = codex_home
-                .or_else(|| std::env::var_os("CODEX_HOME").map(PathBuf::from))
-                .unwrap_or_else(|| home.join(".codex"));
-            let cwd = cwd.unwrap_or_else(|| project.clone());
-            codex::doctor(&project, &cwd, &codex_home, &home, &fallback, max_bytes)
-        }
         Command::WorktreePlan {
             project,
             source,
@@ -2247,41 +2002,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
         ),
-        Command::WorktreeReport {
-            project,
-            tmp_root,
-            budget_ms,
-        } => moai_cli::worktree_report::report(
-            &project,
-            &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
-            std::time::Duration::from_millis(budget_ms),
-        ),
-        Command::InstallInspect { json: _ } => {
-            let home = std::env::var_os("HOME")
-                .filter(|h| !h.is_empty())
-                .map(PathBuf::from)
-                .ok_or("home directory missing; install-inspect requires HOME")?;
-            let path_env = std::env::var("PATH").unwrap_or_default();
-            let env_dir = |k: &str| {
-                std::env::var_os(k)
-                    .filter(|v| !v.is_empty())
-                    .map(PathBuf::from)
-            };
-            let (project_dir, gobin) = (env_dir("CLAUDE_PROJECT_DIR"), env_dir("GOBIN"));
-            let places = moai_cli::install::CandidatePlaces {
-                project_dir: project_dir.as_deref(),
-                gobin: gobin.as_deref(),
-            };
-            let result = moai_cli::install::inspect(&home, &path_env, &places)?;
-            // #2867: a person at a terminal sees the note once, in stderr's language (#2825);
-            // the envelope carries the English note in every language.
-            if result["path_first_moai"]["note"].is_string() && moai_cli::ui::stderr_is_terminal() {
-                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
-                let note = moai_cli::ui_text::text(moai_cli::ui_text::Msg::PathFirstNote, lang);
-                eprintln!("moai-cli: {note}");
-            }
-            Ok(result)
-        }
         Command::Update {
             confirm,
             confirm_cleanup,

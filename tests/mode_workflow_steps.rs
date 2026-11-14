@@ -176,6 +176,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "claim-timeout-check --issue",
             "claim-verify",
             "claim-verify --hook",
+            // #2903 (#2899 O4): the lane closes its own card through `close-check` (its
+            // `--repo` follows a placeholder, so tests/close_step_2903.rs checks that flag).
+            "close-check",
             "gate-check",
             "gate-loop --fetch",
             "gate-schedule-apply",
