@@ -799,11 +799,19 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 `moai statusline` reads Claude Code JSON from stdin and prints raw text, not an
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
-The three lines follow the user instructions of 2026-11-13 (#2756, and #2809 for the
-third line's order). Segments on a line are joined by ` | `, and a segment with no value
+The three lines follow the user instructions of 2026-11-13 (#2756) and, for the tag's
+place, #2928 (user instruction 6878415244, 2026-11-14). Segments on a line are joined by ` | `, and a segment with no value
 is left out together with its separator.
 
-1. Running environment: `🤖` model, `🧠` effort/thinking, `♻️` cache hit with the prompt
+1. Tag and running environment: `🏷️ <tag>` first (`🏷️ leader | 🤖 … | 🗿 …`; #2928, user
+   instruction 6878415244 on 2026-11-14, which moved it from the front of line 3). The tag
+   is only `leader` or `agent`: `leader` when the stdin `session_name` is a valid lane name
+   and the clone's lane registry holds a live entry for it with mode `leader`
+   (`moai session-register --mode leader`, read by `lane_registry::mode_of`), `agent`
+   otherwise. The `session_name` text itself is never printed. The tag is shown whenever
+   the `session` option is on, even without stdin (decision Q2); with every other line-1
+   segment off it stands alone, and with `session` off line 1 starts at `🤖`. Then `🤖`
+   model, `🧠` effort/thinking, `♻️` cache hit with the prompt
    cache timer (`⏱️ Nm` whole minutes until `prompt_cache.expires_at`, `🧊` once
    `prompt_cache.warm` is false or the time has passed; user choice 2026-11-13, #2756
    AC-8), `🔅` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
@@ -817,14 +825,9 @@ is left out together with its separator.
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
    The `worktree` and `pr` options turn their segments off.
-3. Tag and usage: `🏷️ <tag>` first, then the `CTX` and available `Week` bars
-   (`🏷️ leader | 🔋 CTX: … | 🪫 Week: …`; #2928, user instruction 2026-11-14, replacing
-   #2809's name-last order). The tag is only `leader` or `agent`: `leader` when the stdin
-   `session_name` is a valid lane name and the clone's lane registry holds a live entry for
-   it with mode `leader` (`moai session-register --mode leader`, read by
-   `lane_registry::mode_of`), `agent` otherwise. The `session_name` text itself is never
-   printed. The tag is shown whenever the `session` option is on, even without stdin
-   (decision Q2); with no bars it stands alone. The bar icons (`🔋`/`🪫`) and the
+3. Usage: the `CTX` and available `Week` bars only (`🔋 CTX: … | 🪫 Week: …`; since #2928
+   user instruction 6878415244 the tag is on line 1, not here). With both bars off the
+   line is empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the
    `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden; reset times are not printed.
