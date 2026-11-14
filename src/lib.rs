@@ -62,6 +62,7 @@ pub mod labels_check;
 pub mod lane_duty;
 pub mod lane_env;
 pub mod lane_handoff;
+pub mod lane_loop;
 pub mod lane_next;
 pub mod lane_registry;
 pub mod lane_reset;
