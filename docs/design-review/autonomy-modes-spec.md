@@ -1,6 +1,6 @@
 # 자율 무중단 개발 모드 SPEC — `/moai --mode-leader` · `/moai --mode-agent` (#2138, DR-02)
 
-> 현행 상태(#2167): 구현된 형태는 `/moai --mode-leader [--autonomy full|semi]`·`/moai --mode-agent`(#2160, `skills/moai/SKILL.md`)다. 이 문서의 표기는 #2286(사용자 결정 Issue #2389 댓글 6774899518 행 36)에서 이 두 형태로 고쳤다. 설계 당시 이름 `--leader-mode`·`--agent-mode`와 그 뒤의 `--mode leader`·`--mode agent`는 더 쓰지 않는다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있다. 그 이전 제안 `docs/lane-loop-contract.md`(2026-11-08)는 폐기됐다(#2900, #2899 G10). 2026-11-14 오케스트레이션 재설계(#2899, O1 #2900)로 §1·§2·§3②·§5·§8·§9를 고치고 끝 조건을 §12 한 곳에 두었다. 모드는 호스트가 아니라 채널로 나눈다: Orca가 있으면 지휘 모드, 없으면 자율 모드다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
+> 현행 상태(#2167): 구현된 형태는 `/moai --mode-leader [--autonomy full|semi]`·`/moai --mode-agent`(#2160, `skills/moai/SKILL.md`)다. 이 문서의 표기는 #2286(사용자 결정 Issue #2389 댓글 6774899518 행 36)에서 이 두 형태로 고쳤다. 설계 당시 이름 `--leader-mode`·`--agent-mode`와 그 뒤의 `--mode leader`·`--mode agent`는 더 쓰지 않는다. §3의 한 회차는 `moai-cli lane-next`가 다음 일을 고르고(`queue-next`(#2161)는 #2901에서 폐지), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있다. 그 이전 제안 `docs/lane-loop-contract.md`(2026-11-08)는 폐기됐다(#2900, #2899 G10). 2026-11-14 오케스트레이션 재설계(#2899, O1 #2900)로 §1·§2·§3②·§5·§8·§9를 고치고 끝 조건을 §12 한 곳에 두었다. 모드는 호스트가 아니라 채널로 나눈다: Orca가 있으면 지휘 모드, 없으면 자율 모드다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
 
 - 상태: SPEC 초안(Class C, 설계 변경). 이 문서는 구현하지 않는다. 코드·skill 파일은 바꾸지 않았고, 구현은 §10의 후속 카드가 맡는다.
 - 입력: 종합 개선 보고서 §10.4(`references/chatgpt-space/synthesis-improvement-report-2026-11-09.md`, 2026-11-09 작성, 저장소에 아직 tracked 아님). 사용자 결정 2026-11-09 00:0x~00:3x(모드 skill 진입, 완전/반자율, self-claim 기본, 리더 5분 PR 점검·타 에이전트 수리 지시, `/goal` 붙여넣기 안내).
@@ -45,7 +45,7 @@
 
 ### 현재 선택 경계: 지정 handoff (#2390 S4a)
 
-`queue-next`는 유효한 `moai-claim-handoff: comment=<id> to=<session>`의 수신자를 세션 id의 **정확한 문자열 일치**로 구분한다. 지정되지 않은 세션은 그 카드를 `skipped`의 `reason: handed_to_other`로 남기고 다음 후보로 간다. 로컬 journal에 활성 기록이 있어도 새 원격 handoff를 우회하지 못한다. `pr_ready` 카드의 기존 건너뛰기는 유지한다.
+`queue-free`는 유효한 `moai-claim-handoff: comment=<id> to=<session>`가 아직 받아지지 않은 카드를 `free`가 아니라 `reserved`로 두고 수신자(`to`)를 함께 적는다. 수신자는 세션 id의 **정확한 문자열 일치**로 구분하고(`src/queue.rs` `read_claim_history`), 수신자의 다음 claim이 그 예약을 닫는다. 판정은 원격 Issue 댓글만 읽으므로 로컬 journal의 활성 기록이 새 원격 handoff를 우회하지 못한다. 예전 `queue-next`(#2161)의 `skipped`·`reason: handed_to_other`와 `pr_ready` 건너뛰기는 그 명령과 함께 없어졌다(#2901, PR #2916).
 
 handoff는 소유권 부여가 아니다. 지정된 세션도 claim 게시와 재조회·승자 판정을 거쳐야 한다. 일반 release는 누구나 다시 고를 수 있게 하며, 수신자가 새 claim 뒤 release한 과거 handoff가 카드를 영구히 예약하지 않는다. lease 만료만으로는 이전하지 않는다. 원격 댓글의 eventual consistency와 `cross_host_atomic: false` 한계는 그대로다.
 
@@ -150,4 +150,4 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` was a deterministic, st
 - startable에서 빠지는 것: `needs:decision` 표시, HOLD 기록, keep-set 항목, 열린 선행 Issue가 있는 Issue, 하위 Issue가 열려 있는 상위 epic.
 - 빠진 것은 매 보고(레인의 `LANE-*` 줄과 그 댓글, 리더의 회차 요약)에 **이유와 함께 목록**으로 남긴다. 사용자가 보는 "남은 것"이 이 목록이다. 이유 없이 "할 일 없음"만 적지 않는다.
 - 끝 조건이 거짓인 동안 후보가 0건이면 멈추지 않고 깨우기를 건다(§3②, §5).
-- 판정 기계: 지금은 `lane-next`(레인의 다음 일)와 `goal-block`(붙여 넣을 `/goal` 줄)이 각자 판정한다. 두 명령이 이 판정 함수 하나를 쓰고 HOLD·`needs:decision` 카드를 건너뛰게 하는 일, `queue-next`를 정리하는 일은 #2899 O2가 맡는다(예정).
+- 판정 기계: `lane-next`(레인의 다음 일), `goal-block`(붙여 넣을 `/goal` 줄), `queue-free`(남은 카드 묶음)가 판정 함수 하나(`startable::judge`)를 함께 쓰고 HOLD·`needs:decision` 카드를 건너뛴다. `queue-next`는 폐지됐다(#2899 O2 = #2901, PR #2916).
