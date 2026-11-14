@@ -138,6 +138,250 @@ fn commits_without_claim(dir: &Path, merge_base: &str, head: &str) -> Result<Vec
         .collect())
 }
 
+/// PR files a mechanical delta compares at most (#2833); four git calls per file.
+pub const MAX_DELTA_FILES: usize = 200;
+
+/// `git patch-id --stable` of `file`'s change from `a` to `b` (line numbers and whitespace do
+/// not count; the content of every added and removed line does). `--binary` keeps a binary
+/// file's bytes in the patch, so a changed binary never reads as the same patch.
+fn patch_id(dir: &Path, a: &str, b: &str, file: &str) -> Result<String> {
+    let diff = crate::audit_delta::command(dir)
+        .args(["diff", "--no-renames", "--binary", a, b, "--", file])
+        .output()
+        .map_err(|e| format!("cannot execute git: {e}"))?;
+    if !diff.status.success() {
+        return Err(format!("git diff {a} {b} -- {file} failed"));
+    }
+    let mut child = crate::audit_delta::command(dir)
+        .args(["patch-id", "--stable"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("cannot execute git: {e}"))?;
+    {
+        use std::io::Write;
+        let mut stdin = child.stdin.take().ok_or("git patch-id has no stdin")?;
+        stdin
+            .write_all(&diff.stdout)
+            .map_err(|e| format!("git patch-id stdin: {e}"))?;
+    }
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("git patch-id failed: {e}"))?;
+    Ok(String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .to_string())
+}
+
+/// Whether `to` is the verdict head `from` with only the base branch merged in (#2833 scope
+/// 1–3; scope 4, the CI on `to`, is G5's): `from` is an ancestor of `to` (AC-2); every commit
+/// after `from` that the tip does not hold is a merge, so the PR's author added none; the PR's
+/// file set against its merge base is the same on both heads, so a merge changed no file
+/// outside it; and each file's patch-id is the same, so a resolution that changed a PR line
+/// differs. `ok: false` carries the first reason.
+pub fn mechanical_delta(dir: &Path, from: &str, to: &str, tip: &str) -> Result<gate::AutoDelta> {
+    mechanical_delta_limited(dir, from, to, tip, MAX_DELTA_FILES)
+}
+
+/// [`mechanical_delta`] with the file limit as a parameter, so the limit's boundary can be
+/// tested on a small repository.
+#[doc(hidden)]
+pub fn mechanical_delta_limited(
+    dir: &Path,
+    from: &str,
+    to: &str,
+    tip: &str,
+    max_files: usize,
+) -> Result<gate::AutoDelta> {
+    let no = |detail: String| gate::AutoDelta {
+        from: from.to_string(),
+        to: to.to_string(),
+        ok: false,
+        detail,
+        files: Vec::new(),
+    };
+    if !is_commit(dir, from)? {
+        return Ok(no(format!("the verdict head {from} is not a local commit")));
+    }
+    if !git(dir, &["merge-base", "--is-ancestor", from, to])?.0 {
+        return Ok(no(format!(
+            "the verdict head {} is not an ancestor of the current head",
+            short(from)
+        )));
+    }
+    let own = git_ok(
+        dir,
+        &[
+            "rev-list",
+            "--no-merges",
+            to,
+            &format!("^{from}"),
+            &format!("^{tip}"),
+        ],
+    )?;
+    let own: Vec<&str> = own.lines().filter(|l| !l.is_empty()).collect();
+    if !own.is_empty() {
+        let list: Vec<&str> = own.iter().map(|c| short(c)).collect();
+        return Ok(no(format!(
+            "{} commit(s) after the verdict head are not merges of the base branch: {}",
+            own.len(),
+            list.join(", ")
+        )));
+    }
+    let mb_from = git_ok(dir, &["merge-base", from, tip])?.trim().to_string();
+    let mb_to = git_ok(dir, &["merge-base", to, tip])?.trim().to_string();
+    let files_from = names(&git_ok(
+        dir,
+        &["diff", "--no-renames", "--name-only", &mb_from, from],
+    )?);
+    let files_to = names(&git_ok(
+        dir,
+        &["diff", "--no-renames", "--name-only", &mb_to, to],
+    )?);
+    if files_from != files_to {
+        let extra: Vec<&String> = files_to
+            .iter()
+            .filter(|f| !files_from.contains(f))
+            .collect();
+        let gone: Vec<&String> = files_from
+            .iter()
+            .filter(|f| !files_to.contains(f))
+            .collect();
+        return Ok(no(format!(
+            "the PR's files differ between the heads (only on the current head: {extra:?}; only on the verdict head: {gone:?})"
+        )));
+    }
+    if files_from.is_empty() {
+        return Ok(no("the PR changes no files".into()));
+    }
+    if files_from.len() > max_files {
+        return Ok(no(format!(
+            "{} PR files, more than the {max_files} a mechanical delta compares",
+            files_from.len()
+        )));
+    }
+    let mut files = Vec::new();
+    for f in &files_from {
+        let a = patch_id(dir, &mb_from, from, f)?;
+        let b = patch_id(dir, &mb_to, to, f)?;
+        if a.is_empty() || a != b {
+            return Ok(no(format!(
+                "{f}: the PR's change differs between the heads"
+            )));
+        }
+        files.push(gate::DeltaFile {
+            path: f.clone(),
+            patch_id_from: a,
+            patch_id_to: b,
+        });
+    }
+    Ok(gate::AutoDelta {
+        from: from.to_string(),
+        to: to.to_string(),
+        ok: true,
+        detail: format!(
+            "{} merges only the base branch into {}; {} PR file(s), patch-ids equal",
+            short(to),
+            short(from),
+            files.len()
+        ),
+        files,
+    })
+}
+
+fn short(sha: &str) -> &str {
+    sha.get(..10).unwrap_or(sha)
+}
+
+/// The verdict first line for the head the auditor examined (#2833 D4), refused unless that
+/// head is still the PR's head on GitHub right before printing. A verdict therefore never
+/// names a head nobody audited (audit 6869947940 B1) nor an older one the gate would stop at
+/// (#2821). When the head moved only by an update-branch merge of the base branch, the line
+/// for the audited head is the right one: the gate carries it (AUTO-DELTA). The base is
+/// `base` when given, else `git merge-base <head> <tip>` in the local repository (the head
+/// must be fetched). Reads only.
+pub fn verdict_line_for<T: Transport>(
+    target: &Target<'_>,
+    audited_head: &str,
+    title: &str,
+    verdict: &str,
+    base: Option<&str>,
+    t: &T,
+) -> Result<serde_json::Value> {
+    if !gate::is_full_sha(audited_head) {
+        return Err("--head must be the audited head, 40 lowercase hex".into());
+    }
+    let base_url = format!(
+        "https://api.github.com/repos/{}/{}",
+        target.owner, target.repo
+    );
+    let (pr, _) = get_json(t, &format!("{base_url}/pulls/{}", target.pr))?;
+    let now = pr["head"]["sha"]
+        .as_str()
+        .ok_or("pull request has no head sha")?
+        .to_string();
+    // The head moved during the audit. A line for the audited head is still right when the move
+    // is a mechanical delta (the gate carries the PASS, AUTO-DELTA); anything else needs the
+    // delta audited first, so no line is printed.
+    let mut carried_to = None;
+    if now != audited_head {
+        let refuse = |why: String| {
+            format!(
+                "the pull request's head is now {now}, not the audited head {audited_head}, and {why}; no line printed — audit the delta {audited_head}..{now}, then run this again with --head {now}"
+            )
+        };
+        if !is_commit(target.dir, &now)? {
+            return Err(refuse(format!(
+                "the new head is not in the local repository (fetch refs/pull/{}/head) to check whether only the base branch was merged in",
+                target.pr
+            )));
+        }
+        let d = mechanical_delta(target.dir, audited_head, &now, target.tip)?;
+        if !d.ok {
+            return Err(refuse(format!(
+                "it is not a mechanical delta: {}",
+                d.detail
+            )));
+        }
+        carried_to = Some(now.clone());
+    }
+    let head = audited_head.to_string();
+    let (base, from) = match base {
+        Some(b) => (b.to_string(), "given"),
+        None => {
+            if !is_commit(target.dir, &head)? {
+                return Err(format!(
+                    "pull request head {head} is not in the local repository; fetch refs/pull/{}/head first, or pass --base",
+                    target.pr
+                ));
+            }
+            let tip = git_ok(
+                target.dir,
+                &[
+                    "rev-parse",
+                    "--verify",
+                    &format!("{}^{{commit}}", target.tip),
+                ],
+            )
+            .map_err(|_| format!("tip `{}` is not a local commit", target.tip))?;
+            let mb = git_ok(target.dir, &["merge-base", &head, tip.trim()])?;
+            (mb.trim().to_string(), "merge-base")
+        }
+    };
+    let line = gate::format_verdict_line(target.pr, title, &head, &base, verdict)?;
+    let mut out =
+        serde_json::json!({ "line": line, "head": head, "base": base, "base_from": from });
+    if let Some(to) = carried_to {
+        // A FAIL is never carried; the gate carries only a PASS (G1).
+        out["current_head"] = serde_json::json!(to);
+        out["auto_delta"] = serde_json::json!(verdict == "PASS");
+    }
+    Ok(out)
+}
+
 /// Whether a PR body names a claim (G11): the marker the removed `flow-gate-verdict`
 /// `pr_body_claim` check read, anywhere in the body.
 pub fn has_body_claim(body: &str) -> bool {
@@ -427,15 +671,23 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
     // The verdict base is read from the last verdict the gate will judge; without one G1 stops.
-    let verdict_base = comments
+    let last_verdict = comments
         .iter()
         .filter_map(|c| {
             let first = c.body.lines().next()?;
             first.starts_with("AUDIT #").then_some((c.id, first))
         })
         .max_by_key(|(id, _)| *id)
-        .and_then(|(_, line)| gate::parse_verdict(line))
-        .map(|(_, base, _)| base);
+        .and_then(|(_, line)| gate::parse_verdict(line));
+    let verdict_base = last_verdict.as_ref().map(|(_, base, _)| base.clone());
+    // #2833: a PASS on an earlier head may still count when the current head only merged the
+    // base branch into it. Measured only then; any other case leaves it absent.
+    let auto_delta = match &last_verdict {
+        Some((vhead, _, v)) if v == "PASS" && *vhead != head => {
+            Some(mechanical_delta(dir, vhead, &head, &tip)?)
+        }
+        _ => None,
+    };
     let verdict_base_known = match &verdict_base {
         Some(b) => is_commit(dir, b)?,
         None => false,
@@ -443,7 +695,12 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     // What the tip changed since the verdict: measured from where the verdict's base meets the
     // tip. A verdict base that is an earlier PR head (not on the tip) would otherwise count the
     // PR's own changes, undone, as tip changes — a false overlap.
+    // #2833: with a mechanical delta the current head already holds the tip it merged, so the
+    // tip's changes count from where the current head meets the tip; otherwise the overlap G6
+    // reads would be the very changes the update-branch merged in.
+    let delta_ok = auto_delta.as_ref().is_some_and(|d| d.ok);
     let tip_since = match (&verdict_base, verdict_base_known) {
+        (Some(_), true) if delta_ok => Some(merge_base.clone()),
         (Some(b), true) => Some(git_ok(dir, &["merge-base", b, &tip])?.trim().to_string()),
         _ => None,
     };
@@ -494,5 +751,6 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         tip_repair: crate::flow::is_tip_repair(&body),
         commits_without_claim: Some(unclaimed),
         body_claim: has_body_claim(&body),
+        auto_delta,
     })
 }
