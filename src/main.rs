@@ -3680,6 +3680,7 @@ mod help_rules {
         "hook-dispatch",
         "install-inspect",
         "labels-check",
+        "lane-next",
         "lane-safe-to-reset",
         "migrate-plan",
         "optimize-plan",

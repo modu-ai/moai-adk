@@ -115,6 +115,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("lane-next", false),
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),

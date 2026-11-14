@@ -1,0 +1,7 @@
+# `lane-next`
+
+operation `lane.next` · 코드 `src/ops/lane_next.rs`, `src/lane_next.rs` · Issue #2831
+
+`lane-next --lane NAME --repo OWNER/REPO [--tip BRANCH] [--wait SECS] [--dir .] [--snapshot FILE]` 는 이 레인이 **지금 할 일 하나**와 그 근거를 낸다. 매번 GitHub 에서 다시 읽어 계산하므로, 정지·압축 뒤 첫 실행도 놓친 일을 낸다. 순서(#1975 6855190942): P0 tip 빨강(`gate_collect::tip_ci`, 머지 게이트 G8 과 같은 판정) → P1 내 PR(지금 head 의 감사 FAIL, 충돌, CI 실패) → P1 내가 감사 예약한 PR(판정 없음, 내 판정 뒤 head 가 바뀜, 재감사 요청 댓글 — 지금 head 40자와 함께) → P1 감사자 없는 남의 PR(초안 아님) → 내 `LANE-BLOCKED … kind=decision` 뒤에 `LEADER-DECISION` 이 달린 스레드 → P2 내가 claim 한 카드(내 열린 PR 이 없고 결정 대기 아님) → P2–P4 아무도 claim 하지 않은 열린 Issue(`hold` 라벨 제외). 내 PR·내 claim 은 `Moai-Claim: <issue>#<comment>` 와 그 댓글의 `moai-claim: session=<lane>` 로, 감사 예약은 `moai-audit-claim: lane=<lane> head=<40hex>` 로, 판정은 첫 줄 `AUDIT #… head <40hex> … verdict: PASS|FAIL` 로 읽는다. `LANE-BLOCKED` 줄은 레인 이름을 담거나 레인이 claim 한 스레드에 있어야 그 레인 것이다.
+
+읽기만 한다(쓰기 0). 한 번 읽기에 GitHub 요청은 최대 30(높은 순위부터 읽고, 모자라면 `partial` 에 무엇을 못 읽었는지 적는다). `--wait` 는 할 일이 생길 때까지 60초마다 다시 읽는다(3600초 이하). `--tip` 이 없으면 열린 PR 들이 가장 많이 겨누는 base 를 tip 으로 쓴다. `--snapshot` 은 저장한 스냅숏(JSON)으로 판정만 한다. 결과: `lane`, `next`(`priority`·`kind`·`target`·`action`·`evidence` 또는 `null`), `waiting`(답이 아직 없는 결정 요청), `partial`, `api_calls`, `writes: false`, `rounds`. 사람용 한 줄은 stderr 가 터미널일 때만, GitHub 에서 읽은 글은 넣지 않는다.
