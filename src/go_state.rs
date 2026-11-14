@@ -1763,6 +1763,18 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     }
     let (kinds, counterparts) = plan_counterparts(&items);
     let after_move = plan_after_move(&project, &items, &settings);
+    // O-2 (#2936): the skill mirror folders may end up empty; the apply deletes no folder, so
+    // the preview says so and the user decides.
+    for f in after_move
+        .empty_folders
+        .iter()
+        .filter(|f| matches!(f.as_str(), ".agents/skills" | ".agents"))
+    {
+        warnings.push(format!(
+            "{f} holds nothing once the move is done; the apply deletes no folder (O-2), remove \
+             it yourself if you do not want it"
+        ));
+    }
     let mut plan = GoStatePlan {
         schema_version: SCHEMA_VERSION,
         project: project
