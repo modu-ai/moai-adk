@@ -73,6 +73,27 @@ pub fn choose(i: &Inputs) -> Lang {
     }
 }
 
+/// The language of one stream from its real inputs (what [`crate::ui::ui_lang`] passes): the
+/// stream's terminal flag, an environment reader, the current folder and HOME. The terminal
+/// flag goes into [`choose`], so the tested rule — a pipe is English (S6-2) — is the one that
+/// runs; for a pipe nothing else is read (audit #2862 B1).
+pub fn for_stream(
+    terminal: bool,
+    var: &dyn Fn(&str) -> Option<String>,
+    cwd: Option<&Path>,
+    home: Option<&Path>,
+) -> Lang {
+    let read = |f: &dyn Fn() -> Option<String>| if terminal { f() } else { None };
+    choose(&Inputs {
+        terminal,
+        moai_lang: read(&|| var("MOAI_LANG")),
+        profile_chat: read(&|| cwd.and_then(|c| profile_chat(c, home))),
+        lc_all: read(&|| var("LC_ALL")),
+        lc_messages: read(&|| var("LC_MESSAGES")),
+        lang: read(&|| var("LANG")),
+    })
+}
+
 /// `language.user_chat` of the project that holds `cwd`: walking up from `cwd`, the first
 /// folder whose profile reads; the walk stops at the first folder holding `.git` (the project
 /// boundary), and HOME and the file-system root are never read as projects. Every read
@@ -167,10 +188,37 @@ pub fn placeholders(text: &str) -> Vec<&str> {
 /// `text(msg, lang)` with each `{name}` replaced by its value, made safe for a terminal by
 /// [`crate::ui::visible`]. A placeholder without a value is left as written.
 pub fn fill(msg: Msg, lang: Lang, values: &[(&str, &str)]) -> String {
-    let mut out = text(msg, lang).to_string();
-    for (name, value) in values {
-        out = out.replace(&format!("{{{name}}}"), &crate::ui::visible(value));
+    fill_text(text(msg, lang), values)
+}
+
+/// One pass over `template`: each `{name}` is replaced once, so a value that itself contains
+/// `{other}` is never expanded again (audit #2862 N1).
+fn fill_text(template: &str, values: &[(&str, &str)]) -> String {
+    let mut out = String::with_capacity(template.len());
+    let mut rest = template;
+    while let Some(open) = rest.find('{') {
+        out.push_str(&rest[..open]);
+        let after = &rest[open + 1..];
+        match after.find('}') {
+            Some(close) => {
+                let name = &after[..close];
+                match values.iter().find(|(n, _)| *n == name) {
+                    Some((_, value)) => out.push_str(&crate::ui::visible(value)),
+                    None => {
+                        out.push('{');
+                        out.push_str(name);
+                        out.push('}');
+                    }
+                }
+                rest = &after[close + 1..];
+            }
+            None => {
+                out.push_str(&rest[open..]);
+                rest = "";
+            }
+        }
     }
+    out.push_str(rest);
     out
 }
 
@@ -256,6 +304,31 @@ mod tests {
                 },
                 Lang::Ko,
             ),
+            // LC_ALL comes before LC_MESSAGES, and LC_MESSAGES before LANG (audit #2862 B1).
+            (
+                Inputs {
+                    lc_all: some("C"),
+                    lc_messages: some("ko_KR.UTF-8"),
+                    ..tty()
+                },
+                Lang::En,
+            ),
+            (
+                Inputs {
+                    lc_all: some("ko_KR.UTF-8"),
+                    lc_messages: some("C"),
+                    ..tty()
+                },
+                Lang::Ko,
+            ),
+            (
+                Inputs {
+                    lc_messages: some("ko_KR.UTF-8"),
+                    lang: some("C"),
+                    ..tty()
+                },
+                Lang::Ko,
+            ),
         ];
         for (inputs, want) in rows {
             assert_eq!(choose(&inputs), want, "{inputs:?}");
@@ -315,6 +388,42 @@ mod tests {
         );
         assert_eq!(fill(Msg::MoreRows, Lang::En, &[("count", "3")]), "… 3 more");
         assert_eq!(fill(Msg::MoreRows, Lang::Ko, &[]), "… 외 {count}개");
+    }
+
+    /// The function `ui::ui_lang` calls: a pipe is English whatever the environment says, and
+    /// nothing is read for it; a terminal follows the environment (audit #2862 B1).
+    #[test]
+    fn a_real_stream_on_a_pipe_is_english() {
+        let asked = std::cell::RefCell::new(Vec::new());
+        let env = |k: &str| {
+            asked.borrow_mut().push(k.to_string());
+            match k {
+                "MOAI_LANG" | "LANG" => Some("ko".to_string()),
+                _ => None,
+            }
+        };
+        let cwd = Path::new("/nonexistent/moai-ui-text");
+        assert_eq!(for_stream(false, &env, Some(cwd), None), Lang::En);
+        assert!(
+            asked.borrow().is_empty(),
+            "a pipe reads nothing: {:?}",
+            asked.borrow()
+        );
+        assert_eq!(for_stream(true, &env, Some(cwd), None), Lang::Ko);
+        assert!(asked.borrow().contains(&"MOAI_LANG".to_string()));
+    }
+
+    /// One pass: a value holding another placeholder's text is not expanded again, and an
+    /// unmatched brace stays as written (audit #2862 N1).
+    #[test]
+    fn fill_replaces_each_placeholder_once() {
+        assert_eq!(
+            fill_text("{a} and {b}", &[("a", "{b}"), ("b", "B")]),
+            "{b} and B"
+        );
+        assert_eq!(fill_text("x {missing} y", &[]), "x {missing} y");
+        assert_eq!(fill_text("open { tail", &[("tail", "t")]), "open { tail");
+        assert_eq!(fill_text("", &[]), "");
     }
 
     #[test]
