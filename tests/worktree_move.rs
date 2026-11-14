@@ -239,9 +239,10 @@ fn every_blocking_reason_is_named_and_only_a_clean_worktree_moves() {
         key.starts_with("proj-") && key.len() == "proj-".len() + 12,
         "{key}"
     );
+    // #2835 D3: one level, `<root>/<project>-<name>` like the W2 worktree place.
     assert_eq!(
         item(&p, &fx.wt("clean"))["destination"],
-        json!(fx.root.join(key).join("clean").display().to_string())
+        json!(fx.root.join("proj-clean").display().to_string())
     );
     assert_eq!(p["writes"], json!(false));
     assert!(!fx.root.exists(), "the plan creates nothing");
@@ -408,7 +409,8 @@ fn the_root_is_checked_and_a_taken_destination_blocks() {
         .as_str()
         .unwrap()
         .to_string();
-    fs::create_dir_all(fx.root.join(&key).join("clean")).unwrap();
+    let _ = key;
+    fs::create_dir_all(fx.root.join("proj-clean")).unwrap();
     assert_eq!(
         reasons(&plan(&fx, Some(&obs)), &fx.wt("clean")),
         ["destination_exists"]
@@ -486,8 +488,8 @@ fn two_worktrees_with_one_name_block_each_other() {
     assert_eq!(p["totals"]["move"], json!(0));
 }
 
-/// #2723: without `--root` the common root is the HOME state folder's `worktrees`; the
-/// folder name is not spelled here, so a rename of the HOME state folder needs no test edit.
+/// #2723, #2835 D3: without `--root` the common root is `<HOME>/.moai/worktrees` — the W2
+/// worktree place — and destinations sit directly in it.
 #[test]
 fn without_root_the_home_state_folder_holds_the_worktrees() {
     let fx = fixture(&["clean"]);
@@ -497,12 +499,18 @@ fn without_root_the_home_state_folder_holds_the_worktrees() {
     assert_eq!(v["ok"], json!(true), "{v}");
     let r = &v["result"];
     let root = PathBuf::from(r["root"].as_str().unwrap());
-    assert_eq!(root.parent().unwrap().parent().unwrap(), fx.home, "{r}");
-    assert_eq!(root.file_name().unwrap(), "worktrees");
-    let key = r["project_key"].as_str().unwrap();
+    assert_eq!(root, fx.home.join(".moai/worktrees"), "{r}");
+    assert_eq!(PathBuf::from(r["project_root"].as_str().unwrap()), root);
+    let clean = fs::canonicalize(fx.wt("clean")).unwrap();
+    let c = r["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == clean.to_str().unwrap())
+        .unwrap();
     assert_eq!(
-        PathBuf::from(r["project_root"].as_str().unwrap()),
-        root.join(key)
+        c["destination"],
+        json!(root.join("proj-clean").to_str().unwrap())
     );
     // Without HOME, or with a relative HOME, nothing is guessed.
     for home in [None, Some("relative/home")] {
@@ -519,4 +527,48 @@ fn without_root_the_home_state_folder_holds_the_worktrees() {
         assert_eq!(v["ok"], json!(false), "{home:?}: {v}");
         assert!(v.to_string().contains("pass --root"), "{v}");
     }
+}
+
+/// #2835 D3: worktrees already in the new place, in the earlier common root
+/// `<HOME>/.moai-cli/worktrees/<project key>/<name>` and in the Go generation's
+/// `<HOME>/.moai/worktrees/projects/<project>/<name>` are judged and kept — never moved.
+#[test]
+fn new_old_root_and_go_place_worktrees_are_kept() {
+    let fx = fixture(&[]);
+    let place = fx.home.join(".moai/worktrees");
+    let at = [
+        (place.join("proj-here"), "here", "home"),
+        (
+            fx.home.join(".moai-cli/worktrees/proj-0123456789ab/old"),
+            "old",
+            "old_root",
+        ),
+        (place.join("projects/proj/feat"), "feat", "go"),
+    ];
+    for (wt, name, _) in &at {
+        let branch = format!("issue/1-{name}");
+        git(
+            &fx.repo,
+            &["worktree", "add", "-q", "-b", &branch, wt.to_str().unwrap()],
+        );
+        pushed(wt, &branch);
+    }
+    let obs = fx.obs(json!({"source": "fixture", "branches": []}));
+    let out = run(
+        &fx,
+        &[
+            "worktree-move-plan",
+            fx.repo.to_str().unwrap(),
+            "--observations",
+            obs.to_str().unwrap(),
+        ],
+    );
+    let v = envelope(&out);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    for (wt, name, location) in &at {
+        let c = item(&v["result"], wt);
+        assert_eq!(c["action"], json!("keep"), "{name}: {c}");
+        assert_eq!(c["location"], json!(location), "{name}: {c}");
+    }
+    assert_eq!(v["result"]["totals"]["move"], json!(0), "{v}");
 }
