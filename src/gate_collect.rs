@@ -296,26 +296,59 @@ fn short(sha: &str) -> &str {
     sha.get(..10).unwrap_or(sha)
 }
 
-/// The verdict first line for the PR's head as GitHub has it now (#2833 D4): reads the head
-/// right before printing, so a verdict never names a head that moved while the audit ran
-/// (#2821). The base is `base` when given, else `git merge-base <head> <tip>` in the local
-/// repository (the head must be fetched). Reads only.
+/// The verdict first line for the head the auditor examined (#2833 D4), refused unless that
+/// head is still the PR's head on GitHub right before printing. A verdict therefore never
+/// names a head nobody audited (audit 6869947940 B1) nor an older one the gate would stop at
+/// (#2821). When the head moved only by an update-branch merge of the base branch, the line
+/// for the audited head is the right one: the gate carries it (AUTO-DELTA). The base is
+/// `base` when given, else `git merge-base <head> <tip>` in the local repository (the head
+/// must be fetched). Reads only.
 pub fn verdict_line_for<T: Transport>(
     target: &Target<'_>,
+    audited_head: &str,
     title: &str,
     verdict: &str,
     base: Option<&str>,
     t: &T,
 ) -> Result<serde_json::Value> {
+    if !gate::is_full_sha(audited_head) {
+        return Err("--head must be the audited head, 40 lowercase hex".into());
+    }
     let base_url = format!(
         "https://api.github.com/repos/{}/{}",
         target.owner, target.repo
     );
     let (pr, _) = get_json(t, &format!("{base_url}/pulls/{}", target.pr))?;
-    let head = pr["head"]["sha"]
+    let now = pr["head"]["sha"]
         .as_str()
         .ok_or("pull request has no head sha")?
         .to_string();
+    // The head moved during the audit. A line for the audited head is still right when the move
+    // is a mechanical delta (the gate carries the PASS, AUTO-DELTA); anything else needs the
+    // delta audited first, so no line is printed.
+    let mut carried_to = None;
+    if now != audited_head {
+        let refuse = |why: String| {
+            format!(
+                "the pull request's head is now {now}, not the audited head {audited_head}, and {why}; no line printed — audit the delta {audited_head}..{now}, then run this again with --head {now}"
+            )
+        };
+        if !is_commit(target.dir, &now)? {
+            return Err(refuse(format!(
+                "the new head is not in the local repository (fetch refs/pull/{}/head) to check whether only the base branch was merged in",
+                target.pr
+            )));
+        }
+        let d = mechanical_delta(target.dir, audited_head, &now, target.tip)?;
+        if !d.ok {
+            return Err(refuse(format!(
+                "it is not a mechanical delta: {}",
+                d.detail
+            )));
+        }
+        carried_to = Some(now.clone());
+    }
+    let head = audited_head.to_string();
     let (base, from) = match base {
         Some(b) => (b.to_string(), "given"),
         None => {
@@ -339,7 +372,14 @@ pub fn verdict_line_for<T: Transport>(
         }
     };
     let line = gate::format_verdict_line(target.pr, title, &head, &base, verdict)?;
-    Ok(serde_json::json!({ "line": line, "head": head, "base": base, "base_from": from }))
+    let mut out =
+        serde_json::json!({ "line": line, "head": head, "base": base, "base_from": from });
+    if let Some(to) = carried_to {
+        // A FAIL is never carried; the gate carries only a PASS (G1).
+        out["current_head"] = serde_json::json!(to);
+        out["auto_delta"] = serde_json::json!(verdict == "PASS");
+    }
+    Ok(out)
 }
 
 /// Whether a PR body names a claim (G11): the marker the removed `flow-gate-verdict`

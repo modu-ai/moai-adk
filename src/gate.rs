@@ -133,6 +133,11 @@ pub struct Stop {
     pub reason: String,
 }
 
+/// Whether `s` is a full commit id as verdict lines spell it: 40 lowercase hex.
+pub fn is_full_sha(s: &str) -> bool {
+    is_hex40(s)
+}
+
 fn is_hex40(s: &str) -> bool {
     s.len() == 40
         && s.bytes()

@@ -118,7 +118,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "7c7257b95eda2d4c69c17662cc8062b4902b6a03f8fea26e97aaacf00bde9569",
+      "sha256": "d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",

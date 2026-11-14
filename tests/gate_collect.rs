@@ -1295,46 +1295,87 @@ fn pr_head(head: &str) -> RecordedTransport {
     }])
 }
 
-/// AC-3: the helper names the head GitHub has now and its line reads back through the gate's
-/// own parser; the base is the merge base unless one is given.
-#[test]
-fn the_verdict_line_names_the_current_head_and_reads_back() {
-    let r = delta_repo();
-    let n = r.merge_tip();
-    let target = Target {
+fn delta_target(r: &Delta) -> Target<'_> {
+    Target {
         dir: r.d(),
         owner: "o",
         repo: "r",
         pr: 9,
         tip: "main",
         review_confirmed_prs: vec![],
-    };
-    // The head moved to `n` while the audit ran: the line names `n`, not `h`.
-    let t = pr_head(&n);
-    let v = gate_collect::verdict_line_for(&target, "S3 delta", "PASS", None, &t).unwrap();
+    }
+}
+
+/// AC-3: the line names the head the auditor examined, read back through the gate's own
+/// parser, while that head is still the PR's head; the base is the merge base unless given.
+#[test]
+fn the_verdict_line_names_the_audited_head_and_reads_back() {
+    let r = delta_repo();
+    let target = delta_target(&r);
+    let t = pr_head(&r.h);
+    let v = gate_collect::verdict_line_for(&target, &r.h, "S3", "PASS", None, &t).unwrap();
     assert_eq!(t.remaining(), 0);
     let line = v["line"].as_str().unwrap();
     let (h, b, verdict) = gate::parse_verdict(line).expect("the gate reads the line");
-    assert_eq!((h.as_str(), verdict.as_str()), (n.as_str(), "PASS"));
-    assert_eq!(
-        b, r.c,
-        "the merge base of the merged head and the tip is the tip"
-    );
+    assert_eq!((h.as_str(), verdict.as_str()), (r.h.as_str(), "PASS"));
+    assert_eq!(b, r.a, "the merge base of the PR head and the tip");
     assert_eq!(v["base_from"], json!("merge-base"));
-    assert!(line.starts_with("AUDIT #9 (S3 delta) head "), "{line}");
+    assert!(v.get("auto_delta").is_none());
+    assert!(line.starts_with("AUDIT #9 (S3) head "), "{line}");
 
     // A given base (a delta re-audit names the earlier head) is used as it is.
-    let t = pr_head(&n);
-    let v = gate_collect::verdict_line_for(&target, "re-audit", "FAIL", Some(&r.h), &t).unwrap();
+    let v = gate_collect::verdict_line_for(&target, &r.h, "re", "FAIL", Some(&r.c), &pr_head(&r.h))
+        .unwrap();
     let (_, b, verdict) = gate::parse_verdict(v["line"].as_str().unwrap()).unwrap();
-    assert_eq!((b.as_str(), verdict.as_str()), (r.h.as_str(), "FAIL"));
+    assert_eq!((b.as_str(), verdict.as_str()), (r.c.as_str(), "FAIL"));
     assert_eq!(v["base_from"], json!("given"));
 
-    // A head that was never fetched is named, not guessed.
-    let missing = "f".repeat(40);
+    // `--head` must be a full commit id.
     let err =
-        gate_collect::verdict_line_for(&target, "x", "PASS", None, &pr_head(&missing)).unwrap_err();
-    assert!(err.contains("fetch refs/pull/9/head first"), "{err}");
+        gate_collect::verdict_line_for(&target, &r.h[..10], "x", "PASS", None, &pr_head(&r.h))
+            .unwrap_err();
+    assert!(err.contains("40 lowercase hex"), "{err}");
+}
+
+/// Audit 6869947940 B1: a head that moved during the audit never gets a line for a head nobody
+/// examined. An author commit (or any move that is not a mechanical delta) is refused with the
+/// delta to audit; an update-branch merge of the tip gives the line for the audited head, which
+/// the gate carries (AUTO-DELTA) — a PASS only.
+#[test]
+fn a_head_that_moved_during_the_audit_is_never_named_unaudited() {
+    let r = delta_repo();
+    let target = delta_target(&r);
+    let n = r.merge_tip();
+    let v =
+        gate_collect::verdict_line_for(&target, &r.h, "S3", "PASS", None, &pr_head(&n)).unwrap();
+    let (h, _, _) = gate::parse_verdict(v["line"].as_str().unwrap()).unwrap();
+    assert_eq!(h, r.h, "the line names the audited head, not the merge");
+    assert_eq!(v["current_head"], json!(n));
+    assert_eq!(v["auto_delta"], json!(true));
+    let v =
+        gate_collect::verdict_line_for(&target, &r.h, "S3", "FAIL", None, &pr_head(&n)).unwrap();
+    assert_eq!(v["auto_delta"], json!(false), "a FAIL is never carried");
+
+    // The author added a commit after the audited head: refused, nothing printed.
+    let m = commit(r.d(), &[("src/p.rs", "p2\n")], "more\n\nMoai-Claim: 9#555");
+    let err = gate_collect::verdict_line_for(&target, &r.h, "S3", "PASS", None, &pr_head(&m))
+        .unwrap_err();
+    assert!(
+        err.contains(&format!("now {m}, not the audited head {}", r.h)),
+        "{err}"
+    );
+    assert!(err.contains("not a mechanical delta"), "{err}");
+    assert!(
+        err.contains(&format!("audit the delta {}..{m}", r.h)),
+        "{err}"
+    );
+
+    // A new head that was never fetched cannot be checked: refused, not guessed.
+    let missing = "f".repeat(40);
+    let err = gate_collect::verdict_line_for(&target, &r.h, "x", "PASS", None, &pr_head(&missing))
+        .unwrap_err();
+    assert!(err.contains("fetch refs/pull/9/head"), "{err}");
+    assert!(err.contains("no line printed"), "{err}");
 }
 
 #[test]
@@ -1377,5 +1418,8 @@ fn the_audit_workflow_example_is_the_helpers_line() {
     let (h, b, v) = gate::parse_verdict(example).expect("the gate reads the example");
     let built = gate::format_verdict_line(2786, "#2708 4/4 repo-scans", &h, &b, &v).unwrap();
     assert_eq!(built, example);
-    assert!(text.contains("moai audit-verdict-line --pr <n> --verdict PASS|FAIL --title <scope>"));
+    assert!(text.contains(
+        "moai audit-verdict-line --pr <n> --head <audited 40-hex> --verdict PASS|FAIL --title <scope>"
+    ));
+    assert!(text.contains("a verdict never names a head nobody audited"));
 }
