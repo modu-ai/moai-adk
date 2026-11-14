@@ -789,3 +789,75 @@ fn retire_revert_refuses_a_home_folder_that_is_a_file() {
     assert_eq!(r["ok"], json!(false), "{r}");
     assert!(retired(&home).join(STAMP).join("cache/a.bin").is_file());
 }
+
+/// #2996 audit note N1: an entry that became busy after the preview changes the plan digest, so
+/// the apply refuses the stale plan and writes nothing. (`partial: true` is therefore reachable only
+/// in the short gap between the digest check and the move itself, which no CLI test can hit; the
+/// wording of that case is pinned by the unit test on `rerun_text`.)
+#[test]
+fn retire_apply_refuses_a_stale_plan_when_an_entry_became_busy_after_the_preview() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    assert_eq!(act(&p, "Logs").0, "retire", "{p}");
+    let _busy = Kill(
+        Command::new("sleep")
+            .arg("60")
+            .current_dir(home.join(".moai/Logs"))
+            .spawn()
+            .unwrap(),
+    );
+    let a = apply(&home, p["plan_digest"].as_str().unwrap());
+    assert_eq!(a["ok"], json!(false), "{a}");
+    assert_eq!(a["error"]["kind"], json!("stale_plan"), "{a}");
+    assert!(home.join(".moai/Logs/go.log").is_file(), "{a}");
+    assert!(home.join(".moai/cache/a.bin").is_file(), "{a}");
+    assert!(!retired(&home).exists(), "{a}");
+}
+
+/// #2996 audit note N2: a `~/.moai` that is absent is not the link refusal; the replay is left to
+/// say what it could not put back, and nothing lands outside the HOME.
+#[test]
+fn retire_revert_does_not_refuse_an_absent_home_folder_as_a_link() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    assert_eq!(
+        apply(&home, p["plan_digest"].as_str().unwrap())["ok"],
+        json!(true)
+    );
+    fs::remove_dir_all(home.join(".moai")).unwrap();
+    let r = revert(&home, &[]);
+    assert!(
+        !r.to_string().contains("is a link or not a folder"),
+        "an absent folder was refused as a link: {r}"
+    );
+}
+
+/// #2996 audit note N3: the preview says why the markers wait, and only while something is in use.
+#[test]
+fn retire_preview_warns_that_the_markers_wait_only_while_an_entry_is_in_use() {
+    let (_d, home) = go_home();
+    let calm = plan(&home);
+    assert!(
+        !calm["warnings"]
+            .to_string()
+            .contains("hold a Go marker wait"),
+        "{calm}"
+    );
+    let _busy = Kill(
+        Command::new("sleep")
+            .arg("60")
+            .current_dir(home.join(".moai/Logs"))
+            .spawn()
+            .unwrap(),
+    );
+    let busy = plan(&home);
+    let warnings = busy["warnings"].as_array().unwrap();
+    assert_eq!(
+        warnings
+            .iter()
+            .filter(|w| w.as_str().unwrap().contains("hold a Go marker wait"))
+            .count(),
+        1,
+        "{busy}"
+    );
+}
