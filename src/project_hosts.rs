@@ -434,17 +434,30 @@ mod tests {
     }
 
     /// A Codex home that cannot be told (or a project `.codex` that is the user's config folder)
-    /// blocks the config step; it never previews a write.
+    /// blocks the config step; it never previews a write. The same project with a home is ready,
+    /// so the refusal comes from the home and not from the project.
     #[test]
     fn a_codex_home_that_cannot_be_told_blocks_the_config_step() {
+        let project = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(project.path()).unwrap();
+        let shown = root.to_str().unwrap();
         let s = codex_config_step(
-            Path::new("/p"),
-            "/p",
+            &root,
+            shown,
             Err("home directory missing; config target refused".into()),
         );
         assert_eq!(s.state, "blocked");
+        assert!(s.reason.contains("home directory missing"), "{}", s.reason);
         assert!(s.apply.is_none() && s.plan_digest.is_none());
+        let home = tempfile::tempdir().unwrap();
+        let ok = codex_config_step(
+            &root,
+            shown,
+            Ok(std::fs::canonicalize(home.path()).unwrap()),
+        );
+        assert_eq!(ok.state, "ready", "{}", ok.reason);
     }
+
     fn config_plan(action: &str) -> Value {
         json!({"action": action, "plan_digest": "sha256:fixture", "config_path": ".codex/config.toml",
                "conflicts": [], "status_line": {}, "status_line_unverified": {}})
