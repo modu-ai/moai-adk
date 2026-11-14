@@ -92,3 +92,26 @@ pub fn git_pinned(dir: &Path, args: &[&str], date: Option<&str>) {
         String::from_utf8_lossy(&out.stderr)
     );
 }
+
+/// Runs git in `dir` with the fixture identity and no signing, autocrlf, excludes file or
+/// background maintenance; asserts success. Moved from `tests/product_cli.rs` unchanged
+/// (#2834 R1) so the group test files share it.
+#[allow(dead_code)] // only the product CLI group files use it
+pub fn git_in(dir: &std::path::Path, args: &[&str]) {
+    let out = std::process::Command::new("git")
+        .args([
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+        ])
+        .args(["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"])
+        .args(["-c", "core.excludesFile=/dev/null"])
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "git {args:?}: {:?}", out.stderr);
+}
