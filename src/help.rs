@@ -30,7 +30,6 @@ pub const GROUPS: &[Group] = &[
         heading: "Project",
         heading_ko: "프로젝트",
         commands: &[
-            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),
@@ -251,7 +250,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
     ("glm", &["glm -a"]),
-    ("init", &["init", "init --new demo", "init --new demo --dry-run"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -1068,7 +1066,7 @@ pub fn configure_in(
 /// The groups whose root commands' own help texts read Korean on a Korean terminal (S6e-2…,
 /// one group per slice; `the_moved_groups_read_korean_in_their_help` in `main.rs` checks
 /// every about, long about and argument of them).
-pub const KOREAN_GROUPS: &[&str] = &["Project", "Update and move", "Keys"];
+pub const KOREAN_GROUPS: &[&str] = &["Start", "Project", "Update and move", "Keys", "Diagnose"];
 
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
@@ -1160,6 +1158,47 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          적었는지 확인해요(아니면 `git worktree repair` 한 번). 옮긴 worktree 마다 되돌리는 명령이 \
          함께 와요.",
     ),
+    ("cc", "Claude Code 세션 실행기: `cc -l|-a`."),
+    ("codex", "Codex CLI 세션 실행기: `codex -l|-a`."),
+    (
+        "glm",
+        "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
+         필요해요).",
+    ),
+    (
+        "claude-doctor",
+        "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
+    ),
+    (
+        "codex-doctor",
+        "Codex 를 읽기만 하고 진단해요: AGENTS 사슬과 크기 한도, 겹친 스킬, `.codex/` 층.",
+    ),
+    (
+        "install-inspect",
+        "설치를 읽기만 하고 살펴봐요(04-A #1998): PATH 의 세대, `~/.moai-cli/installations/` 의 \
+         영수증, Go 세대 경로가 있는지. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "identity",
+        "경로의 클론·작업 공간 정체와 상태 루트를 읽기만 하고 알려 줘요(stdout 에 typed JSON).",
+    ),
+    (
+        "worktree-report",
+        "저장소의 worktree, 그 빌드 폴더, 임시 `moai-*` 폴더가 쓰는 공간을 읽기만 하고 보고해요 \
+         (WT-1, #2380). 사실만 — 지울 후보는 판단하지 않아요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "optimize-plan",
+        "비울 수 있는 공간을 읽기만 하고 미리 봐요(#2724): 병합 뒤의 linked worktree(squash 병합 \
+         포함), 이름 댄 루트 아래의 cargo 빌드 폴더, 보고서 — 크기, 마지막 변경, 보관 기간, 남기는 \
+         까닭, 되살리는 법. worktree 는 정확한 HEAD 에 대한 독립 감사 PASS 가 있을 때만 `remove` \
+         후보이고, 살아 있는 claim·HOLD·관측 안 된 부분이 있으면 남겨요. 아무것도 지우지 않아요 — \
+         적용은 사용자 확인 뒤 `worktree-gc-apply`.",
+    ),
+    (
+        "baseline-inventory",
+        "체크아웃의 기준 사실 목록을 읽기만 하고 만들어요(stdout 에 typed JSON).",
+    ),
     (
         "key-set",
         "공급자 키를 암호화해 금고에 저장해요(#2393): 지금 프로젝트용, 또는 `--shared` 면 모든 \
@@ -1189,10 +1228,147 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
 ];
 
+/// The launchers' own abouts (S6e-6): the root list shows the three on one line instead.
+const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
+    ("cc", "Claude Code 세션 시작"),
+    ("codex", "Codex CLI 세션 시작"),
+    ("glm", "z.ai GLM 으로 Claude Code 세션 시작"),
+];
+
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    (
+        "cc|codex|glm",
+        "prompt",
+        "첫 프롬프트에 덧붙일 글(codex 만)",
+    ),
+    ("cc|codex|glm", "leader", "리더 세션"),
+    ("cc|codex|glm", "agent", "에이전트 세션"),
+    (
+        "cc|codex|glm",
+        "name",
+        "세션 이름(기본: -l 은 `leader`, -a 는 프로젝트의 다음 `agent-N`, 역할 없으면 없음)",
+    ),
+    (
+        "cc|codex|glm",
+        "model",
+        "주 모델(Claude 호스트 기본 `opus`, codex 는 정하지 않으면 자기 기본값)",
+    ),
+    ("cc|codex|glm", "effort", "Claude effort(기본 `medium`)"),
+    (
+        "cc|codex|glm",
+        "advisor",
+        "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id). 기본 없음 — \
+         사용자 설정 `launcher.advisor` 로 켤 수 있음. 사용량 크레딧이 청구될 수 있음",
+    ),
+    (
+        "cc|codex|glm",
+        "no_advisor",
+        "사용자 설정 `launcher.advisor` 가 켜도 `--advisor` 를 넘기지 않기",
+    ),
+    (
+        "cc|codex|glm",
+        "permissions",
+        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트), codex 는 \
+         `workspace-write` / `on-request` sandbox. 없으면 -l|-a 세션은 전체 접근, 역할 없는 세션은 \
+         권한 플래그를 받지 않음",
+    ),
+    (
+        "cc|codex|glm",
+        "dry_run",
+        "호스트를 시작하는 대신 만든 명령을 JSON 으로 찍기",
+    ),
+    (
+        "codex-doctor",
+        "project",
+        "프로젝트 루트(Codex 는 여기서 작업 폴더까지 내려가며 읽음)",
+    ),
+    (
+        "codex-doctor",
+        "cwd",
+        "프로젝트 안의 작업 폴더(기본: 프로젝트 루트)",
+    ),
+    (
+        "codex-doctor",
+        "codex_home",
+        "전역 AGENTS 파일이 있는 Codex home(기본: $CODEX_HOME, 없으면 ~/.codex)",
+    ),
+    (
+        "codex-doctor",
+        "home",
+        "`.agents/skills` 가 있는 home(기본: $HOME)",
+    ),
+    (
+        "codex-doctor",
+        "fallback",
+        "`project_doc_fallback_filenames` 항목(되풀이 가능, config.toml 은 안 읽음)",
+    ),
+    (
+        "codex-doctor",
+        "max_bytes",
+        "`project_doc_max_bytes`(기본 32768, config.toml 은 안 읽음)",
+    ),
+    (
+        "install-inspect",
+        "json",
+        "REQ-04A-02 호출 형식용으로 받음 — 출력은 늘 JSON 봉투",
+    ),
+    ("identity", "path", "클론이나 worktree 안의 아무 경로"),
+    (
+        "worktree-report",
+        "tmp_root",
+        "`moai-*` 자식을 나눌 폴더(기본 `/tmp`)",
+    ),
+    (
+        "worktree-report",
+        "budget_ms",
+        "크기 훑기의 시간 예산(밀리초). 넘으면 그 갈래는 `partial`",
+    ),
+    ("optimize-plan", "project", "저장소의 아무 체크아웃"),
+    (
+        "optimize-plan",
+        "integration_ref",
+        "통합 가지의 로컬 ref, 예: `origin/v2026.11.0`. 아무것도 fetch 하지 않음",
+    ),
+    (
+        "optimize-plan",
+        "recent_minutes",
+        "이 분보다 최근에 바뀌면 그 줄을 남김(최소 60)",
+    ),
+    (
+        "optimize-plan",
+        "budget_ms",
+        "시간 예산(밀리초). 넘으면 남은 worktree 는 `skip`, 크기는 partial",
+    ),
+    (
+        "optimize-plan",
+        "retention_days",
+        "worktree 밖 빌드 폴더의 자식은 이 날수가 지나야 셈",
+    ),
+    (
+        "optimize-plan",
+        "build_roots",
+        "자식 폴더가 cargo 빌드 폴더인 절대 폴더(되풀이 가능, 예: `/tmp/moai-rc-target-*` 용 \
+         `/tmp`). 기본 없음",
+    ),
+    (
+        "optimize-plan",
+        "observations",
+        "JSON 파일: `schema_version` 1 과 선택 `audits`·`claims`·`holds`(각각 source·items). \
+         빠진 부분이 필요한 줄은 남김",
+    ),
+    (
+        "baseline-inventory",
+        "go_baseline_commit",
+        "`.claude` 트리를 비교할 Go 세대 기준 커밋(ls-tree 로만 읽음)",
+    ),
+    (
+        "baseline-inventory",
+        "go_repo",
+        "프로젝트에 기준 커밋이 없을 때 찾아볼 추가 저장소",
+    ),
     ("update", "json", "터미널에서도 화면 대신 JSON 봉투 찍기"),
     (
         "update",
@@ -1340,9 +1516,10 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
 
 /// The Korean help of argument `id` of `command`, when the table has one.
 fn arg_help_ko(command: &str, id: &str) -> Option<&'static str> {
+    // A command field may name several commands, `cc|codex|glm`.
     ARG_HELP_KO
         .iter()
-        .find(|(c, i, _)| *c == command && *i == id)
+        .find(|(c, i, _)| c.split('|').any(|w| w == command) && *i == id)
         .or_else(|| {
             ARG_HELP_KO
                 .iter()
@@ -1353,10 +1530,6 @@ fn arg_help_ko(command: &str, id: &str) -> Option<&'static str> {
 
 /// The column clap starts an argument's help at in a long help (`          <help>`).
 const LONG_ARG_INDENT: usize = 10;
-
-/// clap's own help template with the usage heading spelled out (clap 4.6 `DEFAULT_TEMPLATE`).
-const SUBCOMMAND_TEMPLATE_KO: &str =
-    "{before-help}{about-with-newline}\n사용법: {usage}\n\n{all-args}{after-help}";
 
 /// A subcommand's help frame on a Korean terminal (S6e-1, #2825; design 5): the usage,
 /// arguments and options headings and the help flag's line. The command's about, argument
@@ -1372,14 +1545,17 @@ fn korean_frame(c: Command) -> Command {
     } else {
         c
     };
-    let c = c.mut_args(|a| {
-        let heading = if a.is_positional() {
-            ARGUMENTS_KO
-        } else {
-            OPTIONS_KO
-        };
-        a.help_heading(heading.trim_end_matches(':'))
-    });
+    // The arguments and options sections are spelled out in the template, arguments first as in
+    // English: a custom `help_heading` would be drawn in the order the arguments are declared,
+    // which put `옵션:` before `인자:` for the launchers (their options come first).
+    let positionals = if c.get_positionals().any(|a| !a.is_hide_set()) {
+        format!("{ARGUMENTS_KO}\n{{positionals}}\n\n")
+    } else {
+        String::new()
+    };
+    let template = format!(
+        "{{before-help}}{{about-with-newline}}\n{USAGE_KO} {{usage}}\n\n{positionals}{OPTIONS_KO}\n{{options}}{{after-help}}"
+    );
     // clap's generated `-h, --help` cannot be edited before the command is built, so it is
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
     // Every help starts on the line after its name, `LONG_ARG_INDENT` in, in `-h` as in
@@ -1393,18 +1569,23 @@ fn korean_frame(c: Command) -> Command {
                 .long("help")
                 .action(clap::ArgAction::Help)
                 .help(wrap(HELP_FLAG_SHORT_KO, 0, room))
-                .long_help(wrap(HELP_FLAG_LONG_KO, 0, room))
-                .help_heading(OPTIONS_KO.trim_end_matches(':')),
+                .long_help(wrap(HELP_FLAG_LONG_KO, 0, room)),
         )
         .next_line_help(true)
-        .help_template(SUBCOMMAND_TEMPLATE_KO)
+        .help_template(template)
 }
 
 /// A moved command's own texts in Korean (S6e-2): its about (the root list's), its long about
 /// and its arguments' help, each wrapped at `width` display cells — clap would count a Hangul
 /// letter as one cell and run the line past the terminal.
 fn korean_texts(c: Command, name: &str, width: usize) -> Command {
-    let c = match about_ko(name) {
+    let about = about_ko(name).or_else(|| {
+        LAUNCHER_ABOUT_KO
+            .iter()
+            .find(|(w, _)| *w == name)
+            .map(|(_, t)| *t)
+    });
+    let c = match about {
         Some(about) => c.about(about),
         None => c,
     };
@@ -1418,11 +1599,42 @@ fn korean_texts(c: Command, name: &str, width: usize) -> Command {
     let name = name.to_string();
     c.mut_args(move |a| match arg_help_ko(&name, a.get_id().as_str()) {
         Some(text) => {
-            let wrapped = wrap(text, 0, room);
-            a.help(wrapped.clone()).long_help(wrapped)
+            // A short help ends its last line with clap's ` [default: …]` and
+            // ` [possible values: …]`; a long help puts them on lines of their own.
+            let short = wrap(text, 0, room.saturating_sub(short_suffix_width(&a)));
+            a.help(short).long_help(wrap(text, 0, room))
         }
         None => a,
     })
+}
+
+/// The width of what clap appends to an argument's short help line: ` [default: …]` and
+/// ` [possible values: …]` (clap's words, left in English).
+fn short_suffix_width(a: &clap::Arg) -> usize {
+    // A flag (`--json`) takes no value: clap shows neither its `false` default nor `true|false`.
+    if !a.get_action().takes_values() {
+        return 0;
+    }
+    let join = |v: Vec<String>| v.join(", ");
+    let defaults: Vec<String> = a
+        .get_default_values()
+        .iter()
+        .map(|v| v.to_string_lossy().into_owned())
+        .collect();
+    let mut width = 0;
+    if !defaults.is_empty() && !a.is_hide_default_value_set() {
+        width += format!(" [default: {}]", join(defaults)).width();
+    }
+    let possible: Vec<String> = a
+        .get_possible_values()
+        .iter()
+        .filter(|p| !p.is_hide_set())
+        .map(|p| p.get_name().to_string())
+        .collect();
+    if !possible.is_empty() && !a.is_hide_possible_values_set() {
+        width += format!(" [possible values: {}]", join(possible)).width();
+    }
+    width
 }
 
 #[cfg(test)]
@@ -1579,7 +1791,7 @@ mod tests {
     fn a_korean_full_list_keeps_the_other_abouts_english() {
         let cmd = root_cmd();
         let ko = render_groups_in(&cmd, true, 100, Lang::Ko);
-        assert!(ko.contains("About init"), "{ko}");
+        assert!(ko.contains("About agents-plan"), "{ko}");
         assert!(!ko.contains("About project-detect"), "{ko}");
         for g in GROUPS {
             assert!(
@@ -1617,9 +1829,10 @@ mod tests {
         }
     }
 
-    /// The frame tests use `identity`: a command of a group whose own texts have not moved.
+    /// The frame tests use `index-query`: a command outside the root list, whose own texts move
+    /// in the last slice.
     fn sub_help(lang: Lang, long: bool) -> String {
-        sub_help_of("identity", lang, long)
+        sub_help_of("index-query", lang, long)
     }
 
     /// S6e-2: a command of a moved group takes its Korean about, long about and argument help;
@@ -1685,7 +1898,7 @@ mod tests {
             ko.contains("Detect the project's facts, reading only."),
             "{ko}"
         );
-        assert!(ko.contains("moai identity ."), "{ko}");
+        assert!(ko.contains("moai index-query . < request.json"), "{ko}");
         // `-h` keeps the short form with its own Korean line.
         let short = sub_help(Lang::Ko, false);
         assert!(short.contains(HELP_FLAG_SHORT_KO), "{short}");

@@ -59,21 +59,17 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `apply-recover`
 - `atlas-graph`
 - `atlas-map`
-- `atlas-tag-scan`
 - `audit-claim`
 - `audit-clone-plan`
-- `baseline-inventory`
 - `claim-acquire`
 - `claim-handoff`
 - `claim-release`
 - `claim-show`
 - `claim-verify`
-- `claude-doctor`
 - `claude-settings-apply`
 - `claude-settings-plan`
 - `codex-config-apply`
 - `codex-config-plan`
-- `codex-doctor`
 - `decision-append`
 - `dispatch-ack`
 - `dispatch-check`
@@ -93,19 +89,10 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `heavy-slot-acquire`
 - `heavy-slot-status`
 - `hook-dispatch`
-- `hook-receipt`
 - `hooks-apply`
 - `hooks-plan`
 - `hooks-revert`
-- `identity`
 - `index-build`
-- `index-query`
-- `install-inspect`
-- `key-import-apply`
-- `key-import-plan`
-- `key-remove`
-- `key-set`
-- `key-status`
 - `labels-apply`
 - `labels-plan`
 - `lane-handoff-check`
@@ -122,7 +109,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `migrate-plan`
 - `migrate-recover`
 - `migrate-recovery-plan`
-- `package-resolve`
 - `pr-body-render`
 - `pr-confirm`
 - `project-apply`
@@ -138,10 +124,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
-- `worktree-gc-apply`
-- `worktree-gc-plan`
 - `worktree-plan`
-- `worktree-report`
 
 (알파벳순, 한 줄에 operation 하나, 개수는 적지 않는다. `src/main.rs`의 시험 `operations_doc_matches_code`가 이 목록과 OPERATIONS 배열의 이름 집합을 비교해 빠진 것·남는 것·중복·순서 어긋남을 이름으로 보고한다 — op를 더하거나 빼는 PR은 알파벳 위치에 자기 줄만 넣거나 뺀다. 이력: tip `604792666` 47개에서 시작해 rc.2 카드들이 더했고, #2241에서 이 형식으로 바꿨다; `lane-handoff-check`은 A10 #2264 수리 r2에서 더했다. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
 

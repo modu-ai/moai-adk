@@ -9,8 +9,6 @@ Start
   glm                     Start a Claude Code session on
                           z.ai GLM
 Project
-  init                    Initialize this folder or a new
-                          project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile

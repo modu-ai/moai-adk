@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "656f0361f8de5cfa276f071e8dd50af58e189b009b08b508bd2c15880d58b1fc",
+      "sha256": "9e86d8782ee949221dff96c1282c91fa07f21d10b1a7c51dd67ba63be5118342",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "8a39414e00bbb57699651dc7097f7568ae1f4b568f5ca6388184270527f35f39",
+      "sha256": "d506c5ae0258348a1951f64387fc1c896f88ca58e3319ebae00fad60d5c01a47",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -313,7 +313,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "sha256": "0cd35e499e206541da20005ad7236eadea4dc6571a50882121b0825b0f933d01",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
