@@ -269,6 +269,8 @@ pub fn revert(path: &Path) -> Result<Report> {
                 .map(|()| true)
         } else if status != ItemStatus::Moved && recorded(&from) {
             Ok(false)
+        } else if j.items[i].identity.is_none() {
+            Err((ItemStatus::Conflict, "identity_not_recorded".into()))
         } else {
             Err((
                 ItemStatus::Conflict,
@@ -475,9 +477,11 @@ fn entry_kind(p: &Path) -> Option<String> {
     }
 }
 
-/// `<device>:<inode>` of the entry at `p`, not followed, and for a file also
-/// `:<size>:<mtime s>.<ns>` (a rename keeps all of them; a freed inode number can be reused by
-/// a new file); `None` where that is not available (which makes a revert of the item a
+/// `<device>:<inode>` of the entry at `p`, not followed, plus a part a freed and reused inode
+/// number does not repeat (ext4 hands a freed inode to the next file or folder at once): the
+/// creation time `:b<s>.<ns>` where the file system reports it, a file's `:<size>:<mtime>`, and
+/// for a folder without a creation time `:c<hash>` of its entries' names and inodes. A rename
+/// keeps all of them. `None` where that is not available (which makes a revert of the item a
 /// conflict).
 fn identity(p: &Path) -> Option<String> {
     #[cfg(unix)]
@@ -485,8 +489,17 @@ fn identity(p: &Path) -> Option<String> {
         use std::os::unix::fs::MetadataExt;
         let m = fs::symlink_metadata(p).ok()?;
         let mut id = format!("{}:{}", m.dev(), m.ino());
+        let born = m
+            .created()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok());
+        if let Some(b) = born {
+            id.push_str(&format!(":b{}.{}", b.as_secs(), b.subsec_nanos()));
+        }
         if m.is_file() {
             id.push_str(&format!(":{}:{}.{}", m.size(), m.mtime(), m.mtime_nsec()));
+        } else if m.is_dir() && born.is_none() {
+            id.push_str(&format!(":c{}", folder_print(p)?));
         }
         Some(id)
     }
@@ -495,6 +508,28 @@ fn identity(p: &Path) -> Option<String> {
         let _ = p;
         None
     }
+}
+
+/// SHA-256 of a folder's direct entries as sorted `(name, inode)` pairs (metadata only, links
+/// not followed).
+#[cfg(unix)]
+fn folder_print(p: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+    use std::os::unix::fs::MetadataExt;
+    let mut rows = Vec::new();
+    for e in fs::read_dir(p).ok()? {
+        let e = e.ok()?;
+        let ino = fs::symlink_metadata(e.path()).ok()?.ino();
+        rows.push((e.file_name().as_encoded_bytes().to_vec(), ino));
+    }
+    rows.sort();
+    let mut h = Sha256::new();
+    for (name, ino) in rows {
+        h.update(&name);
+        h.update([0]);
+        h.update(ino.to_le_bytes());
+    }
+    Some(format!("{:x}", h.finalize()))
 }
 
 /// The destination name is free: nothing has that name, and no entry of its folder differs
@@ -1210,6 +1245,117 @@ mod tests {
         assert_eq!(outcomes(&r)[2], "conflict");
         assert_eq!(fs::read(&n).unwrap(), b"spaces and a dot and more");
         assert!(!f.tree.join("old/my notes.").exists());
+    }
+
+    /// The moved folder removed first and a new one made under its name afterwards (PR #2957
+    /// re-audit B1'): on ext4 the new folder can get the freed inode number, so the inode alone
+    /// does not tell them apart; revert still leaves the new folder where it is.
+    #[test]
+    fn move_journal_revert_leaves_a_folder_made_again_after_removal() {
+        let f = fixture();
+        let items = plan(&f);
+        let path = journal_path(&f.journals, STAMP);
+        apply(
+            &f.journals,
+            "test",
+            &items,
+            &aliases(),
+            NOW,
+            &MoveEnv::new(&never_in_use),
+        )
+        .unwrap();
+        let v = f.tree.join("new/versions");
+        fs::remove_dir_all(&v).unwrap();
+        fs::create_dir(&v).unwrap();
+        file(&v.join("a.bin"), b"other", 0o644);
+        let r = revert(&path).unwrap();
+        assert_eq!(r.state, JournalState::RevertPartial);
+        assert_eq!(outcomes(&r)[0], "conflict");
+        assert_eq!(fs::read(v.join("a.bin")).unwrap(), b"other");
+        assert!(!f.tree.join("old/versions").exists());
+    }
+
+    /// The folder fingerprint used where no creation time is reported: a rename keeps it, other
+    /// entries change it.
+    #[test]
+    fn move_journal_folder_print_follows_the_entries() {
+        let f = fixture();
+        let d = f.tree.join("old/d");
+        fs::create_dir(&d).unwrap();
+        file(&d.join("x"), b"x", 0o644);
+        let before = folder_print(&d).unwrap();
+        fs::rename(&d, f.tree.join("new/d")).unwrap();
+        assert_eq!(folder_print(&f.tree.join("new/d")).unwrap(), before);
+        file(&f.tree.join("new/d/y"), b"y", 0o644);
+        assert_ne!(folder_print(&f.tree.join("new/d")).unwrap(), before);
+        fs::create_dir(&d).unwrap();
+        file(&d.join("x"), b"x", 0o644);
+        assert_ne!(folder_print(&d).unwrap(), before, "same name, other inode");
+        // Where the file system reports a creation time, a folder's identity carries it.
+        let id = identity(&d).unwrap();
+        if fs::symlink_metadata(&d).unwrap().created().is_ok() {
+            assert!(id.contains(":b"), "{id}");
+        } else {
+            assert!(id.contains(":c"), "{id}");
+        }
+    }
+
+    /// A journal item without a recorded identity (an older journal) is never moved back, and
+    /// the reason says why.
+    #[test]
+    fn move_journal_revert_without_a_recorded_identity_is_a_conflict() {
+        let f = fixture();
+        let items = plan(&f);
+        let path = journal_path(&f.journals, STAMP);
+        apply(
+            &f.journals,
+            "test",
+            &items,
+            &aliases(),
+            NOW,
+            &MoveEnv::new(&never_in_use),
+        )
+        .unwrap();
+        let mut j = read_journal(&path).unwrap();
+        j.items[1].identity = None;
+        save(&path, &j).unwrap();
+        let r = revert(&path).unwrap();
+        assert_eq!(outcomes(&r)[1], "conflict");
+        let j = read_journal(&path).unwrap();
+        assert_eq!(
+            j.items[1].reason.as_deref(),
+            Some("revert_conflict:identity_not_recorded")
+        );
+        assert!(f.tree.join("new/path").exists());
+    }
+
+    /// A name at the original place that differs only by letter case: revert leaves the item
+    /// at its destination (a case-sensitive file system would otherwise hold both names).
+    #[test]
+    fn move_journal_revert_with_a_case_only_clash_at_the_original_place() {
+        let f = fixture();
+        let items = plan(&f);
+        let path = journal_path(&f.journals, STAMP);
+        apply(
+            &f.journals,
+            "test",
+            &items,
+            &aliases(),
+            NOW,
+            &MoveEnv::new(&never_in_use),
+        )
+        .unwrap();
+        file(&f.tree.join("old/PATH"), b"case", 0o644);
+        let r = revert(&path).unwrap();
+        assert_eq!(r.state, JournalState::RevertPartial);
+        assert_eq!(outcomes(&r)[1], "conflict");
+        assert_eq!(fs::read(f.tree.join("new/path")).unwrap(), b"#!/bin/sh\n");
+        let names: Vec<_> = fs::read_dir(f.tree.join("old"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .filter(|n| n.eq_ignore_ascii_case("path"))
+            .collect();
+        assert_eq!(names, ["PATH"]);
     }
 
     #[test]
