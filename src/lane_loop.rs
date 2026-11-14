@@ -258,7 +258,7 @@ pub fn codex_blocked_line(lane: &str, state: &str) -> Option<String> {
 /// What a lane's Stop hook read: a snapshot, or nothing it can trust (a failed or timed-out
 /// GitHub read, an unreadable `--snapshot`).
 pub enum Reading {
-    Snapshot(crate::lane_next::Snapshot),
+    Snapshot(Box<crate::lane_next::Snapshot>),
     Unknown,
 }
 
@@ -407,7 +407,7 @@ pub fn read_snapshot(file: &Path) -> Reading {
     read_bounded(file)
         .ok()
         .and_then(|b| serde_json::from_slice(&b).ok())
-        .map_or(Reading::Unknown, Reading::Snapshot)
+        .map_or(Reading::Unknown, |s| Reading::Snapshot(Box::new(s)))
 }
 
 /// One `lane_next::collect` read of GitHub (no wait), in the working directory's clone; a
@@ -435,7 +435,7 @@ pub fn read_github(lane: &str, repo: &str) -> Reading {
         let _ = tx.send(Some(crate::lane_next::collect(&target, &t)));
     });
     match rx.recv_timeout(std::time::Duration::from_secs(STOP_READ_SECS)) {
-        Ok(Some(s)) => Reading::Snapshot(s),
+        Ok(Some(s)) => Reading::Snapshot(Box::new(s)),
         _ => Reading::Unknown,
     }
 }
@@ -817,7 +817,7 @@ mod tests {
     }
 
     fn snap(v: Value) -> Reading {
-        Reading::Snapshot(serde_json::from_value(v).unwrap())
+        Reading::Snapshot(Box::new(serde_json::from_value(v).unwrap()))
     }
 
     fn issue(n: u64) -> Reading {
