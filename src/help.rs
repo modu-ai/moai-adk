@@ -128,6 +128,9 @@ pub const GROUPS: &[Group] = &[
             ("queue-query", false),
             ("leader-tick", false),
             ("lane-next", false),
+            ("lane-loop-line", false),
+            ("lane-resume-note", false),
+            ("lane-resume-check", false),
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
@@ -320,6 +323,18 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "lane-next --lane agent-1 --repo modu-ai/moai-adk --wait 1800",
         ],
     ),
+    (
+        "lane-loop-line",
+        &[
+            "lane-loop-line --host claude --lane agent-1",
+            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
+        ],
+    ),
+    (
+        "lane-resume-note",
+        &["lane-resume-note --lane agent-1 --issue 2904 --claim 6874514212 --lease-until 2026-11-14T14:00:00Z --branch issue/2904-x --head <40-hex> --uncommitted 0 --next push"],
+    ),
+    ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
