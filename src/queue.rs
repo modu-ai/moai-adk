@@ -245,7 +245,11 @@ pub fn free<T: Transport, C: Clock>(
                 epics.push(json!({"issue": number, "title": title}));
                 continue;
             }
-            Some(crate::startable::Skip::BlockedBy(open_blockers)) => {
+            // The whole list is read here, so `BlockedByUnknown` cannot occur; it would block.
+            Some(
+                crate::startable::Skip::BlockedBy(open_blockers)
+                | crate::startable::Skip::BlockedByUnknown(open_blockers),
+            ) => {
                 blocked.push(json!({"issue": number, "title": title, "blocked_by": open_blockers}));
                 continue;
             }

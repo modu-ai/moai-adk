@@ -477,6 +477,32 @@ fn each_skip_reason_is_named() {
     );
 }
 
+/// PR #2916 review: when the open Issue list was read only in part, a `Blocked-By:` reference
+/// past the last number read may still be open — the card is skipped as `blocked_by_unknown`,
+/// not picked; with the whole list the same reference is closed and the card is picked.
+#[test]
+fn a_blocker_past_a_partial_list_is_not_read_as_closed() {
+    let waits = json!({"number": 1, "title": "waits", "body": "Blocked-By: #150", "comments": []});
+    let free = json!({"number": 2, "title": "free", "comments": []});
+    let partial = next(&json!({
+        "cards": [waits.clone(), free.clone()],
+        "cards_truncated": true,
+        "open_issues": [waits.clone(), free.clone()],
+    }));
+    assert_eq!(kind(&partial), json!("pick_issue"), "{partial}");
+    assert_eq!(partial["next"]["target"]["number"], json!(2));
+    assert_eq!(
+        partial["skipped"],
+        json!([{"issue": 1, "reason": "blocked_by_unknown", "blocked_by": [150]}])
+    );
+    let whole = next(&json!({
+        "cards": [waits.clone(), free.clone()],
+        "open_issues": [waits, free],
+    }));
+    assert_eq!(kind(&whole), json!("pick_issue"), "{whole}");
+    assert_eq!(whole["next"]["target"]["number"], json!(1));
+}
+
 /// #2901 AC5: `end_condition` counts the open pull requests and the startable open Issues of
 /// the list (`cards`); met only when both are zero, null while the list was read in part.
 #[test]

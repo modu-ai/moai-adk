@@ -10,7 +10,10 @@
 //!    `keep_set`);
 //! 3. `epic` — its title carries `][EP-`, or GitHub reports open sub-issues;
 //! 4. `blocked_by` — its body's `Blocked-By:` line names an Issue that is still open, or GitHub
-//!    reports an open Issue blocking it.
+//!    reports an open Issue blocking it;
+//! 5. `blocked_by_unknown` — the open Issue list was read only in part and its `Blocked-By:` line
+//!    names an Issue past the part read, whose state is therefore unknown (fail closed, PR #2916
+//!    review: a blocker outside the first page must not read as closed).
 //!
 //! A claim is not part of the judgment: a claimed card is still work left in the repository.
 //! Whether another lane's claim keeps a card from this lane is the caller's step.
@@ -53,6 +56,8 @@ pub enum Skip {
     },
     /// The open Issues it waits for.
     BlockedBy(Vec<u64>),
+    /// The `Blocked-By:` Issues past the part of the open list that was read.
+    BlockedByUnknown(Vec<u64>),
 }
 
 impl Skip {
@@ -62,6 +67,7 @@ impl Skip {
             Skip::KeepSet(_) => "keep_set",
             Skip::Epic { .. } => "epic",
             Skip::BlockedBy(_) => "blocked_by",
+            Skip::BlockedByUnknown(_) => "blocked_by_unknown",
         }
     }
 
@@ -72,16 +78,29 @@ impl Skip {
             Skip::Held(labels) => v["labels"] = json!(labels),
             Skip::KeepSet(why) => v["keep_reason"] = json!(why),
             Skip::Epic { open_children } => v["open_children"] = json!(open_children),
-            Skip::BlockedBy(by) => v["blocked_by"] = json!(by),
+            Skip::BlockedBy(by) | Skip::BlockedByUnknown(by) => v["blocked_by"] = json!(by),
         }
         v
     }
 }
 
-/// `None` when `card` is startable; otherwise the first reason it is not. `open` holds the
-/// open Issue numbers (a `Blocked-By:` reference outside it is closed), `keep` the goal's
+/// `None` when `card` is startable; otherwise the first reason it is not. `open` holds every
+/// open Issue number (a `Blocked-By:` reference outside it is closed), `keep` the goal's
 /// exclusions.
 pub fn judge(card: &Card<'_>, open: &BTreeSet<u64>, keep: &[Exclusion]) -> Option<Skip> {
+    judge_within(card, open, None, keep)
+}
+
+/// [`judge`] over an open list read only in part, oldest first: `read_through` is the highest
+/// Issue number of the part read (`None` when the list is whole). A `Blocked-By:` reference
+/// above it may still be open, so it keeps the card out as `blocked_by_unknown`; one at or
+/// below it and outside `open` is closed.
+pub fn judge_within(
+    card: &Card<'_>,
+    open: &BTreeSet<u64>,
+    read_through: Option<u64>,
+    keep: &[Exclusion],
+) -> Option<Skip> {
     let held: Vec<String> = card.labels.iter().filter(|l| holds(l)).cloned().collect();
     if !held.is_empty() {
         return Some(Skip::Held(held));
@@ -94,16 +113,33 @@ pub fn judge(card: &Card<'_>, open: &BTreeSet<u64>, keep: &[Exclusion]) -> Optio
             open_children: card.open_children,
         });
     }
-    let mut blockers: Vec<u64> = crate::queue::refs_on(card.body, "Blocked-By:")
+    let refs: Vec<u64> = crate::queue::refs_on(card.body, "Blocked-By:")
         .into_iter()
         .filter_map(|n| u64::try_from(n).ok())
+        .filter(|n| *n != card.number)
+        .collect();
+    let mut blockers: Vec<u64> = refs
+        .iter()
+        .copied()
         .filter(|n| open.contains(n))
         .chain(card.blocked_by.iter().copied())
         .filter(|n| *n != card.number)
         .collect();
     blockers.sort_unstable();
     blockers.dedup();
-    (!blockers.is_empty()).then_some(Skip::BlockedBy(blockers))
+    if !blockers.is_empty() {
+        return Some(Skip::BlockedBy(blockers));
+    }
+    let mut unknown: Vec<u64> = match read_through {
+        Some(last) => refs
+            .into_iter()
+            .filter(|n| *n > last && !open.contains(n))
+            .collect(),
+        None => Vec::new(),
+    };
+    unknown.sort_unstable();
+    unknown.dedup();
+    (!unknown.is_empty()).then_some(Skip::BlockedByUnknown(unknown))
 }
 
 /// The lane-wide end condition: `met` is true when no pull request is open and no Issue is
@@ -219,6 +255,41 @@ mod tests {
             None
         );
         assert_eq!(judge(&card(5, "t", &none, ""), &open, &[]), None);
+    }
+
+    /// PR #2916 review: over an open list read only in part (oldest first, read through #100),
+    /// a `Blocked-By:` reference past the part read is of unknown state and keeps the card out;
+    /// one inside the part read and absent from `open` is closed; the whole list is as before.
+    #[test]
+    fn a_blocker_past_a_partial_list_keeps_the_card_out() {
+        let open: BTreeSet<u64> = [10, 40, 100].into();
+        let none: Vec<String> = vec![];
+        let past = card(10, "t", &none, "Blocked-By: #150");
+        // Boundary: #100 is the last number read, #101 the first one past it.
+        let at_last_closed = card(10, "t", &none, "Blocked-By: #99");
+        let first_past = card(10, "t", &none, "Blocked-By: #101");
+        assert_eq!(
+            judge_within(&past, &open, Some(100), &[]),
+            Some(Skip::BlockedByUnknown(vec![150]))
+        );
+        assert_eq!(
+            judge_within(&first_past, &open, Some(100), &[]),
+            Some(Skip::BlockedByUnknown(vec![101]))
+        );
+        assert_eq!(judge_within(&at_last_closed, &open, Some(100), &[]), None);
+        // An open blocker inside the part read is still `blocked_by`, and wins.
+        let both = card(10, "t", &none, "Blocked-By: #40 #150");
+        assert_eq!(
+            judge_within(&both, &open, Some(100), &[]),
+            Some(Skip::BlockedBy(vec![40]))
+        );
+        // The whole list: a number outside `open` is closed, whatever its size.
+        assert_eq!(judge(&past, &open, &[]), None);
+        assert_eq!(judge_within(&past, &open, None, &[]), None);
+        assert_eq!(
+            Skip::BlockedByUnknown(vec![150]).entry(10),
+            json!({"issue": 10, "reason": "blocked_by_unknown", "blocked_by": [150]})
+        );
     }
 
     #[test]

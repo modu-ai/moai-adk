@@ -158,6 +158,23 @@ fn card(t: &Thread) -> crate::startable::Card<'_> {
     }
 }
 
+/// The highest Issue number of the open list when it was read only in part (oldest first,
+/// `cards_truncated`); `None` when the list is whole or was not read. A `Blocked-By:`
+/// reference above it is of unknown state (PR #2916 review).
+fn read_through(snap: &Snapshot) -> Option<u64> {
+    if !snap.cards_truncated {
+        return None;
+    }
+    Some(
+        snap.cards
+            .iter()
+            .flatten()
+            .map(|t| t.number)
+            .max()
+            .unwrap_or(0),
+    )
+}
+
 /// The tip's CI as the merge gate judges it (`gate::TipCi` fields).
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Tip {
@@ -499,7 +516,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         .chain(&snap.open_issues)
         .map(|t| t.number)
         .collect();
-    let judge = |t: &Thread| crate::startable::judge(&card(t), &open, &snap.keep_set);
+    let read_through = read_through(snap);
+    let judge =
+        |t: &Thread| crate::startable::judge_within(&card(t), &open, read_through, &snap.keep_set);
     let next = (|| {
         // 1. P0: a red tip stops everything else — until a tip-repair pull request is open.
         // Then one lane repairs: its author goes on with it as its own pull request (2.), the
@@ -1157,11 +1176,14 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     }
     let open: std::collections::BTreeSet<u64> =
         snap.cards.iter().flatten().map(|t| t.number).collect();
+    let through = read_through(&snap);
     let free: Vec<u64> = snap
         .cards
         .iter()
         .flatten()
-        .filter(|t| crate::startable::judge(&card(t), &open, &snap.keep_set).is_none())
+        .filter(|t| {
+            crate::startable::judge_within(&card(t), &open, through, &snap.keep_set).is_none()
+        })
         .map(|t| t.number)
         .take(FREE_ISSUE_SCAN)
         .collect();
