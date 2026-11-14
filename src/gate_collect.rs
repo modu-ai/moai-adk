@@ -949,7 +949,12 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     let merge_base = git_ok(dir, &["merge-base", &tip, &head])?
         .trim()
         .to_string();
-    let pr_files = names(&git_ok(dir, &["diff", "--name-only", &merge_base, &head])?);
+    // `--no-renames`: a rename must list the old path too, or a tier-2 file moved into docs/
+    // would hide from the path rule that decides the audit tier (#2967 audit B1).
+    let pr_files = names(&git_ok(
+        dir,
+        &["diff", "--no-renames", "--name-only", &merge_base, &head],
+    )?);
     let authors = pr_authors(t, &base_url, dir, &merge_base, &head)?;
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
@@ -1005,15 +1010,18 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     // tip's changes count from where the current head meets the tip; otherwise the overlap G6
     // reads would be the very changes the update-branch merged in.
     let delta_ok = auto_delta.as_ref().is_some_and(|d| d.ok);
+    // #2906 T: without a known verdict base (a tier-0 PR has no verdict) the tip's changes count
+    // from the merge base, so G6 always has the overlap to check. Tiers 1 and 2 without a
+    // verdict already stop at G1.
     let tip_since = match (&verdict_base, verdict_base_known) {
-        (Some(_), true) if delta_ok => Some(merge_base.clone()),
-        (Some(b), true) => Some(git_ok(dir, &["merge-base", b, &tip])?.trim().to_string()),
-        _ => None,
+        (Some(_), true) if delta_ok => merge_base.clone(),
+        (Some(b), true) => git_ok(dir, &["merge-base", b, &tip])?.trim().to_string(),
+        _ => merge_base.clone(),
     };
-    let tip_files = match &tip_since {
-        Some(from) => names(&git_ok(dir, &["diff", "--name-only", from, &tip])?),
-        None => Vec::new(),
-    };
+    let tip_files = names(&git_ok(
+        dir,
+        &["diff", "--no-renames", "--name-only", &tip_since, &tip],
+    )?);
 
     let mut docs_lines_kept = Vec::new();
     let mut merged_manifest_ok = false;
@@ -1025,10 +1033,9 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
             } else if f == LIB_RS {
                 lib_mod_only_kept = lib_mods_only_kept(dir, &merged_tree, &merge_base, &head)?;
             } else if f.starts_with("docs/") {
-                let from = tip_since.clone().unwrap_or_default();
                 let sides = [
                     (merge_base.as_str(), head.as_str()),
-                    (from.as_str(), tip.as_str()),
+                    (tip_since.as_str(), tip.as_str()),
                 ];
                 if lines_kept(dir, &merged_tree, f, &sides)? {
                     docs_lines_kept.push(f.clone());
@@ -1067,6 +1074,8 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         body_claim: has_body_claim(&body),
         auto_delta,
         stacked_below: Some(stacked),
+        body_tier: gate::parse_body_tier(&body),
+        merge_base: Some(merge_base),
     })
 }
 

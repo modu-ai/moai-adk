@@ -15,6 +15,7 @@ pub struct Args {
 pub const OPERATION: &str = "agents.apply";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    moai_cli::profile::require_interviewed(&args.project)?;
     moai_cli::agents_apply(
         &args.project,
         super::super::plan_input::<moai_cli::AgentsPlan>()?,
