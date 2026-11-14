@@ -287,7 +287,9 @@ fn the_probe_limit_holds_when_a_wrapper_child_keeps_stdout_open() {
     cmd.args(["install-inspect", "--json"])
         .env("HOME", &home)
         .env("PATH", join(&[&stuck, &left]))
-        .env("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "300")
+        // 2 s, not less: a loaded machine (load 27–39 seen, #2843) may need well over 300 ms
+        // before the wrapper prints its line; the children still hold the pipe for 60 s.
+        .env("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "2000")
         .env_remove("CLAUDE_PROJECT_DIR")
         .env_remove("GOBIN")
         .current_dir(&home)
