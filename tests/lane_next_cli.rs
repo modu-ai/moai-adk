@@ -297,6 +297,66 @@ fn an_open_tip_repair_takes_p0_off_the_other_lanes() {
     assert_eq!(r["waiting"], json!([]));
 }
 
+/// #2664 E1: a pull request from outside the project (author association not OWNER, MEMBER or
+/// COLLABORATOR) or one that does not target the integration branch is the leader's to report
+/// to the user: no lane reserves or runs its audit; it is listed in `waiting` as `external_pr`.
+/// A pull request whose association and base were not read stays a lane pull request.
+#[test]
+fn an_external_pull_request_is_not_audited_by_a_lane() {
+    let ext = |n: u64, assoc: &str, base: &str, comments: Value| {
+        json!({"number": n, "head": h('x'), "author_lane": "agent-29", "author_association": assoc,
+            "base": base, "comments": comments})
+    };
+    // An outside contributor's pull request into the integration branch.
+    for assoc in [
+        "CONTRIBUTOR",
+        "FIRST_TIME_CONTRIBUTOR",
+        "FIRST_TIMER",
+        "NONE",
+    ] {
+        let r = next(&json!({"tip_branch": "v2026.11.0",
+            "prs": [ext(50, assoc, "v2026.11.0", json!([]))]}));
+        assert_eq!(r["next"], json!(null), "{assoc}: {r}");
+        assert_eq!(
+            r["waiting"][0]["reason"],
+            json!("external_pr"),
+            "{assoc}: {r}"
+        );
+        assert_eq!(r["waiting"][0]["number"], json!(50));
+    }
+    // A member's pull request into another branch than the integration branch.
+    let r = next(&json!({"tip_branch": "v2026.11.0",
+        "prs": [ext(51, "MEMBER", "main", json!([]))]}));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["waiting"][0]["reason"], json!("external_pr"), "{r}");
+    // Even with this lane's reservation on it, the audit is not run by the lane.
+    let r = next(&json!({"tip_branch": "v2026.11.0",
+        "prs": [ext(52, "NONE", "v2026.11.0", json!([audit_claim(1, LANE, &h('x'))]))]}));
+    assert_eq!(r["next"], json!(null), "{r}");
+    // Members, owners and collaborators into the integration branch stay lane work, and so does
+    // a pull request whose association, base or tip branch was not read.
+    for assoc in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let r = next(&json!({"tip_branch": "v2026.11.0",
+            "prs": [ext(53, assoc, "v2026.11.0", json!([]))]}));
+        assert_eq!(kind(&r), json!("reserve_audit"), "{assoc}: {r}");
+        assert_eq!(r["waiting"], json!([]), "{assoc}: {r}");
+    }
+    let r = next(&json!({"prs": [ext(54, "", "", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    let r = next(&json!({"tip_branch": "v2026.11.0", "prs": [ext(58, "MEMBER", "", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "no base read: {r}");
+    let r = next(&json!({"prs": [ext(55, "MEMBER", "main", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "no tip branch read: {r}");
+    // An external pull request never hides the next lane task behind it.
+    let r = next(&json!({"tip_branch": "v2026.11.0", "prs": [
+        ext(56, "NONE", "v2026.11.0", json!([])),
+        pr(57, &h('y'), Some("agent-29"), json!([])),
+    ]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(57));
+    assert_eq!(r["waiting"][0]["number"], json!(56));
+}
+
 /// #2873 N8: a card whose pull request (its body naming this claim) has merged is not a draft
 /// to open: `card_pr_merged`. A merge before the `pr-wait` line, or one for another claim,
 /// leaves the draft task.
