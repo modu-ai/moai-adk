@@ -26,6 +26,8 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
+/// The planned files and, per file, what OMP cannot express.
+type FilePlans = (Vec<Value>, BTreeMap<String, Vec<String>>);
 
 const SCHEMA_VERSION: u32 = 1;
 /// The agent folder, relative to the project.
@@ -186,10 +188,7 @@ fn plan_inner(project: &Path, package: &Path, agents: &Path) -> Result<Planned> 
     Ok(Planned { root, value })
 }
 
-fn file_plans(
-    root: &Path,
-    files: &[(String, String, Vec<String>)],
-) -> Result<(Vec<Value>, BTreeMap<String, Vec<String>>)> {
+fn file_plans(root: &Path, files: &[(String, String, Vec<String>)]) -> Result<FilePlans> {
     folders_plain(root)?;
     let owned = read_owned(root)?;
     let dir = root.join(DIR);

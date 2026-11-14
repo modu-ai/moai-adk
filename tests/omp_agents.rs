@@ -392,3 +392,19 @@ mod links {
         assert_eq!(snapshot(&out), outside);
     }
 }
+
+#[test]
+fn a_plan_of_one_project_is_not_a_plan_of_another() {
+    // Two projects with the same layout: the digest names its project, so a confirmation made
+    // for one cannot be used on the other (the lesson of #2983 B1).
+    let a = fx();
+    let b = fx();
+    assert_ne!(a.project, b.project);
+    let (pa, pb) = (a.plan().unwrap(), b.plan().unwrap());
+    assert_eq!(Fx::actions(&pa), Fx::actions(&pb));
+    assert_ne!(digest(&pa), digest(&pb));
+    let before = snapshot(&b.project);
+    let e = b.apply(&digest(&pa)).unwrap_err();
+    assert!(e.contains("stale"), "{e}");
+    assert_eq!(snapshot(&b.project), before);
+}
