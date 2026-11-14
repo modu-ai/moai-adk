@@ -391,7 +391,11 @@ fn ac3_a_wiring_hash_is_bare_hex_and_only_that_provenance_is_normalized() {
     );
     // A template-managed record keeps the prefixed form: bare hex is not its hash.
     fx.write(".codex/agents/moai/q.toml", "q\n");
-    fx.record(".codex/agents/moai/q.toml", "template_managed", &hex(b"q\n"));
+    fx.record(
+        ".codex/agents/moai/q.toml",
+        "template_managed",
+        &hex(b"q\n"),
+    );
     fx.manifest();
     let p = fx.plan();
     stays(&p, ".codex/hooks.json", "go_hooks");
@@ -457,10 +461,16 @@ fn ac4_hooks_json_needs_content_proof_and_prints_key_names_only() {
         let p = fx.plan();
         stays(&p, ".codex/hooks.json", "user_modified");
         assert_ne!(item(&p, ".codex/hooks.json")["reason"], LATER, "case {n}");
-        assert!(proof(&p, ".codex/hooks.json").contains(why), "case {n}: {p}");
+        assert!(
+            proof(&p, ".codex/hooks.json").contains(why),
+            "case {n}: {p}"
+        );
         let all = p.to_string();
         for leaked in ["value-5c1e", "token-9f3a", "example.invalid"] {
-            assert!(!all.contains(leaked), "case {n}: a value reached the output");
+            assert!(
+                !all.contains(leaked),
+                "case {n}: a value reached the output"
+            );
         }
     }
 }
@@ -483,15 +493,9 @@ fn ac4_hooks_json_with_only_moai_handlers_is_go_wiring_and_empty_hooks_are_too()
 fn ac5_config_toml_needs_content_proof_and_prints_key_names_only() {
     let cases: [(String, &str); 7] = [
         // a key the Go wiring does not write
-        (
-            format!("model = \"value-77aa\"\n{GO_CONFIG}"),
-            "model",
-        ),
+        (format!("model = \"value-77aa\"\n{GO_CONFIG}"), "model"),
         // another key inside `tui`
-        (
-            format!("{GO_CONFIG}theme = \"value-77ab\"\n"),
-            "tui.theme",
-        ),
+        (format!("{GO_CONFIG}theme = \"value-77ab\"\n"), "tui.theme"),
         // another MCP server
         (
             format!("{GO_CONFIG}\n[mcp_servers.other]\ncommand = \"value-77ac\"\n"),
@@ -530,7 +534,10 @@ fn ac5_config_toml_needs_content_proof_and_prints_key_names_only() {
             "case {n}: {p}"
         );
         let all = p.to_string();
-        assert!(!all.contains("value-77a"), "case {n}: a value reached the output");
+        assert!(
+            !all.contains("value-77a"),
+            "case {n}: a value reached the output"
+        );
     }
 }
 
@@ -725,7 +732,9 @@ fn assert_everything_stays(p: &Value) {
         assert_ne!(item(p, rel)["reason"], LATER, "{rel}");
     }
     assert!(
-        p["warnings"].to_string().contains("interrupted Codex wiring"),
+        p["warnings"]
+            .to_string()
+            .contains("interrupted Codex wiring"),
         "{p}"
     );
 }
@@ -771,7 +780,9 @@ fn ac10_a_finished_journal_and_no_temp_file_are_not_interrupted() {
     stays(&p, ".codex/hooks.json", "go_hooks");
     stays(&p, ".codex/agents/moai/expert.toml", "tool_asset");
     assert!(
-        !p["warnings"].to_string().contains("interrupted Codex wiring"),
+        !p["warnings"]
+            .to_string()
+            .contains("interrupted Codex wiring"),
         "{p}"
     );
 }
@@ -784,7 +795,10 @@ fn ac11_a_symlink_on_the_path_keeps_the_file_in_place_unread() {
     // `.codex/agents` is a link to a folder outside the project.
     let body = "name = \"expert\"\n";
     let target = fx.outside("agents/moai/expert.toml", body);
-    fx.link(".codex/agents", target.parent().unwrap().parent().unwrap().to_str().unwrap());
+    fx.link(
+        ".codex/agents",
+        target.parent().unwrap().parent().unwrap().to_str().unwrap(),
+    );
     fx.record(
         ".codex/agents/moai/expert.toml",
         "template_managed",
@@ -807,7 +821,10 @@ fn ac11_a_symlink_on_the_path_keeps_the_file_in_place_unread() {
     ] {
         stays(&p, rel, "unknown");
         assert!(
-            item(&p, rel)["reason"].as_str().unwrap().contains("symlink"),
+            item(&p, rel)["reason"]
+                .as_str()
+                .unwrap()
+                .contains("symlink"),
             "{rel}: {p}"
         );
     }
@@ -818,7 +835,18 @@ fn ac11_a_linked_codex_folder_keeps_everything_and_is_not_counted() {
     let mut fx = go_fx();
     let body = "name = \"expert\"\n";
     let target = fx.outside("codex/agents/moai/expert.toml", body);
-    fx.link(".codex", target.parent().unwrap().parent().unwrap().parent().unwrap().to_str().unwrap());
+    fx.link(
+        ".codex",
+        target
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap(),
+    );
     fx.record(
         ".codex/agents/moai/expert.toml",
         "template_managed",
