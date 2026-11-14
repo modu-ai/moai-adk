@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Classify flaky tests from two CI logs
+///
 /// Classify flaky tests (#2666): given the log of a failed CI run and the log of a later run of
 /// the same head (`gh run view <id> --log` saved to a file), list the tests that failed first
 /// and passed later (flaky), failed in both (still failing), or are absent from the later log.

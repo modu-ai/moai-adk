@@ -6,6 +6,8 @@ use moai_cli::forge::transport::GhTransport;
 use moai_cli::gate_loop::{self, LoopTarget};
 use std::path::PathBuf;
 
+/// Run one pass of the leader merge loop
+///
 /// One pass of the leader's merge loop (#2674 S4): runs `gate-merge` on every open,
 /// non-draft pull request into the integration branch, and once per head updates the branch
 /// on a code overlap with the tip (G6) or asks the claim holder when the verdict's author holds

@@ -1,0 +1,187 @@
+MoAI-ADK 2026.11.0-rc.1 — agentic development kit
+
+Usage: moai <command> [options]
+       moai cc|codex|glm -l|-a    lead or agent session
+
+Start
+  cc                      Start a Claude Code session
+  codex                   Start a Codex CLI session
+  glm                     Start a Claude Code session on z.ai GLM
+Project
+  project-detect          Detect the project's facts
+  project-plan            Preview the project profile
+  project-apply           Write a previewed project profile
+  language-setup          Choose the writing language item by item
+  index-build             Build the code map index
+  agents-plan             Preview the AGENTS.md managed section
+  agents-apply            Write a previewed AGENTS.md managed section
+  generation-plan         Preview the project's generated agent and skill files
+  generation-apply        Write previewed generated agent and skill files
+  github-plan             Preview the project's GitHub templates
+  github-apply            Write previewed GitHub templates
+  labels-plan             Preview syncing the project's GitHub labels
+  labels-apply            Sync previewed GitHub labels
+  claude-settings-plan    Preview the managed Claude Code settings keys
+  claude-settings-apply   Write previewed Claude Code settings keys
+  codex-config-plan       Preview the managed Codex config keys
+  codex-config-apply      Write previewed Codex config keys
+  hooks-plan              Preview the MoAI hook set for one host
+  hooks-apply             Write a previewed hook set
+Update and move
+  update                  Update MoAI from the installed package
+  go-state-plan           Preview moving the Go-era .moai folder
+  go-state-apply          Move a previewed Go-era .moai folder
+  go-state-revert-plan    Preview undoing a Go-era folder move
+  go-state-revert         Undo a Go-era folder move
+  home-state-plan         Preview moving the Go-era ~/.moai folder
+  home-state-apply        Move a previewed Go-era ~/.moai folder
+  home-state-revert       Undo a ~/.moai folder move
+  worktree-move-plan      Preview moving this clone's worktrees
+  worktree-move-apply     Move the previewed worktrees
+  update-plan             Preview an update of every host copy
+  update-apply            Apply a previewed update host by host
+  recovery-plan           Preview recovering hosts an update left pending
+  recovery-apply          Revert one update's changes on pending hosts
+  apply-recover           Revert the files one apply published
+  layout-plan             Preview moving MoAI state into the home layout
+  layout-apply            Copy MoAI state into a previewed home layout
+  migrate-plan            Preview migrating Go MoAI data on a test HOME
+  migrate-apply           Apply a previewed Go MoAI migration
+  migrate-recovery-plan   Preview undoing one migration apply
+  migrate-recover         Remove the imports one migration apply made
+  skills-legacy           List legacy moai-* skill folders
+  bin-names-plan          Preview the moai link beside moai-cli
+  bin-names-apply         Make the previewed moai link
+  agents-home-plan        Preview installing the base agents into HOME
+  agents-home-apply       Install previewed base agents into HOME
+  agents-home-revert      Undo one base agent install
+  home-routing-plan       Preview the routing section in HOME instructions
+  home-routing-apply      Write a previewed routing section into HOME
+  home-routing-revert     Undo one routing section apply
+Keys
+  key-set                 Store a provider key in the vault
+  key-status              Check a provider key without showing it
+  key-remove              Remove a provider key from the vault
+  key-import-plan         Preview importing an old key file
+  key-import-apply        Import a previewed old key file
+Diagnose
+  claude-doctor           Check that Claude Code reads AGENTS.md
+  codex-doctor            Check the Codex instructions and skills
+  install-inspect         Show the installed MoAI binaries
+  identity                Show where a path sits in its clone
+  worktree-report         Report the space worktrees use
+  optimize-plan           Preview space that can be freed
+  baseline-inventory      List a checkout's baseline facts
+Lane and leader
+  claim-acquire           Claim a task with one Issue comment
+  claim-verify            Check claim ownership before a commit or push
+  claim-show              Show the current claim record of a task
+  claim-release           Close the active claim as cancelled
+  claim-handoff           Hand a claim to another session
+  queue-next              Claim the next free card
+  queue-free              List the open cards a lane may take
+  queue-query             Read the merge train from the leader's comment
+  leader-tick             Run one leader supervision tick
+  lane-status             Show the status table of the named lanes
+  lane-handoff-check      Check that a worktree is safe to leave
+  lane-safe-to-reset      Check that a lane's session is safe to clear
+  session-register        Register this session's lane name
+  usage-limit             Report how close the usage limits are
+  heavy-slot-acquire      Run a heavy command in a machine-wide slot
+  heavy-slot-status       List the heavy-run slots held now
+  goal-show               Show the standing goal of this clone
+  goal-plan               Preview a change of the standing goal
+  goal-apply              Write a previewed change of the standing goal
+  goal-block              Build the goal paste block from the state
+  gate-check              Check every rule of the leader merge gate
+  gate-merge              Merge one pull request when the gate passes
+  gate-loop               Run one pass of the leader merge loop
+  wait                    Wait until a condition holds on GitHub
+  scope-check             Check a claim's write scope against others
+  worktree-plan           Preview the branch and worktree of a claim
+  worktree-apply          Create the previewed worktree of a claim
+  pr-body-render          Render the pull request body of a claim
+  pr-confirm              Record a pull request's acknowledgement
+  audit-claim             Reserve the audit of one pull request head
+  audit-clone-plan        Preview an independent audit clone
+  labels-check            Report Issues whose labels break the rule
+  decision-due            Sort the unanswered decisions of a bundle
+  decision-file-check     Check one decision bundle file
+  decision-append         Add rows to the user decision log
+  flow-wip-check          Check the open pull requests against the WIP cap
+  dispatch-record         Record a dispatch revision
+  dispatch-ack            Record a dispatch acknowledgement and decision
+  dispatch-check          Check dispatch revisions and late acknowledgements
+  message-record          Publish a durable message
+  message-ack             Publish a receiver acknowledgement
+  message-reconcile       Reconcile local messages with the remote
+  effect-intend           Record an external write before it is sent
+  effect-confirm          Confirm or mark uncertain an intended write
+  effects-reconcile       Reconcile uncertain writes with the remote
+Checks
+  review-package          Build the review package for an audit
+  review-check            Check review findings before they are posted
+  repo-scans              List the repo-wide scan tests a merge must run
+  pr-self-audit-check     Check a pull request body's Self-Audit section
+  flake-classify          Classify flaky tests from two CI logs
+  flake-record            Record classified flaky tests on their Issues
+  audit-delta             Compare a two-parent merge with a replay
+  audit-reduce            Run an independent audit of a candidate
+  parity-check            Compare a template and its generated files
+  plan-admit              Admit a plan to a run
+  run-verify              Re-check a run's pinned verification
+Internal
+  statusline              Render the Claude Code status line
+  hook-receipt            Record one hook receipt line
+  hook-dispatch           Run one MoAI hook duty for a host
+  forge-read              Read GitHub Issues and comments as tasks
+  forge-links-probe       Probe the GitHub sub-issue and dependency APIs
+  forge-report            Create or update a run's report comment
+  forge-audit-status      Post the audit commit status on a SHA
+  index-query             Query the code map index
+  atlas-map               Show the code map
+  atlas-graph             Walk the code graph from a symbol
+  atlas-tag-scan          Scan for MOAI and MX tag markers
+  search                  Search paths, symbols and text
+  context-bundle          Bundle file ranges with digests
+  context-verify          Re-check a bundle's ranges against the files
+  decision-record         Append one decision record to a run
+  cost-report             Sum the cost items of run receipts
+  snapshot-describe       Describe a project's HEAD and tracked changes
+  package-inspect         Inspect a skill package's digests
+  package-resolve         Resolve which skill package a project uses
+  codex-projection-plan   Preview a Codex copy of the skill package
+  codex-projection-apply  Install a previewed Codex skill copy
+  project-skill-plan      Preview project copies of the moai skill
+  project-skill-apply     Copy the moai skill into the project
+  project-skill-revert    Undo one project skill copy
+  archive-plan            Preview which SPECs can be archived
+  archive-apply           Archive the previewed SPECs
+  archive-restore         Restore one archived SPEC
+  archive-search          Search the archived SPECs
+  worktree-gc-plan        Preview removing or trimming merged worktrees
+  worktree-gc-apply       Remove or trim the previewed worktrees
+  session                 Start a Claude Code session (legacy form)
+
+Options:
+  -l, --leader             Start a leader session on the default host (cc)
+  -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|codex; default cc)
+      --name <NAME>        Session name (default `leader` for -l, the project's next `agent-N` for
+                           -a; none without a role)
+      --model <MODEL>      Main model (Claude hosts default `opus`; codex uses its own default
+                           unless set)
+      --effort <EFFORT>    Claude effort (default `medium`)
+      --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id).
+                           None by default; the user setting `launcher.advisor` can turn it on. May
+                           bill to usage credits
+      --no-advisor         Pass no `--advisor` even when the user setting `launcher.advisor` turns
+                           it on
+      --permissions        Keep permission prompts: no `--dangerously-skip-permissions` (Claude
+                           hosts) and the `workspace-write` / `on-request` sandbox on codex. Without
+                           it a -l|-a session has full access; a session without a role never gets a
+                           permission flag
+      --dry-run            Print the composed command as JSON instead of starting the host
+  -h, --help               Print help
+  -V, --version            Print version
+
+Run 'moai <command> --help' for details and examples.

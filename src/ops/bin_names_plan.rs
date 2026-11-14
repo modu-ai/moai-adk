@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Preview the moai link beside moai-cli
+///
 /// Preview the two command names (#2791 AC-1): in the version folder this binary runs from,
 /// `~/.moai-cli/versions/<version>/bin/`, `moai` should be a hard link to `moai-cli`. Says
 /// `create`, `unchanged`, `replace_copy` (a separate copy of this same build is moved aside),

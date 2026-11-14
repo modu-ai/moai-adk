@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Undo one routing section apply
+///
 /// Undo one routing section apply (#2638) for the files that still hold the bytes it wrote; a
 /// file changed since is skipped and reported.
 #[derive(clap::Args)]

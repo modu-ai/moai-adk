@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Make the previewed moai link
+///
 /// Make the `moai` hard link `bin-names-plan` previewed (#2791 AC-1). The digest must match a
 /// fresh preview; only `create` and `replace_copy` write. A separate copy is moved aside to
 /// `moai.replaced-<UTC>`, never deleted, and moved back if the link fails.

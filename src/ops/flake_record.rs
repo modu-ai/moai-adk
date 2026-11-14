@@ -3,6 +3,8 @@
 use moai_cli::forge::transport::GhTransport;
 use std::path::PathBuf;
 
+/// Record classified flaky tests on their Issues
+///
 /// Record flaky tests (#2666): for every flaky row of a `flake-classify` result, comment on the
 /// open Issue that tracks the test (hidden marker on its first line), or create `[flake] <test>`
 /// when none is open. A run and job already recorded writes nothing. Needs a permission
