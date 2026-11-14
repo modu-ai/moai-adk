@@ -126,8 +126,10 @@ fn sync_parent(path: &Path) {
 /// Stages `after` into a unique temporary file in the target's directory (create_new,
 /// write, sync_all), re-verifying the target still matches `before` before publishing.
 /// The temporary file carries the target's permissions on unix and is removed on every
-/// failure path (REQ-01B-03).
-fn stage(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<PathBuf> {
+/// failure path (REQ-01B-03). A new file takes `mode` (unix permission bits) when one is
+/// given, from its creation on, so bytes that may be a secret are never readable more widely
+/// than the caller allows; an existing target's permissions win.
+fn stage(path: &Path, before: Option<&[u8]>, after: &[u8], mode: Option<u32>) -> Result<PathBuf> {
     let parent = path.parent().ok_or("target parent unavailable")?;
     fs::create_dir_all(parent).map_err(|_| "target directory unavailable")?;
     let nanos = std::time::SystemTime::now()
@@ -135,15 +137,28 @@ fn stage(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<PathBuf> {
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     let temp = parent.join(format!(".moai-apply-{}-{nanos}.tmp", std::process::id()));
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .map_err(|_| "temporary file refused")?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
     #[cfg(unix)]
-    if let Ok(meta) = fs::metadata(path) {
-        let _ = fs::set_permissions(&temp, meta.permissions());
+    if let Some(mode) = mode {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(mode);
     }
+    let mut file = options.open(&temp).map_err(|_| "temporary file refused")?;
+    #[cfg(unix)]
+    match fs::metadata(path) {
+        Ok(meta) => {
+            let _ = fs::set_permissions(&temp, meta.permissions());
+        }
+        Err(_) => {
+            if let Some(mode) = mode {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = fs::set_permissions(&temp, fs::Permissions::from_mode(mode));
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = mode;
     let written = file
         .write_all(after)
         .and_then(|_| file.sync_all())
@@ -164,7 +179,7 @@ fn stage(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<PathBuf> {
 /// Atomic replace (REQ-01B-03): stage → rename → directory sync. A rename across
 /// filesystems is refused, never downgraded to copy+delete (REQ-01B-05).
 pub fn publish_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
-    let temp = stage(path, before, after)?;
+    let temp = stage(path, before, after, None)?;
     match fs::rename(&temp, path) {
         Ok(()) => {}
         Err(e) => {
@@ -189,7 +204,13 @@ pub fn publish_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Resu
 // @MX:NOTE [HOLD-B2 A] Hard-link publish verified on macOS/APFS fixtures only; a
 // no-hard-link filesystem fails explicitly and no wider OS/FS claim is made.
 pub fn publish_exclusive(path: &Path, after: &[u8]) -> Result<()> {
-    let temp = stage(path, None, after)?;
+    publish_exclusive_mode(path, after, None)
+}
+
+/// [`publish_exclusive`] with the unix permission bits of the new file (`None`: the process
+/// default). The file has them from its creation, not after a later `chmod`.
+pub fn publish_exclusive_mode(path: &Path, after: &[u8], mode: Option<u32>) -> Result<()> {
+    let temp = stage(path, None, after, mode)?;
     let published = fs::hard_link(&temp, path)
         .map_err(|_| "exclusive create refused")
         .map(|_| ());

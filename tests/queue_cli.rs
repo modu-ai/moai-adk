@@ -301,17 +301,24 @@ fn queue_free_sorts_every_card_into_one_bucket() {
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
     assert_eq!(out["writes"], json!(false));
     assert_eq!(out["inspected"], json!(9), "{out}");
-    assert_eq!(numbers(&out, "free"), vec![5, 6, 7, 10]);
+    // #2973 T1: an expired claim is its own bucket, not startable work.
+    assert_eq!(numbers(&out, "free"), vec![5, 6, 10]);
     let why: Vec<&str> = out["free"]
         .as_array()
         .unwrap()
         .iter()
         .map(|e| e["why"].as_str().unwrap())
         .collect();
-    assert_eq!(why, vec!["unclaimed", "released", "expired", "unclaimed"]);
-    assert_eq!(out["free"][2]["claimed_by"], json!("agent-7"));
-    assert_eq!(out["free"][2]["lease_until"], json!(EXPIRED));
-    assert_eq!(out["free_count"], json!(4));
+    assert_eq!(why, vec!["unclaimed", "released", "unclaimed"]);
+    assert_eq!(numbers(&out, "expired"), vec![7]);
+    assert_eq!(out["expired"][0]["claimed_by"], json!("agent-7"));
+    assert_eq!(out["expired"][0]["comment_id"], json!(70));
+    assert_eq!(out["expired"][0]["lease_until"], json!(EXPIRED));
+    assert_eq!(out["expired_count"], json!(1));
+    assert_eq!(out["free_count"], json!(3));
+    assert_eq!(out["startable_count"], json!(3));
+    assert_eq!(out["unjudged_count"], json!(0));
+    assert_eq!(out["unjudged"], json!([]));
     assert_eq!(numbers(&out, "claimed"), vec![8]);
     assert_eq!(out["claimed"][0]["claimed_by"], json!("agent-8"));
     assert_eq!(numbers(&out, "reserved"), vec![9]);
@@ -323,7 +330,10 @@ fn queue_free_sorts_every_card_into_one_bucket() {
     assert_eq!(out["blocked"][0]["blocked_by"], json!([1]));
     assert_eq!(
         out["summary"],
-        json!("free 4건 (inspected 9, claimed 1, reserved 1, held 1, epics 1, blocked 1)")
+        json!(
+            "free 3건 (startable 3, expired 1, unjudged 0, inspected 9, claimed 1, reserved 1, \
+             held 1, epics 1, blocked 1)"
+        )
     );
 }
 
@@ -453,13 +463,65 @@ fn queue_free_edges_self_block_lease_now_and_lowest_live_claim() {
         Vec::<i64>::new(),
         "self reference is not a blocker"
     );
-    assert_eq!(numbers(&out, "free"), vec![1, 2]);
+    assert_eq!(numbers(&out, "free"), vec![1]);
     assert_eq!(
-        out["free"][1]["why"],
-        json!("expired"),
+        numbers(&out, "expired"),
+        vec![2],
         "a lease ending now is expired"
     );
     assert_eq!(numbers(&out, "claimed"), vec![3, 4]);
     assert_eq!(out["claimed"][1]["claimed_by"], json!("agent-a"));
     assert_eq!(out["claimed"][1]["comment_id"], json!(40));
+}
+
+/// #2973 T1 (AC3): text that says "on hold" but carries no hold label is `unjudged` — shown with
+/// its marker and place, never counted as startable. A label still judges (`held`); a letter
+/// touching `hold`, a mention below the first body line, a claim and an expired claim change
+/// nothing about their own buckets.
+#[test]
+fn queue_free_surfaces_hold_text_it_cannot_judge() {
+    let (out, t) = free_run(vec![
+        open_issues(vec![
+            card(1, "[HOLD] 정책 정리", ""),
+            card(2, "결제 연동 보류", ""),
+            card(3, "plain", "HOLD: 사용자 결정 대기\n\n본문"),
+            card(4, "threshold 조정", "배경\nHOLD 범주는 다섯 가지"),
+            card(5, "[HOLD] 이미 맡음", ""),
+            card(6, "[HOLD] 만료", ""),
+        ]),
+        exchange("GET", &comments(1), resp(200, json!([]))),
+        exchange("GET", &comments(2), resp(200, json!([]))),
+        exchange("GET", &comments(3), resp(200, json!([]))),
+        exchange("GET", &comments(4), resp(200, json!([]))),
+        exchange(
+            "GET",
+            &comments(5),
+            resp(200, json!([claim(50, "agent-5")])),
+        ),
+        exchange(
+            "GET",
+            &comments(6),
+            resp(200, json!([claim_until(60, "agent-6", EXPIRED)])),
+        ),
+    ]);
+    let out = out.unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(numbers(&out, "unjudged"), vec![1, 2, 3]);
+    assert_eq!(out["unjudged"][0]["marker"], json!("HOLD"));
+    assert_eq!(out["unjudged"][0]["where"], json!("title"));
+    assert_eq!(out["unjudged"][1]["marker"], json!("보류"));
+    assert_eq!(out["unjudged"][2]["marker"], json!("HOLD"));
+    assert_eq!(out["unjudged"][2]["where"], json!("body"));
+    assert_eq!(out["unjudged_count"], json!(3));
+    assert_eq!(numbers(&out, "free"), vec![4]);
+    assert_eq!(out["startable_count"], json!(1));
+    assert_eq!(numbers(&out, "claimed"), vec![5]);
+    assert_eq!(numbers(&out, "expired"), vec![6]);
+    assert!(
+        out["summary"]
+            .as_str()
+            .unwrap()
+            .starts_with("free 1건 (startable 1, expired 1, unjudged 3, "),
+        "{out}"
+    );
 }

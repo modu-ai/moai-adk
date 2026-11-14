@@ -299,8 +299,10 @@ enum Command {
     /// List the open cards a lane may take
     ///
     /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
-    /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
-    /// epics, blocked); an empty result says `free_count: 0`.
+    /// on stdin; GET only. Every open Issue lands in one bucket (free, expired, unjudged,
+    /// reserved, claimed, held, epics, blocked); `startable_count` (= `free_count`) counts only
+    /// the work a lane can start now, so expired claims and cards whose text says HOLD without
+    /// a hold label are listed apart; an empty result says `free_count: 0` (#2973).
     QueueFree { project: PathBuf },
     /// Read the merge train from the leader's comment
     ///
@@ -1047,7 +1049,8 @@ fn launch(
 ) -> Result<serde_json::Value, String> {
     use moai_cli::session::{launch_settings, peek_agent_number, take_agent_number, AdvisorSource};
     // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
-    // `-a` is `agent-N` from the project's counter; access is resolved before numbering.
+    // `-a` is `agent-N` after the project's live sessions (#2971); access is resolved before
+    // numbering.
     let role = leader.map(|l| if l { "leader" } else { "agent" });
     // `-a` without `--name` is numbered; `--name` takes no number.
     let numbered = leader == Some(false) && o.name.is_none();
@@ -1096,40 +1099,43 @@ fn launch(
     if let (false, Some(note)) = (o.dry_run, &init.note) {
         eprintln!("{note}");
     }
-    let mut number_note = None;
+    let mut number_notes = Vec::new();
+    // The number's `.live` lock (#2971): held until the host has exited, so a launch started in
+    // the meantime sees this number alive. It is dropped after `session_launch` returns.
+    let mut live_number = None;
     if numbered {
         let here = std::env::current_dir()
             .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
         let n = if o.dry_run && init.git_pending {
-            number_note = Some(
-                "agent-N preview: --dry-run takes no number (the store is created by git init)"
-                    .to_string(),
-            );
+            number_notes = moai_cli::session::pending_number_notes();
             1
         } else if o.dry_run {
             let dir = moai_cli::session::agent_seq_dir(&here)?;
-            number_note = Some(format!(
-                "agent-N preview: --dry-run takes no number (store {})",
-                dir.display()
-            ));
-            peek_agent_number(&here)?
+            let (n, live_max) = peek_agent_number(&here)?;
+            number_notes = moai_cli::session::number_notes(n, live_max, &dir, false);
+            n
         } else {
             // Compose first, so a launch that is refused anyway (a blocked glm, an invalid
             // option) takes no number.
             request.name = Some("agent-0".into());
             moai_cli::session::compose(&request)?;
             let dir = moai_cli::session::agent_seq_dir(&here)?;
-            let n = take_agent_number(&here)?;
-            number_note = Some(format!("agent number {n} taken (store {})", dir.display()));
+            let taken = take_agent_number(&here)?;
+            let n = taken.number;
+            number_notes = moai_cli::session::number_notes(n, taken.live_max, &dir, true);
+            live_number = Some(taken);
             n
         };
         request.name = Some(format!("agent-{n}"));
     }
-    let mut v = session_launch(&request, o.dry_run)?;
+    let launched = session_launch(&request, o.dry_run);
+    // The host has exited (or never started): the number is free again.
+    drop(live_number);
+    let mut v = launched?;
     if let Some(notes) = v["notes"].as_array_mut() {
         notes.extend(advisor_note.map(Into::into));
         notes.extend(init.note.map(Into::into));
-        notes.extend(number_note.map(Into::into));
+        notes.extend(number_notes.into_iter().map(serde_json::Value::from));
     }
     Ok(v)
 }

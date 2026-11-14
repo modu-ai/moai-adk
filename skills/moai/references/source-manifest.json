@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "02357d45de5d7a21e3f00bf9e4772ff5536ea2d55574ea95736afe5e6b47278f",
+      "sha256": "d772e9f9422ce444b76d13171d124a3febcb399a3e9345e23a1cd2420589ff9d",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,12 +154,12 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "fada040a748d42e03c0ed436108c8bd49269067486ac9ce196db414c1bbe3029",
+      "sha256": "bc6fadf652bb0c966b3c444158e4cff32a98ef877eb797c8dfd7a0884da3e98d",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
         "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B)."
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2)."
       }
     },
     "references/chains/index.md": {

@@ -968,3 +968,51 @@ fn passed_green_unmerged_pr_points_to_gate_dry_run() {
     snap["prs"][0]["ci"] = json!("pending");
     assert_eq!(kind(&next(&snap)), json!("resume_decision"));
 }
+
+/// #2973 T2 (AC4–AC6): an audit record in another form that names the head now is no reason to
+/// ask for a second reservation. The PR goes to `waiting` with the record's comment id; the list
+/// goes on to the next PR; a record of an older head, or one with a head too short to tell, changes
+/// nothing; and nothing is written.
+#[test]
+fn a_foreign_audit_record_on_the_head_now_waits_instead_of_reserving() {
+    let head = "a0f30f6865e273a42e39c6a2e818d772704496be";
+    let record = json!({"id": 6858185395u64, "body": "## 독립 감사 델타 (리드 배정 · lane-14) head a0f30f686\n\nPASS 근거"});
+    // Alone: nothing to do, and the PR is listed as waiting with the record.
+    let r = next(&json!({"prs": [pr(872, head, Some("agent-29"), json!([record.clone()]))]}));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["waiting"],
+        json!([{"number": 872, "reason": "foreign_audit_record",
+                "comment": 6858185395u64, "head": head}]),
+        "{r}"
+    );
+    // The list goes on: the next PR with no record is still reserved.
+    let r = next(&json!({"prs": [
+        pr(872, head, Some("agent-29"), json!([record.clone()])),
+        pr(873, &h('b'), Some("agent-29"), json!([])),
+    ]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(873));
+    assert_eq!(r["waiting"][0]["number"], json!(872));
+    // A record of an older head: the head now still needs a reservation.
+    let r = next(&json!({"prs": [pr(
+        872,
+        &format!("b0{}", &head[2..]),
+        Some("agent-29"),
+        json!([record.clone()]),
+    )]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    // A head of 6 digits is too short to tell.
+    let short = json!({"id": 7, "body": "독립 감사 head a0f30f"});
+    let r = next(&json!({"prs": [pr(872, head, Some("agent-29"), json!([short]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    // A reservation by another lane still wins (the record adds nothing): audit_reserved.
+    let r = next(&json!({"prs": [pr(
+        872,
+        head,
+        Some("agent-29"),
+        json!([record, audit_claim(8, "agent-3", head)]),
+    )]}));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["pr_skipped"][0]["reason"], json!("audit_reserved"), "{r}");
+}
