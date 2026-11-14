@@ -306,14 +306,19 @@ fn an_item_in_use_after_the_plan_is_not_moved() {
 
 /// A file held open inside a held item by a process that works elsewhere and names it only
 /// relatively is invisible to the plan, so the digest matches; the re-check right before the
-/// move skips that item and the others still move.
+/// move skips that item and the others still move. The holder drops `OLDPWD` and `PWD` before
+/// its `exec`: dash exports `OLDPWD=<the item>` after a `cd`, and on Linux the plan reads
+/// `/proc/<pid>/environ`, so the process would otherwise be seen by name.
 #[test]
 fn an_item_with_a_file_held_open_is_skipped_right_before_the_move() {
     let fx = fixture();
     let now = far(&fx);
     let digest = plan(&fx, now)["plan_digest"].as_str().unwrap().to_string();
     let mut holder = Command::new("/bin/sh")
-        .args(["-c", "exec 3<CACHEDIR.TAG; cd /; exec /bin/sleep 30"])
+        .args([
+            "-c",
+            "exec 3<CACHEDIR.TAG; cd /; unset OLDPWD PWD; exec /bin/sleep 30",
+        ])
         .current_dir(fx.build())
         .stdin(Stdio::null())
         .spawn()
