@@ -401,7 +401,7 @@ pub(crate) fn census(wt: &Path) -> Option<(usize, usize, bool)> {
 
 /// Ignored files a merged worktree may lose (#2879 D2) — the one table. Regenerable caches,
 /// a lane's temporary files and byte-identical copies of the primary checkout's same path
-/// (what `.worktreeinclude` copied). Anything else keeps the worktree: a `.moai/` report that
+/// (what the worktree include list copied). Anything else keeps the worktree: a `.moai/` report that
 /// exists only in the worktree, or differs from the primary's copy, is user data (measured
 /// 2026-11-14 on 41 merged worktrees: 34 held a differing file, 6 a file the primary lacks).
 const REGENERABLE_DIRS: &[&str] = &["__pycache__", ".ruff_cache", ".pytest_cache", ".mypy_cache"];

@@ -260,8 +260,13 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         self.assertIn("the `debug`, `release` and `<target triple>` folders", text)
         self.assertIn("never removes `target/` itself or the notes, evidence and scripts under `target/<name>/`", text)
         self.assertIn("never touches another lane's worktree", text)
-        self.assertIn("a script the leader writes after checking the list and the operator runs, never by a lane", text)
-        self.assertIn("a worktree itself is removed only after a separate confirmation", text)
+        # #2879 (user instruction 2026-11-14): a lane removes its own merged card worktree
+        # through the gc plan; many worktrees at once stay the leader's periodic step.
+        self.assertIn("after the card's closing table a lane removes its own merged card worktree "
+                      "with `moai worktree-gc-apply --worktree <path>`", text)
+        self.assertIn("cleaning other lanes' worktrees or many at once stays the leader's periodic step", text)
+        self.assertNotIn("a script the leader writes after checking the list and the operator runs, never by a lane", text)
+        self.assertNotIn("a worktree itself is removed only after a separate confirmation", text)
         self.assertNotIn("the leader removes them after checking the list", text)
         self.assertNotIn("The leader cleans the build folders of merged work", text)
         self.assertNotIn("A lane does not delete build folders", text)
