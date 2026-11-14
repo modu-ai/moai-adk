@@ -174,12 +174,60 @@ fn evidence_only(rest: &str) -> bool {
         && text.chars().all(|c| {
             c.is_alphanumeric()
                 || c.is_whitespace()
-                || (c.is_ascii_punctuation() && c != '?')
+                || (c.is_ascii_punctuation() && !NOT_EVIDENCE_PUNCT.contains(c))
                 || EVIDENCE_SYMBOLS.contains(c)
         })
         && text
             .split(|c: char| !c.is_alphanumeric())
-            .all(|w| w.is_empty() || w.chars().any(|c| c.is_ascii_digit()) || MET.contains(&w))
+            .all(|w| w.is_empty() || evidence_word(w) || MET.contains(&w))
+}
+
+/// ASCII punctuation that is not evidence: `?`, and `/` and `%`, which make a count say "not
+/// all yet" (`0/3`, `50%` — audit 6876510659 N1).
+pub const NOT_EVIDENCE_PUNCT: &str = "?/%";
+
+/// A word that holds a digit and has the shape of evidence (audit 6876510659 B1 — a digit
+/// alone let `3건남음`, `1wip`, `v2예정` through): digits only; a commit (7 or more hex
+/// characters with a digit); or an id of up to three ASCII letters, digits, and at most one more
+/// letter with optional digits (`b2`, `r5`, `t04`, `s6e1`, the `09t04` and `08z` of a UTC time).
+/// Lowercase input.
+fn evidence_word(w: &str) -> bool {
+    let b = w.as_bytes();
+    if !b.iter().any(u8::is_ascii_digit) {
+        return false;
+    }
+    if b.iter().all(u8::is_ascii_digit) {
+        return true;
+    }
+    if b.len() >= 7 && b.iter().all(u8::is_ascii_hexdigit) {
+        return true;
+    }
+    // [a-z]{0,3} [0-9]+ ( [a-z] [0-9]* )?
+    let mut i = 0;
+    while i < b.len() && b[i].is_ascii_lowercase() {
+        i += 1;
+    }
+    if i > 3 {
+        return false;
+    }
+    let digits = |from: usize| {
+        let mut j = from;
+        while j < b.len() && b[j].is_ascii_digit() {
+            j += 1;
+        }
+        j
+    };
+    let j = digits(i);
+    if j == i {
+        return false;
+    }
+    if j == b.len() {
+        return true;
+    }
+    if !b[j].is_ascii_lowercase() {
+        return false;
+    }
+    digits(j + 1) == b.len()
 }
 
 /// The verdict column of a header row: the first cell after the first that starts with a
@@ -427,6 +475,8 @@ mod tests {
             "CLOSED completed 2026-11-09T04",
             "충족 ✓",
             "충족 (B2, R5)",
+            "충족 (S6e1, T04, 2026-11-14T09:16:08Z)",
+            "병합 `f00` 663107d9b5",
             "끝 — `progress_painter` `the_loop_merges_a_tip_only_update`",
         ] {
             assert!(is_met(yes), "{yes}");
@@ -484,6 +534,18 @@ mod tests {
             "충족(범위 밖 종료)",
             // An unclosed code span is not evidence.
             "충족 `abc",
+            // Audit 6876510659 B1: a digit glued to a word is not evidence.
+            "충족 3건남음",
+            "충족 — B2남음",
+            "충족 v2예정",
+            "충족 1차미완",
+            "충족 2todo",
+            "done 1wip",
+            "충족 abcd1",
+            // N1: counts that say "not all yet".
+            "완료 0/3",
+            "충족 1/2",
+            "충족 50%",
             "PASS 6875042988 · CI 43578802502",
             "끝 — `progress_painter` 단위 시험",
         ] {
