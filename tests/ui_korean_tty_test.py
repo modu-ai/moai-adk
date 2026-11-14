@@ -1,9 +1,10 @@
-"""Korean human output on a terminal (CLI design S6b, Issue #2825; design
+"""Korean human output on a terminal (CLI design S6b and S6c, Issue #2825; design
 `docs/design-review/cli-s6-korean-2026-11-14.md` §6, leader decision 6870716572).
 
-The S4 summary, the S5 progress lines and the `key-remove` confirm screen are compared with
-per-language goldens under `tests/fixtures/ui/{en,ko}/`. The English goldens were captured from
-the binary before S6b, so an equal English run means the English bytes did not change. A
+The S4 summary, the S5 progress lines, the `key-remove` confirm screen (S6b) and the S3 error
+frame (S6c) are compared with per-language goldens under `tests/fixtures/ui/{en,ko}/`. The
+English goldens were captured from the binary before each card, so an equal English run means
+the English bytes did not change. A
 stream that is not a terminal stays English whatever the language settings say (S6-2), and
 the stdout envelope is the same bytes on a pipe, on an English terminal and on a Korean one
 (D3). POSIX only (the `pty` module); the binary is the one `self_audit_run.rust_bin` finds.
@@ -191,6 +192,108 @@ class KoreanTerminal(unittest.TestCase):
         b = git_project(self.tmp.name, self.home, "b")
         self.assertEqual(capture_index_stages(b, self.home, **KOREAN),
                          golden("ko", "index-build-stages"))
+
+
+# S6c (#2825, design 5 and 8): the S3 error frame. The frame's labels and next step follow the
+# terminal's language; a usage error's first line is our sentence on a Korean terminal (clap's
+# missing-argument names stay, nothing the user typed is put in); an operation error's message
+# is the envelope's `error.message` and stays English.
+ERROR_CASES = {
+    "usage-missing": ["project-plan"],
+    "usage-unknown": ["project-plan", "--nope", "{proj}"],
+    "operation-permission": ["hooks-apply", "--host", "claude", "{proj}", "--plan-digest", "x",
+                             "--permission-reference", ""],
+}
+
+
+def capture_error(name, home, tty=True, binary=None, **extra):
+    """(exit, stdout bytes, stderr text) of ERROR_CASES[name] with `NO_COLOR=1`; stderr on a
+    pty when `tty`. `binary` runs another build under the name `moai-cli` (the frame names the
+    program as run)."""
+    from tests import error_frame_tty_test as frame
+
+    proj = os.path.join(home, "p")
+    os.makedirs(proj, exist_ok=True)
+    args = [a.replace("{proj}", proj) for a in ERROR_CASES[name]]
+    env = frame.base_env(home, NO_COLOR="1", **extra)
+    run_one = frame.stderr_on_tty if tty else frame.piped
+    if binary is None:
+        return run_one(args, env, home)
+    link_dir = os.path.join(home, "bin")
+    os.makedirs(link_dir, exist_ok=True)
+    link = os.path.join(link_dir, "moai-cli")
+    if not os.path.exists(link):
+        os.symlink(binary, link)
+    old = os.environ.get("MOAI_CLI_BIN")
+    os.environ["MOAI_CLI_BIN"] = link
+    try:
+        return run_one(args, env, home)
+    finally:
+        if old is None:
+            del os.environ["MOAI_CLI_BIN"]
+        else:
+            os.environ["MOAI_CLI_BIN"] = old
+
+
+@unittest.skipUnless(os.name == "posix", "pseudo-terminals are POSIX only")
+class KoreanErrorFrame(unittest.TestCase):
+    def setUp(self):
+        if not rust_bin().exists():
+            raise AssertionError(f"moai-cli not built at {rust_bin()}; run cargo build first")
+        self.tmp = tempfile.TemporaryDirectory(dir="/tmp")
+        self.home = os.path.join(self.tmp.name, "home")
+        os.makedirs(self.home)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def frame(self, name, **extra):
+        code, out, err = capture_error(name, self.home, **extra)
+        return code, out, normal(err, self.home)
+
+    def test_english_frames_keep_their_bytes(self):
+        for name in ERROR_CASES:
+            _, _, err = self.frame(name)
+            self.assertEqual(err, golden("en", f"error-{name}"), name)
+
+    def test_korean_frames_and_the_same_envelope(self):
+        for name in ERROR_CASES:
+            code_en, out_en, _ = self.frame(name)
+            code_ko, out_ko, err = self.frame(name, **KOREAN)
+            self.assertEqual(err, golden("ko", f"error-{name}"), name)
+            self.assertEqual((code_ko, out_ko), (code_en, out_en), f"{name}: same exit, envelope")
+        # The typed argument never reaches a Korean frame.
+        _, _, err = self.frame("usage-unknown", **KOREAN)
+        self.assertNotIn("--nope", err)
+
+    def test_a_pipe_keeps_the_english_bytes_in_any_language(self):
+        for name in ERROR_CASES:
+            plain = capture_error(name, self.home, tty=False)
+            for extra in (KOREAN, {"LANG": "ko_KR.UTF-8", "LC_ALL": "ko_KR.UTF-8"}):
+                self.assertEqual(capture_error(name, self.home, tty=False, **extra), plain,
+                                 f"{name} {extra}")
+
+    def test_a_control_character_in_the_program_name_is_shown_as_text(self):
+        # The next step names the program as run; a name with an OSC title and BEL is data.
+        evil_dir = os.path.join(self.tmp.name, "evil")
+        os.makedirs(evil_dir)
+        evil = os.path.join(evil_dir, "mo\x1b]0;T\x07ai")
+        os.symlink(rust_bin(), evil)
+        old = os.environ.get("MOAI_CLI_BIN")
+        os.environ["MOAI_CLI_BIN"] = evil
+        try:
+            from tests import error_frame_tty_test as frame
+            _, _, err = frame.stderr_on_tty(["project-plan"],
+                                            frame.base_env(self.home, NO_COLOR="1", **KOREAN),
+                                            self.home)
+        finally:
+            if old is None:
+                del os.environ["MOAI_CLI_BIN"]
+            else:
+                os.environ["MOAI_CLI_BIN"] = old
+        self.assertNotIn("\x1b]", err)
+        self.assertNotIn("\x07", err)
+        self.assertIn("`mo\\x1b]0;T\\x07ai project-plan --help` 로 인자를 확인하세요", err)
 
 
 if __name__ == "__main__":
