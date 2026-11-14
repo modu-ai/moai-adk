@@ -25,7 +25,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const ROLES: [&str; 2] = ["leader", "agent"];
@@ -317,17 +316,23 @@ pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
     Ok(launch_settings("claude", has_role, keep_prompts, None, false)?.skip_permissions)
 }
 
-// ---- agent-N numbering (#2359 decision 6760976883; resolves #2361) ----
+// ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
 
-/// Largest store that is read: `u64::MAX` is 20 digits, plus the newline.
-const AGENT_SEQ_MAX_BYTES: u64 = 21;
-/// Test-only: milliseconds to hold the counter lock between reading and writing.
+/// Test-only: milliseconds to hold the counter lock between choosing a number and locking it.
 pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_AGENT_SEQ_HOLD_MS";
+/// The one warning line for number 1 (leader decision 6880464413): `claim` and `claim-verify`
+/// judge ownership by the session name alone, so a claim an earlier `agent-1` left inside its
+/// lease still reads as this session's.
+pub const AGENT_ONE_WARNING: &str = "warning: a claim of an earlier agent-1 may still be inside its lease; do not take over work from claim-verify alone";
+/// How long a launch waits for the `.live` lock of its number. Only a dry run that is probing
+/// that file at the same moment can hold it, and only for an instant.
+const LIVE_LOCK_TRIES: u32 = 200;
 
 /// Where `-a` session numbers are kept: `<clone common dir>/.moai-cli/sessions/`, beside the
 /// claim journal (`claim::journal_root`). Every worktree of one clone resolves the same common
-/// dir, so they share one counter across hosts, and git never lists the files. `agent-seq`
-/// holds the last number handed out (decimal, one line); `.lock` is the `File::lock` target.
+/// dir, so they share the numbers across hosts, and git never lists the files. A session is
+/// alive while its launcher holds the lock on `agent-<n>.live` or while the registry entry
+/// `agent-<n>.json` has a running lease; `.lock` is the counter's `File::lock` target.
 pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
     let id = crate::identity::identity(project)
         .map_err(|e| format!("agent numbering: {e}; pass --name"))?;
@@ -353,49 +358,187 @@ fn refuse_symlink(path: &Path) -> Result<(), String> {
     }
 }
 
-/// The last number handed out; 0 when none was. Only a regular file is read (a FIFO at the
-/// path would block a plain read). Anything but one decimal number is an error, never 0.
-fn read_last(file: &Path) -> Result<u64, String> {
-    let broken = || {
+/// A path that is absent or a regular file. A symlink is refused, and so is anything else (a
+/// FIFO would block an open), before the path is opened.
+fn refuse_unless_regular(path: &Path) -> Result<(), String> {
+    refuse_symlink(path)?;
+    match fs::symlink_metadata(path) {
+        Ok(m) if !m.file_type().is_file() => Err(format!(
+            "agent number file {} is not a regular file; refused (pass --name)",
+            path.display()
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// `n` of a canonical `agent-<n><suffix>` file name: decimal digits without a leading zero
+/// that fit in 32 bits. Any other name is not one of the launcher's numbers.
+pub(crate) fn agent_number_of(file_name: &str, suffix: &str) -> Option<u64> {
+    let digits = file_name.strip_prefix("agent-")?.strip_suffix(suffix)?;
+    let n: u32 = digits.parse().ok()?;
+    (n.to_string() == digits).then_some(u64::from(n))
+}
+
+fn clock() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
+}
+
+/// Whether some launcher holds the lock on the `agent-<n>.live` file at `path`. The probe asks
+/// for a shared lock and lets go at once: it conflicts with the holder's exclusive lock only,
+/// and two probes never block each other.
+fn live_lock_held(path: &Path) -> Result<bool, String> {
+    refuse_unless_regular(path)?;
+    let unusable = || {
         format!(
-            "agent number store {} is unreadable or not a number; fix or remove it, or pass --name",
-            file.display()
+            "agent number file {} cannot be probed; pass --name",
+            path.display()
         )
     };
-    match fs::symlink_metadata(file) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
-        Err(_) => return Err(broken()),
-        Ok(m) if !m.file_type().is_file() || m.len() > AGENT_SEQ_MAX_BYTES => return Err(broken()),
-        Ok(_) => {}
+    let file = match OpenOptions::new().read(true).open(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(_) => return Err(unusable()),
+    };
+    match file.try_lock_shared() {
+        Ok(()) => Ok(false),
+        Err(fs::TryLockError::WouldBlock) => Ok(true),
+        Err(fs::TryLockError::Error(_)) => Err(unusable()),
     }
-    let text = fs::read_to_string(file).map_err(|_| broken())?;
-    let digits = text.strip_suffix('\n').unwrap_or(&text);
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return Err(broken());
-    }
-    digits.parse().map_err(|_| broken())
 }
 
-fn next_of(last: u64) -> Result<u64, String> {
-    last.checked_add(1)
-        .ok_or_else(|| "agent number store is exhausted; pass --name".into())
+/// The highest number of a live `agent-*` session in `dir`, or `None` when none is alive.
+/// Live: the `.live` lock of `agent-<n>` is held, or the registry entry `agent-<n>.json` has a
+/// running lease at `now`. A `.live` file nobody locks is dead. Reads and probes only; it
+/// creates and writes nothing, and a missing folder has no live session.
+fn highest_live(dir: &Path, now: i64) -> Result<Option<u64>, String> {
+    let mut highest: Option<u64> = None;
+    match fs::read_dir(dir) {
+        Ok(entries) => {
+            for entry in entries {
+                let entry = entry.map_err(|_| {
+                    format!(
+                        "agent number folder {} cannot be read; pass --name",
+                        dir.display()
+                    )
+                })?;
+                let file_name = entry.file_name();
+                let Some(n) = file_name.to_str().and_then(|f| agent_number_of(f, ".live")) else {
+                    continue;
+                };
+                if live_lock_held(&entry.path())? {
+                    highest = highest.max(Some(n));
+                }
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => {
+            return Err(format!(
+                "agent number folder {} cannot be read; pass --name",
+                dir.display()
+            ))
+        }
+    }
+    let registered = crate::lane_registry::live_agent_numbers(dir, now)
+        .map_err(|e| format!("{e}; or pass --name"))?;
+    Ok(registered.into_iter().map(Some).fold(highest, Ord::max))
 }
 
-/// The number the next `-a` launch would take, read without taking it (`--dry-run`).
-pub fn peek_agent_number(project: &Path) -> Result<u64, String> {
+/// The number after the highest live one, or 1 when none is alive.
+fn number_after(highest_live: Option<u64>) -> u64 {
+    highest_live.map_or(1, |n| n + 1)
+}
+
+/// The number the next `-a` launch would take and the live number it follows, calculated
+/// without taking anything (`--dry-run`): no lock is held, no folder or file is created.
+pub fn peek_agent_number(project: &Path) -> Result<(u64, Option<u64>), String> {
     let dir = agent_seq_dir(project)?;
     refuse_symlink(&dir)?;
-    next_of(read_last(&dir.join("agent-seq"))?)
+    let live = highest_live(&dir, clock())?;
+    Ok((number_after(live), live))
+}
+
+/// A number a launch has taken. The exclusive lock on `agent-<n>.live` is held for as long as
+/// this value lives, so the caller keeps it until the host has exited; the OS releases the lock
+/// on any exit of the launcher, a kill included.
+#[derive(Debug)]
+pub struct TakenNumber {
+    pub number: u64,
+    /// The highest live number this one follows; `None` when no session was alive.
+    pub live_max: Option<u64>,
+    _live: fs::File,
+}
+
+/// The `notes` lines for a number: where it comes from, and the claim warning when it is 1.
+/// `taken` is false for a `--dry-run` preview.
+pub fn number_notes(number: u64, live_max: Option<u64>, dir: &Path, taken: bool) -> Vec<String> {
+    let origin = match live_max {
+        None => "no live agent session, starts at agent-1".to_string(),
+        Some(k) => format!("next after live agent-{k}"),
+    };
+    let mut notes = vec![if taken {
+        format!(
+            "agent number {number} taken: {origin} (store {})",
+            dir.display()
+        )
+    } else {
+        format!(
+            "agent-N preview: --dry-run takes no number; {origin} (store {})",
+            dir.display()
+        )
+    }];
+    notes.extend((number == 1).then(|| AGENT_ONE_WARNING.to_string()));
+    notes
+}
+
+/// The preview for a folder that `git init` is about to create: no session can be alive.
+pub fn pending_number_notes() -> Vec<String> {
+    vec![
+        "agent-N preview: --dry-run takes no number; no live agent session, starts at agent-1 (the store is created by git init)".to_string(),
+        AGENT_ONE_WARNING.to_string(),
+    ]
+}
+
+/// Takes the `agent-<n>.live` lock for `n`. A shared probe of a dry run may hold the file for an
+/// instant, so the lock is retried; a holder that stays means this number is not free.
+fn lock_live(dir: &Path, n: u64) -> Result<fs::File, String> {
+    let path = dir.join(format!("agent-{n}.live"));
+    refuse_unless_regular(&path)?;
+    let unavailable = || {
+        format!(
+            "agent number lock {} unavailable; pass --name",
+            path.display()
+        )
+    };
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .map_err(|_| unavailable())?;
+    for _ in 0..LIVE_LOCK_TRIES {
+        match file.try_lock() {
+            Ok(()) => return Ok(file),
+            Err(fs::TryLockError::WouldBlock) => {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            Err(fs::TryLockError::Error(_)) => break,
+        }
+    }
+    Err(unavailable())
 }
 
 // @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
-//   first has renamed its new number into place.
-// @MX:REASON: two launches that read the same last number would both open `agent-<n+1>`.
+//   first holds the `.live` lock of its number.
+// @MX:REASON: two launches that both chose the same number would open one `agent-<n>`.
 /// Takes the next agent number. Under an exclusive `File::lock` on `.lock` (a concurrent launch
-/// waits, it does not fail) it reads the last number, writes last + 1 (temp file, fsync,
-/// rename) and returns it. Numbers only increase and are never handed out twice; every failure
-/// is an error for the caller to show, never a silent `agent-1`.
-pub fn take_agent_number(project: &Path) -> Result<u64, String> {
+/// waits, it does not fail) it finds the highest live number, takes the exclusive lock on
+/// `agent-<highest + 1>.live` (or `agent-1.live` when none is alive) and only then lets go of
+/// `.lock`. The number stays live while the returned value is held. Every failure is an error
+/// for the caller to show, never a silent `agent-1`.
+pub fn take_agent_number(project: &Path) -> Result<TakenNumber, String> {
     let dir = agent_seq_dir(project)?;
     refuse_symlink(&dir)?;
     fs::create_dir_all(&dir).map_err(|_| {
@@ -405,7 +548,7 @@ pub fn take_agent_number(project: &Path) -> Result<u64, String> {
         )
     })?;
     let lock_path = dir.join(".lock");
-    refuse_symlink(&lock_path)?;
+    refuse_unless_regular(&lock_path)?;
     let lock = OpenOptions::new()
         .read(true)
         .write(true)
@@ -419,36 +562,24 @@ pub fn take_agent_number(project: &Path) -> Result<u64, String> {
                 lock_path.display()
             )
         })?;
-    let file = dir.join("agent-seq");
-    refuse_symlink(&file)?;
-    let n = next_of(read_last(&file)?)?;
-    // Test seam: widens the read-to-write window (at most 2 s) so the concurrency test can
-    // show the lock is what keeps numbers apart. Unset in normal use.
+    let live_max = highest_live(&dir, clock())?;
+    let number = number_after(live_max);
+    // Test seam: widens the window between choosing and locking (at most 2 s) so the
+    // concurrency test can show the counter lock is what keeps numbers apart. Unset in
+    // normal use.
     if let Some(ms) = std::env::var(AGENT_SEQ_TEST_HOLD_VAR)
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
     {
         std::thread::sleep(std::time::Duration::from_millis(ms.min(2000)));
     }
-    let tmp = dir.join(format!("agent-seq.tmp-{}", std::process::id()));
-    let written = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&tmp)
-        .and_then(|mut f| {
-            f.write_all(format!("{n}\n").as_bytes())?;
-            f.sync_all()
-        })
-        .and_then(|()| fs::rename(&tmp, &file));
-    if written.is_err() {
-        let _ = fs::remove_file(&tmp);
-        return Err(format!(
-            "agent number store {} cannot be written; pass --name",
-            file.display()
-        ));
-    }
+    let live = lock_live(&dir, number)?;
     drop(lock);
-    Ok(n)
+    Ok(TakenNumber {
+        number,
+        live_max,
+        _live: live,
+    })
 }
 
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {

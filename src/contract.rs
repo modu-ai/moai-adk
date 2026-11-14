@@ -145,6 +145,8 @@ const RULES: &[(&str, Kind)] = &[
     ("audit delta I/O failed: ", Kind::Io),
     // decision-append (rc.2 #2403): ahead of the generic words its messages may contain.
     ("decision append blocked: ", Kind::Blocked),
+    // placeholder profile (#2936 R3): ahead of the generic words it quotes.
+    ("profile blocked: ", Kind::Blocked),
     ("decision append refused: ", Kind::InvalidInput),
     ("claim verify: stale", Kind::Blocked),
     ("claim verify: uncertain", Kind::Blocked),

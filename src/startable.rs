@@ -17,6 +17,12 @@
 //!
 //! A claim is not part of the judgment: a claimed card is still work left in the repository.
 //! Whether another lane's claim keeps a card from this lane is the caller's step.
+//!
+//! What counts as a hold (#2973 T1): only a label judges it (reason 1). A repository without that
+//! label scheme writes the hold in the title (`[HOLD] …`, `… 보류`) or at the head of the body
+//! instead; [`hold_marker`] finds such text, but text is evidence, not a judgment, so the card
+//! stays `startable` for [`judge`] (lane-next and goal-block are unchanged) and `queue-free`
+//! reports it as `unjudged` rather than counting it as work a lane can start.
 
 use crate::goal::Exclusion;
 use serde_json::{json, Value};
@@ -29,6 +35,89 @@ pub fn holds(label: &str) -> bool {
     // (`.github/moai/labels.yml`); `hold` and a `<axis>:hold` value are the HOLD spellings.
     let l = label.trim().to_ascii_lowercase();
     l == "needs:decision" || l == "hold" || l.ends_with(":hold")
+}
+
+/// Text that says a card is on hold without the label (#2973 T1): where it was found and which
+/// marker it is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HoldMarker {
+    /// `needs:decision`, `HOLD` or `보류`.
+    pub marker: &'static str,
+    /// `title` (anywhere in it) or `body` (the head of its first non-empty line).
+    pub place: &'static str,
+}
+
+/// `HOLD` as a whole word: `hold` with no letter or digit on either side (`threshold` and
+/// `holder` do not match, `[HOLD]`, `on-hold` and `status:hold` do). `lower` is lower-cased.
+fn has_hold_word(lower: &str) -> bool {
+    let b = lower.as_bytes();
+    let mut from = 0;
+    while let Some(i) = lower[from..].find("hold") {
+        let at = from + i;
+        let before = at == 0 || !b[at - 1].is_ascii_alphanumeric();
+        let end = at + 4;
+        let after = end >= b.len() || !b[end].is_ascii_alphanumeric();
+        if before && after {
+            return true;
+        }
+        from = end;
+    }
+    false
+}
+
+/// The hold marker anywhere in `text`, if any.
+fn marker_in(text: &str) -> Option<&'static str> {
+    let lower = text.to_ascii_lowercase();
+    if lower.contains("needs:decision") {
+        Some("needs:decision")
+    } else if lower.contains("보류") {
+        Some("보류")
+    } else if has_hold_word(&lower) {
+        Some("HOLD")
+    } else {
+        None
+    }
+}
+
+/// The hold marker at the head of `line` (after Markdown list, quote or emphasis marks).
+fn marker_at_head(line: &str) -> Option<&'static str> {
+    let head = line
+        .trim_start_matches(|c: char| c.is_whitespace() || "#>*_-[(".contains(c))
+        .to_ascii_lowercase();
+    if head.starts_with("needs:decision") {
+        Some("needs:decision")
+    } else if head.starts_with("보류") {
+        Some("보류")
+    } else if head.starts_with("hold")
+        && head
+            .as_bytes()
+            .get(4)
+            .is_none_or(|b| !b.is_ascii_alphanumeric())
+    {
+        Some("HOLD")
+    } else {
+        None
+    }
+}
+
+/// The text evidence of a hold on a card the label judgment lets through: a marker anywhere in
+/// the title, else one at the head of the body's first non-empty line (a body that merely
+/// mentions HOLD further down is about something else). It is no judgment: see the module doc.
+pub fn hold_marker(title: &str, body: &str) -> Option<HoldMarker> {
+    if let Some(marker) = marker_in(title) {
+        return Some(HoldMarker {
+            marker,
+            place: "title",
+        });
+    }
+    let first = body.lines().find(|l| {
+        !l.trim_start_matches(|c: char| c.is_whitespace() || "#>*_-[(".contains(c))
+            .is_empty()
+    })?;
+    marker_at_head(first).map(|marker| HoldMarker {
+        marker,
+        place: "body",
+    })
 }
 
 /// What the judgment reads of one open Issue.
@@ -310,6 +399,62 @@ mod tests {
             Skip::BlockedBy(vec![3]).entry(7),
             json!({"issue": 7, "reason": "blocked_by", "blocked_by": [3]})
         );
+    }
+
+    /// #2973 T1: text that says "on hold" is evidence, not a judgment. A marker anywhere in the
+    /// title counts, one in the body only at the head of its first non-empty line, and a letter or
+    /// digit touching `hold` (`threshold`, `holder`, `holdings`) is not the word.
+    #[test]
+    fn a_hold_marker_is_found_in_the_title_or_the_body_head() {
+        let t = |title: &str| hold_marker(title, "");
+        let title = |marker| {
+            Some(HoldMarker {
+                marker,
+                place: "title",
+            })
+        };
+        assert_eq!(t("[HOLD] 정책 정리"), title("HOLD"));
+        assert_eq!(t("정책 정리 (hold)"), title("HOLD"));
+        assert_eq!(t("status:hold 로 둠"), title("HOLD"));
+        assert_eq!(t("결제 연동 보류"), title("보류"));
+        assert_eq!(t("Needs:Decision 필요"), title("needs:decision"));
+        for plain in [
+            "threshold 조정",
+            "holder 목록",
+            "holdings",
+            "withhold",
+            "홀드",
+            "",
+        ] {
+            assert_eq!(t(plain), None, "{plain}");
+        }
+        let b = |body: &str| hold_marker("plain", body);
+        let body = |marker| {
+            Some(HoldMarker {
+                marker,
+                place: "body",
+            })
+        };
+        assert_eq!(b("HOLD: 사용자 결정 대기\n\n본문"), body("HOLD"));
+        assert_eq!(b("\n\n> **보류** 중이에요"), body("보류"));
+        assert_eq!(b("- hold\n나머지"), body("HOLD"));
+        assert_eq!(
+            b("holdings 는 그대로\nHOLD: 아래"),
+            None,
+            "only the first line"
+        );
+        assert_eq!(
+            b("배경\nHOLD 범주는 다섯 가지"),
+            None,
+            "not at the head of line one"
+        );
+        assert_eq!(
+            b("hold한글"),
+            body("HOLD"),
+            "a Korean particle is not a letter of the word"
+        );
+        assert_eq!(b(""), None);
+        assert_eq!(b("   \n\n"), None);
     }
 
     /// #2901 AC5: the end condition is met only with both counts known and zero; any count

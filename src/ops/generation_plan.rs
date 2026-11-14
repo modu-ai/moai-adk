@@ -14,6 +14,7 @@ pub struct Args {
 pub const OPERATION: &str = "generation.plan";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    moai_cli::profile::require_interviewed(&args.project)?;
     serde_json::to_value(moai_cli::generation::generation_plan(
         &args.project,
         super::super::input::<moai_cli::generation::GenerationRequest>()?,
