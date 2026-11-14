@@ -260,6 +260,84 @@ impl GoFx {
         self.run_stdin(&args, &stdin)
     }
 
+    /// The shape the real run 6879901297 found: 46 hook scripts of which the settings file
+    /// runs 23, three output styles, three workflows and `loop.md`, all recorded as deployed,
+    /// and a settings file with deny rules and, when `style` is given, an `outputStyle`.
+    /// Returns the names of the 23 scripts the settings run.
+    pub fn real_run_shape(&mut self, style: Option<&str>) -> Vec<String> {
+        let names: Vec<String> = (0..46).map(|n| format!("handle-{n:02}.sh")).collect();
+        for n in &names {
+            self.deployed(
+                &format!(".claude/hooks/moai/{n}"),
+                &format!("#!/bin/sh\necho {n}\n"),
+            );
+        }
+        for (file, name) in [
+            ("moai.md", "MoAI"),
+            ("moai-easy.md", "MoAI-Easy"),
+            ("moai-learn.md", "MoAI-Learn"),
+        ] {
+            self.deployed(
+                &format!(".claude/output-styles/moai/{file}"),
+                &format!("---\nname: {name}\n---\nbody\n"),
+            );
+        }
+        for n in ["plan", "run", "sync"] {
+            self.deployed(&format!(".claude/workflows/{n}.md"), &format!("# {n}\n"));
+        }
+        self.deployed(".claude/loop.md", "# loop\n");
+        self.manifest();
+        let referenced: Vec<String> = names.iter().take(23).cloned().collect();
+        let handlers: Vec<Value> = referenced
+            .iter()
+            .map(|s| json!({"type": "command", "command": format!("bash .claude/hooks/moai/{s}")}))
+            .collect();
+        let mut settings = json!({
+            "hooks": {"PreToolUse": [{"matcher": "*", "hooks": handlers}]},
+            "permissions": {"deny": ["Read(./.env)", "Read(./secrets/**)"]},
+        });
+        if let Some(s) = style {
+            settings["outputStyle"] = json!(s);
+        }
+        self.write(".claude/settings.json", &settings.to_string());
+        referenced
+    }
+
+    /// The first `moai cc` launch in this project, with a stub `claude` on PATH: the launcher
+    /// writes the placeholder profile (`tools: ["unspecified"]`) the way a user's first
+    /// launch does. Nothing else of the real HOME is read.
+    pub fn first_launch(&self) {
+        use std::os::unix::fs::PermissionsExt as _;
+        let bin = self.root.parent().unwrap().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let stub = bin.join("claude");
+        fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+        let out = Command::new(MOAI_BIN)
+            .args(["cc", "-a"])
+            .clean_env()
+            .current_dir(&self.root)
+            .env("HOME", &self.home)
+            .env("USERPROFILE", &self.home)
+            .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+            .env("LC_ALL", "C")
+            .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "first launch: {}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        // A project with Go state keeps the Rust profile in the earlier folder.
+        let profile = fs::read_to_string(self.root.join(".moai-cli/project.yaml")).unwrap();
+        assert!(profile.contains("unspecified"), "{profile}");
+    }
+
     pub fn apply(&self, digest: &str) -> Value {
         self.run(&[
             "go-state-apply",
