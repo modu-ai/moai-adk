@@ -148,6 +148,13 @@ enum W {
     Keep,
     CleanupNext,
     Cleaned,
+    CleanupFailed,
+}
+
+/// Whether a confirmed cleanup, when there is one, ended committed.
+fn cleanup_ok(v: &Value) -> bool {
+    let r = &v["cleanup_result"];
+    r.is_null() || r["state"].as_str() == Some("committed")
 }
 
 fn w(lang: Lang, word: W) -> &'static str {
@@ -462,6 +469,13 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "정리했어요 — 보관"
             } else {
                 "Cleaned up — archived:"
+            }
+        }
+        CleanupFailed => {
+            if ko {
+                "정리가 끝나지 않았어요"
+            } else {
+                "Cleanup did not finish"
             }
         }
     }
@@ -989,6 +1003,20 @@ impl Out<'_> {
         }
         let lang = self.lang();
         self.blank();
+        // AUDIT #2908 B1: only a committed cleanup is "cleaned up". Any other result (`part`
+        // gives `{"state": "error", "message"}`, also after some entries moved and the receipt
+        // stayed pending) is an error with its message.
+        if !cleanup_ok(v) {
+            let msg = r["message"]
+                .as_str()
+                .or(r["reason"].as_str())
+                .unwrap_or(r["state"].as_str().unwrap_or(""));
+            self.status(
+                Mark::Error,
+                &format!("{}: {}", w(lang, W::CleanupFailed), visible(msg)),
+            );
+            return;
+        }
         let moved = r["moved"].as_u64().unwrap_or(0) as usize;
         self.status(
             Mark::Ok,
@@ -1402,6 +1430,8 @@ fn applied(v: &Value, view: &View) -> String {
     o.heading(W::Applying);
     o.rows(&rows);
     o.blank();
+    // A cleanup that did not commit leaves the run partly applied (AUDIT #2908 B1).
+    bad |= !cleanup_ok(v);
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {

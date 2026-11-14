@@ -181,12 +181,16 @@ fn flat(text: &str) -> String {
 fn check(name: &str, lang: Lang, text: &str, width: usize) {
     let dir = if lang == Lang::Ko { "ko" } else { "en" };
     let path = root().join(format!("tests/fixtures/ui/{dir}/update-{name}.golden"));
+    // A file ends with one newline (`git diff --check`, AUDIT #2908 B2): a screen's trailing
+    // blank lines are stored and compared as one newline; the question's own blank line is
+    // asserted in `goldens_end_with_one_newline_and_the_question_keeps_its_blank_line`.
+    let stored = format!("{}\n", text.trim_end_matches('\n'));
     if std::env::var_os("MOAI_UPDATE_GOLDEN_WRITE").is_some() {
-        fs::write(&path, text).unwrap();
+        fs::write(&path, &stored).unwrap();
     }
     let want = fs::read_to_string(&path).unwrap_or_default();
     assert_eq!(
-        text,
+        stored,
         want,
         "{} differs; regenerate and review",
         path.display()
@@ -375,6 +379,64 @@ fn the_applied_screen_counts_published_files_and_keeps_healthy_hosts_ok() {
         text.contains("Partly applied") && text.contains("disk full"),
         "{text}"
     );
+}
+
+/// AUDIT #2908 B1: a confirmed cleanup that failed — before any move or after some (`update_cleanup`
+/// stops with "stopped after n moved, the receipt … stays pending") — is an error on the screen
+/// with its message, never "Cleaned up ✓", and the run ends as partly applied.
+#[test]
+fn a_failed_cleanup_is_shown_as_failed_with_its_message() {
+    for message in [
+        "cleanup token changed after the layers were applied; preview again",
+        "a target changed during the move: stopped after 2 moved, the receipt 20261114T080000Z stays pending",
+    ] {
+        let mut applied = fixture("applied");
+        applied["cleanup_result"] = serde_json::json!({"state": "error", "message": message});
+        for lang in [Lang::En, Lang::Ko] {
+            let text = screen(&applied, Asked::Yes, &view(lang, Look::Plain, 80, None));
+            let flat_text = flat(&text);
+            let (cleaned, partial) = if lang == Lang::Ko {
+                ("정리했어요", "일부만 바꿨어요")
+            } else {
+                ("Cleaned up", "Partly applied")
+            };
+            assert!(!text.contains(cleaned), "{text}");
+            assert!(text.contains(partial), "{text}");
+            assert!(flat_text.contains(&message[..40]), "{text}");
+            assert!(text.lines().any(|l| l.starts_with("✗ ")), "{text}");
+        }
+        // The not-asked screen that shows a cleanup result also shows the failure.
+        let mut latest = fixture("preview-latest");
+        latest["cleanup_result"] = serde_json::json!({"state": "error", "message": message});
+        let text = screen(&latest, Asked::NotAsked, &view(Lang::En, Look::Plain, 80, None));
+        assert!(!text.contains("Cleaned up") && flat(&text).contains(&message[..40]), "{text}");
+    }
+}
+
+/// AUDIT #2908 B2: a golden file never ends with a blank line (`git diff --check`); the question
+/// screen still ends with the blank line that sets the `[y/N]` prompt apart.
+#[test]
+fn goldens_end_with_one_newline_and_the_question_keeps_its_blank_line() {
+    for dir in ["en", "ko"] {
+        for e in fs::read_dir(root().join("tests/fixtures/ui").join(dir)).unwrap() {
+            let p = e.unwrap().path();
+            let name = p.file_name().unwrap().to_string_lossy().to_string();
+            if !name.starts_with("update-") {
+                continue;
+            }
+            let text = fs::read_to_string(&p).unwrap();
+            assert!(
+                !text.ends_with("\n\n"),
+                "{} ends with a blank line",
+                p.display()
+            );
+        }
+    }
+    let q = question(
+        &fixture("preview-changes"),
+        &view(Lang::En, Look::Plain, 80, None),
+    );
+    assert!(q.ends_with("\n\n"), "{q:?}");
 }
 
 fn hosts_failed(applied: &mut Value) {
