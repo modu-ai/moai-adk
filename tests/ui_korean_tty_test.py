@@ -201,6 +201,7 @@ class KoreanTerminal(unittest.TestCase):
 ERROR_CASES = {
     "usage-missing": ["project-plan"],
     "usage-unknown": ["project-plan", "--nope", "{proj}"],
+    "usage-invalid": ["lane-next", "--lane", "a", "--repo", "o/r", "--wait", "bogus"],
     "operation-permission": ["hooks-apply", "--host", "claude", "{proj}", "--plan-digest", "x",
                              "--permission-reference", ""],
 }
@@ -265,6 +266,8 @@ class KoreanErrorFrame(unittest.TestCase):
         # The typed argument never reaches a Korean frame.
         _, _, err = self.frame("usage-unknown", **KOREAN)
         self.assertNotIn("--nope", err)
+        _, _, err = self.frame("usage-invalid", **KOREAN)
+        self.assertNotIn("bogus", err)
 
     def test_a_pipe_keeps_the_english_bytes_in_any_language(self):
         for name in ERROR_CASES:
