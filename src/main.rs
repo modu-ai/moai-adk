@@ -3670,6 +3670,60 @@ mod help_rules {
         )
     }
 
+    /// S6e-2 (#2825): on a Korean terminal every command of the groups moved so far has a Korean
+    /// about, a Korean long about when it has an English one, and a Korean help on every
+    /// argument but the help flag — a new argument without its Korean line fails here.
+    #[test]
+    fn the_moved_groups_read_korean_in_their_help() {
+        let hangul = |t: &str| t.chars().any(|c| ('가'..='힣').contains(&c));
+        let english = configured();
+        let mut korean = moai_cli::help::configure_in(
+            Cli::command(),
+            "moai",
+            moai_cli::BUILD_VERSION,
+            false,
+            moai_cli::ui_text::Lang::Ko,
+        );
+        korean.build();
+        let mut seen = 0;
+        for group in moai_cli::help::KOREAN_GROUPS {
+            let g = moai_cli::help::GROUPS
+                .iter()
+                .find(|g| g.heading == *group)
+                .unwrap_or_else(|| panic!("{group}"));
+            for (word, _) in g.commands.iter().filter(|(_, root)| *root) {
+                let ko = korean.find_subcommand(word).unwrap();
+                let en = english.find_subcommand(word).unwrap();
+                let about = ko.get_about().map(|a| a.to_string()).unwrap_or_default();
+                assert!(hangul(&about), "{word} about: {about:?}");
+                if en.get_long_about().is_some() {
+                    let long = ko
+                        .get_long_about()
+                        .map(|a| a.to_string())
+                        .unwrap_or_default();
+                    assert!(hangul(&long), "{word} long about: {long:?}");
+                }
+                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                    let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
+                    assert!(hangul(&help), "{word} {}: {help:?}", arg.get_id());
+                }
+                seen += 1;
+            }
+            // The slice boundary (mutation P5): the group's commands outside the root list
+            // keep their own texts until their slice.
+            for (word, _) in g.commands.iter().filter(|(_, root)| !*root) {
+                let ko = korean.find_subcommand(word).unwrap();
+                let en = english.find_subcommand(word).unwrap();
+                assert_eq!(ko.get_about(), en.get_about(), "{word}");
+                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                    let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
+                    assert!(!hangul(&help), "{word} {}: {help:?}", arg.get_id());
+                }
+            }
+        }
+        assert!(seen >= 5, "{seen}");
+    }
+
     /// Every command's `--help` carries an `Examples:` section (#2802 S1c).
     #[test]
     fn every_command_has_examples() {
