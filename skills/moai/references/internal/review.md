@@ -9,3 +9,4 @@ This note says where the review rules live; it does not restate them.
 3. Which checks you run yourself and when you may cite an exact-head CI run follow the VERIFY workflow's section "Check-run rules" (`workflows/verify.md`). Read the run back yourself and cite its run id, head and conclusion in the verdict.
 4. Never review a change you wrote or repaired. The agent that implemented a change hands it to a separate context (`chains/index.md`).
 5. Each finding names the file and line, the evidence and whether it blocks. A first audit presents its whole threat model, boundaries and mutation list at once; a re-audit checks only the listed repairs and classifies anything new.
+6. A Critical or High security finding blocks. Only an exception record the user approved — finding, severity, reason, scope, approver, expiry — lowers one; a missing or stale scan is unverified, never a pass (#2876, from the Go generation's security decision contract).

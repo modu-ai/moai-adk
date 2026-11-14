@@ -720,6 +720,27 @@
         }
       ],
       "rejects": "a skill package manifest other than what tools/source_manifest.py write produces from the package files (#2837)"
+    },
+    {
+      "id": "skill-core-rules",
+      "tests": [
+        "tests/core_rules_2876.rs (all 3)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test core_rules_2876"
+      ],
+      "rules": [
+        "tests/core_rules_2876.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "core-rules.md over 4096 bytes, unnumbered or naming a host-only tool; a base agent whose reads do not start with internal/core-rules; a route table without core_rules (#2876)"
     }
   ]
 }
