@@ -57,10 +57,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `agents-apply`
 - `agents-plan`
 - `apply-recover`
-- `archive-apply`
-- `archive-plan`
-- `archive-restore`
-- `archive-search`
 - `atlas-graph`
 - `atlas-map`
 - `atlas-tag-scan`
@@ -78,8 +74,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `codex-config-apply`
 - `codex-config-plan`
 - `codex-doctor`
-- `codex-projection-apply`
-- `codex-projection-plan`
 - `context-bundle`
 - `context-verify`
 - `cost-report`
@@ -140,9 +134,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `project-apply`
 - `project-detect`
 - `project-plan`
-- `project-skill-apply`
-- `project-skill-plan`
-- `project-skill-revert`
 - `queue-free`
 - `queue-next`
 - `queue-query`

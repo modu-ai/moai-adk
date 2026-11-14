@@ -701,58 +701,6 @@ enum Command {
         #[arg(long)]
         event: String,
     },
-    /// Preview a Codex copy of the skill package
-    ///
-    /// Plan a Codex projection of the common package into an explicit target; writes nothing.
-    CodexProjectionPlan {
-        package: PathBuf,
-        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
-        #[arg(long)]
-        target: PathBuf,
-        #[arg(long, default_value = "MoAI")]
-        display_name: String,
-        #[arg(
-            long,
-            default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
-        )]
-        short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
-        default_prompt: String,
-        /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
-        #[arg(long)]
-        allow_implicit_invocation: Option<bool>,
-        /// Requested `tui.status_line` item (repeatable); reported as HOLD, never written.
-        #[arg(long = "status-line")]
-        status_line: Vec<String>,
-        /// Requested `[skills.bundled] enabled = false`; reported as HOLD, never written.
-        #[arg(long)]
-        disable_bundled_skills: bool,
-    },
-    /// Install a previewed Codex skill copy
-    ///
-    /// Install a planned Codex projection into its explicit target (I4 #2241). Refuses a
-    /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
-    CodexProjectionApply {
-        package: PathBuf,
-        /// Absolute skill directory named `moai`; the same target the plan was made for.
-        #[arg(long)]
-        target: PathBuf,
-        #[arg(long, default_value = "MoAI")]
-        display_name: String,
-        #[arg(
-            long,
-            default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
-        )]
-        short_description: String,
-        #[arg(long, default_value = "Use $moai to read this project's status")]
-        default_prompt: String,
-        #[arg(long)]
-        allow_implicit_invocation: Option<bool>,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Check the Codex instructions and skills
     ///
     /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
@@ -1014,65 +962,6 @@ enum Command {
     ///
     /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
     SnapshotDescribe { project: PathBuf },
-    /// Preview which SPECs can be archived
-    ///
-    /// Dry-run (D1 #2187, REQ-D1-01): which SPEC directories under
-    /// `.moai-cli/specs/` are archive-eligible and why the rest are excluded.
-    /// Writes nothing. `--grace-days` overrides the profile's inactivity window.
-    ArchivePlan {
-        project: PathBuf,
-        #[arg(long)]
-        grace_days: Option<u64>,
-    },
-    /// Archive the previewed SPECs
-    ///
-    /// Move the archive-eligible SPECs (D2 #2188, REQ-D2-01): recomputes the plan and
-    /// requires its `plan_digest`; each SPEC is hashed, copied, read back and indexed
-    /// before its source is removed. Any mismatch cancels the move and keeps the source.
-    ArchiveApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-        #[arg(long)]
-        grace_days: Option<u64>,
-    },
-    /// Restore one archived SPEC
-    ///
-    /// Restore one archived SPEC to `.moai-cli/specs/<id>` after verifying its manifest
-    /// (D2 #2188).
-    ArchiveRestore {
-        project: PathBuf,
-        #[arg(long)]
-        spec: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Search the archived SPECs
-    ///
-    /// Read-only, non-vector search over the archive index and archived text (D2 #2188).
-    ArchiveSearch {
-        project: PathBuf,
-        #[arg(long)]
-        query: String,
-    },
-    /// Preview project copies of the moai skill
-    ///
-    /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
-    /// typed request on stdin; judgment envelope on stdout; writes nothing.
-    ProjectSkillPlan { project: PathBuf },
-    /// Copy the moai skill into the project
-    ///
-    /// Copy the staged `moai` skill package into the project host folders
-    /// (I5 #2242): the exact request on stdin; requires `opt_in` and writes
-    /// only under the caller-supplied project root.
-    ProjectSkillApply { project: PathBuf },
-    /// Undo one project skill copy
-    ///
-    /// Revert one applied project-skill copy from its rollback receipt
-    /// (I5 #2242): typed request on stdin.
-    ProjectSkillRevert { project: PathBuf },
     /// Sum the cost items of run receipts
     ///
     /// Aggregate cost items across run/verify receipts (D5 #2191): typed request
@@ -1502,10 +1391,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
-        ArchiveApply { .. } => "archive.apply",
-        ArchivePlan { .. } => "archive.plan",
-        ArchiveRestore { .. } => "archive.restore",
-        ArchiveSearch { .. } => "archive.search",
         AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
@@ -1521,8 +1406,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         CodexConfigApply { .. } => "codex.config_apply",
         CodexConfigPlan { .. } => "codex.config_plan",
         CodexDoctor { .. } => "codex.doctor",
-        CodexProjectionApply { .. } => "codex.projection_apply",
-        CodexProjectionPlan { .. } => "codex.projection_plan",
         ContextBundle { .. } => "context.bundle",
         ContextVerify { .. } => "context.verify",
         CostReport { .. } => "cost.report",
@@ -1577,9 +1460,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectApply { .. } => "project.apply",
         ProjectDetect { .. } => "project.detect",
         ProjectPlan { .. } => "project.plan",
-        ProjectSkillApply { .. } => "project_skill.apply",
-        ProjectSkillPlan { .. } => "project_skill.plan",
-        ProjectSkillRevert { .. } => "project_skill.revert",
         HeavySlotAcquire { .. } => "heavy_slot.acquire",
         HeavySlotStatus { .. } => "heavy_slot.status",
         QueueNext { .. } => "queue.next",
@@ -2439,48 +2319,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &permission_reference,
             )
         }
-        Command::CodexProjectionPlan {
-            package,
-            target,
-            display_name,
-            short_description,
-            default_prompt,
-            allow_implicit_invocation,
-            status_line,
-            disable_bundled_skills,
-        } => codex::projection_plan(
-            &package,
-            &target,
-            &codex::OpenAiYaml {
-                display_name,
-                short_description,
-                default_prompt,
-                allow_implicit_invocation,
-            },
-            &status_line,
-            disable_bundled_skills,
-        ),
-        Command::CodexProjectionApply {
-            package,
-            target,
-            display_name,
-            short_description,
-            default_prompt,
-            allow_implicit_invocation,
-            plan_digest,
-            permission_reference,
-        } => codex::projection_apply(
-            &package,
-            &target,
-            &codex::OpenAiYaml {
-                display_name,
-                short_description,
-                default_prompt,
-                allow_implicit_invocation,
-            },
-            &plan_digest,
-            &permission_reference,
-        ),
         Command::CodexDoctor {
             project,
             cwd,
@@ -2666,54 +2504,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
-        Command::ArchivePlan {
-            project,
-            grace_days,
-        } => serde_json::to_value(moai_cli::archive::plan(
-            &project,
-            std::time::SystemTime::now(),
-            grace_days,
-        )?)
-        .map_err(|_| "encode failed".into()),
-        Command::ArchiveApply {
-            project,
-            plan_digest,
-            permission_reference,
-            grace_days,
-        } => moai_cli::archive::apply(
-            &project,
-            std::time::SystemTime::now(),
-            grace_days,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::ArchiveRestore {
-            project,
-            spec,
-            permission_reference,
-        } => moai_cli::archive::restore(&project, &spec, &permission_reference),
-        Command::ArchiveSearch { project, query } => moai_cli::archive::search(&project, &query),
         Command::CostReport {} => {
             // cost_report checks protocol_version itself (one check, not two).
             moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
-        }
-        Command::ProjectSkillPlan { project } => {
-            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
-            request.project_root = project;
-            serde_json::to_value(moai_cli::project_skills::project_skill_plan(&request)?)
-                .map_err(|_| "encode failed".into())
-        }
-        Command::ProjectSkillApply { project } => {
-            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
-            request.project_root = project;
-            serde_json::to_value(moai_cli::project_skills::project_skill_apply(&request)?)
-                .map_err(|_| "encode failed".into())
-        }
-        Command::ProjectSkillRevert { project } => {
-            let mut request = input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
-            request.project_root = project;
-            serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
-                .map_err(|_| "encode failed".into())
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(
