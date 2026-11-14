@@ -143,6 +143,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
+            ("close-check", false),
             ("lane-env", false),
             ("session-register", false),
             ("usage-limit", false),
@@ -355,6 +356,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
+    ("close-check", &["close-check 2903 --repo modu-ai/moai-adk"]),
     (
         "session-register",
         &[
