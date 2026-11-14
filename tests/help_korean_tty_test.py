@@ -178,6 +178,26 @@ class KoreanHelp(unittest.TestCase):
                         self.assertLessEqual(cells(line), int(columns),
                                              (columns, word, flag, line))
 
+    def test_the_keys_group_reads_its_own_texts_in_korean(self):
+        """S6e-3: the Keys group's root commands — about, long about, argument help — and
+        every line inside 60 and 80 cells but the usage and example lines clap never wraps."""
+        text = self.help(["key-set", "--help"], **KOREAN)
+        self.assertIn("공급자 키를 암호화해 금고에 저장해요(#2393)", text)
+        self.assertIn("공급자 이름, 예: `glm`", text)
+        self.assertIn("모든 프로젝트가 쓰는", text)
+        imp = self.help(["key-import-plan", "--help"], **KOREAN)
+        self.assertIn("프로젝트 대신 `~/.moai-cli/vault/_shared/`", imp)
+        self.assertIn("묻지 않고 지우기", self.help(["key-remove", "--help"], **KOREAN))
+        for columns in ("60", "80"):
+            for word in ("key-set", "key-status", "key-remove", "key-import-plan",
+                         "key-import-apply"):
+                for flag in ("-h", "--help"):
+                    for line in self.help([word, flag], COLUMNS=columns, **KOREAN).splitlines():
+                        if line.startswith("사용법: ") or line.startswith("  moai "):
+                            continue
+                        self.assertLessEqual(cells(line), int(columns),
+                                             (columns, word, flag, line))
+
     def test_an_english_subcommand_help_keeps_its_bytes(self):
         for args in (["project-detect", "--help"], ["key-set", "-h"], ["cc", "--help"]):
             piped, _, code = pipe(args, env_for(self.home))

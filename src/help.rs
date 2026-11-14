@@ -1022,7 +1022,7 @@ pub fn configure_in(
 /// The groups whose root commands' own help texts read Korean on a Korean terminal (S6e-2…,
 /// one group per slice; `the_moved_groups_read_korean_in_their_help` in `main.rs` checks
 /// every about, long about and argument of them).
-pub const KOREAN_GROUPS: &[&str] = &["Project"];
+pub const KOREAN_GROUPS: &[&str] = &["Project", "Keys"];
 
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
@@ -1046,12 +1046,60 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          준비한 뒤 원자적 포인터 교체로 게시해요. 빌드가 실패하면 앞 세대를 그대로 두고 partial 로 \
          표시해요(REQ-C6-01).",
     ),
+    (
+        "key-set",
+        "공급자 키를 암호화해 금고에 저장해요(#2393): 지금 프로젝트용, 또는 `--shared` 면 모든 \
+         프로젝트용. 값은 stdin 에서만 읽고(argv 로는 받지 않음) 대화형 터미널이면 거절해요. 답에는 \
+         값이 절대 들어가지 않아요.",
+    ),
+    (
+        "key-status",
+        "공급자 항목(지금 프로젝트, 또는 `--shared`)이 있는지, 안전한지, 복호화되는지 확인해요 \
+         (#2393). 값·길이·지문은 절대 보이지 않아요.",
+    ),
+    (
+        "key-remove",
+        "금고에서 공급자 키를 지워요(#2393): 지금 프로젝트의 항목, 또는 `--shared` 면 공유 항목. \
+         `--yes` 가 없으면 지울 것만 알려 줘요. 기계 키와 옛 키 파일은 절대 건드리지 않아요.",
+    ),
+    (
+        "key-import-plan",
+        "옛 키 파일을 암호화 금고로 옮기는 일을 미리 봐요(#2393 S3): 어느 파일, 어느 폴더로 — 값은 \
+         절대 보이지 않아요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "key-import-apply",
+        "옛 키 파일의 키를 암호화 금고로 복사해요(#2393 S3): 미리 보기의 digest 와 권한 참조가 \
+         있을 때만, 다시 읽은 값이 같아야 하고, 옛 파일은 그대로 둬요. 목적지는 지금 프로젝트 폴더, \
+         또는 `--shared` 면 `_shared`.",
+    ),
 ];
 
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    ("", "provider", "공급자 이름, 예: `glm`(소문자·숫자·`-`)"),
+    (
+        "",
+        "shared",
+        "모든 프로젝트가 쓰는 키(`~/.moai-cli/vault/_shared/`)",
+    ),
+    (
+        "key-import-plan",
+        "shared",
+        "프로젝트 대신 `~/.moai-cli/vault/_shared/`(모든 프로젝트)로 가져오기",
+    ),
+    (
+        "key-import-apply",
+        "shared",
+        "프로젝트 대신 `~/.moai-cli/vault/_shared/`(모든 프로젝트)로 가져오기",
+    ),
+    (
+        "key-remove",
+        "yes",
+        "묻지 않고 지우기. 없으면 미리 보기, 터미널에서는 질문 하나",
+    ),
     ("", "plan_digest", "미리 보기의 `plan_digest`"),
     (
         "",
@@ -1119,13 +1167,15 @@ fn korean_frame(c: Command) -> Command {
     });
     // clap's generated `-h, --help` cannot be edited before the command is built, so it is
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
+    // Its short line may sit beside the widest name, so it is wrapped for that column too.
+    let short_room = width().saturating_sub(short_help_column(&c).max(LONG_ARG_INDENT));
     c.disable_help_flag(true)
         .arg(
             clap::Arg::new("help")
                 .short('h')
                 .long("help")
                 .action(clap::ArgAction::Help)
-                .help(HELP_FLAG_SHORT_KO)
+                .help(wrap(HELP_FLAG_SHORT_KO, 0, short_room))
                 .long_help(HELP_FLAG_LONG_KO)
                 .help_heading(OPTIONS_KO.trim_end_matches(':')),
         )
@@ -1144,14 +1194,39 @@ fn korean_texts(c: Command, name: &str, width: usize) -> Command {
         Some((_, long)) => c.long_about(wrap(long, 0, width)),
         None => c,
     };
+    // A short help (`-h`) may put the help beside the names, after the widest of them; a long
+    // help (`--help`) always starts it on the next line, `LONG_ARG_INDENT` in.
+    let short_room = width.saturating_sub(short_help_column(&c).max(LONG_ARG_INDENT));
+    let long_room = width.saturating_sub(LONG_ARG_INDENT);
     let name = name.to_string();
     c.mut_args(move |a| match arg_help_ko(&name, a.get_id().as_str()) {
-        Some(text) => {
-            let wrapped = wrap(text, 0, width.saturating_sub(LONG_ARG_INDENT));
-            a.help(wrapped.clone()).long_help(wrapped)
-        }
+        Some(text) => a
+            .help(wrap(text, 0, short_room))
+            .long_help(wrap(text, 0, long_room)),
         None => a,
     })
+}
+
+/// The widest column a short help can start an argument's help at: two spaces, the widest
+/// `-s, --long <VALUE>` or `<VALUE>`, two spaces (clap's layout; an upper bound when clap puts
+/// the help on the next line instead).
+fn short_help_column(c: &Command) -> usize {
+    let spec = |a: &clap::Arg| -> usize {
+        let value = || -> String {
+            a.get_value_names()
+                .and_then(|v| v.first())
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| a.get_id().as_str().to_uppercase())
+        };
+        if a.is_positional() {
+            return value().width() + 2;
+        }
+        let takes = a.get_action().takes_values();
+        let long = a.get_long().map(|l| l.width() + 2).unwrap_or(0);
+        4 + long + if takes { value().width() + 3 } else { 0 }
+    };
+    let widest = c.get_arguments().map(spec).max().unwrap_or(0);
+    2 + widest.max("-h, --help".width()) + 2
 }
 
 #[cfg(test)]
