@@ -15,6 +15,7 @@
 //! | a folder with neither, not empty | `unknown` (nothing moves; the user decides) |
 //! | unreadable or newer Rust marker | `refuse` |
 //! | not `rust`, with a Go backup beside it and `.moai` absent or holding a go-state receipt | `interrupted` (a stopped migration; recovery first) |
+//! | HOME only ([`classify_home`]): schema-2 Rust marker, Go markers or not | `rust-first` (#2871 I2, D-M1) |
 //!
 //! Go markers: `.moai/manifest.json` (the Go deploy manifest), `.moai/config/config.yaml`,
 //! and `.moai/config/sections/system.yaml` with a `moai:` block holding `version:`.
@@ -35,6 +36,11 @@ pub const MOAI_DIR: &str = ".moai";
 pub const RUST_MARKER: &str = "moai-cli.json";
 /// The marker schema this build writes and understands.
 pub const MARKER_SCHEMA: u64 = 1;
+/// #2871 I2 R1: a HOME marker with this schema makes the HOME this generation's first
+/// (`rust-first`, user decision D-M1 6876633358), Go markers or not. Only
+/// [`classify_home`] reads it; projects and older builds refuse it as `newer`. Nothing writes
+/// it yet.
+pub const HOME_MARKER_SCHEMA: u64 = 2;
 /// The name `go-state-apply` gives the Go folder (#2725 rev2 D2); never overwritten.
 pub const GO_BACKUP: &str = ".moai-backup";
 /// The receipt a `go-state-apply` that moved the Go folder keeps under `.moai/backups/<UTC>/`.
@@ -62,11 +68,14 @@ pub struct Classified {
     /// The earlier Rust project root (`.moai-cli/project.yaml`) is present.
     pub legacy_root: bool,
     pub reason: String,
+    /// `rust-first` only (#2871 I2 R1): the Go markers this generation now outranks; their items
+    /// retire in a later step, nothing moves here.
+    pub go_retire_pending: Vec<String>,
 }
 
 impl Classified {
     pub fn to_json(&self) -> Value {
-        json!({
+        let mut v = json!({
             "generation": self.generation,
             "moai_dir": self.moai_dir,
             "go_markers": self.go_markers,
@@ -75,7 +84,12 @@ impl Classified {
             "entries": self.entries,
             "legacy_root": self.legacy_root.then_some(crate::PROJECT_STATE_DIR),
             "reason": self.reason,
-        })
+        });
+        // Only a `rust-first` verdict carries the key, so every other verdict's JSON is unchanged.
+        if self.generation == "rust-first" {
+            v["go_retire_pending"] = json!(self.go_retire_pending);
+        }
+        v
     }
 }
 
@@ -145,8 +159,10 @@ fn go_markers(moai: &Path) -> Vec<String> {
     found
 }
 
-/// `valid`, `absent`, `newer` or `unreadable` for `.moai/moai-cli.json`.
-fn rust_marker(moai: &Path) -> &'static str {
+/// `valid`, `absent`, `newer` or `unreadable` for `.moai/moai-cli.json`; `schema-2` too when
+/// `accept` is [`HOME_MARKER_SCHEMA`] (HOME only). Old builds read schema 2 as `newer` and
+/// refuse it.
+fn rust_marker(moai: &Path, accept: u64) -> &'static str {
     let path = moai.join(RUST_MARKER);
     match fs::symlink_metadata(&path) {
         Err(_) => return "absent",
@@ -164,6 +180,7 @@ fn rust_marker(moai: &Path) -> &'static str {
     }
     match map.get("schema_version").and_then(Value::as_u64) {
         Some(MARKER_SCHEMA) => "valid",
+        Some(HOME_MARKER_SCHEMA) if accept >= HOME_MARKER_SCHEMA => "schema-2",
         Some(v) if v > MARKER_SCHEMA => "newer",
         _ => "unreadable",
     }
@@ -224,6 +241,19 @@ pub fn classify(root: &Path) -> Classified {
 /// #2725 rev2 — one table and one set of rules for both). `go` returns the markers found,
 /// as paths relative to `root`.
 pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
+    classify_inner(root, go, MARKER_SCHEMA)
+}
+
+/// The HOME verdict (#2871 I2 R1): the table above with the HOME's Go markers, plus one row —
+/// a schema-2 marker is `rust-first`, Go markers or not; the Go markers found are reported as
+/// `go_retire_pending` and nothing moves. A HOME without a schema-2 marker gets exactly the
+/// verdict of [`classify_with`] (`mixed` stays for schema 1). The way to the layout root
+/// ([`crate::home_layout::RUST_HOME_LAYOUT`]) must be real folders, or the verdict is `refuse`.
+pub fn classify_home(home: &Path) -> Classified {
+    classify_inner(home, crate::home_state::home_go_markers, HOME_MARKER_SCHEMA)
+}
+
+fn classify_inner(root: &Path, go: fn(&Path) -> Vec<String>, accept: u64) -> Classified {
     let go_markers = go;
     let moai = root.join(MOAI_DIR);
     let moai_dir = match fs::symlink_metadata(&moai) {
@@ -235,7 +265,7 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
     let legacy_root = regular_file(root, &[crate::PROJECT_STATE_DIR, "project.yaml"]).is_some();
     let (go, marker, entries) = if moai_dir == "folder" {
         let entries = fs::read_dir(&moai).map(|rd| rd.count() as u64).unwrap_or(0);
-        (go_markers(&moai), rust_marker(&moai), entries)
+        (go_markers(&moai), rust_marker(&moai, accept), entries)
     } else {
         (Vec::new(), "absent", 0)
     };
@@ -248,6 +278,7 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
     // #2696 C4a: the earlier-root move has no Go backup, so its own `.moai/` holding a receipt
     // without a valid marker is a stopped migration by itself.
     let stopped = marker != "valid"
+        && marker != "schema-2"
         && ((!backups.is_empty() && moai_dir == "absent")
             || (moai_dir == "folder" && holds_go_state_receipt(&moai)));
     let interrupted = if stopped {
@@ -282,6 +313,16 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
                     "refuse",
                     format!("{MOAI_DIR}/{RUST_MARKER} is not a marker this build can read"),
                 ),
+                ("schema-2", _) => match crate::home_layout::check_root_in(
+                    crate::home_layout::RUST_HOME_LAYOUT,
+                    root,
+                ) {
+                    Ok(()) => (
+                        "rust-first",
+                        "this generation's HOME; Go items stay until they retire".to_string(),
+                    ),
+                    Err(e) => ("refuse", e),
+                },
                 ("valid", true) => ("rust", "this generation's state".to_string()),
                 ("valid", false) => (
                     "mixed",
@@ -307,6 +348,11 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
     Classified {
         generation,
         moai_dir,
+        go_retire_pending: if generation == "rust-first" {
+            go.clone()
+        } else {
+            Vec::new()
+        },
         go_markers: go,
         rust_marker: marker,
         interrupted,
@@ -637,6 +683,182 @@ mod tests {
         });
         assert_eq!(c.generation, "unknown");
         assert!(c.go_markers.is_empty());
+    }
+
+    const MARKER_V2: &str = r#"{"schema_version":2,"generation":"moai-cli"}"#;
+    const ACTIVE: &str = ".moai/state/active-sessions.json";
+
+    fn home_verdict(setup: impl FnOnce(&Path)) -> Classified {
+        let tmp = tempfile::tempdir().unwrap();
+        setup(tmp.path());
+        classify_home(tmp.path())
+    }
+
+    /// Every name and its bytes under `root`, links described not followed (a no-write check).
+    fn snapshot(root: &Path) -> Vec<(String, Vec<u8>)> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(d) = stack.pop() {
+            for e in fs::read_dir(&d).unwrap() {
+                let p = e.unwrap().path();
+                let m = fs::symlink_metadata(&p).unwrap();
+                let rel = p.strip_prefix(root).unwrap().display().to_string();
+                if m.is_dir() {
+                    stack.push(p);
+                    out.push((rel, b"dir".to_vec()));
+                } else if m.is_file() {
+                    out.push((rel, fs::read(&p).unwrap_or_default()));
+                } else {
+                    out.push((rel, b"other".to_vec()));
+                }
+            }
+        }
+        out.sort();
+        out
+    }
+
+    /// #2871 I2 R1 (D-M1 6876633358): a schema-2 marker on a HOME is this generation first;
+    /// the Go markers beside it are reported as retiring, nothing moves.
+    #[test]
+    fn a_schema_2_home_marker_is_rust_first() {
+        let c = home_verdict(|h| {
+            write(h, ".moai/moai-cli.json", MARKER_V2);
+            write(h, ACTIVE, "[]");
+        });
+        assert_eq!((c.generation, c.rust_marker), ("rust-first", "schema-2"));
+        assert_eq!(c.go_retire_pending, vec![ACTIVE.to_string()]);
+        assert_eq!(c.to_json()["go_retire_pending"], json!([ACTIVE]));
+        // Rust-first without Go markers too.
+        let c = home_verdict(|h| write(h, ".moai/moai-cli.json", MARKER_V2));
+        assert_eq!(c.generation, "rust-first");
+        assert!(c.go_retire_pending.is_empty());
+        // Every HOME without a schema-2 marker keeps its verdict, and its JSON keys.
+        for (setup, want) in [
+            (Box::new(|_: &Path| {}) as Box<dyn Fn(&Path)>, "none"),
+            (
+                Box::new(|h: &Path| fs::create_dir(h.join(".moai")).unwrap()),
+                "empty",
+            ),
+            (Box::new(|h: &Path| write(h, ACTIVE, "[]")), "go"),
+            (
+                Box::new(|h: &Path| write(h, ".moai/moai-cli.json", MARKER_V1)),
+                "rust",
+            ),
+            (
+                Box::new(|h: &Path| {
+                    write(h, ".moai/moai-cli.json", MARKER_V1);
+                    write(h, ACTIVE, "[]");
+                }),
+                "mixed",
+            ),
+        ] {
+            let c = home_verdict(|h| setup(h));
+            assert_eq!(c.generation, want);
+            assert!(c.to_json().get("go_retire_pending").is_none(), "{want}");
+            let tmp = tempfile::tempdir().unwrap();
+            setup(tmp.path());
+            assert_eq!(
+                classify_home(tmp.path()),
+                classify_with(tmp.path(), crate::home_state::home_go_markers),
+                "{want}"
+            );
+        }
+        // Projects never read schema 2: an older-style refusal, as before.
+        let c = verdict(|r| {
+            write(r, ".moai/moai-cli.json", MARKER_V2);
+            write(r, ".moai/manifest.json", "{}");
+        });
+        assert_eq!((c.generation, c.rust_marker), ("refuse", "newer"));
+    }
+
+    #[test]
+    fn schema_2_home_marker_boundaries() {
+        let refused = |c: &Classified, marker: &str| {
+            assert_eq!((c.generation, c.rust_marker), ("refuse", marker));
+        };
+        // Schema 3 is newer than this build.
+        refused(
+            &home_verdict(|h| {
+                write(
+                    h,
+                    ".moai/moai-cli.json",
+                    r#"{"schema_version":3,"generation":"moai-cli"}"#,
+                )
+            }),
+            "newer",
+        );
+        // 65536 bytes still reads; 65537 does not.
+        let padded = |len: usize| {
+            let mut s = MARKER_V2.to_string();
+            while s.len() < len {
+                s.push(' ');
+            }
+            s
+        };
+        let at = home_verdict(|h| write(h, ".moai/moai-cli.json", &padded(65536)));
+        assert_eq!(at.generation, "rust-first");
+        let tmp = tempfile::tempdir().unwrap();
+        let h = tmp.path();
+        write(h, ".moai/moai-cli.json", &padded(65537));
+        let before = snapshot(h);
+        refused(&classify_home(h), "unreadable");
+        assert_eq!(snapshot(h), before, "nothing written");
+        // A folder in the marker's place.
+        refused(
+            &home_verdict(|h| fs::create_dir_all(h.join(".moai/moai-cli.json")).unwrap()),
+            "unreadable",
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let tmp = tempfile::tempdir().unwrap();
+            let h = tmp.path();
+            write(h, "outside/m.json", MARKER_V2);
+            fs::create_dir(h.join(".moai")).unwrap();
+            symlink(h.join("outside/m.json"), h.join(".moai/moai-cli.json")).unwrap();
+            let before = snapshot(h);
+            refused(&classify_home(h), "unreadable");
+            assert_eq!(snapshot(h), before, "nothing written");
+            // A FIFO is never opened (opening it would block).
+            let tmp = tempfile::tempdir().unwrap();
+            let h = tmp.path();
+            fs::create_dir(h.join(".moai")).unwrap();
+            let status = std::process::Command::new("mkfifo")
+                .arg(h.join(".moai/moai-cli.json"))
+                .status()
+                .unwrap();
+            assert!(status.success());
+            let before = snapshot(h);
+            refused(&classify_home(h), "unreadable");
+            assert_eq!(snapshot(h), before, "nothing written");
+            // A linked `.moai` holding a schema-2 marker is not followed.
+            let c = home_verdict(|h| {
+                write(h, "elsewhere/moai-cli.json", MARKER_V2);
+                symlink(h.join("elsewhere"), h.join(".moai")).unwrap();
+            });
+            assert_eq!((c.generation, c.moai_dir), ("refuse", "link"));
+        }
+    }
+
+    /// The secret Go marker is seen by its metadata only: a 0o000 `credentials.yaml` beside a
+    /// schema-2 marker is listed, never opened.
+    #[cfg(unix)]
+    #[test]
+    fn home_classification_never_opens_secret_files() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let h = tmp.path();
+        write(h, ".moai/moai-cli.json", MARKER_V2);
+        write(h, ".moai/credentials.yaml", "token: x\n");
+        let secret = h.join(".moai/credentials.yaml");
+        fs::set_permissions(&secret, fs::Permissions::from_mode(0o000)).unwrap();
+        let c = classify_home(h);
+        fs::set_permissions(&secret, fs::Permissions::from_mode(0o600)).unwrap();
+        assert_eq!(c.generation, "rust-first");
+        assert_eq!(
+            c.go_retire_pending,
+            vec![".moai/credentials.yaml".to_string()]
+        );
     }
 
     #[test]
