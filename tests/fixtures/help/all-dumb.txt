@@ -41,6 +41,9 @@ Update and move
   home-state-plan         Preview moving the Go-era ~/.moai folder
   home-state-apply        Move a previewed Go-era ~/.moai folder
   home-state-revert       Undo a ~/.moai folder move
+  home-retire-plan        Preview retiring the Go items in ~/.moai
+  home-retire-apply       Retire the Go items in ~/.moai
+  home-retire-revert      Undo a Go-item retire
   worktree-move-plan      Preview moving this clone's worktrees
   worktree-move-apply     Move the previewed worktrees
   update-plan             Preview an update of every host copy
