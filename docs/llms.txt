@@ -1,13 +1,13 @@
 # MoAI ADK
 
-> MoAI ADK is an open-source development kit that runs one workflow (read, plan, run, verify, audit, sync) inside Claude Code and Codex through a single shared `moai-cli` skill, with GitHub Issues as the work ledger. The Rust release candidate `moai-cli 2026.11.0-rc.1` is not yet released; the stable release is the Go 3.x generation.
+> MoAI ADK is an open-source development kit that runs one workflow (read, plan, run, verify, audit, sync) inside Claude Code and Codex through a single shared `moai` skill, with GitHub Issues as the work ledger. The Rust release candidate `moai-cli 2026.11.0-rc.1` is not yet released; the stable release is the Go 3.x generation.
 
 Draft for the documentation site root (`/llms.txt`, format from https://llmstxt.org/). It is not published; publishing waits for a maintainer decision. Links point to the release-candidate branch on GitHub.
 
 Key facts:
 
 - License: Apache-2.0.
-- RC1 language and binary: Rust, `moai-cli`. Previous generation: Go `moai` 3.x on the `main` branch.
+- RC1 language and binary: Rust, `moai` (alias `moai-cli`). Previous generation: Go `moai` 3.x on the `main` branch.
 - RC1 target scope: Claude Code and Codex on macOS arm64. Host end-to-end tests have not run yet, so this is a target, not a support guarantee.
 - Merge gate: an independent audit by a session other than the author, recorded as the `moai/audit` commit status on the exact head commit.
 
