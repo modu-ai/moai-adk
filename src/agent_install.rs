@@ -41,7 +41,7 @@ fn host_dir(home: &Path, host: &str) -> PathBuf {
 }
 
 fn state_root(home: &Path) -> PathBuf {
-    home.join(crate::HOME_STATE_DIR).join(STATE_DIR)
+    crate::home_root::path(&home).join(STATE_DIR)
 }
 
 fn sha(bytes: &[u8]) -> String {
@@ -160,7 +160,7 @@ fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
 
 fn read_state(home: &Path, host: &str) -> Result<HostState> {
     let root = state_root(home);
-    plain_dir_or_absent(&home.join(crate::HOME_STATE_DIR))?;
+    plain_dir_or_absent(&crate::home_root::path(&home))?;
     plain_dir_or_absent(&root)?;
     match read_opt(&root.join(format!("{host}.json")))? {
         None => Ok(HostState {

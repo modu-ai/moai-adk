@@ -47,7 +47,7 @@ pub struct Record {
 }
 
 pub fn record_path(home: &Path) -> PathBuf {
-    home.join(crate::HOME_STATE_DIR).join("state").join(FILE)
+    crate::home_root::path(&home).join("state").join(FILE)
 }
 
 /// A folder that must be a real folder when present: a symlink here could send the write
@@ -98,7 +98,7 @@ pub fn record(home: &Path, windows: BTreeMap<String, Window>, now: i64) -> Resul
     if windows.is_empty() {
         return Ok(false);
     }
-    let base = home.join(crate::HOME_STATE_DIR);
+    let base = crate::home_root::path(&home);
     let dir = base.join("state");
     plain_dir_or_absent(&base)?;
     plain_dir_or_absent(&dir)?;
@@ -141,7 +141,7 @@ pub fn evaluate(home: &Path, now: i64) -> Value {
             "windows": {},
         })
     };
-    let base = home.join(crate::HOME_STATE_DIR);
+    let base = crate::home_root::path(&home);
     if plain_dir_or_absent(&base).is_err() || plain_dir_or_absent(&base.join("state")).is_err() {
         return unknown("state folder is not a plain folder");
     }

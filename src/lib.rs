@@ -40,6 +40,7 @@ pub mod goal_block;
 pub mod handoff;
 pub mod heavy_slot;
 pub mod help;
+pub mod home_root;
 pub mod home_routing;
 pub mod home_state;
 pub mod home_workdir;
@@ -155,8 +156,8 @@ pub const PROJECT_STATE_DIR: &str = project_state!();
 pub const CLONE_STATE_DIR: &str = fixed_state!();
 /// Lane worktrees of the primary checkout, relative to it; they stay here until #2723 (#2725 D6).
 pub const WORKTREES_DIR: &str = fixed_state!("worktrees");
-/// User-home install root of the Rust RC (`~/.moai-cli`). The Go generation keeps `~/.moai`.
-/// No command writes there yet; the constant fixes the destination for later install code.
+/// The earlier user-home state root (`~/.moai-cli`). Production code asks
+/// [`home_root::dir`]/[`home_root::path`], which give `~/.moai` once its marker is there (#2696 C4b).
 pub const HOME_STATE_DIR: &str = ".moai-cli";
 
 pub fn digest(bytes: &[u8]) -> String {

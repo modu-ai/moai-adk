@@ -262,6 +262,7 @@ fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
             ".omp",
             ".agents",
             crate::HOME_STATE_DIR,
+            crate::home_root::MOAI_DIR,
         ]
         .iter()
         .any(|d| root.starts_with(home.join(d)));

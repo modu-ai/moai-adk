@@ -8,7 +8,7 @@
 //! Provisional decisions (leader RC1, decisions log 18:1x, pending P05 and P12): git runs as a
 //! fixed-argv subprocess, ids are sha256 of canonical paths, the home root is fixed at
 //! `~/.moai-cli`, and the output keeps the current contract (no envelope, exit 0/1).
-use crate::{digest, read_profile, HOME_STATE_DIR};
+use crate::{digest, read_profile};
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -176,7 +176,7 @@ pub fn identity(path: &Path) -> Result<Value> {
     }
     let home = match std::env::var_os("HOME") {
         Some(h) if !h.is_empty() => {
-            let root = PathBuf::from(h).join(HOME_STATE_DIR);
+            let root = crate::home_root::path(&PathBuf::from(h));
             refuse_symlink(&root, "home state root")?;
             json!(text(&root)?)
         }

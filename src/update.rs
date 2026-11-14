@@ -400,7 +400,10 @@ pub(crate) fn refuse_state_symlinks(dir: &Path, what: &str) -> Result<()> {
                 return Err(format!("{what} path is a symlink; refused"));
             }
         }
-        if cursor.file_name().map(|n| n == crate::HOME_STATE_DIR) == Some(true) {
+        if cursor
+            .file_name()
+            .is_some_and(crate::home_root::is_state_dir_name)
+        {
             return Ok(());
         }
         cursor = match cursor.parent() {
@@ -503,8 +506,7 @@ pub(crate) fn host_receipt_path(
     host: &str,
     create: bool,
 ) -> Result<PathBuf> {
-    let dir = home
-        .join(crate::HOME_STATE_DIR)
+    let dir = crate::home_root::path(&home)
         .join("installations")
         .join(install_id)
         .join("hosts")
@@ -516,7 +518,10 @@ pub(crate) fn host_receipt_path(
         while let Some(parent) = cursor.parent() {
             parts.push(cursor.to_path_buf());
             cursor = parent;
-            if cursor.file_name().map(|n| n == crate::HOME_STATE_DIR) == Some(true) {
+            if cursor
+                .file_name()
+                .is_some_and(crate::home_root::is_state_dir_name)
+            {
                 break;
             }
         }
@@ -592,8 +597,7 @@ fn known_good_copies(
         let target = root.join(&w.path);
         let bytes = read_opt(&target)?.ok_or("known-good: update target missing")?;
         let hex = format!("{:x}", Sha256::digest(&bytes));
-        let dir = home
-            .join(crate::HOME_STATE_DIR)
+        let dir = crate::home_root::path(&home)
             .join("installations")
             .join(install_id)
             .join("hosts")
@@ -607,7 +611,10 @@ fn known_good_copies(
         while let Some(parent) = cursor.parent() {
             parts.push(cursor.to_path_buf());
             cursor = parent;
-            if cursor.file_name().map(|n| n == crate::HOME_STATE_DIR) == Some(true) {
+            if cursor
+                .file_name()
+                .is_some_and(crate::home_root::is_state_dir_name)
+            {
                 break;
             }
         }
@@ -774,7 +781,7 @@ fn ancestor_symlinks(home: &Path, root: &Path) -> Result<()> {
 #[cfg(unix)]
 fn cross_filesystem(home: &Path, root: &Path) -> Result<bool> {
     use std::os::unix::fs::MetadataExt;
-    let state = home.join(crate::HOME_STATE_DIR);
+    let state = crate::home_root::path(&home);
     match (fs::metadata(&state), fs::metadata(root)) {
         (Ok(a), Ok(b)) => Ok(a.dev() != b.dev()),
         _ => Ok(false),
@@ -891,7 +898,7 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
         return None;
     }
     let folder = bin.parent()?;
-    let versions = canonical_home.join(crate::HOME_STATE_DIR).join("versions");
+    let versions = crate::home_root::path(&canonical_home).join("versions");
     if folder.parent()? != versions {
         return None;
     }
@@ -950,9 +957,7 @@ pub(crate) fn resolve_host_receipt(
         return Ok(plain(own));
     };
     let exe_name = exe.file_name().ok_or("binary path unavailable")?.to_owned();
-    let installations = canonical_home
-        .join(crate::HOME_STATE_DIR)
-        .join("installations");
+    let installations = crate::home_root::path(&canonical_home).join("installations");
     let blocked = |reason: String| ReceiptSource {
         receipt: None,
         from: None,
@@ -1205,8 +1210,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
                     source_file_count: source.len(),
                     source_files: source,
                     source_tree_sha256: tree.clone(),
-                    backup_root: canonical_home
-                        .join(crate::HOME_STATE_DIR)
+                    backup_root: crate::home_root::path(&canonical_home)
                         .join("backups")
                         .to_string_lossy()
                         .into_owned(),
@@ -2192,7 +2196,7 @@ fn run_backup_then_replace(
     if source_files(&root)? != btr.source_files {
         return Err("projection changed since the plan; nothing moved".into());
     }
-    let backups = home.join(crate::HOME_STATE_DIR).join("backups");
+    let backups = crate::home_root::path(&home).join("backups");
     refuse_state_symlinks(&backups, "backup")?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     refuse_state_symlinks(&backups, "backup")?;
