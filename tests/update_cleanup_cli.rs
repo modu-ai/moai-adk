@@ -650,6 +650,93 @@ fn a_live_go_session_keeps_every_go_item() {
     assert_eq!(a[".claude/skills/moai/b.md"].0, "archive");
 }
 
+/// #2885 audit B1: a Go session state that cannot be read counts as in use (fail-closed), for
+/// the registry and for the lock each; a readable empty registry frees the Go items again.
+#[test]
+fn an_unreadable_go_session_state_keeps_every_go_item() {
+    let go_items = [
+        ".claude/skills/moai-proven",
+        ".claude/agents/moai-a.md",
+        ".moai/cache",
+    ];
+    // The registry is not a list of rows.
+    let f = fixture();
+    write(&f.home, ".moai/state/active-sessions.json", "not json\n");
+    let plan = f.plan();
+    let a = actions(&plan);
+    for p in go_items {
+        assert_eq!(
+            a[p],
+            ("keep".into(), "in_use_unknown".into()),
+            "{p}: {plan:#}"
+        );
+    }
+    // The same registry, readable and empty: nothing is in use.
+    write(&f.home, ".moai/state/active-sessions.json", "[]\n");
+    let a = actions(&f.plan());
+    for p in go_items {
+        assert_eq!(a[p].0, "archive", "{p}");
+    }
+    // The lock is not a plain file, so whether it is held cannot be told.
+    let f = fixture();
+    fs::create_dir_all(f.home.join(".moai/state/active-sessions.json.lock")).unwrap();
+    let a = actions(&f.plan());
+    for p in go_items {
+        assert_eq!(a[p], ("keep".into(), "in_use_unknown".into()), "{p}");
+    }
+}
+
+/// #2885 audit N1: an apply that stopped before an item (`moved: false`, no archived copy)
+/// leaves that item `not_moved`; the items it did move still revert.
+#[test]
+fn revert_skips_an_item_the_stopped_apply_never_moved() {
+    let f = fixture();
+    let token = f.plan()["confirm_token"].as_str().unwrap().to_string();
+    assert!(f.apply(&token, &[]).1);
+    let archive = f.home.join(".moai-cli/cleanup").join(STAMP);
+    let receipt_path = archive.join("receipt.json");
+    let mut receipt: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
+    receipt["status"] = json!("pending");
+    let rel = ".claude/agents/moai-a.md";
+    for i in receipt["items"].as_array_mut().unwrap() {
+        if i["path"] == json!(rel) {
+            i["moved"] = json!(false);
+            i["changed"] = json!(true);
+        }
+    }
+    fs::write(&receipt_path, receipt.to_string()).unwrap();
+    // As if the apply had stopped there: the file never left, and it changed meanwhile.
+    fs::remove_file(archive.join(rel)).unwrap();
+    write(&f.home, rel, "changed during the apply\n");
+
+    let rp = f.revert_plan(STAMP);
+    assert_eq!(rp["action"], json!("restore"), "{rp:#}");
+    assert_eq!(rp["counts"]["not_moved"], json!(1), "{rp:#}");
+    assert_eq!(rp["counts"]["conflict"], json!(0), "{rp:#}");
+    let (v, success) = f.revert(STAMP);
+    assert!(success, "{v}");
+    assert_eq!(
+        fs::read_to_string(f.home.join(rel)).unwrap(),
+        "changed during the apply\n"
+    );
+    assert!(
+        f.home.join(".moai/cache").exists(),
+        "a moved item was not restored"
+    );
+}
+
+/// #2885 audit B2: an empty `moai-*` sibling has no file the Go manifest proves, so it stays.
+#[test]
+fn an_empty_sibling_skill_folder_is_not_proven() {
+    let f = fixture();
+    fs::create_dir_all(f.home.join(".claude/skills/moai-empty")).unwrap();
+    fs::create_dir_all(f.home.join(".agents/skills/moai-empty")).unwrap();
+    let a = actions(&f.plan());
+    for p in [".claude/skills/moai-empty", ".agents/skills/moai-empty"] {
+        assert_eq!(a[p], ("keep".into(), "unrecorded".into()), "{p}");
+    }
+}
+
 #[test]
 fn an_unreadable_go_manifest_proves_nothing() {
     let f = fixture();

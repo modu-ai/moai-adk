@@ -1081,8 +1081,13 @@ fn revert_items(home: &Path, root: &Path, receipt: &Value) -> Result<Vec<RevertI
         let same = |p: &Path| digest_of(p, dir, &LIMITS).ok().as_deref() == Some(digest);
         // A parent swapped for a link since the apply would carry the restore outside HOME.
         let parent_linked = parent_rel(path).is_some_and(|r| real_dirs(home, r).is_err());
+        // An apply that stopped before this item never moved it (#2885 audit N1): with no
+        // archived copy there is nothing to restore, whatever the original holds now.
+        let never_moved = i["moved"] == json!(false) && !exists(&archived);
         let status = if parent_linked {
             "conflict"
+        } else if never_moved {
+            "not_moved"
         } else if exists(&original) {
             if !exists(&archived) && same(&original) {
                 "done"
@@ -1121,6 +1126,7 @@ fn revert_json(home: &Path, stamp: &str, receipt: &Value, items: &[RevertItem]) 
         "counts": {
             "restore": count("restore"),
             "done": count("done"),
+            "not_moved": count("not_moved"),
             "conflict": count("conflict"),
             "missing": count("missing"),
         },
