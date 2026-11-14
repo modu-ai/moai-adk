@@ -18,17 +18,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -51,17 +51,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -80,17 +80,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -108,17 +108,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -141,17 +141,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -169,17 +169,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -229,17 +229,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -257,17 +257,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -285,17 +285,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -313,17 +313,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -341,17 +341,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -369,17 +369,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -397,17 +397,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -425,17 +425,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -469,17 +469,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -536,17 +536,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -607,17 +607,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -643,17 +643,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -678,17 +678,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -713,17 +713,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -744,17 +744,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -775,17 +775,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -804,17 +804,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -852,17 +852,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -911,17 +911,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -1007,17 +1007,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -1044,17 +1044,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -1073,17 +1073,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -1113,17 +1113,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -1152,17 +1152,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }
@@ -1191,17 +1191,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
             "stdout": "PTY"
           }
         }

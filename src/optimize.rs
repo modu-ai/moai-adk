@@ -4,7 +4,8 @@
 //! only under roots the caller names), and reports. One table: size, last change, retention,
 //! the reasons a row is kept, and how to get it back.
 //!
-//! Nothing is deleted or written. The worktree rows reuse `worktree.gc.plan` with its
+//! Nothing is deleted or written. `worktrees.count` is the repository's worktree count, and
+//! `warnings` names it when it is above [`WORKTREE_WARN_OVER`] (#2930 item 6). The worktree rows reuse `worktree.gc.plan` with its
 //! squash-merge test turned on ([`crate::worktree_gc::plan_with`]); on top of that a row is
 //! a `remove` candidate only with independent-audit evidence for its exact HEAD, and any
 //! non-`skip` row needs the caller's observation of live claims and HOLD Issues (the
@@ -330,6 +331,19 @@ fn build_folder_rows(
     Ok(rows)
 }
 
+/// #2930 item 6: a repository with more worktrees than this (the primary one included) gets a
+/// warning line in the preview; exactly this many does not.
+pub const WORKTREE_WARN_OVER: usize = 200;
+
+/// The warning for a repository with `count` worktrees, or `None` at [`WORKTREE_WARN_OVER`] or fewer.
+pub fn worktree_count_warning(count: usize) -> Option<String> {
+    (count > WORKTREE_WARN_OVER).then(|| {
+        format!(
+            "this repository has {count} worktrees, more than {WORKTREE_WARN_OVER}; `worktree-gc-plan` lists the merged ones that could go"
+        )
+    })
+}
+
 /// Builds the preview. Reads only.
 pub fn plan(req: &Request) -> Result<Value> {
     validate(req.observations)?;
@@ -350,7 +364,9 @@ pub fn plan(req: &Request) -> Result<Value> {
     let retention_secs = req.retention_days.saturating_mul(86_400);
     let listing = worktree_gc::git_out(req.project, &["worktree", "list", "--porcelain"])
         .ok_or("git failed: worktree list")?;
-    let primary = parse_worktree_list(&listing)
+    let listed = parse_worktree_list(&listing);
+    let worktree_count = listed.len();
+    let primary = listed
         .first()
         .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
         .ok_or("git failed: no worktree listed")?;
@@ -494,6 +510,8 @@ pub fn plan(req: &Request) -> Result<Value> {
             "bytes": sum(&|r: &Value| r["bytes"].as_u64().unwrap_or(0)),
             "freeable_bytes": freeable,
         },
+        "worktrees": {"count": worktree_count, "warn_over": WORKTREE_WARN_OVER},
+        "warnings": worktree_count_warning(worktree_count).into_iter().collect::<Vec<_>>(),
         "rows": rows,
         "preview_digest": digest,
         "apply": "optimize-plan applies nothing. Worktree rows: worktree-gc-apply recomputes its own plan, where only an ancestor of the integration tip counts as merged, and runs only after the user confirms (#2389 comment 6774899518 item 2). Build folders outside the worktrees and reports: no apply step in #2724.",
@@ -539,6 +557,25 @@ mod tests {
     }
 
     const H: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    /// #2930 item 6: strictly more than 200 worktrees warns; 200 does not.
+    #[test]
+    fn the_worktree_count_warning_starts_above_200() {
+        assert_eq!(WORKTREE_WARN_OVER, 200);
+        for (count, warns) in [
+            (0, false),
+            (1, false),
+            (199, false),
+            (200, false),
+            (201, true),
+        ] {
+            assert_eq!(worktree_count_warning(count).is_some(), warns, "{count}");
+        }
+        assert_eq!(
+            worktree_count_warning(201).unwrap(),
+            "this repository has 201 worktrees, more than 200; `worktree-gc-plan` lists the merged ones that could go"
+        );
+    }
 
     #[test]
     fn remove_needs_a_pass_for_the_exact_head() {

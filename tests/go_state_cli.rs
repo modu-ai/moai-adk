@@ -783,9 +783,11 @@ fn a_failure_midway_leaves_a_pending_receipt_the_revert_can_use() {
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(v.to_string().contains(".moai-cli/index"), "{v}");
     let backups = fx.root.join(".moai/backups");
+    // The `.gitignore` that keeps the backup area out of git sits beside the stamp folders.
     let mut stamps: Vec<String> = fs::read_dir(&backups)
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n != ".gitignore")
         .collect();
     assert_eq!(stamps.len(), 1);
     let backup = stamps.pop().unwrap();
@@ -2025,10 +2027,11 @@ fn an_earlier_root_move_stopped_midway_is_interrupted_and_reverts() {
             .contains("state_root is `interrupted`"),
         "{again}"
     );
+    // The stamp folder, not the `.gitignore` that keeps the backup area out of git.
     let backup: String = fs::read_dir(fx.root.join(".moai/backups"))
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
-        .next()
+        .find(|n| n != ".gitignore")
         .unwrap();
     let rp = revert_plan(&fx, &backup);
     assert_eq!(

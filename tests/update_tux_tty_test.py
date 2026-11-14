@@ -195,13 +195,15 @@ class UpdateScreens(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(json.loads(out)["ok"], False)
 
-    def test_korean_on_a_korean_terminal(self):
-        """U item 8: the profile/terminal language picks Korean sentences."""
+    def test_a_korean_setting_keeps_the_english_screens(self):
+        """#2825 R1 (user decision 6878265192): the CLI's screens are English whatever the
+        language settings say."""
         env = dict(self.env, MOAI_LANG="ko")
         text, code = run_pty(["update"], env, self.work, answer=b"n\n")
         self.assertEqual(code, 0, text)
-        self.assertIn("검사", text)
-        self.assertIn("쓰지 않았어요.", text)
+        self.assertIn("Checking", text)
+        self.assertIn("Nothing was written.", text)
+        self.assertNotIn("검사", text)
 
 
 if __name__ == "__main__":

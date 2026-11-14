@@ -281,6 +281,8 @@ class HeavyCheckSlotTest(unittest.TestCase):
 
 ROOT = Path(__file__).resolve().parent.parent
 REASON = re.compile(r"not started — (.*); load ")
+# #2930 item 6: the one warning line of either tool, without its "heavy-slot: " prefix.
+LOW_SPACE = re.compile(r"^heavy(?:-check)?-slot: (free disk space is under .*)$", re.M)
 
 
 def padded(n):
@@ -352,6 +354,51 @@ class MachineLimitTest(unittest.TestCase):
             r = self.run_python(f"free_gb={free},swap_pct=0")
             self.assertEqual(r.returncode, 0, (free, r.stderr))
             self.assertTrue(self.ran(), free)
+
+    def test_2930_item6_a_start_under_100_gb_warns_once_on_stderr_only(self):
+        """The edges: 99 GB warns, 100 and 101 do not; below the floor is the old refusal
+        without the warning; stdout and the exit code are those of a roomy machine."""
+        for free, extra, code, warns in [
+            (49, (), 75, False),
+            (50, (), 0, True),
+            (99, (), 0, True),
+            (100, (), 0, False),
+            (101, (), 0, False),
+            (60, ("--min-free-gb", "61"), 75, False),
+            (61, ("--min-free-gb", "61"), 0, True),
+        ]:
+            r = self.run_python(f"free_gb={free},swap_pct=0", *extra)
+            self.assertEqual(r.returncode, code, (free, r.stderr))
+            seen = LOW_SPACE.findall(r.stderr)
+            self.assertEqual(len(seen), int(warns), (free, r.stderr))
+            self.assertNotIn("under 100 GB", r.stdout, free)
+            if warns:
+                floor = extra[1] if extra else "50"
+                self.assertEqual(
+                    seen[0],
+                    f"free disk space is under 100 GB (disk free {free}.0 GB at {self.root}); "
+                    f"the floor is {floor} GB")
+            self.ran()
+
+    def test_2930_item6_python_and_rust_warn_with_the_same_words(self):
+        exe = rust_bin()
+        if not exe.exists():
+            raise AssertionError(f"moai-cli not built at {exe}; run cargo build first")
+        for machine, extra in [
+            ("free_gb=49,swap_pct=0", ()),
+            ("free_gb=50,swap_pct=0", ()),
+            ("free_gb=99,swap_pct=0", ()),
+            ("free_gb=100,swap_pct=0", ()),
+            ("free_gb=101,swap_pct=0", ()),
+            ("free_gb=61,swap_pct=0", ("--min-free-gb", "61")),
+            ("nothing=1", ()),
+        ]:
+            py = self.run_python(machine, *extra)
+            rs = self.run_rust(machine, *extra)
+            self.assertEqual(py.returncode, rs.returncode, (machine, py.stderr, rs.stderr))
+            self.assertEqual(LOW_SPACE.findall(py.stderr), LOW_SPACE.findall(rs.stderr),
+                             (machine, py.stderr, rs.stderr))
+            self.assertEqual(py.stdout.count("under 100 GB"), rs.stdout.count("under 100 GB"))
 
     def test_swap_boundary_80_81_and_both_reasons(self):
         r = self.run_python("free_gb=1000,swap_pct=80")

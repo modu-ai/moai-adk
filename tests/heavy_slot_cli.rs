@@ -436,6 +436,69 @@ fn a_machine_over_the_limits_starts_nothing() {
 }
 
 /// A slot folder with only `limits.json` in it (the folder the next caller reads).
+/// #2930 item 6: a run that starts with less than 100 GB free prints one warning line on
+/// stderr only — stdout and the exit code are the ones of a roomy machine; the refusal below
+/// the floor is the old one, without the warning. The edges: 99 GB warns, 100 and 101 do not.
+#[test]
+fn a_start_under_100_gb_free_warns_once_on_stderr_only() {
+    let m = tempfile::tempdir().unwrap();
+    let ran = m.path().join("ran");
+    let touch = format!("touch '{}'", ran.display());
+    for (free, flags, starts, warns) in [
+        ("49", &[][..], false, false),
+        ("50", &[][..], true, true),
+        ("99", &[][..], true, true),
+        ("100", &[][..], true, false),
+        ("101", &[][..], true, false),
+        ("60", &["--min-free-gb", "61"][..], false, false),
+        ("61", &["--min-free-gb", "61"][..], true, true),
+    ] {
+        let _ = fs::remove_file(&ran);
+        let d = tempfile::tempdir().unwrap();
+        let mut c = Command::new(EXE);
+        c.env(
+            "MOAI_CLI_TEST_MACHINE",
+            format!("free_gb={free},swap_pct=0"),
+        )
+        .args([
+            "heavy-slot-acquire",
+            "--max",
+            "1",
+            "--name",
+            "lane-w",
+            "--dir",
+        ])
+        .arg(d.path().join("slots"))
+        .args(flags)
+        .args(["--", "sh", "-c", &touch]);
+        let out = run(c);
+        let (stdout, stderr) = (
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr),
+        );
+        let lines = stderr
+            .lines()
+            .filter(|l| l.contains("free disk space is under 100 GB"))
+            .count();
+        assert_eq!(
+            out.status.code(),
+            Some(if starts { 0 } else { 75 }),
+            "{free}: {stderr}"
+        );
+        assert_eq!(ran.exists(), starts, "{free}");
+        assert_eq!(lines, usize::from(warns), "{free} {flags:?}: {stderr}");
+        assert!(!stdout.contains("under 100 GB"), "{free}: stdout {stdout}");
+        if warns {
+            let floor = flags.get(1).copied().unwrap_or("50");
+            let want = format!(
+                "heavy-slot: free disk space is under 100 GB (disk free {free}.0 GB at {}); the floor is {floor} GB",
+                std::env::current_dir().unwrap().display()
+            );
+            assert!(stderr.lines().any(|l| l == want), "{free}: {stderr}");
+        }
+    }
+}
+
 fn limits_dir(body: &str) -> (tempfile::TempDir, PathBuf) {
     let d = tempfile::tempdir().unwrap();
     let slots = d.path().join("slots");

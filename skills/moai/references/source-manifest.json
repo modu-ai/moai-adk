@@ -109,16 +109,16 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "2505b039ab49ca3965674ef0d34b70d7aee70b82df39094f9ef21053142657a7",
+      "sha256": "616cc2309f8840f44539a0b9bb95976e4a39c18280b432056415b78c7c234c6e",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006). One stderr warning line when a heavy run starts with under 100 GB free (#2930 item 6). Section \"Lane worktrees and build cache\": worktree lifetime rule, user-owned retention information and sccache/cargo official-document citations read 2026-11-14 (#2930 S7, items 3 and 5, R-5)."
       }
     },
     "workflows/audit.md": {
-      "sha256": "a8a423475a591eeb4794fa94f9c7516dbe205c942332d3a066e35e9b71a44e6d",
+      "sha256": "83b74b590679825c81bdbb66cd74b6d47354a3ba056a5b22faae143abc0514db",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "6cdf1c3de69ffde78a1e060a880b74066d3b3312fd2e16b24f7f676f7154ae2c",
+      "sha256": "02706b9b64ade15e3ee9013bb6388c569d0519e29b37aab20ce7e8f72667b42f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "d506c5ae0258348a1951f64387fc1c896f88ca58e3319ebae00fad60d5c01a47",
+      "sha256": "f7c80469e1075b0889d269e814267f0d346a582218deb98b9e20b3c5ca864b58",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,12 +154,12 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "fada040a748d42e03c0ed436108c8bd49269067486ac9ce196db414c1bbe3029",
+      "sha256": "bc6fadf652bb0c966b3c444158e4cff32a98ef877eb797c8dfd7a0884da3e98d",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
         "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B)."
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2)."
       }
     },
     "references/chains/index.md": {
@@ -322,12 +322,12 @@
       }
     },
     "workflows/optimize.md": {
-      "sha256": "64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "sha256": "47617dc6dc94e747eeb59c25b469bd2530a4240d07eb6945ea925c7abca9fa18",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-optimize",
         "adoption": "new",
-        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE."
+        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE. Shows the preview's worktree-count warning line (#2930 item 6)."
       }
     }
   }
