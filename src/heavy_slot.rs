@@ -2,7 +2,7 @@
 //! of the repository tool `tools/heavy_check_slot.py` (#2491), with the same folder, file
 //! names and lock, so the two take turns with each other.
 //!
-//! `heavy-slot-acquire --max N --name LANE [--dir DIR] -- COMMAND…` waits for one of N slots,
+//! `heavy-slot-acquire [--max N] --name LANE [--dir DIR] -- COMMAND…` waits for one of N slots,
 //! runs COMMAND and returns COMMAND's exit code (128 + the signal number when it ends on a
 //! signal). A slot is a file `slot-<i>` with an exclusive `flock` (std `File::try_lock`); the
 //! open file is handed to COMMAND, so the slot stays held while either the wrapper or COMMAND
@@ -19,6 +19,11 @@
 //! anything is written: acquire exits 125 without running COMMAND (`status` lists it under
 //! `refused`). The default folder is `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`.
 //! Unix only; elsewhere both operations refuse.
+//!
+//! #2930 R-2: the machine's limits live in one file beside the slots, `<folder>/limits.json`
+//! (`max`, `min_free_gb`, `max_swap_pct`; defaults 3, 50, 80). A caller's flag wins only when
+//! it is stricter. A limits file that is not a plain file of at most 4096 bytes holding only
+//! those keys, or that sets `max` 0, is refused: acquire exits 125 without running COMMAND.
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -35,7 +40,8 @@ pub const BUSY: u8 = 75;
 
 /// Where a new heavy run is not started (#2677, item 3 of the leader's measurement record,
 /// comment 6850581277: "남은 공간 < 50 GB 또는 swap 사용 > 80% 면 새 빌드·시험을 시작하지 않고
-/// 이유를 출력"). `--min-free-gb 0 --max-swap-pct 100` turns both off.
+/// 이유를 출력"). Only `limits.json` beside the slots can loosen them; a caller's flag only
+/// tightens (#2930 R-2, [`effective`]).
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     /// Free space (decimal GB, 10^9 bytes) the working folder's file system must keep.
@@ -49,6 +55,136 @@ pub const DEFAULT_LIMITS: Limits = Limits {
     min_free_gb: 50,
     max_swap_pct: 80,
 };
+
+/// The slot count when neither the limits file nor the caller names one (#2930 R-2).
+pub const DEFAULT_MAX: usize = 3;
+
+/// The machine's limits, beside the slots: `<slot folder>/limits.json` (#2930 R-2, D-a).
+pub const LIMITS_FILE: &str = "limits.json";
+
+/// The largest limits file read; a bigger one is refused, not cut.
+const LIMITS_FILE_MAX_BYTES: u64 = 4096;
+
+/// `limits.json`: every key optional, any other key refused.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LimitsFile {
+    pub max: Option<usize>,
+    pub min_free_gb: Option<u64>,
+    pub max_swap_pct: Option<u64>,
+}
+
+/// The limits file in `folder`: `None` when there is none. A path that is not a plain file
+/// (a symlink, even to a valid file, or a folder), a file over 4096 bytes, JSON that does not
+/// parse, an unknown key or `max` 0 is an error — the caller runs nothing.
+pub fn read_limits_file(folder: &Path) -> Result<Option<LimitsFile>> {
+    use std::io::Read;
+    let path = folder.join(LIMITS_FILE);
+    let meta = match std::fs::symlink_metadata(&path) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(format!("{}: {e}", path.display())),
+    };
+    if !meta.file_type().is_file() {
+        return Err(format!(
+            "{}: not a plain file (symlink, FIFO, device or folder)",
+            path.display()
+        ));
+    }
+    let mut o = std::fs::OpenOptions::new();
+    o.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    let file = o
+        .open(&path)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut bytes = Vec::new();
+    file.take(LIMITS_FILE_MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    if bytes.len() as u64 > LIMITS_FILE_MAX_BYTES {
+        return Err(format!(
+            "{}: larger than {LIMITS_FILE_MAX_BYTES} bytes",
+            path.display()
+        ));
+    }
+    // An object only: serde would also read a struct from a JSON array.
+    let value: Value =
+        serde_json::from_slice(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+    if !value.is_object() {
+        return Err(format!("{}: not a JSON object", path.display()));
+    }
+    let file: LimitsFile =
+        serde_json::from_value(value).map_err(|e| format!("{}: {e}", path.display()))?;
+    if file.max == Some(0) {
+        return Err(format!("{}: max must be at least 1", path.display()));
+    }
+    Ok(Some(file))
+}
+
+/// The limits a run uses: the stricter of the file (or the defaults) and the caller's flags —
+/// a flag only tightens (#2930 D-b), so no caller turns a limit off. Also one note per caller
+/// value that a stricter file or default overrode.
+pub fn effective(
+    file: Option<&LimitsFile>,
+    caller_max: Option<usize>,
+    caller_free: Option<u64>,
+    caller_swap: Option<u64>,
+) -> (usize, Limits, Vec<String>) {
+    let base_max = file.and_then(|f| f.max).unwrap_or(DEFAULT_MAX);
+    let base_free = file
+        .and_then(|f| f.min_free_gb)
+        .unwrap_or(DEFAULT_LIMITS.min_free_gb);
+    let base_swap = file
+        .and_then(|f| f.max_swap_pct)
+        .unwrap_or(DEFAULT_LIMITS.max_swap_pct);
+    let source = if file.is_some() {
+        LIMITS_FILE
+    } else {
+        "the default"
+    };
+    let mut notes = Vec::new();
+    let mut note = |flag: &str, given: String, used: String| {
+        notes.push(format!(
+            "heavy-slot: {flag} {given} is looser than {source} ({used}); using {used}"
+        ));
+    };
+    let max = match caller_max {
+        Some(c) if c > base_max => {
+            note("--max", c.to_string(), base_max.to_string());
+            base_max
+        }
+        Some(c) => c,
+        None => base_max,
+    };
+    let min_free_gb = match caller_free {
+        Some(c) if c < base_free => {
+            note("--min-free-gb", c.to_string(), base_free.to_string());
+            base_free
+        }
+        Some(c) => c,
+        None => base_free,
+    };
+    let max_swap_pct = match caller_swap {
+        Some(c) if c > base_swap => {
+            note("--max-swap-pct", c.to_string(), base_swap.to_string());
+            base_swap
+        }
+        Some(c) => c,
+        None => base_swap,
+    };
+    (
+        max,
+        Limits {
+            min_free_gb,
+            max_swap_pct,
+        },
+        notes,
+    )
+}
 
 /// The free bytes and swap percent the limits are judged on. Debug builds take
 /// `MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>` instead (or `@<file>` holding that text,
@@ -573,6 +709,61 @@ mod sys {
             "machine": machine_line(folder),
             "writes": false,
         }))
+    }
+}
+
+#[cfg(test)]
+mod limits_tests {
+    use super::{effective, LimitsFile, DEFAULT_MAX};
+
+    fn file(max: Option<usize>, free: Option<u64>, swap: Option<u64>) -> LimitsFile {
+        LimitsFile {
+            max,
+            min_free_gb: free,
+            max_swap_pct: swap,
+        }
+    }
+
+    #[test]
+    fn no_file_and_no_flags_use_the_defaults() {
+        let (max, l, notes) = effective(None, None, None, None);
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (DEFAULT_MAX, 50, 80));
+        assert_eq!(DEFAULT_MAX, 3);
+        assert!(notes.is_empty());
+    }
+
+    #[test]
+    fn flags_only_tighten() {
+        // Looser flags lose to the defaults, each with a note.
+        let (max, l, notes) = effective(None, Some(9), Some(0), Some(100));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, 50, 80));
+        assert_eq!(notes.len(), 3, "{notes:?}");
+        assert!(notes[1].contains("--min-free-gb 0 is looser than the default (50)"));
+        // Stricter flags win, silently; equal flags too.
+        let (max, l, notes) = effective(None, Some(1), Some(51), Some(79));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (1, 51, 79));
+        assert!(notes.is_empty());
+        let (max, l, notes) = effective(None, Some(3), Some(50), Some(80));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, 50, 80));
+        assert!(notes.is_empty());
+        // The file replaces the defaults, also in the looser direction.
+        let f = file(Some(1), Some(10), Some(95));
+        let (max, l, notes) = effective(Some(&f), None, None, None);
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (1, 10, 95));
+        assert!(notes.is_empty());
+        let (max, l, notes) = effective(Some(&f), Some(2), Some(9), Some(96));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (1, 10, 95));
+        assert!(notes.iter().all(|n| n.contains("limits.json")), "{notes:?}");
+        assert_eq!(notes.len(), 3);
+    }
+
+    #[test]
+    fn extreme_values_are_capped_by_the_stricter_side() {
+        let (max, l, _) = effective(None, Some(usize::MAX), Some(u64::MAX), Some(u64::MAX));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, u64::MAX, 80));
+        let f = file(Some(usize::MAX), Some(u64::MAX), Some(u64::MAX));
+        let (max, l, _) = effective(Some(&f), Some(2), Some(0), Some(100));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (2, u64::MAX, 100));
     }
 }
 
