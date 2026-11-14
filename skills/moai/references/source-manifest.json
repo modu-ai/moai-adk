@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "2cda667921b8579d793c90712c8f15fe17003010dbbae1c5e38b0ad29d2d27d6",
+      "sha256": "0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -55,7 +55,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "6fd0159994da8440f7afe3a8eb8930a529636289b548a7b451bf0c71bc09dfda",
+      "sha256": "d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -100,7 +100,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "d747e80bb098f513846565caf62bbf257973a10dcf48d59c57dd72e708a5c1a5",
+      "sha256": "529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -145,12 +145,12 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "5509b52c77fa57597aa35fd20921201838473ab42e2214ac9a1dbff2f7b09112",
+      "sha256": "d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8, 9, 12 and 13: lanes open their own pull requests below four non-draft ones and settle a simultaneous opening by the four lowest numbers (others become drafts), the U6 integration gate (no tip chasing), the one-line round, and the waiting-branch suffix — #2515. Steps 12 keep-going and 14 wake added, report/pr-gate/heavy-checks/claim/goal-lines/self-pick changed so a round never stops on LANE-DONE, a full open-PR count, a wait or a leader request (#2515 comment 6823975793). Step 3 four-way Issue counts and step 13 LANE-BLOCKED for expired foreign claims (cause 8, #2515 comment 6824158448). Step 13 end condition matches keep-going (audit 6824297146 N1). Worktree sessions without the project settings file run no project hook, so claim-verify is the only boundary there (#2581). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): renewal by editing the own claim comment, every earlier claim id in a handoff request, a fresh branch for an unread trailer, the open-PR limit N from decision D7 with cross-lane `pr-wait` order, pre-push checks, a slot wait is no wake reason, a lost reservation posts no verdict, no-op wake backoff and no reprint of unchanged lines, the poll interval only for unchanged state. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show (one file per clone, read from every worktree); an active goal's end condition and exclusions hold after a restart without the person repeating it; lanes only read it. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Codex hook trust (#2592): claim-verify names the primary checkout's trust_level and the /hooks review, the measured worktree inheritance of project trust, and that a lane never bypasses hook trust. LANE-BLOCKED kind/owner/next fields and the resume point's who-clears-it (#2769, #2554 leader decision 6861024531). Step 8 checks the PR body locally with moai pr-self-audit-check before the push and before gh pr create (#2840 D3). The self-pick and wake steps name `moai lane-next` (fresh GitHub read each time, reversible decisions go on with the safe default) — #2831; at the open-PR limit the pr-gate step opens a draft instead of waiting (leader decision 6870150891)."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8, 9, 12 and 13: lanes open their own pull requests below four non-draft ones and settle a simultaneous opening by the four lowest numbers (others become drafts), the U6 integration gate (no tip chasing), the one-line round, and the waiting-branch suffix — #2515. Steps 12 keep-going and 14 wake added, report/pr-gate/heavy-checks/claim/goal-lines/self-pick changed so a round never stops on LANE-DONE, a full open-PR count, a wait or a leader request (#2515 comment 6823975793). Step 3 four-way Issue counts and step 13 LANE-BLOCKED for expired foreign claims (cause 8, #2515 comment 6824158448). Step 13 end condition matches keep-going (audit 6824297146 N1). Worktree sessions without the project settings file run no project hook, so claim-verify is the only boundary there (#2581). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): renewal by editing the own claim comment, every earlier claim id in a handoff request, a fresh branch for an unread trailer, the open-PR limit N from decision D7 with cross-lane `pr-wait` order, pre-push checks, a slot wait is no wake reason, a lost reservation posts no verdict, no-op wake backoff and no reprint of unchanged lines, the poll interval only for unchanged state. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show (one file per clone, read from every worktree); an active goal's end condition and exclusions hold after a restart without the person repeating it; lanes only read it. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Codex hook trust (#2592): claim-verify names the primary checkout's trust_level and the /hooks review, the measured worktree inheritance of project trust, and that a lane never bypasses hook trust. LANE-BLOCKED kind/owner/next fields and the resume point's who-clears-it (#2769, #2554 leader decision 6861024531). Step 8 checks the PR body locally with moai pr-self-audit-check before the push and before gh pr create (#2840 D3). The self-pick and wake steps name `moai lane-next` (fresh GitHub read each time, reversible decisions go on with the safe default) — #2831; at the open-PR limit the pr-gate step opens a draft instead of waiting (leader decision 6870150891). The self-pick step adds the `DECISION-APPLIED` line, the tip-repair wait and `card_pr_merged`; the wake step names `--shared-lanes` (#2873)."
       }
     },
     "workflows/project.md": {
@@ -172,7 +172,7 @@
       }
     },
     "references/internal/review.md": {
-      "sha256": "9fd0ee153f775716179de1a958d7b7188e837519bca73a57914988fedc55aa93",
+      "sha256": "c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-review",
@@ -208,7 +208,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "bcdec4f3bd1caf2be3fe0e660882b81988fd81f3b9c69d7e3f7bc20dc57ae57b",
+      "sha256": "8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -301,6 +301,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/core-rules.md": {
+      "sha256": "a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-core-rules",
+        "adoption": "adapted",
+        "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`."
       }
     },
     "workflows/optimize.md": {

@@ -17,7 +17,10 @@
 //!
 //! Reads only (leader decision D1): reservations and comments stay with the existing commands.
 //! One collection sends at most [`API_BUDGET`] GitHub requests (D4), taking the higher
-//! priorities first; what the budget left unread is named in `partial`, never guessed.
+//! priorities first; what the budget left unread is named in `partial`, never guessed. The open
+//! pull requests with their comments, the lane's threads and the open Issues come from a few
+//! GraphQL requests, not one request per pull request (#2873 N1), so a long list no longer
+//! spends the budget before the lower priorities are read.
 
 use crate::forge::policy::Clock;
 use crate::forge::transport::{HttpRequest, Transport};
@@ -34,17 +37,25 @@ type Result<T> = std::result::Result<T, String>;
 pub const API_BUDGET: u32 = 30;
 /// Open Issues whose comments are read to find one nobody claims.
 pub const FREE_ISSUE_SCAN: usize = 5;
-/// Lanes assumed to poll at once with one GitHub token (they all read as one account).
+/// Lanes assumed to poll at once with one GitHub token (they all read as one account), unless
+/// `--shared-lanes` names the number (#2873 N9).
 pub const SHARED_LANES: u64 = 10;
+/// The most lanes `--shared-lanes` accepts: the poll interval then stays below
+/// [`MAX_WAIT_SECS`] (3600 × 30 × 50 / 2500 = 2160).
+pub const MAX_SHARED_LANES: u64 = 50;
 /// The part of GitHub's 5,000 requests per hour per token the lanes' polling may use: half,
 /// so the leader loop and the merge gate keep the other half (#2856 audit B1).
 pub const HOURLY_SHARE: u64 = 2_500;
 // The share is at most half of GitHub's 5,000 per hour, checked when the crate compiles.
 const _: () = assert!(HOURLY_SHARE * 2 <= 5_000);
 /// Seconds between two collections while `--wait` waits, derived from the budget so that
-/// `SHARED_LANES` lanes each sending `API_BUDGET` requests per collection stay within
-/// `HOURLY_SHARE` per hour: 3600 × 30 × 10 / 2500 = 432.
-pub const POLL_SECS: u64 = (3600 * API_BUDGET as u64 * SHARED_LANES).div_ceil(HOURLY_SHARE);
+/// `shared_lanes` lanes each sending `API_BUDGET` requests per collection stay within
+/// `HOURLY_SHARE` per hour: ⌈3600 × 30 × lanes / 2500⌉.
+pub const fn poll_secs(shared_lanes: u64) -> u64 {
+    (3600 * API_BUDGET as u64 * shared_lanes).div_ceil(HOURLY_SHARE)
+}
+/// The interval for the default [`SHARED_LANES`]: 3600 × 30 × 10 / 2500 = 432.
+pub const POLL_SECS: u64 = poll_secs(SHARED_LANES);
 /// The longest `--wait` accepted (seconds).
 pub const MAX_WAIT_SECS: u64 = 3600;
 
@@ -53,6 +64,9 @@ pub const MAX_WAIT_SECS: u64 = 3600;
 pub struct Comment {
     pub id: u64,
     pub body: String,
+    /// When it was posted (ISO 8601 UTC); empty when unknown.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub at: String,
 }
 
 /// One open pull request as read.
@@ -82,8 +96,23 @@ pub struct Pr {
     /// The failed checks with their run ids, when `ci` is `red`.
     #[serde(default)]
     pub ci_detail: Option<String>,
+    /// The body carries a `moai-tip-repair:` line: the pull request that repairs a red tip.
+    #[serde(default)]
+    pub tip_repair: bool,
     #[serde(default)]
     pub comments: Vec<Comment>,
+}
+
+/// A merged pull request that refers to a thread, with the claim its body's `Moai-Claim:`
+/// names (#2873 N8).
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct MergedPr {
+    pub number: u64,
+    #[serde(default)]
+    pub claim: Option<u64>,
+    /// When it was merged (ISO 8601 UTC); empty when unknown.
+    #[serde(default)]
+    pub merged_at: String,
 }
 
 /// An Issue thread read for the lane's claims and decision requests.
@@ -96,6 +125,9 @@ pub struct Thread {
     pub labels: Vec<String>,
     #[serde(default)]
     pub comments: Vec<Comment>,
+    /// Merged pull requests that refer to this thread.
+    #[serde(default)]
+    pub merged: Vec<MergedPr>,
 }
 
 /// The tip's CI as the merge gate judges it (`gate::TipCi` fields).
@@ -234,6 +266,23 @@ fn leader_decision(c: &Comment) -> bool {
     first_line(c).starts_with("LEADER-DECISION")
 }
 
+/// A `DECISION-APPLIED <decision comment id>` line: the lane has acted on that decision, so it
+/// is no longer a task (#2873 N11).
+fn decision_applied(c: &Comment, decision: u64) -> bool {
+    lines(c).any(|l| {
+        l.strip_prefix("DECISION-APPLIED")
+            .and_then(|rest| rest.split_whitespace().next())
+            .and_then(|id| id.parse::<u64>().ok())
+            == Some(decision)
+    })
+}
+
+/// The body line that marks a tip-repair pull request.
+fn is_tip_repair(body: &str) -> bool {
+    body.lines()
+        .any(|l| l.trim_start().starts_with("moai-tip-repair:"))
+}
+
 // --- decision ----------------------------------------------------------------------------
 
 fn task(priority: &str, kind: &str, target: Value, action: String, evidence: Value) -> Value {
@@ -355,15 +404,24 @@ fn has_audit_claim(pr: &Pr) -> bool {
 pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
     let next = (|| {
-        // 1. P0: a red tip stops everything else.
+        // 1. P0: a red tip stops everything else — until a tip-repair pull request is open.
+        // Then one lane repairs: its author goes on with it as its own pull request (2.), the
+        // others are told it is open and go on down the list (#2873 N2).
         if let Some(tip) = snap.tip.as_ref().filter(|t| t.state == "red") {
-            return Some(task(
-                "P0",
-                "tip_red",
-                json!({"type": "tip", "head": tip.tip}),
-                "repair the red tip (a PR with a `moai-tip-repair:` line)".into(),
-                json!({"decided_by": tip.decided_by, "detail": tip.detail}),
-            ));
+            let repairs: Vec<&Pr> = snap.prs.iter().filter(|p| p.tip_repair).collect();
+            if repairs.is_empty() {
+                return Some(task(
+                    "P0",
+                    "tip_red",
+                    json!({"type": "tip", "head": tip.tip}),
+                    "repair the red tip (a PR with a `moai-tip-repair:` line)".into(),
+                    json!({"decided_by": tip.decided_by, "detail": tip.detail}),
+                ));
+            }
+            for p in repairs {
+                waiting.push(json!({"number": p.number, "reason": "tip_repair_open",
+                    "tip": tip.tip, "author_lane": p.author_lane}));
+            }
         }
         let mut prs: Vec<&Pr> = snap.prs.iter().collect();
         prs.sort_by_key(|p| p.number);
@@ -427,7 +485,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 continue;
             };
             let blocked = &comments[bi];
-            match comments[bi + 1..].iter().find(|c| leader_decision(c)) {
+            let after = &comments[bi + 1..];
+            match after.iter().find(|c| leader_decision(c)) {
+                Some(d) if after.iter().any(|c| decision_applied(c, d.id)) => {}
                 Some(d) => {
                     return Some(task(
                         "P1",
@@ -460,21 +520,38 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if own_pr_issues.contains(&t.number) {
                 continue;
             }
-            let decision_pending = waiting.iter().any(|w| w["number"] == json!(t.number));
+            let decision_pending = waiting
+                .iter()
+                .any(|w| w["number"] == json!(t.number) && w.get("blocked_comment").is_some());
             if decision_pending {
                 continue;
             }
+            // A merged pull request carrying this claim (#2873 N8): the newest one.
+            let merged = t
+                .merged
+                .iter()
+                .filter(|m| m.claim == Some(claim))
+                .max_by(|a, b| a.merged_at.cmp(&b.merged_at));
             // A pushed branch held back by the open-PR limit (`pr-wait:` after the claim, no pull
             // request of the lane for the card): open it as a draft now instead of waiting for
             // a slot — the merge gate marks a draft ready once it has its PASS (leader decision
             // #1975 6870150891, #2856 audit B2).
+            // A branch whose pull request merged after the `pr-wait` line is not waiting any more;
+            // with a time missing on either side the merge is taken as later, so no second pull
+            // request is suggested for work already merged.
             let claim_at = t.comments.iter().position(|c| c.id == claim);
-            if let Some(w) = claim_at.map(|i| &t.comments[i + 1..]).and_then(|after| {
+            let wait = claim_at.map(|i| &t.comments[i + 1..]).and_then(|after| {
                 after
                     .iter()
                     .rev()
                     .find(|c| first_line(c).starts_with("pr-wait:"))
-            }) {
+            });
+            let wait = wait.filter(|w| {
+                merged.is_none_or(|m| {
+                    !w.at.is_empty() && !m.merged_at.is_empty() && m.merged_at < w.at
+                })
+            });
+            if let Some(w) = wait {
                 return Some(task(
                     "P2",
                     "open_draft_pr",
@@ -484,6 +561,18 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                         t.number
                     ),
                     json!({"claim_comment": claim, "pr_wait_comment": w.id}),
+                ));
+            }
+            if let Some(m) = merged {
+                return Some(task(
+                    "P2",
+                    "card_pr_merged",
+                    json!({"type": "issue", "number": t.number}),
+                    format!(
+                        "PR #{} for your claim on #{} is merged: when the card's criteria are all met, post the close table and release the claim (moai-claim-release: comment={claim} by={lane}); otherwise continue the card",
+                        m.number, t.number
+                    ),
+                    json!({"claim_comment": claim, "merged_pr": m.number}),
                 ));
             }
             return Some(task(
@@ -544,7 +633,7 @@ pub fn summary_line(v: &Value) -> String {
             )
         }
         None => format!(
-            "lane-next: nothing to do now ({} waiting on the leader)",
+            "lane-next: nothing to do now ({} waiting)",
             v["waiting"].as_array().map_or(0, Vec::len)
         ),
     }
@@ -580,21 +669,116 @@ impl<T: Transport> Transport for Budgeted<'_, T> {
     }
 }
 
-fn comments_of<T: Transport>(t: &T, base: &str, number: u64) -> Result<(Vec<Comment>, bool)> {
-    let (v, next) =
-        crate::gate_collect::get_json(t, &format!("{base}/issues/{number}/comments?per_page=100"))?;
-    let list = v
+/// GitHub's GraphQL endpoint: one request reads many lists, and it is limited by its own
+/// points per hour, apart from the REST requests (GitHub Docs, "Rate limits and query limits
+/// for the GraphQL API").
+const GRAPHQL_URL: &str = "https://api.github.com/graphql";
+/// Issues read in one GraphQL request.
+pub const ISSUES_PER_QUERY: usize = 25;
+/// Newest comments read per thread (GraphQL's largest page).
+const COMMENTS_READ: u64 = 100;
+
+/// Open pull requests with their newest comments, the lane's two searches and the oldest open
+/// Issues, in one request.
+const LISTS_QUERY: &str = "query($owner:String!,$repo:String!,$claims:String!,$blocked:String!){\
+repository(owner:$owner,name:$repo){\
+pullRequests(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{\
+number title body headRefOid isDraft mergeable baseRefName \
+comments(last:100){totalCount nodes{databaseId body createdAt}}}}\
+issues(states:OPEN,first:30,orderBy:{field:CREATED_AT,direction:ASC}){nodes{number title}}}\
+claims:search(query:$claims,type:ISSUE,first:30){nodes{...on Issue{number} ...on PullRequest{number}}}\
+blocked:search(query:$blocked,type:ISSUE,first:30){nodes{...on Issue{number} ...on PullRequest{number}}}}";
+
+/// One Issue's title, labels, newest comments and the merged pull requests that refer to it.
+fn issue_fields(n: u64) -> String {
+    format!(
+        "i{n}:issue(number:{n}){{number title labels(first:20){{nodes{{name}}}} \
+comments(last:{COMMENTS_READ}){{totalCount nodes{{databaseId body createdAt}}}} \
+timelineItems(itemTypes:[CROSS_REFERENCED_EVENT],last:50){{nodes{{...on CrossReferencedEvent{{\
+source{{...on PullRequest{{number merged mergedAt body}}}}}}}}}}}}"
+    )
+}
+
+/// Sends one GraphQL query; the `data` and, when GitHub also answered errors next to the data,
+/// their messages (a missing Issue, for example).
+fn graphql<T: Transport>(t: &T, query: &str, variables: Value) -> Result<(Value, Option<String>)> {
+    let req = HttpRequest::new("POST", GRAPHQL_URL)
+        .with_body(json!({"query": query, "variables": variables}));
+    let resp = t.send(&req)?;
+    if resp.status != 200 {
+        return Err(format!("GraphQL returned HTTP {}", resp.status));
+    }
+    let body = resp.body.unwrap_or(Value::Null);
+    let errors = body["errors"]
+        .as_array()
+        .filter(|e| !e.is_empty())
+        .map(|e| {
+            e.iter()
+                .map(|x| x["message"].as_str().unwrap_or("error"))
+                .collect::<Vec<_>>()
+                .join("; ")
+        });
+    if !body["data"].is_object() {
+        return Err(errors.unwrap_or_else(|| "GraphQL answered without data".into()));
+    }
+    Ok((body["data"].clone(), errors))
+}
+
+/// The comments of a GraphQL connection, oldest first, and whether older ones were left out.
+fn gql_comments(conn: &Value) -> (Vec<Comment>, bool) {
+    let list: Vec<Comment> = conn["nodes"]
         .as_array()
         .map(|a| {
             a.iter()
                 .map(|c| Comment {
-                    id: c["id"].as_u64().unwrap_or(0),
+                    id: c["databaseId"].as_u64().unwrap_or(0),
                     body: c["body"].as_str().unwrap_or("").to_string(),
+                    at: c["createdAt"].as_str().unwrap_or("").to_string(),
                 })
                 .collect()
         })
         .unwrap_or_default();
-    Ok((list, next.is_some()))
+    let more = conn["totalCount"].as_u64().unwrap_or(0) > list.len() as u64;
+    (list, more)
+}
+
+/// An Issue read by [`issue_fields`] as a thread.
+fn gql_thread(i: &Value) -> (Thread, bool) {
+    let (comments, more) = gql_comments(&i["comments"]);
+    let merged = i["timelineItems"]["nodes"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .map(|e| &e["source"])
+                .filter(|pr| pr["merged"].as_bool() == Some(true))
+                .filter_map(|pr| {
+                    Some(MergedPr {
+                        number: pr["number"].as_u64()?,
+                        claim: body_claim(pr["body"].as_str().unwrap_or("")).map(|(_, c)| c),
+                        merged_at: pr["mergedAt"].as_str().unwrap_or("").to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let labels = i["labels"]["nodes"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|l| l["name"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    (
+        Thread {
+            number: i["number"].as_u64().unwrap_or(0),
+            title: i["title"].as_str().unwrap_or("").to_string(),
+            labels,
+            comments,
+            merged,
+        },
+        more,
+    )
 }
 
 /// `Moai-Claim: <issue>#<comment>` in a body.
@@ -606,59 +790,9 @@ fn body_claim(body: &str) -> Option<(u64, u64)> {
     })
 }
 
-fn search<T: Transport>(t: &T, owner: &str, repo: &str, text: &str) -> Result<Vec<(u64, String)>> {
-    let q = format!("repo:{owner}/{repo} is:open in:comments \"{text}\"");
-    let enc: String = q
-        .bytes()
-        .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' => (b as char).to_string(),
-            b' ' => "+".into(),
-            _ => format!("%{b:02X}"),
-        })
-        .collect();
-    let (v, _) = crate::gate_collect::get_json(
-        t,
-        &format!("https://api.github.com/search/issues?q={enc}&per_page=30"),
-    )?;
-    Ok(v["items"]
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|i| {
-                    let title = i["title"].as_str().unwrap_or("").to_string();
-                    Some((i["number"].as_u64()?, title))
-                })
-                .collect()
-        })
-        .unwrap_or_default())
-}
-
-/// The tip's state as #2831 states P0 (D8(a)): the aggregate check (`ci`/`rc-ci`) is not
-/// judged on its own — a newer push cancels the older run, and the aggregate then reads
-/// `failure` with every real job passed or cancelled — and a cancelled job says nothing about
-/// the code. The remaining jobs are judged with `flow::tip_ci_judgment`: `red` only when a job
-/// itself failed with no success on the same commit.
-pub fn d8a_judgment(runs: &[Value]) -> Value {
-    let kept: Vec<Value> = runs
-        .iter()
-        .filter(|r| {
-            let name = r["name"].as_str().unwrap_or("");
-            !crate::flow::CI_CHECK_NAMES.contains(&name)
-                && r["conclusion"].as_str() != Some("cancelled")
-        })
-        .cloned()
-        .collect();
-    let mut names: Vec<String> = kept
-        .iter()
-        .filter_map(|r| r["name"].as_str().map(str::to_string))
-        .collect();
-    names.sort();
-    names.dedup();
-    if names.is_empty() {
-        return json!({"state": "pending"});
-    }
-    crate::flow::tip_ci_judgment(&kept, &names)
-}
+/// The tip's state as #2831 states P0 (D8(a)) — the merge gate's own judgment, one copy
+/// (#2856 D3, merged as `gate_collect::d8a_judgment` by #2869).
+pub use crate::gate_collect::d8a_judgment;
 
 /// P0 input: the tip commit judged by [`d8a_judgment`]; while it reads `pending` (running, or
 /// only cancelled), the earlier first-parent tip commits are read in turn, at most
@@ -718,7 +852,9 @@ fn tip_d8a<T: Transport>(
     ))
 }
 
-/// Reads one snapshot for `target`, higher priorities first, within [`API_BUDGET`] requests.
+/// Reads one snapshot for `target`, higher priorities first, within [`API_BUDGET`] requests:
+/// one GraphQL request for the lists, the tip's CI (REST), one GraphQL request per
+/// [`ISSUES_PER_QUERY`] Issues, then the CI of the lane's own pull requests (REST).
 pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     let t = Budgeted {
         inner: transport,
@@ -736,19 +872,43 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             format!("{what}: {e}")
         });
     };
-    // P1: open pull requests, their comments and authors.
-    let pulls =
-        match crate::gate_collect::get_json(&t, &format!("{base}/pulls?state=open&per_page=100")) {
-            Ok((v, _)) => v.as_array().cloned().unwrap_or_default(),
-            Err(e) => {
-                miss("open pull requests".into(), e, &mut snap);
-                Vec::new()
+    // P1 and 5–7: the lists, in one request.
+    let search = |text: String| {
+        format!(
+            "repo:{}/{} is:open in:comments \"{text}\"",
+            target.owner, target.repo
+        )
+    };
+    let vars = json!({"owner": target.owner, "repo": target.repo,
+        "claims": search(format!("session={}", target.lane)),
+        "blocked": search(format!("LANE-BLOCKED {}", target.lane))});
+    let lists = match graphql(&t, LISTS_QUERY, vars) {
+        Ok((data, errors)) => {
+            if let Some(e) = errors {
+                snap.partial.push(format!("lists: {e}"));
             }
-        };
+            data
+        }
+        Err(e) => {
+            miss("open pull requests and Issues".into(), e, &mut snap);
+            Value::Null
+        }
+    };
+    let repo = &lists["repository"];
+    let pulls = repo["pullRequests"]["nodes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if repo["pullRequests"]["totalCount"].as_u64().unwrap_or(0) > pulls.len() as u64 {
+        snap.partial.push(format!(
+            "only the oldest {} open pull requests read",
+            pulls.len()
+        ));
+    }
     // P0: the tip — the named branch, else the base most open pull requests target.
     let mut bases: BTreeMap<&str, usize> = BTreeMap::new();
     for p in &pulls {
-        if let Some(b) = p["base"]["ref"].as_str() {
+        if let Some(b) = p["baseRefName"].as_str() {
             *bases.entry(b).or_default() += 1;
         }
     }
@@ -780,26 +940,116 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             }
         }
     }
-    let mut claim_lane: BTreeMap<u64, Option<String>> = BTreeMap::new();
+    let mut claims: Vec<(u64, u64)> = Vec::new();
     for p in &pulls {
         let number = p["number"].as_u64().unwrap_or(0);
-        let mut pr = Pr {
+        let body = p["body"].as_str().unwrap_or("");
+        let (comments, more) = gql_comments(&p["comments"]);
+        if more {
+            snap.partial.push(format!(
+                "PR #{number}: only the newest {COMMENTS_READ} comments read"
+            ));
+        }
+        let claim = body_claim(body);
+        if let Some(c) = claim {
+            claims.push(c);
+        }
+        snap.prs.push(Pr {
             number,
             title: p["title"].as_str().unwrap_or("").to_string(),
-            head: p["head"]["sha"].as_str().unwrap_or("").to_string(),
-            draft: p["draft"].as_bool().unwrap_or(false),
+            head: p["headRefOid"].as_str().unwrap_or("").to_string(),
+            draft: p["isDraft"].as_bool().unwrap_or(false),
+            claim_issue: claim.map(|(i, _)| i),
+            conflicting: match p["mergeable"].as_str() {
+                Some("CONFLICTING") => Some(true),
+                Some("MERGEABLE") => Some(false),
+                _ => None,
+            },
+            tip_repair: is_tip_repair(body),
+            comments,
             ..Pr::default()
+        });
+    }
+    // 5–7: the Issues to read — the claim Issues of the pull requests (for their authors), the
+    // lane's threads and the oldest open Issues.
+    let pr_numbers: Vec<u64> = snap.prs.iter().map(|p| p.number).collect();
+    let mut own: Vec<u64> = ["claims", "blocked"]
+        .iter()
+        .flat_map(|k| lists[*k]["nodes"].as_array().cloned().unwrap_or_default())
+        .filter_map(|n| n["number"].as_u64())
+        .filter(|n| !pr_numbers.contains(n))
+        .collect();
+    own.sort_unstable();
+    own.dedup();
+    let free: Vec<u64> = repo["issues"]["nodes"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|i| i["number"].as_u64()).collect())
+        .unwrap_or_default();
+    let free: Vec<u64> = free.into_iter().take(FREE_ISSUE_SCAN).collect();
+    let mut wanted: Vec<u64> = claims.iter().map(|(i, _)| *i).collect();
+    wanted.extend(&own);
+    wanted.extend(&free);
+    let mut seen = std::collections::BTreeSet::new();
+    wanted.retain(|n| seen.insert(*n));
+    let mut issues: BTreeMap<u64, (Thread, bool)> = BTreeMap::new();
+    for chunk in wanted.chunks(ISSUES_PER_QUERY) {
+        let fields: String = chunk.iter().map(|n| issue_fields(*n)).collect();
+        let query = format!(
+            "query($owner:String!,$repo:String!){{repository(owner:$owner,name:$repo){{{fields}}}}}"
+        );
+        match graphql(
+            &t,
+            &query,
+            json!({"owner": target.owner, "repo": target.repo}),
+        ) {
+            Ok((data, errors)) => {
+                if let Some(e) = errors {
+                    snap.partial.push(format!("Issues: {e}"));
+                }
+                for n in chunk {
+                    let i = &data["repository"][format!("i{n}")];
+                    if i.is_object() {
+                        issues.insert(*n, gql_thread(i));
+                    }
+                }
+            }
+            Err(e) => miss(
+                format!(
+                    "Issues {}",
+                    chunk
+                        .iter()
+                        .map(|n| format!("#{n}"))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                ),
+                e,
+                &mut snap,
+            ),
+        }
+    }
+    // Who wrote each pull request: the lane of the claim its body names, read in the claim
+    // Issue; a claim older than the comments read there is read by itself (REST).
+    let mut claim_lane: BTreeMap<u64, Option<String>> = BTreeMap::new();
+    for (idx, p) in pulls.iter().enumerate() {
+        let number = snap.prs[idx].number;
+        let Some((issue, comment)) = body_claim(p["body"].as_str().unwrap_or("")) else {
+            continue;
         };
-        if let Some((issue, comment)) = body_claim(p["body"].as_str().unwrap_or("")) {
-            pr.claim_issue = Some(issue);
-            if let std::collections::btree_map::Entry::Vacant(slot) = claim_lane.entry(comment) {
-                let lane = match crate::gate_collect::get_json(
+        if let std::collections::btree_map::Entry::Vacant(slot) = claim_lane.entry(comment) {
+            let read = issues
+                .get(&issue)
+                .and_then(|(th, _)| th.comments.iter().find(|c| c.id == comment))
+                .map(claim_session);
+            let lane = match read {
+                Some(lane) => lane,
+                None => match crate::gate_collect::get_json(
                     &t,
                     &format!("{base}/issues/comments/{comment}"),
                 ) {
                     Ok((c, _)) => claim_session(&Comment {
                         id: comment,
                         body: c["body"].as_str().unwrap_or("").to_string(),
+                        ..Comment::default()
                     }),
                     Err(e) => {
                         miss(
@@ -809,136 +1059,96 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
                         );
                         None
                     }
-                };
-                slot.insert(lane);
-            }
-            pr.author_lane = claim_lane[&comment].clone();
+                },
+            };
+            slot.insert(lane);
         }
-        match comments_of(&t, &base, number) {
-            Ok((c, more)) => {
-                pr.comments = c;
-                if more {
-                    snap.partial
-                        .push(format!("PR #{number}: only the first 100 comments read"));
-                }
-            }
-            Err(e) => miss(format!("comments of PR #{number}"), e, &mut snap),
-        }
-        if pr.author_lane.as_deref() == Some(target.lane) {
-            match crate::gate_collect::get_json(&t, &format!("{base}/pulls/{number}")) {
-                Ok((v, _)) => {
-                    pr.conflicting = match (v["mergeable"].as_bool(), v["mergeable_state"].as_str())
-                    {
-                        (Some(false), _) | (_, Some("dirty")) => Some(true),
-                        (Some(true), _) => Some(false),
-                        _ => None,
-                    }
-                }
-                Err(e) => miss(format!("mergeable of PR #{number}"), e, &mut snap),
-            }
-            match crate::gate_collect::tip_runs(&t, &base, &pr.head) {
-                Ok(runs) => {
-                    let j = crate::gate_collect::completed_judgment(&runs);
-                    pr.ci = j["state"].as_str().map(str::to_string);
-                    pr.ci_detail = j.get("failed").map(Value::to_string);
-                }
-                Err(e) => miss(format!("CI of PR #{number}"), e, &mut snap),
-            }
-        }
-        snap.prs.push(pr);
+        snap.prs[idx].author_lane = claim_lane[&comment].clone();
     }
-    // 5–6: the lane's claim threads and decision requests.
-    let mut numbers = Vec::new();
-    for text in [
-        format!("session={}", target.lane),
-        format!("LANE-BLOCKED {}", target.lane),
-    ] {
-        match search(&t, target.owner, target.repo, &text) {
-            Ok(found) => numbers.extend(found),
-            Err(e) => miss(format!("search {text:?}"), e, &mut snap),
+    let take = |n: u64, snap: &mut Snapshot| -> Option<Thread> {
+        match issues.get(&n) {
+            Some((th, more)) => {
+                let note = format!("#{n}: only the newest {COMMENTS_READ} comments read");
+                if *more && !snap.partial.contains(&note) {
+                    snap.partial.push(note);
+                }
+                Some(th.clone())
+            }
+            None => {
+                if !snap.partial.iter().any(|p| p.contains(&format!("#{n}"))) {
+                    snap.partial.push(format!("#{n}: not read"));
+                }
+                None
+            }
+        }
+    };
+    for n in own {
+        if let Some(th) = take(n, &mut snap) {
+            snap.threads.push(th);
         }
     }
-    numbers.sort_unstable();
-    numbers.dedup_by_key(|(n, _)| *n);
-    let pr_numbers: Vec<u64> = snap.prs.iter().map(|p| p.number).collect();
-    for (number, title) in numbers.into_iter().filter(|(n, _)| !pr_numbers.contains(n)) {
-        match comments_of(&t, &base, number) {
-            Ok((comments, _)) => snap.threads.push(Thread {
-                number,
-                title,
-                comments,
-                ..Thread::default()
+    for n in free {
+        if let Some(th) = take(n, &mut snap) {
+            snap.open_issues.push(th);
+        }
+    }
+    // The CI of the lane's own pull requests.
+    for pr in snap.prs.iter_mut() {
+        if pr.author_lane.as_deref() != Some(target.lane) {
+            continue;
+        }
+        match crate::gate_collect::tip_runs(&t, &base, &pr.head) {
+            Ok(runs) => {
+                let j = crate::gate_collect::completed_judgment(&runs);
+                pr.ci = j["state"].as_str().map(str::to_string);
+                pr.ci_detail = j.get("failed").map(Value::to_string);
+            }
+            Err(e) => snap.partial.push(if e == "budget" {
+                format!(
+                    "CI of PR #{}: request budget ({API_BUDGET}) spent",
+                    pr.number
+                )
+            } else {
+                format!("CI of PR #{}: {e}", pr.number)
             }),
-            Err(e) => miss(format!("comments of #{number}"), e, &mut snap),
         }
-    }
-    // 7: a few open Issues, oldest first.
-    match crate::gate_collect::get_json(
-        &t,
-        &format!("{base}/issues?state=open&sort=created&direction=asc&per_page=30"),
-    ) {
-        Ok((v, _)) => {
-            let issues: Vec<&Value> = v
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .filter(|i| i.get("pull_request").is_none())
-                        .collect()
-                })
-                .unwrap_or_default();
-            for i in issues.into_iter().take(FREE_ISSUE_SCAN) {
-                let number = i["number"].as_u64().unwrap_or(0);
-                let labels = i["labels"]
-                    .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|l| l["name"].as_str().map(str::to_string))
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                match comments_of(&t, &base, number) {
-                    Ok((comments, _)) => snap.open_issues.push(Thread {
-                        number,
-                        title: i["title"].as_str().unwrap_or("").to_string(),
-                        labels,
-                        comments,
-                    }),
-                    Err(e) => {
-                        miss(format!("comments of open Issue #{number}"), e, &mut snap);
-                        break;
-                    }
-                }
-            }
-        }
-        Err(e) => miss("open Issues".into(), e, &mut snap),
     }
     snap.api_calls = t.used.get();
     snap
 }
 
-/// Collects and decides; with `wait_secs` > 0, collects again every [`POLL_SECS`] until a task
-/// appears or the wait is over (at most [`MAX_WAIT_SECS`]).
+/// Collects and decides; with `wait_secs` > 0, collects again every [`poll_secs`]
+/// (`shared_lanes`) seconds until a task appears or the wait is over (at most
+/// [`MAX_WAIT_SECS`]).
 pub fn run<T: Transport, C: Clock>(
     target: &Target<'_>,
     transport: &T,
     clock: &C,
     wait_secs: u64,
+    shared_lanes: u64,
 ) -> Result<Value> {
     if wait_secs > MAX_WAIT_SECS {
         return Err(format!("--wait accepts at most {MAX_WAIT_SECS} seconds"));
     }
+    if !(1..=MAX_SHARED_LANES).contains(&shared_lanes) {
+        return Err(format!(
+            "--shared-lanes accepts 1 to {MAX_SHARED_LANES} lanes"
+        ));
+    }
+    let poll = poll_secs(shared_lanes);
     let deadline = clock.now() + wait_secs as i64;
     let mut rounds = 0u32;
     loop {
         rounds += 1;
         let snap = collect(target, transport);
         let mut v = decide(target.lane, &snap);
-        let done = !v["next"].is_null() || clock.now() + POLL_SECS as i64 > deadline;
+        let done = !v["next"].is_null() || clock.now() + poll as i64 > deadline;
         if done {
             v["rounds"] = json!(rounds);
+            v["poll_secs"] = json!(poll);
             return Ok(v);
         }
-        clock.sleep(POLL_SECS);
+        clock.sleep(poll);
     }
 }
 
@@ -950,44 +1160,175 @@ mod tests {
         Comment {
             id,
             body: body.into(),
+            ..Comment::default()
         }
     }
 
-    /// Answers every GET: 40 open pull requests, empty lists elsewhere; counts requests.
-    struct Busy {
+    /// GitHub as GraphQL and REST answer it: `prs` open pull requests, each naming claim
+    /// `n` on Issue `1000 + n`; Issue 3000 found by the lane's search, with a merged and an
+    /// unmerged pull request referring to it; ten open Issues. With `claims_in_issue` false
+    /// the claim comments are older than the comments an Issue read returns, so each is read
+    /// by itself. Counts requests.
+    struct Hub {
+        prs: u64,
+        claims_in_issue: bool,
         sent: Cell<u32>,
     }
 
-    impl Transport for Busy {
+    impl Transport for Hub {
         fn send(&self, req: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
             self.sent.set(self.sent.get() + 1);
-            let body = if req.url.contains("/pulls?state=open") {
-                json!((1..=40)
-                    .map(|n| json!({"number": n, "head": {"sha": "a".repeat(40)}, "base": {"ref": "main"}, "body": ""}))
-                    .collect::<Vec<_>>())
-            } else if req.url.contains("/branches/") {
-                json!({"commit": {"sha": "b".repeat(40)}})
+            let ok = |b: Value| Ok(crate::forge::transport::HttpResponse::new(200).with_body(b));
+            if req.url == GRAPHQL_URL {
+                assert_eq!(req.method, "POST");
+                let q = req.body.as_ref().unwrap()["query"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                if q.contains("pullRequests") {
+                    let prs: Vec<Value> = (1..=self.prs)
+                        .map(|n| {
+                            let tip = if n == 1 { "\nmoai-tip-repair: tip red" } else { "" };
+                            json!({"number": n, "title": format!("pr {n}"),
+                                "body": format!("Moai-Claim: {}#{n}{tip}", 1000 + n),
+                                "headRefOid": "a".repeat(40), "isDraft": false,
+                                "mergeable": if n == 2 { "CONFLICTING" } else { "MERGEABLE" },
+                                "baseRefName": "main",
+                                "comments": {"totalCount": 1, "nodes": [
+                                    {"databaseId": 5000 + n, "body": "note", "createdAt": "2026-11-14T00:00:00Z"}]}})
+                        })
+                        .collect();
+                    return ok(json!({"data": {
+                        "repository": {"pullRequests": {"totalCount": self.prs, "nodes": prs},
+                            "issues": {"nodes": (0..10).map(|k| json!({"number": 2000 + k})).collect::<Vec<_>>()}},
+                        "claims": {"nodes": [{"number": 3000}, {"number": 1}]},
+                        "blocked": {"nodes": []}}}));
+                }
+                let mut repo = serde_json::Map::new();
+                for part in q.split(":issue(number:").skip(1) {
+                    let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
+                    let n: u64 = digits.parse().unwrap();
+                    assert!(q.contains(&format!("i{n}:issue(number:{n})")));
+                    let comments = if n == 3000 {
+                        vec![
+                            json!({"databaseId": 77, "body": "moai-claim: session=agent-10 epoch=1"}),
+                        ]
+                    } else if (1001..2000).contains(&n) && self.claims_in_issue {
+                        vec![
+                            json!({"databaseId": n - 1000, "body": "moai-claim: session=agent-x epoch=1"}),
+                        ]
+                    } else {
+                        vec![]
+                    };
+                    let timeline = if n == 3000 {
+                        json!([
+                            {"source": {"number": 90, "merged": true, "mergedAt": "2026-11-14T03:00:00Z",
+                                "body": "x\nMoai-Claim: 3000#77"}},
+                            {"source": {"number": 91, "merged": false, "body": "Moai-Claim: 3000#77"}},
+                            {}
+                        ])
+                    } else {
+                        json!([])
+                    };
+                    repo.insert(
+                        format!("i{n}"),
+                        json!({"number": n, "title": format!("issue {n}"),
+                        "labels": {"nodes": [{"name": "P3"}]},
+                        "comments": {"totalCount": comments.len(), "nodes": comments},
+                        "timelineItems": {"nodes": timeline}}),
+                    );
+                }
+                return ok(json!({"data": {"repository": repo}}));
+            }
+            assert_eq!(req.method, "GET");
+            if req.url.contains("/branches/") {
+                ok(json!({"commit": {"sha": "b".repeat(40)}}))
+            } else if req.url.contains("/issues/comments/") {
+                ok(json!({"body": "moai-claim: session=agent-x epoch=1"}))
             } else {
-                json!([])
-            };
-            Ok(crate::forge::transport::HttpResponse::new(200).with_body(body))
+                ok(json!({"check_runs": []}))
+            }
         }
     }
 
-    /// D4: one collection sends at most API_BUDGET requests, reads the higher priorities first
-    /// and names what it left unread instead of guessing.
-    #[test]
-    fn a_collection_stops_at_its_request_budget() {
-        let t = Busy { sent: Cell::new(0) };
-        let dir = tempfile::TempDir::new().unwrap();
-        let target = Target {
+    fn target(dir: &Path) -> Target<'_> {
+        Target {
             owner: "o",
             repo: "r",
             lane: "agent-10",
             tip_branch: None,
-            dir: dir.path(),
+            dir,
+        }
+    }
+
+    /// #2873 N1: forty open pull requests with their comments, their authors, the lane's thread
+    /// and the open Issues come from a fixed handful of requests — nothing left unread.
+    #[test]
+    fn forty_pull_requests_are_read_in_a_few_requests() {
+        let dir = tempfile::TempDir::new().unwrap();
+        for prs in [1u64, 40] {
+            let t = Hub {
+                prs,
+                claims_in_issue: true,
+                sent: Cell::new(0),
+            };
+            let snap = collect(&target(dir.path()), &t);
+            // lists + tip branch + tip check runs + Issue reads (ISSUES_PER_QUERY each).
+            let issue_reads = (prs as usize + 1 + FREE_ISSUE_SCAN).div_ceil(ISSUES_PER_QUERY);
+            assert_eq!(snap.api_calls, 3 + issue_reads as u32, "{:?}", snap.partial);
+            assert_eq!(t.sent.get(), snap.api_calls);
+            assert!(
+                !snap
+                    .partial
+                    .iter()
+                    .any(|p| p.contains("budget") || p.contains("not read")),
+                "{:?}",
+                snap.partial
+            );
+            assert_eq!(snap.prs.len() as u64, prs);
+            assert!(snap
+                .prs
+                .iter()
+                .all(|p| p.author_lane.as_deref() == Some("agent-x") && p.comments.len() == 1));
+            assert_eq!(snap.open_issues.len(), FREE_ISSUE_SCAN);
+            assert_eq!(snap.open_issues[0].labels, vec!["P3".to_string()]);
+            // The search hit that is an open pull request is not read again as a thread.
+            assert_eq!(
+                snap.threads.iter().map(|t| t.number).collect::<Vec<_>>(),
+                vec![3000]
+            );
+            // N8: only the merged pull request, with the claim its body names.
+            assert_eq!(
+                snap.threads[0].merged,
+                vec![MergedPr {
+                    number: 90,
+                    claim: Some(77),
+                    merged_at: "2026-11-14T03:00:00Z".into()
+                }]
+            );
+            // N2: the tip-repair line and the conflict come from the same read.
+            assert!(snap.prs[0].tip_repair);
+            if prs > 1 {
+                assert_eq!(snap.prs[1].conflicting, Some(true));
+                assert!(!snap.prs[1].tip_repair);
+            }
+            assert_eq!(snap.prs[0].conflicting, Some(false));
+        }
+        assert_eq!(ISSUES_PER_QUERY, 25);
+    }
+
+    /// D4: one collection still sends at most API_BUDGET requests — claims older than the
+    /// comments read are read one by one until the budget is spent — and names what it left
+    /// unread instead of guessing.
+    #[test]
+    fn a_collection_stops_at_its_request_budget() {
+        let t = Hub {
+            prs: 40,
+            claims_in_issue: false,
+            sent: Cell::new(0),
         };
-        let snap = collect(&target, &t);
+        let dir = tempfile::TempDir::new().unwrap();
+        let snap = collect(&target(dir.path()), &t);
         assert_eq!(t.sent.get(), API_BUDGET, "{snap:?}");
         assert_eq!(snap.api_calls, API_BUDGET);
         assert!(
@@ -998,8 +1339,8 @@ mod tests {
             snap.partial
         );
         // The tip and the pull request list came first.
-        assert!(snap.tip.is_some() || snap.partial.iter().any(|p| p.starts_with("tip")));
-        assert!(!snap.prs.is_empty());
+        assert!(snap.tip.is_some());
+        assert_eq!(snap.prs.len(), 40);
         assert_eq!(API_BUDGET, 30, "the leader's number (#2831 D4)");
     }
 
@@ -1041,14 +1382,42 @@ mod tests {
             now: Cell::new(0),
             slept: Cell::new(0),
         };
-        let v = run(&target, &Quiet, &clock, 900).unwrap();
+        let v = run(&target, &Quiet, &clock, 900, SHARED_LANES).unwrap();
         assert_eq!(v["next"], Value::Null);
         assert_eq!(v["rounds"], json!(3));
+        assert_eq!(v["poll_secs"], json!(432));
         assert_eq!(clock.slept.get(), 2 * POLL_SECS);
-        let once = run(&target, &Quiet, &clock, 0).unwrap();
+        let once = run(&target, &Quiet, &clock, 0, SHARED_LANES).unwrap();
         assert_eq!(once["rounds"], json!(1));
-        assert!(run(&target, &Quiet, &clock, MAX_WAIT_SECS + 1).is_err());
+        assert!(run(&target, &Quiet, &clock, MAX_WAIT_SECS + 1, SHARED_LANES).is_err());
         assert_eq!((POLL_SECS, MAX_WAIT_SECS), (432, 3600));
+        // #2873 N9: twenty lanes on the token poll half as often.
+        clock.slept.set(0);
+        let v = run(&target, &Quiet, &clock, 900, 20).unwrap();
+        assert_eq!(
+            (v["rounds"].clone(), v["poll_secs"].clone()),
+            (json!(2), json!(864))
+        );
+        assert_eq!(clock.slept.get(), 864);
+    }
+
+    /// #2873 N9: `--shared-lanes` accepts 1 to 50 — 0 and 51 are refused.
+    #[test]
+    fn shared_lanes_are_bounded() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let clock = FakeClock {
+            now: Cell::new(0),
+            slept: Cell::new(0),
+        };
+        let t = Target {
+            tip_branch: Some("main"),
+            ..target(dir.path())
+        };
+        for (lanes, ok) in [(0, false), (1, true), (50, true), (51, false)] {
+            assert_eq!(run(&t, &Quiet, &clock, 0, lanes).is_ok(), ok, "{lanes}");
+        }
+        assert_eq!(MAX_SHARED_LANES, 50);
+        assert_eq!((poll_secs(1), poll_secs(50)), (44, 2160));
     }
 
     /// #2856 audit B1: ten lanes polling with one token stay within half of GitHub's 5,000
@@ -1056,10 +1425,20 @@ mod tests {
     #[test]
     fn polling_stays_within_the_shared_hourly_budget() {
         assert_eq!((API_BUDGET, SHARED_LANES, HOURLY_SHARE), (30, 10, 2_500));
-        let per_hour = SHARED_LANES * API_BUDGET as u64 * 3600 / POLL_SECS;
-        assert!(per_hour <= HOURLY_SHARE, "{per_hour} requests per hour");
-        // One second less would go over.
-        assert!(SHARED_LANES * API_BUDGET as u64 * 3600 / (POLL_SECS - 1) > HOURLY_SHARE);
+        for lanes in 1..=MAX_SHARED_LANES {
+            let poll = poll_secs(lanes);
+            let per_hour = lanes * API_BUDGET as u64 * 3600 / poll;
+            assert!(
+                per_hour <= HOURLY_SHARE,
+                "{lanes} lanes: {per_hour} per hour"
+            );
+            // One second less would go over (or reach the share exactly).
+            assert!(
+                lanes * API_BUDGET as u64 * 3600 / (poll - 1) >= HOURLY_SHARE,
+                "{lanes}"
+            );
+            assert!(poll <= MAX_WAIT_SECS);
+        }
     }
 
     /// The tip branch, and a failed check run on the tip commit; nothing else.
