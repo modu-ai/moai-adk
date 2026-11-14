@@ -263,13 +263,19 @@ impl Token {
         }
     }
 
-    /// The word that carries the meaning without color or symbol.
+    /// The word that carries the meaning without color or symbol, in English.
     pub fn word(self) -> &'static str {
+        self.word_in(crate::ui_text::Lang::En)
+    }
+
+    /// The word in `lang` (S6b): the same meaning as [`Token::word`], from the sentence table.
+    pub fn word_in(self, lang: crate::ui_text::Lang) -> &'static str {
+        use crate::ui_text::{text, Msg};
         match self {
-            Token::Ok => "ok",
-            Token::Warn => "warning",
-            Token::Error => "error",
-            Token::Info => "next",
+            Token::Ok => text(Msg::WordOk, lang),
+            Token::Warn => text(Msg::WordWarning, lang),
+            Token::Error => text(Msg::WordError, lang),
+            Token::Info => text(Msg::WordNext, lang),
             Token::Accent | Token::Muted | Token::Code | Token::Strong => "",
         }
     }
@@ -298,28 +304,50 @@ pub fn visible(text: &str) -> std::borrow::Cow<'_, str> {
 
 /// Paints text for one stream: color and symbols as decided, plain text otherwise. Every text it
 /// paints goes through [`visible`] first, so only the painter's own style codes reach the terminal.
+/// `lang` is the language of the stream's human sentences (S6b): a screen takes its words from
+/// [`crate::ui_text::text`] in this language, so one stream never mixes two.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Painter {
     pub color: bool,
     pub unicode: bool,
+    pub lang: crate::ui_text::Lang,
 }
 
 impl Painter {
-    /// The painter for `stream` under the current environment and `flag`.
+    /// The painter for `stream` under the current environment and `flag`; its language is
+    /// [`ui_lang`] of the same stream.
     pub fn for_stream(stream: Stream, flag: ColorFlag) -> Painter {
         let env = Env::from_process();
         Painter {
             color: color_enabled(flag, &env, stream.is_terminal()),
             unicode: unicode_enabled(&env),
+            lang: ui_lang(stream),
         }
     }
 
-    /// No color, ASCII symbols: the pipe / `TERM=dumb` shape.
+    /// No color, ASCII symbols, English: the pipe / `TERM=dumb` shape.
     pub fn plain() -> Painter {
         Painter {
             color: false,
             unicode: false,
+            lang: crate::ui_text::Lang::En,
         }
+    }
+
+    /// The same painter speaking `lang` (`MOAI_OUTPUT=plain` drops color and UTF-8 symbols, not
+    /// the language of a terminal).
+    pub fn with_lang(self, lang: crate::ui_text::Lang) -> Painter {
+        Painter { lang, ..self }
+    }
+
+    /// `msg` in this painter's language (no data filled in).
+    pub fn text(&self, msg: crate::ui_text::Msg) -> &'static str {
+        crate::ui_text::text(msg, self.lang)
+    }
+
+    /// `msg` in this painter's language with `values` filled in through [`visible`].
+    pub fn fill(&self, msg: crate::ui_text::Msg, values: &[(&str, &str)]) -> String {
+        crate::ui_text::fill(msg, self.lang, values)
     }
 
     /// `text` in the token's style, or unchanged without color.
@@ -354,16 +382,26 @@ impl Painter {
 /// whenever the stream is not a terminal, otherwise `MOAI_LANG`, the profile's
 /// `language.user_chat` of the project holding the current folder, the locale, English
 /// ([`crate::ui_text::choose`]). Nothing is read for a pipe, and a failed read is silently the
-/// next step.
+/// next step. The answer is computed once per stream and process (S6b, audit #2862 N3): a
+/// command that paints many lines reads the profile once.
 pub fn ui_lang(stream: Stream) -> crate::ui_text::Lang {
-    let cwd = std::env::current_dir().ok();
-    let home = crate::home_workdir::home().ok();
-    crate::ui_text::for_stream(
-        stream.is_terminal(),
-        &|k| std::env::var(k).ok(),
-        cwd.as_deref(),
-        home.as_deref(),
-    )
+    use std::sync::OnceLock;
+    static STDOUT: OnceLock<crate::ui_text::Lang> = OnceLock::new();
+    static STDERR: OnceLock<crate::ui_text::Lang> = OnceLock::new();
+    let cell = match stream {
+        Stream::Stdout => &STDOUT,
+        Stream::Stderr => &STDERR,
+    };
+    *cell.get_or_init(|| {
+        let cwd = std::env::current_dir().ok();
+        let home = crate::home_workdir::home().ok();
+        crate::ui_text::for_stream(
+            stream.is_terminal(),
+            &|k| std::env::var(k).ok(),
+            cwd.as_deref(),
+            home.as_deref(),
+        )
+    })
 }
 
 /// Whether stderr is a terminal: the error frame (D2 §4) is drawn only there, so a pipe — a
@@ -549,6 +587,7 @@ mod tests {
         let p = Painter {
             color: true,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         };
         assert_eq!(p.status(Token::Ok, "create"), "\x1b[32m✓ create\x1b[0m");
         assert_eq!(p.paint(Token::Error, "x"), "\x1b[31mx\x1b[0m");
@@ -601,6 +640,7 @@ mod tests {
             Painter {
                 color: true,
                 unicode: true,
+                lang: crate::ui_text::Lang::En,
             },
         ] {
             for t in [Token::Ok, Token::Muted, Token::Strong] {
@@ -638,6 +678,7 @@ mod tests {
         let color = Painter {
             color: true,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         };
         let painted = error_frame(&color, evil, &[evil], Some(evil), Some(evil));
         assert_eq!(painted.lines().count(), 4, "{painted:?}");
@@ -681,10 +722,12 @@ mod tests {
         let ascii = Painter {
             color: false,
             unicode: false,
+            lang: crate::ui_text::Lang::En,
         };
         let unicode = Painter {
             color: false,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         };
         let f = |p: &Painter| error_frame(p, "x", &[], None, Some("y"));
         assert_eq!(f(&ascii), f(&unicode), "no symbol rides in the frame");
@@ -692,6 +735,7 @@ mod tests {
         let color = Painter {
             color: true,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         };
         let painted = error_frame(&color, "x", &["  d"], Some("c"), Some("n"));
         assert_eq!(
