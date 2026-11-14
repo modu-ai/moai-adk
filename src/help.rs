@@ -30,7 +30,6 @@ pub const GROUPS: &[Group] = &[
         heading: "Project",
         heading_ko: "프로젝트",
         commands: &[
-            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),
@@ -250,7 +249,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
     ("glm", &["glm -a"]),
-    ("init", &["init", "init --new demo", "init --new demo --dry-run"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -1577,7 +1575,7 @@ mod tests {
     fn a_korean_full_list_keeps_the_other_abouts_english() {
         let cmd = root_cmd();
         let ko = render_groups_in(&cmd, true, 100, Lang::Ko);
-        assert!(ko.contains("About init"), "{ko}");
+        assert!(ko.contains("About agents-plan"), "{ko}");
         assert!(!ko.contains("About project-detect"), "{ko}");
         for g in GROUPS {
             assert!(
