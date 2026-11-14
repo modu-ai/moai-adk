@@ -914,3 +914,82 @@ fn without_a_home_only_an_explicit_path_plans() {
     assert_eq!(env["ok"], true, "{env}");
     assert_eq!(env["result"]["path"], "/tmp/elsewhere-wt");
 }
+
+/// #2934 S3 (#2930 R-3): `worktree-plan` refuses a path inside a Cargo build folder — one
+/// that holds `CACHEDIR.TAG`, or a `target` folder beside a `Cargo.toml` (even before it
+/// exists) — also through a symbolic link; a plain folder next to them is still planned.
+#[cfg(unix)]
+#[test]
+fn worktree_plan_refuses_a_path_inside_a_cargo_build_folder() {
+    let f = fixture();
+    let p = project(&f);
+    let base = f.repo.parent().unwrap().to_path_buf();
+    // A build folder outside every worktree, marked the way cargo marks it.
+    let tagged = base.join("tmp-target");
+    fs::create_dir_all(tagged.join("debug")).unwrap();
+    fs::write(
+        tagged.join("CACHEDIR.TAG"),
+        "Signature: 8a477f597d28d172789f06886806bc55\n",
+    )
+    .unwrap();
+    // A crate whose `target` does not exist yet.
+    let krate = base.join("krate");
+    fs::create_dir_all(&krate).unwrap();
+    fs::write(krate.join("Cargo.toml"), "[package]\nname = \"k\"\n").unwrap();
+    // A link that leads into the tagged folder.
+    std::os::unix::fs::symlink(&tagged, base.join("link")).unwrap();
+    for bad in [
+        tagged.join("wt-a"),
+        tagged.join("debug/deep/wt-b"),
+        krate.join("target/wt-c"),
+        base.join("link/wt-d"),
+    ] {
+        let path = bad.to_string_lossy().to_string();
+        let out = run(
+            &f.repo,
+            &args(
+                &[
+                    "worktree-plan",
+                    &p,
+                    "--branch-prefix",
+                    "lane",
+                    "--path",
+                    &path,
+                ],
+                &f.source,
+            ),
+        );
+        let env = envelope(&out);
+        assert_eq!(env["ok"], false, "{path}: {env}");
+        assert!(
+            env.to_string().contains("Cargo build folder"),
+            "{path}: {env}"
+        );
+    }
+    // Next to them, not inside: planned. A folder merely named `target` with no crate beside it
+    // and no tag is not a build folder either.
+    let plain_target = base.join("notes/target");
+    fs::create_dir_all(&plain_target).unwrap();
+    for good in [
+        base.join("wt-ok"),
+        krate.join("src-wt"),
+        plain_target.join("wt-e"),
+    ] {
+        let path = good.to_string_lossy().to_string();
+        let out = run(
+            &f.repo,
+            &args(
+                &[
+                    "worktree-plan",
+                    &p,
+                    "--branch-prefix",
+                    "lane",
+                    "--path",
+                    &path,
+                ],
+                &f.source,
+            ),
+        );
+        assert_eq!(envelope(&out)["ok"], true, "{path}");
+    }
+}

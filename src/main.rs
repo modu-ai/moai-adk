@@ -715,6 +715,7 @@ enum Command {
         #[arg(long)]
         branch_prefix: String,
         /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
+        /// Refused inside a Cargo build folder (#2930 R-3).
         #[arg(long)]
         path: Option<PathBuf>,
     },
