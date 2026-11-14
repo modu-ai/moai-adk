@@ -151,7 +151,7 @@ fn run(args: &[&str], body: &str) -> (i32, String) {
     )
 }
 
-const FULL: &str = "## Self-Audit\n\n- mutation: guard removed -> check FAILED\n- clone: fresh clone\n- host: fake gh\n- receipt: digest re-read\n";
+const FULL: &str = "## Self-Audit\n\n- mutation: guard removed -> check FAILED\n- clone: fresh clone\n- host: fake gh\n- receipt: digest re-read\n- plan: PLAN comment 6872621175\n- red: lane_next_cli::a_merged_card failed first (card_pr_merged was P2)\n";
 
 /// The command's own boundaries, without Python: pass, a missing line, an unmeasured
 /// mutation, a re-audit without its section, and a usage error.
@@ -178,4 +178,55 @@ fn the_command_prints_one_line_and_the_python_exit_codes() {
     );
     assert_eq!(run(&["bogus"], FULL).0, 2);
     assert_eq!(run(&["--reaudit", "--reaudit"], FULL).0, 2);
+}
+
+/// #2880 W1·W2 (AC-1): the section also needs `plan:` — naming the lane's PLAN comment by its
+/// id (a number of at least seven digits) — and a filled `red:` line (the test that failed
+/// first, or why there is none: documents only).
+#[test]
+fn plan_and_red_lines_are_required() {
+    let without = |prefix: &str| {
+        FULL.lines()
+            .filter(|l| !l.starts_with(prefix))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n"
+    };
+    assert_eq!(
+        run(&[], &without("- plan:")),
+        (1, "self-audit: blocked missing=plan\n".into())
+    );
+    assert_eq!(
+        run(&[], &without("- red:")),
+        (1, "self-audit: blocked missing=red\n".into())
+    );
+    assert_eq!(
+        run(&[], &without("- plan:").replace("- red:", "- x:")),
+        (1, "self-audit: blocked missing=plan,red\n".into())
+    );
+    // The PLAN comment id: six digits are not one, seven are.
+    let plan = |v: &str| FULL.replace("- plan: PLAN comment 6872621175", &format!("- plan: {v}"));
+    assert_eq!(
+        run(&[], &plan("PLAN 687262")),
+        (1, "self-audit: blocked missing=plan\n".into())
+    );
+    assert_eq!(run(&[], &plan("PLAN 6872621")).0, 0);
+    assert_eq!(
+        run(
+            &[],
+            &plan("https://github.com/o/r/issues/2880#issuecomment-6872621175")
+        )
+        .0,
+        0
+    );
+    assert_eq!(run(&[], &plan("")).1, "self-audit: blocked missing=plan\n");
+    // `red:` must say something; a documents-only change says so.
+    let red = |v: &str| {
+        FULL.replace(
+            "- red: lane_next_cli::a_merged_card failed first (card_pr_merged was P2)",
+            &format!("- red:{v}"),
+        )
+    };
+    assert_eq!(run(&[], &red("  ")).1, "self-audit: blocked missing=red\n");
+    assert_eq!(run(&[], &red(" 문서만 — 시험 없음")).0, 0);
 }

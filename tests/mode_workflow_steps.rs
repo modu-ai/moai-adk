@@ -255,12 +255,18 @@ fn self_opening_rules_are_pinned_in_both_mode_workflows() {
             "among the N lowest open non-draft numbers",
             "`gh pr ready --undo`",
             "the author of the lowest-numbered draft marks it ready",
+            "also carries `plan:` (the PLAN comment, by its number or link) and `red:`",
         ],
     );
     assert_says(
         &agent,
         "self-pick",
-        &["One round runs `claim → worktree work → verify → push → pull request (when the pr-gate count allows) → report → next round`"],
+        &[
+            "One round runs `claim → PLAN → RUN (RED → GREEN) → VERIFY → push → pull request (when the pr-gate count allows) → AUDIT (another lane) → merge → SYNC (close table, claim release, cleanup) → report → next round`",
+            "post one `PLAN #<issue>` comment on the Issue with the scope, an acceptance-criteria table, the test plan and the risks",
+            "RUN starts with the test that fails first (RED)",
+            "`card_pr_merged` at P1 (Issue #2880)",
+        ],
     );
     assert_says(&agent, "report", &["· waiting for PR slot: #<issue> …"]);
     assert_says(
