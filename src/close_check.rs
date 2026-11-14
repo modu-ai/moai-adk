@@ -115,13 +115,29 @@ pub fn claim_search(owner: &str, repo: &str, n: u64) -> String {
     format!("repo:{owner}/{repo} is:pr is:open \"Moai-Claim: {n}#\"")
 }
 
-/// `Moai-Claim: <issue>#<comment>` at the start of a body line: the Issue.
+/// `Moai-Claim: <issue>#<comment>` in a body: the Issue. A bare line wins; without one, the first
+/// inline token with digits on both sides of `#`.
 pub fn claim_issue(body: &str) -> Option<u64> {
-    body.lines().find_map(|l| {
+    let bare = body.lines().find_map(|l| {
         let rest = l.trim().strip_prefix("Moai-Claim:")?.trim();
         let (issue, comment) = rest.split_once('#')?;
         comment.trim().parse::<u64>().ok()?;
         issue.trim().parse().ok()
+    });
+    // Without a bare line, the first inline `Moai-Claim: <digits>#<digits>` (a list item or a
+    // code span) counts, as `lane-next` (#2923) and the merge gate's G11 read it. Counting more
+    // pull requests as claiming only keeps an Issue open (audit 6875195827 N3).
+    bare.or_else(|| {
+        body.match_indices("Moai-Claim:").find_map(|(at, m)| {
+            let rest = body[at + m.len()..].trim_start();
+            let digits = |s: &str| s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
+            let n = digits(rest);
+            let tail = rest[n..].strip_prefix('#')?;
+            if digits(tail) == 0 {
+                return None;
+            }
+            rest[..n].parse().ok()
+        })
     })
 }
 
@@ -532,13 +548,29 @@ mod tests {
     }
 
     #[test]
-    fn claim_issue_is_read_only_at_a_line_start() {
+    fn a_bare_claim_line_wins_and_an_inline_one_counts_without_it() {
         assert_eq!(claim_issue("x\nMoai-Claim: 7#123\n"), Some(7));
-        assert_eq!(claim_issue("receipt: `Moai-Claim: 7#123` in commits"), None);
-        // Mid-line, even when the rest would parse (#2898's body before its edit).
-        assert_eq!(claim_issue("trailer is Moai-Claim: 7#123"), None);
         assert_eq!(claim_issue("  Moai-Claim: 7#123  "), Some(7));
+        // Audit 6875195827 N3: without a bare line an inline token counts (#2898's body
+        // before its edit), as lane-next (#2923) reads it.
+        assert_eq!(
+            claim_issue("receipt: `Moai-Claim: 7#123` in commits"),
+            Some(7)
+        );
+        assert_eq!(claim_issue("trailer is Moai-Claim:7#123"), Some(7));
+        // A bare line wins over an earlier inline mention of another claim.
+        assert_eq!(
+            claim_issue("stacked on `Moai-Claim: 8#1`\nMoai-Claim: 7#123\n"),
+            Some(7)
+        );
+        // Placeholders and a missing number are no claim; a later real token still counts.
         assert_eq!(claim_issue("Moai-Claim: 7#abc"), None);
+        assert_eq!(claim_issue("`Moai-Claim: <n>#<id>`"), None);
+        assert_eq!(claim_issue("`Moai-Claim: 7#` and `Moai-Claim: #5`"), None);
+        assert_eq!(
+            claim_issue("`Moai-Claim: <n>#<id>` then `Moai-Claim: 9#5`"),
+            Some(9)
+        );
     }
 
     struct Fixed(RefCell<Vec<Value>>, Value);
