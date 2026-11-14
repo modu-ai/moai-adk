@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "31a2941b8528aa14da83cdf9013cfaa537a0331c1fa4b7ecda36b70a4893a1e3",
+      "sha256": "09ce9c01814e2fee244d7e7fdb29defa2fbd29e77b2d72bca631976588504772",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "7955e783026fd5ac07dd24a45f6f85a06e1d7d915c51dca2792eca1bbfcad1e9",
+      "sha256": "0471a6b9261c7f49b38f6c97ed4d540cccad1dfb4edb20b854ee606b171299cf",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",

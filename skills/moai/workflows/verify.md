@@ -62,6 +62,7 @@ Docs-only PRs get light CI (#2527, design comment 6822993459): when every change
 ## Shell and helper rules
 
 - Guard refusal (WF-OBS #17): when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. Only when the refusal is confirmed to be about the combined form (the guard says the command is too complex to verify, not that its effect is forbidden) may it be retried split into plain single steps: the refused effect itself stays forbidden, and each step must pass the same guard on its own. Splitting is never a bypass.
+- Host worktree guard (Issue #2836): a refusal that names the session as isolated in a worktree comes from Claude Code itself, not from a MoAI hook (whose refusals start with `MoAI tool-preflight:`); the shapes it accepts are listed in the MODE-AGENT workflow ("Host worktree guard"). They only change how a permitted effect is spelled, as the rule above says.
 - Helper authentication failure (WF-OBS #19): when a sub-review helper cannot start because its provider answers 401, record that review as `not_run`; if your own review replaced it, say so. Never record a key or token value.
 - zsh word splitting (WF-OBS #16): zsh does not split an unquoted `$var` holding several words or lines, so iterate an array (`for x in ${=var}` or `for x in a b c`), and never name a shell function after an existing alias.
 
