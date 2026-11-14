@@ -148,6 +148,15 @@ fn each_case_is_found() {
     }));
     assert_eq!(r["next"], json!(null), "{r}");
 
+    // A pushed branch waiting for a pull request slot is not work now: listed as waiting.
+    let r = next(
+        &json!({"threads": [{"number": 2831, "comments": [claim(100, LANE),
+        {"id": 102, "body": "pr-wait: 2026-11-14T01:58:00Z\n\nbranch pushed"}]}]}),
+    );
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["waiting"][0]["reason"], json!("pr_slot"));
+    assert_eq!(r["waiting"][0]["pr_wait_comment"], json!(102));
+
     // 7. An open Issue nobody claims; `hold` and claimed ones are skipped.
     let r = next(&json!({"open_issues": [
         {"number": 1, "title": "held", "labels": ["HOLD"], "comments": []},

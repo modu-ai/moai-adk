@@ -455,6 +455,20 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if decision_pending {
                 continue;
             }
+            // A pushed branch waiting for a pull request slot (`pr-wait:` after the claim) is
+            // done for now: its turn comes when a slot opens, not by working on it again.
+            let claim_at = t.comments.iter().position(|c| c.id == claim);
+            if let Some(w) = claim_at.map(|i| &t.comments[i + 1..]).and_then(|after| {
+                after
+                    .iter()
+                    .rev()
+                    .find(|c| first_line(c).starts_with("pr-wait:"))
+            }) {
+                waiting.push(
+                    json!({"number": t.number, "reason": "pr_slot", "pr_wait_comment": w.id}),
+                );
+                continue;
+            }
             return Some(task(
                 "P2",
                 "continue_card",
@@ -575,7 +589,7 @@ fn body_claim(body: &str) -> Option<(u64, u64)> {
     })
 }
 
-fn search<T: Transport>(t: &T, owner: &str, repo: &str, text: &str) -> Result<Vec<u64>> {
+fn search<T: Transport>(t: &T, owner: &str, repo: &str, text: &str) -> Result<Vec<(u64, String)>> {
     let q = format!("repo:{owner}/{repo} is:open in:comments \"{text}\"");
     let enc: String = q
         .bytes()
@@ -591,7 +605,14 @@ fn search<T: Transport>(t: &T, owner: &str, repo: &str, text: &str) -> Result<Ve
     )?;
     Ok(v["items"]
         .as_array()
-        .map(|a| a.iter().filter_map(|i| i["number"].as_u64()).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(|i| {
+                    let title = i["title"].as_str().unwrap_or("").to_string();
+                    Some((i["number"].as_u64()?, title))
+                })
+                .collect()
+        })
         .unwrap_or_default())
 }
 
@@ -742,12 +763,13 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
         }
     }
     numbers.sort_unstable();
-    numbers.dedup();
+    numbers.dedup_by_key(|(n, _)| *n);
     let pr_numbers: Vec<u64> = snap.prs.iter().map(|p| p.number).collect();
-    for number in numbers.into_iter().filter(|n| !pr_numbers.contains(n)) {
+    for (number, title) in numbers.into_iter().filter(|(n, _)| !pr_numbers.contains(n)) {
         match comments_of(&t, &base, number) {
             Ok((comments, _)) => snap.threads.push(Thread {
                 number,
+                title,
                 comments,
                 ..Thread::default()
             }),
