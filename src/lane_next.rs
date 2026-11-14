@@ -1159,6 +1159,111 @@ mod tests {
         );
     }
 
+    /// Answers `commits/<sha>/check-runs` from a table; every other commit has no runs.
+    struct WalkRuns(std::collections::HashMap<String, Vec<Value>>);
+    impl Transport for WalkRuns {
+        fn send(&self, req: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
+            let sha = req
+                .url
+                .split("/commits/")
+                .nth(1)
+                .and_then(|r| r.split('/').next())
+                .unwrap_or("");
+            let runs = self.0.get(sha).cloned().unwrap_or_default();
+            Ok(crate::forge::transport::HttpResponse::new(200)
+                .with_body(json!({"check_runs": runs})))
+        }
+    }
+
+    /// A temporary repository with `n` empty commits; their SHAs, newest first.
+    fn commits(dir: &Path, n: usize) -> Vec<String> {
+        let git = |args: &[&str]| {
+            let out = crate::audit_delta::command(dir)
+                .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "{args:?}: {out:?}");
+            String::from_utf8(out.stdout).unwrap()
+        };
+        git(&["init", "-q", "-b", "main"]);
+        for i in 0..n {
+            git(&["commit", "-q", "--allow-empty", "-m", &format!("c{i}")]);
+        }
+        git(&["rev-list", "--first-parent", "HEAD"])
+            .lines()
+            .map(str::to_string)
+            .collect()
+    }
+
+    /// #2856 delta re-audit B1: while the tip commit reads `pending` (only cancelled, or still
+    /// running), the earlier first-parent commits decide — a real failure one commit back is
+    /// red, decided by that commit.
+    #[test]
+    fn a_pending_tip_walks_back_to_the_commit_that_decides() {
+        let d = tempfile::TempDir::new().unwrap();
+        let shas = commits(d.path(), 3);
+        let runs = std::collections::HashMap::from([
+            (
+                shas[0].clone(),
+                vec![
+                    check("ci / macos-arm64", "cancelled"),
+                    check("ci", "failure"),
+                ],
+            ),
+            (
+                shas[1].clone(),
+                vec![
+                    check("ci / linux-x86_64", "success"),
+                    check("ci / macos-arm64", "failure"),
+                ],
+            ),
+            (shas[2].clone(), vec![check("ci / linux-x86_64", "success")]),
+        ]);
+        let (tip, note) = tip_d8a(
+            &WalkRuns(runs),
+            "https://api.github.com/repos/o/r",
+            d.path(),
+            &shas[0],
+        )
+        .unwrap();
+        assert_eq!(tip.state, "red", "{tip:?}");
+        assert_eq!(tip.tip, shas[0]);
+        assert_eq!(tip.decided_by.as_deref(), Some(shas[1].as_str()));
+        assert_eq!(note, None, "the walk ran in the local clone");
+    }
+
+    /// The walk reads at most `TIP_WALK` (10) commits: a decision on the 10th is used, one on
+    /// the 11th is beyond the walk and the tip stays `unknown`.
+    #[test]
+    fn the_walk_stops_at_ten_commits() {
+        assert_eq!(crate::gate_collect::TIP_WALK, 10);
+        let d = tempfile::TempDir::new().unwrap();
+        let shas = commits(d.path(), 11);
+        for (decider, want) in [(9usize, "red"), (10, "unknown")] {
+            let runs = std::collections::HashMap::from([(
+                shas[decider].clone(),
+                vec![check("ci / macos-arm64", "failure")],
+            )]);
+            let (tip, _) = tip_d8a(
+                &WalkRuns(runs),
+                "https://api.github.com/repos/o/r",
+                d.path(),
+                &shas[0],
+            )
+            .unwrap();
+            assert_eq!(
+                tip.state,
+                want,
+                "decision on commit {}: {tip:?}",
+                decider + 1
+            );
+            if want == "red" {
+                assert_eq!(tip.decided_by.as_deref(), Some(shas[decider].as_str()));
+            }
+        }
+    }
+
     #[test]
     fn comment_lines_are_read_strictly() {
         let h = "a".repeat(40);
