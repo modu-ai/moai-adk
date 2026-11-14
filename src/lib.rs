@@ -111,6 +111,7 @@ pub mod ui_text;
 pub mod update;
 pub mod update_cleanup;
 pub mod update_hooks;
+pub mod update_keys;
 pub mod update_tux;
 pub mod usage_limit;
 pub mod verify;

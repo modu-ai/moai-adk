@@ -262,10 +262,11 @@
         "tests/agent_defs_package.rs (all 5)",
         "tests/agents_home_cli.rs (package copy)",
         "tests/update_user_layer_cli.rs (package copy)",
-        "tests/update_hooks_cli.rs (package copy)"
+        "tests/update_hooks_cli.rs (package copy)",
+        "tests/update_keys_cli.rs (package copy)"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli"
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
@@ -273,7 +274,8 @@
         "src/agent_install.rs",
         "tests/agents_home_cli.rs",
         "tests/update_user_layer_cli.rs",
-        "tests/update_hooks_cli.rs"
+        "tests/update_hooks_cli.rs",
+        "tests/update_keys_cli.rs"
       ],
       "scope": [
         {

@@ -158,6 +158,11 @@ mod tests {
                 "unit-test fixture of the earlier layout",
             ),
             (
+                "update_keys.rs",
+                1,
+                "the keys layer lists legacy key files under either HOME state root",
+            ),
+            (
                 "usage_limit.rs",
                 2,
                 "unit-test fixture of the earlier layout",
