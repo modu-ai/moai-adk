@@ -1177,6 +1177,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    ("update", "json", "터미널에서도 화면 대신 JSON 봉투 찍기"),
     (
         "update",
         "confirm",

@@ -230,7 +230,13 @@ class KoreanHelp(unittest.TestCase):
         over = []
         for word in words:
             for flag in ("-h", "--help"):
+                # A line the English help prints too is the command's own text, not the Korean
+                # layer's (e.g. a Korean phrase quoted inside an English about).
+                english, _, _ = pipe([word, flag], env_for(self.home, COLUMNS="60"))
+                same = set(english.splitlines())
                 for line in self.help([word, flag], COLUMNS="60", **KOREAN).splitlines():
+                    if line in same:
+                        continue
                     if line.startswith("사용법: ") or line.startswith("  moai "):
                         continue  # clap never wraps a usage or an example, in English too
                     if cells(line) > 60 and any("가" <= c <= "힣" for c in line):
