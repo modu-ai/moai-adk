@@ -821,3 +821,35 @@ fn legacy_receipts_do_not_own_a_go_era_moai_tree() {
         assert_eq!(fs::read(receipt).unwrap(), bytes);
     }
 }
+
+/// #2696 C4b2: the first install into a HOME with no MoAI state at all makes `~/.moai` and its
+/// marker before anything else; receipts live under `~/.moai`, no `~/.moai-cli` appears, and a
+/// re-run plans nothing new. (`setup()`'s HOME holds a foreign `~/.moai`, so it keeps
+/// `~/.moai-cli`, which the other tests pin.)
+#[test]
+fn a_first_install_into_an_empty_home_starts_on_moai() {
+    let (root, _home, stage1, _s2, _s3) = setup();
+    let home = root.path().join("empty-home");
+    fs::create_dir_all(&home).unwrap();
+    let (plan, _) = plan_via_cli(&home, &stage1);
+    assert!(!home.join(".moai").exists(), "a preview writes nothing");
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let result = apply_ok(&home, &stage1, &plan, &digest);
+    assert_eq!(result["status"], json!("applied"), "{result}");
+    let marker: Value =
+        serde_json::from_slice(&fs::read(home.join(".moai/moai-cli.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+    assert!(!home.join(".moai-cli").exists(), "no earlier root");
+    let installations: Vec<PathBuf> = fs::read_dir(home.join(".moai/installations"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(installations.len(), 1, "{installations:?}");
+    assert!(installations[0].join("hosts/moai/claude.json").is_file());
+    let (again, _) = plan_via_cli(&home, &stage1);
+    for name in ["claude", "codex"] {
+        for f in host(&again, name)["files"].as_array().unwrap() {
+            assert_eq!(f["action"], json!("unchanged"), "{name}: {again}");
+        }
+    }
+}

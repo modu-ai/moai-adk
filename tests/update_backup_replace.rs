@@ -82,6 +82,9 @@ fn fixture() -> Fixture {
     for (host, rel) in ROOTS {
         write_go_skill(&home.join(rel), host);
     }
+    // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 gives a HOME with no
+    // state `~/.moai`; that layout is pinned by home_root tests and update_cli).
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
     let home = fs::canonicalize(&home).unwrap();
     Fixture {
         _tmp: tmp,
@@ -628,6 +631,8 @@ fn assert_symlinked_state_path_is_refused(link_rel: &str) {
     fs::create_dir_all(&outside).unwrap();
     let link = f.home.join(link_rel);
     fs::create_dir_all(link.parent().unwrap()).unwrap();
+    // The fixture's empty earlier root gives way to the link under test.
+    let _ = fs::remove_dir(&link);
     std::os::unix::fs::symlink(&outside, &link).unwrap();
     let before = originals(&f);
     let p = plan(&f);
