@@ -70,13 +70,20 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
 
 fn decide(snapshot: &Snapshot) -> serde_json::Value {
     match gate::check(snapshot) {
-        Ok((base, overlap)) => serde_json::json!({
-            "pr": snapshot.pr,
-            "head": snapshot.head,
-            "pass": true,
-            "verdict_base": base,
-            "overlap": overlap,
-        }),
+        Ok((base, overlap)) => {
+            let mut out = serde_json::json!({
+                "pr": snapshot.pr,
+                "head": snapshot.head,
+                "pass": true,
+                "verdict_base": base,
+                "overlap": overlap,
+            });
+            // #2833 D1: a PASS carried by a mechanical delta shows its evidence.
+            if let Some(d) = gate::accepted_auto_delta(snapshot) {
+                out["auto_delta"] = serde_json::to_value(d).unwrap_or_default();
+            }
+            out
+        }
         Err(stop) => serde_json::json!({
             "pr": snapshot.pr,
             "head": snapshot.head,

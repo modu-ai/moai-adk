@@ -120,6 +120,55 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         }));
     }
 
+    // #2833 D1: a PASS carried by a mechanical delta is recorded on the PR before any other
+    // write, once per `from → to`, so the audit trail names the head it now covers. A failed
+    // record writes nothing else.
+    let mut writes = Vec::new();
+    if let Some(d) = gate::accepted_auto_delta(&snapshot) {
+        let first = format!("AUTO-DELTA #{pr} {}→{}", d.from, d.to);
+        let already = snapshot
+            .comments
+            .iter()
+            .any(|c| c.body.lines().next() == Some(first.as_str()));
+        if !already {
+            let mut body = format!(
+                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {verdict_id} on {} counts for {}. CI on {}: success (G5).\n\n| file | patch-id |\n| --- | --- |\n",
+                short(&d.to),
+                short(&d.from),
+                short(&d.from),
+                short(&d.to),
+                short(&d.to),
+            );
+            for f in &d.files {
+                body.push_str(&format!("| `{}` | `{}` |\n", f.path, f.patch_id_from));
+            }
+            let sent = transport.send(
+                &HttpRequest::new(
+                    "POST",
+                    format!("https://api.github.com/repos/{owner}/{repo}/issues/{pr}/comments"),
+                )
+                .with_body(json!({ "body": body })),
+            );
+            match sent {
+                Ok(r) if r.status == 201 => writes.push(json!("auto_delta")),
+                Ok(r) => {
+                    return Ok(json!({
+                        "pr": pr, "head": head, "merged": false, "rule": "G1",
+                        "reason": format!("the AUTO-DELTA record returned HTTP {}; nothing else written", r.status),
+                        "writes": [],
+                    }))
+                }
+                Err(e) => {
+                    return Ok(json!({
+                        "pr": pr, "head": head, "merged": false, "rule": "G1",
+                        "reason": format!("the AUTO-DELTA record failed ({e}); check the PR before running again"),
+                        "writes": [],
+                    }))
+                }
+            }
+        }
+    }
+
     let status = AuditStatusRequest {
         schema_version: 1,
         owner: owner.into(),
@@ -137,7 +186,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         ),
     };
     audit_status::post(&status, permission, app, status_transport, clock).map_err(|e| e.message)?;
-    let mut writes = vec![json!("status")];
+    writes.push(json!("status"));
 
     let url = format!("https://api.github.com/repos/{owner}/{repo}/pulls/{pr}/merge");
     let mut merged_sha = None;

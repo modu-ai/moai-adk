@@ -105,6 +105,7 @@ Lane and leader
   pr-body-render          Render the pull request body of a claim
   pr-confirm              Record a pull request's acknowledgement
   audit-claim             Reserve the audit of one pull request head
+  audit-verdict-line      Print the verdict first line for the audited head
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break the rule
   decision-due            Sort the unanswered decisions of a bundle
