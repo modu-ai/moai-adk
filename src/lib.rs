@@ -35,6 +35,7 @@ pub mod gate_loop;
 pub mod gate_merge;
 pub mod generation;
 pub mod github_templates;
+pub mod go_hooks;
 pub mod go_settings;
 pub mod go_state;
 pub mod goal;
