@@ -299,8 +299,10 @@ enum Command {
     /// List the open cards a lane may take
     ///
     /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
-    /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
-    /// epics, blocked); an empty result says `free_count: 0`.
+    /// on stdin; GET only. Every open Issue lands in one bucket (free, expired, unjudged,
+    /// reserved, claimed, held, epics, blocked); `startable_count` (= `free_count`) counts only
+    /// the work a lane can start now, so expired claims and cards whose text says HOLD without
+    /// a hold label are listed apart; an empty result says `free_count: 0` (#2973).
     QueueFree { project: PathBuf },
     /// Read the merge train from the leader's comment
     ///

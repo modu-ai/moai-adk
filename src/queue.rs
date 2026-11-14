@@ -186,11 +186,14 @@ fn valid_name(s: &str) -> bool {
 /// sorted into exactly one bucket — `held` (a label named `needs:decision`, `hold` or `<axis>:hold`), `epics`
 /// (title `][EP-`), `blocked` (an open `Blocked-By:` Issue) — these three by the shared
 /// [`crate::startable::judge`] (#2901) — `reserved` (an outstanding
-/// handoff names its recipient), `claimed` (a live claim), or `free`. A free card says why:
-/// `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only
-/// expired claims remain; taking it over still follows the handoff rules). An empty result
-/// is stated as `free_count: 0` and a `0건` summary, never as missing output; a failed read
-/// is an error, never an empty list.
+/// handoff names its recipient), `claimed` (a live claim), `expired` (only expired claims
+/// remain: taking it over needs a handoff line or decision D2's timeout, so it is not work a
+/// lane can start), `unjudged` (no claim, no hold label, but the title or the head of the body
+/// says hold: [`crate::startable::hold_marker`] — evidence, not a judgment, shown and not
+/// counted), or `free`. A free card is work a lane can start now and says why: `unclaimed` (no
+/// claim line ever) or `released` (every claim released). `startable_count` (= `free_count`)
+/// counts only those. An empty result is stated as `free_count: 0` and a `0건` summary, never as
+/// missing output; a failed read is an error, never an empty list.
 pub fn free<T: Transport, C: Clock>(
     req: &FreeRequest,
     client: &Client<'_, T, C>,
@@ -207,6 +210,7 @@ pub fn free<T: Transport, C: Clock>(
     let now = clock.now();
     let live = |c: &ClaimComment| parse_utc(&c.lease_until).is_some_and(|t| t > now);
     let (mut free, mut reserved, mut claimed) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut expired, mut unjudged) = (Vec::new(), Vec::new());
     let (mut held, mut epics, mut blocked) = (Vec::new(), Vec::new(), Vec::new());
     let mut inspected = 0u64;
     for i in &issues {
@@ -270,17 +274,27 @@ pub fn free<T: Transport, C: Clock>(
                                 "comment_id": c.comment_id, "lease_until": c.lease_until}),
             );
         } else if let Some(c) = claims.iter().min_by_key(|c| c.comment_id) {
-            free.push(json!({"issue": number, "title": title, "why": "expired",
-                             "claimed_by": c.session, "comment_id": c.comment_id,
-                             "lease_until": c.lease_until}));
+            // Only expired claims remain: taking the card over needs a handoff line or decision
+            // D2's timeout, so it is not work a lane can start (#2973 T1).
+            expired.push(json!({"issue": number, "title": title,
+                                "claimed_by": c.session, "comment_id": c.comment_id,
+                                "lease_until": c.lease_until}));
+        } else if let Some(m) = crate::startable::hold_marker(title, body) {
+            // Text says "on hold" but no label judges it: shown, not counted (#2973 T1).
+            unjudged.push(json!({"issue": number, "title": title, "marker": m.marker,
+                                 "where": m.place}));
         } else {
             let why = if ever { "released" } else { "unclaimed" };
             free.push(json!({"issue": number, "title": title, "why": why}));
         }
     }
     let summary = format!(
-        "free {}건 (inspected {inspected}, claimed {}, reserved {}, held {}, epics {}, blocked {})",
+        "free {}건 (startable {}, expired {}, unjudged {}, inspected {inspected}, claimed {}, \
+         reserved {}, held {}, epics {}, blocked {})",
         free.len(),
+        free.len(),
+        expired.len(),
+        unjudged.len(),
         claimed.len(),
         reserved.len(),
         held.len(),
@@ -291,8 +305,13 @@ pub fn free<T: Transport, C: Clock>(
         "schema_version": 1,
         "repository": format!("{}/{}", req.owner, req.repo),
         "inspected": inspected,
+        "startable_count": free.len(),
         "free_count": free.len(),
         "free": free,
+        "expired_count": expired.len(),
+        "expired": expired,
+        "unjudged_count": unjudged.len(),
+        "unjudged": unjudged,
         "reserved": reserved,
         "claimed": claimed,
         "held": held,
