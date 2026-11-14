@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// short head). The first thing a lane reads after a compact or a clear. Writes nothing.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The comment body, saved to a file (at most 1 MiB is read).
+    /// The comment body, saved to a file (over 1 MiB is refused, never read in part).
     #[arg(long)]
     file: PathBuf,
 }
@@ -19,15 +19,9 @@ pub struct Args {
 pub const OPERATION: &str = "lane.resume_check";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    use std::io::Read as _;
-    let meta = std::fs::metadata(&args.file).map_err(|e| format!("file unreadable: {e}"))?;
-    if !meta.is_file() {
-        return Err("file must be a regular file".into());
-    }
-    let mut body = String::new();
-    std::fs::File::open(&args.file)
-        .and_then(|f| f.take(1 << 20).read_to_string(&mut body))
-        .map_err(|e| format!("file unreadable: {e}"))?;
+    // A body over 1 MiB is refused whole, never read in part (AUDIT #2917 I1).
+    let bytes = moai_cli::lane_loop::read_bounded(&args.file).map_err(|e| format!("file {e}"))?;
+    let body = String::from_utf8(bytes).map_err(|_| "file is not UTF-8".to_string())?;
     Ok(match moai_cli::lane_loop::parse(&body) {
         Ok(n) => serde_json::json!({
             "ok": true,

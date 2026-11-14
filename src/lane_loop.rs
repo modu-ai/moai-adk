@@ -65,8 +65,36 @@ impl Host {
     }
 }
 
+/// The most a hook file or a saved comment body is read (1 MiB).
+pub const READ_LIMIT: u64 = 1 << 20;
+
+/// A regular file's bytes, refused whole when it is over [`READ_LIMIT`] (never cut: a cut file
+/// could parse as something the whole file is not, AUDIT #2917 I1). A FIFO, a folder or a
+/// device is refused before it is opened.
+pub fn read_bounded(path: &Path) -> Result<Vec<u8>, String> {
+    use std::io::Read as _;
+    match std::fs::metadata(path) {
+        Ok(m) if m.is_file() => {}
+        Ok(_) => return Err("not a regular file".into()),
+        Err(e) => return Err(format!("unreadable: {e}")),
+    }
+    let file = std::fs::File::open(path).map_err(|e| format!("unreadable: {e}"))?;
+    let mut bytes = Vec::new();
+    // One byte past the limit shows a file that is longer, also one that grew after the check.
+    file.take(READ_LIMIT + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("unreadable: {e}"))?;
+    if bytes.len() as u64 > READ_LIMIT {
+        return Err(format!("file is over {READ_LIMIT} bytes"));
+    }
+    Ok(bytes)
+}
+
+/// 1–`max` of `A-Z a-z 0-9 . _ -`, not starting with `-` (it would read as a flag in the Stop
+/// hook command, AUDIT #2917 N1).
 fn token_ok(s: &str, max: usize) -> bool {
     !s.is_empty()
+        && !s.starts_with('-')
         && s.len() <= max
         && s.chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
@@ -165,23 +193,15 @@ pub fn lines(
 /// file), `no_lane_hook`, `other_lane` or `unreadable`. Trust is Codex's own record and is
 /// never read here.
 pub fn codex_hook_state(project: &Path, lane: &str, repo: &str) -> &'static str {
-    use std::io::Read as _;
     let path = project.join(".codex/hooks.json");
-    // Only a regular file is opened: a FIFO there would block the open forever.
-    match std::fs::metadata(&path) {
-        Ok(m) if m.is_file() => {}
-        Ok(_) => return "unreadable",
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return "missing",
-        Err(_) => return "unreadable",
+    if matches!(std::fs::symlink_metadata(&path), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
+    {
+        return "missing";
     }
-    let Ok(file) = std::fs::File::open(&path) else {
+    // Only a regular file at most READ_LIMIT long is read (a FIFO would block the open).
+    let Ok(bytes) = read_bounded(&path) else {
         return "unreadable";
     };
-    // A hook file is small; only its first MiB is read.
-    let mut bytes = Vec::new();
-    if file.take(1 << 20).read_to_end(&mut bytes).is_err() {
-        return "unreadable";
-    }
     let Ok(v) = serde_json::from_slice::<Value>(&bytes) else {
         return "unreadable";
     };
@@ -535,6 +555,49 @@ mod tests {
             .unwrap();
         assert!(made.success());
         assert_eq!(codex_hook_state(q.path(), "a", "o/r"), "unreadable");
+    }
+
+    /// AUDIT #2917 I1: a file over the cap is refused whole, never judged on its first MiB.
+    #[test]
+    fn a_hook_file_over_the_cap_is_unreadable_and_at_the_cap_is_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        std::fs::create_dir(p.join(".codex")).unwrap();
+        let hook = json!({"hooks": {"Stop": [{"hooks": [{"type": "command",
+            "command": stop_hook_command("a", "o/r")}]}]}})
+        .to_string();
+        let pad = |total: usize| {
+            let mut s = hook.clone();
+            s.push_str(&" ".repeat(total - hook.len()));
+            s
+        };
+        let file = p.join(".codex/hooks.json");
+        std::fs::write(&file, pad(READ_LIMIT as usize)).unwrap();
+        assert_eq!(codex_hook_state(p, "a", "o/r"), "installed");
+        std::fs::write(&file, pad(READ_LIMIT as usize + 1)).unwrap();
+        assert_eq!(codex_hook_state(p, "a", "o/r"), "unreadable");
+        // The case the audit probed: valid JSON first, garbage after the cap.
+        let mut over = pad(READ_LIMIT as usize + 10);
+        over.push_str("GARBAGE");
+        std::fs::write(&file, over).unwrap();
+        assert_eq!(codex_hook_state(p, "a", "o/r"), "unreadable");
+        assert_eq!(
+            read_bounded(&file).unwrap_err(),
+            "file is over 1048576 bytes"
+        );
+        std::fs::write(&file, pad(READ_LIMIT as usize)).unwrap();
+        assert_eq!(read_bounded(&file).unwrap().len(), READ_LIMIT as usize);
+    }
+
+    /// AUDIT #2917 N1: a lane or repository part starting with `-` would read as a flag in the
+    /// Stop hook command.
+    #[test]
+    fn a_leading_dash_is_not_a_lane_or_repo() {
+        assert!(!lane_ok("--help"));
+        assert!(!lane_ok("-a"));
+        assert!(lane_ok("a-"));
+        assert!(lines(Host::Codex, "a", Some("-o/r"), None).is_err());
+        assert!(lines(Host::Codex, "a", Some("o/-r"), None).is_err());
     }
 
     #[test]

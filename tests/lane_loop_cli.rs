@@ -25,6 +25,35 @@ fn run(args: &[&str], cwd: &Path) -> (i32, Value) {
     (out.status.code().unwrap_or(-1), v)
 }
 
+/// AUDIT #2917 I1: a saved body of exactly 1 MiB is read; one byte more is refused whole, so a
+/// second note past the cap is never missed by a partial read.
+#[test]
+fn a_body_over_one_mib_is_refused_not_cut() {
+    let dir = tempfile::tempdir().unwrap();
+    let note = format!(
+        "moai-resume: lane=a issue=1 claim=1234567 lease_until=2026-11-14T14:00:00Z branch=b head={HEAD} uncommitted=0\nnext: x\n"
+    );
+    let limit = moai_cli::lane_loop::READ_LIMIT as usize;
+    let file = dir.path().join("c.md");
+    let mut at = note.clone();
+    at.push_str(&" ".repeat(limit - note.len()));
+    fs::write(&file, &at).unwrap();
+    let args = ["lane-resume-check", "--file", file.to_str().unwrap()];
+    let (code, v) = run(&args, dir.path());
+    assert_eq!((code, &v["result"]["ok"]), (0, &json!(true)), "{v}");
+    fs::write(&file, format!("{at} ")).unwrap();
+    let (code, v) = run(&args, dir.path());
+    assert_ne!(code, 0, "one byte over: {v}");
+    // More, with a second note after the cap: refused, not read as one note.
+    let mut over = at.clone();
+    over.push('\n');
+    over.push_str(&note);
+    fs::write(&file, &over).unwrap();
+    let (code, v) = run(&args, dir.path());
+    assert_ne!(code, 0, "{v}");
+    assert!(v.to_string().contains("over 1048576 bytes"), "{v}");
+}
+
 /// AC-1: the three hosts' lines, byte for byte.
 #[test]
 fn host_lines_match_goldens() {
