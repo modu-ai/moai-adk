@@ -668,6 +668,9 @@ fn retire_keeps_the_go_markers_until_the_entries_in_use_are_free() {
     assert_eq!(act(&p, "cache").0, "retire", "{p}");
     let a = apply(&home, p["plan_digest"].as_str().unwrap());
     assert_eq!(a["ok"], json!(true), "{a}");
+    // Nothing the journal was asked to move was skipped: the usual next step.
+    assert_eq!(a["result"]["partial"], json!(false), "{a}");
+    assert!(a["result"]["rerun"].as_str().unwrap().contains("`none`"));
     for n in MARKER_HOLDERS {
         assert!(home.join(".moai").join(n).exists(), "{n} moved too early");
     }

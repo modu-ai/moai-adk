@@ -787,6 +787,7 @@ mod tests {
         let markers = vec![
             ".moai/user-assets.json".to_string(),
             ".moai/state/active-sessions.json".to_string(),
+            ".moai/credentials.yaml".to_string(),
         ];
         let entries = || {
             vec![
@@ -795,6 +796,8 @@ mod tests {
                 row("cache", "retire"),
                 row("Logs", "skip-in-use"),
                 row("specs", "keep"),
+                // A marker holder that already stays, or is in use itself, keeps its own say.
+                row("credentials.yaml", "keep"),
             ]
         };
         let actions = |v: &[Value]| -> Vec<String> {
@@ -807,20 +810,21 @@ mod tests {
             hold_markers_while_in_use(g, &markers, &mut e);
             assert_eq!(
                 actions(&e),
-                ["keep", "keep", "retire", "skip-in-use", "keep"],
+                ["keep", "keep", "retire", "skip-in-use", "keep", "keep"],
                 "{g}"
             );
             assert_eq!(e[0]["reason"], json!("marker_waits_for_in_use"));
             assert_eq!(e[0]["destination"], Value::Null);
             // An entry that already stays keeps its own reason.
             assert_eq!(e[4]["reason"], json!("r"));
+            assert_eq!(e[5]["reason"], json!("r"));
         }
         for g in ["rust-first", "rust", "unknown", "empty", "none"] {
             let mut e = entries();
             hold_markers_while_in_use(g, &markers, &mut e);
             assert_eq!(
                 actions(&e),
-                ["retire", "retire", "retire", "skip-in-use", "keep"],
+                ["retire", "retire", "retire", "skip-in-use", "keep", "keep"],
                 "{g}"
             );
         }
