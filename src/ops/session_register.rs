@@ -9,7 +9,8 @@ use std::path::PathBuf;
 /// .moai-cli/sessions/<name>.json`) before claiming (#2592 S-C). A name another instance holds
 /// under a live lease is refused (`conflict`); the first call returns a fresh `instance`, and
 /// later calls with `--instance` renew the lease. `--release` frees the name before the
-/// session is cleared.
+/// session is cleared. `--show` reads the holder without writing; the leader then releases
+/// that instance with `--release --by leader` (#2902 O3a).
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
@@ -26,6 +27,12 @@ pub struct Args {
     /// Free the name held by `--instance` instead of registering it.
     #[arg(long, requires = "instance")]
     release: bool,
+    /// Who releases for the lane: only `leader`, with the instance `--show` printed.
+    #[arg(long, requires = "release", value_parser = ["leader"])]
+    by: Option<String>,
+    /// Print the current holder's `instance` and lease end, or `free`; writes nothing.
+    #[arg(long, conflicts_with_all = ["instance", "release"])]
+    show: bool,
     /// `YYYY-MM-DDTHH:MM:SSZ` to judge leases against; the system clock when absent.
     #[arg(long)]
     now: Option<String>,
@@ -37,9 +44,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let now_text = args.now.unwrap_or_else(moai_cli::audit::utc_now);
     let now = moai_cli::forge::policy::parse_utc(&now_text)
         .ok_or_else(|| format!("invalid --now `{now_text}`: expected YYYY-MM-DDTHH:MM:SSZ"))?;
+    if args.show {
+        return moai_cli::lane_registry::show(&args.project, &args.name, now);
+    }
     let instance = args.instance.as_deref();
     match (args.release, instance) {
-        (true, Some(i)) => moai_cli::lane_registry::release(&args.project, &args.name, i, now),
+        (true, Some(i)) => moai_cli::lane_registry::release(
+            &args.project,
+            &args.name,
+            i,
+            args.by.as_deref(),
+            now,
+        ),
         _ => moai_cli::lane_registry::register(
             &args.project,
             &args.name,

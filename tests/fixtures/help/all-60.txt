@@ -148,6 +148,8 @@ Lane and leader
                           leader's comment
   leader-tick             Run one leader supervision tick
   lane-next               Find the lane's next task
+  lane-duty-line          Print the line a leader types into
+                          a lane
   lane-status             Show the status table of the named
                           lanes
   lane-handoff-check      Check that a worktree is safe to

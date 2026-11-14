@@ -74,7 +74,8 @@ fn mode_leader_first_run_steps_are_fixed() {
     assert_eq!(
         procedure_keys(&workflow("mode-leader.md")),
         [
-            "codex-refusal",
+            // #2900 (#2899 G4, D-O3): the mode follows the channel, not the host.
+            "mode-channel",
             "mode-only",
             "banner",
             "state",
@@ -179,9 +180,13 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "heavy-slot-acquire",
             "labels-apply",
             "labels-plan",
+            // #2879: the lane's one build folder and the card cleanup.
+            "lane-env",
             "lane-next",
             "lane-next --lane",
             "lane-next --wait",
+            // #2900 (#2899 G2): the leader clears a lane only on `safe`.
+            "lane-safe-to-reset --lane",
             "pr-confirm",
             // #2840 D3: the PR body is checked locally before the push and before opening.
             "pr-self-audit-check --file",
@@ -190,7 +195,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "repo-scans --refs",
             "scope-check",
             "session-register",
-            "usage-limit"
+            "session-register --release",
+            "usage-limit",
+            "worktree-gc-apply",
+            "worktree-gc-plan --integration-ref"
         ],
         "the op list the workflows name"
     );
@@ -304,11 +312,22 @@ fn self_opening_rules_are_pinned_in_both_mode_workflows() {
 #[test]
 fn the_round_keeps_going_until_its_end_condition() {
     let agent = workflow("mode-agent.md");
+    // #2910 audit 6874564526 B1: the claim step chooses by channel, never by host (D-O3).
+    assert_says(
+        &agent,
+        "claim",
+        &["Which of the two applies follows the channel, never the host"],
+    );
+    assert!(
+        !step(&agent, "claim").contains("Codex CLI and others"),
+        "the claim step still names a host instead of the channel"
+    );
     assert_says(
         &agent,
         "keep-going",
         &[
-            "A turn ends only when (i) the repository has no open pull request and no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed)",
+            // #2900: the end condition is defined once, in SPEC §12 (user decision D-O1).
+            "A turn ends only when (i) the repository has no open pull request and no startable Issue (the end condition of SPEC §12, user decision D-O1: not on HOLD, not `needs:decision`, not in the keep-set, prerequisites closed, not a parent epic with open children)",
             "(ii) the user says stop",
             "In every other case do not end the turn",
             "A card's completion report closes the card, never the round.",
@@ -361,9 +380,13 @@ fn the_round_keeps_going_until_its_end_condition() {
         &leader,
         "supervise",
         &[
-            "Restart, do not dispatch",
+            // #2900 (#2899 G1): four actions replace "Restart, do not dispatch".
+            "give each lane exactly one of four actions",
+            "`restart`, `clear_redispatch`, `answer` or `leave`",
             "`순환 계속 — self-pick (1)부터`",
             "only when its input box is empty",
+            // #2900 (#2899 G2): the clear contract and its order.
+            "answers `safe` — send `/clear`, read the screen again until the input box is empty, and only then send the duty line",
         ],
     );
     assert_says(
@@ -379,7 +402,7 @@ fn the_round_keeps_going_until_its_end_condition() {
     assert_says(
         &agent,
         "self-pick",
-        &["no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed) — the same end condition as the `keep-going` step"],
+        &["no startable Issue (SPEC §12) — the same end condition as the `keep-going` step"],
     );
     // Cause 8 (6824158448): no bare "no startable Issue"; expired foreign claims go up.
     assert_says(&agent, "state", &["expired claims of other sessions"]);
