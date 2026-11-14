@@ -46,6 +46,7 @@ pub mod help;
 pub mod home_root;
 pub mod home_routing;
 pub mod home_state;
+pub mod home_style;
 pub mod home_workdir;
 pub mod hook_config;
 pub mod hook_engine;

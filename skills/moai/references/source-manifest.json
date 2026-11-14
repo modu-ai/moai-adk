@@ -225,6 +225,15 @@
         "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
       }
     },
+    "references/home/output-style.md": {
+      "sha256": "d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-output-style",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Easy style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Easy.md with frontmatter, and a moai:managed block in ~/.codex/AGENTS.md."
+      }
+    },
     "references/adapters/orca.md": {
       "sha256": "bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
       "origin": {

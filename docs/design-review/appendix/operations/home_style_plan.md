@@ -1,0 +1,5 @@
+# `home-style-plan`
+
+operation `home.style_plan` · 코드 `src/ops/home_style_plan.rs`, `src/home_style.rs` (#2875)
+
+`home-style-plan HOME PACKAGE` 는 꾸러미의 `references/home/output-style.md` 하나를 도구별로 그려 비교한다. Claude Code 는 `HOME/.claude/output-styles/MoAI-Easy.md`(frontmatter `name: MoAI-Easy`·`description`·`keep-coding-instructions: true` + 원본)와 `HOME/.claude/settings.json` 의 `outputStyle`, Codex 는 `HOME/.codex/AGENTS.md` 의 `moai-output-style` 관리 구간. 스타일 파일은 마지막 적용이 기록한 sha256 과 같을 때만 우리 것(`merge`), 없으면 `create`, 같으면 `unchanged`, 그 밖은 `conflict`. `outputStyle` 은 키가 없을 때만 `set`, `MoAI-Easy` 면 `unchanged`, 다른 값·객체가 아닌 파일은 `conflict`, 스타일 파일이 우리 것이 아니면 `skipped`. 관리 구간은 `home-routing-plan` 과 같은 3자 비교이고, 파일에 손으로 넣은 `<!-- moai:output-style` 구간이 있으면 `conflict`. 폴더·파일이 링크면 `blocked`. OMP·Kiro·Cursor CLI 는 `home-routing-plan` 과 같은 사유로 `not_supported`. 아무것도 쓰지 않는다. 결과: `schema_version`, `home`, `package_digest`, `source_sha256`, `targets`(`host`, `kind`, `path`, `action`, `expected_sha256`, `baseline_sha256`, `detail`), `not_supported`, `plan_digest`.
