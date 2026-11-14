@@ -27,6 +27,7 @@
 | 진행 | 카드 하나를 worktree에서 끝내고 PR·영속 보고 뒤 다음 카드로 간다. 병합을 기다리지 않는다(`AGENTS.local.md:32`, `:36`) | 주기적 PR 점검(§5), 수리 지시, 배정 기록 대조, 목록이 빌 때 대기 사유 통지 |
 | 완료 판정 | 하지 않는다 | 증거(PR 병합, verdict 파일)를 읽어서만 한다. 메시지나 idle 알림으로는 판정하지 않는다 |
 | 통합 | 하지 않는다(작성자 ≠ 감사자 ≠ 통합자) | 게이트 절차를 따른다(`AGENTS.local.md:39`: verdict 첫 줄 → head == 감사 SHA → `moai/audit` → auto-merge) |
+| 외부 PR(#2664) | 작성자 관계가 `OWNER`·`MEMBER`·`COLLABORATOR` 가 아니거나 통합 가지를 향하지 않는 PR 은 예약도 감사도 하지 않는다(`lane-next` 의 `waiting` 에 `external_pr`) | 병합 열차에 올리지 않고 사용자에게 번호·작성자·base 를 한 번 보고한다 |
 | 특정 레인 지정 | — | Issue 본문이나 댓글에 `assignee-hint: agent-N`을 적는다. 그래도 소유권은 그 에이전트의 claim 댓글이 성립해야 생긴다 |
 
 ## 3. self-claim 7단계 — RC1 대조
