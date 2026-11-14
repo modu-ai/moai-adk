@@ -2027,10 +2027,11 @@ fn an_earlier_root_move_stopped_midway_is_interrupted_and_reverts() {
             .contains("state_root is `interrupted`"),
         "{again}"
     );
+    // The stamp folder, not the `.gitignore` that keeps the backup area out of git.
     let backup: String = fs::read_dir(fx.root.join(".moai/backups"))
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
-        .next()
+        .find(|n| n != ".gitignore")
         .unwrap();
     let rp = revert_plan(&fx, &backup);
     assert_eq!(
