@@ -127,9 +127,16 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     let plan = go_state::plan(root)?;
     let pending = plan.items.iter().any(|i| i.action == "move")
         || plan.state_moves.iter().any(|m| m.action == "move")
-        || plan.root_files.iter().any(|f| f.action == "copy")
+        || plan.root_files.iter().any(|f| f.action != "leave")
         || plan.restores.iter().any(|r| r.action == "copy");
+    // #2936 S1b: how many items fall in each class, so the user sees the shape at a glance.
+    let mut classes = std::collections::BTreeMap::<&str, u64>::new();
+    for i in &plan.items {
+        *classes.entry(i.class.as_str()).or_insert(0) += 1;
+    }
     let preview = json!({
+        "classes": classes,
+        "secrets": plan.secrets,
         "items": plan.items,
         "go_backup": plan.go_backup,
         "state_moves": plan.state_moves,

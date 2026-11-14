@@ -164,17 +164,14 @@ fn only_unchanged_template_files_are_offered_for_moving() {
         ("with_folder", "moves with .moai/ as a whole")
     );
     assert_eq!(action(&p, ".claude/workflows/w.md").0, "move");
-    assert_eq!(
-        action(&p, ".claude/rules/b.md"),
-        ("leave", "changed since the Go deploy")
-    );
-    assert_eq!(
-        action(&p, ".claude/rules/u.md"),
-        ("leave", "not template_managed")
-    );
+    // #2936 O2: a file the user changed moves too, with both hashes in the receipt.
+    let edited = "edited since the Go deploy; moves with both hashes recorded for the stage-3 \
+                  merge (O2)";
+    assert_eq!(action(&p, ".claude/rules/b.md"), ("move", edited));
+    assert_eq!(action(&p, ".claude/rules/u.md"), ("move", edited));
     assert_eq!(
         action(&p, "AGENTS.md"),
-        ("leave", "outside .moai/ and .claude/")
+        ("leave", "a root instruction file; see root_files")
     );
     // Not recorded by the Go manifest: never moved, counted under its folder.
     assert_eq!(p["unrecorded"][".moai/specs"], json!(1));
@@ -943,12 +940,13 @@ fn a_receipt_that_points_elsewhere_is_refused() {
     }
 }
 
-/// AUDIT #2584 B1: an unchanged Go `.claude/settings.json` is a recorded, unchanged
-/// template file, yet it is the live host settings (permissions.deny, hooks, statusLine).
-/// Moving it would drop those rules, so both settings files always stay, and a file the
-/// local settings name stays like one the shared settings name.
+/// AUDIT #2584 B1, revised by #2936 O3 (user decision 6877929684): the Go
+/// `.claude/settings.json` moves into the backup only with the Go folder (the install step
+/// writes new settings); `.claude/settings.local.json` always stays in place byte for byte,
+/// with a copy in the backup, so its deny rules keep working. A file either settings file
+/// names stays.
 #[test]
-fn the_live_settings_files_always_stay() {
+fn the_go_settings_move_and_the_local_settings_stay() {
     let mut fx = Fx::new();
     let shared = json!({"permissions": {"deny": ["Bash(rm -rf:*)", "Read(./.env)"]},
         "hooks": {"PreToolUse": [{"hooks": [{"type": "command",
@@ -964,22 +962,34 @@ fn the_live_settings_files_always_stay() {
     fx.deployed(".claude/workflows/free.md", "# free\n");
     fx.manifest();
     let p = plan(&fx);
-    for rel in [".claude/settings.json", ".claude/settings.local.json"] {
-        assert_eq!(action(&p, rel).0, "leave", "{rel}: {p}");
-    }
+    assert_eq!(action(&p, ".claude/settings.json").0, "move", "{p}");
+    assert_eq!(action(&p, ".claude/settings.local.json").0, "leave", "{p}");
     assert_eq!(
         action(&p, ".claude/hooks/moai/status.sh"),
         ("leave", "referenced by .claude/settings.local.json")
     );
+    assert_eq!(
+        action(&p, ".claude/hooks/moai/handle-pre-tool.sh"),
+        ("leave", "referenced by .claude/settings.json")
+    );
     assert_eq!(action(&p, ".claude/workflows/free.md").0, "move");
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(true), "{v}");
+    let dir = area(&fx, v["result"]["backup"].as_str().unwrap());
+    assert!(!fx.root.join(".claude/settings.json").exists());
     assert_eq!(
-        fs::read_to_string(fx.root.join(".claude/settings.json")).unwrap(),
-        shared,
-        "the deny rules and hooks are still in place after the apply"
+        fs::read_to_string(dir.join("go-state/.claude/settings.json")).unwrap(),
+        shared
     );
-    assert!(fx.root.join(".claude/settings.local.json").is_file());
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".claude/settings.local.json")).unwrap(),
+        local,
+        "the local deny rules are still in place after the apply"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("root-files/.claude/settings.local.json")).unwrap(),
+        local
+    );
     assert!(fx.root.join(".claude/hooks/moai/status.sh").is_file());
 }
 
@@ -1797,11 +1807,12 @@ fn a_linked_state_entry_keeps_the_go_folder() {
     assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
 }
 
-/// `CLAUDE.md` and `AGENTS.md` are copied aside byte for byte and stay as they are (the
-/// user decides later, default `keep`); a linked one is not copied; a file changed after the
-/// preview stops the apply before anything is written.
+/// #2936 O4 (D-M1): `CLAUDE.md` and `AGENTS.md` move byte for byte into the backup's
+/// `root-files/` (the install step writes new ones; the user decides later, default `keep`);
+/// a linked one stays and is never followed; a file changed after the preview stops the apply
+/// before anything is written.
 #[test]
-fn root_instruction_files_are_copied_aside_and_kept() {
+fn root_instruction_files_move_into_root_files() {
     let fx = movable_fixture();
     fx.write("CLAUDE.md", "# project rules\n");
     fs::write(fx.root.parent().unwrap().join("agents.md"), "# shared\n").unwrap();
@@ -1814,12 +1825,15 @@ fn root_instruction_files_are_copied_aside_and_kept() {
     assert_eq!(
         p["root_files"],
         json!([
-            {"path": "CLAUDE.md", "sha256": sha(b"# project rules\n"), "action": "copy",
+            {"path": "CLAUDE.md", "sha256": sha(b"# project rules\n"), "action": "move",
              "backup_copy": ".moai/backups/<UTC>/root-files/CLAUDE.md", "user_choice": "keep",
-             "reason": "copied aside; the file stays as it is until the user decides"},
+             "reason": "no Go proof; moves to the backup as D-M1 says (O4); the install step \
+                        writes a new one",
+             "class": "instructions", "go_proof": "none", "git": "unknown"},
             {"path": "AGENTS.md", "sha256": "", "action": "leave",
              "backup_copy": ".moai/backups/<UTC>/root-files/AGENTS.md", "user_choice": "keep",
-             "reason": "a link; not copied, never followed"}
+             "reason": "a link; not moved, never followed", "class": "instructions",
+             "go_proof": ""}
         ]),
         "{p}"
     );
@@ -1834,20 +1848,20 @@ fn root_instruction_files_are_copied_aside_and_kept() {
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(true), "{v}");
     let backup = v["result"]["backup"].as_str().unwrap().to_string();
-    let copy = format!(".moai/backups/{backup}/root-files/CLAUDE.md");
+    let moved = format!(".moai/backups/{backup}/root-files/CLAUDE.md");
     assert_eq!(
-        fs::read_to_string(fx.root.join(&copy)).unwrap(),
+        fs::read_to_string(fx.root.join(&moved)).unwrap(),
         "# project rules, edited\n"
     );
-    assert_eq!(
-        fs::read_to_string(fx.root.join("CLAUDE.md")).unwrap(),
-        "# project rules, edited\n"
-    );
+    assert!(!fx.root.join("CLAUDE.md").exists());
+    assert!(fs::symlink_metadata(fx.root.join("AGENTS.md")).is_ok());
     assert!(!area(&fx, &backup).join("root-files/AGENTS.md").exists());
-    assert_eq!(
-        v["result"]["copied"],
-        json!([{"path": copy, "sha256": sha(b"# project rules, edited\n")}])
-    );
+    assert_eq!(v["result"]["copied"], Value::Null, "{v}");
+    assert!(v["result"]["moves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["path"] == "CLAUDE.md" && m["kind"] == "root_file" && m["moved"] == true));
 }
 
 /// Without a Go folder that moves, the preview carries none of the #2696 fields.

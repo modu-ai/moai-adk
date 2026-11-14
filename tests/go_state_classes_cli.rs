@@ -246,10 +246,8 @@ impl Fx {
     }
 
     fn receipt(&self, backup: &str) -> Value {
-        serde_json::from_slice(
-            &fs::read(self.area(backup).join("go-state-receipt.json")).unwrap(),
-        )
-        .unwrap()
+        serde_json::from_slice(&fs::read(self.area(backup).join("go-state-receipt.json")).unwrap())
+            .unwrap()
     }
 }
 
@@ -317,7 +315,11 @@ fn a_mirror_link_with_the_exact_body_moves_as_a_link() {
     fx.link(".agents/skills/moai-a", "../../.claude/skills/moai-a");
     fx.manifest();
     let p = fx.plan();
-    assert_eq!(ac(&p, ".agents/skills/moai-a"), ("move", "go_mirror"), "{p}");
+    assert_eq!(
+        ac(&p, ".agents/skills/moai-a"),
+        ("move", "go_mirror"),
+        "{p}"
+    );
     assert_eq!(
         item(&p, ".agents/skills/moai-a")["proof"],
         json!("link ../../.claude/skills/moai-a"),
@@ -374,7 +376,11 @@ fn a_copy_folder_with_one_changed_byte_is_a_conflict_and_stays() {
     fx.write(".agents/skills/moai-a/ref/x.md", "y\n");
     fx.manifest();
     let p = fx.plan();
-    assert_eq!(ac(&p, ".agents/skills/moai-a"), ("leave", "conflict"), "{p}");
+    assert_eq!(
+        ac(&p, ".agents/skills/moai-a"),
+        ("leave", "conflict"),
+        "{p}"
+    );
 }
 
 #[test]
@@ -446,7 +452,11 @@ fn secret_names_are_counted_and_never_opened() {
     fx.fifo(".claude/.env");
     fx.fifo(".agents/skills/x/credentials.json");
     fx.write(".claude/hooks/server.pem", "not read\n");
-    fx.record(".claude/hooks/server.pem", "template_managed", &sha(b"not read\n"));
+    fx.record(
+        ".claude/hooks/server.pem",
+        "template_managed",
+        &sha(b"not read\n"),
+    );
     // A secret in the Go folder's user data is filtered by name before any read.
     fx.fifo(".moai/docs/.env");
     fx.write(".moai/docs/guide.md", "# guide\n");
@@ -478,8 +488,11 @@ fn secret_names_are_counted_and_never_opened() {
 
 #[test]
 fn root_instruction_files_carry_their_go_proof_and_markers() {
-    let mut fx = go_fx();
-    fx.write("CLAUDE.md", "# rules\n<!-- moai:learned-start -->\nx\n<!-- moai:learned-end -->\n");
+    let fx = go_fx();
+    fx.write(
+        "CLAUDE.md",
+        "# rules\n<!-- moai:learned-start -->\nx\n<!-- moai:learned-end -->\n",
+    );
     fx.write(
         "AGENTS.md",
         "# a\n<!-- moai:managed:begin id=moai-workflow -->\nm\n<!-- moai:managed:end id=moai-workflow -->\n",
@@ -606,7 +619,7 @@ fn codex_files_stay_for_s1c() {
 /// The backup step of `project-update-plan` shows how many items fall in each class.
 #[test]
 fn the_backup_step_counts_items_per_class() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.link(".agents/skills/moai-a", "../../.claude/skills/moai-a");
     fx.fifo(".claude/.env");
     fx.manifest();
@@ -643,14 +656,23 @@ fn zeros(fx: &mut Fx, rel: &str, len: u64, recorded_len: u64) {
         h.update(&chunk[..n]);
         left -= n as u64;
     }
-    fx.record(rel, "template_managed", &format!("sha256:{:x}", h.finalize()));
+    fx.record(
+        rel,
+        "template_managed",
+        &format!("sha256:{:x}", h.finalize()),
+    );
 }
 
 #[test]
 fn a_file_of_exactly_the_file_limit_moves_and_one_byte_more_stays() {
     let mut fx = go_fx();
     zeros(&mut fx, ".claude/big/at.bin", FILE_LIMIT, FILE_LIMIT);
-    zeros(&mut fx, ".claude/big/over.bin", FILE_LIMIT + 1, FILE_LIMIT + 1);
+    zeros(
+        &mut fx,
+        ".claude/big/over.bin",
+        FILE_LIMIT + 1,
+        FILE_LIMIT + 1,
+    );
     fx.manifest();
     let p = fx.plan();
     assert_eq!(ac(&p, ".claude/big/at.bin"), ("move", "tool_asset"), "{p}");
@@ -729,7 +751,10 @@ fn apply_then_revert_restores_the_tree_links_by_body() {
     copy_folder(&fx, "moai-b");
     fx.deployed(".claude/rules/b.md", "b: 1\n");
     fx.write(".claude/rules/b.md", "b: 2\n");
-    fx.deployed(".claude/settings.json", "{\"permissions\":{\"deny\":[\"Read(./.env)\"]}}");
+    fx.deployed(
+        ".claude/settings.json",
+        "{\"permissions\":{\"deny\":[\"Read(./.env)\"]}}",
+    );
     fx.write(".claude/settings.local.json", "{\"local\":true}");
     fx.write("CLAUDE.md", "# rules\n");
     fx.write(".moai/plans/p.md", "# plan\n");
@@ -782,7 +807,10 @@ fn apply_then_revert_restores_the_tree_links_by_body() {
         moved(&r, ".agents/skills/moai-a")["target"],
         json!("../../.claude/skills/moai-a")
     );
-    assert_eq!(moved(&r, ".agents/skills/moai-b")["kind"], json!("mirror_copy"));
+    assert_eq!(
+        moved(&r, ".agents/skills/moai-b")["kind"],
+        json!("mirror_copy")
+    );
     assert_eq!(moved(&r, "CLAUDE.md")["kind"], json!("root_file"));
 
     let v = fx.revert(&backup);
@@ -869,7 +897,10 @@ fn a_regenerated_root_file_or_settings_is_a_conflict_on_revert() {
     fx.deployed(".claude/settings.json", "{}");
     fx.manifest();
     let (_, backup) = fx.apply_ok();
-    for (rel, body) in [("AGENTS.md", "# new\n"), (".claude/settings.json", "{\"new\":1}")] {
+    for (rel, body) in [
+        ("AGENTS.md", "# new\n"),
+        (".claude/settings.json", "{\"new\":1}"),
+    ] {
         fx.write(rel, body);
         let rp = fx.revert_plan(&backup);
         let i = rp["result"]["items"]
@@ -902,7 +933,10 @@ fn settings_local_stays_in_place_with_a_copy_in_the_backup() {
         json!("copy"),
         "{p}"
     );
-    assert_eq!(item(&p, ".claude/settings.local.json")["action"], json!("leave"));
+    assert_eq!(
+        item(&p, ".claude/settings.local.json")["action"],
+        json!("leave")
+    );
     let ino = fs::metadata(fx.root.join(".claude/settings.local.json"))
         .unwrap()
         .ino();
@@ -911,8 +945,11 @@ fn settings_local_stays_in_place_with_a_copy_in_the_backup() {
     assert_eq!(fs::read_to_string(&here).unwrap(), local);
     assert_eq!(fs::metadata(&here).unwrap().ino(), ino, "never moved");
     assert_eq!(
-        fs::read_to_string(fx.area(&backup).join("root-files/.claude/settings.local.json"))
-            .unwrap(),
+        fs::read_to_string(
+            fx.area(&backup)
+                .join("root-files/.claude/settings.local.json")
+        )
+        .unwrap(),
         local
     );
 }
@@ -923,7 +960,11 @@ fn secrets_stay_untouched_through_apply_and_revert() {
     let mut fx = go_fx();
     fx.fifo(".claude/.env");
     fx.write(".claude/hooks/server.pem", "not read\n");
-    fx.record(".claude/hooks/server.pem", "template_managed", &sha(b"not read\n"));
+    fx.record(
+        ".claude/hooks/server.pem",
+        "template_managed",
+        &sha(b"not read\n"),
+    );
     fx.manifest();
     let pem_ino = fs::metadata(fx.root.join(".claude/hooks/server.pem"))
         .unwrap()
@@ -943,7 +984,9 @@ fn secrets_stay_untouched_through_apply_and_revert() {
         .map(|(p, _)| p.to_string_lossy().into_owned())
         .collect::<Vec<_>>();
     assert!(
-        !names.iter().any(|n| n.ends_with(".env") || n.ends_with(".pem")),
+        !names
+            .iter()
+            .any(|n| n.ends_with(".env") || n.ends_with(".pem")),
         "{names:?}"
     );
     let v = fx.revert(&backup);
@@ -976,7 +1019,10 @@ fn user_data_folders_are_restored_and_removed_again_on_revert() {
     assert!(fx.root.join(".moai/reports/r.md").is_file());
     assert!(!fx.root.join(".moai/state/s.json").exists());
     let r = fx.receipt(&backup);
-    assert!(r["restored"].to_string().contains(".moai/research/n.md"), "{r}");
+    assert!(
+        r["restored"].to_string().contains(".moai/research/n.md"),
+        "{r}"
+    );
     let v = fx.revert(&backup);
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(fx.project_tree(), before);
