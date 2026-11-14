@@ -3822,6 +3822,28 @@ mod help_rules {
             && !about.contains('`')
     }
 
+    /// #2824 re-audit B2: the rule itself at its edges. clap drops a doc comment's closing
+    /// period, so the period case is reachable only by calling the rule directly.
+    #[test]
+    fn the_one_line_rule_holds_at_its_edges() {
+        let sixty = format!("A{}", "b".repeat(59));
+        assert_eq!(sixty.chars().count(), 60);
+        assert!(about_ok(&sixty));
+        assert!(!about_ok(&format!("{sixty}c")), "61 characters");
+        // Characters, not bytes: 60 Hangul syllables are 180 bytes.
+        assert!(about_ok(&format!("A{}", "가".repeat(59))));
+        assert!(about_ok("Show the installed MoAI binaries"));
+        for off in [
+            "Show the installed MoAI binaries.",
+            "show the installed MoAI binaries",
+            "Show the binaries (#2802)",
+            "Show the `moai` binaries",
+            "",
+        ] {
+            assert!(!about_ok(off), "{off:?}");
+        }
+    }
+
     fn meeting(rule: impl Fn(&clap::Command) -> bool) -> BTreeSet<String> {
         let cli = Cli::command();
         cli.get_subcommands()
