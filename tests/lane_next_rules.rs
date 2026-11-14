@@ -60,6 +60,7 @@ fn the_flags_the_workflow_names_are_the_commands_own() {
         "--tip",
         "--snapshot",
         "--shared-lanes",
+        "--explain",
     ] {
         assert!(help.contains(flag), "lane-next --help lacks {flag}: {help}");
     }
