@@ -1,6 +1,6 @@
 # ZCode 지원 근거와 adapter gap (02-D #1994)
 
-Z.ai ZCode를 공통 skill package(`skills/moai/`, 02-A #1991; #2286에서 skill 이름 `moai`로 확정, 실행 파일은 `moai-cli`)에 연결할 때의 상황을 기록한다. 공식 출처가 명시하는 것, 명시하지 않는 것, 그리고 adapter가 맡아야 할 일을 나눈다. 지원표 행은 `docs/host-support-matrix.md`에 있다. 이 문서는 ZCode용 파일을 생성하거나 설치하지 않는다. 확인일은 모두 2026-11-08이다.
+Z.ai ZCode를 공통 skill package(`skills/moai/`, 02-A #1991; #2286에서 skill 이름 `moai`로 확정, 실행 명령은 `moai`이고 `moai-cli`는 호환 별칭 — #2812)에 연결할 때의 상황을 기록한다. 공식 출처가 명시하는 것, 명시하지 않는 것, 그리고 adapter가 맡아야 할 일을 나눈다. 지원표 행은 `docs/host-support-matrix.md`에 있다. 이 문서는 ZCode용 파일을 생성하거나 설치하지 않는다. 확인일은 모두 2026-11-08이다.
 
 ## 범위와 결정
 
