@@ -54,6 +54,10 @@ pub const DEFAULT_RECENT_MINUTES: u64 = 120;
 /// the recent-change protection off for work that pauses between builds; it is refused, not
 /// clamped, so the caller sees it.
 pub const MIN_RECENT_MINUTES: u64 = 60;
+/// An empty merged worktree (nothing but its checkout) is kept while its last change is under
+/// this many seconds old — a lane may have just made it and not started (#2498 N3) — and
+/// removed after that (#2879: 283 such worktrees, about 4 GB, sat on this machine).
+pub const EMPTY_KEEP_SECS: u64 = 86_400;
 /// Default time budget for the whole plan.
 pub const DEFAULT_BUDGET_MS: u64 = 120_000;
 
@@ -122,7 +126,9 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         // #2498 N3: a worktree with nothing in it but its checkout — never built, no files
         // of its own — looks exactly like one a lane has just created and not started; it
         // frees almost nothing, so it is kept.
-        (Some(0), Some(0)) if !f.has_build_output => {
+        (Some(0), Some(0))
+            if !f.has_build_output && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
+        {
             reasons.push("empty_worktree");
             return ("skip", reasons);
         }
@@ -401,6 +407,8 @@ pub(crate) fn census(wt: &Path) -> Option<(usize, usize, bool)> {
 const REGENERABLE_DIRS: &[&str] = &["__pycache__", ".ruff_cache", ".pytest_cache", ".mypy_cache"];
 const REGENERABLE_EXTS: &[&str] = &["pyc", "pyo"];
 const LANE_TEMP_EXTS: &[&str] = &["log"];
+/// State the statusline rewrites on its next run (session context use, GitHub counts).
+const REGENERABLE_PREFIXES: &[&str] = &[".moai/state/context-usage/", ".moai/state/github/"];
 /// More ignored files than this in one worktree and the census is unknown (fail closed).
 const IGNORED_FILE_LIMIT: usize = 20_000;
 
@@ -436,7 +444,9 @@ fn ignored_file_is_safe(wt: &Path, primary: &Path, rel: &Path) -> bool {
             .any(|d| c.as_os_str() == std::ffi::OsStr::new(d))
     });
     let ext = rel.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let shown = rel.to_string_lossy().replace('\\', "/");
     regenerable
+        || REGENERABLE_PREFIXES.iter().any(|p| shown.starts_with(p))
         || REGENERABLE_EXTS.contains(&ext)
         || LANE_TEMP_EXTS.contains(&ext)
         || same_bytes(&path, &primary.join(rel))
@@ -1105,13 +1115,19 @@ mod tests {
         );
     }
 
-    /// #2498 N3: clean and merged but never built and holding nothing — kept, not removed.
+    /// #2498 N3, narrowed by #2879: clean and merged but never built and holding nothing is
+    /// kept while its last change is under a day old (a lane may have just made it), and
+    /// removed after that (N/N+1 at the edge).
     #[test]
-    fn an_empty_worktree_is_skipped_not_removed() {
+    fn an_empty_worktree_is_kept_for_a_day_then_removed() {
         let mut f = eligible();
         f.has_build_output = false;
+        f.change_age_secs = Some(EMPTY_KEEP_SECS - 1);
         assert_eq!(decide(&f, 7_200), ("skip", vec!["empty_worktree"]));
+        f.change_age_secs = Some(EMPTY_KEEP_SECS);
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
         f.has_build_output = true;
+        f.change_age_secs = Some(7_200);
         assert_eq!(decide(&f, 7_200), ("remove", vec![]));
     }
 

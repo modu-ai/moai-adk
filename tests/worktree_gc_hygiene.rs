@@ -333,3 +333,27 @@ fn worktree_option_limits_the_plan_to_the_named_worktrees() {
         "{v}"
     );
 }
+
+/// #2879: the statusline's state files under `.moai/state/` (session context usage, GitHub
+/// counts) are regenerable; any other `.moai/` file keeps the worktree.
+#[test]
+fn statusline_state_files_are_regenerable() {
+    let fx = fixture(&["st", "rep"]);
+    for n in ["st", "rep"] {
+        write(
+            &fx.wt(n).join(".moai/state/context-usage/1234-abcd.json"),
+            "{}",
+        );
+        write(&fx.wt(n).join(".moai/state/github/counts.json"), "{}");
+    }
+    write(&fx.wt("rep").join(".moai/state/active-sessions.json"), "[]");
+    let r = plan(&fx, &[]);
+    assert_eq!(
+        entry(&r, ".moai-cli/worktrees/st")["action"],
+        "remove",
+        "{r}"
+    );
+    let rep = entry(&r, ".moai-cli/worktrees/rep");
+    assert_ne!(rep["action"], "remove", "{rep}");
+    assert_eq!(rep["ignored_kept"][0], ".moai/state/active-sessions.json");
+}
