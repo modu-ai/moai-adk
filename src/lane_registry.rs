@@ -624,6 +624,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         fs::create_dir(tmp.path().join("agent-4.json")).unwrap();
         assert!(live_agent_numbers(tmp.path(), 0).is_err(), "directory");
+    }
+
+    /// #2971: a symlinked entry is refused too, never followed.
+    #[cfg(unix)]
+    #[test]
+    fn live_agent_numbers_refuse_a_symlinked_entry() {
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("real"), numbered_entry(4, 10)).unwrap();
         std::os::unix::fs::symlink(tmp.path().join("real"), tmp.path().join("agent-4.json"))
