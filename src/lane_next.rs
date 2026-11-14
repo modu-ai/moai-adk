@@ -42,8 +42,13 @@ type Result<T> = std::result::Result<T, String>;
 /// GitHub requests one collection may send (#2831 D4): ten lanes polling stay far below the
 /// 5,000-per-hour limit of one token.
 pub const API_BUDGET: u32 = 30;
-/// Startable open Issues (the oldest) whose comments are read to find one nobody claims.
-pub const FREE_ISSUE_SCAN: usize = 5;
+/// Startable open Issues (the oldest) whose comments are read to find one nobody claims: one
+/// detail request ([`ISSUES_PER_QUERY`]), so five claimed ones at the front no longer leave the
+/// result empty (#2933 P-3).
+pub const FREE_ISSUE_SCAN: usize = 25;
+/// Live claims on open cards (not merged, no close table) at which a lane takes no new Issue
+/// (#2933 E).
+pub const CARD_CAP: usize = 2;
 /// Lanes assumed to poll at once with one GitHub token (they all read as one account), unless
 /// `--shared-lanes` names the number (#2873 N9).
 pub const SHARED_LANES: u64 = 10;
@@ -647,6 +652,24 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                     "line": blocked_line(blocked, lane, claimed)})),
             }
         }
+        // The lane's live claims on open cards — not merged, no close table — its own pull
+        // request waiting included (#2933 E). At the cap no new Issue is taken (step 7).
+        let mut live_cards: Vec<u64> = snap
+            .threads
+            .iter()
+            .filter(|t| {
+                live_claim(&t.comments, lane).is_some_and(|claim| {
+                    let card = card_state(t, claim);
+                    card.merged.is_none() && !card.closed
+                })
+            })
+            .map(|t| t.number)
+            .collect();
+        live_cards.sort_unstable();
+        let at_cap = live_cards.len() >= CARD_CAP;
+        if at_cap {
+            waiting.push(json!({"reason": "card_cap", "cards": live_cards, "limit": CARD_CAP}));
+        }
         // 6. P2: the next step of a card the lane claims.
         let own_pr_issues: Vec<u64> = prs
             .iter()
@@ -705,6 +728,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         // 7. P2–P4: an open Issue that is startable and nobody claims. The open Issues the
         // collection did not read in detail because they are not startable are named first.
+        if at_cap {
+            return None;
+        }
         for t in snap.cards.iter().flatten() {
             if let Some(s) = judge(t) {
                 skip(s.entry(t.number));
@@ -1190,7 +1216,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     let open: std::collections::BTreeSet<u64> =
         snap.cards.iter().flatten().map(|t| t.number).collect();
     let through = read_through(&snap);
-    let free: Vec<u64> = snap
+    let mut free: Vec<u64> = snap
         .cards
         .iter()
         .flatten()
@@ -1198,8 +1224,13 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             crate::startable::judge_within(&card(t), &open, through, &snap.keep_set).is_none()
         })
         .map(|t| t.number)
-        .take(FREE_ISSUE_SCAN)
         .collect();
+    if free.len() > FREE_ISSUE_SCAN {
+        free.truncate(FREE_ISSUE_SCAN);
+        snap.partial.push(format!(
+            "only the oldest {FREE_ISSUE_SCAN} startable open Issues read in detail"
+        ));
+    }
     let mut wanted: Vec<u64> = claims.iter().map(|(i, _)| *i).collect();
     wanted.extend(&own);
     wanted.extend(&free);
@@ -1488,7 +1519,9 @@ mod tests {
             };
             let snap = collect(&target(dir.path()), &t);
             // lists + tip branch + tip check runs + Issue reads (ISSUES_PER_QUERY each).
-            let issue_reads = (prs as usize + 1 + FREE_ISSUE_SCAN).div_ceil(ISSUES_PER_QUERY);
+            // Ten open Issues exist.
+            let free = FREE_ISSUE_SCAN.min(10);
+            let issue_reads = (prs as usize + 1 + free).div_ceil(ISSUES_PER_QUERY);
             assert_eq!(snap.api_calls, 3 + issue_reads as u32, "{:?}", snap.partial);
             assert_eq!(t.sent.get(), snap.api_calls);
             assert!(
@@ -1504,7 +1537,7 @@ mod tests {
                 .prs
                 .iter()
                 .all(|p| p.author_lane.as_deref() == Some("agent-x") && p.comments.len() == 1));
-            assert_eq!(snap.open_issues.len(), FREE_ISSUE_SCAN);
+            assert_eq!(snap.open_issues.len(), free);
             assert_eq!(snap.open_issues[0].labels, vec!["P3".to_string()]);
             // The search hit that is an open pull request is not read again as a thread.
             assert_eq!(
@@ -1559,10 +1592,12 @@ mod tests {
     }
 
     /// No open pull request; `held` of the `issues` oldest open Issues carry `HOLD`, the rest
-    /// none; `total` open Issues exist. Records the Issues each detail read asks for.
+    /// none, and the next `claimed` carry another lane's claim; `total` open Issues exist.
+    /// Records the Issues each detail read asks for.
     struct HeldOldest {
         issues: u64,
         held: u64,
+        claimed: u64,
         total: u64,
         sent: Cell<u32>,
         read: std::cell::RefCell<Vec<u64>>,
@@ -1601,10 +1636,18 @@ mod tests {
                 let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
                 let n: u64 = digits.parse().unwrap();
                 self.read.borrow_mut().push(n);
+                let comments: Vec<Value> = if n - 2000 > self.held
+                    && n - 2000 <= self.held + self.claimed
+                {
+                    vec![json!({"databaseId": n, "body": "moai-claim: session=agent-x epoch=1"})]
+                } else {
+                    vec![]
+                };
                 repo.insert(
                     format!("i{n}"),
                     json!({"number": n, "title": format!("issue {n}"), "labels": labels(n),
-                        "comments": {"totalCount": 0, "nodes": []}, "timelineItems": {"nodes": []}}),
+                        "comments": {"totalCount": comments.len(), "nodes": comments},
+                        "timelineItems": {"nodes": []}}),
                 );
             }
             ok(json!({"data": {"repository": repo}}))
@@ -1621,6 +1664,7 @@ mod tests {
             let t = HeldOldest {
                 issues: 6,
                 held,
+                claimed: 0,
                 total: 6,
                 sent: Cell::new(0),
                 read: Default::default(),
@@ -1651,6 +1695,7 @@ mod tests {
             let t = HeldOldest {
                 issues: 6,
                 held: 6,
+                claimed: 0,
                 total,
                 sent: Cell::new(0),
                 read: Default::default(),
@@ -1664,6 +1709,54 @@ mod tests {
             assert_eq!(v["next"], Value::Null, "{v}");
             assert_eq!(v["end_condition"]["met"], met, "{v}");
         }
+    }
+
+    /// #2933 P-3: the five oldest startable Issues claimed by other lanes do not hide a sixth
+    /// nobody claims — with no pull request work the result is that Issue.
+    #[test]
+    fn startable_issues_past_claimed_oldest_are_picked() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let t = HeldOldest {
+            issues: 6,
+            held: 0,
+            claimed: 5,
+            total: 6,
+            sent: Cell::new(0),
+            read: Default::default(),
+        };
+        let snap = collect(&target(dir.path()), &t);
+        assert_eq!(*t.read.borrow(), (2001..=2006).collect::<Vec<_>>());
+        let v = decide("agent-10", &snap);
+        assert_eq!(v["next"]["kind"], json!("pick_issue"), "{v}");
+        assert_eq!(v["next"]["target"]["number"], json!(2006));
+    }
+
+    /// #2933 D: the oldest 25 startable Issues are read in detail in one request; a 26th is
+    /// not, and `partial` says so in fixed words.
+    #[test]
+    fn free_issue_scan_reads_25_and_names_the_rest() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let note = "only the oldest 25 startable open Issues read in detail";
+        for (issues, named) in [(25u64, false), (26, true)] {
+            let t = HeldOldest {
+                issues,
+                held: 0,
+                claimed: 0,
+                total: issues,
+                sent: Cell::new(0),
+                read: Default::default(),
+            };
+            let snap = collect(&target(dir.path()), &t);
+            assert_eq!(snap.api_calls, 2, "{issues}: {:?}", snap.partial);
+            assert_eq!(*t.read.borrow(), (2001..=2025).collect::<Vec<_>>());
+            assert_eq!(
+                snap.partial.iter().any(|p| p == note),
+                named,
+                "{issues}: {:?}",
+                snap.partial
+            );
+        }
+        assert_eq!(FREE_ISSUE_SCAN, ISSUES_PER_QUERY, "one detail request");
     }
 
     /// Answers every GET with an empty list: never a task.

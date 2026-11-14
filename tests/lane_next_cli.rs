@@ -532,3 +532,97 @@ fn the_end_condition_counts_open_prs_and_startable_cards() {
         assert_eq!(r["end_condition"], want, "{snap}");
     }
 }
+
+/// #2933 P-3: with no pull request work, a startable Issue nobody claims is the result even
+/// when the five oldest startable ones are claimed by other lanes.
+#[test]
+fn startable_issue_is_picked_when_no_pr_work() {
+    let issues: Vec<Value> = (1..=6u64)
+        .map(|n| {
+            let comments = if n <= 5 {
+                json!([claim(n * 10, &format!("agent-{}", 20 + n))])
+            } else {
+                json!([])
+            };
+            json!({"number": n, "title": format!("issue {n}"), "comments": comments})
+        })
+        .collect();
+    let r = next(&json!({"open_issues": issues}));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(6));
+    let skipped = r["skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 5, "{r}");
+    assert!(
+        skipped.iter().all(|s| s["reason"] == json!("claimed")),
+        "{r}"
+    );
+}
+
+/// #2933 E: a lane with two live claims on open cards takes no new Issue — `waiting` names
+/// the cap; one live claim does not stop it, and a card closed (`CLOSE-TABLE`) or merged
+/// does not count.
+#[test]
+fn two_live_cards_stop_pick_issue() {
+    let free = json!([{"number": 2600, "title": "free", "comments": []}]);
+    // Each claimed card has the lane's own open pull request, so step 6 passes over it.
+    let snap = |cards: &[(u64, Value)]| {
+        let threads: Vec<Value> = cards
+            .iter()
+            .map(|(n, extra)| {
+                let mut t =
+                    json!({"number": n, "title": "card", "comments": [claim(n * 10, LANE)]});
+                t.as_object_mut()
+                    .unwrap()
+                    .extend(extra.as_object().unwrap().clone());
+                t
+            })
+            .collect();
+        let prs: Vec<Value> = cards
+            .iter()
+            .map(|(n, _)| {
+                json!({"number": n + 100, "head": h('a'), "author_lane": LANE,
+                    "claim_issue": n, "comments": []})
+            })
+            .collect();
+        json!({"threads": threads, "prs": prs, "open_issues": free.clone()})
+    };
+    let cap = |cards: Vec<u64>| json!([{"reason": "card_cap", "cards": cards, "limit": 2}]);
+    // N = 1: the free Issue is offered.
+    let r = next(&snap(&[(2501, json!({}))]));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    assert_eq!(r["waiting"], json!([]));
+    // N = 2: no new Issue; the cap waits.
+    let r = next(&snap(&[(2501, json!({})), (2502, json!({}))]));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["waiting"], cap(vec![2501, 2502]), "{r}");
+    // A card with its close table posted after the claim does not count.
+    let closed = json!({"comments": [claim(25020, LANE),
+        {"id": 25021, "body": "CLOSE-TABLE #2502\n\n| AC | ... |"}]});
+    let r = next(&snap(&[(2501, json!({})), (2502, closed)]));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["waiting"], json!([]));
+    // A card whose pull request for this claim merged does not count.
+    let merged =
+        json!({"merged": [{"number": 90, "claim": 25020, "merged_at": "2026-11-14T03:00:00Z"}]});
+    let r = next(&snap(&[(2501, json!({})), (2502, merged)]));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["waiting"], json!([]));
+    // Without its own pull requests the lane continues its oldest card (step 6 comes first);
+    // with two such cards the cap is named as well, with one it is not.
+    let bare = |ns: &[u64]| {
+        let threads: Vec<Value> = ns
+            .iter()
+            .map(|n| json!({"number": n, "title": "card", "comments": [claim(n * 10, LANE)]}))
+            .collect();
+        json!({"threads": threads, "open_issues": free.clone()})
+    };
+    let r = next(&bare(&[2501]));
+    assert_eq!(kind(&r), json!("continue_card"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2501));
+    assert_eq!(r["waiting"], json!([]));
+    let r = next(&bare(&[2501, 2502]));
+    assert_eq!(kind(&r), json!("continue_card"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2501));
+    assert_eq!(r["waiting"], cap(vec![2501, 2502]), "{r}");
+}
