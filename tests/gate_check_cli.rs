@@ -569,6 +569,10 @@ fn a_delta_that_does_not_hold_stops_at_g1() {
     let mut s = on_delta();
     s["auto_delta"]["to"] = json!(OTHER);
     reason(&s);
+    // A third head: neither the verdict head nor the current one.
+    let mut s = on_delta();
+    s["auto_delta"]["to"] = json!(B);
+    reason(&s);
 
     // A FAIL is never carried: the delta counts only a PASS.
     let mut s = on_delta();

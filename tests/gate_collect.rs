@@ -1167,6 +1167,38 @@ fn a_merge_that_changes_a_file_outside_the_pr_is_not_a_mechanical_delta() {
     );
 }
 
+/// A merge that changes a PR binary file: its patch keeps the bytes (`--binary`), so the change
+/// differs; without them both sides would read "Binary files differ" and look the same.
+#[test]
+fn a_merge_that_changes_a_pr_binary_file_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    commit(
+        r.d(),
+        &[("img.bin", "\u{0}\u{1}\u{2}bin-one\u{0}")],
+        "image\n\nMoai-Claim: 9#555",
+    );
+    let h = r.head();
+    let n = r.merge_tip_with(&[("img.bin", "\u{0}\u{1}\u{2}bin-two\u{0}")]);
+    let d = gate_collect::mechanical_delta(r.d(), &h, &n, "main").unwrap();
+    assert!(!d.ok);
+    assert!(
+        d.detail.contains("img.bin: the PR's change differs"),
+        "{}",
+        d.detail
+    );
+    // The same history with the binary left alone is a mechanical delta.
+    let r = delta_repo();
+    commit(
+        r.d(),
+        &[("img.bin", "\u{0}\u{1}\u{2}bin-one\u{0}")],
+        "image\n\nMoai-Claim: 9#555",
+    );
+    let h = r.head();
+    let n = r.merge_tip();
+    let d = gate_collect::mechanical_delta(r.d(), &h, &n, "main").unwrap();
+    assert!(d.ok, "{}", d.detail);
+}
+
 /// AC-2: a head the verdict head is not an ancestor of (the change re-made on the tip).
 #[test]
 fn a_head_that_does_not_descend_from_the_verdict_head_is_refused() {
@@ -1240,6 +1272,13 @@ fn collect_carries_a_pass_across_an_update_branch_merge() {
     );
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
     assert!(gate::accepted_auto_delta(&s).is_some());
+    // `gate-merge` and `gate-check` ask for the accepted delta directly: a FAIL on the verdict
+    // head is never one.
+    let mut failed = s.clone();
+    for c in failed.comments.iter_mut() {
+        c.body = c.body.replace("verdict: PASS", "verdict: FAIL");
+    }
+    assert!(gate::accepted_auto_delta(&failed).is_none());
 
     // The same head with a verdict on itself measures no delta.
     let t = exchanges(&n, &r.c, vec![claim(&n), verdict(&n, &r.a)], PASS_BODY);
