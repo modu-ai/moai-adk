@@ -39,6 +39,8 @@ Project
   hooks-plan              Preview the MoAI hook set for one
                           host
   hooks-apply             Write a previewed hook set
+  hooks-revert            Undo the hook set one update
+                          applied
 Update and move
   update                  Update MoAI from the installed
                           package

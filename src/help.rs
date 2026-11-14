@@ -44,6 +44,7 @@ pub const GROUPS: &[Group] = &[
             ("codex-config-apply", false),
             ("hooks-plan", false),
             ("hooks-apply", false),
+            ("hooks-revert", false),
         ],
     },
     Group {

@@ -94,6 +94,7 @@ pub mod state_root;
 pub mod statusline;
 pub mod ui;
 pub mod update;
+pub mod update_hooks;
 pub mod usage_limit;
 pub mod verify;
 pub mod worktree;
