@@ -610,7 +610,10 @@ fn dropping_the_preset_removes_the_table_it_added() {
         "model = \"gpt-6\"\n\n[mcp_servers.docs]\ncommand = \"docs-mcp\"\n",
     ] {
         let g = fixture(Some(original));
-        apply(&g, &desired(json!({"tui.status_line": "moai", "skills.bundled.enabled": false})));
+        apply(
+            &g,
+            &desired(json!({"tui.status_line": "moai", "skills.bundled.enabled": false})),
+        );
         assert!(read(&g).contains("[tui]"), "{}", read(&g));
         apply(&g, &Map::new());
         assert_eq!(read(&g), original);
