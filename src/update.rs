@@ -1516,6 +1516,13 @@ fn cleanup_token<'a>(layer: &UserLayerPlan, given: Option<&'a str>) -> Result<Op
     Ok(Some(t))
 }
 
+/// Whether the terminal is asked to apply the layer: only for a plan that writes and only
+/// without `--confirm-cleanup` — a cleanup run without `--confirm` leaves the layer a preview,
+/// so a yes there never applies it (#2872 stage 2).
+fn asks(cleanup: Option<&str>, writes: bool) -> bool {
+    cleanup.is_none() && writes
+}
+
 /// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
 fn run_cleanup(
     home: &Path,
@@ -1715,9 +1722,7 @@ pub fn update_command(
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if cleanup.is_none() && writes && ask(&layer_summary(&layer))? => {
-            layer.plan_digest.clone()
-        }
+        None if asks(cleanup, writes) && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
         None => {
             let mut out = json!({
                 "mode": "preview",
@@ -2683,6 +2688,10 @@ mod user_layer_tests {
         assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdee")).is_err());
         layer.cleanup = None;
         assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdef")).is_err());
+        // The terminal is asked only for a plan that writes and never on a cleanup run.
+        assert!(asks(None, true));
+        assert!(!asks(None, false));
+        assert!(!asks(Some("cleanup:0123456789abcdef"), true));
     }
 
     /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the
