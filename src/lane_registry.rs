@@ -14,6 +14,9 @@
 //! and a rename under an exclusive `File::lock` on `registry.lock`, so two registrations of one
 //! name cannot both succeed. Symlinks, non-regular files and oversized or malformed entries are
 //! refused, never followed or overwritten.
+//!
+//! An entry may also carry `mode` (`leader` or `agent`, #2928 decision D1 = (A)), written by
+//! `session-register --mode`. The statusline reads it with [`mode_of`] to tag the session.
 
 use std::fs::{self, OpenOptions};
 use std::hash::{BuildHasher, Hasher};
@@ -100,9 +103,13 @@ fn refuse_symlink(path: &Path) -> Result<(), String> {
     }
 }
 
-/// The current entry: `None` when there is none. A non-regular file, an oversized file or one
-/// that is not a well-formed entry for `name` is an error, never treated as absent.
-fn read_entry(file: &Path, name: &str) -> Result<Option<(String, i64)>, String> {
+/// The current entry — `instance`, `lease_until` and the `mode` text as written (#2928, read
+/// through [`accepted_mode`] only) — or `None` when there is none. A non-regular file, an
+/// oversized file or one that is not a well-formed entry for `name` is an error, never treated
+/// as absent. Unknown keys are ignored, so an entry with `mode` is still schema 1.
+type Entry = (String, i64, Option<String>);
+
+fn read_entry(file: &Path, name: &str) -> Result<Option<Entry>, String> {
     let broken = || {
         format!(
             "session registry entry {} is invalid; remove it after checking that no session uses that name",
@@ -125,8 +132,25 @@ fn read_entry(file: &Path, name: &str) -> Result<Option<(String, i64)>, String> 
         instance,
         lease,
     ) {
-        (Some(1), Some(n), Some(i), Some(l)) if n == name => Ok(Some((i.to_string(), l))),
+        (Some(1), Some(n), Some(i), Some(l)) if n == name => Ok(Some((
+            i.to_string(),
+            l,
+            v["mode"].as_str().map(str::to_string),
+        ))),
         _ => Err(broken()),
+    }
+}
+
+/// The session modes an entry may carry (#2928, decision D1 = (A)).
+pub const MODES: &[&str] = &["leader", "agent"];
+
+/// An entry's `mode` when it is exactly `leader` or `agent`; any other text — a made-up word,
+/// another case, escape bytes — is no mode at all, so it is never shown or trusted.
+fn accepted_mode(raw: Option<&str>) -> Option<&'static str> {
+    match raw {
+        Some("leader") => Some("leader"),
+        Some("agent") => Some("agent"),
+        _ => None,
     }
 }
 
@@ -162,6 +186,24 @@ fn open_locked(project: &Path, name: &str) -> Result<(PathBuf, PathBuf, fs::File
     Ok((dir, file, lock))
 }
 
+/// The mode a live entry records for `name` in the clone whose git common dir is `common`
+/// (#2928, decision D1 = (A)): `Some("leader")` or `Some("agent")` only when the entry is for
+/// exactly this name, its lease runs past `now`, and its `mode` is exactly one of the two.
+/// Read-only for the statusline: no lock, no folder created; an unsafe name, a symlinked
+/// folder or entry, an oversized or malformed entry — anything unreadable — is `None`.
+pub fn mode_of(common: &Path, name: &str, now: i64) -> Option<&'static str> {
+    if !valid_name(name) {
+        return None;
+    }
+    let dir = crate::clone_root::path(common).join("sessions");
+    refuse_symlink(&dir).ok()?;
+    let file = dir.join(format!("{name}.json"));
+    match read_entry(&file, name).ok()?? {
+        (_, lease, mode) if lease > now => accepted_mode(mode.as_deref()),
+        _ => None,
+    }
+}
+
 /// Who may release on a lane's behalf (#2902 O3a): only the leader, which passes the instance
 /// it read with `show`.
 pub const RELEASED_BY: &[&str] = &["leader"];
@@ -177,12 +219,19 @@ pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
     let file = dir.join(format!("{name}.json"));
     refuse_symlink(&file)?;
     Ok(match read_entry(&file, name)? {
-        Some((instance, lease)) if lease > now => json!({
-            "status": "held",
-            "name": name,
-            "instance": instance,
-            "lease_until": crate::forge::policy::format_utc(lease),
-        }),
+        Some((instance, lease, mode)) if lease > now => {
+            let mut out = json!({
+                "status": "held",
+                "name": name,
+                "instance": instance,
+                "lease_until": crate::forge::policy::format_utc(lease),
+            });
+            // #2928: only an accepted mode is shown; an entry without one keeps the output.
+            if let Some(m) = accepted_mode(mode.as_deref()) {
+                out["mode"] = json!(m);
+            }
+            out
+        }
         _ => json!({"status": "free", "name": name}),
     })
 }
@@ -213,14 +262,14 @@ pub fn release(
     let (_, file, lock) = open_locked(project, name)?;
     let status = match read_entry(&file, name)? {
         None => "already_free",
-        Some((_, lease)) if lease <= now => "already_free",
-        Some((held, _)) if held == instance => {
+        Some((_, lease, _)) if lease <= now => "already_free",
+        Some((held, _, _)) if held == instance => {
             fs::remove_file(&file).map_err(|e| {
                 format!("session registry entry {} write failed: {e}", file.display())
             })?;
             "released"
         }
-        Some((_, lease)) => {
+        Some((_, lease, _)) => {
             return Err(format!(
                 "conflict in session registry: name `{name}` is held by another instance until {}; only that instance releases it",
                 crate::forge::policy::format_utc(lease)
@@ -242,13 +291,22 @@ pub fn release(
 /// - A live entry with the same instance: `renewed` (`previous` `same_instance`).
 /// - A live entry with another instance: refused as a conflict naming the lease end; the
 ///   other instance's id is not shown.
+///
+/// `mode` (#2928, `leader` or `agent`) is written into the entry and the result only when it is
+/// given; every write replaces the whole entry, so a renew records the mode it is given.
 pub fn register(
     project: &Path,
     name: &str,
     instance: Option<&str>,
     lease_secs: u64,
+    mode: Option<&str>,
     now: i64,
 ) -> Result<Value, String> {
+    if let Some(m) = mode {
+        if !MODES.contains(&m) {
+            return Err("session mode is invalid: only `leader` or `agent` is accepted".into());
+        }
+    }
     check_name(name)?;
     if !(MIN_LEASE_SECS..=MAX_LEASE_SECS).contains(&lease_secs) {
         return Err(format!(
@@ -267,9 +325,9 @@ pub fn register(
     let current = read_entry(&file, name)?;
     let previous = match (&current, instance) {
         (None, _) => "none",
-        (Some((_, lease)), _) if *lease <= now => "expired",
-        (Some((held, _)), Some(mine)) if held == mine => "same_instance",
-        (Some((_, lease)), _) => {
+        (Some((_, lease, _)), _) if *lease <= now => "expired",
+        (Some((held, _, _)), Some(mine)) if held == mine => "same_instance",
+        (Some((_, lease, _)), _) => {
             return Err(format!(
                 "conflict in session registry: name `{name}` is in use by another instance until {}; pick another name, or wait for that lease to end",
                 crate::forge::policy::format_utc(*lease)
@@ -286,13 +344,16 @@ pub fn register(
     }
     let instance = instance.map_or_else(new_instance, str::to_string);
     let lease_until = now + lease_secs as i64;
-    let entry = json!({
+    let mut entry = json!({
         "schema_version": 1,
         "name": name,
         "instance": instance,
         "lease_until": lease_until,
         "registered_at": now,
     });
+    if let Some(m) = mode {
+        entry["mode"] = json!(m);
+    }
     let tmp = dir.join(format!("{name}.json.tmp-{}", std::process::id()));
     let written = OpenOptions::new()
         .write(true)
@@ -311,14 +372,18 @@ pub fn register(
         ));
     }
     drop(lock);
-    Ok(json!({
+    let mut out = json!({
         "status": if previous == "same_instance" { "renewed" } else { "registered" },
         "previous": previous,
         "name": name,
         "instance": instance,
         "lease_until": crate::forge::policy::format_utc(lease_until),
         "entry": file.to_string_lossy(),
-    }))
+    });
+    if let Some(m) = mode {
+        out["mode"] = json!(m);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -363,6 +428,90 @@ mod tests {
         }
         let e = release(nowhere, "agent-8", &"0".repeat(32), Some("leader"), 0).unwrap_err();
         assert!(!e.contains("--by"), "{e}");
+    }
+
+    /// #2928 S-2 (decision D1 = (A)): the statusline's leader reading is a live entry for exactly
+    /// this name whose `mode` is exactly `leader` or `agent`. Everything else — an ended lease, an
+    /// entry naming another lane, any other mode text, no entry, a symlink, an oversized file or an
+    /// unsafe name — reads as no mode, and the read creates nothing.
+    #[cfg(unix)]
+    #[test]
+    fn mode_of_reads_only_a_live_exact_leader_entry() {
+        let tmp = tempfile::tempdir().unwrap();
+        let common = tmp.path();
+        let sessions = crate::clone_root::path(common).join("sessions");
+        let now = 1_000;
+        let entry = |name: &str, lease: i64, mode: Option<&str>| {
+            let mut v = json!({
+                "schema_version": 1,
+                "name": name,
+                "instance": "1".repeat(32),
+                "lease_until": lease,
+                "registered_at": 0,
+            });
+            if let Some(m) = mode {
+                v["mode"] = json!(m);
+            }
+            v.to_string()
+        };
+        let put = |file: &str, text: &str| fs::write(sessions.join(file), text).unwrap();
+
+        assert_eq!(mode_of(common, "leader", now), None, "no registry folder");
+        assert!(!sessions.exists(), "the read creates no folder");
+        fs::create_dir_all(&sessions).unwrap();
+        assert_eq!(mode_of(common, "leader", now), None, "no entry");
+
+        put("leader.json", &entry("leader", now + 1, Some("leader")));
+        assert_eq!(mode_of(common, "leader", now), Some("leader"), "live");
+        put("leader.json", &entry("leader", now, Some("leader")));
+        assert_eq!(mode_of(common, "leader", now), None, "the lease end second");
+        put("leader.json", &entry("leader", now + 1, Some("agent")));
+        assert_eq!(mode_of(common, "leader", now), Some("agent"));
+        for other in ["boss", "Leader", "leader ", "", "\u{1b}]0;leader\u{7}"] {
+            put("leader.json", &entry("leader", now + 1, Some(other)));
+            assert_eq!(mode_of(common, "leader", now), None, "{other:?}");
+        }
+        put("leader.json", &entry("leader", now + 1, None));
+        assert_eq!(mode_of(common, "leader", now), None, "no mode");
+        put("leader.json", &entry("agent-3", now + 1, Some("leader")));
+        assert_eq!(
+            mode_of(common, "leader", now),
+            None,
+            "the entry names another lane"
+        );
+
+        // 4096 bytes are read; 4097 are refused.
+        let padded = |len: usize| {
+            let mut s = entry("leader", now + 1, Some("leader"));
+            s.push_str(&" ".repeat(len - s.len()));
+            s
+        };
+        put("leader.json", &padded(4096));
+        assert_eq!(mode_of(common, "leader", now), Some("leader"), "4096 bytes");
+        put("leader.json", &padded(4097));
+        assert_eq!(mode_of(common, "leader", now), None, "4097 bytes");
+
+        // A symlinked entry or registry folder is never followed.
+        let real = tmp.path().join("real.json");
+        fs::write(&real, entry("leader", now + 1, Some("leader"))).unwrap();
+        fs::remove_file(sessions.join("leader.json")).unwrap();
+        std::os::unix::fs::symlink(&real, sessions.join("leader.json")).unwrap();
+        assert_eq!(mode_of(common, "leader", now), None, "symlinked entry");
+        fs::remove_file(sessions.join("leader.json")).unwrap();
+        let elsewhere = tmp.path().join("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        fs::write(
+            elsewhere.join("leader.json"),
+            entry("leader", now + 1, Some("leader")),
+        )
+        .unwrap();
+        fs::remove_dir(&sessions).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, &sessions).unwrap();
+        assert_eq!(mode_of(common, "leader", now), None, "symlinked folder");
+
+        for bad in ["", "../leader", ".leader", "a b"] {
+            assert_eq!(mode_of(common, bad, now), None, "{bad:?}");
+        }
     }
 
     #[test]
