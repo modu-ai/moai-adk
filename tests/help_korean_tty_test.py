@@ -5,7 +5,9 @@ Help goes to stdout, so its language is stdout's: Korean only when stdout is a t
 language is `ko`, English bytes otherwise — a pipe whatever the settings say (S6-2), and a run
 whose stdout is a pipe even when stderr is a terminal (the two streams choose apart, agent-22
 6873424675). The pipe bytes are pinned by `tests/help_layout.rs`; here an English terminal must
-give the same bytes, and the Korean screen is compared with `tests/fixtures/ui/ko/`. POSIX only.
+give the same bytes, and the Korean screen is compared with `tests/fixtures/ui/ko/`. A
+subcommand's help (S6e-1) keeps its own texts and takes a Korean frame: the usage, arguments,
+options and examples headings and the help flag's line. POSIX only.
 """
 
 import os
@@ -132,6 +134,38 @@ class KoreanHelp(unittest.TestCase):
             out, err, code = pipe(["--help"], env_for(self.home, **extra))
             self.assertEqual(code, 0, err)
             self.assertEqual(out, english, extra)
+
+    def test_a_subcommand_help_has_a_korean_frame(self):
+        """S6e-1: the usage, arguments, options and examples headings and the help flag's line
+        read Korean; the command's own texts are unchanged."""
+        text = self.help(["project-detect", "--help"], **KOREAN)
+        for head in ("\n사용법: moai project-detect <PROJECT>\n", "\n인자:\n", "\n옵션:\n",
+                     "\n예시:\n  moai project-detect .\n"):
+            self.assertIn(head, text)
+        self.assertIn("도움말 보기 (요약은 '-h')", text)
+        self.assertIn("Detect the project's facts", text)
+        for word in ("Usage:", "Arguments:", "Options:", "Examples:", "Print help"):
+            self.assertNotIn(word, text)
+        short = self.help(["key-set", "-h"], **KOREAN)
+        self.assertIn("도움말 보기 (자세히는 '--help')", short)
+        self.assertIn("\n옵션:\n      --shared", short)
+
+    def test_an_english_subcommand_help_keeps_its_bytes(self):
+        for args in (["project-detect", "--help"], ["key-set", "-h"], ["cc", "--help"]):
+            piped, _, code = pipe(args, env_for(self.home))
+            self.assertEqual(code, 0)
+            self.assertEqual(self.help(args), normal(piped), args)
+            ko_piped, _, _ = pipe(args, env_for(self.home, **KOREAN))
+            self.assertEqual(ko_piped, piped, f"{args}: a pipe stays English")
+
+    def test_korean_subcommand_help_fits_the_terminal(self):
+        for columns in ("60", "80"):
+            for args in (["project-detect", "--help"], ["key-set", "--help"], ["cc", "--help"],
+                         ["update", "-h"]):
+                text = self.help(args, COLUMNS=columns, **KOREAN)
+                self.assertIn("사용법:", text)
+                for line in text.splitlines():
+                    self.assertLessEqual(cells(line), int(columns), (columns, args, line))
 
     def test_help_follows_stdout_not_stderr(self):
         """stdout a pipe and stderr a terminal: English help; stdout a terminal and stderr a

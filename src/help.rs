@@ -755,6 +755,12 @@ const LAUNCHER_LINE_KO: &str = "Claude Code·Codex·GLM 세션 시작";
 const USAGE_KO: &str = "사용법:";
 /// clap's `Options:` heading of `help --all` on a Korean terminal.
 const OPTIONS_KO: &str = "옵션:";
+/// A subcommand help's `Arguments:` and `Examples:` headings on a Korean terminal (S6e-1).
+const ARGUMENTS_KO: &str = "인자:";
+const EXAMPLES_KO: &str = "예시:";
+/// The help flag's line in a subcommand's short (`-h`) and long (`--help`) help (S6e-1).
+const HELP_FLAG_SHORT_KO: &str = "도움말 보기 (자세히는 '--help')";
+const HELP_FLAG_LONG_KO: &str = "도움말 보기 (요약은 '-h')";
 /// The usage's second line ends with what `-l`/`-a` start.
 const LEAD_OR_AGENT: &str = "lead or agent session";
 const LEAD_OR_AGENT_KO: &str = "리더·에이전트 세션";
@@ -971,11 +977,19 @@ pub fn configure_in(
                     .map(|e| format!("  {bin} {e}"))
                     .collect::<Vec<_>>()
                     .join("\n");
-                c.after_long_help(format!("Examples:\n{text}"))
+                let heading = match lang {
+                    Lang::En => "Examples:",
+                    Lang::Ko => EXAMPLES_KO,
+                };
+                c.after_long_help(format!("{heading}\n{text}"))
             }
             None => c,
         },
     );
+    let cmd = match lang {
+        Lang::En => cmd,
+        Lang::Ko => cmd.mut_subcommands(korean_frame),
+    };
     let cmd = cmd.mut_subcommands(|c| {
         let name = c.get_name().to_string();
         c.mut_args(|a| {
@@ -997,6 +1011,37 @@ pub fn configure_in(
             " ".repeat(usage_indent)
         ))
         .help_template(template)
+}
+
+/// clap's own help template with the usage heading spelled out (clap 4.6 `DEFAULT_TEMPLATE`).
+const SUBCOMMAND_TEMPLATE_KO: &str =
+    "{before-help}{about-with-newline}\n사용법: {usage}\n\n{all-args}{after-help}";
+
+/// A subcommand's help frame on a Korean terminal (S6e-1, #2825; design 5): the usage,
+/// arguments and options headings and the help flag's line. The command's about, argument
+/// texts and examples are left as they are; later S6e slices move them group by group.
+fn korean_frame(c: Command) -> Command {
+    let c = c.mut_args(|a| {
+        let heading = if a.is_positional() {
+            ARGUMENTS_KO
+        } else {
+            OPTIONS_KO
+        };
+        a.help_heading(heading.trim_end_matches(':'))
+    });
+    // clap's generated `-h, --help` cannot be edited before the command is built, so it is
+    // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
+    c.disable_help_flag(true)
+        .arg(
+            clap::Arg::new("help")
+                .short('h')
+                .long("help")
+                .action(clap::ArgAction::Help)
+                .help(HELP_FLAG_SHORT_KO)
+                .long_help(HELP_FLAG_LONG_KO)
+                .help_heading(OPTIONS_KO.trim_end_matches(':')),
+        )
+        .help_template(SUBCOMMAND_TEMPLATE_KO)
 }
 
 #[cfg(test)]
@@ -1162,6 +1207,86 @@ mod tests {
                 g.heading_ko
             );
         }
+    }
+
+    /// A stand-in subcommand's help, configured as `main` does, in `lang`.
+    fn sub_help(lang: Lang, long: bool) -> String {
+        let cmd = Command::new("moai").subcommand(
+            Command::new("project-detect")
+                .about("Detect the project's facts")
+                .long_about("Detect the project's facts, reading only.")
+                .arg(
+                    clap::Arg::new("project")
+                        .value_name("PROJECT")
+                        .required(true),
+                )
+                .arg(
+                    clap::Arg::new("json")
+                        .long("json")
+                        .action(clap::ArgAction::SetTrue),
+                ),
+        );
+        let mut cmd = configure_in(cmd, "moai", "9.9.9", false, lang);
+        cmd.build();
+        let sub = cmd.find_subcommand_mut("project-detect").unwrap();
+        if long {
+            sub.render_long_help().to_string()
+        } else {
+            sub.render_help().to_string()
+        }
+    }
+
+    /// S6e-1 (#2825): a subcommand's help frame — the usage, arguments, options and examples
+    /// headings and the help flag — reads Korean on a Korean terminal; the command's own texts
+    /// stay as they are (later S6e slices), and English is today's frame.
+    #[test]
+    fn a_korean_subcommand_help_has_a_korean_frame() {
+        let en = sub_help(Lang::En, true);
+        for head in [
+            "\nUsage: ",
+            "\nArguments:\n",
+            "\nOptions:\n",
+            "\nExamples:\n",
+        ] {
+            assert!(en.contains(head), "{head:?} in {en}");
+        }
+        assert!(en.contains("Print help (see a summary with '-h')"), "{en}");
+        let ko = sub_help(Lang::Ko, true);
+        for head in [
+            format!("\n{USAGE_KO} "),
+            format!("\n{ARGUMENTS_KO}\n"),
+            format!("\n{OPTIONS_KO}\n"),
+            format!("\n{EXAMPLES_KO}\n"),
+        ] {
+            assert!(ko.contains(&head), "{head:?} in {ko}");
+        }
+        for head in [
+            "Usage:",
+            "Arguments:",
+            "Options:",
+            "Examples:",
+            "Print help",
+        ] {
+            assert!(!ko.contains(head), "{head:?} in {ko}");
+        }
+        assert!(ko.contains(HELP_FLAG_LONG_KO), "{ko}");
+        assert!(
+            ko.contains("Detect the project's facts, reading only."),
+            "{ko}"
+        );
+        assert!(ko.contains("moai project-detect ."), "{ko}");
+        // `-h` keeps the short form with its own Korean line.
+        let short = sub_help(Lang::Ko, false);
+        assert!(short.contains(HELP_FLAG_SHORT_KO), "{short}");
+        assert!(
+            !short.contains("Examples") && !short.contains(EXAMPLES_KO),
+            "{short}"
+        );
+        let en_short = sub_help(Lang::En, false);
+        assert!(
+            en_short.contains("Print help (see more with '--help')"),
+            "{en_short}"
+        );
     }
 
     /// S6d AC-3: the Korean help names its usage and options headings and the two footer lines
