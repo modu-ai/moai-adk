@@ -45,6 +45,10 @@ Update and move
   worktree-move-apply     Move the previewed worktrees
   update-plan             Preview an update of every host copy
   update-apply            Apply a previewed update host by host
+  cleanup-plan            Preview archiving leftover MoAI files in HOME
+  cleanup-apply           Archive the previewed leftover MoAI files
+  cleanup-revert-plan     Preview undoing one HOME cleanup
+  cleanup-revert          Undo one HOME cleanup
   recovery-plan           Preview recovering hosts an update left pending
   recovery-apply          Revert one update's changes on pending hosts
   apply-recover           Revert the files one apply published
