@@ -23,6 +23,9 @@ fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
         "only a `guarded` one waits for the answer",
         "`moai lane-next --wait <seconds>` (at most 3,600",
         "Issue #2831",
+        "open it as a draft (`gh pr create --draft …`)",
+        "Issue #1975 comment 6870150891",
+        "`open_draft_pr`",
     ] {
         assert!(text.contains(phrase), "mode-agent.md must say `{phrase}`");
     }
@@ -41,5 +44,5 @@ fn the_flags_the_workflow_names_are_the_commands_own() {
     }
     assert!(help.contains("at most 3600"), "{help}");
     let text = mode_agent();
-    assert!(text.contains("at most 3,600") && text.contains("every 60 seconds"));
+    assert!(text.contains("at most 3,600") && text.contains("every 432 seconds"));
 }

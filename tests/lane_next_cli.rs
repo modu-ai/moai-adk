@@ -148,14 +148,24 @@ fn each_case_is_found() {
     }));
     assert_eq!(r["next"], json!(null), "{r}");
 
-    // A pushed branch waiting for a pull request slot is not work now: listed as waiting.
+    // A pushed branch the open-PR limit held back: open it as a draft now (leader decision
+    // #1975 6870150891) — a task, not a wait.
     let r = next(
         &json!({"threads": [{"number": 2831, "comments": [claim(100, LANE),
         {"id": 102, "body": "pr-wait: 2026-11-14T01:58:00Z\n\nbranch pushed"}]}]}),
     );
+    assert_eq!(kind(&r), json!("open_draft_pr"), "{r}");
+    assert_eq!(r["next"]["evidence"]["pr_wait_comment"], json!(102));
+    assert!(r["next"]["action"].as_str().unwrap().contains("--draft"));
+    assert_eq!(r["waiting"], json!([]));
+    // Once the draft is open, the card waits on its audit: nothing to do.
+    let r = next(&json!({
+        "threads": [{"number": 2831, "comments": [claim(100, LANE),
+            {"id": 102, "body": "pr-wait: 2026-11-14T01:58:00Z"}]}],
+        "prs": [{"number": 2856, "head": h('a'), "draft": true, "author_lane": LANE, "claim_issue": 2831,
+            "comments": [audit_claim(1, "agent-26", &h('a'))]}]
+    }));
     assert_eq!(r["next"], json!(null), "{r}");
-    assert_eq!(r["waiting"][0]["reason"], json!("pr_slot"));
-    assert_eq!(r["waiting"][0]["pr_wait_comment"], json!(102));
 
     // 7. An open Issue nobody claims; `hold` and claimed ones are skipped.
     let r = next(&json!({"open_issues": [

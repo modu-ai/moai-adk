@@ -179,6 +179,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "heavy-slot-acquire",
             "labels-apply",
             "labels-plan",
+            "lane-next",
             "lane-next --lane",
             "lane-next --wait",
             "pr-confirm",

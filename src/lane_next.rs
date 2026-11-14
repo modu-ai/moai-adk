@@ -34,8 +34,17 @@ type Result<T> = std::result::Result<T, String>;
 pub const API_BUDGET: u32 = 30;
 /// Open Issues whose comments are read to find one nobody claims.
 pub const FREE_ISSUE_SCAN: usize = 5;
-/// Seconds between two collections while `--wait` waits; never shorter.
-pub const POLL_SECS: u64 = 60;
+/// Lanes assumed to poll at once with one GitHub token (they all read as one account).
+pub const SHARED_LANES: u64 = 10;
+/// The part of GitHub's 5,000 requests per hour per token the lanes' polling may use: half,
+/// so the leader loop and the merge gate keep the other half (#2856 audit B1).
+pub const HOURLY_SHARE: u64 = 2_500;
+// The share is at most half of GitHub's 5,000 per hour, checked when the crate compiles.
+const _: () = assert!(HOURLY_SHARE * 2 <= 5_000);
+/// Seconds between two collections while `--wait` waits, derived from the budget so that
+/// `SHARED_LANES` lanes each sending `API_BUDGET` requests per collection stay within
+/// `HOURLY_SHARE` per hour: 3600 × 30 × 10 / 2500 = 432.
+pub const POLL_SECS: u64 = (3600 * API_BUDGET as u64 * SHARED_LANES).div_ceil(HOURLY_SHARE);
 /// The longest `--wait` accepted (seconds).
 pub const MAX_WAIT_SECS: u64 = 3600;
 
@@ -455,8 +464,10 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if decision_pending {
                 continue;
             }
-            // A pushed branch waiting for a pull request slot (`pr-wait:` after the claim) is
-            // done for now: its turn comes when a slot opens, not by working on it again.
+            // A pushed branch held back by the open-PR limit (`pr-wait:` after the claim, no pull
+            // request of the lane for the card): open it as a draft now instead of waiting for
+            // a slot — the merge gate marks a draft ready once it has its PASS (leader decision
+            // #1975 6870150891, #2856 audit B2).
             let claim_at = t.comments.iter().position(|c| c.id == claim);
             if let Some(w) = claim_at.map(|i| &t.comments[i + 1..]).and_then(|after| {
                 after
@@ -464,10 +475,16 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                     .rev()
                     .find(|c| first_line(c).starts_with("pr-wait:"))
             }) {
-                waiting.push(
-                    json!({"number": t.number, "reason": "pr_slot", "pr_wait_comment": w.id}),
-                );
-                continue;
+                return Some(task(
+                    "P2",
+                    "open_draft_pr",
+                    json!({"type": "issue", "number": t.number}),
+                    format!(
+                        "open the pushed branch of #{} as a draft pull request (gh pr create --draft); the open-PR limit does not hold a draft",
+                        t.number
+                    ),
+                    json!({"claim_comment": claim, "pr_wait_comment": w.id}),
+                ));
             }
             return Some(task(
                 "P2",
@@ -961,14 +978,25 @@ mod tests {
             now: Cell::new(0),
             slept: Cell::new(0),
         };
-        let v = run(&target, &Quiet, &clock, 120).unwrap();
+        let v = run(&target, &Quiet, &clock, 900).unwrap();
         assert_eq!(v["next"], Value::Null);
         assert_eq!(v["rounds"], json!(3));
-        assert_eq!(clock.slept.get(), 120);
+        assert_eq!(clock.slept.get(), 2 * POLL_SECS);
         let once = run(&target, &Quiet, &clock, 0).unwrap();
         assert_eq!(once["rounds"], json!(1));
         assert!(run(&target, &Quiet, &clock, MAX_WAIT_SECS + 1).is_err());
-        assert_eq!((POLL_SECS, MAX_WAIT_SECS), (60, 3600));
+        assert_eq!((POLL_SECS, MAX_WAIT_SECS), (432, 3600));
+    }
+
+    /// #2856 audit B1: ten lanes polling with one token stay within half of GitHub's 5,000
+    /// requests per hour (literals, so a changed number fails here).
+    #[test]
+    fn polling_stays_within_the_shared_hourly_budget() {
+        assert_eq!((API_BUDGET, SHARED_LANES, HOURLY_SHARE), (30, 10, 2_500));
+        let per_hour = SHARED_LANES * API_BUDGET as u64 * 3600 / POLL_SECS;
+        assert!(per_hour <= HOURLY_SHARE, "{per_hour} requests per hour");
+        // One second less would go over.
+        assert!(SHARED_LANES * API_BUDGET as u64 * 3600 / (POLL_SECS - 1) > HOURLY_SHARE);
     }
 
     /// The tip branch, and a failed check run on the tip commit; nothing else.

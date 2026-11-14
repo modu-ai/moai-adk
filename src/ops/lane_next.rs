@@ -12,7 +12,8 @@ use std::path::PathBuf;
 /// judged, head moved, re-audit asked — with the head now), a pull request with no auditor, a
 /// decision request the leader answered, its claimed card, an unclaimed Issue. Reads GitHub
 /// (at most 30 requests a run) and the local clone only; writes nothing. `--wait` reads again
-/// every 60 seconds until a task appears.
+/// every 432 seconds (ten lanes on one token stay within half of GitHub's hourly limit) until
+/// a task appears.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane name as it appears in claims (`session=<lane>`) and audit reservations.
