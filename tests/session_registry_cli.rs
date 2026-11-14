@@ -432,6 +432,20 @@ fn a_symlinked_registry_folder_is_refused_and_its_target_untouched() {
     );
 }
 
+/// #2912 audit I2: `--show` refuses a symlinked registry folder even when the folder it points
+/// to holds a valid live entry; the holder there is never reported.
+#[test]
+fn show_refuses_a_symlinked_registry_folder() {
+    let fx = Fixture::new();
+    ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let elsewhere = fx.home.join("elsewhere");
+    fs::rename(fx.sessions(), &elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, fx.sessions()).unwrap();
+    let (kind, message) = refused(&run(&fx, &["--show", "--name", "agent-8", "--now", T0]));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("symlink"), "{message}");
+}
+
 /// Audit B2 A3: a `registry.lock` that is a symlink is refused; its target is not opened for
 /// writing and no entry is written.
 #[test]

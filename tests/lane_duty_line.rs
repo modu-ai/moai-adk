@@ -115,9 +115,32 @@ fn first_with_a_control_character_is_refused() {
         "a\u{2066}b",
         "a\u{200f}b",
         "a\u{feff}b",
+        // #2912 audit I3: the rest of category Cf and U+034F, at each range's edges.
+        "a\u{ad}b",
+        "a\u{34f}b",
+        "a\u{180e}b",
+        "a\u{206a}b",
+        "a\u{206f}b",
+        "a\u{fff9}b",
+        "a\u{e0001}b",
+        "a\u{e0020}b",
+        "a\u{e0041}b",
+        "a\u{e007f}b",
     ] {
         let message = refused(&["--lane", "3", "--first", bad]);
         assert!(!message.contains(bad), "{message}");
+    }
+}
+
+/// #2912 audit I3: printable neighbours just outside the refused format ranges still pass.
+#[test]
+fn printable_neighbours_of_the_format_ranges_pass() {
+    for good in ["\u{ae}", "\u{180f}", "\u{2070}", "\u{fffc}", "\u{e0080}"] {
+        let task = format!("a{good}b");
+        assert!(
+            line(&["--lane", "3", "--first", task.as_str()]).ends_with(&format!("먼저: {task}")),
+            "{good:?}"
+        );
     }
 }
 
