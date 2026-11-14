@@ -206,6 +206,20 @@ fn repo_flag_and_origin_remote() {
         "{out:?}"
     );
 
+    // An empty session name is refused by the shared request check, before any read.
+    let out = run(
+        &ssh,
+        &["--issue", "7", "--comment", "100", "--lane", ""],
+        "",
+        &body,
+    );
+    assert_eq!(out.status.code(), Some(1), "{out:?}");
+    assert!(
+        text(&out.stderr).contains("session are required"),
+        "{out:?}"
+    );
+    assert_eq!(gh_calls(&ssh), "", "empty --lane: no GitHub read");
+
     for bad in ["acme", "acme/widgets/extra", "/widgets", "acme/"] {
         let mut args = flags.to_vec();
         args.extend(["--repo", bad]);
