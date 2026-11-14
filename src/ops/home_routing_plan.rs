@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Preview the routing section in HOME instructions
+///
 /// Preview the MoAI routing section in HOME's global instruction files (#2638): per host
 /// create, append, merge, unchanged or conflict, and the hosts not written with the reason.
 /// Writes nothing.

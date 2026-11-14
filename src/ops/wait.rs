@@ -5,6 +5,8 @@ use moai_cli::forge::policy::SystemClock;
 use moai_cli::forge::transport::GhTransport;
 use moai_cli::forge::wait::{self, Condition, WaitRequest};
 
+/// Wait until a condition holds on GitHub
+///
 /// Wait until a condition holds on GitHub, then end. KIND is `ci` (every workflow run of
 /// `--head` completed), `comment` (a comment on `--issue` newer than `--after`, optionally with
 /// a line starting `--prefix`) or `pr` (pull request `--pr` no longer at `--head`, or closed).
