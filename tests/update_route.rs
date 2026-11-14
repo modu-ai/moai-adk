@@ -77,7 +77,7 @@ fn the_update_route_is_the_project_layer() {
         // #2936 R-fix R-B (O-1): the hooks step.
         "A `hooks` step reads `ready` when `.claude/settings.json` still runs Go-generation hook scripts",
         "its printed `go-hooks-apply` moves those scripts into a receipt folder, takes the Go entries out of `hooks` and installs the MoAI hook set; `permissions` is not touched",
-        "it reads `needs_decision` without a printed command when other tools' hook entries share `hooks`",
+        "It reads `needs_decision` without a printed command when other tools' hook entries share `hooks`",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }

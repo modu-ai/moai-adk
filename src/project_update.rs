@@ -33,7 +33,7 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
      (go-state-plan); .agents, .codex, settings and instruction files are not covered yet \
      (a later slice, #2936 S2)";
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
-     files), Claude Code settings, GitHub templates; host bundles for .codex, .agents and .omp \
+     files), Claude Code settings, Claude Code hooks, GitHub templates; host bundles for .codex, .agents and .omp \
      are a later slice (#2936 S3)";
 const MERGE_REASON: &str = "merge candidates are a later slice (#2936 S1f)";
 
@@ -476,6 +476,59 @@ fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> S
     }
 }
 
+/// #2936 R-B (O-1): the Go-generation hook entries in `.claude/settings.json` are replaced by
+/// the MoAI hook set with `go-hooks-apply`. `replace` prints that command (`permissions` is
+/// not touched), `blocked` (entries of other tools share `hooks`) waits for the user without a
+/// command, `none` is `unchanged`. HOME is not read (O-3).
+fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
+    let plan = crate::go_hooks::plan(root, None)?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let names = |key: &str| -> Vec<Value> {
+        plan[key]
+            .as_array()
+            .map(|a| a.iter().filter(|v| !v.is_null()).cloned().collect())
+            .unwrap_or_default()
+    };
+    let preview = json!({
+        "action": plan["action"],
+        "blocks": plan["blocks"],
+        "go_entries": names("go_entries"),
+        "kept_entries": plan["kept_entries"],
+        "added_events": plan["added"].as_object().map(|m| m.keys().cloned().collect::<Vec<_>>()),
+        "scripts": names("scripts"),
+        "scripts_unreferenced": names("scripts_unreferenced"),
+        "scripts_missing": names("scripts_missing"),
+    });
+    let (state, reason) = match plan["action"].as_str() {
+        Some("replace") => (
+            "ready",
+            "Go-generation hook entries to replace with the MoAI hook set".to_string(),
+        ),
+        Some("none") => ("unchanged", "no Go-generation hooks are left".to_string()),
+        _ => (
+            "needs_decision",
+            format!(
+                "the replacement is blocked: {}; the user decides outside this route",
+                plan["blocks"]
+            ),
+        ),
+    };
+    let apply = (state == "ready")
+        .then(|| {
+            let d = digest.as_deref().ok_or("hooks plan without a digest")?;
+            Ok::<_, String>((argv("go-hooks-apply", shown, d), Value::Null))
+        })
+        .transpose()?;
+    Ok(Step {
+        name: "hooks",
+        state,
+        reason,
+        preview,
+        plan_digest: digest,
+        apply,
+    })
+}
+
 fn github_step(root: &Path, shown: &str) -> Result<Step> {
     let plan = github_templates::github_plan(
         root,
@@ -521,7 +574,15 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-const INSTALL: [&str; 4] = ["profile", "generation", "claude-settings", "github"];
+/// The install steps in the order they are printed and applied; `hooks` follows
+/// `claude-settings` (#2936 R-B).
+const INSTALL: [&str; 5] = [
+    "profile",
+    "generation",
+    "claude-settings",
+    "hooks",
+    "github",
+];
 
 fn install_steps(
     root: &Path,
@@ -540,6 +601,7 @@ fn install_steps(
             let mut steps = vec![Step::waiting("profile", "blocked", &e)];
             steps.push(Step::waiting("generation", "blocked", &e));
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
+            steps.push(or_blocked("hooks", hooks_step(root, shown)));
             steps.push(or_blocked("github", github_step(root, shown)));
             return steps;
         }
@@ -554,6 +616,7 @@ fn install_steps(
         profile_step,
         generation,
         or_blocked("claude-settings", settings_step(root, shown)),
+        or_blocked("hooks", hooks_step(root, shown)),
         or_blocked("github", github_step(root, shown)),
     ]
 }

@@ -15,7 +15,13 @@ use serde_json::{json, Value};
 use std::fs;
 
 const PLACEHOLDER: &str = "<permission-reference>";
-const INSTALL_ORDER: [&str; 5] = ["profile", "generation", "claude-settings", "hooks", "github"];
+const INSTALL_ORDER: [&str; 5] = [
+    "profile",
+    "generation",
+    "claude-settings",
+    "hooks",
+    "github",
+];
 
 const DENY: [&str; 2] = ["Bash(rm -rf:*)", "Read(./.env)"];
 
@@ -127,7 +133,10 @@ fn hooks_of_other_tools_block_the_step_and_print_no_command() {
     let step = hooks(&plan);
     assert_eq!(step["state"], "needs_decision", "{step}");
     assert!(
-        step["reason"].as_str().unwrap().contains("other_hooks_present"),
+        step["reason"]
+            .as_str()
+            .unwrap()
+            .contains("other_hooks_present"),
         "{step}"
     );
     assert_eq!(step["apply"], Value::Null, "{step}");
@@ -137,7 +146,10 @@ fn hooks_of_other_tools_block_the_step_and_print_no_command() {
 fn without_a_profile_the_hooks_step_waits_with_the_other_install_steps() {
     let fx = GoFx::new();
     fx.write(".claude/hooks/moai/handle-a.sh", "#!/bin/sh\n");
-    fx.write(".claude/settings.json", &settings_body(&["handle-a.sh"], false));
+    fx.write(
+        ".claude/settings.json",
+        &settings_body(&["handle-a.sh"], false),
+    );
     let plan = fx.update_plan();
     let step = hooks(&plan);
     assert_eq!(step["state"], "needs_decision", "{step}");

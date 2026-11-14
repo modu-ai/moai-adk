@@ -268,7 +268,13 @@ fn steps(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-const INSTALL: [&str; 5] = ["profile", "generation", "claude-settings", "hooks", "github"];
+const INSTALL: [&str; 5] = [
+    "profile",
+    "generation",
+    "claude-settings",
+    "hooks",
+    "github",
+];
 
 #[test]
 fn empty_project() {
