@@ -67,3 +67,13 @@ fn the_leader_runs_the_same_plan_periodically_with_a_cursor() {
         ],
     );
 }
+
+#[test]
+fn verify_names_the_build_folder_warning() {
+    let verify = workflow("verify.md");
+    says(
+        &verify,
+        "verify.md",
+        &["prints one warning line when it wraps `cargo` with any other `CARGO_TARGET_DIR`, unset included"],
+    );
+}

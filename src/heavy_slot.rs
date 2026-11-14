@@ -98,6 +98,35 @@ pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
 }
 
 /// `${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/heavy-slots`, the Python tool's folder.
+/// #2879 D3: one build folder per lane. When the wrapped command is `cargo` and the lane's
+/// `CARGO_TARGET_DIR` is not the folder `moai lane-env --lane <name>` names (unset counts: cargo
+/// then builds into the worktree's own `target/`), a one-line warning for stderr. A warning, not
+/// a refusal: CI runners and lanes not yet on `lane-env` keep working while the line tells them
+/// how to switch. `None` when the name is no lane name or the folder is already the lane's.
+pub fn build_folder_note(
+    name: &str,
+    command: &[String],
+    target_dir: Option<&std::ffi::OsStr>,
+    base: &Path,
+) -> Option<String> {
+    let program = command.first().map(Path::new)?.file_name()?;
+    if program != "cargo" || crate::lane_env::check_lane(name).is_err() {
+        return None;
+    }
+    let want = base.join(format!("moai-rc-target-{name}"));
+    if target_dir.is_some_and(|t| Path::new(t) == want) {
+        return None;
+    }
+    let now = target_dir.map_or_else(
+        || "unset (the worktree's own target/)".to_string(),
+        |t| Path::new(t).display().to_string(),
+    );
+    Some(format!(
+        "heavy-slot: CARGO_TARGET_DIR is {now}, not this lane's one build folder {} (#2879); run `e=$(moai lane-env --lane {name}) && eval \"$e\"` first",
+        want.display()
+    ))
+}
+
 pub fn default_dir() -> Result<PathBuf> {
     let base = match std::env::var_os("XDG_CACHE_HOME").filter(|v| !v.is_empty()) {
         Some(x) => PathBuf::from(x),
@@ -544,5 +573,52 @@ mod sys {
             "machine": machine_line(folder),
             "writes": false,
         }))
+    }
+}
+
+#[cfg(test)]
+mod build_folder_tests {
+    use super::build_folder_note;
+    use std::ffi::OsStr;
+    use std::path::Path;
+
+    fn cmd(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn a_cargo_run_off_the_lane_folder_is_named() {
+        let base = Path::new("/tmp");
+        let cargo = cmd(&["cargo", "test", "--offline"]);
+        // The lane's own folder: nothing to say.
+        let own = OsStr::new("/tmp/moai-rc-target-agent-7");
+        assert_eq!(build_folder_note("agent-7", &cargo, Some(own), base), None);
+        // Another folder, a per-card folder, or none at all: one line naming the right one.
+        for t in [
+            Some("/tmp/moai-rc-target-agent-7-a2846"),
+            Some("/tmp/x"),
+            None,
+        ] {
+            let n = build_folder_note("agent-7", &cargo, t.map(OsStr::new), base).unwrap();
+            assert!(n.contains("/tmp/moai-rc-target-agent-7 (#2879)"), "{n}");
+            assert!(n.contains("moai lane-env --lane agent-7"), "{n}");
+        }
+        // A full path to cargo counts as cargo too.
+        let full = cmd(&["/usr/local/bin/cargo", "build"]);
+        assert!(build_folder_note("agent-7", &full, None, base).is_some());
+    }
+
+    #[test]
+    fn other_commands_and_non_lane_names_are_left_alone() {
+        let base = Path::new("/tmp");
+        assert_eq!(
+            build_folder_note("agent-7", &cmd(&["python3", "-m", "unittest"]), None, base),
+            None
+        );
+        assert_eq!(
+            build_folder_note("a b", &cmd(&["cargo", "test"]), None, base),
+            None
+        );
+        assert_eq!(build_folder_note("agent-7", &[], None, base), None);
     }
 }

@@ -3001,6 +3001,14 @@ pub(crate) fn main() -> ExitCode {
             min_free_gb: *min_free_gb,
             max_swap_pct: *max_swap_pct,
         };
+        if let Some(note) = moai_cli::heavy_slot::build_folder_note(
+            name,
+            command,
+            std::env::var_os("CARGO_TARGET_DIR").as_deref(),
+            &moai_cli::lane_env::default_base(),
+        ) {
+            eprintln!("{note}");
+        }
         return ExitCode::from(moai_cli::heavy_slot::acquire(
             &dir, *max, name, command, limits,
         ));
