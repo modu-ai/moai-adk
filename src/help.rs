@@ -1444,6 +1444,13 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
          --confirm 이 없으면 나머지는 미리 보기로 남음",
     ),
     (
+        "update",
+        "confirm_home",
+        "미리 보기의 `home.confirm_token`(#2871): 거기 적힌 Go 세대 `~/.moai` 항목을 \
+         `~/.moai-go-retired/<UTC>/` 로 옮김. --confirm 이 없으면 나머지는 미리 보기로 남고, \
+         --confirm-cleanup 과 같이 못 씀",
+    ),
+    (
         "go-state-plan",
         "project",
         "Go `.moai/manifest.json` 이 있는 프로젝트 루트",

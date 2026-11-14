@@ -848,6 +848,11 @@ enum Command {
         /// Without --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_cleanup: Option<String>,
+        /// The preview's `home.confirm_token` (#2871): move the Go generation's `~/.moai` items
+        /// it lists to `~/.moai-go-retired/<UTC>/`. Without --confirm the rest stays a preview;
+        /// not combinable with --confirm-cleanup.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_home: Option<String>,
         /// Print the JSON envelope on a terminal too, instead of the screens.
         #[arg(long)]
         json: bool,
@@ -1857,6 +1862,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::Update {
             confirm,
             confirm_cleanup,
+            confirm_home,
             json: _,
         } => {
             use moai_cli::update_tux::{self as tux, Asked};
@@ -1871,6 +1877,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &home,
                 confirm.as_deref(),
                 confirm_cleanup.as_deref(),
+                confirm_home.as_deref(),
                 |summary, preview| {
                     use moai_cli::ui_text::Msg;
                     if !tux::human() {
@@ -1909,7 +1916,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         && (e.contains("stale or altered plan") || e.contains("preview again")) =>
                 {
                     tux::set_asked(Asked::Stale);
-                    moai_cli::update::update_command(&home, None, None, |_, _| Ok(false))
+                    moai_cli::update::update_command(&home, None, None, None, |_, _| Ok(false))
                 }
                 other => other,
             }

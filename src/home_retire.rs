@@ -259,6 +259,32 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         })).collect::<Vec<_>>(),
     });
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
+    // What the confirmation binds, without the clock: the HOME it was made for, the generation,
+    // the action, the blocks and the retirement set (the entries that retire). The dated folder
+    // is out, so `moai update` can hand the digest out as a token for a later run. An entry
+    // that stays or is in use is out too: the layer's own writes (a store like `.moai/agents`)
+    // add some, and they confirm nothing. An entry that starts or stops being retired moves
+    // the digest, so a program that frees (or takes) an item between preview and confirmation
+    // makes the token stale.
+    let stable = json!({
+        "mode": "retire",
+        "home": home.display().to_string(),
+        "generation": c.generation,
+        "action": action,
+        "blocks": blocks,
+        "entries": entries
+            .iter()
+            .filter(|e| e["action"] == "retire")
+            .map(|e| json!({
+                "name": e["name"], "kind": e["kind"], "action": e["action"], "reason": e["reason"],
+            }))
+            .collect::<Vec<_>>(),
+    });
+    let content_digest = crate::digest(
+        serde_json::to_string(&stable)
+            .unwrap_or_default()
+            .as_bytes(),
+    );
     Ok(json!({
         "schema_version": 1,
         "mode": "retire",
@@ -272,6 +298,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "total": total,
         "warnings": warnings,
         "plan_digest": plan_digest,
+        "content_digest": content_digest,
         "apply": "home-retire-apply with the same --now, this plan_digest and a permission reference; on a real HOME it runs only after the user confirms",
         "writes": false,
     }))
@@ -293,13 +320,55 @@ pub fn apply(
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value, String> {
+    apply_checked(
+        home,
+        moai_home,
+        now,
+        "plan_digest",
+        plan_digest,
+        permission_reference,
+    )
+}
+
+/// [`apply`] confirmed by the preview's `content_digest` (no dated folder in it) instead of its
+/// `plan_digest`: the preview and the apply may run at different clocks. `moai update` uses it.
+pub fn apply_confirmed(
+    home: &Path,
+    moai_home: Option<&str>,
+    now: &str,
+    content_digest: &str,
+    permission_reference: &str,
+) -> Result<Value, String> {
+    apply_checked(
+        home,
+        moai_home,
+        now,
+        "content_digest",
+        content_digest,
+        permission_reference,
+    )
+}
+
+fn apply_checked(
+    home: &Path,
+    moai_home: Option<&str>,
+    now: &str,
+    digest_key: &str,
+    expected: &str,
+    permission_reference: &str,
+) -> Result<Value, String> {
     if !crate::contract::permission_reference_ok(permission_reference) {
         return Err("permission reference required".into());
     }
     let fresh = plan(home, moai_home, now)?;
-    if fresh["plan_digest"].as_str() != Some(plan_digest) {
+    if fresh[digest_key].as_str() != Some(expected) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
     }
+    let plan_digest = fresh["plan_digest"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let plan_digest = plan_digest.as_str();
     if fresh["action"] != "retire" {
         return Err(format!(
             "the preview's action is `{}`, not `retire`; nothing was written",
@@ -385,6 +454,7 @@ pub fn apply(
     Ok(json!({
         "schema_version": 1,
         "state": "applied",
+        "stamp": stamp,
         "home": home.display().to_string(),
         "folder": folder.display().to_string(),
         "manifest": manifest_path.display().to_string(),
@@ -552,6 +622,57 @@ mod tests {
         for g in ["go", "mixed", "rust-first"] {
             assert_eq!(d("cache", "folder", g), ("retire", "go_item"), "{g}");
         }
+    }
+
+    /// The `content_digest` holds no clock: two previews at different times give the same one
+    /// (the `plan_digest` names the dated folder, so it differs). It follows the retirement set
+    /// (what retires or is in use) and the HOME it was made for, and nothing else: an entry
+    /// that stays (a name this generation writes, user data, an unknown name) does not move it,
+    /// so the layer's own writes do not make a confirmed token stale.
+    #[test]
+    fn the_content_digest_is_clock_free_and_follows_the_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(dir.path()).unwrap();
+        let moai = home.join(".moai");
+        fs::create_dir_all(moai.join("state")).unwrap();
+        fs::write(moai.join("user-assets.json"), "{}").unwrap();
+        fs::write(moai.join("state/active-sessions.json"), "[]").unwrap();
+        fs::create_dir_all(moai.join("cache")).unwrap();
+        let a = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        let b = plan(&home, None, "2026-11-14T13:30:00Z").unwrap();
+        assert_eq!(a["action"], json!("retire"), "{a}");
+        assert_eq!(a["content_digest"], b["content_digest"]);
+        assert_ne!(a["plan_digest"], b["plan_digest"]);
+        // Entries that stay do not move the digest.
+        fs::write(moai.join("appeared-later"), "x").unwrap();
+        fs::create_dir_all(moai.join("agents")).unwrap();
+        let kept = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        assert_eq!(a["content_digest"], kept["content_digest"], "{kept}");
+        // A new retire candidate does.
+        fs::create_dir_all(moai.join("run")).unwrap();
+        let c = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        assert_ne!(a["content_digest"], c["content_digest"]);
+    }
+
+    /// Two HOMEs with the same layout do not share a `content_digest`.
+    #[test]
+    fn the_content_digest_names_its_home() {
+        let make = || {
+            let dir = tempfile::tempdir().unwrap();
+            let home = fs::canonicalize(dir.path()).unwrap();
+            let moai = home.join(".moai");
+            fs::create_dir_all(moai.join("state")).unwrap();
+            fs::write(moai.join("user-assets.json"), "{}").unwrap();
+            fs::write(moai.join("state/active-sessions.json"), "[]").unwrap();
+            fs::create_dir_all(moai.join("cache")).unwrap();
+            (dir, home)
+        };
+        let (_a, ha) = make();
+        let (_b, hb) = make();
+        let now = "2026-11-14T12:00:00Z";
+        let (pa, pb) = (plan(&ha, None, now).unwrap(), plan(&hb, None, now).unwrap());
+        assert_eq!(pa["action"], pb["action"]);
+        assert_ne!(pa["content_digest"], pb["content_digest"]);
     }
 
     #[test]
