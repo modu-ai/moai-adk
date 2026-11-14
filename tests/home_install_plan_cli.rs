@@ -787,3 +787,41 @@ fn install_blocks_when_the_stub_or_alias_list_would_be_cut() {
         );
     }
 }
+
+// #2989 audit item 1: a `path` or `versions` that is a link (or a plain file) is not a list the
+// later steps walk, so the names behind the link must not trip the bound. The same number of names
+// in a real folder does block, so the count below is a real one.
+#[test]
+fn install_does_not_count_a_linked_list_folder_against_its_bound() {
+    for (sub, many, block) in [
+        ("path", 60usize, "path_not_fully_listed"),
+        ("versions", 600, "versions_not_fully_listed"),
+    ] {
+        let (_d, home) = rust_home();
+        for i in 0..many {
+            fs::create_dir_all(home.join(format!("elsewhere/{sub}/e{i:04}"))).unwrap();
+        }
+        let list = home.join(format!(".moai-cli/{sub}"));
+
+        // Control: the names in a real folder block.
+        let _ = fs::remove_dir_all(&list);
+        fs::create_dir_all(list.parent().unwrap()).unwrap();
+        for i in 0..many {
+            fs::create_dir_all(list.join(format!("e{i:04}"))).unwrap();
+        }
+        let p = plan(&home);
+        assert!(blocks(&p).contains(&block.to_string()), "{sub} real: {p}");
+
+        // The same names behind a link do not.
+        fs::remove_dir_all(&list).unwrap();
+        symlink(home.join(format!("elsewhere/{sub}")), &list).unwrap();
+        let p = plan(&home);
+        assert!(!blocks(&p).contains(&block.to_string()), "{sub} link: {p}");
+
+        // Nor behind a plain file.
+        fs::remove_file(&list).unwrap();
+        fs::write(&list, "x").unwrap();
+        let p = plan(&home);
+        assert!(!blocks(&p).contains(&block.to_string()), "{sub} file: {p}");
+    }
+}
