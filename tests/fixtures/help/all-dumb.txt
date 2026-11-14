@@ -11,6 +11,7 @@ Project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile
+  project-update-plan     Preview the whole project update in one view
   language-setup          Choose the writing language item by item
   index-build             Build the code map index
   agents-plan             Preview the AGENTS.md managed section

@@ -312,7 +312,7 @@ fn render_ignore(root: &Path) -> String {
     )
 }
 
-fn ignore_has_rule(text: &str) -> bool {
+pub(crate) fn ignore_has_rule(text: &str) -> bool {
     text.lines().any(|l| {
         let t = l.trim();
         t == "AGENTS.local.md" || t == "/AGENTS.local.md"
@@ -431,6 +431,160 @@ fn plan_digest(p: &AgentsPlan) -> String {
         ))
         .expect("typed plan"),
     )
+}
+
+/// Records `bytes` as the baseline of one managed section, replacing an earlier entry.
+fn record_owned(owned: &mut Vec<OwnedFile>, path: &str, section: &str, bytes: &[u8]) {
+    owned.retain(|f| f.path != path);
+    owned.push(OwnedFile {
+        path: path.into(),
+        section_id: Some(section.into()),
+        baseline_sha256: digest(bytes),
+        kind: None,
+    });
+}
+
+/// What an apply carries over from the previous manifest: the generation linkage (#2127:
+/// it belongs to the last generation apply), the owned sections, and the personal files seen
+/// once (a legacy entry without a section becomes created-once).
+type Carried = (Option<String>, Option<String>, Vec<OwnedFile>, Vec<String>);
+fn carried(previous: Option<Manifest>) -> Carried {
+    let Some(m) = previous else {
+        return (None, None, Vec::new(), Vec::new());
+    };
+    let mut created = m.created_once;
+    for legacy in m.owned_files.iter().filter(|f| f.section_id.is_none()) {
+        if !created.contains(&legacy.path) {
+            created.push(legacy.path.clone());
+        }
+    }
+    let owned = m
+        .owned_files
+        .into_iter()
+        .filter(|f| f.section_id.is_some())
+        .collect();
+    (m.workflow_id, m.interview_revision, owned, created)
+}
+
+/// Recovery after an interrupted apply, for an `unchanged` row whose file exists: a managed
+/// block that already equals the rendered text becomes the baseline (first write or
+/// interrupted update); a personal file is recorded as seen, whatever its content, so it is
+/// never recreated after the user deletes it (presence, not ownership).
+fn adopt_unchanged(
+    owned: &mut Vec<OwnedFile>,
+    created: &mut Vec<String>,
+    f: &FilePlan,
+    rendered: &str,
+    bytes: &[u8],
+) {
+    match f.section_id.as_deref() {
+        None => {
+            if !created.contains(&f.path) {
+                created.push(f.path.clone());
+            }
+        }
+        Some(section) if f.baseline_sha256.as_deref() != Some(rendered) => {
+            let comment = if f.path == ".gitignore" {
+                "hash"
+            } else {
+                "html"
+            };
+            let (b, e) = markers(section, comment);
+            if let Some((s, end, _)) = std::str::from_utf8(bytes)
+                .ok()
+                .and_then(|text| find_block(text, &b, &e).ok().flatten())
+            {
+                let block = &bytes[s..end];
+                if digest(block) == rendered {
+                    record_owned(owned, &f.path, section, block);
+                }
+            }
+        }
+        Some(_) => {}
+    }
+}
+
+/// The manifest an apply publishes (before a caller's hook), from what it carried and recorded.
+fn compose_manifest(
+    profile: &Profile,
+    profile_bytes: &[u8],
+    request: &AgentsRequest,
+    carried: Carried,
+) -> Manifest {
+    let (workflow_id, interview_revision, owned, created) = carried;
+    Manifest {
+        schema_version: 1,
+        generator_version: env!("CARGO_PKG_VERSION").into(),
+        template_version: TEMPLATE_VERSION.into(),
+        project_id: profile.project_id.clone(),
+        profile_sha256: digest(profile_bytes),
+        interview_revision,
+        workflow_id,
+        workflow_reference: request.workflow_reference.clone(),
+        source_kind: "generated".into(),
+        sources: Vec::new(),
+        canonical_sha256: None,
+        projections: profile.hosts.clone(),
+        owned_files: owned,
+        created_once: created,
+        activation_status: "pending-validation".into(),
+    }
+}
+
+/// The manifest bytes as published: pretty JSON and a final newline.
+fn manifest_bytes_of(m: &Manifest) -> Vec<u8> {
+    let mut bytes = serde_json::to_vec_pretty(m).expect("typed manifest");
+    bytes.push(b'\n');
+    bytes
+}
+
+/// The manifest an apply of `files` would publish before a caller's hook, when every planned
+/// file other than the manifest is `unchanged` (#2936 Q3 B). Rows of any other action are not
+/// modelled, so a caller asks only in that case.
+fn predict_manifest(
+    root: &Path,
+    profile: &Profile,
+    profile_bytes: &[u8],
+    previous: Option<Manifest>,
+    request: &AgentsRequest,
+    files: &[FilePlan],
+) -> Result<Manifest> {
+    let manifest_rel = manifest_rel(root);
+    let mut carried = carried(previous);
+    for f in files {
+        if f.path == manifest_rel || f.action != "unchanged" {
+            continue;
+        }
+        let Some(rendered) = &f.rendered_sha256 else {
+            continue;
+        };
+        let Some(bytes) = read_opt(&target(root, &f.path)?)? else {
+            continue;
+        };
+        adopt_unchanged(&mut carried.2, &mut carried.3, f, rendered, &bytes);
+    }
+    Ok(compose_manifest(profile, profile_bytes, request, carried))
+}
+
+/// [`predict_manifest`] for generation (#2936 Q3 B): the value its apply hook then amends.
+pub(crate) fn predicted_manifest_value(
+    root: &Path,
+    request: &AgentsRequest,
+    files: &[FilePlan],
+) -> Result<Value> {
+    let root = root_of(root)?;
+    let (profile, profile_bytes) = read_profile(&root)?;
+    let previous = read_manifest(&root, &profile.project_id)?;
+    let m = predict_manifest(&root, &profile, &profile_bytes, previous, request, files)?;
+    Ok(serde_json::to_value(&m).expect("typed manifest"))
+}
+
+/// The bytes `agents_apply` publishes for an amended manifest value; `None` when the value is
+/// outside the schema (that apply would refuse it).
+pub(crate) fn amended_manifest_bytes(value: Value) -> Option<Vec<u8>> {
+    serde_json::from_value::<Manifest>(value)
+        .ok()
+        .map(|m| manifest_bytes_of(&m))
 }
 
 pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
@@ -583,14 +737,28 @@ pub(crate) fn agents_plan_for(
     }
 
     let manifest_bytes = read_opt(&target(&root, &manifest_rel)?)?;
+    // #2936 Q3 B: the manifest is `unchanged` when every other file is and the bytes an apply
+    // would publish equal the file on disk, so a re-run plans `unchanged` throughout.
+    let manifest_action = match &manifest_bytes {
+        None => "create",
+        Some(disk)
+            if files.iter().all(|f| f.action == "unchanged")
+                && manifest_bytes_of(&predict_manifest(
+                    &root,
+                    &profile,
+                    &profile_bytes,
+                    manifest.clone(),
+                    &request,
+                    &files,
+                )?) == *disk =>
+        {
+            "unchanged"
+        }
+        Some(_) => "merge",
+    };
     files.push(FilePlan {
         path: manifest_rel.clone(),
-        action: if manifest_bytes.is_none() {
-            "create"
-        } else {
-            "merge"
-        }
-        .into(),
+        action: manifest_action.into(),
         tracked_by_default: true,
         expected_sha256: manifest_bytes.as_deref().map(digest),
         section_id: None,
@@ -750,37 +918,8 @@ pub(crate) fn agents_apply_amended_for(
     let previous = read_manifest(&root, &profile.project_id)?;
     // #2127: the generation linkage belongs to the last generation apply; an
     // agents-only apply carries it forward instead of resetting it.
-    let (workflow_id, interview_revision) = previous
-        .as_ref()
-        .map(|m| (m.workflow_id.clone(), m.interview_revision.clone()))
-        .unwrap_or_default();
+    let (workflow_id, interview_revision, mut owned, mut created) = carried(previous);
     let mut applied = Vec::new();
-    let (mut owned, mut created): (Vec<OwnedFile>, Vec<String>) = match previous {
-        Some(m) => {
-            let mut created = m.created_once;
-            for legacy in m.owned_files.iter().filter(|f| f.section_id.is_none()) {
-                if !created.contains(&legacy.path) {
-                    created.push(legacy.path.clone());
-                }
-            }
-            let owned = m
-                .owned_files
-                .into_iter()
-                .filter(|f| f.section_id.is_some())
-                .collect();
-            (owned, created)
-        }
-        None => (Vec::new(), Vec::new()),
-    };
-    fn record(owned: &mut Vec<OwnedFile>, path: &str, section: &str, bytes: &[u8]) {
-        owned.retain(|f| f.path != path);
-        owned.push(OwnedFile {
-            path: path.into(),
-            section_id: Some(section.into()),
-            baseline_sha256: digest(bytes),
-            kind: None,
-        });
-    }
     let step = |applied: &[String], path: &str, e: String| {
         format!(
             "partial apply: applied [{}]; failed at {path}: {e}",
@@ -818,35 +957,7 @@ pub(crate) fn agents_apply_amended_for(
                 false,
                 None,
             );
-            match f.section_id.as_deref() {
-                None => {
-                    // A personal file that already exists is recorded as seen so it is never
-                    // recreated after the user deletes it, whatever its content; this records
-                    // presence, not ownership.
-                    let _ = (&bytes, rendered);
-                    if !created.contains(&f.path) {
-                        created.push(f.path.clone());
-                    }
-                }
-                Some(section) if f.baseline_sha256.as_deref() != Some(rendered.as_str()) => {
-                    let comment = if f.path == ".gitignore" {
-                        "hash"
-                    } else {
-                        "html"
-                    };
-                    let (b, e) = markers(section, comment);
-                    if let Some((s, end, _)) = std::str::from_utf8(&bytes)
-                        .ok()
-                        .and_then(|text| find_block(text, &b, &e).ok().flatten())
-                    {
-                        let block = &bytes[s..end];
-                        if &digest(block) == rendered {
-                            record(&mut owned, &f.path, section, block);
-                        }
-                    }
-                }
-                Some(_) => {}
-            }
+            adopt_unchanged(&mut owned, &mut created, f, rendered, &bytes);
             continue;
         }
         let path = target(&root, &f.path)?;
@@ -961,13 +1072,13 @@ pub(crate) fn agents_apply_amended_for(
         }
         // Baseline is the managed text MoAI wrote, not the whole user file.
         match section {
-            Some(AGENTS_SECTION) => record(
+            Some(AGENTS_SECTION) => record_owned(
                 &mut owned,
                 &f.path,
                 AGENTS_SECTION,
                 render_agents(&profile, &p.request, &root).as_bytes(),
             ),
-            Some(IGNORE_SECTION) => record(
+            Some(IGNORE_SECTION) => record_owned(
                 &mut owned,
                 &f.path,
                 IGNORE_SECTION,
@@ -982,23 +1093,12 @@ pub(crate) fn agents_apply_amended_for(
         applied.push(f.path.clone());
     }
 
-    let manifest = Manifest {
-        schema_version: 1,
-        generator_version: env!("CARGO_PKG_VERSION").into(),
-        template_version: TEMPLATE_VERSION.into(),
-        project_id: profile.project_id.clone(),
-        profile_sha256: digest(&profile_bytes),
-        interview_revision,
-        workflow_id,
-        workflow_reference: p.request.workflow_reference.clone(),
-        source_kind: "generated".into(),
-        sources: Vec::new(),
-        canonical_sha256: None,
-        projections: profile.hosts.clone(),
-        owned_files: owned,
-        created_once: created,
-        activation_status: "pending-validation".into(),
-    };
+    let manifest = compose_manifest(
+        &profile,
+        &profile_bytes,
+        &p.request,
+        (workflow_id, interview_revision, owned, created),
+    );
     let manifest_path = target(&root, &manifest_rel)?;
     let before = read_opt(&manifest_path)?;
     let manifest_plan = p
@@ -1046,8 +1146,7 @@ pub(crate) fn agents_apply_amended_for(
             ));
         }
     };
-    let mut manifest_bytes = serde_json::to_vec_pretty(&manifest).expect("typed manifest");
-    manifest_bytes.push(b'\n');
+    let manifest_bytes = manifest_bytes_of(&manifest);
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
         if let Some(b) = before.as_deref() {
             if let Err(e) = apply::save_before_bytes(&root, &request_id, &manifest_rel, b) {

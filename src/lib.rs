@@ -87,6 +87,7 @@ pub mod profile;
 pub mod progress;
 pub mod project_detect;
 pub mod project_skills;
+pub mod project_update;
 pub mod queue;
 pub mod queue_query;
 pub mod recovery;

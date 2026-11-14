@@ -39,27 +39,31 @@ fn the_update_route_is_the_project_layer() {
     let update = skill("workflows/update.md");
     for text in [
         "`/moai update` (`$moai update` in Codex CLI) updates the current project",
-        "moai go-state-plan",
-        "moai project-plan",
-        "moai agents-plan",
-        "moai generation-plan",
+        // #2936 S1: one read-only preview of every phase, then the printed commands.
+        "Run `moai project-update-plan <project>`. It writes nothing",
+        "Show the user every phase and every step in one view",
+        "Ask once for the `ready` steps as a whole, then a separate yes for each `needs_decision` step",
+        "the words of `apply.argv` (the first is the `moai` command) with `<permission-reference>` replaced by the user's permission reference, and `apply.stdin` on stdin",
+        "After a go-state apply, run `moai project-update-plan <project>` again before anything else",
+        "The project is up to date only when `all_unchanged` is `true`",
         "a re-run plans `unchanged`",
         // The user layer is the shell command, named and never run from this route.
         "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai update`",
         "this route never runs it",
         // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
         // first, and "nothing to update" holds only without Go state.
-        // #2696: after the move `.moai/` is this generation's folder too, so the route follows
-        // the classification, not the folder kind.
-        "When `result.profile` is `null` but `result.state_root.generation` is `go` or `interrupted`, do step 2 first",
+        "when the backup phase has a move, do it first (steps 2–4), then send the user to SETUP (or `/moai project`) and stop",
         "only when there is no profile and no Go-generation state is there nothing to update",
-        // #2702 audit N2: the other Go-state kinds are reported, never written.
-        "which covers a `.moai` that is a link or not a folder) is reported with its `reason` and nothing is moved",
-        "When it is `interrupted`, a move stopped midway",
+        // #2702 audit N2 (#2953 F1): the other Go-state kinds are reported, never written.
+        "When the go-state step reads `needs_decision` with a `reason` naming state_root `interrupted`, a move stopped midway",
+        "`state_root.generation` is `mixed`, `unknown` or `refuse` (`refuse` covers a `.moai` that is a link or not a folder)",
+        "It is reported with its `reason` and nothing is moved (a link is never followed): say what was found and let the user decide outside this route",
+        // #2953 F6: the confirmed replacement is the step's printed command.
+        "the step reads `needs_decision` and its printed command is that replacement (`apply.argv` ends with `--confirm-replace <token>`",
         // #2702 audit N1: the user's edits, unreadable targets and HOLD, and the #2383 step.
         "A file or managed part the user edited is planned as `conflict` and kept",
         "Never write a target whose current state could not be read, nor one under a recorded HOLD",
-        "`moai claude-settings-plan <project>`",
+        "For the Claude Code settings, a key MoAI manages that the user set themselves",
         "`claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
