@@ -95,6 +95,11 @@ Update and move
   home-routing-apply      Write a previewed routing section
                           into HOME
   home-routing-revert     Undo one routing section apply
+  home-style-plan         Preview the MoAI-Easy output style
+                          in HOME
+  home-style-apply        Write a previewed output style
+                          into HOME
+  home-style-revert       Undo one output style apply
 Keys
   key-set                 Store a provider key in the vault
   key-status              Check a provider key without
