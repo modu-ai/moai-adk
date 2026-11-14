@@ -1,6 +1,7 @@
 pub mod agent_defs;
 pub mod agent_install;
 pub mod agents;
+pub mod agents_local_merge;
 pub mod apply;
 pub mod archive;
 pub mod atlas_query;

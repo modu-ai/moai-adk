@@ -1,0 +1,5 @@
+# `agents-merge-plan`
+
+operation `agents_merge.plan` · 코드 `src/ops/agents_merge_plan.rs`, `src/agents_local_merge.rs` · Issue #2936 (R10, 사용자 결정 6880117157)
+
+`agents-merge-plan [PROJECT]` 는 프로젝트의 `AGENTS.local.md` 글을 `AGENTS.md` 에 합치면 어떻게 되는지 보여 준다. 쓰지 않는다. 글의 출처(`source`)는 제자리 파일(`in_place`)이거나, 사용자가 쓴 글이 없을 때(비었거나 MoAI 가 만든 고정 문구뿐) 가장 새 `go-state-apply` 가 날짜 백업의 `root-files/` 로 옮긴 사본(`backup`, 영수증의 sha256 과 같아야 함)이다. `action` 은 `merge`(합칠 글이 있음), `unchanged`(이미 들어 있음), `none`(합칠 글 없음), `conflict`(블록을 손으로 고쳤거나 글이 합친 뒤 바뀌었거나 표지가 깨짐 — 아무것도 쓰지 않음), `blocked`(링크·128 KiB 초과·UTF-8 아님·`AGENTS.md` 없음·MoAI 표지 줄 포함·비밀로 보이는 줄) 중 하나다. `merge` 일 때 `body`(합쳐질 글 전체), `target.starts_at_line`(`AGENTS.md` 끝, 관리 구역 밖), `commit_notice`("이 내용이 커밋되는 `AGENTS.md` 로 들어간다")를 낸다. 비밀로 보이는 줄은 줄 번호와 종류(`secret_suspects`)만 내고 값은 내지 않는다. `plan_digest` 는 출처 바이트·`AGENTS.md` 바이트·`action` 을 묶는다.
