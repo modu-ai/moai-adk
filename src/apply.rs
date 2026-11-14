@@ -97,6 +97,26 @@ pub fn target(root: &Path, rel: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Removes `dir` and then each parent of it below `stop`, as long as the folder is a real,
+/// empty one (#2936 R-C): the folders a removal emptied go, nothing else does. `stop` itself
+/// (the project root) is never removed, a link is never followed or removed, and the first
+/// folder that still holds anything ends the walk. A folder that is not under `stop` is left
+/// alone. Errors are not reported: a folder that stays is only untidy.
+pub(crate) fn prune_empty_dirs(dir: &Path, stop: &Path) {
+    let mut cur = dir.to_path_buf();
+    while cur != stop && cur.starts_with(stop) {
+        let real = fs::symlink_metadata(&cur).is_ok_and(|m| m.is_dir());
+        // `remove_dir` succeeds only on an empty folder.
+        if !real || fs::remove_dir(&cur).is_err() {
+            return;
+        }
+        match cur.parent() {
+            Some(p) => cur = p.to_path_buf(),
+            None => return,
+        }
+    }
+}
+
 pub fn read_opt(path: &Path) -> Result<Option<Vec<u8>>> {
     match fs::metadata(path) {
         Ok(m) if !m.is_file() || m.len() > RECEIPT_LIMIT => {

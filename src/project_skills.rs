@@ -570,6 +570,10 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
             "create" => {
                 if dest.is_dir() {
                     fs::remove_dir_all(&dest).map_err(|_| "revert remove failed".to_string())?;
+                    // The folders the apply made on the way go with the copy (#2936 R-C).
+                    if let Some(parent) = dest.parent() {
+                        crate::apply::prune_empty_dirs(parent, &root);
+                    }
                     reverted.push(format!("{} (created, removed)", a.host));
                 }
             }
