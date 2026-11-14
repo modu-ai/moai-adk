@@ -676,3 +676,143 @@ fn by_accepts_only_leader_and_plain_release_is_unchanged() {
         "{\"protocol_version\":1,\"operation\":\"session.register\",\"ok\":true,\"result\":{\"status\":\"released\",\"name\":\"agent-8\"}}\n"
     );
 }
+
+fn keys(v: &Value) -> Vec<String> {
+    v.as_object().unwrap().keys().cloned().collect()
+}
+
+/// #2928 S-2 (decision D1 = (A)): `--mode leader|agent` is stored in the entry only when it is
+/// given, is written again on a same-instance renew, and `--show` prints it. A registration and
+/// a `--show` without it keep their output and their entry key for key.
+#[test]
+fn register_mode_is_stored_and_renewed() {
+    let fx = Fixture::new();
+    let first = ok(&run(&fx, &["--name", "leader", "--now", T0]));
+    assert_eq!(
+        keys(&first),
+        [
+            "status",
+            "previous",
+            "name",
+            "instance",
+            "lease_until",
+            "entry"
+        ],
+        "no --mode: the output is unchanged"
+    );
+    let stored: Value = serde_json::from_slice(&fs::read(fx.entry("leader")).unwrap()).unwrap();
+    assert_eq!(
+        keys(&stored),
+        [
+            "schema_version",
+            "name",
+            "instance",
+            "lease_until",
+            "registered_at"
+        ],
+        "no --mode: the entry is unchanged"
+    );
+    let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
+    assert_eq!(keys(&show), ["status", "name", "instance", "lease_until"]);
+    let instance = first["instance"].as_str().unwrap().to_string();
+
+    // The same instance renews and records the mode.
+    let renewed = ok(&run(
+        &fx,
+        &[
+            "--name",
+            "leader",
+            "--instance",
+            &instance,
+            "--mode",
+            "leader",
+            "--now",
+            T0,
+        ],
+    ));
+    assert_eq!(renewed["status"], "renewed");
+    assert_eq!(renewed["mode"], "leader");
+    let stored: Value = serde_json::from_slice(&fs::read(fx.entry("leader")).unwrap()).unwrap();
+    assert_eq!(stored["mode"], "leader");
+    let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
+    assert_eq!(show["mode"], "leader", "{show}");
+
+    // A later renew with another mode replaces it.
+    ok(&run(
+        &fx,
+        &[
+            "--name",
+            "leader",
+            "--instance",
+            &instance,
+            "--mode",
+            "agent",
+            "--now",
+            T0,
+        ],
+    ));
+    let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
+    assert_eq!(show["mode"], "agent", "{show}");
+
+    // A first registration takes it too.
+    let lane = ok(&run(
+        &fx,
+        &["--name", "agent-8", "--mode", "agent", "--now", T0],
+    ));
+    assert_eq!(lane["status"], "registered");
+    assert_eq!(lane["mode"], "agent");
+
+    // Only `leader` and `agent`, never with `--show` or `--release`; a refusal writes nothing.
+    let before = fs::read(fx.entry("leader")).unwrap();
+    for bad in ["boss", "Leader", ""] {
+        let out = run(
+            &fx,
+            &[
+                "--name",
+                "leader",
+                "--instance",
+                &instance,
+                "--mode",
+                bad,
+                "--now",
+                T0,
+            ],
+        );
+        assert_eq!(out.status.code(), Some(2), "--mode {bad:?}");
+        assert_eq!(envelope(&out)["error"]["kind"], "usage");
+    }
+    for extra in [
+        vec!["--show"],
+        vec!["--release", "--instance", instance.as_str()],
+    ] {
+        let mut args = vec!["--name", "leader", "--mode", "leader", "--now", T0];
+        args.extend_from_slice(&extra);
+        assert_eq!(run(&fx, &args).status.code(), Some(2), "{args:?}");
+    }
+    assert_eq!(fs::read(fx.entry("leader")).unwrap(), before);
+}
+
+/// #2928 S-3: `--show` prints only a mode it accepts; a hand-written entry with any other mode
+/// text (a made-up word, or terminal escapes) shows no `mode` at all.
+#[test]
+fn show_never_prints_a_hand_written_mode() {
+    let fx = Fixture::new();
+    fs::create_dir_all(fx.sessions()).unwrap();
+    let held = "1".repeat(32);
+    let lease = 1_800_000_000; // 2027, after T0
+    for mode in ["boss", "\u{1b}]0;leader\u{7}", "Leader"] {
+        let text = entry_text("leader", &held, lease, 1, None).replace(
+            '}',
+            &format!(",\"mode\":{}}}", serde_json::to_string(mode).unwrap()),
+        );
+        fs::write(fx.entry("leader"), &text).unwrap();
+        let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
+        assert_eq!(show["status"], "held");
+        assert!(show.get("mode").is_none(), "{mode:?}: {show}");
+    }
+    // The accepted word is shown, so the refusals above are about the text.
+    let text = entry_text("leader", &held, lease, 1, None).replace('}', ",\"mode\":\"leader\"}");
+    fs::write(fx.entry("leader"), &text).unwrap();
+    let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
+    assert_eq!(show["mode"], "leader", "{show}");
+}

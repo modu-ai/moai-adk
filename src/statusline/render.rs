@@ -106,7 +106,8 @@ impl Renderer {
 
     /// `Render`: the layout, or `MoAI` when every line is empty, then the base color.
     /// #2756 (user instruction 2026-11-13): line 1 is the running environment, line 2 the
-    /// repository, line 3 the lane name and the usage bars.
+    /// repository, line 3 the usage bars; #2928 (user instruction 6878415244, 2026-11-14): the
+    /// `leader`/`agent` tag opens line 1.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
@@ -145,6 +146,14 @@ impl Renderer {
 
     fn info_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
+        // #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): the
+        // tag comes first on line 1 and is only `leader` or `agent` — never the stdin
+        // `session_name` text — and is shown whenever the `session` segment is on, even without
+        // stdin (decision Q2 = (가)).
+        if self.enabled("session") {
+            let tag = if s.leader { "leader" } else { "agent" };
+            segs.push(format!("🏷️ {}", crate::ui::visible(tag)));
+        }
         let metrics = !s.model.is_empty();
         if self.enabled("model") && metrics {
             segs.push(self.paint(self.theme.model, &format!("🤖 {}", s.model)));
@@ -197,6 +206,8 @@ impl Renderer {
 
     fn bars_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
+        // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the bars alone; the tag
+        // moved to the front of line 1.
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
                 let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
@@ -226,12 +237,6 @@ impl Renderer {
             if let Some(w) = s.seven_day {
                 segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
             }
-        }
-        // #2809 AC-1 (user instruction 2026-11-13T22:3xZ, replacing #2756's name-first order):
-        // the usage bars come first and the lane name last; with no name the segment and its
-        // separator are both left out.
-        if self.enabled("session") && !s.session_name.is_empty() {
-            segs.push(format!("🏷️ {}", s.session_name));
         }
         // The renderer never shortens a segment and does not read `COLUMNS`, which Claude
         // Code sets; whether an overlong line is cut or wraps is left open by the host docs
@@ -417,15 +422,16 @@ mod tests {
         }
     }
 
-    /// #2756 AC-1–AC-2 and #2809 AC-1 (user instructions 2026-11-13): environment,
-    /// repository, then the usage bars and the lane name last, each line joined by ` | `.
+    /// #2756 AC-1–AC-2 (user instructions 2026-11-13) and #2928 (user instruction 6878415244,
+    /// 2026-11-14): the tag and the environment, the repository, then the usage bars, each line
+    /// joined by ` | `.
     #[test]
     fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
         assert_eq!(
             plain(&full_status(), &[]),
-            "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
+            "🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
              📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
-             🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75% | 🏷️ release"
+             🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
     }
 
@@ -488,14 +494,20 @@ mod tests {
     #[test]
     fn rate_windows_are_optional_but_present_windows_keep_zero_percent() {
         let mut status = Status::default();
-        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &["session"]), "CTX: ░░░░░░░░░░ n/a");
         status.seven_day = Some(RateWindow::default());
         assert_eq!(
-            plain(&status, &[]),
+            plain(&status, &["session"]),
             "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
-        assert_eq!(plain(&status, &["context"]), "🔋 Week: ░░░░░░░░░░ 0%");
-        assert_eq!(plain(&status, &["usage_7d"]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(
+            plain(&status, &["session", "context"]),
+            "🔋 Week: ░░░░░░░░░░ 0%"
+        );
+        assert_eq!(
+            plain(&status, &["session", "usage_7d"]),
+            "CTX: ░░░░░░░░░░ n/a"
+        );
     }
 
     /// #2559 AC-1: the bar's thresholds pinned at N/N+1 — the battery icon turns at 70/71 and
@@ -510,7 +522,7 @@ mod tests {
                 }),
                 ..Status::default()
             };
-            plain(&status, &["context"])
+            plain(&status, &["context", "session"])
         };
         assert_eq!(at(70.0), "🔋 Week: ███████░░░ 70%");
         assert_eq!(at(71.0), "🪫 Week: ███████░░░ 71%");
@@ -518,54 +530,162 @@ mod tests {
         assert_eq!(at(10.0), "🔋 Week: █░░░░░░░░░ 10%");
     }
 
-    /// #2809 AC-1 (replacing #2756's name-first order): the name closes the line after a
-    /// ` | `; with no bars it stands alone, and with no name (or `session` off) the name and
-    /// its separator are both left out.
+    /// The renderer never shortens for width and does not read `COLUMNS`; since #2928 the
+    /// stdin name is not printed at all, so a 200-character name leaves lines 1 and 3 unchanged.
     #[test]
-    fn the_session_name_is_the_last_segment_after_the_bars() {
-        let mut status = Status {
-            session_name: "focus".into(),
-            ..Default::default()
-        };
-        assert_eq!(plain(&status, &[]), "CTX: ░░░░░░░░░░ n/a | 🏷️ focus");
+    fn a_long_name_changes_nothing_on_lines_one_and_three() {
+        let mut status = full_status();
+        status.session_name = "x".repeat(200);
+        let out = plain(&status, &[]);
+        assert_eq!(
+            out.lines().next(),
+            Some("🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
+        );
+        assert_eq!(
+            out.lines().nth(2),
+            Some("🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%")
+        );
+    }
+
+    /// #2928 (user instruction 6878415244, 2026-11-14): line 1 is `🏷️ <tag> | 🤖 … | 🗿 …` and
+    /// line 3 is `🔋 CTX … | 🪫 Week …` alone. The tag is `leader` or `agent` and comes first; it
+    /// is shown whenever the `session` segment is on, even with no stdin (decision Q2 = (가));
+    /// with every other line-1 segment off it stands alone, and with `session` off line 1 is as
+    /// before. The bar icons and marks are unchanged.
+    #[test]
+    fn the_tag_is_the_first_segment_of_line_one() {
+        let mut status = Status::default();
+        assert_eq!(plain(&status, &[]), "🏷️ agent\nCTX: ░░░░░░░░░░ n/a");
         status.seven_day = Some(RateWindow::default());
         assert_eq!(
             plain(&status, &[]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0% | 🏷️ focus"
+            "🏷️ agent\nCTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
+        status.leader = true;
         assert_eq!(
-            plain(&status, &["usage_7d", "context"]),
-            "🏷️ focus",
-            "no bars: the name alone"
+            plain(&status, &[]),
+            "🏷️ leader\nCTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
+        assert_eq!(plain(&status, &["usage_7d", "context"]), "🏷️ leader");
         assert_eq!(
             plain(&status, &["session"]),
             "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
-        status.session_name.clear();
+        let mut full = full_status();
+        let bars = "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%";
+        let env = "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
         assert_eq!(
-            plain(&status, &[]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%",
-            "no name: no trailing segment and no trailing separator"
+            plain(&full, &[]).lines().next(),
+            Some(format!("🏷️ agent | {env}").as_str())
         );
+        assert_eq!(plain(&full, &[]).lines().nth(2), Some(bars));
+        assert_eq!(plain(&full, &["session"]).lines().next(), Some(env));
+        assert_eq!(plain(&full, &["session"]).lines().nth(2), Some(bars));
+        let line_one_off = [
+            "model",
+            "effort_thinking",
+            "cache_hit",
+            "claude_version",
+            "moai_version",
+        ];
+        let only_tag = plain(&full, &line_one_off);
+        assert_eq!(only_tag.lines().next(), Some("🏷️ agent"), "{only_tag}");
+        assert_eq!(only_tag.lines().nth(2), Some(bars), "{only_tag}");
+        full.leader = true;
+        assert_eq!(
+            plain(&full, &[]).lines().next(),
+            Some(format!("🏷️ leader | {env}").as_str())
+        );
+        assert_eq!(plain(&full, &[]).lines().nth(2), Some(bars));
+        let colored = strip_sgr(&colored("mocha", Profile::TrueColor, &full));
+        assert!(
+            colored.lines().next().unwrap().starts_with("🏷️ leader | "),
+            "{colored:?}"
+        );
+        assert_eq!(colored.lines().nth(2), Some(bars), "{colored:?}");
     }
 
-    /// The renderer never shortens for width and does not read `COLUMNS`; the host docs leave
-    /// open whether an overlong line is cut or wraps. A long name is printed whole, after
-    /// every bar, and the bars before it are unchanged.
+    /// #2928 S-3 (#2818 B1): the stdin `session_name` — a lane name, a terminal title, escape
+    /// or C1 bytes, even the word `leader` itself — never reaches the output; only the tag
+    /// does, and without a registry reading it is `agent`.
     #[test]
-    fn a_long_name_is_printed_whole_and_after_every_bar() {
-        let long = "x".repeat(200);
-        let mut status = full_status();
-        status.session_name = long.clone();
-        let line = plain(&status, &[]).lines().nth(2).unwrap().to_string();
-        let tail = format!(" | 🏷️ {long}");
-        assert!(line.ends_with(&tail), "{line}");
+    fn session_name_text_never_reaches_the_tag() {
+        for name in [
+            "\u{1b}]0;evil\u{7}",
+            "x\u{9b}31m",
+            "#2388·#2403·#2385 Issue 닫기 대조",
+            "agent-27",
+            "/moai",
+            "leader",
+        ] {
+            let mut status = full_status();
+            status.session_name = name.into();
+            let out = plain(&status, &[]);
+            assert_eq!(
+                out.lines().next(),
+                Some("🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"),
+                "{name:?}"
+            );
+            let colored = colored("mocha", Profile::TrueColor, &status);
+            for text in [&out, &colored] {
+                assert!(!text.contains("\u{1b}]0;"), "{name:?}: {text:?}");
+                assert!(!text.contains('\u{9b}'), "{name:?}: {text:?}");
+                assert!(!text.contains("Issue"), "{name:?}: {text:?}");
+                assert!(!text.contains("agent-27"), "{name:?}: {text:?}");
+                assert!(!text.contains("/moai"), "{name:?}: {text:?}");
+            }
+        }
+    }
+
+    /// #2928 S-4, revised by user instruction 6878415244 (2026-11-14): lines 2 and 3 are the
+    /// same bytes whatever the tag and the stdin name, plain and colored, and line 1 differs
+    /// only by its first segment, the tag.
+    #[test]
+    fn lines_two_and_three_are_identical_and_line_one_differs_only_by_its_tag() {
+        let tail = |s: &str| s.lines().skip(1).collect::<Vec<_>>().join("\n");
+        let first = |s: &str| s.lines().next().unwrap().to_string();
+        let base = full_status();
+        let base_plain = plain(&base, &[]);
+        let want_plain = tail(&base_plain);
         assert_eq!(
-            &line[..line.len() - tail.len()],
-            "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%",
-            "the bars come before the name, unchanged by its length"
+            want_plain,
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
+             🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
+        let base_colored = colored("mocha", Profile::TrueColor, &base);
+        let want_colored = tail(&base_colored);
+        for text in [&base_plain, &base_colored] {
+            assert_eq!(first(text).matches("🏷️ agent").count(), 1, "{text:?}");
+        }
+        for (leader, name) in [
+            (false, ""),
+            (true, "leader"),
+            (false, "\u{1b}]0;x\u{7}"),
+            (true, "agent-27"),
+        ] {
+            let mut s = full_status();
+            s.leader = leader;
+            s.session_name = name.into();
+            let tag = if leader {
+                "🏷️ leader"
+            } else {
+                "🏷️ agent"
+            };
+            let got_plain = plain(&s, &[]);
+            assert_eq!(tail(&got_plain), want_plain, "{leader} {name:?}");
+            assert_eq!(
+                first(&got_plain),
+                first(&base_plain).replacen("🏷️ agent", tag, 1),
+                "{leader} {name:?}"
+            );
+            let got_colored = colored("mocha", Profile::TrueColor, &s);
+            assert_eq!(tail(&got_colored), want_colored, "{leader} {name:?}");
+            assert_eq!(
+                first(&got_colored),
+                first(&base_colored).replacen("🏷️ agent", tag, 1),
+                "{leader} {name:?}"
+            );
+        }
     }
 
     #[test]
@@ -651,7 +771,7 @@ mod tests {
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(
             lines[0],
-            "🤖 Opus | 🧠 high·t | ♻️ 75% ⏱️ 4m | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+            "🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% ⏱️ 4m | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
         );
         assert_eq!(
             lines[1],
@@ -662,7 +782,7 @@ mod tests {
             "plain output carries no link escape: {out:?}"
         );
         status.cache_timer = Some(CacheTimer::Cold);
-        assert!(plain(&status, &[]).starts_with("🤖 Opus | 🧠 high·t | ♻️ 75% 🧊 | "));
+        assert!(plain(&status, &[]).starts_with("🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% 🧊 | "));
         status.cache = None;
         assert!(
             plain(&status, &[]).contains("| ♻️ 🧊 |"),
@@ -734,7 +854,11 @@ mod tests {
         let output = plain(&full_status(), &["git_branch", "git_status"]);
         assert_eq!(output.lines().count(), 2);
         assert!(
-            output.lines().nth(1).unwrap().ends_with(" | 🏷️ release"),
+            output.lines().next().unwrap().starts_with("🏷️ agent | "),
+            "{output}"
+        );
+        assert!(
+            output.lines().nth(1).unwrap().starts_with("🔋 CTX: "),
             "{output}"
         );
     }
@@ -751,12 +875,20 @@ mod tests {
             },
             ..Default::default()
         };
-        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (⚠️ /clear)");
+        let off = ["session"];
+        assert_eq!(plain(&status, &off), "🪫 CTX: ██████████ 100% (⚠️ /clear)");
+        // #2928 (user instruction 6878415244): the tag on line 1 leaves the bar and its mark as
+        // they were.
+        assert_eq!(
+            plain(&status, &[]),
+            "🏷️ agent\n🪫 CTX: ██████████ 100% (⚠️ /clear)"
+        );
         status.memory.tokens_used = 190_000;
-        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100% (🛑/clear!)");
+        assert_eq!(plain(&status, &off), "🪫 CTX: ██████████ 100% (🛑/clear!)");
         status.goal_armed = true;
-        assert_eq!(plain(&status, &[]), "🪫 CTX: ██████████ 100%");
-        assert_eq!(plain(&status, &["context"]), "MoAI");
+        assert_eq!(plain(&status, &off), "🪫 CTX: ██████████ 100%");
+        assert_eq!(plain(&status, &["context", "session"]), "MoAI");
+        assert_eq!(plain(&status, &["context"]), "🏷️ agent");
     }
 
     #[test]

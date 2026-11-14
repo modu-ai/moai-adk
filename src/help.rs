@@ -30,10 +30,10 @@ pub const GROUPS: &[Group] = &[
         heading: "Project",
         heading_ko: "프로젝트",
         commands: &[
-            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),
+            ("project-update-plan", false),
             ("language-setup", true),
             ("index-build", true),
             ("agents-plan", false),
@@ -108,6 +108,7 @@ pub const GROUPS: &[Group] = &[
             ("key-remove", true),
             ("key-import-plan", true),
             ("key-import-apply", true),
+            ("keys-revert", false),
         ],
     },
     Group {
@@ -136,6 +137,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
             ("lane-stop-hook", false),
@@ -236,6 +238,8 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("hygiene-plan", false),
+            ("hygiene-apply", false),
             ("session", false),
         ],
     },
@@ -250,10 +254,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
     ("glm", &["glm -a"]),
-    ("init", &["init", "init --new demo", "init --new demo --dry-run"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
+    ("project-update-plan", &["project-update-plan ."]),
     ("language-setup", &["language-setup . < request.json"]),
     ("index-build", &["index-build . < request.json"]),
     ("agents-plan", &["agents-plan . < request.json", "agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -316,6 +320,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("key-remove", &["key-remove glm"]),
     ("key-import-plan", &["key-import-plan glm", "key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
     ("key-import-apply", &["key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
+    ("keys-revert", &["keys-revert --receipt <keys-id> --permission-reference <ref> ~"]),
     ("claude-doctor", &["claude-doctor ."]),
     ("codex-doctor", &["codex-doctor ."]),
     ("install-inspect", &["install-inspect"]),
@@ -335,6 +340,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
+    (
+        "leader-round",
+        &[
+            "leader-round --observations screens.json --repo modu-ai/moai-adk .",
+            "leader-round --observations screens.json --snapshot fleet.json .",
+        ],
+    ),
     (
         "lane-next",
         &[
@@ -378,7 +390,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     ("usage-limit", &["usage-limit ~"]),
-    ("heavy-slot-acquire", &["heavy-slot-acquire --max 2 --name agent-1 -- cargo test"]),
+    ("heavy-slot-acquire", &["heavy-slot-acquire --name agent-1 -- cargo test"]),
     ("heavy-slot-status", &["heavy-slot-status"]),
     ("goal-show", &["goal-show ."]),
     ("goal-plan", &["goal-plan --request <request> .", "goal-apply --request <request> --plan-digest <digest> ."]),
@@ -452,6 +464,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("archive-restore", &["archive-restore --spec SPEC-001 --permission-reference <ref> ."]),
     ("archive-search", &["archive-search --query cache ."]),
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
+    ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
+    ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-gc-apply", &["worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("session", &["session --name agent-1"]),
     ("lane-env", &["lane-env --lane agent-1"]),
@@ -1791,7 +1805,7 @@ mod tests {
     fn a_korean_full_list_keeps_the_other_abouts_english() {
         let cmd = root_cmd();
         let ko = render_groups_in(&cmd, true, 100, Lang::Ko);
-        assert!(ko.contains("About init"), "{ko}");
+        assert!(ko.contains("About agents-plan"), "{ko}");
         assert!(!ko.contains("About project-detect"), "{ko}");
         for g in GROUPS {
             assert!(

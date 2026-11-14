@@ -5,7 +5,8 @@
 //!   project overrides in `.codex/config.toml`, "Codex loads project `.codex/` layers only when
 //!   you trust the project", closest project file wins.
 //! - https://learn.chatgpt.com/docs/config-file/config-reference — `tui.status_line`
-//!   (`array<string> | null`, item identifiers not enumerated), `skills.bundled.enabled`
+//!   (`array<string> | null`, item identifiers not enumerated; #2928 S-5 checks them against the
+//!   Codex 0.169.0 source list [`CODEX_STATUS_LINE_ITEMS`]), `skills.bundled.enabled`
 //!   (`boolean`, default `true`, may be `false` in a trusted project), `project_doc_fallback_filenames`
 //!   (`array<string>`), `project_doc_max_bytes` (`number`), `projects.<path>.trust_level`
 //!   (stated only for the user config), and the keys Codex ignores in a project file.
@@ -59,7 +60,92 @@ const MAX_LIST: usize = 32;
 const MAX_ITEM: usize = 128;
 
 const TRUST_DECLARATION: &str = "Codex reads .codex/config.toml only for a trusted project; trust is projects.<path>.trust_level in the user config (~/.codex/config.toml), which this operation never writes";
-const STATUS_LINE_UNVERIFIED: &str = "tui.status_line item identifiers are not listed in the official config reference (read 2026-11-09); the items are written as given and not verified";
+const STATUS_LINE_UNVERIFIED: &str = "these tui.status_line items are not Codex 0.169.0 identifiers (openai/codex rust-v0.169.0 d32063f96c2dff1dc96af839b3952abb6acfeda4, codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169); they are written as given, and Codex 0.169.0 ignores them with the warning \"Ignored invalid status line item\" (codex-rs/tui/src/chatwidget/status_surfaces.rs:121-138)";
+
+/// Every `tui.status_line` identifier Codex 0.169.0 parses, aliases included (#2928 S-5).
+/// The config reference lists none, so the source is the `StatusLineItem` enum of openai/codex
+/// tag `rust-v0.169.0`, commit `d32063f96c2dff1dc96af839b3952abb6acfeda4`,
+/// `codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169`: each variant's kebab-case name
+/// plus every `to_string`/`serialize` alias (read 2026-11-14). The picker's
+/// `status-line-use-theme-colors` toggle is not an item and is not here.
+pub const CODEX_STATUS_LINE_ITEMS: [&str; 41] = [
+    "model",
+    "model-name",
+    "model-with-reasoning",
+    "reasoning",
+    "current-dir",
+    "project-name",
+    "project",
+    "project-root",
+    "hostname",
+    "git-branch",
+    "pull-request-number",
+    "branch-changes",
+    "run-state",
+    "status",
+    "permissions",
+    "approval-mode",
+    "approval",
+    "context-remaining",
+    "context-used",
+    "context-usage",
+    "five-hour-limit",
+    "weekly-limit",
+    "codex-version",
+    "context-window-size",
+    "used-tokens",
+    "total-input-tokens",
+    "total-output-tokens",
+    "thread-credits",
+    "estimated-thread-cost",
+    "thread-id",
+    "session-id",
+    "fast-mode",
+    "daybreak",
+    "raw-output",
+    "thread-name",
+    "thread-title",
+    "workspace-headline",
+    "task-progress",
+    "profile",
+    "provider",
+    "model-provider",
+];
+
+/// `"tui.status_line": "moai"` (#2928 S-5): the Claude Code status-line elements Codex 0.169.0
+/// can show, in Claude Code order (line 1 model, effort, host version; line 2 repository,
+/// branch, changes, then the PR number where Claude Code shows `🔗 #n`, after the branch and
+/// worktree; line 3 name tag, context, week). The mapping and what Codex cannot show:
+/// `docs/codex-adapter-contract.md` "상태줄 (#2928 S-5)".
+pub const MOAI_STATUS_LINE_PRESET: [&str; 10] = [
+    "model",
+    "reasoning",
+    "codex-version",
+    "project-name",
+    "git-branch",
+    "branch-changes",
+    "pull-request-number",
+    "thread-name",
+    "context-remaining",
+    "weekly-limit",
+];
+
+/// Replaces a preset name given as the `tui.status_line` value with its list. Returns the
+/// request MoAI plans with and the preset used. Any other string is refused.
+fn resolve_preset(desired: &Map<String, Value>) -> Result<(Map<String, Value>, Option<&str>)> {
+    let mut out = desired.clone();
+    let preset = match desired.get("tui.status_line") {
+        Some(Value::String(name)) if name == "moai" => {
+            out.insert("tui.status_line".into(), json!(MOAI_STATUS_LINE_PRESET));
+            Some("moai")
+        }
+        Some(Value::String(_)) => {
+            return Err("invalid codex config value for tui.status_line".into())
+        }
+        _ => None,
+    };
+    Ok((out, preset))
+}
 
 fn is_name(s: &str) -> bool {
     !s.is_empty() && s.len() <= MAX_ITEM && !s.chars().any(char::is_control) && s.trim() == s
@@ -196,16 +282,36 @@ fn set_key(doc: &mut DocumentMut, key: &str, value: &Value) -> Result<()> {
     Ok(())
 }
 
+/// Removes `key`, and every parent table the removal leaves empty when it carries no comment
+/// (#2956 audit B2): `set_key` creates the tables a key needs, so the table it created goes
+/// with the key and the file gets its bytes back. A table with a comment is the user's and stays.
 fn remove_key(doc: &mut DocumentMut, key: &str) -> Result<()> {
     let segments: Vec<&str> = key.split('.').collect();
-    let mut table: &mut dyn TableLike = doc.as_table_mut();
-    for seg in &segments[..segments.len() - 1] {
-        match table.get_mut(seg) {
-            None => return Ok(()),
-            Some(item) => table = item.as_table_like_mut().ok_or_else(review)?,
-        }
+    remove_in(doc.as_table_mut(), &segments)
+}
+
+fn remove_in(table: &mut dyn TableLike, segments: &[&str]) -> Result<()> {
+    let (first, rest) = segments.split_first().expect("a dotted key has a segment");
+    if rest.is_empty() {
+        table.remove(first);
+        return Ok(());
     }
-    table.remove(leaf(key));
+    let Some(item) = table.get_mut(first) else {
+        return Ok(());
+    };
+    remove_in(item.as_table_like_mut().ok_or_else(review)?, rest)?;
+    let prune = match &*item {
+        Item::Table(t) => {
+            let commented = |r: Option<&toml_edit::RawString>| {
+                r.and_then(|r| r.as_str()).is_some_and(|s| s.contains('#'))
+            };
+            t.is_empty() && !commented(t.decor().prefix()) && !commented(t.decor().suffix())
+        }
+        _ => false,
+    };
+    if prune {
+        table.remove(first);
+    }
     Ok(())
 }
 
@@ -357,16 +463,63 @@ fn config_state(project: &Path, home: &Path, desired: &Map<String, Value>) -> Re
     })
 }
 
+/// Requested `tui.status_line` items that are not Codex 0.169.0 identifiers. They are still
+/// written (Codex ignores an unknown one with a warning, and a newer Codex may know it), but
+/// reported one by one, never dropped.
 fn unverified(desired: &Map<String, Value>) -> Value {
-    match desired.get("tui.status_line") {
-        Some(items) => json!({"items": items, "reason": STATUS_LINE_UNVERIFIED}),
-        None => json!({"items": [], "reason": Value::Null}),
-    }
+    let unknown: Vec<&Value> = desired
+        .get("tui.status_line")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|id| {
+            !id.as_str()
+                .is_some_and(|s| CODEX_STATUS_LINE_ITEMS.contains(&s))
+        })
+        .collect();
+    let reason = (!unknown.is_empty()).then_some(STATUS_LINE_UNVERIFIED);
+    json!({"items": unknown, "reason": reason})
+}
+
+/// `tui.status_line` in a config the plan already parsed, or `null`.
+fn status_line_in(bytes: Option<&[u8]>) -> Value {
+    let doc = bytes
+        .and_then(|b| std::str::from_utf8(b).ok())
+        .and_then(|t| t.parse::<DocumentMut>().ok());
+    let key = "tui.status_line".to_string();
+    doc.and_then(|d| read_keys(&d, &[&key]).ok())
+        .and_then(|mut m| m.remove(&key))
+        .unwrap_or(Value::Null)
+}
+
+/// Before and after of `tui.status_line` and each requested item's status (#2928 S-5).
+fn status_line_plan(s: &ConfigState, desired: &Map<String, Value>, preset: Option<&str>) -> Value {
+    let before = status_line_in(s.before.as_deref());
+    let after = match &s.after {
+        Some(bytes) => status_line_in(Some(bytes)),
+        None => before.clone(),
+    };
+    let items: Vec<Value> = desired
+        .get("tui.status_line")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|id| {
+            let known = id
+                .as_str()
+                .is_some_and(|s| CODEX_STATUS_LINE_ITEMS.contains(&s));
+            json!({"id": id, "status": if known { "known" } else { "unknown_item" }})
+        })
+        .collect();
+    json!({"before": before, "after": after, "preset": preset, "items": items})
 }
 
 /// Previews setting `desired` (managed dotted keys only) in `PROJECT/.codex/config.toml`.
 /// Never writes. `home` is the user home; a project equal to it is refused.
+/// `"tui.status_line": "moai"` names [`MOAI_STATUS_LINE_PRESET`].
 pub fn config_plan(project: &Path, home: &Path, desired: &Map<String, Value>) -> Result<Value> {
+    let (desired, preset) = resolve_preset(desired)?;
+    let desired = &desired;
     let s = config_state(project, home, desired)?;
     let action = match (s.conflicts.is_empty(), &s.after, &s.before) {
         (false, _, _) => "conflict",
@@ -382,6 +535,7 @@ pub fn config_plan(project: &Path, home: &Path, desired: &Map<String, Value>) ->
         "planned_sha256": s.after.as_deref().map(crate::digest),
         "plan_digest": s.digest,
         "trust": {"status": "not_evaluated", "declaration": TRUST_DECLARATION, "writes": false},
+        "status_line": status_line_plan(&s, desired, preset),
         "status_line_unverified": unverified(desired),
         "writes": false,
     }))
@@ -447,6 +601,8 @@ pub fn config_apply(
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
+    let (desired, _) = resolve_preset(desired)?;
+    let desired = &desired;
     let s = config_state(project, home, desired)?;
     if !s.conflicts.is_empty() {
         return Err(format!(

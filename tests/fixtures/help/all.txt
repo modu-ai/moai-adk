@@ -8,10 +8,10 @@ Start
   codex                   Start a Codex CLI session
   glm                     Start a Claude Code session on z.ai GLM
 Project
-  init                    Initialize this folder or a new project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile
+  project-update-plan     Preview the whole project update in one view
   language-setup          Choose the writing language item by item
   index-build             Build the code map index
   agents-plan             Preview the AGENTS.md managed section
@@ -76,6 +76,7 @@ Keys
   key-remove              Remove a provider key from the vault
   key-import-plan         Preview importing an old key file
   key-import-apply        Import a previewed old key file
+  keys-revert             Undo the keys one update imported
 Diagnose
   claude-doctor           Check that Claude Code reads AGENTS.md
   codex-doctor            Check the Codex instructions and skills
@@ -94,6 +95,7 @@ Lane and leader
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
+  leader-round            Build the leader's per-lane action list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host
   lane-stop-hook          Answer a Codex lane's Stop hook
@@ -184,11 +186,15 @@ Internal
   archive-search          Search the archived SPECs
   worktree-gc-plan        Preview removing or trimming merged worktrees
   worktree-gc-apply       Remove or trim the previewed worktrees
+  hygiene-plan            Preview what may move to the holding folder
+  hygiene-apply           Move the previewed leftovers to the holding folder
   session                 Start a Claude Code session (legacy form)
 
 Options:
   -l, --leader             Start a leader session on the default host (cc)
   -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|codex; default cc)
+      --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or
+                           never; put it before the command
       --name <NAME>        Session name (default `leader` for -l, the project's next `agent-N` for
                            -a; none without a role)
       --model <MODEL>      Main model (Claude hosts default `opus`; codex uses its own default

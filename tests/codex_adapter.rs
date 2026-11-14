@@ -942,3 +942,25 @@ fn codex_projection_refuses_a_package_target_reached_through_a_symlink() {
     let (ok, v) = run(&["codex-projection-plan", &pkg_s, "--target", s(&outside)]);
     assert!(ok, "{v}");
 }
+
+/// Without `--codex-home` and `CODEX_HOME`, the global AGENTS file comes from `<home>/.codex`
+/// (the default the command kept when it moved to `src/ops/`, #2834 R3).
+#[test]
+fn codex_home_defaults_to_dot_codex_under_home() {
+    let f = fixture();
+    write(&f.home.join(".codex/AGENTS.md"), "global\n");
+    let (ok, v) = run(&[
+        "codex-doctor",
+        s(&f.root),
+        "--cwd",
+        s(&f.cwd),
+        "--home",
+        s(&f.home),
+    ]);
+    assert!(ok, "{v}");
+    assert_eq!(
+        v["result"]["agents"]["global"]["included"].as_str(),
+        Some(s(&f.home.join(".codex/AGENTS.md"))),
+        "{v}"
+    );
+}

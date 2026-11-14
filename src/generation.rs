@@ -619,7 +619,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
     };
     let agents = agents_plan_for(
         &root,
-        agents_request,
+        agents_request.clone(),
         reference_is_own_output(&root, &request),
     )?;
     let manifest = manifest_value(&root)?;
@@ -921,6 +921,29 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         warnings,
         plan_digest: String::new(),
     };
+    // #2936 Q3 B: the manifest line from the agents plan knows nothing of the generation
+    // entries this apply records, so it is decided again here: `unchanged` only when every
+    // other file is and the amended bytes equal the manifest on disk.
+    let manifest_rel = manifest_rel(&root);
+    if let Some(line) = plan
+        .files
+        .iter()
+        .position(|f| f.path == manifest_rel && f.action != "create")
+    {
+        let others_unchanged = plan
+            .files
+            .iter()
+            .all(|f| f.path == manifest_rel || f.action == "unchanged");
+        let same = others_unchanged && {
+            let mut value =
+                crate::agents::predicted_manifest_value(&root, &agents_request, &agents.files)?;
+            let (profile, profile_bytes) = read_profile(&root)?;
+            record_generation(&mut value, &plan, &profile, &profile_bytes);
+            let disk = read_opt(&root.join(&manifest_rel))?;
+            disk.is_some() && crate::agents::amended_manifest_bytes(value) == disk
+        };
+        plan.files[line].action = if same { "unchanged" } else { "merge" }.into();
+    }
     plan.plan_digest = plan_digest(&plan);
     Ok(plan)
 }
@@ -1043,6 +1066,64 @@ fn remove_owned(
     }
     receipt.entry(&f.path, "remove", Some(&digest(&bytes)), None, true, None);
     Ok(())
+}
+
+/// The manifest step of `generation-apply`'s hook: records the generation baselines and the
+/// profile linkage on the value `agents_apply` is about to publish. Only keys the agents.rs
+/// schema already knows are touched (agents_apply re-decodes the typed schema). The plan uses
+/// it too, to tell whether the manifest bytes would move (#2936 Q3 B).
+fn record_generation(
+    manifest: &mut Value,
+    p: &GenerationPlan,
+    profile: &crate::Profile,
+    profile_bytes: &[u8],
+) {
+    let Some(map) = manifest.as_object_mut() else {
+        return;
+    };
+    let list = map
+        .entry("owned_files")
+        .or_insert_with(|| json!([]))
+        .as_array_mut()
+        .expect("owned_files array");
+    list.retain(|f| {
+        let path = f.get("path").and_then(Value::as_str).unwrap_or("");
+        !p.files.iter().any(|pf| {
+            pf.kind
+                .as_deref()
+                .is_some_and(|k| k.starts_with("generation:"))
+                && pf.path == path
+        })
+    });
+    for f in &p.files {
+        let Some(kind) = &f.kind else {
+            continue;
+        };
+        if !kind.starts_with("generation:") || f.action == "conflict" {
+            continue;
+        }
+        // A `remove` plan carries no rendered digest, so it never re-enters the list.
+        let Some(rendered) = &f.rendered_sha256 else {
+            continue;
+        };
+        list.push(json!({
+            "path": f.path,
+            // The bare kind (#2109) is the primary discriminator; the
+            // generation:… section_id tag stays for readers of manifests
+            // written before the kind field existed.
+            "kind": kind.strip_prefix("generation:").and_then(|rest| {
+                rest.split(':').next()
+            }),
+            "section_id": kind,
+            "baseline_sha256": rendered,
+        }));
+    }
+    map.insert("workflow_id".into(), json!(p.request.workflow_id));
+    map.insert(
+        "interview_revision".into(),
+        json!(profile.interview_revision),
+    );
+    map.insert("profile_sha256".into(), json!(digest(profile_bytes)));
 }
 
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
@@ -1217,51 +1298,7 @@ pub fn generation_apply(
         // 3. The manifest: record generation baselines and the profile linkage on the
         //    value agents_apply is about to publish. Only keys the agents.rs schema
         //    already knows are touched (agents_apply re-decodes the typed schema).
-        if let Some(map) = manifest.as_object_mut() {
-            let list = map
-                .entry("owned_files")
-                .or_insert_with(|| json!([]))
-                .as_array_mut()
-                .expect("owned_files array");
-            list.retain(|f| {
-                let path = f.get("path").and_then(Value::as_str).unwrap_or("");
-                !p.files.iter().any(|pf| {
-                    pf.kind
-                        .as_deref()
-                        .is_some_and(|k| k.starts_with("generation:"))
-                        && pf.path == path
-                })
-            });
-            for f in &p.files {
-                let Some(kind) = &f.kind else {
-                    continue;
-                };
-                if !kind.starts_with("generation:") || f.action == "conflict" {
-                    continue;
-                }
-                // A `remove` plan carries no rendered digest, so it never re-enters the list.
-                let Some(rendered) = &f.rendered_sha256 else {
-                    continue;
-                };
-                list.push(json!({
-                    "path": f.path,
-                    // The bare kind (#2109) is the primary discriminator; the
-                    // generation:… section_id tag stays for readers of manifests
-                    // written before the kind field existed.
-                    "kind": kind.strip_prefix("generation:").and_then(|rest| {
-                        rest.split(':').next()
-                    }),
-                    "section_id": kind,
-                    "baseline_sha256": rendered,
-                }));
-            }
-            map.insert("workflow_id".into(), json!(p.request.workflow_id));
-            map.insert(
-                "interview_revision".into(),
-                json!(profile.interview_revision),
-            );
-            map.insert("profile_sha256".into(), json!(digest(&profile_bytes)));
-        }
+        record_generation(manifest, &p, &profile, &profile_bytes);
         // The manifest entry itself is recorded in the agents.apply receipt, which keeps
         // the pre-apply manifest bytes for recovery. Saved as `partial` here: the
         // manifest publish is still ahead.

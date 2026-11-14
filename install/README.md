@@ -23,6 +23,10 @@ The addresses do not change; at release time only the files behind them are repl
 7. Never edit PATH or shell profiles. When the link folder is not on PATH, print the line to add instead. Putting the Rust `moai` first on PATH, with a receipt and a way back, is the `install-path-*` step (#2871 I1-b).
 8. When the `moai` first on PATH is the Go edition, change nothing of it and print `moai-cli update` (a preview that writes nothing) as the next step.
 
+## After the install
+
+Both scripts end by printing the next steps. Make a project folder and enter it (`mkdir my-project && cd my-project`; in PowerShell `New-Item -ItemType Directory my-project; Set-Location my-project`). Start a session there with `moai cc`, or `moai glm` or `moai codex`; `-l` starts it in leader mode and `-a` in agent mode, and both are optional. In the session, run `/moai project` to set the project up.
+
 ## Options, compared with the Go scripts
 
 | Option or variable | Go `install.sh` / `install.ps1` | Rust installers |

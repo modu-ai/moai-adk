@@ -323,6 +323,74 @@ fn without_observations_no_worktree_is_a_candidate() {
     assert_eq!(r["observations"]["claims"], Value::Null);
 }
 
+/// #2930 item 6: the preview counts the repository's worktrees (the primary one included) and
+/// warns, as an added `warnings` line, only when there are more than 200: 200 is quiet, 201
+/// warns. The fixture of the other cases has 7 and no warning.
+#[test]
+fn more_than_200_worktrees_in_a_repository_add_a_warning_line() {
+    let fx = fixture();
+    let r = optimize(&fx, None, now_plus_days(8), &[]);
+    assert_eq!(r["worktrees"], json!({"count": 7, "warn_over": 200}), "{r}");
+    assert_eq!(r["warnings"], json!([]), "{r}");
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let base = fs::canonicalize(dir.path()).unwrap();
+    let (root, home, builds) = (base.join("repo"), base.join("home"), base.join("builds"));
+    for d in [&root, &home, &builds] {
+        fs::create_dir_all(d).unwrap();
+    }
+    git(&root, &["init", "-q", "-b", "main"]);
+    fs::write(root.join(".gitignore"), ".moai-cli/\n").unwrap();
+    fs::write(root.join("a.txt"), "a\n").unwrap();
+    git(&root, &["add", ".gitignore", "a.txt"]);
+    git(&root, &["commit", "-q", "-m", "init"]);
+    git(&root, &["branch", "integ"]);
+    let fx = Fixture {
+        _dir: dir,
+        root,
+        home,
+        builds,
+    };
+    let add = |i: usize| {
+        let path = wt(&fx, &format!("w{i}"));
+        git(
+            &fx.root,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "--no-checkout",
+                "-b",
+                &format!("issue/{}-w", 1000 + i),
+                path.to_str().unwrap(),
+                "integ",
+            ],
+        );
+    };
+    for i in 0..199 {
+        add(i);
+    }
+    // A 1 ms budget keeps the per-worktree size and status scans short; the count comes from
+    // the worktree list, not from them.
+    let quick = ["--budget-ms", "1"];
+    let r = optimize(&fx, None, now_plus_days(8), &quick);
+    assert_eq!(r["worktrees"]["count"], 200, "{}", r["worktrees"]);
+    assert_eq!(r["warnings"], json!([]), "200 worktrees must not warn: {r}");
+    add(199);
+    let r = optimize(&fx, None, now_plus_days(8), &quick);
+    assert_eq!(
+        r["worktrees"],
+        json!({"count": 201, "warn_over": 200}),
+        "{r}"
+    );
+    assert_eq!(
+        r["warnings"],
+        json!(["this repository has 201 worktrees, more than 200; `worktree-gc-plan` lists the merged ones that could go"]),
+        "{r}"
+    );
+    assert_eq!(r["writes"], false);
+}
+
 /// Build folders: only cargo output past retention, nothing else beside it.
 #[test]
 fn build_folders_count_only_past_retention_and_only_cargo_output() {
