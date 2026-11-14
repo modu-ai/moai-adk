@@ -25,6 +25,7 @@ pub const GROUPS: &[Group] = &[
     Group {
         heading: "Project",
         commands: &[
+            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),
@@ -218,6 +219,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
     ("glm", &["glm -a"]),
+    ("init", &["init", "init --new demo", "init --new demo --dry-run"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
