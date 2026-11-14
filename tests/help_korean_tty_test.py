@@ -12,8 +12,10 @@ options and examples headings and the help flag's line. POSIX only.
 
 import os
 import re
+import select
 import shutil
 import subprocess
+import time
 import tempfile
 import unittest
 
@@ -43,23 +45,26 @@ def run_help(args, env, stdout_tty=True, stderr_tty=False):
                                 stdout=slave if stdout_tty else subprocess.PIPE,
                                 stderr=slave if stderr_tty else subprocess.PIPE,
                                 env=env, cwd=env["HOME"])
-        os.close(slave)
-        slave = -1
+        # The parent keeps the slave open until the child has exited and the master is drained:
+        # on macOS the output a child wrote is dropped once the last slave descriptor closes
+        # before the master reads it, which loses lines when the machine is busy.
         chunks = []
+        deadline = time.monotonic() + 60
         while True:
-            try:
-                data = os.read(master, 65536)
-            except OSError:
+            ready, _, _ = select.select([master], [], [], 0.05)
+            if ready:
+                chunks.append(os.read(master, 65536))
+                continue
+            if proc.poll() is not None:
                 break
-            if not data:
-                break
-            chunks.append(data)
+            if time.monotonic() > deadline:
+                proc.kill()
+                raise AssertionError(f"{args}: no exit within 60 s")
         out = "" if stdout_tty else proc.stdout.read().decode()
         err = "" if stderr_tty else proc.stderr.read().decode()
         proc.wait(timeout=60)
     finally:
-        if slave != -1:
-            os.close(slave)
+        os.close(slave)
         os.close(master)
     term = b"".join(chunks).decode("utf-8", "replace").replace("\r\n", "\n")
     if stdout_tty:
