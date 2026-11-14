@@ -940,7 +940,24 @@ pub(crate) fn resolve_host_receipt(
     install_id: &str,
     host: &str,
 ) -> Result<ReceiptSource> {
-    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let mut own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    if own.is_none() {
+        // R5 (#2871 U3b): this folder moved with `~/.moai-cli`, so its receipt may still sit under
+        // the id it was written under. Only a receipt that names that id and this host counts;
+        // the newest of them (by its finish time) stands in for the missing own one.
+        for old in crate::home_install::earlier_ids_of(canonical_home, install_id) {
+            let path = host_receipt_path(canonical_home, &old, host, false)?;
+            if let Ok(Some(r)) = load_host_receipt(&path) {
+                let newer = own.as_ref().is_none_or(|o| {
+                    r.finished_at.clone().unwrap_or(r.started_at.clone())
+                        > o.finished_at.clone().unwrap_or(o.started_at.clone())
+                });
+                if r.install_id == old && r.host == host && newer {
+                    own = Some(r);
+                }
+            }
+        }
+    }
     let plain = |receipt| ReceiptSource {
         receipt,
         from: None,
@@ -988,40 +1005,64 @@ pub(crate) fn resolve_host_receipt(
         }
     }
     folders.sort();
-    for (_, id) in earlier_install_ids(&versions, &folders, &exe_name)? {
-        if id == install_id {
+    for (_, folder_id) in earlier_install_ids(&versions, &folders, &exe_name)? {
+        if folder_id == install_id {
             continue;
         }
-        match fs::symlink_metadata(installations.join(&id)) {
-            Ok(m) if m.is_dir() => {}
-            _ => continue, // never installed anything, or a linked receipt directory
-        }
-        let path = host_receipt_path(canonical_home, &id, host, false)?;
-        let receipt = match load_host_receipt(&path) {
-            Ok(Some(r)) => r,
-            Ok(None) => continue,
-            Err(e) => {
+        // R5 (#2871 U3b): a folder that moved with `~/.moai-cli` may hold its receipts under the
+        // id it had before (the committed install journal says which). The folder's own id comes
+        // first; of the finished receipts it holds, the newest stands for the folder, so one
+        // folder never ties with itself. With no journal this is the folder's own id alone.
+        let mut ids = vec![folder_id.clone()];
+        ids.extend(crate::home_install::earlier_ids_of(
+            canonical_home,
+            &folder_id,
+        ));
+        let mut chosen: Option<(String, HostReceipt)> = None;
+        for id in ids {
+            if id == install_id {
+                continue;
+            }
+            match fs::symlink_metadata(installations.join(&id)) {
+                Ok(m) if m.is_dir() => {}
+                _ => continue, // never installed anything, or a linked receipt directory
+            }
+            let path = host_receipt_path(canonical_home, &id, host, false)?;
+            let receipt = match load_host_receipt(&path) {
+                Ok(Some(r)) => r,
+                Ok(None) => continue,
+                Err(e) => {
+                    return Ok(blocked(format!(
+                        "the host receipt of the earlier installation {id} is unreadable ({e}); \
+                         nothing was adopted"
+                    )))
+                }
+            };
+            if receipt.install_id != id || receipt.host != host {
                 return Ok(blocked(format!(
-                    "the host receipt of the earlier installation {id} is unreadable ({e}); \
-                     nothing was adopted"
-                )))
+                    "the host receipt of the earlier installation {id} names another \
+                     installation or host; nothing was adopted"
+                )));
             }
-        };
-        if receipt.install_id != id || receipt.host != host {
-            return Ok(blocked(format!(
-                "the host receipt of the earlier installation {id} names another \
-                 installation or host; nothing was adopted"
-            )));
-        }
-        if receipt.status == "pending" {
-            if newest_pending
+            if receipt.status == "pending" {
+                if newest_pending
+                    .as_ref()
+                    .is_none_or(|(k, _)| receipt.started_at > *k)
+                {
+                    newest_pending = Some((receipt.started_at.clone(), id));
+                }
+                continue;
+            }
+            if chosen
                 .as_ref()
-                .is_none_or(|(k, _)| receipt.started_at > *k)
+                .is_none_or(|(_, c)| finished_key(&receipt) > finished_key(c))
             {
-                newest_pending = Some((receipt.started_at.clone(), id));
+                chosen = Some((id, receipt));
             }
-            continue;
         }
+        let Some((id, receipt)) = chosen else {
+            continue;
+        };
         let key = finished_key(&receipt);
         match &best {
             Some((k, _, _)) if key < *k => {}

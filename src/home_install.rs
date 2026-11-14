@@ -502,6 +502,53 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     }))
 }
 
+/// The most install journals read; a journal folder with more is read newest-name last up to
+/// this many and the rest ignored (the reader is a lookup, never a gate).
+const ALIAS_JOURNAL_LIMIT: usize = 64;
+
+/// R5 (#2871 U3b): old install id to new install id, from the `committed` install journals in
+/// `<home>/<HOME_STATE_DIR>/home-install/`.
+///
+/// The install id is a hash of the binary's canonical path, so moving a version folder to
+/// `~/.moai/versions` changes it, while the receipts keep the id they were written under. A
+/// reader that wants the receipt of a build asks for its earlier ids too. Only a committed
+/// journal counts: a pending or reverted one lends nothing, so a revert takes the ids back. The
+/// journal folder and every file are read by `lstat` first (a link lends nothing); a file that
+/// is not a valid journal, is of another `kind` or is unreadable is skipped, never an error.
+/// With no journal this is empty and every caller behaves as before. A later journal (by name)
+/// wins over an earlier one for the same old id. Reads names and JSON only.
+pub fn committed_aliases(home: &Path) -> BTreeMap<String, String> {
+    let dir = home.join(crate::HOME_STATE_DIR).join(JOURNAL_DIR);
+    let mut out = BTreeMap::new();
+    if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
+        return out;
+    }
+    let (names, _) = names_of(&dir);
+    let mut names: Vec<String> = names
+        .into_iter()
+        .filter(|n| n.starts_with(move_journal::PREFIX) && n.ends_with(".json"))
+        .collect();
+    names.sort();
+    for n in names.iter().take(ALIAS_JOURNAL_LIMIT) {
+        let Ok(j) = move_journal::read_journal(&dir.join(n)) else {
+            continue;
+        };
+        if j.kind == KIND && j.state == move_journal::JournalState::Committed {
+            out.extend(j.id_aliases);
+        }
+    }
+    out
+}
+
+/// The earlier install ids that `new_id` replaced, sorted. Empty with no committed journal.
+pub fn earlier_ids_of(home: &Path, new_id: &str) -> Vec<String> {
+    committed_aliases(home)
+        .into_iter()
+        .filter(|(_, new)| new == new_id)
+        .map(|(old, _)| old)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -615,5 +662,93 @@ mod tests {
         for e in home_layout::HOME_TABLE {
             assert!(!class_str(e.class).is_empty() && !rule_str(e.rule).is_empty());
         }
+    }
+
+    fn journal(dir: &Path, stamp: &str, state: move_journal::JournalState, pairs: &[(&str, &str)]) {
+        let j = move_journal::Journal {
+            schema_version: move_journal::SCHEMA_VERSION,
+            kind: KIND.to_string(),
+            stamp: stamp.to_string(),
+            state,
+            id_aliases: pairs
+                .iter()
+                .map(|(a, b)| (a.to_string(), b.to_string()))
+                .collect(),
+            items: Vec::new(),
+        };
+        fs::create_dir_all(dir).unwrap();
+        fs::write(
+            move_journal::journal_path(dir, stamp),
+            serde_json::to_vec(&j).unwrap(),
+        )
+        .unwrap();
+    }
+
+    /// R5 (#2871 U3b): only committed journals lend ids; a later one wins for the same old id.
+    #[test]
+    fn committed_aliases_read_committed_journals_and_the_later_one_wins() {
+        use move_journal::JournalState::{Committed, Pending, Reverted};
+        let t = tempfile::tempdir().unwrap();
+        let home = t.path();
+        assert!(committed_aliases(home).is_empty(), "no folder, no ids");
+        let dir = old_dir(home).join(JOURNAL_DIR);
+        journal(
+            &dir,
+            "20261114T100000Z",
+            Committed,
+            &[("a", "a1"), ("b", "b1")],
+        );
+        journal(&dir, "20261114T110000Z", Committed, &[("a", "a2")]);
+        journal(&dir, "20261114T120000Z", Pending, &[("c", "c1")]);
+        journal(&dir, "20261114T130000Z", Reverted, &[("d", "d1")]);
+        let got = committed_aliases(home);
+        assert_eq!(got.get("a").map(String::as_str), Some("a2"), "{got:?}");
+        assert_eq!(got.get("b").map(String::as_str), Some("b1"), "{got:?}");
+        assert!(!got.contains_key("c") && !got.contains_key("d"), "{got:?}");
+        assert_eq!(earlier_ids_of(home, "a2"), vec!["a".to_string()]);
+        assert!(
+            earlier_ids_of(home, "a1").is_empty(),
+            "replaced by a later journal"
+        );
+    }
+
+    /// A file that is not a journal, a journal folder that is a link and a bad file lend nothing
+    /// and never fail the lookup.
+    #[cfg(unix)]
+    #[test]
+    fn committed_aliases_skip_what_is_not_a_plain_journal() {
+        use move_journal::JournalState::Committed;
+        let t = tempfile::tempdir().unwrap();
+        let home = t.path();
+        let dir = old_dir(home).join(JOURNAL_DIR);
+        journal(&dir, "20261114T100000Z", Committed, &[("a", "a1")]);
+        fs::write(dir.join("move-journal-20261114T110000Z.json"), "{not json").unwrap();
+        fs::write(dir.join("notes.txt"), "x").unwrap();
+        assert_eq!(committed_aliases(home).len(), 1);
+        // The same journal folder reached through a link lends nothing.
+        let linked = tempfile::tempdir().unwrap();
+        fs::create_dir_all(old_dir(linked.path())).unwrap();
+        std::os::unix::fs::symlink(&dir, old_dir(linked.path()).join(JOURNAL_DIR)).unwrap();
+        assert!(committed_aliases(linked.path()).is_empty());
+    }
+
+    /// The reader is a lookup with a bound: past the limit, the rest are ignored.
+    #[test]
+    fn committed_aliases_read_at_most_the_journal_limit() {
+        use move_journal::JournalState::Committed;
+        let t = tempfile::tempdir().unwrap();
+        let dir = old_dir(t.path()).join(JOURNAL_DIR);
+        for i in 0..=ALIAS_JOURNAL_LIMIT {
+            let stamp = format!("20261114T{:02}{:02}00Z", i / 60, i % 60);
+            journal(&dir, &stamp, Committed, &[(&format!("old{i:03}"), "new")]);
+        }
+        let got = committed_aliases(t.path());
+        assert_eq!(
+            got.len(),
+            ALIAS_JOURNAL_LIMIT,
+            "the {}th is ignored",
+            ALIAS_JOURNAL_LIMIT + 1
+        );
+        assert!(got.contains_key("old063") && !got.contains_key("old064"));
     }
 }
