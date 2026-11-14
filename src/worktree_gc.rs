@@ -393,6 +393,131 @@ pub(crate) fn census(wt: &Path) -> Option<(usize, usize, bool)> {
     Some((untracked, ignored, target_ignored))
 }
 
+/// Ignored files a merged worktree may lose (#2879 D2) — the one table. Regenerable caches,
+/// a lane's temporary files and byte-identical copies of the primary checkout's same path
+/// (what `.worktreeinclude` copied). Anything else keeps the worktree: a `.moai/` report that
+/// exists only in the worktree, or differs from the primary's copy, is user data (measured
+/// 2026-11-14 on 41 merged worktrees: 34 held a differing file, 6 a file the primary lacks).
+const REGENERABLE_DIRS: &[&str] = &["__pycache__", ".ruff_cache", ".pytest_cache", ".mypy_cache"];
+const REGENERABLE_EXTS: &[&str] = &["pyc", "pyo"];
+const LANE_TEMP_EXTS: &[&str] = &["log"];
+/// More ignored files than this in one worktree and the census is unknown (fail closed).
+const IGNORED_FILE_LIMIT: usize = 20_000;
+
+/// A `target/` entry that is a lane's own temporary folder: `agent-9`, `agent9`, `lane-3`.
+pub(crate) fn lane_temp_dir(name: &str) -> bool {
+    ["agent", "lane"].iter().any(|p| {
+        name.strip_prefix(p).is_some_and(|rest| {
+            let digits = rest.strip_prefix('-').unwrap_or(rest);
+            !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+        })
+    })
+}
+
+fn same_bytes(a: &Path, b: &Path) -> bool {
+    let (Ok(ma), Ok(mb)) = (fs::symlink_metadata(a), fs::symlink_metadata(b)) else {
+        return false;
+    };
+    if !ma.is_file() || !mb.is_file() || ma.len() != mb.len() {
+        return false;
+    }
+    matches!((fs::read(a), fs::read(b)), (Ok(x), Ok(y)) if x == y)
+}
+
+/// One ignored file (path relative to the worktree): safe to lose, or kept.
+fn ignored_file_is_safe(wt: &Path, primary: &Path, rel: &Path) -> bool {
+    let path = wt.join(rel);
+    if fs::symlink_metadata(&path).map_or(true, |m| !m.is_file()) {
+        return false; // links and special files are never counted safe
+    }
+    let regenerable = rel.components().any(|c| {
+        REGENERABLE_DIRS
+            .iter()
+            .any(|d| c.as_os_str() == std::ffi::OsStr::new(d))
+    });
+    let ext = rel.extension().and_then(|e| e.to_str()).unwrap_or("");
+    regenerable
+        || REGENERABLE_EXTS.contains(&ext)
+        || LANE_TEMP_EXTS.contains(&ext)
+        || same_bytes(&path, &primary.join(rel))
+}
+
+/// The ignored files of `wt` outside its cargo build output, split into a safe count and the
+/// kept paths (#2879 D2). `preserved` are the non-cargo entries of `target/`; a lane's
+/// temporary folder there is safe. `None` when git fails or there are too many files.
+pub(crate) fn ignored_split(
+    wt: &Path,
+    primary: &Path,
+    preserved: &[String],
+) -> Option<(usize, Vec<String>)> {
+    let s = git_out(
+        wt,
+        &[
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=normal",
+            "--ignored=traditional",
+        ],
+    )?;
+    let (mut safe, mut kept, mut seen) = (0usize, Vec::new(), 0usize);
+    for rec in s.split('\0').filter(|r| r.len() > 3) {
+        let (code, entry) = rec.split_at(3);
+        if code != "!! " || entry == "target/" {
+            continue;
+        }
+        let mut files = Vec::new();
+        let top = wt.join(entry.trim_end_matches('/'));
+        if fs::symlink_metadata(&top).is_ok_and(|m| m.is_dir()) {
+            let mut stack = vec![top];
+            while let Some(d) = stack.pop() {
+                for e in fs::read_dir(&d).ok()?.flatten() {
+                    let p = e.path();
+                    if fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir()) {
+                        stack.push(p);
+                    } else {
+                        files.push(p);
+                    }
+                    seen += 1;
+                    if seen > IGNORED_FILE_LIMIT {
+                        return None;
+                    }
+                }
+            }
+        } else {
+            files.push(top);
+        }
+        for f in files {
+            let rel = f.strip_prefix(wt).ok()?.to_path_buf();
+            if ignored_file_is_safe(wt, primary, &rel) {
+                safe += 1;
+            } else {
+                kept.push(rel.to_string_lossy().into_owned());
+            }
+        }
+    }
+    for name in preserved {
+        if lane_temp_dir(name)
+            && fs::symlink_metadata(wt.join("target").join(name)).is_ok_and(|m| m.is_dir())
+        {
+            safe += 1;
+        } else {
+            kept.push(format!("target/{name}"));
+        }
+    }
+    kept.sort();
+    Some((safe, kept))
+}
+
+/// How far one plan goes (#2879 D2): at most `max_checked` worktrees are examined, starting
+/// after `cursor` (a candidate `path` of an earlier plan) and wrapping around. The default
+/// examines all of them, as before.
+#[derive(Clone, Debug, Default)]
+pub struct Pace {
+    pub max_checked: Option<usize>,
+    pub cursor: Option<String>,
+}
+
 /// The home worktree folder and the Go generation's folder (#2811), each as written and as
 /// resolved; empty when no home is known.
 fn work_roots() -> (Vec<PathBuf>, Vec<PathBuf>) {
@@ -447,6 +572,29 @@ pub fn plan_with(
     now_unix: Option<u64>,
     squash: bool,
 ) -> Result<Value> {
+    plan_paced(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        squash,
+        &Pace::default(),
+    )
+}
+
+/// [`plan_with`] that examines at most `pace.max_checked` worktrees, starting after
+/// `pace.cursor`; the answer says how many were left (`remaining`) and where the next run
+/// goes on (`next_cursor`) — a plan cut short by its time budget says the same (#2879 D2).
+pub fn plan_paced(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    squash: bool,
+    pace: &Pace,
+) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
             "--recent-minutes must be at least {MIN_RECENT_MINUTES} (#2498); got {}",
@@ -488,7 +636,25 @@ pub fn plan_with(
     let (home_roots, go_roots) = work_roots();
 
     let mut candidates = Vec::new();
-    for (i, e) in entries.iter().enumerate() {
+    // #2879 D2: the primary first, then the linked worktrees starting after the cursor.
+    let shown_of = |e: &crate::worktree_report::WorktreeEntry| {
+        shown(
+            &fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()),
+            &primary,
+        )
+    };
+    let mut order: Vec<usize> = (1..entries.len()).collect();
+    if let Some(c) = pace.cursor.as_deref() {
+        if let Some(at) = order.iter().position(|&i| shown_of(&entries[i]) == c) {
+            order.rotate_left(at + 1);
+        }
+    }
+    if !entries.is_empty() {
+        order.insert(0, 0);
+    }
+    let (mut checked, mut remaining, mut last_checked) = (0usize, 0usize, None::<String>);
+    for i in order {
+        let e = &entries[i];
         if e.bare {
             continue;
         }
@@ -516,9 +682,19 @@ pub fn plan_with(
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
-        if Instant::now() >= deadline {
+        let mut ignored_safe: Option<usize> = None;
+        let mut ignored_kept: Vec<String> = Vec::new();
+        let over_count = i != 0 && pace.max_checked.is_some_and(|m| checked >= m);
+        if Instant::now() >= deadline || over_count {
             f.budget_spent = true;
+            if i != 0 {
+                remaining += 1;
+            }
         } else if !e.prunable {
+            if i != 0 {
+                checked += 1;
+                last_checked = Some(shown(&path, &primary));
+            }
             f.merged = e.head.as_deref().and_then(|h| merged(&primary, h, &tip));
             if f.merged == Some(true) {
                 merged_by = Some("ancestor");
@@ -535,9 +711,20 @@ pub fn plan_with(
             }
             f.tracked_dirty = git_out(&path, &["status", "--porcelain", "--untracked-files=no"])
                 .map(|s| !s.trim().is_empty());
-            if let Some((u, ign, _)) = census(&path) {
+            if i == 0 {
+                // The primary is never removed; its ignored folders (other worktrees, build
+                // output) are not walked file by file.
+                if let Some((u, ign, _)) = census(&path) {
+                    f.untracked = Some(u);
+                    f.ignored_outside_build = Some(ign + preserved.len());
+                }
+            } else if let (Some((u, _, _)), Some((safe, kept))) =
+                (census(&path), ignored_split(&path, &primary, &preserved))
+            {
                 f.untracked = Some(u);
-                f.ignored_outside_build = Some(ign + preserved.len());
+                f.ignored_outside_build = Some(kept.len());
+                ignored_safe = Some(safe);
+                ignored_kept = kept;
             }
             f.in_use = cwds
                 .as_ref()
@@ -563,6 +750,8 @@ pub fn plan_with(
             "preserved_in_target": preserved,
             "untracked": f.untracked,
             "ignored_outside_build": f.ignored_outside_build,
+            "ignored_safe": ignored_safe,
+            "ignored_kept": ignored_kept.iter().take(5).collect::<Vec<_>>(),
             "change_age_secs": f.change_age_secs,
             "trim_bytes": trim_bytes,
             "bytes_partial": partial,
@@ -594,6 +783,8 @@ pub fn plan_with(
             "trim_bytes": trim_total,
         },
         "candidates": candidates,
+        "remaining": remaining,
+        "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
         "plan_digest": plan_digest,
         "apply": "worktree-gc-apply with this plan_digest and a permission reference (#2498); on this machine the leader runs it only after the user confirms (#2389 comment 6774899518 item 2)",
         "network": "disabled",
@@ -611,7 +802,8 @@ fn validate_permission(permission: &str) -> Result<()> {
 /// Why `wt` must not be touched right now, re-checked just before each deletion: a process
 /// working inside it, a tracked change, or (for a removal) any untracked file or ignored file
 /// outside the cargo build output. An unknown fact refuses too.
-pub(crate) fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
+/// `primary` is the primary checkout, for the copy check of the ignored files when removing.
+pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Option<&'static str> {
     let cwds = match process_cwds() {
         Some(v) => v,
         None => return Some("process_check_unavailable"),
@@ -634,11 +826,13 @@ pub(crate) fn busy_now(wt: &Path, removing: bool) -> Option<&'static str> {
         None => return Some("status_unknown"),
     }
     if removing {
+        // The same split the plan used (#2879 D2): only safe ignored files may go with it.
         let (_, preserved) = split_target(&wt.join("target"));
-        match census(wt) {
-            Some((0, 0, _)) if preserved.is_empty() => {}
-            Some(_) => return Some("files_outside_build_output"),
-            None => return Some("file_census_unknown"),
+        let split = primary.and_then(|p| ignored_split(wt, p, &preserved));
+        match (census(wt), split) {
+            (Some((0, _, _)), Some((_, kept))) if kept.is_empty() => {}
+            (Some(_), Some(_)) => return Some("files_outside_build_output"),
+            _ => return Some("file_census_unknown"),
         }
     }
     None
@@ -688,11 +882,20 @@ pub fn apply(
     recent: Duration,
     budget: Duration,
     now_unix: Option<u64>,
+    pace: &Pace,
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value> {
     validate_permission(permission_reference)?;
-    let fresh = plan(project, integration_ref, recent, budget, now_unix)?;
+    let fresh = plan_paced(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        false,
+        pace,
+    )?;
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
     }
@@ -724,7 +927,7 @@ pub fn apply(
             .unwrap_or_else(|_| primary.join(&shown_path));
         let outcome = if wt == primary || !worktrees.contains(&wt) {
             Err("not a linked worktree of this repository".to_string())
-        } else if let Some(why) = busy_now(&wt, action == "remove") {
+        } else if let Some(why) = busy_now(&wt, action == "remove", Some(&primary)) {
             Err(format!("refused: {why}"))
         } else if action == "trim" {
             let paths: Vec<String> = c["trim_paths"]
@@ -910,5 +1113,19 @@ mod tests {
             decide(&f, 7_200),
             ("skip", vec!["file_census_unknown", "no_build_output"])
         );
+    }
+
+    /// #2879 D2: only a lane's own folder names are temporary; anything else in `target/` is
+    /// a note kept with the worktree.
+    #[test]
+    fn lane_temp_dirs_are_named_for_a_lane() {
+        for ok in ["agent-9", "agent29", "lane-3", "lane12"] {
+            assert!(lane_temp_dir(ok), "{ok}");
+        }
+        for no in [
+            "agent", "agent-", "agents-9", "notes", "agent-9x", "lane-a", "pr-12",
+        ] {
+            assert!(!lane_temp_dir(no), "{no}");
+        }
     }
 }

@@ -777,6 +777,13 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
+        /// `next_cursor` says where the next run goes on (#2879).
+        #[arg(long)]
+        max_checked: Option<usize>,
+        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
+        #[arg(long)]
+        cursor: Option<String>,
     },
     /// Remove or trim the previewed worktrees
     ///
@@ -794,6 +801,13 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
+        /// `next_cursor` says where the next run goes on (#2879).
+        #[arg(long)]
+        max_checked: Option<usize>,
+        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
+        #[arg(long)]
+        cursor: Option<String>,
         #[arg(long)]
         plan_digest: String,
         #[arg(long)]
@@ -2354,12 +2368,19 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             recent_minutes,
             budget_ms,
             now_unix,
-        } => moai_cli::worktree_gc::plan(
+            max_checked,
+            cursor,
+        } => moai_cli::worktree_gc::plan_paced(
             &project,
             &integration_ref,
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+            false,
+            &moai_cli::worktree_gc::Pace {
+                max_checked,
+                cursor,
+            },
         ),
         Command::WorktreeGcApply {
             project,
@@ -2367,6 +2388,8 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             recent_minutes,
             budget_ms,
             now_unix,
+            max_checked,
+            cursor,
             plan_digest,
             permission_reference,
         } => moai_cli::worktree_gc::apply(
@@ -2375,6 +2398,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+            &moai_cli::worktree_gc::Pace {
+                max_checked,
+                cursor,
+            },
             &plan_digest,
             &permission_reference,
         ),
