@@ -65,6 +65,13 @@ impl GoFx {
         fs::write(p, body).unwrap();
     }
 
+    /// A symbolic link at `rel` whose body is `body`.
+    pub fn link(&self, rel: &str, body: &str) {
+        let p = self.root.join(rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(body, p).unwrap();
+    }
+
     /// A file the Go deployer wrote and recorded as `template_managed`.
     pub fn deployed(&mut self, rel: &str, body: &str) {
         self.write(rel, body);

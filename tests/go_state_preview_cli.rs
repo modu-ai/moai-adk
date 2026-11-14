@@ -488,3 +488,53 @@ fn a_new_dangling_line_changes_the_plan_digest_and_the_old_digest_is_refused() {
     assert_eq!(refused["ok"], json!(false), "{refused}");
     assert_eq!(fx.tree(), tree, "a refused apply writes nothing");
 }
+
+// ---- AC-11, O-2: an emptied skill mirror folder is warned about and kept ----
+
+#[test]
+fn an_emptied_agents_skills_folder_is_warned_about_and_kept_by_the_apply() {
+    let mut fx = GoFx::new();
+    fx.deployed(".claude/skills/moai-a/SKILL.md", "# a\n");
+    fx.manifest();
+    fx.link(".agents/skills/moai-a", "../../.claude/skills/moai-a");
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".agents/skills/moai-a"), "move", "{plan}");
+    let folders = empty_folders(&plan);
+    assert!(
+        folders.contains(&".agents/skills".to_string()),
+        "{folders:?}"
+    );
+    let warned = plan["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .find(|w| w.contains(".agents/skills"))
+        .unwrap_or_else(|| panic!("no warning about .agents/skills: {}", plan["warnings"]));
+    assert!(warned.contains("the apply deletes no folder"), "{warned}");
+
+    let applied = fx.apply(plan["plan_digest"].as_str().unwrap());
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    let left = fx.root.join(".agents/skills");
+    assert!(left.is_dir(), "the apply deleted a folder");
+    assert_eq!(std::fs::read_dir(&left).unwrap().count(), 0);
+}
+
+/// The miss direction: a mirror folder that keeps something is not warned about.
+#[test]
+fn a_skills_folder_that_keeps_something_is_not_warned_about() {
+    let mut fx = GoFx::new();
+    fx.deployed(".claude/skills/moai-a/SKILL.md", "# a\n");
+    fx.manifest();
+    fx.link(".agents/skills/moai-a", "../../.claude/skills/moai-a");
+    fx.write(".agents/skills/mine/SKILL.md", "mine\n");
+    let plan = fx.plan();
+    assert!(!empty_folders(&plan).contains(&".agents/skills".to_string()));
+    assert!(
+        !plan["warnings"]
+            .to_string()
+            .contains("the apply deletes no folder"),
+        "{}",
+        plan["warnings"]
+    );
+}

@@ -209,7 +209,10 @@ fn reverting_a_created_copy_leaves_no_empty_skills_folder() {
         ".claude/skills",
         ".claude",
     ] {
-        assert!(!project.path().join(gone).exists(), "{gone} was left behind");
+        assert!(
+            !project.path().join(gone).exists(),
+            "{gone} was left behind"
+        );
     }
 }
 
@@ -227,7 +230,10 @@ fn a_revert_keeps_the_folders_that_hold_other_files() {
     skill_revert(project.path(), &id);
     assert!(!project.path().join(".agents/skills/moai").exists());
     assert!(!project.path().join(".claude/skills/moai").exists());
-    for kept in [".agents/skills/mine/SKILL.md", ".claude/skills/mine/SKILL.md"] {
+    for kept in [
+        ".agents/skills/mine/SKILL.md",
+        ".claude/skills/mine/SKILL.md",
+    ] {
         assert!(project.path().join(kept).exists(), "{kept} was removed");
     }
 }
