@@ -1,0 +1,28 @@
+◆ MoAI update
+  설치본 2026.11.0-rc.1 = 패키지
+  2026.11.0-rc.1
+  HOME ~
+
+검사
+  ↑ 스킬 claude
+    최신 30개 · 새로 1개 · 갱신 1개
+  ↑ 스킬 codex
+    최신 30개 · 새로 1개 · 갱신 1개
+  ✓ 에이전트
+    claude 5 · codex 5 · omp 5 — 최신
+    15개
+  ✓ 라우팅
+    CLAUDE.md 최신 · AGENTS.md 최신
+  ✓ 출력 스타일
+    최신 3개
+  ✓ 실행 파일 이름
+    최신
+  – hooks
+    건너뜀: 이 프로젝트에 MoAI hook 없음
+
+바뀔 것
+  스킬 claude
+    ↑ references/routes.md
+    ↑ workflows/update.md
+  스킬 codex
+    같은 파일 2개

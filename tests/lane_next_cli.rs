@@ -410,3 +410,125 @@ fn a_merged_card_without_its_close_table_comes_before_audits() {
     assert_eq!(kind(&r), json!("card_pr_merged"), "{r}");
     assert_eq!(r["next"]["target"]["number"], json!(2831));
 }
+
+/// #2901 AC1 (the #2345 case): a lane whose only live claim is on a card held for a decision
+/// (`needs:decision`) is not told to continue it — it gets the next free card, and the held
+/// card is named under `skipped`. Without the label the same claim is the lane's next step.
+#[test]
+fn a_lane_whose_only_claim_is_held_gets_the_next_free_card() {
+    let free = json!([{"number": 2400, "title": "free", "labels": ["P2"], "comments": []}]);
+    let r = next(&json!({
+        "threads": [{"number": 2345, "title": "held", "labels": ["P1", "needs:decision"],
+            "comments": [claim(100, LANE)]}],
+        "open_issues": free.clone(),
+    }));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2400));
+    assert_eq!(
+        r["skipped"],
+        json!([{"issue": 2345, "reason": "held", "labels": ["needs:decision"]}])
+    );
+    let r = next(&json!({
+        "threads": [{"number": 2345, "title": "not held", "labels": ["P1"],
+            "comments": [claim(100, LANE)]}],
+        "open_issues": free,
+    }));
+    assert_eq!(kind(&r), json!("continue_card"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2345));
+    assert_eq!(r["skipped"], json!([]));
+}
+
+/// #2901 AC2: every reason a card is passed over is named in `skipped` — on hold, left out
+/// by the goal, an epic (title or open sub-issues), blocked by an open Issue (body line or
+/// GitHub), claimed by another lane — and the first card none of them stops is picked.
+#[test]
+fn each_skip_reason_is_named() {
+    let r = next(&json!({
+        "keep_set": [{"number": 2, "reason": "운영자 보유"}],
+        "open_issues": [
+            {"number": 1, "title": "held", "labels": ["status:hold"], "comments": []},
+            {"number": 2, "title": "kept", "comments": []},
+            {"number": 3, "title": "[rc.2][EP-X] epic", "comments": []},
+            {"number": 4, "title": "parent", "open_children": 2, "comments": []},
+            {"number": 5, "title": "waits", "body": "Blocked-By: #1", "comments": []},
+            {"number": 6, "title": "waits on GitHub", "blocked_by": [1], "comments": []},
+            {"number": 7, "title": "taken", "comments": [claim(9, "agent-9")]},
+            {"number": 8, "title": "free", "labels": ["threshold"], "body": "Blocked-By: #999", "comments": []},
+        ]
+    }));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(8));
+    assert_eq!(
+        r["skipped"],
+        json!([
+            {"issue": 1, "reason": "held", "labels": ["status:hold"]},
+            {"issue": 2, "reason": "keep_set", "keep_reason": "운영자 보유"},
+            {"issue": 3, "reason": "epic", "open_children": 0},
+            {"issue": 4, "reason": "epic", "open_children": 2},
+            {"issue": 5, "reason": "blocked_by", "blocked_by": [1]},
+            {"issue": 6, "reason": "blocked_by", "blocked_by": [1]},
+            {"issue": 7, "reason": "claimed", "claim_comment": 9},
+        ])
+    );
+    // An older snapshot without the open Issue list cannot tell the end condition.
+    assert_eq!(
+        r["end_condition"],
+        json!({"open_prs": null, "startable": null, "met": null})
+    );
+}
+
+/// PR #2916 review: when the open Issue list was read only in part, a `Blocked-By:` reference
+/// past the last number read may still be open — the card is skipped as `blocked_by_unknown`,
+/// not picked; with the whole list the same reference is closed and the card is picked.
+#[test]
+fn a_blocker_past_a_partial_list_is_not_read_as_closed() {
+    let waits = json!({"number": 1, "title": "waits", "body": "Blocked-By: #150", "comments": []});
+    let free = json!({"number": 2, "title": "free", "comments": []});
+    let partial = next(&json!({
+        "cards": [waits.clone(), free.clone()],
+        "cards_truncated": true,
+        "open_issues": [waits.clone(), free.clone()],
+    }));
+    assert_eq!(kind(&partial), json!("pick_issue"), "{partial}");
+    assert_eq!(partial["next"]["target"]["number"], json!(2));
+    assert_eq!(
+        partial["skipped"],
+        json!([{"issue": 1, "reason": "blocked_by_unknown", "blocked_by": [150]}])
+    );
+    let whole = next(&json!({
+        "cards": [waits.clone(), free.clone()],
+        "open_issues": [waits, free],
+    }));
+    assert_eq!(kind(&whole), json!("pick_issue"), "{whole}");
+    assert_eq!(whole["next"]["target"]["number"], json!(1));
+}
+
+/// #2901 AC5: `end_condition` counts the open pull requests and the startable open Issues of
+/// the list (`cards`); met only when both are zero, null while the list was read in part.
+#[test]
+fn the_end_condition_counts_open_prs_and_startable_cards() {
+    let held = json!({"number": 1, "title": "held", "labels": ["HOLD"]});
+    let free = json!({"number": 2, "title": "free"});
+    let cases = [
+        (
+            json!({"cards": [held.clone()]}),
+            json!({"open_prs": 0, "startable": 0, "met": true}),
+        ),
+        (
+            json!({"cards": [held.clone(), free]}),
+            json!({"open_prs": 0, "startable": 1, "met": false}),
+        ),
+        (
+            json!({"cards": [held.clone()], "prs": [pr(9, &h('a'), Some("agent-28"), json!([audit_claim(1, "agent-27", &h('a'))]))]}),
+            json!({"open_prs": 1, "startable": 0, "met": false}),
+        ),
+        (
+            json!({"cards": [held], "cards_truncated": true}),
+            json!({"open_prs": 0, "startable": null, "met": null}),
+        ),
+    ];
+    for (snap, want) in cases {
+        let r = next(&snap);
+        assert_eq!(r["end_condition"], want, "{snap}");
+    }
+}
