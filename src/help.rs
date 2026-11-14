@@ -365,6 +365,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-gc-apply", &["worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("session", &["session --name agent-1"]),
+    ("lane-env", &["lane-env --lane agent-1"]),
 ];
 
 /// The launchers the root help shows on one line.
