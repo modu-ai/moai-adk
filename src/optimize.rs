@@ -428,14 +428,25 @@ pub fn plan(req: &Request) -> Result<Value> {
         )?);
     }
 
-    // Repository development records keep the `.moai-cli` name (#2725 decision D5).
-    let reports = primary.join(crate::fixed_state!("reports"));
-    if fs::symlink_metadata(&reports).is_ok_and(|m| m.is_dir()) {
+    // Reports are kept, never trimmed. A migration leaves them in the earlier root (#2725 D5),
+    // and a project on `.moai/` may write new ones there (#2696 C4d): both are listed.
+    let mut report_dirs = vec![crate::state_root::rel(&primary, "reports")];
+    if !report_dirs
+        .iter()
+        .any(|d| d == crate::fixed_state!("reports"))
+    {
+        report_dirs.push(crate::fixed_state!("reports").to_string());
+    }
+    for rel in report_dirs {
+        let reports = primary.join(&rel);
+        if !fs::symlink_metadata(&reports).is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
         let (bytes, partial) = bytes_under(std::slice::from_ref(&reports), deadline);
         let modified = mtime(&reports);
         rows.push(json!({
             "kind": "report",
-            "path": crate::fixed_state!("reports"),
+            "path": rel,
             "action": "keep",
             "reasons": ["reports_kept"],
             "trim_paths": [],

@@ -85,7 +85,7 @@ impl Context {
     /// tool's variable — is not consulted, so a Go setting cannot point back at it.
     fn home_state(&self) -> Option<PathBuf> {
         self.home()
-            .map(|h| h.join(crate::HOME_STATE_DIR).join("state"))
+            .map(|h| crate::home_root::path(&h).join("state"))
     }
 
     pub fn no_color(&self) -> bool {

@@ -17,7 +17,7 @@ use std::{
     process::{Command, Output, Stdio},
 };
 
-const INIT_LINE: &str = "moai-cli: initialized";
+const INIT_LINE: &str = "moai: initialized";
 
 struct Fixture {
     bin: tempfile::TempDir,

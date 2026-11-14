@@ -9,6 +9,7 @@
 | `src/ops/<word>.rs` (새) | `pub struct Args`(clap 인자, `///` 줄이 도움말), `pub const OPERATION`(봉투의 operation 이름), `pub fn run(args: Args) -> Result<serde_json::Value, String>`. 파일 이름은 명령 이름의 `-` 를 `_` 로 | 아님(새 파일) |
 | `docs/design-review/appendix/operations/<word>.md` (새) | 첫 줄 `` # `<word>` ``, 그다음 operation·코드 위치·동작 한 문단 | 아님(새 파일) |
 | `src/help.rs` `GROUPS` | 자기 무리 목록에 `("<word>", false)` 한 줄 | 무리 안 한 줄 |
+| `src/help.rs` `EXAMPLES` | `("<word>", &["<word> …"])` 한 줄(예시 1–3개). stdin 을 읽으면 예시 끝에 ` < request.json`. `help_rules::every_command_has_examples`·`every_example_parses`·`stdin_examples_match_the_commands_that_read_stdin` 이 확인(#2802 S1c) | 표 안 한 줄 |
 | `tests/cli_<group>.rs` | 그 무리의 제품 CLI 시험. 공통 도우미는 `tests/common/cli.rs`(`cli`·`ok_result`·`profile`·`create`·`write_file`·`tree_state`)와 `tests/common/git.rs`(`git_in` 등) | 무리 파일 안 |
 
 `build.rs` 가 `src/ops/*.rs` 를 모아 `Ops` 하위 명령으로 만들고, `src/main.rs` 는 그것을 `Command` 에 한 번 펼친다(`#[command(flatten)] Op(ops::Ops)`). 그래서 `Command` enum·`operation()` 표·dispatch `match` 에 줄을 더하지 않는다. 같은 모양의 두 가지(branch)가 각자 명령을 더해도 충돌 없이 합쳐지는 것은 `tests/hot_file_ops_merge.rs` 가 확인한다.

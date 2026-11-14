@@ -168,6 +168,8 @@ envelope 예외 하위 명령: `statusline`(#2350). Claude Code가 `statusLine` 
 
 envelope 예외 하위 명령: `pr-self-audit-check`(#2708). `tools/check_pr_self_audit.py`를 옮긴 것으로, PR 본문(`--file BODY.md` 또는 stdin)의 `## Self-Audit` 절을 검사해 stdout에 한 줄(`self-audit: pass (…)` 또는 `self-audit: blocked missing=…`)을 쓰고 exit 0/1로 끝나며, 사용법 오류는 exit 2다. 배포 skill과 PR 양식이 이 줄과 exit를 그대로 읽으므로 JSON envelope을 쓰지 않는다. `--reaudit`는 `## 독립 review` 절도 요구한다. `src/main.rs`의 시험 `pr_self_audit_check_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
 
+envelope 예외 하위 명령: `lane-env`(#2841). `--lane NAME [--base DIR]` 으로 레인 빌드 환경을 셸 `export` 줄로 출력해 `e=$(moai lane-env --lane NAME) && eval "$e"` 한 줄로 쓰게 한다(맨 `eval "$(…)"` 는 POSIX `eval` 이 빈 문자열에 0 을 돌려줘 거부 뒤에도 계속 가므로 쓰지 않는다). `CARGO_TARGET_DIR` 는 `<base>/moai-rc-target-<lane>`(레인당 하나, worktree 를 바꿔도 같음), `CARGO_HOME` 은 `registry/src` 가 준비된 `<base>/moai-rc-cargo-<lane>`, 없으면 준비된 공용 `<base>/moai-rc-product-cargo`, 둘 다 없으면 설정하지 않고 `#` 주석으로 이유를 쓴다. `<base>` 기본값은 Unix `/tmp`, Windows 는 시스템 임시 폴더다. 읽기만 하고 아무것도 만들지 않는다. 잘못된 레인 이름·상대 경로 base·심볼릭 링크이거나 폴더가 아닌 대상은 stdout 을 비운 채 stderr 한 줄과 exit 1 로 거부하고(부분 환경이 `eval` 되지 않게), 사용법 오류는 exit 2 다. `src/main.rs`의 시험 `lane_env_is_the_documented_envelope_exception`이 이 문단과 코드를 대조한다.
+
 `audit-delta [PROJECT] --pass-head SHA --tip SHA --head SHA`는 `audit.delta`로 대응한다.
 로컬 3개 commit의 두 부모 merge 재현 증거만 계산하며 PROJECT 기본값은 `.`이다.
 원본 저장소는 읽기 전용이고 새 Git 객체는 외부 임시 bare 저장소에만 생성한 뒤 정리한다.

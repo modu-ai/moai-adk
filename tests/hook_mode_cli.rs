@@ -254,10 +254,26 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
     );
     assert_eq!(applied["result"]["hooks_active"], false);
 
+    // Only a `moai` on that PATH (it may be the Go generation's): the generated hooks call
+    // `moai-cli` until R5 (#2812 leader decision 6868439066 (나)), so they still do not resolve.
+    common::write_executable(&bin.join("moai"), "#!/bin/sh\nexit 0\n");
+    let with_binary = bin.to_string_lossy().to_string();
+    let r = run(
+        &["hooks-plan", ".", "--host", "claude"],
+        &root,
+        b"",
+        &[("PATH", &with_binary)],
+    );
+    let plan: Value = serde_json::from_str(&r.stdout).unwrap();
+    assert_eq!(plan["result"]["hook_binary"]["name"], "moai-cli", "{plan}");
+    assert_eq!(
+        plan["result"]["hook_binary"]["state"], "binary_unresolved",
+        "{plan}"
+    );
+
     // With an executable `moai-cli` on that PATH the binary resolves; whether the host runs
     // the hooks is still unknown until a host receipt says so.
     common::write_executable(&bin.join("moai-cli"), "#!/bin/sh\nexit 0\n");
-    let with_binary = bin.to_string_lossy().to_string();
     let r = run(
         &["hooks-plan", ".", "--host", "claude"],
         &root,

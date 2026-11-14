@@ -92,7 +92,7 @@ pub fn load() -> Loaded {
         return Loaded::default();
     };
     let home = PathBuf::from(home);
-    let path = home.join(crate::HOME_STATE_DIR).join("config");
+    let path = crate::home_root::path(&home).join("config");
     load_path(&path, &home)
 }
 

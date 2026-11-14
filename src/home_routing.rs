@@ -131,7 +131,7 @@ fn host_file(home: &Path, host: &str) -> PathBuf {
 }
 
 fn state_root(home: &Path) -> PathBuf {
-    home.join(crate::HOME_STATE_DIR).join(STATE_DIR)
+    crate::home_root::path(home).join(STATE_DIR)
 }
 
 /// A path that must be a real folder (or absent): never a symlink, never a file.
@@ -168,7 +168,7 @@ fn host_folder_plain(home: &Path, host: &str) -> Result<()> {
 
 fn read_state(home: &Path, host: &str) -> Result<HostState> {
     let root = state_root(home);
-    plain_dir_or_absent(&home.join(crate::HOME_STATE_DIR))?;
+    plain_dir_or_absent(&crate::home_root::path(home))?;
     plain_dir_or_absent(&root)?;
     match read_opt(&root.join(format!("{host}.json")))? {
         None => Ok(HostState {
@@ -317,7 +317,7 @@ fn validate_permission(permission: &str) -> Result<()> {
 }
 
 fn new_receipt_dir(home: &Path) -> Result<(String, PathBuf)> {
-    plain_dir_or_absent(&home.join(crate::HOME_STATE_DIR))?;
+    plain_dir_or_absent(&crate::home_root::path(home))?;
     let receipts = state_root(home).join("receipts");
     fs::create_dir_all(&receipts).map_err(|_| "routing receipt folder unavailable")?;
     plain_dir_or_absent(&state_root(home))?;
@@ -454,7 +454,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
         return Err("unknown routing receipt id".into());
     }
     let home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
-    plain_dir_or_absent(&home.join(crate::HOME_STATE_DIR))?;
+    plain_dir_or_absent(&crate::home_root::path(&home))?;
     plain_dir_or_absent(&state_root(&home))?;
     let dir = state_root(&home).join("receipts").join(receipt_id);
     plain_dir_or_absent(&dir)?;
