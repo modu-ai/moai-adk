@@ -2600,13 +2600,19 @@ mod user_layer_tests {
         let g = gate_on_skills(&ok, &layer);
         assert_eq!(hosts(&g.agents), "claude,codex,omp");
         assert_eq!(hosts(&g.routing), "claude,codex");
+        assert_eq!(hosts(&g.style), "claude,codex");
         assert!(g.skipped.is_empty());
         // The Codex copy failed during the apply: codex and omp agents and the codex section stop.
         let failed = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "failed"}]});
         let g = gate_on_skills(&failed, &layer);
         assert_eq!(hosts(&g.agents), "claude");
         assert_eq!(hosts(&g.routing), "claude");
-        assert_eq!(skipped(&g), "agents:codex,agents:omp,routing:codex");
+        // #2875: the codex style block points at the same copy, so it stops too.
+        assert_eq!(hosts(&g.style), "claude");
+        assert_eq!(
+            skipped(&g),
+            "agents:codex,agents:omp,routing:codex,style:codex"
+        );
         assert!(g
             .skipped
             .iter()
@@ -2616,5 +2622,6 @@ mod user_layer_tests {
         let g = gate_on_skills(&missing, &layer);
         assert_eq!(hosts(&g.agents), "codex,omp");
         assert_eq!(hosts(&g.routing), "codex");
+        assert_eq!(hosts(&g.style), "codex");
     }
 }
