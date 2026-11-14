@@ -911,6 +911,22 @@ enum Command {
     /// namespaces normalize into one node shape, duplicates are diagnosed only,
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan { path: PathBuf },
+    /// Print a lane's cargo folders
+    ///
+    /// Print a lane's build environment as shell `export` lines (#2841): one
+    /// `CARGO_TARGET_DIR` per lane for all its worktrees, and a prepared `CARGO_HOME` (the
+    /// lane's own, else the shared one, else unset). Use it as
+    /// `e=$(moai lane-env --lane NAME) && eval "$e"`. Reads only. Raw text, not the envelope; a refusal
+    /// prints nothing on stdout and exits 1, a usage error exits 2.
+    LaneEnv {
+        /// The lane name, as in the claim line (`session=`).
+        #[arg(long)]
+        lane: String,
+        /// Absolute folder that holds the lane folders (default `/tmp`, on Windows the system
+        /// temporary folder).
+        #[arg(long)]
+        base: Option<PathBuf>,
+    },
     /// Check a pull request body's Self-Audit section
     ///
     /// Check a PR body's Self-Audit section (#2708, formerly tools/check_pr_self_audit.py):
@@ -1550,6 +1566,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         | Codex(_)
         | Session { .. }
         | Statusline { .. }
+        | LaneEnv { .. }
         | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
         AgentsApply { .. } => "agents.apply",
@@ -3101,6 +3118,24 @@ const HOOK_NON_BLOCKING_ERROR: u8 = 1;
 
 /// `pr-self-audit-check` (#2708): the Python checker's text and exit codes. With no `--file`,
 /// the body comes from stdin; a terminal on stdin is a usage error, as before.
+/// `lane-env` (#2841): the export lines on stdout, or the refusal on stderr with exit 1 and
+/// nothing on stdout, so the documented `e=$(…) && eval "$e"` stops and nothing is exported.
+fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
+    let base = base
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(moai_cli::lane_env::default_base);
+    match moai_cli::lane_env::resolve(lane, &base) {
+        Ok(env) => {
+            print!("{}", moai_cli::lane_env::render(lane, &env));
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCode {
     use std::io::IsTerminal as _;
     let body = match file {
@@ -3224,6 +3259,9 @@ pub(crate) fn main() -> ExitCode {
     }
     if let Some(Command::PrSelfAuditCheck { reaudit, file }) = &cli.command {
         return pr_self_audit_check(*reaudit, file.as_deref());
+    }
+    if let Some(Command::LaneEnv { lane, base }) = &cli.command {
+        return lane_env(lane, base.as_deref());
     }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
@@ -3367,7 +3405,7 @@ mod tests {
         }
     }
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
-    const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
+    const RAW_OUTPUT: [&str; 3] = ["statusline", "pr-self-audit-check", "lane-env"];
 
     /// #2722 AC-5: `--version` shows the build version, which is the package version plus
     /// `+local.<n>` exactly when this build set `MOAI_LOCAL_BUILD`.
@@ -3679,6 +3717,18 @@ mod operations_doc {
         assert!(DOC.contains("envelope 예외 하위 명령: `pr-self-audit-check`(#2708)"));
     }
 
+    /// #2841: `lane-env` prints shell `export` lines for `eval`, so it is outside OPERATIONS
+    /// and documented as an envelope exception.
+    #[test]
+    fn lane_env_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli.get_subcommands().any(|s| s.get_name() == "lane-env"));
+        assert_eq!(operation_of("lane-env"), None);
+        assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "lane-env"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `lane-env`(#2841)"));
+        assert!(DOC.contains("`lane_env_is_the_documented_envelope_exception`"));
+    }
+
     fn render(words: &[&str]) -> String {
         let list: String = words.iter().map(|w| format!("- `{w}`\n")).collect();
         format!("{HEADING}\n\n{list}\n(note)\n")
@@ -3783,6 +3833,7 @@ mod help_rules {
         "hook-dispatch",
         "install-inspect",
         "labels-check",
+        "lane-env",
         "lane-next",
         "lane-safe-to-reset",
         "migrate-plan",

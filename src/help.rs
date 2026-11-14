@@ -119,6 +119,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
+            ("lane-env", false),
             ("session-register", false),
             ("usage-limit", false),
             ("heavy-slot-acquire", false),

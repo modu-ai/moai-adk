@@ -86,6 +86,7 @@ Lane and leader
   lane-status             Show the status table of the named lanes
   lane-handoff-check      Check that a worktree is safe to leave
   lane-safe-to-reset      Check that a lane's session is safe to clear
+  lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   usage-limit             Report how close the usage limits are
   heavy-slot-acquire      Run a heavy command in a machine-wide slot
