@@ -189,6 +189,8 @@ Internal
 Options:
   -l, --leader             Start a leader session on the default host (cc)
   -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|codex; default cc)
+      --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or
+                           never; put it before the command
       --name <NAME>        Session name (default `leader` for -l, the project's next `agent-N` for
                            -a; none without a role)
       --model <MODEL>      Main model (Claude hosts default `opus`; codex uses its own default
