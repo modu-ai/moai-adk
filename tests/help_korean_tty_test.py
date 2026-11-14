@@ -235,6 +235,21 @@ class KoreanHelp(unittest.TestCase):
         self.assertTrue(self.help(["identity", "-h"], **KOREAN)
                         .startswith("경로가 클론 안 어디에 있는지 보기\n"))
 
+    def test_the_launchers_read_korean_with_arguments_first(self):
+        """S6e-6: cc, codex and glm in Korean; the arguments section comes before the options as
+        in English, though the launchers declare their options first."""
+        for word, about in (("cc", "Claude Code 세션 시작"), ("codex", "Codex CLI 세션 시작"),
+                            ("glm", "z.ai GLM 으로 Claude Code 세션 시작")):
+            short = self.help([word, "-h"], **KOREAN)
+            self.assertTrue(short.startswith(about + "\n"), short)
+            text = self.help([word, "--help"], **KOREAN)
+            self.assertIn("\n인자:\n  [PROMPT]\n          첫 프롬프트에 덧붙일 글(codex 만)\n", text)
+            self.assertLess(text.index("\n인자:\n"), text.index("\n옵션:\n"), word)
+            self.assertIn("권한 질문 유지", text)
+        for word in ("key-set", "optimize-plan", "project-apply"):
+            text = self.help([word, "--help"], **KOREAN)
+            self.assertLess(text.index("\n인자:\n"), text.index("\n옵션:\n"), word)
+
     def test_no_korean_line_of_any_command_help_runs_past_sixty_cells(self):
         """Every command's `-h` and `--help` at 60 columns: no line with Hangul past 60 cells
         (clap counts a Hangul letter as one cell, so a Korean help beside a wide name ran to 72

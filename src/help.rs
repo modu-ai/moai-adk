@@ -1052,7 +1052,7 @@ pub fn configure_in(
 /// The groups whose root commands' own help texts read Korean on a Korean terminal (S6e-2…,
 /// one group per slice; `the_moved_groups_read_korean_in_their_help` in `main.rs` checks
 /// every about, long about and argument of them).
-pub const KOREAN_GROUPS: &[&str] = &["Project", "Update and move", "Keys", "Diagnose"];
+pub const KOREAN_GROUPS: &[&str] = &["Start", "Project", "Update and move", "Keys", "Diagnose"];
 
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
@@ -1144,6 +1144,13 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          적었는지 확인해요(아니면 `git worktree repair` 한 번). 옮긴 worktree 마다 되돌리는 명령이 \
          함께 와요.",
     ),
+    ("cc", "Claude Code 세션 실행기: `cc -l|-a`."),
+    ("codex", "Codex CLI 세션 실행기: `codex -l|-a`."),
+    (
+        "glm",
+        "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
+         필요해요).",
+    ),
     (
         "claude-doctor",
         "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
@@ -1207,10 +1214,58 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
 ];
 
+/// The launchers' own abouts (S6e-6): the root list shows the three on one line instead.
+const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
+    ("cc", "Claude Code 세션 시작"),
+    ("codex", "Codex CLI 세션 시작"),
+    ("glm", "z.ai GLM 으로 Claude Code 세션 시작"),
+];
+
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    (
+        "cc|codex|glm",
+        "prompt",
+        "첫 프롬프트에 덧붙일 글(codex 만)",
+    ),
+    ("cc|codex|glm", "leader", "리더 세션"),
+    ("cc|codex|glm", "agent", "에이전트 세션"),
+    (
+        "cc|codex|glm",
+        "name",
+        "세션 이름(기본: -l 은 `leader`, -a 는 프로젝트의 다음 `agent-N`, 역할 없으면 없음)",
+    ),
+    (
+        "cc|codex|glm",
+        "model",
+        "주 모델(Claude 호스트 기본 `opus`, codex 는 정하지 않으면 자기 기본값)",
+    ),
+    ("cc|codex|glm", "effort", "Claude effort(기본 `medium`)"),
+    (
+        "cc|codex|glm",
+        "advisor",
+        "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id). 기본 없음 — \
+         사용자 설정 `launcher.advisor` 로 켤 수 있음. 사용량 크레딧이 청구될 수 있음",
+    ),
+    (
+        "cc|codex|glm",
+        "no_advisor",
+        "사용자 설정 `launcher.advisor` 가 켜도 `--advisor` 를 넘기지 않기",
+    ),
+    (
+        "cc|codex|glm",
+        "permissions",
+        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트), codex 는 \
+         `workspace-write` / `on-request` sandbox. 없으면 -l|-a 세션은 전체 접근, 역할 없는 세션은 \
+         권한 플래그를 받지 않음",
+    ),
+    (
+        "cc|codex|glm",
+        "dry_run",
+        "호스트를 시작하는 대신 만든 명령을 JSON 으로 찍기",
+    ),
     (
         "codex-doctor",
         "project",
@@ -1447,9 +1502,10 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
 
 /// The Korean help of argument `id` of `command`, when the table has one.
 fn arg_help_ko(command: &str, id: &str) -> Option<&'static str> {
+    // A command field may name several commands, `cc|codex|glm`.
     ARG_HELP_KO
         .iter()
-        .find(|(c, i, _)| *c == command && *i == id)
+        .find(|(c, i, _)| c.split('|').any(|w| w == command) && *i == id)
         .or_else(|| {
             ARG_HELP_KO
                 .iter()
@@ -1460,10 +1516,6 @@ fn arg_help_ko(command: &str, id: &str) -> Option<&'static str> {
 
 /// The column clap starts an argument's help at in a long help (`          <help>`).
 const LONG_ARG_INDENT: usize = 10;
-
-/// clap's own help template with the usage heading spelled out (clap 4.6 `DEFAULT_TEMPLATE`).
-const SUBCOMMAND_TEMPLATE_KO: &str =
-    "{before-help}{about-with-newline}\n사용법: {usage}\n\n{all-args}{after-help}";
 
 /// A subcommand's help frame on a Korean terminal (S6e-1, #2825; design 5): the usage,
 /// arguments and options headings and the help flag's line. The command's about, argument
@@ -1479,14 +1531,17 @@ fn korean_frame(c: Command) -> Command {
     } else {
         c
     };
-    let c = c.mut_args(|a| {
-        let heading = if a.is_positional() {
-            ARGUMENTS_KO
-        } else {
-            OPTIONS_KO
-        };
-        a.help_heading(heading.trim_end_matches(':'))
-    });
+    // The arguments and options sections are spelled out in the template, arguments first as in
+    // English: a custom `help_heading` would be drawn in the order the arguments are declared,
+    // which put `옵션:` before `인자:` for the launchers (their options come first).
+    let positionals = c
+        .get_positionals()
+        .any(|a| !a.is_hide_set())
+        .then(|| format!("{ARGUMENTS_KO}\n{{positionals}}\n\n"))
+        .unwrap_or_default();
+    let template = format!(
+        "{{before-help}}{{about-with-newline}}\n{USAGE_KO} {{usage}}\n\n{positionals}{OPTIONS_KO}\n{{options}}{{after-help}}"
+    );
     // clap's generated `-h, --help` cannot be edited before the command is built, so it is
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
     // Every help starts on the line after its name, `LONG_ARG_INDENT` in, in `-h` as in
@@ -1500,18 +1555,23 @@ fn korean_frame(c: Command) -> Command {
                 .long("help")
                 .action(clap::ArgAction::Help)
                 .help(wrap(HELP_FLAG_SHORT_KO, 0, room))
-                .long_help(wrap(HELP_FLAG_LONG_KO, 0, room))
-                .help_heading(OPTIONS_KO.trim_end_matches(':')),
+                .long_help(wrap(HELP_FLAG_LONG_KO, 0, room)),
         )
         .next_line_help(true)
-        .help_template(SUBCOMMAND_TEMPLATE_KO)
+        .help_template(template)
 }
 
 /// A moved command's own texts in Korean (S6e-2): its about (the root list's), its long about
 /// and its arguments' help, each wrapped at `width` display cells — clap would count a Hangul
 /// letter as one cell and run the line past the terminal.
 fn korean_texts(c: Command, name: &str, width: usize) -> Command {
-    let c = match about_ko(name) {
+    let about = about_ko(name).or_else(|| {
+        LAUNCHER_ABOUT_KO
+            .iter()
+            .find(|(w, _)| *w == name)
+            .map(|(_, t)| *t)
+    });
+    let c = match about {
         Some(about) => c.about(about),
         None => c,
     };
@@ -1537,6 +1597,10 @@ fn korean_texts(c: Command, name: &str, width: usize) -> Command {
 /// The width of what clap appends to an argument's short help line: ` [default: …]` and
 /// ` [possible values: …]` (clap's words, left in English).
 fn short_suffix_width(a: &clap::Arg) -> usize {
+    // A flag (`--json`) takes no value: clap shows neither its `false` default nor `true|false`.
+    if !a.get_action().takes_values() {
+        return 0;
+    }
     let join = |v: Vec<String>| v.join(", ");
     let defaults: Vec<String> = a
         .get_default_values()
