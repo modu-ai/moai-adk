@@ -40,7 +40,7 @@ The workflow text the hosts load is in [skills/moai/](skills/moai/SKILL.md).
 | State folders | `.moai-cli/` (project), `~/.moai-cli/` (user) | `.moai/`, `~/.moai/` |
 | Host entry | `/moai <request>` in Claude Code, `$moai <request>` in Codex | `/moai` commands in Claude Code |
 
-The two generations use separate state folders and do not update each other. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias that prints the same output.
+The two generations use separate state folders and do not update each other. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias: it prints the same `--version` line, and its help names `moai-cli` as the command.
 
 **RC1 target scope** is macOS on Apple silicon (`aarch64-apple-darwin`) with Claude Code or Codex. This is a target, not a support guarantee: end-to-end tests of the hosts loading the skill have not run yet. Linux, Intel macOS and Windows are outside RC1 (CI builds and tests some of them). The measured state of every combination is in [docs/support-matrix.md](docs/support-matrix.md) and [docs/host-support-matrix.md](docs/host-support-matrix.md).
 
@@ -64,7 +64,7 @@ cargo build --release --locked
 ./target/release/moai --version
 ```
 
-The last command prints `moai-cli 2026.11.0-rc.1 (rust)`; `./target/release/moai-cli --version` prints the same line. These commands were run on 2026-11-14 on macOS 27.0.1 (arm64) with an empty Cargo home, at branch commit `0e9ad36fc4`; the release build took about 1 minute 26 seconds after the crate download, on a heavily loaded machine. Other platforms were not tried with these exact steps.
+The last command prints `moai-cli 2026.11.0-rc.1 (rust)`; `./target/release/moai-cli --version` prints the same line. These commands were run on 2026-11-14 on macOS 27.0.1 (arm64) with an empty Cargo home, at branch commit `0e9ad36fc4`; the release build took about 1 minute 26 seconds after the crate download, into an empty build folder on a heavily loaded machine. Other platforms were not tried with these exact steps.
 
 ## First run
 
