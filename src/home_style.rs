@@ -100,6 +100,10 @@ pub struct ReceiptEntry {
     pub after_sha256: String,
     /// What this module owned before the apply; a revert restores it.
     pub baseline_before: Option<String>,
+    /// The exact text the apply put into `settings.json` (#2875 audit B1): a revert of a file
+    /// changed since removes only this text, never re-encoding the user's values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inserted: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -235,7 +239,7 @@ fn source(package: &Path) -> Result<String> {
 /// Claude Code's output style file: frontmatter, then the source.
 pub fn render_style_file(source: &str) -> String {
     format!(
-        "---\nname: {STYLE_NAME}\ndescription: {DESCRIPTION}\nkeep-coding-instructions: true\n---\n\n{source}"
+        "---\nname: {STYLE_NAME}\ndescription: \"{DESCRIPTION}\"\nkeep-coding-instructions: true\n---\n\n{source}"
     )
 }
 
@@ -484,17 +488,7 @@ fn new_receipt_dir(home: &Path) -> Result<(String, PathBuf)> {
 fn new_bytes(t: &TargetPlan, before: Option<&[u8]>, src: &str) -> Result<Vec<u8>> {
     match t.kind.as_str() {
         "style_file" => Ok(render_style_file(src).into_bytes()),
-        "setting" => {
-            let mut map = match before {
-                None => Map::new(),
-                Some(b) => settings_object(b)?,
-            };
-            map.insert("outputStyle".into(), json!(STYLE_NAME));
-            let mut out =
-                serde_json::to_vec_pretty(&Value::Object(map)).map_err(|_| "encode failed")?;
-            out.push(b'\n');
-            Ok(out)
-        }
+        "setting" => insert_style(before).map(|(out, _)| out),
         _ => {
             let (begin, end) = markers(SECTION, "html");
             let rendered = render_block(src);
@@ -503,6 +497,49 @@ fn new_bytes(t: &TargetPlan, before: Option<&[u8]>, src: &str) -> Result<Vec<u8>
             Ok(out)
         }
     }
+}
+
+/// `settings.json` with `"outputStyle": "MoAI-Easy"` added as text before the object's closing
+/// brace, and the text added (#2875 audit B1): every other byte stays as the user wrote it — no
+/// re-encoding of numbers, indentation or order. The result must parse to the same object plus
+/// the one key, or nothing is written.
+fn insert_style(before: Option<&[u8]>) -> Result<(Vec<u8>, String)> {
+    let pair = format!("\"outputStyle\": \"{STYLE_NAME}\"");
+    let Some(bytes) = before else {
+        let text = format!("{{\n  {pair}\n}}\n");
+        return Ok((text.into_bytes(), pair));
+    };
+    let old = settings_object(bytes)?;
+    let text = std::str::from_utf8(bytes).map_err(|_| "settings.json is not UTF-8; not changed")?;
+    let close = text
+        .trim_end()
+        .strip_suffix('}')
+        .map(str::len)
+        .ok_or("settings.json does not end with `}`; not changed")?;
+    let body_end = text[..close].trim_end().len();
+    let open = text
+        .find('{')
+        .ok_or("settings.json has no `{`; not changed")?;
+    let inner = &text[open + 1..close];
+    let inserted = if inner.trim().is_empty() {
+        pair.clone()
+    } else if inner.contains('\n') {
+        let indent: String = inner
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .map(|l| l.chars().take_while(|c| c.is_whitespace()).collect())
+            .unwrap_or_else(|| "  ".into());
+        format!(",\n{indent}{pair}")
+    } else {
+        format!(", {pair}")
+    };
+    let out = format!("{}{inserted}{}", &text[..body_end], &text[body_end..]);
+    let mut want = old;
+    want.insert("outputStyle".into(), json!(STYLE_NAME));
+    if settings_object(out.as_bytes()).ok() != Some(want) {
+        return Err("settings.json could not take the key as text; not changed".into());
+    }
+    Ok((out.into_bytes(), inserted))
 }
 
 /// Applies a previewed plan. `plan_digest` must equal a fresh plan's digest; only `create`,
@@ -562,17 +599,20 @@ pub fn apply_for(
                 path.display()
             ));
         }
-        let out = new_bytes(t, before.as_deref(), &src)?;
+        let (out, inserted) = if t.kind == "setting" {
+            let (out, ins) = insert_style(before.as_deref())?;
+            (out, Some(ins))
+        } else {
+            (new_bytes(t, before.as_deref(), &src)?, None)
+        };
         if let Some(b) = &before {
             publish_exclusive(
                 &receipt_dir.join(format!("{}-{}.before", t.host, t.kind)),
                 b,
             )?;
         }
-        match &before {
-            Some(b) => publish_replace(&path, Some(b), &out)?,
-            None => publish_exclusive(&path, &out)?,
-        }
+        // The entry is recorded before the write (#2875 audit N3): an apply cut after the write
+        // still leaves what a revert needs.
         receipt.entries.push(ReceiptEntry {
             host: t.host.clone(),
             kind: t.kind.clone(),
@@ -580,8 +620,13 @@ pub fn apply_for(
             before_sha256: before.as_deref().map(sha),
             after_sha256: sha(&out),
             baseline_before: t.baseline_sha256.clone(),
+            inserted,
         });
         write_json(&receipt_path, &receipt)?;
+        match &before {
+            Some(b) => publish_replace(&path, Some(b), &out)?,
+            None => publish_exclusive(&path, &out)?,
+        }
         match t.kind.as_str() {
             "style_file" => write_state(&home, &t.host, Some(sha(&out)))?,
             "block" => write_state(&home, &t.host, Some(sha(render_block(&src).as_bytes())))?,
@@ -605,23 +650,41 @@ fn receipt_id_ok(id: &str) -> bool {
         && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
-/// Removes the `outputStyle` key the apply set, while it still names this style; the other keys
-/// stay as they are. A file the apply created and nobody changed since is removed.
-fn revert_setting(path: &Path, e: &ReceiptEntry) -> std::result::Result<(), String> {
+/// Undoes the `outputStyle` the apply added (#2875 audit B1). A file still holding the bytes
+/// the apply wrote gets its before bytes back byte for byte (a created file is removed). A file
+/// changed since loses only the exact text the apply inserted, while it is there once and the
+/// rest parses to an object without the key; otherwise it is skipped. The user's other values
+/// are never re-encoded.
+fn revert_setting(path: &Path, dir: &Path, e: &ReceiptEntry) -> std::result::Result<(), String> {
     let current = current_file(path)
         .map_err(|r| format!("file_not_plain: {r}"))?
         .ok_or("user_changed_since_apply")?;
-    if e.before_sha256.is_none() && sha(&current) == e.after_sha256 {
-        return fs::remove_file(path).map_err(|_| format!("{} not removed", path.display()));
+    if sha(&current) == e.after_sha256 {
+        return match &e.before_sha256 {
+            None => fs::remove_file(path).map_err(|_| format!("{} not removed", path.display())),
+            Some(before_sha) => {
+                let before = read_opt(&dir.join(format!("{}-{}.before", e.host, e.kind)))?
+                    .ok_or("before bytes missing from the receipt")?;
+                if &sha(&before) != before_sha {
+                    return Err("before bytes do not match the receipt".into());
+                }
+                publish_replace(path, Some(&current), &before)
+            }
+        };
     }
-    let mut map = settings_object(&current).map_err(|_| "user_changed_since_apply")?;
-    if map.get("outputStyle") != Some(&json!(STYLE_NAME)) {
+    let inserted = e.inserted.as_deref().ok_or("user_changed_since_apply")?;
+    let text = std::str::from_utf8(&current).map_err(|_| "user_changed_since_apply")?;
+    if text.matches(inserted).count() != 1 {
         return Err("user_changed_since_apply".into());
     }
-    map.shift_remove("outputStyle");
-    let mut out = serde_json::to_vec_pretty(&Value::Object(map)).map_err(|_| "encode failed")?;
-    out.push(b'\n');
-    publish_replace(path, Some(&current), &out)
+    let out = text.replacen(inserted, "", 1);
+    let mut want = settings_object(&current).map_err(|_| "user_changed_since_apply")?;
+    if want.shift_remove("outputStyle") != Some(json!(STYLE_NAME))
+        || settings_object(out.as_bytes()).ok() != Some(want)
+    {
+        return Err("user_changed_since_apply".into());
+    }
+    publish_replace(path, Some(&current), out.as_bytes())
 }
 
 /// Undoes one apply for the targets that still hold what it wrote: a created file is removed, a
@@ -635,6 +698,8 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> 
     let home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     plain_dir_or_absent(&crate::home_root::path(&home))?;
     plain_dir_or_absent(&state_root(&home))?;
+    // Every folder on the way, `receipts` included (#2875 audit B3): a link is never followed.
+    plain_dir_or_absent(&state_root(&home).join("receipts"))?;
     let dir = state_root(&home).join("receipts").join(receipt_id);
     plain_dir_or_absent(&dir)?;
     let path = dir.join("receipt.json");
@@ -661,7 +726,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> 
         }
         let target = home.join(rel);
         if e.kind == "setting" {
-            match revert_setting(&target, e) {
+            match revert_setting(&target, &dir, e) {
                 Ok(()) => reverted.push(name),
                 Err(reason) => skipped.push(json!({"target": name, "reason": reason})),
             }
@@ -694,7 +759,6 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> 
                 publish_replace(&target, Some(&current), &before)?;
             }
         }
-        read_state(&home, &e.host)?;
         write_state(&home, &e.host, e.baseline_before.clone())?;
         reverted.push(name);
     }
@@ -731,5 +795,55 @@ mod tests {
         assert!(settings_object(b"{").is_err());
         assert!(settings_object(&vec![b' '; SETTINGS_LIMIT + 1]).is_err());
         assert!(settings_object(b"{\"a\":1}").is_ok());
+    }
+
+    fn plan_of(source: &str, targets: &[(&str, &str, &str)]) -> Plan {
+        Plan {
+            schema_version: SCHEMA_VERSION,
+            home: "/h".into(),
+            package_digest: "p".into(),
+            source_sha256: source.into(),
+            targets: targets
+                .iter()
+                .map(|(host, kind, action)| TargetPlan {
+                    host: (*host).into(),
+                    kind: (*kind).into(),
+                    path: String::new(),
+                    action: (*action).into(),
+                    expected_sha256: None,
+                    baseline_sha256: None,
+                    detail: None,
+                })
+                .collect(),
+            not_supported: Vec::new(),
+            plan_digest: String::new(),
+        }
+    }
+
+    /// #2875 audit N1: `moai update` accepts a re-plan that writes the same targets from the same
+    /// source — the routing apply turned `create` into `append` — and refuses any other change.
+    #[test]
+    fn same_writes_accepts_only_the_same_written_targets() {
+        let confirmed = plan_of(
+            "s",
+            &[("claude", "setting", "set"), ("codex", "block", "create")],
+        );
+        let appended = plan_of(
+            "s",
+            &[("claude", "setting", "set"), ("codex", "block", "append")],
+        );
+        assert!(same_writes(&confirmed, &appended));
+        let conflict = plan_of(
+            "s",
+            &[("claude", "setting", "set"), ("codex", "block", "conflict")],
+        );
+        assert!(!same_writes(&confirmed, &conflict));
+        let other_source = plan_of(
+            "t",
+            &[("claude", "setting", "set"), ("codex", "block", "append")],
+        );
+        assert!(!same_writes(&confirmed, &other_source));
+        let fewer = plan_of("s", &[("claude", "setting", "set")]);
+        assert!(!same_writes(&confirmed, &fewer));
     }
 }

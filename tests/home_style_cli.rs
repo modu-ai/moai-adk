@@ -352,3 +352,113 @@ fn the_operations_run_through_the_binary() {
     assert_eq!(r["result"]["state"], "reverted");
     assert!(!home.join(STYLE).exists() && !home.join(SETTINGS).exists());
 }
+
+/// #2875 audit B1: the key goes in as text — every other byte (big integers, a trailing zero,
+/// four-space indentation, order) stays — and a revert of an untouched file gives the before
+/// bytes back byte for byte.
+#[test]
+fn settings_keep_every_byte_through_apply_and_revert() {
+    for (before, after) in [
+        (
+            "{\n    \"a\": 1,\n    \"n\": 12345678901234567890123,\n    \"f\": 1.50\n}\n",
+            "{\n    \"a\": 1,\n    \"n\": 12345678901234567890123,\n    \"f\": 1.50,\n    \"outputStyle\": \"MoAI-Easy\"\n}\n",
+        ),
+        ("{\"a\":1.0}", "{\"a\":1.0, \"outputStyle\": \"MoAI-Easy\"}"),
+        ("{ }\n", "{\"outputStyle\": \"MoAI-Easy\" }\n"),
+    ] {
+        let (_t, home) = home();
+        write(&home, SETTINGS, before);
+        let p = plan(&home, &package()).unwrap();
+        assert_eq!(action(&p, "setting"), "set", "{before:?}");
+        let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+        assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), after);
+        let id = r["receipt"].as_str().unwrap().to_string();
+        revert(&home, &id, PERM).unwrap();
+        assert_eq!(
+            fs::read(home.join(SETTINGS)).unwrap(),
+            before.as_bytes(),
+            "{before:?}"
+        );
+    }
+}
+
+/// #2875 audit B1: a file changed after the apply loses only the inserted text; when that text
+/// is gone (the file was rewritten another way), the revert skips it and writes nothing.
+#[test]
+fn a_changed_settings_file_loses_only_the_inserted_text_or_is_skipped() {
+    let before = "{\n    \"n\": 1.50\n}\n";
+    let (_t2, other) = home();
+    let (_t, home) = home();
+    write(&home, SETTINGS, before);
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let changed = fs::read_to_string(home.join(SETTINGS))
+        .unwrap()
+        .replace("{\n", "{\n    \"mine\": 10.0,\n");
+    fs::write(home.join(SETTINGS), &changed).unwrap();
+    revert(&home, &id, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\n    \"mine\": 10.0,\n    \"n\": 1.50\n}\n"
+    );
+    // Rewritten another way: the exact inserted text is not there, so nothing changes.
+    write(&other, SETTINGS, before);
+    let p = plan(&other, &package()).unwrap();
+    let id = apply(&other, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let rewritten = "{\"n\":1.5,\"outputStyle\":\"MoAI-Easy\"}";
+    fs::write(other.join(SETTINGS), rewritten).unwrap();
+    let r = revert(&other, &id, PERM).unwrap();
+    assert_eq!(r["skipped"][0]["target"], "claude:setting");
+    assert_eq!(fs::read_to_string(other.join(SETTINGS)).unwrap(), rewritten);
+}
+
+/// #2875 audit B2: the style file's frontmatter is plain YAML — every value that holds `: ` is
+/// quoted, so a strict parser reads `name: MoAI-Easy`.
+#[test]
+fn the_style_frontmatter_is_valid_yaml() {
+    let out = render_style_file(&src());
+    let front = out
+        .strip_prefix("---\n")
+        .and_then(|r| r.split_once("\n---\n"))
+        .unwrap()
+        .0;
+    let mut keys = Vec::new();
+    for line in front.lines() {
+        let (key, value) = line.split_once(": ").unwrap();
+        keys.push(key);
+        if value.len() >= 2 && value.starts_with('"') && value.ends_with('"') {
+            assert!(!value[1..value.len() - 1].contains('"'), "{line}");
+        } else {
+            assert!(!value.contains(": ") && !value.contains(" #"), "{line}");
+        }
+    }
+    assert_eq!(keys, ["name", "description", "keep-coding-instructions"]);
+    assert!(front.starts_with("name: MoAI-Easy\n"));
+}
+
+/// #2875 audit B3: a `receipts` folder swapped for a link is never followed by a revert.
+#[cfg(unix)]
+#[test]
+fn revert_refuses_a_linked_receipts_folder() {
+    let (_o, outside) = home();
+    let (_t, home) = home();
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let receipts = home.join(".moai-cli/home-style/receipts");
+    fs::rename(&receipts, outside.join("receipts")).unwrap();
+    std::os::unix::fs::symlink(outside.join("receipts"), &receipts).unwrap();
+    let outside_receipt = outside.join("receipts").join(&id).join("receipt.json");
+    let before = fs::read(&outside_receipt).unwrap();
+    assert!(revert(&home, &id, PERM).unwrap_err().contains("symlink"));
+    assert_eq!(fs::read(&outside_receipt).unwrap(), before);
+    assert!(home.join(STYLE).exists());
+}
