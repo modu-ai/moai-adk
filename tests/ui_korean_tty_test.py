@@ -131,7 +131,14 @@ class KoreanTerminal(unittest.TestCase):
     def test_the_project_profile_chooses_korean(self):
         project = os.path.join(self.tmp.name, "proj")
         os.makedirs(project)
-        _, err, code = run_pipe(["init"], env_for(self.home), project)
+        # The first `moai cc` in a folder prepares it (#2935 L3: `moai init` is gone); a stand-in
+        # `claude` that exits at once takes the session's place.
+        fake = os.path.join(self.tmp.name, "fakebin")
+        os.makedirs(fake, exist_ok=True)
+        with open(os.path.join(fake, "claude"), "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(os.path.join(fake, "claude"), 0o755)
+        _, err, code = run_pipe(["cc"], env_for(self.home, PATH=fake + ":/usr/bin:/bin"), project)
         self.assertEqual(code, 0, err)
         # The profile lives under a hidden state folder, which `glob` skips; walk instead.
         files = [os.path.join(d, "project.yaml") for d, _, names in os.walk(project)

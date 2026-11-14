@@ -172,9 +172,17 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         seen,
         [
             "claim-acquire",
+            "claim-timeout-check",
+            "claim-timeout-check --issue",
             "claim-verify",
             "claim-verify --hook",
+            // #2903 (#2899 O4): the lane closes its own card through `close-check` (its
+            // `--repo` follows a placeholder, so tests/close_step_2903.rs checks that flag).
+            "close-check",
             "gate-check",
+            "gate-loop --fetch",
+            "gate-schedule-apply",
+            "gate-schedule-plan",
             "goal-block",
             "goal-plan",
             "goal-show",
@@ -195,6 +203,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "repo-scans --refs",
             "scope-check",
             "session-register",
+            // #2928: MODE-LEADER registers itself as the leader for the status line tag
+            // (`--name <n> --mode=leader`; the `=` keeps clear of the retired `/moai` mode
+            // spelling that tests/product_cli.rs scans the package for).
+            "session-register --name",
             "session-register --release",
             "usage-limit",
             "worktree-gc-apply",
@@ -240,6 +252,22 @@ fn assert_says(text: &str, key: &str, phrases: &[&str]) {
     for p in phrases {
         assert!(body.contains(p), "{key} must say `{p}`:\n{body}");
     }
+}
+
+/// #2928 (decision D1 = (A)): the leader registers its session with mode `leader` at the banner
+/// and renews it every round, so the status line tags it `leader`; the flag it names exists.
+#[test]
+fn the_leader_registers_its_mode_for_the_status_line() {
+    assert_says(
+        &workflow("mode-leader.md"),
+        "banner",
+        &[
+            "`moai session-register --name <your session name> --mode=leader .`",
+            "`--instance <that instance>`",
+            "every supervision round",
+        ],
+    );
+    assert!(help(&["session-register"]).contains("--mode <MODE>"));
 }
 
 // #2515: lanes open their own pull requests, settle a simultaneous opening themselves,
@@ -853,4 +881,39 @@ fn inspection_p2_rules_are_written_where_they_are_used() {
     ] {
         assert!(reduced.contains(p), "reduced mode must say `{p}`:\n{reduced}");
     }
+}
+
+// #2906 S4 (decision D2, plan Q2/Q7): without a terminal list (no Orca) the third timeout
+// condition is `claim-timeout-check` answering `met`, the leader re-checks a `by=timeout`
+// line with `--now`, and without a leader session the merge gate runs from the OS scheduler.
+#[test]
+fn timeout_takeover_without_a_terminal_list_uses_claim_timeout_check() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim-verify",
+        &[
+            "or — when there is no terminal list (no Orca) — `moai claim-timeout-check --issue <n> --claim <holder id> --request <your request id> --lane <you>` answers `met`",
+            "names the holder's claim id, never the holder lane",
+            "post the line the command prints",
+        ],
+    );
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "`moai claim-timeout-check`",
+            "`--now <the timeout line's created_at>`",
+        ],
+    );
+    assert_says(
+        &leader,
+        "merge-train",
+        &[
+            "`moai gate-schedule-plan`",
+            "`moai gate-schedule-apply`",
+            "enabling it is the operator's step",
+            "`moai gate-loop --fetch`",
+        ],
+    );
 }

@@ -382,3 +382,33 @@ fn a_legacy_key_file_is_never_read_or_touched() {
         before
     );
 }
+
+/// The key commands left `src/main.rs` for `src/ops/` (#2834 R3): each envelope still names
+/// its own operation.
+#[test]
+fn each_key_command_answers_under_its_operation_name() {
+    let (_d, home) = home();
+    let key = synthetic();
+    let names = [
+        (vec!["key-status", "glm"], None, "key.status"),
+        (vec!["key-set", "glm"], Some(key.as_str()), "key.set"),
+        (vec!["key-remove", "glm"], None, "key.remove"),
+        (vec!["key-import-plan", "glm"], None, "key.import_plan"),
+        (
+            vec![
+                "key-import-apply",
+                "glm",
+                "--plan-digest",
+                "x",
+                "--permission-reference",
+                "r",
+            ],
+            None,
+            "key.import_apply",
+        ),
+    ];
+    for (args, stdin, op) in names {
+        let v = envelope(&run(&home, &args, stdin), &key);
+        assert_eq!(v["operation"], op, "{v}");
+    }
+}

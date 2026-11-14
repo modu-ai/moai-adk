@@ -76,6 +76,9 @@ fn each_reason_keeps_the_issue_open() {
         "병합 대기중",
         "충족 안됨",
         "충족(일부만)",
+        // Audit 6876510659 B1 end-to-end: a digit glued to a word.
+        "충족 3건남음",
+        "done 1wip",
     ] {
         let t = format!(
             "CLOSE-TABLE #7\n\n| AC | 상태 | 근거 |\n| --- | --- | --- |\n| AC-1 | 충족 | test |\n| AC-2 | {verdict_cell} | PR #9 열림 |"
