@@ -3651,6 +3651,7 @@ mod help_rules {
         "agents-home-plan",
         "agents-home-revert",
         "audit-claim",
+        "audit-verdict-line",
         "bin-names-apply",
         "bin-names-plan",
         "cc",

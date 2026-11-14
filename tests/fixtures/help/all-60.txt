@@ -168,6 +168,8 @@ Lane and leader
                           acknowledgement
   audit-claim             Reserve the audit of one pull
                           request head
+  audit-verdict-line      Print the verdict first line for a
+                          PR's current head
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break
                           the rule

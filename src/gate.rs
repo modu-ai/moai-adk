@@ -160,6 +160,35 @@ pub fn parse_verdict(line: &str) -> Option<(String, String, String)> {
     Some((head.into(), base.into(), verdict.into()))
 }
 
+/// The first line of a verdict comment (#2833 D4): `AUDIT #<pr> (<title>) head <head> base
+/// <base> — verdict: <verdict>`, refused unless [`parse_verdict`] reads back exactly these
+/// values — the line the gate's G1 reads is the line the helper prints.
+pub fn format_verdict_line(
+    pr: u64,
+    title: &str,
+    head: &str,
+    base: &str,
+    verdict: &str,
+) -> Result<String, String> {
+    if !is_hex40(head) || !is_hex40(base) {
+        return Err("head and base must be 40 lowercase hex".into());
+    }
+    if !matches!(verdict, "PASS" | "FAIL") {
+        return Err("verdict must be PASS or FAIL".into());
+    }
+    if title.trim().is_empty() || title.contains(['\n', '\r']) {
+        return Err("title must be one non-empty line".into());
+    }
+    let line = format!(
+        "AUDIT #{pr} ({}) head {head} base {base} — verdict: {verdict}",
+        title.trim()
+    );
+    match parse_verdict(&line) {
+        Some((h, b, v)) if h == head && b == base && v == verdict => Ok(line),
+        _ => Err("the line would not read back as this head, base and verdict".into()),
+    }
+}
+
 /// The auditor of a verdict: the first lane name (`agent-N`, `pr-N`, with an optional
 /// `-suffix`) after the `AUDIT #` line. A lane named further on is not the author (owner_ok).
 pub fn auditor(body: &str) -> Option<String> {

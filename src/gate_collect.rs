@@ -296,6 +296,52 @@ fn short(sha: &str) -> &str {
     sha.get(..10).unwrap_or(sha)
 }
 
+/// The verdict first line for the PR's head as GitHub has it now (#2833 D4): reads the head
+/// right before printing, so a verdict never names a head that moved while the audit ran
+/// (#2821). The base is `base` when given, else `git merge-base <head> <tip>` in the local
+/// repository (the head must be fetched). Reads only.
+pub fn verdict_line_for<T: Transport>(
+    target: &Target<'_>,
+    title: &str,
+    verdict: &str,
+    base: Option<&str>,
+    t: &T,
+) -> Result<serde_json::Value> {
+    let base_url = format!(
+        "https://api.github.com/repos/{}/{}",
+        target.owner, target.repo
+    );
+    let (pr, _) = get_json(t, &format!("{base_url}/pulls/{}", target.pr))?;
+    let head = pr["head"]["sha"]
+        .as_str()
+        .ok_or("pull request has no head sha")?
+        .to_string();
+    let (base, from) = match base {
+        Some(b) => (b.to_string(), "given"),
+        None => {
+            if !is_commit(target.dir, &head)? {
+                return Err(format!(
+                    "pull request head {head} is not in the local repository; fetch refs/pull/{}/head first, or pass --base",
+                    target.pr
+                ));
+            }
+            let tip = git_ok(
+                target.dir,
+                &[
+                    "rev-parse",
+                    "--verify",
+                    &format!("{}^{{commit}}", target.tip),
+                ],
+            )
+            .map_err(|_| format!("tip `{}` is not a local commit", target.tip))?;
+            let mb = git_ok(target.dir, &["merge-base", &head, tip.trim()])?;
+            (mb.trim().to_string(), "merge-base")
+        }
+    };
+    let line = gate::format_verdict_line(target.pr, title, &head, &base, verdict)?;
+    Ok(serde_json::json!({ "line": line, "head": head, "base": base, "base_from": from }))
+}
+
 /// Whether a PR body names a claim (G11): the marker the removed `flow-gate-verdict`
 /// `pr_body_claim` check read, anywhere in the body.
 pub fn has_body_claim(body: &str) -> bool {

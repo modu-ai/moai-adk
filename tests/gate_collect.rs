@@ -1246,3 +1246,97 @@ fn collect_carries_a_pass_across_an_update_branch_merge() {
     let s = collect(&target, &t).unwrap();
     assert!(s.auto_delta.is_none());
 }
+
+// ---- #2833 D4 / AC-3: the verdict first line ----
+
+fn pr_head(head: &str) -> RecordedTransport {
+    RecordedTransport::new(vec![Exchange {
+        request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+        response: ok(json!({"head": {"sha": head}})),
+    }])
+}
+
+/// AC-3: the helper names the head GitHub has now and its line reads back through the gate's
+/// own parser; the base is the merge base unless one is given.
+#[test]
+fn the_verdict_line_names_the_current_head_and_reads_back() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let target = Target {
+        dir: r.d(),
+        owner: "o",
+        repo: "r",
+        pr: 9,
+        tip: "main",
+        review_confirmed_prs: vec![],
+    };
+    // The head moved to `n` while the audit ran: the line names `n`, not `h`.
+    let t = pr_head(&n);
+    let v = gate_collect::verdict_line_for(&target, "S3 delta", "PASS", None, &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let line = v["line"].as_str().unwrap();
+    let (h, b, verdict) = gate::parse_verdict(line).expect("the gate reads the line");
+    assert_eq!((h.as_str(), verdict.as_str()), (n.as_str(), "PASS"));
+    assert_eq!(
+        b, r.c,
+        "the merge base of the merged head and the tip is the tip"
+    );
+    assert_eq!(v["base_from"], json!("merge-base"));
+    assert!(line.starts_with("AUDIT #9 (S3 delta) head "), "{line}");
+
+    // A given base (a delta re-audit names the earlier head) is used as it is.
+    let t = pr_head(&n);
+    let v = gate_collect::verdict_line_for(&target, "re-audit", "FAIL", Some(&r.h), &t).unwrap();
+    let (_, b, verdict) = gate::parse_verdict(v["line"].as_str().unwrap()).unwrap();
+    assert_eq!((b.as_str(), verdict.as_str()), (r.h.as_str(), "FAIL"));
+    assert_eq!(v["base_from"], json!("given"));
+
+    // A head that was never fetched is named, not guessed.
+    let missing = "f".repeat(40);
+    let err =
+        gate_collect::verdict_line_for(&target, "x", "PASS", None, &pr_head(&missing)).unwrap_err();
+    assert!(err.contains("fetch refs/pull/9/head first"), "{err}");
+}
+
+#[test]
+fn a_verdict_line_the_gate_would_not_read_is_refused() {
+    let h = "a".repeat(40);
+    let b = "b".repeat(40);
+    assert!(gate::format_verdict_line(9, "t", &h, &b, "PASS").is_ok());
+    for (title, head, base, verdict) in [
+        ("t", "A".repeat(40), b.clone(), "PASS"),
+        ("t", "a".repeat(39), b.clone(), "PASS"),
+        ("t", h.clone(), "b".repeat(41), "PASS"),
+        ("t", h.clone(), b.clone(), "Pass"),
+        ("t", h.clone(), b.clone(), "PASS WITH NOTES"),
+        ("two\nlines", h.clone(), b.clone(), "PASS"),
+        ("  ", h.clone(), b.clone(), "PASS"),
+    ] {
+        assert!(
+            gate::format_verdict_line(9, title, &head, &base, verdict).is_err(),
+            "{title:?} {head} {base} {verdict}"
+        );
+    }
+    // A title that itself says " head " still reads back: the gate takes the last one.
+    let line = gate::format_verdict_line(9, "the head moved", &h, &b, "FAIL").unwrap();
+    assert_eq!(gate::parse_verdict(&line), Some((h, b, "FAIL".to_string())));
+}
+
+/// AC-3 (document and gate agree): the example verdict line in the AUDIT workflow is exactly
+/// what the helper prints for the same values.
+#[test]
+fn the_audit_workflow_example_is_the_helpers_line() {
+    let text = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
+    )
+    .unwrap();
+    let example = text
+        .lines()
+        .map(str::trim)
+        .find(|l| l.starts_with("AUDIT #2786 "))
+        .expect("the example line");
+    let (h, b, v) = gate::parse_verdict(example).expect("the gate reads the example");
+    let built = gate::format_verdict_line(2786, "#2708 4/4 repo-scans", &h, &b, &v).unwrap();
+    assert_eq!(built, example);
+    assert!(text.contains("moai audit-verdict-line --pr <n> --verdict PASS|FAIL --title <scope>"));
+}

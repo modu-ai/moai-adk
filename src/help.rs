@@ -136,6 +136,7 @@ pub const GROUPS: &[Group] = &[
             ("pr-body-render", false),
             ("pr-confirm", false),
             ("audit-claim", false),
+            ("audit-verdict-line", false),
             ("audit-clone-plan", false),
             ("labels-check", false),
             ("decision-due", false),
