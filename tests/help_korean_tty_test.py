@@ -151,6 +151,13 @@ class KoreanHelp(unittest.TestCase):
         short = self.help(["key-set", "-h"], **KOREAN)
         self.assertIn("도움말 보기 (자세히는 '--help')", short)
         self.assertIn("\n옵션:\n      --shared", short)
+        # The help flag's Korean lines are wrapped at the indent too: at 40 columns they break.
+        for flag in ("-h", "--help"):
+            narrow = self.help(["identity", flag], COLUMNS="40", **KOREAN)
+            lines = [line for line in narrow.splitlines() if "도움말" in line or "'-" in line]
+            self.assertTrue(lines, narrow)
+            for line in lines:
+                self.assertLessEqual(cells(line), 40, (flag, line))
 
     def test_the_project_group_reads_its_own_texts_in_korean(self):
         """S6e-2: the Project group's root commands — about, long about, argument help."""
