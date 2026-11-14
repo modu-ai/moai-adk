@@ -1,0 +1,9 @@
+◆ home-routing-plan  <home>
+
+동작      호스트
+→ create  claude
+→ create  codex
+
+2 create · 쓰는 것 없음
+→ 다음: moai home-routing-apply <같은 인자>
+  --plan-digest sha256:<digest>

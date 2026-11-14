@@ -761,12 +761,12 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             crate::apply::target(&root, &rel)?;
         }
         // Three static progress lines (#2806); silent without a stderr sink.
-        crate::progress::note("scanning tracked files (1/3)");
+        crate::progress::note_msg(crate::ui_text::Msg::ScanningTrackedFiles, &[]);
         let (base_commit, files) = scan(&root, &source)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
         let (history, history_digest) = build_history(&root, &base_commit);
         let gen_id = content_id(&base_commit, &files, &history_digest);
-        crate::progress::note("building the views (2/3)");
+        crate::progress::note_msg(crate::ui_text::Msg::BuildingViews, &[]);
         let (views, records, reused, extracted) =
             build_views(&root, &source, &gen_id, &base_commit, &files, history)?;
         let manifest = IndexManifest {
@@ -786,7 +786,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
                 &format!("{}/index/generations/{gen_id}/{name}", source.state),
             )?;
         }
-        crate::progress::note("publishing the generation (3/3)");
+        crate::progress::note_msg(crate::ui_text::Msg::PublishingGeneration, &[]);
         let action = if !gen_dir.is_dir() {
             let nanos = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

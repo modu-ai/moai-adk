@@ -1,0 +1,4 @@
+key-remove 가 파일 1개를 지워요
+  glm 키, shared 범위: <home>/.moai-cli/vault/_shared/glm.key
+! 지울까요? [y/N] n
+다음: 묻지 않고 지우려면 --yes 를 붙여 실행하세요

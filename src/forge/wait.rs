@@ -12,6 +12,7 @@
 use super::policy::{next_link, Clock};
 use super::transport::{HttpResponse, Transport};
 use super::{valid_name, CachedPage, Client, Config, ForgeError};
+use crate::ui_text::Msg;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
@@ -183,12 +184,18 @@ fn check<T: Transport, C: Clock>(
             let completed = list.iter().filter(|r| r["status"] == "completed").count();
             let done = !list.is_empty() && completed == list.len();
             let short = head.get(..8).unwrap_or(head);
+            // The state is a progress line in the sink's language (S6b); it is compared only
+            // with the previous poll's state of the same process.
             let state = if list.is_empty() {
-                format!("ci on {short}: no workflow run yet")
+                crate::progress::say(Msg::CiNoRunYet, &[("head", short)])
             } else {
-                format!(
-                    "ci on {short}: {completed} of {} runs completed",
-                    list.len()
+                crate::progress::say(
+                    Msg::CiRunsCompleted,
+                    &[
+                        ("head", short),
+                        ("done", &completed.to_string()),
+                        ("total", &list.len().to_string()),
+                    ],
                 )
             };
             let ok = |r: &Value| {
@@ -213,7 +220,10 @@ fn check<T: Transport, C: Clock>(
             let now = projected(client, &url, &resp, &project_pr);
             let moved = now["head"].as_str() != Some(head.as_str()) || now["state"] != "open";
             let short = head.get(..8).unwrap_or(head);
-            let state = format!("pull request #{pr} still at {short}");
+            let state = crate::progress::say(
+                Msg::PullRequestStillAt,
+                &[("pr", &pr.to_string()), ("head", short)],
+            );
             Ok((moved.then_some(now), resp.status == 304, state))
         }
         Condition::Comment {
@@ -237,7 +247,11 @@ fn check<T: Transport, C: Clock>(
                 json!({"id": c["id"], "author": c["author"],
                        "first_line": first_line(c["text"].as_str().unwrap_or(""))})
             });
-            Ok((value, all_cached, format!("no new comment on #{issue}")))
+            Ok((
+                value,
+                all_cached,
+                crate::progress::say(Msg::NoNewComment, &[("issue", &issue.to_string())]),
+            ))
         }
     }
 }

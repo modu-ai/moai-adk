@@ -1,0 +1,4 @@
+key-remove deletes 1 file
+  glm key, shared scope: <home>/.moai-cli/vault/_shared/glm.key
+! Remove it? [y/N] n
+next: run with --yes to remove it without asking

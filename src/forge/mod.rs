@@ -301,7 +301,10 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
             n += 1;
             if n > 1 {
                 // A read of one page is quick; from the second page on, say which (#2806).
-                crate::progress::note(&format!("reading page {n} of {}", api_path(&u)));
+                crate::progress::note_msg(
+                    crate::ui_text::Msg::ReadingPage,
+                    &[("n", &n.to_string()), ("path", api_path(&u))],
+                );
             }
             if n > self.config.max_pages {
                 return Err(ForgeError::invalid(format!(
