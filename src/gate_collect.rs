@@ -671,14 +671,37 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
     // The verdict base is read from the last verdict the gate will judge; without one G1 stops.
-    let last_verdict = comments
+    let last_line = comments
         .iter()
         .filter_map(|c| {
             let first = c.body.lines().next()?;
             first.starts_with("AUDIT #").then_some((c.id, first))
         })
         .max_by_key(|(id, _)| *id)
-        .and_then(|(_, line)| gate::parse_verdict(line));
+        .map(|(_, line)| line);
+    // #2860 rule 3 (shell gate_merge.sh): a short verdict base counts when it names exactly one
+    // commit here. `rev-parse --verify --quiet <b>^{commit}` refuses an ambiguous or unknown
+    // prefix; the full SHA then stands for the base everywhere the gate reads it.
+    let mut verdict_base_full = None;
+    let mut last_verdict = last_line.and_then(gate::parse_verdict);
+    if last_verdict.is_none() {
+        if let Some((vh, short, v)) = last_line.and_then(gate::parse_verdict_short_base) {
+            let (ok, out) = git(
+                dir,
+                &[
+                    "rev-parse",
+                    "--verify",
+                    "--quiet",
+                    &format!("{short}^{{commit}}"),
+                ],
+            )?;
+            let full = out.trim().to_string();
+            if ok && full.len() == 40 && full.starts_with(&short) {
+                verdict_base_full = Some(full.clone());
+                last_verdict = Some((vh, full, v));
+            }
+        }
+    }
     let verdict_base = last_verdict.as_ref().map(|(_, base, _)| base.clone());
     // #2833: a PASS on an earlier head may still count when the current head only merged the
     // base branch into it. Measured only then; any other case leaves it absent.
@@ -746,6 +769,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         review_confirmed_prs: target.review_confirmed_prs.clone(),
         body_check_ok: body_check(&body),
         verdict_base_known,
+        verdict_base_full,
         pr_authors: Some(authors),
         tip_ci: Some(tip_ci),
         tip_repair: crate::flow::is_tip_repair(&body),

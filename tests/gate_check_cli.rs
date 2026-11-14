@@ -677,3 +677,28 @@ fn g2_a_leader_handoff_moves_an_allowed_claim() {
     ]);
     assert_eq!(stopped(&gate(&s)), (true, "".into()));
 }
+
+/// #2860 rule 3 (shell gate_merge.sh): a verdict whose base is a short SHA passes only when the
+/// collector resolved it to exactly one commit (`verdict_base_full`) that starts with it. Too
+/// short, unresolved, or resolved to another commit stops at G1; the head stays 40 hex.
+#[test]
+fn g1_a_short_base_counts_only_when_resolved_to_one_commit() {
+    let short = &B[..12];
+    let line = |base: &str, head: &str| json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")});
+    let mut s = passing();
+    s["comments"] = json!([claim(100, "agent-10", H), line(short, H)]);
+    s["verdict_base_full"] = json!(B);
+    assert_eq!(stopped(&gate(&s)), (true, "".into()), "{}", gate(&s));
+    // Not resolved by the collector.
+    s["verdict_base_full"] = Value::Null;
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // Resolved to a commit the short base does not name.
+    s["verdict_base_full"] = json!(OTHER);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    // Six hex digits are too short even when "resolved"; a short head never counts.
+    s["verdict_base_full"] = json!(B);
+    s["comments"] = json!([claim(100, "agent-10", H), line(&B[..6], H)]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+    s["comments"] = json!([claim(100, "agent-10", H), line(B, &H[..12])]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}

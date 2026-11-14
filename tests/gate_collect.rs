@@ -1427,3 +1427,31 @@ fn the_audit_workflow_example_is_the_helpers_line() {
     ));
     assert!(text.contains("a verdict never names a head nobody audited"));
 }
+
+/// #2860 rule 3: the collector resolves a short verdict base through git. A 12-digit prefix of
+/// a real commit becomes its full SHA and the gate passes; a prefix git does not know leaves it
+/// unresolved and G1 stops.
+#[test]
+fn a_short_verdict_base_is_resolved_to_one_commit() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a[..12])],
+        PASS_BODY,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.verdict_base_full.as_deref(), Some(r.a.as_str()));
+    assert!(s.verdict_base_known);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
+
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, "abababababab")],
+        PASS_BODY,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.verdict_base_full, None);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+}
