@@ -245,15 +245,25 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
     // marker, is a migration stopped midway in either direction. A backup beside the Go
     // folder or beside any other `.moai/` is not (a finished revert, or the user's folder).
     let backups = go_backups(root);
-    let stopped = !backups.is_empty()
-        && marker != "valid"
-        && (moai_dir == "absent" || (moai_dir == "folder" && holds_go_state_receipt(&moai)));
-    let interrupted = if stopped { backups } else { Vec::new() };
+    // #2696 C4a: the earlier-root move has no Go backup, so its own `.moai/` holding a receipt
+    // without a valid marker is a stopped migration by itself.
+    let stopped = marker != "valid"
+        && ((!backups.is_empty() && moai_dir == "absent")
+            || (moai_dir == "folder" && holds_go_state_receipt(&moai)));
+    let interrupted = if stopped {
+        if backups.is_empty() {
+            vec![MOAI_DIR.to_string()]
+        } else {
+            backups
+        }
+    } else {
+        Vec::new()
+    };
     let (generation, reason) = if stopped {
         (
             "interrupted",
             format!(
-                "a go-state migration stopped midway ({} beside a .moai that is not this \
+                "a go-state migration stopped midway ({} and a .moai that is not this \
                  generation's); run go-state-revert-plan before anything else",
                 interrupted.join(", ")
             ),
@@ -513,6 +523,18 @@ mod tests {
             write(r, ".moai/backups/latest/go-state-receipt.json", "{}");
         });
         assert_eq!(c.generation, "unknown");
+        // #2696 C4a: the earlier-root move has no Go backup; its own `.moai/` holding a receipt
+        // and no valid marker is interrupted by itself, and names `.moai`.
+        let c = verdict(|r| write(r, RECEIPT, "{}"));
+        assert_eq!(
+            (c.generation, c.interrupted.clone()),
+            ("interrupted", vec![".moai".to_string()])
+        );
+        let c = verdict(|r| {
+            write(r, RECEIPT, "{}");
+            write(r, ".moai/moai-cli.json", MARKER_V1);
+        });
+        assert_eq!(c.generation, "rust");
     }
 
     #[test]

@@ -316,14 +316,31 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
     assert!(fx.home_is_empty(), "the project route never writes HOME");
 }
 
-/// A project that is already Rust-generation has no Go state: the move is skipped.
+/// A project that is already on this generation's `.moai/` (marker present) has nothing to
+/// move; one whose only state is the earlier `.moai-cli/` is offered the move into a new
+/// `.moai/` (#2696 C4a), and nothing is written by the preview.
 #[test]
 fn an_already_rust_project_has_nothing_to_move() {
     let fx = Fx::new();
     fx.write(".moai-cli/specs/SPEC-1/spec.md", "# spec\n");
+    let legacy = fx.call(&["go-state-plan", fx.p()]);
+    assert_eq!(moves(&legacy), 1, "{legacy}");
+    assert_eq!(
+        legacy["state_moves"][0]["to"],
+        json!(".moai/specs"),
+        "{legacy}"
+    );
+    fx.write(
+        ".moai/moai-cli.json",
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    );
     let before = fx.tree();
     let detect = fx.call(&["project-detect", fx.p()]);
-    assert_eq!(detect["go_state"]["moai_dir"], json!("absent"), "{detect}");
+    assert_eq!(
+        detect["state_root"]["generation"],
+        json!("rust"),
+        "{detect}"
+    );
     let plan = fx.call(&["go-state-plan", fx.p()]);
     assert_eq!(moves(&plan), 0, "{plan}");
     assert_eq!(fx.tree(), before);
