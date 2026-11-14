@@ -256,3 +256,123 @@ fn the_commands_are_wired() {
     assert_eq!(v["result"]["action"], json!("replace"), "{v}");
     assert_eq!(v["operation"], json!("go_hooks.plan"));
 }
+
+fn applied(root: &Path) -> String {
+    let plan = go_hooks::plan(root, None).unwrap();
+    let out = go_hooks::apply(
+        root,
+        None,
+        plan["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+    )
+    .unwrap();
+    out["receipt"].as_str().unwrap().to_string()
+}
+
+fn receipt_status(root: &Path, id: &str) -> Value {
+    read_json(&root.join(format!(".moai-cli/receipts/{id}/receipt.json")))["status"].clone()
+}
+
+/// #2893 audit B1: a revert never writes through a link — neither a linked `.claude/hooks`
+/// nor a linked `.claude` — and leaves the receipt usable once the folder is real again.
+#[test]
+fn revert_refuses_a_linked_hooks_or_claude_folder() {
+    let (_d, root) = go_project();
+    let id = applied(&root);
+    let outside = tempfile::tempdir().unwrap();
+    fs::remove_dir(root.join(".claude/hooks")).unwrap();
+    std::os::unix::fs::symlink(outside.path(), root.join(".claude/hooks")).unwrap();
+    let settings_now = fs::read(root.join(".claude/settings.json")).unwrap();
+    let e = go_hooks::revert(&root, &id, PERMISSION).unwrap_err();
+    assert!(e.contains(".claude/hooks is a link"), "{e}");
+    assert_eq!(
+        fs::read_dir(outside.path()).unwrap().count(),
+        0,
+        "nothing moved outside"
+    );
+    assert_eq!(
+        fs::read(root.join(".claude/settings.json")).unwrap(),
+        settings_now
+    );
+    assert_eq!(receipt_status(&root, &id), json!("applied"));
+    // A real folder again: the same receipt reverts.
+    fs::remove_file(root.join(".claude/hooks")).unwrap();
+    assert_eq!(
+        go_hooks::revert(&root, &id, PERMISSION).unwrap()["state"],
+        json!("reverted")
+    );
+    assert!(root.join(".claude/hooks/moai/handle-stop.sh").is_file());
+
+    // `.claude` itself as a link.
+    let (_d2, root) = go_project();
+    let id = applied(&root);
+    let away = root.join("claude-away");
+    fs::rename(root.join(".claude"), &away).unwrap();
+    std::os::unix::fs::symlink(&away, root.join(".claude")).unwrap();
+    let e = go_hooks::revert(&root, &id, PERMISSION).unwrap_err();
+    assert!(e.contains(".claude is a link"), "{e}");
+    assert!(!away.join("hooks/moai").exists());
+    assert_eq!(receipt_status(&root, &id), json!("applied"));
+}
+
+/// #2893 audit note 2: an archived script changed while archived is not put back.
+#[test]
+fn revert_refuses_an_archived_script_changed_since_the_apply() {
+    let (_d, root) = go_project();
+    let id = applied(&root);
+    let archived = root.join(format!(
+        ".moai-cli/receipts/{id}/archive/moai/handle-stop.sh"
+    ));
+    fs::write(&archived, "#!/bin/sh\necho changed\n").unwrap();
+    let settings_now = fs::read(root.join(".claude/settings.json")).unwrap();
+    let e = go_hooks::revert(&root, &id, PERMISSION).unwrap_err();
+    assert!(e.contains("handle-stop.sh changed since the apply"), "{e}");
+    assert_eq!(
+        fs::read(root.join(".claude/settings.json")).unwrap(),
+        settings_now
+    );
+    assert!(!root.join(".claude/hooks/moai").exists());
+}
+
+/// #2893 audit note 3: an interrupted apply's receipt names the manual recovery.
+#[test]
+fn a_pending_receipt_names_the_manual_recovery() {
+    let (_d, root) = go_project();
+    let id = applied(&root);
+    let path = root.join(format!(".moai-cli/receipts/{id}/receipt.json"));
+    let mut r = read_json(&path);
+    r["status"] = json!("pending");
+    fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+    let e = go_hooks::revert(&root, &id, PERMISSION).unwrap_err();
+    assert!(e.contains("interrupted") && e.contains("by hand"), "{e}");
+}
+
+/// A revert that fails after the scripts moved back puts them into the archive again and leaves
+/// the settings as the apply wrote them, so the receipt still matches and can be used later.
+#[test]
+fn a_revert_that_fails_midway_moves_the_scripts_back_into_the_archive() {
+    use std::os::unix::fs::PermissionsExt;
+    let (_d, root) = go_project();
+    let id = applied(&root);
+    let settings_now = fs::read(root.join(".claude/settings.json")).unwrap();
+    let manifests = root.join(".moai-cli/manifests");
+    fs::set_permissions(&manifests, fs::Permissions::from_mode(0o555)).unwrap();
+    let result = go_hooks::revert(&root, &id, PERMISSION);
+    fs::set_permissions(&manifests, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(result.is_err(), "{result:?}");
+    assert_eq!(
+        fs::read(root.join(".claude/settings.json")).unwrap(),
+        settings_now
+    );
+    assert!(!root.join(".claude/hooks/moai").exists());
+    assert!(root
+        .join(format!(
+            ".moai-cli/receipts/{id}/archive/moai/handle-stop.sh"
+        ))
+        .is_file());
+    assert_eq!(receipt_status(&root, &id), json!("applied"));
+    assert_eq!(
+        go_hooks::revert(&root, &id, PERMISSION).unwrap()["state"],
+        json!("reverted")
+    );
+}

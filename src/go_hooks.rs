@@ -337,6 +337,18 @@ struct Receipt {
     claude_receipt_after: Option<String>,
     /// The script files moved to `archive/moai` in the receipt folder.
     scripts: Vec<String>,
+    /// sha256 of each of `scripts`, same order; a revert puts back only these bytes.
+    #[serde(default)]
+    scripts_sha256: Vec<String>,
+}
+
+/// `true` when `path` is a real folder or absent, `false` when it is a link or anything else.
+fn plain_dir_or_absent(path: &Path) -> Result<bool> {
+    match fs::symlink_metadata(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(true),
+        Err(_) => Err(format!("{} unavailable", path.display())),
+        Ok(m) => Ok(m.is_dir() && !m.file_type().is_symlink()),
+    }
 }
 
 fn receipts_dir(root: &Path) -> std::path::PathBuf {
@@ -433,7 +445,13 @@ pub fn apply(
         claude_receipt_before: claude_before.as_deref().map(crate::digest),
         claude_receipt_after: None,
         scripts: scripts.clone(),
+        scripts_sha256: Vec::new(),
     };
+    for name in &scripts {
+        let b = fs::read(root.join(GO_HOOK_DIR).join(name))
+            .map_err(|_| format!("{GO_HOOK_DIR}/{name} unreadable"))?;
+        receipt.scripts_sha256.push(crate::digest(&b));
+    }
     write_receipt(&dir, &receipt)?;
 
     // 1. The scripts move into the receipt folder (nothing is deleted).
@@ -543,8 +561,25 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let bytes =
         crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
     let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
+    if r.status == "pending" {
+        return Err(
+            "the receipt is pending: an apply was interrupted; compare .claude/settings.json with \
+             before/settings.json in the receipt folder and move archive/moai back to \
+             .claude/hooks/moai by hand; nothing was written"
+                .into(),
+        );
+    }
     if r.status != "applied" {
         return Err(format!("the receipt is {}; nothing to revert", r.status));
+    }
+    // #2893 audit B1: nothing is written through a link — `.claude` and `.claude/hooks` must be
+    // real folders (or absent), like every path the apply read.
+    for rel in [".claude", ".claude/hooks"] {
+        if !plain_dir_or_absent(&root.join(rel))? {
+            return Err(format!(
+                "{rel} is a link or not a folder; nothing was written"
+            ));
+        }
     }
     let settings_path = root.join(SETTINGS);
     let receipt_path = crate::state_root::path(&root, CLAUDE_RECEIPT);
@@ -578,22 +613,59 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     };
     let settings_before = load("settings.json", &r.settings_before)?;
     let claude_before = load("claude-settings.json", &r.claude_receipt_before)?;
-    restore(
-        &settings_path,
-        settings_now.as_deref(),
-        settings_before.as_deref(),
-    )?;
-    restore(
-        &receipt_path,
-        claude_now.as_deref(),
-        claude_before.as_deref(),
-    )?;
+    // #2893 audit note 2: the archived scripts are the ones the apply moved, byte for byte.
     if !r.scripts.is_empty() {
-        if let Some(parent) = script_dir.parent() {
-            fs::create_dir_all(parent).map_err(|_| ".claude/hooks unavailable")?;
+        crate::claude::refuse_symlink_dir(&dir.join("archive"))?;
+        crate::claude::refuse_symlink_dir(&archived)?;
+        for (name, sha) in r.scripts.iter().zip(&r.scripts_sha256) {
+            let b = fs::read(archived.join(name))
+                .map_err(|_| format!("archived script {name} missing; nothing was written"))?;
+            if &crate::digest(&b) != sha {
+                return Err(format!(
+                    "archived script {name} changed since the apply; nothing was written"
+                ));
+            }
+        }
+    }
+    // Scripts first: the one step that cannot be redone by bytes. A later failure moves them
+    // back into the archive, so the files and the receipt still agree.
+    if !r.scripts.is_empty() {
+        for rel in [".claude", ".claude/hooks"] {
+            let d = root.join(rel);
+            if fs::symlink_metadata(&d).is_err() {
+                fs::create_dir(&d).map_err(|_| format!("{rel} unavailable"))?;
+            }
+            if !plain_dir_or_absent(&d)? {
+                return Err(format!(
+                    "{rel} is a link or not a folder; nothing was written"
+                ));
+            }
         }
         fs::rename(&archived, &script_dir)
             .map_err(|e| format!("{GO_HOOK_DIR} not moved back: {e}"))?;
+    }
+    let undo_scripts = || {
+        if !r.scripts.is_empty() {
+            let _ = fs::rename(&script_dir, &archived);
+        }
+    };
+    if let Err(e) = restore(
+        &settings_path,
+        settings_now.as_deref(),
+        settings_before.as_deref(),
+    ) {
+        undo_scripts();
+        return Err(e);
+    }
+    if let Err(e) = restore(
+        &receipt_path,
+        claude_now.as_deref(),
+        claude_before.as_deref(),
+    ) {
+        let now = crate::claude::read_existing(&settings_path)?;
+        restore(&settings_path, now.as_deref(), settings_now.as_deref())?;
+        undo_scripts();
+        return Err(e);
     }
     r.status = "reverted".into();
     write_receipt(&dir, &r)?;
