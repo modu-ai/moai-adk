@@ -240,7 +240,9 @@ fn a_process_inside_or_a_nested_checkout_blocks_the_move() {
         "{p}"
     );
 
-    write(&home, ".moai/worktrees/x/.git", "gitdir: /elsewhere\n");
+    // A checkout outside the work folders, so this case names only the nested checkout
+    // (`worktrees/` itself blocks on its own since #2811).
+    write(&home, ".moai/clone/x/.git", "gitdir: /elsewhere\n");
     let p = plan(&home);
     assert_eq!(p["action"], json!("blocked"));
     assert_eq!(p["blocks"], json!(["nested_checkouts:1"]));
@@ -334,4 +336,38 @@ fn a_file_held_open_inside_blocks_the_move() {
     let _ = child.kill();
     let _ = child.wait();
     assert_eq!(p["blocks"], json!(["file_open_in_use"]), "{p}");
+}
+
+/// #2811 D7/D8a: `worktrees/` and `projects/` are user work in the same `~/.moai`. They are
+/// never copy candidates, and while either is present the move of the whole folder is
+/// blocked (a rename would carry them into the backup). An empty Go HOME without them still
+/// offers the move.
+#[test]
+fn work_folders_are_never_copied_and_block_the_move() {
+    for name in ["worktrees", "projects"] {
+        let (_d, home) = go_home();
+        write(&home, &format!(".moai/{name}/keep.txt"), "work\n");
+        let before = tree(&home);
+        let p = plan(&home);
+        assert_eq!(p["action"], json!("blocked"), "{name}: {p}");
+        assert!(
+            p["blocks"]
+                .as_array()
+                .unwrap()
+                .contains(&json!(format!("work_folder_present:{name}"))),
+            "{name}: {p}"
+        );
+        let c = p["copy"]["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == json!(name))
+            .unwrap()
+            .clone();
+        assert_eq!(c["kind"], json!("work_folder"), "{c}");
+        assert_eq!(c["selected"], json!(false), "{c}");
+        assert_eq!(tree(&home), before, "the plan writes nothing");
+    }
+    let (_d, home) = go_home();
+    assert_eq!(plan(&home)["action"], json!("migrate"));
 }

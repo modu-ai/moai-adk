@@ -8,9 +8,10 @@
 //! It never forces the add, and the primary worktree's HEAD, branch and index are never
 //! written: the only mutating git call in this file is that `worktree add`.
 //!
-//! Decided inputs (docs/decisions-2026-11-08.md): the default root is the user's lane location
-//! `<primary>/.moai-cli/worktrees/<issue>-<logical_key>` (16:5x→17:0x); any other path is
-//! accepted as given (REQ-06C-12). The branch prefix is an open HOLD, so it is a required
+//! Decided inputs: the default path is `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`
+//! (#2811 W2, `crate::home_workdir`; before it `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`,
+//! decisions 16:5x→17:0x, where existing worktrees stay); any other path is accepted as given
+//! (REQ-06C-12). `git worktree add` creates the missing parents of the default path (D5). The branch prefix is an open HOLD, so it is a required
 //! input with no default.
 //!
 //! Records: every 06-C command returns its record change as `record_update_request`. When
@@ -156,6 +157,7 @@ pub fn apply_and_record<C: Clock>(
     from_journal: bool,
     prefix: &str,
     path: Option<&Path>,
+    home: Option<&Path>,
     plan_digest: &str,
     capacity: Capacity,
     clock: &C,
@@ -165,7 +167,7 @@ pub fn apply_and_record<C: Clock>(
     } else {
         None
     };
-    let mut out = apply(project, rec, prefix, path, plan_digest, capacity)?;
+    let mut out = apply(project, rec, prefix, path, home, plan_digest, capacity)?;
     out["record_update"] = if out["decision"] != "created" {
         json!({"applied": false, "reason": "no worktree was created"})
     } else if let Some(journal) = &journal {
@@ -381,7 +383,15 @@ fn valid_prefix(p: &str) -> bool {
 //   Issue); it still differs from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
-pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>) -> Result<Value> {
+/// `home` is the user's home (`crate::home_workdir::home`); it is needed only when `path` is
+/// `None` and names the default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`.
+pub fn plan(
+    project: &Path,
+    rec: &ClaimRecord,
+    prefix: &str,
+    path: Option<&Path>,
+    home: Option<&Path>,
+) -> Result<Value> {
     if !valid_prefix(prefix) {
         return Err("invalid --branch-prefix: segments of [A-Za-z0-9._-] separated by /".into());
     }
@@ -401,9 +411,11 @@ pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>
     let path = match path {
         Some(p) if p.is_absolute() => p.to_path_buf(),
         Some(p) => primary.join(p),
-        None => primary
-            .join(crate::WORKTREES_DIR)
-            .join(format!("{issue}-{}", rec.logical_key)),
+        None => crate::home_workdir::worktree_dir(
+            home.ok_or("home directory missing; pass --path for the worktree")?,
+            &primary,
+            &format!("{issue}-{}", rec.logical_key),
+        )?,
     };
     let content = json!({
         "task_key": rec.task_key,
@@ -468,10 +480,11 @@ pub fn apply(
     rec: &ClaimRecord,
     prefix: &str,
     path: Option<&Path>,
+    home: Option<&Path>,
     plan_digest: &str,
     capacity: Capacity,
 ) -> Result<Value> {
-    let p = plan(project, rec, prefix, path)?;
+    let p = plan(project, rec, prefix, path, home)?;
     if p["plan_digest"] != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }

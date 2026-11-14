@@ -194,7 +194,7 @@ fn portable(s: &str) -> bool {
             .chain(SECRET_SHAPES.iter())
             .any(|x| lower.contains(x))
 }
-fn portable_id(s: &str) -> bool {
+pub(crate) fn portable_id(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 80
         && s.bytes()
