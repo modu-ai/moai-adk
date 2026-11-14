@@ -732,3 +732,76 @@ fn a_deleted_start_marker_is_a_conflict() {
     let p = fx.plan();
     assert_eq!(p["action"], json!("conflict"), "{p}");
 }
+
+/// #2982 audit O27/O09: when `AGENTS.md` cannot be written, the apply fails, the receipt says
+/// `failed` (it was written first as `pending`, with the earlier copy beside it), and
+/// `AGENTS.md` is untouched; a revert of that receipt writes nothing.
+#[test]
+fn a_failed_write_leaves_a_failed_receipt_and_changes_nothing() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = Fx::with(RULES, Some(MINE));
+    fs::create_dir_all(fx.root.join(".moai-cli")).unwrap();
+    let plan = fx.plan();
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    // A project folder nobody can add files to: AGENTS.md cannot be replaced there.
+    fs::set_permissions(&fx.root, fs::Permissions::from_mode(0o555)).unwrap();
+    let probe = fs::write(fx.root.join("probe"), "x");
+    let blocked = probe.is_err();
+    if !blocked {
+        // Running as a user who ignores modes (root): the case cannot be built here.
+        fs::remove_file(fx.root.join("probe")).unwrap();
+    }
+    let v = fx.apply_with(&digest, REF);
+    fs::set_permissions(&fx.root, fs::Permissions::from_mode(0o755)).unwrap();
+    if !blocked {
+        return;
+    }
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.read("AGENTS.md"), RULES);
+    let receipts: Vec<_> = fs::read_dir(fx.root.join(".moai-cli/receipts"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    assert_eq!(receipts.len(), 1, "{receipts:?}");
+    let dir = fx.receipt_path(&receipts[0]);
+    let r: Value = serde_json::from_slice(&fs::read(dir.join("receipt.json")).unwrap()).unwrap();
+    assert_eq!(r["status"], json!("failed"), "{r}");
+    assert_eq!(r["agents_after"], Value::Null, "{r}");
+    assert_eq!(
+        fs::read_to_string(dir.join("before/AGENTS.md")).unwrap(),
+        RULES
+    );
+    let v = fx.revert_with(&receipts[0], REF);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.read("AGENTS.md"), RULES);
+    // The same text still merges once the folder is writable again.
+    assert_eq!(fx.plan()["action"], json!("merge"));
+}
+
+/// #2982 audit O16: a receipt id is `agents-local-merge-` plus letters, digits and dashes, at
+/// most 64 bytes in all; the edge of the length and a character just outside the set.
+#[test]
+fn a_receipt_id_is_checked_by_prefix_characters_and_length() {
+    let fx = Fx::with(RULES, Some(MINE));
+    let id = fx.merge()["receipt"].as_str().unwrap().to_string();
+    let merged = fx.read("AGENTS.md");
+    let prefix = "agents-local-merge-";
+    let at = |n: usize| format!("{prefix}{}", "1".repeat(n - prefix.len()));
+    // 64 bytes passes the id check (and then finds no receipt); 65 is refused as an id.
+    let v = fx.revert_with(&at(64), REF);
+    assert!(v.to_string().contains("receipt not found"), "{v}");
+    let v = fx.revert_with(&at(65), REF);
+    assert!(v.to_string().contains("unknown receipt id"), "{v}");
+    for bad in [
+        format!("{id}_"),
+        format!("{id}+"),
+        format!("{id}é"),
+        format!("{id}\n"),
+    ] {
+        let v = fx.revert_with(&bad, REF);
+        assert!(v.to_string().contains("unknown receipt id"), "{bad:?}: {v}");
+    }
+    assert_eq!(fx.read("AGENTS.md"), merged);
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+}

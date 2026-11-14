@@ -162,6 +162,9 @@ fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bo
                     c.is_ascii_alphanumeric() || *c == '-' || *c == '_'
                 }
             })
+            // Counting past `min` is never needed; without this one long line of repeated
+            // prefixes costs time quadratic in its length (#2982 re-audit N6').
+            .take(min)
             .count();
         !word_before && run >= min
     })
@@ -204,7 +207,7 @@ fn secret_kind(line: &str) -> Option<&'static str> {
     // `Authorization: Bearer <token>` or `Basic <base64>`.
     if lower.contains("authorization") {
         for word in ["bearer ", "basic "] {
-            for (i, _) in lower.match_indices(word).take(64) {
+            for (i, _) in lower.match_indices(word) {
                 let run = line[i + word.len()..]
                     .chars()
                     .take(64)
@@ -217,11 +220,13 @@ fn secret_kind(line: &str) -> Option<&'static str> {
         }
     }
     // A URL that carries a password: `scheme://user:password@host`.
-    for (i, _) in line.match_indices("://").take(64) {
-        let authority: &str = line[i + 3..]
-            .split(|c: char| c == '/' || c.is_whitespace())
-            .next()
-            .unwrap_or("");
+    for (i, _) in line.match_indices("://") {
+        // The host part ends at the next `/`, which the next `://` also holds, so the parts of
+        // one line never overlap and the scan stays linear.
+        let authority: String = line[i + 3..]
+            .chars()
+            .take_while(|c| *c != '/' && !c.is_whitespace())
+            .collect();
         if let Some((userinfo, _)) = authority.split_once('@') {
             if let Some((_, password)) = userinfo.split_once(':') {
                 if password.len() >= 3 && !password.starts_with(['<', '$', '{', '*', '[', '(']) {
@@ -243,9 +248,10 @@ fn secret_kind(line: &str) -> Option<&'static str> {
         "access_key",
         "private_key",
     ] {
-        // A bounded number of hits and of value characters per line: one huge line must not
-        // cost time quadratic in its length (#2982 audit N6).
-        for (i, _) in lower.match_indices(key).take(64) {
+        // Every hit looks at a bounded number of value characters, so one huge line costs time
+        // linear in its length, and a credential after many look-alikes is still found
+        // (#2982 audit N6, re-audit N6'').
+        for (i, _) in lower.match_indices(key) {
             let tail = lower[i + key.len()..].trim_start_matches(['"', '\'', '`', ' ', '\t']);
             let Some(tail) = tail.strip_prefix('=').or_else(|| tail.strip_prefix(':')) else {
                 continue;
@@ -1013,15 +1019,49 @@ mod tests {
         assert_eq!(secret_suspects("password: abcdefghij"), vec![]);
     }
 
-    /// A single huge line must not cost time quadratic in its length (#2982 audit N6; it took
-    /// about 43 seconds in a debug build before the scan was bounded).
+    /// A single huge line must not cost time quadratic in its length, whatever shape it repeats
+    /// (#2982 audit N6 and re-audit N6'; each of these took 30 seconds or more in a debug build
+    /// before its scan was bounded).
     #[test]
     fn one_huge_line_is_scanned_in_bounded_time() {
-        let line = "password:".repeat(SOURCE_LIMIT / 9);
-        let start = std::time::Instant::now();
-        let _ = secret_suspects(&line);
-        let spaced = format!("password{}x", " ".repeat(SOURCE_LIMIT - 10));
-        let _ = secret_suspects(&spaced);
-        assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
+        let long = |unit: &str| unit.repeat(SOURCE_LIMIT / unit.len());
+        let mut lines = vec![
+            long("password:"),
+            long("xsk-"),
+            long("aghp_"),
+            long("AKIA"),
+            long("ghp_"),
+            long("hf_"),
+            long("://"),
+            long("a://u:"),
+            long("authorization bearer "),
+            long("secret_key="),
+            format!("password{}x", " ".repeat(SOURCE_LIMIT - 10)),
+            format!("authorization: bearer {}", "a".repeat(SOURCE_LIMIT - 30)),
+            format!("{}{}", "sk-", "a".repeat(SOURCE_LIMIT - 3)),
+        ];
+        lines.push(long("eyJ.eyJ"));
+        for line in lines {
+            let start = std::time::Instant::now();
+            let _ = secret_suspects(&line);
+            assert!(
+                start.elapsed().as_secs() < 3,
+                "{:?} for a line starting {:?}",
+                start.elapsed(),
+                &line[..12]
+            );
+        }
+    }
+
+    /// Look-alikes before a real credential on the same line must not hide it (re-audit N6'').
+    #[test]
+    fn a_credential_after_many_lookalikes_is_still_found() {
+        let lookalikes = "password:x ".repeat(200);
+        let real = format!("{lookalikes}password: Abcdef12");
+        assert_eq!(secret_suspects(&real), vec![(1, "credential_assignment")]);
+        let urls = "http://a/b ".repeat(200);
+        let real = format!("{urls}{}://u:pw3@h", "postgres");
+        assert_eq!(secret_suspects(&real), vec![(1, "url_credential")]);
+        assert_eq!(secret_suspects(&lookalikes), vec![]);
     }
 }
