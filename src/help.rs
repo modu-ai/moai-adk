@@ -368,6 +368,299 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-env", &["lane-env --lane agent-1"]),
 ];
 
+/// Descriptions of arguments that share one meaning wherever they appear (#2802 S1d), by clap
+/// argument id. `configure` gives one to an argument only when the source carries none, so a
+/// doc comment on the field always wins.
+pub const ARG_HELP: &[(&str, &str)] = &[
+    ("project", "Project root"),
+    (
+        "permission_reference",
+        "Caller-supplied permission reference (recorded; not an authorization verifier)",
+    ),
+    ("plan_digest", "The preview's `plan_digest`"),
+    (
+        "task",
+        "The 16-hex task key of a record in the local claim journal",
+    ),
+    ("operation_id", "Operation id of the intended effect"),
+    (
+        "provider",
+        "Provider name, e.g. `glm` (lower-case letters, digits and `-`)",
+    ),
+];
+
+/// Descriptions of arguments whose meaning depends on the command (#2802 S1d):
+/// (command, argument id, text). Checked before `ARG_HELP`.
+pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
+    (
+        "decision-due",
+        "file",
+        "Decision bundle file under `docs/decisions/`",
+    ),
+    (
+        "decision-file-check",
+        "file",
+        "Decision bundle file under `docs/decisions/`",
+    ),
+    ("package-inspect", "package", "Skill package folder"),
+    (
+        "package-resolve",
+        "repo_package",
+        "Repository package folder; required when the profile pins a package",
+    ),
+    (
+        "package-resolve",
+        "user_package",
+        "User package folder; required when the profile pins none",
+    ),
+    ("identity", "path", "Any path inside a clone or worktree"),
+    (
+        "key-remove",
+        "yes",
+        "Remove without asking; without it a preview, or one question on a terminal",
+    ),
+    (
+        "migrate-apply",
+        "home",
+        "Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`",
+    ),
+    (
+        "migrate-recovery-plan",
+        "home",
+        "Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`",
+    ),
+    (
+        "migrate-recover",
+        "home",
+        "Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`",
+    ),
+    (
+        "migrate-recover",
+        "backup",
+        "The apply's backup id (its plan digest)",
+    ),
+    (
+        "heavy-slot-status",
+        "dir",
+        "Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`)",
+    ),
+    (
+        "language-setup",
+        "questions",
+        "Print the question set for a host question tool",
+    ),
+    (
+        "language-setup",
+        "answers",
+        "Read the question tool's `{item: code}` JSON on stdin",
+    ),
+    (
+        "claim-verify",
+        "hook",
+        "Read a host PreToolUse hook input instead of a typed request (refusal exits 2)",
+    ),
+    (
+        "claim-release",
+        "epoch",
+        "The epoch of the current claim record",
+    ),
+    (
+        "claim-handoff",
+        "reason",
+        "Why the claim is handed off; recorded",
+    ),
+    (
+        "effect-intend",
+        "project_id",
+        "Project part of the operation id (07-B format)",
+    ),
+    (
+        "effect-intend",
+        "local_id",
+        "Local part of the operation id",
+    ),
+    (
+        "effect-intend",
+        "attempt",
+        "Attempt number of the operation id",
+    ),
+    ("hooks-apply", "host", "`claude` or `codex`"),
+    ("hook-receipt", "host", "`claude` or `codex`"),
+    (
+        "codex-projection-plan",
+        "package",
+        "Common skill package folder to project",
+    ),
+    (
+        "codex-projection-apply",
+        "package",
+        "Common skill package folder to project",
+    ),
+    (
+        "codex-projection-plan",
+        "display_name",
+        "`display_name` written to `agents/openai.yaml`",
+    ),
+    (
+        "codex-projection-apply",
+        "display_name",
+        "`display_name` written to `agents/openai.yaml`",
+    ),
+    (
+        "codex-projection-plan",
+        "short_description",
+        "`short_description` written to `agents/openai.yaml`",
+    ),
+    (
+        "codex-projection-apply",
+        "short_description",
+        "`short_description` written to `agents/openai.yaml`",
+    ),
+    (
+        "codex-projection-plan",
+        "default_prompt",
+        "`default_prompt` written to `agents/openai.yaml`",
+    ),
+    (
+        "codex-projection-apply",
+        "default_prompt",
+        "`default_prompt` written to `agents/openai.yaml`",
+    ),
+    (
+        "codex-projection-apply",
+        "allow_implicit_invocation",
+        "Write `policy.allow_implicit_invocation`; omitted keeps Codex's default",
+    ),
+    (
+        "worktree-apply",
+        "branch_prefix",
+        "Prefix of the new branch name (required; no default)",
+    ),
+    (
+        "worktree-apply",
+        "path",
+        "Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`",
+    ),
+    (
+        "worktree-gc-apply",
+        "integration_ref",
+        "Local ref of the integration branch, e.g. `origin/v2026.11.0`; nothing is fetched",
+    ),
+    (
+        "worktree-gc-apply",
+        "recent_minutes",
+        "A change newer than this many minutes keeps a worktree",
+    ),
+    (
+        "worktree-gc-apply",
+        "budget_ms",
+        "Time budget in milliseconds; past it the remaining worktrees are `skip`",
+    ),
+    ("parity-check", "template", "Template tree"),
+    (
+        "parity-check",
+        "generated",
+        "Generated tree compared with the template",
+    ),
+    (
+        "parity-check",
+        "doc",
+        "Optional third set: the documented tree",
+    ),
+    ("atlas-tag-scan", "path", "File or directory to scan"),
+    (
+        "pr-body-render",
+        "base_sha",
+        "Exact commit of the base branch",
+    ),
+    ("pr-body-render", "base_branch", "Branch the PR merges into"),
+    (
+        "pr-body-render",
+        "default_branch",
+        "The repository's default branch (closing keywords work only there)",
+    ),
+    (
+        "pr-body-render",
+        "not_run",
+        "A check that did not run, listed under not_run (repeatable)",
+    ),
+    (
+        "pr-body-render",
+        "review_link",
+        "Link to the independent review; a waiting line when absent",
+    ),
+    (
+        "archive-plan",
+        "grace_days",
+        "Inactivity window in days instead of the profile's",
+    ),
+    (
+        "archive-apply",
+        "grace_days",
+        "Inactivity window in days instead of the profile's",
+    ),
+    (
+        "archive-restore",
+        "spec",
+        "Id of the archived SPEC to restore",
+    ),
+    ("archive-search", "query", "Text to search for"),
+    (
+        "decision-record",
+        "run",
+        "Run id; the record goes to `decisions/<RUN>.jsonl` in the project state folder",
+    ),
+    ("audit-clone-plan", "pr", "Pull request number"),
+    ("audit-clone-plan", "head_branch", "Branch of the PR head"),
+    (
+        "audit-clone-plan",
+        "base_branch",
+        "Branch the PR merges into",
+    ),
+    (
+        "decision-append",
+        "apply",
+        "Write the rows; without it only preview",
+    ),
+    (
+        "go-state-revert",
+        "backup",
+        "The apply's backup stamp (`YYYYMMDDTHHMMSSZ`)",
+    ),
+    (
+        "update-apply",
+        "home",
+        "The HOME to change (default `$HOME`). Tests pass a temporary folder",
+    ),
+    (
+        "update-apply",
+        "stage",
+        "Package directory carrying SKILL.md (staged new state)",
+    ),
+    (
+        "recovery-apply",
+        "home",
+        "The HOME to change (default `$HOME`). Tests pass a temporary folder",
+    ),
+    (
+        "session",
+        "host",
+        "Only `claude`; other hosts start with `cc|glm|codex -l|-a`",
+    ),
+    ("session", "model", "Claude model"),
+    ("session", "effort", "Claude effort"),
+    ("session", "claude_bin", "Claude Code executable to run"),
+];
+
+/// The description `configure` gives an argument of `command` that has none.
+pub fn arg_help(command: &str, id: &str) -> Option<&'static str> {
+    ARG_HELP_FOR
+        .iter()
+        .find(|(c, i, _)| *c == command && *i == id)
+        .map(|(_, _, t)| *t)
+        .or_else(|| ARG_HELP.iter().find(|(i, _)| *i == id).map(|(_, t)| *t))
+}
+
 /// The launchers the root help shows on one line.
 const LAUNCHERS: [&str; 3] = ["cc", "codex", "glm"];
 const LAUNCHER_LINE: (&str, &str) = (
@@ -515,6 +808,18 @@ pub fn configure(cmd: Command, bin: &'static str, version: &str, all: bool) -> C
             None => c,
         },
     );
+    let cmd = cmd.mut_subcommands(|c| {
+        let name = c.get_name().to_string();
+        c.mut_args(|a| {
+            if a.get_help().is_some() || a.get_long_help().is_some() {
+                return a;
+            }
+            match arg_help(&name, a.get_id().as_str()) {
+                Some(text) => a.help(text),
+                None => a,
+            }
+        })
+    });
     cmd.bin_name(bin)
         .override_usage(format!(
             "{bin} <command> [options]\n       {bin} cc|codex|glm -l|-a    lead or agent session"

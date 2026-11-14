@@ -3797,62 +3797,6 @@ mod help_rules {
     use clap::{CommandFactory, FromArgMatches};
     use std::collections::BTreeSet;
 
-    /// Commands whose every shown argument and option has a description (#2799 A 6865611250:
-    /// 48 at the S1a base, plus `bin-names-*` from #2800).
-    const ARGS_DONE: &[&str] = &[
-        "agents-home-apply",
-        "agents-home-plan",
-        "agents-home-revert",
-        "audit-claim",
-        "bin-names-apply",
-        "bin-names-plan",
-        "cc",
-        "codex",
-        "codex-doctor",
-        "cost-report",
-        "dispatch-check",
-        "flake-classify",
-        "flake-record",
-        "flow-wip-check",
-        "gate-check",
-        "gate-loop",
-        "gate-merge",
-        "glm",
-        "go-state-plan",
-        "goal-apply",
-        "goal-block",
-        "goal-plan",
-        "goal-show",
-        "heavy-slot-acquire",
-        "home-routing-apply",
-        "home-routing-plan",
-        "home-routing-revert",
-        "home-state-apply",
-        "home-state-plan",
-        "home-state-revert",
-        "hook-dispatch",
-        "install-inspect",
-        "labels-check",
-        "lane-env",
-        "lane-safe-to-reset",
-        "migrate-plan",
-        "optimize-plan",
-        "pr-self-audit-check",
-        "recovery-plan",
-        "repo-scans",
-        "review-check",
-        "review-package",
-        "session-register",
-        "skills-legacy",
-        "statusline",
-        "update",
-        "update-plan",
-        "usage-limit",
-        "wait",
-        "worktree-move-apply",
-        "worktree-move-plan",
-    ];
-
     fn words() -> Vec<String> {
         Cli::command()
             .get_subcommands()
@@ -3880,10 +3824,6 @@ mod help_rules {
             .collect()
     }
 
-    fn set(list: &[&str]) -> BTreeSet<String> {
-        list.iter().map(|s| s.to_string()).collect()
-    }
-
     #[test]
     fn help_table_names_every_command_once() {
         let mut listed = Vec::new();
@@ -3905,19 +3845,59 @@ mod help_rules {
         assert!(off.is_empty(), "abouts off the rule: {off:?}");
     }
 
+    /// Every shown argument and option has a description in the help people see (#2802 S1d;
+    /// S1a listed the 50 commands complete at its base).
     #[test]
-    fn argument_descriptions_are_complete_exactly_where_listed() {
-        let ok = meeting(|s| {
-            s.get_arguments()
-                .filter(|a| !a.is_hide_set())
-                .filter(|a| !matches!(a.get_id().as_str(), "help" | "version"))
-                .all(|a| a.get_help().is_some() || a.get_long_help().is_some())
-        });
-        assert_eq!(
-            ok,
-            set(ARGS_DONE),
-            "ARGS_DONE must list exactly the fully described commands"
+    fn every_argument_is_described() {
+        let cli = configured();
+        let mut blank = Vec::new();
+        for s in cli.get_subcommands().filter(|s| s.get_name() != "help") {
+            for a in s.get_arguments() {
+                if a.is_hide_set() || matches!(a.get_id().as_str(), "help" | "version") {
+                    continue;
+                }
+                if a.get_help().is_none() && a.get_long_help().is_none() {
+                    blank.push(format!("{} {}", s.get_name(), a.get_id()));
+                }
+            }
+        }
+        assert!(
+            blank.is_empty(),
+            "arguments without a description: {blank:?}"
         );
+    }
+
+    /// Every row of the argument tables fills an argument the source leaves blank: a row for a
+    /// renamed command or argument, or one a doc comment already covers, fails here.
+    #[test]
+    fn argument_help_rows_fill_real_blanks() {
+        use moai_cli::help::{ARG_HELP, ARG_HELP_FOR};
+        let cli = Cli::command();
+        let blank = |cmd: &str, id: &str| {
+            cli.find_subcommand(cmd).is_some_and(|s| {
+                s.get_arguments().any(|a| {
+                    a.get_id().as_str() == id
+                        && a.get_help().is_none()
+                        && a.get_long_help().is_none()
+                })
+            })
+        };
+        let mut rows = BTreeSet::new();
+        for (cmd, id, text) in ARG_HELP_FOR {
+            assert!(rows.insert((cmd, id)), "{cmd} {id} is listed twice");
+            assert!(blank(cmd, id), "{cmd} {id} is not a blank argument");
+            assert!(
+                !text.is_empty() && !text.ends_with('.'),
+                "{cmd} {id}: {text:?}"
+            );
+        }
+        for (id, text) in ARG_HELP {
+            let used = cli
+                .get_subcommands()
+                .any(|s| !rows.contains(&(&s.get_name(), id)) && blank(s.get_name(), id));
+            assert!(used, "generic {id} fills no blank argument");
+            assert!(!text.is_empty() && !text.ends_with('.'), "{id}: {text:?}");
+        }
     }
 
     /// The command as people see it: the layout `main` parses with (examples attached).
