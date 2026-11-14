@@ -892,7 +892,15 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
 pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> String {
     let about = |word: &str| -> String {
         if lang == Lang::Ko {
-            if let Some(text) = about_ko(word) {
+            // The root commands' table, then the launchers and the moved commands outside the
+            // root list (S6e-7), so `help --all` reads them as their own help does.
+            let more = || {
+                MORE_ABOUT_KO
+                    .iter()
+                    .find(|(w, _)| *w == word)
+                    .map(|(_, t)| *t)
+            };
+            if let Some(text) = about_ko(word).or_else(more) {
                 return text.to_string();
             }
         }
@@ -1068,6 +1076,10 @@ pub fn configure_in(
 /// every about, long about and argument of them).
 pub const KOREAN_GROUPS: &[&str] = &["Start", "Project", "Update and move", "Keys", "Diagnose"];
 
+/// The groups of [`KOREAN_GROUPS`] whose commands outside the root list (shown only by
+/// `help --all`) have moved too (S6e-7…).
+pub const KOREAN_FULL_GROUPS: &[&str] = &["Project"];
+
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
 const LONG_ABOUT_KO: &[(&str, &str)] = &[
@@ -1158,6 +1170,99 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          적었는지 확인해요(아니면 `git worktree repair` 한 번). 옮긴 worktree 마다 되돌리는 명령이 \
          함께 와요.",
     ),
+    (
+        "init",
+        "`--new` 이 없으면 지금 폴더를, 첫 `cc|glm|codex` 실행과 똑같이 초기화해요(필요하면 `git \
+         init`, 표식이 붙은 프로젝트 설정, `AGENTS.md`. 있는 파일은 절대 건드리지 않고, HOME 자체와 \
+         파일 시스템 루트는 거절). `--new <name>` 이면 `<HOME>/.moai/projects/<name>/` 을 만들고 같은 \
+         방식으로 초기화해요(HOME 은 `$HOME`, Windows 는 `%USERPROFILE%`). 이미 있는 이름, 안전한 \
+         경로 한 칸이 아닌 이름, 심볼릭 링크인 `~/.moai`·`~/.moai/projects` 는 쓰기 전에 거절해요.",
+    ),
+    (
+        "generation-plan",
+        "프로젝트 맞춤 생성 파일을 읽기만 하고 계획해요(03-C #1997): typed 요청은 stdin, 판정 봉투는 \
+         stdout. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "generation-apply",
+        "승인된 생성 계획을 실행해요(03-C #1997): 같은 계획을 stdin 으로, `--plan-digest` 와 \
+         `--permission-reference` 와 함께.",
+    ),
+    (
+        "github-plan",
+        "프로젝트의 GitHub 템플릿을 계획해요(08-B #2013): typed 요청은 stdin(`github_issues` 로 \
+         켬). 읽기만 해요.",
+    ),
+    (
+        "github-apply",
+        "승인된 GitHub 템플릿 계획을 실행해요(08-B #2013): 같은 계획을 stdin 으로, `--plan-digest` \
+         와 `--permission-reference` 와 함께.",
+    ),
+    (
+        "labels-plan",
+        "`.github/moai/labels.yml` 로 프로젝트 라벨 맞추기를 계획해요(#2434 결정 40): typed 요청 \
+         `{schema_version, owner, repo}` 는 stdin. GET 만 하고 절대 지우지 않아요.",
+    ),
+    (
+        "labels-apply",
+        "승인된 라벨 맞추기 계획을 실행해요(#2434 결정 40): 같은 계획을 stdin 으로, `--plan-digest` \
+         와 `--permission-reference` 와 함께. POST/PATCH 만 해요.",
+    ),
+    (
+        "claude-settings-plan",
+        "stdin 의 관리 키(`outputStyle`·`statusLine`·`permissions`)를 PROJECT/.claude/settings.json \
+         에 세 갈래로 합치는 일을 미리 봐요(#2239). 다른 키는 거절해요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "claude-settings-apply",
+        "미리 본 설정 합치기를 실행해요: 같은 stdin, 미리 보기의 digest, 권한 참조로. 프로젝트 설정 \
+         파일과 그 영수증만 쓰고, home 은 거절해요.",
+    ),
+    (
+        "codex-config-plan",
+        "stdin 의 관리 키(점으로 이은 이름)를 PROJECT/.codex/config.toml 에 넣는 일을 미리 봐요. \
+         절대 쓰지 않아요.",
+    ),
+    (
+        "codex-config-apply",
+        "미리 본 프로젝트 설정을 같은 stdin·digest·권한 참조로 실행해요. 사용자 HOME 과 \
+         CODEX_HOME 설정은 거절하고, trust 는 절대 바꾸지 않아요.",
+    ),
+    (
+        "hooks-plan",
+        "PROJECT 의 호스트 하나에 쓸 MoAI hook 묶음을 미리 봐요(rc.2 I1 #2238). 아무것도 쓰지 \
+         않아요.",
+    ),
+    (
+        "hooks-apply",
+        "미리 본 hook 묶음과 그 영수증을 써요. plan digest 가 있어야 해요.",
+    ),
+    (
+        "hooks-revert",
+        "PROJECT 에서 확인한 `update` 한 번이 쓴 hook 층을 그 영수증으로 되돌려요(#2853): 호스트의 \
+         파일이 모두 아직 업데이트가 쓴 그대로일 때만 앞 바이트로 돌아가고, 그 뒤 바뀐 호스트는 \
+         건너뛰고 이름을 알려 줘요.",
+    ),
+    (
+        "go-hooks-plan",
+        "프로젝트의 Go 세대 hook 을 바꾸는 일을 미리 봐요(#2877): `.claude/hooks/moai/*` 를 돌리는 \
+         `.claude/settings.json` 항목은 빠지고 다른 항목은 남고, MoAI hook 묶음이 더해지고, 스크립트는 \
+         보관 폴더로 옮겨요(절대 지우지 않음). `hooks` 안에 다른 도구의 항목이 있으면 지금은 계획이 \
+         막혀요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "go-hooks-apply",
+        "사용자가 `go-hooks-plan` 을 확인한 뒤 프로젝트의 Go 세대 hook 을 바꿔요(#2877): 스크립트는 \
+         영수증 폴더로 옮기고, Go 항목은 `.claude/settings.json` 에서 빠지고(다른 키는 남음), MoAI \
+         hook 묶음은 `hooks-apply` 처럼 설치해요. 실패하면 모두 되돌리고, 끝난 실행은 \
+         `go-hooks-revert` 가 되돌려요.",
+    ),
+    (
+        "go-hooks-revert",
+        "`.claude/settings.json` 과 그 소유 영수증이 아직 실행이 쓴 그대로일 때 `go-hooks-apply` 한 \
+         번을 되돌려요(#2877): 둘 다 앞 바이트로 돌아가고 스크립트는 `.claude/hooks/moai` 로 \
+         돌아와요. 아무것도 지우지 않아요.",
+    ),
     ("cc", "Claude Code 세션 실행기: `cc -l|-a`."),
     ("codex", "Codex CLI 세션 실행기: `codex -l|-a`."),
     (
@@ -1228,17 +1333,122 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
 ];
 
-/// The launchers' own abouts (S6e-6): the root list shows the three on one line instead.
-const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
+/// The abouts [`ABOUT_KO`] does not hold: the launchers (S6e-6; the root list shows the three on
+/// one line instead) and the moved commands outside the root list (S6e-7…).
+const MORE_ABOUT_KO: &[(&str, &str)] = &[
     ("cc", "Claude Code 세션 시작"),
     ("codex", "Codex CLI 세션 시작"),
     ("glm", "z.ai GLM 으로 Claude Code 세션 시작"),
+    ("init", "이 폴더나 새 프로젝트 초기화"),
+    ("agents-plan", "AGENTS.md 관리 구간 미리 보기"),
+    ("agents-apply", "미리 본 AGENTS.md 관리 구간 쓰기"),
+    (
+        "generation-plan",
+        "프로젝트의 생성 에이전트·스킬 파일 미리 보기",
+    ),
+    ("generation-apply", "미리 본 생성 에이전트·스킬 파일 쓰기"),
+    ("github-plan", "프로젝트의 GitHub 템플릿 미리 보기"),
+    ("github-apply", "미리 본 GitHub 템플릿 쓰기"),
+    ("labels-plan", "프로젝트의 GitHub 라벨 맞추기 미리 보기"),
+    ("labels-apply", "미리 본 GitHub 라벨 맞추기"),
+    (
+        "claude-settings-plan",
+        "관리하는 Claude Code 설정 키 미리 보기",
+    ),
+    ("claude-settings-apply", "미리 본 Claude Code 설정 키 쓰기"),
+    ("codex-config-plan", "관리하는 Codex 설정 키 미리 보기"),
+    ("codex-config-apply", "미리 본 Codex 설정 키 쓰기"),
+    ("hooks-plan", "호스트 하나의 MoAI hook 묶음 미리 보기"),
+    ("hooks-apply", "미리 본 hook 묶음 쓰기"),
+    ("hooks-revert", "업데이트 한 번이 쓴 hook 묶음 되돌리기"),
+    ("go-hooks-plan", "Go 세대 프로젝트 hook 바꾸기 미리 보기"),
+    ("go-hooks-apply", "Go 세대 프로젝트 hook 바꾸기"),
+    ("go-hooks-revert", "Go 세대 hook 바꾸기 되돌리기"),
 ];
 
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    (
+        "init",
+        "new",
+        "`<HOME>/.moai/projects/<name>/` 을 만들고 초기화",
+    ),
+    (
+        "init",
+        "host",
+        "기본 프로젝트 설정이 이름 댈 호스트: `claude`(기본)·`codex`·`glm`",
+    ),
+    (
+        "init",
+        "dry_run",
+        "만들 것을 알려 주기만 하고 아무것도 쓰지 않기",
+    ),
+    (
+        "claude-settings-plan",
+        "scope",
+        "`project`(기본): .claude/settings.json. `local`: .claude/settings.local.json — linked \
+         worktree 의 세션에서도 Claude Code 가 읽는 파일(#2581)",
+    ),
+    (
+        "claude-settings-apply",
+        "scope",
+        "계획이 만들어진 범위(#2581). digest 가 묶어 둠",
+    ),
+    (
+        "claude-settings-apply",
+        "confirm_replace",
+        "충돌 계획이 내준 `confirm_token`(#2383): 사용자가 확인한 뒤 기존 파일을 \
+         `.moai-cli/settings-backups/` 에 두고 충돌한 키를 바꿈",
+    ),
+    (
+        "hooks-plan",
+        "host",
+        "`claude`(.claude/settings.json 의 `hooks`) 또는 `codex`(.codex/hooks.json)",
+    ),
+    ("hooks-apply", "host", "`claude` 또는 `codex`"),
+    (
+        "hooks-plan|hooks-apply",
+        "lane_loop",
+        "이 레인의 Stop hook(`lane-stop-hook`)을 `.codex/hooks.json` 에 더하기(codex 만)",
+    ),
+    (
+        "hooks-plan|hooks-apply",
+        "repo",
+        "레인 Stop hook 이 읽을 `OWNER/REPO`(`--lane-loop` 와 함께)",
+    ),
+    (
+        "hooks-plan|hooks-apply",
+        "lane_loop_off",
+        "레인 Stop hook 을 빼서 파일을 기본 hook 묶음으로 되돌리기(codex 만)",
+    ),
+    ("hooks-revert", "project", "업데이트가 돈 프로젝트"),
+    (
+        "hooks-revert",
+        "receipt",
+        "업데이트가 `hooks_result.receipt` 아래 찍은 영수증 id",
+    ),
+    (
+        "go-hooks-plan|go-hooks-apply|go-hooks-revert",
+        "project",
+        "프로젝트(기본: 지금 폴더)",
+    ),
+    (
+        "go-hooks-apply",
+        "plan_digest",
+        "확인한 `go-hooks-plan` 의 `plan_digest`",
+    ),
+    (
+        "go-hooks-apply|go-hooks-revert",
+        "permission_reference",
+        "사용자 승인에 대한 호출자의 참조",
+    ),
+    (
+        "go-hooks-revert",
+        "receipt",
+        "실행이 찍은 영수증 id(`go-hooks-…`)",
+    ),
     (
         "cc|codex|glm",
         "prompt",
@@ -1539,7 +1749,12 @@ fn korean_frame(c: Command) -> Command {
     let moved = GROUPS
         .iter()
         .filter(|g| KOREAN_GROUPS.contains(&g.heading))
-        .any(|g| g.commands.iter().any(|(w, root)| *root && *w == name));
+        .any(|g| {
+            let full = KOREAN_FULL_GROUPS.contains(&g.heading);
+            g.commands
+                .iter()
+                .any(|(w, root)| (*root || full) && *w == name)
+        });
     let c = if moved {
         korean_texts(c, &name, width())
     } else {
@@ -1580,7 +1795,7 @@ fn korean_frame(c: Command) -> Command {
 /// letter as one cell and run the line past the terminal.
 fn korean_texts(c: Command, name: &str, width: usize) -> Command {
     let about = about_ko(name).or_else(|| {
-        LAUNCHER_ABOUT_KO
+        MORE_ABOUT_KO
             .iter()
             .find(|(w, _)| *w == name)
             .map(|(_, t)| *t)
@@ -1791,8 +2006,13 @@ mod tests {
     fn a_korean_full_list_keeps_the_other_abouts_english() {
         let cmd = root_cmd();
         let ko = render_groups_in(&cmd, true, 100, Lang::Ko);
-        assert!(ko.contains("About init"), "{ko}");
+        assert!(ko.contains("About index-query"), "{ko}");
         assert!(!ko.contains("About project-detect"), "{ko}");
+        // S6e-7: a moved command outside the root list and the launchers read Korean here too.
+        assert!(!ko.contains("About init"), "{ko}");
+        assert!(ko.contains("이 폴더나 새 프로젝트 초기화"), "{ko}");
+        assert!(ko.contains("Claude Code 세션 시작"), "{ko}");
+        assert!(!ko.contains("About cc"), "{ko}");
         for g in GROUPS {
             assert!(
                 ko.contains(&format!("{}\n", g.heading_ko)),

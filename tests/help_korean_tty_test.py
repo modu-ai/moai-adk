@@ -182,6 +182,23 @@ class KoreanHelp(unittest.TestCase):
                         self.assertLessEqual(cells(line), int(columns),
                                              (columns, word, flag, line))
 
+    def test_the_project_group_outside_the_root_list_reads_korean(self):
+        """S6e-7: the Project group's commands that only `help --all` lists, in their own help
+        and in the full list."""
+        init = self.help(["init", "--help"], **KOREAN)
+        self.assertIn("`--new` 이 없으면 지금 폴더를", init)
+        self.assertIn("만들 것을 알려 주기만 하고 아무것도 쓰지 않기", init)
+        self.assertIn("[default: claude]", init)
+        settings = self.help(["claude-settings-apply", "--help"], **KOREAN)
+        self.assertIn("계획이 만들어진 범위(#2581)", settings)
+        self.assertIn("충돌 계획이 내준 `confirm_token`", settings)
+        self.assertIn("`claude` 또는 `codex`", self.help(["hooks-apply", "--help"], **KOREAN))
+        self.assertIn("프로젝트(기본: 지금 폴더)", self.help(["go-hooks-revert", "--help"], **KOREAN))
+        listing = self.help(["help", "--all"], **KOREAN)
+        self.assertIn("이 폴더나 새 프로젝트 초기화", listing)
+        self.assertIn("Claude Code 세션 시작", listing)
+        self.assertNotIn("Initialize this folder or a new project", listing)
+
     def test_the_keys_group_reads_its_own_texts_in_korean(self):
         """S6e-3: the Keys group's root commands — about, long about, argument help — and
         every line inside 60 and 80 cells but the usage and example lines clap never wraps."""

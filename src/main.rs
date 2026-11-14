@@ -3778,7 +3778,9 @@ mod help_rules {
                 .iter()
                 .find(|g| g.heading == *group)
                 .unwrap_or_else(|| panic!("{group}"));
-            for (word, _) in g.commands.iter().filter(|(_, root)| *root) {
+            // A group in `KOREAN_FULL_GROUPS` has moved its commands outside the root list too.
+            let full = moai_cli::help::KOREAN_FULL_GROUPS.contains(group);
+            for (word, _) in g.commands.iter().filter(|(_, root)| *root || full) {
                 let ko = korean.find_subcommand(word).unwrap();
                 let en = english.find_subcommand(word).unwrap();
                 let about = ko.get_about().map(|a| a.to_string()).unwrap_or_default();
@@ -3802,7 +3804,7 @@ mod help_rules {
             }
             // The slice boundary (mutation P5): the group's commands outside the root list
             // keep their own texts until their slice.
-            for (word, _) in g.commands.iter().filter(|(_, root)| !*root) {
+            for (word, _) in g.commands.iter().filter(|(_, root)| !*root && !full) {
                 let ko = korean.find_subcommand(word).unwrap();
                 let en = english.find_subcommand(word).unwrap();
                 assert_eq!(ko.get_about(), en.get_about(), "{word}");
