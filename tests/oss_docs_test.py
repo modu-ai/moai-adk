@@ -12,6 +12,7 @@ community profile counts them, or that external links resolve.
 import hashlib
 import pathlib
 import re
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -144,6 +145,74 @@ class PublicDocsTest(unittest.TestCase):
         self.assertIn("(README.md)", ko)
         for text in (en, ko):
             self.assertIn("https://z.ai/subscribe?ic=1NDV03BGWU", text)
+
+
+def cargo():
+    return tomllib.loads(read("Cargo.toml"))
+
+
+def binary_names():
+    """Every `[[bin]]` name in Cargo.toml (`moai` and its alias `moai-cli`, #2790 R1, #2812 W3)."""
+    return [entry["name"] for entry in cargo().get("bin", [])]
+
+
+def version_signature():
+    """What `--version` prints: the clap command name, the package version and the generation
+    mark that `VERSION_SIGNATURE` in src/lib.rs appends (#2790 R1). Read from the source, so a
+    README that quotes an older output fails here."""
+    name = re.search(r'#\[command\((?:(?!\)\]).)*?\bname = "([^"]+)"', read("src/main.rs"), re.S)
+    mark = re.search(
+        r'VERSION_SIGNATURE: &str = concat!\(env!\("MOAI_BUILD_VERSION"\), "([^"]*)"\)', read("src/lib.rs")
+    )
+    if not name or not mark:
+        raise AssertionError("command name or VERSION_SIGNATURE not found in the source")
+    return f"{name.group(1)} {cargo()['package']['version']}{mark.group(1)}"
+
+
+def one_line(rel, prefix):
+    found = [line for line in read(rel).splitlines() if line.startswith(prefix)]
+    if len(found) != 1:
+        raise AssertionError(f"{rel} must have exactly one line starting {prefix!r}, found {len(found)}")
+    return found[0]
+
+
+# The README lines that name the binary: the Facts line and the compatibility table row.
+BINARY_LINES = {
+    "README.md": ["- RC1 implementation language: ", "| Command | "],
+    "README.ko.md": ["- RC1 구현 언어: ", "| 명령 | "],
+}
+
+
+class ProductFactsTest(unittest.TestCase):
+    """The public documents state the binary names and the `--version` output the code has now."""
+
+    def test_readmes_name_every_binary(self):
+        names = binary_names()
+        self.assertIn("moai", names)
+        for rel, prefixes in BINARY_LINES.items():
+            for prefix in prefixes:
+                line = one_line(rel, prefix)
+                if prefix.startswith("|"):
+                    # Only the RC1 cell: the Go 3.x cell after it is also `moai`.
+                    line = line.split("|")[2]
+                for name in names:
+                    with self.subTest(file=rel, line=prefix, binary=name):
+                        self.assertIn(f"`{name}`", line)
+
+    def test_readmes_quote_the_version_signature(self):
+        signature = version_signature()
+        stale = signature.rsplit(" ", 1)[0]
+        for rel in ("README.md", "README.ko.md", "SUPPORT.md"):
+            with self.subTest(file=rel):
+                text = read(rel)
+                self.assertNotIn(f"`{stale}`", text)
+                if rel.startswith("README"):
+                    self.assertIn(f"`{signature}`", text)
+
+    def test_signature_reader_reads_the_source(self):
+        signature = version_signature()
+        self.assertTrue(signature.startswith("moai-cli "), signature)
+        self.assertTrue(signature.endswith(" (rust)"), signature)
 
 
 class DetectorSelfTest(unittest.TestCase):
