@@ -81,6 +81,9 @@ pub const GROUPS: &[Group] = &[
             ("home-routing-plan", false),
             ("home-routing-apply", false),
             ("home-routing-revert", false),
+            ("home-style-plan", false),
+            ("home-style-apply", false),
+            ("home-style-revert", false),
         ],
     },
     Group {
@@ -272,6 +275,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-routing-plan", &["home-routing-plan ~ skills/moai", "home-routing-apply --plan-digest <digest> --permission-reference <ref> ~ skills/moai"]),
     ("home-routing-apply", &["home-routing-apply --plan-digest <digest> --permission-reference <ref> ~ skills/moai"]),
     ("home-routing-revert", &["home-routing-revert --receipt <receipt-id> --permission-reference <ref> ~"]),
+    ("home-style-plan", &["home-style-plan ~ skills/moai", "home-style-apply --plan-digest <digest> --permission-reference <ref> ~ skills/moai"]),
+    ("home-style-apply", &["home-style-apply --plan-digest <digest> --permission-reference <ref> ~ skills/moai"]),
+    ("home-style-revert", &["home-style-revert --receipt <receipt-id> --permission-reference <ref> ~"]),
     ("key-set", &["key-set glm < key.txt"]),
     ("key-status", &["key-status glm"]),
     ("key-remove", &["key-remove glm"]),
@@ -704,14 +710,23 @@ pub fn bin_name(argv0: &str) -> &'static str {
     }
 }
 
-/// The width help lines wrap at: `COLUMNS` when set and sane, else 100 (clap's own cap).
-fn width() -> usize {
-    std::env::var("COLUMNS")
-        .ok()
+/// The narrowest `COLUMNS` the help follows; a smaller (or unreadable) value means [`MAX_WIDTH`].
+pub const MIN_COLUMNS: usize = 20;
+/// The widest any help line gets, the grouped list and clap's own sections alike.
+pub const MAX_WIDTH: usize = 100;
+
+/// The width help lines wrap at: `COLUMNS` when set, readable and at least [`MIN_COLUMNS`],
+/// never more than [`MAX_WIDTH`]; otherwise [`MAX_WIDTH`].
+pub fn width_from(columns: Option<&str>) -> usize {
+    columns
         .and_then(|c| c.trim().parse::<usize>().ok())
-        .filter(|w| (20..=1000).contains(w))
-        .unwrap_or(100)
-        .min(100)
+        .filter(|w| *w >= MIN_COLUMNS)
+        .unwrap_or(MAX_WIDTH)
+        .min(MAX_WIDTH)
+}
+
+fn width() -> usize {
+    width_from(std::env::var("COLUMNS").ok().as_deref())
 }
 
 /// `  name  about` rows under each heading, the about column wrapped to `width` with a hanging
@@ -770,7 +785,7 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
 /// `text` broken at spaces so no line passes `width` display cells (a wide character counts
 /// two), later lines indented by `indent`.
 fn wrap(text: &str, indent: usize, width: usize) -> String {
-    let room = width.saturating_sub(indent).max(20);
+    let room = width.saturating_sub(indent).max(MIN_COLUMNS);
     let mut lines: Vec<String> = Vec::new();
     let mut line = String::new();
     for word in text.split_whitespace() {
@@ -834,7 +849,10 @@ pub fn configure(cmd: Command, bin: &'static str, version: &str, all: bool) -> C
             }
         })
     });
+    // clap wraps its own sections (options, arguments) at the terminal width it reads, `COLUMNS`
+    // included, with no cap of its own; the cap holds every help line to `MAX_WIDTH`.
     cmd.bin_name(bin)
+        .max_term_width(MAX_WIDTH)
         .override_usage(format!(
             "{bin} <command> [options]\n       {bin} cc|codex|glm -l|-a    lead or agent session"
         ))
@@ -863,6 +881,35 @@ mod tests {
         }
         assert_eq!(out.split_whitespace().collect::<Vec<_>>().join(" "), text);
         assert_eq!(wrap("short", 24, 60), "short");
+    }
+
+    /// #2824 re-audit B3: `COLUMNS` below 20 or unreadable means 100, 20 is followed, and nothing
+    /// goes past 100.
+    #[test]
+    fn width_follows_columns_between_twenty_and_one_hundred() {
+        for (columns, want) in [
+            (None, 100),
+            (Some("19"), 100),
+            (Some("20"), 20),
+            (Some(" 60 "), 60),
+            (Some("100"), 100),
+            (Some("101"), 100),
+            (Some("1001"), 100),
+            (Some("0"), 100),
+            (Some("wide"), 100),
+            (Some("-5"), 100),
+        ] {
+            assert_eq!(width_from(columns), want, "{columns:?}");
+        }
+    }
+
+    /// The description column keeps at least 20 columns however deep the indent: a column
+    /// squeezed below that would put every word on its own line.
+    #[test]
+    fn wrap_keeps_a_twenty_column_floor() {
+        let out = wrap("aaaa bbbb cccc dddd eeee", 55, 60);
+        assert_eq!(out.lines().next(), Some("aaaa bbbb cccc dddd"), "{out:?}");
+        assert_eq!(out.lines().count(), 2, "{out:?}");
     }
 
     /// Hangul counts two cells, so a Korean about wraps at half the characters (S6 will need it).

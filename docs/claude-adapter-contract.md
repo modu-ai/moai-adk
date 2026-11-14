@@ -57,13 +57,13 @@ Hooks can come from user, project, local and managed settings, plugin `hooks/hoo
 
 ## install.py removed (#2239, #2709)
 
-The provisional Python installer `adapters/claude/install.py`, its settings module, its `statusline.py`, the mirror `experiments/claude_settings_plan.py` and their six Python tests were deleted (Issue #2709; judgement table on the Issue). No product route called them. The output style files it copied, with their `LICENSE` and `NOTICE.md`, were kept byte for byte under `templates/claude/output-styles/` (leader decision on #2709, option (나)) for a later user-layer install (#2638); nothing installs them yet. What each step became:
+The provisional Python installer `adapters/claude/install.py`, its settings module, its `statusline.py`, the mirror `experiments/claude_settings_plan.py` and their six Python tests were deleted (Issue #2709; judgement table on the Issue). No product route called them. The output style files it copied, with their `LICENSE` and `NOTICE.md`, were kept byte for byte under `templates/claude/output-styles/` (leader decision on #2709, option (나)) for a later user-layer install (#2638). Since #2875 the user layer installs one style, MoAI-Easy, from the package source `skills/moai/references/home/output-style.md` (`src/home_style.rs`, part `style` of `moai update`); these three template files are still not installed. What each step became:
 
 | install.py step | Now | Why nothing else is needed |
 |---|---|---|
 | Three-way merge of `outputStyle` and `statusLine` into `.claude/settings.json` | `claude-settings-plan` / `claude-settings-apply` (#2239), tests in `tests/claude_settings_cli.rs` | same managed keys, ownership receipt and `pending` recovery; the Rust lists `MANAGED_SETTINGS` / `USER_SETTINGS` in `src/claude.rs` are the only lists |
 | Copy of `statusline.py` | `moai-cli statusline` (#2376) | the product status line is the Rust command |
-| Copy of the output styles and their licenses | none yet; the files are kept in `templates/claude/output-styles/` | no Rust route installs output style files today; the Go generation's styles in a project are handled by the Go-state move (#2561) |
+| Copy of the output styles and their licenses | `home-style-plan` / `-apply` / `-revert` and `moai update` (#2875) install MoAI-Easy into `~/.claude/output-styles/` and set `outputStyle` only when the user has none; the template files stay in `templates/claude/output-styles/` | one style source for every host (Codex reads it as a managed block in `~/.codex/AGENTS.md`); the Go generation's styles in a project are handled by the Go-state move (#2561) |
 | `--recovery-plan` read of an interrupted merge | the Rust plan resolves a leftover `pending` itself | the Python receipt `.moai-cli/claude-settings-owner.json` only existed in projects set up by the removed script |
 
 A project that the Python script once set up keeps its settings; the Rust plan reads such a key as one MoAI never owned (an equal value is `unchanged` and not adopted, a different value is a `conflict`).

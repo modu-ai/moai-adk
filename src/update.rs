@@ -1374,19 +1374,22 @@ fn skill_host_of(agent_host: &str) -> &'static str {
     }
 }
 
-/// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents and
-/// the routing section of the global instruction files, all from one package snapshot.
+/// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents, the
+/// routing section of the global instruction files and the MoAI-Easy output style (#2875), all
+/// from one package snapshot.
 pub struct UserLayerPlan {
     pub skills: UpdatePlan,
     pub agents: crate::agent_install::Plan,
     pub routing: crate::home_routing::Plan,
+    /// The MoAI-Easy output style (#2875): Claude's style file and `outputStyle`, Codex's block.
+    pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
     /// The MoAI hook set installed in the project the command runs from (#2853).
     pub hooks: crate::update_hooks::Layer,
-    /// Agent and routing hosts left out because their skill copy is blocked.
+    /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the five plan digests; the only value `--confirm` accepts.
+    /// One digest over the six plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
 }
 
@@ -1424,14 +1427,30 @@ fn user_layer_plan(
             skipped.push(json!({"part": "routing", "host": h, "reason": format!("the {h} skill copy is blocked")}));
         }
     }
+    let mut style_hosts = Vec::new();
+    // A package from before #2875 carries no style source: the style is left out, named.
+    let has_style = staged.files.contains_key(crate::home_style::SOURCE);
+    for h in crate::home_style::HOSTS {
+        if !has_style {
+            skipped.push(json!({"part": "style", "host": h, "reason": format!("the package has no {}", crate::home_style::SOURCE)}));
+        } else if skill_ok(h) {
+            style_hosts.push(h);
+        } else {
+            skipped.push(json!({"part": "style", "host": h, "reason": format!("the {h} skill copy is blocked")}));
+        }
+    }
     let agents = crate::agent_install::plan_for(home, package, agents, &agent_hosts)?;
     let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
+    let style = crate::home_style::plan_for(home, package, &style_hosts)?;
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
-    if agents.package_digest != staged.digest || routing.package_digest != staged.digest {
+    if agents.package_digest != staged.digest
+        || routing.package_digest != staged.digest
+        || style.package_digest != staged.digest
+    {
         return Err("the package changed while it was read; nothing applied, preview again".into());
     }
     let plan_digest = crate::digest(
@@ -1440,7 +1459,8 @@ fn user_layer_plan(
             agents.plan_digest,
             routing.plan_digest,
             bin_names.plan_digest,
-            hooks.plan_digest
+            hooks.plan_digest,
+            style.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
     );
@@ -1448,6 +1468,7 @@ fn user_layer_plan(
         skills,
         agents,
         routing,
+        style,
         bin_names,
         hooks,
         skipped,
@@ -1459,6 +1480,7 @@ fn user_layer_plan(
 struct SkillGate {
     agents: Vec<String>,
     routing: Vec<String>,
+    style: Vec<String>,
     skipped: Vec<serde_json::Value>,
 }
 
@@ -1474,6 +1496,7 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
     let mut gate = SkillGate {
         agents: Vec::new(),
         routing: Vec::new(),
+        style: Vec::new(),
         skipped: Vec::new(),
     };
     for h in &layer.agents.hosts {
@@ -1494,7 +1517,30 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
             );
         }
     }
+    let mut style_hosts: Vec<&str> = layer
+        .style
+        .targets
+        .iter()
+        .map(|t| t.host.as_str())
+        .collect();
+    style_hosts.dedup();
+    for h in style_hosts {
+        if landed(h) {
+            gate.style.push(h.to_string());
+        } else {
+            gate.skipped.push(
+                json!({"part": "style", "host": h, "reason": "the skill copy did not apply"}),
+            );
+        }
+    }
     gate
+}
+
+/// How many hosts a style plan covers (Claude has two targets, Codex one).
+fn count_hosts(p: &crate::home_style::Plan) -> usize {
+    let mut hosts: Vec<&str> = p.targets.iter().map(|t| t.host.as_str()).collect();
+    hosts.dedup();
+    hosts.len()
 }
 
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
@@ -1542,6 +1588,13 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
             h.host, h.preflight, h.file
         ));
     }
+    out.push_str("output style\n");
+    for t in &p.style.targets {
+        out.push_str(&format!(
+            "  {} {}: {} {}\n",
+            t.host, t.kind, t.action, t.path
+        ));
+    }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
     out.push_str(&p.hooks.summary());
     for s in &p.skipped {
@@ -1556,15 +1609,17 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 }
 
 /// #2522, #2638: one-line `moai-cli update` over the package installed with this binary — the
-/// user layer: the skill copies, the base agents (`agent_install`) and the routing section of
-/// the global instruction files (`home_routing`).
+/// user layer: the skill copies, the base agents (`agent_install`), the routing section of
+/// the global instruction files (`home_routing`) and the MoAI-Easy output style (`home_style`,
+/// #2875).
 ///
-/// Always computes the three previews from one package snapshot. Without a confirmation it
+/// Always computes every preview from one package snapshot. Without a confirmation it
 /// writes nothing and returns them with the exact confirming command. `confirm` is the
 /// combined `plan_digest` (`--confirm`) — a single part's digest is refused; `ask` is the
 /// terminal question, called only when no digest was given, with the summary it shows. A
-/// confirmed run recomputes all three and compares the combined digest before any write, then
-/// applies the skills, and the agents and the section only for hosts whose skill copy applied.
+/// confirmed run recomputes them all and compares the combined digest before any write, then
+/// applies the skills, and the agents, the section and the style only for hosts whose skill
+/// copy applied.
 /// A backup-then-replace is never confirmed here: it keeps its explicit
 /// `update-apply --confirm-backup-replace` token.
 ///
@@ -1591,6 +1646,7 @@ pub fn update_command(
     let writes = plan_writes_anything(&layer.skills)
         || agents_write_anything(&layer.agents)
         || routing_writes_anything(&layer.routing)
+        || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
         || layer.hooks.writes();
     let digest = match confirm {
@@ -1606,6 +1662,7 @@ pub fn update_command(
                 "plan": layer.skills,
                 "agents": layer.agents,
                 "routing": layer.routing,
+                "style": layer.style,
                 "bin_names": layer.bin_names.to_json(),
                 "hooks": layer.hooks.to_json(),
                 "skipped": layer.skipped,
@@ -1631,6 +1688,7 @@ pub fn update_command(
     skipped.extend(gate.skipped);
     let agent_hosts: Vec<&str> = gate.agents.iter().map(String::as_str).collect();
     let routing_hosts: Vec<&str> = gate.routing.iter().map(String::as_str).collect();
+    let style_hosts: Vec<&str> = gate.style.iter().map(String::as_str).collect();
     // From here the skills are written: a later part's error is reported beside the skills
     // result instead of hiding it (audit 6847256437 note 3).
     let part = |r: Result<serde_json::Value>| {
@@ -1666,6 +1724,19 @@ pub fn update_command(
         }
         crate::home_routing::apply_for(home, &package, &routing_hosts, &p.plan_digest, PERMISSION)
     })());
+    // #2875: the style, for the same confirmed hosts whose skill copy applied.
+    let style = part((|| {
+        let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
+        // The routing apply may have just written the same Codex file: compare what is written.
+        if style_hosts.len() == count_hosts(&fresh.style)
+            && !crate::home_style::same_writes(&p, &fresh.style)
+        {
+            return Ok(
+                json!({"state": "refused", "reason": "the style plan changed after the confirmed preview; nothing written"}),
+            );
+        }
+        crate::home_style::apply_for(home, &package, &style_hosts, &p.plan_digest, PERMISSION)
+    })());
     // #2791: the `moai` link is independent of the skill copies; its own plan was confirmed.
     let bin_names = part((|| {
         let exe =
@@ -1689,6 +1760,7 @@ pub fn update_command(
     let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
         || routing["state"] == json!("applied")
+        || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     let revert = |op: &str, r: &serde_json::Value| {
@@ -1704,12 +1776,14 @@ pub fn update_command(
         "result": skills,
         "agents_result": agents,
         "routing_result": routing,
+        "style_result": style,
         "bin_names_result": bin_names,
         "hooks_result": hooks,
         "skipped": skipped,
         "revert": {
             "agents": revert("agents-home-revert", &agents),
             "routing": revert("home-routing-revert", &routing),
+            "style": revert("home-style-revert", &style),
             "hooks": hooks["receipt"].as_str().map(|id| format!(
                 "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
             )),
@@ -2526,13 +2600,19 @@ mod user_layer_tests {
         let g = gate_on_skills(&ok, &layer);
         assert_eq!(hosts(&g.agents), "claude,codex,omp");
         assert_eq!(hosts(&g.routing), "claude,codex");
+        assert_eq!(hosts(&g.style), "claude,codex");
         assert!(g.skipped.is_empty());
         // The Codex copy failed during the apply: codex and omp agents and the codex section stop.
         let failed = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "failed"}]});
         let g = gate_on_skills(&failed, &layer);
         assert_eq!(hosts(&g.agents), "claude");
         assert_eq!(hosts(&g.routing), "claude");
-        assert_eq!(skipped(&g), "agents:codex,agents:omp,routing:codex");
+        // #2875: the codex style block points at the same copy, so it stops too.
+        assert_eq!(hosts(&g.style), "claude");
+        assert_eq!(
+            skipped(&g),
+            "agents:codex,agents:omp,routing:codex,style:codex"
+        );
         assert!(g
             .skipped
             .iter()
@@ -2542,5 +2622,6 @@ mod user_layer_tests {
         let g = gate_on_skills(&missing, &layer);
         assert_eq!(hosts(&g.agents), "codex,omp");
         assert_eq!(hosts(&g.routing), "codex");
+        assert_eq!(hosts(&g.style), "codex");
     }
 }

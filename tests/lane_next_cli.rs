@@ -276,3 +276,79 @@ fn the_list_order_decides_when_several_hold() {
     }
     assert_eq!(next(&snap)["next"], json!(null));
 }
+
+/// #2873 N2: with a tip-repair pull request open, a red tip is its author's: every other lane
+/// is told it is open (`waiting`) and goes on down the list — here to audit it.
+#[test]
+fn an_open_tip_repair_takes_p0_off_the_other_lanes() {
+    let red = json!({"state": "red", "tip": h('t')});
+    let repair = |author: &str, comments: Value| json!({"number": 40, "head": h('e'), "author_lane": author, "tip_repair": true, "comments": comments});
+    let r = next(&json!({"tip": red, "prs": [repair("agent-28", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(40));
+    assert_eq!(r["waiting"][0]["reason"], json!("tip_repair_open"));
+    assert_eq!(r["waiting"][0]["number"], json!(40));
+    // Its author repairs it as its own pull request.
+    let r = next(&json!({"tip": red, "prs": [repair(LANE, json!([verdict(1, &h('e'), "FAIL")]))]}));
+    assert_eq!(kind(&r), json!("repair_audit_fail"), "{r}");
+    // A pull request without the line does not take P0 off anyone.
+    let r = next(&json!({"tip": red, "prs": [pr(41, &h('s'), Some("agent-28"), json!([]))]}));
+    assert_eq!(kind(&r), json!("tip_red"), "{r}");
+    assert_eq!(r["waiting"], json!([]));
+}
+
+/// #2873 N8: a card whose pull request (its body naming this claim) has merged is not a draft
+/// to open: `card_pr_merged`. A merge before the `pr-wait` line, or one for another claim,
+/// leaves the draft task.
+#[test]
+fn a_merged_card_is_not_offered_as_a_draft() {
+    let card = |merged: Value, wait: bool| {
+        let mut comments = vec![claim(100, LANE)];
+        if wait {
+            comments.push(json!({"id": 102, "body": "pr-wait: 2026-11-14T01:58:00Z", "at": "2026-11-14T01:58:00Z"}));
+        }
+        json!({"threads": [{"number": 2831, "comments": comments, "merged": merged}]})
+    };
+    let after = json!([{"number": 2856, "claim": 100, "merged_at": "2026-11-14T03:00:00Z"}]);
+    let r = next(&card(after.clone(), true));
+    assert_eq!(kind(&r), json!("card_pr_merged"), "{r}");
+    assert_eq!(r["next"]["evidence"]["merged_pr"], json!(2856));
+    assert!(r["next"]["action"]
+        .as_str()
+        .unwrap()
+        .contains("moai-claim-release: comment=100 by=agent-10"));
+    assert_eq!(kind(&next(&card(after, false))), json!("card_pr_merged"));
+    // Merged before the branch started waiting: that branch is new work.
+    let before = json!([{"number": 2800, "claim": 100, "merged_at": "2026-11-14T01:00:00Z"}]);
+    assert_eq!(kind(&next(&card(before, true))), json!("open_draft_pr"));
+    // Another claim's merge says nothing about this one.
+    let other = json!([{"number": 2801, "claim": 99, "merged_at": "2026-11-14T03:00:00Z"}]);
+    assert_eq!(
+        kind(&next(&card(other.clone(), true))),
+        json!("open_draft_pr")
+    );
+    assert_eq!(kind(&next(&card(other, false))), json!("continue_card"));
+    // No time on the merge: taken as later, so no second pull request is suggested.
+    let untimed = json!([{"number": 2856, "claim": 100}]);
+    assert_eq!(kind(&next(&card(untimed, true))), json!("card_pr_merged"));
+}
+
+/// #2873 N11: a `DECISION-APPLIED <decision id>` line after the decision ends `resume_decision`;
+/// a line naming another decision does not.
+#[test]
+fn an_applied_decision_is_not_resumed_again() {
+    let thread = |extra: Value| {
+        json!({"threads": [{"number": 2812, "title": "t", "comments": [claim(40, LANE),
+            {"id": 50, "body": "LANE-BLOCKED kind=decision owner=leader #2812 — (가)/(나)"},
+            {"id": 51, "body": "LEADER-DECISION #2812 — (나)"}, extra]}]})
+    };
+    let r = next(&thread(
+        json!({"id": 52, "body": "DECISION-APPLIED 51 — 6871318339 반영"}),
+    ));
+    assert_eq!(kind(&r), json!("continue_card"), "{r}");
+    assert_eq!(r["waiting"], json!([]));
+    let r = next(&thread(json!({"id": 52, "body": "DECISION-APPLIED 50"})));
+    assert_eq!(kind(&r), json!("resume_decision"), "{r}");
+    let r = next(&thread(json!({"id": 52, "body": "DECISION-APPLIED"})));
+    assert_eq!(kind(&r), json!("resume_decision"), "{r}");
+}

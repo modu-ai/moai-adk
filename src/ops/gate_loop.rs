@@ -8,18 +8,23 @@ use std::path::PathBuf;
 
 /// Run one pass of the leader merge loop
 ///
-/// One pass of the leader's merge loop (#2674 S4): runs `gate-merge` on every open,
-/// non-draft pull request into the integration branch, and once per head updates the branch
-/// on a code overlap with the tip (G6) or asks the claim holder when the verdict's author holds
-/// no allowed claim (G2). The leader or a scheduler calls it instead of a shell loop. Needs a
-/// permission reference; the heads must already be fetched (a missing one is skipped).
+/// One pass of the leader's merge loop (#2674 S4): runs `gate-merge` on every open pull
+/// request into the integration branch, oldest number first, drafts included (a passing draft
+/// is marked ready just before its merge, #2860), and once per head updates the branch on a
+/// code overlap with the tip (G6) or asks the claim holder when the verdict's author holds no
+/// allowed claim (G2). The leader or a scheduler calls it instead of a shell loop. Needs a
+/// permission reference, except with `--dry-run`, which writes nothing and lists the decision
+/// for each pull request; the heads must already be fetched (a missing one is skipped).
 #[derive(clap::Args)]
 pub struct Args {
     /// Run a single pass (the only mode; a scheduler repeats it).
     #[arg(long)]
     once: bool,
-    /// The operator's permission reference for these writes.
+    /// Read only: report what the pass would do for each pull request, write nothing (#2860).
     #[arg(long)]
+    dry_run: bool,
+    /// The operator's permission reference for these writes (not needed with --dry-run).
+    #[arg(long, default_value = "")]
     permission_reference: String,
     /// `OWNER/REPO`.
     #[arg(long, default_value = "modu-ai/moai-adk")]
@@ -71,6 +76,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         &target,
         &args.permission_reference,
         app,
+        args.dry_run,
         &transport,
         &status_transport,
         &SystemClock,

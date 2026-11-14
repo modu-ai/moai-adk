@@ -207,8 +207,10 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     );
     assert_eq!(p["agents"]["hosts"].as_array().unwrap().len(), 3, "{p}");
     assert_eq!(p["routing"]["hosts"].as_array().unwrap().len(), 2, "{p}");
+    // #2875: the style file, the default style and the Codex block.
+    assert_eq!(p["style"]["targets"].as_array().unwrap().len(), 3, "{p}");
     // A part's own digest is not a confirmation of the whole layer.
-    for part in ["plan", "agents", "routing"] {
+    for part in ["plan", "agents", "routing", "style"] {
         let d = p[part]["plan_digest"].as_str().unwrap();
         assert_ne!(d, top);
         let out = run(&exe, &home, &["update", "--confirm", d]);
@@ -219,6 +221,11 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert_eq!(r["applied"], json!(true), "{r}");
     assert_eq!(r["agents_result"]["state"], json!("applied"), "{r}");
     assert_eq!(r["routing_result"]["state"], json!("applied"), "{r}");
+    assert_eq!(r["style_result"]["state"], json!("applied"), "{r}");
+    assert!(r["revert"]["style"]
+        .as_str()
+        .unwrap()
+        .starts_with("moai home-style-revert"));
     assert!(r["revert"]["agents"]
         .as_str()
         .unwrap()
@@ -235,6 +242,14 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         .unwrap()
         .contains("($moai)"));
     assert!(!home.join(".agents/AGENTS.md").exists());
+    // #2875: MoAI-Easy is Claude Code's default style, and Codex reads the same text beside the
+    // routing section.
+    assert!(home.join(".claude/output-styles/MoAI-Easy.md").is_file());
+    let settings: serde_json::Value =
+        serde_json::from_slice(&fs::read(home.join(".claude/settings.json")).unwrap()).unwrap();
+    assert_eq!(settings["outputStyle"], json!("MoAI-Easy"));
+    let codex = fs::read_to_string(home.join(".codex/AGENTS.md")).unwrap();
+    assert!(codex.contains("id=moai-routing") && codex.contains("id=moai-output-style"));
     // Every `references/…` path an installed agent names exists in the skill copy it reads.
     let mut checked = 0;
     for host in ["claude", "codex", "omp"] {
@@ -266,6 +281,7 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     for (op, part) in [
         ("home-routing-revert", "routing_result"),
         ("agents-home-revert", "agents_result"),
+        ("home-style-revert", "style_result"),
     ] {
         let receipt = r[part]["receipt"].as_str().unwrap();
         result(&run(
@@ -380,9 +396,16 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
         .collect();
     assert_eq!(
         skipped,
-        ["agents:codex", "agents:omp", "routing:codex"],
+        ["agents:codex", "agents:omp", "routing:codex", "style:codex"],
         "{p}"
     );
+    let style_hosts: Vec<&str> = p["style"]["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(style_hosts, ["claude", "claude"], "{p}");
     let top = p["plan_digest"].as_str().unwrap().to_string();
     let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
     assert_eq!(r["applied"], json!(true), "{r}");

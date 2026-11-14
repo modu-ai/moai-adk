@@ -43,6 +43,10 @@ pub struct Snapshot {
     /// Whether every skill file in the merged tree matches its source-manifest sha256.
     #[serde(default)]
     pub merged_manifest_ok: bool,
+    /// Whether the PR's own change to `src/lib.rs` is only added module lines that the merged
+    /// tree keeps (#2860 rule 2); then a tip change to that file is no code overlap.
+    #[serde(default)]
+    pub lib_mod_only_kept: bool,
     /// PR numbers whose REVIEW.md draft the user confirmed (#2614 decision).
     #[serde(default)]
     pub review_confirmed_prs: Vec<u64>,
@@ -52,6 +56,10 @@ pub struct Snapshot {
     /// means unknown, and the gate stops (audit 6850181707 N4).
     #[serde(default)]
     pub verdict_base_known: bool,
+    /// The full SHA of the last verdict's short base, when the collector resolved it to exactly
+    /// one commit (#2860 rule 3). Absent for a full-length base or one that did not resolve.
+    #[serde(default)]
+    pub verdict_base_full: Option<String>,
     /// The sessions of the claims the PR's own commits name in `Moai-Claim: <issue>#<id>`
     /// trailers (merge base to head, merges skipped). Absent means unknown, and G9 stops.
     #[serde(default)]
@@ -199,6 +207,36 @@ pub fn parse_verdict(line: &str) -> Option<(String, String, String)> {
     Some((head.into(), base.into(), verdict.into()))
 }
 
+/// Like [`parse_verdict`], but the base may be a short SHA of 7 to 39 lowercase hex digits
+/// (#2860 rule 3, shell gate_merge.sh). The head stays 40 hex. Only a base the collector
+/// resolved to exactly one commit is accepted, through [`verdict_of`].
+pub fn parse_verdict_short_base(line: &str) -> Option<(String, String, String)> {
+    let h = line.rfind(" head ")? + 6;
+    let head = line.get(h..h + 40)?;
+    let rest = line.get(h + 40..)?.strip_prefix(" base ")?;
+    let (base, verdict) = rest.split_once(" — verdict: ")?;
+    let short = (7..40).contains(&base.len())
+        && base
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+    if !is_hex40(head) || !short || verdict.is_empty() || verdict.contains(' ') {
+        return None;
+    }
+    Some((head.into(), base.into(), verdict.into()))
+}
+
+/// The verdict a line carries for this snapshot: a full line, or one whose short base the
+/// collector resolved to exactly one commit (`verdict_base_full`, #2860 rule 3), read with
+/// that full SHA as its base.
+pub fn verdict_of(s: &Snapshot, line: &str) -> Option<(String, String, String)> {
+    if let Some(v) = parse_verdict(line) {
+        return Some(v);
+    }
+    let (head, short, verdict) = parse_verdict_short_base(line)?;
+    let full = s.verdict_base_full.as_ref()?;
+    (is_hex40(full) && full.starts_with(&short)).then(|| (head, full.clone(), verdict))
+}
+
 /// The first line of a verdict comment (#2833 D4): `AUDIT #<pr> (<title>) head <head> base
 /// <base> — verdict: <verdict>`, refused unless [`parse_verdict`] reads back exactly these
 /// values — the line the gate's G1 reads is the line the helper prints.
@@ -314,8 +352,31 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
             .iter()
             .any(|(lane, id)| *id == c.0 && *lane == c.1)
     });
+    // #2860 scope add 6872037464 (shell owner_ok.py, #2831): a comment whose first line is
+    // `moai-audit-withdraw: lane=<lane>` or `moai-audit-claim-withdraw: lane=<lane>` gives the
+    // PR up for that lane — its claims posted before that comment no longer count.
+    for c in comments {
+        let Some(lane) = lane_withdrawal(&c.body) else {
+            continue;
+        };
+        out.retain(|cl| !(cl.1 == lane && cl.0 < c.id));
+    }
     out.sort();
     out
+}
+
+/// The lane a whole-lane withdrawal names, from a comment's first line
+/// `moai-audit-withdraw: lane=<lane>` or `moai-audit-claim-withdraw: lane=<lane>`.
+pub fn lane_withdrawal(body: &str) -> Option<String> {
+    let first = body.lines().next()?;
+    let rest = first
+        .strip_prefix("moai-audit-withdraw: lane=")
+        .or_else(|| first.strip_prefix("moai-audit-claim-withdraw: lane="))?;
+    let lane: String = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '-')
+        .collect();
+    (!lane.is_empty()).then_some(lane)
 }
 
 /// The mechanical delta the gate accepts (#2833 D1): the last verdict is a PASS on `from`, the
@@ -330,7 +391,7 @@ pub fn accepted_auto_delta(s: &Snapshot) -> Option<&AutoDelta> {
         .filter_map(|c| verdict_line(&c.body).map(|l| (c.id, l)))
         .max_by_key(|(id, _)| *id)?
         .1;
-    let (head, _, verdict) = parse_verdict(line)?;
+    let (head, _, verdict) = verdict_of(s, line)?;
     let same = |f: &DeltaFile| !f.patch_id_from.is_empty() && f.patch_id_from == f.patch_id_to;
     (d.ok
         && verdict == "PASS"
@@ -354,7 +415,7 @@ fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
         .max_by_key(|(id, _)| *id);
     let stop = |reason: String| Stop { rule: "G1", reason };
     let (_, line) = last.ok_or_else(|| stop("no AUDIT verdict".into()))?;
-    let (head, base, verdict) = parse_verdict(line).ok_or_else(|| {
+    let (head, base, verdict) = verdict_of(s, line).ok_or_else(|| {
         stop(
             "the last verdict line does not read `head <40hex> base <40hex> — verdict: <V>`".into(),
         )
@@ -380,8 +441,30 @@ fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
     Ok((base, head))
 }
 
+/// `(claim id, lane)` from a comment whose first line is a leader handoff,
+/// `moai-claim-handoff: comment=<id> to=<lane> by=leader` (the lane is letters, digits and
+/// `-`). Any other first line, or the line later in the body, is not a handoff.
+pub fn leader_handoff(body: &str) -> Option<(u64, String)> {
+    let first = body.lines().next()?;
+    let rest = first.strip_prefix("moai-claim-handoff: comment=")?;
+    let (id, rest) = rest.split_once(' ')?;
+    let id: u64 = id.parse().ok()?;
+    let rest = rest.strip_prefix("to=")?;
+    let (lane, rest) = rest.split_once(' ')?;
+    if lane.is_empty()
+        || !lane
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+    {
+        return None;
+    }
+    // The shell rule matched the line's start; anything after `by=leader` is ignored.
+    rest.starts_with("by=leader")
+        .then(|| (id, lane.to_string()))
+}
+
 /// G2: the last verdict's auditor holds the PR's lowest audit claim or the lowest claim on the
-/// current head. No claim at all passes (nothing to check).
+/// current head, or the lane a leader handoff moved one of those to. No claim at all passes.
 fn g2(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     let claims = audit_claims(&s.comments);
     if claims.is_empty() {
@@ -395,10 +478,23 @@ fn g2(s: &Snapshot, judged: &str) -> Result<(), Stop> {
         .map(|c| (c.id, &c.body))
         .max_by_key(|(id, _)| *id)
         .ok_or_else(|| stop("no verdict".into()))?;
-    let mut allowed = vec![&claims[0]];
+    let mut allowed: Vec<(u64, String, String)> = vec![claims[0].clone()];
     if let Some(on_head) = claims.iter().find(|c| c.2 == judged) {
         if on_head.0 != claims[0].0 {
-            allowed.push(on_head);
+            allowed.push(on_head.clone());
+        }
+    }
+    // #2860 rule 1 (shell owner_ok.py): a leader handoff moves an allowed claim to another
+    // lane. Only a comment whose first line is `moai-claim-handoff: comment=<id> to=<lane>
+    // by=leader`, that names an allowed claim and comes after it, counts; the latest one wins.
+    let mut by_id: Vec<&Comment> = s.comments.iter().collect();
+    by_id.sort_by_key(|c| c.id);
+    for c in by_id {
+        let Some((claim, lane)) = leader_handoff(&c.body) else {
+            continue;
+        };
+        if let Some(a) = allowed.iter_mut().find(|a| a.0 == claim && c.id > claim) {
+            a.1 = lane;
         }
     }
     let names = allowed
@@ -555,7 +651,7 @@ fn g3(s: &Snapshot, judged: &str) -> Result<(), Stop> {
         .comments
         .iter()
         .filter_map(|c| {
-            let (h, _, v) = parse_verdict(verdict_line(&c.body)?)?;
+            let (h, _, v) = verdict_of(s, verdict_line(&c.body)?)?;
             (h == judged).then(|| (c.id, v, auditor(&c.body).unwrap_or_default()))
         })
         .collect();
@@ -647,6 +743,8 @@ fn g6(s: &Snapshot) -> Result<Vec<String>, Stop> {
             if !s.docs_lines_kept.contains(f) {
                 return Err(stop(format!("merged {f} lost lines one side added")));
             }
+        } else if f == "src/lib.rs" && s.lib_mod_only_kept {
+            // #2860 rule 2: only module lines added on the PR side, all kept in the merge.
         } else {
             return Err(stop(format!("overlap in non-doc file: {f}")));
         }
