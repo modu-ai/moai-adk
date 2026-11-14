@@ -3320,6 +3320,13 @@ pub(crate) fn main() -> ExitCode {
             } else {
                 ExitCode::SUCCESS
             };
+            // Human summary on stderr only when stderr is a terminal (#2805); the envelope
+            // below is printed unchanged either way.
+            moai_cli::ui_summary::maybe_print(op, &result, |name| {
+                Cli::command()
+                    .get_subcommands()
+                    .any(|c| c.get_name() == name)
+            });
             println!("{}", contract::success(op, result));
             exit
         }

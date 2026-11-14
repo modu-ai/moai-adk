@@ -95,6 +95,7 @@ pub mod spec_links;
 pub mod state_root;
 pub mod statusline;
 pub mod ui;
+pub mod ui_summary;
 pub mod update;
 pub mod usage_limit;
 pub mod verify;
