@@ -1537,3 +1537,60 @@ fn the_project_workflow_says_the_root_instruction_files_are_moved() {
         assert!(!workflow.contains(stale), "project.md still says: {stale}");
     }
 }
+
+/// #2966 F1: the product-path contract rows for `go-state-plan` and `go-state-apply` describe
+/// the move of the root instruction files, not the copy they replaced.
+#[test]
+fn the_product_path_rows_describe_the_move_of_the_root_files() {
+    let doc = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("docs")
+            .join("rust-product-path.md"),
+    )
+    .unwrap();
+    let row = |name: &str| {
+        doc.lines()
+            .find(|l| l.starts_with(&format!("| `{name}` ")))
+            .unwrap_or_else(|| panic!("no contract row for {name}"))
+            .to_string()
+    };
+    let (plan, apply) = (row("go_state.plan"), row("go_state.apply"));
+    for (what, row, sentence) in [
+        ("plan", &plan, "`CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md`: `move` into the backup's `root-files/` or `leave`"),
+        ("plan", &plan, "`.claude/settings.local.json`: `copy`, the original stays"),
+        ("plan", &plan, "files of the Go user-data folders `specs`, `project`"),
+        ("apply", &apply, "`CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md` moved"),
+        ("apply", &apply, "`copied` (only the `.claude/settings.local.json` copy"),
+        ("apply", &apply, "`.moai/backups/.gitignore` (`*`) written before any of them"),
+    ] {
+        assert!(row.contains(sentence), "go_state.{what} row lacks: {sentence}");
+    }
+    for stale in [
+        "`restores` (Go SPECs copied into `.moai/specs`)",
+        "`CLAUDE.md`/`AGENTS.md`: `copy` or `leave`",
+        "`CLAUDE.md`/`AGENTS.md` copies to",
+    ] {
+        assert!(
+            !plan.contains(stale) && !apply.contains(stale),
+            "a contract row still says: {stale}"
+        );
+    }
+}
+
+/// #2966 N2: the PROJECT workflow says what the restore check really reads. "secrets
+/// excluded" read wider than the check: a document is passed on its name and size only.
+#[test]
+fn the_project_workflow_names_what_the_restore_check_really_reads() {
+    let workflow = include_str!("../skills/moai/workflows/project.md");
+    for sentence in [
+        "a secret name is never opened",
+        "a config-shaped file (`.json`, `.toml`, `.yaml`, `.yml`) and anything under `specs` is also read for content that looks like a credential",
+        "any other document is checked by its name and size only, never by its content",
+    ] {
+        assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
+    }
+    assert!(
+        !workflow.contains("secrets excluded"),
+        "project.md still claims the restore excludes secrets in general"
+    );
+}

@@ -65,6 +65,11 @@ fn the_update_route_is_the_project_layer() {
         "Never write a target whose current state could not be read, nor one under a recorded HOLD",
         "For the Claude Code settings, a key MoAI manages that the user set themselves",
         "`claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation",
+        // #2936 R-fix R2 (AC-12): the scope of one yes is a sentence, not an inference.
+        "That yes belongs to the preview run the user was shown and covers only the steps that read `ready` in it",
+        "A step that read `blocked`, `skip` or `re-run after …` in that run was not shown with its content, so no earlier yes covers it",
+        "An answer such as \"continue\" or \"install\" is not an approval of a step the user has not seen",
+        "the yes given before the backup phase does not carry over",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }
