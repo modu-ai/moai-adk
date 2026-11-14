@@ -120,6 +120,11 @@ fn verdict(pr: u64, id: u64, head: &str, base: &str, v: &str, lane: &str) -> Val
     json!({"id": id, "body": format!("AUDIT #{pr} (x) head {head} base {base} — verdict: {v}\n\n감사: {lane} (예약 {}).\n", id - 1)})
 }
 
+/// The `local-check:` pass line for `head` (#2906 S5b, G5).
+fn local_check(head: &str) -> Value {
+    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+}
+
 /// The reads `collect` makes for PR #9 with PR #7 open below it: PR #9 (passing on its own),
 /// the open list, PR #7's commits, the claim its carried commits name, PR #7's comments, the
 /// green tip. `pr7_comments` is PR #7's verdict history.
@@ -134,6 +139,7 @@ fn reads(s: &Stack, pr7_open: bool, pr7_comments: Value) -> RecordedTransport {
             json!([
                 {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
                 verdict(9, 200, &s.b1, &s.base, "PASS", "agent-10"),
+                local_check(&s.b1),
             ]),
         ),
         get(
@@ -376,6 +382,7 @@ fn the_pr_below_commit_pages_stop_at_three() {
                 json!([
                     {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
                     verdict(9, 200, &s.b1, &s.base, "PASS", "agent-10"),
+                    local_check(&s.b1),
                 ]),
             ),
             get(

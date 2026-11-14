@@ -62,6 +62,10 @@ Update and move
   home-state-apply        Move a previewed Go-era ~/.moai
                           folder
   home-state-revert       Undo a ~/.moai folder move
+  home-retire-plan        Preview retiring the Go items in
+                          ~/.moai
+  home-retire-apply       Retire the Go items in ~/.moai
+  home-retire-revert      Undo a Go-item retire
   worktree-move-plan      Preview moving this clone's
                           worktrees
   worktree-move-apply     Move the previewed worktrees
@@ -300,6 +304,10 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  hygiene-plan            Preview what may move to the
+                          holding folder
+  hygiene-apply           Move the previewed leftovers to
+                          the holding folder
   session                 Start a Claude Code session
                           (legacy form)
 

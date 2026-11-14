@@ -101,8 +101,15 @@ fn tip_runs(sha: &str, runs: Value) -> Exchange {
     }
 }
 
-/// The reads `collect` makes, with a green tip push CI on `tip`.
-fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> RecordedTransport {
+/// The `local-check:` pass line for `head` (#2906 S5b, G5).
+fn local_check(head: &str) -> Value {
+    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+}
+
+/// The reads `collect` makes, with a green tip push CI on `tip`; the comments end with the
+/// local check pass line for `head` (#2906 S5b).
+fn exchanges(head: &str, tip: &str, mut comments: Vec<Value>, body: &str) -> RecordedTransport {
+    comments.push(local_check(head));
     RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
@@ -408,7 +415,7 @@ fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> Recorded
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
-            response: ok(json!([claim(head), verdict(head, base)])),
+            response: ok(json!([claim(head), verdict(head, base), local_check(head)])),
         },
         Exchange {
             request: HttpRequest::new(
@@ -1637,4 +1644,103 @@ fn the_d8a_judgment_ignores_the_aggregate_and_cancelled_jobs() {
         job(mac, Some("cancelled"), 1),
     ];
     assert_eq!(d8a_judgment(&nothing)["state"], json!("pending"));
+}
+
+/// #2906 T (user decision 6878414880, Issue #1975): a tier-0 pull request has no verdict, so
+/// the tip's changes are measured from the merge base — G6 never skips the overlap check. A
+/// tip change to another file is listed; one to the PR's own document is an overlap whose
+/// kept lines are measured as with a verdict.
+#[test]
+fn without_a_verdict_the_tip_changes_count_from_the_merge_base() {
+    let r = repo(
+        &[("docs/a.md", "one\nPR line\n\ntwo\n")],
+        &[("src/b.rs", "b2\n")],
+    );
+    let t = exchanges(&r.b, &r.c, vec![], PASS_BODY);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
+    // No tier line: tier 2, and without a verdict G1 stops.
+    assert_eq!(s.body_tier, None);
+    assert_eq!(s.merge_base.as_deref(), Some(r.a.as_str()));
+    assert_eq!(gate::effective_tier(&s), 2);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+    // A tier line at the top of the body: tier 0, and it passes with the merge base as base.
+    let body = format!("audit-tier: 0 docs only\n{PASS_BODY}");
+    let t = exchanges(&r.b, &r.c, vec![], &body);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.body_tier, Some(0));
+    assert_eq!(gate::effective_tier(&s), 0);
+    assert_eq!(gate::check(&s), Ok((r.a.clone(), vec![])));
+    // On line 11 it is not read.
+    let body = format!("{}audit-tier: 0 docs only\n{PASS_BODY}", "x\n".repeat(10));
+    let t = exchanges(&r.b, &r.c, vec![], &body);
+    assert_eq!(collect(&target(&r), &t).unwrap().body_tier, None);
+    let r = repo(
+        &[("docs/a.md", "one\nPR line\n\ntwo\n")],
+        &[("docs/a.md", "one\n\ntwo\ntip line\n")],
+    );
+    let t = exchanges(&r.b, &r.c, vec![], PASS_BODY);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(
+        s.tip_files_since_verdict_base,
+        vec!["docs/a.md".to_string()]
+    );
+    assert_eq!(s.docs_lines_kept, vec!["docs/a.md".to_string()]);
+}
+
+/// #2967 audit B1: a rename lists the old path too. Otherwise a tier-2 file (the gate, the local
+/// check script) moved into `docs/` would look like a docs-only change, and the path rule that
+/// raises the audit tier would never see it. The same holds for the tip's changes (G6 overlap).
+#[test]
+fn a_rename_lists_the_old_path_so_the_tier2_rule_still_sees_it() {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let a = commit(
+        d,
+        &[
+            ("docs/a.md", "one\n"),
+            ("src/gate.rs", "the merge gate code\nsecond line\n"),
+            ("tools/local_check.sh", "local check script\nsecond line\n"),
+            ("src/hook.rs", "hook code\nsecond line\n"),
+        ],
+        "base",
+    );
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    // The destination folder is joined at run time: a literal `docs/x.txt` would read as a docs
+    // path the code reads (ci_scope_test).
+    let moved = |name: &str| format!("{}/{name}", "docs");
+    git_ok(d, &["mv", "src/gate.rs", &moved("gate.txt")]);
+    git_ok(
+        d,
+        &["mv", "tools/local_check.sh", &moved("local_check.txt")],
+    );
+    let b = commit(d, &[], "pr\n\nMoai-Claim: 9#555");
+    git_ok(d, &["checkout", "-q", "main"]);
+    git_ok(d, &["mv", "src/hook.rs", &moved("hook.txt")]);
+    let c = commit(d, &[], "tip");
+    let r = Repo { _dir: dir, a, b, c };
+    let body = format!("audit-tier: 0 docs only\n{PASS_BODY}");
+    let t = exchanges(&r.b, &r.c, vec![], &body);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    for old in ["src/gate.rs", "tools/local_check.sh"] {
+        assert!(
+            s.pr_files.iter().any(|f| f == old),
+            "{old} in {:?}",
+            s.pr_files
+        );
+    }
+    assert_eq!(s.body_tier, Some(0));
+    assert_eq!(gate::effective_tier(&s), 2);
+    // Tier 2 without a verdict stops at G1; before the fix this passed as tier 0.
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+    assert!(
+        s.tip_files_since_verdict_base
+            .iter()
+            .any(|f| f == "src/hook.rs"),
+        "{:?}",
+        s.tip_files_since_verdict_base
+    );
 }

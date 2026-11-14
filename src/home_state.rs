@@ -54,7 +54,7 @@ fn is_work_folder(name: &str) -> bool {
     .any(|w| w.eq_ignore_ascii_case(name))
 }
 /// Top-level entries listed as copy candidates; more are counted, not listed.
-const CANDIDATE_LIMIT: usize = 500;
+pub(crate) const CANDIDATE_LIMIT: usize = 500;
 
 /// The HOME's Go markers, as paths relative to HOME (#2723 design §2).
 pub fn home_go_markers(moai: &Path) -> Vec<String> {
@@ -435,14 +435,14 @@ fn line_names(line: &str, path: &str) -> bool {
 
 /// What the machine's processes use, gathered once: their working folders, open files and
 /// command lines. A part that cannot be read is `None`.
-struct InUse {
+pub(crate) struct InUse {
     cwds: Option<Vec<PathBuf>>,
     open: Option<Vec<PathBuf>>,
     lines: Option<Vec<String>>,
 }
 
 impl InUse {
-    fn read() -> InUse {
+    pub(crate) fn read() -> InUse {
         // Test builds only: simulate a machine whose process table cannot be read, so the
         // fail-closed path is pinned by a test (#2823 audit N1).
         #[cfg(debug_assertions)]
@@ -466,7 +466,11 @@ impl InUse {
 
     /// `Some(reason)` when a process uses `entry` (given as written and canonical), `None`
     /// when none does; `Err` when a part could not be read (the caller keeps it in place).
-    fn uses(&self, raw: &Path, canon: &Path) -> Result<Option<&'static str>, &'static str> {
+    pub(crate) fn uses(
+        &self,
+        raw: &Path,
+        canon: &Path,
+    ) -> Result<Option<&'static str>, &'static str> {
         let cwds = self.cwds.as_ref().ok_or("process_check_unavailable")?;
         if cwds
             .iter()
