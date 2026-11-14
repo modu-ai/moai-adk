@@ -244,6 +244,36 @@ mod tests {
         assert_eq!(p["apply_flag"], json!(format!("--confirm-home {t}")));
     }
 
+    /// `apply` recomputes the preview and takes only its own token: a wrong or stale one writes
+    /// nothing; the right one moves the items and names the revert.
+    #[test]
+    fn apply_takes_only_the_previews_own_token() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = std::fs::canonicalize(dir.path()).unwrap();
+        let moai = home.join(".moai");
+        std::fs::create_dir_all(moai.join("state")).unwrap();
+        std::fs::create_dir_all(moai.join("cache")).unwrap();
+        std::fs::write(moai.join("user-assets.json"), "{}").unwrap();
+        std::fs::write(moai.join("state/active-sessions.json"), "[]").unwrap();
+        let token = plan(&home).unwrap().token().unwrap().to_string();
+        for bad in ["home:0000000000000000", "cleanup:aaaaaaaaaaaaaaaa", ""] {
+            let e = apply(&home, bad, "unit test").unwrap_err();
+            assert!(e.contains("home token"), "{e}");
+            assert!(moai.join("cache").is_dir() && !home.join(".moai-go-retired").exists());
+        }
+        // A top-level entry appeared after the preview: the token is stale.
+        std::fs::write(moai.join("appeared-later"), "x").unwrap();
+        assert!(apply(&home, &token, "unit test").is_err());
+        assert!(moai.join("cache").is_dir());
+        // The fresh token moves the Go items and names the revert.
+        let token = plan(&home).unwrap().token().unwrap().to_string();
+        let r = apply(&home, &token, "unit test").unwrap();
+        assert_eq!(r["state"], json!("applied"), "{r}");
+        assert!(!moai.join("cache").exists() && moai.join("appeared-later").is_file());
+        let revert = r["revert"].as_str().unwrap();
+        assert!(revert.contains(&format!("--stamp {}", r["stamp"].as_str().unwrap())));
+    }
+
     #[test]
     fn a_missing_or_foreign_token_is_refused() {
         let l = Layer {
