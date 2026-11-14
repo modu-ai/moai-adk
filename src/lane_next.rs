@@ -633,6 +633,91 @@ fn search<T: Transport>(t: &T, owner: &str, repo: &str, text: &str) -> Result<Ve
         .unwrap_or_default())
 }
 
+/// The tip's state as #2831 states P0 (D8(a)): the aggregate check (`ci`/`rc-ci`) is not
+/// judged on its own — a newer push cancels the older run, and the aggregate then reads
+/// `failure` with every real job passed or cancelled — and a cancelled job says nothing about
+/// the code. The remaining jobs are judged with `flow::tip_ci_judgment`: `red` only when a job
+/// itself failed with no success on the same commit.
+pub fn d8a_judgment(runs: &[Value]) -> Value {
+    let kept: Vec<Value> = runs
+        .iter()
+        .filter(|r| {
+            let name = r["name"].as_str().unwrap_or("");
+            !crate::flow::CI_CHECK_NAMES.contains(&name)
+                && r["conclusion"].as_str() != Some("cancelled")
+        })
+        .cloned()
+        .collect();
+    let mut names: Vec<String> = kept
+        .iter()
+        .filter_map(|r| r["name"].as_str().map(str::to_string))
+        .collect();
+    names.sort();
+    names.dedup();
+    if names.is_empty() {
+        return json!({"state": "pending"});
+    }
+    crate::flow::tip_ci_judgment(&kept, &names)
+}
+
+/// P0 input: the tip commit judged by [`d8a_judgment`]; while it reads `pending` (running, or
+/// only cancelled), the earlier first-parent tip commits are read in turn, at most
+/// `gate_collect::TIP_WALK`, and the first with a completed judgment decides. When the local
+/// clone lacks the newest tip (no fetch here: reads only), the tip commit alone is judged and
+/// the returned note says so.
+fn tip_d8a<T: Transport>(
+    t: &T,
+    base: &str,
+    dir: &Path,
+    tip: &str,
+) -> Result<(Tip, Option<String>)> {
+    let walk = crate::audit_delta::command(dir)
+        .args([
+            "rev-list",
+            "--first-parent",
+            &format!("--max-count={}", crate::gate_collect::TIP_WALK),
+            tip,
+        ])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
+    let (shas, note): (Vec<String>, Option<String>) = match &walk {
+        Some(out) => (out.lines().map(str::to_string).collect(), None),
+        None => (
+            vec![tip.to_string()],
+            Some(format!(
+                "tip CI: {tip} is not in the local clone; judged the tip commit alone, without earlier commits"
+            )),
+        ),
+    };
+    for sha in &shas {
+        let j = d8a_judgment(&crate::gate_collect::tip_runs(t, base, sha)?);
+        let state = j["state"].as_str().unwrap_or("unknown").to_string();
+        if state == "pending" {
+            continue;
+        }
+        return Ok((
+            Tip {
+                state,
+                tip: tip.to_string(),
+                decided_by: Some(sha.clone()),
+                detail: j.get("failed").map(Value::to_string).unwrap_or_default(),
+            },
+            note,
+        ));
+    }
+    Ok((
+        Tip {
+            state: "unknown".into(),
+            tip: tip.to_string(),
+            decided_by: None,
+            detail: format!("no completed job on the last {} tip commit(s)", shas.len()),
+        },
+        note,
+    ))
+}
+
 /// Reads one snapshot for `target`, higher priorities first, within [`API_BUDGET`] requests.
 pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     let t = Budgeted {
@@ -681,36 +766,14 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             match crate::gate_collect::get_json(&t, &format!("{base}/branches/{tip_branch}")) {
                 Ok((b, _)) => {
                     let sha = b["commit"]["sha"].as_str().unwrap_or("").to_string();
-                    match crate::gate_collect::tip_ci(&t, &base, target.dir, &sha) {
-                        Ok(ci) => {
-                            snap.tip = Some(Tip {
-                                state: ci.state,
-                                tip: ci.tip,
-                                decided_by: ci.decided_by,
-                                detail: ci.detail,
-                            })
-                        }
-                        // The local clone may not hold the newest tip yet (no fetch here: D1
-                        // reads only). Judge the tip commit's own check runs instead, without
-                        // the walk to earlier commits, and say so.
-                        Err(e) => match crate::gate_collect::tip_runs(&t, &base, &sha) {
-                            Ok(runs) => {
-                                let j = crate::gate_collect::completed_judgment(&runs);
-                                snap.tip = Some(Tip {
-                                    state: j["state"].as_str().unwrap_or("unknown").to_string(),
-                                    tip: sha.clone(),
-                                    decided_by: Some(sha.clone()),
-                                    detail: j
-                                        .get("failed")
-                                        .map(Value::to_string)
-                                        .unwrap_or_default(),
-                                });
-                                snap.partial.push(format!(
-                                    "tip CI: {e}; judged the tip commit alone, without earlier commits"
-                                ));
+                    match tip_d8a(&t, &base, target.dir, &sha) {
+                        Ok((tip, note)) => {
+                            snap.tip = Some(tip);
+                            if let Some(n) = note {
+                                snap.partial.push(n);
                             }
-                            Err(e2) => miss("tip CI".into(), format!("{e}; {e2}"), &mut snap),
-                        },
+                        }
+                        Err(e) => miss("tip CI".into(), e, &mut snap),
                     }
                 }
                 Err(e) => miss("tip branch".into(), e, &mut snap),
@@ -1006,7 +1069,7 @@ mod tests {
             let body = if req.url.contains("/branches/") {
                 json!({"commit": {"sha": "c".repeat(40)}})
             } else if req.url.contains("/check-runs") {
-                json!({"check_runs": [{"name": "ci", "status": "completed",
+                json!({"check_runs": [{"name": "ci / macos-arm64", "status": "completed",
                     "conclusion": "failure",
                     "details_url": "https://github.com/o/r/actions/runs/9/job/1"}]})
             } else {
@@ -1040,6 +1103,60 @@ mod tests {
             snap.partial
         );
         assert_eq!(decide("agent-10", &snap)["next"]["kind"], json!("tip_red"));
+    }
+
+    fn check(name: &str, conclusion: &str) -> Value {
+        json!({"name": name, "status": "completed", "conclusion": conclusion,
+               "details_url": "https://github.com/o/r/actions/runs/7/job/1"})
+    }
+
+    /// #2831 D8(a): a newer push cancels the macOS jobs and the aggregate `ci` then reads
+    /// `failure`; that is not red. Only a job that itself failed is (run 43550300926 shape).
+    #[test]
+    fn the_aggregate_and_cancelled_jobs_do_not_make_the_tip_red() {
+        let cancelled_by_newer_push = [
+            check("ci", "failure"),
+            check("ci / linux-x86_64", "success"),
+            check("ci / linux-arm64", "success"),
+            check("windows-build", "success"),
+            check("ci / macos-x86_64", "cancelled"),
+            check("ci / macos-arm64", "cancelled"),
+        ];
+        assert_eq!(
+            d8a_judgment(&cancelled_by_newer_push)["state"],
+            json!("green")
+        );
+        let job_failed = [
+            check("ci", "failure"),
+            check("ci / linux-x86_64", "success"),
+            check("ci / macos-arm64", "failure"),
+        ];
+        let j = d8a_judgment(&job_failed);
+        assert_eq!(j["state"], json!("red"), "{j}");
+        assert!(j["failed"].to_string().contains("ci / macos-arm64"));
+        // Only cancelled or only the aggregate: nothing judged yet.
+        assert_eq!(
+            d8a_judgment(&[
+                check("ci", "failure"),
+                check("ci / macos-arm64", "cancelled")
+            ])["state"],
+            json!("pending")
+        );
+        // A failure a re-run turned green on the same commit is flaky, not red.
+        assert_eq!(
+            d8a_judgment(&[
+                check("ci / macos-arm64", "failure"),
+                check("ci / macos-arm64", "success")
+            ])["state"],
+            json!("flaky")
+        );
+        assert_eq!(
+            d8a_judgment(&[
+                check("rc-ci", "failure"),
+                check("ci / linux-x86_64", "success")
+            ])["state"],
+            json!("green")
+        );
     }
 
     #[test]
