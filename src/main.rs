@@ -3623,7 +3623,11 @@ mod help_rules {
                         .unwrap_or_default();
                     assert!(hangul(&long), "{word} long about: {long:?}");
                 }
-                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                // A hidden argument (a test seam such as `--now-unix`) shows in no help.
+                for arg in ko
+                    .get_arguments()
+                    .filter(|a| a.get_id() != "help" && !a.is_hide_set())
+                {
                     let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
                     assert!(hangul(&help), "{word} {}: {help:?}", arg.get_id());
                 }
