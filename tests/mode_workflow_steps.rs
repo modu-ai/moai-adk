@@ -172,9 +172,17 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         seen,
         [
             "claim-acquire",
+            "claim-timeout-check",
+            "claim-timeout-check --issue",
             "claim-verify",
             "claim-verify --hook",
+            // #2903 (#2899 O4): the lane closes its own card through `close-check` (its
+            // `--repo` follows a placeholder, so tests/close_step_2903.rs checks that flag).
+            "close-check",
             "gate-check",
+            "gate-loop --fetch",
+            "gate-schedule-apply",
+            "gate-schedule-plan",
             "goal-block",
             "goal-plan",
             "goal-show",
@@ -853,4 +861,39 @@ fn inspection_p2_rules_are_written_where_they_are_used() {
     ] {
         assert!(reduced.contains(p), "reduced mode must say `{p}`:\n{reduced}");
     }
+}
+
+// #2906 S4 (decision D2, plan Q2/Q7): without a terminal list (no Orca) the third timeout
+// condition is `claim-timeout-check` answering `met`, the leader re-checks a `by=timeout`
+// line with `--now`, and without a leader session the merge gate runs from the OS scheduler.
+#[test]
+fn timeout_takeover_without_a_terminal_list_uses_claim_timeout_check() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim-verify",
+        &[
+            "or — when there is no terminal list (no Orca) — `moai claim-timeout-check --issue <n> --claim <holder id> --request <your request id> --lane <you>` answers `met`",
+            "names the holder's claim id, never the holder lane",
+            "post the line the command prints",
+        ],
+    );
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "`moai claim-timeout-check`",
+            "`--now <the timeout line's created_at>`",
+        ],
+    );
+    assert_says(
+        &leader,
+        "merge-train",
+        &[
+            "`moai gate-schedule-plan`",
+            "`moai gate-schedule-apply`",
+            "enabling it is the operator's step",
+            "`moai gate-loop --fetch`",
+        ],
+    );
 }
