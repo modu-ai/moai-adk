@@ -138,6 +138,7 @@ pub const GROUPS: &[Group] = &[
             ("leader-tick", false),
             ("lane-next", false),
             ("lane-loop-line", false),
+            ("lane-stop-hook", false),
             ("lane-resume-note", false),
             ("lane-resume-check", false),
             ("lane-duty-line", false),
@@ -157,6 +158,8 @@ pub const GROUPS: &[Group] = &[
             ("gate-check", false),
             ("gate-merge", false),
             ("gate-loop", false),
+            ("gate-schedule-plan", false),
+            ("gate-schedule-apply", false),
             ("wait", false),
             ("scope-check", false),
             ("worktree-plan", false),
@@ -265,7 +268,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("claude-settings-apply", &["claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("codex-config-plan", &["codex-config-plan . < request.json", "codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("codex-config-apply", &["codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
+    ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> .", "hooks-plan --host codex --lane-loop agent-1 --repo modu-ai/moai-adk ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
     ("go-hooks-plan", &["go-hooks-plan .", "go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -352,6 +355,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ),
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
+        "lane-stop-hook",
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+    ),
+    (
         "lane-duty-line",
         &[
             "lane-duty-line --lane 1",
@@ -380,6 +387,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("gate-check", &["gate-check < request.json"]),
     ("gate-merge", &["gate-merge --pr 2824 --permission-reference <ref>"]),
     ("gate-loop", &["gate-loop --permission-reference <ref>"]),
+    ("gate-schedule-plan", &["gate-schedule-plan ~ --os macos", "gate-schedule-apply ~ --os macos --plan-digest <digest> --permission-reference <ref>"]),
+    ("gate-schedule-apply", &["gate-schedule-apply ~ --os macos --plan-digest <digest> --permission-reference <ref>"]),
     ("wait", &["wait --repo modu-ai/moai-adk ci"]),
     ("scope-check", &["scope-check ."]),
     ("worktree-plan", &["worktree-plan --branch-prefix issue/ .", "worktree-apply --branch-prefix issue/ --plan-digest <digest> ."]),
@@ -1057,7 +1066,7 @@ pub fn configure_in(
 /// The groups whose root commands' own help texts read Korean on a Korean terminal (S6e-2…,
 /// one group per slice; `the_moved_groups_read_korean_in_their_help` in `main.rs` checks
 /// every about, long about and argument of them).
-pub const KOREAN_GROUPS: &[&str] = &["Project"];
+pub const KOREAN_GROUPS: &[&str] = &["Project", "Update and move", "Keys"];
 
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
@@ -1081,12 +1090,229 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          준비한 뒤 원자적 포인터 교체로 게시해요. 빌드가 실패하면 앞 세대를 그대로 두고 partial 로 \
          표시해요(REQ-C6-01).",
     ),
+    (
+        "update",
+        "이 실행 파일과 함께 설치된 패키지로 스킬을 업데이트해요(#2522): update-plan 처럼 미리 \
+         보여 주고, 확인하기 전에는 아무것도 쓰지 않아요 — 터미널에서는 한 번 묻고, 그 밖에서는 \
+         미리 보기의 digest 를 --confirm 으로 넘겨요. HOME 은 환경에서 읽어요.",
+    ),
+    (
+        "go-state-plan",
+        "PROJECT 의 Go 세대 상태를 읽기만 하고 미리 봐요(#2561): Go manifest 가 도구가 만들고 \
+         바뀌지 않았다고 증명하는 파일은 무엇인지, 나머지는 왜 그대로 남는지. 아무것도 쓰지 \
+         않아요.",
+    ),
+    (
+        "go-state-apply",
+        "확인한 go-state 미리 보기를 실행해요(#2561, #2696): Go `.moai/` 는 `.moai-backup`(또는 \
+         `.moai-backup-<UTC>`)이 되고, 새 `.moai/` 가 앞서의 `.moai-cli` 제품 상태를 받고 표식은 \
+         마지막에 써요. 남는 Go 폴더는 #2561 2단계 파일 이동을 그대로 해요. 새로 계산한 미리 보기의 \
+         digest 가 같을 때만 실행하고, 절대 덮어쓰지 않아요.",
+    ),
+    (
+        "go-state-revert-plan",
+        "go-state 실행 하나를 되돌리면 무엇을 하는지 읽기만 해요(#2561 2단계).",
+    ),
+    (
+        "go-state-revert",
+        "go-state 실행 하나를 되돌려요(#2561, #2696): 새 `.moai/` 는 `.moai.rust-<UTC>` 로 비켜 \
+         두고, Go 백업이 다시 `.moai` 가 돼요. 전부 아니면 전무: 원래 경로에 무언가 다시 생겼거나 \
+         백업이 바뀌었으면 되돌리기를 거절해요.",
+    ),
+    (
+        "home-state-plan",
+        "HOME 상태 폴더를 미리 봐요(#2723): 프로젝트 판정 표와 HOME 의 Go 표식으로 `~/.moai` 를 \
+         나누고, 백업 이름(`~/.moai-backup`, 이미 있으면 `~/.moai-backup-<UTC>` — 절대 덮어쓰지 \
+         않음)을 정하고, 이동을 막는 것(살아 있는 Go 세션, 안에서 도는 프로세스, 안쪽 체크아웃, \
+         확인하기에 너무 큼)과 사용자가 다시 복사해 올 수 있는 항목(기본 없음, 비밀은 절대 제안 \
+         안 함)을 보여 줘요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "home-state-apply",
+        "Go `~/.moai` 를 미리 보기가 정한 백업으로 비켜 두고(절대 덮어쓰지 않음) Rust `~/.moai` 를 \
+         만들고, `--copy` 로 이름 댄 항목만 복사하고(비밀·Go 표식은 절대 안 함), 영수증을 쓴 뒤 Rust \
+         표식을 써요(#2723). 같은 입력으로 다시 계산한 미리 보기의 `plan_digest` 가 같고 동작이 \
+         `migrate` 일 때만 실행해요. 실제 HOME 에서는 사용자가 확인한 뒤에만 리더가 실행해요.",
+    ),
+    (
+        "home-state-revert",
+        "Go `~/.moai` 를 되돌려 놓아요(#2723): 실행이 만든 Rust `~/.moai`(올바른 표식과 영수증)는 \
+         `~/.moai.rust-<UTC>` 로 비켜 두고, 영수증이 이름 댄 백업이 `~/.moai` 로 돌아와요. 아무것도 \
+         지우지 않아요.",
+    ),
+    (
+        "worktree-move-plan",
+        "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
+         #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
+         `move`·`keep`(이미 root 안, 앞서의 `~/.moai-cli/worktrees/<key>/` 또는 Go 세대의 \
+         `~/.moai/worktrees/projects/` 안)·`blocked` 와 그 까닭을 보여 줘요: main worktree, 없음, \
+         잠김, submodule, 커밋 안 한·추적 안 하는 파일, push 안 한 커밋, 그 가지의 stash, 안에서 \
+         도는 프로세스, 붙잡힌 가지, 붙잡힘 검사를 안 함(`holds` 관측 없음). 아무것도 쓰지 않고, \
+         답에 `plan_digest` 가 있어요.",
+    ),
+    (
+        "worktree-move-apply",
+        "`worktree-move-plan` 이 `move` 로 적은 worktree 를 옮겨요(#2723) — 같은 입력으로 다시 \
+         계산한 계획의 `plan_digest` 가 같을 때만. 옮길 때마다 프로세스와 열린 파일을 다시 보고, \
+         `git worktree move` 를 돌리고(`--force` 는 절대 안 함), git 이 새 경로에 같은 HEAD·가지로 \
+         적었는지 확인해요(아니면 `git worktree repair` 한 번). 옮긴 worktree 마다 되돌리는 명령이 \
+         함께 와요.",
+    ),
+    (
+        "key-set",
+        "공급자 키를 암호화해 금고에 저장해요(#2393): 지금 프로젝트용, 또는 `--shared` 면 모든 \
+         프로젝트용. 값은 stdin 에서만 읽고(argv 로는 받지 않음) 대화형 터미널이면 거절해요. 답에는 \
+         값이 절대 들어가지 않아요.",
+    ),
+    (
+        "key-status",
+        "공급자 항목(지금 프로젝트, 또는 `--shared`)이 있는지, 안전한지, 복호화되는지 확인해요 \
+         (#2393). 값·길이·지문은 절대 보이지 않아요.",
+    ),
+    (
+        "key-remove",
+        "금고에서 공급자 키를 지워요(#2393): 지금 프로젝트의 항목, 또는 `--shared` 면 공유 항목. \
+         `--yes` 가 없으면 지울 것만 알려 줘요. 기계 키와 옛 키 파일은 절대 건드리지 않아요.",
+    ),
+    (
+        "key-import-plan",
+        "옛 키 파일을 암호화 금고로 옮기는 일을 미리 봐요(#2393 S3): 어느 파일, 어느 폴더로 — 값은 \
+         절대 보이지 않아요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "key-import-apply",
+        "옛 키 파일의 키를 암호화 금고로 복사해요(#2393 S3): 미리 보기의 digest 와 권한 참조가 \
+         있을 때만, 다시 읽은 값이 같아야 하고, 옛 파일은 그대로 둬요. 목적지는 지금 프로젝트 폴더, \
+         또는 `--shared` 면 `_shared`.",
+    ),
 ];
 
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    ("update", "json", "터미널에서도 화면 대신 JSON 봉투 찍기"),
+    (
+        "update",
+        "confirm",
+        "확인하는 미리 보기의 `plan_digest` — 아직 같을 때만 실행",
+    ),
+    (
+        "update",
+        "confirm_cleanup",
+        "미리 보기의 `cleanup.confirm_token`(#2872): 거기 적힌 Go 잔여물을 보관 폴더로. \
+         --confirm 이 없으면 나머지는 미리 보기로 남음",
+    ),
+    (
+        "go-state-plan",
+        "project",
+        "Go `.moai/manifest.json` 이 있는 프로젝트 루트",
+    ),
+    ("", "backup", "실행의 백업 표지(`YYYYMMDDTHHMMSSZ`)"),
+    (
+        "home-state-plan",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "",
+        "home",
+        "바꿀 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "home-state-plan",
+        "now",
+        "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계",
+    ),
+    (
+        "home-state-apply",
+        "now",
+        "미리 보기가 읽은 것과 같은 `--now`",
+    ),
+    (
+        "home-state-revert",
+        "now",
+        "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계(비켜 둘 폴더 이름)",
+    ),
+    (
+        "home-state-plan",
+        "selective",
+        "폴더 전체를 옮기는 대신 맨 위 항목마다 나누기(#2815): 제자리·백업으로 옮김·비밀 \
+         수동(절대 안 엶)·모름(아무것도 안 옮김)",
+    ),
+    (
+        "home-state-apply",
+        "permission_reference",
+        "사용자 승인에 대한 호출자의 참조",
+    ),
+    (
+        "home-state-revert",
+        "permission_reference",
+        "사용자 승인에 대한 호출자의 참조",
+    ),
+    (
+        "worktree-move-apply",
+        "permission_reference",
+        "이 이동들에 대한 사용자 승인의 호출자 참조",
+    ),
+    (
+        "home-state-apply",
+        "copy",
+        "Rust 폴더로 복사할 `~/.moai` 의 맨 위 항목. 여럿이면 되풀이",
+    ),
+    (
+        "worktree-move-plan",
+        "project",
+        "저장소의 아무 체크아웃(primary 또는 worktree)",
+    ),
+    (
+        "worktree-move-apply",
+        "project",
+        "저장소의 아무 체크아웃(primary 또는 worktree)",
+    ),
+    (
+        "worktree-move-plan",
+        "root",
+        "worktree 를 옮겨 넣을 절대 폴더(기본 `<HOME>/.moai/worktrees`, #2835). 모든 worktree \
+         밖이어야 함",
+    ),
+    (
+        "worktree-move-apply",
+        "root",
+        "미리 보기가 읽은 것과 같은 `--root`(기본도 미리 보기와 같음)",
+    ),
+    (
+        "worktree-move-plan",
+        "observations",
+        "JSON 파일: `schema_version` 1 과 선택 `holds`(source, branches: branch, reason). \
+         `holds` 가 없으면 모든 worktree 가 `hold_check_not_run` 으로 막힘",
+    ),
+    (
+        "worktree-move-apply",
+        "observations",
+        "미리 보기가 읽은 것과 같은 관측 파일",
+    ),
+    ("", "provider", "공급자 이름, 예: `glm`(소문자·숫자·`-`)"),
+    (
+        "",
+        "shared",
+        "모든 프로젝트가 쓰는 키(`~/.moai-cli/vault/_shared/`)",
+    ),
+    (
+        "key-import-plan",
+        "shared",
+        "프로젝트 대신 `~/.moai-cli/vault/_shared/`(모든 프로젝트)로 가져오기",
+    ),
+    (
+        "key-import-apply",
+        "shared",
+        "프로젝트 대신 `~/.moai-cli/vault/_shared/`(모든 프로젝트)로 가져오기",
+    ),
+    (
+        "key-remove",
+        "yes",
+        "묻지 않고 지우기. 없으면 미리 보기, 터미널에서는 질문 하나",
+    ),
     ("", "plan_digest", "미리 보기의 `plan_digest`"),
     (
         "",
@@ -1154,16 +1380,21 @@ fn korean_frame(c: Command) -> Command {
     });
     // clap's generated `-h, --help` cannot be edited before the command is built, so it is
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
+    // Every help starts on the line after its name, `LONG_ARG_INDENT` in, in `-h` as in
+    // `--help`: clap counts a Hangul letter as one cell, so beside a wide name it would judge a
+    // Korean help to fit when it does not (`codex-projection-plan -h` ran to 72 cells at 60).
+    let room = width().saturating_sub(LONG_ARG_INDENT);
     c.disable_help_flag(true)
         .arg(
             clap::Arg::new("help")
                 .short('h')
                 .long("help")
                 .action(clap::ArgAction::Help)
-                .help(HELP_FLAG_SHORT_KO)
-                .long_help(HELP_FLAG_LONG_KO)
+                .help(wrap(HELP_FLAG_SHORT_KO, 0, room))
+                .long_help(wrap(HELP_FLAG_LONG_KO, 0, room))
                 .help_heading(OPTIONS_KO.trim_end_matches(':')),
         )
+        .next_line_help(true)
         .help_template(SUBCOMMAND_TEMPLATE_KO)
 }
 
@@ -1179,10 +1410,13 @@ fn korean_texts(c: Command, name: &str, width: usize) -> Command {
         Some((_, long)) => c.long_about(wrap(long, 0, width)),
         None => c,
     };
+    // The Korean frame puts every help on the line after its name (`korean_frame`), so one
+    // wrap at the indent fits `-h` and `--help` alike.
+    let room = width.saturating_sub(LONG_ARG_INDENT);
     let name = name.to_string();
     c.mut_args(move |a| match arg_help_ko(&name, a.get_id().as_str()) {
         Some(text) => {
-            let wrapped = wrap(text, 0, width.saturating_sub(LONG_ARG_INDENT));
+            let wrapped = wrap(text, 0, room);
             a.help(wrapped.clone()).long_help(wrapped)
         }
         None => a,

@@ -95,6 +95,21 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 - 확인: 훅 층의 digest 는 `moai update --confirm` 이 받는 하나의 `plan_digest` 에 들어간다. 확인 때 host 마다 `hooks-apply` 규칙으로 쓰고, 바꾼 두 파일(host 파일·소유 영수증)의 앞 바이트를 `.moai-cli/receipts/hooks-<id>/` 에 남긴다. 결과는 `hooks_result`, 되돌리기 명령은 `revert.hooks`.
 - 되돌리기: `moai hooks-revert <PROJECT> --receipt <id> --permission-reference <ref>` — host 의 두 파일이 모두 update 가 쓴 바이트 그대로일 때만 앞 바이트로 되돌린다(만든 파일은 지움). 하나라도 바뀌었으면 그 host 는 `user_changed_since_apply` 로 건너뛴다. 영수증은 한 번만 되돌린다.
 
+## 4b. 레인 Stop hook — Codex opt-in 변형 (#2904 2단계)
+
+- 설치: `hooks-plan --host codex --lane-loop <lane> --repo <OWNER/REPO> <PROJECT>` 로 미리 보고, 같은 플래그와 그 `plan_digest` 로 `hooks-apply`. `.codex/hooks.json` 의 `Stop` 에 영수증 그룹 다음 두 번째 matcher 그룹 `{"hooks":[{"type":"command","command":"moai-cli lane-stop-hook --lane <lane> --repo <repo>","timeout":120}]}` 이 생긴다. `--lane-loop` 과 `--repo` 는 함께만, `--host codex` 에서만 받는다(레인 이름 1–64자 `A-Z a-z 0-9 . _ -`, 저장소 `OWNER/REPO`).
+- 영수증: 레인이 있을 때만 `lane_loop: {lane, repo}` 와 `hooks` 끝의 레인 항목이 더해진다. 레인 없는 설치는 hook 파일·영수증·plan digest 가 전과 바이트까지 같다(`hooks::tests` 가 이전 코드의 digest 로 묶어 둠). digest 에는 레인이 있을 때만 레인이 들어간다.
+- 유지: 플래그 없는 `hooks-plan`·`moai update` 는 영수증이 적은 레인을 그대로 둔다(재계획 `unchanged`). `hook_status.configured` 도 영수증의 세트와 비교하므로 설치된 레인 hook 은 `yes`.
+- 되돌리기: 같은 두 단계를 `--lane-loop-off` 로 — 파일과 영수증이 기본 세트 바이트로 돌아간다. `--lane-loop-off` 는 `--lane-loop` 과 함께 쓸 수 없다.
+- `lane-stop-hook --lane <lane> --repo <repo> [--snapshot FILE]`: envelope 없이 Codex 의 Stop 답만 stdout 에 낸다. Stop 입력(stdin)은 64 KiB 까지 읽고 버린다 — `stop_hook_active` 는 보지 않고(리더 결정 대기 Q1 기본 (a)), 깨진 JSON 도 판정을 바꾸지 않는다. `lane-next` 판정을 한 번(기다림 없음, GitHub 읽기 90초 한도) 또는 `--snapshot` 으로 읽어:
+  - 레인의 다음 일이 있으면 `{"decision":"block","reason":…}` — 이유는 고정 문장과 `lane-next` 요약 줄뿐(GitHub 글 없음).
+  - 내 일은 없고 열린 PR 이 남았으면 block, 이유는 `moai lane-next --lane <lane> --repo <repo> --wait 1800` 실행(Q2 기본 (a)).
+  - 열린 PR 0 이고 시작할 Issue 0(끝 조건, 지금은 `lane-next` 가 읽은 그대로)이면 아무것도 내지 않고 exit 0.
+  - 읽기 실패·시간 초과·일부만 읽고 다음 일 없음 = 모름 → 한 번 block, 다음 멈춤은 통과.
+  - 같은 다음 일에 연속 48번 block 하면 49번째부터 통과. 다음 일이 바뀌면 0부터.
+  - 다음 일과 상관없이 마지막 통과 뒤 block 이 96번이면 97번째는 통과하고, 어떤 통과든 이 총수를 0으로 되돌린다(두 일이 번갈아 나와 위 상한이 매번 0이 되는 경우의 한도, #2926 감사 B1). 횟수는 `<state root>/lane-stop-hook/<lane>.json`; state root 가 없거나 링크라 셀 수 없으면 block 하지 않는다.
+  - 레인·저장소 형식이 틀리거나 명령줄이 깨지면 hook 비차단 오류(exit 1, stdout 비움).
+
 ## 5. 출처 (확인일 2026-11-09)
 
 | 문서 | URL | 이번에 쓴 사실 |
