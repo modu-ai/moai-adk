@@ -187,9 +187,10 @@ pub fn default_root() -> Result<PathBuf> {
 fn old_root() -> Option<PathBuf> {
     crate::home_workdir::home()
         .ok()
-        // The historical name, spelled out: when the HOME state folder becomes `.moai`
-        // (#2725) this must not turn into the new root (#2846 audit N1).
-        .map(|h| h.join(".moai-cli").join("worktrees"))
+        // The historical name (`fixed_state!`, which does not follow HOME_STATE_DIR): when
+        // the HOME state folder becomes `.moai` (#2725) this must not turn into the new root
+        // (#2846 audit N1).
+        .map(|h| h.join(crate::fixed_state!("worktrees")))
 }
 
 /// The plan for the clone holding `project`; `root` defaults to [`default_root`].
