@@ -151,6 +151,15 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
             )),
             plan_digest: Some(plan.plan_digest),
         }
+    } else if let Some((state, reason)) = tied(root, &plan) {
+        Step {
+            name: "go-state",
+            state,
+            reason,
+            preview,
+            plan_digest: Some(plan.plan_digest),
+            apply: None,
+        }
     } else {
         Step {
             name: "go-state",
@@ -161,6 +170,53 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
             apply: None,
         }
     })
+}
+
+/// Earlier state that stays where it is although nothing moves (#2953 F1): `go-state-plan`
+/// leaves everything for a `state_root` verdict other than `go`/`none`, and for Go or
+/// `.moai-cli/` state it cannot move (settings naming `.moai/`, a worktree or nested checkout
+/// inside, no usable Go manifest). The user decides; `interrupted` waits for their revert.
+fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, String)> {
+    let state = state_root::classify(root);
+    let held = |path: &str| {
+        plan.items
+            .iter()
+            .find(|i| i.path == path && i.action == "leave")
+            .map(|i| i.reason.clone())
+    };
+    match state.generation {
+        "interrupted" => Some((
+            "needs_decision",
+            format!(
+                "state_root `interrupted`: {}; show go-state-revert-plan and move nothing else \
+                 until the user decides",
+                state.reason
+            ),
+        )),
+        "mixed" | "unknown" | "refuse" => Some((
+            "blocked",
+            format!(
+                "state_root `{}`: {}; nothing moves, the user decides outside this route",
+                state.generation, state.reason
+            ),
+        )),
+        "go" => Some((
+            "blocked",
+            format!(
+                "the Go-generation .moai/ stays: {}",
+                held(state_root::MOAI_DIR).unwrap_or_else(|| {
+                    "no usable Go manifest, so nothing is proven tool-made".into()
+                })
+            ),
+        )),
+        "none" => held(crate::PROJECT_STATE_DIR).map(|r| {
+            (
+                "blocked",
+                format!("the earlier .moai-cli/ state stays: {r}"),
+            )
+        }),
+        _ => None,
+    }
 }
 
 fn profile_step(
@@ -200,8 +256,53 @@ fn profile_step(
     })
 }
 
+/// The personal-file choice as the manifest records it (#2953 F2): an `AGENTS.local.md` seen
+/// once with the `.gitignore` section MoAI owns is `ignored`, without it `tracked`, neither
+/// is `none`. `Err` when the record cannot tell: the section without the file, or the file
+/// without the section while a user rule in `.gitignore` names it (an `ignored` choice
+/// records no section then).
+fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
+    const LOCAL: &str = "AGENTS.local.md";
+    let created = manifest["created_once"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|p| p == LOCAL)
+        // Manifests written before `created_once` recorded the file in owned_files.
+        || manifest["owned_files"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|f| f["path"] == LOCAL && f["section_id"].is_null());
+    let section = owned_entries(manifest).any(|(s, _)| s == crate::agents::IGNORE_SECTION);
+    let unknown = "the generation manifest does not tell whether AGENTS.local.md is tracked \
+                   or ignored; ask the user and regenerate through /moai project";
+    match (created, section) {
+        (true, true) => Ok("ignored"),
+        (false, false) => Ok("none"),
+        (false, true) => Err(unknown.into()),
+        (true, false) => {
+            let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
+            let user_rule = ignore
+                .as_deref()
+                .and_then(|b| std::str::from_utf8(b).ok())
+                .is_some_and(crate::agents::ignore_has_rule);
+            if user_rule {
+                Err(unknown.into())
+            } else {
+                Ok("tracked")
+            }
+        }
+    }
+}
+
 /// The generation request rebuilt from the profile and the manifest's record (#2936 S1).
-fn generation_request(root: &Path, profile: &Profile, manifest: &Value) -> GenerationRequest {
+/// `Err` is a question for the user (the step reads `needs_decision`).
+fn generation_request(
+    root: &Path,
+    profile: &Profile,
+    manifest: &Value,
+) -> Result<GenerationRequest> {
     let language = profile
         .language
         .as_ref()
@@ -217,20 +318,16 @@ fn generation_request(root: &Path, profile: &Profile, manifest: &Value) -> Gener
         .as_str()
         .map(String::from)
         .unwrap_or_else(|| "project".into());
-    // The manifest records the personal-file choice only through the `.gitignore` section it
-    // owns (`ignored`); anything else plans `none`, which never creates or touches the file.
-    let ignored =
-        owned_entries(manifest).any(|(section, _)| section == crate::agents::IGNORE_SECTION);
-    GenerationRequest {
+    Ok(GenerationRequest {
         protocol_version: 1,
         language,
         workflow_reference,
-        local_file: if ignored { "ignored" } else { "none" }.into(),
+        local_file: local_file(root, manifest)?.into(),
         workflow_id,
         native_roles: Vec::new(),
         skill_projections: Vec::new(),
         project_skills: Vec::new(),
-    }
+    })
 }
 
 /// `(section_id, path)` of every owned manifest entry that has a section.
@@ -243,8 +340,9 @@ fn owned_entries(manifest: &Value) -> impl Iterator<Item = (&str, &str)> {
 }
 
 fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
-    let path = state_root::path(root, "manifests/generation.json");
-    let manifest: Value = match crate::apply::read_opt(&path)? {
+    // Read without following a link on the way, like every other manifest read.
+    let rel = format!("{}/manifests/generation.json", state_root::dir(root));
+    let manifest: Value = match crate::apply::read_opt(&crate::apply::target(root, &rel)?)? {
         None => Value::Null,
         Some(bytes) => serde_json::from_slice(&bytes)
             .map_err(|_| "generation manifest unreadable; inspect before regenerating")?,
@@ -268,7 +366,10 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
             apply: None,
         });
     }
-    let request = generation_request(root, profile, &manifest);
+    let request = match generation_request(root, profile, &manifest) {
+        Ok(r) => r,
+        Err(reason) => return Ok(Step::waiting("generation", "needs_decision", &reason)),
+    };
     let plan = generation::generation_plan(root, request)?;
     let files: Vec<Value> = plan
         .files
@@ -303,10 +404,20 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// Q2 A (#2936): the keys MoAI already owns, without `hooks` (only `hooks-apply` writes
 /// that key), are kept as they are; no key is added by default.
 fn settings_step(root: &Path, shown: &str) -> Result<Step> {
-    let mut owned: Map<String, Value> = claude::owned_settings(root)?;
-    owned.remove("hooks");
+    let owned = settings_stdin(claude::owned_settings(root)?);
     let desired = claude::user_settings_desired_in(root, &owned, SettingsScope::Project)?;
     let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
+    Ok(settings_from_plan(shown, &plan, owned))
+}
+
+/// The keys a printed settings apply carries on stdin: the owned keys without `hooks`.
+fn settings_stdin(mut owned: Map<String, Value>) -> Map<String, Value> {
+    owned.remove("hooks");
+    owned
+}
+
+/// The settings step from its plan; `owned` (without `hooks`) is the printed stdin.
+fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> Step {
     let digest = plan["plan_digest"].as_str().map(String::from);
     let (state, reason) = match plan["action"].as_str() {
         Some("create" | "update") => ("ready", "MoAI-owned keys to restore"),
@@ -316,14 +427,30 @@ fn settings_step(root: &Path, shown: &str) -> Result<Step> {
             "a key MoAI manages was set by the user; nothing is written",
         ),
     };
-    let apply = match (&digest, state) {
-        (Some(d), "ready") => Some((
+    // #2383: a conflict the plan offers to replace prints that replacement as its command; it
+    // runs only after the user's explicit confirmation (#2953 F6).
+    let token = plan["confirm_replace"]["confirm_token"].as_str();
+    let (state, reason) = match (state, token) {
+        ("conflict", Some(_)) => (
+            "needs_decision",
+            "a key MoAI manages was set by the user; replacing it needs the user's explicit \
+             confirmation (confirm_replace)",
+        ),
+        _ => (state, reason),
+    };
+    let apply = match (&digest, state, token) {
+        (Some(d), "ready", _) => Some((
             argv("claude-settings-apply", shown, d),
             Value::Object(owned),
         )),
+        (Some(d), "needs_decision", Some(t)) => {
+            let mut words = argv("claude-settings-apply", shown, d);
+            words.extend(["--confirm-replace".to_string(), t.to_string()]);
+            Some((words, Value::Object(owned)))
+        }
         _ => None,
     };
-    Ok(Step {
+    Step {
         name: "claude-settings",
         state,
         reason: reason.into(),
@@ -335,7 +462,7 @@ fn settings_step(root: &Path, shown: &str) -> Result<Step> {
         }),
         plan_digest: digest,
         apply,
-    })
+    }
 }
 
 fn github_step(root: &Path, shown: &str) -> Result<Step> {
@@ -473,6 +600,54 @@ mod tests {
         assert_eq!(worst(&[s("ready"), s("blocked"), s("conflict")]), "blocked");
         assert_eq!(worst(&[s("needs_decision"), s("ready")]), "needs_decision");
         assert_eq!(worst(&[]), "unchanged");
+    }
+
+    /// #2953 F6: a conflict whose plan offers `confirm_replace` prints that replacement — the
+    /// argv with `--confirm-replace <token>` and the owned keys on stdin — as a decision; a
+    /// conflict without it prints nothing.
+    #[test]
+    fn a_replaceable_settings_conflict_prints_the_confirmed_apply() {
+        let owned: Map<String, Value> =
+            serde_json::from_value(json!({"outputStyle": "Explanatory"})).unwrap();
+        let mut plan = json!({
+            "action": "conflict", "plan_digest": "sha256:d",
+            "settings_path": ".claude/settings.json", "conflicts": ["outputStyle"],
+        });
+        let kept = settings_from_plan("/p", &plan, owned.clone());
+        assert_eq!((kept.state, kept.apply.is_none()), ("conflict", true));
+
+        plan["confirm_replace"] =
+            json!({"keys": ["outputStyle"], "confirm_token": "settings-replace:project:t"});
+        let step = settings_from_plan("/p", &plan, owned.clone());
+        assert_eq!(step.state, "needs_decision");
+        let (argv, stdin) = step.apply.expect("a printed command");
+        assert_eq!(
+            argv,
+            [
+                "moai",
+                "claude-settings-apply",
+                "/p",
+                "--plan-digest",
+                "sha256:d",
+                "--permission-reference",
+                PERMISSION_PLACEHOLDER,
+                "--confirm-replace",
+                "settings-replace:project:t",
+            ]
+        );
+        assert_eq!(stdin, Value::Object(owned));
+    }
+
+    /// #2953 F5: the printed settings stdin carries the owned keys without `hooks`.
+    #[test]
+    fn the_settings_stdin_has_no_hooks() {
+        let owned: Map<String, Value> =
+            serde_json::from_value(json!({"outputStyle": "Explanatory", "hooks": {"Stop": []}}))
+                .unwrap();
+        assert_eq!(
+            Value::Object(settings_stdin(owned)),
+            json!({"outputStyle": "Explanatory"})
+        );
     }
 
     #[test]

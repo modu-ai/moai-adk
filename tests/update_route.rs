@@ -54,7 +54,12 @@ fn the_update_route_is_the_project_layer() {
         // first, and "nothing to update" holds only without Go state.
         "when the backup phase has a move, do it first (steps 2–4), then send the user to SETUP (or `/moai project`) and stop",
         "only when there is no profile and no Go-generation state is there nothing to update",
-        "When it is `interrupted`, a move stopped midway",
+        // #2702 audit N2 (#2953 F1): the other Go-state kinds are reported, never written.
+        "When the go-state step reads `needs_decision` with a `reason` naming state_root `interrupted`, a move stopped midway",
+        "`state_root.generation` is `mixed`, `unknown` or `refuse` (`refuse` covers a `.moai` that is a link or not a folder)",
+        "It is reported with its `reason` and nothing is moved (a link is never followed): say what was found and let the user decide outside this route",
+        // #2953 F6: the confirmed replacement is the step's printed command.
+        "the step reads `needs_decision` and its printed command is that replacement (`apply.argv` ends with `--confirm-replace <token>`",
         // #2702 audit N1: the user's edits, unreadable targets and HOLD, and the #2383 step.
         "A file or managed part the user edited is planned as `conflict` and kept",
         "Never write a target whose current state could not be read, nor one under a recorded HOLD",

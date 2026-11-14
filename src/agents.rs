@@ -312,7 +312,7 @@ fn render_ignore(root: &Path) -> String {
     )
 }
 
-fn ignore_has_rule(text: &str) -> bool {
+pub(crate) fn ignore_has_rule(text: &str) -> bool {
     text.lines().any(|l| {
         let t = l.trim();
         t == "AGENTS.local.md" || t == "/AGENTS.local.md"
