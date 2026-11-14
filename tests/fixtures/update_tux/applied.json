@@ -1,0 +1,601 @@
+{
+ "mode": "applied",
+ "applied": true,
+ "package": "/home/u/.moai-cli/versions/2026.11.0-rc.1/skills/moai",
+ "plan_digest": "sha256:4d97991e5800984720a452b7db8f12fbfe7f49b31f56cb742a9d797a8ebe8d56",
+ "result": {
+  "status": "applied",
+  "plan_digest": "sha256:810171afbe1e8f441bf5b3c792d2cc95d150ef9509ad5099f1dec78015313851",
+  "package_digest": "sha256:ff411803edd434a7a9af753cfe175cb6089aee039f7106476c6d12bce1e16802",
+  "package_version": "2026.11.0-rc.1",
+  "hosts": [
+   {
+    "host": "claude",
+    "status": "applied",
+    "files": [
+     {
+      "path": "SKILL.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/adapters/aside.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/adapters/orca.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/chains/index.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/home/output-style.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/home/routing.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/boundary-checks.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/check-completeness.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/core-rules.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/decide.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/doc-claims.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/git-safety.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/interview.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/review.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/security-checklist.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/tdd-results.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/test-design.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/routes.json",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/source-manifest.json",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/audit.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/mode-agent.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/mode-leader.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/optimize.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/plan.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/project.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/read.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/run.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/setup.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/sync.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/update.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/verify.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23",
+      "published": true,
+      "error": null
+     }
+    ],
+    "receipt_status": "committed",
+    "reload_required": "yes",
+    "reload_basis": "the top-level skills directory was created; running sessions need /reload-skills (code.claude.com/docs/en/skills, 2026-11-08)",
+    "blocked_reason": null,
+    "host_loaded": false,
+    "execution_verified": "not_run"
+   },
+   {
+    "host": "codex",
+    "status": "applied",
+    "files": [
+     {
+      "path": "SKILL.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/adapters/aside.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/adapters/orca.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/chains/index.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/home/output-style.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/home/routing.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/boundary-checks.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/check-completeness.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/core-rules.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/decide.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/doc-claims.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/git-safety.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/interview.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/review.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/security-checklist.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/tdd-results.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/internal/test-design.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/routes.json",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "references/source-manifest.json",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/audit.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/mode-agent.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/mode-leader.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/optimize.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/plan.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/project.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/read.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/run.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/setup.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/sync.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/update.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
+      "published": true,
+      "error": null
+     },
+     {
+      "path": "workflows/verify.md",
+      "action": "create",
+      "before_sha256": null,
+      "after_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23",
+      "published": true,
+      "error": null
+     }
+    ],
+    "receipt_status": "committed",
+    "reload_required": "unknown",
+    "reload_basis": "Codex detects skill changes automatically; restart if they are not shown (learn.chatgpt.com/docs/build-skills, 2026-11-08)",
+    "blocked_reason": null,
+    "host_loaded": false,
+    "execution_verified": "not_run"
+   }
+  ],
+  "host_loaded": false,
+  "execution_verified": "not_run",
+  "reload_note": "host loading is not measured here (08-C owns the live check)",
+  "writes": false
+ },
+ "agents_result": {
+  "state": "applied",
+  "plan_digest": "sha256:f5ef7d853bc45f2012f6ae3a5dbc137b07a56615af0998985b401d1259d97cc4",
+  "receipt": "agents-1794640614651673000-0",
+  "written": [
+   "claude:moai-audit.md",
+   "claude:moai-docs.md",
+   "claude:moai-impl.md",
+   "claude:moai-plan.md",
+   "claude:moai-research.md",
+   "codex:moai-audit.toml",
+   "codex:moai-docs.toml",
+   "codex:moai-impl.toml",
+   "codex:moai-plan.toml",
+   "codex:moai-research.toml",
+   "omp:moai-audit.md",
+   "omp:moai-docs.md",
+   "omp:moai-impl.md",
+   "omp:moai-plan.md",
+   "omp:moai-research.md"
+  ]
+ },
+ "routing_result": {
+  "state": "applied",
+  "plan_digest": "sha256:dcc98fe72f0ed8cbfb7acc008b3bf4d191ab0a432275e327d2d1ea1cc22f9a33",
+  "receipt": "routing-1794640615516508000-0",
+  "written": [
+   "claude",
+   "codex"
+  ]
+ },
+ "style_result": {
+  "state": "applied",
+  "plan_digest": "sha256:5ced8be60ae2d2981b781d2c4177907bbf3de2bcfc92a676c912e31426a62cf0",
+  "receipt": "style-1794640615603369000-0",
+  "written": [
+   "claude:style_file",
+   "claude:setting",
+   "codex:block"
+  ]
+ },
+ "bin_names_result": {
+  "state": "applied",
+  "plan_digest": "sha256:81bdbe4e97c0f89c56a25abd5b21c07de526869aea54cf40abdef8775c063a57",
+  "linked": "/home/u/.moai-cli/versions/2026.11.0-rc.1/bin/moai",
+  "to": "/home/u/.moai-cli/versions/2026.11.0-rc.1/bin/moai-cli",
+  "moved_aside": null,
+  "written": [
+   "/home/u/.moai-cli/versions/2026.11.0-rc.1/bin/moai"
+  ]
+ },
+ "hooks_result": {
+  "state": "unchanged",
+  "hosts": []
+ },
+ "skipped": [],
+ "revert": {
+  "agents": "moai agents-home-revert <HOME> --receipt agents-1794640614651673000-0 --permission-reference <reference>",
+  "routing": "moai home-routing-revert <HOME> --receipt routing-1794640615516508000-0 --permission-reference <reference>",
+  "style": "moai home-style-revert <HOME> --receipt style-1794640615603369000-0 --permission-reference <reference>",
+  "hooks": null,
+  "skills": "recovery-plan / recovery-apply for a host left pending"
+ }
+}
