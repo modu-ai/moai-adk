@@ -46,6 +46,7 @@ pub mod goal_block;
 pub mod handoff;
 pub mod heavy_slot;
 pub mod help;
+pub mod home_install;
 pub mod home_layout;
 pub mod home_retire;
 pub mod home_root;

@@ -148,6 +148,11 @@ mod tests {
     fn home_state_paths_are_resolved_per_home() {
         let allowed: &[(&str, usize, &str)] = &[
             (
+                "home_install.rs",
+                2,
+                "the install preview reads the earlier folder whatever generation the HOME is in (one use in the plan, one in the unit-test fixture)",
+            ),
+            (
                 "hooks.rs",
                 1,
                 "hooks are refused inside either HOME state root",
