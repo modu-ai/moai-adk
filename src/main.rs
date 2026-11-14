@@ -1,4 +1,4 @@
-use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, Parser, Subcommand};
+use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use moai_cli::{
     agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
     AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
@@ -110,15 +110,15 @@ enum Command {
     /// The one-file operations under `src/ops/` (#2617): add a file there, not a variant here.
     #[command(flatten)]
     Op(ops::Ops),
-    ProjectPlan {
-        project: PathBuf,
-    },
+    /// Preview the project profile
+    ProjectPlan { project: PathBuf },
+    /// Detect the project's facts
+    ///
     /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
     /// manifests, languages, language servers, configured MCP server names, databases. Reads
     /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
-    ProjectDetect {
-        project: PathBuf,
-    },
+    ProjectDetect { project: PathBuf },
+    /// Write a previewed project profile
     ProjectApply {
         project: PathBuf,
         #[arg(long)]
@@ -126,6 +126,7 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Resolve which skill package a project uses
     PackageResolve {
         project: PathBuf,
         #[arg(long)]
@@ -133,9 +134,9 @@ enum Command {
         #[arg(long)]
         user_package: Option<PathBuf>,
     },
-    AgentsPlan {
-        project: PathBuf,
-    },
+    /// Preview the AGENTS.md managed section
+    AgentsPlan { project: PathBuf },
+    /// Write a previewed AGENTS.md managed section
     AgentsApply {
         project: PathBuf,
         #[arg(long)]
@@ -143,6 +144,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Revert the files one apply published
+    ///
     /// Revert exactly the files one apply request published, from its receipt
     /// (Issue #1989, 01-B). Files changed since the apply are skipped, never overwritten.
     ApplyRecover {
@@ -154,6 +157,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// List a checkout's baseline facts
+    ///
     /// Read-only baseline inventory of a checkout (typed JSON on stdout).
     BaselineInventory {
         project: PathBuf,
@@ -164,16 +169,18 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
+    /// Read GitHub Issues and comments as tasks
+    ///
     /// Read GitHub Issues and comments as TODO (GET only; typed JSON request on stdin,
     /// envelope on stdout). Poll state: `<PROJECT>/.moai-cli/forge/poll-state.json`.
-    ForgeRead {
-        project: PathBuf,
-    },
+    ForgeRead { project: PathBuf },
+    /// Probe the GitHub sub-issue and dependency APIs
+    ///
     /// Probe whether the sub-issue and dependency APIs answer for one Issue and plan the
     /// links: API write intents, or `Parent:`/`Blocked-By:` body lines (GET only; #2172).
-    ForgeLinksProbe {
-        project: PathBuf,
-    },
+    ForgeLinksProbe { project: PathBuf },
+    /// Create or update a run's report comment
+    ///
     /// Create or update the one report comment of a run on its Issue (typed JSON payload on
     /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
     ForgeReport {
@@ -181,6 +188,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Post the audit commit status on a SHA
+    ///
     /// Post the `moai/audit` commit status on an exact SHA (typed JSON on stdin). Uses the
     /// audit App token from `MOAI_AUDIT_APP_TOKEN` when set, else warns (#2173).
     ForgeAuditStatus {
@@ -188,22 +197,24 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Show where a path sits in its clone
+    ///
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
-    Identity {
-        path: PathBuf,
-    },
+    Identity { path: PathBuf },
+    /// Build the code map index
+    ///
     /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
     /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
     /// build keeps the previous generation and marks partial (REQ-C6-01).
-    IndexBuild {
-        project: PathBuf,
-    },
+    IndexBuild { project: PathBuf },
+    /// Query the code map index
+    ///
     /// Query the incremental index (C6 #2182): read-only — resolves the published
     /// generation and reports one of fresh/stale/partial/unavailable with the detected
     /// changes (additions, deletions, modifications, untracked new files, branch switch).
-    IndexQuery {
-        project: PathBuf,
-    },
+    IndexQuery { project: PathBuf },
+    /// Import a previewed old key file
+    ///
     /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
     /// preview's digest and a permission reference; the read-back must match; the legacy file
     /// is kept. Destination: the current project's folder, or `_shared` with `--shared`.
@@ -217,6 +228,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Preview importing an old key file
+    ///
     /// Preview of moving a legacy key file into the encrypted vault (#2393 S3): which file,
     /// which destination folder, never the value. Writes nothing.
     KeyImportPlan {
@@ -225,6 +238,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Remove a provider key from the vault
+    ///
     /// Remove a provider's key from the vault (#2393): the current project's entry, or the
     /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
     /// machine key and any legacy key file are never touched.
@@ -236,6 +251,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Store a provider key in the vault
+    ///
     /// Store a provider's key, encrypted, in the vault (#2393): for the current project, or
     /// for every project with `--shared`. The value is read from stdin only (never argv); an
     /// interactive terminal is refused. The answer never contains the value.
@@ -245,6 +262,8 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Check a provider key without showing it
+    ///
     /// Whether a provider's entry (current project, or `--shared`) exists, is safe and
     /// decrypts (#2393). Never the value, its length or a fingerprint.
     KeyStatus {
@@ -253,11 +272,13 @@ enum Command {
         #[arg(long)]
         shared: bool,
     },
+    /// Preview moving MoAI state into the home layout
+    ///
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
     /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
-    LayoutPlan {
-        project: PathBuf,
-    },
+    LayoutPlan { project: PathBuf },
+    /// Copy MoAI state into a previewed home layout
+    ///
     /// Execute a confirmed layout plan: copy without deleting the originals, verify the
     /// copy, then switch the pointer (`layout.json`). The default stays project-side.
     LayoutApply {
@@ -267,6 +288,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview migrating Go MoAI data on a test HOME
+    ///
     /// Go MoAI migration preview (#2016) on a prepared synthetic HOME only: typed request
     /// on stdin (`hosts`, `mode`, `go_release`, `selections`); shows ownership, the
     /// update-conflict preview and the plan digest. Writes nothing.
@@ -274,6 +297,8 @@ enum Command {
         /// Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`.
         home: PathBuf,
     },
+    /// Apply a previewed Go MoAI migration
+    ///
     /// Apply a previewed migration (#2016): the exact plan on stdin must equal a fresh
     /// recompute and `--plan-digest`. Backs up, then copies only the selected owned files
     /// to `.moai-cli/imports/`; the Go source is kept.
@@ -284,6 +309,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview undoing one migration apply
+    ///
     /// Read-only recovery plan for one migration apply (#2016), from its backup manifest.
     MigrateRecoveryPlan {
         home: PathBuf,
@@ -291,6 +318,8 @@ enum Command {
         #[arg(long)]
         backup: String,
     },
+    /// Remove the imports one migration apply made
+    ///
     /// Remove only the imports one migration apply published (#2016); changed files are
     /// kept. The recovery plan travels on stdin and must match a fresh recompute.
     MigrateRecover {
@@ -302,11 +331,13 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Claim a task with one Issue comment
+    ///
     /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
-    ClaimAcquire {
-        project: PathBuf,
-    },
+    ClaimAcquire { project: PathBuf },
+    /// Run a heavy command in a machine-wide slot
+    ///
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
     /// waiting and on failure it prints the load averages and free disk space. Unix only.
@@ -331,48 +362,58 @@ enum Command {
         #[arg(last = true)]
         command: Vec<String>,
     },
+    /// List the heavy-run slots held now
+    ///
     /// List the heavy-run slots held now, the slot paths refused, and the machine's load and
     /// free disk space (#2677). Reads only.
     HeavySlotStatus {
         #[arg(long)]
         dir: Option<PathBuf>,
     },
+    /// Claim the next free card
+    ///
     /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
     /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
     /// candidate through `claim-acquire` under one journal lock.
-    QueueNext {
-        project: PathBuf,
-    },
+    QueueNext { project: PathBuf },
+    /// List the open cards a lane may take
+    ///
     /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
     /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
     /// epics, blocked); an empty result says `free_count: 0`.
-    QueueFree {
-        project: PathBuf,
-    },
+    QueueFree { project: PathBuf },
+    /// Read the merge train from the leader's comment
+    ///
     /// Read the merge train in a pinned leader Issue comment; GET only, no local store.
-    QueueQuery {
-        project: PathBuf,
-    },
+    QueueQuery { project: PathBuf },
+    /// Run one leader supervision tick
+    ///
     /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
     /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
-    LeaderTick {
-        project: PathBuf,
-    },
+    LeaderTick { project: PathBuf },
+    /// Record a dispatch revision
+    ///
     /// Record a dispatch revision over durable S1 messages (typed JSON stdin).
     DispatchRecord {
         project: PathBuf,
         #[arg(long)]
         permission_reference: String,
     },
+    /// Record a dispatch acknowledgement and decision
+    ///
     /// Record received ACK and explicit accepted/deferred/rejected decision, separately.
     DispatchAck {
         project: PathBuf,
         #[arg(long)]
         permission_reference: String,
     },
+    /// Check dispatch revisions and late acknowledgements
+    ///
     /// Observe dispatch revisions, decisions and the five-minute ACK alert (GET only).
     /// Never authorizes a claim or an audit gate.
     DispatchCheck,
+    /// Publish a durable message
+    ///
     /// Publish a durable message from typed JSON on stdin; queued is not receiver ACK
     /// or business acceptance.
     MessageRecord {
@@ -380,6 +421,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Publish a receiver acknowledgement
+    ///
     /// Publish an explicit receiver ACK from typed JSON on stdin; not business acceptance
     /// or completion.
     MessageAck {
@@ -387,24 +430,26 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Reconcile local messages with the remote
+    ///
     /// Reconcile messages from typed JSON on stdin: remote GET only, with local
     /// reconciliation writes; never publishes messages or ACKs.
-    MessageReconcile {
-        project: PathBuf,
-    },
+    MessageReconcile { project: PathBuf },
+    /// Check that a worktree is safe to leave
+    ///
     /// Lane handoff gate (rc.2 A10 #2264): typed JSON request on stdin; read-only
     /// verification that the worktree is safe to exit — status clean, HEAD ==
     /// observed remote == PR head, claim trailers on lane-authored non-merge commits, leader report
     /// record present, no publish_unknown outbox effects. A failed status blocks
     /// the exit (kind blocked, exit 1) with a preservation note.
-    LaneHandoffCheck {
-        project: PathBuf,
-    },
+    LaneHandoffCheck { project: PathBuf },
+    /// Show the status table of the named lanes
+    ///
     /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
     /// named Issues, their open PRs and the local worktrees; writes nothing.
-    LaneStatus {
-        project: PathBuf,
-    },
+    LaneStatus { project: PathBuf },
+    /// Choose the writing language item by item
+    ///
     /// Per-item writing-language setup (#2293): asks one question per item and returns a
     /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
     /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
@@ -420,6 +465,8 @@ enum Command {
         #[arg(long)]
         conversation: Option<String>,
     },
+    /// Check claim ownership before a commit or push
+    ///
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
     /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
@@ -427,6 +474,8 @@ enum Command {
         #[arg(long)]
         hook: bool,
     },
+    /// Show the current claim record of a task
+    ///
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
         project: PathBuf,
@@ -434,6 +483,8 @@ enum Command {
         #[arg(long)]
         task: String,
     },
+    /// Close the active claim as cancelled
+    ///
     /// Close the active claim as `cancelled`; the epoch must match the current record.
     ClaimRelease {
         project: PathBuf,
@@ -445,6 +496,8 @@ enum Command {
         #[arg(long)]
         reason: Option<String>,
     },
+    /// Hand a claim to another session
+    ///
     /// Explicit leader handoff (06-B #2006): liveness probe, worktree evidence, close as
     /// `handed_off`; an alive or indeterminate owner needs --force-explicit.
     ClaimHandoff {
@@ -465,6 +518,8 @@ enum Command {
         #[arg(long)]
         host_id: Option<String>,
     },
+    /// Record an external write before it is sent
+    ///
     /// Record an external-write intent before it is sent (REQ-06B-06); payload JSON on
     /// stdin gives the intent digest. A stale epoch is fenced (REQ-06B-08).
     EffectIntend {
@@ -487,6 +542,8 @@ enum Command {
         #[arg(long)]
         kind: String,
     },
+    /// Confirm or mark uncertain an intended write
+    ///
     /// Confirm an intended effect after the write returned, or mark it uncertain.
     EffectConfirm {
         project: PathBuf,
@@ -501,6 +558,8 @@ enum Command {
         #[arg(long = "observed-state")]
         observed_state: String,
     },
+    /// Reconcile uncertain writes with the remote
+    ///
     /// Reconcile uncertain effects against the remote by their stable marker (GET only,
     /// never re-creates). `--remote-probe` replaces the built-in comment lookup (tests).
     EffectsReconcile {
@@ -512,6 +571,8 @@ enum Command {
         #[arg(long = "remote-probe")]
         remote_probe: Option<String>,
     },
+    /// Check the open pull requests against the WIP cap
+    ///
     /// Flow control (A13 #2279): WIP cap check over the open pull requests of the
     /// repository — the assignment-refusal signal (the refusal itself is the
     /// leader's act). GET-only.
@@ -532,10 +593,12 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
         total_cap: u64,
     },
+    /// Check that Claude Code reads AGENTS.md
+    ///
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
-    ClaudeDoctor {
-        project: PathBuf,
-    },
+    ClaudeDoctor { project: PathBuf },
+    /// Preview the managed Claude Code settings keys
+    ///
     /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
@@ -545,6 +608,8 @@ enum Command {
         #[arg(long, default_value = "project")]
         scope: String,
     },
+    /// Write previewed Claude Code settings keys
+    ///
     /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
     /// reference. Writes the project settings file and its receipt only; home is refused.
     ClaudeSettingsApply {
@@ -561,10 +626,12 @@ enum Command {
         #[arg(long)]
         confirm_replace: Option<String>,
     },
+    /// Preview the managed Codex config keys
+    ///
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
-    CodexConfigPlan {
-        project: PathBuf,
-    },
+    CodexConfigPlan { project: PathBuf },
+    /// Write previewed Codex config keys
+    ///
     /// Apply a previewed project config with the same stdin, digest and permission reference.
     /// User HOME and CODEX_HOME config targets are refused; trust is never changed.
     CodexConfigApply {
@@ -574,6 +641,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview the MoAI hook set for one host
+    ///
     /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
     HooksPlan {
         project: PathBuf,
@@ -581,6 +650,8 @@ enum Command {
         #[arg(long)]
         host: String,
     },
+    /// Write a previewed hook set
+    ///
     /// Write a previewed hook set and its receipt; requires the plan digest.
     HooksApply {
         project: PathBuf,
@@ -591,12 +662,16 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Record one hook receipt line
+    ///
     /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
     /// ./.moai-cli/receipts/; never fails the hook.
     HookReceipt {
         #[arg(long)]
         host: String,
     },
+    /// Run one MoAI hook duty for a host
+    ///
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
     /// answer; reads the host's hook JSON on stdin, no network.
     HookDispatch {
@@ -607,6 +682,8 @@ enum Command {
         #[arg(long)]
         event: String,
     },
+    /// Preview a Codex copy of the skill package
+    ///
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -632,6 +709,8 @@ enum Command {
         #[arg(long)]
         disable_bundled_skills: bool,
     },
+    /// Install a previewed Codex skill copy
+    ///
     /// Install a planned Codex projection into its explicit target (I4 #2241). Refuses a
     /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
     CodexProjectionApply {
@@ -655,6 +734,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Check the Codex instructions and skills
+    ///
     /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
     CodexDoctor {
         /// Project root (Codex walks from here down to the working directory).
@@ -675,6 +756,8 @@ enum Command {
         #[arg(long)]
         max_bytes: Option<u64>,
     },
+    /// Preview the branch and worktree of a claim
+    ///
     /// Plan the branch and worktree of a claim (06-C #2007). Writes nothing.
     WorktreePlan {
         project: PathBuf,
@@ -683,10 +766,12 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`.
+        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
         #[arg(long)]
         path: Option<PathBuf>,
     },
+    /// Create the previewed worktree of a claim
+    ///
     /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); refuses
     /// without `--force` when the branch, path or task already has a worktree.
     WorktreeApply {
@@ -706,6 +791,8 @@ enum Command {
         #[arg(long, hide = true, default_value_t = moai_cli::worktree::PROJECT_WARN_BYTES)]
         warn_total_bytes: u64,
     },
+    /// Preview removing or trimming merged worktrees
+    ///
     /// Read-only removal plan (WT-4, #2380): per linked worktree `remove`, `trim` (cargo
     /// build output only) or `skip` with reasons, and a digest. Deletes nothing.
     WorktreeGcPlan {
@@ -724,6 +811,8 @@ enum Command {
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
     },
+    /// Remove or trim the previewed worktrees
+    ///
     /// Act on a `worktree-gc-plan` (WT-9, #2498): recomputes the plan with the same inputs,
     /// refuses before any write unless its digest equals `--plan-digest`, then trims the
     /// listed cargo output and removes the listed worktrees (no `--force`; branches kept).
@@ -743,6 +832,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Report the space worktrees use
+    ///
     /// Read-only space report of the repository's worktrees, their build folders and the
     /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
     /// evaluated. Writes nothing.
@@ -755,24 +846,26 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::worktree_report::DEFAULT_BUDGET_MS)]
         budget_ms: u64,
     },
+    /// Show the code map
+    ///
     /// Code Map query (C9 #2185): read-only — the published generation's map records
     /// (file and tag nodes, `annotated_by` edges, missing coverage) of the requested paths
     /// or directory prefixes; `unavailable` when no index records can be read.
-    AtlasMap {
-        project: PathBuf,
-    },
+    AtlasMap { project: PathBuf },
+    /// Walk the code graph from a symbol
+    ///
     /// Code Graph query (C9 #2185): read-only — a bounded-hop walk over the same
     /// generation's map and graph records from the given node ids; `unavailable` when no
     /// index records can be read.
-    AtlasGraph {
-        project: PathBuf,
-    },
+    AtlasGraph { project: PathBuf },
+    /// Search paths, symbols and text
+    ///
     /// Non-vector-first search (C7 #2183): read-only — exact paths first, then literal
     /// matches over the published index generation (or the tracked files), each result with
     /// a source citation; the typed-edge step is reported unavailable (#2408).
-    Search {
-        project: PathBuf,
-    },
+    Search { project: PathBuf },
+    /// Check a claim's write scope against others
+    ///
     /// write_scope overlap of a claim against the other active claims (06-C #2007).
     ScopeCheck {
         project: PathBuf,
@@ -782,6 +875,8 @@ enum Command {
         #[arg(long)]
         integration_order: Option<String>,
     },
+    /// Compare a template and its generated files
+    ///
     /// Semantic parity of TEMPLATE vs GENERATED (optional third DOC set, D6 #2192):
     /// per-key classification with the 00-A vocabulary (missing / extra /
     /// value_mismatch / identical / doc_only). Read-only.
@@ -791,12 +886,14 @@ enum Command {
         #[arg(long)]
         doc: Option<PathBuf>,
     },
+    /// Scan for MOAI and MX tag markers
+    ///
     /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
     /// namespaces normalize into one node shape, duplicates are diagnosed only,
     /// nothing is written. PATH is a file or a directory.
-    AtlasTagScan {
-        path: PathBuf,
-    },
+    AtlasTagScan { path: PathBuf },
+    /// Check a pull request body's Self-Audit section
+    ///
     /// Check a PR body's Self-Audit section (#2708, formerly tools/check_pr_self_audit.py):
     /// the body from --file or stdin; prints one line, `self-audit: pass (…)` (exit 0) or
     /// `self-audit: blocked missing=…` (exit 1); a usage error exits 2. Raw text, not the
@@ -809,6 +906,8 @@ enum Command {
         #[arg(long, value_name = "BODY.md")]
         file: Option<PathBuf>,
     },
+    /// Render the Claude Code status line
+    ///
     /// Render the Claude Code status line from the session JSON on stdin (#2350). The one
     /// operation that prints raw text instead of the JSON envelope: Claude Code shows the
     /// command's stdout as is. Always exits 0.
@@ -830,6 +929,8 @@ enum Command {
         #[arg(long, hide = true, value_name = "DIR")]
         board_root: Option<PathBuf>,
     },
+    /// Record a pull request's acknowledgement
+    ///
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -845,6 +946,8 @@ enum Command {
         #[arg(long = "observed-state")]
         observed_state: String,
     },
+    /// Render the pull request body of a claim
+    ///
     /// Render the PR body of a claim (06-C #2007): Refs, exact SHAs, receipts, op marker.
     PrBodyRender {
         project: PathBuf,
@@ -874,6 +977,8 @@ enum Command {
         #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
         pr_seq: u32,
     },
+    /// Show the installed MoAI binaries
+    ///
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
     InstallInspect {
@@ -881,20 +986,22 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Admit a plan to a run
+    ///
     /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
     /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
-    PlanAdmit {
-        project: PathBuf,
-    },
+    PlanAdmit { project: PathBuf },
+    /// Re-check a run's pinned verification
+    ///
     /// Temporary (05-C #2003; the name is fixed after P06): re-check the pinned contract and
     /// run the approved verification commands in PROJECT as argv; returns a receipt.
-    RunVerify {
-        project: PathBuf,
-    },
+    RunVerify { project: PathBuf },
+    /// Describe a project's HEAD and tracked changes
+    ///
     /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
-    SnapshotDescribe {
-        project: PathBuf,
-    },
+    SnapshotDescribe { project: PathBuf },
+    /// Preview which SPECs can be archived
+    ///
     /// Dry-run (D1 #2187, REQ-D1-01): which SPEC directories under
     /// `.moai-cli/specs/` are archive-eligible and why the rest are excluded.
     /// Writes nothing. `--grace-days` overrides the profile's inactivity window.
@@ -903,6 +1010,8 @@ enum Command {
         #[arg(long)]
         grace_days: Option<u64>,
     },
+    /// Archive the previewed SPECs
+    ///
     /// Move the archive-eligible SPECs (D2 #2188, REQ-D2-01): recomputes the plan and
     /// requires its `plan_digest`; each SPEC is hashed, copied, read back and indexed
     /// before its source is removed. Any mismatch cancels the move and keeps the source.
@@ -915,6 +1024,8 @@ enum Command {
         #[arg(long)]
         grace_days: Option<u64>,
     },
+    /// Restore one archived SPEC
+    ///
     /// Restore one archived SPEC to `.moai-cli/specs/<id>` after verifying its manifest
     /// (D2 #2188).
     ArchiveRestore {
@@ -924,48 +1035,54 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Search the archived SPECs
+    ///
     /// Read-only, non-vector search over the archive index and archived text (D2 #2188).
     ArchiveSearch {
         project: PathBuf,
         #[arg(long)]
         query: String,
     },
+    /// Preview project copies of the moai skill
+    ///
     /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
     /// typed request on stdin; judgment envelope on stdout; writes nothing.
-    ProjectSkillPlan {
-        project: PathBuf,
-    },
+    ProjectSkillPlan { project: PathBuf },
+    /// Copy the moai skill into the project
+    ///
     /// Copy the staged `moai` skill package into the project host folders
     /// (I5 #2242): the exact request on stdin; requires `opt_in` and writes
     /// only under the caller-supplied project root.
-    ProjectSkillApply {
-        project: PathBuf,
-    },
+    ProjectSkillApply { project: PathBuf },
+    /// Undo one project skill copy
+    ///
     /// Revert one applied project-skill copy from its rollback receipt
     /// (I5 #2242): typed request on stdin.
-    ProjectSkillRevert {
-        project: PathBuf,
-    },
+    ProjectSkillRevert { project: PathBuf },
+    /// Sum the cost items of run receipts
+    ///
     /// Aggregate cost items across run/verify receipts (D5 #2191): typed request
     /// (receipt array) on stdin; breakdown envelope on stdout; writes nothing.
     /// External backend calls are structurally zero; tokens are absent, never
     /// estimated (REQ-D5-01).
     CostReport {},
+    /// Preview the project's generated agent and skill files
+    ///
     /// Plan project-specific generated files read-only (03-C #1997): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
-    GenerationPlan {
-        project: PathBuf,
-    },
+    GenerationPlan { project: PathBuf },
+    /// Preview the project's GitHub templates
+    ///
     /// Plan the GitHub templates of a project (08-B #2013): typed request on stdin
     /// (`github_issues` opts in); read-only.
-    GithubPlan {
-        project: PathBuf,
-    },
+    GithubPlan { project: PathBuf },
+    /// Preview syncing the project's GitHub labels
+    ///
     /// Plan a project's label sync from `.github/moai/labels.yml` (#2434 decision 40): typed
     /// request `{schema_version, owner, repo}` on stdin; GET only, never deletes.
-    LabelsPlan {
-        project: PathBuf,
-    },
+    LabelsPlan { project: PathBuf },
+    /// Sync previewed GitHub labels
+    ///
     /// Apply an approved label sync plan (#2434 decision 40): the exact plan on stdin,
     /// `--plan-digest` and `--permission-reference`; POST/PATCH only.
     LabelsApply {
@@ -975,6 +1092,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Write previewed GitHub templates
+    ///
     /// Apply an approved GitHub template plan (08-B #2013): the exact plan on stdin,
     /// `--plan-digest` and `--permission-reference`.
     GithubApply {
@@ -984,6 +1103,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Write previewed generated agent and skill files
+    ///
     /// Apply an approved generation plan (03-C #1997): the exact plan on stdin,
     /// `--plan-digest` and `--permission-reference`.
     GenerationApply {
@@ -993,14 +1114,16 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Bundle file ranges with digests
+    ///
     /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
-    ContextBundle {
-        project: PathBuf,
-    },
+    ContextBundle { project: PathBuf },
+    /// Re-check a bundle's ranges against the files
+    ///
     /// Read-only: re-check a bundle's ranges against the files now (typed request on stdin).
-    ContextVerify {
-        project: PathBuf,
-    },
+    ContextVerify { project: PathBuf },
+    /// Append one decision record to a run
+    ///
     /// Append one native decision record (stdin) to `.moai-cli/decisions/<RUN>.jsonl`.
     DecisionRecord {
         project: PathBuf,
@@ -1009,6 +1132,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview an independent audit clone
+    ///
     /// Read-only plan of an independent audit clone (WT-3, #2380): the single-branch,
     /// no-checkout clone commands for an exact PR head and where the evidence is kept. Runs
     /// nothing, no network.
@@ -1030,6 +1155,8 @@ enum Command {
         #[arg(long)]
         tmp_root: Option<PathBuf>,
     },
+    /// Compare a two-parent merge with a replay
+    ///
     /// Compare one local two-parent merge with a controlled replay; evidence only, not AUDIT PASS.
     AuditDelta {
         #[arg(default_value = ".")]
@@ -1044,6 +1171,8 @@ enum Command {
         #[arg(long)]
         head: String,
     },
+    /// Add rows to the user decision log
+    ///
     /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
     /// The log must equal HEAD in the worktree and index, and HEAD the given base; existing
     /// rows are never edited or removed. Preview by default; `--apply` writes. Rows go to the
@@ -1059,17 +1188,21 @@ enum Command {
         #[arg(long)]
         permission_reference: Option<String>,
     },
+    /// Reserve the audit of one pull request head
+    ///
     /// Reserve the independent audit of one exact PR head (rc.2 #2403 item 1): typed JSON
     /// `{schema_version, owner, repo, pr, head, lane}` on stdin. Reads the PR, its commits and
     /// comments (GET); refuses a stale head or an author lane; posts at most one
     /// `moai-audit-claim` comment, then re-reads. The lowest reservation id on the head wins
     /// (user decision #2403 c6784520362). Start the audit only when `outcome` is `reserved`.
     AuditClaim,
+    /// Run an independent audit of a candidate
+    ///
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
-    AuditReduce {
-        project: PathBuf,
-    },
+    AuditReduce { project: PathBuf },
+    /// Update MoAI from the installed package
+    ///
     /// Update the skill from the package installed with this binary (#2522): previews like
     /// update-plan and writes nothing unless confirmed — in a terminal it asks once; elsewhere
     /// pass the preview's digest with --confirm. HOME comes from the environment.
@@ -1078,6 +1211,8 @@ enum Command {
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
     },
+    /// Build the review package for an audit
+    ///
     /// The deterministic review package for an AUDIT (#2614): the diff from the merge base to
     /// HEAD, the changed files, and the review instructions (`REVIEW.md` and its includes) and
     /// context (`AGENTS.md`, `CLAUDE.md`) read from BASE only. Reads git; writes nothing.
@@ -1091,6 +1226,8 @@ enum Command {
         #[arg(long)]
         head: String,
     },
+    /// Check review findings before they are posted
+    ///
     /// Format check of review findings before they are posted (#2614 AC-3): stdin
     /// `{"schema_version":1,"findings":[…]}`; each finding needs a severity, a `file:line` in
     /// HEAD, a title, evidence quoted from that line, and a confirmed verification. Prints the
@@ -1102,12 +1239,16 @@ enum Command {
         #[arg(long)]
         head: String,
     },
+    /// Preview moving the Go-era .moai folder
+    ///
     /// Read-only preview of the Go-generation state in PROJECT (#2561): which files the Go
     /// manifest proves tool-made and unchanged, and why every other one stays. Writes nothing.
     GoStatePlan {
         /// Project root carrying the Go `.moai/manifest.json`.
         project: PathBuf,
     },
+    /// Move a previewed Go-era .moai folder
+    ///
     /// Carry out a confirmed go-state preview (#2561, #2696): the Go `.moai/` becomes
     /// `.moai-backup` (or `.moai-backup-<UTC>`), a new `.moai/` takes the earlier `.moai-cli`
     /// product state and the marker last; a Go folder that stays keeps the #2561 stage-2 file
@@ -1119,6 +1260,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview undoing a Go-era folder move
+    ///
     /// Read-only: what reverting one go-state apply would do (#2561 stage 2).
     GoStateRevertPlan {
         project: PathBuf,
@@ -1126,6 +1269,8 @@ enum Command {
         #[arg(long)]
         backup: String,
     },
+    /// Undo a Go-era folder move
+    ///
     /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
     /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. All or nothing: anything that
     /// came back at an original path, or a changed backup, refuses the revert.
@@ -1138,6 +1283,8 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview an update of every host copy
+    ///
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
     UpdatePlan {
@@ -1146,6 +1293,8 @@ enum Command {
         /// Package directory carrying SKILL.md (staged new state).
         stage: PathBuf,
     },
+    /// Apply a previewed update host by host
+    ///
     /// Apply a previewed UPDATE host by host (04-B #1999; pending→committed receipts).
     /// The previewed plan travels on stdin and must match a fresh recompute.
     UpdateApply {
@@ -1160,11 +1309,15 @@ enum Command {
         #[arg(long, value_name = "TOKEN")]
         confirm_backup_replace: Vec<String>,
     },
+    /// Preview recovering hosts an update left pending
+    ///
     /// Read-only recovery plan for UPDATE hosts left `pending` (04-C #2000; names P06 HOLD).
     RecoveryPlan {
         /// User home root whose `.moai-cli` host receipts and projections are read.
         home: PathBuf,
     },
+    /// Revert one update's changes on pending hosts
+    ///
     /// Revert only this request's changes on pending hosts (04-C #2000). The previewed
     /// plan travels on stdin and must match a fresh recompute.
     RecoveryApply {
@@ -1174,12 +1327,20 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Start a Claude Code session
+    ///
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
+    /// Start a Claude Code session on z.ai GLM
+    ///
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
     Glm(HostLaunch),
+    /// Start a Codex CLI session
+    ///
     /// Codex CLI session launcher: `codex -l|-a`.
     Codex(HostLaunch),
+    /// Start a Claude Code session (legacy form)
+    ///
     /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex`.
     Session {
         /// leader | agent
@@ -1575,9 +1736,29 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
 /// Internal operations; `main` wraps the result in the envelope.
 /// Journal-writing operations and message operations return typed errors directly;
 /// the remaining operations keep the classified `String` fallback.
+/// Commands that may run longer than two seconds and print static progress lines on a stderr
+/// terminal (#2806, design #2799 D2 §5). The `wait`, `gate-loop`, `gate-check` and
+/// `labels-check` operations install the same sink in their own files.
+fn shows_progress(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::IndexBuild { .. }
+            | Command::LabelsPlan { .. }
+            | Command::QueueFree { .. }
+            | Command::LeaderTick { .. }
+            | Command::LaneStatus { .. }
+            | Command::ForgeRead { .. }
+            | Command::FlowWipCheck { .. }
+            | Command::DispatchCheck
+    )
+}
+
 fn run_internal(
     command: Command,
 ) -> std::result::Result<serde_json::Value, moai_cli::contract::OpError> {
+    if shows_progress(&command) {
+        moai_cli::progress::install_stderr();
+    }
     match command {
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
@@ -1746,6 +1927,7 @@ fn run_internal(
             source.task.is_some(),
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
             &plan_digest,
             moai_cli::worktree::Capacity {
                 floor_bytes: disk_floor_bytes,
@@ -2000,7 +2182,30 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             shared,
         } => {
             let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::remove(&moai_cli::key_vault::home()?, &scope, &provider, yes)
+            let home = moai_cli::key_vault::home()?;
+            if yes {
+                return moai_cli::key_vault::remove(&home, &scope, &provider, true);
+            }
+            // Without `--yes`: the preview removes nothing. On a terminal (stdin and stderr)
+            // with an entry to delete, ask once (#2806, design #2799 D2 §7); elsewhere the
+            // preview with its `next:` hint is the answer, byte for byte as before.
+            let preview = moai_cli::key_vault::remove(&home, &scope, &provider, false)?;
+            use std::io::IsTerminal as _;
+            let terminal = io::stdin().is_terminal() && io::stderr().is_terminal();
+            if !(terminal && preview["exists"] == serde_json::json!(true)) {
+                return Ok(preview);
+            }
+            let what = format!(
+                "key-remove deletes 1 file\n  {provider} key, {} scope: {}\n",
+                preview["scope"].as_str().unwrap_or("?"),
+                preview["path"].as_str().unwrap_or("?")
+            );
+            if moai_cli::progress::ask_terminal(&what, "Remove it?")? {
+                moai_cli::key_vault::remove(&home, &scope, &provider, true)
+            } else {
+                eprintln!("next: run with --yes to remove it without asking");
+                Ok(preview)
+            }
         }
         Command::KeySet { provider, shared } => {
             use std::io::IsTerminal;
@@ -2322,6 +2527,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
         ),
         Command::WorktreeGcPlan {
             project,
@@ -2424,24 +2630,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
+            // The shared confirm prompt (#2806): same terminal rule and question as before.
             moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                use std::io::{BufRead as _, IsTerminal as _, Write as _};
-                if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
-                    return Ok(false);
-                }
-                let mut err = io::stderr();
-                let _ = write!(
-                    err,
-                    "moai-cli update preview:\n{}Apply this update? [y/N] ",
-                    summary
-                );
-                let _ = err.flush();
-                let mut answer = String::new();
-                io::stdin()
-                    .lock()
-                    .read_line(&mut answer)
-                    .map_err(|_| "could not read the answer".to_string())?;
-                Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "YES" | "Yes"))
+                moai_cli::progress::ask_terminal(
+                    &format!("moai-cli update preview:\n{summary}"),
+                    "Apply this update?",
+                )
             })
         }
         Command::ReviewCheck { project, head } => {
@@ -2879,7 +3073,18 @@ pub(crate) fn main() -> ExitCode {
         return go_hook_main(&argv);
     }
     let hook_mode = hook_mode_argv(&argv);
-    let cli = match Cli::try_parse() {
+    let bin = moai_cli::help::bin_name(argv.first().map(String::as_str).unwrap_or(""));
+    // `help --all` (#2802 S1): every command in its group. clap's `help` takes command names
+    // only, so this form is answered before parsing.
+    if argv.len() == 3 && argv[1] == "help" && argv[2] == "--all" {
+        let mut cmd = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, true);
+        print!("{}", cmd.render_help());
+        return ExitCode::SUCCESS;
+    }
+    let parsed = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, false)
+        .try_get_matches_from(&argv)
+        .and_then(|m| Cli::from_arg_matches(&m));
+    let cli = match parsed {
         Ok(cli) => cli,
         Err(e) if hook_mode => {
             if matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
@@ -3365,5 +3570,182 @@ mod operations_doc {
         assert!(
             err(&code, &render(&sorted).replacen(HEADING, "## Other", 1)).contains("not found")
         );
+    }
+}
+
+#[cfg(test)]
+mod help_rules {
+    //! #2802 S1 (design #2799 D2 sections 9 and 11): the people-facing help layout and its
+    //! static rules. Each rule still in progress has a `*_DONE` list that must equal the set of commands
+    //! meeting it exactly, so every later S1 pull request moves names in and none can slip back;
+    //! a rule every command meets is checked for all (the one-line about since S1b).
+    use super::Cli;
+    use clap::CommandFactory;
+    use std::collections::BTreeSet;
+
+    /// Commands whose every shown argument and option has a description (#2799 A 6865611250:
+    /// 48 at the S1a base, plus `bin-names-*` from #2800).
+    const ARGS_DONE: &[&str] = &[
+        "agents-home-apply",
+        "agents-home-plan",
+        "agents-home-revert",
+        "audit-claim",
+        "bin-names-apply",
+        "bin-names-plan",
+        "cc",
+        "codex",
+        "codex-doctor",
+        "cost-report",
+        "dispatch-check",
+        "flake-classify",
+        "flake-record",
+        "flow-wip-check",
+        "gate-check",
+        "gate-loop",
+        "gate-merge",
+        "glm",
+        "go-state-plan",
+        "goal-apply",
+        "goal-block",
+        "goal-plan",
+        "goal-show",
+        "heavy-slot-acquire",
+        "home-routing-apply",
+        "home-routing-plan",
+        "home-routing-revert",
+        "home-state-apply",
+        "home-state-plan",
+        "home-state-revert",
+        "hook-dispatch",
+        "install-inspect",
+        "labels-check",
+        "lane-safe-to-reset",
+        "migrate-plan",
+        "optimize-plan",
+        "pr-self-audit-check",
+        "recovery-plan",
+        "repo-scans",
+        "review-check",
+        "review-package",
+        "session-register",
+        "skills-legacy",
+        "statusline",
+        "update",
+        "update-plan",
+        "usage-limit",
+        "wait",
+        "worktree-move-apply",
+        "worktree-move-plan",
+    ];
+
+    /// Commands whose `--help` carries an `Examples:` section (none yet at S1a).
+    const EXAMPLES_DONE: &[&str] = &[];
+
+    fn words() -> Vec<String> {
+        Cli::command()
+            .get_subcommands()
+            .map(|s| s.get_name().to_string())
+            .filter(|w| w != "help")
+            .collect()
+    }
+
+    /// D2 section 9: an upper-case verb phrase, no closing period, at most 60 characters, no
+    /// Issue number and no backtick.
+    fn about_ok(about: &str) -> bool {
+        about.chars().count() <= 60
+            && about.chars().next().is_some_and(char::is_uppercase)
+            && !about.ends_with('.')
+            && !about.contains('#')
+            && !about.contains('`')
+    }
+
+    fn meeting(rule: impl Fn(&clap::Command) -> bool) -> BTreeSet<String> {
+        let cli = Cli::command();
+        cli.get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .filter(|s| rule(s))
+            .map(|s| s.get_name().to_string())
+            .collect()
+    }
+
+    fn set(list: &[&str]) -> BTreeSet<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn help_table_names_every_command_once() {
+        let mut listed = Vec::new();
+        for g in moai_cli::help::GROUPS {
+            listed.extend(g.commands.iter().map(|(w, _)| w.to_string()));
+        }
+        let unique: BTreeSet<_> = listed.iter().cloned().collect();
+        assert_eq!(unique.len(), listed.len(), "a command is listed twice");
+        let all: BTreeSet<_> = words().into_iter().collect();
+        assert_eq!(unique, all, "the help table and the command list differ");
+    }
+
+    /// Every command's one-line about follows the rule (#2802 S1b; S1a listed the root 30).
+    #[test]
+    fn every_one_line_about_follows_the_rule() {
+        let ok = meeting(|s| about_ok(&s.get_about().map(|a| a.to_string()).unwrap_or_default()));
+        let all: BTreeSet<String> = words().into_iter().collect();
+        let off: Vec<_> = all.difference(&ok).collect();
+        assert!(off.is_empty(), "abouts off the rule: {off:?}");
+    }
+
+    #[test]
+    fn argument_descriptions_are_complete_exactly_where_listed() {
+        let ok = meeting(|s| {
+            s.get_arguments()
+                .filter(|a| !a.is_hide_set())
+                .filter(|a| !matches!(a.get_id().as_str(), "help" | "version"))
+                .all(|a| a.get_help().is_some() || a.get_long_help().is_some())
+        });
+        assert_eq!(
+            ok,
+            set(ARGS_DONE),
+            "ARGS_DONE must list exactly the fully described commands"
+        );
+    }
+
+    #[test]
+    fn examples_are_present_exactly_where_listed() {
+        let ok = meeting(|s| {
+            [s.get_after_help(), s.get_after_long_help()]
+                .into_iter()
+                .flatten()
+                .any(|t| t.to_string().contains("Examples:"))
+        });
+        assert_eq!(
+            ok,
+            set(EXAMPLES_DONE),
+            "EXAMPLES_DONE must list exactly the commands with examples"
+        );
+    }
+
+    /// The grouped list goes into clap's help template, where `{name}` is a tag; no about may
+    /// carry one of clap's tags (an unknown `{…}` is printed as it is).
+    #[test]
+    fn help_text_has_no_template_braces() {
+        const TAGS: [&str; 12] = [
+            "{name}",
+            "{bin}",
+            "{version}",
+            "{author}",
+            "{about}",
+            "{usage}",
+            "{usage-heading}",
+            "{all-args}",
+            "{options}",
+            "{positionals}",
+            "{subcommands}",
+            "{after-help}",
+        ];
+        for s in Cli::command().get_subcommands() {
+            let about = s.get_about().map(|a| a.to_string()).unwrap_or_default();
+            for tag in TAGS {
+                assert!(!about.contains(tag), "{}: {tag}", s.get_name());
+            }
+        }
     }
 }

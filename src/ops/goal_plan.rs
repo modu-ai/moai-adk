@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Preview a change of the standing goal
+///
 /// Preview a change of the standing goal (#2679): `change` is `create`, `update`, `clear`,
 /// `unchanged` or `none`, with the changed fields and the `plan_digest` that `goal-apply`
 /// needs. `asks_person` is true only when something would change. Writes nothing.

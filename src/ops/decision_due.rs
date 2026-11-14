@@ -3,6 +3,8 @@
 use moai_cli::decision_file::{self, Due};
 use std::path::PathBuf;
 
+/// Sort the unanswered decisions of a bundle
+///
 /// Sort the unanswered decisions of one bundle at `--now` (default: the clock): still open,
 /// default applies (reversible, category `none`, the user's, past its deadline), or on hold
 /// (one-way, `guarded` or a HOLD category, past its deadline). Reads only; applies nothing.

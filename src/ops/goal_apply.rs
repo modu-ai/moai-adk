@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Write a previewed change of the standing goal
+///
 /// Write a previewed change of the standing goal (#2679), only with the `plan_digest` of a
 /// fresh `goal-plan` for the same request and the same file. An `unchanged` or `none` plan
 /// writes nothing.
