@@ -180,6 +180,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "labels-apply",
             "labels-plan",
             "pr-confirm",
+            // #2840 D3: the PR body is checked locally before the push and before opening.
+            "pr-self-audit-check --file",
             "queue-free",
             "queue-next",
             "repo-scans --refs",
