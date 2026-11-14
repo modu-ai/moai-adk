@@ -282,8 +282,9 @@ pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     Ok(out)
 }
 
-/// The opt-in lane `Stop` hook of a Codex project (#2904 stage 2, #2899 D-O2): a second `Stop`
-/// matcher group after the receipt group that runs `lane-stop-hook --lane L --repo O/R`.
+/// The opt-in lane `Stop` hook of a Codex project (#2904 stage 2, #2899 D-O2): the only `Stop`
+/// matcher group (the default set has none since #2936 R9 S1) that runs
+/// `lane-stop-hook --lane L --repo O/R`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LaneLoop {
     /// What the Codex ownership receipt records under `lane_loop`; none recorded → the base
