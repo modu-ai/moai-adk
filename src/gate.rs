@@ -318,8 +318,31 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
             .iter()
             .any(|(lane, id)| *id == c.0 && *lane == c.1)
     });
+    // #2860 scope add 6872037464 (shell owner_ok.py, #2831): a comment whose first line is
+    // `moai-audit-withdraw: lane=<lane>` or `moai-audit-claim-withdraw: lane=<lane>` gives the
+    // PR up for that lane — its claims posted before that comment no longer count.
+    for c in comments {
+        let Some(lane) = lane_withdrawal(&c.body) else {
+            continue;
+        };
+        out.retain(|cl| !(cl.1 == lane && cl.0 < c.id));
+    }
     out.sort();
     out
+}
+
+/// The lane a whole-lane withdrawal names, from a comment's first line
+/// `moai-audit-withdraw: lane=<lane>` or `moai-audit-claim-withdraw: lane=<lane>`.
+pub fn lane_withdrawal(body: &str) -> Option<String> {
+    let first = body.lines().next()?;
+    let rest = first
+        .strip_prefix("moai-audit-withdraw: lane=")
+        .or_else(|| first.strip_prefix("moai-audit-claim-withdraw: lane="))?;
+    let lane: String = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '-')
+        .collect();
+    (!lane.is_empty()).then_some(lane)
 }
 
 /// The mechanical delta the gate accepts (#2833 D1): the last verdict is a PASS on `from`, the

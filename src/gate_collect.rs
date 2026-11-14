@@ -910,7 +910,10 @@ mod tests {
     use std::process::Command;
 
     fn git_in(dir: &Path, args: &[&str]) -> String {
-        let out = Command::new("git")
+        // Every git subprocess in src/ is scrubbed (#2337; tests/git_env_scrub.rs).
+        let mut cmd = Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
             .args([
                 "-c",
                 "user.name=t",

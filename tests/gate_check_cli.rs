@@ -702,3 +702,44 @@ fn g1_a_short_base_counts_only_when_resolved_to_one_commit() {
     s["comments"] = json!([claim(100, "agent-10", H), line(B, &H[..12])]);
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
 }
+
+/// #2860 scope add 6872037464 (shell owner_ok.py, #2831): a first-line withdrawal gives the PR
+/// up for that lane; its claims before the withdrawal no longer count, so another lane's
+/// claim on the current head and its PASS pass G2. A withdrawal of another lane, one not on the
+/// first line, or one posted before the claim changes nothing.
+#[test]
+fn g2_a_withdrawn_lane_no_longer_holds_the_audit() {
+    let mut s = passing();
+    for line in [
+        "moai-audit-withdraw: lane=agent-10",
+        "moai-audit-claim-withdraw: lane=agent-10",
+    ] {
+        // agent-27's claim names an older head, so only the withdrawal makes it the lowest
+        // claim (without it agent-10 holds the audit; mutant W1).
+        s["comments"] = json!([
+            claim(100, "agent-10", OTHER),
+            note(150, &format!("{line}\n\nhanding the re-audit over")),
+            claim(160, "agent-27", OTHER),
+            verdict(200, "agent-27", H, "PASS")
+        ]);
+        assert_eq!(
+            stopped(&gate(&s)),
+            (true, "".into()),
+            "{line}: {}",
+            gate(&s)
+        );
+    }
+    for (id, body) in [
+        (150, "moai-audit-withdraw: lane=agent-9"),
+        (150, "note\nmoai-audit-withdraw: lane=agent-10"),
+        (90, "moai-audit-withdraw: lane=agent-10"),
+    ] {
+        s["comments"] = json!([
+            claim(100, "agent-10", OTHER),
+            note(id, body),
+            claim(160, "agent-27", OTHER),
+            verdict(200, "agent-27", H, "PASS")
+        ]);
+        assert_eq!(stopped(&gate(&s)), (false, "G2".into()), "{body}");
+    }
+}
