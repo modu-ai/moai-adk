@@ -76,6 +76,7 @@ Keys
   key-remove              Remove a provider key from the vault
   key-import-plan         Preview importing an old key file
   key-import-apply        Import a previewed old key file
+  keys-revert             Undo the keys one update imported
 Diagnose
   claude-doctor           Check that Claude Code reads AGENTS.md
   codex-doctor            Check the Codex instructions and skills

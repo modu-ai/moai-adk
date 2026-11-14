@@ -120,6 +120,7 @@ Keys
                           vault
   key-import-plan         Preview importing an old key file
   key-import-apply        Import a previewed old key file
+  keys-revert             Undo the keys one update imported
 Diagnose
   claude-doctor           Check that Claude Code reads
                           AGENTS.md

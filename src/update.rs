@@ -1387,9 +1387,11 @@ pub struct UserLayerPlan {
     pub bin_names: crate::bin_names::Plan,
     /// The MoAI hook set installed in the project the command runs from (#2853).
     pub hooks: crate::update_hooks::Layer,
+    /// #2871 I2 S3: legacy `.env.<provider>` key files under HOME and the vault import of `glm`.
+    pub keys: crate::update_keys::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the six plan digests; the only value `--confirm` accepts.
+    /// One digest over the seven plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
     /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
     /// package, only when it archives something. Not part of `plan_digest`: only
@@ -1450,6 +1452,7 @@ fn user_layer_plan(
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     let hooks = crate::update_hooks::plan(home, &cwd)?;
+    let keys = crate::update_keys::plan(home)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1464,7 +1467,8 @@ fn user_layer_plan(
             routing.plan_digest,
             bin_names.plan_digest,
             hooks.plan_digest,
-            style.plan_digest
+            style.plan_digest,
+            keys.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
     );
@@ -1479,6 +1483,7 @@ fn user_layer_plan(
         style,
         bin_names,
         hooks,
+        keys,
         skipped,
         plan_digest,
         cleanup,
@@ -1660,6 +1665,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
     out.push_str(&p.hooks.summary());
+    out.push_str(&p.keys.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1719,7 +1725,8 @@ pub fn update_command(
         || routing_writes_anything(&layer.routing)
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
-        || layer.hooks.writes();
+        || layer.hooks.writes()
+        || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
     // The preview value: what a pipe gets as the envelope result and what the terminal question
     // shows (#2894).
@@ -1739,6 +1746,10 @@ pub fn update_command(
             "skipped": layer.skipped,
             "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
         });
+        // #2871 I2 S3: only a HOME with legacy key files has a `keys` part.
+        if !layer.keys.rows.is_empty() {
+            out["keys"] = layer.keys.to_json();
+        }
         if let Some(c) = &layer.cleanup {
             out["cleanup"] = c.clone();
         }
@@ -1845,8 +1856,11 @@ pub fn update_command(
         &digest,
         PERMISSION,
     ));
+    // #2871 I2 S3: the vault import of a legacy key file; its plan was confirmed.
+    let keys = part(crate::update_keys::apply(home, &fresh.keys, PERMISSION));
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
-    let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
+    let applied = keys["state"] == json!("applied")
+        || matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
@@ -1881,6 +1895,10 @@ pub fn update_command(
             "skills": "recovery-plan / recovery-apply for a host left pending",
         },
     });
+    if !fresh.keys.rows.is_empty() {
+        out["revert"]["keys"] = json!(revert("keys-revert", &keys));
+        out["keys_result"] = keys;
+    }
     if let Some(c) = cleanup {
         out["revert"]["cleanup"] = json!(cleanup_revert(&c));
         out["cleanup_result"] = c;
