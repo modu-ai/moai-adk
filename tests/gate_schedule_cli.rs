@@ -475,7 +475,7 @@ fn run_lines(home: &Path, bin: &Path, lines: &Value) {
         let line = line.as_str().unwrap();
         let out = Command::new("sh")
             .args(["-c", line])
-            .env_clear()
+            .clean_env()
             .env("HOME", home)
             .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
             .current_dir(home)
