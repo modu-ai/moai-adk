@@ -164,3 +164,42 @@ fn plain_init_initializes_the_current_folder_and_refuses_home() {
     assert!(v.to_string().contains("your HOME folder"), "{v}");
     assert!(!home.join(".git").exists());
 }
+
+/// #2846 audit B1: when initialization fails after the folder was made (no git on PATH), the
+/// empty folder this run made is removed, so the retry the error message asks for works.
+#[test]
+fn a_failed_init_leaves_no_folder_and_the_retry_works() {
+    let (_d, home) = temp_home();
+    let out = Command::new(crate::common::MOAI_BIN)
+        .args(["init", "--new", "demo"])
+        .current_dir(&home)
+        .env("HOME", &home)
+        .env("USERPROFILE", &home)
+        .env("PATH", "/nonexistent")
+        .output()
+        .unwrap();
+    let v = envelope(&out);
+    assert_eq!(v["ok"], false, "{v}");
+    assert!(!home.join(".moai/projects/demo").exists(), "{v}");
+    let v = envelope(&run(&home, &home, &["init", "--new", "demo"]));
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["result"]["created"], true, "{v}");
+}
+
+/// #2846 audit N2: Windows device names and over-long names are refused by the name check,
+/// before `projects/` is created.
+#[test]
+fn device_and_overlong_names_are_refused() {
+    let (_d, home) = temp_home();
+    let long = "a".repeat(101);
+    for bad in ["CON", "nul", "Com1", "LPT9", "aux.txt", long.as_str()] {
+        let arg = format!("--new={bad}");
+        let v = envelope(&run(&home, &home, &["init", &arg]));
+        assert_eq!(v["ok"], false, "{bad}: {v}");
+        assert!(v.to_string().contains("invalid project name"), "{bad}: {v}");
+    }
+    assert!(!home.join(".moai").exists());
+    let ok = "a".repeat(100);
+    let v = envelope(&run(&home, &home, &["init", "--new", &ok, "--dry-run"]));
+    assert_eq!(v["ok"], true, "100 characters is allowed: {v}");
+}

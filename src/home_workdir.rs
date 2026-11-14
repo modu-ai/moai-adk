@@ -135,13 +135,30 @@ pub fn worktree_dir(home: &Path, project_root: &Path, id: &str) -> Result<PathBu
     Ok(worktrees_root(home).join(worktree_name(project_root, id)?))
 }
 
+/// The longest project name `init --new` takes (#2846 audit N2).
+pub const PROJECT_NAME_MAX: usize = 100;
+
+/// A Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`), with or
+/// without an extension, in any case: Windows cannot make such a folder, so every OS refuses it.
+fn windows_device(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or("").to_ascii_uppercase();
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.len() == 4
+            && stem.as_bytes()[3].is_ascii_digit()
+            && stem.as_bytes()[3] != b'0')
+}
+
 /// `<HOME>/.moai/projects/<name>` for `init --new` (#2835 D1). The name must already be a safe
 /// component (`[A-Za-z0-9._-]`, not led or ended by `-` or `.`); anything else is refused,
 /// never rewritten, so the folder is exactly the name the user typed.
 pub fn project_dir(home: &Path, name: &str) -> Result<PathBuf> {
-    if safe_name(name).as_deref() != Some(name) {
+    if safe_name(name).as_deref() != Some(name)
+        || name.chars().count() > PROJECT_NAME_MAX
+        || windows_device(name)
+    {
         return Err(format!(
-            "invalid project name {name:?}: use letters, digits, `.`, `_` and `-`, not starting or ending with `-` or `.`"
+            "invalid project name {name:?}: use up to {PROJECT_NAME_MAX} letters, digits, `.`, `_` and `-`, not starting or ending with `-` or `.`, and not a Windows device name"
         ));
     }
     Ok(projects_root(home).join(name))

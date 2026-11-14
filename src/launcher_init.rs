@@ -210,6 +210,11 @@ pub fn init_new(home: &Path, name: &str, host: &str, dry_run: bool) -> Result<Va
             dir.display()
         ));
     }
+    // Git is checked before the folder exists, so a missing git leaves nothing behind
+    // (#2846 audit B1).
+    if identity(home).is_ok_and(|id| id["identity_status"] == "git_unavailable") {
+        return Err(install_guidance());
+    }
     if dry_run {
         let p = Prepared {
             note: Some(format!(
@@ -231,8 +236,18 @@ pub fn init_new(home: &Path, name: &str, host: &str, dry_run: bool) -> Result<Va
         ),
         _ => format!("cannot create {}: {e}", dir.display()),
     })?;
-    let p = prepare(&dir, host, false)?;
-    Ok(init_answer(&dir, true, p, false))
+    match prepare(&dir, host, false) {
+        Ok(p) => Ok(init_answer(&dir, true, p, false)),
+        Err(e) => {
+            // Only the folder this run made, and only while it is still empty: anything
+            // written into it (a partial `git init`) is kept for the user to look at.
+            let empty = fs::read_dir(&dir).is_ok_and(|mut rd| rd.next().is_none());
+            if empty {
+                let _ = fs::remove_dir(&dir);
+            }
+            Err(e)
+        }
+    }
 }
 
 /// `Some(description)` when `dir` (canonical) is a file-system root or `home` (HOME, already

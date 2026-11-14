@@ -572,3 +572,29 @@ fn new_old_root_and_go_place_worktrees_are_kept() {
     }
     assert_eq!(v["result"]["totals"]["move"], json!(0), "{v}");
 }
+
+/// #2846 audit N3: two worktrees whose folder names match (one under `.claude/worktrees/`,
+/// one under `.moai-cli/worktrees/`) map to one destination; the plan blocks both up front.
+#[test]
+fn same_named_worktrees_in_two_places_block_each_other_in_the_plan() {
+    let fx = fixture(&["x"]);
+    pushed(&fx.wt("x"), "issue/1-x");
+    let other = fx.repo.join(".claude/worktrees/x");
+    git(
+        &fx.repo,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/2-x",
+            other.to_str().unwrap(),
+        ],
+    );
+    pushed(&other, "issue/2-x");
+    let obs = fx.obs(json!({"source": "fixture", "branches": []}));
+    let p = plan(&fx, Some(&obs));
+    assert_eq!(reasons(&p, &fx.wt("x")), ["destination_collision"], "{p}");
+    assert_eq!(reasons(&p, &other), ["destination_collision"], "{p}");
+    assert_eq!(p["totals"]["move"], json!(0));
+}
