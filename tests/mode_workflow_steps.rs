@@ -179,6 +179,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "heavy-slot-acquire",
             "labels-apply",
             "labels-plan",
+            // #2879: the lane's one build folder and the card cleanup.
+            "lane-env",
             "lane-next",
             "lane-next --lane",
             "lane-next --wait",
@@ -190,7 +192,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "repo-scans --refs",
             "scope-check",
             "session-register",
-            "usage-limit"
+            "usage-limit",
+            "worktree-gc-apply",
+            "worktree-gc-plan --integration-ref"
         ],
         "the op list the workflows name"
     );

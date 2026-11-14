@@ -296,3 +296,40 @@ fn apply_removes_only_the_safe_worktree() {
         "shared report\n"
     );
 }
+
+/// #2879 D1: `--worktree <path>` limits the plan (and so the apply) to the lane's own card
+/// worktrees; other lanes' merged worktrees are not even listed.
+#[test]
+fn worktree_option_limits_the_plan_to_the_named_worktrees() {
+    let fx = fixture(&["mine", "other"]);
+    let mine = fx.wt("mine");
+    let r = plan(&fx, &["--worktree", mine.to_str().unwrap()]);
+    let paths: Vec<&str> = r["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, [".moai-cli/worktrees/mine"], "{r}");
+    assert_eq!(r["totals"]["remove"], 1, "{r}");
+    // A path that is no worktree of this clone is refused, not silently ignored.
+    let out = Command::new(BIN)
+        .args(["worktree-gc-plan"])
+        .arg(&fx.root)
+        .args([
+            "--integration-ref",
+            "integ",
+            "--worktree",
+            "/nonexistent-wt",
+        ])
+        .current_dir(&fx.root)
+        .env("HOME", &fx.home)
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], false, "{v}");
+    assert!(
+        v.to_string().contains("not a worktree of this clone"),
+        "{v}"
+    );
+}

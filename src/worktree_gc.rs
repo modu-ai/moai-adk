@@ -516,6 +516,9 @@ pub(crate) fn ignored_split(
 pub struct Pace {
     pub max_checked: Option<usize>,
     pub cursor: Option<String>,
+    /// When not empty, only these worktrees are planned (#2879 D1: a lane cleans its own card
+    /// worktrees and never another lane's). Each must be a worktree of this clone.
+    pub only: Vec<PathBuf>,
 }
 
 /// The home worktree folder and the Go generation's folder (#2811), each as written and as
@@ -653,12 +656,31 @@ pub fn plan_paced(
         order.insert(0, 0);
     }
     let (mut checked, mut remaining, mut last_checked) = (0usize, 0usize, None::<String>);
+    let only: Vec<PathBuf> = pace
+        .only
+        .iter()
+        .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
+        .collect();
+    for (want, given) in only.iter().zip(&pace.only) {
+        let listed = entries
+            .iter()
+            .any(|e| &fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()) == want);
+        if !listed {
+            return Err(format!(
+                "{} is not a worktree of this clone; nothing planned",
+                given.display()
+            ));
+        }
+    }
     for i in order {
         let e = &entries[i];
         if e.bare {
             continue;
         }
         let path = fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone());
+        if !only.is_empty() && !only.contains(&path) {
+            continue;
+        }
         let target = path.join("target");
         let (cargo, preserved) = split_target(&target);
         let location = if i == 0 {

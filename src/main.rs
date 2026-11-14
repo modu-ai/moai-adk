@@ -784,6 +784,9 @@ enum Command {
         /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
         #[arg(long)]
         cursor: Option<String>,
+        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
+        #[arg(long = "worktree", value_name = "PATH")]
+        only: Vec<PathBuf>,
     },
     /// Remove or trim the previewed worktrees
     ///
@@ -808,6 +811,9 @@ enum Command {
         /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
         #[arg(long)]
         cursor: Option<String>,
+        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
+        #[arg(long = "worktree", value_name = "PATH")]
+        only: Vec<PathBuf>,
         #[arg(long)]
         plan_digest: String,
         #[arg(long)]
@@ -2370,6 +2376,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             now_unix,
             max_checked,
             cursor,
+            only,
         } => moai_cli::worktree_gc::plan_paced(
             &project,
             &integration_ref,
@@ -2380,6 +2387,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::worktree_gc::Pace {
                 max_checked,
                 cursor,
+                only,
             },
         ),
         Command::WorktreeGcApply {
@@ -2390,6 +2398,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             now_unix,
             max_checked,
             cursor,
+            only,
             plan_digest,
             permission_reference,
         } => moai_cli::worktree_gc::apply(
@@ -2401,6 +2410,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::worktree_gc::Pace {
                 max_checked,
                 cursor,
+                only,
             },
             &plan_digest,
             &permission_reference,
