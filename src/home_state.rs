@@ -89,7 +89,7 @@ const REGISTRY_LIMIT: u64 = 4 * 1024 * 1024;
 /// the same way, `internal/homestate/runtime_census.go`): the Go tool holds the registry lock
 /// only while it rewrites the file, so the lock alone misses a live session (#2771 audit F1).
 /// `None` when the file cannot be read as rows with positive `pid`s or a pid cannot be judged.
-fn live_sessions(moai: &Path) -> Option<usize> {
+pub(crate) fn live_sessions(moai: &Path) -> Option<usize> {
     if fs::symlink_metadata(moai.join("state").join("active-sessions.json")).is_err() {
         return Some(0);
     }
@@ -130,7 +130,7 @@ fn pid_alive(_pid: i64) -> Option<bool> {
 }
 
 /// `YYYYMMDDTHHMMSSZ` from `YYYY-MM-DDTHH:MM:SSZ`.
-fn stamp(now: &str) -> Result<String, String> {
+pub(crate) fn stamp(now: &str) -> Result<String, String> {
     let ok = now.len() == 20
         && now.ends_with('Z')
         && now.as_bytes()[10] == b'T'
@@ -146,7 +146,7 @@ fn exists(p: &Path) -> bool {
 }
 
 /// Whether the Go session lock is held by another process; `None` when it cannot be told.
-fn session_lock_held(moai: &Path) -> Option<bool> {
+pub(crate) fn session_lock_held(moai: &Path) -> Option<bool> {
     let lock = moai.join("state").join("active-sessions.json.lock");
     match fs::symlink_metadata(&lock) {
         Err(_) => return Some(false),

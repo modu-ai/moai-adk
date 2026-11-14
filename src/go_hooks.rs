@@ -268,6 +268,410 @@ pub fn preview(project: &Path) -> Result<Value> {
     }))
 }
 
+// ---- replacement: plan, apply, revert (#2877, after #2868) ----
+//
+// The apply moves the script folder into a receipt folder, takes the Go entries out of
+// `.claude/settings.json` (the `hooks` key goes; every other key stays byte for byte), then
+// installs the MoAI hook set through `hooks::plan` / `hooks::apply` — the writer and ownership
+// receipt `hooks-apply` uses, so `moai update` sees the hooks as installed afterwards. A failure
+// after the first write puts everything back. The receipt keeps the replaced bytes, and
+// `go-hooks-revert` restores them while the files still hold what the apply wrote.
+
+const RECEIPT_PREFIX: &str = "go-hooks-";
+const CLAUDE_RECEIPT: &str = "manifests/claude-settings.json";
+
+/// The replacement preview of `project` with what an apply needs: `action` is `replace`,
+/// `none` (nothing of the Go generation) or `blocked`; `blocks` says why. Entries of other tools
+/// in `hooks` block for now: the MoAI writer owns the whole `hooks` key, so keeping them needs a
+/// decision first (fail-closed). `plan_digest` binds the settings bytes, the scripts and the
+/// result.
+pub fn plan(project: &Path, home: Option<&Path>) -> Result<Value> {
+    let root = crate::hooks::project_root(project, home)?;
+    let mut p = preview(&root)?;
+    let mut blocks = Vec::new();
+    if p["kept_entries"].as_object().is_some_and(|m| !m.is_empty()) {
+        blocks.push("other_hooks_present");
+    }
+    if p["action"] == json!("replace") && !blocks.is_empty() {
+        p["action"] = json!("blocked");
+    }
+    let settings = crate::claude::read_existing(&root.join(SETTINGS))?;
+    let mut script_digests = Vec::new();
+    for s in p["scripts"].as_array().into_iter().flatten() {
+        let name = s.as_str().unwrap_or_default();
+        let bytes = fs::read(root.join(GO_HOOK_DIR).join(name))
+            .map_err(|_| format!("{GO_HOOK_DIR}/{name} unreadable"))?;
+        script_digests.push(json!([name, crate::digest(&bytes)]));
+    }
+    let bound = json!({
+        "settings_sha256": settings.as_deref().map(crate::digest),
+        "scripts": script_digests,
+        "go_entries": p["go_entries"],
+        "hooks_after": p["hooks_after"],
+        "action": p["action"],
+    });
+    p["blocks"] = json!(blocks);
+    p["project"] = json!(root.display().to_string());
+    p["plan_digest"] = json!(crate::digest(
+        &serde_json::to_vec(&bound).map_err(|_| "encode failed")?
+    ));
+    p["next_actions"] = json!([
+        "review the entries that go, stay and are added, then run `moai-cli go-hooks-apply --plan-digest <plan_digest> --permission-reference <ref> <project>`"
+    ]);
+    Ok(p)
+}
+
+/// The record of one replacement, under `<state>/receipts/go-hooks-<id>/`.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Receipt {
+    schema_version: u32,
+    id: String,
+    plan_digest: String,
+    permission_reference: String,
+    status: String,
+    /// sha256 of `.claude/settings.json` before and after (`None`: absent).
+    settings_before: Option<String>,
+    settings_after: Option<String>,
+    /// sha256 of the Claude ownership receipt before and after.
+    claude_receipt_before: Option<String>,
+    claude_receipt_after: Option<String>,
+    /// The script files moved to `archive/moai` in the receipt folder.
+    scripts: Vec<String>,
+    /// sha256 of each of `scripts`, same order; a revert puts back only these bytes.
+    #[serde(default)]
+    scripts_sha256: Vec<String>,
+}
+
+/// `true` when `path` is a real folder or absent, `false` when it is a link or anything else.
+fn plain_dir_or_absent(path: &Path) -> Result<bool> {
+    match fs::symlink_metadata(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(true),
+        Err(_) => Err(format!("{} unavailable", path.display())),
+        Ok(m) => Ok(m.is_dir() && !m.file_type().is_symlink()),
+    }
+}
+
+fn receipts_dir(root: &Path) -> std::path::PathBuf {
+    crate::state_root::path(root, "receipts")
+}
+
+fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
+    let receipts = receipts_dir(root);
+    crate::claude::refuse_symlink_dir(&crate::state_root::path(root, ""))?;
+    fs::create_dir_all(&receipts).map_err(|_| "receipt folder unavailable")?;
+    crate::claude::refuse_symlink_dir(&receipts)?;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    for n in 0..16 {
+        let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
+        let dir = receipts.join(&id);
+        if fs::create_dir(&dir).is_ok() {
+            return Ok((id, dir));
+        }
+    }
+    Err("receipt id unavailable".into())
+}
+
+fn write_receipt(dir: &Path, r: &Receipt) -> Result<()> {
+    let mut bytes = serde_json::to_vec_pretty(r).map_err(|_| "encode failed")?;
+    bytes.push(b'\n');
+    let path = dir.join("receipt.json");
+    let before = crate::claude::read_existing(&path)?;
+    crate::apply::publish_replace(&path, before.as_deref(), &bytes)
+}
+
+/// Puts a file back to `bytes` (or removes it when it did not exist), from `now`.
+fn restore(path: &Path, now: Option<&[u8]>, bytes: Option<&[u8]>) -> Result<()> {
+    match bytes {
+        Some(b) => crate::apply::publish_replace(path, now, b),
+        None if now.is_some() => {
+            fs::remove_file(path).map_err(|_| format!("{} not removed", path.display()))
+        }
+        None => Ok(()),
+    }
+}
+
+/// Replaces the Go-generation hooks of `project` after the user confirmed the plan whose digest
+/// is `plan_digest` (see the module notes for the order of writes).
+pub fn apply(
+    project: &Path,
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<Value> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("a permission reference is required; nothing was written".into());
+    }
+    let p = plan(project, home)?;
+    if p["plan_digest"].as_str() != Some(plan_digest) {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    match p["action"].as_str() {
+        Some("replace") => {}
+        Some("none") => return Ok(json!({"state": "unchanged", "writes": []})),
+        _ => return Err(format!("the plan is blocked: {}", p["blocks"])),
+    }
+    let root = crate::hooks::project_root(project, home)?;
+    let settings_path = root.join(SETTINGS);
+    let receipt_path = crate::state_root::path(&root, CLAUDE_RECEIPT);
+    let settings_before = crate::claude::read_existing(&settings_path)?;
+    let claude_before = crate::claude::read_existing(&receipt_path)?;
+    let scripts: Vec<String> = p["scripts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|s| s.as_str().map(str::to_string))
+        .collect();
+
+    let (id, dir) = new_receipt_dir(&root)?;
+    let keep = dir.join("before");
+    fs::create_dir_all(&keep).map_err(|_| "receipt folder unavailable")?;
+    if let Some(b) = &settings_before {
+        fs::write(keep.join("settings.json"), b).map_err(|_| "receipt write failed")?;
+    }
+    if let Some(b) = &claude_before {
+        fs::write(keep.join("claude-settings.json"), b).map_err(|_| "receipt write failed")?;
+    }
+    let mut receipt = Receipt {
+        schema_version: 1,
+        id: id.clone(),
+        plan_digest: plan_digest.to_string(),
+        permission_reference: permission.to_string(),
+        status: "pending".into(),
+        settings_before: settings_before.as_deref().map(crate::digest),
+        settings_after: None,
+        claude_receipt_before: claude_before.as_deref().map(crate::digest),
+        claude_receipt_after: None,
+        scripts: scripts.clone(),
+        scripts_sha256: Vec::new(),
+    };
+    for name in &scripts {
+        let b = fs::read(root.join(GO_HOOK_DIR).join(name))
+            .map_err(|_| format!("{GO_HOOK_DIR}/{name} unreadable"))?;
+        receipt.scripts_sha256.push(crate::digest(&b));
+    }
+    write_receipt(&dir, &receipt)?;
+
+    // 1. The scripts move into the receipt folder (nothing is deleted).
+    let script_dir = root.join(GO_HOOK_DIR);
+    let archive = dir.join("archive");
+    let moved = if scripts.is_empty() {
+        false
+    } else {
+        fs::create_dir_all(&archive).map_err(|_| "receipt folder unavailable")?;
+        fs::rename(&script_dir, archive.join("moai"))
+            .map_err(|e| format!("{GO_HOOK_DIR} not moved: {e}"))?;
+        true
+    };
+    let undo_move = || {
+        if moved {
+            let _ = fs::rename(archive.join("moai"), &script_dir);
+        }
+    };
+
+    // 2. The Go `hooks` key goes; every other key stays.
+    let without = match &settings_before {
+        None => None,
+        Some(b) => {
+            let Ok(Value::Object(mut map)) = serde_json::from_slice::<Value>(b) else {
+                undo_move();
+                return Err(format!("{SETTINGS} is not a JSON object"));
+            };
+            map.remove("hooks");
+            let mut out = serde_json::to_vec_pretty(&map).map_err(|_| "encode failed")?;
+            out.push(b'\n');
+            Some(out)
+        }
+    };
+    if let Some(w) = &without {
+        if let Err(e) = crate::apply::publish_replace(&settings_path, settings_before.as_deref(), w)
+        {
+            undo_move();
+            return Err(e);
+        }
+    }
+
+    // 3. The MoAI hook set through the hooks-apply writer.
+    let installed = crate::hooks::plan(&root, "claude", home).and_then(|hp| {
+        if hp["action"] == json!("conflict") {
+            return Err(format!("hooks-plan conflict: {}", hp["conflicts"]));
+        }
+        let digest = hp["plan_digest"].as_str().unwrap_or_default().to_string();
+        crate::hooks::apply(&root, "claude", home, &digest, permission)
+    });
+    if let Err(e) = installed {
+        let now = crate::claude::read_existing(&settings_path)?;
+        restore(&settings_path, now.as_deref(), settings_before.as_deref())?;
+        let now = crate::claude::read_existing(&receipt_path)?;
+        restore(&receipt_path, now.as_deref(), claude_before.as_deref())?;
+        undo_move();
+        receipt.status = "rolled_back".into();
+        write_receipt(&dir, &receipt)?;
+        return Err(format!(
+            "the MoAI hooks were not installed ({e}); everything was put back"
+        ));
+    }
+
+    receipt.settings_after = crate::claude::read_existing(&settings_path)?
+        .as_deref()
+        .map(crate::digest);
+    receipt.claude_receipt_after = crate::claude::read_existing(&receipt_path)?
+        .as_deref()
+        .map(crate::digest);
+    receipt.status = "applied".into();
+    write_receipt(&dir, &receipt)?;
+    Ok(json!({
+        "state": "applied",
+        "project": root.display().to_string(),
+        "removed_entries": p["go_entries"].as_array().map_or(0, Vec::len),
+        "scripts_archived": scripts.len(),
+        "archive": crate::state_root::rel(&root, &format!("receipts/{id}/archive/moai")),
+        "receipt": id,
+        "host_loaded": "not_run",
+        "next_actions": [format!("to undo: moai-cli go-hooks-revert --receipt {id} --permission-reference <ref> <project>")],
+    }))
+}
+
+/// Undoes one replacement while `.claude/settings.json` and the Claude ownership receipt still
+/// hold the bytes the apply wrote and the script folder is free: the settings file and the
+/// receipt get their before bytes back and the scripts move back.
+pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("a permission reference is required; nothing was written".into());
+    }
+    if !(receipt_id.starts_with(RECEIPT_PREFIX)
+        && receipt_id.len() <= 64
+        && receipt_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-'))
+    {
+        return Err("unknown receipt id".into());
+    }
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    let dir = receipts_dir(&root).join(receipt_id);
+    for d in [
+        crate::state_root::path(&root, ""),
+        receipts_dir(&root),
+        dir.clone(),
+    ] {
+        crate::claude::refuse_symlink_dir(&d)?;
+    }
+    let bytes =
+        crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
+    let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
+    if r.status == "pending" {
+        return Err(
+            "the receipt is pending: an apply was interrupted; compare .claude/settings.json with \
+             before/settings.json in the receipt folder and move archive/moai back to \
+             .claude/hooks/moai by hand; nothing was written"
+                .into(),
+        );
+    }
+    if r.status != "applied" {
+        return Err(format!("the receipt is {}; nothing to revert", r.status));
+    }
+    // #2893 audit B1: nothing is written through a link — `.claude` and `.claude/hooks` must be
+    // real folders (or absent), like every path the apply read.
+    for rel in [".claude", ".claude/hooks"] {
+        if !plain_dir_or_absent(&root.join(rel))? {
+            return Err(format!(
+                "{rel} is a link or not a folder; nothing was written"
+            ));
+        }
+    }
+    let settings_path = root.join(SETTINGS);
+    let receipt_path = crate::state_root::path(&root, CLAUDE_RECEIPT);
+    let settings_now = crate::claude::read_existing(&settings_path)?;
+    let claude_now = crate::claude::read_existing(&receipt_path)?;
+    if settings_now.as_deref().map(crate::digest) != r.settings_after
+        || claude_now.as_deref().map(crate::digest) != r.claude_receipt_after
+    {
+        return Err(format!(
+            "{SETTINGS} or its ownership receipt changed since the apply; nothing was written"
+        ));
+    }
+    let script_dir = root.join(GO_HOOK_DIR);
+    let archived = dir.join("archive").join("moai");
+    if !r.scripts.is_empty() && fs::symlink_metadata(&script_dir).is_ok() {
+        return Err(format!("{GO_HOOK_DIR} exists again; nothing was written"));
+    }
+    // Read and check every before copy first, so the revert is whole or not at all.
+    let load = |name: &str, want: &Option<String>| -> Result<Option<Vec<u8>>> {
+        match want {
+            None => Ok(None),
+            Some(sha) => {
+                let b = fs::read(dir.join("before").join(name))
+                    .map_err(|_| "before bytes missing from the receipt")?;
+                if &crate::digest(&b) != sha {
+                    return Err("before bytes do not match the receipt".into());
+                }
+                Ok(Some(b))
+            }
+        }
+    };
+    let settings_before = load("settings.json", &r.settings_before)?;
+    let claude_before = load("claude-settings.json", &r.claude_receipt_before)?;
+    // #2893 audit note 2: the archived scripts are the ones the apply moved, byte for byte.
+    if !r.scripts.is_empty() {
+        crate::claude::refuse_symlink_dir(&dir.join("archive"))?;
+        crate::claude::refuse_symlink_dir(&archived)?;
+        for (name, sha) in r.scripts.iter().zip(&r.scripts_sha256) {
+            let b = fs::read(archived.join(name))
+                .map_err(|_| format!("archived script {name} missing; nothing was written"))?;
+            if &crate::digest(&b) != sha {
+                return Err(format!(
+                    "archived script {name} changed since the apply; nothing was written"
+                ));
+            }
+        }
+    }
+    // Scripts first: the one step that cannot be redone by bytes. A later failure moves them
+    // back into the archive, so the files and the receipt still agree.
+    if !r.scripts.is_empty() {
+        for rel in [".claude", ".claude/hooks"] {
+            let d = root.join(rel);
+            if fs::symlink_metadata(&d).is_err() {
+                fs::create_dir(&d).map_err(|_| format!("{rel} unavailable"))?;
+            }
+            if !plain_dir_or_absent(&d)? {
+                return Err(format!(
+                    "{rel} is a link or not a folder; nothing was written"
+                ));
+            }
+        }
+        fs::rename(&archived, &script_dir)
+            .map_err(|e| format!("{GO_HOOK_DIR} not moved back: {e}"))?;
+    }
+    let undo_scripts = || {
+        if !r.scripts.is_empty() {
+            let _ = fs::rename(&script_dir, &archived);
+        }
+    };
+    if let Err(e) = restore(
+        &settings_path,
+        settings_now.as_deref(),
+        settings_before.as_deref(),
+    ) {
+        undo_scripts();
+        return Err(e);
+    }
+    if let Err(e) = restore(
+        &receipt_path,
+        claude_now.as_deref(),
+        claude_before.as_deref(),
+    ) {
+        let now = crate::claude::read_existing(&settings_path)?;
+        restore(&settings_path, now.as_deref(), settings_now.as_deref())?;
+        undo_scripts();
+        return Err(e);
+    }
+    r.status = "reverted".into();
+    write_receipt(&dir, &r)?;
+    Ok(json!({"state": "reverted", "receipt": receipt_id, "scripts_restored": r.scripts.len()}))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
