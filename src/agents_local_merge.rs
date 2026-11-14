@@ -102,6 +102,11 @@ struct Existing {
 fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
     let starts: Vec<usize> = agents.match_indices(BEGIN).map(|(i, _)| i).collect();
     let start = match starts.as_slice() {
+        // An end marker alone means the start marker was deleted: the text may still be
+        // there, and merging again would double it (#2982 audit N5).
+        [] if agents.contains(END) => {
+            return Err("the merged-local end marker has no start marker".into())
+        }
         [] => return Ok(None),
         [one] => *one,
         _ => return Err("AGENTS.md holds more than one merged-local block".into()),
@@ -174,16 +179,73 @@ fn secret_kind(line: &str) -> Option<&'static str> {
         ("github_pat_", 20, false, "github_token"),
         ("xoxb-", 10, false, "slack_token"),
         ("xoxp-", 10, false, "slack_token"),
+        ("ghs_", 20, false, "github_token"),
+        ("ghu_", 20, false, "github_token"),
+        ("glpat-", 20, false, "gitlab_token"),
+        ("sk_live_", 16, false, "api_key"),
+        ("rk_live_", 16, false, "api_key"),
+        ("xoxa-", 10, false, "slack_token"),
+        ("xoxr-", 10, false, "slack_token"),
+        ("xoxs-", 10, false, "slack_token"),
+        ("xapp-", 10, false, "slack_token"),
+        ("AIza", 35, false, "api_key"),
+        ("hf_", 30, false, "api_key"),
         ("AKIA", 16, true, "aws_key"),
+        ("ASIA", 16, true, "aws_key"),
     ] {
         if has_token(line, prefix, min, upper) {
             return Some(kind);
         }
     }
+    // A JSON web token: a header and a payload, both starting `eyJ`.
+    if line.contains(".eyJ") && has_token(line, "eyJ", 10, false) {
+        return Some("jwt");
+    }
+    // `Authorization: Bearer <token>` or `Basic <base64>`.
+    if lower.contains("authorization") {
+        for word in ["bearer ", "basic "] {
+            for (i, _) in lower.match_indices(word).take(64) {
+                let run = line[i + word.len()..]
+                    .chars()
+                    .take(64)
+                    .take_while(|c| c.is_ascii_alphanumeric() || "-._~+/=".contains(*c))
+                    .count();
+                if run >= 16 {
+                    return Some("authorization_header");
+                }
+            }
+        }
+    }
+    // A URL that carries a password: `scheme://user:password@host`.
+    for (i, _) in line.match_indices("://").take(64) {
+        let authority: &str = line[i + 3..]
+            .split(|c: char| c == '/' || c.is_whitespace())
+            .next()
+            .unwrap_or("");
+        if let Some((userinfo, _)) = authority.split_once('@') {
+            if let Some((_, password)) = userinfo.split_once(':') {
+                if password.len() >= 3 && !password.starts_with(['<', '$', '{', '*', '[', '(']) {
+                    return Some("url_credential");
+                }
+            }
+        }
+    }
     for key in [
-        "password", "passwd", "secret", "token", "api_key", "apikey", "api-key",
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "api-key",
+        "secret_key",
+        "secret_access_key",
+        "access_key",
+        "private_key",
     ] {
-        for (i, _) in lower.match_indices(key) {
+        // A bounded number of hits and of value characters per line: one huge line must not
+        // cost time quadratic in its length (#2982 audit N6).
+        for (i, _) in lower.match_indices(key).take(64) {
             let tail = lower[i + key.len()..].trim_start_matches(['"', '\'', '`', ' ', '\t']);
             let Some(tail) = tail.strip_prefix('=').or_else(|| tail.strip_prefix(':')) else {
                 continue;
@@ -192,6 +254,7 @@ fn secret_kind(line: &str) -> Option<&'static str> {
             let value: String = line[at..]
                 .trim_start_matches([' ', '\t', '"', '\'', '`'])
                 .chars()
+                .take(256)
                 .take_while(|c| !c.is_whitespace() && !matches!(c, '"' | '\'' | '`'))
                 .collect();
             let looks_real = value.len() >= 8
@@ -279,6 +342,18 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             let head = format!("{agents}{separator}");
             let starts_at_line = head.matches('\n').count() + 1;
             let new_agents = format!("{head}{}", block_of(&sha, &body)).into_bytes();
+            // The plan, the revert and every later read of AGENTS.md go through
+            // `apply::read_opt`, which refuses a file above this size (#2982 audit B1).
+            if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
+                return Decision::of(
+                    "blocked",
+                    format!(
+                        "AGENTS.md would grow to {} bytes with this text; the limit is {} bytes",
+                        new_agents.len(),
+                        crate::apply::RECEIPT_LIMIT
+                    ),
+                );
+            }
             Decision {
                 action: "merge",
                 reason: "the text of AGENTS.local.md is not in AGENTS.md yet".into(),
@@ -493,11 +568,49 @@ fn receipts_dir(root: &Path) -> std::path::PathBuf {
     crate::state_root::path(root, "receipts")
 }
 
+/// Owner-only bits for a receipt folder and for what it holds: the receipt keeps a copy of a
+/// personal file, which may hold a token (#2982 audit B2; the same bits as `go_state`'s backup).
+const PRIVATE_DIR: u32 = 0o700;
+const PRIVATE_FILE: u32 = 0o600;
+
+/// Create one folder (not its parents) that only the owner can enter, from its creation.
+fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(PRIVATE_DIR);
+    }
+    builder.create(path)
+}
+
+/// Create `path` and the folders below `base` on the way to it, each one private. A link on
+/// the way is refused.
+fn create_private_dirs(base: &Path, rel: &[&str]) -> Result<std::path::PathBuf> {
+    let mut cur = base.to_path_buf();
+    for part in rel {
+        cur.push(part);
+        match fs::symlink_metadata(&cur) {
+            Ok(m) if m.file_type().is_symlink() => return Err("symlink target refused".into()),
+            Ok(m) if m.is_dir() => {}
+            Ok(_) => return Err("receipt folder unavailable".into()),
+            Err(_) => create_private_dir(&cur).map_err(|_| "receipt folder unavailable")?,
+        }
+    }
+    Ok(cur)
+}
+
+/// A new file in a receipt folder: owner-only from its creation, never replacing a file.
+fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
+    crate::apply::publish_exclusive_mode(path, bytes, Some(PRIVATE_FILE))
+        .map_err(|_| "receipt write failed".into())
+}
+
 fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
-    let receipts = receipts_dir(root);
-    crate::claude::refuse_symlink_dir(&crate::state_root::path(root, ""))?;
-    fs::create_dir_all(&receipts).map_err(|_| "receipt folder unavailable")?;
-    crate::claude::refuse_symlink_dir(&receipts)?;
+    let state = crate::state_root::path(root, "");
+    crate::claude::refuse_symlink_dir(&state)?;
+    fs::create_dir_all(&state).map_err(|_| "receipt folder unavailable")?;
+    let receipts = create_private_dirs(&state, &["receipts"])?;
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -505,7 +618,7 @@ fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
     for n in 0..16 {
         let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
         let dir = receipts.join(&id);
-        if fs::create_dir(&dir).is_ok() {
+        if create_private_dir(&dir).is_ok() {
             return Ok((id, dir));
         }
     }
@@ -516,8 +629,11 @@ fn write_receipt(dir: &Path, r: &Receipt) -> Result<()> {
     let mut bytes = serde_json::to_vec_pretty(r).map_err(|_| "encode failed")?;
     bytes.push(b'\n');
     let path = dir.join("receipt.json");
-    let before = crate::claude::read_existing(&path)?;
-    crate::apply::publish_replace(&path, before.as_deref(), &bytes)
+    match crate::claude::read_existing(&path)? {
+        // The first write creates the file owner-only; a later one keeps the bits it has.
+        None => write_private(&path, &bytes),
+        Some(before) => crate::apply::publish_replace(&path, Some(&before), &bytes),
+    }
 }
 
 /// Merges the text after the user confirmed the plan whose digest is `plan_digest`.
@@ -540,17 +656,20 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
     else {
         return Err("the plan holds no merge".into());
     };
+    if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
+        return Err(
+            "the merged AGENTS.md would be larger than the limit; nothing was written".into(),
+        );
+    }
     let agents_path = crate::apply::target(&root, TARGET)?;
     let (id, dir) = new_receipt_dir(&root)?;
-    let keep = dir.join("before");
-    fs::create_dir_all(&keep).map_err(|_| "receipt folder unavailable")?;
-    fs::write(keep.join(TARGET), &before).map_err(|_| "receipt write failed")?;
+    let keep = create_private_dirs(&dir, &["before"])?;
+    write_private(&keep.join(TARGET), &before)?;
     // A file in place stays; the receipt keeps the copy that serves as its backup. A moved
     // copy is already in its dated go-state backup.
     if source.kind == "in_place" {
-        let copy = dir.join("source");
-        fs::create_dir_all(&copy).map_err(|_| "receipt folder unavailable")?;
-        fs::write(copy.join(LOCAL), &source.bytes).map_err(|_| "receipt write failed")?;
+        let copy = create_private_dirs(&dir, &["source"])?;
+        write_private(&copy.join(LOCAL), &source.bytes)?;
     }
     let mut receipt = Receipt {
         schema_version: 1,
@@ -560,7 +679,9 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         permission_reference: permission.to_string(),
         status: "pending".into(),
         agents_before: crate::digest(&before),
-        agents_after: None,
+        // Known before the write, so a revert can tell an interrupted apply that did write
+        // from one that did not (#2982 audit N2).
+        agents_after: Some(crate::digest(&new_agents)),
         block_sha256: hex(&source.bytes),
         source_kind: source.kind.into(),
         source_path: source.rel.clone(),
@@ -569,10 +690,10 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
     write_receipt(&dir, &receipt)?;
     if let Err(e) = crate::apply::publish_replace(&agents_path, Some(&before), &new_agents) {
         receipt.status = "failed".into();
+        receipt.agents_after = None;
         write_receipt(&dir, &receipt)?;
         return Err(format!("AGENTS.md was not written ({e})"));
     }
-    receipt.agents_after = Some(crate::digest(&new_agents));
     receipt.status = "applied".into();
     write_receipt(&dir, &receipt)?;
     Ok(json!({
@@ -614,23 +735,30 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let bytes =
         crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
     let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
+    let agents_path = crate::apply::target(&root, TARGET)?;
     match r.status.as_str() {
         "applied" => {}
         "reverted" => return Ok(json!({"state": "unchanged", "writes": []})),
+        // An apply that was interrupted: AGENTS.md holds either the bytes it was about to
+        // write (undo like an applied one) or its earlier bytes (it wrote nothing).
         "pending" => {
-            return Err(
-                "the receipt is pending: an apply was interrupted; compare AGENTS.md \
-                        with before/AGENTS.md in the receipt folder by hand; nothing was written"
-                    .into(),
-            )
+            let now = crate::apply::read_opt(&agents_path)?.ok_or("AGENTS.md is missing")?;
+            let held = crate::digest(&now);
+            if held == r.agents_before {
+                r.status = "failed".into();
+                r.agents_after = None;
+                write_receipt(&dir, &r)?;
+                return Ok(json!({"state": "unchanged", "writes": []}));
+            }
+            // Any other bytes fall to the check below: AGENTS.md changed; nothing is written.
         }
         _ => return Err("that apply wrote nothing; there is nothing to undo".into()),
     }
-    let agents_path = crate::apply::target(&root, TARGET)?;
     let now = crate::apply::read_opt(&agents_path)?.ok_or("AGENTS.md is missing")?;
     if r.agents_after.as_deref() != Some(crate::digest(&now).as_str()) {
         return Err("AGENTS.md changed since the merge; nothing was written".into());
     }
+    crate::claude::refuse_symlink_dir(&dir.join("before"))?;
     let before = crate::claude::read_existing(&dir.join("before").join(TARGET))?
         .ok_or("the receipt has no copy of the earlier AGENTS.md")?;
     if crate::digest(&before) != r.agents_before {
@@ -723,6 +851,31 @@ mod tests {
         assert_eq!(action(Some(&no_end), src("mine")), "conflict");
         let mid_line = format!("text {good}");
         assert_eq!(action(Some(&mid_line), src("mine")), "conflict");
+        // Only the start marker deleted: merging again would double the text.
+        let no_start: String = good.lines().skip(1).map(|l| format!("{l}\n")).collect();
+        assert_eq!(action(Some(&no_start), src("mine")), "conflict");
+    }
+
+    /// The merged `AGENTS.md` must stay readable by `apply::read_opt` (#2982 audit B1).
+    #[test]
+    fn the_merged_file_may_not_pass_the_receipt_limit() {
+        let limit = crate::apply::RECEIPT_LIMIT as usize;
+        let block_len = block_of(&hex(b"x"), "x\n").len();
+        let agents_of = |extra: usize| format!("{}\n\n", "a".repeat(limit - 2 - block_len + extra));
+        let merged_len = |extra: usize| {
+            decide(Some(agents_of(extra).as_bytes()), src("x"), &[])
+                .new_agents
+                .map(|b| b.len())
+        };
+        assert_eq!(merged_len(0), Some(limit));
+        let over = decide(Some(agents_of(1).as_bytes()), src("x"), &[]);
+        assert_eq!(over.action, "blocked");
+        assert!(over.new_agents.is_none());
+        assert!(
+            over.reason.contains(&(limit + 1).to_string()),
+            "{}",
+            over.reason
+        );
     }
 
     #[test]
@@ -781,5 +934,94 @@ mod tests {
         );
         assert_eq!(secret_suspects(&shaped("sk-", 19)), vec![]);
         assert_eq!(secret_suspects(&shaped("sk-", 20)), vec![(1, "api_key")]);
+    }
+
+    #[test]
+    fn token_shapes_have_an_exact_minimum_length() {
+        // (prefix, shortest run that counts, kind); one fewer is not a token.
+        for (prefix, min, kind) in [
+            ("AKIA", 16, "aws_key"),
+            ("ASIA", 16, "aws_key"),
+            ("ghs_", 20, "github_token"),
+            ("ghu_", 20, "github_token"),
+            ("glpat-", 20, "gitlab_token"),
+            ("sk_live_", 16, "api_key"),
+            ("xapp-", 10, "slack_token"),
+            ("xoxa-", 10, "slack_token"),
+            ("AIza", 35, "api_key"),
+            ("hf_", 30, "api_key"),
+        ] {
+            let body = |n: usize| {
+                if prefix.starts_with("AKIA") || prefix.starts_with("ASIA") {
+                    format!("{prefix}{}", "A".repeat(n))
+                } else {
+                    shaped(prefix, n)
+                }
+            };
+            assert_eq!(secret_suspects(&body(min)), vec![(1, kind)], "{prefix}");
+            assert_eq!(secret_suspects(&body(min - 1)), vec![], "{prefix} short");
+        }
+    }
+
+    #[test]
+    fn headers_urls_and_web_tokens_are_credentials() {
+        let bearer = |n: usize| format!("Authorization: {} {}", "Bearer", "a".repeat(n));
+        assert_eq!(
+            secret_suspects(&bearer(16)),
+            vec![(1, "authorization_header")]
+        );
+        assert_eq!(secret_suspects(&bearer(15)), vec![]);
+        // The word alone, without the header name, is prose.
+        assert_eq!(
+            secret_suspects(&format!("Bearer {}", "a".repeat(30))),
+            vec![]
+        );
+
+        let url = |password: &str| format!("DB: {}://app:{password}@db.example/main", "postgres");
+        assert_eq!(secret_suspects(&url("pw3")), vec![(1, "url_credential")]);
+        assert_eq!(secret_suspects(&url("pw")), vec![]);
+        assert_eq!(secret_suspects(&url("<password>")), vec![]);
+        assert_eq!(
+            secret_suspects("see https://example.com/a:b@c for details"),
+            vec![]
+        );
+
+        let jwt = format!("{}.{}.sig", shaped("eyJ", 12), shaped("eyJ", 12));
+        assert_eq!(secret_suspects(&jwt), vec![(1, "jwt")]);
+        assert_eq!(secret_suspects(&shaped("eyJ", 12)), vec![]);
+    }
+
+    #[test]
+    fn assignments_need_a_value_of_eight_characters_with_a_digit_or_capital() {
+        for key in [
+            "password",
+            "SECRET_KEY",
+            "AWS_SECRET_ACCESS_KEY",
+            "private_key",
+        ] {
+            assert_eq!(
+                secret_suspects(&format!("{key}=Abcdef12")),
+                vec![(1, "credential_assignment")],
+                "{key}"
+            );
+            assert_eq!(
+                secret_suspects(&format!("{key}=Abcdef1")),
+                vec![],
+                "{key} short"
+            );
+        }
+        assert_eq!(secret_suspects("password: abcdefghij"), vec![]);
+    }
+
+    /// A single huge line must not cost time quadratic in its length (#2982 audit N6; it took
+    /// about 43 seconds in a debug build before the scan was bounded).
+    #[test]
+    fn one_huge_line_is_scanned_in_bounded_time() {
+        let line = "password:".repeat(SOURCE_LIMIT / 9);
+        let start = std::time::Instant::now();
+        let _ = secret_suspects(&line);
+        let spaced = format!("password{}x", " ".repeat(SOURCE_LIMIT - 10));
+        let _ = secret_suspects(&spaced);
+        assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
     }
 }
