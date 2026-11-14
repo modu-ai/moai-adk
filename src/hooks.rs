@@ -186,7 +186,11 @@ pub fn hook_command(host: &str, handler: Handler) -> String {
     }
 }
 
-/// The binary every generated hook command names.
+/// The binary every generated hook command names. It stays `moai-cli` while the default command
+/// name is `moai` (#2812 W3, leader decision 6868439066 (나), until the alias retires in R5): a
+/// Go-generation `moai` first on PATH would otherwise receive the claim guard, exit 1 and so
+/// switch the guard off silently, while `binary_state` reported `resolved` (audit 6868377245 B1).
+/// Only this Rust tool has a `moai-cli`.
 pub const HOOK_BINARY: &str = "moai-cli";
 
 /// Whether the generated command's binary resolves on `path_env` (#2348). `hooks-plan` and

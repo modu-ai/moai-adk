@@ -20,7 +20,7 @@ use std::{
 };
 
 /// Prefix of the one stderr line a launch prints after it initialized something.
-pub const INIT_LINE: &str = "moai-cli: initialized";
+pub const INIT_LINE: &str = "moai: initialized";
 /// Recorded in the apply receipts as the reason for the writes (the user decision).
 const PERMISSION: &str = "launcher-auto-init #2481 user decision 6810818827";
 /// The generated workflow id; AGENTS.md points at `.moai-cli/workflows/moai/`.
@@ -67,7 +67,7 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
                 .map_err(|_| "project check: the current directory is unreadable".to_string())?;
             if let Some(what) = guard(&dir) {
                 return Err(format!(
-                    "moai-cli: {} is {what}; it is not turned into a git repository. Run the launcher in a project folder, or run `git init` here yourself first.",
+                    "moai: {} is {what}; it is not turned into a git repository. Run the launcher in a project folder, or run `git init` here yourself first.",
                     dir.display()
                 ));
             }
@@ -131,7 +131,7 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
             if let Some(what) = guard(&top) {
                 return Ok(Prepared {
                     note: Some(format!(
-                        "moai-cli: {} is {what}; MoAI project settings are not created there",
+                        "moai: {} is {what}; MoAI project settings are not created there",
                         top.display()
                     )),
                     git_pending: false,
@@ -309,7 +309,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
         Ok(())
     } else {
         Err(format!(
-            "moai-cli: git init failed in {}; run `git init` there yourself or pass --name",
+            "moai: git init failed in {}; run `git init` there yourself or pass --name",
             dir.display()
         ))
     }
@@ -414,7 +414,7 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
             std::thread::sleep(std::time::Duration::from_millis(ms.min(3000)));
         }
         if std::env::var_os(INIT_TEST_FAIL_VAR).is_some() {
-            return Err("moai-cli: initialization stopped after the settings (test)".into());
+            return Err("moai: initialization stopped after the settings (test)".into());
         }
         if exists(&top.join("AGENTS.md")) {
             done.push("AGENTS.md present, unchanged".into());
@@ -513,7 +513,7 @@ pub fn install_guidance() -> String {
     } else {
         "Source: https://git-scm.com/install"
     };
-    format!("moai-cli: git is not installed (not found on PATH). Install it, then run the launcher again:\n{body}")
+    format!("moai: git is not installed (not found on PATH). Install it, then run the launcher again:\n{body}")
 }
 
 #[cfg(test)]
