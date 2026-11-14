@@ -1391,6 +1391,10 @@ pub struct UserLayerPlan {
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the six plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
+    /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
+    /// package, only when it archives something. Not part of `plan_digest`: only
+    /// `--confirm-cleanup <confirm_token>` applies it.
+    pub cleanup: Option<serde_json::Value>,
 }
 
 fn user_layer_plan(
@@ -1464,6 +1468,10 @@ fn user_layer_plan(
         ]))
         .map_err(|_| "encode failed")?,
     );
+    // A plan without archive items carries no token: no section, the preview stays as it was.
+    let cleanup = crate::update_cleanup::plan(home, staged)
+        .ok()
+        .filter(|c| c["confirm_token"].is_string());
     Ok(UserLayerPlan {
         skills,
         agents,
@@ -1473,7 +1481,62 @@ fn user_layer_plan(
         hooks,
         skipped,
         plan_digest,
+        cleanup,
     })
+}
+
+/// The cleanup block of the terminal summary; empty when nothing would be archived.
+fn cleanup_summary(cleanup: Option<&serde_json::Value>) -> String {
+    let Some(c) = cleanup else {
+        return String::new();
+    };
+    format!(
+        "cleanup\n  archive {} · keep {} · confirm with: moai update --confirm-cleanup {}\n",
+        c["counts"]["archive"],
+        c["counts"]["keep"],
+        c["confirm_token"].as_str().unwrap_or("")
+    )
+}
+
+/// #2872 stage 2: refuse a `--confirm-cleanup` token that is not the preview's before anything
+/// is written.
+fn cleanup_token<'a>(layer: &UserLayerPlan, given: Option<&'a str>) -> Result<Option<&'a str>> {
+    let Some(t) = given else {
+        return Ok(None);
+    };
+    let offered = layer
+        .cleanup
+        .as_ref()
+        .and_then(|c| c["confirm_token"].as_str());
+    if offered != Some(t) {
+        return Err(
+            "the cleanup token differs from the preview's; nothing applied, preview again".into(),
+        );
+    }
+    Ok(Some(t))
+}
+
+/// Whether the terminal is asked to apply the layer: only for a plan that writes and only
+/// without `--confirm-cleanup` — a cleanup run without `--confirm` leaves the layer a preview,
+/// so a yes there never applies it (#2872 stage 2).
+fn asks(cleanup: Option<&str>, writes: bool) -> bool {
+    cleanup.is_none() && writes
+}
+
+/// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
+fn run_cleanup(
+    home: &Path,
+    staged: &StagedPackage,
+    token: &str,
+    permission: &str,
+) -> Result<serde_json::Value> {
+    crate::update_cleanup::apply(home, staged, token, permission, &crate::audit::utc_now())
+}
+
+fn cleanup_revert(r: &serde_json::Value) -> Option<String> {
+    r["stamp"]
+        .as_str()
+        .map(|s| format!("moai cleanup-revert-plan <HOME> --stamp {s}"))
 }
 
 /// Which hosts get agents and the section after the skill apply, and which are skipped.
@@ -1605,6 +1668,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
             s["reason"].as_str().unwrap_or("")
         ));
     }
+    out.push_str(&cleanup_summary(p.cleanup.as_ref()));
     out
 }
 
@@ -1628,9 +1692,15 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// tree the command runs from — is planned with the rest and bound into the same digest; a
 /// confirmed run applies it with a revert receipt (`hooks-revert`). A hook entry the user
 /// changed is a conflict and is left as it is.
+///
+/// #2872 stage 2: the preview carries `cleanup` (an `update_cleanup::plan`) when Go leftovers
+/// can be archived. Neither `confirm` nor the terminal yes applies it; only `confirm_cleanup`
+/// (`--confirm-cleanup`, the preview's `confirm_token`) does, after the layer — or alone, with
+/// the layer left a preview. A token that is not the preview's is refused before any write.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
+    confirm_cleanup: Option<&str>,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
@@ -1650,8 +1720,11 @@ pub fn update_command(
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
         || layer.hooks.writes();
+    let cleanup = cleanup_token(&layer, confirm_cleanup)?;
+    // The preview value: what a pipe gets as the envelope result and what the terminal question
+    // shows (#2894).
     let preview = || {
-        json!({
+        let mut out = json!({
             "mode": "preview",
             "applied": false,
             "nothing_to_apply": !writes,
@@ -1665,12 +1738,26 @@ pub fn update_command(
             "hooks": layer.hooks.to_json(),
             "skipped": layer.skipped,
             "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
-        })
+        });
+        if let Some(c) = &layer.cleanup {
+            out["cleanup"] = c.clone();
+        }
+        out
     };
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if writes && ask(&layer_summary(&layer), &preview())? => layer.plan_digest.clone(),
-        None => return Ok(preview()),
+        None if asks(cleanup, writes) && ask(&layer_summary(&layer), &preview())? => {
+            layer.plan_digest.clone()
+        }
+        None => {
+            let mut out = preview();
+            if let Some(t) = cleanup {
+                let r = run_cleanup(home, &staged, t, PERMISSION)?;
+                out["revert"] = json!({"cleanup": cleanup_revert(&r)});
+                out["cleanup_result"] = r;
+            }
+            return Ok(out);
+        }
     };
     // Verify the whole layer before any write.
     let fresh = user_layer_plan(home, &package, &agents_dir, &staged)?;
@@ -1765,12 +1852,14 @@ pub fn update_command(
         || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
+    // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
+    let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
             .map(|id| format!("moai {op} <HOME> --receipt {id} --permission-reference <reference>"))
     };
-    Ok(json!({
+    let mut out = json!({
         "mode": "applied",
         "applied": applied,
         "package": package_text,
@@ -1791,7 +1880,12 @@ pub fn update_command(
             )),
             "skills": "recovery-plan / recovery-apply for a host left pending",
         },
-    }))
+    });
+    if let Some(c) = cleanup {
+        out["revert"]["cleanup"] = json!(cleanup_revert(&c));
+        out["cleanup_result"] = c;
+    }
+    Ok(out)
 }
 
 /// True when confirming `plan` would write at least one file (#2540): some host is not
@@ -2570,6 +2664,43 @@ mod user_layer_tests {
         assert!(user_layer_plan(&home, &a, &agents, &staged).is_ok());
         let e = user_layer_plan(&home, &b, &agents, &staged).err().unwrap();
         assert!(e.contains("package changed"), "{e}");
+    }
+
+    /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan
+    /// archives something; otherwise it is the summary it was.
+    #[test]
+    fn the_summary_shows_cleanup_only_when_something_is_archived() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        assert!(layer.cleanup.is_none(), "an empty HOME archives nothing");
+        let plain = layer_summary(&layer);
+        assert!(!plain.contains("cleanup"), "{plain}");
+        layer.cleanup = Some(
+            json!({"counts": {"archive": 2, "keep": 3}, "confirm_token": "cleanup:0123456789abcdef"}),
+        );
+        assert_eq!(
+            layer_summary(&layer),
+            format!("{plain}cleanup\n  archive 2 · keep 3 · confirm with: moai update --confirm-cleanup cleanup:0123456789abcdef\n")
+        );
+        // A token not offered by the preview is refused; none given is no cleanup.
+        assert!(cleanup_token(&layer, None).unwrap().is_none());
+        assert_eq!(
+            cleanup_token(&layer, Some("cleanup:0123456789abcdef")).unwrap(),
+            Some("cleanup:0123456789abcdef")
+        );
+        assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdee")).is_err());
+        layer.cleanup = None;
+        assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdef")).is_err());
+        // The terminal is asked only for a plan that writes and never on a cleanup run.
+        assert!(asks(None, true));
+        assert!(!asks(None, false));
+        assert!(!asks(Some("cleanup:0123456789abcdef"), true));
     }
 
     /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the

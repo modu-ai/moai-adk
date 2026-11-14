@@ -54,6 +54,57 @@ fn go_project() -> Option<Project> {
     })
 }
 
+/// #2872 stage 2 on the screens: Go leftovers the cleanup would archive are a row, and the
+/// command that confirms them (its own token, never the `y`) is shown whole; once a cleanup ran,
+/// its count and revert are shown and the command is not offered again.
+#[test]
+fn the_cleanup_is_shown_with_its_own_command() {
+    let token = "sha256:".to_string() + &"c".repeat(64);
+    let pending = serde_json::json!({"counts": {"archive": 2, "keep": 1, "total": 3},
+        "confirm_token": token, "apply_flag": format!("--confirm-cleanup {token}")});
+    let mut changes = fixture("preview-changes");
+    changes["cleanup"] = pending.clone();
+    let mut latest = fixture("preview-latest");
+    latest["cleanup"] = pending;
+    let command = format!("moai update --confirm-cleanup {token}");
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 80, None);
+        let word = if lang == Lang::Ko {
+            "정리(Go 남은 것)"
+        } else {
+            "cleanup (Go leftovers)"
+        };
+        let counts = if lang == Lang::Ko {
+            "보관 2개 · 유지 1개"
+        } else {
+            "2 to archive · 1 kept"
+        };
+        let q = question(&changes, &v);
+        assert!(q.contains(word) && q.contains(counts), "{q}");
+        for text in [
+            screen(&changes, Asked::NotAsked, &v),
+            screen(&changes, Asked::No, &v),
+            screen(&latest, Asked::NotAsked, &v),
+        ] {
+            assert!(text.lines().any(|l| l.trim() == command), "{text}");
+        }
+        let mut done = latest.clone();
+        done["cleanup_result"] = serde_json::json!({"state": "committed", "moved": 2,
+            "stamp": "20261114T080000Z"});
+        done["revert"] = serde_json::json!({
+            "cleanup": "moai cleanup-revert-plan <HOME> --stamp 20261114T080000Z"});
+        let text = screen(&done, Asked::NotAsked, &v);
+        let cleaned = if lang == Lang::Ko {
+            "정리했어요 — 보관 2개"
+        } else {
+            "Cleaned up — archived: 2"
+        };
+        assert!(text.contains(cleaned), "{text}");
+        assert!(text.contains("moai cleanup-revert-plan <HOME> --stamp 20261114T080000Z"));
+        assert!(!text.contains("--confirm-cleanup"), "{text}");
+    }
+}
+
 fn moai_project() -> Option<Project> {
     Some(Project {
         path: "/home/u/work/app".into(),

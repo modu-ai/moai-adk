@@ -143,6 +143,11 @@ enum W {
     SessionChecks,
     Changed,
     Linked,
+    Cleanup,
+    Archive,
+    Keep,
+    CleanupNext,
+    Cleaned,
 }
 
 fn w(lang: Lang, word: W) -> &'static str {
@@ -424,6 +429,41 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "link"
             }
         }
+        Cleanup => {
+            if ko {
+                "정리(Go 남은 것)"
+            } else {
+                "cleanup (Go leftovers)"
+            }
+        }
+        Archive => {
+            if ko {
+                "보관"
+            } else {
+                "to archive"
+            }
+        }
+        Keep => {
+            if ko {
+                "유지"
+            } else {
+                "kept"
+            }
+        }
+        CleanupNext => {
+            if ko {
+                "정리는 따로 확인해요:"
+            } else {
+                "the cleanup is confirmed on its own:"
+            }
+        }
+        Cleaned => {
+            if ko {
+                "정리했어요 — 보관"
+            } else {
+                "Cleaned up — archived:"
+            }
+        }
     }
 }
 
@@ -674,6 +714,20 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             ),
         ));
     }
+    // #2872 stage 2: Go leftovers the cleanup would archive (confirmed apart, never by the y).
+    let c = &v["cleanup"];
+    if c["confirm_token"].is_string() && v["cleanup_result"].is_null() {
+        let n = |k: &str| c["counts"][k].as_u64().unwrap_or(0) as usize;
+        rows.push(row(
+            Mark::Warn,
+            w(lang, W::Cleanup).into(),
+            format!(
+                "{} · {}",
+                counted(lang, W::Archive, n("archive")),
+                counted(lang, W::Keep, n("keep"))
+            ),
+        ));
+    }
     rows
 }
 
@@ -884,6 +938,53 @@ impl Out<'_> {
                 format!("{} {}", w(lang, W::GoPending), count(lang, *n)),
             )];
             self.rows(&rows);
+        }
+    }
+    /// #2872 stage 2: the cleanup is confirmed with its own token, never by the `y`; the command
+    /// is shown whole so it can be copied.
+    fn cleanup_next(&mut self, v: &Value) {
+        let Some(flag) = v["cleanup"]["apply_flag"].as_str() else {
+            return;
+        };
+        if !v["cleanup_result"].is_null() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::CleanupNext))
+        );
+        self.buf.push_str(&line);
+        let line = format!(
+            "  {}\n",
+            self.p()
+                .paint(Token::Code, &visible(&format!("moai update {flag}")))
+        );
+        self.buf.push_str(&line);
+    }
+    /// A cleanup that ran (`--confirm-cleanup`): how many entries were archived and the revert.
+    fn cleanup_done(&mut self, v: &Value) {
+        let r = &v["cleanup_result"];
+        if r.is_null() {
+            return;
+        }
+        let lang = self.lang();
+        self.blank();
+        let moved = r["moved"].as_u64().unwrap_or(0) as usize;
+        self.status(
+            Mark::Ok,
+            &format!("{} {}", w(lang, W::Cleaned), count(lang, moved)),
+        );
+        if let Some(c) = v["revert"]["cleanup"].as_str() {
+            let c = self.home(c);
+            let line = format!(
+                "  {} {}\n",
+                self.p()
+                    .paint(Token::Muted, &format!("{}:", w(lang, W::Revert))),
+                self.p().paint(Token::Code, &visible(&c))
+            );
+            self.buf.push_str(&line);
         }
     }
     /// #2894 7b (U-9): the end block of a finished run and of "all up to date" — always, inside
@@ -1111,6 +1212,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         // The question already showed the head, rows and changes: one line now.
         Asked::No => {
             o.status(Mark::Skip, w(lang, W::NotWritten));
+            o.cleanup_next(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -1150,6 +1252,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.blank();
             o.rows(&others);
         }
+        o.cleanup_done(result);
+        o.cleanup_next(result);
         o.project_next();
         return o.buf;
     }
@@ -1172,6 +1276,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         let line = format!("  {}\n", o.p().paint(Token::Code, &visible(cmd)));
         o.buf.push_str(&line);
     }
+    o.cleanup_done(result);
+    o.cleanup_next(result);
     o.buf
 }
 
@@ -1280,6 +1386,7 @@ fn applied(v: &Value, view: &View) -> String {
     if reload {
         o.muted(w(lang, W::Reload));
     }
+    o.cleanup_done(v);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

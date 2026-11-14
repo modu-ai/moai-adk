@@ -1109,6 +1109,10 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+        /// The preview's `cleanup.confirm_token` (#2872): archive the Go leftovers it lists.
+        /// Without --confirm the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_cleanup: Option<String>,
         /// Print the JSON envelope on a terminal too, instead of the screens.
         #[arg(long)]
         json: bool,
@@ -2474,7 +2478,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             }
             Ok(result)
         }
-        Command::Update { confirm, json: _ } => {
+        Command::Update {
+            confirm,
+            confirm_cleanup,
+            json: _,
+        } => {
             use moai_cli::update_tux::{self as tux, Asked};
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
@@ -2483,8 +2491,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             // The shared confirm prompt (#2806): same terminal rule and question as before. With
             // screens on (#2894) the question shows the check and change lists instead of the
             // summary text, and what was answered is kept for the end screen.
-            let result =
-                moai_cli::update::update_command(&home, confirm.as_deref(), |summary, preview| {
+            let result = moai_cli::update::update_command(
+                &home,
+                confirm.as_deref(),
+                confirm_cleanup.as_deref(),
+                |summary, preview| {
                     use moai_cli::ui_text::Msg;
                     if !tux::human() {
                         return moai_cli::progress::ask_terminal(
@@ -2507,7 +2518,8 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         (true, false) => Asked::No,
                     });
                     Ok(yes)
-                });
+                },
+            );
             match result {
                 // Confirmed on the screen, but the plan or the package moved before the write
                 // (the combined digest check, or the package re-read): refused, nothing written,
@@ -2519,7 +2531,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         && (e.contains("stale or altered plan") || e.contains("preview again")) =>
                 {
                     tux::set_asked(Asked::Stale);
-                    moai_cli::update::update_command(&home, None, |_, _| Ok(false))
+                    moai_cli::update::update_command(&home, None, None, |_, _| Ok(false))
                 }
                 other => other,
             }
