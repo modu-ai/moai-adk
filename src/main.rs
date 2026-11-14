@@ -3801,67 +3801,8 @@ mod help_rules {
     //! meeting it exactly, so every later S1 pull request moves names in and none can slip back;
     //! a rule every command meets is checked for all (the one-line about since S1b).
     use super::Cli;
-    use clap::CommandFactory;
+    use clap::{CommandFactory, FromArgMatches};
     use std::collections::BTreeSet;
-
-    /// Commands whose every shown argument and option has a description (#2799 A 6865611250:
-    /// 48 at the S1a base, plus `bin-names-*` from #2800).
-    const ARGS_DONE: &[&str] = &[
-        "agents-home-apply",
-        "agents-home-plan",
-        "agents-home-revert",
-        "audit-claim",
-        "bin-names-apply",
-        "bin-names-plan",
-        "cc",
-        "codex",
-        "codex-doctor",
-        "cost-report",
-        "dispatch-check",
-        "flake-classify",
-        "flake-record",
-        "flow-wip-check",
-        "gate-check",
-        "gate-loop",
-        "gate-merge",
-        "glm",
-        "go-state-plan",
-        "goal-apply",
-        "goal-block",
-        "goal-plan",
-        "goal-show",
-        "heavy-slot-acquire",
-        "home-routing-apply",
-        "home-routing-plan",
-        "home-routing-revert",
-        "home-state-apply",
-        "home-state-plan",
-        "home-state-revert",
-        "hook-dispatch",
-        "install-inspect",
-        "labels-check",
-        "lane-env",
-        "lane-safe-to-reset",
-        "migrate-plan",
-        "optimize-plan",
-        "pr-self-audit-check",
-        "recovery-plan",
-        "repo-scans",
-        "review-check",
-        "review-package",
-        "session-register",
-        "skills-legacy",
-        "statusline",
-        "update",
-        "update-plan",
-        "usage-limit",
-        "wait",
-        "worktree-move-apply",
-        "worktree-move-plan",
-    ];
-
-    /// Commands whose `--help` carries an `Examples:` section (none yet at S1a).
-    const EXAMPLES_DONE: &[&str] = &[];
 
     fn words() -> Vec<String> {
         Cli::command()
@@ -3890,10 +3831,6 @@ mod help_rules {
             .collect()
     }
 
-    fn set(list: &[&str]) -> BTreeSet<String> {
-        list.iter().map(|s| s.to_string()).collect()
-    }
-
     #[test]
     fn help_table_names_every_command_once() {
         let mut listed = Vec::new();
@@ -3915,33 +3852,225 @@ mod help_rules {
         assert!(off.is_empty(), "abouts off the rule: {off:?}");
     }
 
+    /// Every shown argument and option has a description in the help people see (#2802 S1d;
+    /// S1a listed the 50 commands complete at its base).
     #[test]
-    fn argument_descriptions_are_complete_exactly_where_listed() {
-        let ok = meeting(|s| {
-            s.get_arguments()
-                .filter(|a| !a.is_hide_set())
-                .filter(|a| !matches!(a.get_id().as_str(), "help" | "version"))
-                .all(|a| a.get_help().is_some() || a.get_long_help().is_some())
-        });
-        assert_eq!(
-            ok,
-            set(ARGS_DONE),
-            "ARGS_DONE must list exactly the fully described commands"
+    fn every_argument_is_described() {
+        let cli = configured();
+        let mut blank = Vec::new();
+        for s in cli.get_subcommands().filter(|s| s.get_name() != "help") {
+            for a in s.get_arguments() {
+                if a.is_hide_set() || matches!(a.get_id().as_str(), "help" | "version") {
+                    continue;
+                }
+                if a.get_help().is_none() && a.get_long_help().is_none() {
+                    blank.push(format!("{} {}", s.get_name(), a.get_id()));
+                }
+            }
+        }
+        assert!(
+            blank.is_empty(),
+            "arguments without a description: {blank:?}"
         );
     }
 
+    /// Every row of the argument tables fills an argument the source leaves blank: a row for a
+    /// renamed command or argument, or one a doc comment already covers, fails here.
     #[test]
-    fn examples_are_present_exactly_where_listed() {
-        let ok = meeting(|s| {
-            [s.get_after_help(), s.get_after_long_help()]
-                .into_iter()
-                .flatten()
-                .any(|t| t.to_string().contains("Examples:"))
-        });
-        assert_eq!(
-            ok,
-            set(EXAMPLES_DONE),
-            "EXAMPLES_DONE must list exactly the commands with examples"
+    fn argument_help_rows_fill_real_blanks() {
+        use moai_cli::help::{ARG_HELP, ARG_HELP_FOR};
+        let cli = Cli::command();
+        let blank = |cmd: &str, id: &str| {
+            cli.find_subcommand(cmd).is_some_and(|s| {
+                s.get_arguments().any(|a| {
+                    a.get_id().as_str() == id
+                        && a.get_help().is_none()
+                        && a.get_long_help().is_none()
+                })
+            })
+        };
+        let mut rows = BTreeSet::new();
+        for (cmd, id, text) in ARG_HELP_FOR {
+            assert!(rows.insert((cmd, id)), "{cmd} {id} is listed twice");
+            assert!(blank(cmd, id), "{cmd} {id} is not a blank argument");
+            assert!(
+                !text.is_empty() && !text.ends_with('.'),
+                "{cmd} {id}: {text:?}"
+            );
+        }
+        for (id, text) in ARG_HELP {
+            let used = cli
+                .get_subcommands()
+                .any(|s| !rows.contains(&(&s.get_name(), id)) && blank(s.get_name(), id));
+            assert!(used, "generic {id} fills no blank argument");
+            assert!(!text.is_empty() && !text.ends_with('.'), "{id}: {text:?}");
+        }
+    }
+
+    /// The command as people see it: the layout `main` parses with (examples attached).
+    fn configured() -> clap::Command {
+        moai_cli::help::configure(Cli::command(), "moai", moai_cli::BUILD_VERSION, false)
+    }
+
+    /// Every command's `--help` carries an `Examples:` section (#2802 S1c).
+    #[test]
+    fn every_command_has_examples() {
+        let cmd = configured();
+        let missing: Vec<_> = cmd
+            .get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .filter(|s| {
+                !s.get_after_long_help()
+                    .is_some_and(|t| t.to_string().starts_with("Examples:\n  moai "))
+            })
+            .map(|s| s.get_name().to_string())
+            .collect();
+        assert!(missing.is_empty(), "no examples: {missing:?}");
+    }
+
+    /// Each example names its own command or that command's pair, holds one to three lines,
+    /// and parses with this binary's command line (` < file` is standard input, not an
+    /// argument).
+    #[test]
+    fn every_example_parses() {
+        let mut failed = Vec::new();
+        for (word, examples) in moai_cli::help::EXAMPLES {
+            assert!(
+                (1..=3).contains(&examples.len()),
+                "{word}: {} examples",
+                examples.len()
+            );
+            for example in *examples {
+                // A usage placeholder such as `[PROJECT]` would parse as a value; examples
+                // carry real values or `<…>` placeholders only.
+                assert!(
+                    !example.contains('[') && !example.contains(']'),
+                    "{word}: `{example}`"
+                );
+                let args = example.split(" < ").next().unwrap();
+                let argv: Vec<&str> = std::iter::once("moai")
+                    .chain(args.split_whitespace())
+                    .collect();
+                let parsed = configured()
+                    .try_get_matches_from(&argv)
+                    .map_err(|e| e.kind())
+                    .and_then(|m| Cli::from_arg_matches(&m).map_err(|e| e.kind()));
+                if let Err(kind) = parsed {
+                    failed.push(format!("{word}: `{example}` -> {kind:?}"));
+                }
+            }
+        }
+        assert!(
+            failed.is_empty(),
+            "examples that do not parse:\n{}",
+            failed.join("\n")
+        );
+    }
+
+    /// Attaching the examples keeps the commands in their declared order (#2839 audit N1).
+    #[test]
+    fn configure_keeps_the_command_order() {
+        let names = |c: &clap::Command| {
+            c.get_subcommands()
+                .map(|s| s.get_name().to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(&configured()), names(&Cli::command()));
+    }
+
+    /// Commands `main` answers before the internal dispatch; each reads standard input there
+    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
+    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
+
+    /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
+    /// more than asking whether it is a terminal.
+    fn reads_stdin(text: &str) -> bool {
+        text.contains("input::<")
+            || text.contains("input()")
+            || text.contains("plan_input")
+            || text
+                .match_indices("stdin()")
+                .any(|(i, m)| !text[i + m.len()..].trim_start().starts_with(".is_terminal"))
+    }
+
+    /// The commands whose handling reads standard input, from the source: each
+    /// `Command::<Variant>` match arm before the first test module, and each `src/ops` file.
+    fn commands_reading_stdin() -> BTreeSet<String> {
+        let source = include_str!("main.rs");
+        let code = &source[..source.find("\n#[cfg(test)]").unwrap()];
+        let lines: Vec<&str> = code.lines().collect();
+        let indent = |l: &str| l.len() - l.trim_start().len();
+        let kebab = |v: &str| {
+            let mut out = String::new();
+            for (i, ch) in v.chars().enumerate() {
+                if ch.is_uppercase() && i > 0 {
+                    out.push('-');
+                }
+                out.push(ch.to_ascii_lowercase());
+            }
+            out
+        };
+        let mut reads = BTreeSet::new();
+        for (i, line) in lines.iter().enumerate() {
+            let Some(rest) = line.trim_start().strip_prefix("Command::") else {
+                continue;
+            };
+            let variant: String = rest.chars().take_while(|c| c.is_alphanumeric()).collect();
+            let after = rest[variant.len()..].trim_start();
+            if variant.is_empty() || !["{", "(", "=>"].iter().any(|p| after.starts_with(p)) {
+                continue;
+            }
+            // The arm runs until the next arm at its indent or a line indented less.
+            let depth = indent(line);
+            let end = (i + 1..lines.len())
+                .find(|&j| {
+                    let l = lines[j];
+                    !l.trim().is_empty()
+                        && (indent(l) < depth
+                            || (indent(l) == depth && l.trim_start().starts_with("Command::")))
+                })
+                .unwrap_or(lines.len());
+            if reads_stdin(&lines[i..end].join("\n")) {
+                reads.insert(kebab(&variant));
+            }
+        }
+        let ops = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ops");
+        for entry in std::fs::read_dir(ops).unwrap() {
+            let path = entry.unwrap().path();
+            let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
+            if stem != "mod" && reads_stdin(&std::fs::read_to_string(&path).unwrap()) {
+                reads.insert(stem.replace('_', "-"));
+            }
+        }
+        reads
+    }
+
+    /// An example carries ` < file` exactly when the command it runs reads standard input, so
+    /// an example typed as written gets its input (#2839 audit B1: ten typed-request commands
+    /// lacked it).
+    #[test]
+    fn stdin_examples_match_the_commands_that_read_stdin() {
+        let reads = commands_reading_stdin();
+        for word in READ_BEFORE_DISPATCH {
+            assert!(
+                !reads.contains(word),
+                "{word} is found by the scan; drop it from the list"
+            );
+        }
+        let mut off = Vec::new();
+        for (_, examples) in moai_cli::help::EXAMPLES {
+            for example in *examples {
+                let word = example.split_whitespace().next().unwrap();
+                let wants = reads.contains(word) || READ_BEFORE_DISPATCH.contains(&word);
+                if example.contains(" < ") != wants {
+                    off.push(format!("`{example}` (reads stdin: {wants})"));
+                }
+            }
+        }
+        assert!(
+            off.is_empty(),
+            "examples off the stdin rule:\n{}",
+            off.join("\n")
         );
     }
 
