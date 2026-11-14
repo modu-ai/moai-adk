@@ -43,6 +43,10 @@ Project
   hooks-apply             Write a previewed hook set
   hooks-revert            Undo the hook set one update
                           applied
+  go-hooks-plan           Preview replacing Go-era project
+                          hooks
+  go-hooks-apply          Replace Go-era project hooks
+  go-hooks-revert         Undo a Go-era hook replacement
 Update and move
   update                  Update MoAI from the installed
                           package
