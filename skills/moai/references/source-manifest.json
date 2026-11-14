@@ -118,12 +118,12 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "sha256": "a8a423475a591eeb4794fa94f9c7516dbe205c942332d3a066e35e9b71a44e6d",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). Rebuild-by-modification-time sentence (touch restored or extracted sources; cite a run only with the tree's Compiling line and the expected test count) added by #2401 comment 6824103310."
       }
     },
     "workflows/sync.md": {
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "651cc0a44d329e0c0bfedc1b1d45c56d99651cb38a05aa57a43e3a90ebd064c4",
+      "sha256": "9163f0dd4c3767b4bf09478066d8d1895802e0de4b0694b373c8bc6c72d04b62",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "8a39414e00bbb57699651dc7097f7568ae1f4b568f5ca6388184270527f35f39",
+      "sha256": "a239b3d5b3ac5e42a4a38c0faf5c11e5ca173b90fda29358f5ba87efb3555044",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -313,7 +313,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "sha256": "0cd35e499e206541da20005ad7236eadea4dc6571a50882121b0825b0f933d01",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
