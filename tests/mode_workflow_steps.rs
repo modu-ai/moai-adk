@@ -843,8 +843,11 @@ fn inspection_p2_rules_are_written_where_they_are_used() {
         .expect("reduced-mode section")..];
     let reduced = &reduced[..reduced[3..].find("\n## ").map_or(reduced.len(), |i| i + 3)];
     for p in [
-        "take the lowest claim comment that no release or handoff line closes and whose lease is live, and write only when it is yours",
-        "when the read fails, is paged short or two claims tie, write nothing",
+        // Audit #2938 B1: the lowest open claim holds even when its lease has expired, as
+        // `claim-verify` judges it (`stale`) — no takeover by time alone.
+        "take the lowest claim comment that no release or handoff line closes — expired or not — and write only when it is yours and its lease is live",
+        "An expired holder stays the holder, as `claim-verify` judges it `stale`: never take the card over by time alone",
+        "When the read fails, is paged short or the order of the claims cannot be read, write nothing",
         "kind=claim owner=leader",
         "are reported `not_run` with the substitute, never as passed",
     ] {
