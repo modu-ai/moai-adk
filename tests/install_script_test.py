@@ -613,14 +613,17 @@ class InstallShTest(unittest.TestCase):
     def pty_env(self, **env):
         return self.env(NO_COLOR="1", **env)
 
-    def run_pty(self, args, answers, timeout=300, **env):
+    def run_pty(self, args, answers, timeout=300, after=None, **env):
+        """Run the installer at a terminal and type `answers`: at once, or, with `after`, only
+        once that text has been printed (the prompt is waiting then, as it is for a person)."""
         master, slave = pty.openpty()
         proc = subprocess.Popen(
             [*self.pty_argv(), *args], stdin=slave, stdout=slave, stderr=slave,
             env=self.pty_env(**env), cwd=self.home, close_fds=True, start_new_session=True,
         )
         os.close(slave)
-        os.write(master, answers.encode())
+        if after is None:
+            os.write(master, answers.encode())
         out = b""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -633,6 +636,9 @@ class InstallShTest(unittest.TestCase):
                 if not chunk:
                     break
                 out += chunk
+                if after is not None and after.encode() in out:
+                    os.write(master, answers.encode())
+                    after = None
             elif proc.poll() is not None:
                 break
         else:
@@ -641,14 +647,23 @@ class InstallShTest(unittest.TestCase):
         os.close(master)
         return proc.returncode, out.decode(errors="replace").replace("\r\n", "\n")
 
-    def assert_menu_choice(self, answers, want, prompts=1, **env):
+    def assert_menu_choice(self, answers, want, prompts=1, after=None, **env):
         if os.path.exists(self.log):
             os.remove(self.log)
         shutil.rmtree(self.state(), ignore_errors=True)
-        code, out = self.run_pty([], answers, **env)
+        # The installer's own temporary folder goes here, so a leftover shows.
+        scratch = os.path.join(self.tmp, "scratch")
+        shutil.rmtree(scratch, ignore_errors=True)
+        os.makedirs(scratch)
+        code, out = self.run_pty([], answers, after=after, TMPDIR=scratch, **env)
         self.assertEqual(code, 0, out)
         self.assertEqual(out.count("Choose 1-5"), prompts, out)
         self.assertEqual(self.calls(), [["language-set", "--home", want, ""]], out)
+        # The install ran to its end whatever the answers were: the tail (the next steps) is
+        # printed and the temporary folder is gone.
+        self.assertIn("Installation complete!", out)
+        self.assertIn("Next steps:", out)
+        self.assertEqual(os.listdir(scratch), [], out)
         return out
 
     def test_the_menu_at_a_terminal_lists_the_five_choices_in_english(self):
@@ -681,8 +696,9 @@ class InstallShTest(unittest.TestCase):
     def test_an_empty_menu_answer_takes_the_default_and_the_end_of_input_too(self):
         self.assert_menu_choice("\n", "en")
         self.assert_menu_choice("\n", "zh", LC_ALL="", LANG="zh_CN.UTF-8")
-        # Ctrl-D on an empty line is the end of input.
-        out = self.assert_menu_choice("\x04", "ko", LC_ALL="", LANG="ko_KR.UTF-8")
+        # Ctrl-D on an empty line is the end of input; it is typed once the prompt is waiting.
+        out = self.assert_menu_choice(
+            "\x04", "ko", after="Choose 1-5", LC_ALL="", LANG="ko_KR.UTF-8")
         self.assertIn("Using ko.", out)
 
     def test_no_menu_when_the_language_is_given_or_there_is_no_terminal(self):
@@ -731,8 +747,8 @@ class InstallPs1Test(InstallShTest):
             env=self.pwsh_env(**env), cwd=self.home, capture_output=True, text=True, timeout=300,
         )
 
-    # The menu is read with Read-Host, which a -NonInteractive host refuses: the terminal runs
-    # get an interactive one.
+    # The menu is read with [Console]::In.ReadLine(): the terminal runs get an interactive host,
+    # as a person at a terminal has.
     def pty_argv(self):
         return [shutil.which("pwsh"), "-NoProfile", "-File", PS1]
 

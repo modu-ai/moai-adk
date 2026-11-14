@@ -94,6 +94,16 @@ function Get-LocaleLanguage {
     return ""
 }
 
+# One line from the terminal after the prompt text. [Console]::In.ReadLine() gives $null at the end
+# of input (Ctrl-D, a closed terminal); Read-Host would end the whole host there, and the install
+# with it, on Linux.
+function Read-Answer([string]$Prompt) {
+    Write-Host "${Prompt}: " -NoNewline
+    try { $line = [Console]::In.ReadLine() } catch { $line = $null }
+    if ($null -eq $line) { Write-Host "" }
+    return $line
+}
+
 # Asks for the language at a terminal. A wrong answer is asked again, three answers at most, then
 # the default is used; an empty answer or the end of input takes the default too.
 function Read-LanguageChoice([string]$Default) {
@@ -106,13 +116,13 @@ function Read-LanguageChoice([string]$Default) {
     Write-Host "  5) Other (type a language code, for example fr or pt-BR)"
     $known = @{ "1" = "en"; "2" = "ko"; "3" = "ja"; "4" = "zh" }
     for ($try = 0; $try -lt 3; $try++) {
-        try { $answer = Read-Host "Choose 1-5 [default: $Default]" } catch { break }
+        $answer = Read-Answer "Choose 1-5 [default: $Default]"
         if ($null -eq $answer) { break }
         $answer = $answer.Trim()
         if ($answer -eq "") { return $Default }
         if ($known.ContainsKey($answer)) { return $known[$answer] }
         if ($answer -eq "5") {
-            try { $code = Read-Host "Language code" } catch { break }
+            $code = Read-Answer "Language code"
             if ($null -eq $code) { break }
             $code = $code.Trim()
             if (Test-Language $code) { return $code }
