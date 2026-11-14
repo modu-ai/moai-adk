@@ -12,10 +12,8 @@ options and examples headings and the help flag's line. POSIX only.
 
 import os
 import re
-import select
 import shutil
 import subprocess
-import time
 import tempfile
 import unittest
 
@@ -45,28 +43,27 @@ def run_help(args, env, stdout_tty=True, stderr_tty=False):
                                 stdout=slave if stdout_tty else subprocess.PIPE,
                                 stderr=slave if stderr_tty else subprocess.PIPE,
                                 env=env, cwd=env["HOME"])
-        # The parent keeps the slave open until the child has exited and the master is drained:
-        # on macOS the output a child wrote is dropped once the last slave descriptor closes
-        # before the master reads it, which loses lines when the machine is busy.
+        os.close(slave)
+        slave = -1
         chunks = []
-        deadline = time.monotonic() + 60
         while True:
-            ready, _, _ = select.select([master], [], [], 0.05)
-            if ready:
-                chunks.append(os.read(master, 65536))
-                continue
-            if proc.poll() is not None:
+            try:
+                data = os.read(master, 65536)
+            except OSError:
                 break
-            if time.monotonic() > deadline:
-                proc.kill()
-                raise AssertionError(f"{args}: no exit within 60 s")
+            if not data:
+                break
+            chunks.append(data)
         out = "" if stdout_tty else proc.stdout.read().decode()
         err = "" if stderr_tty else proc.stderr.read().decode()
         proc.wait(timeout=60)
     finally:
-        os.close(slave)
+        if slave != -1:
+            os.close(slave)
         os.close(master)
-    term = b"".join(chunks).decode("utf-8", "replace").replace("\r\n", "\n")
+    # The pty turns each "\n" into "\r\n"; under a full output queue macOS has been seen to send
+    # one "\r" twice ("\r\r\n" in a 15 KB `help --all`). Help text carries no "\r" of its own.
+    term = b"".join(chunks).decode("utf-8", "replace").replace("\r", "")
     if stdout_tty:
         out = term
     else:
@@ -197,6 +194,25 @@ class KoreanHelp(unittest.TestCase):
                             continue
                         self.assertLessEqual(cells(line), int(columns),
                                              (columns, word, flag, line))
+
+    def test_no_korean_line_of_any_command_help_runs_past_sixty_cells(self):
+        """Every command's `-h` and `--help` at 60 columns: no line with Hangul past 60 cells
+        (clap counts a Hangul letter as one cell, so a Korean help beside a wide name ran to 72
+        before the Korean frame put every help on its own line)."""
+        listing, _, _ = pipe(["help", "--all"], env_for(self.home))
+        words = sorted({line.split()[0] for line in listing.splitlines()
+                        if line.startswith("  ") and not line.startswith("   ")
+                        and not line.split()[0].startswith("-")})
+        self.assertGreater(len(words), 100)
+        over = []
+        for word in words:
+            for flag in ("-h", "--help"):
+                for line in self.help([word, flag], COLUMNS="60", **KOREAN).splitlines():
+                    if line.startswith("사용법: ") or line.startswith("  moai "):
+                        continue  # clap never wraps a usage or an example, in English too
+                    if cells(line) > 60 and any("가" <= c <= "힣" for c in line):
+                        over.append((word, flag, cells(line), line))
+        self.assertEqual(over, [])
 
     def test_an_english_subcommand_help_keeps_its_bytes(self):
         for args in (["project-detect", "--help"], ["key-set", "-h"], ["cc", "--help"]):

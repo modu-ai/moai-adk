@@ -1167,18 +1167,21 @@ fn korean_frame(c: Command) -> Command {
     });
     // clap's generated `-h, --help` cannot be edited before the command is built, so it is
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
-    // Its short line may sit beside the widest name, so it is wrapped for that column too.
-    let short_room = width().saturating_sub(short_help_column(&c).max(LONG_ARG_INDENT));
+    // Every help starts on the line after its name, `LONG_ARG_INDENT` in, in `-h` as in
+    // `--help`: clap counts a Hangul letter as one cell, so beside a wide name it would judge a
+    // Korean help to fit when it does not (`codex-projection-plan -h` ran to 72 cells at 60).
+    let room = width().saturating_sub(LONG_ARG_INDENT);
     c.disable_help_flag(true)
         .arg(
             clap::Arg::new("help")
                 .short('h')
                 .long("help")
                 .action(clap::ArgAction::Help)
-                .help(wrap(HELP_FLAG_SHORT_KO, 0, short_room))
-                .long_help(HELP_FLAG_LONG_KO)
+                .help(wrap(HELP_FLAG_SHORT_KO, 0, room))
+                .long_help(wrap(HELP_FLAG_LONG_KO, 0, room))
                 .help_heading(OPTIONS_KO.trim_end_matches(':')),
         )
+        .next_line_help(true)
         .help_template(SUBCOMMAND_TEMPLATE_KO)
 }
 
@@ -1194,39 +1197,17 @@ fn korean_texts(c: Command, name: &str, width: usize) -> Command {
         Some((_, long)) => c.long_about(wrap(long, 0, width)),
         None => c,
     };
-    // A short help (`-h`) may put the help beside the names, after the widest of them; a long
-    // help (`--help`) always starts it on the next line, `LONG_ARG_INDENT` in.
-    let short_room = width.saturating_sub(short_help_column(&c).max(LONG_ARG_INDENT));
-    let long_room = width.saturating_sub(LONG_ARG_INDENT);
+    // The Korean frame puts every help on the line after its name (`korean_frame`), so one
+    // wrap at the indent fits `-h` and `--help` alike.
+    let room = width.saturating_sub(LONG_ARG_INDENT);
     let name = name.to_string();
     c.mut_args(move |a| match arg_help_ko(&name, a.get_id().as_str()) {
-        Some(text) => a
-            .help(wrap(text, 0, short_room))
-            .long_help(wrap(text, 0, long_room)),
+        Some(text) => {
+            let wrapped = wrap(text, 0, room);
+            a.help(wrapped.clone()).long_help(wrapped)
+        }
         None => a,
     })
-}
-
-/// The widest column a short help can start an argument's help at: two spaces, the widest
-/// `-s, --long <VALUE>` or `<VALUE>`, two spaces (clap's layout; an upper bound when clap puts
-/// the help on the next line instead).
-fn short_help_column(c: &Command) -> usize {
-    let spec = |a: &clap::Arg| -> usize {
-        let value = || -> String {
-            a.get_value_names()
-                .and_then(|v| v.first())
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| a.get_id().as_str().to_uppercase())
-        };
-        if a.is_positional() {
-            return value().width() + 2;
-        }
-        let takes = a.get_action().takes_values();
-        let long = a.get_long().map(|l| l.width() + 2).unwrap_or(0);
-        4 + long + if takes { value().width() + 3 } else { 0 }
-    };
-    let widest = c.get_arguments().map(spec).max().unwrap_or(0);
-    2 + widest.max("-h, --help".width()) + 2
 }
 
 #[cfg(test)]
