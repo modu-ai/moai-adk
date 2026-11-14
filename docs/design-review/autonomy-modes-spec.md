@@ -1,6 +1,6 @@
 # 자율 무중단 개발 모드 SPEC — `/moai --mode-leader` · `/moai --mode-agent` (#2138, DR-02)
 
-> 현행 상태(#2167): 구현된 형태는 `/moai --mode-leader [--autonomy full|semi]`·`/moai --mode-agent`(#2160, `skills/moai/SKILL.md`)다. 이 문서의 표기는 #2286(사용자 결정 Issue #2389 댓글 6774899518 행 36)에서 이 두 형태로 고쳤다. 설계 당시 이름 `--leader-mode`·`--agent-mode`와 그 뒤의 `--mode leader`·`--mode agent`는 더 쓰지 않는다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있고, 그 이전 제안은 `docs/lane-loop-contract.md`(2026-11-08)다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
+> 현행 상태(#2167): 구현된 형태는 `/moai --mode-leader [--autonomy full|semi]`·`/moai --mode-agent`(#2160, `skills/moai/SKILL.md`)다. 이 문서의 표기는 #2286(사용자 결정 Issue #2389 댓글 6774899518 행 36)에서 이 두 형태로 고쳤다. 설계 당시 이름 `--leader-mode`·`--agent-mode`와 그 뒤의 `--mode leader`·`--mode agent`는 더 쓰지 않는다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있다. 그 이전 제안 `docs/lane-loop-contract.md`(2026-11-08)는 폐기됐다(#2900, #2899 G10). 2026-11-14 오케스트레이션 재설계(#2899, O1 #2900)로 §1·§2·§3②·§5·§8·§9를 고치고 끝 조건을 §12 한 곳에 두었다. 모드는 호스트가 아니라 채널로 나눈다: Orca가 있으면 지휘 모드, 없으면 자율 모드다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
 
 - 상태: SPEC 초안(Class C, 설계 변경). 이 문서는 구현하지 않는다. 코드·skill 파일은 바꾸지 않았고, 구현은 §10의 후속 카드가 맡는다.
 - 입력: 종합 개선 보고서 §10.4(`references/chatgpt-space/synthesis-improvement-report-2026-11-09.md`, 2026-11-09 작성, 저장소에 아직 tracked 아님). 사용자 결정 2026-11-09 00:0x~00:3x(모드 skill 진입, 완전/반자율, self-claim 기본, 리더 5분 PR 점검·타 에이전트 수리 지시, `/goal` 붙여넣기 안내).
@@ -13,8 +13,8 @@
 
 | 형태 | host | RC1 대조 |
 |---|---|---|
-| `/moai --mode-leader [--autonomy full\|semi]` | Claude Code | **신규**. `skills/moai/SKILL.md`에는 모드 인자가 없고, `skills/moai/references/routes.json`의 route는 8개(`AUDIT PLAN READ RUN SETUP SYNC UPDATE VERIFY`)뿐이다 |
-| `/moai --mode-agent` | Claude Code | **신규**. 위와 같다 |
+| `/moai --mode-leader [--autonomy full\|semi]` | 호스트 무관 — Orca(지휘 채널)와 리더를 깨우는 타이머가 있으면 Claude Code·Codex CLI·OMP 모두(D-O3, #2899 G4). 둘 다 없을 때만 거절한다(§5) | **신규**. `skills/moai/SKILL.md`에는 모드 인자가 없고, `skills/moai/references/routes.json`의 route는 8개(`AUDIT PLAN READ RUN SETUP SYNC UPDATE VERIFY`)뿐이다 |
+| `/moai --mode-agent` | 호스트 무관 — 지휘 모드에선 리더의 지시를, 자율 모드에선 자기 깨우기(§5)로 돈다(#2899 원칙 1·2) | **신규**. 위와 같다 |
 | 같은 인자를 Codex skill 호출로 전달 | Codex CLI | **미확인**. Codex에서 공통 skill에 인자를 넘기는 형태는 이번에 확인하지 않았다(§11) |
 
 지금은 `-l`/`-a` 론처 플래그가 세션 이름과 첫 prompt만 바꾼다(`src/main.rs:85-95`, `src/session.rs:13-15`). 역할 행동은 `AGENTS.local.md` § Lane loop(`AGENTS.local.md:28-39`)와 SessionStart 주입에 기대고 있다. 모드 skill은 이 암묵적 주입을 명시적 진입으로 바꾼다. `-l`/`-a`를 남길지는 §8의 결정 항목이다.
@@ -23,7 +23,7 @@
 
 | 책임 | 에이전트 모드 | 리더 모드 |
 |---|---|---|
-| 작업 획득 | self-claim(§3). 리더 배차를 기다리지 않는다 | 배차하지 않는다. 미배차 목록을 보충한다(보고서 → Issue 변환, 수리 Issue 발행) |
+| 작업 획득 | self-claim(§3). 리더 배차를 기다리지 않는다 | 지휘 모드에서 레인마다 한 회차에 행동 하나로 배차한다: `clear_redispatch`·`restart`·`answer`·`leave`(§5, #2899 G1). 배차는 힌트이고 소유권은 레인의 claim 댓글로만 생긴다(§4). 자율 모드에서는 배차하지 않는다. 어느 모드든 미배차 목록을 보충한다(보고서 → Issue 변환, 수리 Issue 발행) |
 | 진행 | 카드 하나를 worktree에서 끝내고 PR·영속 보고 뒤 다음 카드로 간다. 병합을 기다리지 않는다(`AGENTS.local.md:32`, `:36`) | 주기적 PR 점검(§5), 수리 지시, 배정 기록 대조, 목록이 빌 때 대기 사유 통지 |
 | 완료 판정 | 하지 않는다 | 증거(PR 병합, verdict 파일)를 읽어서만 한다. 메시지나 idle 알림으로는 판정하지 않는다 |
 | 통합 | 하지 않는다(작성자 ≠ 감사자 ≠ 통합자) | 게이트 절차를 따른다(`AGENTS.local.md:39`: verdict 첫 줄 → head == 감사 SHA → `moai/audit` → auto-merge) |
@@ -34,7 +34,7 @@
 | 단계 | 내용 | RC1 | 근거(경로:행) | 실패 분기 |
 |---|---|---|---|---|
 | ① 목록 갱신 | 미배차 Issue 번호 목록을 원격에서 다시 읽어 갱신한다(읽기 전용 스냅샷) | **부분** | 원격 읽기는 있다. `forge-read`가 열린 Issue와 댓글을 조건부 GET으로 읽는다(`src/forge/mod.rs:1-7`, `:347`, CLI `src/main.rs:801`). 반면 "미배차 목록"을 만드는 코드는 없다. `src/` 전체에서 `dispatch_journal`·`assignments`·`github-issues.json`을 찾으면 0건이다. `.moai-cli/manifests/github-issues.json`은 리더가 손으로 관리하는 기록이고, 코드가 읽지 않는다 | 원격 읽기 실패 → 목록을 갱신하지 않고 이전 스냅샷을 쓰지 않는다. 그 회차는 claim하지 않고 대기를 기록한다 |
-| ② 후보 선택 | 우선순위와 ready 조건(선행 Issue 종료)으로 1건을 고른다 | **신규** | Issue 큐용 선택 코드는 없다. `plan-admit`(`src/plan.rs:1-6`)은 SPEC task DAG의 `ready/stale/blocked`를 계산하는 것이라 Issue 큐 선택과는 다르다. 재사용할 수 있는지는 후속 카드에서 판단한다 | 후보 0건 → `idle: backlog empty <time>`을 한 번 기록하고 멈춘다. 폴링을 늘리지 않는다(Go 규칙 `<primary>/.claude/rules/moai/workflow/factory-dispatch.md:123`) |
+| ② 후보 선택 | 우선순위와 ready 조건(선행 Issue 종료)으로 1건을 고른다 | **신규** | Issue 큐용 선택 코드는 없다. `plan-admit`(`src/plan.rs:1-6`)은 SPEC task DAG의 `ready/stale/blocked`를 계산하는 것이라 Issue 큐 선택과는 다르다. 재사용할 수 있는지는 후속 카드에서 판단한다 | 후보 0건 → §12 끝 조건을 본다. 참이면 회차를 끝낸다. 거짓이면(열린 PR·다른 레인의 일이 남음) 멈추지 않고 깨우기를 건다(§5, #2899 G5). 바뀐 것 없는 상태를 짧은 간격으로 다시 읽지 않는다 |
 | ③ 같은 호스트 직렬화 | `<common dir>/.moai-cli/claims/` journal을 열고 advisory lock을 잡는다 | **있음** | `src/claim.rs:5-13`(journal 위치·authority·advisory lock), `:595-596`(`try_lock`), `:1120-1133`(lock을 못 잡으면 즉시 `busy`, 기다리지 않음) | `busy` → 기다리지 않고 다른 후보로 가거나 다음 회차로 미룬다(REQ-06A-05). 이미 활성 기록이 있으면 `already_owned`, lease가 만료됐으면 `expired`(자동 takeover 금지, `:787-811`) |
 | ④ 댓글 claim | `moai-claim: session= epoch= lease_until=` 댓글을 정확히 1건 게시한다 | **있음** | 게시 전에 먼저 읽고, 살아 있는 남의 claim이 있으면 쓰지 않는다(`src/claim.rs:821-841`). POST는 `:846-854`, `post_claim`은 `:506-538`(claim의 유일한 GitHub 쓰기) | POST 실패 → journal에 아무것도 쓰지 않는다. 오류는 envelope `kind`로 보고한다 |
 | ⑤ 승자 판정 | 댓글 목록을 다시 읽어 가장 작은 live 댓글 id가 이긴다 | **있음** | `src/claim.rs:856-918`(다시 읽기로 판정), `:447-450`(`resolve_winner` = 최소 id), 모듈 설명 `:15-23` | 다시 읽기 실패, 또는 내 댓글이 목록에 안 보임 → `uncertain`. journal은 쓰지 않는다(`:864-895`). 진 경우 → `already_owned`, journal은 쓰지 않고 내 댓글은 남긴다(규칙상 효력 없음, `:856-859`, `:896-912`) |
@@ -56,7 +56,7 @@ handoff는 소유권 부여가 아니다. 지정된 세션도 claim 게시와 �
 중재 수단은 **Issue 댓글 id**다. 로컬 파일이나 label은 중재 수단이 될 수 없다.
 
 1. **로컬 파일은 lock이 될 수 없다.** journal과 lock은 clone 하나의 git common dir 아래에 있어서(`src/claim.rs:5-8`) 다른 PC나 다른 clone의 세션은 볼 수 없다. 같은 호스트에서도 advisory lock이라 `moai-cli`를 거치지 않는 프로세스는 직렬화되지 않는다(`src/claim.rs:11-13`, 실행 시 notes `:947-949`). 그래서 journal은 같은 호스트 직렬화와 캐시에만 쓴다.
-2. **label은 lock이 될 수 없다.** GitHub는 unsafe 메서드에 조건부 요청(If-Match)을 지원하지 않는다. RC1의 쓰기 보호는 "쓰기 전에 다시 읽기"이지 원자적 CAS가 아니다(`src/forge/write.rs:4-6`). 두 세션이 같은 label을 동시에 붙여도 둘 다 성공한다. 저장소 규칙도 label·assignee는 표시이며 lock이 아니라고 적고 있다(`docs/lane-loop-contract.md:8`).
+2. **label은 lock이 될 수 없다.** GitHub는 unsafe 메서드에 조건부 요청(If-Match)을 지원하지 않는다. RC1의 쓰기 보호는 "쓰기 전에 다시 읽기"이지 원자적 CAS가 아니다(`src/forge/write.rs:4-6`). 두 세션이 같은 label을 동시에 붙여도 둘 다 성공한다. 저장소 규칙도 label·assignee는 표시이며 lock이 아니라고 적고 있다(`AGENTS.md:8`).
 3. **댓글 id 단조성은 가정이다.** RC1은 "살아 있는 claim 가운데 가장 작은 댓글 id가 이긴다"로 판정한다(`src/claim.rs:15-19`, `:447-450`). 이 판정은 먼저 게시된 댓글의 id가 더 작다는 가정에 기댄다. 이 가정이 GitHub 공식 문서에 보장으로 적혀 있는지는 이번에 확인하지 않았다(§11). 판정은 게시 뒤에 다시 읽어서 하므로, POST 결과 하나로 결정하지 않는다(`src/claim.rs:856-859`).
 4. **가정이 깨질 때의 fallback은 `uncertain`이다.** 다시 읽기가 실패하거나, 방금 게시한 내 댓글이 목록에 보이지 않으면(read-your-writes 불확실) 승자를 판정하지 않는다. 결과는 `uncertain`이고 journal은 쓰지 않는다(`src/claim.rs:864-895`). 에이전트는 그 카드를 소유한 것으로 행동하지 않는다. 사람이나 리더가 `claim-show`와 댓글을 보고 정리한다.
 5. **lease는 각 호스트의 시계로 판정한다.** `is_live`는 호출한 쪽의 현재 시각(`clock.now()`, `src/claim.rs:786`)과 비교한다. 호스트 간 시계가 어긋나면 live 판정이 달라질 수 있다. lease 수치 자체가 HOLD다(`src/claim.rs:25-28`).
@@ -67,7 +67,11 @@ handoff는 소유권 부여가 아니다. 지정된 세션도 claim 게시와 �
 - 주기: **5분**. 사용자가 지정한 값이며 측정해서 정한 값이 아니다. 실제로 맞는 주기인지는 운영하면서 기록해 다시 정한다.
 - 한 회차에서 읽는 증거: 열린 PR(head·base·병합 상태·CI·감사 verdict·충돌), 각 claim 댓글과 배정 기록, `ListAgents`(살아 있는 세션·중복 이름). 리더 상시 점검 규칙과 같다(`AGENTS.local.md:35`).
 - 행동: PASS면 게이트를 진행한다(`AGENTS.local.md:39`). 수리가 필요하면 수리 Issue나 댓글을 만들고 **원 작성자가 아닌** 레인을 `assignee-hint`로 지목한다. 목록이 비었는데 대기 중인 에이전트가 있으면 사유를 알린다.
-- 깨우기 수단: Claude runner는 스스로 다음 깨우기를 예약한다(`ScheduleWakeup`, 상대 지연). 반복 cron과 절대 시각 one-shot은 쓰지 않는다(Go 규칙 `<primary>/.claude/rules/moai/workflow/factory-dispatch.md:123`). Codex runner에는 스스로 깨우는 도구가 없다. 대체 수단은 증거 읽기와 디스크 대기 기록이다(Go 규칙 `<primary>/.claude/rules/moai/workflow/auto-semantics.md:200-204`). 따라서 Codex 세션은 리더 모드를 맡을 수 없거나, 사람이 깨우는 제한을 갖는다. 이것은 §8의 결정 항목이다.
+- 모드(#2899 원칙 2, G4): 채널로 나눈다. Orca(또는 같은 일을 하는 세션 제어 통로)가 있으면 **지휘 모드** — 리더가 레인 화면을 읽고 레인에 입력을 보낸다. 없거나 세션 간 통신이 안 되면 **자율 모드** — 레인마다 스스로 고르고(§3) 스스로 깨우고 스스로 마감한다. 리더의 호스트는 묻지 않는다(D-O3).
+- 깨우기 수단(#2899 G9, 호스트 능력 표): 쉴 때만 발화하는 세션 반복은 허용한다 — Claude Code `/loop 5m /moai --mode-leader`(리더)·`/loop 5m /moai --mode-agent`(자율 레인), 스스로 예약하는 `ScheduleWakeup`(상대 지연)도 그대로다. 턴 중에도 발화하는 벽시계 cron과 절대 시각 one-shot은 세션 안에서 쓰지 않는다. Codex CLI·OMP 리더는 세션 안 시간 반복이 없으므로 바깥 타이머 — Orca automation — 가 리더 세션을 깨운다. 그 5분 주기·바쁜 세션에서의 동작은 #2899 O6이 실측하고, 그전까지 `not_run`이다. Codex 자율 레인은 `/goal` 과 신뢰된 `Stop` hook(`decision: "block"`)으로 이어 간다(D-O2). 리더 모드는 지휘 채널(Orca)도 리더를 깨우는 타이머도 없을 때만 거절하고 에이전트 모드를 권한다. 한쪽만 있으면 들어가되, Orca 없이 타이머만 있으면 Issue·PR 댓글로만 일하고(`clear`·`restart` 없음), 타이머 없이 Orca만 있으면 사람이 깨운다고 적는다.
+- 리더 행동(지휘 모드, #2899 G1·설계 A.3): 한 회차에 레인마다 하나 — `clear_redispatch`(아래 비우기 조건 + 첫 일), `restart`(턴은 끝났는데 카드 진행 중: `순환 계속 — self-pick (1)부터`), `answer`(`LANE-BLOCKED`·인계 요청·결정 요청에 결정 기록), `leave`(작업 중·깨우기 걸림·`not_safe`/`unknown`, 사유 보고). 회차마다 CLOSE-TABLE이 확인된 Issue를 닫고(G7), 만료 claim을 정리하고, 병합 게이트를 한 번 돈다.
+- 비우기(`/clear`) 계약(#2899 G2·원칙 3): 조건은 모두 — 레인의 턴이 끝남, 입력창이 빔, 카드가 끝남(마지막 `LANE-DONE` 뒤 자기 진행 중인 일 없음) 또는 문맥 85% 이상이고 카드 경계, 그리고 `moai lane-safe-to-reset`이 `safe`. 순서는 `/clear` → 화면을 다시 읽어 입력창이 빈 것을 확인 → duty line `/moai --mode-agent …`(Codex는 `$moai`). 리더가 비우면 레인의 세션 이름 해제도 리더가 한다. `not_safe`·`unknown`이면 `leave`다. 세션은 스스로 비우지 못하므로(#2899 호스트 능력 표: Claude Code의 예약 입력 속 `/clear`는 평문으로 전달된다) 비우기는 리더 몫이다. 자율 모드 레인은 비우지 않고 auto-compact와 카드별 재개 메모로 이어 간다.
+- 보고(#2899 G3): 레인의 보고는 화면의 마지막 `LANE-*` 줄과 Issue/PR 댓글 둘 다다. 리더는 화면 전체를 읽고(줄 시작이 일치하는 줄만, 인용 제외) 댓글을 함께 읽는다.
 - 변화가 없는 PR 때문에 폴링을 늘리지 않는다.
 
 ## 6. 결정 등급과 keep-set
@@ -97,17 +101,18 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` was a deterministic, st
 
 - **D-1 론처 `-l`/`-a`**: (a) 호환용으로 남긴다. 모드 skill과 같은 세션 이름 기본값을 유지한다. (b) 폐기한다. 역할은 모드 skill로만 켠다. 어느 쪽이든 `moai-cli cc|glm|codex`만 실행하면 역할을 추측하지 않는다는 #2053의 동작은 유지한다.
 - **D-2 5분 주기**: 사용자 지정값으로 시작한다. 측정 기록이 쌓이면 다시 정할지 정한다.
-- **D-3 Codex 리더 모드**: 스스로 깨우는 도구가 없으므로 (a) Codex는 에이전트 모드만 허용한다. (b) 사람이 깨우는 제한을 명시하고 허용한다.
+- **D-3 Codex 리더 모드**: 스스로 깨우는 도구가 없으므로 (a) Codex는 에이전트 모드만 허용한다. (b) 사람이 깨우는 제한을 명시하고 허용한다. → **D-O3로 대체**(사용자 결정 2026-11-14, #2899 결정 표): Orca와 automation 타이머가 있으면 Codex·OMP도 리더를 맡는다(§5). 이 줄은 이력으로 남긴다.
+- **D-O1 끝 조건**(2026-11-14, #2899): 시작 가능 0 + 보류 목록(§12). **D-O2 Orca 없는 Codex 레인**: 한 세션 `/goal` + `Stop` hook + 카드별 재개 메모(§5). **D-O4 진행**: 상위 Issue + 카드 7개. 기록 원본은 #2899 결정 표다.
 - **D-4 미배차 목록의 위치**: `.moai-cli/manifests/github-issues.json`의 `dispatch_journal`을 확장한다. 또는 옆에 `assignments.json`을 새로 둔다(보고서 §10.4). 어느 쪽이든 원격 Issue가 원본이고 로컬 파일은 스냅샷이다.
 
 ## 9. GEARS 요구와 수용 기준 초안
 
 - REQ-AM-01 (WHEN) 사용자가 세션 안에서 `/moai --mode-agent`를 입력하면, 시스템은 §3의 ①~⑦을 리더 배차 없이 반복해야 한다. 각 회차의 결과(`claimed`, `already_owned`, `busy`, `expired`, `uncertain`, 목록 없음)를 디스크에 기록해야 한다.
-- REQ-AM-02 (WHEN) 사용자가 `/moai --mode-leader [--autonomy full|semi]`를 입력하면, 시스템은 Issue를 직접 배차하지 않아야 한다. 대신 §5 감독 루프와 §6 결정 등급으로 동작해야 하고, `--autonomy`가 없으면 `semi`로 시작해야 한다.
+- REQ-AM-02 (WHEN) 사용자가 `/moai --mode-leader [--autonomy full|semi]`를 입력하면, 시스템은 지휘 모드에서만 §5의 행동 네 가지로 배차하고 자율 모드에서는 배차하지 않아야 한다(#2899 G1). §5 감독 루프와 §6 결정 등급으로 동작해야 하고, `--autonomy`가 없으면 `semi`로 시작해야 한다.
 - REQ-AM-03 (Ubiquitous) 소유권은 claim 댓글의 최소 live id 판정(RC1 `claim-acquire`)으로만 성립해야 한다. label, assignee, 로컬 파일, 메시지는 소유권의 근거가 되지 않아야 한다.
 - REQ-AM-04 (IF … THEN) 같은 `session` 값을 쓰는 살아 있는 다른 세션이 감지되면, 시스템은 claim하지 않고 중복을 보고해야 한다.
 - REQ-AM-05 (IF … THEN) claim 결과가 `uncertain`이면, 시스템은 그 카드에 쓰지 않아야 한다. 판정에 필요한 근거(댓글 id, 다시 읽기 실패 사유)를 보고해야 한다.
-- REQ-AM-06 (WHILE) 미배차 후보가 없는 동안, 시스템은 `idle: backlog empty <time>`을 한 번만 기록해야 하고 폴링을 늘리지 않아야 한다.
+- REQ-AM-06 (WHILE) 미배차 후보가 없는 동안, 시스템은 §12 끝 조건이 참일 때만 회차를 끝내야 하고, 거짓이면 깨우기를 걸어야 한다. 바뀐 것 없는 상태를 짧은 간격으로 다시 읽지 않아야 한다(#2899 G5).
 - REQ-AM-07 (Ubiquitous) 두 모드 모두 `/goal`을 직접 실행하지 않아야 한다. 사용자가 붙여 넣을 `/goal <조건>` 한 줄을 출력해야 한다.
 - REQ-AM-08 (Ubiquitous) full 등급에서도 keep-set 3종의 결정은 사람에게 넘겨야 한다. 모든 결정은 결정 기록을 남겨야 한다.
 - REQ-AM-09 (Ubiquitous) 리더 감독 주기는 설정값으로 두어야 하며, 기본값은 사용자 지정 5분이어야 한다. 문서와 출력은 이 값을 측정값이라고 부르지 않아야 한다.
@@ -116,14 +121,14 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` was a deterministic, st
 
 - AC-AM-1: 두 세션이 같은 Issue에 동시에 self-claim하면 정확히 한 세션만 `claimed`이고, 다른 세션은 `already_owned` 또는 `uncertain`이다. 진 쪽 journal에는 기록이 없다. 검증은 fixture transport로 POST 순서를 바꿔 가며 한다.
 - AC-AM-2: 같은 `session` 값의 다른 세션이 살아 있으면 claim을 시도하지 않고 중복을 보고한다.
-- AC-AM-3: 후보 0건에서 `idle` 기록이 정확히 1번 남고, 이후 회차가 새 GitHub 요청을 늘리지 않는다.
+- AC-AM-3: 후보 0건에서 §12가 참이면 회차가 끝나고, 거짓이면 깨우기가 걸린다. 바뀐 것 없는 동안 새 GitHub 요청이 늘지 않는다(#2899 G5).
 - AC-AM-4: 리더 모드 출력에 `/goal <조건>` 한 줄이 있고, 세션이 그 명령을 스스로 실행한 흔적이 없다.
 - AC-AM-5: semi 등급에서 Issue 신규 발행이 사람 확인 없이 일어나지 않는다. full 등급에서 keep-set 결정이 사람 확인 없이 일어나지 않는다.
 
 ## 10. 후속 구현 카드 분해
 
 - **(a) skill 인자와 모드 진입 절차.** `skills/moai/SKILL.md`와 `references/routes.json`에 `--mode-leader`, `--mode-agent`, `--autonomy full|semi`를 추가한다. `skills/moai/workflows/`에 모드별 진입 절차를 둔다. 지금 route 8개에는 모드가 없으므로 새 route를 둘지, 기존 route의 인자로 둘지 먼저 정한다. Codex에서 skill 인자를 넘기는 형태를 공식 문서로 확인하는 일이 이 카드의 선행 조사다. REQ-AM-01·02·07을 맡는다.
-- **(b) 리더 감독 절차 문서.** §5의 5분 PR 점검, 수리 재배차(원 작성자 제외), 목록 보충, 대기 사유 통지를 factory-dispatch 문서에 넣는다. 리더 상시 점검(`AGENTS.local.md:35`)과 게이트 절차(`:39`)를 바꾸지 않고 참조한다. 깨우기는 Claude는 `ScheduleWakeup`이고, Codex는 D-3 결정에 따른다. REQ-AM-09를 맡는다.
+- **(b) 리더 감독 절차 문서.** §5의 5분 PR 점검, 수리 재배차(원 작성자 제외), 목록 보충, 대기 사유 통지를 factory-dispatch 문서에 넣는다. 리더 상시 점검(`AGENTS.local.md:35`)과 게이트 절차(`:39`)를 바꾸지 않고 참조한다. 깨우기는 Claude는 `ScheduleWakeup`이고, Codex는 D-3 결정에 따른다(2026-11-14 D-O3로 대체 — 바깥 타이머, §5·§8). REQ-AM-09를 맡는다.
 - **(c) assignments 연동과 self-claim 루프.** §3의 ①(미배차 목록 산출), ②(후보 선택), ⑥(claim 뒤 label·소유 댓글 표시 연결)이 이 카드의 코드 작업이다. ③~⑤는 RC1 `claim-acquire`를 그대로 부른다. 목록 위치는 D-4 결정을 따르고, 원격 Issue가 원본이다. 세션 id 중복 감지(REQ-AM-04)와 `uncertain` 처리(REQ-AM-05)를 함께 넣는다. AC-AM-1~3을 맡는다.
 - **(d) 결정 등급과 결정 사다리 연결.** full/semi를 결정 사다리와 keep-set에 연결한다. semi의 추가 보류 목록(Issue 발행, HOLD 해제, 병합 정책, release)을 gate 목록에 적는다. Jev 사용 여부는 "켜져 있고 질문형이 맞을 때만"으로 두고, 결정 기록 형식은 RC1 `decision.record`(`src/decision.rs`)를 쓴다. 사다리가 지금은 Go 세대 규칙에만 있으므로, RC1 tracked 문서로 옮길지가 이 카드의 결정 항목이다. REQ-AM-08과 AC-AM-5를 맡는다.
 - **(e) 론처 결정.** D-1에 따라 `-l`/`-a`를 남기거나 폐기한다. 남기면 모드 skill과 이름 기본값을 맞춘다. 폐기하면 `src/main.rs` `HostLaunch`의 역할 플래그와 관련 fixture·문서를 정리한다. 어느 쪽이든 역할 없는 실행이 역할을 추측하지 않는 #2053 동작은 회귀 시험으로 지킨다.
@@ -136,3 +141,13 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` was a deterministic, st
 - GitHub Issue 댓글 id가 게시 순서대로 커진다는 것이 공식 문서에 보장으로 적혀 있는지(§4-3).
 - GitHub Actions Ubuntu 러너 이미지 문서. #2029 때 504로 읽지 못했고, 이 카드와는 직접 관련이 없어 다시 시도하지 않았다.
 - `<primary>/.claude/…` 인용은 Go 세대 파일이라 저장소 이력으로 행 번호를 다시 확인할 수 없다. 이 문서의 행 번호는 2026-11-09 primary checkout 기준이다.
+
+## 12. 끝 조건
+
+두 모드의 회차가 끝나는 조건은 이 절 한 곳에서 정한다(사용자 결정 D-O1, #2899 "끝 조건"·G5). MODE-AGENT의 `keep-going`·`self-pick`과 MODE-LEADER의 감독 회차는 이 절을 가리킨다.
+
+- 끝 조건: `open_prs = 0` 그리고 `startable_issues = 0`.
+- startable에서 빠지는 것: `needs:decision` 표시, HOLD 기록, keep-set 항목, 열린 선행 Issue가 있는 Issue, 하위 Issue가 열려 있는 상위 epic.
+- 빠진 것은 매 보고(레인의 `LANE-*` 줄과 그 댓글, 리더의 회차 요약)에 **이유와 함께 목록**으로 남긴다. 사용자가 보는 "남은 것"이 이 목록이다. 이유 없이 "할 일 없음"만 적지 않는다.
+- 끝 조건이 거짓인 동안 후보가 0건이면 멈추지 않고 깨우기를 건다(§3②, §5).
+- 판정 기계: 지금은 `lane-next`(레인의 다음 일)와 `goal-block`(붙여 넣을 `/goal` 줄)이 각자 판정한다. 두 명령이 이 판정 함수 하나를 쓰고 HOLD·`needs:decision` 카드를 건너뛰게 하는 일, `queue-next`를 정리하는 일은 #2899 O2가 맡는다(예정).

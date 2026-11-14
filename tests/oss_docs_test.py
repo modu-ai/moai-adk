@@ -180,6 +180,8 @@ def one_line(rel, prefix):
 BINARY_LINES = {
     "README.md": ["- RC1 implementation language: ", "| Command | "],
     "README.ko.md": ["- RC1 구현 언어: ", "| 명령 | "],
+    # The in-scope list a vulnerability reporter reads.
+    "SECURITY.md": ["- the `moai"],
 }
 
 
@@ -208,6 +210,22 @@ class ProductFactsTest(unittest.TestCase):
                 self.assertNotIn(f"`{stale}`", text)
                 if rel.startswith("README"):
                     self.assertIn(f"`{signature}`", text)
+
+    def test_support_names_the_version_command_and_its_mark(self):
+        # SUPPORT tells the generations apart by the `--version` line's generation mark.
+        mark = version_signature().rsplit(" ", 1)[1]
+        text = read("SUPPORT.md")
+        self.assertIn("`moai --version`", text)
+        self.assertIn(f"`{mark}`", text)
+
+    def test_alias_sameness_is_claimed_only_for_the_version_line(self):
+        # The alias prints the same `--version` line, but its help names `moai-cli` as the
+        # command, so a README line that calls the two "the same" must say it is the version line.
+        for rel, alias, same in (("README.md", "alias", "same"), ("README.ko.md", "별칭", "같은")):
+            for line in read(rel).splitlines():
+                if "`moai-cli`" in line and alias in line and same in line:
+                    with self.subTest(file=rel, line=line[:60]):
+                        self.assertIn("`--version`", line)
 
     def test_signature_reader_reads_the_source(self):
         signature = version_signature()

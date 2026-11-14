@@ -27,7 +27,7 @@ Which versions receive security fixes is [PENDING MAINTAINER DECISION].
 
 In scope:
 
-- the `moai-cli` binary and its commands;
+- the `moai` binary, its alias `moai-cli`, and their commands;
 - files MoAI generates or applies into a project or a host configuration;
 - hooks that MoAI generates;
 - the installer and release artifacts, once they are published.

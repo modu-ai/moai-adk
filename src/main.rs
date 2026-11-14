@@ -172,34 +172,6 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
-    /// Read GitHub Issues and comments as tasks
-    ///
-    /// Read GitHub Issues and comments as TODO (GET only; typed JSON request on stdin,
-    /// envelope on stdout). Poll state: `<PROJECT>/.moai-cli/forge/poll-state.json`.
-    ForgeRead { project: PathBuf },
-    /// Probe the GitHub sub-issue and dependency APIs
-    ///
-    /// Probe whether the sub-issue and dependency APIs answer for one Issue and plan the
-    /// links: API write intents, or `Parent:`/`Blocked-By:` body lines (GET only; #2172).
-    ForgeLinksProbe { project: PathBuf },
-    /// Create or update a run's report comment
-    ///
-    /// Create or update the one report comment of a run on its Issue (typed JSON payload on
-    /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
-    ForgeReport {
-        project: PathBuf,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Post the audit commit status on a SHA
-    ///
-    /// Post the `moai/audit` commit status on an exact SHA (typed JSON on stdin). Uses the
-    /// audit App token from `MOAI_AUDIT_APP_TOKEN` when set, else warns (#2173).
-    ForgeAuditStatus {
-        project: PathBuf,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Show where a path sits in its clone
     ///
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
@@ -973,17 +945,6 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
-    /// Describe a project's HEAD and tracked changes
-    ///
-    /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
-    SnapshotDescribe { project: PathBuf },
-    /// Sum the cost items of run receipts
-    ///
-    /// Aggregate cost items across run/verify receipts (D5 #2191): typed request
-    /// (receipt array) on stdin; breakdown envelope on stdout; writes nothing.
-    /// External backend calls are structurally zero; tokens are absent, never
-    /// estimated (REQ-D5-01).
-    CostReport {},
     /// Preview the project's generated agent and skill files
     ///
     /// Plan project-specific generated files read-only (03-C #1997): typed request on
@@ -1029,24 +990,6 @@ enum Command {
         project: PathBuf,
         #[arg(long)]
         plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Bundle file ranges with digests
-    ///
-    /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
-    ContextBundle { project: PathBuf },
-    /// Re-check a bundle's ranges against the files
-    ///
-    /// Read-only: re-check a bundle's ranges against the files now (typed request on stdin).
-    ContextVerify { project: PathBuf },
-    /// Append one decision record to a run
-    ///
-    /// Append one native decision record (stdin) to `.moai-cli/decisions/<RUN>.jsonl`.
-    DecisionRecord {
-        project: PathBuf,
-        #[arg(long)]
-        run: String,
         #[arg(long)]
         permission_reference: String,
     },
@@ -1107,6 +1050,10 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+        /// The preview's `cleanup.confirm_token` (#2872): archive the Go leftovers it lists.
+        /// Without --confirm the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_cleanup: Option<String>,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -1421,19 +1368,11 @@ fn operation(command: &Command) -> Option<&'static str> {
         CodexConfigApply { .. } => "codex.config_apply",
         CodexConfigPlan { .. } => "codex.config_plan",
         CodexDoctor { .. } => "codex.doctor",
-        ContextBundle { .. } => "context.bundle",
-        ContextVerify { .. } => "context.verify",
-        CostReport { .. } => "cost.report",
         DecisionAppend { .. } => "decision.append",
-        DecisionRecord { .. } => "decision.record",
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
         EffectsReconcile { .. } => "effects.reconcile",
         FlowWipCheck { .. } => "flow.wip_check",
-        ForgeAuditStatus { .. } => "forge.audit_status",
-        ForgeLinksProbe { .. } => "forge.links_probe",
-        ForgeRead { .. } => "forge.read",
-        ForgeReport { .. } => "forge.report",
         GenerationApply { .. } => "generation.apply",
         GenerationPlan { .. } => "generation.plan",
         GithubApply { .. } => "github.apply",
@@ -1487,7 +1426,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         Search { .. } => "search.query",
         AtlasMap { .. } => "atlas.map",
         AtlasGraph { .. } => "atlas.graph",
-        SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
         GoStatePlan { .. } => "go_state.plan",
@@ -1602,7 +1540,6 @@ fn shows_progress(command: &Command) -> bool {
             | Command::QueueFree { .. }
             | Command::LeaderTick { .. }
             | Command::LaneStatus { .. }
-            | Command::ForgeRead { .. }
             | Command::FlowWipCheck { .. }
             | Command::DispatchCheck
     )
@@ -1945,53 +1882,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             receipt,
             permission_reference,
         } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
-        Command::ForgeReport {
-            project,
-            permission_reference,
-        } => {
-            let mut bytes = Vec::new();
-            io::stdin()
-                .take(65537)
-                .read_to_end(&mut bytes)
-                .map_err(|_| "stdin read failed")?;
-            if bytes.len() > 65536 {
-                return Err(
-                    "input exceeds 64 KiB; put large output in an artifact reference, not the payload"
-                        .into(),
-                );
-            }
-            let payload: moai_cli::forge::report::ReportPayload =
-                serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input")?;
-            moai_cli::forge::report::report_cli(
-                &project,
-                payload,
-                &permission_reference,
-                &moai_cli::forge::transport::GhTransport::from_env()?,
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
-        Command::ForgeAuditStatus {
-            project,
-            permission_reference,
-        } => moai_cli::forge::audit_status::audit_status_cli(
-            &project,
-            input::<moai_cli::forge::audit_status::AuditStatusRequest>()?,
-            &permission_reference,
-            moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
-            &project,
-            input::<moai_cli::forge::ReadRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::ForgeLinksProbe { project } => moai_cli::forge::links::links_probe_cli(
-            &project,
-            input::<moai_cli::forge::links::LinksRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -2460,28 +2350,36 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 gobin: gobin.as_deref(),
             };
             let result = moai_cli::install::inspect(&home, &path_env, &places)?;
-            // #2867: a person at a terminal sees the note once; the envelope carries it too.
-            if let Some(note) = result["path_first_moai"]["note"].as_str() {
-                use std::io::IsTerminal as _;
-                if std::io::stderr().is_terminal() {
-                    eprintln!("moai-cli: {note}");
-                }
+            // #2867: a person at a terminal sees the note once, in stderr's language (#2825);
+            // the envelope carries the English note in every language.
+            if result["path_first_moai"]["note"].is_string() && moai_cli::ui::stderr_is_terminal() {
+                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+                let note = moai_cli::ui_text::text(moai_cli::ui_text::Msg::PathFirstNote, lang);
+                eprintln!("moai-cli: {note}");
             }
             Ok(result)
         }
-        Command::Update { confirm } => {
+        Command::Update {
+            confirm,
+            confirm_cleanup,
+        } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
             // The shared confirm prompt (#2806): same terminal rule and question as before.
-            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                use moai_cli::ui_text::Msg;
-                moai_cli::progress::ask_terminal(
-                    |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
-                    Msg::ApplyUpdate,
-                )
-            })
+            moai_cli::update::update_command(
+                &home,
+                confirm.as_deref(),
+                confirm_cleanup.as_deref(),
+                |summary| {
+                    use moai_cli::ui_text::Msg;
+                    moai_cli::progress::ask_terminal(
+                        |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                        Msg::ApplyUpdate,
+                    )
+                },
+            )
         }
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
@@ -2548,11 +2446,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
-        Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
-        Command::CostReport {} => {
-            // cost_report checks protocol_version itself (one check, not two).
-            moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
-        }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(
                 &project,
@@ -2610,13 +2503,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &plan_digest,
             &permission_reference,
         ),
-        Command::ContextBundle { project } => moai_cli::context::bundle(&project, &input()?),
-        Command::ContextVerify { project } => moai_cli::context::verify(&project, &input()?),
-        Command::DecisionRecord {
-            project,
-            run,
-            permission_reference,
-        } => moai_cli::decision::append(&project, &run, &input()?, &permission_reference),
         Command::DecisionAppend {
             project,
             log,

@@ -27,7 +27,7 @@ Never invent a flag from memory. Resolve the executable the way Orca's skill stu
 - `accepted: true` proves only that the input was accepted; read the target again, and never resend on silence.
 - Publishing skill links or artifacts stays off unless a human turned it on in Orca's settings; never ask an agent to turn it on.
 
-The full session-control rules for lanes and the leader are in the MODE-AGENT and MODE-LEADER workflows.
+The full session-control rules for lanes and the leader are in the MODE-AGENT and MODE-LEADER workflows. Orca present is what puts the leader in the command mode, whatever host it runs on; the leader clears a lane only under the clear contract of MODE-LEADER's `supervise` step (Issue #2899 G2, G4).
 
 ## When Orca is missing
 
