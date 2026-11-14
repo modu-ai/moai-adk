@@ -1019,3 +1019,230 @@ fn commits_without_a_claim_trailer_and_the_body_claim_are_collected() {
     fixed.body_claim = true;
     assert!(gate::check(&fixed).is_ok(), "{:?}", gate::check(&fixed));
 }
+
+// ---- #2833: the mechanical delta ----
+
+const EIGHT: &str = "1\n2\n3\n4\n5\n6\n7\n8\n";
+
+fn git_as(dir: &Path, args: &[&str]) {
+    let mut all = vec!["-c", "user.name=t", "-c", "user.email=t@example.invalid"];
+    all.extend_from_slice(args);
+    git_ok(dir, &all);
+}
+
+/// Base A; the PR's verdict head H changes line 1 of src/a.rs and adds src/p.rs; the tip C
+/// changes line 8 of src/a.rs (the same file, other lines) and src/b.rs. The work tree is left
+/// on the PR branch at H.
+struct Delta {
+    dir: TempDir,
+    a: String,
+    h: String,
+    c: String,
+}
+
+fn delta_repo() -> Delta {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let a = commit(
+        d,
+        &[
+            ("src/a.rs", EIGHT),
+            ("src/b.rs", "b\n"),
+            ("src/c.rs", "c\n"),
+        ],
+        "base",
+    );
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    let h = commit(
+        d,
+        &[
+            ("src/a.rs", "one\n2\n3\n4\n5\n6\n7\n8\n"),
+            ("src/p.rs", "p\n"),
+        ],
+        "pr\n\nMoai-Claim: 9#555",
+    );
+    git_ok(d, &["checkout", "-q", "main"]);
+    let c = commit(
+        d,
+        &[
+            ("src/a.rs", "1\n2\n3\n4\n5\n6\n7\neight\n"),
+            ("src/b.rs", "b2\n"),
+        ],
+        "tip",
+    );
+    git_ok(d, &["checkout", "-q", "pr"]);
+    Delta { dir, a, h, c }
+}
+
+impl Delta {
+    fn d(&self) -> &Path {
+        self.dir.path()
+    }
+    fn head(&self) -> String {
+        git(self.d(), &["rev-parse", "HEAD"]).trim().to_string()
+    }
+    /// The leader loop's update-branch: merge the tip into the PR branch.
+    fn merge_tip(&self) -> String {
+        git_as(
+            self.d(),
+            &["merge", "-q", "--no-ff", "-m", "Merge main", "main"],
+        );
+        self.head()
+    }
+    /// A merge of the tip whose commit also carries `edit`.
+    fn merge_tip_with(&self, edit: &[(&str, &str)]) -> String {
+        git_as(self.d(), &["merge", "-q", "--no-ff", "--no-commit", "main"]);
+        commit(self.d(), edit, "Merge main")
+    }
+    fn delta(&self, to: &str) -> gate::AutoDelta {
+        gate_collect::mechanical_delta(self.d(), &self.h, to, "main").unwrap()
+    }
+}
+
+/// AC-1 (accepted): a merge of only the tip — even with the tip changing other lines of a PR
+/// file — keeps every PR file's patch-id.
+#[test]
+fn a_tip_only_merge_is_a_mechanical_delta() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let d = r.delta(&n);
+    assert!(d.ok, "{}", d.detail);
+    let paths: Vec<&str> = d.files.iter().map(|f| f.path.as_str()).collect();
+    assert_eq!(paths, ["src/a.rs", "src/p.rs"]);
+    for f in &d.files {
+        assert!(
+            !f.patch_id_from.is_empty() && f.patch_id_from == f.patch_id_to,
+            "{f:?}"
+        );
+    }
+    assert_eq!((d.from.as_str(), d.to.as_str()), (r.h.as_str(), n.as_str()));
+    let _ = (&r.a, &r.c);
+}
+
+/// AC-1 (refused): the PR's author added a commit after the verdict head.
+#[test]
+fn an_author_commit_after_the_verdict_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    r.merge_tip();
+    let n = commit(r.d(), &[("src/p.rs", "p2\n")], "more\n\nMoai-Claim: 9#555");
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail
+            .contains("1 commit(s) after the verdict head are not merges"),
+        "{}",
+        d.detail
+    );
+    assert!(d.detail.contains(&n[..10]), "{}", d.detail);
+    assert!(d.files.is_empty());
+}
+
+/// AC-1 (refused): the merge changed a PR line in an overlapping file.
+#[test]
+fn a_merge_that_changes_a_pr_line_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    let n = r.merge_tip_with(&[("src/a.rs", "ONE\n2\n3\n4\n5\n6\n7\neight\n")]);
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail.contains("src/a.rs: the PR's change differs"),
+        "{}",
+        d.detail
+    );
+}
+
+/// AC-1 (refused): the merge changed a file outside the PR's file set (and outside the tip's).
+#[test]
+fn a_merge_that_changes_a_file_outside_the_pr_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    let n = r.merge_tip_with(&[("src/c.rs", "c-evil\n")]);
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail
+            .contains("only on the current head: [\"src/c.rs\"]"),
+        "{}",
+        d.detail
+    );
+}
+
+/// AC-2: a head the verdict head is not an ancestor of (the change re-made on the tip).
+#[test]
+fn a_head_that_does_not_descend_from_the_verdict_head_is_refused() {
+    let r = delta_repo();
+    git_ok(r.d(), &["checkout", "-q", "-b", "redo", "main"]);
+    let n = commit(
+        r.d(),
+        &[
+            ("src/a.rs", "one\n2\n3\n4\n5\n6\n7\neight\n"),
+            ("src/p.rs", "p\n"),
+        ],
+        "redo\n\nMoai-Claim: 9#555",
+    );
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail.contains("is not an ancestor of the current head"),
+        "{}",
+        d.detail
+    );
+    // An unknown verdict head is refused too, not an error.
+    let d = gate_collect::mechanical_delta(r.d(), &"e".repeat(40), &n, "main").unwrap();
+    assert!(
+        !d.ok && d.detail.contains("not a local commit"),
+        "{}",
+        d.detail
+    );
+}
+
+/// The file limit's boundary: as many files as the limit pass, one more is refused.
+#[test]
+fn the_delta_compares_at_most_its_file_limit() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let at = gate_collect::mechanical_delta_limited(r.d(), &r.h, &n, "main", 2).unwrap();
+    assert!(at.ok, "{}", at.detail);
+    let over = gate_collect::mechanical_delta_limited(r.d(), &r.h, &n, "main", 1).unwrap();
+    assert!(!over.ok);
+    assert!(
+        over.detail.contains("2 PR files, more than the 1"),
+        "{}",
+        over.detail
+    );
+    assert_eq!(gate_collect::MAX_DELTA_FILES, 200);
+}
+
+/// End to end: `collect` measures the delta for a PASS on the verdict head, counts the tip's
+/// changes from where the current head meets it (the overlap the merge resolved is not an
+/// overlap any more), and the gate passes the current head.
+#[test]
+fn collect_carries_a_pass_across_an_update_branch_merge() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let target = Target {
+        dir: r.d(),
+        owner: "o",
+        repo: "r",
+        pr: 9,
+        tip: "main",
+        review_confirmed_prs: vec![],
+    };
+    let t = exchanges(&n, &r.c, vec![claim(&r.h), verdict(&r.h, &r.a)], PASS_BODY);
+    let s = collect(&target, &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let d = s.auto_delta.clone().expect("a delta is measured");
+    assert!(d.ok, "{}", d.detail);
+    assert!(
+        s.tip_files_since_verdict_base.is_empty(),
+        "{:?}",
+        s.tip_files_since_verdict_base
+    );
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+    assert!(gate::accepted_auto_delta(&s).is_some());
+
+    // The same head with a verdict on itself measures no delta.
+    let t = exchanges(&n, &r.c, vec![claim(&n), verdict(&n, &r.a)], PASS_BODY);
+    let s = collect(&target, &t).unwrap();
+    assert!(s.auto_delta.is_none());
+}

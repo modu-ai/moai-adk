@@ -499,3 +499,121 @@ fn g11_the_pr_body_carries_a_claim_line() {
     s["body_claim"] = json!(true);
     assert_eq!(stopped(&gate(&s)), (true, String::new()));
 }
+
+/// #2833: the last PASS is on an earlier head (OTHER) and the current head (H) only merged the
+/// base branch into it — the collector's finding plus equal patch-ids per file.
+fn on_delta() -> Value {
+    let mut s = passing();
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        verdict(200, "agent-10", OTHER, "PASS")
+    ]);
+    s["auto_delta"] = json!({
+        "from": OTHER, "to": H, "ok": true, "detail": "merges only the base branch",
+        "files": [
+            {"path": "src/a.rs", "patch_id_from": "aa11", "patch_id_to": "aa11"},
+            {"path": doc(), "patch_id_from": "bb22", "patch_id_to": "bb22"}
+        ]
+    });
+    s
+}
+
+/// #2833 D1: a mechanical delta carries the PASS on its verdict head to the current head, and
+/// the verdict's base is the one reported.
+#[test]
+fn a_mechanical_delta_carries_the_pass_to_the_current_head() {
+    let v = gate(&on_delta());
+    assert_eq!(stopped(&v), (true, String::new()), "{v}");
+    assert_eq!(v["result"]["verdict_base"], json!(B));
+    assert_eq!(v["result"]["auto_delta"]["from"], json!(OTHER), "{v}");
+    assert_eq!(v["result"]["auto_delta"]["to"], json!(H), "{v}");
+    // Without a delta the same comments stop at G1, as before.
+    let mut s = on_delta();
+    s.as_object_mut().unwrap().remove("auto_delta");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()));
+    assert!(v["result"].get("auto_delta").is_none());
+}
+
+/// #2833 AC-1/AC-2 at the gate: every way the delta does not hold stops at G1 with its reason;
+/// the gate checks the patch-ids itself, so a snapshot claiming `ok` with unequal ids stops.
+#[test]
+fn a_delta_that_does_not_hold_stops_at_g1() {
+    let reason = |s: &Value| {
+        let v = gate(s);
+        assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+        v["result"]["reason"].as_str().unwrap().to_string()
+    };
+    let mut s = on_delta();
+    s["auto_delta"]["ok"] = json!(false);
+    s["auto_delta"]["detail"] = json!("1 commit(s) after the verdict head are not merges");
+    assert!(reason(&s).contains("not a mechanical delta: 1 commit(s)"));
+
+    let mut s = on_delta();
+    s["auto_delta"]["files"][1]["patch_id_to"] = json!("bb23");
+    assert!(reason(&s).contains("patch-ids or heads do not match"));
+
+    let mut s = on_delta();
+    s["auto_delta"]["files"][0]["patch_id_from"] = json!("");
+    s["auto_delta"]["files"][0]["patch_id_to"] = json!("");
+    reason(&s);
+
+    let mut s = on_delta();
+    s["auto_delta"]["files"] = json!([]);
+    reason(&s);
+
+    // The delta must start at the last verdict's head and end at the current head.
+    let mut s = on_delta();
+    s["auto_delta"]["from"] = json!(B);
+    reason(&s);
+    let mut s = on_delta();
+    s["auto_delta"]["to"] = json!(OTHER);
+    reason(&s);
+
+    // A FAIL is never carried: the delta counts only a PASS.
+    let mut s = on_delta();
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        verdict(200, "agent-10", OTHER, "FAIL")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}
+
+/// #2833 scope 4: the CI on the current head still decides (G5).
+#[test]
+fn a_mechanical_delta_still_needs_the_current_heads_ci() {
+    let mut s = on_delta();
+    s["checks"] = json!([
+        {"name": "ci", "conclusion": "failure"},
+        {"name": "ci / linux-x86_64", "conclusion": "failure"}
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+}
+
+/// #2833 D2: the audit rules read the verdict head. An unresolved FAIL there still blocks
+/// (G3), and the auditor's claim on that head counts (G2).
+#[test]
+fn the_audit_rules_apply_to_the_verdict_head_of_a_delta() {
+    let mut s = on_delta();
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        verdict(150, "agent-27", OTHER, "FAIL"),
+        verdict(200, "agent-10", OTHER, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G3".into()));
+    // The same auditor reversing itself on the verdict head passes, as on a plain head.
+    s["comments"] = json!([
+        claim(100, "agent-10", OTHER),
+        verdict(150, "agent-10", OTHER, "FAIL"),
+        verdict(200, "agent-10", OTHER, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+    // G2: the lowest claim is another lane's on an older head; the claim on the verdict head
+    // is the auditor's, so it is allowed.
+    s["comments"] = json!([
+        claim(90, "agent-27", B),
+        claim(100, "agent-10", OTHER),
+        verdict(200, "agent-10", OTHER, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+}
