@@ -101,6 +101,7 @@ pub mod ui_summary;
 pub mod ui_text;
 pub mod update;
 pub mod update_cleanup;
+pub mod update_hooks;
 pub mod usage_limit;
 pub mod verify;
 pub mod worktree;

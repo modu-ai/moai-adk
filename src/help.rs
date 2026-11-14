@@ -45,6 +45,7 @@ pub const GROUPS: &[Group] = &[
             ("codex-config-apply", false),
             ("hooks-plan", false),
             ("hooks-apply", false),
+            ("hooks-revert", false),
         ],
     },
     Group {
@@ -244,6 +245,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("codex-config-apply", &["codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
+    ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),

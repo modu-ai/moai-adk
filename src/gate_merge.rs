@@ -188,6 +188,36 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
     audit_status::post(&status, permission, app, status_transport, clock).map_err(|e| e.message)?;
     writes.push(json!("status"));
 
+    // #2860 rule 4 (leader decision 6870150891): a passing draft is marked ready right before
+    // its merge, as `gh pr ready` did in the shell gate. REST has no endpoint for it; GraphQL's
+    // `markPullRequestReadyForReview` takes the pull request's node id. A failure merges nothing.
+    if pr_body["draft"].as_bool() == Some(true) {
+        let node = pr_body["node_id"]
+            .as_str()
+            .ok_or("the draft pull request has no node_id")?;
+        let sent = transport.send(
+            &HttpRequest::new("POST", "https://api.github.com/graphql").with_body(json!({
+                "query": "mutation($id: ID!) { markPullRequestReadyForReview(input: {pullRequestId: $id}) { pullRequest { isDraft } } }",
+                "variables": {"id": node},
+            })),
+        );
+        let ready = matches!(&sent, Ok(r) if r.status == 200
+            && r.body.as_ref().is_some_and(|b| b.get("errors").is_none()
+                && b["data"]["markPullRequestReadyForReview"]["pullRequest"]["isDraft"] == json!(false)));
+        if !ready {
+            let why = match sent {
+                Ok(r) => format!("HTTP {}", r.status),
+                Err(e) => e,
+            };
+            return Ok(json!({
+                "pr": pr, "head": head, "merged": false, "rule": "READY",
+                "reason": format!("marking the draft ready failed ({why}); not merged"),
+                "writes": writes,
+            }));
+        }
+        writes.push(json!("ready"));
+    }
+
     let url = format!("https://api.github.com/repos/{owner}/{repo}/pulls/{pr}/merge");
     let mut merged_sha = None;
     let mut last = 0;
