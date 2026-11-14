@@ -298,6 +298,46 @@ fn codex_pending_receipt_resolves_on_replan() {
 
 /// REQ-I1-01 isolation: the home directory itself, or a project inside a host's home
 /// configuration, is refused by plan and apply alike.
+/// #2696 C4b (audit #2848 B1): `~/.moai` is refused only when it is this generation's HOME
+/// state folder (marker present), and never under its worktree folder — where W2 creates
+/// worktrees and the Go generation keeps its own. A Go `~/.moai` (no marker) is not ours.
+#[test]
+fn home_moai_is_refused_only_as_this_generations_state_outside_worktrees() {
+    let home = project();
+    let plan_at = |rel: &str| {
+        let dir = home.path().join(rel);
+        fs::create_dir_all(&dir).unwrap();
+        hooks::plan(&dir, "claude", Some(home.path()))
+    };
+    // A Go `~/.moai` (no marker): nothing under it is refused.
+    fs::create_dir_all(home.path().join(".moai/state")).unwrap();
+    fs::write(home.path().join(".moai/state/active-sessions.json"), "{}").unwrap();
+    for rel in [
+        ".moai/worktrees/demo-1",
+        ".moai/worktrees/projects/demo/agent-1",
+        ".moai/other/p",
+    ] {
+        assert!(plan_at(rel).is_ok(), "go HOME, {rel}");
+    }
+    // This generation's `~/.moai`: refused, except under its worktree folder.
+    fs::remove_dir_all(home.path().join(".moai/state")).unwrap();
+    fs::write(
+        home.path().join(".moai/moai-cli.json"),
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    )
+    .unwrap();
+    for rel in [
+        ".moai/worktrees/demo-2",
+        ".moai/worktrees/projects/demo/agent-2",
+    ] {
+        assert!(plan_at(rel).is_ok(), "marked HOME, {rel}");
+    }
+    for rel in [".moai/state/p", ".moai/agents/p"] {
+        let err = plan_at(rel).unwrap_err();
+        assert!(err.contains("home directory refused"), "{rel}: {err}");
+    }
+}
+
 #[test]
 fn home_directory_is_refused() {
     let home = project();
@@ -307,8 +347,7 @@ fn home_directory_is_refused() {
         let err = hooks::apply(home.path(), host, Some(home.path()), "x", PERMISSION).unwrap_err();
         assert!(err.contains("home directory refused"), "{err}");
     }
-    // #2696 C4b: both HOME state roots, the earlier `.moai-cli` and this generation's `.moai`.
-    for dir in [".claude", ".codex", ".omp", ".agents", ".moai-cli", ".moai"] {
+    for dir in [".claude", ".codex", ".omp", ".agents", ".moai-cli"] {
         let inside = home.path().join(dir).join("p");
         fs::create_dir_all(&inside).unwrap();
         let err = hooks::plan(&inside, "codex", Some(home.path())).unwrap_err();
