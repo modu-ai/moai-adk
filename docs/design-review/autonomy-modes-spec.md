@@ -128,7 +128,7 @@ RC1 implementation (A4 #2163): `tools/gen_goal_block.py` was a deterministic, st
 ## 10. 후속 구현 카드 분해
 
 - **(a) skill 인자와 모드 진입 절차.** `skills/moai/SKILL.md`와 `references/routes.json`에 `--mode-leader`, `--mode-agent`, `--autonomy full|semi`를 추가한다. `skills/moai/workflows/`에 모드별 진입 절차를 둔다. 지금 route 8개에는 모드가 없으므로 새 route를 둘지, 기존 route의 인자로 둘지 먼저 정한다. Codex에서 skill 인자를 넘기는 형태를 공식 문서로 확인하는 일이 이 카드의 선행 조사다. REQ-AM-01·02·07을 맡는다.
-- **(b) 리더 감독 절차 문서.** §5의 5분 PR 점검, 수리 재배차(원 작성자 제외), 목록 보충, 대기 사유 통지를 factory-dispatch 문서에 넣는다. 리더 상시 점검(`AGENTS.local.md:35`)과 게이트 절차(`:39`)를 바꾸지 않고 참조한다. 깨우기는 Claude는 `ScheduleWakeup`이고, Codex는 D-3 결정에 따른다. REQ-AM-09를 맡는다.
+- **(b) 리더 감독 절차 문서.** §5의 5분 PR 점검, 수리 재배차(원 작성자 제외), 목록 보충, 대기 사유 통지를 factory-dispatch 문서에 넣는다. 리더 상시 점검(`AGENTS.local.md:35`)과 게이트 절차(`:39`)를 바꾸지 않고 참조한다. 깨우기는 Claude는 `ScheduleWakeup`이고, Codex는 D-3 결정에 따른다(2026-11-14 D-O3로 대체 — 바깥 타이머, §5·§8). REQ-AM-09를 맡는다.
 - **(c) assignments 연동과 self-claim 루프.** §3의 ①(미배차 목록 산출), ②(후보 선택), ⑥(claim 뒤 label·소유 댓글 표시 연결)이 이 카드의 코드 작업이다. ③~⑤는 RC1 `claim-acquire`를 그대로 부른다. 목록 위치는 D-4 결정을 따르고, 원격 Issue가 원본이다. 세션 id 중복 감지(REQ-AM-04)와 `uncertain` 처리(REQ-AM-05)를 함께 넣는다. AC-AM-1~3을 맡는다.
 - **(d) 결정 등급과 결정 사다리 연결.** full/semi를 결정 사다리와 keep-set에 연결한다. semi의 추가 보류 목록(Issue 발행, HOLD 해제, 병합 정책, release)을 gate 목록에 적는다. Jev 사용 여부는 "켜져 있고 질문형이 맞을 때만"으로 두고, 결정 기록 형식은 RC1 `decision.record`(`src/decision.rs`)를 쓴다. 사다리가 지금은 Go 세대 규칙에만 있으므로, RC1 tracked 문서로 옮길지가 이 카드의 결정 항목이다. REQ-AM-08과 AC-AM-5를 맡는다.
 - **(e) 론처 결정.** D-1에 따라 `-l`/`-a`를 남기거나 폐기한다. 남기면 모드 skill과 이름 기본값을 맞춘다. 폐기하면 `src/main.rs` `HostLaunch`의 역할 플래그와 관련 fixture·문서를 정리한다. 어느 쪽이든 역할 없는 실행이 역할을 추측하지 않는 #2053 동작은 회귀 시험으로 지킨다.

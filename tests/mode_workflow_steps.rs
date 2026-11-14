@@ -308,6 +308,16 @@ fn self_opening_rules_are_pinned_in_both_mode_workflows() {
 #[test]
 fn the_round_keeps_going_until_its_end_condition() {
     let agent = workflow("mode-agent.md");
+    // #2910 audit 6874564526 B1: the claim step chooses by channel, never by host (D-O3).
+    assert_says(
+        &agent,
+        "claim",
+        &["Which of the two applies follows the channel, never the host"],
+    );
+    assert!(
+        !step(&agent, "claim").contains("Codex CLI and others"),
+        "the claim step still names a host instead of the channel"
+    );
     assert_says(
         &agent,
         "keep-going",
