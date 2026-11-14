@@ -236,7 +236,7 @@ pub fn scope_here(shared: bool) -> Result<Scope> {
 }
 
 fn state_dir(home: &Path) -> PathBuf {
-    crate::home_root::path(&home)
+    crate::home_root::path(home)
 }
 
 fn vault_dir(home: &Path) -> PathBuf {

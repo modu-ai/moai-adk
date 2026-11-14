@@ -365,7 +365,7 @@ fn identity_fields_equal(a: &InstallReceipt, b: &InstallReceipt) -> bool {
 }
 
 fn installations_dir(home: &Path) -> Result<PathBuf> {
-    let dir = crate::home_root::path(&home).join("installations");
+    let dir = crate::home_root::path(home).join("installations");
     match fs::symlink_metadata(&dir) {
         Ok(m) if m.file_type().is_symlink() => {
             Err("installations directory is a symlink; refused".into())
@@ -442,7 +442,7 @@ pub fn record_receipt(home: &Path, plan: &ReceiptPlan) -> Result<Value> {
 /// Reads every `*.json` receipt under `<home>/.moai-cli/installations/`, oldest-independent
 /// sorted by id. A malformed sibling is reported as `invalid`, never fails the listing.
 pub fn read_receipts(home: &Path) -> Result<Vec<Value>> {
-    let dir = crate::home_root::path(&home).join("installations");
+    let dir = crate::home_root::path(home).join("installations");
     let entries = match fs::read_dir(&dir) {
         Ok(e) => e,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
