@@ -7,7 +7,8 @@
 //! and picks one task in the order of the user's priority list (#1975 6855190942):
 //!
 //! 1. P0 the tip is red (`gate_collect::tip_ci`, the D8(a) judgment the merge gate uses);
-//! 2. P1 the lane's own pull request: an audit FAIL on its head, a conflict, a failed CI;
+//! 2. P1 the lane's own pull request: an audit FAIL on its head, a conflict, a failed CI; then
+//!    a claimed card whose pull request merged with no close table posted (SYNC, #2880 W3);
 //! 3. P1 a pull request the lane reserved to audit: not judged yet, its head moved past the
 //!    lane's verdict (an update-branch too) or a re-audit was asked for — with the head now;
 //! 4. P1 another lane's pull request no auditor reserved;
@@ -400,6 +401,46 @@ fn has_audit_claim(pr: &Pr) -> bool {
     pr.comments.iter().any(|c| audit_claim(c).is_some())
 }
 
+/// What a claimed card's thread says after the claim: the newest merged pull request whose
+/// body names the claim (#2873 N8), a `pr-wait:` line still waiting, and whether a close table
+/// is posted (#2880 W3).
+struct CardState<'a> {
+    merged: Option<&'a MergedPr>,
+    wait: Option<&'a Comment>,
+    closed: bool,
+}
+
+fn card_state(t: &Thread, claim: u64) -> CardState<'_> {
+    let merged = t
+        .merged
+        .iter()
+        .filter(|m| m.claim == Some(claim))
+        .max_by(|a, b| a.merged_at.cmp(&b.merged_at));
+    let after = t
+        .comments
+        .iter()
+        .position(|c| c.id == claim)
+        .map_or(&[][..], |i| &t.comments[i + 1..]);
+    // A branch whose pull request merged after the `pr-wait` line is not waiting any more; with
+    // a time missing on either side the merge is taken as later, so no second pull request is
+    // suggested for work already merged.
+    let wait = after
+        .iter()
+        .rev()
+        .find(|c| first_line(c).starts_with("pr-wait:"))
+        .filter(|w| {
+            merged.is_none_or(|m| !w.at.is_empty() && !m.merged_at.is_empty() && m.merged_at < w.at)
+        });
+    let closed = after
+        .iter()
+        .any(|c| first_line(c).starts_with("CLOSE-TABLE"));
+    CardState {
+        merged,
+        wait,
+        closed,
+    }
+}
+
 /// Decides the next task of `lane` from `snap`. Pure: the same snapshot gives the same bytes.
 pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
@@ -432,6 +473,32 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         {
             if let Some(t) = own_pr_task(pr) {
                 return Some(t);
+            }
+        }
+        // 2b. P1: SYNC — a claimed card whose pull request merged and whose close table is not
+        // posted yet: close it before new work (#2880 W3). A card with another open pull
+        // request of the lane is still in progress.
+        let mut claimed: Vec<&Thread> = snap.threads.iter().collect();
+        claimed.sort_by_key(|t| t.number);
+        for t in claimed {
+            let Some(claim) = live_claim(&t.comments, lane) else {
+                continue;
+            };
+            let open_pr = prs
+                .iter()
+                .any(|p| p.author_lane.as_deref() == Some(lane) && p.claim_issue == Some(t.number));
+            let card = card_state(t, claim);
+            if let (Some(m), None, false, false) = (card.merged, card.wait, card.closed, open_pr) {
+                return Some(task(
+                    "P1",
+                    "card_pr_merged",
+                    json!({"type": "issue", "number": t.number}),
+                    format!(
+                        "PR #{} for your claim on #{} is merged: post the close table (first line CLOSE-TABLE #{}) and release the claim (moai-claim-release: comment={claim} by={lane}) before new work; if the card's criteria are not all met yet, say so there and continue the card",
+                        m.number, t.number, t.number
+                    ),
+                    json!({"claim_comment": claim, "merged_pr": m.number}),
+                ));
             }
         }
         // 3. P1: audits the lane reserved.
@@ -526,32 +593,12 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if decision_pending {
                 continue;
             }
-            // A merged pull request carrying this claim (#2873 N8): the newest one.
-            let merged = t
-                .merged
-                .iter()
-                .filter(|m| m.claim == Some(claim))
-                .max_by(|a, b| a.merged_at.cmp(&b.merged_at));
+            let card = card_state(t, claim);
             // A pushed branch held back by the open-PR limit (`pr-wait:` after the claim, no pull
             // request of the lane for the card): open it as a draft now instead of waiting for
             // a slot — the merge gate marks a draft ready once it has its PASS (leader decision
             // #1975 6870150891, #2856 audit B2).
-            // A branch whose pull request merged after the `pr-wait` line is not waiting any more;
-            // with a time missing on either side the merge is taken as later, so no second pull
-            // request is suggested for work already merged.
-            let claim_at = t.comments.iter().position(|c| c.id == claim);
-            let wait = claim_at.map(|i| &t.comments[i + 1..]).and_then(|after| {
-                after
-                    .iter()
-                    .rev()
-                    .find(|c| first_line(c).starts_with("pr-wait:"))
-            });
-            let wait = wait.filter(|w| {
-                merged.is_none_or(|m| {
-                    !w.at.is_empty() && !m.merged_at.is_empty() && m.merged_at < w.at
-                })
-            });
-            if let Some(w) = wait {
+            if let Some(w) = card.wait {
                 return Some(task(
                     "P2",
                     "open_draft_pr",
@@ -563,17 +610,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                     json!({"claim_comment": claim, "pr_wait_comment": w.id}),
                 ));
             }
-            if let Some(m) = merged {
-                return Some(task(
-                    "P2",
-                    "card_pr_merged",
-                    json!({"type": "issue", "number": t.number}),
-                    format!(
-                        "PR #{} for your claim on #{} is merged: when the card's criteria are all met, post the close table and release the claim (moai-claim-release: comment={claim} by={lane}); otherwise continue the card",
-                        m.number, t.number
-                    ),
-                    json!({"claim_comment": claim, "merged_pr": m.number}),
-                ));
+            // Merged: step 2b named it, or its close table is posted (the release follows).
+            if card.merged.is_some() {
+                continue;
             }
             return Some(task(
                 "P2",

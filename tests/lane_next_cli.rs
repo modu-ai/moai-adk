@@ -352,3 +352,46 @@ fn an_applied_decision_is_not_resumed_again() {
     let r = next(&thread(json!({"id": 52, "body": "DECISION-APPLIED"})));
     assert_eq!(kind(&r), json!("resume_decision"), "{r}");
 }
+
+/// #2880 W3 (AC-2): SYNC before new work — a merged card of mine with no close table is a P1
+/// task ahead of an audit I reserved; once `CLOSE-TABLE` is posted after the claim it is no
+/// task, and another open pull request of mine for the card keeps it in progress.
+#[test]
+fn a_merged_card_without_its_close_table_comes_before_audits() {
+    let snap = |extra: Vec<Value>, prs: Value| {
+        let mut comments = vec![claim(100, LANE)];
+        comments.extend(extra);
+        json!({"threads": [{"number": 2831, "comments": comments,
+            "merged": [{"number": 2856, "claim": 100, "merged_at": "2026-11-14T03:00:00Z"}]}],
+            "prs": prs})
+    };
+    let audit = json!([pr(
+        11,
+        &h('c'),
+        Some("agent-28"),
+        json!([audit_claim(1, LANE, &h('c'))])
+    )]);
+    let r = next(&snap(vec![], audit.clone()));
+    assert_eq!(kind(&r), json!("card_pr_merged"), "{r}");
+    assert_eq!(r["next"]["priority"], json!("P1"));
+    assert!(r["next"]["action"]
+        .as_str()
+        .unwrap()
+        .contains("CLOSE-TABLE #2831"));
+    // Close table posted: the audit is next, and the card is no task.
+    let table = json!({"id": 101, "body": "CLOSE-TABLE #2831\n\n| AC | ... |"});
+    let r = next(&snap(vec![table.clone()], audit));
+    assert_eq!(kind(&r), json!("audit"), "{r}");
+    let r = next(&snap(vec![table], json!([])));
+    assert_eq!(r["next"], json!(null), "{r}");
+    // A table line that is not the first line does not count.
+    let quoted = json!({"id": 102, "body": "note\nCLOSE-TABLE #2831"});
+    assert_eq!(
+        kind(&next(&snap(vec![quoted], json!([])))),
+        json!("card_pr_merged")
+    );
+    // Another open pull request of mine for the card: still in progress, not closed yet.
+    let open = json!([{"number": 2870, "head": h('a'), "author_lane": LANE, "claim_issue": 2831,
+        "comments": [audit_claim(1, "agent-26", &h('a'))]}]);
+    assert_eq!(next(&snap(vec![], open))["next"], json!(null));
+}

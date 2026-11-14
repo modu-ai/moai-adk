@@ -24,6 +24,8 @@ FULL = """Refs #2388
 - clone: check set from a fresh clone, not the /tmp symlink path
 - host: api.github.com exercised via fake gh executable, no network
 - receipt: receipt digest re-read and matched before PASS recorded
+- plan: PLAN comment 6872621175
+- red: check failed first without the plan line
 - ci: rc-ci run=42821157127 head=72331be4fda1786c32c3189a6faa4a817324a200
 
 ## 독립 review

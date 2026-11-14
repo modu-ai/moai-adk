@@ -3,7 +3,9 @@
 //! `moai-cli`. It judges text and never posts anything.
 //!
 //! A lane PR body carries a `## Self-Audit` section with four measured lines — `mutation:`
-//! (and the mutation reports FAILED), `clone:`, `host:`, `receipt:`. An optional `ci:` line is
+//! (and the mutation reports FAILED), `clone:`, `host:`, `receipt:` — and the round's
+//! `plan:` (the lane's PLAN comment, by an id of at least seven digits) and `red:` (the test
+//! that failed first, or why there is none) lines (#2880). An optional `ci:` line is
 //! either `ci: … run=<digits> head=<40 lowercase hex>` (keyed whole tokens) or `ci: not_run
 //! <reason>`. In the section and in every Markdown table row, `0 passed` needs `not_run` on the
 //! same line, and a filtered `cargo test` in a code span must select exactly one target. With
@@ -16,7 +18,11 @@
 //! used; each pattern of the Python tool is a hand-written matcher with the same meaning.
 
 const SECTION: &str = "## self-audit";
-const TAGS: [&str; 4] = ["mutation", "clone", "host", "receipt"];
+/// The measured lines, then the lane round's PLAN comment and RED evidence (#2880 W1·W2).
+const TAGS: [&str; 6] = ["mutation", "clone", "host", "receipt", "plan", "red"];
+/// The shortest number taken as a comment id on a `plan:` line: GitHub comment ids run to ten
+/// digits, Issue and pull request numbers here to four.
+const PLAN_ID_DIGITS: usize = 7;
 pub const PASS: &str = "self-audit: pass (mutation/clone/host/receipt measured)";
 
 /// `Ok(())` on pass, `Err(missing)` with the names the Python tool prints.
@@ -40,8 +46,13 @@ pub fn check(body: &str, reaudit: bool) -> Result<(), Vec<String>> {
             .iter()
             .find(|l| strip_marker(l).starts_with(&prefix));
         let filled = hit.is_some_and(|l| {
-            l.split_once(':')
-                .is_some_and(|(_, v)| !py_strip(v).is_empty())
+            l.split_once(':').is_some_and(|(_, v)| {
+                // `plan:` names the PLAN comment by its id: a run of at least seven digits.
+                !py_strip(v).is_empty()
+                    && (tag != "plan"
+                        || v.split(|c: char| !c.is_ascii_digit())
+                            .any(|run| run.len() >= PLAN_ID_DIGITS))
+            })
         });
         if !filled {
             missing.push(tag.to_string());
