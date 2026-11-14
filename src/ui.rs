@@ -275,7 +275,29 @@ impl Token {
     }
 }
 
-/// Paints text for one stream: color and symbols as decided, plain text otherwise.
+/// `text` safe to show on a terminal (Issue #2818 audit B1, CWE-150; leader decision 6867586011):
+/// every control character — C0 including tab, CR and LF, DEL, and C1 (`\u{80}`–`\u{9f}`, which
+/// some terminals read as escape introducers) — becomes a visible `\xNN`. A file or folder name
+/// can then never move the cursor, retitle the window, write the clipboard or start a link.
+/// Text without control characters is returned as it is, and the result is stable when applied
+/// twice. Human output only: the stdout JSON envelope escapes these itself and never comes here.
+pub fn visible(text: &str) -> std::borrow::Cow<'_, str> {
+    if !text.chars().any(char::is_control) {
+        return std::borrow::Cow::Borrowed(text);
+    }
+    let mut out = String::with_capacity(text.len() + 8);
+    for c in text.chars() {
+        if c.is_control() {
+            out.push_str(&format!("\\x{:02x}", c as u32));
+        } else {
+            out.push(c);
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
+/// Paints text for one stream: color and symbols as decided, plain text otherwise. Every text it
+/// paints goes through [`visible`] first, so only the painter's own style codes reach the terminal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Painter {
     pub color: bool,
@@ -302,8 +324,9 @@ impl Painter {
 
     /// `text` in the token's style, or unchanged without color.
     pub fn paint(&self, token: Token, text: &str) -> String {
+        let text = visible(text);
         if !self.color || text.is_empty() {
-            return text.to_string();
+            return text.into_owned();
         }
         let style = token.style();
         format!("{}{text}{}", style.render(), style.render_reset())
@@ -521,6 +544,57 @@ mod tests {
             assert!(!s.contains("38;5;") && !s.contains("38;2;"), "{t:?}: {s:?}");
         }
         assert_eq!(p.paint(Token::Ok, ""), "");
+    }
+
+    #[test]
+    fn control_characters_become_visible_text() {
+        // C0 (NUL, BEL, TAB, LF, CR, ESC), DEL and C1 (CSI U+009B, the last C1 U+009F).
+        let raw = "a\u{0}b\u{7}c\td\ne\rf\u{1b}]0;T\u{7}\u{1b}[2Jg\u{7f}h\u{9b}31mi\u{9f}j";
+        let shown = visible(raw);
+        assert_eq!(
+            shown,
+            "a\\x00b\\x07c\\x09d\\x0ae\\x0df\\x1b]0;T\\x07\\x1b[2Jg\\x7fh\\x9b31mi\\x9fj"
+        );
+        assert!(!shown.chars().any(char::is_control), "{shown:?}");
+        // Plain text, Hangul and wide symbols pass unchanged and borrowed; applying twice is stable.
+        assert!(matches!(
+            visible("한글 path/✓"),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        assert_eq!(visible(&shown), shown);
+        // U+00A0 (after C1) and U+0080 (first C1) are the boundaries.
+        assert_eq!(visible("\u{a0}"), "\u{a0}");
+        assert_eq!(visible("\u{80}"), "\\x80");
+    }
+
+    #[test]
+    fn painting_never_passes_a_control_character_from_the_text() {
+        let raw = "dir\u{1b}]52;c;Zm9v\u{7}\u{9b}2J";
+        for p in [
+            Painter::plain(),
+            Painter {
+                color: true,
+                unicode: true,
+            },
+        ] {
+            for t in [Token::Ok, Token::Muted, Token::Strong] {
+                let painted = p.paint(t, raw);
+                let escapes = painted.matches('\u{1b}').count();
+                // Only the painter's own SGR start and reset remain.
+                assert_eq!(escapes, if p.color { 2 } else { 0 }, "{painted:?}");
+                assert!(
+                    !painted.contains('\u{7}') && !painted.contains('\u{9b}'),
+                    "{painted:?}"
+                );
+                assert!(
+                    painted.contains("\\x1b]52;c;Zm9v\\x07\\x9b2J"),
+                    "{painted:?}"
+                );
+            }
+            assert!(!p
+                .status(Token::Error, "con\u{1b}[2Jflict")
+                .contains("\u{1b}[2J"));
+        }
     }
 
     /// Card #2804: the frame's golden shapes. Plain (NO_COLOR, TERM=dumb, ASCII) is the same
