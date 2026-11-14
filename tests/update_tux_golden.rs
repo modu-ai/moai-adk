@@ -322,3 +322,124 @@ fn no_screen_prints_json_or_asks_to_copy_a_digest_when_it_asks() {
     // Only the not-asked screen (no terminal to answer on) names the confirming command.
     assert!(screen(&changes, Asked::NotAsked, &v).contains("moai update --confirm sha256:"));
 }
+
+/// PR #2908 review (Codex P2 4572504797, 4572504811): a skill host the apply left as it was
+/// (`unchanged`) or replaced after a backup (`replaced`) is not a failure, and a host's count is
+/// the files it published, not every file the result lists.
+#[test]
+fn the_applied_screen_counts_published_files_and_keeps_healthy_hosts_ok() {
+    let mut applied = fixture("applied");
+    let hosts = applied["result"]["hosts"].as_array_mut().unwrap();
+    // claude: nothing to write. codex: one file of 31 published by a backup-then-replace.
+    hosts[0]["status"] = "unchanged".into();
+    for f in hosts[0]["files"].as_array_mut().unwrap() {
+        f["published"] = false.into();
+    }
+    hosts[1]["status"] = "replaced".into();
+    for (i, f) in hosts[1]["files"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        f["published"] = (i == 0).into();
+    }
+    let v = view(Lang::En, Look::Plain, 80, None);
+    let text = screen(&applied, Asked::Yes, &v);
+    assert!(
+        !text.contains("Partly applied") && !text.contains("blocked"),
+        "{text}"
+    );
+    // 1 skill file + 15 agents + 2 routing + 3 style + 1 command name.
+    assert!(text.contains("✓ Done — 22 changed"), "{text}");
+    assert!(
+        text.lines()
+            .any(|l| l.contains("skills codex") && l.contains(" 1 changed")),
+        "{text}"
+    );
+    assert!(
+        !text
+            .lines()
+            .any(|l| l.contains("skills claude") && l.contains("changed")),
+        "{text}"
+    );
+    // The project step still ends a run whose every change succeeded.
+    assert!(
+        flat(&text).contains("run /moai update in a session there"),
+        "{text}"
+    );
+    // A host that failed is still a partial run, with the error its files carry.
+    hosts_failed(&mut applied);
+    let text = screen(&applied, Asked::Yes, &v);
+    assert!(
+        text.contains("Partly applied") && text.contains("disk full"),
+        "{text}"
+    );
+}
+
+fn hosts_failed(applied: &mut Value) {
+    let h = &mut applied["result"]["hosts"][0];
+    h["status"] = "failed".into();
+    h["blocked_reason"] = Value::Null;
+    h["files"][0]["error"] = "disk full".into();
+}
+
+/// PR #2908 review (Codex P2 4572504814): the end of a confirmed run lists every layer's revert,
+/// output style included, in the reverse of the order the layers were applied (agents, routing,
+/// style, command names, hooks), so a file two layers changed is restored last-first.
+#[test]
+fn the_applied_screen_lists_reverts_last_applied_first_with_the_style() {
+    let mut applied = fixture("applied");
+    applied["revert"]["hooks"] =
+        "moai hooks-revert <PROJECT> --receipt hooks-1 --permission-reference <reference>".into();
+    let text = screen(&applied, Asked::Yes, &view(Lang::En, Look::Plain, 80, None));
+    let order: Vec<&str> = text
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("revert: moai "))
+        .map(|l| l.split(' ').next().unwrap_or(""))
+        .collect();
+    assert_eq!(
+        order,
+        [
+            "hooks-revert",
+            "home-style-revert",
+            "home-routing-revert",
+            "agents-home-revert"
+        ],
+        "{text}"
+    );
+}
+
+/// PR #2908 review (Codex P2 4572504820, 4572504824): routing that is appended to an existing
+/// file or merged into its block is a change, never "skipped"; a blocked output-style target is an
+/// error row with its path and reason, so the preview is not "everything is up to date".
+#[test]
+fn the_preview_shows_routing_appends_and_blocked_style_targets() {
+    let v = view(Lang::En, Look::Plain, 80, None);
+    for (action, word) in [("append", "new"), ("merge", "to update")] {
+        let mut p = fixture("preview-latest");
+        p["routing"]["hosts"][0]["section"]["action"] = action.into();
+        let q = question(&p, &v);
+        let line = q.lines().find(|l| l.contains("routing")).unwrap_or("");
+        assert!(
+            line.contains(word) && !line.contains("skipped"),
+            "{action}: {q}"
+        );
+    }
+    let mut p = fixture("preview-latest");
+    let t = &mut p["style"]["targets"][0];
+    t["action"] = "blocked".into();
+    t["detail"] = "is a symlink; refusing to write through it".into();
+    let path = t["path"].as_str().unwrap().to_string();
+    let text = screen(&p, Asked::NotAsked, &v);
+    let flat_text = flat(&text);
+    assert!(!text.contains("Everything is up to date"), "{text}");
+    // The reason wraps to the width; its start stays on the row.
+    assert!(
+        flat_text.contains("blocked: is a symlink; refusing"),
+        "{text}"
+    );
+    assert!(text.contains("Nothing can be applied"), "{text}");
+    let name = path.rsplit('/').next().unwrap();
+    assert!(flat_text.contains(name), "{text}");
+}

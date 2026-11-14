@@ -2504,7 +2504,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         );
                     }
                     let asked = tux::can_ask();
-                    let yes = moai_cli::progress::ask_terminal(
+                    // The question screen paints itself (its result text is made visible
+                    // inside), so it is written as it is (PR #2908 review 4572504804).
+                    let yes = moai_cli::progress::ask_terminal_screen(
                         |p| {
                             let mut view = tux::view_for(moai_cli::ui::Stream::Stderr);
                             view.painter = *p;

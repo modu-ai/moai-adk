@@ -637,10 +637,12 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             ));
             continue;
         }
+        // `agents::section_plan`: create (new file), append (block added to an existing file),
+        // merge (owned block rewritten), unchanged, conflict.
         let (m, word) = match h["section"]["action"].as_str().unwrap_or("") {
             "unchanged" => (Mark::Ok, w(lang, W::UpToDate)),
-            "create" => (Mark::Update, w(lang, W::New)),
-            "update" => (Mark::Update, w(lang, W::ToUpdate)),
+            "create" | "append" => (Mark::Update, w(lang, W::New)),
+            "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
             "conflict" => (Mark::Warn, w(lang, W::Conflict)),
             _ => (Mark::Warn, w(lang, W::Skipped)),
         };
@@ -651,9 +653,25 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
         rows.push(row(worst, w(lang, W::Routing).into(), parts.join(" · ")));
     }
     // Output style.
+    // A blocked target (`home_style`: a symlink, an unreadable file) is an error row with its
+    // file and the refusal, never folded into a count.
     if let Some(targets) = v["style"]["targets"].as_array().filter(|t| !t.is_empty()) {
-        let (m, text) = tally_text(lang, tally(targets));
-        rows.push(row(m, w(lang, W::Style).into(), text));
+        let (blocked, rest): (Vec<Value>, Vec<Value>) = targets
+            .iter()
+            .cloned()
+            .partition(|t| t["action"].as_str() == Some("blocked"));
+        if !rest.is_empty() {
+            let (m, text) = tally_text(lang, tally(&rest));
+            rows.push(row(m, w(lang, W::Style).into(), text));
+        }
+        for t in &blocked {
+            let label = format!(
+                "{} {}",
+                w(lang, W::Style),
+                short(t["path"].as_str().unwrap_or(""))
+            );
+            rows.push(blocked_row(lang, label, &t["detail"]));
+        }
     }
     // Command names.
     let b = &v["bin_names"];
@@ -1297,17 +1315,46 @@ fn applied(v: &Value, view: &View) -> String {
             w(lang, W::Skills),
             h["host"].as_str().unwrap_or("")
         );
-        let n = h["files"].as_array().map_or(0, Vec::len);
-        if h["status"].as_str() == Some("applied") {
-            total += n;
-            rows.push(row(
-                Mark::Ok,
-                label,
-                format!("{} {}", count(lang, n), w(lang, W::Changed)),
-            ));
-        } else {
-            bad = true;
-            rows.push(blocked_row(lang, label, &h["blocked_reason"]));
+        let files = h["files"].as_array().map_or(&[][..], |a| a);
+        // The result lists unchanged and conflicting files too: count only what was written.
+        let n = files
+            .iter()
+            .filter(|f| f["published"].as_bool() == Some(true))
+            .count();
+        // `update::apply_update` host statuses: applied, replaced (backup then replace) and
+        // unchanged (nothing to write) are healthy; conflict, blocked and failed are not.
+        match h["status"].as_str().unwrap_or("") {
+            "applied" | "replaced" => {
+                total += n;
+                rows.push(row(
+                    Mark::Ok,
+                    label,
+                    format!("{} {}", count(lang, n), w(lang, W::Changed)),
+                ));
+            }
+            "unchanged" => {}
+            "conflict" => {
+                bad = true;
+                let c = files
+                    .iter()
+                    .filter(|f| f["action"].as_str() == Some("conflict"))
+                    .count();
+                rows.push(row(Mark::Warn, label, counted(lang, W::Conflict, c)));
+            }
+            _ => {
+                bad = true;
+                // A failed host names its error on the file that failed, not as a reason.
+                let reason = h["blocked_reason"]
+                    .as_str()
+                    .map(str::to_string)
+                    .or_else(|| {
+                        files
+                            .iter()
+                            .find_map(|f| f["error"].as_str().map(str::to_string))
+                    })
+                    .unwrap_or_default();
+                rows.push(blocked_row(lang, label, &Value::String(reason)));
+            }
         }
     }
     let mut part = |label: W, r: &Value, rows: &mut Vec<Row>| {
@@ -1363,7 +1410,9 @@ fn applied(v: &Value, view: &View) -> String {
         format!("{total} {}", w(lang, W::Changed))
     };
     o.status(m, &format!("{} — {total}", w(lang, head)));
-    let reverts: Vec<String> = ["agents", "routing", "hooks"]
+    // Last applied first (the apply order is agents, routing, style, command names, hooks): a file
+    // two layers changed, such as Codex's AGENTS.md, is only restored in that order.
+    let reverts: Vec<String> = ["hooks", "style", "routing", "agents"]
         .iter()
         .filter_map(|k| v["revert"][*k].as_str())
         .map(|c| o.home(c))
