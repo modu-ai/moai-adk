@@ -5,7 +5,7 @@
 //!
 //! The three conditions, each reported with its evidence:
 //! - lease expired: `now >= lease_until`, the edge of `is_live = lease_until > now`;
-//! - request unanswered: the lane's request names the holder's claim id, `now >= request_at +
+//! - request unanswered: this lane's request names the holder's claim id, `now >= request_at +
 //!   1800`, and after the request there is no comment of the holder lane and no release or
 //!   handoff of that claim;
 //! - no heartbeat: `now >= max(latest activity, claim written) + 7200`, where activity is the
@@ -14,9 +14,14 @@
 //!   `branch=` carrying `Moai-Claim: <issue>#<claim>` (decision Q4; a branch that is gone is
 //!   zero commits). An activity time after `now` is never silence.
 //!
-//! A holder-lane comment is one whose first non-empty line names the holder's lane or session
-//! as a whole word: every lane posts through one account, so the text is all there is. A wrong
-//! match only blocks a takeover, the safe direction.
+//! A holder-lane comment is one that names the holder's lane or session as a whole word on any
+//! line (`auditor: x`, `lane=x`, `LANE-… x` included): every lane posts through one account, so
+//! the text is all there is. Over-counting only blocks a takeover, the safe direction.
+//!
+//! The request is this lane's only when its first non-empty line names `--lane` as a whole
+//! word, it is not a holder-lane comment, and its id is above the claim's (written after it);
+//! otherwise `request_not_mine` or `request_before_claim`. A holder-lane comment is never
+//! taken out of the holder's activity.
 //!
 //! Reads are GET only, at most [`MAX_PAGES`] pages per list; a failed read or a page cap
 //! overflow is `uncertain`, with no line.
@@ -167,14 +172,9 @@ pub fn judge(input: &Input, now: i64) -> Value {
     for c in input.issue_comments.iter().chain(&input.repo_comments) {
         all.entry(c.id).or_insert(c);
     }
-    let of_lane = |c: &TimedComment| {
-        c.id != input.request
-            && c.body
-                .lines()
-                .map(str::trim)
-                .find(|l| !l.is_empty())
-                .is_some_and(|first| whole_word(first, &lane) || whole_word(first, &parsed.session))
-    };
+    // Anywhere in the body: lanes sign on any line (`auditor: x`, `lane=x`, `LANE-… x`).
+    let of_lane =
+        |c: &TimedComment| whole_word(&c.body, &lane) || whole_word(&c.body, &parsed.session);
     let closes_claim = |c: &TimedComment| match classify_comment(&c.body) {
         CommentKind::Release { target } | CommentKind::Handoff { target, .. } => {
             target == input.claim
@@ -202,10 +202,24 @@ pub fn judge(input: &Input, now: i64) -> Value {
                 Err(e) => return uncertain(input, e),
             };
             let names = whole_word(&r.body, &claim_id);
+            // This lane's: its first non-empty line names `--lane`, and it is not the holder
+            // lane's comment (which stays the holder's activity).
+            let mine = r
+                .body
+                .lines()
+                .map(str::trim)
+                .find(|l| !l.is_empty())
+                .is_some_and(|first| whole_word(first, &input.me))
+                && !of_lane(r);
+            let after_claim = r.id > input.claim;
             let waited = now >= at + REQUEST_WAIT_SECS;
-            let met = names && answered_by.is_none() && waited;
+            let met = names && mine && after_claim && answered_by.is_none() && waited;
             let reason = if !names {
                 "request_names_no_claim"
+            } else if !mine {
+                "request_not_mine"
+            } else if !after_claim {
+                "request_before_claim"
             } else if answered_by.is_some() {
                 "answered"
             } else if !waited {
@@ -664,6 +678,141 @@ mod tests {
                 "{body}"
             );
             assert_eq!(v["met"], json!(false), "{body}");
+        }
+    }
+
+    fn request_reason(v: &Value) -> &Value {
+        &v["conditions"]["request_unanswered"]["reason"]
+    }
+
+    /// B1 (audit P1): the holder's own note passed as `--request` is not this lane's request,
+    /// and it stays the holder's activity.
+    #[test]
+    fn the_holders_note_is_not_a_request() {
+        for body in [
+            "resume note - agent-7 (claim `2906#100`, will renew)",
+            "agent-25 to agent-7: claim 100 shows no activity; timeout takeover after 1800 s",
+        ] {
+            let mut input = base();
+            input.issue_comments[1].body = body.into();
+            let v = judge(&input, now());
+            assert_eq!(v["met"], json!(false), "{body}: {v}");
+            assert_eq!(
+                request_reason(&v),
+                &json!("request_not_mine"),
+                "{body}: {v}"
+            );
+            assert!(!cond(&v, "no_heartbeat"), "{body}: {v}");
+            assert_eq!(
+                v["conditions"]["no_heartbeat"]["latest"]["ref"],
+                json!(200),
+                "{body}: {v}"
+            );
+        }
+    }
+
+    /// B1 (audit P3): a request another lane wrote is not this lane's; `agent-250` is not
+    /// `agent-25`.
+    #[test]
+    fn another_lanes_request_is_not_mine() {
+        for body in [
+            "agent-30: claim 100 shows no activity; timeout takeover after 1800 s",
+            "agent-250: claim 100 shows no activity; timeout takeover after 1800 s",
+            "claim 100 shows no activity\nagent-25",
+        ] {
+            let mut input = base();
+            input.issue_comments[1].body = body.into();
+            let v = judge(&input, now());
+            assert_eq!(v["met"], json!(false), "{body}: {v}");
+            assert_eq!(
+                request_reason(&v),
+                &json!("request_not_mine"),
+                "{body}: {v}"
+            );
+        }
+    }
+
+    /// B1: a request written before the claim (a lower id) is not a request about it.
+    #[test]
+    fn a_request_before_the_claim_blocks() {
+        let mut input = base();
+        input.issue_comments[1].id = 50;
+        input.request = 50;
+        let v = judge(&input, now());
+        assert_eq!(v["met"], json!(false), "{v}");
+        assert_eq!(request_reason(&v), &json!("request_before_claim"), "{v}");
+    }
+
+    /// Holder-lane comments in the forms lanes write, the lane not on the first line.
+    const HOLDER_FORMS: [&str; 6] = [
+        "AUDIT #2884 (x) head a1 base b2 — verdict: PASS\n\nauditor: agent-7",
+        "CLOSE-TABLE #2876 — all rows closed\nlane=agent-7",
+        "DECISION-APPLIED #2880\n\n감사: agent-7 (claim 6873011928)",
+        "pr-wait: #2890 waits for CI\nsession=agent-7-abc",
+        "LANE-DONE agent-7 #2901",
+        "moai-audit-claim: lane=agent-7 pr=#2903",
+    ];
+
+    /// B2 (audit P2): a holder-lane comment ten minutes old is a heartbeat wherever in the body
+    /// the lane or session stands.
+    #[test]
+    fn a_holder_comment_anywhere_in_the_body_is_a_heartbeat() {
+        for body in HOLDER_FORMS {
+            let mut input = base();
+            input.repo_comments = vec![comment(150, body, -600, -600)];
+            let v = judge(&input, now());
+            assert!(!cond(&v, "no_heartbeat"), "{body}: {v}");
+            assert_eq!(
+                v["conditions"]["no_heartbeat"]["latest"]["ref"],
+                json!(150),
+                "{body}: {v}"
+            );
+            assert_eq!(v["met"], json!(false), "{body}: {v}");
+        }
+    }
+
+    /// B2: the same forms after the request answer it.
+    #[test]
+    fn a_holder_comment_anywhere_in_the_body_answers() {
+        for body in HOLDER_FORMS {
+            let mut input = base();
+            input.repo_comments = vec![comment(300, body, -3000, -3000)];
+            let v = judge(&input, now());
+            assert_eq!(
+                v["conditions"]["request_unanswered"]["answered_by"],
+                json!(300),
+                "{body}: {v}"
+            );
+            assert_eq!(request_reason(&v), &json!("answered"), "{body}: {v}");
+            assert_eq!(v["met"], json!(false), "{body}: {v}");
+        }
+    }
+
+    /// N1: a claim already closed before the request (release, handoff, D1 renewal by a later
+    /// claim of the same session) is no longer the holder; only `holder_ok` refuses it.
+    #[test]
+    fn a_claim_closed_before_the_request_blocks() {
+        for (closer, lease) in [
+            ("moai-claim-release: comment=100 by=leader".to_string(), 0),
+            (
+                "moai-claim-handoff: comment=100 to=agent-9-x".to_string(),
+                0,
+            ),
+            (
+                "moai-claim: session=agent-7-abc epoch=2 lease_until={} lane=agent-7 issue=2906"
+                    .to_string(),
+                -5,
+            ),
+        ] {
+            let closer = closer.replace("{}", &at(lease));
+            let mut input = base();
+            input
+                .issue_comments
+                .insert(1, comment(150, &closer, -7300, -7300));
+            let v = judge(&input, now());
+            assert_eq!(v["met"], json!(false), "{closer}: {v}");
+            assert_eq!(v["reasons"], json!(["claim_not_holder"]), "{closer}: {v}");
+            assert!(v["line"].is_null(), "{closer}: {v}");
         }
     }
 

@@ -10,7 +10,8 @@ use moai_cli::forge::transport::{Exchange, HttpResponse, RecordedTransport};
 use serde_json::{json, Value};
 use std::process::Command;
 
-const NOW: &str = "2026-11-14T12:00:00Z";
+/// A fixed past time: the binary refuses a `--now` more than 300 s after the system clock.
+const NOW: &str = "2026-11-01T12:00:00Z";
 const ISSUE_URL: &str = "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100";
 const LINE: &str = "moai-claim-handoff: comment=100 to=agent-25 by=timeout";
 
@@ -234,4 +235,17 @@ fn the_binary_prints_the_timeout_line_when_met() {
     assert_eq!(out.status.code(), Some(0), "{envelope}");
     assert_eq!(envelope["result"]["met"], json!(false), "{envelope}");
     assert!(envelope["result"]["line"].is_null(), "{envelope}");
+
+    // N3: a `--now` later than the system clock by more than 300 s is a usage error, before
+    // any read.
+    let out = run("2999-01-01T00:00:00Z");
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_ne!(out.status.code(), Some(0), "{text}");
+    assert!(text.contains("--now"), "{text}");
+    assert!(text.contains("system clock"), "{text}");
+    assert!(!text.contains("\"met\""), "{text}");
 }
