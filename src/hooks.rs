@@ -293,7 +293,7 @@ fn hook_list(host: &str) -> Value {
 }
 
 /// Refuses a project that is the home directory or lies inside a host's home configuration.
-fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
+pub(crate) fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
