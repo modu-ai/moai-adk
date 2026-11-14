@@ -1961,6 +1961,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
 /// decision 1 (a)); no operation ran, so it names the command line itself.
 const UNKNOWN_COMMAND_OPERATION: &str = "cli";
 const UNKNOWN_COMMAND: &str = "unknown command; see --help";
+/// #2935 L3 (user instruction 2026-11-14T12:05Z): `init` is gone; its envelope names the
+/// launcher flow that replaces it, and stderr says it in the terminal's language.
+const INIT_REMOVED: &str =
+    "moai init was removed; in a project folder run moai cc, moai glm or moai codex";
 
 /// True when clap refused `first` as a subcommand and `first` is a bare word that names no
 /// command (nor `help`): `moai no-such-command`. An option, `help <word>` or a known command
@@ -1977,6 +1981,22 @@ fn names_no_command(e: &clap::Error, first: &str) -> bool {
 /// the launchers and words that name no operation keep clap's own output.
 fn usage_error(e: clap::Error) -> ExitCode {
     let first = std::env::args().nth(1);
+    if first.as_deref() == Some("init") && names_no_command(&e, "init") {
+        let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+        eprintln!(
+            "{}",
+            moai_cli::ui_text::text(moai_cli::ui_text::Msg::InitRemoved, lang)
+        );
+        println!(
+            "{}",
+            contract::failure(
+                UNKNOWN_COMMAND_OPERATION,
+                contract::Kind::Usage,
+                INIT_REMOVED
+            )
+        );
+        return ExitCode::from(2);
+    }
     if first.as_deref().is_some_and(|w| names_no_command(&e, w)) {
         // #2799 D3 decision 1 (a): an unknown first word is a usage error like any other, so
         // stdout carries the `usage` envelope too. Its message echoes no argument (the word

@@ -87,3 +87,44 @@ fn other_command_line_errors_keep_their_output() {
     assert_eq!(v["operation"], json!("project.plan"));
     assert_eq!(v["error"]["kind"], json!("usage"));
 }
+
+/// #2935 L3 (user instruction 2026-11-14T12:05Z): `moai init` is gone — a project starts by
+/// making a folder and running `moai cc`, `moai glm` or `moai codex` in it. `init` is still not
+/// a command (exit 2, `usage` envelope), but instead of clap's "unrecognized" line it names the
+/// new flow. Only the exact word `init`: a near miss keeps the general unknown-command output.
+#[test]
+fn init_names_the_launcher_flow_instead_of_an_unknown_command() {
+    let out = run(&["init"]);
+    assert_eq!(out.status.code(), Some(2));
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(
+        v,
+        json!({
+            "protocol_version": 1,
+            "operation": "cli",
+            "ok": false,
+            "error": {"kind": "usage",
+                "message": "moai init was removed; in a project folder run moai cc, moai glm or moai codex",
+                "retryable": false}
+        })
+    );
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    for p in [
+        "moai init",
+        "moai cc",
+        "moai glm",
+        "moai codex",
+        "-l",
+        "-a",
+        "/moai project",
+    ] {
+        assert!(stderr.contains(p), "stderr must name `{p}`: {stderr}");
+    }
+    assert!(!stderr.contains("unrecognized subcommand"), "{stderr}");
+    // Arguments after it change nothing, and the near miss stays a plain unknown command.
+    let with_args = run(&["init", "--force", "x"]);
+    assert_eq!(with_args.status.code(), Some(2));
+    assert_eq!(with_args.stdout, out.stdout);
+    let near: Value = serde_json::from_slice(&run(&["inti"]).stdout).unwrap();
+    assert_eq!(near, envelope());
+}
