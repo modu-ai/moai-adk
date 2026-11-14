@@ -1063,5 +1063,19 @@ mod tests {
         let real = format!("{urls}{}://u:pw3@h", "postgres");
         assert_eq!(secret_suspects(&real), vec![(1, "url_credential")]);
         assert_eq!(secret_suspects(&lookalikes), vec![]);
+        // The header words too (#2994 audit B1): look-alikes first, a real token last.
+        for (word, token) in [
+            ("bearer", "abcdefghijklmnopqrstuv"),
+            ("basic", "QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
+        ] {
+            let alikes = format!("authorization: {}", format!("{word} x ").repeat(200));
+            assert_eq!(secret_suspects(&alikes), vec![], "{word} look-alikes only");
+            let real = format!("{alikes}{word} {token}");
+            assert_eq!(
+                secret_suspects(&real),
+                vec![(1, "authorization_header")],
+                "{word}"
+            );
+        }
     }
 }
