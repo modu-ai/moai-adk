@@ -249,6 +249,7 @@ class LabelTaxonomyTest(unittest.TestCase):
 
 WORKFLOWS = ROOT / ".github/workflows"
 PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
+LOCAL_CHECK = ROOT / "tools/local_check.sh"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
 # The only write scope a workflow may hold: moai-label-sync's manual apply job creates labels.
 ALLOWED_WRITES = {("moai-label-sync.yml", "apply"): {"issues"}}
@@ -380,11 +381,13 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('if [ "$actual" != "$sum" ]; then', install)
         self.assertNotRegex(install, r"\|\|\s*true|cargo install")
         self.assertLess(names.index("cargo-nextest (pinned, sha256-checked)"), names.index("Check set"))
-        script = steps[names.index("Check set")]["run"]
-        # Both must be real `run` steps of the check set (a recorded exit), not just text.
-        self.assertRegex(script, r"(?m)^\s*run test bash -c 'RUST_MIN_STACK=8388608 "
+        self.assertIn("bash tools/local_check.sh", steps[names.index("Check set")]["run"])
+        # #2906 S5a: the Check set runs tools/local_check.sh. Both must be real steps of it
+        # (a recorded exit), not just text.
+        script = LOCAL_CHECK.read_text(encoding="utf-8")
+        self.assertRegex(script, r"(?m)^\s*step heavy test bash -c 'RUST_MIN_STACK=8388608 "
                                  r"cargo nextest run --offline --locked --no-fail-fast ")
-        self.assertRegex(script, r"(?m)^\s*run doctest bash -c 'RUST_MIN_STACK=8388608 "
+        self.assertRegex(script, r"(?m)^\s*step heavy doctest bash -c 'RUST_MIN_STACK=8388608 "
                                  r"cargo test --offline --locked --doc ")
         self.assertNotRegex(script, r"cargo test --offline --locked 2>&1")
 
@@ -395,6 +398,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(flow["jobs"]["ci"]["name"], "ci")
         # The check set runs on every matrix target (#2194); `ci` aggregates them.
         script = "\n".join(s.get("run", "") for s in flow["jobs"]["check"]["steps"])
+        self.assertIn("bash tools/local_check.sh", script)
+        script += "\n" + LOCAL_CHECK.read_text(encoding="utf-8")  # #2906 S5a
         for command in ("cargo test --offline --locked", "cargo clippy --offline --locked --all-targets -- -D warnings",
                         "cargo fmt --check", "unittest discover -v -s tests -p '*_test.py'", "git diff --check",
                         "GITHUB_STEP_SUMMARY"):

@@ -254,6 +254,21 @@ class InstallShTest(unittest.TestCase):
         # No partial folder is left behind.
         self.assertEqual(sorted(os.listdir(self.state("versions"))), ["1.2.3"])
 
+    def test_the_end_of_an_install_names_the_next_steps_in_order(self):
+        # #2935 L3-b: after the install, a project folder, then a session there, then
+        # `/moai project` in it. `moai init` is being removed (PR #2949) and is never named.
+        r = self.run_sh()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        out = r.stdout
+        done = out.find("Installation complete!")
+        self.assertNotEqual(done, -1, out)
+        folder = out.find("my-project", done)
+        session = out.find("moai cc", done)
+        setup = out.find("/moai project", done)
+        self.assertNotEqual(folder, -1, out)
+        self.assertTrue(folder < session < setup, out)
+        self.assertNotIn("moai init", out + r.stderr)
+
     def test_channel_rc_and_a_pinned_version(self):
         r = self.run_sh("--channel", "rc")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

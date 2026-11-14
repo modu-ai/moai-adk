@@ -54,8 +54,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 
 ## RC1 OPERATIONS 전수
 
-- `agents-apply`
-- `agents-plan`
 - `apply-recover`
 - `atlas-graph`
 - `atlas-map`
@@ -68,8 +66,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `claim-verify`
 - `claude-settings-apply`
 - `claude-settings-plan`
-- `codex-config-apply`
-- `codex-config-plan`
 - `decision-append`
 - `dispatch-ack`
 - `dispatch-check`
@@ -78,10 +74,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `effect-intend`
 - `effects-reconcile`
 - `flow-wip-check`
-- `generation-apply`
-- `generation-plan`
-- `github-apply`
-- `github-plan`
 - `go-state-apply`
 - `go-state-plan`
 - `go-state-revert`
@@ -93,12 +85,10 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `hooks-plan`
 - `hooks-revert`
 - `index-build`
-- `labels-apply`
 - `labels-plan`
 - `lane-handoff-check`
 - `lane-status`
 - `lane-stop-hook`
-- `language-setup`
 - `layout-apply`
 - `layout-plan`
 - `leader-tick`
@@ -111,9 +101,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `migrate-recovery-plan`
 - `pr-body-render`
 - `pr-confirm`
-- `project-apply`
-- `project-detect`
-- `project-plan`
 - `queue-free`
 - `queue-query`
 - `recovery-apply`
