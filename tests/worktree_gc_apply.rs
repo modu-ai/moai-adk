@@ -189,12 +189,21 @@ fn tree(root: &Path) -> Vec<String> {
 #[test]
 fn an_empty_new_worktree_is_kept() {
     let fx = fixture();
-    let r = plan(&fx, later());
+    // Three hours on: past the two-hour recent window, still inside the empty worktree's day.
+    let soon = later() - 86_400 + 3 * 3_600;
+    let r = plan(&fx, soon);
     let g = entry(&r, ".moai-cli/worktrees/g");
     assert_eq!(g["action"], "skip", "{g}");
     assert_eq!(g["reasons"], serde_json::json!(["empty_worktree"]), "{g}");
     // A built and finished worktree is still removable.
     assert_eq!(entry(&r, ".moai-cli/worktrees/a")["action"], "remove");
+    // #2879: two days on the empty merged worktree goes too (it holds only its checkout).
+    let r = plan(&fx, later() + 86_400);
+    assert_eq!(
+        entry(&r, ".moai-cli/worktrees/g")["action"],
+        "remove",
+        "{r}"
+    );
 }
 
 // N2: `--recent-minutes` has a floor of 60 — 59 is refused, 60 is accepted (literal values).
@@ -254,7 +263,8 @@ fn a_stale_digest_is_refused_and_nothing_changes() {
 #[test]
 fn apply_acts_only_on_the_planned_paths() {
     let fx = fixture();
-    let now = later();
+    // Three hours on, so the empty `g` is still inside its day and stays a `skip` (#2879).
+    let now = later() - 86_400 + 3 * 3_600;
     let r = plan(&fx, now);
     let digest = r["plan_digest"].as_str().unwrap().to_string();
     let v = apply(&fx, now, &digest);

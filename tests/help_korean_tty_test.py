@@ -5,7 +5,9 @@ Help goes to stdout, so its language is stdout's: Korean only when stdout is a t
 language is `ko`, English bytes otherwise — a pipe whatever the settings say (S6-2), and a run
 whose stdout is a pipe even when stderr is a terminal (the two streams choose apart, agent-22
 6873424675). The pipe bytes are pinned by `tests/help_layout.rs`; here an English terminal must
-give the same bytes, and the Korean screen is compared with `tests/fixtures/ui/ko/`. POSIX only.
+give the same bytes, and the Korean screen is compared with `tests/fixtures/ui/ko/`. A
+subcommand's help (S6e-1) keeps its own texts and takes a Korean frame: the usage, arguments,
+options and examples headings and the help flag's line. POSIX only.
 """
 
 import os
@@ -59,7 +61,9 @@ def run_help(args, env, stdout_tty=True, stderr_tty=False):
         if slave != -1:
             os.close(slave)
         os.close(master)
-    term = b"".join(chunks).decode("utf-8", "replace").replace("\r\n", "\n")
+    # The pty turns each "\n" into "\r\n"; under a full output queue macOS has been seen to send
+    # one "\r" twice ("\r\r\n" in a 15 KB `help --all`). Help text carries no "\r" of its own.
+    term = b"".join(chunks).decode("utf-8", "replace").replace("\r", "")
     if stdout_tty:
         out = term
     else:
@@ -133,17 +137,142 @@ class KoreanHelp(unittest.TestCase):
             self.assertEqual(code, 0, err)
             self.assertEqual(out, english, extra)
 
+    def test_a_subcommand_help_has_a_korean_frame(self):
+        """S6e-1: the usage, arguments, options and examples headings and the help flag's line
+        read Korean; a command of a group not moved yet keeps its own texts."""
+        text = self.help(["identity", "--help"], **KOREAN)
+        for head in ("\n사용법: moai identity <PATH>\n", "\n인자:\n", "\n옵션:\n",
+                     "\n예시:\n  moai identity .\n"):
+            self.assertIn(head, text)
+        self.assertIn("도움말 보기 (요약은 '-h')", text)
+        self.assertIn("Any path inside a clone or worktree", text)
+        for word in ("Usage:", "Arguments:", "Options:", "Examples:", "Print help"):
+            self.assertNotIn(word, text)
+        short = self.help(["key-set", "-h"], **KOREAN)
+        self.assertIn("도움말 보기 (자세히는 '--help')", short)
+        self.assertIn("\n옵션:\n      --shared", short)
+        # The help flag's Korean lines are wrapped at the indent too: at 40 columns they break.
+        for flag in ("-h", "--help"):
+            narrow = self.help(["identity", flag], COLUMNS="40", **KOREAN)
+            lines = [line for line in narrow.splitlines() if "도움말" in line or "'-" in line]
+            self.assertTrue(lines, narrow)
+            for line in lines:
+                self.assertLessEqual(cells(line), 40, (flag, line))
+
+    def test_the_project_group_reads_its_own_texts_in_korean(self):
+        """S6e-2: the Project group's root commands — about, long about, argument help."""
+        detect = self.help(["project-detect", "--help"], **KOREAN)
+        self.assertIn("`/moai project` 경로(#2496)", detect)
+        self.assertIn("\n          프로젝트 루트\n", detect)
+        self.assertNotIn("Detect the project's facts", detect)
+        setup = self.help(["language-setup", "--help"], **KOREAN)
+        self.assertIn("호스트 질문 도구용 질문 묶음 찍기", setup)
+        self.assertIn("대화 기본 항목의 대화 언어 코드", setup)
+        self.assertTrue(self.help(["index-build", "-h"], **KOREAN).startswith("코드 지도 색인 만들기\n"))
+        apply = self.help(["project-apply", "--help"], **KOREAN)
+        self.assertIn("호출자가 준 권한 참조", apply)
+        for columns in ("60", "80"):
+            for word in ("project-detect", "project-plan", "project-apply", "language-setup",
+                         "index-build"):
+                for flag in ("-h", "--help"):
+                    text = self.help([word, flag], COLUMNS=columns, **KOREAN)
+                    for line in text.splitlines():
+                        if line.startswith("사용법: ") or line.startswith("  moai "):
+                            continue  # clap never wraps a usage or an example, in English too
+                        self.assertLessEqual(cells(line), int(columns),
+                                             (columns, word, flag, line))
+
+    def test_the_keys_group_reads_its_own_texts_in_korean(self):
+        """S6e-3: the Keys group's root commands — about, long about, argument help — and
+        every line inside 60 and 80 cells but the usage and example lines clap never wraps."""
+        text = self.help(["key-set", "--help"], **KOREAN)
+        self.assertIn("공급자 키를 암호화해 금고에 저장해요(#2393)", text)
+        self.assertIn("공급자 이름, 예: `glm`", text)
+        self.assertIn("모든 프로젝트가 쓰는", text)
+        imp = self.help(["key-import-plan", "--help"], **KOREAN)
+        self.assertIn("프로젝트 대신 `~/.moai-cli/vault/_shared/`", imp)
+        self.assertIn("묻지 않고 지우기", self.help(["key-remove", "--help"], **KOREAN))
+        for columns in ("60", "80"):
+            for word in ("key-set", "key-status", "key-remove", "key-import-plan",
+                         "key-import-apply"):
+                for flag in ("-h", "--help"):
+                    for line in self.help([word, flag], COLUMNS=columns, **KOREAN).splitlines():
+                        if line.startswith("사용법: ") or line.startswith("  moai "):
+                            continue
+                        self.assertLessEqual(cells(line), int(columns),
+                                             (columns, word, flag, line))
+
+    def test_the_update_and_move_group_reads_its_own_texts_in_korean(self):
+        """S6e-4: per-command argument lines where the English differs between commands."""
+        plan = self.help(["home-state-plan", "--help"], **KOREAN)
+        self.assertIn("읽을 HOME(기본 `$HOME`)", plan)
+        apply = self.help(["home-state-apply", "--help"], **KOREAN)
+        self.assertIn("바꿀 HOME(기본 `$HOME`)", apply)
+        self.assertIn("사용자 승인에 대한 호출자의 참조", apply)
+        self.assertIn("미리 보기가 읽은 것과 같은 `--now`", apply)
+        go = self.help(["go-state-plan", "--help"], **KOREAN)
+        self.assertIn("Go `.moai/manifest.json` 이 있는 프로젝트 루트", go)
+        self.assertIn("호출자가 준 권한 참조", self.help(["go-state-apply", "--help"], **KOREAN))
+        self.assertIn("이 이동들에 대한 사용자 승인의 호출자 참조",
+                      self.help(["worktree-move-apply", "--help"], **KOREAN))
+        self.assertTrue(self.help(["update", "-h"], **KOREAN)
+                        .startswith("설치된 패키지로 MoAI 업데이트\n"))
+
+    def test_no_korean_line_of_any_command_help_runs_past_sixty_cells(self):
+        """Every command's `-h` and `--help` at 60 columns: no line with Hangul past 60 cells
+        (clap counts a Hangul letter as one cell, so a Korean help beside a wide name ran to 72
+        before the Korean frame put every help on its own line)."""
+        listing, _, _ = pipe(["help", "--all"], env_for(self.home))
+        words = sorted({line.split()[0] for line in listing.splitlines()
+                        if line.startswith("  ") and not line.startswith("   ")
+                        and not line.split()[0].startswith("-")})
+        self.assertGreater(len(words), 100)
+        over = []
+        for word in words:
+            for flag in ("-h", "--help"):
+                # A line the English help prints too is the command's own text, not the Korean
+                # layer's (e.g. a Korean phrase quoted inside an English about).
+                english, _, _ = pipe([word, flag], env_for(self.home, COLUMNS="60"))
+                same = set(english.splitlines())
+                for line in self.help([word, flag], COLUMNS="60", **KOREAN).splitlines():
+                    if line in same:
+                        continue
+                    if line.startswith("사용법: ") or line.startswith("  moai "):
+                        continue  # clap never wraps a usage or an example, in English too
+                    if cells(line) > 60 and any("가" <= c <= "힣" for c in line):
+                        over.append((word, flag, cells(line), line))
+        self.assertEqual(over, [])
+
+    def test_an_english_subcommand_help_keeps_its_bytes(self):
+        for args in (["project-detect", "--help"], ["key-set", "-h"], ["cc", "--help"]):
+            piped, _, code = pipe(args, env_for(self.home))
+            self.assertEqual(code, 0)
+            self.assertEqual(self.help(args), normal(piped), args)
+            ko_piped, _, _ = pipe(args, env_for(self.home, **KOREAN))
+            self.assertEqual(ko_piped, piped, f"{args}: a pipe stays English")
+
+    def test_korean_subcommand_help_fits_the_terminal(self):
+        for columns in ("60", "80"):
+            for args in (["project-detect", "--help"], ["key-set", "--help"], ["cc", "--help"],
+                         ["update", "-h"]):
+                text = self.help(args, COLUMNS=columns, **KOREAN)
+                self.assertIn("사용법:", text)
+                for line in text.splitlines():
+                    self.assertLessEqual(cells(line), int(columns), (columns, args, line))
+
     def test_a_usage_error_on_a_piped_stderr_stays_english(self):
         """Audit #2909 B1: clap prints the root usage in a usage error, so with stdout a Korean
         terminal and stderr a pipe the error bytes are the all-pipe bytes."""
-        for args in (["--bogus"], ["bogus"], ["project-detect"]):
-            _, piped_err, piped_code = pipe(args, env_for(self.home))
-            out, err, code = run_help(args, env_for(self.home, **KOREAN), stdout_tty=True,
-                                      stderr_tty=False)
-            self.assertEqual(code, piped_code, args)
-            self.assertNotEqual(code, 0, args)
-            self.assertEqual(err, piped_err, args)
-            self.assertNotIn("에이전트", err, args)
+        # Both ways to Korean (re-audit 6874932388 note: the locale was only probed).
+        for korean in (KOREAN, {"LANG": "ko_KR.UTF-8"}):
+            for args in (["--bogus"], ["bogus"], ["project-detect"]):
+                _, piped_err, piped_code = pipe(args, env_for(self.home))
+                out, err, code = run_help(args, env_for(self.home, **korean), stdout_tty=True,
+                                          stderr_tty=False)
+                self.assertEqual(code, piped_code, (korean, args))
+                self.assertNotEqual(code, 0, (korean, args))
+                self.assertEqual(err, piped_err, (korean, args))
+                self.assertNotIn("에이전트", err, (korean, args))
 
     def test_help_follows_stdout_not_stderr(self):
         """stdout a pipe and stderr a terminal: English help; stdout a terminal and stderr a

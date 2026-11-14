@@ -424,8 +424,7 @@ mod tests {
             ("target is not a bounded regular file", InvalidInput),
             ("HEAD is not a 40 hex commit", InvalidInput),
             ("package path invalid", InvalidInput),
-            // queue-next (rc.2 A2 #2161)
-            ("queue milestone must be a positive number", InvalidInput),
+            // queue-free (#2675; the open-Issue read queue-next used, #2161)
             ("queue issue page limit exceeded (50)", InvalidInput),
             // leader-tick and the profile `leader` key (rc.2 A3 #2162)
             ("leader tick page limit exceeded (50)", InvalidInput),
