@@ -154,7 +154,19 @@ fn words(text: &str) -> Vec<String> {
 #[test]
 fn root_help_lists_cc_glm_and_codex_and_never_the_removed_host() {
     let f = Fixture::new();
-    let out = f.run(&["--help".to_string()]);
+    // The root help shows the three launchers on one line (#2802 S1: `cc, codex, glm`);
+    // `help --all` lists each command on its own line.
+    let root = f.run(&["--help".to_string()]);
+    assert!(root.status.success());
+    let root = String::from_utf8_lossy(&root.stdout);
+    for host in ["cc", "glm", "codex"] {
+        assert!(
+            words(&root).contains(&host.to_string()),
+            "{host} missing from:\n{root}"
+        );
+    }
+    assert!(!words(&root).contains(&removed()), "{root}");
+    let out = f.run(&["help".to_string(), "--all".to_string()]);
     assert!(out.status.success());
     let help = String::from_utf8_lossy(&out.stdout);
     let commands: Vec<&str> = help

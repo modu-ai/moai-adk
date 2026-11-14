@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Check one decision bundle file
+///
 /// Check one decision bundle under `docs/decisions/` (#2619): the table, every field, and
 /// that a one-way, `guarded` or HOLD-category decision is the user's. Reads only.
 #[derive(clap::Args)]
