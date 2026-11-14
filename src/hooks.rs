@@ -695,12 +695,18 @@ pub fn apply_with(
     if let Some(l) = &applied_lane {
         out["lane_loop"] = l.json();
     }
-    out["trust_required"] = json!(match host {
+    out["trust_required"] = json!(trust_notice(host));
+    Ok(out)
+}
+
+/// What the user must do before `host` runs the generated project hooks. Printed by
+/// `hooks-apply` and by the `project-update-plan` host steps.
+pub fn trust_notice(host: &str) -> &'static str {
+    match host {
         "claude" => "Claude Code runs project hooks only in a trusted workspace",
         "omp" => "OMP loads project extensions from .omp/extensions with no trust prompt in its docs (docs/extension-loading.md, read 2026-11-13)",
         _ => "Codex runs project hooks only when the project .codex/ layer is trusted and each hook is reviewed (/hooks)",
-    });
-    Ok(out)
+    }
 }
 
 /// Where each host keeps the project hook definitions MoAI generates.
