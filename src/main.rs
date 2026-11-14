@@ -1,7 +1,7 @@
 use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use moai_cli::{
-    agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
-    AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
+    agents_apply, agents_plan, apply, contract, hosts::codex, plan, session_launch, AgentsPlan,
+    AgentsRequest, Plan, Profile, SessionRequest,
 };
 use std::{
     io::{self, Read},
@@ -155,14 +155,6 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Resolve which skill package a project uses
-    PackageResolve {
-        project: PathBuf,
-        #[arg(long)]
-        repo_package: Option<PathBuf>,
-        #[arg(long)]
-        user_package: Option<PathBuf>,
-    },
     /// Preview the AGENTS.md managed section
     AgentsPlan { project: PathBuf },
     /// Write a previewed AGENTS.md managed section
@@ -208,12 +200,6 @@ enum Command {
     /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
     /// build keeps the previous generation and marks partial (REQ-C6-01).
     IndexBuild { project: PathBuf },
-    /// Query the code map index
-    ///
-    /// Query the incremental index (C6 #2182): read-only — resolves the published
-    /// generation and reports one of fresh/stale/partial/unavailable with the detected
-    /// changes (additions, deletions, modifications, untracked new files, branch switch).
-    IndexQuery { project: PathBuf },
     /// Import a previewed old key file
     ///
     /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
@@ -711,14 +697,6 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Record one hook receipt line
-    ///
-    /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
-    /// ./.moai-cli/receipts/; never fails the hook.
-    HookReceipt {
-        #[arg(long)]
-        host: String,
-    },
     /// Run one MoAI hook duty for a host
     ///
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
@@ -788,67 +766,6 @@ enum Command {
         #[arg(long, hide = true, default_value_t = moai_cli::worktree::PROJECT_WARN_BYTES)]
         warn_total_bytes: u64,
     },
-    /// Preview removing or trimming merged worktrees
-    ///
-    /// Read-only removal plan (WT-4, #2380): per linked worktree `remove`, `trim` (cargo
-    /// build output only) or `skip` with reasons, and a digest. Deletes nothing.
-    WorktreeGcPlan {
-        project: PathBuf,
-        /// Local ref of the integration branch, e.g. `origin/v2026.11.0`; a worktree whose
-        /// HEAD it contains counts as merged. Nothing is fetched.
-        #[arg(long)]
-        integration_ref: String,
-        /// A change newer than this many minutes keeps a worktree (design: 120).
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
-        recent_minutes: u64,
-        /// Time budget in milliseconds; past it the remaining worktrees are `skip`.
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
-        budget_ms: u64,
-        /// Test seam: the current time in Unix seconds instead of the clock.
-        #[arg(long, hide = true)]
-        now_unix: Option<u64>,
-        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
-        /// `next_cursor` says where the next run goes on (#2879).
-        #[arg(long)]
-        max_checked: Option<usize>,
-        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
-        #[arg(long)]
-        cursor: Option<String>,
-        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
-        #[arg(long = "worktree", value_name = "PATH")]
-        only: Vec<PathBuf>,
-    },
-    /// Remove or trim the previewed worktrees
-    ///
-    /// Act on a `worktree-gc-plan` (WT-9, #2498): recomputes the plan with the same inputs,
-    /// refuses before any write unless its digest equals `--plan-digest`, then trims the
-    /// listed cargo output and removes the listed worktrees (no `--force`; branches kept).
-    WorktreeGcApply {
-        project: PathBuf,
-        #[arg(long)]
-        integration_ref: String,
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
-        recent_minutes: u64,
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
-        budget_ms: u64,
-        /// Test seam: the current time in Unix seconds instead of the clock.
-        #[arg(long, hide = true)]
-        now_unix: Option<u64>,
-        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
-        /// `next_cursor` says where the next run goes on (#2879).
-        #[arg(long)]
-        max_checked: Option<usize>,
-        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
-        #[arg(long)]
-        cursor: Option<String>,
-        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
-        #[arg(long = "worktree", value_name = "PATH")]
-        only: Vec<PathBuf>,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Report the space worktrees use
     ///
     /// Read-only space report of the repository's worktrees, their build folders and the
@@ -892,12 +809,6 @@ enum Command {
         #[arg(long)]
         integration_order: Option<String>,
     },
-    /// Scan for MOAI and MX tag markers
-    ///
-    /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
-    /// namespaces normalize into one node shape, duplicates are diagnosed only,
-    /// nothing is written. PATH is a file or a directory.
-    AtlasTagScan { path: PathBuf },
     /// Print a lane's cargo folders
     ///
     /// Print a lane's build environment as shell `export` lines (#2841): one
@@ -1421,7 +1332,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
-        AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
         BaselineInventory { .. } => "baseline.inventory",
@@ -1446,13 +1356,11 @@ fn operation(command: &Command) -> Option<&'static str> {
         GithubApply { .. } => "github.apply",
         GithubPlan { .. } => "github.plan",
         HookDispatch { .. } => "hook.dispatch",
-        HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         HooksRevert { .. } => "hooks.revert",
         Identity { .. } => "identity",
         IndexBuild { .. } => "index.build",
-        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         KeyImportApply { .. } => "key.import_apply",
         LabelsApply { .. } => "labels.apply",
@@ -1478,7 +1386,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         MigratePlan { .. } => "migrate.plan",
         MigrateRecover { .. } => "migrate.recover",
         MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
-        PackageResolve { .. } => "package.resolve",
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
         ProjectApply { .. } => "project.apply",
@@ -1504,8 +1411,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
         WorktreeReport { .. } => "worktree.report",
-        WorktreeGcPlan { .. } => "worktree.gc.plan",
-        WorktreeGcApply { .. } => "worktree.gc.apply",
     })
 }
 
@@ -1920,11 +1825,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &plan_digest,
             &permission_reference,
         ),
-        Command::PackageResolve {
-            project,
-            repo_package,
-            user_package,
-        } => resolve(&project, repo_package.as_deref(), user_package.as_deref()),
         Command::AgentsPlan { project } => {
             serde_json::to_value(agents_plan(&project, input::<AgentsRequest>()?)?)
                 .map_err(|_| "encode failed".into())
@@ -1957,11 +1857,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
             &project,
             &input::<moai_cli::index::IndexBuildRequest>()?,
-        )?)
-        .map_err(|_| "encode failed".into()),
-        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
-            &project,
-            &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::KeyImportApply {
@@ -2249,21 +2144,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::LaneStopHook { .. } => {
             Err("lane-stop-hook is answered before internal dispatch".into())
         }
-        Command::HookReceipt { host } => {
-            // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
-            // fails to parse and is skipped, never an error: the hook must not fail.
-            let mut bytes = Vec::new();
-            let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_millis());
-            Ok(match std::env::current_dir() {
-                Ok(cwd) => moai_cli::hooks::receipt(&host, &bytes, &cwd, now),
-                Err(_) => {
-                    serde_json::json!({"recorded": false, "reason": "working directory unavailable"})
-                }
-            })
-        }
         // Answered in `main` before internal dispatch (no envelope, the command's exit code).
         Command::HeavySlotAcquire { .. } => {
             Err("heavy-slot-acquire is answered before internal dispatch".into())
@@ -2347,53 +2227,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             path.as_deref(),
             moai_cli::home_workdir::home().ok().as_deref(),
         ),
-        Command::WorktreeGcPlan {
-            project,
-            integration_ref,
-            recent_minutes,
-            budget_ms,
-            now_unix,
-            max_checked,
-            cursor,
-            only,
-        } => moai_cli::worktree_gc::plan_paced(
-            &project,
-            &integration_ref,
-            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
-            std::time::Duration::from_millis(budget_ms),
-            now_unix,
-            false,
-            &moai_cli::worktree_gc::Pace {
-                max_checked,
-                cursor,
-                only,
-            },
-        ),
-        Command::WorktreeGcApply {
-            project,
-            integration_ref,
-            recent_minutes,
-            budget_ms,
-            now_unix,
-            max_checked,
-            cursor,
-            only,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::worktree_gc::apply(
-            &project,
-            &integration_ref,
-            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
-            std::time::Duration::from_millis(budget_ms),
-            now_unix,
-            &moai_cli::worktree_gc::Pace {
-                max_checked,
-                cursor,
-                only,
-            },
-            &plan_digest,
-            &permission_reference,
-        ),
         Command::AuditClonePlan {
             project,
             pr,
@@ -2422,7 +2255,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             std::time::Duration::from_millis(budget_ms),
         ),
-        Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
