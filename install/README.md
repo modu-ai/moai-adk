@@ -27,6 +27,12 @@ The addresses do not change; at release time only the files behind them are repl
 
 Both scripts end by printing the next steps. Make a project folder and enter it (`mkdir my-project && cd my-project`; in PowerShell `New-Item -ItemType Directory my-project; Set-Location my-project`). Start a session there with `moai cc`, or `moai glm` or `moai codex`; `-l` starts it in leader mode and `-a` in agent mode, and both are optional. In the session, run `/moai project` to set the project up.
 
+## Conversation language
+
+The installers ask which language the model should use when it talks with you (#2935). The answer is only the language of the conversation: everything the installer and `moai-cli` print stays English. The choice is, in order: `--language CODE` (`-language` in PowerShell), then the `MOAI_LANGUAGE` variable, then, when both stdin and stdout are a terminal, a numbered menu (1 English, 2 한국어, 3 日本語, 4 中文, 5 other: type a code; a wrong answer is asked again, three answers at most, then the locale's language is used), then the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`; PowerShell also `Get-Culture`), then `en`. A pipe (`curl … | sh`) has no terminal on stdin, so it never shows the menu. At the menu, press Enter to take the default; Ctrl-D ends the input in `install.sh`, but PowerShell does not treat it as the end of input on every host. A code is two or three letters and optional `-` groups of two to eight letters or digits (`ko`, `pt-BR`); anything else is refused before anything is downloaded or written. A code is at most 35 characters and is passed on as typed.
+
+When the commands are linked, the installer runs `moai-cli language-set --home <code>` once. It writes `config/language.yaml` in the state folder only when that file is not there yet (a second install never changes an earlier choice), and writes nothing when the HOME has no MoAI state folder. An older pinned version that has no `language-set` only costs one warning line; the install still succeeds. `moai-cli language-set` accepts any code of that shape and writes it as given; `moai-cli language-setup` offers the stored value as the conversation default when it is `en`, `ko`, `ja` or `zh` and otherwise falls through to the next source, so a code such as `pt-BR` is kept for a later reader without changing what `language-setup` does.
+
 ## Options, compared with the Go scripts
 
 | Option or variable | Go `install.sh` / `install.ps1` | Rust installers |
@@ -35,6 +41,7 @@ Both scripts end by printing the next steps. Make a project folder and enter it 
 | `--install-dir D` (`-install-dir`) | puts the `moai` binary in D | puts the `moai` and `moai-cli` commands in D. The version folder stays the original |
 | `MOAI_INSTALL_DIR` | PowerShell only | both scripts, same meaning as `--install-dir` |
 | `--channel stable\|rc` | — | new: `rc` also takes release candidates |
+| `--language CODE` (`-language`), `MOAI_LANGUAGE` | — | new: the conversation language, see above |
 | `-h`, `--help` (`-help`) | help | help |
 | an unknown option | exit 1 | exit 1 |
 | default location | `GOBIN`, `GOPATH/bin` or `~/.local/bin` (`%LOCALAPPDATA%\Programs\moai`) | `<state home>/versions/<v>/bin`, commands in `<state home>/path` |
@@ -48,4 +55,4 @@ When the site switches (I1-e), the Go repository's `docs-site/static/install.sh`
 
 ## Tests
 
-`tests/install_script_test.py` runs both scripts against a temporary HOME and a fake release served from `file://`. The fake contains a feed, the archives in the cargo-dist shape and a fake `moai-cli` that answers `install-inspect` and `--version`. It covers the latest stable and `rc` versions, a pinned version, refused checksums (wrong, missing, malformed) with no files written, versions that are not versions, a Go `moai` left byte for byte, a second run that writes nothing, a version folder with other bytes refused, the state folder taken from the binary, `--install-dir`, and a non-link command file left alone. `shellcheck` runs when it is installed. The PowerShell tests run when `pwsh` is installed. Windows itself (zip, `.exe`, copies) is `not_run` there.
+`tests/install_script_test.py` runs both scripts against a temporary HOME and a fake release served from `file://`. The fake contains a feed, the archives in the cargo-dist shape and a fake `moai-cli` that answers `install-inspect` and `--version`. It covers the latest stable and `rc` versions, a pinned version, refused checksums (wrong, missing, malformed) with no files written, versions that are not versions, a Go `moai` left byte for byte, a second run that writes nothing, a version folder with other bytes refused, the state folder taken from the binary, `--install-dir`, and a non-link command file left alone. For the conversation language it covers the flag, the variable and the locale order, the edges of the code pattern, the menu through a pseudo-terminal (every number, a typed code, the three-answer limit, an empty answer, the end of input), a fake `moai-cli` that records the exact `language-set --home <code>` call (`pt-BR` by flag, variable and menu choice 5, also against the real `moai-cli` when one is built), one without `language-set`, and a second run that writes nothing. `shellcheck` runs when it is installed. The PowerShell tests run when `pwsh` is installed. Windows itself (zip, `.exe`, copies) is `not_run` there.

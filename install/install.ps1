@@ -13,6 +13,12 @@
 # The User PATH and shell profiles are never edited, and an existing Go-edition `moai` is never
 # touched: the script prints what to run next instead. Requires PowerShell 5.1 or later; on
 # macOS and Linux `pwsh` runs the same flow with the `.tar.xz` archive.
+#
+# The language of the conversation with the model (#2935 L1) comes from --language, else
+# MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
+# commands are linked the script runs `moai-cli language-set --home <code>` once; that never
+# overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
+# script prints stays English whatever the language.
 
 $ErrorActionPreference = "Stop"
 
@@ -49,17 +55,84 @@ function Show-Usage {
     Write-Host "  --version VERSION     Install a specific version (default: latest)"
     Write-Host "  --install-dir DIR     Put the moai and moai-cli commands in DIR (default: <state home>\path)"
     Write-Host "  --channel CHANNEL     stable (default) or rc: rc also takes release candidates"
+    Write-Host "  --language CODE       Language of your conversation with the model, for example en, ko, ja or"
+    Write-Host "                        zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,"
+    Write-Host "                        else en). MoAI's own messages stay English."
     Write-Host "  -h, --help            Show this help message"
     Write-Host ""
     Write-Host "Examples:"
     Write-Host '  irm https://adk.mo.ai.kr/install.ps1 | iex'
     Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --version 2026.11.0'
     Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --channel rc'
+    Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --language ko'
 }
 
 # A version is SemVer-shaped text only: it becomes part of a URL and a folder name.
 function Test-Version([string]$V) {
     return ($V -match '^[0-9][0-9A-Za-z.+-]*$') -and ($V -notmatch '\.\.')
+}
+
+# A language code is BCP-47-shaped text only: 2-3 letters, then groups of 2-8 letters or digits
+# after a `-`, at most 35 characters (#2935 L1). `\z`, not `$`: a trailing newline must not slip
+# through. The code is passed to moai-cli as written.
+function Test-Language([string]$V) {
+    return ($V.Length -le 35) -and ($V -match '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*\z')
+}
+
+# The language of the first of LC_ALL, LC_MESSAGES, LANG that is set (`ko_KR.UTF-8` -> ko), else
+# the culture of the session (Windows); as written, or "" when it is C, POSIX, invariant or no code.
+function Get-LocaleLanguage {
+    foreach ($name in @("LC_ALL", "LC_MESSAGES", "LANG")) {
+        $loc = [Environment]::GetEnvironmentVariable($name)
+        if (-not $loc) { continue }
+        $part = ($loc -split '[_.@]')[0]
+        if (($part -in "C", "POSIX") -or -not (Test-Language $part)) { return "" }
+        return $part
+    }
+    try { $part = (Get-Culture).TwoLetterISOLanguageName } catch { return "" }
+    if ($part -and $part -ne "iv" -and (Test-Language $part)) { return $part }
+    return ""
+}
+
+# One line from the terminal after the prompt text. [Console]::In.ReadLine() gives $null when the
+# input is closed, and a null answer takes the default. Read-Host would end the whole host there,
+# and the install with it, on Linux. Whether Ctrl-D closes the input depends on the host: press
+# Enter to take the default.
+function Read-Answer([string]$Prompt) {
+    Write-Host "${Prompt}: " -NoNewline
+    try { $line = [Console]::In.ReadLine() } catch { $line = $null }
+    if ($null -eq $line) { Write-Host "" }
+    return $line
+}
+
+# Asks for the language at a terminal. A wrong answer is asked again, three answers at most, then
+# the default is used; an empty answer or the end of input takes the default too.
+function Read-LanguageChoice([string]$Default) {
+    Write-Host ""
+    Write-Host "Which language should the model use when it talks with you?"
+    Write-Host "  1) English"
+    Write-Host ([string]::Concat("  2) ", [char]0xD55C, [char]0xAD6D, [char]0xC5B4))
+    Write-Host ([string]::Concat("  3) ", [char]0x65E5, [char]0x672C, [char]0x8A9E))
+    Write-Host ([string]::Concat("  4) ", [char]0x4E2D, [char]0x6587))
+    Write-Host "  5) Other (type a language code, for example fr or pt-BR)"
+    $known = @{ "1" = "en"; "2" = "ko"; "3" = "ja"; "4" = "zh" }
+    for ($try = 0; $try -lt 3; $try++) {
+        $answer = Read-Answer "Choose 1-5 [default: $Default]"
+        if ($null -eq $answer) { break }
+        $answer = $answer.Trim()
+        if ($answer -eq "") { return $Default }
+        if ($known.ContainsKey($answer)) { return $known[$answer] }
+        if ($answer -eq "5") {
+            $code = Read-Answer "Language code"
+            if ($null -eq $code) { break }
+            $code = $code.Trim()
+            if (Test-Language $code) { return $code }
+            Print-Warning "That is not a language code (for example en, ko, fr, pt-BR)."
+        }
+        else { Print-Warning "Please type a number from 1 to 5." }
+    }
+    Print-Info "Using $Default."
+    return $Default
 }
 
 # Windows architecture detection keeps the Go installer's layers (env vars, 64-bit OS check).
@@ -165,6 +238,7 @@ function Main {
     $Version = ""
     $InstallDir = $env:MOAI_INSTALL_DIR
     $Channel = "stable"
+    $Language = ""
     for ($i = 0; $i -lt $Arguments.Count; $i++) {
         $arg = $Arguments[$i]
         if ($arg -in "--version", "-version") {
@@ -184,6 +258,12 @@ function Main {
             if ($i + 1 -ge $Arguments.Count) { Fail "--channel needs a value" }
             $Channel = [string]$Arguments[++$i]
             if ($Channel -notin "stable", "rc") { Fail "Unknown channel: $Channel (stable or rc)" }
+        }
+        elseif ($arg -in "--language", "-language") {
+            if ($i + 1 -ge $Arguments.Count) { Fail "--language needs a value" }
+            $given = [string]$Arguments[++$i]
+            if (-not (Test-Language $given)) { Fail "Not a language code: '$given' (for example en, ko, ja, zh)" }
+            $Language = $given
         }
         elseif ($arg -in "-h", "--help", "-help") {
             Show-Usage
@@ -207,6 +287,17 @@ function Main {
     Write-Host ""
     Write-Host "MoAI-ADK installer (Rust edition)"
     Write-Host ""
+    # The language of the conversation, settled before anything is downloaded or written:
+    # --language, else MOAI_LANGUAGE, else the menu at a terminal, else the locale, else en.
+    if (-not $Language -and $env:MOAI_LANGUAGE) {
+        if (-not (Test-Language $env:MOAI_LANGUAGE)) { Fail "Not a language code: '$($env:MOAI_LANGUAGE)' (for example en, ko, ja, zh)" }
+        $Language = $env:MOAI_LANGUAGE
+    }
+    if (-not $Language) {
+        $Language = Get-LocaleLanguage
+        if (-not $Language) { $Language = "en" }
+        if (-not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) { $Language = Read-LanguageChoice $Language }
+    }
     $target = Get-Target
     $script:TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "moai-install-$([System.Guid]::NewGuid().ToString())"
     New-Item -ItemType Directory -Path $script:TmpDir -Force | Out-Null
@@ -327,8 +418,25 @@ function Main {
         Print-Success "Linked: $link -> $src"
     }
 
-    Remove-Temp
+    # Record the language once, with the installed moai-cli. It never overwrites a value that is
+    # already there, and a moai-cli that has no language-set (an older pinned version) or refuses
+    # the code costs a warning, not the install.
     $cli = Join-Path (Join-Path $dest "bin") "moai-cli$Exe"
+    $recorded = $null
+    try {
+        $answer = (& $cli language-set --home $Language 2>$null | Out-String)
+        if ($LASTEXITCODE -eq 0) { $recorded = $answer | ConvertFrom-Json }
+    }
+    catch { $recorded = $null }
+    if (-not $recorded) {
+        Print-Warning "Could not record the conversation language ($Language): this moai-cli has no language-set or does not accept the code. The install is complete."
+    }
+    elseif ($recorded.result.written -eq $true) { Print-Success "Conversation language recorded: $Language" }
+    elseif ("$($recorded.result.reason)" -eq "exists") { Print-Info "A conversation language is already recorded; left as it is" }
+    elseif ("$($recorded.result.reason)" -eq "no_home_state") { Print-Info "No MoAI state folder in your home yet; the conversation language was not recorded" }
+    else { Print-Warning "The conversation language answer was not understood; it may not be recorded." }
+
+    Remove-Temp
     Write-Host (& $cli --version | Out-String).Trim()
     if ($goOnPath) {
         Write-Host ""
