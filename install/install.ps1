@@ -19,6 +19,7 @@ $ErrorActionPreference = "Stop"
 $RepoUrl = "https://github.com/modu-ai/moai-adk"
 $ReleaseBase = if ($env:MOAI_RELEASE_BASE) { $env:MOAI_RELEASE_BASE } else { "$RepoUrl/releases/download" }
 $ReleaseFeed = if ($env:MOAI_RELEASE_FEED) { $env:MOAI_RELEASE_FEED } else { "$RepoUrl/releases.atom" }
+$ReleaseApi = if ($env:MOAI_RELEASE_API) { $env:MOAI_RELEASE_API } else { "https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100" }
 $TagPrefix = "moai-cli-v"
 $IsWin = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
 $Exe = if ($IsWin) { ".exe" } else { "" }
@@ -107,20 +108,46 @@ function Get-Url([string]$Url, [string]$OutFile) {
     }
 }
 
-# The newest moai-cli-v<version> tag in the releases feed (not the rate-limited REST API;
-# /releases/latest is the Go edition's: Rust final releases are published with --latest=false).
-function Get-LatestVersion([string]$Channel) {
-    $feed = Join-Path $script:TmpDir "releases.atom"
-    try { Get-Url $ReleaseFeed $feed }
-    catch {
-        Print-Info "You can install a specific version: install.ps1 --version <version>"
-        Fail "Could not read the release list from GitHub"
-    }
-    $text = Get-Content -LiteralPath $feed -Raw
-    foreach ($m in [regex]::Matches($text, "/releases/tag/$([regex]::Escape($TagPrefix))([^""/?#<]+)")) {
-        $v = $m.Groups[1].Value
+# The first candidate (newest first) that is a moai-cli-v<version> release for the channel.
+function Select-Version($Candidates, [string]$Channel) {
+    foreach ($c in $Candidates) {
+        $tag = [string]$c.tag
+        if (-not $tag.StartsWith($TagPrefix) -or $c.draft) { continue }
+        $v = $tag.Substring($TagPrefix.Length)
         if (-not (Test-Version $v)) { continue }
-        if ($v.Contains("-") -and $Channel -ne "rc") { continue }
+        if ($Channel -ne "rc" -and ($c.prerelease -or $v.Contains("-"))) { continue }
+        return $v
+    }
+    return $null
+}
+
+# The newest moai-cli-v<version> release. /releases/latest is the Go edition's (Rust final
+# releases are published with --latest=false). First the REST list (100 newest, with the draft
+# and prerelease fields); when it cannot be read (no network to the API, or the
+# unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries
+# (audit #2943 B1).
+function Get-LatestVersion([string]$Channel) {
+    $v = $null
+    $api = Join-Path $script:TmpDir "releases.json"
+    try {
+        Get-Url $ReleaseApi $api
+        $list = Get-Content -LiteralPath $api -Raw | ConvertFrom-Json
+        $v = Select-Version ($list | ForEach-Object { @{ tag = $_.tag_name; draft = [bool]$_.draft; prerelease = [bool]$_.prerelease } }) $Channel
+    }
+    catch { $v = $null }
+    if (-not $v) {
+        $feed = Join-Path $script:TmpDir "releases.atom"
+        try { Get-Url $ReleaseFeed $feed }
+        catch {
+            Print-Info "You can install a specific version: install.ps1 --version <version>"
+            Fail "Could not read the release list from GitHub"
+        }
+        $text = Get-Content -LiteralPath $feed -Raw
+        $tags = [regex]::Matches($text, "/releases/tag/($([regex]::Escape($TagPrefix))[^""/?#<]+)") |
+            ForEach-Object { @{ tag = $_.Groups[1].Value; draft = $false; prerelease = $false } }
+        $v = Select-Version $tags $Channel
+    }
+    if ($v) {
         Print-Success "Latest version ($Channel): $v"
         return $v
     }
@@ -142,8 +169,12 @@ function Main {
         $arg = $Arguments[$i]
         if ($arg -in "--version", "-version") {
             if ($i + 1 -ge $Arguments.Count) { Fail "--version needs a value" }
-            $Version = [string]$Arguments[++$i]
-            if (-not (Test-Version $Version)) { Fail "Not a version: '$Version'" }
+            $given = [string]$Arguments[++$i]
+            # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+            $Version = $given
+            if ($Version.StartsWith($TagPrefix)) { $Version = $Version.Substring($TagPrefix.Length) }
+            if ($Version.StartsWith("v")) { $Version = $Version.Substring(1) }
+            if (-not (Test-Version $Version)) { Fail "Not a version: '$given'" }
         }
         elseif ($arg -in "--install-dir", "-install-dir") {
             if ($i + 1 -ge $Arguments.Count) { Fail "--install-dir needs a value" }
@@ -162,6 +193,14 @@ function Main {
             Print-Error "Unknown option: $arg"
             Write-Host "Use --help for usage information"
             exit 1
+        }
+    }
+
+    # Releases are read over https only (file:// for the tests): the checksum comes from the
+    # same place as the archive, so a plain-http source would make the check meaningless.
+    foreach ($url in @($ReleaseBase, $ReleaseFeed, $ReleaseApi)) {
+        if (-not ($url.StartsWith("https://") -or $url.StartsWith("file://"))) {
+            Fail "Release sources must be https:// (or file://): $url"
         }
     }
 
@@ -207,6 +246,8 @@ function Main {
     if (-not $IsWin) { & chmod 755 $newBin }
 
     # Ask the downloaded binary where its state lives and what `moai` on PATH is (read only).
+    # moai-cli reads HOME; Windows often has only USERPROFILE (codex review P1 on #2943).
+    if (-not $env:HOME -and $env:USERPROFILE) { $env:HOME = $env:USERPROFILE }
     try {
         $inspect = (& $newBin install-inspect 2>$null | Out-String) | ConvertFrom-Json
     }
@@ -248,21 +289,41 @@ function Main {
     # link folder. A file there that this installer did not make is left as it is.
     $linkDir = if ($InstallDir) { $InstallDir } else { Join-Path $stateHome "path" }
     New-Item -ItemType Directory -Path $linkDir -Force | Out-Null
+    $versionsPrefix = (Join-Path $stateHome "versions") + [System.IO.Path]::DirectorySeparatorChar
     foreach ($name in @("moai-cli$Exe", "moai$Exe")) {
         $link = Join-Path $linkDir $name
         $src = Join-Path (Join-Path $dest "bin") $name
         $item = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+        $tmp = Join-Path $linkDir ".$name.install-$PID"
         if ($IsWin) {
-            if ($item -and ((Get-Sha256 $link) -eq (Get-Sha256 $src))) { continue }
-            if ($item) { Print-Warning "$link is not a copy of this version; left as it is"; continue }
-            Copy-Item -LiteralPath $src -Destination $link
+            if ($item) {
+                $have = Get-Sha256 $link
+                if ($have -eq (Get-Sha256 $src)) { continue }
+                # A copy of a version this installer placed is its own and is replaced on an
+                # upgrade (codex review P2 on #2943); any other file is someone else's.
+                $owned = Get-ChildItem -LiteralPath (Join-Path $stateHome "versions") -Directory -ErrorAction SilentlyContinue |
+                    Where-Object { $f = Join-Path (Join-Path $_.FullName "bin") $name; (Test-Path -LiteralPath $f) -and ((Get-Sha256 $f) -eq $have) }
+                if (-not $owned) { Print-Warning "$link is not a copy this installer placed; left as it is"; continue }
+            }
+            Copy-Item -LiteralPath $src -Destination $tmp
+            Move-Item -LiteralPath $tmp -Destination $link -Force
             Print-Success "Copied: $link"
             continue
         }
         if ($item -and -not $item.LinkType) { Print-Warning "$link is not a link made by this installer; left as it is"; continue }
-        if ($item -and ("$($item.Target)" -eq $src)) { continue }
-        if ($item) { Remove-Item -LiteralPath $link -Force }
-        New-Item -ItemType SymbolicLink -Path $link -Target $src | Out-Null
+        if ($item) {
+            $current = "$($item.Target)"
+            if ($current -eq $src) { continue }
+            # Only a link into a version folder this installer placed is replaced; a link to the
+            # Go edition's moai, say, is someone else's (codex review P1 on #2943).
+            if (-not $current.StartsWith($versionsPrefix)) {
+                Print-Warning "$link points to $current, not a version this installer placed; left as it is"
+                continue
+            }
+        }
+        # Made under a temporary name and renamed over the old link, so moai never goes missing.
+        New-Item -ItemType SymbolicLink -Path $tmp -Target $src | Out-Null
+        Move-Item -LiteralPath $tmp -Destination $link -Force
         Print-Success "Linked: $link -> $src"
     }
 

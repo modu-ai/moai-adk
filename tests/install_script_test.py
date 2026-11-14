@@ -8,6 +8,7 @@ reaches the network, the real HOME or the real PATH.
 
 import hashlib
 import io
+import json
 import os
 import platform
 import shutil
@@ -106,6 +107,24 @@ class Release:
         with open(os.path.join(self.root, "releases.atom"), "w") as f:
             f.write(feed(tags))
 
+    def publish_api(self, releases):
+        """GitHub's REST release list, newest first, in its own shape: an author object before
+        the tag, assets after it, and a body whose text holds commas and an escaped
+        `"tag_name": "moai-cli-v9.9.9"` that must not be read as a release."""
+        items = []
+        for tag, draft, pre in releases:
+            items.append({
+                "url": f"https://api.github.com/repos/modu-ai/moai-adk/releases/{len(items)}",
+                "author": {"login": "someone", "type": "User", "site_admin": False},
+                "node_id": "RE_x", "tag_name": tag, "target_commitish": "main", "name": tag,
+                "draft": draft, "immutable": False, "prerelease": pre,
+                "created_at": "2026-11-14T00:00:00Z",
+                "assets": [{"name": "checksums.txt", "label": "", "uploader": {"login": "bot"}}],
+                "body": 'Notes, with commas, and a quote: "tag_name": "moai-cli-v9.9.9", "draft": false',
+            })
+        with open(os.path.join(self.root, "releases.json"), "w") as f:
+            json.dump(items, f, indent=2)
+
 
 class InstallShTest(unittest.TestCase):
     def setUp(self):
@@ -128,9 +147,76 @@ class InstallShTest(unittest.TestCase):
             "LC_ALL": "C",
             "MOAI_RELEASE_BASE": "file://" + self.rel.download,
             "MOAI_RELEASE_FEED": "file://" + os.path.join(self.rel.root, "releases.atom"),
+            # Never the real API: until a test publishes it, this file is missing, which is how
+            # an unreadable API looks (the feed is used then).
+            "MOAI_RELEASE_API": "file://" + os.path.join(self.rel.root, "releases.json"),
         }
         env.update(extra)
         return env
+
+    def test_the_rest_list_finds_a_release_the_feed_has_pushed_out(self):
+        # Audit #2943 B1: the feed holds the 10 newest entries; ten Go releases after the Rust
+        # one push it out. The REST list (100 newest) still has it as the 11th.
+        go = [f"v3.{n}.0" for n in range(10, 0, -1)]
+        self.rel.publish_feed(go)
+        before = snapshot(self.home)
+        r = self.run_sh()
+        self.assertNotEqual(r.returncode, 0, "feed only: the 11th is out of reach")
+        self.assertEqual(snapshot(self.home), before)
+        self.rel.publish_api([(t, False, False) for t in go] + [("moai-cli-v1.2.3", False, False)])
+        r = self.run_sh()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(os.path.isfile(self.state("versions", "1.2.3", "bin", "moai-cli")))
+
+    def test_the_rest_list_skips_drafts_and_prereleases_and_never_reads_the_body(self):
+        self.rel.add("1.4.0")
+        self.rel.add("1.5.0")
+        self.rel.publish_api([
+            ("moai-cli-v1.5.0", True, False),        # a draft
+            ("moai-cli-v1.4.0", False, True),        # a prerelease without a `-`
+            ("v3.1.2", False, False),
+            ("moai-cli-v1.3.0-rc.1", False, True),
+            ("moai-cli-v1.2.3", False, False),
+        ])
+        r = self.run_sh()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["1.2.3"])
+        r = self.run_sh("--channel", "rc")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        # rc takes the newest non-draft: 1.4.0 (flagged prerelease), never the draft 1.5.0 or
+        # the 9.9.9 written in a body.
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["1.2.3", "1.4.0"])
+
+    def test_release_sources_must_be_https_or_file(self):
+        for var in ("MOAI_RELEASE_BASE", "MOAI_RELEASE_FEED", "MOAI_RELEASE_API"):
+            r = self.assert_refused_without_writes(**{var: "http://127.0.0.1:9/x"})
+            self.assertIn("https://", r.stdout + r.stderr, var)
+
+    def test_a_v_or_tag_prefix_on_the_version_is_accepted(self):
+        for given in ("v1.2.3", "moai-cli-v1.2.3"):
+            r = self.run_sh("--version", given)
+            self.assertEqual(r.returncode, 0, given + r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["1.2.3"])
+
+    def test_a_link_to_something_else_is_left_alone(self):
+        # Codex review P1 on #2943: a `moai` link in --install-dir that points to the Go
+        # edition is someone else's, not a link to replace.
+        d = os.path.join(self.home, "go", "bin")
+        os.makedirs(d)
+        go = os.path.join(d, "moai.go")
+        with open(go, "w") as f:
+            f.write("#!/bin/sh\necho go\n")
+        os.symlink(go, os.path.join(d, "moai"))
+        r = self.run_sh("--install-dir", d)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(os.readlink(os.path.join(d, "moai")), go)
+        self.assertIn("left as it is", r.stdout)
+        # Its own link from an earlier version is switched to the new one.
+        self.assertTrue(os.path.islink(os.path.join(d, "moai-cli")))
+        self.assertEqual(self.run_sh("--install-dir", d, "--channel", "rc").returncode, 0)
+        self.assertIn("1.3.0-rc.1", os.readlink(os.path.join(d, "moai-cli")))
+        self.assertEqual(os.readlink(os.path.join(d, "moai")), go)
+        self.assertEqual([n for n in os.listdir(d) if n.startswith(".")], [])
 
     def run_sh(self, *args, **env):
         return subprocess.run(

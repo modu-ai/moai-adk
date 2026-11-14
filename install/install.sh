@@ -20,6 +20,7 @@ set -eu
 REPO_URL="https://github.com/modu-ai/moai-adk"
 RELEASE_BASE="${MOAI_RELEASE_BASE:-$REPO_URL/releases/download}"
 RELEASE_FEED="${MOAI_RELEASE_FEED:-$REPO_URL/releases.atom}"
+RELEASE_API="${MOAI_RELEASE_API:-https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100}"
 TAG_PREFIX="moai-cli-v"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -115,27 +116,54 @@ fetch() {
     fi
 }
 
-# The newest `moai-cli-v<version>` tag in the releases feed. The feed is not GitHub's REST API
-# (no 60-requests-per-hour limit for an unauthenticated address) and lists published releases
-# only, newest first. `/releases/latest` cannot be used: the Rust edition's final releases are
-# published with `--latest=false` so the Go edition's updater keeps its latest
-# (docs/release-checklist.md).
-latest_version() {
-    feed_file="$TMP_DIR/releases.atom"
-    if ! fetch "$RELEASE_FEED" "$feed_file"; then
-        print_info "You can install a specific version: install.sh --version <version>"
-        die "Could not read the release list from GitHub"
-    fi
-    VERSION=""
-    for tag in $(tr '<>"' '\n\n\n' <"$feed_file" | sed -n "s|^.*/releases/tag/\\($TAG_PREFIX[^/?#]*\\)\$|\\1|p"); do
+# Takes the first candidate line `<tag> <draft> <prerelease>` (newest first) that is a
+# `moai-cli-v<version>` release for the channel. Sets VERSION, or leaves it empty.
+pick_version() {
+    while read -r tag draft pre; do
+        case "$tag" in "$TAG_PREFIX"*) ;; *) continue ;; esac
+        [ "$draft" = "true" ] && continue
         v="${tag#"$TAG_PREFIX"}"
         valid_version "$v" || continue
-        case "$v" in
-            *-*) [ "$CHANNEL" = "rc" ] || continue ;;
-        esac
+        if [ "$CHANNEL" != "rc" ]; then
+            [ "$pre" = "true" ] && continue
+            case "$v" in *-*) continue ;; esac
+        fi
         VERSION="$v"
-        break
+        return 0
     done
+    return 0
+}
+
+# The newest `moai-cli-v<version>` release. `/releases/latest` cannot be used: the Rust
+# edition's final releases are published with `--latest=false` so the Go edition's updater
+# keeps its latest (docs/release-checklist.md). First the REST list (100 newest, with the
+# draft and prerelease fields); when it cannot be read (no network to the API, or the
+# unauthenticated limit of 60 requests an hour is spent), the releases feed, which is not
+# rate limited but holds only the 10 newest entries (audit #2943 B1).
+latest_version() {
+    VERSION=""
+    api_file="$TMP_DIR/releases.json"
+    if fetch "$RELEASE_API" "$api_file" 2>/dev/null; then
+        # One `"key": value` per line; a release's tag_name, draft and prerelease come in
+        # that order, so each prerelease line closes one candidate. Escaped quotes inside
+        # text (\"tag_name\") do not match.
+        pick_version <<EOF
+$(tr ',{}' '\n\n\n' <"$api_file" | sed -n -E 's/^[[:space:]]*"(tag_name|draft|prerelease)"[[:space:]]*:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1 \2/p' |
+    awk '$1 == "tag_name" { t = $2; d = "" } $1 == "draft" { d = $2 } $1 == "prerelease" && t != "" { print t, d, $2; t = "" }')
+EOF
+    fi
+    if [ -z "$VERSION" ]; then
+        feed_file="$TMP_DIR/releases.atom"
+        if ! fetch "$RELEASE_FEED" "$feed_file"; then
+            print_info "You can install a specific version: install.sh --version <version>"
+            die "Could not read the release list from GitHub"
+        fi
+        # The feed lists published releases only and has no prerelease field: a `-` in the
+        # version marks a release candidate.
+        pick_version <<EOF
+$(tr '<>"' '\n\n\n' <"$feed_file" | sed -n "s|^.*/releases/tag/\\($TAG_PREFIX[^/?#]*\\)\$|\\1 false false|p")
+EOF
+    fi
     if [ -z "$VERSION" ]; then
         if [ "$CHANNEL" = "stable" ]; then
             print_info "No stable release yet. For a release candidate: install.sh --channel rc"
@@ -228,14 +256,27 @@ link_commands() {
     mkdir -p "$LINK_DIR"
     for name in moai-cli moai; do
         link="$LINK_DIR/$name"
-        if [ -e "$link" ] && [ ! -L "$link" ]; then
+        if [ -L "$link" ]; then
+            current=$(readlink "$link")
+            [ "$current" = "$DEST/bin/$name" ] && continue
+            # Only a link this installer made (into a version folder) is replaced: a link to
+            # anything else — the Go edition's `moai`, say — is someone else's.
+            case "$current" in
+                "$STATE_HOME/versions/"*) ;;
+                *)
+                    print_warning "$link points to $current, not a version this installer placed; left as it is"
+                    continue
+                    ;;
+            esac
+        elif [ -e "$link" ]; then
             print_warning "$link is not a link made by this installer; left as it is"
             continue
         fi
-        if [ -L "$link" ] && [ "$(readlink "$link")" = "$DEST/bin/$name" ]; then
-            continue
-        fi
-        ln -sfn "$DEST/bin/$name" "$link"
+        # Made under a temporary name and renamed over the old link, so `moai` never goes
+        # missing in between (rename is atomic within a folder).
+        tmp_link="$LINK_DIR/.$name.install-$$"
+        ln -s "$DEST/bin/$name" "$tmp_link"
+        mv -f "$tmp_link" "$link"
         print_success "Linked: $link -> $DEST/bin/$name"
     done
 }
@@ -269,8 +310,10 @@ main() {
         case "$1" in
             --version)
                 [ $# -ge 2 ] || die "--version needs a value"
-                VERSION="$2"
-                valid_version "$VERSION" || die "Not a version: '$VERSION'"
+                # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+                VERSION="${2#"$TAG_PREFIX"}"
+                VERSION="${VERSION#v}"
+                valid_version "$VERSION" || die "Not a version: '$2'"
                 shift 2
                 ;;
             --install-dir)
@@ -293,6 +336,15 @@ main() {
                 echo "Use --help for usage information"
                 exit 1
                 ;;
+        esac
+    done
+
+    # Releases are read over https only (file:// for the tests): the checksum comes from the
+    # same place as the archive, so a plain-http source would make the check meaningless.
+    for url in "$RELEASE_BASE" "$RELEASE_FEED" "$RELEASE_API"; do
+        case "$url" in
+            https://* | file://*) ;;
+            *) die "Release sources must be https:// (or file://): $url" ;;
         esac
     done
 
