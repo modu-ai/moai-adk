@@ -1479,3 +1479,425 @@ fn the_second_audit_comes_after_reserving_and_before_issues() {
         "{r}"
     );
 }
+
+// --- #2933 S5 ⑤: repair help for a FAIL nobody repairs --------------------------------------
+
+/// When the FAIL verdicts of the pull requests below were posted.
+const FAILED_AT: &str = "2026-11-14T10:00:00Z";
+
+/// The auditor `agent-3` reserved pull request 5 and judged it FAIL on the head `a`.
+fn failed() -> Vec<Value> {
+    vec![
+        at(audit_claim(500, "agent-3", &h('a')), "2026-11-14T09:00:00Z"),
+        at(verdict(510, &h('a'), "FAIL"), FAILED_AT),
+    ]
+}
+
+fn offer(id: u64, lane: &str, number: u64, fail: u64, head: &str) -> Value {
+    at(
+        json!({"id": id, "body": format!("moai-repair-help-offer: pr={number} lane={lane} fail={fail} head={head}")}),
+        "2026-11-14T10:31:00Z",
+    )
+}
+
+fn note(id: u64, body: &str, when: &str) -> Value {
+    at(json!({"id": id, "body": body}), when)
+}
+
+/// The decision for pull request 5 (author `agent-29`) with `comments`, at `now`.
+fn help(now: &str, comments: Vec<Value>) -> Value {
+    next(&json!({"now": now, "prs": [pr(5, &h('a'), Some("agent-29"), json!(comments))]}))
+}
+
+fn assert_failed_not_helped(r: &Value, ctx: &str) {
+    assert_eq!(r["next"], json!(null), "{ctx}: {r}");
+    assert_eq!(
+        r["pr_skipped"],
+        json!([{"pr": 5, "reason": "audit_reserved", "by": "agent-3", "comment": 500}]),
+        "{ctx}: {r}"
+    );
+}
+
+/// ⑤ boundary on the injected clock: 29:59 after the FAIL is still `audit_reserved`; 30:00 and
+/// 30:01 offer repair help, with the one line to post. The line is only an offer: no push before
+/// the author's consent or the leader's handoff.
+#[test]
+fn a_fail_nobody_repairs_for_thirty_minutes_gets_a_help_offer() {
+    assert_failed_not_helped(&help("2026-11-14T10:29:59Z", failed()), "29:59");
+    for (now, idle) in [
+        ("2026-11-14T10:30:00Z", 1800),
+        ("2026-11-14T10:30:01Z", 1801),
+    ] {
+        let r = help(now, failed());
+        assert_eq!(kind(&r), json!("offer_repair_help"), "{now}: {r}");
+        assert_eq!(r["next"]["priority"], json!("P1"), "{r}");
+        assert_eq!(
+            r["next"]["target"],
+            json!({"type": "pull_request", "number": 5, "head": h('a')}),
+            "{r}"
+        );
+        let action = r["next"]["action"].as_str().unwrap();
+        assert!(
+            action.contains(&format!(
+                "`moai-repair-help-offer: pr=5 lane={LANE} fail=510 head={}`",
+                h('a')
+            )),
+            "{action}"
+        );
+        assert!(action.contains("exactly one line"), "{action}");
+        assert!(action.contains("only an offer"), "{action}");
+        assert!(action.contains("never push"), "{action}");
+        assert!(action.contains("agent-29"), "{action}");
+        assert!(action.contains("moai-claim-handoff"), "{action}");
+        assert!(action.contains("by=leader"), "{action}");
+        assert_eq!(
+            r["next"]["evidence"],
+            json!({"fail_comment": 510, "failed_by": "agent-3", "author_lane": "agent-29",
+                   "head": h('a'), "idle_secs": idle}),
+            "{r}"
+        );
+        // The pull request is not "passed over" when it is the task; nothing is written.
+        assert_eq!(r["pr_skipped"], json!([]), "{r}");
+        assert_eq!(r["waiting"], json!([]), "{r}");
+    }
+}
+
+/// ⑤ also needs the author lane silent on the pull request for 30:00 after the FAIL: a comment
+/// that names it restarts the count (29:59 after it still holds, 30:00 offers); other lanes'
+/// comments, or one that only looks like its name, do not; a comment of the author with no time
+/// is not proof of silence.
+#[test]
+fn an_author_who_is_still_commenting_is_not_offered_help() {
+    for body in [
+        "agent-29: reading the findings",
+        "REPAIR\nlane=agent-29 fixing 2/5",
+        "by=agent-29.",
+    ] {
+        let mut comments = failed();
+        comments.push(note(520, body, "2026-11-14T10:10:00Z"));
+        assert_failed_not_helped(&help("2026-11-14T10:39:59Z", comments.clone()), body);
+        let r = help("2026-11-14T10:40:00Z", comments);
+        assert_eq!(kind(&r), json!("offer_repair_help"), "{body:?} 30:00: {r}");
+        assert_eq!(r["next"]["evidence"]["idle_secs"], json!(1800), "{r}");
+    }
+    let mut others = failed();
+    others.extend([
+        note(
+            520,
+            "agent-7 asks about the schedule",
+            "2026-11-14T10:20:00Z",
+        ),
+        note(521, "lane=agent-299 files 1/2", "2026-11-14T10:25:00Z"),
+        note(522, "agent-29x is another name", "2026-11-14T10:29:00Z"),
+    ]);
+    let r = help("2026-11-14T10:30:00Z", others);
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+    let mut undated = failed();
+    undated.push(json!({"id": 520, "body": "agent-29 is fixing it"}));
+    assert_failed_not_helped(&help("2026-11-14T11:30:00Z", undated), "undated activity");
+}
+
+/// ⑤ is for a FAIL on the head now that is still the newest verdict: a verdict on an older head,
+/// a newer verdict (any head), a PASS, or no verdict leaves it to the existing rules.
+#[test]
+fn no_help_offer_for_a_moved_head_a_newer_verdict_or_an_unknown_time() {
+    let old = "2026-11-14T13:00:00Z";
+    // The FAIL was on an older head: the author pushed since (the head moved).
+    let moved = vec![
+        at(audit_claim(500, "agent-3", &h('b')), "2026-11-14T09:00:00Z"),
+        at(verdict(510, &h('b'), "FAIL"), FAILED_AT),
+    ];
+    let r = help(old, moved);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["pr_skipped"][0]["reason"], json!("audit_reserved"), "{r}");
+    // A newer verdict on the head: the PASS ends the repair; a newer one on another head too.
+    for newer in [verdict(520, &h('a'), "PASS"), verdict(520, &h('b'), "FAIL")] {
+        let mut comments = failed();
+        comments.push(at(newer, "2026-11-14T10:10:00Z"));
+        let r = help(old, comments);
+        assert_ne!(kind(&r), json!("offer_repair_help"), "{r}");
+        assert_eq!(r["next"], json!(null), "{r}");
+    }
+    // A reservation with no verdict yet is ④'s, not ⑤'s.
+    let r = help(old, vec![failed().remove(0)]);
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    // An unknown clock, or a FAIL with no time: not proven, nothing is offered.
+    let r = next(&json!({"prs": [pr(5, &h('a'), Some("agent-29"), json!(failed()))]}));
+    assert_failed_not_helped(&r, "no now");
+    let untimed = vec![
+        failed().remove(0),
+        verdict(510, &h('a'), "FAIL"), // no `at`
+    ];
+    assert_failed_not_helped(&help(old, untimed), "no FAIL time");
+    // The author lane is not known: its silence cannot be read.
+    let r = next(&json!({"now": old, "prs": [pr(5, &h('a'), None, json!(failed()))]}));
+    assert_failed_not_helped(&r, "no author lane");
+}
+
+/// Not for the author lane (its FAIL is its own repair), and not for the lane that posted the
+/// FAIL (it keeps the re-audit).
+#[test]
+fn neither_the_author_nor_the_fails_own_auditor_is_offered_help() {
+    let old = "2026-11-14T13:00:00Z";
+    let mine = next(&json!({"now": old, "prs": [pr(5, &h('a'), Some(LANE), json!(failed()))]}));
+    assert_eq!(kind(&mine), json!("repair_audit_fail"), "{mine}");
+    // I reserved and judged it: the re-audit is mine, no offer.
+    let comments = vec![
+        at(audit_claim(500, LANE, &h('a')), "2026-11-14T09:00:00Z"),
+        at(verdict(510, &h('a'), "FAIL"), FAILED_AT),
+    ];
+    let r = help(old, comments);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["pr_skipped"],
+        json!([{"pr": 5, "reason": "audit_reserved", "by": LANE, "comment": 500}]),
+        "{r}"
+    );
+    assert_eq!(r["waiting"], json!([]), "{r}");
+}
+
+/// One offer per FAIL and head: my offer waits (`help_offered`); a lower comment id of another
+/// lane makes mine lose, and a lane that has not offered, too (`help_offer_lost`); an offer for
+/// another pull request, FAIL or head, or by the author lane, counts for nothing.
+#[test]
+fn the_lowest_help_offer_wins_and_the_others_wait() {
+    let now = "2026-11-14T10:40:00Z";
+    let with = |extra: Vec<Value>| {
+        let mut comments = failed();
+        comments.extend(extra);
+        help(now, comments)
+    };
+    let r = with(vec![offer(600, LANE, 5, 510, &h('a'))]);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["waiting"],
+        json!([{"number": 5, "reason": "help_offered", "comment": 510,
+                "offer_comment": 600, "by": LANE, "head": h('a')}]),
+        "{r}"
+    );
+    assert_eq!(r["pr_skipped"], json!([]), "{r}");
+    for mine in [vec![offer(700, LANE, 5, 510, &h('a'))], vec![]] {
+        let mut extra = vec![offer(600, "agent-12", 5, 510, &h('a'))];
+        extra.extend(mine);
+        let r = with(extra);
+        assert_eq!(r["next"], json!(null), "{r}");
+        assert_eq!(
+            r["waiting"],
+            json!([{"number": 5, "reason": "help_offer_lost", "comment": 510,
+                    "offer_comment": 600, "by": "agent-12", "head": h('a')}]),
+            "{r}"
+        );
+    }
+    // Mine has the lower id: I am the one whose offer stands.
+    let r = with(vec![
+        offer(600, LANE, 5, 510, &h('a')),
+        offer(700, "agent-12", 5, 510, &h('a')),
+    ]);
+    assert_eq!(r["waiting"][0]["reason"], json!("help_offered"), "{r}");
+    // Offers for another PR, FAIL or head, or one by the author lane itself (long enough ago
+    // that it is not the author's recent activity), are not for this one.
+    let r = with(vec![
+        offer(600, "agent-12", 6, 510, &h('a')),
+        offer(601, "agent-12", 5, 509, &h('a')),
+        offer(602, "agent-12", 5, 510, &h('b')),
+        at(
+            offer(603, "agent-29", 5, 510, &h('a')),
+            "2026-11-14T10:05:00Z",
+        ),
+    ]);
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+}
+
+/// The place of ⑤ in the list: after my own pull request's work, after reserving a pull
+/// request that has no auditor (③), after ④ and after `unstick_passed_pr`, before an open
+/// Issue; a PR whose offer I wait on does not hold the list back.
+#[test]
+fn the_help_offer_comes_after_the_audit_steps_and_before_issues() {
+    let now = "2026-11-14T10:40:00Z";
+    let failed_pr = pr(5, &h('a'), Some("agent-29"), json!(failed()));
+    let issue = json!({"number": 1, "title": "free", "comments": []});
+    // Before an Issue.
+    let r = next(&json!({"now": now, "prs": [failed_pr.clone()], "open_issues": [issue.clone()]}));
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+    // ③ first.
+    let free = pr(8, &h('c'), Some("agent-29"), json!([]));
+    let r = next(&json!({"now": now, "prs": [failed_pr.clone(), free]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(8));
+    // My own pull request's FAIL first.
+    let mine = pr(3, &h('d'), Some(LANE), json!([verdict(9, &h('d'), "FAIL")]));
+    let r = next(&json!({"now": now, "prs": [failed_pr.clone(), mine]}));
+    assert_eq!(kind(&r), json!("repair_audit_fail"), "{r}");
+    // ④ before ⑤, even when the PR numbers say otherwise.
+    let stale = pr(
+        9,
+        &h('e'),
+        Some("agent-29"),
+        json!([at(
+            audit_claim(30, "agent-4", &h('e')),
+            "2026-11-14T09:00:00Z"
+        )]),
+    );
+    let r = next(&json!({"now": now, "prs": [failed_pr.clone(), stale]}));
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    // 4b `unstick_passed_pr` before ⑤.
+    let passed = json!({"number": 70, "head": h('f'), "author_lane": "agent-29", "ci": "green",
+        "ci_run": 123, "comments": [audit_claim(1, "agent-27", &h('f')), verdict(2, &h('f'), "PASS")]});
+    let r = next(&json!({"now": now, "prs": [failed_pr, passed]}));
+    assert_eq!(kind(&r), json!("unstick_passed_pr"), "{r}");
+    // Waiting on my offer, the list goes on to the Issue.
+    let mut comments = failed();
+    comments.push(offer(600, LANE, 5, 510, &h('a')));
+    let asked = pr(5, &h('a'), Some("agent-29"), json!(comments));
+    let r = next(&json!({"now": now, "prs": [asked], "open_issues": [issue]}));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["waiting"][0]["reason"], json!("help_offered"), "{r}");
+}
+
+/// An offer line is neither a verdict, a reservation nor an audit record in another form: on a
+/// pull request with no auditor it leaves `reserve_audit` alone, even when the offering lane's
+/// name says `audit`.
+#[test]
+fn a_help_offer_line_is_not_read_as_an_audit_record() {
+    let r = next(&json!({"now": "2026-11-14T10:40:00Z", "prs": [pr(
+        5,
+        &h('a'),
+        Some("agent-29"),
+        json!([offer(600, "audit-2", 5, 510, &h('a'))]),
+    )]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["waiting"], json!([]), "{r}");
+}
+
+/// Lane names are compared as `audit-claim` compares them (`same_lane`): the session spellings
+/// `agent-29-59cb6a`, `session=agent-29-59cb6a` and `agent-29-hBp17:` are the lane `agent-29`;
+/// `agent-299-…` is another lane. An author who keeps commenting under such a spelling is active.
+#[test]
+fn an_author_commenting_under_a_session_spelling_is_still_active() {
+    for body in [
+        "session=agent-29-59cb6a reading the findings",
+        "agent-29-hBp17: fixing 2/5",
+        "REPAIR\nlane=agent-29-2293 pushing soon",
+    ] {
+        let mut comments = failed();
+        comments.push(note(520, body, "2026-11-14T10:10:00Z"));
+        assert_failed_not_helped(&help("2026-11-14T10:39:59Z", comments.clone()), body);
+        let r = help("2026-11-14T10:40:00Z", comments);
+        assert_eq!(kind(&r), json!("offer_repair_help"), "{body:?} 30:00: {r}");
+        assert_eq!(r["next"]["evidence"]["idle_secs"], json!(1800), "{r}");
+    }
+    // Another lane whose name only begins like the author's is not the author.
+    let mut comments = failed();
+    comments.push(note(
+        520,
+        "session=agent-299-59cb6a still here",
+        "2026-11-14T10:20:00Z",
+    ));
+    let r = help("2026-11-14T10:30:00Z", comments);
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+}
+
+/// The lane that reserved the failed audit keeps the re-audit also when the reservation spells
+/// its session (`agent-10-59cb6a` is this lane, `agent-10`): no offer, the PR is passed over.
+#[test]
+fn the_fails_auditor_under_a_session_spelling_is_not_offered_help() {
+    let comments = vec![
+        at(
+            audit_claim(500, "agent-10-59cb6a", &h('a')),
+            "2026-11-14T09:00:00Z",
+        ),
+        at(verdict(510, &h('a'), "FAIL"), FAILED_AT),
+    ];
+    let r = help("2026-11-14T13:00:00Z", comments);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["pr_skipped"],
+        json!([{"pr": 5, "reason": "audit_reserved", "by": "agent-10-59cb6a", "comment": 500}]),
+        "{r}"
+    );
+}
+
+/// An offer line's `lane=` is compared as a lane: `agent-10-hBp17` is this lane (its offer
+/// stands: `help_offered`), `agent-12-2293` is `agent-12` (a lower id makes mine lose), and an
+/// offer written under the author's own session spelling is the author's, which counts for nothing.
+#[test]
+fn offers_under_session_spellings_count_as_their_lane() {
+    let now = "2026-11-14T10:40:00Z";
+    let with = |extra: Vec<Value>| {
+        let mut comments = failed();
+        comments.extend(extra);
+        help(now, comments)
+    };
+    let r = with(vec![offer(600, "agent-10-hBp17", 5, 510, &h('a'))]);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["waiting"],
+        json!([{"number": 5, "reason": "help_offered", "comment": 510,
+                "offer_comment": 600, "by": "agent-10-hBp17", "head": h('a')}]),
+        "{r}"
+    );
+    let r = with(vec![
+        offer(600, "agent-12-2293", 5, 510, &h('a')),
+        offer(700, LANE, 5, 510, &h('a')),
+    ]);
+    assert_eq!(r["waiting"][0]["reason"], json!("help_offer_lost"), "{r}");
+    assert_eq!(r["waiting"][0]["by"], json!("agent-12-2293"), "{r}");
+    let r = with(vec![at(
+        offer(603, "agent-29-59cb6a", 5, 510, &h('a')),
+        "2026-11-14T10:05:00Z",
+    )]);
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+}
+
+/// The lane that failed the audit is the effective holder at the FAIL (`audit_claim::holder_of`
+/// on the comments before it): the lowest reservation on the head, moved by the leader's
+/// `moai-claim-handoff … by=leader` line posted before the FAIL. The handed-off lane keeps the
+/// re-audit and is offered nothing; everyone else is offered help, with that lane named. A
+/// handoff after the FAIL moves the hold, but the FAIL was still judged by the earlier holder.
+#[test]
+fn the_fails_auditor_is_the_holder_after_a_handoff_before_the_fail() {
+    let now = "2026-11-14T13:00:00Z";
+    let handed = |to: &str, when: &str| {
+        vec![
+            at(audit_claim(500, "agent-3", &h('a')), "2026-11-14T09:00:00Z"),
+            handoff(505, to, "2026-11-14T09:30:00Z"),
+            at(verdict(510, &h('a'), "FAIL"), when),
+        ]
+    };
+    // Handed to me (or to my session spelling): the re-audit is mine, no offer.
+    for to in [LANE, "agent-10-59cb6a"] {
+        let r = help(now, handed(to, FAILED_AT));
+        assert_eq!(r["next"], json!(null), "{to}: {r}");
+        assert_eq!(
+            r["pr_skipped"],
+            json!([{"pr": 5, "reason": "audit_reserved", "by": to, "comment": 505}]),
+            "{to}: {r}"
+        );
+    }
+    // Handed to another lane: that lane is the auditor, and I am offered the repair help.
+    let r = help(now, handed("agent-7", FAILED_AT));
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+    assert_eq!(r["next"]["evidence"]["failed_by"], json!("agent-7"), "{r}");
+    assert_eq!(r["pr_skipped"], json!([]), "{r}");
+    // A handoff after the FAIL does not change who failed the audit.
+    let after = vec![
+        at(audit_claim(500, "agent-3", &h('a')), "2026-11-14T09:00:00Z"),
+        at(verdict(510, &h('a'), "FAIL"), FAILED_AT),
+        handoff(515, "agent-7", "2026-11-14T10:05:00Z"),
+    ];
+    let r = help(now, after);
+    assert_eq!(kind(&r), json!("offer_repair_help"), "{r}");
+    assert_eq!(r["next"]["evidence"]["failed_by"], json!("agent-3"), "{r}");
+    // The lowest reservation on the head holds it, not the newest.
+    let two = vec![
+        at(
+            audit_claim(500, "agent-10", &h('a')),
+            "2026-11-14T09:00:00Z",
+        ),
+        at(audit_claim(501, "agent-3", &h('a')), "2026-11-14T09:05:00Z"),
+        at(verdict(510, &h('a'), "FAIL"), FAILED_AT),
+    ];
+    let r = help(now, two);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["pr_skipped"][0]["by"], json!("agent-10"), "{r}");
+}

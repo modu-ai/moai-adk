@@ -16,6 +16,8 @@
 //!    for 30:00 whose lane is silent — ask for a second auditor with one takeover-request line
 //!    (#2933 S4 ④; only the leader's handoff makes it effective); then a pull request with a
 //!    PASS on its head and green CI that is still open — read the gate's reason (#2933 S3);
+//!    then a FAIL nobody repairs for 30:00 whose author lane is silent — offer repair help with
+//!    one line (#2933 S5 ⑤; a push needs the author's consent or the leader's handoff);
 //! 5. a `LANE-BLOCKED kind=decision` of the lane that a `LEADER-DECISION` now answers;
 //! 6. P2 the next step of a card the lane claims (no open pull request of its own for it);
 //! 7. P2–P4 an open Issue nobody claims.
@@ -307,7 +309,12 @@ fn foreign_audit_record(pr: &Pr) -> Option<u64> {
     let head = pr.head.to_ascii_lowercase();
     pr.comments.iter().rev().find_map(|c| {
         // A takeover request (#2933 S4) names the head and says `audit`, yet records no audit.
-        if verdict(c).is_some() || audit_claim(c).is_some() || takeover_request(c).is_some() {
+        // A repair-help offer (#2933 S5) names the head too, and its lane may say `audit`.
+        if verdict(c).is_some()
+            || audit_claim(c).is_some()
+            || takeover_request(c).is_some()
+            || help_offer(c).is_some()
+        {
             return None;
         }
         let line = first_line(c)
@@ -640,8 +647,13 @@ fn names_lane(c: &Comment, lane: &str) -> bool {
 /// head, moved by the leader's `moai-claim-handoff: comment=<reservation> to=<lane> by=leader`
 /// line. `None` when no reservation names the head now.
 fn head_holder(pr: &Pr) -> Option<Holder> {
-    let comments: Vec<crate::lane_status::Comment> = pr
-        .comments
+    holder_in(&pr.comments, &pr.head)
+}
+
+/// [`head_holder`] over any run of a pull request's comments: step ⑤ asks who held the head at
+/// the moment of a FAIL by passing the comments before it (#2933 S5).
+fn holder_in(comments: &[Comment], head: &str) -> Option<Holder> {
+    let comments: Vec<crate::lane_status::Comment> = comments
         .iter()
         .map(|c| crate::lane_status::Comment {
             id: i64::try_from(c.id).unwrap_or(i64::MAX),
@@ -649,7 +661,7 @@ fn head_holder(pr: &Pr) -> Option<Holder> {
             body: c.body.clone(),
         })
         .collect();
-    holder_of(&comments, &pr.head)
+    holder_of(&comments, head)
 }
 
 /// The reservation a pull request is passed over for: the comment that gives the hold and the
@@ -742,6 +754,108 @@ fn second_audit(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Second> {
         ),
         json!({"reservation_comment": reservation, "reserved_by": by, "head": pr.head,
                "idle_secs": idle}),
+    )))
+}
+
+/// `moai-repair-help-offer: pr=<n> lane=<lane> fail=<verdict comment> head=<40hex>` of a comment
+/// (#2933 S5): the pull request, the offering lane, the FAIL it answers and the head.
+fn help_offer(c: &Comment) -> Option<(u64, String, u64, String)> {
+    lines(c).find_map(|l| {
+        let rest = l.strip_prefix("moai-repair-help-offer:")?;
+        Some((
+            field(rest, "pr")?.parse().ok()?,
+            field(rest, "lane")?.to_string(),
+            field(rest, "fail")?.parse().ok()?,
+            field(rest, "head")?.to_string(),
+        ))
+    })
+}
+
+/// Seconds a FAIL may stand with no comment of the author lane before repair help is offered
+/// (#2933 S5 ⑤, decision A): 30:00 is enough, 29:59 is not.
+pub const REPAIR_HELP_SECS: i64 = 1800;
+
+/// What step ⑤ finds on a pull request that failed its audit.
+enum Help {
+    /// The task to post an offer line.
+    Offer(Value),
+    /// An offer exists (mine, or a lower one): the author's consent or the leader decides.
+    Wait(Value),
+}
+
+/// #2933 S5 ⑤: the newest verdict of `pr` is a FAIL on the head now (so no push and no later
+/// verdict followed it), and the author lane has not commented on the pull request for
+/// [`REPAIR_HELP_SECS`] after it. Then `lane` — neither the author nor the lane that held the
+/// audit when it failed ([`holder_in`] on the comments before the FAIL; lanes are compared as
+/// [`same_lane`]) — may offer repair help with one line; the lowest offer comment id
+/// stands. The line is only an offer: the author's consent in a comment, or the leader's
+/// `moai-claim-handoff … by=leader` line, must come before any push to the author's branch.
+/// `None` when it does not hold, or when the clock, the FAIL's time, the author lane or the
+/// auditor is unknown (silence is not proven).
+fn repair_help(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Help> {
+    let now = crate::forge::policy::parse_utc(now?)?;
+    let author = pr.author_lane.as_deref()?;
+    let (idx, fail, head, v) = pr
+        .comments
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(i, c)| verdict(c).map(|(head, v)| (i, c, head, v)))?;
+    if v != "FAIL" || head != pr.head {
+        return None;
+    }
+    // The lane that held the audit of the head when the FAIL was posted keeps the re-audit: the
+    // holder as `audit-claim` reads it from the comments before the FAIL (the lowest
+    // reservation, moved by a leader handoff posted before it). Without one the auditor is not
+    // known and nothing is offered.
+    let auditor = holder_in(&pr.comments[..idx], &pr.head)?.lane;
+    if same_lane(author, lane) || same_lane(&auditor, lane) {
+        return None;
+    }
+    let mut quiet_since = crate::forge::policy::parse_utc(&fail.at)?;
+    for c in pr.comments[idx + 1..]
+        .iter()
+        .filter(|c| names_lane(c, author))
+    {
+        // A comment of the author with no readable time counts as now: silence is not proven.
+        quiet_since = quiet_since.max(crate::forge::policy::parse_utc(&c.at).unwrap_or(now));
+    }
+    let idle = now - quiet_since;
+    if idle < REPAIR_HELP_SECS {
+        return None;
+    }
+    let winner = pr.comments[idx + 1..]
+        .iter()
+        .filter_map(|c| {
+            let (number, asker, on, at_head) = help_offer(c)?;
+            (number == pr.number
+                && on == fail.id
+                && at_head == pr.head
+                && !same_lane(&asker, author))
+            .then_some((c.id, asker))
+        })
+        .min();
+    if let Some((offer, asker)) = winner {
+        let reason = if same_lane(&asker, lane) {
+            "help_offered"
+        } else {
+            "help_offer_lost"
+        };
+        return Some(Help::Wait(json!({"number": pr.number, "reason": reason,
+            "comment": fail.id, "offer_comment": offer, "by": asker, "head": pr.head})));
+    }
+    Some(Help::Offer(task(
+        "P1",
+        "offer_repair_help",
+        pr_target(pr),
+        format!(
+            "PR #{n}: the audit FAIL (comment {id}, audit held by {auditor}) has stood for {idle} s with no comment of its author {author}: post exactly one line `moai-repair-help-offer: pr={n} lane={lane} fail={id} head={head}` on the PR. It is only an offer: never push to {author}'s branch until {author} agrees in a comment on the PR or the leader names you with a `moai-claim-handoff … by=leader` line. The lowest offer wins",
+            n = pr.number,
+            id = fail.id,
+            head = pr.head,
+        ),
+        json!({"fail_comment": fail.id, "failed_by": auditor, "author_lane": author,
+               "head": pr.head, "idle_secs": idle}),
     )))
 }
 
@@ -901,6 +1015,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         // 4. P1: another lane's pull request with no auditor; a draft or a reserved one is
         // named with its reason and the list goes on.
         let mut second_ask: Option<Value> = None;
+        let mut help_ask: Option<Value> = None;
         for pr in prs
             .iter()
             .filter(|p| p.author_lane.as_deref() != Some(lane))
@@ -922,6 +1037,19 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                         continue;
                     }
                     Some(Second::Wait(entry)) => {
+                        waiting.push(entry);
+                        continue;
+                    }
+                    None => {}
+                }
+                // ⑤ (#2933 S5): a FAIL nobody repairs is not "passed over" either: an offer of
+                // repair help (taken after ④ and 4b) or a wait for the author's consent.
+                match repair_help(pr, lane, snap.now.as_deref()) {
+                    Some(Help::Offer(t)) => {
+                        help_ask.get_or_insert(t);
+                        continue;
+                    }
+                    Some(Help::Wait(entry)) => {
                         waiting.push(entry);
                         continue;
                     }
@@ -959,6 +1087,11 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         // 4b. P1: a pull request with a PASS on its head and green CI that is still open (#2933
         // S3 ⑥) — another lane's, or the lane's own: its author can act on the gate's reason too.
         if let Some(t) = prs.iter().find_map(|p| unstick_task(p)) {
+            return Some(t);
+        }
+        // 4c. P1: ⑤ offer repair help for a FAIL nobody repairs (#2933 S5), after every audit
+        // step and the passed pull requests, before any Issue.
+        if let Some(t) = help_ask {
             return Some(t);
         }
         // 5. A decision request of the lane that a leader decision now answers.
