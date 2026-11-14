@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "lanes": [
+    {
+      "lane": "agent-29",
+      "host": "claude",
+      "read_at": "2026-11-14T09:20:00Z",
+      "source": "leader agent-0: orca terminal read --screen --json",
+      "terminal": {
+        "handle": "term-29",
+        "status": "running",
+        "source": "screen",
+        "tail": "⏺ LANE-DONE agent-29 #2902 O3a — PR #2912 MERGED\n\n> 다음 카드는 #2916 감사부터 해 주세요",
+        "limited": false,
+        "truncated": false,
+        "draft": "다음 카드는 #2916 감사부터 해 주세요"
+      },
+      "pane": "working",
+      "turn": "idle",
+      "input_box": "text",
+      "context_used_pct": 40,
+      "wake_armed": false,
+      "background_jobs": 0
+    }
+  ]
+}

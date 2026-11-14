@@ -613,16 +613,15 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     .collect();
     let out = agents_plan(&root, &request);
     let plan: Value = ok_result(&out);
+    // #2936 Q3 B: the manifest too reads `unchanged` when its bytes would not move.
+    assert!(
+        actions(&plan).iter().all(|(_, a)| a == "unchanged"),
+        "{:?}",
+        actions(&plan)
+    );
     assert!(actions(&plan)
         .iter()
-        .all(|(_, a)| a == "unchanged" || a == "merge"));
-    assert!(
-        actions(&plan)
-            .iter()
-            .filter(|(p, a)| a == "merge" && p != ".moai-cli/manifests/generation.json")
-            .count()
-            == 0
-    );
+        .any(|(p, _)| p == ".moai-cli/manifests/generation.json"));
     let result = agents_apply(&root, &plan);
     assert!(result.status.success());
     let value: Value = ok_result(&result);

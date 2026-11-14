@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "lanes": [
+    {
+      "lane": "agent-29",
+      "host": "claude",
+      "read_at": "2026-11-14T09:20:00Z",
+      "source": "leader agent-0: orca terminal read --screen --json",
+      "terminal": {
+        "handle": "term-29",
+        "status": "running",
+        "source": "screen",
+        "tail": "⏺ Committed 1f2e3d4 on issue/2902-leader-round-agent29 (not pushed yet).\n\n⏺ LANE-DONE agent-29 #2902 O3b step 2 — commit made, push next",
+        "limited": false,
+        "truncated": false,
+        "draft": null
+      },
+      "pane": "working",
+      "turn": "idle",
+      "input_box": "empty",
+      "context_used_pct": 62,
+      "wake_armed": false,
+      "background_jobs": 0,
+      "reset": {
+        "claims": {
+          "source": "gh api repos/modu-ai/moai-adk/issues/2902/comments",
+          "items": [{ "issue": 2902, "claim_comment": 6874287412, "resume_note": null }]
+        },
+        "session_cwd": { "source": "orca worktree ps", "path": "/work/moai-adk-wt-2902" }
+      }
+    }
+  ]
+}
