@@ -149,8 +149,8 @@ mod tests {
         let allowed: &[(&str, usize, &str)] = &[
             (
                 "home_install.rs",
-                2,
-                "the install preview reads the earlier folder whatever generation the HOME is in (one use in the plan, one in the unit-test fixture)",
+                3,
+                "the install preview reads the earlier folder whatever generation the HOME is in (one use in the plan, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
             ),
             (
                 "hooks.rs",
