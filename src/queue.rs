@@ -304,18 +304,10 @@ fn valid_name(s: &str) -> bool {
         && s != ".."
 }
 
-/// Whether a label marks a card that waits for a decision (`needs:decision`, `HOLD`, …).
-fn holds(label: &str) -> bool {
-    // Whole names only (#2675 audit N4): a label that merely contains `hold` (`threshold`)
-    // must not hide a card. `needs:decision` is the label scheme's gate marker
-    // (`.github/moai/labels.yml`); `hold` and a `<axis>:hold` value are the HOLD spellings.
-    let l = label.trim().to_ascii_lowercase();
-    l == "needs:decision" || l == "hold" || l.ends_with(":hold")
-}
-
 /// `queue-free` (#2675): the open cards a lane may take, read only. Every open Issue is
 /// sorted into exactly one bucket — `held` (a label named `needs:decision`, `hold` or `<axis>:hold`), `epics`
-/// (title `][EP-`), `blocked` (an open `Blocked-By:` Issue), `reserved` (an outstanding
+/// (title `][EP-`), `blocked` (an open `Blocked-By:` Issue) — these three by the shared
+/// [`crate::startable::judge`] (#2901) — `reserved` (an outstanding
 /// handoff names its recipient), `claimed` (a live claim), or `free`. A free card says why:
 /// `unclaimed` (no claim line ever), `released` (every claim released) or `expired` (only
 /// expired claims remain; taking it over still follows the handoff rules). An empty result
@@ -333,7 +325,7 @@ pub fn free<T: Transport, C: Clock>(
         return Err("owner and repo must be GitHub names".into());
     }
     let issues = read_open_issues(client, &req.owner, &req.repo)?;
-    let open: BTreeSet<i64> = issues.iter().filter_map(|i| i["number"].as_i64()).collect();
+    let open: BTreeSet<u64> = issues.iter().filter_map(|i| i["number"].as_u64()).collect();
     let now = clock.now();
     let live = |c: &ClaimComment| parse_utc(&c.lease_until).is_some_and(|t| t > now);
     let (mut free, mut reserved, mut claimed) = (Vec::new(), Vec::new(), Vec::new());
@@ -349,26 +341,38 @@ pub fn free<T: Transport, C: Clock>(
         inspected += 1;
         let title = i["title"].as_str().unwrap_or_default();
         let body = i["body"].as_str().unwrap_or_default();
-        let labels: Vec<&str> = i["labels"]
+        let labels: Vec<String> = i["labels"]
             .as_array()
-            .map(|a| a.iter().filter_map(|l| l["name"].as_str()).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|l| l["name"].as_str().map(str::to_string))
+                    .collect()
+            })
             .unwrap_or_default();
-        let hold: Vec<&str> = labels.iter().copied().filter(|l| holds(l)).collect();
-        if !hold.is_empty() {
-            held.push(json!({"issue": number, "title": title, "labels": hold}));
-            continue;
-        }
-        if title.contains("][EP-") {
-            epics.push(json!({"issue": number, "title": title}));
-            continue;
-        }
-        let open_blockers: Vec<i64> = refs_on(body, "Blocked-By:")
-            .into_iter()
-            .filter(|n| open.contains(n) && *n != number)
-            .collect();
-        if !open_blockers.is_empty() {
-            blocked.push(json!({"issue": number, "title": title, "blocked_by": open_blockers}));
-            continue;
+        // The REST list carries no sub-issue or blocking-Issue fields: those stay zero here.
+        let card = crate::startable::Card {
+            number: number as u64,
+            title,
+            labels: &labels,
+            body,
+            open_children: 0,
+            blocked_by: &[],
+        };
+        match crate::startable::judge(&card, &open, &[]) {
+            Some(crate::startable::Skip::Held(hold)) => {
+                held.push(json!({"issue": number, "title": title, "labels": hold}));
+                continue;
+            }
+            Some(crate::startable::Skip::Epic { .. }) => {
+                epics.push(json!({"issue": number, "title": title}));
+                continue;
+            }
+            Some(crate::startable::Skip::BlockedBy(open_blockers)) => {
+                blocked.push(json!({"issue": number, "title": title, "blocked_by": open_blockers}));
+                continue;
+            }
+            // No goal exclusions are passed, so `KeepSet` cannot occur.
+            Some(crate::startable::Skip::KeepSet(_)) | None => {}
         }
         let (claims, handoff, ever) = read_claim_history(client, &req.owner, &req.repo, number)?;
         if let Some(h) = handoff {
