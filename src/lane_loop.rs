@@ -894,6 +894,18 @@ mod tests {
         };
         assert_eq!(stop_decision("a", "o/r", &snap(json!({})), &mut st), None);
         assert_eq!(st.since_pass, 0);
+        // Passes that keep the rest of the state (the per-task cap, a second unknown reading)
+        // start the total again too.
+        let mut st = StopState::default();
+        stop_decision("a", "o/r", &issue(7), &mut st).unwrap();
+        st.blocks = STOP_BLOCK_CAP;
+        st.since_pass = 10;
+        assert_eq!(stop_decision("a", "o/r", &issue(7), &mut st), None);
+        assert_eq!((st.blocks, st.since_pass), (STOP_BLOCK_CAP, 0));
+        st.since_pass = 10;
+        st.unknown_blocked = true;
+        assert_eq!(stop_decision("a", "o/r", &Reading::Unknown, &mut st), None);
+        assert_eq!(st.since_pass, 0);
     }
 
     #[test]
