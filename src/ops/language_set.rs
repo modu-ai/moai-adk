@@ -16,7 +16,8 @@ use std::ffi::OsStr;
 /// English whatever the code.
 #[derive(clap::Args)]
 pub struct Args {
-    /// Scope: the user's HOME (`$HOME`). Required, so a later scope can be added.
+    /// Scope: the user's HOME (`$HOME`). Without it the command refuses (exit 1), so a later
+    /// scope can be added.
     #[arg(long)]
     home: bool,
     /// Language code: 2-3 letters and optional `-` groups, at most 35 characters (en, pt-BR)

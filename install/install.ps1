@@ -94,9 +94,10 @@ function Get-LocaleLanguage {
     return ""
 }
 
-# One line from the terminal after the prompt text. [Console]::In.ReadLine() gives $null at the end
-# of input (Ctrl-D, a closed terminal); Read-Host would end the whole host there, and the install
-# with it, on Linux.
+# One line from the terminal after the prompt text. [Console]::In.ReadLine() gives $null when the
+# input is closed, and a null answer takes the default. Read-Host would end the whole host there,
+# and the install with it, on Linux. Whether Ctrl-D closes the input depends on the host: press
+# Enter to take the default.
 function Read-Answer([string]$Prompt) {
     Write-Host "${Prompt}: " -NoNewline
     try { $line = [Console]::In.ReadLine() } catch { $line = $null }
