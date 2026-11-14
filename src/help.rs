@@ -132,7 +132,6 @@ pub const GROUPS: &[Group] = &[
             ("claim-show", false),
             ("claim-release", false),
             ("claim-handoff", false),
-            ("queue-next", false),
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
@@ -145,6 +144,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
+            ("close-check", false),
             ("lane-env", false),
             ("session-register", false),
             ("usage-limit", false),
@@ -325,7 +325,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("claim-show", &["claim-show --task <task> ."]),
     ("claim-release", &["claim-release --task <task> --epoch 1 ."]),
     ("claim-handoff", &["claim-handoff --task <task> --from-epoch 1 --reason <reason> ."]),
-    ("queue-next", &["queue-next . < request.json"]),
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
@@ -362,6 +361,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
+    ("close-check", &["close-check 2903 --repo modu-ai/moai-adk"]),
     (
         "session-register",
         &[
