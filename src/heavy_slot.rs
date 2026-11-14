@@ -12,7 +12,8 @@
 //! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
 //! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
 //! values (leader's numbers 50 GB and 80 %, Issue #2677 comment 6850581277), judged before
-//! queueing and again after a wait. A waiter whose parent process ended leaves the queue and
+//! queueing and again after a wait. A run that does start with under 100 GB free
+//! ([`WARN_FREE_GB`]) first prints one warning line on stderr (#2930 item 6). A waiter whose parent process ended leaves the queue and
 //! exits 125 without running COMMAND, so no orphan waits on for hours.
 //!
 //! A slot or queue path that is a symlink, FIFO, device, folder or hard link is refused before
@@ -233,6 +234,22 @@ pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
     (!why.is_empty()).then(|| why.join("; "))
 }
 
+/// #2930 item 6: free space (decimal GB, like the floor) under which a run that does start
+/// still gets one warning line on stderr. The refusal is the floor (`min_free_gb`, default
+/// 50); this mark only tells the lane the disk is getting short before the refusal comes.
+pub const WARN_FREE_GB: u64 = 100;
+
+/// The warning for a run that starts with `free` bytes left, or `None` when the system gives
+/// no value or there are [`WARN_FREE_GB`] GB or more. `floor_gb` is the effective floor.
+pub fn low_space_line(free: Option<u64>, floor_gb: u64, folder: &Path) -> Option<String> {
+    let b = free.filter(|&b| b < WARN_FREE_GB.saturating_mul(1_000_000_000))?;
+    Some(format!(
+        "free disk space is under {WARN_FREE_GB} GB (disk free {:.1} GB at {}); the floor is {floor_gb} GB",
+        b as f64 / 1e9,
+        folder.display()
+    ))
+}
+
 /// #2879 D3: one build folder per lane. When the wrapped command is `cargo` and the lane's
 /// `CARGO_TARGET_DIR` is not the folder `moai lane-env --lane <name>` names (unset counts: cargo
 /// then builds into the worktree's own `target/`), a one-line warning for stderr. A warning, not
@@ -320,7 +337,8 @@ mod sys {
 #[cfg(unix)]
 mod sys {
     use super::{
-        machine_line, over_limits, Limits, Path, PathBuf, Result, Value, BUSY, REFUSED, USAGE,
+        low_space_line, machine_line, measured, over_limits, Limits, Path, PathBuf, Result, Value,
+        BUSY, REFUSED, USAGE,
     };
     use serde_json::json;
     use std::fs::{self, File, OpenOptions, TryLockError};
@@ -599,6 +617,11 @@ mod sys {
                 }
             }
         };
+        // #2930 item 6: the run starts, but the disk is getting short — stderr only, so
+        // stdout and the exit code stay COMMAND's own.
+        if let Some(line) = low_space_line(measured(&cwd).0, limits.min_free_gb, &cwd) {
+            eprintln!("heavy-slot: {line}");
+        }
         run_holding(slot, file, name, command, &cwd)
     }
 
@@ -811,5 +834,46 @@ mod build_folder_tests {
             None
         );
         assert_eq!(build_folder_note("agent-7", &[], None, base), None);
+    }
+}
+
+#[cfg(test)]
+mod low_space_tests {
+    use super::{low_space_line, WARN_FREE_GB};
+    use std::path::Path;
+
+    const GB: u64 = 1_000_000_000;
+
+    #[test]
+    fn the_warning_mark_is_100_gb() {
+        assert_eq!(WARN_FREE_GB, 100);
+    }
+
+    /// #2930 item 6: under 100 GB (decimal, like the floor) one line; 100 GB and up, none.
+    #[test]
+    fn the_edges_are_just_under_and_exactly_100_gb() {
+        let f = Path::new("/work");
+        for (free, warns) in [
+            (Some(99 * GB), true),
+            (Some(100 * GB - 1), true),
+            (Some(100 * GB), false),
+            (Some(101 * GB), false),
+            (Some(0), true),
+            (None, false),
+        ] {
+            assert_eq!(low_space_line(free, 50, f).is_some(), warns, "{free:?}");
+        }
+    }
+
+    #[test]
+    fn the_line_names_the_100_gb_mark_the_measured_space_and_the_floor() {
+        let line = low_space_line(Some(87_300_000_000), 50, Path::new("/work")).unwrap();
+        assert_eq!(
+            line,
+            "free disk space is under 100 GB (disk free 87.3 GB at /work); the floor is 50 GB"
+        );
+        assert!(low_space_line(Some(60 * GB), 61, Path::new("/w"))
+            .unwrap()
+            .ends_with("the floor is 61 GB"));
     }
 }
