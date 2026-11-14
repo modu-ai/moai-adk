@@ -91,12 +91,12 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 - 대상: `moai update` 를 실행한 폴더가 속한 git 작업 트리 하나, 그중 MoAI 훅 집합이 **이미 설치된** host 만(Claude 는 settings 영수증이 `hooks` 를 소유, Codex·OMP 는 소유 영수증이 있음). `update` 는 훅을 새로 설치하지 않는다 — 설치는 계속 `hooks-plan` → `hooks-apply`. 프로젝트 밖이거나 설치된 host 가 없으면 `hooks.skipped` 에 이유 한 줄.
 - 미리보기: host 마다 `hooks-plan` 과 같은 규칙으로 `create`·`update`·`unchanged`·`conflict`. 생성 명령은 `moai-cli`(#2812 결정 (나)). 사용자가 바꾼 항목은 덮지 않는다 — MoAI 가 바꿀 것이 없으면 그대로 두고(`unchanged`), 바꿀 것이 있으면 `conflict` 로 보고만 한다. Codex·OMP 파일을 손으로 바꿨으면 `conflict`(이유: preservation review).
-- 확인: 훅 층의 digest 는 `moai update --confirm` 이 받는 하나의 `plan_digest` 에 들어간다. 확인 때 host 마다 `hooks-apply` 규칙으로 쓰고, 바꾼 두 파일(host 파일·소유 영수증)의 앞 바이트를 `.moai-cli/receipts/hooks-<id>/` 에 남긴다. 결과는 `hooks_result`, 되돌리기 명령은 `revert.hooks`.
+- 확인: 훅 층의 digest 는 `moai update --confirm` 이 받는 하나의 `plan_digest` 에 들어간다. 확인 때 host 마다 `hooks-apply` 규칙으로 쓰고, 바꾼 두 파일(host 파일·소유 영수증)의 앞 바이트를 `.moai-cli/receipts/hooks-<id>/` 에 남긴다. 그 폴더들은 만들 때부터 소유자만(0700), 남긴 사본과 새 `receipt.json` 은 0600 이고 `receipts/.gitignore`(`*`)가 git 이 줍지 않게 한다(0600 으로 보호한 설정 파일에 키가 있을 수 있어서, #2985 감사 B1). 이미 있던 옛 영수증 폴더의 권한은 바꾸지 않는다. 결과는 `hooks_result`, 되돌리기 명령은 `revert.hooks`.
 - 되돌리기: `moai hooks-revert <PROJECT> --receipt <id> --permission-reference <ref>` — host 의 두 파일이 모두 update 가 쓴 바이트 그대로일 때만 앞 바이트로 되돌린다(만든 파일은 지움). 하나라도 바뀌었으면 그 host 는 `user_changed_since_apply` 로 건너뛴다. 영수증은 한 번만 되돌린다.
 
 ## 4b. 레인 Stop hook — Codex opt-in 변형 (#2904 2단계)
 
-- 설치: `hooks-plan --host codex --lane-loop <lane> --repo <OWNER/REPO> <PROJECT>` 로 미리 보고, 같은 플래그와 그 `plan_digest` 로 `hooks-apply`. `.codex/hooks.json` 의 `Stop` 에 영수증 그룹 다음 두 번째 matcher 그룹 `{"hooks":[{"type":"command","command":"moai-cli lane-stop-hook --lane <lane> --repo <repo>","timeout":120}]}` 이 생긴다. `--lane-loop` 과 `--repo` 는 함께만, `--host codex` 에서만 받는다(레인 이름 1–64자 `A-Z a-z 0-9 . _ -`, 저장소 `OWNER/REPO`).
+- 설치: `hooks-plan --host codex --lane-loop <lane> --repo <OWNER/REPO> <PROJECT>` 로 미리 보고, 같은 플래그와 그 `plan_digest` 로 `hooks-apply`. `.codex/hooks.json` 에 `Stop` 이 없던 자리에 유일한 `Stop` matcher 그룹 `{"hooks":[{"type":"command","command":"moai-cli lane-stop-hook --lane <lane> --repo <repo>","timeout":120}]}` 이 생긴다. `--lane-loop` 과 `--repo` 는 함께만, `--host codex` 에서만 받는다(레인 이름 1–64자 `A-Z a-z 0-9 . _ -`, 저장소 `OWNER/REPO`).
 - 영수증: 레인이 있을 때만 `lane_loop: {lane, repo}` 와 `hooks` 끝의 레인 항목이 더해진다. 레인 없는 설치는 hook 파일·영수증·plan digest 가 전과 바이트까지 같다(`hooks::tests` 가 이전 코드의 digest 로 묶어 둠). digest 에는 레인이 있을 때만 레인이 들어간다.
 - 유지: 플래그 없는 `hooks-plan`·`moai update` 는 영수증이 적은 레인을 그대로 둔다(재계획 `unchanged`). `hook_status.configured` 도 영수증의 세트와 비교하므로 설치된 레인 hook 은 `yes`.
 - 되돌리기: 같은 두 단계를 `--lane-loop-off` 로 — 파일과 영수증이 기본 세트 바이트로 돌아간다. `--lane-loop-off` 는 `--lane-loop` 과 함께 쓸 수 없다.
