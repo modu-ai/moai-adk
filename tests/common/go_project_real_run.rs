@@ -161,6 +161,98 @@ impl GoFx {
         self.update_plan_env(&[])
     }
 
+    /// Runs the binary with `stdin` and returns the whole envelope.
+    pub fn run_stdin(&self, args: &[&str], stdin: &[u8]) -> Value {
+        use std::io::Write as _;
+        let mut child = Command::new(MOAI_BIN)
+            .args(args)
+            .clean_env()
+            .env("HOME", &self.home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut pipe = child.stdin.take().unwrap();
+        match pipe.write_all(stdin) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+            Err(e) => panic!("stdin write failed: {e}"),
+        }
+        drop(pipe);
+        let out = child.wait_with_output().unwrap();
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+            panic!(
+                "{args:?}: {}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        })
+    }
+
+    /// A call that must succeed; returns its `result`.
+    pub fn call(&self, args: &[&str], stdin: &[u8]) -> Value {
+        let v = self.run_stdin(args, stdin);
+        assert_eq!(v["ok"], json!(true), "{args:?}: {v}");
+        v["result"].clone()
+    }
+
+    /// A profile written the way PROJECT writes it: the detected facts, then `project-plan`
+    /// and `project-apply`.
+    pub fn with_profile(&self) {
+        let detect = self.call(&["project-detect", self.p()], b"");
+        let profile = json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "detected": detect["detected"],
+        });
+        let plan = self.call(
+            &["project-plan", self.p()],
+            &serde_json::to_vec(&profile).unwrap(),
+        );
+        let digest = plan["plan_digest"].as_str().unwrap().to_string();
+        self.call(
+            &[
+                "project-apply",
+                self.p(),
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                REF,
+            ],
+            &serde_json::to_vec(&plan).unwrap(),
+        );
+    }
+
+    /// Runs the command a step of `project-update-plan` prints, exactly as printed, with the
+    /// permission reference in place of the one placeholder.
+    pub fn apply_step(&self, step: &Value) -> Value {
+        let argv: Vec<String> = step["apply"]["argv"]
+            .as_array()
+            .unwrap_or_else(|| panic!("the step prints a command: {step}"))
+            .iter()
+            .map(|w| w.as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(argv[0], "moai", "{argv:?}");
+        let args: Vec<&str> = argv[1..]
+            .iter()
+            .map(|w| {
+                if w == "<permission-reference>" {
+                    REF
+                } else {
+                    w.as_str()
+                }
+            })
+            .collect();
+        let stdin = match &step["apply"]["stdin"] {
+            Value::Null => Vec::new(),
+            v => serde_json::to_vec(v).unwrap(),
+        };
+        self.run_stdin(&args, &stdin)
+    }
+
     pub fn apply(&self, digest: &str) -> Value {
         self.run(&[
             "go-state-apply",
