@@ -1,7 +1,8 @@
 //! `project-update-plan` (#2936 S1): one read-only preview of the project update, grouped into
 //! the three phases of the user's UPDATE flow (#2936 comment 6876720048): `backup` (the
 //! Go-generation state moves aside), `install` (this generation's managed files), `merge`
-//! (asking which backed-up settings and instructions come back; a later slice).
+//! (the text of `AGENTS.local.md` comes back into `AGENTS.md`, #2936 R10; the other backed-up
+//! settings and instructions are a later slice).
 //!
 //! Every step calls an existing plan in this process — `go_state::plan`, `profile::plan`,
 //! `generation::generation_plan`, `claude::settings_plan_in`, `github_templates::github_plan`
@@ -9,6 +10,7 @@
 //! `moai` whose one placeholder is `<permission-reference>`. Nothing is written here. One
 //! step's error makes that step `blocked` and the others still run.
 
+use crate::agents_local_merge;
 use crate::claude::{self, SettingsScope};
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
@@ -35,7 +37,11 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
      files), Claude Code settings, GitHub templates; host bundles for .codex, .agents and .omp \
      are a later slice (#2936 S3)";
-const MERGE_REASON: &str = "merge candidates are a later slice (#2936 S1f)";
+/// Why the merge step waits while the generation step has files to write: the merge reads and
+/// writes `AGENTS.md`, whose bytes that step's digest binds.
+pub const AFTER_INSTALL: &str = "re-run after the install phase";
+const MERGE_REASON: &str = "the text of AGENTS.local.md merges into AGENTS.md (#2936 R10); other \
+     backed-up settings and instructions are a later slice (#2936 S1f)";
 
 /// Step states from least to most severe; a phase takes its worst step's state.
 /// `skip_in_use` (a file a running session reads, #2936 S2b) is reserved: this slice never
@@ -565,6 +571,54 @@ fn install_steps(
     ]
 }
 
+/// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
+/// phase has a move to make, and while the generation step has files to write.
+fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
+    const NAME: &str = "agents-local-merge";
+    if backup.iter().any(|s| s.state == "needs_decision") {
+        return vec![Step::waiting(NAME, "blocked", AFTER_BACKUP)];
+    }
+    if install
+        .iter()
+        .any(|s| s.name == "generation" && s.state == "ready")
+    {
+        return vec![Step::waiting(NAME, "blocked", AFTER_INSTALL)];
+    }
+    vec![or_blocked(NAME, agents_local_merge_step(root, shown))]
+}
+
+fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
+    let plan = agents_local_merge::plan(root)?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let reason = plan["reason"].as_str().unwrap_or_default().to_string();
+    let state = match plan["action"].as_str() {
+        Some("merge") => "needs_decision",
+        Some("unchanged") => "unchanged",
+        Some("none") => "skip",
+        Some("conflict") => "conflict",
+        _ => "blocked",
+    };
+    let apply = match (&digest, state) {
+        (Some(d), "needs_decision") => Some((argv("agents-merge-apply", shown, d), Value::Null)),
+        _ => None,
+    };
+    Ok(Step {
+        name: "agents-local-merge",
+        state,
+        reason,
+        preview: json!({
+            "action": plan["action"],
+            "source": plan["source"],
+            "target": plan["target"],
+            "body": plan["body"],
+            "commit_notice": plan["commit_notice"],
+            "secret_suspects": plan["secret_suspects"],
+        }),
+        plan_digest: digest,
+        apply,
+    })
+}
+
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
@@ -580,9 +634,11 @@ pub fn plan(project: &Path) -> Result<Value> {
     } else {
         install_steps(&root, &shown, &detected)
     };
+    let merge = merge_steps(&root, &shown, &backup, &install);
     let all_unchanged = backup
         .iter()
         .chain(&install)
+        .chain(&merge)
         .all(|s| s.state == "unchanged" || s.state == "skip");
     let phase = |name: &str, reason: &str, steps: &[Step]| {
         json!({
@@ -599,9 +655,7 @@ pub fn plan(project: &Path) -> Result<Value> {
         "phases": [
             phase("backup", BACKUP_REASON, &backup),
             phase("install", INSTALL_REASON, &install),
-            // The merge phase (asking which backed-up settings and instructions come back)
-            // is a later slice; it is never counted in `all_unchanged`.
-            {"phase": "merge", "state": "not_run", "reason": MERGE_REASON, "candidates": []},
+            phase("merge", MERGE_REASON, &merge),
         ],
         "all_unchanged": all_unchanged,
     }))

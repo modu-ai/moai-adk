@@ -2345,6 +2345,58 @@ fn real_dir(project: &Path, rel: &str) -> bool {
             .unwrap_or(false)
 }
 
+/// Where a committed apply put one root instruction file (#2936 R10): the project-relative path
+/// of the copy in the backup, the apply's UTC stamp and the sha256 the receipt recorded.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BackedUpRootFile {
+    pub backup: String,
+    pub rel: String,
+    pub sha256: String,
+}
+
+/// The newest committed apply that moved the root instruction file `name` into its backup's
+/// `root-files/` and has not been reverted. Reads only; `Ok(None)` when no apply did (also
+/// when an apply's receipt cannot be read: it names nothing this function may trust). A link
+/// on the way to the backups is an error.
+pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUpRootFile>> {
+    if !ROOT_FILES.contains(&name) {
+        return Err(format!("{name}: not a root instruction file"));
+    }
+    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let backups = format!("{MOAI_DIR}/backups");
+    refuse_linked(&project, &backups)?;
+    let Ok(entries) = fs::read_dir(project.join(&backups)) else {
+        return Ok(None);
+    };
+    let mut stamps: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter(|n| valid_stamp(n))
+        .collect();
+    // The stamp is a fixed-width UTC time, so the greatest name is the newest apply.
+    stamps.sort_unstable_by(|a, b| b.cmp(a));
+    for stamp in stamps {
+        let Ok((receipt, _, base)) = read_receipt(&project, &stamp) else {
+            continue;
+        };
+        if receipt.state != "committed" {
+            continue;
+        }
+        if let Some(m) = receipt
+            .moves
+            .iter()
+            .find(|m| m.kind == "root_file" && m.path == name && m.moved)
+        {
+            return Ok(Some(BackedUpRootFile {
+                rel: backup_rel_of(&format!("{base}/backups/{stamp}"), m),
+                backup: stamp,
+                sha256: m.sha256.clone(),
+            }));
+        }
+    }
+    Ok(None)
+}
+
 /// Read-only: what a revert of one apply would do.
 pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
     let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
