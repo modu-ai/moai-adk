@@ -463,10 +463,14 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     } else {
         (BTreeMap::new(), Vec::new())
     };
+    // The table lookup ignores ASCII case (`Versions` is a Rust name too), so this does as well.
     let moves = |n: &str| {
-        entries
-            .iter()
-            .any(|e| e["name"] == n && e["action"] == "move")
+        entries.iter().any(|e| {
+            e["action"] == "move"
+                && e["name"]
+                    .as_str()
+                    .is_some_and(|x| x.eq_ignore_ascii_case(n))
+        })
     };
     let stub = if listed && !moved {
         stub_plan(&old, moves("versions") && moves("path"))

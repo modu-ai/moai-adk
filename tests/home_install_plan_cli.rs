@@ -531,6 +531,26 @@ fn install_does_not_repoint_a_stub_when_versions_stays() {
     assert_eq!(repoint(&staying), json!(false), "{staying}");
 }
 
+// Codex P2 4576239282 on #3001: the table lookup ignores ASCII case, so a `Versions` folder is a
+// Rust name that moves, and the stub plan must agree (on a case-insensitive volume such as default
+// APFS the link below reaches it by the lowercase spelling).
+#[test]
+fn install_repoints_a_stub_when_versions_moves_under_another_case() {
+    let (_d, home) = rust_home();
+    let version_bin = home.join(".moai-cli/versions/1.0.0/bin/moai-cli");
+    symlink(&version_bin, home.join(".moai-cli/path/moai-cli")).unwrap();
+    fs::rename(
+        home.join(".moai-cli/versions"),
+        home.join(".moai-cli/Versions"),
+    )
+    .unwrap();
+    let p = plan(&home);
+    assert_eq!(act(&p, "Versions").0, "move", "{p}");
+    let stub = p["stub"].as_array().unwrap();
+    let link = stub.iter().find(|e| e["name"] == "moai-cli").unwrap();
+    assert_eq!(link["repoint"], json!(true), "{p}");
+}
+
 // #2871 U3c-pre (plan 5.1): the apply creates the install journal folder (for its lock and its
 // manifest) before it re-plans; that arrival must not change the digest it compares. The folder
 // is still listed, as kept.
