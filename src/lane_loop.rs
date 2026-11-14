@@ -53,6 +53,11 @@ pub const STOP_STDIN_LIMIT: u64 = 64 * 1024;
 /// hook ignores `stop_hook_active` and keeps its own bound). A new next task starts at zero.
 pub const STOP_BLOCK_CAP: u32 = 48;
 
+/// Blocks since the hook last let a turn end, whatever the next task (#2926 audit B1: two next
+/// tasks that alternate reset [`STOP_BLOCK_CAP`] each time). The stop after this many blocks
+/// passes, and any pass starts the count again.
+pub const STOP_TOTAL_CAP: u32 = 96;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Host {
     Claude,
@@ -269,6 +274,9 @@ pub struct StopState {
     /// The last stop blocked on an unknown reading; the next unknown one passes.
     #[serde(default)]
     pub unknown_blocked: bool,
+    /// Blocks of any kind since the last pass ([`STOP_TOTAL_CAP`]).
+    #[serde(default)]
+    pub since_pass: u32,
 }
 
 /// The lane's Stop decision: the reason to keep working, or `None` to let the turn end.
@@ -279,13 +287,27 @@ pub struct StopState {
 /// - no open pull request and no startable Issue (the end condition, as `lane_next` reads it)
 ///   → pass;
 /// - unknown (no reading, or a partial reading with no next task) → block once, then pass;
-/// - [`STOP_BLOCK_CAP`] blocks in a row for the same next task → pass.
+/// - [`STOP_BLOCK_CAP`] blocks in a row for the same next task → pass;
+/// - [`STOP_TOTAL_CAP`] blocks of any kind since the last pass → pass.
 pub fn stop_decision(
     lane: &str,
     repo: &str,
     reading: &Reading,
     state: &mut StopState,
 ) -> Option<String> {
+    if state.since_pass >= STOP_TOTAL_CAP {
+        state.since_pass = 0;
+        return None;
+    }
+    let reason = next_block(lane, repo, reading, state);
+    state.since_pass = match reason {
+        Some(_) => state.since_pass + 1,
+        None => 0,
+    };
+    reason
+}
+
+fn next_block(lane: &str, repo: &str, reading: &Reading, state: &mut StopState) -> Option<String> {
     let known = match reading {
         Reading::Snapshot(s) => {
             let v = crate::lane_next::decide(lane, s);
@@ -844,6 +866,36 @@ mod tests {
         assert_eq!(st.blocks, 1);
     }
 
+    /// #2926 audit B1: two next tasks that alternate never reach the per-task cap, so the total
+    /// since the last pass bounds them: the 96th stop blocks, the 97th passes, the next starts
+    /// again.
+    #[test]
+    fn alternating_next_tasks_pass_at_the_total_cap() {
+        let mut st = StopState::default();
+        for i in 0..STOP_TOTAL_CAP {
+            let r = stop_decision("a", "o/r", &issue(7 + u64::from(i % 2)), &mut st);
+            assert!(r.is_some(), "block {}", i + 1);
+        }
+        assert_eq!((st.blocks, st.since_pass), (1, STOP_TOTAL_CAP));
+        assert_eq!(stop_decision("a", "o/r", &issue(7), &mut st), None, "97th");
+        assert_eq!(st.since_pass, 0);
+        assert!(stop_decision("a", "o/r", &issue(8), &mut st).is_some());
+        assert_eq!(st.since_pass, 1);
+        // Unknown blocks count too, and a pass of any kind starts the total again.
+        let mut st = StopState {
+            since_pass: STOP_TOTAL_CAP - 1,
+            ..StopState::default()
+        };
+        assert!(stop_decision("a", "o/r", &Reading::Unknown, &mut st).is_some());
+        assert_eq!(stop_decision("a", "o/r", &issue(7), &mut st), None);
+        let mut st = StopState {
+            since_pass: 5,
+            ..StopState::default()
+        };
+        assert_eq!(stop_decision("a", "o/r", &snap(json!({})), &mut st), None);
+        assert_eq!(st.since_pass, 0);
+    }
+
     #[test]
     fn an_unknown_reading_blocks_once_then_passes() {
         let mut st = StopState::default();
@@ -906,6 +958,16 @@ mod tests {
         .unwrap();
         assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
         assert!(!outside.path().join("a.json").exists());
+        // The state root itself is a link (#2926 audit N3): nothing is created behind it.
+        let root = dir.path().join("p3");
+        let state_root = crate::state_root::path(&root, "");
+        std::fs::create_dir_all(state_root.parent().unwrap()).unwrap();
+        let elsewhere = outside.path().join("root");
+        std::fs::create_dir(&elsewhere).unwrap();
+        symlink(&elsewhere, &state_root).unwrap();
+        assert_eq!(crate::state_root::path(&root, ""), state_root);
+        assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
+        assert!(!elsewhere.join("lane-stop-hook").exists());
     }
 
     #[test]

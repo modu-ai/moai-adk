@@ -689,7 +689,8 @@ enum Command {
     /// reads the Stop input on stdin (64 KiB, dropped), reads the lane's next task once
     /// (`lane-next`, or `--snapshot`) and prints only the Codex answer — `{"decision":"block",
     /// "reason":…}` while the lane has work or open pull requests remain, nothing at the end
-    /// condition, after 48 blocks in a row for one task, or on the second unknown reading.
+    /// condition, after 48 blocks in a row for one task or 96 blocks since the last pass, or
+    /// on the second unknown reading.
     LaneStopHook {
         /// The lane name as it appears in claims (`session=<lane>`).
         #[arg(long)]

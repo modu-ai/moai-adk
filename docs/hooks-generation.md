@@ -106,7 +106,8 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - 내 일은 없고 열린 PR 이 남았으면 block, 이유는 `moai lane-next --lane <lane> --repo <repo> --wait 1800` 실행(Q2 기본 (a)).
   - 열린 PR 0 이고 시작할 Issue 0(끝 조건, 지금은 `lane-next` 가 읽은 그대로)이면 아무것도 내지 않고 exit 0.
   - 읽기 실패·시간 초과·일부만 읽고 다음 일 없음 = 모름 → 한 번 block, 다음 멈춤은 통과.
-  - 같은 다음 일에 연속 48번 block 하면 49번째부터 통과. 다음 일이 바뀌면 0부터. 횟수는 `<state root>/lane-stop-hook/<lane>.json`; state root 가 없거나 링크라 셀 수 없으면 block 하지 않는다.
+  - 같은 다음 일에 연속 48번 block 하면 49번째부터 통과. 다음 일이 바뀌면 0부터.
+  - 다음 일과 상관없이 마지막 통과 뒤 block 이 96번이면 97번째는 통과하고, 어떤 통과든 이 총수를 0으로 되돌린다(두 일이 번갈아 나와 위 상한이 매번 0이 되는 경우의 한도, #2926 감사 B1). 횟수는 `<state root>/lane-stop-hook/<lane>.json`; state root 가 없거나 링크라 셀 수 없으면 block 하지 않는다.
   - 레인·저장소 형식이 틀리거나 명령줄이 깨지면 hook 비차단 오류(exit 1, stdout 비움).
 
 ## 5. 출처 (확인일 2026-11-09)

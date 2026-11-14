@@ -306,3 +306,19 @@ fn generated_stop_command_passes_after_48_blocks_in_a_row() {
     let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
     assert_eq!(st["blocks"], json!(1));
 }
+
+/// #2926 audit B1: two next tasks that alternate block 96 stops, and the 97th passes.
+#[test]
+fn alternating_next_tasks_pass_after_96_blocks() {
+    let f = setup();
+    install(&f, &LANE);
+    let snapshots = ["work.json", "work_other.json"];
+    for i in 0..96 {
+        block_reason(&stop(&f, snapshots[i % 2], STOP_INPUT).1);
+    }
+    let path = state_file(&f);
+    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(st["since_pass"], json!(96));
+    assert_eq!(stop(&f, "work.json", STOP_INPUT), (0, String::new())); // 97th
+    block_reason(&stop(&f, "work_other.json", STOP_INPUT).1);
+}
