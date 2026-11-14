@@ -621,3 +621,59 @@ fn the_audit_rules_apply_to_the_verdict_head_of_a_delta() {
     ]);
     assert_eq!(stopped(&gate(&s)), (true, String::new()));
 }
+
+fn note(id: u64, body: &str) -> Value {
+    json!({"id": id, "body": body})
+}
+
+/// #2860 rule 1 (shell owner_ok.py): a leader handoff whose first line names an allowed claim
+/// moves it to the named lane; the handoff must come after the claim, name an allowed claim,
+/// say `by=leader`, and sit on the first line. The latest handoff wins.
+#[test]
+fn g2_a_leader_handoff_moves_an_allowed_claim() {
+    let mut s = passing();
+    let handoff = "moai-claim-handoff: comment=100 to=agent-27 by=leader\n\nleader";
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        note(150, handoff),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, "".into()), "{}", gate(&s));
+    // Not on the first line, not by the leader, before the claim, or naming another claim:
+    // the claim stays with agent-10 and agent-27's verdict stops at G2.
+    for (id, body) in [
+        (
+            150,
+            "leader note\nmoai-claim-handoff: comment=100 to=agent-27 by=leader",
+        ),
+        (
+            150,
+            "moai-claim-handoff: comment=100 to=agent-27 by=agent-8",
+        ),
+        (90, handoff),
+        (150, "moai-claim-handoff: comment=101 to=agent-27 by=leader"),
+        (150, "moai-claim-handoff: comment=100 to=agent 27 by=leader"),
+    ] {
+        s["comments"] = json!([
+            claim(100, "agent-10", H),
+            note(id, body),
+            verdict(200, "agent-27", H, "PASS")
+        ]);
+        assert_eq!(stopped(&gate(&s)), (false, "G2".into()), "{body}");
+    }
+    // The latest handoff wins: moved to agent-27, then on to agent-9.
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        note(150, handoff),
+        note(160, "moai-claim-handoff: comment=100 to=agent-9 by=leader"),
+        verdict(200, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        note(150, handoff),
+        note(160, "moai-claim-handoff: comment=100 to=agent-9 by=leader"),
+        verdict(200, "agent-9", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, "".into()));
+}

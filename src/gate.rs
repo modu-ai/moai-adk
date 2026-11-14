@@ -346,8 +346,30 @@ fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
     Ok((base, head))
 }
 
+/// `(claim id, lane)` from a comment whose first line is a leader handoff,
+/// `moai-claim-handoff: comment=<id> to=<lane> by=leader` (the lane is letters, digits and
+/// `-`). Any other first line, or the line later in the body, is not a handoff.
+pub fn leader_handoff(body: &str) -> Option<(u64, String)> {
+    let first = body.lines().next()?;
+    let rest = first.strip_prefix("moai-claim-handoff: comment=")?;
+    let (id, rest) = rest.split_once(' ')?;
+    let id: u64 = id.parse().ok()?;
+    let rest = rest.strip_prefix("to=")?;
+    let (lane, rest) = rest.split_once(' ')?;
+    if lane.is_empty()
+        || !lane
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+    {
+        return None;
+    }
+    // The shell rule matched the line's start; anything after `by=leader` is ignored.
+    rest.starts_with("by=leader")
+        .then(|| (id, lane.to_string()))
+}
+
 /// G2: the last verdict's auditor holds the PR's lowest audit claim or the lowest claim on the
-/// current head. No claim at all passes (nothing to check).
+/// current head, or the lane a leader handoff moved one of those to. No claim at all passes.
 fn g2(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     let claims = audit_claims(&s.comments);
     if claims.is_empty() {
@@ -361,10 +383,23 @@ fn g2(s: &Snapshot, judged: &str) -> Result<(), Stop> {
         .map(|c| (c.id, &c.body))
         .max_by_key(|(id, _)| *id)
         .ok_or_else(|| stop("no verdict".into()))?;
-    let mut allowed = vec![&claims[0]];
+    let mut allowed: Vec<(u64, String, String)> = vec![claims[0].clone()];
     if let Some(on_head) = claims.iter().find(|c| c.2 == judged) {
         if on_head.0 != claims[0].0 {
-            allowed.push(on_head);
+            allowed.push(on_head.clone());
+        }
+    }
+    // #2860 rule 1 (shell owner_ok.py): a leader handoff moves an allowed claim to another
+    // lane. Only a comment whose first line is `moai-claim-handoff: comment=<id> to=<lane>
+    // by=leader`, that names an allowed claim and comes after it, counts; the latest one wins.
+    let mut by_id: Vec<&Comment> = s.comments.iter().collect();
+    by_id.sort_by_key(|c| c.id);
+    for c in by_id {
+        let Some((claim, lane)) = leader_handoff(&c.body) else {
+            continue;
+        };
+        if let Some(a) = allowed.iter_mut().find(|a| a.0 == claim && c.id > claim) {
+            a.1 = lane;
         }
     }
     let names = allowed
