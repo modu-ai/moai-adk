@@ -674,6 +674,8 @@ fn a_passing_draft_is_marked_ready_then_merged() {
 fn a_draft_that_cannot_be_marked_ready_is_not_merged() {
     for response in [
         ok(json!({"errors": [{"message": "no"}]})),
+        // An answer without errors whose pull request is still a draft (#2869 audit N1).
+        ok(json!({"data": {"markPullRequestReadyForReview": {"pullRequest": {"isDraft": true}}}})),
         // GraphQL may answer partial data with errors: still not ready enough to merge.
         ok(json!({"errors": [{"message": "partial"}],
             "data": {"markPullRequestReadyForReview": {"pullRequest": {"isDraft": false}}}})),
@@ -840,4 +842,48 @@ fn the_loop_merges_a_tip_only_update_without_a_new_verdict() {
         "{out}"
     );
     assert!(writes(&t).is_empty());
+}
+
+/// #2869 audit B1: the leader runs the usual command with `--dry-run` added, so the permission
+/// reference is present. The dry run must still stop at its own row: one row per pull request,
+/// only GET requests sent, and the recorded reads used up exactly (a fall-through into
+/// gate-merge would read the remote PR again and write).
+#[test]
+fn a_dry_run_with_a_permission_reference_still_writes_nothing() {
+    for overlap in [false, true] {
+        let (dir, a, b) = repo(overlap);
+        let cs = comments(&b, &a, "agent-10", None);
+        let mut ex = vec![list(
+            json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+        )];
+        ex.extend(reads(&dir, &b, &cs));
+        if overlap {
+            ex.push(marker_read(&cs));
+        }
+        let t = RecordedTransport::new(ex);
+        let out = once(
+            &target(&dir),
+            "fixture-approved",
+            false,
+            true,
+            &t,
+            &t,
+            &NoClock,
+        )
+        .unwrap();
+        let rows = out["pull_requests"].as_array().unwrap();
+        assert_eq!(rows.len(), 1, "{out}");
+        let want = if overlap {
+            "would_update_branch"
+        } else {
+            "would_merge"
+        };
+        assert_eq!(rows[0]["outcome"], json!(want), "{out}");
+        assert!(
+            t.sent.borrow().iter().all(|r| r.method == "GET"),
+            "{:?}",
+            writes(&t)
+        );
+        assert_eq!(t.remaining(), 0);
+    }
 }

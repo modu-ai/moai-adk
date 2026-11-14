@@ -903,3 +903,61 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         auto_delta,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git_in(dir: &Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.invalid",
+                "-c",
+                "gc.auto=0",
+                "-c",
+                "maintenance.auto=false",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    fn commit_lib(dir: &Path, text: &str, msg: &str) -> String {
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("src/lib.rs"), text).unwrap();
+        git_in(dir, &["add", "-A"]);
+        git_in(dir, &["commit", "-q", "-m", msg]);
+        git_in(dir, &["rev-parse", "HEAD"])
+    }
+
+    /// #2869 audit B2: the PR's added module lines count only while the tree they are checked
+    /// against still has them. Checked against a tree without the PR's `pub mod b;` (the tip's,
+    /// standing in for a merge that lost the line), the overlap is not excused.
+    #[test]
+    fn a_module_line_missing_from_the_tree_is_not_kept() {
+        let tmp = tempfile::tempdir().unwrap();
+        let d = tmp.path();
+        git_in(d, &["init", "-q", "-b", "main"]);
+        let base = commit_lib(d, "pub mod a;\n\npub mod z;\n", "base");
+        git_in(d, &["checkout", "-q", "-b", "pr"]);
+        let head = commit_lib(d, "pub mod a;\npub mod b;\n\npub mod z;\n", "pr");
+        git_in(d, &["checkout", "-q", "main"]);
+        let tip = commit_lib(d, "pub mod a;\n\npub mod z;\npub mod zz;\n", "tip");
+        let tree_of = |c: &str| git_in(d, &["rev-parse", &format!("{c}^{{tree}}")]);
+        // The head's own tree has the line: kept.
+        assert!(lib_mods_only_kept(d, &tree_of(&head), &base, &head).unwrap());
+        // The tip's tree lacks it: not kept, so G6 stops on the overlap.
+        assert!(!lib_mods_only_kept(d, &tree_of(&tip), &base, &head).unwrap());
+    }
+}
