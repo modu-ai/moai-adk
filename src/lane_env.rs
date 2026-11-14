@@ -13,6 +13,7 @@
 //!   registry (`registry/src`), else the shared `<base>/moai-rc-product-cargo` when that does,
 //!   else it is left unset (cargo's own default) and a comment line says why. Nothing is created
 //!   or copied: the command only reads.
+//! - `CARGO_INCREMENTAL=0` always (#2930): incremental compilation is off for lane builds.
 //! - `<base>` is `/tmp` on Unix (the folder lanes already use) and the system temporary folder
 //!   on Windows, or `--base <absolute folder>`.
 //!
@@ -155,6 +156,11 @@ pub fn render(lane: &str, env: &LaneEnv) -> String {
         "export CARGO_TARGET_DIR={}\n",
         quote(&env.target_dir)
     ));
+    // #2930: incremental output only grows the shared build folder and cannot be cached
+    // (Cargo: `CARGO_INCREMENTAL` "when set to 0 it will force disabling it",
+    // doc.rust-lang.org/cargo/reference/environment-variables.html; sccache README:
+    // "Incrementally compiled crates cannot be cached").
+    out.push_str("export CARGO_INCREMENTAL=0\n");
     match &env.cargo_home {
         Some(home) => {
             out.push_str(&format!("# CARGO_HOME: {}\n", env.cargo_home_why));
@@ -273,6 +279,7 @@ mod tests {
         let text = render("a", &e);
         assert!(text.contains("export CARGO_TARGET_DIR='/tmp/it'\\''s here/moai-rc-target-a'\n"));
         assert!(!text.contains("export CARGO_HOME"));
+        assert_eq!(text.matches("export CARGO_INCREMENTAL=0\n").count(), 1);
         for line in text.lines() {
             assert!(
                 line.starts_with('#') || line.starts_with("export "),
