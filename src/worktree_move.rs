@@ -180,7 +180,7 @@ pub fn default_root() -> Result<PathBuf> {
     if !home.is_absolute() {
         return Err("HOME is not an absolute path; pass --root".into());
     }
-    Ok(home.join(crate::HOME_STATE_DIR).join("worktrees"))
+    Ok(crate::home_root::path(&home).join("worktrees"))
 }
 
 /// The plan for the clone holding `project`; `root` defaults to [`default_root`].
