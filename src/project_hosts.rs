@@ -167,10 +167,13 @@ fn codex_config_step(root: &Path, shown: &str, config_home: Result<PathBuf, Stri
     let Some(request) = desired.as_object() else {
         return HostStep::bare(NAME, "blocked", "the config request is not an object");
     };
-    let plan = match codex_config::config_plan(root, &home, request) {
-        Ok(p) => p,
-        Err(e) => return HostStep::bare(NAME, "blocked", &e),
-    };
+    match codex_config::config_plan(root, &home, request) {
+        Ok(plan) => config_from_plan(shown, &desired, &plan),
+        Err(e) => HostStep::bare(NAME, "blocked", &e),
+    }
+}
+
+fn config_from_plan(shown: &str, desired: &Value, plan: &Value) -> HostStep {
     let digest = plan["plan_digest"].as_str().map(String::from);
     let (state, reason) = match plan["action"].as_str() {
         Some("create" | "update") => ("ready", "MoAI status line to write"),
@@ -199,7 +202,7 @@ fn codex_config_step(root: &Path, shown: &str, config_home: Result<PathBuf, Stri
         _ => None,
     };
     HostStep {
-        name: NAME,
+        name: "codex-config",
         state,
         reason: reason.into(),
         preview: json!({
@@ -441,5 +444,33 @@ mod tests {
         );
         assert_eq!(s.state, "blocked");
         assert!(s.apply.is_none() && s.plan_digest.is_none());
+    }
+    fn config_plan(action: &str) -> Value {
+        json!({"action": action, "plan_digest": "sha256:fixture", "config_path": ".codex/config.toml",
+               "conflicts": [], "status_line": {}, "status_line_unverified": {}})
+    }
+
+    /// The config actions: write only for create and update, the stdin carries the one key.
+    #[test]
+    fn the_config_actions_set_the_step_state() {
+        for (action, state) in [
+            ("create", "ready"),
+            ("update", "ready"),
+            ("unchanged", "unchanged"),
+            ("conflict", "conflict"),
+            ("something-new", "blocked"),
+        ] {
+            let s = config_from_plan("/p", &codex_config_request(), &config_plan(action));
+            assert_eq!(s.state, state, "{action}");
+            match s.apply {
+                Some((argv, stdin)) => {
+                    assert_eq!(state, "ready", "{action}");
+                    assert_eq!(&argv[..2], ["moai", "codex-config-apply"]);
+                    assert_eq!(stdin, json!({"tui.status_line": "moai"}));
+                    assert_eq!(argv.last().map(String::as_str), Some(PLACEHOLDER));
+                }
+                None => assert_ne!(state, "ready", "{action}"),
+            }
+        }
     }
 }

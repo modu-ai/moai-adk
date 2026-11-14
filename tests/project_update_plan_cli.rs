@@ -1216,3 +1216,26 @@ fn a_linked_omp_folder_blocks_the_agents_step_and_nothing_lands_beyond_it() {
     assert_eq!(s["apply"], Value::Null, "{s}");
     assert!(fs::read_dir(&beyond).unwrap().next().is_none());
 }
+
+#[test]
+fn a_status_line_the_user_changed_after_the_apply_is_kept_and_stays_byte_identical() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    assert_eq!(
+        fx.apply_step(step(&plan, "codex-config"))["ok"],
+        json!(true)
+    );
+    let mine = "[tui]\nstatus_line = [\"model\"]\n";
+    fx.write(".codex/config.toml", mine);
+    let before = fx.tree();
+    let again = fx.plan();
+    let s = step(&again, "codex-config");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(before, fx.tree(), "the plan changed the user's file");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".codex/config.toml")).unwrap(),
+        mine
+    );
+}
