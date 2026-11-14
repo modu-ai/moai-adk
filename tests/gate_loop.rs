@@ -222,7 +222,7 @@ fn a_passing_pull_request_is_merged_and_a_draft_is_skipped() {
     let seen: std::rc::Rc<std::cell::RefCell<Vec<String>>> = Default::default();
     let keep = seen.clone();
     moai_cli::progress::install(Box::new(move |l| keep.borrow_mut().push(l.to_string())));
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock);
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock);
     moai_cli::progress::uninstall();
     let out = out.unwrap();
     assert_eq!(
@@ -251,7 +251,7 @@ fn a_code_overlap_updates_the_branch_once_per_head() {
         response: created(),
     });
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(
         out["pull_requests"][0]["outcome"],
         json!("updated_branch"),
@@ -280,7 +280,7 @@ fn a_code_overlap_updates_the_branch_once_per_head() {
     ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("already_updated"));
     assert!(writes(&t).is_empty());
 }
@@ -299,7 +299,7 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
         response: created(),
     });
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("asked_auditor"));
     assert_eq!(writes(&t), vec!["POST /issues/9/comments"]);
 
@@ -311,7 +311,7 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
     ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("already_asked"));
     assert!(writes(&t).is_empty());
 }
@@ -326,12 +326,12 @@ fn a_head_not_fetched_is_skipped_and_no_permission_reads_nothing() {
     )];
     ex.extend(reads(&dir, missing, &cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("skipped"));
     assert!(writes(&t).is_empty());
 
     let t = RecordedTransport::new(vec![]);
-    assert!(once(&target(&dir), "", false, &t, &t, &NoClock).is_err());
+    assert!(once(&target(&dir), "", false, false, &t, &t, &NoClock).is_err());
     assert!(t.sent.borrow().is_empty());
 }
 
@@ -352,7 +352,7 @@ fn a_conflict_is_reported_not_updated() {
     )];
     ex.extend(reads(&dir, &b, &cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(
         out["pull_requests"][0]["outcome"],
         json!("stopped"),
@@ -375,7 +375,7 @@ fn a_red_tip_stops_the_loop_without_any_write() {
         ex.extend(reads(&dir, &b, &cs));
         ex[5] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
         let t = RecordedTransport::new(ex);
-        let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+        let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
         let row = &out["pull_requests"][0];
         assert_eq!(row["outcome"], json!("stopped"), "overlap={overlap} {out}");
         assert_eq!(row["rule"], json!("G8"), "overlap={overlap} {out}");
@@ -427,6 +427,7 @@ fn with_the_app_token_only_the_status_goes_through_the_app_transport() {
         &target(&dir),
         "fixture-approved",
         true,
+        false,
         &ops,
         &app,
         &NoClock,
@@ -457,7 +458,7 @@ fn a_merge_that_cannot_be_read_back_is_reported_uncertain() {
         response: ok(json!({})),
     });
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, &t, &t, &NoClock).unwrap();
+    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
     assert_eq!(
         out["pull_requests"][0]["outcome"],
         json!("uncertain"),
