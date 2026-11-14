@@ -3578,7 +3578,7 @@ mod help_rules {
     //! meeting it exactly, so every later S1 pull request moves names in and none can slip back;
     //! a rule every command meets is checked for all (the one-line about since S1b).
     use super::Cli;
-    use clap::CommandFactory;
+    use clap::{CommandFactory, FromArgMatches};
     use std::collections::BTreeSet;
 
     /// Commands whose every shown argument and option has a description (#2799 A 6865611250:
@@ -3635,9 +3635,6 @@ mod help_rules {
         "worktree-move-apply",
         "worktree-move-plan",
     ];
-
-    /// Commands whose `--help` carries an `Examples:` section (none yet at S1a).
-    const EXAMPLES_DONE: &[&str] = &[];
 
     fn words() -> Vec<String> {
         Cli::command()
@@ -3706,18 +3703,63 @@ mod help_rules {
         );
     }
 
+    /// The command as people see it: the layout `main` parses with (examples attached).
+    fn configured() -> clap::Command {
+        moai_cli::help::configure(Cli::command(), "moai", moai_cli::BUILD_VERSION, false)
+    }
+
+    /// Every command's `--help` carries an `Examples:` section (#2802 S1c).
     #[test]
-    fn examples_are_present_exactly_where_listed() {
-        let ok = meeting(|s| {
-            [s.get_after_help(), s.get_after_long_help()]
-                .into_iter()
-                .flatten()
-                .any(|t| t.to_string().contains("Examples:"))
-        });
-        assert_eq!(
-            ok,
-            set(EXAMPLES_DONE),
-            "EXAMPLES_DONE must list exactly the commands with examples"
+    fn every_command_has_examples() {
+        let cmd = configured();
+        let missing: Vec<_> = cmd
+            .get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .filter(|s| {
+                !s.get_after_long_help()
+                    .is_some_and(|t| t.to_string().starts_with("Examples:\n  moai "))
+            })
+            .map(|s| s.get_name().to_string())
+            .collect();
+        assert!(missing.is_empty(), "no examples: {missing:?}");
+    }
+
+    /// Each example names its own command or that command's pair, holds one to three lines,
+    /// and parses with this binary's command line (` < file` is standard input, not an
+    /// argument).
+    #[test]
+    fn every_example_parses() {
+        let mut failed = Vec::new();
+        for (word, examples) in moai_cli::help::EXAMPLES {
+            assert!(
+                (1..=3).contains(&examples.len()),
+                "{word}: {} examples",
+                examples.len()
+            );
+            for example in *examples {
+                // A usage placeholder such as `[PROJECT]` would parse as a value; examples
+                // carry real values or `<…>` placeholders only.
+                assert!(
+                    !example.contains('[') && !example.contains(']'),
+                    "{word}: `{example}`"
+                );
+                let args = example.split(" < ").next().unwrap();
+                let argv: Vec<&str> = std::iter::once("moai")
+                    .chain(args.split_whitespace())
+                    .collect();
+                let parsed = configured()
+                    .try_get_matches_from(&argv)
+                    .map_err(|e| e.kind())
+                    .and_then(|m| Cli::from_arg_matches(&m).map_err(|e| e.kind()));
+                if let Err(kind) = parsed {
+                    failed.push(format!("{word}: `{example}` -> {kind:?}"));
+                }
+            }
+        }
+        assert!(
+            failed.is_empty(),
+            "examples that do not parse:\n{}",
+            failed.join("\n")
         );
     }
 
