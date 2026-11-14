@@ -949,7 +949,12 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     let merge_base = git_ok(dir, &["merge-base", &tip, &head])?
         .trim()
         .to_string();
-    let pr_files = names(&git_ok(dir, &["diff", "--name-only", &merge_base, &head])?);
+    // `--no-renames`: a rename must list the old path too, or a tier-2 file moved into docs/
+    // would hide from the path rule that decides the audit tier (#2967 audit B1).
+    let pr_files = names(&git_ok(
+        dir,
+        &["diff", "--no-renames", "--name-only", &merge_base, &head],
+    )?);
     let authors = pr_authors(t, &base_url, dir, &merge_base, &head)?;
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
@@ -1013,7 +1018,10 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         (Some(b), true) => git_ok(dir, &["merge-base", b, &tip])?.trim().to_string(),
         _ => merge_base.clone(),
     };
-    let tip_files = names(&git_ok(dir, &["diff", "--name-only", &tip_since, &tip])?);
+    let tip_files = names(&git_ok(
+        dir,
+        &["diff", "--no-renames", "--name-only", &tip_since, &tip],
+    )?);
 
     let mut docs_lines_kept = Vec::new();
     let mut merged_manifest_ok = false;

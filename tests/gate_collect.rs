@@ -1688,3 +1688,59 @@ fn without_a_verdict_the_tip_changes_count_from_the_merge_base() {
     );
     assert_eq!(s.docs_lines_kept, vec!["docs/a.md".to_string()]);
 }
+
+/// #2967 audit B1: a rename lists the old path too. Otherwise a tier-2 file (the gate, the local
+/// check script) moved into `docs/` would look like a docs-only change, and the path rule that
+/// raises the audit tier would never see it. The same holds for the tip's changes (G6 overlap).
+#[test]
+fn a_rename_lists_the_old_path_so_the_tier2_rule_still_sees_it() {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let a = commit(
+        d,
+        &[
+            ("docs/a.md", "one\n"),
+            ("src/gate.rs", "the merge gate code\nsecond line\n"),
+            ("tools/local_check.sh", "local check script\nsecond line\n"),
+            ("src/hook.rs", "hook code\nsecond line\n"),
+        ],
+        "base",
+    );
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    // The destination folder is joined at run time: a literal `docs/x.txt` would read as a docs
+    // path the code reads (ci_scope_test).
+    let moved = |name: &str| format!("{}/{name}", "docs");
+    git_ok(d, &["mv", "src/gate.rs", &moved("gate.txt")]);
+    git_ok(
+        d,
+        &["mv", "tools/local_check.sh", &moved("local_check.txt")],
+    );
+    let b = commit(d, &[], "pr\n\nMoai-Claim: 9#555");
+    git_ok(d, &["checkout", "-q", "main"]);
+    git_ok(d, &["mv", "src/hook.rs", &moved("hook.txt")]);
+    let c = commit(d, &[], "tip");
+    let r = Repo { _dir: dir, a, b, c };
+    let body = format!("audit-tier: 0 docs only\n{PASS_BODY}");
+    let t = exchanges(&r.b, &r.c, vec![], &body);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    for old in ["src/gate.rs", "tools/local_check.sh"] {
+        assert!(
+            s.pr_files.iter().any(|f| f == old),
+            "{old} in {:?}",
+            s.pr_files
+        );
+    }
+    assert_eq!(s.body_tier, Some(0));
+    assert_eq!(gate::effective_tier(&s), 2);
+    // Tier 2 without a verdict stops at G1; before the fix this passed as tier 0.
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+    assert!(
+        s.tip_files_since_verdict_base
+            .iter()
+            .any(|f| f == "src/hook.rs"),
+        "{:?}",
+        s.tip_files_since_verdict_base
+    );
+}
