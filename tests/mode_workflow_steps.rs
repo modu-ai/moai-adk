@@ -919,3 +919,63 @@ fn timeout_takeover_without_a_terminal_list_uses_claim_timeout_check() {
         ],
     );
 }
+
+// #2933 (WF-OBS from a Codex run, #2899 comment 6880316209, items C1, C2, E1, L1): a lane that
+// got no assignment ended its turn on `LANE-BLOCKED kind=outside` and a lane started on a shared
+// `main` 1,070 commits behind. The agent workflow opens with a five-line summary that names the
+// existing steps instead of repeating them; a wait on the leader is `claim` or `decision`,
+// never `outside`; the order "fetch, then your own worktree" is in `state`; a leader reads a
+// lane screen only with `orca terminal read --screen`.
+#[test]
+fn agent_workflow_opens_with_the_leader_busy_summary_and_reads_screens_only_with_orca() {
+    let agent = workflow("mode-agent.md");
+    let top = &agent[agent.find("\n## ").expect("a first section") + 1..];
+    let top = &top[..top[3..].find("\n## ").map_or(top.len(), |i| i + 3)];
+    assert!(
+        top.starts_with("## When the leader is busy or does not answer\n"),
+        "the summary is the first section:\n{top}"
+    );
+    let items: Vec<&str> = top.lines().skip(1).filter(|l| !l.is_empty()).collect();
+    assert_eq!(items.len(), 5, "exactly five lines:\n{top}");
+    for (item, names) in items.iter().zip([
+        &["- ", "`claim`"][..],
+        &["- ", "`moai lane-next`", "self-claim"],
+        &["- ", "Do not end the turn", "`keep-going`"],
+        &["- ", "`wake`", "`loop_line`", "`goal-lines`"],
+        &["- ", "`kind=claim`", "`report`"],
+    ]) {
+        for n in names {
+            assert!(item.contains(n), "`{n}` in `{item}`");
+        }
+    }
+    assert_says(
+        &agent,
+        "report",
+        &[
+            "A lane waiting on the leader for a card assignment reports `kind=claim`, and one waiting for the leader's answer to a question reports `kind=decision`",
+            "`outside` is only for something outside the repository and the team, never for a wait on the leader",
+        ],
+    );
+    assert_says(
+        &agent,
+        "state",
+        &[
+            "run `git fetch`, then work in your own worktree",
+            "never start from the shared checkout's `main`",
+        ],
+    );
+    // The Orca section is kept identical in both mode workflows (#2516), so both carry it.
+    for text in [workflow("mode-leader.md"), agent] {
+        let orca = &text[text
+            .find("\n## Session control with Orca\n")
+            .expect("the Orca section")..];
+        let orca = &orca[..orca[3..].find("\n## ").map_or(orca.len(), |i| i + 3)];
+        for p in [
+            "Read a lane's screen only with `orca terminal read --screen`",
+            "if it cannot be read that way, report the lane as unconfirmed",
+            "never use a screenshot or computer use for it",
+        ] {
+            assert!(orca.contains(p), "the Orca section must say `{p}`:\n{orca}");
+        }
+    }
+}

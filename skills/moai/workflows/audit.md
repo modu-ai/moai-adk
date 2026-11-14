@@ -25,6 +25,8 @@ Findings from an independent context and an evidence-bound verdict.
    감사: agent-27 (예약 6863193225)
    ```
 
+9. **Audit tier.** The pull request body's first line names its tier, `audit-tier: 0|1|2` with the changed paths as the reason, and the gate's path rule raises it (`moai gate-check` reports `effective_tier`). Tier 0 (documents, wording and tests only) has no audit. Tier 1 (ordinary code) is a light review: read the change, run the pull request's tests, make no mutations, and block only on a contract violation, data loss or a security problem; every other finding is a note, not a FAIL. Tier 2 (HOME or project migration, secrets and keys, install scripts, the merge gate, hooks) is the full audit of this workflow. At either tier, check that the `local-check:` line's head equals the head of your verdict, and rerun `tools/local_check.sh` on that head when in doubt. The auditor or the leader may raise a tier by saying so on the pull request; the author then edits the body's line (user decisions 6877084436 and 6878414880, Issue #1975).
+
 The review package and the way a verdict reaches integration are described in the SYNC workflow (procedure steps 7 and 8).
 
 ## Review steps

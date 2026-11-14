@@ -1,8 +1,9 @@
-//! #2928 S-1 (user instruction 2026-11-14): line 3 of the Claude statusline is
-//! `🏷️ <leader|agent> | 🔋 CTX … | 🪫 Week …`, the same bytes under every language and width.
+//! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
+//! the Claude statusline starts with `🏷️ <leader|agent> | `, and line 3 is `🔋 CTX … | 🪫 Week …`
+//! without the tag, the same bytes under every language and width.
 //!
 //! The renderer has no language text and does not read `COLUMNS` (docs/rust-product-path.md,
-//! line 3), so "Korean and English, 80 and 40 columns" is proven as "byte-equal to the recorded
+//! line 1), so "Korean and English, 80 and 40 columns" is proven as "byte-equal to the recorded
 //! golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
 //! `LANG` ko_KR.UTF-8 / en_US.UTF-8 × `COLUMNS` 80 / 40 × plain (`NO_COLOR=1`) / truecolor
 //! (`COLORTERM=truecolor`, through a pipe as Claude Code reads it), and must print exactly the
@@ -131,7 +132,7 @@ fn strip_sgr(text: &str) -> String {
 }
 
 #[test]
-fn line3_tag_first_under_ko_en_and_80_40_columns() {
+fn line1_tag_first_under_ko_en_and_80_40_columns() {
     let manifest: Value =
         serde_json::from_slice(&std::fs::read(Path::new(FIXTURES).join("cases.json")).unwrap())
             .unwrap();
@@ -162,11 +163,20 @@ fn line3_tag_first_under_ko_en_and_80_40_columns() {
                         got, golden,
                         "{name} {variant} LANG={lang} COLUMNS={columns}"
                     );
-                    let line3 = strip_sgr(&got).lines().nth(2).map(str::to_string);
-                    let line3 = line3.unwrap_or_default();
+                    let text = strip_sgr(&got);
+                    let line1 = text.lines().next().unwrap_or_default();
                     assert!(
-                        line3.starts_with(want_tag),
+                        line1.starts_with(want_tag),
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
+                    );
+                    let line3 = text.lines().nth(2).unwrap_or_default();
+                    assert!(
+                        line3.starts_with("🔋 CTX: ") || line3.starts_with("🪫 CTX: "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"
+                    );
+                    assert!(
+                        !text.lines().skip(1).any(|l| l.contains("🏷️")),
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: tag after line 1"
                     );
                     runs += 1;
                 }
