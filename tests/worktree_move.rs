@@ -598,3 +598,31 @@ fn same_named_worktrees_in_two_places_block_each_other_in_the_plan() {
     assert_eq!(reasons(&p, &other), ["destination_collision"], "{p}");
     assert_eq!(p["totals"]["move"], json!(0));
 }
+
+/// #2934 S3 (#2930 R-3): a `--root` inside a Cargo build folder outside every worktree (a
+/// tagged `/tmp` build output, a crate's `target`) is refused like one inside a worktree.
+#[test]
+fn a_root_inside_a_cargo_build_folder_is_refused() {
+    let fx = fixture(&["clean"]);
+    let repo = fx.repo.to_str().unwrap();
+    let tagged = fx.base.join("tmp-target");
+    fs::create_dir_all(&tagged).unwrap();
+    fs::write(
+        tagged.join("CACHEDIR.TAG"),
+        "Signature: 8a477f597d28d172789f06886806bc55\n",
+    )
+    .unwrap();
+    let krate = fx.base.join("krate");
+    fs::create_dir_all(&krate).unwrap();
+    fs::write(krate.join("Cargo.toml"), "[package]\nname = \"k\"\n").unwrap();
+    for root in [tagged.join("roots"), krate.join("target/roots")] {
+        let r = root.to_str().unwrap();
+        let v = envelope(&run(&fx, &["worktree-move-plan", repo, "--root", r]));
+        assert_eq!(v["ok"], json!(false), "{r}: {v}");
+        assert!(v.to_string().contains("Cargo build folder"), "{r}: {v}");
+    }
+    let ok = fx.base.join("krate-roots");
+    let r = ok.to_str().unwrap();
+    let v = envelope(&run(&fx, &["worktree-move-plan", repo, "--root", r]));
+    assert_eq!(v["ok"], json!(true), "{r}: {v}");
+}
