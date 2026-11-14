@@ -41,12 +41,9 @@ pub fn note(text: &str) {
     });
 }
 
-/// [`note`] of one sentence in the sink's language, with `values` filled in (S6b). Nothing is
-/// formatted when no sink listens.
+/// [`note`] of one sentence in the sink's language, with `values` filled in (S6b).
 pub fn note_msg(msg: Msg, values: &[(&str, &str)]) {
-    if SINK.with(|s| s.borrow().is_some()) {
-        note(&say(msg, values));
-    }
+    note(&say(msg, values));
 }
 
 /// `msg` in the sink's language with `values` filled in: the text a progress line would show.

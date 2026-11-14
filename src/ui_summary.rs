@@ -823,6 +823,17 @@ ACTION   PATH              NOTE
         assert_eq!(done, "◆ x-apply\n완료\n");
     }
 
+    /// The action column is as wide as its widest cell or its head, whichever is wider: with
+    /// only short actions the head decides — six cells for `ACTION`, four for `동작`.
+    #[test]
+    fn the_action_head_width_counts_when_actions_are_short() {
+        let result = json!({"items": [{"path": "a", "action": "ok"}]});
+        let en = render("x.apply", &result, &utf8(), 80, None);
+        assert!(en.contains("\nACTION  PATH\n✓ ok    a\n"), "{en}");
+        let ko = render("x.apply", &result, &korean(), 80, None);
+        assert!(ko.contains("\n동작  경로\n✓ ok  a\n"), "{ko}");
+    }
+
     /// Korean lines fit the width by display cells (Hangul is two cells), the digest line
     /// excepted as in English (design 6, "폭").
     #[test]
