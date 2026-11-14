@@ -1,6 +1,7 @@
 //! `hygiene-plan` (#2934 S4a, #2930 R-4): which leftovers of lane work may move to the holding
 //! folder `<HOME>/.moai/holding/<UTC date>/`, from where a later purge deletes them after
-//! [`HOLDING_KEEP_SECS`]. Read-only; the apply and the purge are separate commands.
+//! [`HOLDING_KEEP_SECS`]. The plan is read-only; `hygiene-apply` (#2934 S4b, [`apply`]) moves
+//! what a matching plan holds, and the purge is a separate command.
 //!
 //! Two kinds, and the rule for each is not new here:
 //! - `worktree`: a linked worktree that `worktree-gc-plan` would remove (merged into the
@@ -231,6 +232,198 @@ pub fn plan(inp: &Inputs) -> Result<Value> {
         "items": items,
         "plan_digest": plan_digest,
         "writes": false,
+    }))
+}
+
+/// The first line of every `manifest.tsv`.
+pub const MANIFEST_HEADER: &str = "original\tholding\tkind\tbytes\treason\n";
+
+/// Refuses a path that is a symbolic link (an absent path passes).
+fn not_a_link(p: &Path) -> Result<()> {
+    match fs::symlink_metadata(p) {
+        Ok(m) if m.file_type().is_symlink() => Err(format!(
+            "{} is a symlink; refused, nothing was moved",
+            p.display()
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// Opens `p` without following a link at its last component.
+fn open_nofollow(o: &mut fs::OpenOptions, p: &Path) -> std::io::Result<fs::File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.custom_flags(libc::O_NOFOLLOW);
+    }
+    o.open(p)
+}
+
+/// Creates `manifest` with its header, or accepts an existing regular file as it is.
+fn start_manifest(manifest: &Path) -> Result<()> {
+    match open_nofollow(
+        fs::OpenOptions::new().write(true).create_new(true),
+        manifest,
+    ) {
+        Ok(mut f) => {
+            use std::io::Write;
+            f.write_all(MANIFEST_HEADER.as_bytes())
+                .and_then(|()| f.sync_data())
+                .map_err(|e| format!("manifest could not be written: {e}"))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            match fs::symlink_metadata(manifest) {
+                Ok(m) if m.is_file() => Ok(()),
+                _ => Err(format!(
+                    "{} is a symlink or not a file; refused, nothing was moved",
+                    manifest.display()
+                )),
+            }
+        }
+        Err(e) => Err(format!("manifest could not be created: {e}")),
+    }
+}
+
+/// Appends and flushes one manifest line; returns the file and its length before the line.
+fn record(manifest: &Path, line: &str) -> std::io::Result<(fs::File, u64)> {
+    use std::io::Write;
+    let mut f = open_nofollow(fs::OpenOptions::new().append(true), manifest)?;
+    let len = f.metadata()?.len();
+    f.write_all(line.as_bytes())?;
+    f.sync_data()?;
+    Ok((f, len))
+}
+
+/// Why `dir` must not move right now, checked just before the move: a process working in it
+/// or naming it ([`in_use`]), or one holding a file open inside it. An unknown fact refuses.
+fn busy_now(dir: &Path) -> Option<&'static str> {
+    match in_use(dir, &crate::worktree_gc::process_cwds(), &process_text()) {
+        None => return Some("in_use_unknown"),
+        Some(true) => return Some("in_use"),
+        Some(false) => {}
+    }
+    let canon = fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    match crate::worktree_gc::open_file_paths() {
+        None => Some("open_file_check_unavailable"),
+        Some(open) if open.iter().any(|p| p.starts_with(&canon)) => Some("file_open_in_use"),
+        Some(_) => None,
+    }
+}
+
+/// `hygiene.apply` (#2934 S4b): recomputes the plan with the same inputs and refuses before
+/// any write unless its digest equals `plan_digest` or the holding folder or its manifest is a
+/// link. Then each `hold` item, re-checked right before ([`busy_now`]), gets its manifest line
+/// written and flushed first and moves by one same-file-system `rename` into
+/// `<holding>/<n>-<name>` — never a copy; a failed rename (another file system included) skips
+/// the item and takes its line back. Moved worktrees are pruned from git's list.
+pub fn apply(inp: &Inputs, plan_digest: &str, permission_reference: &str) -> Result<Value> {
+    if !crate::contract::permission_reference_ok(permission_reference) {
+        return Err("permission reference required".into());
+    }
+    let fresh = plan(inp)?;
+    if fresh["plan_digest"].as_str() != Some(plan_digest) {
+        return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
+    }
+    let root = holding_root(inp.home);
+    let holding = root.join(utc_date(inp.now));
+    let manifest = holding.join("manifest.tsv");
+    for p in [&root, &holding, &manifest] {
+        not_a_link(p)?;
+    }
+    let items: Vec<&Value> = fresh["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|i| i["action"] == "hold")
+        .collect();
+    let (mut moved, mut skipped) = (Vec::new(), Vec::new());
+    let mut moved_worktree = false;
+    if !items.is_empty() {
+        fs::create_dir_all(&holding).map_err(|e| format!("holding folder: {e}"))?;
+        for p in [&root, &holding] {
+            not_a_link(p)?;
+        }
+        start_manifest(&manifest)?;
+    }
+    let mut n = fs::read_dir(&holding)
+        .map(|rd| {
+            rd.flatten()
+                .filter(|e| e.file_name() != "manifest.tsv")
+                .count()
+        })
+        .unwrap_or(0);
+    let deadline = Instant::now() + SIZE_BUDGET;
+    for it in &items {
+        let path = PathBuf::from(it["path"].as_str().unwrap_or_default());
+        let kind = it["kind"].as_str().unwrap_or_default();
+        let reason = it["reason"].as_str().unwrap_or_default();
+        let skip =
+            |why: String| json!({"path": path.to_string_lossy(), "kind": kind, "reason": why});
+        let name = path.file_name().map(|s| s.to_string_lossy().into_owned());
+        let shown = path.to_string_lossy();
+        if !fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir()) || name.is_none() {
+            skipped.push(skip("not_a_folder".into()));
+            continue;
+        }
+        if shown.contains(['\t', '\n']) {
+            skipped.push(skip("path_not_tsv_safe".into()));
+            continue;
+        }
+        if let Some(why) = busy_now(&path) {
+            skipped.push(skip(why.into()));
+            continue;
+        }
+        let dest = loop {
+            n += 1;
+            let d = holding.join(format!("{n}-{}", name.as_deref().unwrap_or_default()));
+            if fs::symlink_metadata(&d).is_err() {
+                break d;
+            }
+        };
+        let bytes = it["bytes"]
+            .as_u64()
+            .unwrap_or_else(|| bytes_under(std::slice::from_ref(&path), deadline).0);
+        let line = format!("{shown}\t{}\t{kind}\t{bytes}\t{reason}\n", dest.display());
+        let staged = record(&manifest, &line).ok();
+        if staged.is_none() {
+            skipped.push(skip("manifest_write_failed".into()));
+            continue;
+        }
+        if let Err(e) = fs::rename(&path, &dest) {
+            if let Some((f, len)) = staged {
+                let _ = f.set_len(len).and_then(|()| f.sync_data());
+            }
+            let why = if e.kind() == std::io::ErrorKind::CrossesDevices {
+                "other_file_system".to_string()
+            } else {
+                format!("rename_failed: {e}")
+            };
+            skipped.push(skip(why));
+            continue;
+        }
+        moved_worktree |= kind == "worktree";
+        moved.push(json!({
+            "original": shown,
+            "holding": dest.to_string_lossy(),
+            "kind": kind,
+            "bytes": bytes,
+            "reason": reason,
+        }));
+    }
+    let pruned = moved_worktree
+        && crate::worktree_gc::git_out(inp.project, &["worktree", "prune"]).is_some();
+    Ok(json!({
+        "schema_version": 1,
+        "status": if moved.is_empty() && skipped.is_empty() { "unchanged" } else if skipped.is_empty() { "applied" } else { "partial" },
+        "plan_digest": plan_digest,
+        "holding": holding.to_string_lossy(),
+        "manifest": manifest.to_string_lossy(),
+        "moved": moved,
+        "skipped": skipped,
+        "pruned": pruned,
+        "retry": "none: a skipped item is reported, never retried",
+        "network": "disabled",
+        "writes": !items.is_empty(),
     }))
 }
 

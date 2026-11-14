@@ -297,6 +297,8 @@ Internal
                           worktrees
   hygiene-plan            Preview what may move to the
                           holding folder
+  hygiene-apply           Move the previewed leftovers to
+                          the holding folder
   session                 Start a Claude Code session
                           (legacy form)
 
