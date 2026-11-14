@@ -109,7 +109,7 @@ MoAI가 쓰는 키는 이 중 `interface.display_name`·`short_description`·`de
 | --- | --- | --- | --- | --- |
 | C1 | trust 판정과 `blocked_by_trust` 보고 | 구현 필요 | config reference `projects.<path>.trust_level`(2026-11-09 재확인: 위치는 user config만 명시). 파서는 #2240에서 들어옴(아래 "config.toml 생성") | doctor가 user config의 trust를 **읽는** 후속 Issue. 쓰기는 하지 않음: #2240은 trust를 선언(`trust.declaration`)만 하고 홈 쓰기는 blocked |
 | C2 | `project_doc_fallback_filenames`·`project_doc_max_bytes`를 config에서 읽기 | 대안 있음 | 쓰기는 #2240(managed 키). doctor는 아직 `--fallback`·`--max-bytes` 인자 | doctor가 project `.codex/config.toml`을 읽는 후속 Issue(C1과 함께) |
-| C3 | `tui.status_line` 항목 ID | 닫힘(#2928 S-5) | config reference에는 ID 목록이 없고, openai/codex `rust-v0.169.0`(`a41fe5b443652cbdbee57717fbb9fd78d8d8b32a`) `codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169`의 `StatusLineItem`에서 41개(별칭 포함)를 확인(2026-11-14) | `codex_config::CODEX_STATUS_LINE_ITEMS`로 검증. 목록 밖 항목은 그대로 쓰되 항목마다 `unknown_item`으로 보고(아래 "상태줄 (#2928 S-5)"). Codex 버전이 바뀌면 같은 파일을 다시 읽어 목록을 갱신 |
+| C3 | `tui.status_line` 항목 ID | 대안 있음 | config reference에는 ID 목록이 없고, openai/codex `rust-v0.169.0`(`d32063f96c2dff1dc96af839b3952abb6acfeda4`) `codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169`의 `StatusLineItem`에서 41개(별칭 포함)를 확인(2026-11-14) | `codex_config::CODEX_STATUS_LINE_ITEMS`로 검증. 목록 밖 항목은 그대로 쓰되 항목마다 `unknown_item`으로 보고(아래 "상태줄 (#2928 S-5)"). Codex 버전이 바뀌면 같은 파일을 다시 읽어 목록을 갱신 |
 | C4 | hook 등록(`hooks.json` 또는 inline, 한 곳만) | 대안 있음 | RC1 결정 0개 → rc.2 I1 #2238에서 `.codex/hooks.json` 하나로 생성 | `hooks-apply --host codex`가 `.codex/hooks.json`만 쓴다(inline `[hooks]`는 쓰지 않음). 실행 전 hash trust 검토(`/hooks`) 안내는 apply 결과 `trust_required`에 있다 |
 | C5 | projection 설치(사용자 홈/project) | 대안 있음 | I4 #2241: `codex-projection-apply`가 호출자가 정한 대상에 설치·검증한다. 기본 위치는 없다 | 위치 결정(P04) 뒤 기본값과 UPDATE 경로(`update.rs`의 `~/.agents/skills/moai`)와의 관계를 정하는 후속 Issue |
 | C6 | Desktop·CLI·IDE 명시 호출 실측 receipt(version·표면·읽힌 경로) | 미검증 | REQ-02C-03 | 운영자 실측(HA-01, HA-10). CLI는 외부 전송을 승인한 뒤 |
@@ -152,16 +152,16 @@ Codex CLI 0.169.0의 바닥줄은 내장 항목 ID를 고르고 순서만 정하
 
 ```toml
 [tui]
-status_line = ["model", "reasoning", "codex-version", "project-name", "pull-request-number", "git-branch", "branch-changes", "thread-name", "context-remaining", "weekly-limit"]
+status_line = ["model", "reasoning", "codex-version", "project-name", "git-branch", "branch-changes", "pull-request-number", "thread-name", "context-remaining", "weekly-limit"]
 ```
 
-세션 한 번만 쓰려면 Codex 안에서 `/statusline model reasoning codex-version project-name pull-request-number git-branch branch-changes thread-name context-remaining weekly-limit`.
+세션 한 번만 쓰려면 Codex 안에서 `/statusline model reasoning codex-version project-name git-branch branch-changes pull-request-number thread-name context-remaining weekly-limit`.
 
 **plan 결과.** `status_line`은 `before`(지금 파일의 목록, 없으면 `null`), `after`(적용 뒤 목록 — conflict면 쓰지 않으므로 `before`와 같음), `preset`(`"moai"` 또는 `null`), `items`(요청한 항목마다 `{"id", "status": "known" | "unknown_item"}`)를 담는다. `status_line_unverified`는 목록 밖 항목만 `items`에 담고, 그런 항목이 있을 때만 `reason`이 문자열이다.
 
 **목록 밖 항목.** 그대로 쓰고(지금까지와 같음), 항목마다 `unknown_item`으로 보고하며 빼지 않는다. Codex 0.169.0은 해석하지 못한 항목을 경고 "Ignored invalid status line item"과 함께 건너뛰고(`codex-rs/tui/src/chatwidget/status_surfaces.rs:121-138`, `:467-468`), 더 새 Codex가 아는 ID일 수 있어서 거부하지 않는다.
 
-**사용자 값과 되돌리기.** 프로젝트 `.codex/config.toml`에 사용자가 이미 `tui.status_line`을 둔 경우는 덮어쓰지 않는다: plan은 `conflict`(`before`=`after`=사용자 목록), apply는 아무것도 쓰지 않는다. 사용자 config(`~/.codex/config.toml`, CODEX_HOME)의 목록은 이 명령이 쓰지 않으므로 그대로 남는다. MoAI가 넣은 목록을 되돌리려면 `tui.status_line`을 뺀 요청으로 plan → apply한다: receipt가 MoAI 소유로 기록한 키만 지워지고 파일은 원래 바이트로 돌아온다. 별도 `*-revert` 명령은 두지 않았다(codex config는 사용자 값을 바꾸지 않으므로 보관할 이전 값이 없다).
+**사용자 값과 되돌리기.** 프로젝트 `.codex/config.toml`에 사용자가 이미 `tui.status_line`을 둔 경우는 덮어쓰지 않는다: plan은 `conflict`(`before`=`after`=사용자 목록), apply는 아무것도 쓰지 않는다. 사용자 config(`~/.codex/config.toml`, CODEX_HOME)의 목록은 이 명령이 쓰지 않으므로 그대로 남는다. MoAI가 넣은 목록을 되돌리려면 `tui.status_line`을 뺀 요청으로 plan → apply한다: receipt가 MoAI 소유로 기록한 키만 지워지고, 그 키를 넣으며 만든 표(`[tui]`)가 비고 주석이 없으면 표도 함께 지워져 파일은 원래 바이트로 돌아온다. 파일이 없던 프로젝트는 빈 파일(0바이트)로 남는다 — Codex에는 설정이 없는 것과 같다. 사용자가 미리 둔 빈 표는 주석이 있으면 남고, 주석 없는 빈 표는 MoAI가 만든 표와 구별되지 않아 함께 지워진다. 별도 `*-revert` 명령은 두지 않았다(codex config는 사용자 값을 바꾸지 않으므로 보관할 이전 값이 없다).
 
 **이름표(leader/agent).** `thread-name`은 Codex 대화 이름을 보여 주고, 이름이 없으면 칸을 생략한다(`status_line_setup.rs` `ThreadName`: "Current thread name, omitted when unnamed"). 이름은 Codex 안에서 `/rename leader`(leader 세션) 또는 `/rename agent`(그 밖의 세션)로 정한다(S-2 규칙). 실행 플래그나 설정 키로는 정할 수 없다. 지금 화면의 'Set MoAI session name' 자리는 이 이름이 정해지면 채워진다.
 
@@ -173,11 +173,13 @@ status_line = ["model", "reasoning", "codex-version", "project-name", "pull-requ
 | 1 | 호스트 버전 | 가능 | `codex-version` |
 | 1 | moai 버전 | 불가 | 외부 명령 실행 없음, ID 목록만 받음 — D2, S1 |
 | 2 | 저장소 | 일부 | `project-name`(또는 `current-dir`) |
+| 2 | ⬇️ 열린 Issue 수 | 불가 | 해당 항목 없음 — S1 |
+| 2 | 🔀 열린 PR 수 | 불가 | 해당 항목 없음(`pull-request-number`는 지금 가지의 PR 번호 하나) — S1 |
 | 2 | ahead/behind | 불가 | 해당 항목 없음 — `branch-changes`는 기본 가지 대비 커밋 차이 |
-| 2 | PR | 가능 | `pull-request-number`(없으면 생략) |
 | 2 | 가지 | 가능 | `git-branch` |
 | 2 | 변경 | 뜻이 다름 | `branch-changes` = 기본 가지 대비 커밋된 차이, 작업 트리의 미커밋 변경이 아님 |
 | 2 | worktree | 불가 | 해당 항목 없음(`current-dir` 경로로 짐작만) |
+| 2 | 🔗 PR 번호 | 가능 | `pull-request-number`(없으면 생략) — CC는 가지·worktree 뒤에 보여 주므로 `branch-changes` 다음 |
 | 3 | 🏷️ 이름표 | 가능 | `thread-name`(또는 `thread-title`) — 값은 `/rename leader`·`/rename agent`, 플래그·설정 키로는 못 정함 |
 | 3 | CTX % | 가능 | `context-remaining`(또는 `context-used`) |
 | 3 | Week % | 가능 | `weekly-limit` |
@@ -186,7 +188,7 @@ status_line = ["model", "reasoning", "codex-version", "project-name", "pull-requ
 | --- | --- | --- |
 | D1 https://learn.chatgpt.com/docs/developer-commands?surface=cli | "/statusline · … Pick and reorder footer items (model/context/limits/git/tokens/session) and persist in config.toml." · "To set the footer for this session only, list the items in display order." | 2026-11-14 |
 | D2 https://learn.chatgpt.com/docs/config-file/config-reference | "`tui.status_line` · array<string> \| null · Ordered list of TUI footer status-line item identifiers. `null` disables the status line." | 2026-11-14 |
-| S1 openai/codex `rust-v0.169.0` (`a41fe5b443652cbdbee57717fbb9fd78d8d8b32a`) `codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169` | `StatusLineItem` 변형과 별칭 = ID 41개(`CODEX_STATUS_LINE_ITEMS`). `status-line-use-theme-colors`는 picker의 색 토글이지 항목이 아님(같은 파일 :43, :309-316) | 2026-11-14 |
+| S1 openai/codex `rust-v0.169.0` (`d32063f96c2dff1dc96af839b3952abb6acfeda4`) `codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169` | `StatusLineItem` 변형과 별칭 = ID 41개(`CODEX_STATUS_LINE_ITEMS`). `status-line-use-theme-colors`는 picker의 색 토글이지 항목이 아님(같은 파일 :43, :309-316) | 2026-11-14 |
 | S2 같은 태그 `codex-rs/tui/src/chatwidget/status_surfaces.rs:121-138`, `:467-468` | 해석하지 못한 항목은 "Ignored invalid status line item" 경고와 함께 건너뜀 | 2026-11-14 |
 | S4 같은 태그 `codex-rs/features/src/lib.rs` | `tui_extensions_statusline`("Enable experimental MCP status line providers.", UnderDevelopment, 기본 꺼짐) — 지금은 쓸 수 없음 | 2026-11-14 |
 

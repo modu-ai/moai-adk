@@ -398,16 +398,16 @@ const MOAI_PRESET: [&str; 10] = [
     "reasoning",
     "codex-version",
     "project-name",
-    "pull-request-number",
     "git-branch",
     "branch-changes",
+    "pull-request-number",
     "thread-name",
     "context-remaining",
     "weekly-limit",
 ];
 
 /// Every identifier Codex 0.169.0 parses, aliases included, literal (openai/codex
-/// rust-v0.169.0 a41fe5b443652cbdbee57717fbb9fd78d8d8b32a,
+/// rust-v0.169.0 d32063f96c2dff1dc96af839b3952abb6acfeda4,
 /// codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169).
 const CODEX_0169_IDS: [&str; 41] = [
     "model",
@@ -601,6 +601,40 @@ fn dropping_the_preset_restores_the_original_bytes() {
     assert_eq!(receipt(&g)["owned"], json!({}));
 }
 
+/// #2956 audit B2: a user config without a `[tui]` table gets its own bytes back — the table
+/// MoAI added for the list goes with it — and so does one with a nested managed key.
+#[test]
+fn dropping_the_preset_removes_the_table_it_added() {
+    for original in [
+        "# mine\nmodel = \"gpt-6\"\n",
+        "model = \"gpt-6\"\n\n[mcp_servers.docs]\ncommand = \"docs-mcp\"\n",
+    ] {
+        let g = fixture(Some(original));
+        apply(&g, &desired(json!({"tui.status_line": "moai", "skills.bundled.enabled": false})));
+        assert!(read(&g).contains("[tui]"), "{}", read(&g));
+        apply(&g, &Map::new());
+        assert_eq!(read(&g), original);
+        assert_eq!(receipt(&g)["owned"], json!({}));
+    }
+    // A table the user wrote stays, even when MoAI's key was its last one.
+    let user_tui = "model = \"gpt-6\"\n\n# my footer\n[tui]\n";
+    let g = fixture(Some(user_tui));
+    apply(&g, &desired(json!({"tui.status_line": "moai"})));
+    apply(&g, &Map::new());
+    assert_eq!(read(&g), user_tui);
+}
+
+/// #2956 audit B2: a project with no `.codex/config.toml` is left with an empty file (Codex
+/// reads it as no settings); no `[tui]` header is left behind.
+#[test]
+fn dropping_the_preset_from_a_new_file_leaves_it_empty() {
+    let g = fixture(None);
+    apply(&g, &desired(json!({"tui.status_line": "moai"})));
+    apply(&g, &Map::new());
+    assert_eq!(read(&g), "");
+    assert_eq!(receipt(&g)["owned"], json!({}));
+}
+
 #[test]
 fn known_ids_are_not_flagged_and_unknown_ids_are_reported() {
     let f = fixture(None);
@@ -647,7 +681,7 @@ fn known_ids_are_not_flagged_and_unknown_ids_are_reported() {
     assert!(plan["status_line_unverified"]["reason"]
         .as_str()
         .unwrap()
-        .contains("a41fe5b443652cbdbee57717fbb9fd78d8d8b32a"));
+        .contains("d32063f96c2dff1dc96af839b3952abb6acfeda4"));
     // Written as given, nothing silently dropped.
     let doc: toml_edit::DocumentMut = read(&f).parse().unwrap();
     let written = doc["tui"]["status_line"].as_array().unwrap();
