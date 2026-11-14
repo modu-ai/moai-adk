@@ -234,27 +234,80 @@ fn a_revert_skips_a_host_changed_after_the_apply() {
     let r = update_confirm(&f);
     let id = r["hooks_result"]["receipt"].as_str().unwrap().to_string();
     let settings = f.project.join(".claude/settings.json");
-    let mut edited = fs::read(&settings).unwrap();
+    let written = fs::read(&settings).unwrap();
+    let mut edited = written.clone();
     edited.extend_from_slice(b"\n");
     fs::write(&settings, &edited).unwrap();
-    let reverted = result(&run(
-        &f,
-        &f.project,
-        &[
-            "hooks-revert",
-            f.project.to_str().unwrap(),
-            "--receipt",
-            &id,
-            "--permission-reference",
-            "test-approval",
-        ],
-    ));
+    let revert = || {
+        result(&run(
+            &f,
+            &f.project,
+            &[
+                "hooks-revert",
+                f.project.to_str().unwrap(),
+                "--receipt",
+                &id,
+                "--permission-reference",
+                "test-approval",
+            ],
+        ))
+    };
+    let reverted = revert();
+    assert_eq!(reverted["state"], json!("unchanged"), "{reverted}");
     assert_eq!(reverted["reverted"], json!([]), "{reverted}");
     assert_eq!(
         reverted["skipped"][0]["reason"],
         json!("user_changed_since_apply")
     );
     assert_eq!(fs::read(&settings).unwrap(), edited);
+    // Nothing was restored, so the receipt still works once the user puts the file back.
+    fs::write(&settings, &written).unwrap();
+    let again = revert();
+    assert_eq!(again["state"], json!("reverted"), "{again}");
+    assert_eq!(again["reverted"], json!(["claude"]), "{again}");
+}
+
+/// The receipt id is the only thing that keeps `hooks-revert` inside the receipt folder: an id
+/// with a path step, without the `hooks-` prefix, or longer than 64 characters is refused before
+/// any path is built; a 64-character id of the right shape is looked up (and not found).
+#[test]
+fn a_receipt_id_of_another_shape_is_refused() {
+    let f = setup();
+    let p = f.project.to_str().unwrap();
+    let revert = |id: &str| {
+        run(
+            &f,
+            &f.project,
+            &[
+                "hooks-revert",
+                p,
+                "--receipt",
+                id,
+                "--permission-reference",
+                "test-approval",
+            ],
+        )
+    };
+    let len65 = format!("hooks-{}", "a".repeat(59));
+    let len64 = format!("hooks-{}", "a".repeat(58));
+    assert_eq!((len64.len(), len65.len()), (64, 65));
+    for id in [
+        "hooks-../../x",
+        "../hooks-1",
+        "hooks-1/../../x",
+        "agents-1",
+        "hooks",
+        len65.as_str(),
+    ] {
+        let out = revert(id);
+        assert!(!out.status.success(), "{id}");
+        let text = String::from_utf8_lossy(&out.stdout);
+        assert!(text.contains("unknown hook receipt id"), "{id}: {text}");
+    }
+    let out = revert(&len64);
+    assert!(!out.status.success());
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.contains("hook receipt not found"), "{text}");
 }
 
 /// Edits the `Stop` handler's timeout in the settings file only, as a user would.

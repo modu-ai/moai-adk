@@ -419,6 +419,13 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
         }
         reverted.push(host.to_string());
     }
+    // Nothing restored (every host changed since): the receipt stays usable, so a revert after
+    // the user puts the files back still works (#2868 audit N1).
+    if reverted.is_empty() {
+        return Ok(
+            json!({"state": "unchanged", "receipt": receipt_id, "reverted": reverted, "skipped": skipped}),
+        );
+    }
     receipt.status = "reverted".into();
     write_json(&path, &receipt)?;
     Ok(
