@@ -79,7 +79,7 @@ pub const UNDOING: [&str; 33] = [
 ];
 
 /// Korean attaches particles and endings to a word (`대기중`, `안됨`, `일부만`, `미확인`), so a
-/// Hangul word after the met word undoes it when it *starts* with one of these (re-audit
+/// word after the met word undoes it when it *starts* with one of these (re-audit
 /// 6875342005 B1). Wrong in this direction only leaves an Issue open.
 pub const UNDOING_KO_PREFIXES: [&str; 16] = [
     "대기", "예정", "일부", "부분", "남", "보류", "진행", "실패", "안", "않", "아니", "아님",
@@ -190,15 +190,10 @@ pub fn is_met(cell: &str) -> bool {
 fn undone(rest: &str) -> bool {
     rest.split(|c: char| !c.is_alphanumeric()).any(|word| {
         UNDOING.contains(&word)
-            || (word.chars().any(is_hangul)
-                && !KO_NOT_UNDOING.iter().any(|p| word.starts_with(p))
+            // Every prefix is Hangul, so only a Hangul word can match one.
+            || (!KO_NOT_UNDOING.iter().any(|p| word.starts_with(p))
                 && UNDOING_KO_PREFIXES.iter().any(|p| word.starts_with(p)))
     })
-}
-
-/// A Hangul syllable or jamo.
-fn is_hangul(c: char) -> bool {
-    matches!(c, '\u{AC00}'..='\u{D7A3}' | '\u{1100}'..='\u{11FF}' | '\u{3130}'..='\u{318F}')
 }
 
 /// The verdict column of a header row: the first cell after the first that starts with a
