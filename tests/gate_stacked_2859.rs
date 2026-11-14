@@ -329,3 +329,91 @@ fn a_snapshot_that_did_not_read_the_prs_below_stops() {
     snap.stacked_below = None;
     assert!(g12_stop(&snap).contains("were not read"));
 }
+
+/// The PR below's commit list is read over at most three pages (GitHub lists 250 commits of a
+/// pull request): three pages, the last without `next`, are all read and a carried commit on
+/// the third is found; a third page that points to a fourth stops before the fourth request.
+#[test]
+fn the_pr_below_commit_pages_stop_at_three() {
+    let s = stack(false, false);
+    let first = format!("{API}/pulls/7/commits?per_page=100");
+    let page_url = |n: usize| {
+        if n == 1 {
+            first.clone()
+        } else {
+            format!("{API}/pr7-commit-pages/{n}")
+        }
+    };
+    let pages = |more: bool| -> Vec<Exchange> {
+        (1..=3)
+            .map(|n| {
+                let shas = if n == 3 {
+                    json!([{"sha": s.a1}])
+                } else {
+                    json!([{"sha": format!("{n}").repeat(40)}])
+                };
+                let mut resp = ok(shas);
+                if n < 3 || more {
+                    resp = resp.with_header("link", format!("<{}>; rel=\"next\"", page_url(n + 1)));
+                }
+                Exchange {
+                    request: HttpRequest::new("GET", page_url(n)),
+                    response: resp,
+                }
+            })
+            .collect()
+    };
+    let head_reads = || -> Vec<Exchange> {
+        vec![
+            get(
+                format!("{API}/pulls/9"),
+                json!({"head": {"sha": s.b1}, "body": PASS_BODY}),
+            ),
+            get(
+                format!("{API}/issues/9/comments?per_page=100"),
+                json!([
+                    {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
+                    verdict(9, 200, &s.b1, &s.base, "PASS", "agent-10"),
+                ]),
+            ),
+            get(
+                format!("{API}/commits/{}/check-runs?per_page=100", s.b1),
+                json!({"check_runs": [{"name": "ci", "conclusion": "success"}]}),
+            ),
+            claim_comment(555, "agent-26"),
+            claim_comment(777, "agent-31"),
+            get(
+                format!("{API}/pulls?state=open&per_page=100"),
+                json!([{"number": 9}, {"number": 7}]),
+            ),
+        ]
+    };
+
+    // N = 3 pages: read, and the carried commit on the last page is found.
+    let mut ex = head_reads();
+    ex.extend(pages(false));
+    ex.push(claim_comment(777, "agent-31"));
+    ex.push(get(
+        format!("{API}/issues/7/comments?per_page=100"),
+        json!([verdict(7, 301, &s.a1, &s.base, "PASS", "agent-30")]),
+    ));
+    ex.push(get(
+        format!("{API}/commits/{}/check-runs?filter=all&per_page=100", s.tip),
+        json!({"check_runs": [{"name": "ci", "conclusion": "success"}]}),
+    ));
+    let t = RecordedTransport::new(ex);
+    let snap = collect(&target(&s), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(
+        snap.stacked_below.as_ref().unwrap()[0].brought,
+        vec![s.a1.clone()]
+    );
+
+    // N + 1: the third page points to a fourth; nothing past the third is requested.
+    let mut ex = head_reads();
+    ex.extend(pages(true));
+    let t = RecordedTransport::new(ex);
+    let err = collect(&target(&s), &t).unwrap_err();
+    assert!(err.contains("more than 3 pages"), "{err}");
+    assert_eq!(t.remaining(), 0, "the fourth page is never requested");
+}
