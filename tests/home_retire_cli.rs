@@ -638,3 +638,154 @@ fn retire_blocks_when_the_session_lock_cannot_be_judged() {
         "{p}"
     );
 }
+
+const LATER2: &str = "2026-11-14T14:00:00Z";
+const MARKER_HOLDERS: [&str; 3] = ["user-assets.json", "state", "credentials.yaml"];
+
+/// Codex review 4574332849 on #2970: a retire that skipped an entry in use must not take the
+/// Go markers with it, or the HOME is no longer `go`, the next preview lists nothing and the
+/// skipped entry can never retire. The entries that hold a marker wait; the rest retire.
+#[test]
+fn retire_keeps_the_go_markers_until_the_entries_in_use_are_free() {
+    let (_d, home) = go_home();
+    let busy = Kill(
+        Command::new("sleep")
+            .arg("60")
+            .current_dir(home.join(".moai/Logs"))
+            .spawn()
+            .unwrap(),
+    );
+    let p = plan(&home);
+    assert_eq!(act(&p, "Logs").0, "skip-in-use", "{p}");
+    for n in MARKER_HOLDERS {
+        assert_eq!(
+            act(&p, n),
+            ("keep".into(), "marker_waits_for_in_use".into()),
+            "{n}: {p}"
+        );
+        assert_eq!(entry(&p, n)["destination"], Value::Null, "{n}");
+    }
+    assert_eq!(act(&p, "cache").0, "retire", "{p}");
+    let a = apply(&home, p["plan_digest"].as_str().unwrap());
+    assert_eq!(a["ok"], json!(true), "{a}");
+    // Nothing the journal was asked to move was skipped: the usual next step.
+    assert_eq!(a["result"]["partial"], json!(false), "{a}");
+    assert!(a["result"]["rerun"].as_str().unwrap().contains("`none`"));
+    for n in MARKER_HOLDERS {
+        assert!(home.join(".moai").join(n).exists(), "{n} moved too early");
+    }
+    assert!(!home.join(".moai/cache").exists());
+    // Still a Go HOME: the next preview lists the entry in use and the markers, and waits.
+    let wait = plan_with(&home, LATER, &[]);
+    assert_eq!(wait["state"]["generation"], json!("go"), "{wait}");
+    assert_eq!(act(&wait, "Logs").0, "skip-in-use", "{wait}");
+    assert_eq!(wait["action"], json!("none"), "{wait}");
+    // The program stops: the entry that was in use retires with the markers, and the HOME is done.
+    drop(busy);
+    let free = plan_with(&home, LATER, &[]);
+    assert_eq!(free["action"], json!("retire"), "{free}");
+    for n in MARKER_HOLDERS.into_iter().chain(["Logs"]) {
+        assert_eq!(act(&free, n).0, "retire", "{n}: {free}");
+    }
+    let done = apply_with(
+        &home,
+        LATER,
+        free["plan_digest"].as_str().unwrap(),
+        PERM,
+        &[],
+    );
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert!(!home.join(".moai/Logs").exists());
+    for n in MARKER_HOLDERS {
+        assert!(!home.join(".moai").join(n).exists(), "{n} stayed");
+    }
+    let end = plan_with(&home, LATER2, &[]);
+    assert_eq!(end["action"], json!("none"), "{end}");
+}
+
+/// The wait applies to a mixed HOME too (a valid Rust marker beside the Go ones): without the
+/// Go markers it would read as `rust` and the rest could never retire.
+#[test]
+fn retire_keeps_the_go_markers_on_a_mixed_home_while_an_entry_is_in_use() {
+    let (_d, home) = go_home();
+    write(
+        &home,
+        ".moai/moai-cli.json",
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    );
+    let _busy = Kill(
+        Command::new("sleep")
+            .arg("60")
+            .current_dir(home.join(".moai/Logs"))
+            .spawn()
+            .unwrap(),
+    );
+    let p = plan(&home);
+    assert_eq!(p["state"]["generation"], json!("mixed"), "{p}");
+    assert_eq!(act(&p, "Logs").0, "skip-in-use", "{p}");
+    assert_eq!(act(&p, "cache").0, "retire", "{p}");
+    assert_eq!(
+        act(&p, "credentials.yaml"),
+        ("keep".into(), "marker_waits_for_in_use".into()),
+        "{p}"
+    );
+}
+
+/// With nothing in use the markers retire with everything else, as before.
+#[test]
+fn retire_moves_the_go_markers_when_nothing_is_in_use() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    for n in MARKER_HOLDERS {
+        assert_eq!(act(&p, n).0, "retire", "{n}: {p}");
+    }
+}
+
+/// Codex review 4574332851 on #2970: a revert replays renames into `~/.moai`; if that folder
+/// became a link, the retired entries (a credentials file among them) would land wherever the
+/// link points while the journal reports success. It is refused before any move.
+#[test]
+fn retire_revert_refuses_a_home_folder_that_became_a_link() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    assert_eq!(
+        apply(&home, p["plan_digest"].as_str().unwrap())["ok"],
+        json!(true)
+    );
+    let aside = home.join("aside");
+    fs::rename(home.join(".moai"), &aside).unwrap();
+    let elsewhere = home.join("elsewhere");
+    fs::create_dir(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, home.join(".moai")).unwrap();
+    let before = tree(&retired(&home));
+    let r = revert(&home, &[]);
+    assert_eq!(r["ok"], json!(false), "{r}");
+    assert!(r.to_string().contains("nothing was moved"), "{r}");
+    assert!(
+        fs::read_dir(&elsewhere).unwrap().next().is_none(),
+        "the retired entries landed through the link"
+    );
+    assert_eq!(tree(&retired(&home)), before, "the backup changed");
+    // The folder is a real one again: the same revert goes through.
+    fs::remove_file(home.join(".moai")).unwrap();
+    fs::rename(&aside, home.join(".moai")).unwrap();
+    let ok = revert(&home, &[]);
+    assert_eq!(ok["ok"], json!(true), "{ok}");
+    assert!(home.join(".moai/cache/a.bin").is_file());
+}
+
+/// `.moai` replaced by a plain file is refused the same way.
+#[test]
+fn retire_revert_refuses_a_home_folder_that_is_a_file() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    assert_eq!(
+        apply(&home, p["plan_digest"].as_str().unwrap())["ok"],
+        json!(true)
+    );
+    fs::remove_dir_all(home.join(".moai")).unwrap();
+    fs::write(home.join(".moai"), "not a folder").unwrap();
+    let r = revert(&home, &[]);
+    assert_eq!(r["ok"], json!(false), "{r}");
+    assert!(retired(&home).join(STAMP).join("cache/a.bin").is_file());
+}
