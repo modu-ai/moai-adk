@@ -48,7 +48,7 @@ impl Fixture {
         )
         .unwrap();
         fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
-        // A stored number, so any change to it is visible.
+        // An old store: it is no longer read, and any change to it is visible.
         let store = project.path().join(".git/.moai-cli/sessions/agent-seq");
         fs::create_dir_all(store.parent().unwrap()).unwrap();
         fs::write(&store, "5\n").unwrap();
@@ -72,13 +72,20 @@ impl Fixture {
             .unwrap()
     }
 
-    fn store(&self) -> String {
-        fs::read_to_string(
-            self.project
-                .path()
-                .join(".git/.moai-cli/sessions/agent-seq"),
-        )
-        .unwrap()
+    /// No number was taken: no `agent-<n>.live` file exists and the old store is as seeded.
+    fn took_no_number(&self) -> bool {
+        let dir = self.project.path().join(".git/.moai-cli/sessions");
+        let lives = fs::read_dir(&dir)
+            .unwrap()
+            .filter(|e| {
+                e.as_ref()
+                    .unwrap()
+                    .file_name()
+                    .to_string_lossy()
+                    .ends_with(".live")
+            })
+            .count();
+        lives == 0 && fs::read_to_string(dir.join("agent-seq")).unwrap() == "5\n"
     }
 
     fn host_started(&self) -> bool {
@@ -125,7 +132,7 @@ fn every_form_of_the_removed_host_is_a_usage_error_that_starts_nothing() {
             "{words:?}"
         );
         assert!(!f.host_started(), "{words:?} started a host process");
-        assert_eq!(f.store(), "5\n", "{words:?} took a number");
+        assert!(f.took_no_number(), "{words:?} took a number");
     }
 }
 
@@ -139,7 +146,7 @@ fn the_legacy_top_level_agent_flag_still_names_only_three_hosts() {
         assert!(stderr.contains("unknown host"), "{words:?}: {stderr}");
         assert!(stderr.contains("(cc|glm|codex)"), "{words:?}: {stderr}");
         assert!(!f.host_started(), "{words:?} started a host process");
-        assert_eq!(f.store(), "5\n", "{words:?} took a number");
+        assert!(f.took_no_number(), "{words:?} took a number");
     }
 }
 

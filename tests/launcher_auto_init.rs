@@ -136,7 +136,7 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
         assert_eq!(init_lines(&out), 1, "{host}: {}", text(&out));
         assert!(dir.join(".git").is_dir(), "{host}");
         assert!(
-            dir.join(".git/.moai-cli/sessions/agent-seq").is_file(),
+            dir.join(".git/.moai-cli/sessions/agent-1.live").is_file(),
             "{host}"
         );
         let p = profile(&dir);

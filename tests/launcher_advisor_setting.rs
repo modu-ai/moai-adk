@@ -122,7 +122,7 @@ fn host_started(f: &Fixture) -> bool {
     f.home.path().join("host-started").exists()
 }
 fn number_store(f: &Fixture) -> std::path::PathBuf {
-    f.project.path().join(".git/.moai-cli/sessions/agent-seq")
+    f.project.path().join(".git/.moai-cli/sessions/agent-1.live")
 }
 
 /// Literal complete argv with no advisor: the decided default for every host and role
@@ -442,5 +442,5 @@ fn real_launch_uses_the_setting() {
     assert_eq!(v["argv"], serde_json::json!(with_advisor(1, "fable")));
     assert_eq!(v["executed"], serde_json::json!(true));
     assert!(host_started(&f));
-    assert_eq!(fs::read_to_string(number_store(&f)).unwrap(), "1\n");
+    assert!(number_store(&f).is_file());
 }
