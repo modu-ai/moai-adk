@@ -3794,7 +3794,7 @@ mod help_rules {
     //! meeting it exactly, so every later S1 pull request moves names in and none can slip back;
     //! a rule every command meets is checked for all (the one-line about since S1b).
     use super::Cli;
-    use clap::CommandFactory;
+    use clap::{CommandFactory, FromArgMatches};
     use std::collections::BTreeSet;
 
     /// Commands whose every shown argument and option has a description (#2799 A 6865611250:
@@ -3852,9 +3852,6 @@ mod help_rules {
         "worktree-move-apply",
         "worktree-move-plan",
     ];
-
-    /// Commands whose `--help` carries an `Examples:` section (none yet at S1a).
-    const EXAMPLES_DONE: &[&str] = &[];
 
     fn words() -> Vec<String> {
         Cli::command()
@@ -3923,18 +3920,170 @@ mod help_rules {
         );
     }
 
+    /// The command as people see it: the layout `main` parses with (examples attached).
+    fn configured() -> clap::Command {
+        moai_cli::help::configure(Cli::command(), "moai", moai_cli::BUILD_VERSION, false)
+    }
+
+    /// Every command's `--help` carries an `Examples:` section (#2802 S1c).
     #[test]
-    fn examples_are_present_exactly_where_listed() {
-        let ok = meeting(|s| {
-            [s.get_after_help(), s.get_after_long_help()]
-                .into_iter()
-                .flatten()
-                .any(|t| t.to_string().contains("Examples:"))
-        });
-        assert_eq!(
-            ok,
-            set(EXAMPLES_DONE),
-            "EXAMPLES_DONE must list exactly the commands with examples"
+    fn every_command_has_examples() {
+        let cmd = configured();
+        let missing: Vec<_> = cmd
+            .get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .filter(|s| {
+                !s.get_after_long_help()
+                    .is_some_and(|t| t.to_string().starts_with("Examples:\n  moai "))
+            })
+            .map(|s| s.get_name().to_string())
+            .collect();
+        assert!(missing.is_empty(), "no examples: {missing:?}");
+    }
+
+    /// Each example names its own command or that command's pair, holds one to three lines,
+    /// and parses with this binary's command line (` < file` is standard input, not an
+    /// argument).
+    #[test]
+    fn every_example_parses() {
+        let mut failed = Vec::new();
+        for (word, examples) in moai_cli::help::EXAMPLES {
+            assert!(
+                (1..=3).contains(&examples.len()),
+                "{word}: {} examples",
+                examples.len()
+            );
+            for example in *examples {
+                // A usage placeholder such as `[PROJECT]` would parse as a value; examples
+                // carry real values or `<…>` placeholders only.
+                assert!(
+                    !example.contains('[') && !example.contains(']'),
+                    "{word}: `{example}`"
+                );
+                let args = example.split(" < ").next().unwrap();
+                let argv: Vec<&str> = std::iter::once("moai")
+                    .chain(args.split_whitespace())
+                    .collect();
+                let parsed = configured()
+                    .try_get_matches_from(&argv)
+                    .map_err(|e| e.kind())
+                    .and_then(|m| Cli::from_arg_matches(&m).map_err(|e| e.kind()));
+                if let Err(kind) = parsed {
+                    failed.push(format!("{word}: `{example}` -> {kind:?}"));
+                }
+            }
+        }
+        assert!(
+            failed.is_empty(),
+            "examples that do not parse:\n{}",
+            failed.join("\n")
+        );
+    }
+
+    /// Attaching the examples keeps the commands in their declared order (#2839 audit N1).
+    #[test]
+    fn configure_keeps_the_command_order() {
+        let names = |c: &clap::Command| {
+            c.get_subcommands()
+                .map(|s| s.get_name().to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(&configured()), names(&Cli::command()));
+    }
+
+    /// Commands `main` answers before the internal dispatch; each reads standard input there
+    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
+    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
+
+    /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
+    /// more than asking whether it is a terminal.
+    fn reads_stdin(text: &str) -> bool {
+        text.contains("input::<")
+            || text.contains("input()")
+            || text.contains("plan_input")
+            || text
+                .match_indices("stdin()")
+                .any(|(i, m)| !text[i + m.len()..].trim_start().starts_with(".is_terminal"))
+    }
+
+    /// The commands whose handling reads standard input, from the source: each
+    /// `Command::<Variant>` match arm before the first test module, and each `src/ops` file.
+    fn commands_reading_stdin() -> BTreeSet<String> {
+        let source = include_str!("main.rs");
+        let code = &source[..source.find("\n#[cfg(test)]").unwrap()];
+        let lines: Vec<&str> = code.lines().collect();
+        let indent = |l: &str| l.len() - l.trim_start().len();
+        let kebab = |v: &str| {
+            let mut out = String::new();
+            for (i, ch) in v.chars().enumerate() {
+                if ch.is_uppercase() && i > 0 {
+                    out.push('-');
+                }
+                out.push(ch.to_ascii_lowercase());
+            }
+            out
+        };
+        let mut reads = BTreeSet::new();
+        for (i, line) in lines.iter().enumerate() {
+            let Some(rest) = line.trim_start().strip_prefix("Command::") else {
+                continue;
+            };
+            let variant: String = rest.chars().take_while(|c| c.is_alphanumeric()).collect();
+            let after = rest[variant.len()..].trim_start();
+            if variant.is_empty() || !["{", "(", "=>"].iter().any(|p| after.starts_with(p)) {
+                continue;
+            }
+            // The arm runs until the next arm at its indent or a line indented less.
+            let depth = indent(line);
+            let end = (i + 1..lines.len())
+                .find(|&j| {
+                    let l = lines[j];
+                    !l.trim().is_empty()
+                        && (indent(l) < depth
+                            || (indent(l) == depth && l.trim_start().starts_with("Command::")))
+                })
+                .unwrap_or(lines.len());
+            if reads_stdin(&lines[i..end].join("\n")) {
+                reads.insert(kebab(&variant));
+            }
+        }
+        let ops = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ops");
+        for entry in std::fs::read_dir(ops).unwrap() {
+            let path = entry.unwrap().path();
+            let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
+            if stem != "mod" && reads_stdin(&std::fs::read_to_string(&path).unwrap()) {
+                reads.insert(stem.replace('_', "-"));
+            }
+        }
+        reads
+    }
+
+    /// An example carries ` < file` exactly when the command it runs reads standard input, so
+    /// an example typed as written gets its input (#2839 audit B1: ten typed-request commands
+    /// lacked it).
+    #[test]
+    fn stdin_examples_match_the_commands_that_read_stdin() {
+        let reads = commands_reading_stdin();
+        for word in READ_BEFORE_DISPATCH {
+            assert!(
+                !reads.contains(word),
+                "{word} is found by the scan; drop it from the list"
+            );
+        }
+        let mut off = Vec::new();
+        for (_, examples) in moai_cli::help::EXAMPLES {
+            for example in *examples {
+                let word = example.split_whitespace().next().unwrap();
+                let wants = reads.contains(word) || READ_BEFORE_DISPATCH.contains(&word);
+                if example.contains(" < ") != wants {
+                    off.push(format!("`{example}` (reads stdin: {wants})"));
+                }
+            }
+        }
+        assert!(
+            off.is_empty(),
+            "examples off the stdin rule:\n{}",
+            off.join("\n")
         );
     }
 
