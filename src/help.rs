@@ -25,6 +25,7 @@ pub const GROUPS: &[Group] = &[
     Group {
         heading: "Project",
         commands: &[
+            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),

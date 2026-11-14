@@ -3,7 +3,8 @@
 //!
 //! Everything lives under the HOME state folder `<HOME>/.moai` — no visible `~/moai` folder:
 //! - `<HOME>/.moai/worktrees/<project>-<id>/` — where a new worktree is created;
-//! - `<HOME>/.moai/projects/` — the default parent of a new project created without a path;
+//! - `<HOME>/.moai/projects/` — the default parent of a new project created without a path
+//!   (`init --new <name>`, #2835, [`project_dir`]);
 //! - `<HOME>/.moai/<service>/` — the default folder of a MoAI service such as `moai-stock`.
 //!
 //! `<HOME>` is `$HOME` on Unix and `%USERPROFILE%` on Windows, with the same folder name on
@@ -132,6 +133,18 @@ pub fn worktree_name(project_root: &Path, id: &str) -> Result<String> {
 /// `<HOME>/.moai/worktrees/<project>-<id>` (AC-2).
 pub fn worktree_dir(home: &Path, project_root: &Path, id: &str) -> Result<PathBuf> {
     Ok(worktrees_root(home).join(worktree_name(project_root, id)?))
+}
+
+/// `<HOME>/.moai/projects/<name>` for `init --new` (#2835 D1). The name must already be a safe
+/// component (`[A-Za-z0-9._-]`, not led or ended by `-` or `.`); anything else is refused,
+/// never rewritten, so the folder is exactly the name the user typed.
+pub fn project_dir(home: &Path, name: &str) -> Result<PathBuf> {
+    if safe_name(name).as_deref() != Some(name) {
+        return Err(format!(
+            "invalid project name {name:?}: use letters, digits, `.`, `_` and `-`, not starting or ending with `-` or `.`"
+        ));
+    }
+    Ok(projects_root(home).join(name))
 }
 
 /// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>`), `go`
@@ -264,6 +277,26 @@ mod tests {
         assert_eq!(safe_name("a_b.c-d"), Some("a_b.c-d".into()));
         assert_eq!(safe_name("..."), None);
         assert_eq!(safe_name(""), None);
+    }
+
+    /// AC-3 (#2835): the project folder on Unix and Windows homes, and the names refused.
+    #[test]
+    fn project_dirs_sit_under_projects_on_every_os() {
+        for home in ["/home/u", "/Users/u", "C:\\Users\\u"] {
+            let h = PathBuf::from(home);
+            assert_eq!(
+                project_dir(&h, "demo").unwrap(),
+                h.join(".moai").join("projects").join("demo")
+            );
+        }
+        let win = home_from(None, os("C:\\Users\\u"), true).unwrap();
+        assert_eq!(
+            project_dir(&win, "moai-stock").unwrap(),
+            PathBuf::from("C:\\Users\\u").join(".moai/projects/moai-stock")
+        );
+        for bad in ["", ".", "..", "a/b", "a\\b", "-x", "x.", "a b", "../e"] {
+            assert!(project_dir(Path::new("/h"), bad).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

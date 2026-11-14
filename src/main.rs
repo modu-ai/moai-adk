@@ -3678,6 +3678,7 @@ mod help_rules {
         "home-state-plan",
         "home-state-revert",
         "hook-dispatch",
+        "init",
         "install-inspect",
         "labels-check",
         "lane-safe-to-reset",
