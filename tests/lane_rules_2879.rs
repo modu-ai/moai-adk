@@ -35,6 +35,18 @@ fn a_lane_cleans_its_card_after_the_closing_table() {
     );
 }
 
+/// Audit C1 on PR #2896: the blanket "never delete" rule names the card cleanup as its one
+/// exception, so the two instructions no longer contradict each other.
+#[test]
+fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
+    let agent = workflow("mode-agent.md");
+    says(
+        &agent,
+        "mode-agent.md",
+        &["Never delete files, branches or worktrees — except the cleanup in `self-pick` (4): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879) — never touch the real HOME"],
+    );
+}
+
 #[test]
 fn verify_states_the_safe_ignored_rule_and_leaves_bulk_cleanup_to_the_leader() {
     let verify = workflow("verify.md");

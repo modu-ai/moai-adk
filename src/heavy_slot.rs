@@ -97,7 +97,6 @@ pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
     (!why.is_empty()).then(|| why.join("; "))
 }
 
-/// `${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/heavy-slots`, the Python tool's folder.
 /// #2879 D3: one build folder per lane. When the wrapped command is `cargo` and the lane's
 /// `CARGO_TARGET_DIR` is not the folder `moai lane-env --lane <name>` names (unset counts: cargo
 /// then builds into the worktree's own `target/`), a one-line warning for stderr. A warning, not
@@ -127,6 +126,7 @@ pub fn build_folder_note(
     ))
 }
 
+/// `${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/heavy-slots`, the Python tool's folder.
 pub fn default_dir() -> Result<PathBuf> {
     let base = match std::env::var_os("XDG_CACHE_HOME").filter(|v| !v.is_empty()) {
         Some(x) => PathBuf::from(x),

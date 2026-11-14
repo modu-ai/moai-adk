@@ -350,8 +350,14 @@ fn unix_secs(t: SystemTime) -> Option<u64> {
     t.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
 }
 
-/// Newest modification time (Unix seconds) among the change-age proxy paths.
-fn newest_change(wt: &Path, target: &Path, cargo: &[PathBuf]) -> Option<u64> {
+/// Newest modification time (Unix seconds) among the change-age proxy paths and `safe_newest`,
+/// the newest of the ignored files counted safe to lose (audit B2 on PR #2896).
+fn newest_change(
+    wt: &Path,
+    target: &Path,
+    cargo: &[PathBuf],
+    safe_newest: Option<u64>,
+) -> Option<u64> {
     let gitdir = git_out(wt, &["rev-parse", "--absolute-git-dir"])?;
     let gitdir = PathBuf::from(gitdir.trim());
     let mut paths = vec![
@@ -371,6 +377,7 @@ fn newest_change(wt: &Path, target: &Path, cargo: &[PathBuf]) -> Option<u64> {
         .filter_map(|p| fs::symlink_metadata(p).ok())
         .filter_map(|m| m.modified().ok())
         .filter_map(unix_secs)
+        .chain(safe_newest)
         .max()
 }
 
@@ -452,14 +459,50 @@ fn ignored_file_is_safe(wt: &Path, primary: &Path, rel: &Path) -> bool {
         || same_bytes(&path, &primary.join(rel))
 }
 
-/// The ignored files of `wt` outside its cargo build output, split into a safe count and the
-/// kept paths (#2879 D2). `preserved` are the non-cargo entries of `target/`; a lane's
-/// temporary folder there is safe. `None` when git fails or there are too many files.
+/// The files under `top` (not following links), walked within the shared `seen` limit. A
+/// `.git` entry (a nested clone or linked worktree, folder or file) is not walked into but
+/// returned in `git_marks`. `None` past [`IGNORED_FILE_LIMIT`] or when a folder cannot be read.
+fn walk_files(
+    top: PathBuf,
+    seen: &mut usize,
+    git_marks: &mut Vec<PathBuf>,
+) -> Option<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    if !fs::symlink_metadata(&top).is_ok_and(|m| m.is_dir()) {
+        files.push(top);
+        return Some(files);
+    }
+    let mut stack = vec![top];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).ok()?.flatten() {
+            let p = e.path();
+            if e.file_name() == ".git" {
+                git_marks.push(p);
+            } else if fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir()) {
+                stack.push(p);
+            } else {
+                files.push(p);
+            }
+            *seen += 1;
+            if *seen > IGNORED_FILE_LIMIT {
+                return None;
+            }
+        }
+    }
+    Some(files)
+}
+
+/// The ignored files of `wt` outside its cargo build output, split into a safe count, the
+/// kept paths and the newest modification time among the safe files (#2879 D2; audit B1·B2
+/// on PR #2896). `preserved` are the non-cargo entries of `target/`; a lane's temporary
+/// folder there is walked and its files are safe. A `.git` anywhere (a nested clone or
+/// worktree) and another worktree of this clone inside `wt` are kept. `None` when git fails
+/// or there are too many files.
 pub(crate) fn ignored_split(
     wt: &Path,
     primary: &Path,
     preserved: &[String],
-) -> Option<(usize, Vec<String>)> {
+) -> Option<(usize, Vec<String>, Option<u64>)> {
     let s = git_out(
         wt,
         &[
@@ -471,52 +514,56 @@ pub(crate) fn ignored_split(
         ],
     )?;
     let (mut safe, mut kept, mut seen) = (0usize, Vec::new(), 0usize);
+    let (mut git_marks, mut safe_files) = (Vec::new(), Vec::new());
     for rec in s.split('\0').filter(|r| r.len() > 3) {
         let (code, entry) = rec.split_at(3);
         if code != "!! " || entry == "target/" {
             continue;
         }
-        let mut files = Vec::new();
         let top = wt.join(entry.trim_end_matches('/'));
-        if fs::symlink_metadata(&top).is_ok_and(|m| m.is_dir()) {
-            let mut stack = vec![top];
-            while let Some(d) = stack.pop() {
-                for e in fs::read_dir(&d).ok()?.flatten() {
-                    let p = e.path();
-                    if fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir()) {
-                        stack.push(p);
-                    } else {
-                        files.push(p);
-                    }
-                    seen += 1;
-                    if seen > IGNORED_FILE_LIMIT {
-                        return None;
-                    }
-                }
-            }
-        } else {
-            files.push(top);
-        }
-        for f in files {
+        for f in walk_files(top, &mut seen, &mut git_marks)? {
             let rel = f.strip_prefix(wt).ok()?.to_path_buf();
             if ignored_file_is_safe(wt, primary, &rel) {
                 safe += 1;
+                safe_files.push(f);
             } else {
                 kept.push(rel.to_string_lossy().into_owned());
             }
         }
     }
     for name in preserved {
-        if lane_temp_dir(name)
-            && fs::symlink_metadata(wt.join("target").join(name)).is_ok_and(|m| m.is_dir())
-        {
-            safe += 1;
+        let dir = wt.join("target").join(name);
+        if lane_temp_dir(name) && fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
+            // Audit B1 on PR #2896: the lane folder is walked like any other ignored folder.
+            let files = walk_files(dir, &mut seen, &mut git_marks)?;
+            safe += files.len();
+            safe_files.extend(files);
         } else {
             kept.push(format!("target/{name}"));
         }
     }
+    for g in &git_marks {
+        kept.push(g.strip_prefix(wt).ok()?.to_string_lossy().into_owned());
+    }
+    // Another worktree of this clone inside `wt` (in a lane folder, a cargo folder, anywhere)
+    // goes with it on removal, so it keeps `wt`.
+    let listing = git_out(wt, &["worktree", "list", "--porcelain"])?;
+    let here = fs::canonicalize(wt).unwrap_or_else(|_| wt.to_path_buf());
+    for e in parse_worktree_list(&listing) {
+        let p = fs::canonicalize(&e.path).unwrap_or(e.path);
+        if p != here && p.starts_with(&here) {
+            kept.push(p.strip_prefix(&here).ok()?.to_string_lossy().into_owned());
+        }
+    }
+    let newest = safe_files
+        .iter()
+        .filter_map(|f| fs::symlink_metadata(f).ok())
+        .filter_map(|m| m.modified().ok())
+        .filter_map(unix_secs)
+        .max();
     kept.sort();
-    Some((safe, kept))
+    kept.dedup();
+    Some((safe, kept, newest))
 }
 
 /// How far one plan goes (#2879 D2): at most `max_checked` worktrees are examined, starting
@@ -716,6 +763,7 @@ pub fn plan_paced(
         let mut merged_by: Option<&str> = None;
         let mut ignored_safe: Option<usize> = None;
         let mut ignored_kept: Vec<String> = Vec::new();
+        let mut safe_newest: Option<u64> = None;
         let over_count = i != 0 && pace.max_checked.is_some_and(|m| checked >= m);
         if Instant::now() >= deadline || over_count {
             f.budget_spent = true;
@@ -750,19 +798,20 @@ pub fn plan_paced(
                     f.untracked = Some(u);
                     f.ignored_outside_build = Some(ign + preserved.len());
                 }
-            } else if let (Some((u, _, _)), Some((safe, kept))) =
+            } else if let (Some((u, _, _)), Some((safe, kept, newest))) =
                 (census(&path), ignored_split(&path, &primary, &preserved))
             {
                 f.untracked = Some(u);
                 f.ignored_outside_build = Some(kept.len());
                 ignored_safe = Some(safe);
                 ignored_kept = kept;
+                safe_newest = newest;
             }
             f.in_use = cwds
                 .as_ref()
                 .map(|list| list.iter().any(|c| c.starts_with(&path)));
             f.change_age_secs =
-                newest_change(&path, &target, &cargo).map(|t| now.saturating_sub(t));
+                newest_change(&path, &target, &cargo, safe_newest).map(|t| now.saturating_sub(t));
         }
         let (action, reasons) = decide(&f, window);
         let (trim_bytes, partial) = if action == "skip" {
@@ -862,7 +911,7 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
         let (_, preserved) = split_target(&wt.join("target"));
         let split = primary.and_then(|p| ignored_split(wt, p, &preserved));
         match (census(wt), split) {
-            (Some((0, _, _)), Some((_, kept))) if kept.is_empty() => {}
+            (Some((0, _, _)), Some((_, kept, _))) if kept.is_empty() => {}
             (Some(_), Some(_)) => return Some("files_outside_build_output"),
             _ => return Some("file_census_unknown"),
         }

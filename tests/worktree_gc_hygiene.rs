@@ -359,3 +359,163 @@ fn statusline_state_files_are_regenerable() {
     assert_ne!(rep["action"], "remove", "{rep}");
     assert_eq!(rep["ignored_kept"][0], ".moai/state/active-sessions.json");
 }
+
+fn plan_at(fx: &Fx, now: u64) -> Value {
+    let out = Command::new(BIN)
+        .args(["worktree-gc-plan"])
+        .arg(&fx.root)
+        .args(["--integration-ref", "integ", "--now-unix", &now.to_string()])
+        .current_dir(&fx.root)
+        .env("HOME", &fx.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)));
+    assert_eq!(v["ok"], true, "{v}");
+    v["result"].clone()
+}
+
+fn apply(fx: &Fx, r: &Value) -> Value {
+    let out = Command::new(BIN)
+        .args(["worktree-gc-apply"])
+        .arg(&fx.root)
+        .args([
+            "--integration-ref",
+            "integ",
+            "--now-unix",
+            &r["now_unix"].as_u64().unwrap().to_string(),
+            "--plan-digest",
+            r["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ])
+        .current_dir(&fx.root)
+        .env("HOME", &fx.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .unwrap();
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)))
+}
+
+fn kept(c: &Value) -> Vec<String> {
+    c["ignored_kept"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect()
+}
+
+/// Audit B1 on PR #2896: a clone with an unpushed commit inside the lane's temporary folder
+/// `target/agent-N/` keeps the worktree, and the apply leaves the clone and its commit as
+/// they were. A lane folder of plain notes alone still lets the worktree go.
+#[test]
+fn a_nested_clone_in_the_lane_folder_keeps_the_worktree() {
+    let fx = fixture(&["nest", "plain"]);
+    write(&fx.wt("plain").join("target/agent-3/notes.md"), "n\n");
+    let clone = fx.wt("nest").join("target/agent-3/clone");
+    fs::create_dir_all(&clone).unwrap();
+    git(&clone, &["init", "-q", "-b", "main"]);
+    fs::write(clone.join("work.txt"), "unpushed\n").unwrap();
+    git(&clone, &["add", "work.txt"]);
+    git(&clone, &["commit", "-q", "-m", "unpushed"]);
+    let head = git(&clone, &["rev-parse", "HEAD"]);
+
+    let r = plan(&fx, &[]);
+    let c = entry(&r, ".moai-cli/worktrees/nest");
+    assert_ne!(c["action"], "remove", "{c}");
+    assert!(
+        kept(c).contains(&"target/agent-3/clone/.git".to_string()),
+        "{c}"
+    );
+    assert_eq!(
+        entry(&r, ".moai-cli/worktrees/plain")["action"],
+        "remove",
+        "{r}"
+    );
+    let v = apply(&fx, &r);
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(!fx.wt("plain").exists(), "{v}");
+    assert!(fx.wt("nest").is_dir(), "{v}");
+    assert_eq!(git(&clone, &["rev-parse", "HEAD"]), head);
+}
+
+/// Audit B1 on PR #2896: a linked worktree of the same clone placed inside the lane folder
+/// keeps the outer worktree; the plan names the nested worktree's path, and the apply leaves
+/// its uncommitted change in place.
+#[test]
+fn a_nested_linked_worktree_in_the_lane_folder_keeps_the_worktree() {
+    let fx = fixture(&["outer"]);
+    let inner = fx.wt("outer").join("target/agent-3/wt2");
+    fs::create_dir_all(inner.parent().unwrap()).unwrap();
+    git(
+        &fx.root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/1-inner",
+            inner.to_str().unwrap(),
+        ],
+    );
+    fs::write(inner.join("a.txt"), "uncommitted\n").unwrap();
+
+    let r = plan(&fx, &[]);
+    let c = entry(&r, ".moai-cli/worktrees/outer");
+    assert_ne!(c["action"], "remove", "{c}");
+    assert!(kept(c).contains(&"target/agent-3/wt2".to_string()), "{c}");
+    let v = apply(&fx, &r);
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(fx.wt("outer").is_dir(), "{v}");
+    assert_eq!(
+        fs::read_to_string(inner.join("a.txt")).unwrap(),
+        "uncommitted\n"
+    );
+}
+
+/// Audit B2 on PR #2896: a file the plan counts safe (a lane folder note, a `*.log`) that was
+/// written inside the recent window makes the worktree skip with `recent_change`; the same
+/// worktree without it is removed. The files are dated two days ahead and the plan runs a
+/// minute after that, so every other change-age path is two days old.
+#[test]
+fn a_recent_write_to_a_safe_file_keeps_the_worktree() {
+    let fx = fixture(&["lane", "log", "old"]);
+    let ahead = std::time::SystemTime::now() + std::time::Duration::from_secs(2 * 86_400);
+    for (n, rel) in [
+        ("lane", "target/agent-3/deep/evidence.md"),
+        ("log", "logs/deep/run.log"),
+    ] {
+        let p = fx.wt(n).join(rel);
+        write(&p, "fresh\n");
+        fs::File::options()
+            .write(true)
+            .open(&p)
+            .unwrap()
+            .set_modified(ahead)
+            .unwrap();
+    }
+    let at = ahead
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        + 60;
+    let r = plan_at(&fx, at);
+    for n in ["lane", "log"] {
+        let c = entry(&r, &format!(".moai-cli/worktrees/{n}"));
+        assert_eq!(c["action"], "skip", "{n}: {c}");
+        assert!(
+            reasons(c).contains(&"recent_change".to_string()),
+            "{n}: {c}"
+        );
+    }
+    assert_eq!(
+        entry(&r, ".moai-cli/worktrees/old")["action"],
+        "remove",
+        "{r}"
+    );
+}
