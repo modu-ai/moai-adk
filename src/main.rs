@@ -315,11 +315,13 @@ enum Command {
     ///
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
-    /// waiting and on failure it prints the load averages and free disk space. Unix only.
+    /// waiting and on failure it prints the load averages and free disk space. The machine's
+    /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 %); a
+    /// flag only tightens them (#2930). Unix only.
     HeavySlotAcquire {
-        /// The machine's slot count; every caller passes the same value (the leader's limit).
+        /// Slot count; only a value below `limits.json`'s (default 3) takes effect.
         #[arg(long)]
-        max: usize,
+        max: Option<usize>,
         /// The caller's name, shown by `heavy-slot-status`.
         #[arg(long)]
         name: String,
@@ -327,12 +329,13 @@ enum Command {
         #[arg(long)]
         dir: Option<PathBuf>,
         /// Start nothing (exit 75) while the working folder's file system has less free space,
-        /// in decimal GB; 0 turns it off.
-        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.min_free_gb)]
-        min_free_gb: u64,
-        /// Start nothing (exit 75) while swap use is above this percent; 100 turns it off.
-        #[arg(long, default_value_t = moai_cli::heavy_slot::DEFAULT_LIMITS.max_swap_pct)]
-        max_swap_pct: u64,
+        /// in decimal GB; only a value above `limits.json`'s (default 50) takes effect.
+        #[arg(long)]
+        min_free_gb: Option<u64>,
+        /// Start nothing (exit 75) while swap use is above this percent; only a value below
+        /// `limits.json`'s (default 80) takes effect.
+        #[arg(long)]
+        max_swap_pct: Option<u64>,
         /// The heavy command and its arguments, after `--`.
         #[arg(last = true)]
         command: Vec<String>,
@@ -2986,10 +2989,19 @@ pub(crate) fn main() -> ExitCode {
                 return ExitCode::from(moai_cli::heavy_slot::USAGE);
             }
         };
-        let limits = moai_cli::heavy_slot::Limits {
-            min_free_gb: *min_free_gb,
-            max_swap_pct: *max_swap_pct,
+        // #2930 R-2: the machine's limits file beside the slots; a flag only tightens it.
+        let file = match moai_cli::heavy_slot::read_limits_file(&dir) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("heavy-slot: refused {e}; nothing was written and COMMAND did not run");
+                return ExitCode::from(moai_cli::heavy_slot::REFUSED);
+            }
         };
+        let (max, limits, notes) =
+            moai_cli::heavy_slot::effective(file.as_ref(), *max, *min_free_gb, *max_swap_pct);
+        for note in notes {
+            eprintln!("{note}");
+        }
         if let Some(note) = moai_cli::heavy_slot::build_folder_note(
             name,
             command,
@@ -2999,7 +3011,7 @@ pub(crate) fn main() -> ExitCode {
             eprintln!("{note}");
         }
         return ExitCode::from(moai_cli::heavy_slot::acquire(
-            &dir, *max, name, command, limits,
+            &dir, max, name, command, limits,
         ));
     }
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the

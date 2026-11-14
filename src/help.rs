@@ -371,7 +371,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     ("usage-limit", &["usage-limit ~"]),
-    ("heavy-slot-acquire", &["heavy-slot-acquire --max 2 --name agent-1 -- cargo test"]),
+    ("heavy-slot-acquire", &["heavy-slot-acquire --name agent-1 -- cargo test"]),
     ("heavy-slot-status", &["heavy-slot-status"]),
     ("goal-show", &["goal-show ."]),
     ("goal-plan", &["goal-plan --request <request> .", "goal-apply --request <request> --plan-digest <digest> ."]),

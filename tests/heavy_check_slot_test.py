@@ -283,6 +283,25 @@ ROOT = Path(__file__).resolve().parent.parent
 REASON = re.compile(r"not started — (.*); load ")
 
 
+def padded(n):
+    """A valid limits file of exactly `n` bytes."""
+    head = '{"max":2}'
+    return head + " " * (n - len(head))
+
+
+# Limits files both tools refuse with 125 (#2930 R-2); the symlink and folder cases plant
+# something other than text and are run on their own.
+BAD_LIMITS_FILES = [
+    ("max 0", '{"max":0}'),
+    ("unknown key", '{"max":2,"min_free":1}'),
+    ("invalid JSON", "{max:2"),
+    ("not an object", "[2,50,80]"),
+    ("negative", '{"min_free_gb":-1}'),
+    ("not a whole number", '{"max_swap_pct":"80"}'),
+    ("4097 bytes", padded(4097)),
+]
+
+
 def rust_bin():
     """The debug `moai-cli` the cargo steps built (debug builds read MOAI_CLI_TEST_MACHINE)."""
     target = os.environ.get("CARGO_TARGET_DIR")
@@ -346,13 +365,30 @@ class MachineLimitTest(unittest.TestCase):
         self.assertEqual(r.returncode, 75)
         self.assertRegex(r.stderr, r"is below 50 GB; swap use 95% is above 80%")
 
+    def limits(self, body):
+        """Write `<slots>/limits.json` (#2930 R-2), or remove it for None."""
+        path = self.folder / "limits.json"
+        if body is None:
+            if path.is_file() and not path.is_symlink():
+                path.unlink()
+            return
+        self.folder.mkdir(exist_ok=True)
+        path.write_text(body)
+
     def test_limits_can_be_set_or_turned_off_and_unknown_values_do_not_refuse(self):
         r = self.run_python("free_gb=60,swap_pct=0", "--min-free-gb", "61")
         self.assertEqual(r.returncode, 75, r.stderr)
         self.assertIn("is below 61 GB", r.stderr)
-        r = self.run_python("free_gb=0,swap_pct=100", "--min-free-gb", "0", "--max-swap-pct", "100")
+        # #2930 R-2: the old flags alone no longer turn the limits off; the file does.
+        r = self.run_python("free_gb=1,swap_pct=0", "--min-free-gb", "0", "--max-swap-pct", "100")
+        self.assertEqual(r.returncode, 75, r.stderr)
+        self.assertIn("is below 50 GB", r.stderr)
+        self.assertFalse(self.ran())
+        self.limits('{"min_free_gb":0,"max_swap_pct":100}')
+        r = self.run_python("free_gb=0,swap_pct=100")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue(self.ran())
+        self.limits(None)
         r = self.run_python("nothing=1")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue(self.ran())
@@ -387,17 +423,27 @@ class MachineLimitTest(unittest.TestCase):
         if not exe.exists():
             raise AssertionError(f"moai-cli not built at {exe}; run cargo build first")
         cases = [
-            ("free_gb=49,swap_pct=0", ()),
-            ("free_gb=50,swap_pct=0", ()),
-            ("free_gb=51,swap_pct=0", ()),
-            ("free_gb=1000,swap_pct=80", ()),
-            ("free_gb=1000,swap_pct=81", ()),
-            ("free_gb=10,swap_pct=95", ()),
-            ("free_gb=60,swap_pct=0", ("--min-free-gb", "61")),
-            ("free_gb=0,swap_pct=100", ("--min-free-gb", "0", "--max-swap-pct", "100")),
-            ("nothing=1", ()),
-        ]
-        for machine, extra in cases:
+            ("free_gb=49,swap_pct=0", (), None),
+            ("free_gb=50,swap_pct=0", (), None),
+            ("free_gb=51,swap_pct=0", (), None),
+            ("free_gb=1000,swap_pct=80", (), None),
+            ("free_gb=1000,swap_pct=81", (), None),
+            ("free_gb=10,swap_pct=95", (), None),
+            ("free_gb=60,swap_pct=0", ("--min-free-gb", "61"), None),
+            ("free_gb=0,swap_pct=100", ("--min-free-gb", "0", "--max-swap-pct", "100"), None),
+            ("free_gb=0,swap_pct=100", (), '{"min_free_gb":0,"max_swap_pct":100}'),
+            ("free_gb=49,swap_pct=0", ("--min-free-gb", "0"), '{"min_free_gb":50}'),
+            ("free_gb=50,swap_pct=0", ("--min-free-gb", "0"), '{"min_free_gb":50}'),
+            ("free_gb=59,swap_pct=0", (), '{"min_free_gb":60}'),
+            ("free_gb=60,swap_pct=0", (), '{"min_free_gb":60}'),
+            ("free_gb=60,swap_pct=0", ("--min-free-gb", "61"), '{"min_free_gb":50}'),
+            ("free_gb=61,swap_pct=0", ("--min-free-gb", "61"), '{"min_free_gb":50}'),
+            ("free_gb=1000,swap_pct=81", ("--max-swap-pct", "100"), '{"max_swap_pct":80}'),
+            ("free_gb=1000,swap_pct=80", ("--max-swap-pct", "100"), '{"max_swap_pct":80}'),
+            ("nothing=1", (), None),
+        ] + [(ROOMY, (), body) for _, body in BAD_LIMITS_FILES]
+        for machine, extra, body in cases:
+            self.limits(body)
             py = self.run_python(machine, *extra)
             py_ran = self.ran()
             rs = self.run_rust(machine, *extra)
@@ -408,6 +454,83 @@ class MachineLimitTest(unittest.TestCase):
             self.assertEqual(bool(py_why), bool(rs_why), (machine, py.stderr, rs.stderr))
             if py_why:
                 self.assertEqual(py_why.group(1), rs_why.group(1), machine)
+
+    def test_a_limits_file_wins_when_stricter(self):
+        """#2930 R-2: each pair is the edge — the first value refused, then the first that
+        starts."""
+        for body, extra, refused, starts, says in [
+            ('{"min_free_gb":50}', ("--min-free-gb", "0"), 49, 50, "below 50 GB"),
+            ('{"min_free_gb":60}', (), 59, 60, "below 60 GB"),
+            ('{"min_free_gb":50}', ("--min-free-gb", "61"), 60, 61, "below 61 GB"),
+        ]:
+            self.limits(body)
+            r = self.run_python(f"free_gb={refused},swap_pct=0", *extra)
+            self.assertEqual(r.returncode, 75, (body, extra, r.stderr))
+            self.assertIn(says, r.stderr)
+            self.assertFalse(self.ran())
+            r = self.run_python(f"free_gb={starts},swap_pct=0", *extra)
+            self.assertEqual(r.returncode, 0, (body, extra, r.stderr))
+            self.assertTrue(self.ran())
+        self.limits('{"max_swap_pct":80}')
+        r = self.run_python("free_gb=1000,swap_pct=81", "--max-swap-pct", "100")
+        self.assertEqual(r.returncode, 75, r.stderr)
+        self.assertIn("swap use 81% is above 80%", r.stderr)
+        self.assertIn("--max-swap-pct 100 is looser than limits.json (80)", r.stderr)
+        r = self.run_python("free_gb=1000,swap_pct=80", "--max-swap-pct", "100")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(self.ran())
+
+    def test_a_max_in_the_file_beats_a_larger_caller_max(self):
+        self.limits('{"max":1}')
+        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=ROOMY)
+        hold = subprocess.Popen(
+            tool(self.folder, "acquire", "--max", "2", "--name", "holder", "--",
+                 sys.executable, "-c", "import time; time.sleep(30)"),
+            env=env, cwd=self.root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        self.addCleanup(lambda: hold.poll() is None and os.killpg(hold.pid, signal.SIGKILL))
+        self.assertTrue(wait_for(lambda: "holder" in holder_names(self.folder)))
+        waiter = subprocess.Popen(
+            tool(self.folder, "acquire", "--max", "2", "--name", "waiter", "--",
+                 sys.executable, "-c", f"open({str(self.marker)!r}, 'w')"),
+            env=env, cwd=self.root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        waiting = self.folder / "waiting"
+        self.assertTrue(wait_for(lambda: waiting.is_dir() and any(waiting.iterdir())))
+        self.assertFalse(self.marker.exists(), "the waiter ran while the only slot was held")
+        self.assertFalse((self.folder / "slot-1").exists(), "slot 1 was created")
+        os.killpg(hold.pid, signal.SIGKILL)
+        out, err = waiter.communicate(timeout=30)
+        self.assertEqual(waiter.returncode, 0, (out, err))
+        self.assertIn("waiting 1 of 1 for 1 slot(s)", out)
+        self.assertTrue(self.ran())
+
+    def test_a_bad_limits_file_runs_nothing(self):
+        valid = self.root / "valid.json"
+        valid.write_text('{"min_free_gb":0}')
+        path = self.folder / "limits.json"
+        plants = [(what, lambda b=body: path.write_text(b)) for what, body in BAD_LIMITS_FILES]
+        plants += [("symlink to a valid file", lambda: path.symlink_to(valid)),
+                   ("directory", lambda: path.mkdir())]
+        for what, plant in plants:
+            with self.subTest(what):
+                with tempfile.TemporaryDirectory() as d:
+                    self.folder = Path(os.path.realpath(d)) / "slots"
+                    self.folder.mkdir()
+                    path = self.folder / "limits.json"
+                    plant()
+                    r = self.run_python(ROOMY)
+                    self.assertEqual(r.returncode, 125, (what, r.stderr))
+                    self.assertIn("heavy-check-slot: refused", r.stderr)
+                    self.assertIn("COMMAND did not run", r.stderr)
+                    self.assertNotIn("Traceback", r.stderr)
+                    self.assertFalse(self.ran(), what)
+                    self.assertFalse((self.folder / "slot-0").exists(), what)
+                    self.assertFalse((self.folder / "waiting").exists(), what)
+        self.folder = self.root / "slots"
+        self.limits(padded(4096))
+        r = self.run_python(ROOMY)
+        self.assertEqual(r.returncode, 0, ("4096 bytes", r.stderr))
+        self.assertTrue(self.ran())
 
 
 if __name__ == "__main__":
