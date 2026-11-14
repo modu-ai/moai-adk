@@ -816,9 +816,14 @@ is left out together with its separator.
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
    The `worktree` and `pr` options turn their segments off.
-3. Usage and lane: the `CTX` and available `Week` bars, then the optional `🏷️` session
-   name last (#2809, replacing #2756's name-first order; with no name the line ends at
-   the last bar; with no bars the name stands alone). The bar icons (`🔋`/`🪫`) and the
+3. Tag and usage: `🏷️ <tag>` first, then the `CTX` and available `Week` bars
+   (`🏷️ leader | 🔋 CTX: … | 🪫 Week: …`; #2928, user instruction 2026-11-14, replacing
+   #2809's name-last order). The tag is only `leader` or `agent`: `leader` when the stdin
+   `session_name` is a valid lane name and the clone's lane registry holds a live entry for
+   it with mode `leader` (`moai session-register --mode leader`, read by
+   `lane_registry::mode_of`), `agent` otherwise. The `session_name` text itself is never
+   printed. The tag is shown whenever the `session` option is on, even without stdin
+   (decision Q2); with no bars it stands alone. The bar icons (`🔋`/`🪫`) and the
    `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden; reset times are not printed.

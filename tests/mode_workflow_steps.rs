@@ -176,6 +176,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "claim-timeout-check --issue",
             "claim-verify",
             "claim-verify --hook",
+            // #2903 (#2899 O4): the lane closes its own card through `close-check` (its
+            // `--repo` follows a placeholder, so tests/close_step_2903.rs checks that flag).
+            "close-check",
             "gate-check",
             "gate-loop --fetch",
             "gate-schedule-apply",
@@ -202,6 +205,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "repo-scans --refs",
             "scope-check",
             "session-register",
+            // #2928: MODE-LEADER registers itself as the leader for the status line tag
+            // (`--name <n> --mode=leader`; the `=` keeps clear of the retired `/moai` mode
+            // spelling that tests/product_cli.rs scans the package for).
+            "session-register --name",
             "session-register --release",
             "usage-limit",
             "worktree-gc-apply",
@@ -247,6 +254,22 @@ fn assert_says(text: &str, key: &str, phrases: &[&str]) {
     for p in phrases {
         assert!(body.contains(p), "{key} must say `{p}`:\n{body}");
     }
+}
+
+/// #2928 (decision D1 = (A)): the leader registers its session with mode `leader` at the banner
+/// and renews it every round, so the status line tags it `leader`; the flag it names exists.
+#[test]
+fn the_leader_registers_its_mode_for_the_status_line() {
+    assert_says(
+        &workflow("mode-leader.md"),
+        "banner",
+        &[
+            "`moai session-register --name <your session name> --mode=leader .`",
+            "`--instance <that instance>`",
+            "every supervision round",
+        ],
+    );
+    assert!(help(&["session-register"]).contains("--mode <MODE>"));
 }
 
 // #2515: lanes open their own pull requests, settle a simultaneous opening themselves,
