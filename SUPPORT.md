@@ -14,7 +14,7 @@ Discord is for conversation. Anything that should be remembered (a decision, a b
 
 ## Before you ask
 
-- Say which generation you use: the Rust release candidate (`moai-cli`, branch `v2026.11.0`) or the Go 3.x release (`moai`, branch `main`). For the release candidate, include the output of `moai-cli --version`.
+- Say which generation you use: the Rust release candidate (branch `v2026.11.0`) or the Go 3.x release (branch `main`). Both commands are called `moai`, so include the output of `moai --version`: only the release candidate's line ends with `(rust)`.
 - Include your OS and CPU architecture, and the host and its version (Claude Code or Codex).
 - For an error, paste the exact command and its output, with secrets and personal paths removed.
 

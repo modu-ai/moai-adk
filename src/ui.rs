@@ -423,7 +423,14 @@ pub fn error_frame(
     cause: Option<&str>,
     next: Option<&str>,
 ) -> String {
-    let mut out = format!("{} {}\n", p.paint(Token::Error, "error:"), visible(what));
+    // S6c (#2825): the labels are words in the stream's language — the `error` and `next`
+    // token words (S6b) and the `cause` sentence; the texts inside stay as given.
+    let label = |word: &str| format!("{word}:");
+    let mut out = format!(
+        "{} {}\n",
+        p.paint(Token::Error, &label(Token::Error.word_in(p.lang))),
+        visible(what)
+    );
     for line in detail {
         out.push_str(&visible(line));
         out.push('\n');
@@ -431,14 +438,17 @@ pub fn error_frame(
     if let Some(cause) = cause {
         out.push_str(&format!(
             "  {} {}\n",
-            p.paint(Token::Muted, "cause:"),
+            p.paint(
+                Token::Muted,
+                &label(p.text(crate::ui_text::Msg::LabelCause))
+            ),
             visible(cause)
         ));
     }
     if let Some(next) = next {
         out.push_str(&format!(
             "  {} {}\n",
-            p.paint(Token::Info, "next:"),
+            p.paint(Token::Info, &label(Token::Info.word_in(p.lang))),
             visible(next)
         ));
     }
@@ -697,6 +707,40 @@ mod tests {
             error_frame(&plain, "plain text", &[], None, None),
             "error: plain text\n"
         );
+    }
+
+    /// S6c (#2825): a Korean stream labels the frame `오류:`, `원인:`, `다음:` — the token words
+    /// of S6b and one new sentence — while the text inside stays as given. Control characters
+    /// in the given text are still shown as `\xNN` (agent-22 #2887 note).
+    #[test]
+    fn a_korean_frame_has_korean_labels() {
+        let ko = Painter::plain().with_lang(crate::ui_text::Lang::Ko);
+        assert_eq!(
+            error_frame(
+                &ko,
+                "invalid typed JSON input",
+                &["  <PROJECT>"],
+                Some("c"),
+                Some("n")
+            ),
+            "오류: invalid typed JSON input\n  <PROJECT>\n  원인: c\n  다음: n\n"
+        );
+        let color = Painter {
+            color: true,
+            unicode: true,
+            lang: crate::ui_text::Lang::Ko,
+        };
+        assert_eq!(
+            error_frame(&color, "x", &[], None, Some("n")),
+            "\u{1b}[31m오류:\u{1b}[0m x\n  \u{1b}[36m다음:\u{1b}[0m n\n"
+        );
+        let evil = "a\u{1b}]0;t\u{7}b";
+        let shown = error_frame(&ko, evil, &[evil], Some(evil), Some(evil));
+        assert!(
+            !shown.chars().any(|c| c.is_control() && c != '\n'),
+            "{shown:?}"
+        );
+        assert_eq!(shown.matches("a\\x1b]0;t\\x07b").count(), 4, "{shown}");
     }
 
     /// Card #2804: the frame's golden shapes. Plain (NO_COLOR, TERM=dumb, ASCII) is the same

@@ -416,6 +416,212 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
     assert!(!home.join(".codex/AGENTS.md").exists());
 }
 
+/// #2872 stage 2: Go leftovers a cleanup plan archives — a Go `~/.moai` (no live session) whose
+/// user-asset manifest proves the sibling skill `~/.claude/skills/moai-proven/`.
+fn go_leftovers(home: &Path) {
+    use sha2::{Digest, Sha256};
+    let sha = |b: &[u8]| format!("{:x}", Sha256::digest(b));
+    let put = |rel: &str, body: &str| {
+        let p = home.join(rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, body).unwrap();
+    };
+    put(".moai/state/active-sessions.json", "[]");
+    put(".claude/skills/moai-proven/SKILL.md", "proven\n");
+    put(".claude/skills/moai-proven/refs/x.md", "x\n");
+    // Keys are `<slug>/<path>`, joined at run time: a literal `…-skills/<path>` reads as a
+    // repository skill path to tests/skill_references_test.py.
+    let slug = "claude-skills";
+    let mut files = serde_json::Map::new();
+    for (rel, body) in [
+        ("moai-proven/SKILL.md", "proven\n"),
+        ("moai-proven/refs/x.md", "x\n"),
+    ] {
+        files.insert(
+            format!("{slug}/{rel}"),
+            json!({"sha256": sha(body.as_bytes()), "bundle": "core"}),
+        );
+    }
+    put(
+        ".moai/user-assets.json",
+        &json!({"schema_version": 1, "bundles": {}, "files": files, "collisions": []}).to_string(),
+    );
+}
+
+const PREVIEW_KEYS: [&str; 13] = [
+    "mode",
+    "applied",
+    "nothing_to_apply",
+    "package",
+    "plan_digest",
+    "plan",
+    "agents",
+    "routing",
+    "style",
+    "bin_names",
+    "hooks",
+    "skipped",
+    "confirm_with",
+];
+
+fn keys(v: &Value) -> Vec<String> {
+    v.as_object().unwrap().keys().cloned().collect()
+}
+
+fn refused(out: &Output) -> String {
+    assert!(!out.status.success());
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    v["error"]["message"].as_str().unwrap().to_string()
+}
+
+/// #2872 stage 2: with nothing to archive the preview is exactly what it was — no `cleanup`
+/// key — and a cleanup token is refused before anything is written.
+#[test]
+fn without_go_leftovers_the_preview_has_no_cleanup_and_a_token_is_refused() {
+    let (_t, home, exe, _) = setup();
+    let before = state(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(keys(&p), PREVIEW_KEYS, "{p}");
+    let e = refused(&run(
+        &exe,
+        &home,
+        &["update", "--confirm-cleanup", "cleanup:0000000000000000"],
+    ));
+    assert!(e.contains("cleanup token"), "{e}");
+    assert_eq!(state(&home), before, "a refused cleanup writes nothing");
+}
+
+/// #2872 stage 2: Go leftovers show a cleanup preview with its token; the cleanup is not part
+/// of `plan_digest`, and `--confirm <digest>` applies the layer but moves nothing.
+#[test]
+fn go_leftovers_are_previewed_outside_the_digest_and_confirm_moves_none() {
+    let (_t, home, exe, _) = setup();
+    let plain = result(&run(&exe, &home, &["update"]));
+    go_leftovers(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(
+        p["plan_digest"], plain["plan_digest"],
+        "cleanup is in the digest"
+    );
+    let mut with: Vec<&str> = PREVIEW_KEYS.to_vec();
+    with.push("cleanup");
+    assert_eq!(keys(&p), with, "{p}");
+    let token = p["cleanup"]["confirm_token"].as_str().unwrap();
+    assert!(token.starts_with("cleanup:"), "{p}");
+    assert_eq!(p["cleanup"]["counts"]["archive"], json!(1), "{p}");
+    assert_eq!(p["cleanup"]["writes"], json!(false));
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    assert!(r.get("cleanup_result").is_none(), "{r}");
+    assert!(r["revert"].get("cleanup").is_none(), "{r}");
+    assert!(home.join(".claude/skills/moai-proven/SKILL.md").is_file());
+    assert!(!home.join(".moai-cli/cleanup").exists());
+}
+
+/// #2872 stage 2: a wrong or stale cleanup token is refused before any write, with or without
+/// `--confirm`; the right one alone archives the leftovers while the layer stays a preview, and
+/// `cleanup-revert` puts the bytes back.
+#[test]
+fn the_cleanup_token_alone_archives_and_cleanup_revert_restores() {
+    let (_t, home, exe, _) = setup();
+    go_leftovers(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    let token = p["cleanup"]["confirm_token"].as_str().unwrap().to_string();
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let before = state(&home);
+    let wrong = "cleanup:0000000000000000";
+    for args in [
+        vec!["update", "--confirm-cleanup", wrong],
+        vec!["update", "--confirm", &top, "--confirm-cleanup", wrong],
+    ] {
+        let e = refused(&run(&exe, &home, &args));
+        assert!(e.contains("cleanup token"), "{args:?}: {e}");
+        assert_eq!(
+            state(&home),
+            before,
+            "{args:?}: a refused token writes nothing"
+        );
+    }
+    let r = result(&run(&exe, &home, &["update", "--confirm-cleanup", &token]));
+    assert_eq!(r["mode"], json!("preview"), "{r}");
+    assert_eq!(r["applied"], json!(false), "{r}");
+    assert!(
+        !home.join(".claude/skills/moai").exists(),
+        "the layer stays a preview"
+    );
+    assert_eq!(r["cleanup_result"]["state"], json!("committed"), "{r}");
+    assert_eq!(r["cleanup_result"]["moved"], json!(1), "{r}");
+    let stamp = r["cleanup_result"]["stamp"].as_str().unwrap();
+    assert_eq!(
+        r["revert"]["cleanup"],
+        json!(format!("moai cleanup-revert-plan <HOME> --stamp {stamp}"))
+    );
+    let archive = home.join(".moai-cli/cleanup").join(stamp);
+    assert!(archive.join("receipt.json").is_file());
+    assert_eq!(
+        fs::read(archive.join(".claude/skills/moai-proven/refs/x.md")).unwrap(),
+        b"x\n"
+    );
+    assert!(!home.join(".claude/skills/moai-proven").exists());
+    // The same token again is stale: nothing is left to archive.
+    let after = state(&home);
+    refused(&run(&exe, &home, &["update", "--confirm-cleanup", &token]));
+    assert_eq!(state(&home), after);
+    let h = home.to_str().unwrap();
+    result(&run(
+        &exe,
+        &home,
+        &["cleanup-revert-plan", h, "--stamp", stamp],
+    ));
+    let rv = result(&run(
+        &exe,
+        &home,
+        &[
+            "cleanup-revert",
+            h,
+            "--stamp",
+            stamp,
+            "--permission-reference",
+            "fixture",
+        ],
+    ));
+    assert_eq!(rv["state"], json!("reverted"), "{rv}");
+    assert_eq!(
+        fs::read(home.join(".claude/skills/moai-proven/SKILL.md")).unwrap(),
+        b"proven\n"
+    );
+    assert_eq!(
+        fs::read(home.join(".claude/skills/moai-proven/refs/x.md")).unwrap(),
+        b"x\n"
+    );
+}
+
+/// #2872 stage 2: `--confirm` and `--confirm-cleanup` together apply the layer, then archive.
+#[test]
+fn confirm_with_the_cleanup_token_applies_the_layer_then_archives() {
+    let (_t, home, exe, _) = setup();
+    go_leftovers(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    let token = p["cleanup"]["confirm_token"].as_str().unwrap();
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(
+        &exe,
+        &home,
+        &["update", "--confirm", top, "--confirm-cleanup", token],
+    ));
+    assert_eq!(r["mode"], json!("applied"), "{r}");
+    assert_eq!(r["applied"], json!(true), "{r}");
+    assert_eq!(r["cleanup_result"]["state"], json!("committed"), "{r}");
+    let stamp = r["cleanup_result"]["stamp"].as_str().unwrap();
+    assert_eq!(
+        r["revert"]["cleanup"],
+        json!(format!("moai cleanup-revert-plan <HOME> --stamp {stamp}"))
+    );
+    assert!(home.join(".claude/skills/moai/SKILL.md").is_file());
+    assert!(!home.join(".claude/skills/moai-proven").exists());
+}
+
 #[test]
 fn a_package_changed_after_the_preview_is_refused_with_nothing_written() {
     let (_t, home, exe, pkg) = setup();

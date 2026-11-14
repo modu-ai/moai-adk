@@ -5,7 +5,7 @@ This file states the default MoAI ADK workflow and the rules every coding agent 
 ## Authority
 
 1. System and developer requirements, then the user's latest authorized scope. A newer user correction supersedes an older plan.
-2. The forge ledger: GitHub Issues are the work ledger. Each Issue body is the design; the owned report comment on the Issue is its state (`상태:` line). Labels and assignees are display only, never locks.
+2. The forge ledger: GitHub Issues are the work ledger. Each Issue body plus the lane's `PLAN #<issue>` comment is the design (#2880); the owned report comment on the Issue is its state (`상태:` line). Labels and assignees are display only, never locks.
 3. The decisions log (`docs/decisions-<date>.md` or the project's equivalent): user decisions with time, scope and affected Issues. Anything not recorded there is still HOLD.
 4. Design documents and official sources, read before implementing. A link is not a read: use a document's content only after an actual successful read whose source, retrieval time and checksum are recorded.
 

@@ -604,3 +604,81 @@ fn install_inspect_names_the_home_state_root_by_its_marker() {
     let marked = state_root(&fresh);
     assert!(marked.ends_with("/.moai"), "{marked}");
 }
+
+/// #2867 (R5a): `path_first_moai` names the first `moai` on PATH with its generation and the
+/// evidence — a Go shim is `go`, a Rust build is `rust`, an executable that gives no version
+/// line is `unknown` (each `go`/`unknown` carries the note); no `moai` on PATH is `absent`, and
+/// a repository-content candidate is reported but never run.
+#[test]
+fn the_first_moai_on_path_is_reported_with_its_generation() {
+    let root = TempDir::new().unwrap();
+    let home = root.path().join("home");
+    let proj = root.path().join("proj");
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&proj).unwrap();
+    let first = |bin: &Path| -> Value {
+        let out = run_inspect(&home, bin, &proj);
+        ok_result(&out)["path_first_moai"].clone()
+    };
+    let go = root.path().join("go-bin");
+    fs::create_dir_all(&go).unwrap();
+    script(&go.join("moai"), "#!/bin/sh\necho 'moai 3.1.5 (go)'\n");
+    let v = first(&go);
+    assert_eq!(v["generation"], json!("go"), "{v}");
+    assert_eq!(v["basis"], json!("--version: moai 3.1.5 (go)"), "{v}");
+    assert!(v["note"].as_str().unwrap().contains("until R5"), "{v}");
+    assert!(v["path"].as_str().unwrap().ends_with("go-bin/moai"), "{v}");
+
+    let rust = root.path().join("rust-bin");
+    fs::create_dir_all(&rust).unwrap();
+    cli_copy(&rust.join("moai"));
+    let v = first(&rust);
+    assert_eq!(v["generation"], json!("rust"), "{v}");
+    assert_eq!(v["note"], Value::Null, "{v}");
+
+    let silent = root.path().join("silent-bin");
+    fs::create_dir_all(&silent).unwrap();
+    script(&silent.join("moai"), "#!/bin/sh\nexit 3\n");
+    let v = first(&silent);
+    assert_eq!(v["generation"], json!("unknown"), "{v}");
+    assert_eq!(v["basis"], json!("--version gave no line"), "{v}");
+    assert!(v["note"].is_string(), "{v}");
+
+    let empty = root.path().join("empty-bin");
+    fs::create_dir_all(&empty).unwrap();
+    let v = first(&empty);
+    assert_eq!(
+        v,
+        json!({"path": null, "generation": "absent", "probed": false,
+            "basis": "no moai on PATH", "note": null})
+    );
+
+    // A repository-content candidate (`$CLAUDE_PROJECT_DIR/.moai/bin/moai`) is never run: a
+    // marker file proves the script did not execute.
+    let ran = root.path().join("ran");
+    fs::create_dir_all(proj.join(".moai/bin")).unwrap();
+    script(
+        &proj.join(".moai/bin/moai"),
+        &format!("#!/bin/sh\ntouch '{}'\necho 'moai 3.1.5'\n", ran.display()),
+    );
+    let out = Command::new(EXE)
+        .args(["install-inspect", "--json"])
+        .env("HOME", &home)
+        .env("PATH", &empty)
+        .env("CLAUDE_PROJECT_DIR", &proj)
+        .current_dir(&proj)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let r = ok_result(&out);
+    assert_eq!(r["path_first_moai"]["generation"], json!("absent"), "{r}");
+    assert!(!ran.exists(), "the repository candidate was run");
+    let item = r["moai_candidates"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"].as_str().unwrap().ends_with(".moai/bin/moai"))
+        .unwrap_or_else(|| panic!("{r}"))
+        .clone();
+    assert_eq!(item["probed"], json!(false), "{item}");
+}
