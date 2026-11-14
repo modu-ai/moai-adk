@@ -162,3 +162,37 @@ fn help_all_lists_every_command_and_the_root_a_subset() {
     }
     assert!(root.contains("  cc, codex, glm "), "{root}");
 }
+
+/// #2824 re-audit B3: a wide `COLUMNS` never takes a help line past 100 columns — the grouped
+/// list, clap's options section of `help --all`, and a command's own help alike.
+#[test]
+fn no_help_line_goes_past_one_hundred_columns() {
+    for args in [
+        &["help", "--all"][..],
+        &["--help"][..],
+        &["identity", "--help"][..],
+    ] {
+        for columns in ["101", "300"] {
+            let out = run(common::MOAI_BIN, args, &[("COLUMNS", columns)]);
+            assert!(out.status.success(), "{args:?}");
+            let text = String::from_utf8(out.stdout).unwrap();
+            for line in text.lines() {
+                assert!(
+                    unicode_width::UnicodeWidthStr::width(line) <= 100,
+                    "{args:?} COLUMNS={columns}: {} columns: {line:?}",
+                    unicode_width::UnicodeWidthStr::width(line)
+                );
+            }
+        }
+    }
+}
+
+/// Only the exact form `help --all` is answered before parsing; anything after it goes to clap,
+/// which refuses it as a usage error instead of printing the list.
+#[test]
+fn help_all_with_more_arguments_is_not_the_grouped_list() {
+    let out = run(common::MOAI_BIN, &["help", "--all", "extra"], &[]);
+    assert_eq!(out.status.code(), Some(2), "{out:?}");
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(!text.contains("Lane and leader"), "{text}");
+}

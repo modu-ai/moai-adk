@@ -829,32 +829,9 @@ fn body_claim(body: &str) -> Option<(u64, u64)> {
     })
 }
 
-/// The tip's state as #2831 states P0 (D8(a)): the aggregate check (`ci`/`rc-ci`) is not
-/// judged on its own — a newer push cancels the older run, and the aggregate then reads
-/// `failure` with every real job passed or cancelled — and a cancelled job says nothing about
-/// the code. The remaining jobs are judged with `flow::tip_ci_judgment`: `red` only when a job
-/// itself failed with no success on the same commit.
-pub fn d8a_judgment(runs: &[Value]) -> Value {
-    let kept: Vec<Value> = runs
-        .iter()
-        .filter(|r| {
-            let name = r["name"].as_str().unwrap_or("");
-            !crate::flow::CI_CHECK_NAMES.contains(&name)
-                && r["conclusion"].as_str() != Some("cancelled")
-        })
-        .cloned()
-        .collect();
-    let mut names: Vec<String> = kept
-        .iter()
-        .filter_map(|r| r["name"].as_str().map(str::to_string))
-        .collect();
-    names.sort();
-    names.dedup();
-    if names.is_empty() {
-        return json!({"state": "pending"});
-    }
-    crate::flow::tip_ci_judgment(&kept, &names)
-}
+/// The tip's state as #2831 states P0 (D8(a)) — the merge gate's own judgment, one copy
+/// (#2856 D3, merged as `gate_collect::d8a_judgment` by #2869).
+pub use crate::gate_collect::d8a_judgment;
 
 /// P0 input: the tip commit judged by [`d8a_judgment`]; while it reads `pending` (running, or
 /// only cancelled), the earlier first-parent tip commits are read in turn, at most

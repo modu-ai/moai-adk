@@ -515,6 +515,48 @@ fn host_config_path(host: &str) -> &'static str {
     }
 }
 
+/// Whether MoAI's hook set is installed for `host` in the project `root` (#2853): Claude Code
+/// when its settings receipt owns `hooks`, Codex and OMP when their ownership receipt exists.
+/// An unreadable receipt is an error for the caller to report, never "not installed".
+pub fn installed(root: &Path, host: &str) -> Result<bool> {
+    check_host(host)?;
+    if host == "claude" {
+        return Ok(crate::claude::owned_settings(root)?.contains_key("hooks"));
+    }
+    let receipt = crate::state_root::path(root, file_host(host).receipt);
+    match fs::symlink_metadata(&receipt) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err(format!("{} unavailable", receipt.display())),
+        Ok(m) if m.file_type().is_symlink() => Err("symlink receipt refused".into()),
+        Ok(_) => Ok(true),
+    }
+}
+
+/// The two files a hook apply for `host` writes in the project `root`, relative to it: the host
+/// file and MoAI's ownership receipt for it (#2853 revert). Each folder between `root` and
+/// these files is listed in `dirs`, so a caller can refuse one that became a link.
+pub fn written_files(root: &Path, host: &str) -> Result<(Vec<String>, Vec<PathBuf>)> {
+    check_host(host)?;
+    let receipt = if host == "claude" {
+        "manifests/claude-settings.json"
+    } else {
+        file_host(host).receipt
+    };
+    let files = vec![
+        host_config_path(host).to_string(),
+        crate::state_root::rel(root, receipt),
+    ];
+    let host_dirs: &[&str] = if host == "claude" {
+        &[".claude"]
+    } else {
+        file_host(host).dirs
+    };
+    let state = crate::state_root::path(root, "");
+    let mut dirs: Vec<PathBuf> = host_dirs.iter().map(|d| root.join(d)).collect();
+    dirs.extend([state.clone(), state.join("manifests")]);
+    Ok((files, dirs))
+}
+
 /// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
 /// a missing, oversized or non-regular log reads as empty).
 fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {

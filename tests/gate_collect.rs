@@ -1447,3 +1447,194 @@ fn the_audit_workflow_example_is_the_helpers_line() {
     ));
     assert!(text.contains("a verdict never names a head nobody audited"));
 }
+
+/// #2860 rule 3: the collector resolves a short verdict base through git. A 12-digit prefix of
+/// a real commit becomes its full SHA and the gate passes; a prefix git does not know leaves it
+/// unresolved and G1 stops.
+#[test]
+fn a_short_verdict_base_is_resolved_to_one_commit() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a[..12])],
+        PASS_BODY,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.verdict_base_full.as_deref(), Some(r.a.as_str()));
+    assert!(s.verdict_base_known);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
+
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, "abababababab")],
+        PASS_BODY,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.verdict_base_full, None);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+}
+
+/// A repository whose base already has `src/lib.rs`; the PR and the tip each rewrite it.
+fn repo_lib(pr_lib: &str, tip_lib: &str) -> Repo {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let base = "pub mod a;\n\npub mod m;\n\npub mod z;\n";
+    let a = commit(d, &[("src/lib.rs", base), ("src/a.rs", "a\n")], "base");
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    let b = commit(
+        d,
+        &[("src/lib.rs", pr_lib), ("src/new.rs", "n\n")],
+        "pr\n\nMoai-Claim: 9#555",
+    );
+    git_ok(d, &["checkout", "-q", "main"]);
+    let c = commit(d, &[("src/lib.rs", tip_lib)], "tip");
+    Repo { _dir: dir, a, b, c }
+}
+
+/// #2860 rule 2 (shell gate_merge.sh): when the PR only adds module lines to `src/lib.rs` and
+/// the merged tree keeps them, the tip's change to that file is no code overlap. Any other PR
+/// change there (a non-module line, a removed line) stays an overlap and stops at G6.
+#[test]
+fn a_lib_rs_overlap_of_added_module_lines_is_allowed() {
+    let tip = "pub mod a;\n\npub mod m;\n\npub mod z;\npub mod zz;\n";
+    let check = |pr_lib: &str| {
+        let r = repo_lib(pr_lib, tip);
+        let t = exchanges(
+            &r.b,
+            &r.c,
+            vec![claim(&r.b), verdict(&r.b, &r.a)],
+            PASS_BODY,
+        );
+        let s = collect(&target(&r), &t).unwrap();
+        assert!(s.merge_clean, "{pr_lib}");
+        assert!(s
+            .tip_files_since_verdict_base
+            .contains(&"src/lib.rs".to_string()));
+        (s.lib_mod_only_kept, gate::check(&s).err().map(|e| e.rule))
+    };
+    // Two added module lines (`pub mod` and `mod`), nothing else: allowed.
+    assert_eq!(
+        check("pub mod a;\npub mod b;\n\npub mod m;\nmod n;\n\npub mod z;\n"),
+        (true, None)
+    );
+    // An added line that is not a module declaration.
+    assert_eq!(
+        check("pub mod a;\npub use a::x;\n\npub mod m;\n\npub mod z;\n"),
+        (false, Some("G6"))
+    );
+    // A removed module line.
+    assert_eq!(check("pub mod a;\n\n\npub mod z;\n"), (false, Some("G6")));
+    // A module name with an upper-case letter is not the declaration form the rule allows.
+    assert_eq!(
+        check("pub mod a;\npub mod Bad;\n\npub mod m;\n\npub mod z;\n"),
+        (false, Some("G6"))
+    );
+}
+
+fn job(name: &str, conclusion: Option<&str>, id: u64) -> Value {
+    json!({
+        "name": name,
+        "conclusion": conclusion,
+        "details_url": format!("https://github.com/o/r/actions/runs/{id}/job/1"),
+    })
+}
+
+/// #2860 (leader, #2856 N10; #2554 D8(a), leader tool green_tip.py): G8 judges the tip's jobs,
+/// not the aggregate `ci`. `main` is a → c; c's CI still runs, so a decides.
+/// - a's macOS job was cancelled by the newer push and the aggregate reads failure, but the
+///   same macOS job succeeded on c: green (the aggregate alone would have read red).
+/// - the same without a newer macOS success: a stays undecided and the walk ends unknown.
+/// - a job that really failed: red.
+/// - a cancelled job that is not macOS is never excused: unknown.
+#[test]
+fn g8_reads_the_jobs_and_excuses_a_macos_cancel_a_newer_run_passed() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let linux = "ci / linux-x86_64";
+    let mac = "ci / macos-arm64";
+    for (tip_now, parent, want, decided) in [
+        (
+            json!([job(linux, None, 90), job(mac, Some("success"), 90)]),
+            json!([
+                job("ci", Some("failure"), 80),
+                job(linux, Some("success"), 80),
+                job(mac, Some("cancelled"), 80)
+            ]),
+            "green",
+            Some(&r.a),
+        ),
+        (
+            json!([job(linux, None, 90), job(mac, None, 90)]),
+            json!([
+                job("ci", Some("failure"), 80),
+                job(linux, Some("success"), 80),
+                job(mac, Some("cancelled"), 80)
+            ]),
+            "unknown",
+            None,
+        ),
+        (
+            json!([job(linux, None, 90), job(mac, Some("success"), 90)]),
+            json!([
+                job("ci", Some("failure"), 80),
+                job(linux, Some("failure"), 80),
+                job(mac, Some("cancelled"), 80)
+            ]),
+            "red",
+            Some(&r.a),
+        ),
+        (
+            json!([
+                job(linux, None, 90),
+                job("ci / windows-x86_64", Some("success"), 90)
+            ]),
+            json!([
+                job("ci", Some("failure"), 80),
+                job(linux, Some("success"), 80),
+                job("ci / windows-x86_64", Some("cancelled"), 80)
+            ]),
+            "unknown",
+            None,
+        ),
+    ] {
+        let t = with_tip(
+            &r.b,
+            PASS_BODY,
+            vec![
+                tip_runs(&r.c, tip_now.clone()),
+                tip_runs(&r.a, parent.clone()),
+            ],
+            &r.a,
+        );
+        let s = collect(&target(&r), &t).unwrap();
+        assert_eq!(t.remaining(), 0, "{tip_now} / {parent}");
+        let ci = s.tip_ci.clone().unwrap();
+        assert_eq!(ci.state, want, "{tip_now} / {parent}");
+        assert_eq!(ci.decided_by.as_ref(), decided, "{tip_now} / {parent}");
+        assert_eq!(g8(&s).is_some(), want != "green", "{tip_now} / {parent}");
+    }
+}
+
+/// D8(a)'s pure judgment, shared with `lane-next` (#2856): the aggregate and cancelled jobs are
+/// not judged; a real job failure is red; nothing left is pending.
+#[test]
+fn the_d8a_judgment_ignores_the_aggregate_and_cancelled_jobs() {
+    use moai_cli::gate_collect::d8a_judgment;
+    let linux = "ci / linux-x86_64";
+    let mac = "ci / macos-arm64";
+    let green = [
+        job("ci", Some("failure"), 1),
+        job(linux, Some("success"), 1),
+        job(mac, Some("cancelled"), 1),
+    ];
+    assert_eq!(d8a_judgment(&green)["state"], json!("green"));
+    let red = [job(linux, Some("failure"), 1), job(mac, Some("success"), 1)];
+    assert_eq!(d8a_judgment(&red)["state"], json!("red"));
+    let nothing = [
+        job("ci", Some("failure"), 1),
+        job(mac, Some("cancelled"), 1),
+    ];
+    assert_eq!(d8a_judgment(&nothing)["state"], json!("pending"));
+}
