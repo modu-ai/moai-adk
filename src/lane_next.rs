@@ -12,8 +12,10 @@
 //!    claimed card whose pull request merged with no close table posted (SYNC, #2880 W3);
 //! 3. P1 a pull request the lane reserved to audit: not judged yet, its head moved past the
 //!    lane's verdict (an update-branch too) or a re-audit was asked for — with the head now;
-//! 4. P1 another lane's pull request no auditor reserved; then a pull request with a PASS on
-//!    its head and green CI that is still open — read the gate's reason (#2933 S3);
+//! 4. P1 another lane's pull request no auditor reserved; then a reservation with no verdict
+//!    for 30:00 whose lane is silent — ask for a second auditor with one takeover-request line
+//!    (#2933 S4 ④; only the leader's handoff makes it effective); then a pull request with a
+//!    PASS on its head and green CI that is still open — read the gate's reason (#2933 S3);
 //! 5. a `LANE-BLOCKED kind=decision` of the lane that a `LEADER-DECISION` now answers;
 //! 6. P2 the next step of a card the lane claims (no open pull request of its own for it);
 //! 7. P2–P4 an open Issue nobody claims.
@@ -303,7 +305,8 @@ fn verdict(c: &Comment) -> Option<(String, &'static str)> {
 fn foreign_audit_record(pr: &Pr) -> Option<u64> {
     let head = pr.head.to_ascii_lowercase();
     pr.comments.iter().rev().find_map(|c| {
-        if verdict(c).is_some() || audit_claim(c).is_some() {
+        // A takeover request (#2933 S4) names the head and says `audit`, yet records no audit.
+        if verdict(c).is_some() || audit_claim(c).is_some() || takeover_request(c).is_some() {
             return None;
         }
         let line = first_line(c)
@@ -587,6 +590,108 @@ fn latest_audit_claim(pr: &Pr) -> Option<(u64, String)> {
         .find_map(|c| audit_claim(c).map(|(lane, _)| (c.id, lane)))
 }
 
+/// `moai-audit-takeover-request: comment=<reservation comment> lane=<lane> head=<40hex>` of a
+/// comment (#2933 S4, decision B): the reservation comment id, the asking lane and the head.
+fn takeover_request(c: &Comment) -> Option<(u64, String, String)> {
+    lines(c).find_map(|l| {
+        let rest = l.strip_prefix("moai-audit-takeover-request:")?;
+        Some((
+            field(rest, "comment")?.parse().ok()?,
+            field(rest, "lane")?.to_string(),
+            field(rest, "head")?.to_string(),
+        ))
+    })
+}
+
+/// A comment "under a lane's name" (#2933 decision A): every lane posts as the same GitHub
+/// account, so a word of the comment must be the lane's name, bare or after `=` (`lane=`,
+/// `session=`, `by=`). `agent-3` is not `agent-33`.
+fn names_lane(c: &Comment, lane: &str) -> bool {
+    c.body.split_whitespace().any(|w| {
+        let w = w.trim_matches(|ch: char| {
+            matches!(
+                ch,
+                ',' | '.' | ';' | ':' | '(' | ')' | '[' | ']' | '`' | '*' | '"' | '\''
+            )
+        });
+        w == lane || w.split_once('=').is_some_and(|(_, v)| v == lane)
+    })
+}
+
+/// Seconds a reservation may stand with no verdict, its lane silent, before a second auditor
+/// is asked for (#2933 S4 ④, decision A): 30:00 is enough, 29:59 is not.
+pub const SECOND_AUDIT_SECS: i64 = 1800;
+
+/// What step ④ finds on a reserved pull request.
+enum Second {
+    /// The task to post a takeover request.
+    Ask(Value),
+    /// A request exists (mine, or a lower one): the leader's handoff decides.
+    Wait(Value),
+}
+
+/// #2933 S4 ④: the newest reservation of `pr` is on the head now, has no verdict, and neither
+/// the reserving lane's comments nor a push (the head would differ) followed it for
+/// [`SECOND_AUDIT_SECS`]. Then `lane` may ask for the second audit with one request line; the
+/// lowest request comment id wins and takes effect only after the leader's
+/// `moai-claim-handoff … by=leader` line (gate G2 is unchanged, a lane never takes over on its
+/// own). `None` when it does not hold, or when the clock or the reservation's time is unknown.
+fn second_audit(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Second> {
+    let now = crate::forge::policy::parse_utc(now?)?;
+    let (idx, claim, by, head) = pr
+        .comments
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(i, c)| audit_claim(c).map(|(by, head)| (i, c, by, head)))?;
+    // The reserving lane never takes its own reservation over; a reservation of an older head
+    // is stale; a verdict, or an audit record in another form, on the head answers it.
+    if by == lane
+        || head != pr.head
+        || head_verdict(pr).is_some()
+        || foreign_audit_record(pr).is_some()
+    {
+        return None;
+    }
+    let mut quiet_since = crate::forge::policy::parse_utc(&claim.at)?;
+    for c in pr.comments[idx + 1..].iter().filter(|c| names_lane(c, &by)) {
+        // A comment of the lane with no readable time counts as now: silence is not proven.
+        quiet_since = quiet_since.max(crate::forge::policy::parse_utc(&c.at).unwrap_or(now));
+    }
+    let idle = now - quiet_since;
+    if idle < SECOND_AUDIT_SECS {
+        return None;
+    }
+    let winner = pr.comments[idx + 1..]
+        .iter()
+        .filter_map(|c| {
+            let (comment, asker, head) = takeover_request(c)?;
+            (comment == claim.id && head == pr.head && asker != by).then_some((c.id, asker))
+        })
+        .min();
+    if let Some((request, asker)) = winner {
+        let reason = if asker == lane {
+            "takeover_requested"
+        } else {
+            "takeover_lost"
+        };
+        return Some(Second::Wait(json!({"number": pr.number, "reason": reason,
+            "comment": claim.id, "request_comment": request, "by": asker, "head": pr.head})));
+    }
+    Some(Second::Ask(task(
+        "P1",
+        "request_second_audit",
+        pr_target(pr),
+        format!(
+            "PR #{n}: the audit reservation of {by} (comment {id}) has no verdict and {by} has been silent for {idle} s: post exactly one line `moai-audit-takeover-request: comment={id} lane={lane} head={head}` on the PR and wait. The lowest request wins and takes effect only after the leader's `moai-claim-handoff … by=leader` line (then post your own moai-audit-claim); never take over on your own",
+            n = pr.number,
+            id = claim.id,
+        ),
+        json!({"reservation_comment": claim.id, "reserved_by": by, "head": pr.head,
+               "idle_secs": idle}),
+    )))
+}
+
 /// What a claimed card's thread says after the claim: the newest merged pull request whose
 /// body names the claim (#2873 N8), a `pr-wait:` line still waiting, and whether a close table
 /// is posted (#2880 W3).
@@ -742,6 +847,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         // 4. P1: another lane's pull request with no auditor; a draft or a reserved one is
         // named with its reason and the list goes on.
+        let mut second_ask: Option<Value> = None;
         for pr in prs
             .iter()
             .filter(|p| p.author_lane.as_deref() != Some(lane))
@@ -753,6 +859,20 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if let Some((comment, by)) = latest_audit_claim(pr) {
                 if unstick_task(pr).is_some() {
                     continue;
+                }
+                // ④ (#2933 S4): a reservation nobody judges is not "passed over" but a
+                // request for a second auditor (taken after this loop, so ③ comes first) or a
+                // wait for the leader's handoff.
+                match second_audit(pr, lane, snap.now.as_deref()) {
+                    Some(Second::Ask(t)) => {
+                        second_ask.get_or_insert(t);
+                        continue;
+                    }
+                    Some(Second::Wait(entry)) => {
+                        waiting.push(entry);
+                        continue;
+                    }
+                    None => {}
                 }
                 pr_skipped.push(json!({"pr": pr.number, "reason": "audit_reserved",
                     "by": by, "comment": comment}));
@@ -777,6 +897,11 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 ),
                 json!({"author_lane": pr.author_lane}),
             ));
+        }
+        // 4a. P1: ④ ask for a second auditor of a reservation nobody judges (#2933 S4), after
+        // every pull request with no auditor (③) was offered.
+        if let Some(t) = second_ask {
+            return Some(t);
         }
         // 4b. P1: a pull request with a PASS on its head and green CI that is still open (#2933
         // S3 ⑥) — another lane's, or the lane's own: its author can act on the gate's reason too.
@@ -1852,6 +1977,37 @@ mod tests {
             body: body.into(),
             ..Comment::default()
         }
+    }
+
+    /// #2933 S4 ④: the reserving lane never gets the second audit of its own reservation, however
+    /// old (the step-4 loop is reached for it only after a verdict, so this pins the function).
+    #[test]
+    fn the_reserving_lane_never_asks_for_a_second_audit_of_its_own_reservation() {
+        let head = "a".repeat(40);
+        let mut claim = c(500, &format!("moai-audit-claim: lane=agent-3 head={head}"));
+        claim.at = "2026-11-14T10:00:00Z".into();
+        let pr = Pr {
+            number: 5,
+            head,
+            comments: vec![claim],
+            ..Pr::default()
+        };
+        let now = Some("2026-11-14T12:00:00Z");
+        assert!(second_audit(&pr, "agent-3", now).is_none());
+        assert!(matches!(
+            second_audit(&pr, "agent-4", now),
+            Some(Second::Ask(_))
+        ));
+    }
+
+    /// #2933 S4: a lane's name is a whole word, bare or after `=`.
+    #[test]
+    fn a_comment_names_a_lane_by_whole_word_only() {
+        assert!(names_lane(&c(1, "agent-3: reading"), "agent-3"));
+        assert!(names_lane(&c(1, "x\nlane=agent-3 files"), "agent-3"));
+        assert!(names_lane(&c(1, "by=agent-3."), "agent-3"));
+        assert!(!names_lane(&c(1, "agent-33 and agent-3x"), "agent-3"));
+        assert!(!names_lane(&c(1, "magent-3"), "agent-3"));
     }
 
     /// #2973 T2: a record in another form counts only when its first line says audit and names

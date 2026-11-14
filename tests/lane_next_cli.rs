@@ -1016,3 +1016,275 @@ fn a_foreign_audit_record_on_the_head_now_waits_instead_of_reserving() {
     assert_eq!(r["next"], json!(null), "{r}");
     assert_eq!(r["pr_skipped"][0]["reason"], json!("audit_reserved"), "{r}");
 }
+
+// --- #2933 S4 ④: a second auditor for a reservation nobody judges ---------------------------
+
+/// When the reservation of the pull requests below was posted.
+const RESERVED_AT: &str = "2026-11-14T10:00:00Z";
+
+fn at(mut c: Value, when: &str) -> Value {
+    c["at"] = json!(when);
+    c
+}
+
+fn reservation() -> Value {
+    at(audit_claim(500, "agent-3", &h('a')), RESERVED_AT)
+}
+
+fn takeover_request(id: u64, lane: &str, comment: u64, head: &str) -> Value {
+    at(
+        json!({"id": id, "body": format!("moai-audit-takeover-request: comment={comment} lane={lane} head={head}")}),
+        "2026-11-14T10:31:00Z",
+    )
+}
+
+/// The decision for pull request 5 (author `agent-29`) with `comments`, at `now`.
+fn second(now: &str, comments: Value) -> Value {
+    next(&json!({"now": now, "prs": [pr(5, &h('a'), Some("agent-29"), comments)]}))
+}
+
+fn assert_reserved_not_second(r: &Value, ctx: &str) {
+    assert_eq!(r["next"], json!(null), "{ctx}: {r}");
+    assert_eq!(
+        r["pr_skipped"],
+        json!([{"pr": 5, "reason": "audit_reserved", "by": "agent-3", "comment": 500}]),
+        "{ctx}: {r}"
+    );
+}
+
+/// ④ boundary on the injected clock: 29:59 after the reservation is still `audit_reserved`; 30:00
+/// and 30:01 ask for a second auditor, with the one line to post and the evidence. The line
+/// says the leader's handoff makes it effective — a lane never takes over on its own.
+#[test]
+fn a_reservation_without_a_verdict_for_thirty_minutes_asks_for_a_second_auditor() {
+    let r = second("2026-11-14T10:29:59Z", json!([reservation()]));
+    assert_reserved_not_second(&r, "29:59");
+    for (now, idle) in [
+        ("2026-11-14T10:30:00Z", 1800),
+        ("2026-11-14T10:30:01Z", 1801),
+    ] {
+        let r = second(now, json!([reservation()]));
+        assert_eq!(kind(&r), json!("request_second_audit"), "{now}: {r}");
+        assert_eq!(r["next"]["priority"], json!("P1"), "{r}");
+        assert_eq!(
+            r["next"]["target"],
+            json!({"type": "pull_request", "number": 5, "head": h('a')}),
+            "{r}"
+        );
+        let action = r["next"]["action"].as_str().unwrap();
+        assert!(
+            action.contains(&format!(
+                "`moai-audit-takeover-request: comment=500 lane={LANE} head={}`",
+                h('a')
+            )),
+            "{action}"
+        );
+        assert!(action.contains("exactly one line"), "{action}");
+        assert!(action.contains("moai-claim-handoff"), "{action}");
+        assert!(action.contains("by=leader"), "{action}");
+        assert!(action.contains("never take over on your own"), "{action}");
+        assert_eq!(
+            r["next"]["evidence"],
+            json!({"reservation_comment": 500, "reserved_by": "agent-3", "head": h('a'),
+                   "idle_secs": idle}),
+            "{r}"
+        );
+        // The pull request is not "passed over" when it is the task; nothing is written.
+        assert_eq!(r["pr_skipped"], json!([]), "{r}");
+        assert_eq!(r["waiting"], json!([]), "{r}");
+    }
+}
+
+/// ④ also needs the reserving lane quiet for 30:00: a comment that names it after the
+/// reservation restarts the count (29:59 after it still holds, 30:00 asks); another lane's
+/// comment, or one that only looks like its name (`agent-33`), does not.
+#[test]
+fn a_reserving_lane_that_is_still_commenting_is_not_replaced() {
+    let note = |id: u64, body: &str, when: &str| at(json!({"id": id, "body": body}), when);
+    for body in [
+        "agent-3: reading the diff, verdict soon",
+        "audit progress\nlane=agent-3 files 3/7",
+        "audit progress\nauditor: agent-3.",
+    ] {
+        let comments = json!([reservation(), note(510, body, "2026-11-14T10:10:00Z")]);
+        let r = second("2026-11-14T10:39:59Z", comments.clone());
+        assert_reserved_not_second(&r, &format!("{body:?} 29:59"));
+        let r = second("2026-11-14T10:40:00Z", comments);
+        assert_eq!(
+            kind(&r),
+            json!("request_second_audit"),
+            "{body:?} 30:00: {r}"
+        );
+        assert_eq!(r["next"]["evidence"]["idle_secs"], json!(1800), "{r}");
+    }
+    // Other lanes talking on the pull request do not count as the reserving lane's activity.
+    let r = second(
+        "2026-11-14T10:30:00Z",
+        json!([
+            reservation(),
+            note(
+                510,
+                "agent-7 asks about the schedule",
+                "2026-11-14T10:20:00Z"
+            ),
+            note(511, "lane=agent-33 files 1/2", "2026-11-14T10:25:00Z"),
+            note(512, "agent-3x is another name", "2026-11-14T10:29:00Z"),
+        ]),
+    );
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    // A comment of the reserving lane with no time is not proof of silence.
+    let r = second(
+        "2026-11-14T11:30:00Z",
+        json!([
+            reservation(),
+            json!({"id": 510, "body": "agent-3 still reading"})
+        ]),
+    );
+    assert_reserved_not_second(&r, "undated activity");
+}
+
+/// Decision B: the lowest request comment id wins. My request waits (`takeover_requested`), a
+/// lower id of another lane makes mine lose (`takeover_lost`), a request that names another
+/// reservation or head counts for nothing; neither is a task.
+#[test]
+fn the_lowest_takeover_request_wins_and_the_others_wait() {
+    let now = "2026-11-14T10:40:00Z";
+    // My request is the only one.
+    let r = second(
+        now,
+        json!([reservation(), takeover_request(600, LANE, 500, &h('a'))]),
+    );
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["waiting"],
+        json!([{"number": 5, "reason": "takeover_requested", "comment": 500,
+                "request_comment": 600, "by": LANE, "head": h('a')}]),
+        "{r}"
+    );
+    assert_eq!(r["pr_skipped"], json!([]), "{r}");
+    // Another lane's request has a lower id: mine (and a lane that has not asked) lose.
+    for mine in [
+        json!([takeover_request(700, LANE, 500, &h('a'))]),
+        json!([]),
+    ] {
+        let mut comments = vec![
+            reservation(),
+            takeover_request(600, "agent-12", 500, &h('a')),
+        ];
+        comments.extend(mine.as_array().unwrap().clone());
+        let r = second(now, json!(comments));
+        assert_eq!(r["next"], json!(null), "{r}");
+        assert_eq!(
+            r["waiting"],
+            json!([{"number": 5, "reason": "takeover_lost", "comment": 500,
+                    "request_comment": 600, "by": "agent-12", "head": h('a')}]),
+            "{r}"
+        );
+    }
+    // Mine has the lower id: I am the one waiting for the leader.
+    let r = second(
+        now,
+        json!([
+            reservation(),
+            takeover_request(600, LANE, 500, &h('a')),
+            takeover_request(700, "agent-12", 500, &h('a')),
+        ]),
+    );
+    assert_eq!(
+        r["waiting"][0]["reason"],
+        json!("takeover_requested"),
+        "{r}"
+    );
+    // A request for another reservation or another head is not for this one: still a task.
+    let r = second(
+        now,
+        json!([
+            reservation(),
+            takeover_request(600, "agent-12", 499, &h('a')),
+            takeover_request(601, "agent-12", 500, &h('b')),
+        ]),
+    );
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+}
+
+/// ④ is never asked when the reserving lane is the one asking, when a verdict is on the head,
+/// when the head moved since the reservation (that reservation is stale), or when the clock or
+/// the reservation's time is not known.
+#[test]
+fn no_second_auditor_for_a_verdict_a_moved_head_or_an_unknown_time() {
+    let old = "2026-11-14T12:00:00Z";
+    // A verdict on the head, either way, ends the question.
+    for v in ["PASS", "FAIL"] {
+        let r = second(old, json!([reservation(), verdict(510, &h('a'), v)]));
+        assert_reserved_not_second(&r, v);
+    }
+    // A verdict on an older head does not.
+    let r = second(old, json!([reservation(), verdict(510, &h('b'), "FAIL")]));
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    // The head moved since the reservation: stale, the existing rule applies.
+    let moved = at(audit_claim(500, "agent-3", &h('b')), RESERVED_AT);
+    let r = second(old, json!([moved]));
+    assert_reserved_not_second(&r, "head moved");
+    // Another form of audit record on the head now: someone wrote the audit.
+    let record = json!({"id": 510, "body": format!("## 독립 감사 델타 head {}", &h('a')[..9])});
+    let r = second(old, json!([reservation(), record]));
+    assert_reserved_not_second(&r, "foreign record");
+    // No clock, or a reservation without a time: unknown, never a guess.
+    let r = next(&json!({"prs": [pr(5, &h('a'), Some("agent-29"), json!([reservation()]))]}));
+    assert_reserved_not_second(&r, "no now");
+    let r = second(old, json!([audit_claim(500, "agent-3", &h('a'))]));
+    assert_reserved_not_second(&r, "no reservation time");
+    // The newest reservation counts: a later one by another lane restarts the 30:00.
+    let r = second(
+        "2026-11-14T10:30:00Z",
+        json!([
+            reservation(),
+            at(audit_claim(520, "agent-4", &h('a')), "2026-11-14T10:20:00Z")
+        ]),
+    );
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["pr_skipped"][0]["by"], json!("agent-4"), "{r}");
+}
+
+/// The place of ④ in the list: after my own pull request's work and after reserving a pull
+/// request that has no auditor (③), before an open Issue; a PR whose request I am waiting on
+/// does not hold the list back.
+#[test]
+fn the_second_audit_comes_after_reserving_and_before_issues() {
+    let now = "2026-11-14T10:40:00Z";
+    let reserved = pr(5, &h('a'), Some("agent-29"), json!([reservation()]));
+    let free = pr(8, &h('c'), Some("agent-29"), json!([]));
+    let issue = json!({"number": 1, "title": "free", "comments": []});
+    // ③ first.
+    let r = next(&json!({"now": now, "prs": [reserved.clone(), free.clone()]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(8));
+    // My own pull request's FAIL first.
+    let mine = pr(3, &h('d'), Some(LANE), json!([verdict(9, &h('d'), "FAIL")]));
+    let r = next(&json!({"now": now, "prs": [reserved.clone(), mine]}));
+    assert_eq!(kind(&r), json!("repair_audit_fail"), "{r}");
+    // Before an Issue.
+    let r = next(&json!({"now": now, "prs": [reserved.clone()], "open_issues": [issue.clone()]}));
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    // Waiting on my request, the list goes on: the free PR is reserved, the Issue is picked.
+    let asked = pr(
+        5,
+        &h('a'),
+        Some("agent-29"),
+        json!([reservation(), takeover_request(600, LANE, 500, &h('a'))]),
+    );
+    let r = next(&json!({"now": now, "prs": [asked.clone(), free]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(
+        r["waiting"][0]["reason"],
+        json!("takeover_requested"),
+        "{r}"
+    );
+    let r = next(&json!({"now": now, "prs": [asked], "open_issues": [issue]}));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(
+        r["waiting"][0]["reason"],
+        json!("takeover_requested"),
+        "{r}"
+    );
+}
