@@ -197,6 +197,10 @@ pub struct Tip {
 /// Everything one decision reads. Tests and `--snapshot` give it as JSON; `collect` reads it.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Snapshot {
+    /// When it was read (`YYYY-MM-DDTHH:MM:SSZ`): given by a saved snapshot, or set from the
+    /// clock by [`run`]; echoed as `now` (#2933 S1).
+    #[serde(default)]
+    pub now: Option<String>,
     #[serde(default)]
     pub tip: Option<Tip>,
     /// The integration branch the tip was read from; `None` when not known.
@@ -479,8 +483,12 @@ fn audit_task(pr: &Pr, lane: &str) -> Option<Value> {
     })
 }
 
-fn has_audit_claim(pr: &Pr) -> bool {
-    pr.comments.iter().any(|c| audit_claim(c).is_some())
+/// The newest audit reservation of a pull request: its comment id and lane.
+fn latest_audit_claim(pr: &Pr) -> Option<(u64, String)> {
+    pr.comments
+        .iter()
+        .rev()
+        .find_map(|c| audit_claim(c).map(|(lane, _)| (c.id, lane)))
 }
 
 /// What a claimed card's thread says after the claim: the newest merged pull request whose
@@ -526,6 +534,8 @@ fn card_state(t: &Thread, claim: u64) -> CardState<'_> {
 /// Decides the next task of `lane` from `snap`. Pure: the same snapshot gives the same bytes.
 pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
+    // Pull requests passed over in steps 2 and 4, each with its reason (#2933 S1).
+    let mut pr_skipped: Vec<Value> = Vec::new();
     // Cards passed over in steps 6 and 7, each with its reason (#2901), once per Issue.
     let mut skipped: Vec<Value> = Vec::new();
     let mut skip = |entry: Value| {
@@ -585,6 +595,8 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if let Some(t) = own_pr_task(pr) {
                 return Some(t);
             }
+            let reason = if pr.draft { "draft" } else { "own_no_blocker" };
+            pr_skipped.push(json!({"pr": pr.number, "reason": reason}));
         }
         // 2b. P1: SYNC — a claimed card whose pull request merged and whose close table is not
         // posted yet: close it before new work (#2880 W3). A card with another open pull
@@ -621,11 +633,21 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 return Some(t);
             }
         }
-        // 4. P1: another lane's pull request with no auditor.
-        if let Some(pr) = prs
+        // 4. P1: another lane's pull request with no auditor; a draft or a reserved one is
+        // named with its reason and the list goes on.
+        for pr in prs
             .iter()
-            .find(|p| !p.draft && p.author_lane.as_deref() != Some(lane) && !has_audit_claim(p))
+            .filter(|p| p.author_lane.as_deref() != Some(lane))
         {
+            if pr.draft {
+                pr_skipped.push(json!({"pr": pr.number, "reason": "draft"}));
+                continue;
+            }
+            if let Some((comment, by)) = latest_audit_claim(pr) {
+                pr_skipped.push(json!({"pr": pr.number, "reason": "audit_reserved",
+                    "by": by, "comment": comment}));
+                continue;
+            }
             return Some(task(
                 "P1",
                 "reserve_audit",
@@ -776,16 +798,52 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         (n > 0 || !snap.cards_truncated).then_some(n)
     });
     let open_prs = (snap.cards.is_some() || !snap.prs.is_empty()).then_some(snap.prs.len() as u64);
-    json!({
+    let mut v = json!({
         "lane": lane,
         "next": next,
         "waiting": waiting,
         "skipped": skipped,
+        "pr_skipped": pr_skipped,
         "end_condition": crate::startable::end_condition(open_prs, startable),
         "partial": snap.partial,
         "api_calls": snap.api_calls,
         "writes": false,
-    })
+    });
+    if let Some(now) = &snap.now {
+        v["now"] = json!(now);
+    }
+    v
+}
+
+/// `--explain` (#2933 S1): one line for each pull request passed over, one for each Issue
+/// skipped, and a last line for the end condition.
+pub fn explain_lines(v: &Value) -> Vec<String> {
+    let none = Vec::new();
+    let prs = v["pr_skipped"].as_array().unwrap_or(&none).iter().map(|p| {
+        let by = match (p["by"].as_str(), p["comment"].as_u64()) {
+            (Some(by), Some(c)) => format!(" by {by} (comment {c})"),
+            _ => String::new(),
+        };
+        format!(
+            "PR #{} passed over: {}{by}",
+            p["pr"],
+            p["reason"].as_str().unwrap_or("?")
+        )
+    });
+    let issues = v["skipped"].as_array().unwrap_or(&none).iter().map(|s| {
+        format!(
+            "Issue #{} skipped: {}",
+            s["issue"],
+            s["reason"].as_str().unwrap_or("?")
+        )
+    });
+    let end = &v["end_condition"];
+    prs.chain(issues)
+        .chain(std::iter::once(format!(
+            "end_condition: open_prs={} startable={} met={}",
+            end["open_prs"], end["startable"], end["met"]
+        )))
+        .collect()
 }
 
 /// The one-line summary for a terminal (D2): stderr only. It carries no text read from GitHub
@@ -808,8 +866,10 @@ pub fn summary_line(v: &Value) -> String {
             )
         }
         None => format!(
-            "lane-next: nothing to do now ({} waiting)",
-            v["waiting"].as_array().map_or(0, Vec::len)
+            "lane-next: nothing to do now ({} waiting, {} skipped, {} PRs passed)",
+            v["waiting"].as_array().map_or(0, Vec::len),
+            v["skipped"].as_array().map_or(0, Vec::len),
+            v["pr_skipped"].as_array().map_or(0, Vec::len)
         ),
     }
 }
@@ -1393,7 +1453,9 @@ pub fn run<T: Transport, C: Clock>(
     let mut rounds = 0u32;
     loop {
         rounds += 1;
-        let snap = collect(target, transport);
+        let mut snap = collect(target, transport);
+        snap.now
+            .get_or_insert_with(|| crate::forge::policy::format_utc(clock.now()));
         let mut v = decide(target.lane, &snap);
         let done = !v["next"].is_null() || clock.now() + poll as i64 > deadline;
         if done {
@@ -1789,6 +1851,47 @@ mod tests {
         }
         assert_eq!(MAX_SHARED_LANES, 50);
         assert_eq!((poll_secs(1), poll_secs(50)), (44, 2160));
+    }
+
+    /// #2933 S1: the time a decision was made comes from the snapshot, or — when reading
+    /// GitHub — from the clock.
+    #[test]
+    fn now_comes_from_the_snapshot_or_the_clock() {
+        let snap = Snapshot {
+            now: Some("2026-11-14T12:00:00Z".into()),
+            ..Snapshot::default()
+        };
+        assert_eq!(
+            decide("agent-10", &snap)["now"],
+            json!("2026-11-14T12:00:00Z")
+        );
+        assert!(decide("agent-10", &Snapshot::default())
+            .get("now")
+            .is_none());
+        let dir = tempfile::TempDir::new().unwrap();
+        let clock = FakeClock {
+            now: Cell::new(crate::forge::policy::parse_utc("2026-11-14T12:34:56Z").unwrap()),
+            slept: Cell::new(0),
+        };
+        let t = Target {
+            tip_branch: Some("main"),
+            ..target(dir.path())
+        };
+        let v = run(&t, &Quiet, &clock, 0, SHARED_LANES).unwrap();
+        assert_eq!(v["now"], json!("2026-11-14T12:34:56Z"), "{v}");
+    }
+
+    /// #2933 S1: with nothing to do the terminal line counts what was waited on, skipped and
+    /// passed over — fixed words and numbers only.
+    #[test]
+    fn the_summary_counts_what_was_passed_over() {
+        let v = json!({"next": null, "waiting": [],
+            "skipped": [{"issue": 7, "reason": "held"}],
+            "pr_skipped": [{"pr": 5, "reason": "draft"}, {"pr": 6, "reason": "draft"}]});
+        assert_eq!(
+            summary_line(&v),
+            "lane-next: nothing to do now (0 waiting, 1 skipped, 2 PRs passed)"
+        );
     }
 
     /// #2856 audit B1: ten lanes polling with one token stay within half of GitHub's 5,000
