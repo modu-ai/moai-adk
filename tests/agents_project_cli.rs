@@ -1,4 +1,4 @@
-//! #2936 R9 S5d: `omp-agents-plan` and `omp-agents-apply` — the project `.omp/agents` files
+//! #2936 R9 S5d: `agents-project-plan` and `agents-project-apply` — the project `.omp/agents` files
 //! through the binary: a read-only preview, an apply that needs its digest and a permission
 //! reference, a re-run that has nothing to do, the user's own agent left alone, a linked
 //! `.omp` refused. Temporary folders only; the real HOME is never read or written.
@@ -76,7 +76,7 @@ impl Fx {
 
     fn plan(&self) -> Value {
         let v = self.run(&[
-            "omp-agents-plan",
+            "agents-project-plan",
             &self.project,
             &self.package,
             &self.agents,
@@ -87,7 +87,7 @@ impl Fx {
 
     fn apply(&self, digest: &str, permission: &str) -> Value {
         self.run(&[
-            "omp-agents-apply",
+            "agents-project-apply",
             &self.project,
             &self.package,
             &self.agents,

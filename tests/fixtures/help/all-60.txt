@@ -54,9 +54,9 @@ Project
   agents-merge-apply      Merge AGENTS.local.md into
                           AGENTS.md
   agents-merge-revert     Undo an AGENTS.local.md merge
-  omp-agents-plan         Preview the project OMP agents
-  omp-agents-apply        Write the previewed project OMP
-                          agents
+  agents-project-plan     Preview the base agents in a
+                          project
+  agents-project-apply    Write the previewed base agents
 Update and move
   update                  Update MoAI from the installed
                           package
