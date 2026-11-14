@@ -1,15 +1,21 @@
 //! `moai leader-round` (Issue #2902 O3b, plan 6875163101): the pure part. A leader observes
 //! each lane's terminal (Orca `terminal read --screen --json`) and writes what it saw into an
 //! observations file; this module reads that file, finds the lane's `LANE-*` lines and picks
-//! one action per lane. It runs no git and calls no forge: the `lane-safe-to-reset` verdict is
-//! an argument, and the caller fills the `release` slot of a `clear_redispatch`.
+//! one action per lane. It runs no git and calls no forge: the `lane-safe-to-reset` verdict and
+//! the end condition are arguments, and the caller fills the `release` slot of a
+//! `clear_redispatch`. [`round`] reads a GitHub snapshot (`lane_next::collect_fleet` or a saved
+//! one) for what the whole round shares: close and handoff candidates, the merge-gate command
+//! and the end condition.
 //!
 //! The turn, the input box and the context percentage are what the observer wrote; nothing
 //! here guesses them from the screen (the `lane_status` principle).
 
+use crate::lane_next::Snapshot;
 use crate::lane_reset::{ClaimsObservation, CwdObservation};
 use crate::lane_status::{PaneState, MAX_LANES};
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::path::Path;
 
 /// The observations file version this module reads.
 pub const SCHEMA_VERSION: u32 = 1;
@@ -32,6 +38,12 @@ pub const MARKER_WORDS: [(&str, MarkerKind); 4] = [
 pub const CLAIM_TEXT: &str = "moai-claim:";
 /// The line a `restart` sends.
 pub const RESTART_LINE: &str = "순환 계속 — self-pick (1)부터";
+/// Marks a host draws in front of a line typed into it (Claude Code `>`, Codex `›`, `❯`) and
+/// the bullets: one is taken off before the last screen line is compared with
+/// [`RESTART_LINE`].
+pub const PROMPT_MARKS: [char; 5] = ['>', '›', '❯', '⏺', '•'];
+/// The first line of a close table comment (`lane-next` reads the same words).
+pub const CLOSE_TABLE: &str = "CLOSE-TABLE";
 
 /// The observations file (typed JSON, unknown keys refused).
 #[derive(Clone, Debug, Deserialize)]
@@ -326,8 +338,23 @@ fn unusable(obs: &LaneObservation, now: i64) -> Option<String> {
     None
 }
 
-/// Rows 0–7 of the plan, first match wins; `now` is Unix seconds.
-pub fn decide(obs: &LaneObservation, now: i64, reset: &ResetVerdict) -> Action {
+/// Whether the last non-empty screen line, without one prompt mark or bullet, is the restart
+/// line.
+fn last_line_is_restart(tail: &str) -> bool {
+    tail.lines()
+        .map(str::trim)
+        .rfind(|l| !l.is_empty())
+        .is_some_and(|l| l.strip_prefix(PROMPT_MARKS).unwrap_or(l).trim() == RESTART_LINE)
+}
+
+/// Rows 0–7 of the plan, first match wins; `now` is Unix seconds. `end_met` is the
+/// `startable::end_condition` `met` value (`None` while unknown).
+pub fn decide(
+    obs: &LaneObservation,
+    now: i64,
+    reset: &ResetVerdict,
+    end_met: Option<bool>,
+) -> Action {
     let found = markers(&obs.terminal.tail, &obs.lane);
     let mut a = Action {
         lane: obs.lane.clone(),
@@ -428,13 +455,121 @@ pub fn decide(obs: &LaneObservation, now: i64, reset: &ResetVerdict) -> Action {
             }
         };
     }
-    // 7. Anything else: restart the loop.
-    // O3b step 4: the end-condition check (`startable::end_condition`) and the
-    // no-repeat rule come with O2 #2916; until then this always restarts.
+    // 7. Anything else: restart the loop — unless the fleet's work is done (no open pull
+    // request, no startable Issue) or the restart line already stands last on the screen
+    // (never the same line twice).
+    if end_met == Some(true) {
+        return leave(a, "end_condition_met");
+    }
+    if last_line_is_restart(&obs.terminal.tail) {
+        return leave(a, "restart_already_sent");
+    }
     a.action = Act::Restart;
     a.reason = "continue".into();
     a.send = vec![RESTART_LINE.into()];
     a
+}
+
+fn not_run(reason: &str) -> Value {
+    json!({"status": "not_run", "reason": reason})
+}
+
+/// The merge-gate pass the leader runs this round, as text (it is not run here).
+pub fn gate_line(repo: &str, project: &Path) -> String {
+    format!(
+        "moai gate-loop --once --fetch --repo {repo} --dir {}",
+        project.display()
+    )
+}
+
+/// Open Issues of the snapshot whose thread holds a close table: `{issue, comment}`, the
+/// newest such comment.
+pub fn close_candidates(snap: &Snapshot) -> Vec<Value> {
+    let mut out: Vec<(u64, u64)> = snap
+        .threads
+        .iter()
+        .filter_map(|t| {
+            let c = t.comments.iter().rev().find(|c| {
+                c.body
+                    .lines()
+                    .next()
+                    .is_some_and(|l| l.trim().starts_with(CLOSE_TABLE))
+            })?;
+            Some((t.number, c.id))
+        })
+        .collect();
+    out.sort_unstable();
+    out.into_iter()
+        .map(|(issue, comment)| json!({"issue": issue, "comment": comment}))
+        .collect()
+}
+
+/// Claims in the snapshot's threads that no later comment released or handed off and whose
+/// lease has ended at `now` (the lease-end second counts as ended, `claim::is_live`). The
+/// other two D2 conditions are the leader's to check.
+pub fn handoff_candidates(snap: &Snapshot, now: i64) -> Vec<Value> {
+    use crate::claim_verify::{classify_comment, CommentKind};
+    let mut out = Vec::new();
+    let mut threads: Vec<_> = snap.threads.iter().collect();
+    threads.sort_by_key(|t| t.number);
+    for t in threads {
+        let mut claims = Vec::new();
+        let mut closed = std::collections::BTreeSet::new();
+        for c in &t.comments {
+            let id = i64::try_from(c.id).unwrap_or(i64::MAX);
+            match classify_comment(&c.body) {
+                CommentKind::Claim {
+                    session,
+                    epoch,
+                    lease_until,
+                } => claims.push((id, session, epoch, lease_until)),
+                CommentKind::Release { target } | CommentKind::Handoff { target, .. }
+                    if target < id =>
+                {
+                    closed.insert(target);
+                }
+                _ => {}
+            }
+        }
+        for (id, session, epoch, lease_until) in claims {
+            if !closed.contains(&id) && !crate::claim::is_live(&lease_until, now) {
+                out.push(
+                    json!({"issue": t.number, "claim_comment": id, "session": session,
+                    "epoch": epoch, "lease_until": lease_until}),
+                );
+            }
+        }
+    }
+    out
+}
+
+/// What the whole round shares. Without a snapshot every part is `not_run` with the reason;
+/// without `repo` the gate line is.
+pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i64) -> Value {
+    let Some(snap) = snap else {
+        let why = "no GitHub snapshot: pass --repo OWNER/REPO or --snapshot FILE";
+        return json!({
+            "close_candidates": not_run(why),
+            "handoff_candidates": not_run(why),
+            "gate": not_run(why),
+            "end_condition": not_run(why),
+        });
+    };
+    let mut end = crate::lane_next::end_condition(snap);
+    end["status"] = json!("ok");
+    json!({
+        "close_candidates": {"status": "ok", "items": close_candidates(snap)},
+        "handoff_candidates": {
+            "status": "ok",
+            "items": handoff_candidates(snap, now),
+            "note": "the lease has ended; the other two D2 conditions are the leader's to check",
+        },
+        "gate": match repo {
+            Some(r) => json!({"status": "ok", "command": gate_line(r, project), "run": false}),
+            None => not_run("no --repo: the gate line names the repository"),
+        },
+        "end_condition": end,
+    })
 }
 
 #[cfg(test)]
@@ -460,7 +595,7 @@ mod tests {
     }
 
     fn safe(obs: &LaneObservation) -> Action {
-        decide(obs, now(), &ResetVerdict::Safe)
+        decide(obs, now(), &ResetVerdict::Safe, None)
     }
 
     fn duty() -> String {
@@ -509,6 +644,7 @@ mod tests {
             &lane(UNPUSHED_HEAD),
             now(),
             &ResetVerdict::NotSafe(vec![finding.clone()]),
+            None,
         );
         assert_eq!(
             (a.action, a.reason.as_str()),
@@ -537,6 +673,7 @@ mod tests {
             &lane(LANE_DONE),
             now(),
             &ResetVerdict::Unknown(vec![why.clone()]),
+            None,
         );
         assert_eq!((a.action, a.reason.as_str()), (Act::Leave, "reset_unknown"));
         assert_eq!(a.findings, vec![why]);
@@ -680,14 +817,14 @@ mod tests {
     fn observation_age_limit_is_600_seconds() {
         let at = parse_utc("2026-11-14T09:20:00Z").unwrap();
         let obs = lane(LANE_DONE);
-        let ok = decide(&obs, at + 600, &ResetVerdict::Safe);
+        let ok = decide(&obs, at + 600, &ResetVerdict::Safe, None);
         assert_eq!(ok.action, Act::ClearRedispatch);
-        let old = decide(&obs, at + 601, &ResetVerdict::Safe);
+        let old = decide(&obs, at + 601, &ResetVerdict::Safe, None);
         assert_eq!(
             (old.action, old.reason.as_str()),
             (Act::Leave, "observation_unusable")
         );
-        let future = decide(&obs, at - 1, &ResetVerdict::Safe);
+        let future = decide(&obs, at - 1, &ResetVerdict::Safe, None);
         assert_eq!(future.reason, "observation_unusable");
     }
 
@@ -780,5 +917,179 @@ mod tests {
         assert_eq!((a.action, a.reason.as_str()), (Act::Answer, "lane_blocked"));
         assert_eq!(a.data.as_deref(), Some(line));
         assert!(a.send.is_empty());
+    }
+
+    // AC11: row 7 restarts, unless the end condition is met or the line was just sent.
+
+    #[test]
+    fn row_7_restarts_unless_the_end_condition_is_met() {
+        let obs = with_tail("⏺ Reading the queue.");
+        for (met, act, reason) in [
+            (None, Act::Restart, "continue"),
+            (Some(false), Act::Restart, "continue"),
+            (Some(true), Act::Leave, "end_condition_met"),
+        ] {
+            let a = decide(&obs, now(), &ResetVerdict::Safe, met);
+            assert_eq!((a.action, a.reason.as_str()), (act, reason), "{met:?}");
+            let want: Vec<String> = if act == Act::Restart {
+                vec![RESTART_LINE.into()]
+            } else {
+                vec![]
+            };
+            assert_eq!(a.send, want);
+        }
+        // A card boundary still clears when the fleet's work is done: rows 0–6 come first.
+        let a = decide(&lane(LANE_DONE), now(), &ResetVerdict::Safe, Some(true));
+        assert_eq!(a.action, Act::ClearRedispatch);
+    }
+
+    #[test]
+    fn the_restart_line_is_never_sent_twice() {
+        for tail in [
+            format!("⏺ idle\n> {RESTART_LINE}"),
+            format!("⏺ idle\n› {RESTART_LINE}\n\n  \n"),
+            format!("⏺ idle\n{RESTART_LINE}"),
+            format!("  ❯  {RESTART_LINE}  "),
+        ] {
+            let a = safe(&with_tail(&tail));
+            assert_eq!(
+                (a.action, a.reason.as_str()),
+                (Act::Leave, "restart_already_sent"),
+                "{tail:?}"
+            );
+            assert!(a.send.is_empty());
+        }
+        // Not the last line, or not the whole line: restart again.
+        for tail in [
+            format!("> {RESTART_LINE}\n⏺ Nothing startable; LANE-REPORT agent-29 idle"),
+            format!("> {RESTART_LINE} please"),
+            format!(">> {RESTART_LINE}"),
+        ] {
+            let a = safe(&with_tail(&tail));
+            assert_eq!(a.action, Act::Restart, "{tail:?}");
+        }
+    }
+
+    // AC12: what the whole round shares.
+
+    fn comment(id: u64, body: &str) -> crate::lane_next::Comment {
+        crate::lane_next::Comment {
+            id,
+            body: body.into(),
+            ..Default::default()
+        }
+    }
+
+    fn thread(number: u64, comments: Vec<crate::lane_next::Comment>) -> crate::lane_next::Thread {
+        crate::lane_next::Thread {
+            number,
+            comments,
+            ..Default::default()
+        }
+    }
+
+    const LEASE: &str = "2026-11-14T10:00:00Z";
+
+    fn fleet() -> Snapshot {
+        let claim =
+            |s: &str, lease: &str| format!("moai-claim: session={s} epoch=1 lease_until={lease}");
+        let threads = vec![
+            thread(
+                7,
+                vec![
+                    comment(70, &claim("agent-1", LEASE)),
+                    comment(71, "CLOSE-TABLE #7 old"),
+                    comment(72, "progress"),
+                    comment(73, "CLOSE-TABLE #7\n| AC1 | met |"),
+                ],
+            ),
+            thread(
+                3,
+                vec![
+                    comment(30, &claim("agent-2", LEASE)),
+                    comment(31, &claim("agent-3", "2026-11-14T10:00:01Z")),
+                    comment(32, &claim("agent-4", "2026-11-14T08:00:00Z")),
+                    comment(33, "moai-claim-release: comment=32 by=agent-4"),
+                    comment(34, &claim("agent-5", "2026-11-14T08:00:00Z")),
+                    comment(35, "moai-claim-handoff: comment=34 to=agent-6 by=leader"),
+                    comment(36, "see CLOSE-TABLE #3 later"),
+                ],
+            ),
+        ];
+        Snapshot {
+            cards: Some(threads.clone()),
+            threads,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn the_round_names_close_and_handoff_candidates_the_gate_and_the_end() {
+        let at = parse_utc(LEASE).unwrap();
+        let snap = fleet();
+        let r = round(Some(&snap), Some("o/r"), Path::new("/work/p"), at);
+        assert_eq!(
+            r["close_candidates"],
+            json!({"status": "ok", "items": [{"issue": 7, "comment": 73}]})
+        );
+        let items = &r["handoff_candidates"]["items"];
+        assert_eq!(
+            items,
+            &json!([
+                {"issue": 3, "claim_comment": 30, "session": "agent-2", "epoch": 1, "lease_until": LEASE},
+                {"issue": 7, "claim_comment": 70, "session": "agent-1", "epoch": 1, "lease_until": LEASE},
+            ])
+        );
+        assert_eq!(
+            r["gate"],
+            json!({"status": "ok", "run": false,
+                "command": "moai gate-loop --once --fetch --repo o/r --dir /work/p"})
+        );
+        assert_eq!(
+            r["end_condition"],
+            json!({"status": "ok", "open_prs": 0, "startable": 2, "met": false})
+        );
+        let none = round(Some(&snap), None, Path::new("."), at);
+        assert_eq!(none["gate"]["status"], "not_run");
+    }
+
+    /// The lease-end second counts as expired; one second before, the claim is live.
+    #[test]
+    fn a_claim_is_a_handoff_candidate_from_its_lease_end_second() {
+        let at = parse_utc(LEASE).unwrap();
+        let snap = fleet();
+        let issues = |now: i64| -> Vec<u64> {
+            handoff_candidates(&snap, now)
+                .iter()
+                .map(|v| v["claim_comment"].as_u64().unwrap())
+                .collect()
+        };
+        assert_eq!(issues(at - 1), Vec::<u64>::new());
+        assert_eq!(issues(at), vec![30, 70]);
+        assert_eq!(issues(at + 1), vec![30, 31, 70]);
+    }
+
+    #[test]
+    fn without_a_snapshot_the_round_is_not_run() {
+        let r = round(None, Some("o/r"), Path::new("."), now());
+        for key in [
+            "close_candidates",
+            "handoff_candidates",
+            "gate",
+            "end_condition",
+        ] {
+            assert_eq!(r[key]["status"], "not_run", "{key}");
+            assert!(r[key]["reason"].as_str().unwrap().contains("--snapshot"));
+        }
+    }
+
+    #[test]
+    fn the_end_condition_is_met_with_no_pr_and_no_startable_card() {
+        let snap = Snapshot {
+            cards: Some(vec![]),
+            ..Default::default()
+        };
+        let r = round(Some(&snap), None, Path::new("."), now());
+        assert_eq!(r["end_condition"]["met"], true);
     }
 }
