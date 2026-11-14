@@ -18,6 +18,9 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 
+/// The content of the synthetic secret file. No output of the command may carry it.
+const SECRET_VALUE: &str = "FAKE-SECRET-VALUE-9f3a7c1e";
+
 fn copy_tree(from: &Path, to: &Path) {
     fs::create_dir_all(to).unwrap();
     for entry in fs::read_dir(from).unwrap() {
@@ -60,7 +63,11 @@ fn go_items(home: &Path) {
         r#"{"schema_version": 1, "files": {}}"#,
     );
     write(home, ".moai/state/active-sessions.json", "[]");
-    write(home, ".moai/credentials.yaml", "token: PLACEHOLDER\n");
+    write(
+        home,
+        ".moai/credentials.yaml",
+        &format!("token: {SECRET_VALUE}\n"),
+    );
     write(home, ".moai/cache/a.bin", "x");
     write(home, ".moai/run/x.pid", "1\n");
     write(home, ".moai/specs/SPEC-1/spec.md", "# user spec\n");
@@ -130,7 +137,16 @@ fn token(p: &Value) -> String {
 #[test]
 fn update_home_preview_lists_the_go_items_and_writes_nothing() {
     let (_t, home, exe) = setup();
+    // Snapshots before the first preview: a write made while the home part is being planned
+    // (even with no Go item present) must show up as a difference.
+    let empty = state(&home);
     let plain = preview(&exe, &home);
+    assert_eq!(
+        state(&home),
+        empty,
+        "a preview of a clean HOME writes nothing"
+    );
+    assert!(!home.join(".moai-go-retired").exists());
     assert!(
         plain.get("home").is_none(),
         "no Go items, no home part: {plain}"
@@ -139,6 +155,10 @@ fn update_home_preview_lists_the_go_items_and_writes_nothing() {
     let before = state(&home);
     let p = preview(&exe, &home);
     assert_eq!(state(&home), before, "a preview writes nothing");
+    assert!(
+        !home.join(".moai-go-retired").exists(),
+        "a preview makes no retirement folder"
+    );
     assert_eq!(p["home"]["action"], json!("retire"), "{p}");
     assert_eq!(p["home"]["generation"], json!("go"), "{p}");
     assert_eq!(p["home"]["writes"], json!(false));
@@ -162,6 +182,80 @@ fn update_home_preview_lists_the_go_items_and_writes_nothing() {
         p["plan_digest"], plain["plan_digest"],
         "home is in the digest"
     );
+}
+
+fn files_under(dir: &Path, out: &mut Vec<PathBuf>) {
+    for e in fs::read_dir(dir).unwrap() {
+        let p = e.unwrap().path();
+        if p.is_dir() {
+            files_under(&p, out);
+        } else {
+            out.push(p);
+        }
+    }
+}
+
+fn carries(out: &Output, needle: &str) -> bool {
+    String::from_utf8_lossy(&out.stdout).contains(needle)
+        || String::from_utf8_lossy(&out.stderr).contains(needle)
+}
+
+#[test]
+fn update_home_never_prints_or_records_the_content_of_a_secret_file() {
+    let (_t, home, exe) = setup();
+    go_items(&home);
+    let prev = run(&exe, &home, &["update"]);
+    let t = token(&result(&prev));
+    assert!(
+        !carries(&prev, SECRET_VALUE),
+        "the preview printed a secret"
+    );
+    let applied = run(&exe, &home, &["update", "--confirm-home", &t]);
+    let r = result(&applied);
+    assert_eq!(r["home_result"]["state"], json!("applied"), "{r}");
+    assert!(
+        !carries(&applied, SECRET_VALUE),
+        "the apply printed a secret"
+    );
+    // The backup folder keeps the secret file itself, renamed whole; the manifest, the journal
+    // and every other file there must not carry its content.
+    let mut files = Vec::new();
+    files_under(&home.join(".moai-go-retired"), &mut files);
+    let mut holders = 0;
+    for f in &files {
+        if String::from_utf8_lossy(&fs::read(f).unwrap()).contains(SECRET_VALUE) {
+            holders += 1;
+            assert_eq!(
+                f.file_name().unwrap(),
+                "credentials.yaml",
+                "only the renamed secret file holds its content: {}",
+                f.display()
+            );
+        }
+    }
+    assert_eq!(
+        holders, 1,
+        "the secret file was renamed, not copied: {files:?}"
+    );
+    let revert = r["revert"]["home"].as_str().unwrap();
+    let stamp = revert
+        .split_whitespace()
+        .skip_while(|w| *w != "--stamp")
+        .nth(1)
+        .unwrap();
+    let back = run(
+        &exe,
+        &home,
+        &[
+            "home-retire-revert",
+            "--stamp",
+            stamp,
+            "--permission-reference",
+            "user approved in the fixture",
+        ],
+    );
+    assert_eq!(result(&back)["state"], json!("reverted"));
+    assert!(!carries(&back, SECRET_VALUE), "the revert printed a secret");
 }
 
 #[test]
