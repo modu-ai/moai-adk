@@ -42,8 +42,13 @@ type Result<T> = std::result::Result<T, String>;
 /// GitHub requests one collection may send (#2831 D4): ten lanes polling stay far below the
 /// 5,000-per-hour limit of one token.
 pub const API_BUDGET: u32 = 30;
-/// Startable open Issues (the oldest) whose comments are read to find one nobody claims.
-pub const FREE_ISSUE_SCAN: usize = 5;
+/// Startable open Issues (the oldest) whose comments are read to find one nobody claims: one
+/// detail request ([`ISSUES_PER_QUERY`]), so five claimed ones at the front no longer leave the
+/// result empty (#2933 P-3).
+pub const FREE_ISSUE_SCAN: usize = 25;
+/// Live claims on open cards (not merged, no close table) at which a lane takes no new Issue
+/// (#2933 E).
+pub const CARD_CAP: usize = 2;
 /// Lanes assumed to poll at once with one GitHub token (they all read as one account), unless
 /// `--shared-lanes` names the number (#2873 N9).
 pub const SHARED_LANES: u64 = 10;
@@ -531,6 +536,13 @@ fn card_state(t: &Thread, claim: u64) -> CardState<'_> {
     }
 }
 
+/// Step 5 listed a decision request of the lane on `number` that no leader decision answers.
+fn decision_pending(waiting: &[Value], number: u64) -> bool {
+    waiting
+        .iter()
+        .any(|w| w["number"] == json!(number) && w.get("blocked_comment").is_some())
+}
+
 /// Decides the next task of `lane` from `snap`. Pure: the same snapshot gives the same bytes.
 pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
@@ -705,6 +717,26 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                     "line": blocked_line(blocked, lane, claimed)})),
             }
         }
+        // The lane's live claims on open cards — not merged, no close table — its own pull
+        // request waiting included (#2933 E). A card that is not startable (on hold, …) or waits
+        // for a decision is not counted (#2954 audit B1). At the cap no new Issue is taken.
+        let mut live_cards: Vec<u64> = snap
+            .threads
+            .iter()
+            .filter(|t| judge(t).is_none() && !decision_pending(&waiting, t.number))
+            .filter(|t| {
+                live_claim(&t.comments, lane).is_some_and(|claim| {
+                    let card = card_state(t, claim);
+                    card.merged.is_none() && !card.closed
+                })
+            })
+            .map(|t| t.number)
+            .collect();
+        live_cards.sort_unstable();
+        let at_cap = live_cards.len() >= CARD_CAP;
+        if at_cap {
+            waiting.push(json!({"reason": "card_cap", "cards": live_cards, "limit": CARD_CAP}));
+        }
         // 6. P2: the next step of a card the lane claims.
         let own_pr_issues: Vec<u64> = prs
             .iter()
@@ -720,10 +752,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if own_pr_issues.contains(&t.number) {
                 continue;
             }
-            let decision_pending = waiting
-                .iter()
-                .any(|w| w["number"] == json!(t.number) && w.get("blocked_comment").is_some());
-            if decision_pending {
+            if decision_pending(&waiting, t.number) {
                 continue;
             }
             // A claimed card on hold, left out by the goal, an epic or blocked is not the next
@@ -763,6 +792,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         // 7. P2–P4: an open Issue that is startable and nobody claims. The open Issues the
         // collection did not read in detail because they are not startable are named first.
+        if at_cap {
+            return None;
+        }
         for t in snap.cards.iter().flatten() {
             if let Some(s) = judge(t) {
                 skip(s.entry(t.number));
@@ -790,21 +822,15 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         None
     })();
-    // The lane-wide end (#2901, #2515): no open pull request and no startable open Issue, a
-    // claimed one included — a claimed card is still work. Unknown while the list was not read
-    // or read in part.
-    let startable = snap.cards.as_ref().and_then(|cards| {
-        let n = cards.iter().filter(|t| judge(t).is_none()).count() as u64;
-        (n > 0 || !snap.cards_truncated).then_some(n)
-    });
-    let open_prs = (snap.cards.is_some() || !snap.prs.is_empty()).then_some(snap.prs.len() as u64);
+    // The lane-wide end (#2901, #2515): shared with `leader-round` through [`end_condition`]
+    // (#2902 O3b), which judges with the same `judge_within`, open set and read-through.
     let mut v = json!({
         "lane": lane,
         "next": next,
         "waiting": waiting,
         "skipped": skipped,
         "pr_skipped": pr_skipped,
-        "end_condition": crate::startable::end_condition(open_prs, startable),
+        "end_condition": end_condition(snap),
         "partial": snap.partial,
         "api_calls": snap.api_calls,
         "writes": false,
@@ -844,6 +870,31 @@ pub fn explain_lines(v: &Value) -> Vec<String> {
             end["open_prs"], end["startable"], end["met"]
         )))
         .collect()
+}
+
+/// The lane-wide end (#2901, #2515) of `snap`: no open pull request and no startable open
+/// Issue, a claimed one included — a claimed card is still work. Unknown while the list was
+/// not read or read in part. `lane-next` and `leader-round` (#2902) read the same judgment.
+pub fn end_condition(snap: &Snapshot) -> Value {
+    let open: std::collections::BTreeSet<u64> = snap
+        .cards
+        .iter()
+        .flatten()
+        .chain(&snap.open_issues)
+        .map(|t| t.number)
+        .collect();
+    let through = read_through(snap);
+    let startable = snap.cards.as_ref().and_then(|cards| {
+        let n = cards
+            .iter()
+            .filter(|t| {
+                crate::startable::judge_within(&card(t), &open, through, &snap.keep_set).is_none()
+            })
+            .count() as u64;
+        (n > 0 || !snap.cards_truncated).then_some(n)
+    });
+    let open_prs = (snap.cards.is_some() || !snap.prs.is_empty()).then_some(snap.prs.len() as u64);
+    crate::startable::end_condition(open_prs, startable)
 }
 
 /// The one-line summary for a terminal (D2): stderr only. It carries no text read from GitHub
@@ -1289,7 +1340,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     let open: std::collections::BTreeSet<u64> =
         snap.cards.iter().flatten().map(|t| t.number).collect();
     let through = read_through(&snap);
-    let free: Vec<u64> = snap
+    let mut free: Vec<u64> = snap
         .cards
         .iter()
         .flatten()
@@ -1297,8 +1348,13 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             crate::startable::judge_within(&card(t), &open, through, &snap.keep_set).is_none()
         })
         .map(|t| t.number)
-        .take(FREE_ISSUE_SCAN)
         .collect();
+    if free.len() > FREE_ISSUE_SCAN {
+        free.truncate(FREE_ISSUE_SCAN);
+        snap.partial.push(format!(
+            "only the oldest {FREE_ISSUE_SCAN} startable open Issues read in detail"
+        ));
+    }
     let mut wanted: Vec<u64> = claims.iter().map(|(i, _)| *i).collect();
     wanted.extend(&own);
     wanted.extend(&free);
@@ -1426,6 +1482,197 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             }),
         }
     }
+    snap.api_calls = t.used.get();
+    snap
+}
+
+/// The open pull requests with their newest comments, and the first fifty open Issues with
+/// theirs.
+const FLEET_FIRST_QUERY: &str = concat!(
+    "query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){\
+pullRequests(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{\
+number title body headRefOid isDraft mergeable \
+comments(last:100){totalCount nodes{databaseId body createdAt}}}}\
+issues(states:OPEN,first:50,orderBy:{field:CREATED_AT,direction:ASC}){totalCount \
+pageInfo{hasNextPage endCursor} nodes{",
+    card_fields!(),
+    " comments(last:100){totalCount nodes{databaseId body createdAt}}}}}}"
+);
+
+/// The next fifty open Issues, after `$after`.
+const FLEET_PAGE_QUERY: &str = concat!(
+    "query($owner:String!,$repo:String!,$after:String!){repository(owner:$owner,name:$repo){\
+issues(states:OPEN,first:50,after:$after,orderBy:{field:CREATED_AT,direction:ASC}){totalCount \
+pageInfo{hasNextPage endCursor} nodes{",
+    card_fields!(),
+    " comments(last:100){totalCount nodes{databaseId body createdAt}}}}}}"
+);
+
+/// One fleet-wide read for `leader-round` (#2902 O3b): the open pull requests with their
+/// comments and every open Issue with its newest comments, in [`Snapshot::threads`] (and, for
+/// the startable judgment, in [`Snapshot::cards`] without comments). One collection for all
+/// lanes instead of one `collect` per lane, within the same [`API_BUDGET`]; what the budget or
+/// a failed read left unread is named in `partial`. Reads only: GraphQL `query` requests, no
+/// mutation and no REST write. The tip's CI is not read (the round does not judge it).
+pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transport: &T) -> Snapshot {
+    let t = Budgeted {
+        inner: transport,
+        used: Cell::new(0),
+    };
+    let mut snap = Snapshot::default();
+    // False when a list came back with errors, without its nodes or with pull requests left
+    // out: the cards then stay unknown, so the end condition is never met on a gap (#2948
+    // audit I2). Issues left past the budget are `cards_truncated` instead.
+    let mut lists_whole = true;
+    let vars = json!({"owner": owner, "repo": repo});
+    let first = match graphql(&t, FLEET_FIRST_QUERY, vars.clone()) {
+        Ok((data, errors)) => {
+            if let Some(e) = errors {
+                snap.partial.push(format!("lists: {e}"));
+                lists_whole = false;
+            }
+            data
+        }
+        Err(e) => {
+            snap.partial.push(if e == "budget" {
+                format!("open pull requests and Issues: request budget ({API_BUDGET}) spent")
+            } else {
+                format!("open pull requests and Issues: {e}")
+            });
+            snap.api_calls = t.used.get();
+            return snap;
+        }
+    };
+    if !first["repository"]["pullRequests"]["nodes"].is_array()
+        || !first["repository"]["issues"]["nodes"].is_array()
+    {
+        snap.partial
+            .push("lists: the answer holds no open pull request or Issue list".into());
+        lists_whole = false;
+    }
+    let pulls = first["repository"]["pullRequests"]["nodes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if first["repository"]["pullRequests"]["totalCount"]
+        .as_u64()
+        .unwrap_or(0)
+        > pulls.len() as u64
+    {
+        snap.partial.push(format!(
+            "only the oldest {} open pull requests read",
+            pulls.len()
+        ));
+        lists_whole = false;
+    }
+    let mut issues: Vec<Thread> = Vec::new();
+    let mut page = first["repository"]["issues"].clone();
+    let total = page["totalCount"].as_u64().unwrap_or(0);
+    loop {
+        for node in page["nodes"].as_array().into_iter().flatten() {
+            let (th, more) = gql_thread(node);
+            if more {
+                snap.partial.push(format!(
+                    "#{}: only the newest {COMMENTS_READ} comments read",
+                    th.number
+                ));
+            }
+            issues.push(th);
+        }
+        let next = page["pageInfo"]["hasNextPage"].as_bool() == Some(true);
+        let cursor = page["pageInfo"]["endCursor"].as_str().map(str::to_string);
+        let (true, Some(after)) = (next, cursor) else {
+            if next {
+                snap.partial
+                    .push("open Issues: the page had no cursor to read on from".into());
+            }
+            break;
+        };
+        let mut vars = vars.clone();
+        vars["after"] = json!(after);
+        match graphql(&t, FLEET_PAGE_QUERY, vars) {
+            Ok((data, errors)) => {
+                if let Some(e) = errors {
+                    snap.partial.push(format!("open Issues: {e}"));
+                    lists_whole = false;
+                }
+                page = data["repository"]["issues"].clone();
+            }
+            Err(e) => {
+                snap.partial.push(if e == "budget" {
+                    format!(
+                        "open Issues after the oldest {}: request budget ({API_BUDGET}) spent",
+                        issues.len()
+                    )
+                } else {
+                    format!("open Issues after the oldest {}: {e}", issues.len())
+                });
+                break;
+            }
+        }
+    }
+    if total > issues.len() as u64 {
+        snap.cards_truncated = true;
+        snap.partial
+            .push(format!("only the oldest {} open Issues read", issues.len()));
+    }
+    for p in &pulls {
+        let body = p["body"].as_str().unwrap_or("");
+        let (comments, more) = gql_comments(&p["comments"]);
+        let number = p["number"].as_u64().unwrap_or(0);
+        if more {
+            snap.partial.push(format!(
+                "PR #{number}: only the newest {COMMENTS_READ} comments read"
+            ));
+        }
+        let claim = body_claim(body);
+        // The author lane, from the claim comment when its Issue was read (no request more).
+        let author_lane = claim.and_then(|(issue, comment)| {
+            issues
+                .iter()
+                .find(|th| th.number == issue)?
+                .comments
+                .iter()
+                .find(|c| c.id == comment)
+                .and_then(claim_session)
+        });
+        snap.prs.push(Pr {
+            number,
+            title: p["title"].as_str().unwrap_or("").to_string(),
+            head: p["headRefOid"].as_str().unwrap_or("").to_string(),
+            draft: p["isDraft"].as_bool().unwrap_or(false),
+            author_lane,
+            claim_issue: claim.map(|(i, _)| i),
+            conflicting: match p["mergeable"].as_str() {
+                Some("CONFLICTING") => Some(true),
+                Some("MERGEABLE") => Some(false),
+                _ => None,
+            },
+            tip_repair: is_tip_repair(body),
+            comments,
+            ..Pr::default()
+        });
+    }
+    match crate::goal::show(dir) {
+        Ok(g) if g["state"] == "active" => {
+            match serde_json::from_value(g["goal"]["exclusions"].clone()) {
+                Ok(keep) => snap.keep_set = keep,
+                Err(e) => snap.partial.push(format!("goal exclusions: {e}")),
+            }
+        }
+        Ok(_) => {}
+        Err(e) => snap.partial.push(format!("goal exclusions: {e}")),
+    }
+    snap.cards = lists_whole.then(|| {
+        issues
+            .iter()
+            .map(|th| Thread {
+                comments: Vec::new(),
+                ..th.clone()
+            })
+            .collect()
+    });
+    snap.threads = issues;
     snap.api_calls = t.used.get();
     snap
 }
@@ -1590,7 +1837,9 @@ mod tests {
             };
             let snap = collect(&target(dir.path()), &t);
             // lists + tip branch + tip check runs + Issue reads (ISSUES_PER_QUERY each).
-            let issue_reads = (prs as usize + 1 + FREE_ISSUE_SCAN).div_ceil(ISSUES_PER_QUERY);
+            // Ten open Issues exist.
+            let free = FREE_ISSUE_SCAN.min(10);
+            let issue_reads = (prs as usize + 1 + free).div_ceil(ISSUES_PER_QUERY);
             assert_eq!(snap.api_calls, 3 + issue_reads as u32, "{:?}", snap.partial);
             assert_eq!(t.sent.get(), snap.api_calls);
             assert!(
@@ -1606,7 +1855,7 @@ mod tests {
                 .prs
                 .iter()
                 .all(|p| p.author_lane.as_deref() == Some("agent-x") && p.comments.len() == 1));
-            assert_eq!(snap.open_issues.len(), FREE_ISSUE_SCAN);
+            assert_eq!(snap.open_issues.len(), free);
             assert_eq!(snap.open_issues[0].labels, vec!["P3".to_string()]);
             // The search hit that is an open pull request is not read again as a thread.
             assert_eq!(
@@ -1670,10 +1919,12 @@ mod tests {
     }
 
     /// No open pull request; `held` of the `issues` oldest open Issues carry `HOLD`, the rest
-    /// none; `total` open Issues exist. Records the Issues each detail read asks for.
+    /// none, and the next `claimed` carry another lane's claim; `total` open Issues exist.
+    /// Records the Issues each detail read asks for.
     struct HeldOldest {
         issues: u64,
         held: u64,
+        claimed: u64,
         total: u64,
         sent: Cell<u32>,
         read: std::cell::RefCell<Vec<u64>>,
@@ -1712,10 +1963,18 @@ mod tests {
                 let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
                 let n: u64 = digits.parse().unwrap();
                 self.read.borrow_mut().push(n);
+                let comments: Vec<Value> = if n - 2000 > self.held
+                    && n - 2000 <= self.held + self.claimed
+                {
+                    vec![json!({"databaseId": n, "body": "moai-claim: session=agent-x epoch=1"})]
+                } else {
+                    vec![]
+                };
                 repo.insert(
                     format!("i{n}"),
                     json!({"number": n, "title": format!("issue {n}"), "labels": labels(n),
-                        "comments": {"totalCount": 0, "nodes": []}, "timelineItems": {"nodes": []}}),
+                        "comments": {"totalCount": comments.len(), "nodes": comments},
+                        "timelineItems": {"nodes": []}}),
                 );
             }
             ok(json!({"data": {"repository": repo}}))
@@ -1732,6 +1991,7 @@ mod tests {
             let t = HeldOldest {
                 issues: 6,
                 held,
+                claimed: 0,
                 total: 6,
                 sent: Cell::new(0),
                 read: Default::default(),
@@ -1762,6 +2022,7 @@ mod tests {
             let t = HeldOldest {
                 issues: 6,
                 held: 6,
+                claimed: 0,
                 total,
                 sent: Cell::new(0),
                 read: Default::default(),
@@ -1775,6 +2036,54 @@ mod tests {
             assert_eq!(v["next"], Value::Null, "{v}");
             assert_eq!(v["end_condition"]["met"], met, "{v}");
         }
+    }
+
+    /// #2933 P-3: the five oldest startable Issues claimed by other lanes do not hide a sixth
+    /// nobody claims — with no pull request work the result is that Issue.
+    #[test]
+    fn startable_issues_past_claimed_oldest_are_picked() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let t = HeldOldest {
+            issues: 6,
+            held: 0,
+            claimed: 5,
+            total: 6,
+            sent: Cell::new(0),
+            read: Default::default(),
+        };
+        let snap = collect(&target(dir.path()), &t);
+        assert_eq!(*t.read.borrow(), (2001..=2006).collect::<Vec<_>>());
+        let v = decide("agent-10", &snap);
+        assert_eq!(v["next"]["kind"], json!("pick_issue"), "{v}");
+        assert_eq!(v["next"]["target"]["number"], json!(2006));
+    }
+
+    /// #2933 D: the oldest 25 startable Issues are read in detail in one request; a 26th is
+    /// not, and `partial` says so in fixed words.
+    #[test]
+    fn free_issue_scan_reads_25_and_names_the_rest() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let note = "only the oldest 25 startable open Issues read in detail";
+        for (issues, named) in [(25u64, false), (26, true)] {
+            let t = HeldOldest {
+                issues,
+                held: 0,
+                claimed: 0,
+                total: issues,
+                sent: Cell::new(0),
+                read: Default::default(),
+            };
+            let snap = collect(&target(dir.path()), &t);
+            assert_eq!(snap.api_calls, 2, "{issues}: {:?}", snap.partial);
+            assert_eq!(*t.read.borrow(), (2001..=2025).collect::<Vec<_>>());
+            assert_eq!(
+                snap.partial.iter().any(|p| p == note),
+                named,
+                "{issues}: {:?}",
+                snap.partial
+            );
+        }
+        assert_eq!(FREE_ISSUE_SCAN, ISSUES_PER_QUERY, "one detail request");
     }
 
     /// Answers every GET with an empty list: never a task.
@@ -2169,5 +2478,186 @@ mod tests {
             body_claim("- `Moai-Claim: <n>#<id>` then `Moai-Claim:2825#7`\n"),
             Some((2825, 7))
         );
+    }
+
+    /// A fleet of `pages` pages of two open Issues each (#2902 O3b): one open pull request,
+    /// Issue 1 holding a close table. Records every request it is sent.
+    struct Fleet {
+        pages: u64,
+        sent: std::cell::RefCell<Vec<HttpRequest>>,
+    }
+
+    impl Transport for Fleet {
+        fn send(&self, req: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
+            self.sent.borrow_mut().push(req.clone());
+            let body = req.body.clone().unwrap_or(Value::Null);
+            let page: u64 = body["variables"]["after"]
+                .as_str()
+                .map_or(0, |c| c.trim_start_matches('c').parse::<u64>().unwrap() + 1);
+            let issues: Vec<Value> = (0..2)
+                .map(|k| {
+                    let n = page * 2 + k + 1;
+                    let comments = if n == 1 {
+                        vec![json!({"databaseId": 10, "body": "CLOSE-TABLE #1\n| AC | ok |"})]
+                    } else {
+                        vec![]
+                    };
+                    json!({"number": n, "title": format!("issue {n}"), "body": "",
+                        "labels": {"nodes": []},
+                        "comments": {"totalCount": comments.len(), "nodes": comments}})
+                })
+                .collect();
+            let conn = json!({"totalCount": self.pages * 2,
+                "pageInfo": {"hasNextPage": page + 1 < self.pages, "endCursor": format!("c{page}")},
+                "nodes": issues});
+            let mut repo = json!({"issues": conn});
+            if page == 0 {
+                repo["pullRequests"] = json!({"totalCount": 1, "nodes": [
+                    {"number": 50, "title": "pr", "body": "Moai-Claim: 1#9",
+                     "headRefOid": "a".repeat(40), "isDraft": false, "mergeable": "MERGEABLE",
+                     "comments": {"totalCount": 0, "nodes": []}}]});
+            }
+            Ok(crate::forge::transport::HttpResponse::new(200)
+                .with_body(json!({"data": {"repository": repo}})))
+        }
+    }
+
+    /// A request that cannot change anything: a REST GET, or a GraphQL `query` (never a
+    /// `mutation`) posted to the GraphQL endpoint.
+    fn read_only(req: &HttpRequest) -> bool {
+        let query = req
+            .body
+            .as_ref()
+            .and_then(|b| b["query"].as_str())
+            .unwrap_or("");
+        match req.method.as_str() {
+            "GET" => req.body.is_none(),
+            "POST" => {
+                req.url == GRAPHQL_URL
+                    && query.trim_start().starts_with("query")
+                    && !query.contains("mutation")
+            }
+            _ => false,
+        }
+    }
+
+    /// #2902 AC14: the fleet read reads every open Issue with its comments, page by page, and
+    /// sends only read requests.
+    #[test]
+    fn the_fleet_read_reads_every_open_issue_with_reads_only() {
+        let t = Fleet {
+            pages: 3,
+            sent: Default::default(),
+        };
+        let dir = tempfile::TempDir::new().unwrap();
+        let snap = collect_fleet("o", "r", dir.path(), &t);
+        let sent = t.sent.borrow();
+        assert_eq!(sent.len(), 3, "{snap:?}");
+        assert!(sent.iter().all(read_only), "{sent:?}");
+        assert_eq!(snap.api_calls, 3);
+        let numbers: Vec<u64> = snap.threads.iter().map(|th| th.number).collect();
+        assert_eq!(numbers, vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(snap.threads[0].comments[0].id, 10);
+        let cards = snap.cards.as_ref().unwrap();
+        assert_eq!(cards.len(), 6);
+        assert!(cards.iter().all(|c| c.comments.is_empty()));
+        assert!(!snap.cards_truncated);
+        // The temporary folder is no clone, so only the goal exclusions are missing.
+        assert_eq!(
+            snap.partial,
+            vec!["goal exclusions: the goal file requires a git repository".to_string()]
+        );
+        assert_eq!(snap.prs.len(), 1);
+        assert_eq!(snap.prs[0].claim_issue, Some(1));
+        assert_eq!(
+            end_condition(&snap),
+            json!({"open_prs": 1, "startable": 6, "met": false})
+        );
+    }
+
+    /// #2902 AC14: a fleet longer than the budget stops at exactly [`API_BUDGET`] requests,
+    /// all reads, and names the open Issues it left unread.
+    #[test]
+    fn the_fleet_read_stops_at_its_request_budget() {
+        let t = Fleet {
+            pages: 1_000,
+            sent: Default::default(),
+        };
+        let dir = tempfile::TempDir::new().unwrap();
+        let snap = collect_fleet("o", "r", dir.path(), &t);
+        let sent = t.sent.borrow();
+        assert_eq!(sent.len() as u32, API_BUDGET, "{:?}", snap.partial);
+        assert_eq!(snap.api_calls, API_BUDGET);
+        assert!(sent.iter().all(read_only));
+        assert_eq!(snap.threads.len(), 60);
+        assert!(snap.cards_truncated);
+        assert!(
+            snap.partial
+                .iter()
+                .any(|p| p.contains("open Issues after the oldest 60: request budget (30) spent")),
+            "{:?}",
+            snap.partial
+        );
+        // Startable cards were read, so the end is not met although the list is partial.
+        assert_eq!(end_condition(&snap)["met"], json!(false));
+    }
+
+    /// A repository GitHub cannot resolve: HTTP 200 with `repository: null` and `errors`.
+    struct NoRepo;
+
+    impl Transport for NoRepo {
+        fn send(&self, _: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
+            Ok(
+                crate::forge::transport::HttpResponse::new(200).with_body(json!({
+                    "data": {"repository": null},
+                    "errors": [{"type": "NOT_FOUND", "path": ["repository"],
+                        "message": "Could not resolve to a Repository with the name 'o/r'."}]
+                })),
+            )
+        }
+    }
+
+    /// #2948 audit I2: a list read that failed leaves the cards unknown, so the end condition
+    /// is unknown (never met) and the leader's round reports its shared parts as partial.
+    #[test]
+    fn a_failed_fleet_read_leaves_the_end_unknown() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let snap = collect_fleet("o", "r", dir.path(), &NoRepo);
+        assert!(
+            snap.partial.iter().any(|p| p.starts_with("lists: ")),
+            "{:?}",
+            snap.partial
+        );
+        assert!(snap.cards.is_none());
+        assert_eq!(
+            end_condition(&snap),
+            json!({"open_prs": null, "startable": null, "met": null})
+        );
+        let r = crate::leader_round::round(Some(&snap), Some("o/r"), dir.path(), 0);
+        assert_eq!(r["end_condition"]["met"], Value::Null, "{r}");
+        assert_eq!(r["end_condition"]["status"], "partial", "{r}");
+    }
+
+    /// The read-only check itself refuses a mutation, a REST write and a GraphQL GET body.
+    #[test]
+    fn the_read_only_check_refuses_writes() {
+        let q =
+            |query: &str| HttpRequest::new("POST", GRAPHQL_URL).with_body(json!({"query": query}));
+        assert!(read_only(&q("query{viewer{login}}")));
+        assert!(!read_only(&q(
+            "mutation{addComment(input:{}){clientMutationId}}"
+        )));
+        assert!(!read_only(
+            &HttpRequest::new("POST", "https://api.github.com/repos/o/r/issues/1/comments")
+                .with_body(json!({"body": "x"}))
+        ));
+        assert!(!read_only(&HttpRequest::new(
+            "PATCH",
+            "https://api.github.com/repos/o/r/issues/1"
+        )));
+        assert!(read_only(&HttpRequest::new(
+            "GET",
+            "https://api.github.com/repos/o/r"
+        )));
     }
 }

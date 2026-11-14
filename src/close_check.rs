@@ -4,12 +4,15 @@
 //!
 //! The close table is the newest comment whose first line starts `CLOSE-TABLE #<n>`. A
 //! Markdown table in it is a criteria table when a header cell after the first starts with a
-//! verdict heading ([`VERDICT_HEADINGS`]); a row whose verdict cell does not start with a word
-//! that means "met" ([`MET`]) — and is not undone by a later word ([`UNDOING`]) or a `?` —
-//! keeps the Issue open, and so does an open pull request whose body names this Issue in
-//! `Moai-Claim: <n>#<comment>`. Fenced code blocks are not read as tables. Both word lists come from the close tables
-//! of the 25 newest closed Issues on 2026-11-14 (상태 / 판정 / 결과 columns; 충족 76, 끝 20,
-//! 병합 3, 지킴 2, `CLOSED …` 6 rows); tables without such a column (남은 것 | 근거 | 몫) list
+//! verdict heading ([`VERDICT_HEADINGS`]). A row is met only when its verdict cell is a word
+//! that means "met" ([`MET`]) followed by nothing but evidence — code spans and words that hold
+//! a digit (commits, `#<n>`, numbers, dates, ids such as `B2`) between punctuation (leader
+//! decision 6875953130, audit 6875910836 N1): any other word, a `?` or an unknown symbol keeps
+//! the Issue open, so the rule errs only toward leaving an Issue open. An open pull request
+//! whose body names this Issue in `Moai-Claim: <n>#<comment>` keeps it open too. Fenced code
+//! blocks are not read as tables. The met words and headings come from the close tables of the
+//! 25 newest closed Issues on 2026-11-14 (상태 / 판정 / 결과 columns; 충족 76, 끝 20, 병합 3,
+//! 지킴 2, `CLOSED …` 6 rows); tables without such a column (남은 것 | 근거 | 몫) list
 //! leftovers, not criteria.
 
 use crate::forge::transport::{HttpRequest, Transport};
@@ -20,10 +23,10 @@ use serde_json::{json, Value};
 /// Comments read (GraphQL's largest page); a longer thread is read newest first.
 pub const COMMENTS_READ: u64 = 100;
 
-/// Verdict words that mean a row is met. A cell is met when it starts with one of them and the
+/// Verdict words that mean a row is met. A cell is met when it starts with one of them, the
 /// next character is not a letter or digit (so `metadata` is not `met`, `미충족` is not `충족`,
-/// `끝남` is not `끝`), case ignored.
-pub const MET: [&str; 11] = [
+/// `끝남` is not `끝`), case ignored, and only evidence follows ([`is_met`]).
+pub const MET: [&str; 12] = [
     "충족",
     "해당 없음",
     "끝",
@@ -31,64 +34,16 @@ pub const MET: [&str; 11] = [
     "지킴",
     "완료",
     "closed",
+    "completed",
     "met",
     "pass",
     "done",
     "n/a",
 ];
 
-/// Words that undo a met word when they follow it anywhere in the cell, as a whole word (case
-/// ignored): negation and not-yet (`충족 아님`, `병합 대기`, `완료 예정`, `충족(일부)`,
-/// `충족 — B2 남음`, `pass 아님`, `met? no` — audit 6874717869 B1). A `?` anywhere after the
-/// met word does the same. Wrong in this direction leaves an Issue open for a person to close;
-/// the other way an unmet criterion would vanish.
-pub const UNDOING: [&str; 33] = [
-    "아님",
-    "아니",
-    "아니요",
-    "아니오",
-    "않음",
-    "안",
-    "전",
-    "전에",
-    "예정",
-    "대기",
-    "남음",
-    "남은",
-    "남아",
-    "일부",
-    "부분",
-    "보류",
-    "미정",
-    "미완",
-    "후속",
-    "진행",
-    "진행중",
-    "실패",
-    "no",
-    "not",
-    "pending",
-    "partial",
-    "partially",
-    "todo",
-    "tbd",
-    "wip",
-    "later",
-    "fail",
-    "failed",
-];
-
-/// Korean attaches particles and endings to a word (`대기중`, `안됨`, `일부만`, `미확인`), so a
-/// word after the met word undoes it when it *starts* with one of these (re-audit
-/// 6875342005 B1). Wrong in this direction only leaves an Issue open.
-pub const UNDOING_KO_PREFIXES: [&str; 16] = [
-    "대기", "예정", "일부", "부분", "남", "보류", "진행", "실패", "안", "않", "아니", "아님",
-    "아직", "미", "후속", "전에",
-];
-
-/// Hangul words that start like an undoing prefix but say nothing is left: `안내`, `안전`,
-/// `전역`, `미리`(보기). A prefix match, checked before [`UNDOING_KO_PREFIXES`].
-pub const KO_NOT_UNDOING: [&str; 4] = ["안내", "안전", "전역", "미리"];
+/// Symbols allowed between evidence besides ASCII punctuation (other than `?`): dashes, the
+/// middle dot, an ellipsis and a check mark. Anything else (`✗`, `❌`, `⚠`) is not evidence.
+pub const EVIDENCE_SYMBOLS: &str = "—–·…✓✅";
 
 /// Header cells (after the first column) that name the verdict column; a prefix match, case
 /// ignored, the first such cell wins.
@@ -127,13 +82,29 @@ pub fn claim_search(owner: &str, repo: &str, n: u64) -> String {
     format!("repo:{owner}/{repo} is:pr is:open \"Moai-Claim: {n}#\"")
 }
 
-/// `Moai-Claim: <issue>#<comment>` at the start of a body line: the Issue.
+/// `Moai-Claim: <issue>#<comment>` in a body: the Issue. A bare line wins; without one, the first
+/// inline token with digits on both sides of `#`.
 pub fn claim_issue(body: &str) -> Option<u64> {
-    body.lines().find_map(|l| {
+    let bare = body.lines().find_map(|l| {
         let rest = l.trim().strip_prefix("Moai-Claim:")?.trim();
         let (issue, comment) = rest.split_once('#')?;
         comment.trim().parse::<u64>().ok()?;
         issue.trim().parse().ok()
+    });
+    // Without a bare line, the first inline `Moai-Claim: <digits>#<digits>` (a list item or a
+    // code span) counts, as `lane-next` (#2923) and the merge gate's G11 read it. Counting more
+    // pull requests as claiming only keeps an Issue open (audit 6875195827 N3).
+    bare.or_else(|| {
+        body.match_indices("Moai-Claim:").find_map(|(at, m)| {
+            let rest = body[at + m.len()..].trim_start();
+            let digits = |s: &str| s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
+            let n = digits(rest);
+            let tail = rest[n..].strip_prefix('#')?;
+            if digits(tail) == 0 {
+                return None;
+            }
+            rest[..n].parse().ok()
+        })
     })
 }
 
@@ -166,7 +137,7 @@ fn cells(line: &str) -> Vec<String> {
         }
     }
     out.iter()
-        .map(|c| c.trim().replace(['*', '`'], "").trim().to_string())
+        .map(|c| c.trim().replace('*', "").trim().to_string())
         .collect()
 }
 
@@ -176,24 +147,87 @@ fn is_separator(line: &str) -> bool {
         .all(|c| !c.is_empty() && c.chars().all(|ch| matches!(ch, '-' | ':' | ' ')))
 }
 
-/// A verdict cell that means the row is met.
+/// A verdict cell that means the row is met: a [`MET`] word and nothing after it but evidence.
 pub fn is_met(cell: &str) -> bool {
-    let lower = cell.trim().to_lowercase();
+    let lower = cell.replace('*', "").trim().to_lowercase();
     MET.iter().any(|w| {
-        lower.strip_prefix(w).is_some_and(|rest| {
-            !rest.starts_with(char::is_alphanumeric) && !rest.contains('?') && !undone(rest)
-        })
+        lower
+            .strip_prefix(w)
+            .is_some_and(|rest| !rest.starts_with(char::is_alphanumeric) && evidence_only(rest))
     })
 }
 
-/// The rest of a cell after its met word holds an [`UNDOING`] word.
-fn undone(rest: &str) -> bool {
-    rest.split(|c: char| !c.is_alphanumeric()).any(|word| {
-        UNDOING.contains(&word)
-            // Every prefix is Hangul, so only a Hangul word can match one.
-            || (!KO_NOT_UNDOING.iter().any(|p| word.starts_with(p))
-                && UNDOING_KO_PREFIXES.iter().any(|p| word.starts_with(p)))
-    })
+/// The rest of a verdict cell holds only evidence: code spans (dropped whole; an unclosed one is
+/// not evidence), words that hold a digit or are themselves met words, whitespace, ASCII
+/// punctuation other than `?`, and [`EVIDENCE_SYMBOLS`] (leader decision 6875953130).
+fn evidence_only(rest: &str) -> bool {
+    let mut text = String::new();
+    let mut in_code = false;
+    for c in rest.chars() {
+        if c == '`' {
+            in_code = !in_code;
+        } else if !in_code {
+            text.push(c);
+        }
+    }
+    !in_code
+        && text.chars().all(|c| {
+            c.is_alphanumeric()
+                || c.is_whitespace()
+                || (c.is_ascii_punctuation() && !NOT_EVIDENCE_PUNCT.contains(c))
+                || EVIDENCE_SYMBOLS.contains(c)
+        })
+        && text
+            .split(|c: char| !c.is_alphanumeric())
+            .all(|w| w.is_empty() || evidence_word(w) || MET.contains(&w))
+}
+
+/// ASCII punctuation that is not evidence: `?`, and `/` and `%`, which make a count say "not
+/// all yet" (`0/3`, `50%` — audit 6876510659 N1).
+pub const NOT_EVIDENCE_PUNCT: &str = "?/%";
+
+/// A word that holds a digit and has the shape of evidence (audit 6876510659 B1 — a digit
+/// alone let `3건남음`, `1wip`, `v2예정` through): digits only; a commit (7 or more hex
+/// characters with a digit); or an id of up to three ASCII letters, digits, and at most one more
+/// letter with optional digits (`b2`, `r5`, `t04`, `s6e1`, the `09t04` and `08z` of a UTC time).
+/// Lowercase input.
+fn evidence_word(w: &str) -> bool {
+    let b = w.as_bytes();
+    if !b.iter().any(u8::is_ascii_digit) {
+        return false;
+    }
+    if b.iter().all(u8::is_ascii_digit) {
+        return true;
+    }
+    if b.len() >= 7 && b.iter().all(u8::is_ascii_hexdigit) {
+        return true;
+    }
+    // [a-z]{0,3} [0-9]+ ( [a-z] [0-9]* )?
+    let mut i = 0;
+    while i < b.len() && b[i].is_ascii_lowercase() {
+        i += 1;
+    }
+    if i > 3 {
+        return false;
+    }
+    let digits = |from: usize| {
+        let mut j = from;
+        while j < b.len() && b[j].is_ascii_digit() {
+            j += 1;
+        }
+        j
+    };
+    let j = digits(i);
+    if j == i {
+        return false;
+    }
+    if j == b.len() {
+        return true;
+    }
+    if !b[j].is_ascii_lowercase() {
+        return false;
+    }
+    digits(j + 1) == b.len()
 }
 
 /// The verdict column of a header row: the first cell after the first that starts with a
@@ -426,19 +460,26 @@ mod tests {
             "충족",
             "**충족**",
             "met",
-            "PASS (agent-9)",
             "n/a",
             "해당 없음",
-            "충족 — 감사 확인",
-            "충족(범위 밖 종료)",
             "끝",
-            "병합 `cf05c3ea6f`",
             "지킴",
-            "CLOSED completed 2026-11-09",
             "완료",
             "done",
+            "PASS",
+            // Evidence only: code spans, words with a digit, punctuation, allowed symbols.
+            "병합 `cf05c3ea6f`",
+            "충족 (6873016131)",
+            "충족 — #2919 `87c6dc3eee`",
+            "PASS 6875042988 · 43578802502",
+            "CLOSED completed 2026-11-09T04",
+            "충족 ✓",
+            "충족 (B2, R5)",
+            "충족 (S6e1, T04, 2026-11-14T09:16:08Z)",
+            "병합 `f00` 663107d9b5",
+            "끝 — `progress_painter` `the_loop_merges_a_tip_only_update`",
         ] {
-            assert!(is_met(&yes.replace(['*', '`'], "")), "{yes}");
+            assert!(is_met(yes), "{yes}");
         }
         for no in [
             "미충족",
@@ -454,7 +495,7 @@ mod tests {
             "열림(감사 대기)",
             "metric",
             "closedown",
-            // Audit 6874717869 B1: a met word undone by what follows it.
+            // Audit 6874717869 B1 and re-audit 6875342005 B1.
             "충족 아님",
             "충족(일부)",
             "충족 — B2 남음",
@@ -466,34 +507,49 @@ mod tests {
             "완료 예정",
             "n/a?",
             "병합 대기",
-            "충족 (pending)",
-            "done, not yet merged",
-            "PASS — 재감사 후속",
-            // Re-audit 6875342005 B1: Korean particles and endings attached to the word.
             "병합 대기중",
             "충족 안됨",
             "충족(일부만)",
             "충족 아직",
             "충족 — 미확인",
             "충족, 단 B2 미해결",
-            "끝 (남은 일 있음)",
-            "완료 예정임",
+            // Audit 6875910836 N1: words no list named — any non-evidence word is enough.
+            "충족 못함",
+            "충족 — 못 함",
+            "충족 — 확인 필요",
+            "충족 검토중",
+            "충족 (누락)",
+            "충족 막힘",
+            "충족 차단됨",
+            "충족 취소",
+            "충족 — 재감사 필요",
+            "충족 부족",
+            "충족 오류",
+            "충족 X",
+            "충족 ✗",
+            "met, blocked",
+            // Description belongs in the evidence column now (leader decision 6875953130).
+            "PASS (agent-9)",
+            "충족 — 감사 확인",
+            "충족(범위 밖 종료)",
+            // An unclosed code span is not evidence.
+            "충족 `abc",
+            // Audit 6876510659 B1: a digit glued to a word is not evidence.
+            "충족 3건남음",
+            "충족 — B2남음",
+            "충족 v2예정",
+            "충족 1차미완",
+            "충족 2todo",
+            "done 1wip",
+            "충족 abcd1",
+            // N1: counts that say "not all yet".
+            "완료 0/3",
+            "충족 1/2",
+            "충족 50%",
+            "PASS 6875042988 · CI 43578802502",
+            "끝 — `progress_painter` 단위 시험",
         ] {
             assert!(!is_met(no), "{no}");
-        }
-        // Words that merely contain an undoing word stay met (`전역` is not `전`, `notes`
-        // is not `not`, `안내` is not `안`).
-        for yes in [
-            "충족 — 판정 함수는 ColorFlag 를 받음. 전역",
-            "met (notes in PR body)",
-            "충족 — 안내 줄 한 번",
-            "끝(대용, 리더 결정 6868714203)",
-            "충족 — 미리보기 출력 그대로",
-            "충족 — 안전하게 거부",
-            "충족(범위 밖 종료)",
-            "충족 — POSIX 만(pty)",
-        ] {
-            assert!(is_met(yes), "{yes}");
         }
     }
 
@@ -561,13 +617,29 @@ mod tests {
     }
 
     #[test]
-    fn claim_issue_is_read_only_at_a_line_start() {
+    fn a_bare_claim_line_wins_and_an_inline_one_counts_without_it() {
         assert_eq!(claim_issue("x\nMoai-Claim: 7#123\n"), Some(7));
-        assert_eq!(claim_issue("receipt: `Moai-Claim: 7#123` in commits"), None);
-        // Mid-line, even when the rest would parse (#2898's body before its edit).
-        assert_eq!(claim_issue("trailer is Moai-Claim: 7#123"), None);
         assert_eq!(claim_issue("  Moai-Claim: 7#123  "), Some(7));
+        // Audit 6875195827 N3: without a bare line an inline token counts (#2898's body
+        // before its edit), as lane-next (#2923) reads it.
+        assert_eq!(
+            claim_issue("receipt: `Moai-Claim: 7#123` in commits"),
+            Some(7)
+        );
+        assert_eq!(claim_issue("trailer is Moai-Claim:7#123"), Some(7));
+        // A bare line wins over an earlier inline mention of another claim.
+        assert_eq!(
+            claim_issue("stacked on `Moai-Claim: 8#1`\nMoai-Claim: 7#123\n"),
+            Some(7)
+        );
+        // Placeholders and a missing number are no claim; a later real token still counts.
         assert_eq!(claim_issue("Moai-Claim: 7#abc"), None);
+        assert_eq!(claim_issue("`Moai-Claim: <n>#<id>`"), None);
+        assert_eq!(claim_issue("`Moai-Claim: 7#` and `Moai-Claim: #5`"), None);
+        assert_eq!(
+            claim_issue("`Moai-Claim: <n>#<id>` then `Moai-Claim: 9#5`"),
+            Some(9)
+        );
     }
 
     struct Fixed(RefCell<Vec<Value>>, Value);

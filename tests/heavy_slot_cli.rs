@@ -353,31 +353,48 @@ fn bad_arguments_are_refused() {
 
 /// Item 3 (leader's numbers, #2677 comment 6850581277): below 50 GB free or above 80 % swap
 /// use nothing starts — exit 75 with the measured values, the command does not run and the
-/// slot folder is not even created. The edges 50 GB and 80 % still start; the flags move or
-/// turn off both limits.
+/// slot folder is not even created. The edges 50 GB and 80 % still start; a caller's flag only
+/// tightens a limit, so the old `--min-free-gb 0 --max-swap-pct 100` no longer turns them off
+/// (#2930 R-2) — only `limits.json` beside the slots does.
 #[test]
 fn a_machine_over_the_limits_starts_nothing() {
     let m = tempfile::tempdir().unwrap();
     let ran = m.path().join("ran");
     let touch = format!("touch '{}'", ran.display());
-    for (machine, extra, starts, says) in [
-        ("free_gb=49,swap_pct=0", &[][..], false, "disk free 49.0 GB"),
-        ("free_gb=50,swap_pct=0", &[][..], true, ""),
+    for (machine, file, extra, starts, says) in [
+        (
+            "free_gb=49,swap_pct=0",
+            None,
+            &[][..],
+            false,
+            "disk free 49.0 GB",
+        ),
+        ("free_gb=50,swap_pct=0", None, &[][..], true, ""),
         (
             "free_gb=1000,swap_pct=81",
+            None,
             &[][..],
             false,
             "swap use 81% is above 80%",
         ),
-        ("free_gb=1000,swap_pct=80", &[][..], true, ""),
+        ("free_gb=1000,swap_pct=80", None, &[][..], true, ""),
         (
             "free_gb=1,swap_pct=100",
-            &["--min-free-gb", "0", "--max-swap-pct", "100"][..],
+            Some(r#"{"min_free_gb":0,"max_swap_pct":100}"#),
+            &[][..],
             true,
             "",
         ),
         (
+            "free_gb=1,swap_pct=0",
+            None,
+            &["--min-free-gb", "0", "--max-swap-pct", "100"][..],
+            false,
+            "below 50 GB",
+        ),
+        (
             "free_gb=60,swap_pct=0",
+            None,
             &["--min-free-gb", "61"][..],
             false,
             "below 61 GB",
@@ -386,6 +403,10 @@ fn a_machine_over_the_limits_starts_nothing() {
         let _ = fs::remove_file(&ran);
         let d = tempfile::tempdir().unwrap();
         let slots = d.path().join("slots");
+        if let Some(body) = file {
+            fs::create_dir_all(&slots).unwrap();
+            fs::write(slots.join("limits.json"), body).unwrap();
+        }
         let mut c = Command::new(EXE);
         c.env("MOAI_CLI_TEST_MACHINE", machine)
             .args([
@@ -412,6 +433,224 @@ fn a_machine_over_the_limits_starts_nothing() {
             assert!(!slots.exists(), "{machine}: slot folder created");
         }
     }
+}
+
+/// A slot folder with only `limits.json` in it (the folder the next caller reads).
+fn limits_dir(body: &str) -> (tempfile::TempDir, PathBuf) {
+    let d = tempfile::tempdir().unwrap();
+    let slots = d.path().join("slots");
+    fs::create_dir_all(&slots).unwrap();
+    fs::write(slots.join("limits.json"), body).unwrap();
+    (d, slots)
+}
+
+/// One caller on `machine` with `flags`, running `touch <ran>`.
+fn limited(slots: &Path, machine: &str, flags: &[&str], ran: &Path) -> Command {
+    let mut c = Command::new(EXE);
+    c.env("MOAI_CLI_TEST_MACHINE", machine)
+        .args([
+            "heavy-slot-acquire",
+            "--max",
+            "2",
+            "--name",
+            "lane-f",
+            "--dir",
+        ])
+        .arg(slots)
+        .args(flags)
+        .args(["--", "sh", "-c", &format!("touch '{}'", ran.display())]);
+    c
+}
+
+/// #2930 R-2: `<slots>/limits.json` sets the machine's limits, and a caller's flag wins only
+/// when it is stricter. Each pair is the edge: the first value refused (75, nothing run, no
+/// slot written) and the first that starts.
+#[test]
+fn a_limits_file_beside_the_slots_wins_when_stricter() {
+    let m = tempfile::tempdir().unwrap();
+    let ran = m.path().join("ran");
+    for (file, flags, refused, starts, says) in [
+        // The file's 50 GB beats the caller's 0.
+        (
+            r#"{"min_free_gb":50}"#,
+            &["--min-free-gb", "0"][..],
+            "free_gb=49,swap_pct=0",
+            "free_gb=50,swap_pct=0",
+            "below 50 GB",
+        ),
+        // No flag: the file's own 60 GB, above the default 50.
+        (
+            r#"{"min_free_gb":60}"#,
+            &[][..],
+            "free_gb=59,swap_pct=0",
+            "free_gb=60,swap_pct=0",
+            "below 60 GB",
+        ),
+        // The caller's 61 GB is stricter than the file's 50: the caller wins.
+        (
+            r#"{"min_free_gb":50}"#,
+            &["--min-free-gb", "61"][..],
+            "free_gb=60,swap_pct=0",
+            "free_gb=61,swap_pct=0",
+            "below 61 GB",
+        ),
+        // The file's 80 % beats the caller's 100 %.
+        (
+            r#"{"max_swap_pct":80}"#,
+            &["--max-swap-pct", "100"][..],
+            "free_gb=1000,swap_pct=81",
+            "free_gb=1000,swap_pct=80",
+            "swap use 81% is above 80%",
+        ),
+    ] {
+        let (_d, slots) = limits_dir(file);
+        let _ = fs::remove_file(&ran);
+        let out = run(limited(&slots, refused, flags, &ran));
+        assert_eq!(
+            out.status.code(),
+            Some(75),
+            "{file} {flags:?}: {}",
+            text(&out)
+        );
+        assert!(
+            text(&out).contains(says),
+            "{file} {flags:?}: {}",
+            text(&out)
+        );
+        assert!(!ran.exists(), "{file} {flags:?}: ran anyway");
+        assert!(
+            !slots.join("slot-0").exists(),
+            "{file} {flags:?}: slot written"
+        );
+        let out = run(limited(&slots, starts, flags, &ran));
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{file} {flags:?}: {}",
+            text(&out)
+        );
+        assert!(ran.exists(), "{file} {flags:?}: did not run");
+    }
+    // A file looser than the caller's flag says so on stderr and uses the file's value.
+    let (_d, slots) = limits_dir(r#"{"min_free_gb":50}"#);
+    let out = run(limited(&slots, ROOMY, &["--min-free-gb", "0"], &ran));
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("--min-free-gb 0") && err.contains("50"),
+        "{err}"
+    );
+
+    // `--max` is optional: no flag and no file runs with the default count.
+    let d = tempfile::tempdir().unwrap();
+    let _ = fs::remove_file(&ran);
+    let mut c = Command::new(EXE);
+    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .args(["heavy-slot-acquire", "--name", "lane-f", "--dir"])
+        .arg(d.path())
+        .args(["--", "sh", "-c", &format!("touch '{}'", ran.display())]);
+    let out = run(c);
+    assert_eq!(out.status.code(), Some(0), "no --max: {}", text(&out));
+    assert!(ran.exists(), "no --max: did not run");
+
+    // `{"max":1}` beats the caller's `--max 2`: with one holder running, the second caller
+    // waits instead of taking slot 1.
+    let (_d, slots) = limits_dir(r#"{"max":1}"#);
+    let (s1, r1, s2) = (
+        m.path().join("s1"),
+        m.path().join("r1"),
+        m.path().join("s2"),
+    );
+    let mut c = acquire(&slots, "2", "first", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let first = spawn(c);
+    wait_for("first started", || s1.exists());
+    let mut c = acquire(
+        &slots,
+        "2",
+        "second",
+        &["sh", "-c", &format!("touch '{}'", s2.display())],
+    );
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let second = spawn(c);
+    wait_for("second waiting", || {
+        fs::read_dir(slots.join("waiting"))
+            .map(|r| r.count() == 1)
+            .unwrap_or(false)
+    });
+    assert!(!s2.exists(), "second ran while the only slot was held");
+    assert!(!slots.join("slot-1").exists(), "slot 1 was created");
+    fs::write(&r1, "").unwrap();
+    let (a, b) = (first.finish(), second.finish());
+    assert!(a.status.success(), "{}", text(&a));
+    assert!(b.status.success(), "{}", text(&b));
+    assert!(
+        text(&b).contains("waiting 1 of 1 for 1 slot(s)"),
+        "{}",
+        text(&b)
+    );
+    assert!(s2.exists());
+}
+
+/// #2930 R-2: a `limits.json` that is not a plain file of at most 4096 bytes holding a known,
+/// valid object is refused with 125 before anything runs or is written; exactly 4096 bytes is
+/// still read.
+#[test]
+fn a_bad_limits_file_runs_nothing() {
+    let m = tempfile::tempdir().unwrap();
+    let ran = m.path().join("ran");
+    let valid = m.path().join("valid.json");
+    fs::write(&valid, r#"{"min_free_gb":0}"#).unwrap();
+    let pad = |n: usize| {
+        let head = r#"{"max":2}"#;
+        format!("{head}{}", " ".repeat(n - head.len()))
+    };
+    type Plant<'a> = Box<dyn Fn(&Path) + 'a>;
+    let cases: Vec<(&str, Plant)> = vec![
+        (
+            "symlink to a valid file",
+            Box::new(|p: &Path| std::os::unix::fs::symlink(&valid, p).unwrap()),
+        ),
+        ("directory", Box::new(|p: &Path| fs::create_dir(p).unwrap())),
+        (
+            "max 0",
+            Box::new(|p: &Path| fs::write(p, r#"{"max":0}"#).unwrap()),
+        ),
+        (
+            "unknown key",
+            Box::new(|p: &Path| fs::write(p, r#"{"max":2,"min_free":1}"#).unwrap()),
+        ),
+        (
+            "invalid JSON",
+            Box::new(|p: &Path| fs::write(p, "{max:2").unwrap()),
+        ),
+        (
+            "4097 bytes",
+            Box::new(move |p: &Path| fs::write(p, pad(4097)).unwrap()),
+        ),
+    ];
+    for (what, plant) in cases {
+        let d = tempfile::tempdir().unwrap();
+        let slots = d.path().join("slots");
+        fs::create_dir_all(&slots).unwrap();
+        plant(&slots.join("limits.json"));
+        let _ = fs::remove_file(&ran);
+        let out = run(limited(&slots, ROOMY, &[], &ran));
+        assert_eq!(out.status.code(), Some(125), "{what}: {}", text(&out));
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            err.contains("heavy-slot: refused") && err.contains("COMMAND did not run"),
+            "{what}: {err}"
+        );
+        assert!(!ran.exists(), "{what}: ran anyway");
+        assert!(!slots.join("slot-0").exists(), "{what}: slot written");
+        assert!(!slots.join("waiting").exists(), "{what}: queue written");
+    }
+    // The edge: exactly 4096 bytes is read and used.
+    let (_d, slots) = limits_dir(&pad(4096));
+    let out = run(limited(&slots, ROOMY, &[], &ran));
+    assert_eq!(out.status.code(), Some(0), "4096 bytes: {}", text(&out));
+    assert!(ran.exists());
 }
 
 /// The machine is judged again after a wait: a waiter queued while the disk was fine does not
