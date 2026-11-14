@@ -530,7 +530,11 @@ fn the_python_tool_and_the_command_take_turns_in_one_folder() {
         );
         let py = |cmd: &str| {
             let mut c = Command::new("python3");
-            c.arg("-I")
+            // The same roomy machine as the Rust side: without it the Python tool measures the
+            // runner's real disk, a CI runner under 50 GB refuses to start (exit 75) and the
+            // holder never runs (tip red on macos-arm64, #2829 6869898907).
+            c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+                .arg("-I")
                 .arg(python_tool())
                 .args(["acquire", "--max", "1", "--name", "py", "--dir"])
                 .arg(d.path())

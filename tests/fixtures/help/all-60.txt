@@ -136,6 +136,7 @@ Lane and leader
                           leave
   lane-safe-to-reset      Check that a lane's session is
                           safe to clear
+  lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   usage-limit             Report how close the usage limits
                           are
@@ -170,6 +171,8 @@ Lane and leader
                           acknowledgement
   audit-claim             Reserve the audit of one pull
                           request head
+  audit-verdict-line      Print the verdict first line for
+                          the audited head
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break
                           the rule

@@ -206,9 +206,7 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     let Ok(home) = crate::key_vault::home() else {
         return Ok(None);
     };
-    let path = home
-        .join(crate::HOME_STATE_DIR)
-        .join("config/launcher.yaml");
+    let path = crate::home_root::path(&home).join("config/launcher.yaml");
     // Check the entry before reading: directories, symlinks and special files (including
     // FIFOs, which could block a read) are not launcher configuration files.
     match fs::symlink_metadata(&path) {

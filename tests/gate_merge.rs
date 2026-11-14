@@ -467,3 +467,123 @@ fn with_the_app_token_only_the_status_goes_through_the_app_transport() {
         .iter()
         .all(|r| !r.url.contains("/statuses")));
 }
+
+// ---- #2833 D1: a PASS carried by a mechanical delta is recorded before any other write ----
+
+/// `repo()` with the tip merged into the PR branch: the verdict head is the PR commit `h`, the
+/// current head `n` is the update-branch merge.
+fn delta_repo() -> (TempDir, String, String, String) {
+    let (dir, a, h) = repo();
+    let d = dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge main",
+            "main",
+        ],
+    );
+    let n = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    (dir, a, h, n)
+}
+
+/// The gate's reads for head `n` with the verdict on `h`, plus `extra` comments, then the two
+/// remote reads.
+fn delta_reads(dir: &TempDir, n: &str, h: &str, base: &str, extra: &[Value]) -> Vec<Exchange> {
+    let tip = tip_of(dir);
+    let mut comments = vec![
+        json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={h}\n")}),
+        json!({"id": 200, "body": format!("AUDIT #9 (x) head {h} base {base} — verdict: PASS\n\n감사: agent-10.\n")}),
+    ];
+    comments.extend(extra.iter().cloned());
+    let mut ex = reads(n, base, &tip, PASS_BODY);
+    ex[1] = Exchange {
+        request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+        response: ok(Value::Array(comments)),
+    };
+    ex.extend(remote(n, &tip));
+    ex
+}
+
+#[test]
+fn a_mechanical_delta_is_recorded_first_then_merged() {
+    let (dir, a, h, n) = delta_repo();
+    let mut ex = delta_reads(&dir, &n, &h, &a, &[]);
+    ex.push(record()); // the AUTO-DELTA comment
+    ex.extend(status(&n, 201));
+    ex.push(put(200));
+    ex.push(record()); // the merge record
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(true), "{out}");
+    assert_eq!(
+        out["writes"],
+        json!(["auto_delta", "status", "merge", "record"])
+    );
+    assert_eq!(t.remaining(), 0);
+    let sent = t.sent.borrow();
+    let note = sent
+        .iter()
+        .find(|r| r.method == "POST" && r.url.ends_with("/issues/9/comments"))
+        .unwrap();
+    let body = note.body.as_ref().unwrap()["body"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        body.lines().next().unwrap(),
+        format!("AUTO-DELTA #9 {h}→{n}"),
+        "{body}"
+    );
+    assert!(body.contains("| `src/a.rs` |"), "{body}");
+    // The merge pins the current head, not the verdict head.
+    let merge_put = sent.iter().find(|r| r.method == "PUT").unwrap();
+    assert_eq!(merge_put.body.as_ref().unwrap()["sha"], json!(n));
+}
+
+#[test]
+fn an_existing_auto_delta_line_is_not_written_again() {
+    let (dir, a, h, n) = delta_repo();
+    let line = json!({"id": 300, "body": format!("AUTO-DELTA #9 {h}→{n}\n\nearlier pass")});
+    let mut ex = delta_reads(&dir, &n, &h, &a, &[line]);
+    ex.extend(status(&n, 201));
+    ex.push(put(200));
+    ex.push(record());
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["writes"], json!(["status", "merge", "record"]), "{out}");
+    assert_eq!(t.remaining(), 0);
+}
+
+#[test]
+fn a_failed_auto_delta_record_writes_nothing_else() {
+    let (dir, a, h, n) = delta_repo();
+    let mut ex = delta_reads(&dir, &n, &h, &a, &[]);
+    ex.push(Exchange {
+        request: HttpRequest::new("POST", format!("{API}/issues/9/comments")),
+        response: HttpResponse::new(403).with_body(json!({"message": "no"})),
+    });
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(false), "{out}");
+    assert_eq!(out["writes"], json!([]));
+    assert!(
+        out["reason"].as_str().unwrap().contains("HTTP 403"),
+        "{out}"
+    );
+    assert_eq!(t.remaining(), 0);
+    assert!(t
+        .sent
+        .borrow()
+        .iter()
+        .all(|r| !r.url.contains("/statuses") && r.method != "PUT"));
+}
