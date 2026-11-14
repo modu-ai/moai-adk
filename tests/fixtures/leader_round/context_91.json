@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "lanes": [
+    {
+      "lane": "agent-29",
+      "host": "claude",
+      "read_at": "2026-11-14T09:20:00Z",
+      "source": "leader agent-0: orca terminal read --screen --json",
+      "terminal": {
+        "handle": "term-29",
+        "status": "running",
+        "source": "screen",
+        "tail": "⏺ LANE-REPORT agent-29 #2902: O3b plan posted 6875163101, implementation next\n\n⏺ Waiting for the next self-pick.",
+        "limited": false,
+        "truncated": false,
+        "draft": null
+      },
+      "pane": "working",
+      "turn": "idle",
+      "input_box": "empty",
+      "context_used_pct": 91,
+      "wake_armed": false,
+      "background_jobs": 0
+    }
+  ]
+}
