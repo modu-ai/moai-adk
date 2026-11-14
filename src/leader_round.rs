@@ -618,6 +618,8 @@ mod tests {
                     ```\n\
                     see LANE-DONE agent-29 mid-line\n\
                     ⏺ LANE-DONE agent-2 other lane\n\
+                    LANE-DONE agent-290 longer lane\n\
+                    LANE-DONE lane=agent-290 longer lane key\n\
                     LANE-DONEX agent-29 longer word\n\
                     LANE-DONE\n";
         let m = markers(tail, "agent-29");
@@ -626,12 +628,14 @@ mod tests {
             m.ignored,
             vec![
                 "LANE-DONE agent-2 other lane".to_string(),
+                "LANE-DONE agent-290 longer lane".into(),
+                "LANE-DONE lane=agent-290 longer lane key".into(),
                 "LANE-DONE".into()
             ]
         );
         let a = safe(&with_tail(tail));
         assert_eq!(a.action, Act::Restart);
-        assert_eq!(a.ignored.len(), 2);
+        assert_eq!(a.ignored.len(), 4);
     }
 
     #[test]
