@@ -47,6 +47,11 @@ Project
                           hooks
   go-hooks-apply          Replace Go-era project hooks
   go-hooks-revert         Undo a Go-era hook replacement
+  agents-merge-plan       Preview merging AGENTS.local.md
+                          into AGENTS.md
+  agents-merge-apply      Merge AGENTS.local.md into
+                          AGENTS.md
+  agents-merge-revert     Undo an AGENTS.local.md merge
 Update and move
   update                  Update MoAI from the installed
                           package
