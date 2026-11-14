@@ -1234,7 +1234,8 @@ fn no_second_auditor_for_a_verdict_a_moved_head_or_an_unknown_time() {
     assert_reserved_not_second(&r, "no now");
     let r = second(old, json!([audit_claim(500, "agent-3", &h('a'))]));
     assert_reserved_not_second(&r, "no reservation time");
-    // The newest reservation counts: a later one by another lane restarts the 30:00.
+    // The lowest reservation on the head holds it (`audit-claim`'s rule): a later one by another
+    // lane is inert and restarts nothing.
     let r = second(
         "2026-11-14T10:30:00Z",
         json!([
@@ -1242,8 +1243,198 @@ fn no_second_auditor_for_a_verdict_a_moved_head_or_an_unknown_time() {
             at(audit_claim(520, "agent-4", &h('a')), "2026-11-14T10:20:00Z")
         ]),
     );
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    assert_eq!(
+        r["next"]["evidence"]["reserved_by"],
+        json!("agent-3"),
+        "{r}"
+    );
+}
+
+/// The decision of `lane` (not the default one) on the snapshot.
+fn next_for(lane: &str, snap: &Value) -> Value {
+    let d = TempDir::new().unwrap();
+    let file = d.path().join("snap.json");
+    std::fs::write(&file, snap.to_string()).unwrap();
+    let out = Command::new(EXE)
+        .args(["lane-next", "--lane", lane, "--repo", "o/r", "--snapshot"])
+        .arg(&file)
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)));
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+/// The leader's handoff of reservation 500 (`audit-claim`'s only way to move a hold).
+fn handoff(id: u64, to: &str, when: &str) -> Value {
+    at(
+        json!({"id": id, "body": format!("moai-claim-handoff: comment=500 to={to} by=leader")}),
+        when,
+    )
+}
+
+/// After the leader's handoff the winner is the auditor: it gets the normal `audit` task, not a
+/// wait; the lane that reserved first, and everyone else, get no audit (`audit_reserved` by the
+/// new holder). A handoff to a session spelling of the lane (`agent-10-59cb6a`) is the lane's.
+#[test]
+fn a_handoff_makes_the_winner_the_auditor_and_no_one_else() {
+    let now = "2026-11-14T10:40:00Z";
+    let snap = |to: &str| {
+        json!({"now": now, "prs": [pr(5, &h('a'), Some("agent-29"), json!([
+            reservation(),
+            takeover_request(600, LANE, 500, &h('a')),
+            handoff(700, to, "2026-11-14T10:35:00Z"),
+        ]))]})
+    };
+    for to in [LANE, "agent-10-59cb6a"] {
+        let r = next_for(LANE, &snap(to));
+        assert_eq!(kind(&r), json!("audit"), "{to}: {r}");
+        assert_eq!(r["next"]["target"]["number"], json!(5), "{r}");
+        assert_eq!(r["waiting"], json!([]), "{to}: {r}");
+        // The lane that reserved first is told nothing to audit.
+        let r = next_for("agent-3", &snap(to));
+        assert_eq!(r["next"], json!(null), "{to}: {r}");
+    }
+    // Handed to another lane: that lane audits, I (a third lane) and the first holder do not;
+    // the PR is `audit_reserved` by the new holder, and no takeover wait is left for the old
+    // reservation.
+    let to_other = snap("agent-12");
+    assert_eq!(kind(&next_for("agent-12", &to_other)), json!("audit"));
+    for third in [LANE, "agent-3"] {
+        let r = next_for(third, &to_other);
+        assert_eq!(r["next"], json!(null), "{third}: {r}");
+        assert_eq!(r["waiting"], json!([]), "{third}: {r}");
+        assert_eq!(
+            r["pr_skipped"],
+            json!([{"pr": 5, "reason": "audit_reserved", "by": "agent-12", "comment": 700}]),
+            "{third}: {r}"
+        );
+    }
+    // A handoff line that is not the leader's, or names another reservation, moves nothing.
+    let not_leader = at(
+        json!({"id": 700, "body": "moai-claim-handoff: comment=500 to=agent-12 by=agent-5"}),
+        "2026-11-14T10:35:00Z",
+    );
+    let r = second(
+        now,
+        json!([
+            reservation(),
+            takeover_request(600, LANE, 500, &h('a')),
+            not_leader
+        ]),
+    );
+    assert_eq!(
+        r["waiting"][0]["reason"],
+        json!("takeover_requested"),
+        "{r}"
+    );
+}
+
+/// The 30:00 and the holder's silence run against the effective holder and restart at the
+/// handoff comment: 29:59 after it is `audit_reserved`, 30:00 asks again. A request posted
+/// before the handoff belongs to the old round and is not read; the holder's own comments after
+/// the handoff restart the count.
+#[test]
+fn the_second_audit_clock_restarts_at_the_handoff() {
+    let handed = handoff(700, "agent-12", "2026-11-14T10:35:00Z");
+    let old_request = takeover_request(600, LANE, 500, &h('a'));
+    let comments = json!([reservation(), old_request, handed]);
+    let r = second("2026-11-14T11:04:59Z", comments.clone());
     assert_eq!(r["next"], json!(null), "{r}");
-    assert_eq!(r["pr_skipped"][0]["by"], json!("agent-4"), "{r}");
+    assert_eq!(r["waiting"], json!([]), "{r}");
+    assert_eq!(r["pr_skipped"][0]["by"], json!("agent-12"), "{r}");
+    // Just before the handoff's own 30:00 it would already be past the reservation's.
+    let r = second("2026-11-14T11:05:00Z", comments);
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    assert_eq!(
+        r["next"]["evidence"]["reserved_by"],
+        json!("agent-12"),
+        "{r}"
+    );
+    assert_eq!(
+        r["next"]["evidence"]["reservation_comment"],
+        json!(500),
+        "{r}"
+    );
+    assert_eq!(r["next"]["evidence"]["idle_secs"], json!(1800), "{r}");
+    // The handed-off auditor commenting after the handoff restarts the count.
+    let note = at(
+        json!({"id": 710, "body": "agent-12: reading the diff"}),
+        "2026-11-14T10:50:00Z",
+    );
+    let comments = json!([
+        reservation(),
+        handoff(700, "agent-12", "2026-11-14T10:35:00Z"),
+        note
+    ]);
+    let r = second("2026-11-14T11:19:59Z", comments.clone());
+    assert_eq!(r["next"], json!(null), "{r}");
+    let r = second("2026-11-14T11:20:00Z", comments);
+    assert_eq!(kind(&r), json!("request_second_audit"), "{r}");
+    // A request after the handoff is for the new round: the lowest such id waits for the leader.
+    let r = second(
+        "2026-11-14T11:20:00Z",
+        json!([
+            reservation(),
+            handoff(700, "agent-12", "2026-11-14T10:35:00Z"),
+            at(
+                json!({"id": 710, "body": "agent-12: reading the diff"}),
+                "2026-11-14T10:50:00Z"
+            ),
+            takeover_request(720, LANE, 500, &h('a')),
+        ]),
+    );
+    assert_eq!(
+        r["waiting"][0]["reason"],
+        json!("takeover_requested"),
+        "{r}"
+    );
+    assert_eq!(r["waiting"][0]["request_comment"], json!(720), "{r}");
+}
+
+/// A comment that names the auditor by a session spelling (`<letters>-<digits>-<fragment>`,
+/// the rule `audit-claim` compares lanes by) is the auditor's activity; `agent-33` and
+/// `agent-3x` are other lanes.
+#[test]
+fn an_alias_spelling_of_the_auditor_keeps_it_active() {
+    let note = |body: &str| at(json!({"id": 510, "body": body}), "2026-11-14T10:10:00Z");
+    for (reserved_lane, body) in [
+        ("agent-3", "session=agent-3-59cb6a reading the diff"),
+        ("agent-3", "agent-3-hBp17: reading the diff"),
+        ("agent-3", "audit progress\nlane=agent-3-2293 files 3/7"),
+        ("agent-3-59cb6a", "agent-3: reading the diff"),
+    ] {
+        let comments = json!([
+            at(audit_claim(500, reserved_lane, &h('a')), RESERVED_AT),
+            note(body),
+        ]);
+        let r = second("2026-11-14T10:39:59Z", comments.clone());
+        assert_eq!(
+            r["next"],
+            json!(null),
+            "{reserved_lane} {body:?} 29:59: {r}"
+        );
+        assert_eq!(r["pr_skipped"][0]["reason"], json!("audit_reserved"), "{r}");
+        let r = second("2026-11-14T10:40:00Z", comments);
+        assert_eq!(
+            kind(&r),
+            json!("request_second_audit"),
+            "{body:?} 30:00: {r}"
+        );
+    }
+    // Other lanes' numbers or fragments do not count, aliased or not.
+    for body in [
+        "agent-33 reading",
+        "session=agent-33-59cb6a",
+        "agent-3x reading",
+        "agent-30-2293 hi",
+    ] {
+        let comments = json!([reservation(), note(body)]);
+        let r = second("2026-11-14T10:30:00Z", comments);
+        assert_eq!(kind(&r), json!("request_second_audit"), "{body:?}: {r}");
+    }
 }
 
 /// The place of ④ in the list: after my own pull request's work and after reserving a pull

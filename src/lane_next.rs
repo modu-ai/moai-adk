@@ -33,6 +33,7 @@
 //! GraphQL requests, not one request per pull request (#2873 N1), so a long list no longer
 //! spends the budget before the lower priorities are read.
 
+use crate::audit_claim::{holder_of, same_lane, Holder};
 use crate::forge::policy::Clock;
 use crate::forge::transport::{HttpRequest, Transport};
 use serde::{Deserialize, Serialize};
@@ -493,10 +494,25 @@ fn own_pr_task(pr: &Pr) -> Option<Value> {
 
 /// A pull request this lane reserved to audit: whether it owes a verdict now.
 fn audit_task(pr: &Pr, lane: &str) -> Option<Value> {
-    let (claim_idx, claim_head) = pr.comments.iter().enumerate().rev().find_map(|(i, c)| {
-        let (l, h) = audit_claim(c)?;
-        (l == lane).then_some((i, h))
-    })?;
+    // The leader's handoff moved the hold (#2933 S4): to another lane — then this lane, the one
+    // that reserved first included, has nothing to audit — or to this lane, which audits the head
+    // now from the handoff comment on, with no new claim (`audit-claim` reports it holds it).
+    let handed = head_holder(pr).filter(|h| h.via_handoff);
+    if handed.as_ref().is_some_and(|h| !same_lane(&h.lane, lane)) {
+        return None;
+    }
+    let (claim_idx, claim_head) = match &handed {
+        Some(h) => (
+            pr.comments
+                .iter()
+                .position(|c| i64::try_from(c.id) == Ok(h.comment_id))?,
+            pr.head.clone(),
+        ),
+        None => pr.comments.iter().enumerate().rev().find_map(|(i, c)| {
+            let (l, h) = audit_claim(c)?;
+            same_lane(&l, lane).then_some((i, h))
+        })?,
+    };
     let after = &pr.comments[claim_idx + 1..];
     // The latest verdict after the reservation: a re-audit's verdict replaces the first one.
     let mine = after
@@ -605,7 +621,8 @@ fn takeover_request(c: &Comment) -> Option<(u64, String, String)> {
 
 /// A comment "under a lane's name" (#2933 decision A): every lane posts as the same GitHub
 /// account, so a word of the comment must be the lane's name, bare or after `=` (`lane=`,
-/// `session=`, `by=`). `agent-3` is not `agent-33`.
+/// `session=`, `by=`), compared as `audit-claim` compares lanes ([`same_lane`]): the session
+/// spellings `agent-3-59cb6a` and `agent-3` are one lane, `agent-3` is not `agent-33`.
 fn names_lane(c: &Comment, lane: &str) -> bool {
     c.body.split_whitespace().any(|w| {
         let w = w.trim_matches(|ch: char| {
@@ -614,8 +631,35 @@ fn names_lane(c: &Comment, lane: &str) -> bool {
                 ',' | '.' | ';' | ':' | '(' | ')' | '[' | ']' | '`' | '*' | '"' | '\''
             )
         });
-        w == lane || w.split_once('=').is_some_and(|(_, v)| v == lane)
+        same_lane(w, lane) || w.split_once('=').is_some_and(|(_, v)| same_lane(v, lane))
     })
+}
+
+/// Who holds the audit of `pr`'s head now, by the rule `audit-claim` follows
+/// ([`crate::audit_claim::holder_of`], not a second reading): the lowest reservation on the
+/// head, moved by the leader's `moai-claim-handoff: comment=<reservation> to=<lane> by=leader`
+/// line. `None` when no reservation names the head now.
+fn head_holder(pr: &Pr) -> Option<Holder> {
+    let comments: Vec<crate::lane_status::Comment> = pr
+        .comments
+        .iter()
+        .map(|c| crate::lane_status::Comment {
+            id: i64::try_from(c.id).unwrap_or(i64::MAX),
+            created_at: c.at.clone(),
+            body: c.body.clone(),
+        })
+        .collect();
+    holder_of(&comments, &pr.head)
+}
+
+/// The reservation a pull request is passed over for: the comment that gives the hold and the
+/// lane that holds the head now (a handoff moves both); for a reservation of an older head
+/// only, the newest one.
+fn reserved_by(pr: &Pr) -> Option<(u64, String)> {
+    match head_holder(pr) {
+        Some(h) => Some((u64::try_from(h.comment_id).unwrap_or(0), h.lane)),
+        None => latest_audit_claim(pr),
+    }
 }
 
 /// Seconds a reservation may stand with no verdict, its lane silent, before a second auditor
@@ -630,31 +674,35 @@ enum Second {
     Wait(Value),
 }
 
-/// #2933 S4 ④: the newest reservation of `pr` is on the head now, has no verdict, and neither
-/// the reserving lane's comments nor a push (the head would differ) followed it for
-/// [`SECOND_AUDIT_SECS`]. Then `lane` may ask for the second audit with one request line; the
-/// lowest request comment id wins and takes effect only after the leader's
-/// `moai-claim-handoff … by=leader` line (gate G2 is unchanged, a lane never takes over on its
-/// own). `None` when it does not hold, or when the clock or the reservation's time is unknown.
+/// #2933 S4 ④: the holder of the head now ([`head_holder`]: the reservation, or the lane the
+/// leader's handoff moved it to) has no verdict on it, and neither the holder's comments nor a
+/// push (the head would differ, so no reservation would name it) followed the hold for
+/// [`SECOND_AUDIT_SECS`]; the count starts at the comment that gave the hold, so a freshly handed-off
+/// auditor is not replaced at once. Then `lane` may ask for the second audit with one request
+/// line; of the requests after that comment the lowest comment id wins, and it takes effect
+/// only after the leader's `moai-claim-handoff … by=leader` line (gate G2 is unchanged, a lane
+/// never takes over on its own). `None` when it does not hold, or when the clock or the hold's
+/// time is unknown.
 fn second_audit(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Second> {
     let now = crate::forge::policy::parse_utc(now?)?;
-    let (idx, claim, by, head) = pr
-        .comments
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(i, c)| audit_claim(c).map(|(by, head)| (i, c, by, head)))?;
-    // The reserving lane never takes its own reservation over; a reservation of an older head
-    // is stale; a verdict, or an audit record in another form, on the head answers it.
-    if by == lane
-        || head != pr.head
+    let holder = head_holder(pr)?;
+    // The holder never takes its own hold over; a verdict, or an audit record in another form,
+    // on the head answers it.
+    if same_lane(&holder.lane, lane)
         || head_verdict(pr).is_some()
         || foreign_audit_record(pr).is_some()
     {
         return None;
     }
-    let mut quiet_since = crate::forge::policy::parse_utc(&claim.at)?;
-    for c in pr.comments[idx + 1..].iter().filter(|c| names_lane(c, &by)) {
+    let idx = pr
+        .comments
+        .iter()
+        .position(|c| i64::try_from(c.id) == Ok(holder.comment_id))?;
+    let mut quiet_since = crate::forge::policy::parse_utc(&pr.comments[idx].at)?;
+    for c in pr.comments[idx + 1..]
+        .iter()
+        .filter(|c| names_lane(c, &holder.lane))
+    {
         // A comment of the lane with no readable time counts as now: silence is not proven.
         quiet_since = quiet_since.max(crate::forge::policy::parse_utc(&c.at).unwrap_or(now));
     }
@@ -662,32 +710,37 @@ fn second_audit(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Second> {
     if idle < SECOND_AUDIT_SECS {
         return None;
     }
+    // The leader's handoff line names the reservation, so a request does too; one posted
+    // before the hold's comment belongs to an earlier round.
+    let reservation = u64::try_from(holder.reservation_id).unwrap_or(0);
+    let by = &holder.lane;
     let winner = pr.comments[idx + 1..]
         .iter()
         .filter_map(|c| {
             let (comment, asker, head) = takeover_request(c)?;
-            (comment == claim.id && head == pr.head && asker != by).then_some((c.id, asker))
+            (comment == reservation && head == pr.head && !same_lane(&asker, by))
+                .then_some((c.id, asker))
         })
         .min();
     if let Some((request, asker)) = winner {
-        let reason = if asker == lane {
+        let reason = if same_lane(&asker, lane) {
             "takeover_requested"
         } else {
             "takeover_lost"
         };
         return Some(Second::Wait(json!({"number": pr.number, "reason": reason,
-            "comment": claim.id, "request_comment": request, "by": asker, "head": pr.head})));
+            "comment": reservation, "request_comment": request, "by": asker, "head": pr.head})));
     }
     Some(Second::Ask(task(
         "P1",
         "request_second_audit",
         pr_target(pr),
         format!(
-            "PR #{n}: the audit reservation of {by} (comment {id}) has no verdict and {by} has been silent for {idle} s: post exactly one line `moai-audit-takeover-request: comment={id} lane={lane} head={head}` on the PR and wait. The lowest request wins and takes effect only after the leader's `moai-claim-handoff … by=leader` line (then post your own moai-audit-claim); never take over on your own",
+            "PR #{n}: the audit reservation of {by} (comment {reservation}) has no verdict and {by} has been silent for {idle} s: post exactly one line `moai-audit-takeover-request: comment={reservation} lane={lane} head={head}` on the PR and wait. The lowest request wins and takes effect only after the leader's `moai-claim-handoff … by=leader` line; then you run the normal audit (`moai audit-claim` reports you already hold the head, no new claim); never take over on your own",
             n = pr.number,
-            id = claim.id,
+            head = pr.head,
         ),
-        json!({"reservation_comment": claim.id, "reserved_by": by, "head": pr.head,
+        json!({"reservation_comment": reservation, "reserved_by": by, "head": pr.head,
                "idle_secs": idle}),
     )))
 }
@@ -856,7 +909,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 pr_skipped.push(json!({"pr": pr.number, "reason": "draft"}));
                 continue;
             }
-            if let Some((comment, by)) = latest_audit_claim(pr) {
+            if let Some((comment, by)) = reserved_by(pr) {
                 if unstick_task(pr).is_some() {
                     continue;
                 }
@@ -2008,6 +2061,12 @@ mod tests {
         assert!(names_lane(&c(1, "by=agent-3."), "agent-3"));
         assert!(!names_lane(&c(1, "agent-33 and agent-3x"), "agent-3"));
         assert!(!names_lane(&c(1, "magent-3"), "agent-3"));
+        // The session spellings `audit-claim` compares lanes by (`crate::audit_claim::same_lane`).
+        assert!(names_lane(&c(1, "session=agent-3-59cb6a"), "agent-3"));
+        assert!(names_lane(&c(1, "agent-3-hBp17: reading"), "agent-3"));
+        assert!(names_lane(&c(1, "agent-3: reading"), "agent-3-59cb6a"));
+        assert!(!names_lane(&c(1, "session=agent-33-59cb6a"), "agent-3"));
+        assert!(!names_lane(&c(1, "agent-30-2293"), "agent-3"));
     }
 
     /// #2973 T2: a record in another form counts only when its first line says audit and names
