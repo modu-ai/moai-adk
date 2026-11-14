@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Undo a ~/.moai folder move
+///
 /// Put the Go `~/.moai` back (#2723): the Rust `~/.moai` an apply made (valid marker and
 /// receipt) moves aside to `~/.moai.rust-<UTC>`, and the backup its receipt names moves back
 /// to `~/.moai`. Deletes nothing.

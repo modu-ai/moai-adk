@@ -245,15 +245,25 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
     // marker, is a migration stopped midway in either direction. A backup beside the Go
     // folder or beside any other `.moai/` is not (a finished revert, or the user's folder).
     let backups = go_backups(root);
-    let stopped = !backups.is_empty()
-        && marker != "valid"
-        && (moai_dir == "absent" || (moai_dir == "folder" && holds_go_state_receipt(&moai)));
-    let interrupted = if stopped { backups } else { Vec::new() };
+    // #2696 C4a: the earlier-root move has no Go backup, so its own `.moai/` holding a receipt
+    // without a valid marker is a stopped migration by itself.
+    let stopped = marker != "valid"
+        && ((!backups.is_empty() && moai_dir == "absent")
+            || (moai_dir == "folder" && holds_go_state_receipt(&moai)));
+    let interrupted = if stopped {
+        if backups.is_empty() {
+            vec![MOAI_DIR.to_string()]
+        } else {
+            backups
+        }
+    } else {
+        Vec::new()
+    };
     let (generation, reason) = if stopped {
         (
             "interrupted",
             format!(
-                "a go-state migration stopped midway ({} beside a .moai that is not this \
+                "a go-state migration stopped midway ({} and a .moai that is not this \
                  generation's); run go-state-revert-plan before anything else",
                 interrupted.join(", ")
             ),
@@ -316,6 +326,57 @@ pub fn dir(root: &Path) -> &'static str {
     } else {
         crate::PROJECT_STATE_DIR
     }
+}
+
+/// #2696 C2b: a project with no MoAI state at all — verdict `none` (no `.moai` of any kind,
+/// no stopped migration) and no earlier `.moai-cli` — starts on this generation's folder.
+pub fn is_new_project(root: &Path) -> bool {
+    fs::symlink_metadata(root.join(crate::PROJECT_STATE_DIR)).is_err()
+        && classify(root).generation == "none"
+}
+
+/// The folder a writer that creates state uses: `.moai` for a new project (which
+/// [`adopt_new`] then marks), otherwise [`dir`]. A preview and its apply both ask this, so the
+/// path the user approved is the path written.
+pub fn create_dir(root: &Path) -> &'static str {
+    if is_new_project(root) {
+        MOAI_DIR
+    } else {
+        dir(root)
+    }
+}
+
+/// The marker this generation writes last (decision D1), with `extra` fields beside the two
+/// that [`classify`] reads.
+pub fn marker_bytes(created_by: &str, extra: &[(&str, &str)]) -> Vec<u8> {
+    let mut map = serde_json::Map::new();
+    map.insert("schema_version".into(), json!(MARKER_SCHEMA));
+    map.insert("generation".into(), json!("moai-cli"));
+    map.insert(
+        "created_by".into(),
+        json!(format!("moai-cli {} {created_by}", crate::BUILD_VERSION)),
+    );
+    for (k, v) in extra {
+        map.insert((*k).into(), json!(v));
+    }
+    let mut bytes = serde_json::to_vec_pretty(&Value::Object(map)).expect("marker encodes");
+    bytes.push(b'\n');
+    bytes
+}
+
+/// Make a new project's `.moai/` and its marker (#2696 C2b), so every later read and write
+/// resolves to `.moai`. Does nothing for any other project and says whether it wrote. The
+/// folder is created exclusively and the marker published without overwriting.
+pub fn adopt_new(root: &Path, created_by: &str) -> Result<bool, String> {
+    if !is_new_project(root) {
+        return Ok(false);
+    }
+    fs::create_dir(root.join(MOAI_DIR)).map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
+    crate::apply::publish_exclusive(
+        &root.join(MOAI_DIR).join(RUST_MARKER),
+        &marker_bytes(created_by, &[]),
+    )?;
+    Ok(true)
 }
 
 /// `root/<dir(root)>/<sub>`; an empty `sub` is the folder itself.
@@ -462,6 +523,18 @@ mod tests {
             write(r, ".moai/backups/latest/go-state-receipt.json", "{}");
         });
         assert_eq!(c.generation, "unknown");
+        // #2696 C4a: the earlier-root move has no Go backup; its own `.moai/` holding a receipt
+        // and no valid marker is interrupted by itself, and names `.moai`.
+        let c = verdict(|r| write(r, RECEIPT, "{}"));
+        assert_eq!(
+            (c.generation, c.interrupted.clone()),
+            ("interrupted", vec![".moai".to_string()])
+        );
+        let c = verdict(|r| {
+            write(r, RECEIPT, "{}");
+            write(r, ".moai/moai-cli.json", MARKER_V1);
+        });
+        assert_eq!(c.generation, "rust");
     }
 
     #[test]

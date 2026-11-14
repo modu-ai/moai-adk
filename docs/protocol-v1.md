@@ -46,7 +46,7 @@
 | 요구 | 현행 | fixture |
 |---|---|---|
 | REQ-00D-01 성공 envelope | 01-C 이후 내부 operation은 envelope 안 `result`로 출력. 런처(18)는 envelope 없음 | 06, 09, 11, 13, 16, 17, 18, 21 |
-| REQ-00D-02 typed 오류와 kind별 exit | 01-C 이후 stdout 실패 envelope의 `error.kind`. exit는 kind별이 아니라 0/1/2(결정 A). 첫 낱말이 operation이 아닌 사용 오류(01)와 런처 오류(19)는 기존 평문 | 01~05, 07, 08, 12, 14, 15, 19, 20 |
+| REQ-00D-02 typed 오류와 kind별 exit | 01-C 이후 stdout 실패 envelope의 `error.kind`. exit는 kind별이 아니라 0/1/2(결정 A). 첫 낱말이 어떤 명령도 아닌 사용 오류(01)는 #2799 D3 결정 1(a)·#2804 이후 stdout에 `operation: "cli"`·`kind: usage` envelope을 내고, stderr(clap 원문)와 exit 2는 그대로다. 런처 오류(19)는 기존 평문 | 01~05, 07, 08, 12, 14, 15, 19, 20 |
 | REQ-00D-03 미지 필드 거부 | 거부는 하지만 malformed JSON과 같은 메시지(`invalid typed JSON input`) | 03, 04 |
 | REQ-00D-04 지원 밖 protocol_version | project-apply는 `stale or altered plan`, agents-plan은 `invalid agents request`로 나온다. 05-B #2002의 `plan-admit`만 전용 메시지 `unsupported protocol_version; supported: 1`을 내고, `contract::classify` 규칙으로 `kind: unsupported_protocol_version`이 된다(규칙과 단위 시험은 `src/contract.rs`) | 07, 15 |
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |

@@ -194,7 +194,7 @@ fn portable(s: &str) -> bool {
             .chain(SECRET_SHAPES.iter())
             .any(|x| lower.contains(x))
 }
-fn portable_id(s: &str) -> bool {
+pub(crate) fn portable_id(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 80
         && s.bytes()
@@ -538,6 +538,11 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         || current_plan.plan_digest != p.plan_digest
     {
         return Err("stale or altered plan; re-preview required".into());
+    }
+    // #2696 C2b: the first profile of a project with no state makes `.moai/` and its marker
+    // first, so the paths below and every later writer resolve to `.moai`.
+    if p.action == "create" {
+        crate::state_root::adopt_new(root, "project-apply")?;
     }
     let target_rel = crate::state_root::rel(root, "project.yaml");
     let baseline_rel = crate::state_root::rel(root, "manifests/profile-baseline.json");

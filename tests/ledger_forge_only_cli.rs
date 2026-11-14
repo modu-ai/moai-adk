@@ -26,7 +26,12 @@ fn removed_todo_promotion_commands_are_usage_errors() {
     for name in ["todo-promote-preview", "todo-promote-apply"] {
         let (code, stdout, stderr) = run(&[name, "."]);
         assert_eq!(code, 2, "{name}: {stderr}");
-        assert_eq!(stdout, "", "{name}");
+        // #2799 D3 decision 1 (a): the `cli` usage envelope, never the removed operation's.
+        assert_eq!(
+            stdout,
+            "{\"protocol_version\":1,\"operation\":\"cli\",\"ok\":false,\"error\":{\"kind\":\"usage\",\"message\":\"unknown command; see --help\",\"retryable\":false}}\n",
+            "{name}"
+        );
         assert!(
             stderr.contains("unrecognized subcommand"),
             "{name}: {stderr}"
@@ -36,7 +41,9 @@ fn removed_todo_promotion_commands_are_usage_errors() {
 
 #[test]
 fn help_lists_no_todo_promotion_command() {
-    let (code, stdout, stderr) = run(&["--help"]);
+    // `help --all` is the full command list (#2802 S1); the root help lists only the commands
+    // a person types.
+    let (code, stdout, stderr) = run(&["help", "--all"]);
     assert_eq!(code, 0, "{stderr}");
     // The help is the real command list (a known forge command is in it).
     assert!(stdout.contains("forge-read"), "{stdout}");

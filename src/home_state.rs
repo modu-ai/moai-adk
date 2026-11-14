@@ -42,6 +42,17 @@ fn is_reserved(name: &str) -> bool {
         || name == crate::state_root::RUST_MARKER.to_ascii_lowercase()
         || name.ends_with(".tmp-write")
 }
+/// User work folders in the same `~/.moai` (#2811 D7/D8a): new worktrees, new projects and
+/// the Go generation's `worktrees/projects`. Never copied, and while one is present the
+/// folder is not moved at all — a rename would carry it into the backup. Compared without case.
+fn is_work_folder(name: &str) -> bool {
+    [
+        crate::home_workdir::WORKTREES,
+        crate::home_workdir::PROJECTS,
+    ]
+    .iter()
+    .any(|w| w.eq_ignore_ascii_case(name))
+}
 /// Top-level entries listed as copy candidates; more are counted, not listed.
 const CANDIDATE_LIMIT: usize = 500;
 
@@ -216,6 +227,16 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             Some(n) => blocks.push(format!("nested_checkouts:{n}")),
             None => blocks.push("not_fully_checked".into()),
         }
+        let mut work: Vec<String> = fs::read_dir(&moai)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .filter_map(|e| e.file_name().into_string().ok())
+                    .filter(|n| is_work_folder(n))
+                    .collect()
+            })
+            .unwrap_or_default();
+        work.sort();
+        blocks.extend(work.into_iter().map(|n| format!("work_folder_present:{n}")));
     }
 
     let action = match c.generation {
@@ -244,6 +265,9 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             if is_secret(n) {
                 json!({"name": n, "kind": "secret", "selected": false,
                        "note": "holds secrets; move it by hand if you need it"})
+            } else if is_work_folder(n) {
+                json!({"name": n, "kind": "work_folder", "selected": false,
+                       "note": "user work (worktrees, projects); never moved or copied (#2811)"})
             } else if is_reserved(n) {
                 // The tool writes these names into the Rust folder (#2783 audit B1).
                 json!({"name": n, "kind": "reserved", "selected": false,
@@ -741,6 +765,11 @@ pub fn apply(
                 return Err(format!(
                 "`{name}` holds secrets and is never copied; move it by hand. Nothing was written"
             ))
+            }
+            Some("work_folder") => {
+                return Err(format!(
+                    "`{name}` is user work (#2811) and is never moved or copied; nothing was written"
+                ))
             }
             Some("reserved") => {
                 return Err(format!(

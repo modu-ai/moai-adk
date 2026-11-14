@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Preview moving this clone's worktrees
+///
 /// Preview moving this clone's linked worktrees under `<root>/<project key>/<name>` (#2723).
 /// Lists every worktree with `move`, `keep` (already there) or `blocked` and its reasons:
 /// main worktree, missing, locked, submodules, uncommitted or untracked files, unpushed

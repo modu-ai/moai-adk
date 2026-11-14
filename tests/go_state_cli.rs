@@ -1870,3 +1870,224 @@ fn a_staying_go_folder_plans_no_new_moai() {
     }
     assert_eq!(p["go_backup"], Value::Null);
 }
+
+// ---- #2696 C4a: the earlier `.moai-cli/` alone moves into a new `.moai/` ----
+
+fn legacy_fixture() -> Fx {
+    let fx = Fx::new();
+    fx.write(".moai-cli/project.yaml", "schema_version: 2\n");
+    fx.write(".moai-cli/index/a.json", "{\"a\":1}");
+    fx.write(".moai-cli/worktrees/lane/x", "x");
+    fx.write(".moai-cli/reports/r.md", "# r\n");
+    fx.write(".claude/agents/mine.md", "# mine\n");
+    fx
+}
+
+/// Preview → apply → re-run → revert: the state entries move into a new `.moai/` with the
+/// marker last; worktrees and reports stay; nothing else in the project changes; the revert
+/// brings the project back and sets the new `.moai/` aside (never deleted).
+#[test]
+fn an_earlier_root_project_moves_into_a_new_moai_and_back() {
+    let fx = legacy_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    assert_eq!(
+        action(&p, ".moai-cli"),
+        (
+            "move",
+            "the earlier root's product state moves into a new .moai/ (#2696 C4a)"
+        )
+    );
+    assert_eq!(moves(&p), 1, "{p}");
+    assert_eq!(p["go_backup"], Value::Null, "{p}");
+    assert_eq!(
+        state_move(&p, ".moai-cli/project.yaml")["to"],
+        json!(".moai/project.yaml")
+    );
+    assert_eq!(
+        state_move(&p, ".moai-cli/worktrees")["action"],
+        json!("leave")
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let r = &v["result"];
+    assert_eq!(r["state"], json!("committed"), "{r}");
+    assert_eq!(r["legacy_move"], json!(true), "{r}");
+    assert_eq!(r["go_backup"], Value::Null, "{r}");
+    let backup = r["backup"].as_str().unwrap().to_string();
+    let marker: Value =
+        serde_json::from_slice(&fs::read(fx.root.join(".moai/moai-cli.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+    for (rel, body) in [
+        (".moai/project.yaml", "schema_version: 2\n"),
+        (".moai/index/a.json", "{\"a\":1}"),
+        (".moai-cli/worktrees/lane/x", "x"),
+        (".moai-cli/reports/r.md", "# r\n"),
+        (".claude/agents/mine.md", "# mine\n"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(fx.root.join(rel)).unwrap(),
+            body,
+            "{rel}"
+        );
+    }
+    assert!(!fx.root.join(".moai-cli/project.yaml").exists());
+    assert!(!fx.root.join(".moai-backup").exists());
+    // Re-run: the project is `rust` now, nothing more moves.
+    let again = plan(&fx);
+    assert_eq!(moves(&again), 0, "{again}");
+    // Revert.
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&rp, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{rp}"
+    );
+    assert_eq!(
+        item_action(&rp, ".moai-cli/index"),
+        json!("restore"),
+        "{rp}"
+    );
+    assert_eq!(item_action(&rp, ".moai"), json!("set_aside"), "{rp}");
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+    assert!(!fx.root.join(".moai").exists());
+    let aside = rust_aside(&fx);
+    let (path, receipt) = receipt_of(&fx, &backup);
+    assert!(path.starts_with(&aside), "{path:?}");
+    assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+    // Back on the earlier root: the move is offered again.
+    assert_eq!(moves(&plan(&fx)), 1);
+}
+
+/// A product-state entry that is a link keeps the earlier root where it is, with the reason;
+/// a project without any product-state entry is offered nothing.
+#[test]
+fn an_earlier_root_with_a_linked_entry_or_no_state_stays() {
+    let fx = legacy_fixture();
+    let elsewhere = fx.root.parent().unwrap().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    symlink(&elsewhere, fx.root.join(".moai-cli/specs")).unwrap();
+    let p = plan(&fx);
+    let (act, reason) = action(&p, ".moai-cli");
+    assert_eq!(act, "leave", "{p}");
+    assert!(reason.contains("so it stays where it is"), "{reason}");
+    assert_eq!(p["state_moves"], json!([]), "{p}");
+    let before = fx.tree();
+    apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(fx.tree(), before);
+
+    let fx = Fx::new();
+    fx.write(".moai-cli/worktrees/lane/x", "x");
+    let p = plan(&fx);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert!(
+        !p["items"].to_string().contains("\".moai-cli\""),
+        "no item without product state: {p}"
+    );
+}
+
+/// A failure midway leaves the new `.moai/` with a pending receipt and no marker:
+/// `state_root` says `interrupted` (no Go backup is involved), further previews hold, and the
+/// revert brings the project back.
+#[test]
+fn an_earlier_root_move_stopped_midway_is_interrupted_and_reverts() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = legacy_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let locked = fx.root.join(".moai-cli");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(!fx.root.join(".moai/moai-cli.json").exists());
+    let again = plan(&fx);
+    assert_eq!(moves(&again), 0, "{again}");
+    assert!(
+        again["warnings"]
+            .to_string()
+            .contains("state_root is `interrupted`"),
+        "{again}"
+    );
+    let backup: String = fs::read_dir(fx.root.join(".moai/backups"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .next()
+        .unwrap();
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&rp, ".moai/moai-cli.json"),
+        json!("skip"),
+        "{rp}"
+    );
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+}
+
+/// A C4a receipt cannot also claim a Go folder, a folder entry or copies.
+#[test]
+fn an_earlier_root_receipt_with_go_parts_is_refused() {
+    let fx = legacy_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, original) = receipt_of(&fx, &backup);
+    type Forge = fn(&mut Value);
+    let cases: Vec<(&str, Forge)> = vec![
+        ("a Go backup too", |r: &mut Value| {
+            r["go_backup"] = json!(".moai-backup")
+        }),
+        ("a folder entry", |r: &mut Value| {
+            r["moves"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"path": ".moai", "sha256": "", "moved": true, "kind": "folder"}))
+        }),
+        (
+            "copies",
+            |r: &mut Value| r["copied"] = json!([{"path": format!(".moai/backups/{}/root-files/CLAUDE.md", r["backup"].as_str().unwrap()), "sha256": "sha256:00"}]),
+        ),
+        ("not a C4a receipt (the flag removed)", |r: &mut Value| {
+            r.as_object_mut().unwrap().remove("legacy_move");
+        }),
+    ];
+    for (name, edit) in cases {
+        let mut forged = original.clone();
+        edit(&mut forged);
+        fs::write(&path, forged.to_string()).unwrap();
+        let rp = revert_plan(&fx, &backup);
+        assert_eq!(rp["ok"], json!(false), "{name}: {rp}");
+    }
+}
+
+/// C4a step 1 fails right after `.moai/` is made (debug-build fault seam): the empty folders it
+/// made are removed and the project is exactly as before.
+#[test]
+fn an_earlier_root_move_failing_after_the_new_folder_leaves_nothing() {
+    let fx = legacy_fixture();
+    let before = fx.tree();
+    let p = plan(&fx);
+    let out = Command::new(EXE)
+        .args([
+            "go-state-apply",
+            fx.root.to_str().unwrap(),
+            "--plan-digest",
+            p["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            REF,
+        ])
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .env("MOAI_CLI_TEST_FAULT", "go_state_legacy_after_mkdir")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.to_string().contains("nothing else changed"), "{v}");
+    assert_eq!(fx.tree(), before);
+    assert!(!fx.root.join(".moai").exists());
+}

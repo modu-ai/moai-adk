@@ -63,6 +63,9 @@ fn sha(path: &Path) -> Option<String> {
 #[test]
 fn profile_receipt_digests_match_the_files() {
     let root = TempDir::new().unwrap();
+    // An earlier-root project: its state stays in `.moai-cli/` (#2696 C2b gives a project
+    // with no state `.moai/`; that layout is pinned in tests/state_root_cli.rs).
+    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let profile_path = root.path().join(".moai-cli/project.yaml");
     let baseline_path = root
         .path()
@@ -147,6 +150,9 @@ fn profile_writes_only_through_the_apply_engine() {
 #[test]
 fn a_hand_edit_after_apply_shows_as_drift() {
     let root = TempDir::new().unwrap();
+    // An earlier-root project: its state stays in `.moai-cli/` (#2696 C2b gives a project
+    // with no state `.moai/`; that layout is pinned in tests/state_root_cli.rs).
+    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let p = root.path().to_str().unwrap();
     apply(root.path(), "first");
     let clean = cli(&["project-plan", p], &profile("first"));

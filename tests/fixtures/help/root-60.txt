@@ -1,0 +1,51 @@
+MoAI-ADK 2026.11.0-rc.1 — agentic development kit
+
+Usage: moai <command> [options]
+       moai cc|codex|glm -l|-a    lead or agent session
+
+Start
+  cc, codex, glm        Start a Claude Code, Codex or GLM
+                        session
+Project
+  project-detect        Detect the project's facts
+  project-plan          Preview the project profile
+  project-apply         Write a previewed project profile
+  language-setup        Choose the writing language item by
+                        item
+  index-build           Build the code map index
+Update and move
+  update                Update MoAI from the installed
+                        package
+  go-state-plan         Preview moving the Go-era .moai
+                        folder
+  go-state-apply        Move a previewed Go-era .moai folder
+  go-state-revert-plan  Preview undoing a Go-era folder move
+  go-state-revert       Undo a Go-era folder move
+  home-state-plan       Preview moving the Go-era ~/.moai
+                        folder
+  home-state-apply      Move a previewed Go-era ~/.moai
+                        folder
+  home-state-revert     Undo a ~/.moai folder move
+  worktree-move-plan    Preview moving this clone's
+                        worktrees
+  worktree-move-apply   Move the previewed worktrees
+Keys
+  key-set               Store a provider key in the vault
+  key-status            Check a provider key without showing
+                        it
+  key-remove            Remove a provider key from the vault
+  key-import-plan       Preview importing an old key file
+  key-import-apply      Import a previewed old key file
+Diagnose
+  claude-doctor         Check that Claude Code reads
+                        AGENTS.md
+  codex-doctor          Check the Codex instructions and
+                        skills
+  install-inspect       Show the installed MoAI binaries
+  identity              Show where a path sits in its clone
+  worktree-report       Report the space worktrees use
+  optimize-plan         Preview space that can be freed
+  baseline-inventory    List a checkout's baseline facts
+
+Run 'moai help --all' for every command.
+Run 'moai <command> --help' for details and examples.

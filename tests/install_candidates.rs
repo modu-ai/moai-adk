@@ -252,3 +252,79 @@ fn a_probe_gets_no_token_variable_and_runs_outside_the_project() {
     );
     assert_eq!(item["generation"], json!("go"));
 }
+
+/// #2791 pre-audit 6865400825 B1, #2808 audit B1: the probe limit holds even when a shell
+/// wrapper's own child keeps stdout open — a wrapper waiting on a background `sleep 60`, and
+/// one that prints its line and exits while a background child still holds the pipe. The
+/// limit is injected (`MOAI_CLI_TEST_PROBE_TIMEOUT_MS`, debug builds only), so the test reads
+/// the results, not the clock: the first reports nothing, the second keeps the line printed
+/// before the limit, and both left-over children are gone (the process group was killed).
+/// The real 5 s value is pinned by the lib test `the_probe_limits_are_pinned`.
+#[test]
+fn the_probe_limit_holds_when_a_wrapper_child_keeps_stdout_open() {
+    let d = TempDir::new().unwrap();
+    let root = fs::canonicalize(d.path()).unwrap();
+    let home = root.join("home");
+    fs::create_dir_all(&home).unwrap();
+    let stuck = root.join("stuck");
+    let left = root.join("left");
+    let (pid_a, pid_b) = (root.join("pid-a"), root.join("pid-b"));
+    script(
+        &stuck,
+        &format!(
+            "#!/bin/sh\nsleep 60 &\necho $! > '{}'\nwait\n",
+            pid_a.display()
+        ),
+    );
+    script(
+        &left,
+        &format!(
+            "#!/bin/sh\nsleep 60 &\necho $! > '{}'\necho 'moai-adk 1.0'\n",
+            pid_b.display()
+        ),
+    );
+    let mut cmd = Command::new(EXE);
+    cmd.args(["install-inspect", "--json"])
+        .env("HOME", &home)
+        .env("PATH", join(&[&stuck, &left]))
+        .env("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "300")
+        .env_remove("CLAUDE_PROJECT_DIR")
+        .env_remove("GOBIN")
+        .current_dir(&home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped());
+    let mut child = cmd.spawn().unwrap();
+    // Hang guard only: without the fix each probe waits for its 60 s child.
+    let guard = std::time::Instant::now() + std::time::Duration::from_secs(50);
+    while child.try_wait().unwrap().is_none() {
+        assert!(std::time::Instant::now() < guard, "install-inspect hung");
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let out = child.wait_with_output().unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let c = &v["result"]["moai_candidates"];
+    assert_eq!(c["items"][0]["version_line"], json!(null), "{c}");
+    assert_eq!(c["items"][0]["generation"], json!("unknown"));
+    assert_eq!(c["items"][1]["version_line"], json!("moai-adk 1.0"), "{c}");
+    assert_eq!(c["items"][1]["generation"], json!("go"));
+    // The left-over children were killed with their group, not left holding the pipe.
+    for pid_file in [&pid_a, &pid_b] {
+        let pid = fs::read_to_string(pid_file).unwrap().trim().to_string();
+        let gone = (0..100).any(|_| {
+            let alive = Command::new("kill")
+                .args(["-0", &pid])
+                .stderr(Stdio::null())
+                .status()
+                .is_ok_and(|s| s.success());
+            if alive {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            !alive
+        });
+        assert!(
+            gone,
+            "child {pid} of {} is still running",
+            pid_file.display()
+        );
+    }
+}

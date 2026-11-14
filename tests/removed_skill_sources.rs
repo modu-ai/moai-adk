@@ -100,8 +100,10 @@ fn removed_installers_are_unknown_and_preserve_home_and_project_bytes() {
     for args in cases {
         let out = run(&home, &project, &args);
         assert_eq!(out.status.code(), Some(2), "{}: {:?}", args[0], out);
-        assert!(
-            out.stdout.is_empty(),
+        // #2799 D3 decision 1 (a): only the `cli` usage envelope, never an operation's.
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            "{\"protocol_version\":1,\"operation\":\"cli\",\"ok\":false,\"error\":{\"kind\":\"usage\",\"message\":\"unknown command; see --help\",\"retryable\":false}}\n",
             "{} returned an operation envelope",
             args[0]
         );
@@ -123,7 +125,8 @@ fn removed_installers_are_unknown_and_preserve_home_and_project_bytes() {
 #[test]
 fn help_excludes_removed_installers_and_keeps_search_atlas_and_project_generation() {
     let root = tempfile::tempdir().unwrap();
-    let out = run(root.path(), root.path(), &["--help"]);
+    // `help --all` lists every command (#2802 S1); the root help shows only the person-facing ones.
+    let out = run(root.path(), root.path(), &["help", "--all"]);
     assert!(out.status.success(), "{:?}", out);
     let help = String::from_utf8(out.stdout).unwrap();
     for removed in REMOVED {

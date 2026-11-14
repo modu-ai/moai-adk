@@ -99,6 +99,8 @@ fn argv(words: &[&str]) -> Vec<String> {
         .collect()
 }
 
+const UNKNOWN_COMMAND_ENVELOPE: &str = "{\"protocol_version\":1,\"operation\":\"cli\",\"ok\":false,\"error\":{\"kind\":\"usage\",\"message\":\"unknown command; see --help\",\"retryable\":false}}\n";
+
 #[test]
 fn every_form_of_the_removed_host_is_a_usage_error_that_starts_nothing() {
     for words in [
@@ -116,7 +118,12 @@ fn every_form_of_the_removed_host_is_a_usage_error_that_starts_nothing() {
             stderr.contains("unrecognized subcommand"),
             "{words:?}: {stderr}"
         );
-        assert!(out.stdout.is_empty(), "{words:?}");
+        // #2799 D3 decision 1 (a): an unknown first word prints the `cli` usage envelope.
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            UNKNOWN_COMMAND_ENVELOPE,
+            "{words:?}"
+        );
         assert!(!f.host_started(), "{words:?} started a host process");
         assert_eq!(f.store(), "5\n", "{words:?} took a number");
     }
@@ -147,7 +154,19 @@ fn words(text: &str) -> Vec<String> {
 #[test]
 fn root_help_lists_cc_glm_and_codex_and_never_the_removed_host() {
     let f = Fixture::new();
-    let out = f.run(&["--help".to_string()]);
+    // The root help shows the three launchers on one line (#2802 S1: `cc, codex, glm`);
+    // `help --all` lists each command on its own line.
+    let root = f.run(&["--help".to_string()]);
+    assert!(root.status.success());
+    let root = String::from_utf8_lossy(&root.stdout);
+    for host in ["cc", "glm", "codex"] {
+        assert!(
+            words(&root).contains(&host.to_string()),
+            "{host} missing from:\n{root}"
+        );
+    }
+    assert!(!words(&root).contains(&removed()), "{root}");
+    let out = f.run(&["help".to_string(), "--all".to_string()]);
     assert!(out.status.success());
     let help = String::from_utf8_lossy(&out.stdout);
     let commands: Vec<&str> = help

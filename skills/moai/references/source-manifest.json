@@ -73,7 +73,7 @@
       }
     },
     "workflows/setup.md": {
-      "sha256": "955e61101878d22341f0e2e8a53a783188a2947bceaac52b361a26f7c9f146ba",
+      "sha256": "9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-setup",
@@ -82,7 +82,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "9bafd99be4eb7ed6f9ce56bd1a81ff0499afb7d2e2a419b0b503d27926faecad",
+      "sha256": "7e2e0e4c610c63142d8a3682dc97b444e99da413227cb53a5f0c71bee4832c94",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "f99791c0dc05fecfa07fec6eb6d3beba192368bbb232eb248a2c1991c3211d59",
+      "sha256": "556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -208,12 +208,12 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "fa9686ef07aa02069e38d80b014600382dc00259041e5767c77cac852955595b",
+      "sha256": "bcdec4f3bd1caf2be3fe0e660882b81988fd81f3b9c69d7e3f7bc20dc57ae57b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
       }
     },
     "references/home/routing.md": {

@@ -206,9 +206,29 @@ fn suggested(current: Option<&LanguageSettings>, item: &Item, conversation: &str
         .unwrap_or_else(|| default_for(item, conversation))
 }
 
+/// The values an empty answer keeps: the profile's own value first, then the Go backup's
+/// (#2817), then the item default. Returned as a map naming only items with a value.
+fn with_go(current: Option<&LanguageSettings>, go: &LanguageSettings) -> LanguageSettings {
+    let mut base = go.clone();
+    if let Some(c) = current {
+        base.extend(c.iter().map(|(k, v)| (k.clone(), v.clone())));
+    }
+    base
+}
+
 /// The question set a host question tool asks: one question per item with the current
 /// value, the value an empty answer keeps (`suggested`) and the accepted codes.
 pub fn questions(current: Option<&LanguageSettings>, conversation: &str) -> Value {
+    questions_with(current, &LanguageSettings::new(), conversation)
+}
+
+/// [`questions`] with the Go backup's item values as the next source of `suggested` (#2817).
+fn questions_with(
+    current: Option<&LanguageSettings>,
+    go: &LanguageSettings,
+    conversation: &str,
+) -> Value {
+    let base = with_go(current, go);
     let options: Vec<Value> = CODES
         .iter()
         .map(|(code, en, ko)| json!({"code": code, "name_en": en, "name_ko": ko}))
@@ -221,7 +241,7 @@ pub fn questions(current: Option<&LanguageSettings>, conversation: &str) -> Valu
                 "question_en": format!("Which language for: {}?", i.label_en),
                 "question_ko": format!("{}에 쓸 언어는?", i.label_ko),
                 "current": current.and_then(|c| c.get(i.id)),
-                "suggested": suggested(current, i, conversation),
+                "suggested": suggested(Some(&base), i, conversation),
                 "default": default_for(i, conversation),
             })
         })
@@ -275,13 +295,35 @@ pub fn setup<R: BufRead, W: Write>(
 ) -> Result<Value> {
     let (mut profile, _) = crate::read_profile(root)?;
     let current = profile.language.clone();
-    let conversation = conversation_language(conversation, current.as_ref())?;
+    // #2817: the Go backup's values come after the profile's and before the built-in ones.
+    let go = crate::go_settings::read(root);
+    let profile_chat = current.as_ref().and_then(|c| c.get("user_chat")).is_some();
+    let conversation = match (conversation, profile_chat, &go.conversation) {
+        (None, false, Some(code)) => code.clone(),
+        _ => conversation_language(conversation, current.as_ref())?,
+    };
+    let base = with_go(current.as_ref(), &go.items);
+    let base_ref = (!base.is_empty()).then_some(&base);
     let chosen = match mode {
         SetupMode::Questions => {
-            return Ok(json!({"questions": questions(current.as_ref(), &conversation)}))
+            let mut out =
+                json!({"questions": questions_with(current.as_ref(), &go.items, &conversation)});
+            if go.found {
+                out["go_backup"] = go.to_json();
+            }
+            return Ok(out);
         }
-        SetupMode::Answers(answers) => merge_answers(current.as_ref(), &answers, &conversation)?,
-        SetupMode::Interactive => interactive(current.as_ref(), &conversation, input, prompt)?,
+        SetupMode::Answers(answers) => merge_answers(base_ref, &answers, &conversation)?,
+        SetupMode::Interactive => {
+            if go.found {
+                let _ = writeln!(
+                    prompt,
+                    "Defaults include values read from {}/config/sections (nothing is copied).",
+                    crate::state_root::GO_BACKUP
+                );
+            }
+            interactive(base_ref, &conversation, input, prompt)?
+        }
     };
     let changed: Vec<&str> = ITEMS
         .iter()
@@ -291,13 +333,17 @@ pub fn setup<R: BufRead, W: Write>(
     // project-plan accepts schema v2 only; the version is MoAI-owned schema state.
     profile.schema_version = 2;
     profile.language = Some(chosen.clone());
-    Ok(json!({
+    let mut out = json!({
         "profile": profile,
         "language": chosen,
         "changed_items": changed,
         "profile_written": false,
         "next_actions": ["pass result.profile to `moai-cli project-plan <project>` on stdin, review the plan, then `moai-cli project-apply`"]
-    }))
+    });
+    if go.found {
+        out["go_backup"] = go.to_json();
+    }
+    Ok(out)
 }
 
 /// Upper bound on wrong answers to one question before the interactive step gives up.
