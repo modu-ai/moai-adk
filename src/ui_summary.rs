@@ -13,6 +13,7 @@
 //! next to its symbol, so the meaning never rides on color alone.
 
 use crate::ui::{Painter, Stream, Token};
+use crate::ui_text::{Lang, Msg};
 use serde_json::Value;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -86,8 +87,14 @@ fn action_source(o: &Obj) -> Option<(&Obj, &'static str)> {
         .find_map(|inner| first_key(inner, &ACTION_KEYS).map(|k| (inner, k)))
 }
 
-/// The first array of objects that carries action words, with its name key.
+/// The first array of objects that carries action words, with its name column head in English.
+#[cfg(test)]
 fn extract(result: &Value) -> Option<(&'static str, Vec<Row>)> {
+    extract_in(result, Lang::En)
+}
+
+/// [`extract`] with the name column head and the note's `(+N more)` in `lang` (S6b).
+fn extract_in(result: &Value, lang: Lang) -> Option<(&'static str, Vec<Row>)> {
     let fields = result.as_object()?;
     for value in fields.values() {
         let Some(items) = value.as_array() else {
@@ -104,13 +111,16 @@ fn extract(result: &Value) -> Option<(&'static str, Vec<Row>)> {
             .iter()
             .find_map(|o| first_key(o, &NAME_KEYS))
             .unwrap_or("name");
-        let header = match name_key {
-            "path" => "PATH",
-            "host" => "HOST",
-            "target" => "TARGET",
-            "selection" => "SELECTION",
-            _ => "NAME",
-        };
+        let header = crate::ui_text::text(
+            match name_key {
+                "path" => Msg::HeadPath,
+                "host" => Msg::HeadHost,
+                "target" => Msg::HeadTarget,
+                "selection" => Msg::HeadSelection,
+                _ => Msg::HeadName,
+            },
+            lang,
+        );
         let rows = objects
             .iter()
             .map(|o| {
@@ -119,13 +129,13 @@ fn extract(result: &Value) -> Option<(&'static str, Vec<Row>)> {
                     return Row {
                         action: "-".into(),
                         name,
-                        note: note_of(o, ""),
+                        note: note_of(o, "", lang),
                     };
                 };
                 let action = src.get(key).and_then(text).unwrap_or_else(|| "-".into());
-                let mut note = note_of(o, key);
+                let mut note = note_of(o, key, lang);
                 if note.is_empty() && !std::ptr::eq(src, *o) {
-                    note = note_of(src, key);
+                    note = note_of(src, key, lang);
                 }
                 Row { action, name, note }
             })
@@ -135,7 +145,7 @@ fn extract(result: &Value) -> Option<(&'static str, Vec<Row>)> {
     None
 }
 
-fn note_of(o: &Obj, action_key: &str) -> String {
+fn note_of(o: &Obj, action_key: &str, lang: Lang) -> String {
     for key in ["reason", "blocked_reason", "detail"] {
         if let Some(t) = o.get(key).and_then(text) {
             return t;
@@ -146,7 +156,11 @@ fn note_of(o: &Obj, action_key: &str) -> String {
         if let Some(first) = texts.first() {
             return match texts.len() {
                 1 => first.clone(),
-                n => format!("{first} (+{} more)", n - 1),
+                n => crate::ui_text::fill(
+                    Msg::MoreReasons,
+                    lang,
+                    &[("first", first), ("count", &(n - 1).to_string())],
+                ),
             };
         }
     }
@@ -264,7 +278,9 @@ pub fn render(
     let writes_nothing = op.rsplit('.').next().is_some_and(|l| l.contains("plan"))
         || result.get("writes") == Some(&Value::Bool(false));
     let mut totals: Vec<(String, usize)> = Vec::new();
-    if let Some((header, rows)) = extract(result) {
+    let action_head = painter.text(Msg::HeadAction);
+    let note_head = painter.text(Msg::HeadNote);
+    if let Some((header, rows)) = extract_in(result, painter.lang) {
         for r in &rows {
             match totals.iter_mut().find(|(a, _)| *a == r.action) {
                 Some((_, n)) => *n += 1,
@@ -283,7 +299,7 @@ pub fn render(
         let act_w = shown
             .iter()
             .map(|r| width(&status_text(r)))
-            .chain([width("ACTION")])
+            .chain([width(action_head)])
             .max()
             .unwrap_or(6);
         let natural_name = shown
@@ -308,8 +324,8 @@ pub fn render(
         };
         out.push('\n');
         let mut head = pad(
-            painter.paint(Token::Strong, "ACTION"),
-            width("ACTION"),
+            painter.paint(Token::Strong, action_head),
+            width(action_head),
             act_w + 2,
         );
         if has_note {
@@ -318,7 +334,7 @@ pub fn render(
                 width(header),
                 name_w + 2,
             ));
-            head.push_str(&painter.paint(Token::Strong, "NOTE"));
+            head.push_str(&painter.paint(Token::Strong, note_head));
         } else {
             head.push_str(&painter.paint(Token::Strong, header));
         }
@@ -342,7 +358,13 @@ pub fn render(
         if rows.len() > MAX_ROWS {
             out.push_str(&painter.paint(
                 Token::Muted,
-                &format!("{ellipsis} {} more", rows.len() - MAX_ROWS),
+                &painter.fill(
+                    Msg::MoreRows,
+                    &[
+                        ("ellipsis", ellipsis),
+                        ("count", &(rows.len() - MAX_ROWS).to_string()),
+                    ],
+                ),
             ));
             out.push('\n');
         }
@@ -354,10 +376,10 @@ pub fn render(
         .map(|(a, n)| painter.paint(token_of(a), &format!("{n} {a}")))
         .collect();
     if writes_nothing {
-        parts.push("writes nothing".to_string());
+        parts.push(painter.text(Msg::WritesNothing).to_string());
     }
     if parts.is_empty() {
-        parts.push("done".to_string());
+        parts.push(painter.text(Msg::Done).to_string());
     }
     out.push_str(&parts.join(if painter.unicode { " · " } else { " | " }));
     out.push('\n');
@@ -369,9 +391,16 @@ pub fn render(
             "{} {}\n  {}\n",
             painter.paint(
                 Token::Info,
-                &format!("{} next:", Token::Info.symbol(painter.unicode))
+                &format!(
+                    "{} {}:",
+                    Token::Info.symbol(painter.unicode),
+                    Token::Info.word_in(painter.lang)
+                )
             ),
-            painter.paint(Token::Strong, &format!("moai {cmd} <same arguments>")),
+            painter.paint(
+                Token::Strong,
+                &format!("moai {cmd} {}", painter.text(Msg::SameArguments))
+            ),
             painter.paint(Token::Strong, &format!("--plan-digest {digest}"))
         ));
     }
@@ -405,7 +434,8 @@ pub fn maybe_print(op: &str, result: &Value, command_exists: impl Fn(&str) -> bo
     let mode = output_mode(std::env::var_os("MOAI_OUTPUT").as_deref());
     let painter = match mode {
         OutputMode::Quiet => return,
-        OutputMode::Plain => Painter::plain(),
+        // `plain` drops color and UTF-8 symbols, not the terminal's language (S6b).
+        OutputMode::Plain => Painter::plain().with_lang(crate::ui::ui_lang(Stream::Stderr)),
         OutputMode::Normal => Painter::for_stream(Stream::Stderr, crate::ui::ColorFlag::Auto),
     };
     let env = crate::ui::Env::from_process();
@@ -428,6 +458,7 @@ mod tests {
         Painter {
             color: false,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         }
     }
 
@@ -599,6 +630,7 @@ ACTION   PATH              NOTE
         let p = Painter {
             color: true,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         };
         let text = render(
             "x.plan",
@@ -679,6 +711,7 @@ ACTION   PATH              NOTE
             Painter {
                 color: true,
                 unicode: true,
+                lang: crate::ui_text::Lang::En,
             },
         ] {
             let text = render("x.plan", &result, &p, 200, Some("x-apply"));
@@ -711,6 +744,118 @@ ACTION   PATH              NOTE
                 1,
                 "{text}"
             );
+        }
+    }
+
+    fn korean() -> Painter {
+        utf8().with_lang(Lang::Ko)
+    }
+
+    /// S6b: the same table in Korean — heads, totals' own words and the `next:` line; the data
+    /// (paths, action words, notes from the result) stays as the envelope has it. Columns are
+    /// laid out by display width, so a two-cell Hangul head pads like an English one.
+    #[test]
+    fn a_korean_table_has_korean_heads_totals_and_next() {
+        let result = json!({"project": "/work/demo", "plan_digest": "sha256:abc", "items": [
+            {"path": ".moai/config/", "action": "move", "reason": "to .moai-backup/"},
+            {"path": ".moai/specs/", "action": "keep", "reason": "copied back"},
+            {"path": ".moai/worktrees/", "action": "leave", "reason": "1 git worktree registered"}]});
+        let text = render(
+            "go_state.plan",
+            &result,
+            &korean(),
+            80,
+            Some("go-state-apply"),
+        );
+        let want = "\
+◆ go-state-plan  /work/demo
+
+동작     경로              메모
+→ move   .moai/config/     to .moai-backup/
+✓ keep   .moai/specs/      copied back
+! leave  .moai/worktrees/  1 git worktree registered
+
+1 move · 1 keep · 1 leave · 쓰는 것 없음
+→ 다음: moai go-state-apply <같은 인자>
+  --plan-digest sha256:abc
+";
+        assert_eq!(text, want);
+        // The English painter on the same result still gives today's bytes.
+        assert!(render(
+            "go_state.plan",
+            &result,
+            &utf8(),
+            80,
+            Some("go-state-apply")
+        )
+        .contains("ACTION   PATH              NOTE\n"));
+    }
+
+    /// Every name column head, the `(+N more)` note, the `… N more` line and `done` in Korean;
+    /// `MOAI_OUTPUT=plain` keeps the language (ASCII symbols, Korean words).
+    #[test]
+    fn korean_heads_counts_and_done() {
+        for (key, head) in [
+            ("path", "경로"),
+            ("host", "호스트"),
+            ("target", "대상"),
+            ("selection", "선택"),
+            ("other", "이름"),
+        ] {
+            let r = json!({"items": [{key: "x", "action": "create"}]});
+            let (h, _) = extract_in(&r, Lang::Ko).unwrap();
+            assert_eq!(h, head, "{key}");
+        }
+        let r = json!({"items": [{"path": "a", "action": "keep", "reasons": ["new", "x", "y"]}]});
+        assert_eq!(extract_in(&r, Lang::Ko).unwrap().1[0].note, "new (외 2개)");
+        assert_eq!(extract_in(&r, Lang::En).unwrap().1[0].note, "new (+2 more)");
+
+        let rows = |n: usize| json!({"items": (0..n).map(|i| json!({"path": format!("f{i}"), "action": "create"})).collect::<Vec<_>>()});
+        let ascii_ko = Painter::plain().with_lang(Lang::Ko);
+        let more = render("x.plan", &rows(MAX_ROWS + 1), &ascii_ko, 80, None);
+        assert!(more.contains("\n... 외 1개\n"), "{more}");
+        assert!(more.contains("51 create | 쓰는 것 없음"), "{more}");
+        assert!(more.starts_with("* x-plan\n\n동작"), "{more}");
+        let utf8_more = render("x.plan", &rows(MAX_ROWS + 1), &korean(), 80, None);
+        assert!(utf8_more.contains("\n… 외 1개\n"), "{utf8_more}");
+
+        let done = render("x.apply", &json!({"ok": true}), &korean(), 80, None);
+        assert_eq!(done, "◆ x-apply\n완료\n");
+    }
+
+    /// The action column is as wide as its widest cell or its head, whichever is wider: with
+    /// only short actions the head decides — six cells for `ACTION`, four for `동작`.
+    #[test]
+    fn the_action_head_width_counts_when_actions_are_short() {
+        let result = json!({"items": [{"path": "a", "action": "ok"}]});
+        let en = render("x.apply", &result, &utf8(), 80, None);
+        assert!(en.contains("\nACTION  PATH\n✓ ok    a\n"), "{en}");
+        let ko = render("x.apply", &result, &korean(), 80, None);
+        assert!(ko.contains("\n동작  경로\n✓ ok  a\n"), "{ko}");
+    }
+
+    /// Korean lines fit the width by display cells (Hangul is two cells), the digest line
+    /// excepted as in English (design 6, "폭").
+    #[test]
+    fn korean_lines_fit_narrow_terminals() {
+        let long = "아주-긴-한글-폴더-이름/".repeat(6);
+        let result = json!({"project": format!("/work/{long}"), "plan_digest": "sha256:abc",
+            "items": [
+                {"path": format!("{long}a.md"), "action": "create", "reason": "새 파일, 설명이 아주 길어서 잘려야 함"},
+                {"path": "b.md", "action": "keep", "reasons": ["같음", "다른 이유"]}]});
+        for columns in [60, 80] {
+            let text = render("x.plan", &result, &korean(), columns, Some("x-apply"));
+            for line in text.lines() {
+                if line.trim_start().starts_with("--plan-digest") {
+                    continue;
+                }
+                assert!(
+                    width(line) <= columns,
+                    "{columns}: {line:?} is {}",
+                    width(line)
+                );
+            }
+            assert!(text.contains("다음:"), "{text}");
         }
     }
 }

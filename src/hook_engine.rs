@@ -540,6 +540,16 @@ fn tool_preflight_deny(
     if let Some(reason) = opt_in {
         return Verdict::Deny(reason.to_string());
     }
+    // #2878 E3 (opt-in): no commit under a test identity.
+    if tool == "Bash" {
+        if let Some(reason) = config
+            .identity
+            .as_ref()
+            .and_then(|r| crate::hook_guards::commit_identity_guard(command, &write_dir, r))
+        {
+            return Verdict::Deny(reason);
+        }
+    }
     if tool != "Bash" || !crate::claim_verify::is_commit(command) {
         return Verdict::Allow;
     }
