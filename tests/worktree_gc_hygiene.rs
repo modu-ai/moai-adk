@@ -142,11 +142,11 @@ fn reasons(c: &Value) -> Vec<String> {
 
 /// AC-1: a merged worktree whose ignored files are only caches, lane temporary files and a
 /// byte-identical copy of the primary's `.moai/shared.md` is removed; one more file that
-/// exists only in the worktree, or a copy that differs, keeps it.
+/// exists only in the worktree, or a copy that differs (in length, or only in its bytes), keeps it.
 #[test]
 fn only_safe_ignored_files_let_a_merged_worktree_go() {
-    let fx = fixture(&["safe", "unique", "changed", "dirty"]);
-    for n in ["safe", "unique", "changed", "dirty"] {
+    let fx = fixture(&["safe", "unique", "changed", "samelen", "dirty"]);
+    for n in ["safe", "unique", "changed", "samelen", "dirty"] {
         let wt = fx.wt(n);
         write(&wt.join("tools/__pycache__/x.cpython-313.pyc"), "bytecode");
         write(&wt.join(".ruff_cache/0.1/cache"), "c");
@@ -156,6 +156,8 @@ fn only_safe_ignored_files_let_a_merged_worktree_go() {
     }
     write(&fx.wt("unique").join(".moai/research/only-here.md"), "x\n");
     write(&fx.wt("changed").join(".moai/shared.md"), "edited\n");
+    // Same length as the primary's copy, one byte different: only a byte compare tells.
+    write(&fx.wt("samelen").join(".moai/shared.md"), "shared reporX\n");
     fs::write(fx.wt("dirty").join("a.txt"), "changed\n").unwrap();
 
     let r = plan(&fx, &[]);
@@ -163,7 +165,7 @@ fn only_safe_ignored_files_let_a_merged_worktree_go() {
     assert_eq!(safe["action"], "remove", "{safe}");
     assert_eq!(safe["ignored_outside_build"], 0, "{safe}");
     assert!(safe["ignored_safe"].as_u64().unwrap() >= 5, "{safe}");
-    for n in ["unique", "changed"] {
+    for n in ["unique", "changed", "samelen"] {
         let c = entry(&r, &format!(".moai-cli/worktrees/{n}"));
         assert_eq!(c["action"], "trim", "{n}: {c}");
         assert_eq!(reasons(c), ["ignored_files_outside_build_output"], "{n}");
