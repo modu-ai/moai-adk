@@ -578,3 +578,98 @@ fn a_hook_file_changed_after_the_preview_refuses_the_confirmation() {
     assert!(String::from_utf8_lossy(&out.stdout).contains("stale or altered plan"));
     assert_eq!(fs::read(&settings).unwrap(), s);
 }
+
+/// Walks `dir`, returning every folder and every file below it with its permission bits.
+fn modes_below(dir: &Path, out: &mut Vec<(PathBuf, bool, u32)>) {
+    use std::os::unix::fs::PermissionsExt;
+    for e in fs::read_dir(dir).unwrap() {
+        let e = e.unwrap();
+        let meta = fs::symlink_metadata(e.path()).unwrap();
+        out.push((e.path(), meta.is_dir(), meta.permissions().mode() & 0o777));
+        if meta.is_dir() {
+            modes_below(&e.path(), out);
+        }
+    }
+}
+
+/// Audit FAIL 6882751326 B1 (#2985): the hook receipt keeps the bytes of every file it replaces.
+/// A settings file can hold a key the user protected with 0600, so the receipt folders are
+/// owner-only and the kept copies are 0600 whatever the umask, and git is told to skip them.
+#[test]
+fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() {
+    use std::os::unix::fs::PermissionsExt;
+    for umask in ["000", "022", "077"] {
+        let f = setup();
+        let receipt = install_hooks(&f, "claude");
+        update_confirm(&f); // the rest of the user layer is current from here on
+        let settings_path = f.project.join(".claude/settings.json");
+        let mut settings: Value =
+            serde_json::from_slice(&fs::read(&settings_path).unwrap()).unwrap();
+        settings["env"] = json!({"TOKEN_FOR_TEST": "TESTVALUE-not-secret"});
+        fs::write(
+            &settings_path,
+            serde_json::to_vec_pretty(&settings).unwrap(),
+        )
+        .unwrap();
+        fs::set_permissions(&settings_path, fs::Permissions::from_mode(0o600)).unwrap();
+        make_claude_hooks_four_event(&f, &receipt);
+
+        let digest = update_preview(&f)["plan_digest"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let out = Command::new("/bin/sh")
+            .args(["-c", &format!("umask {umask}; exec \"$0\" \"$@\"")])
+            .arg(&f.exe)
+            .args(["update", "--confirm", &digest])
+            .clean_env()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", &f.home)
+            .env("LC_ALL", "C")
+            .current_dir(&f.project)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let r = result(&out);
+        assert_eq!(
+            r["hooks_result"]["state"],
+            json!("applied"),
+            "umask {umask}: {r}"
+        );
+
+        let receipts = f.project.join(".moai-cli/receipts");
+        let mut seen = Vec::new();
+        modes_below(&receipts, &mut seen);
+        let own = fs::symlink_metadata(&receipts)
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(own & 0o077, 0, "umask {umask}: receipts folder is {own:o}");
+        let mut kept = 0;
+        for (path, is_dir, mode) in &seen {
+            if path.file_name().is_some_and(|n| n == ".gitignore") {
+                continue;
+            }
+            assert_eq!(
+                mode & 0o077,
+                0,
+                "umask {umask}: {} is {mode:o}",
+                path.display()
+            );
+            if !is_dir && path.to_string_lossy().contains("/before/") {
+                let text = fs::read_to_string(path).unwrap();
+                kept += usize::from(text.contains("TESTVALUE-not-secret"));
+            }
+        }
+        assert_eq!(
+            kept, 1,
+            "umask {umask}: the kept settings copy must exist: {seen:?}"
+        );
+        assert_eq!(
+            fs::read_to_string(receipts.join(".gitignore")).unwrap(),
+            "*\n",
+            "umask {umask}"
+        );
+    }
+}

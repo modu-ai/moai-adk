@@ -12,8 +12,8 @@
 //!   project hooks load only when the project `.codex/` layer is trusted, and non-managed hooks
 //!   are reviewed and trusted (by hash) before they run.
 //!
-//! Only the intersection both hosts accept is used: events `SessionStart`, `PreToolUse`,
-//! `PostToolUse` and `Stop` (both hosts: matcher `Bash`, stdin `tool_name`,
+//! Only the intersection both hosts accept is used: events `SessionStart`, `PreToolUse` and
+//! `PostToolUse` (`Stop` was removed in #2936 R9 S1; both hosts: matcher `Bash`, stdin `tool_name`,
 //! `tool_input.command` and `cwd`, exit 2 blocks with the reason on stderr), handler fields `type: "command"`, `command` and an explicit `timeout`, so neither
 //! host's defaults matter. Nothing here writes a home directory: a project equal to the given
 //! home, or inside its host configuration directories, is refused. No host session runs here;
