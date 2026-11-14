@@ -66,8 +66,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `atlas-tag-scan`
 - `audit-claim`
 - `audit-clone-plan`
-- `audit-delta`
-- `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
 - `claim-handoff`
@@ -137,8 +135,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `migrate-recover`
 - `migrate-recovery-plan`
 - `package-resolve`
-- `parity-check`
-- `plan-admit`
 - `pr-body-render`
 - `pr-confirm`
 - `project-apply`
@@ -152,9 +148,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `queue-query`
 - `recovery-apply`
 - `recovery-plan`
-- `review-check`
-- `review-package`
-- `run-verify`
 - `scope-check`
 - `search`
 - `snapshot-describe`

@@ -875,17 +875,6 @@ enum Command {
         #[arg(long)]
         integration_order: Option<String>,
     },
-    /// Compare a template and its generated files
-    ///
-    /// Semantic parity of TEMPLATE vs GENERATED (optional third DOC set, D6 #2192):
-    /// per-key classification with the 00-A vocabulary (missing / extra /
-    /// value_mismatch / identical / doc_only). Read-only.
-    ParityCheck {
-        template: PathBuf,
-        generated: PathBuf,
-        #[arg(long)]
-        doc: Option<PathBuf>,
-    },
     /// Scan for MOAI and MX tag markers
     ///
     /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
@@ -986,16 +975,6 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
-    /// Admit a plan to a run
-    ///
-    /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
-    /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
-    PlanAdmit { project: PathBuf },
-    /// Re-check a run's pinned verification
-    ///
-    /// Temporary (05-C #2003; the name is fixed after P06): re-check the pinned contract and
-    /// run the approved verification commands in PROJECT as argv; returns a receipt.
-    RunVerify { project: PathBuf },
     /// Describe a project's HEAD and tracked changes
     ///
     /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
@@ -1155,22 +1134,6 @@ enum Command {
         #[arg(long)]
         tmp_root: Option<PathBuf>,
     },
-    /// Compare a two-parent merge with a replay
-    ///
-    /// Compare one local two-parent merge with a controlled replay; evidence only, not AUDIT PASS.
-    AuditDelta {
-        #[arg(default_value = ".")]
-        project: PathBuf,
-        /// Previously audited commit (40 lowercase hex).
-        #[arg(long)]
-        pass_head: String,
-        /// Integrated base tip (40 lowercase hex).
-        #[arg(long)]
-        tip: String,
-        /// Candidate merge commit (40 lowercase hex).
-        #[arg(long)]
-        head: String,
-    },
     /// Add rows to the user decision log
     ///
     /// Add rows (stdin) after the last row of the user-decisions log's single table (#2403).
@@ -1196,11 +1159,6 @@ enum Command {
     /// `moai-audit-claim` comment, then re-reads. The lowest reservation id on the head wins
     /// (user decision #2403 c6784520362). Start the audit only when `outcome` is `reserved`.
     AuditClaim,
-    /// Run an independent audit of a candidate
-    ///
-    /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
-    /// the approved verification itself and decides admission; receipts on stdin never count.
-    AuditReduce { project: PathBuf },
     /// Update MoAI from the installed package
     ///
     /// Update the skill from the package installed with this binary (#2522): previews like
@@ -1210,34 +1168,6 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
-    },
-    /// Build the review package for an audit
-    ///
-    /// The deterministic review package for an AUDIT (#2614): the diff from the merge base to
-    /// HEAD, the changed files, and the review instructions (`REVIEW.md` and its includes) and
-    /// context (`AGENTS.md`, `CLAUDE.md`) read from BASE only. Reads git; writes nothing.
-    ReviewPackage {
-        /// Repository root.
-        project: PathBuf,
-        /// The base revision (the pull request's base branch tip).
-        #[arg(long)]
-        base: String,
-        /// The head revision under review.
-        #[arg(long)]
-        head: String,
-    },
-    /// Check review findings before they are posted
-    ///
-    /// Format check of review findings before they are posted (#2614 AC-3): stdin
-    /// `{"schema_version":1,"findings":[…]}`; each finding needs a severity, a `file:line` in
-    /// HEAD, a title, evidence quoted from that line, and a confirmed verification. Prints the
-    /// verdict (any `important` is FAIL), counts, post body and digest. Reads git only.
-    ReviewCheck {
-        /// Repository root.
-        project: PathBuf,
-        /// The head revision the findings cite.
-        #[arg(long)]
-        head: String,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -1543,8 +1473,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
-        AuditDelta { .. } => "audit.delta",
-        AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
         ClaimHandoff { .. } => "claim.handoff",
@@ -1608,8 +1536,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         MigrateRecover { .. } => "migrate.recover",
         MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
         PackageResolve { .. } => "package.resolve",
-        ParityCheck { .. } => "parity.check",
-        PlanAdmit { .. } => "plan.admit",
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
         ProjectApply { .. } => "project.apply",
@@ -1625,7 +1551,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
         RecoveryPlan { .. } => "recovery.plan",
-        RunVerify { .. } => "run.verify",
         ScopeCheck { .. } => "scope.check",
         Search { .. } => "search.query",
         AtlasMap { .. } => "atlas.map",
@@ -1633,8 +1558,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         SnapshotDescribe { .. } => "snapshot.describe",
         Update { .. } => "update.run",
         UpdateApply { .. } => "update.apply",
-        ReviewCheck { .. } => "review.check",
-        ReviewPackage { .. } => "review.package",
         GoStatePlan { .. } => "go_state.plan",
         GoStateApply { .. } => "go_state.apply",
         GoStateRevertPlan { .. } => "go_state.revert_plan",
@@ -2578,20 +2501,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
         ),
-        Command::AuditDelta {
-            project,
-            pass_head,
-            tip,
-            head,
-        } => serde_json::to_value(moai_cli::audit_delta::inspect(
-            &project,
-            moai_cli::audit_delta::Request {
-                pass_head,
-                tip,
-                head,
-            },
-        )?)
-        .map_err(|_| "encode failed".into()),
         Command::WorktreeReport {
             project,
             tmp_root,
@@ -2601,11 +2510,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             std::time::Duration::from_millis(budget_ms),
         ),
-        Command::ParityCheck {
-            template,
-            generated,
-            doc,
-        } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
         Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
@@ -2638,17 +2542,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 )
             })
         }
-        Command::ReviewCheck { project, head } => {
-            let findings: serde_json::Value = input()?;
-            serde_json::to_value(moai_cli::review::check(&project, &head, &findings)?)
-                .map_err(|_| "encode failed".into())
-        }
-        Command::ReviewPackage {
-            project,
-            base,
-            head,
-        } => serde_json::to_value(moai_cli::review::package(&project, &base, &head)?)
-            .map_err(|_| "encode failed".into()),
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
                 .map_err(|_| "encode failed".into())
@@ -2713,24 +2606,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         } => {
             let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
-        }
-        Command::PlanAdmit { project } => {
-            let request = input::<moai_cli::plan::AdmissionRequest>()?;
-            if request.protocol_version != contract::PROTOCOL_VERSION {
-                return Err("unsupported protocol_version; supported: 1".into());
-            }
-            let current = moai_cli::plan::current_revision(&project)?;
-            serde_json::to_value(moai_cli::plan::admit(&request, &current))
-                .map_err(|_| "encode failed".into())
-        }
-        Command::RunVerify { project } => {
-            let request = input::<moai_cli::run::RunRequest>()?;
-            if request.protocol_version != contract::PROTOCOL_VERSION {
-                return Err("unsupported protocol_version; supported: 1".into());
-            }
-            let current = moai_cli::plan::current_revision(&project)?;
-            serde_json::to_value(moai_cli::run::run_verify(&project, &request, &current)?)
-                .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
         Command::ArchivePlan {
@@ -2863,14 +2738,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::AuditReduce { project } => {
-            let request = input::<moai_cli::audit::AuditInput>()?;
-            if request.protocol_version != contract::PROTOCOL_VERSION {
-                return Err("unsupported protocol_version; supported: 1".into());
-            }
-            serde_json::to_value(moai_cli::audit::audit(&project, &request)?)
-                .map_err(|_| "encode failed".into())
-        }
         _ => unreachable!("launchers run through run_launcher"),
     }
 }
