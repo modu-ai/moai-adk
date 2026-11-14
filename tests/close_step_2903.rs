@@ -22,7 +22,7 @@ fn the_agent_workflow_closes_its_own_card_through_close_check() {
         "first line is `CLOSE-TABLE #<n>`",
         "a verdict column (`상태`, `판정` or `결과`)",
         "`moai close-check <n> --repo <owner>/<repo>`",
-        "On `close`, release the claim and close the Issue with `gh issue close <n> --comment` naming the close table's comment id",
+        "On `close`, release the claim and close the Issue with `gh issue close <n> --comment` naming the close table by its link",
         "read the Issue's state back",
         "On `keep_open`, write the follow-up card number into each row the answer lists under `unmet`",
         "a lane opens no new Issue",
