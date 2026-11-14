@@ -536,6 +536,13 @@ fn card_state(t: &Thread, claim: u64) -> CardState<'_> {
     }
 }
 
+/// Step 5 listed a decision request of the lane on `number` that no leader decision answers.
+fn decision_pending(waiting: &[Value], number: u64) -> bool {
+    waiting
+        .iter()
+        .any(|w| w["number"] == json!(number) && w.get("blocked_comment").is_some())
+}
+
 /// Decides the next task of `lane` from `snap`. Pure: the same snapshot gives the same bytes.
 pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
@@ -711,10 +718,12 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             }
         }
         // The lane's live claims on open cards — not merged, no close table — its own pull
-        // request waiting included (#2933 E). At the cap no new Issue is taken (step 7).
+        // request waiting included (#2933 E). A card that is not startable (on hold, …) or waits
+        // for a decision is not counted (#2954 audit B1). At the cap no new Issue is taken.
         let mut live_cards: Vec<u64> = snap
             .threads
             .iter()
+            .filter(|t| judge(t).is_none() && !decision_pending(&waiting, t.number))
             .filter(|t| {
                 live_claim(&t.comments, lane).is_some_and(|claim| {
                     let card = card_state(t, claim);
@@ -743,10 +752,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if own_pr_issues.contains(&t.number) {
                 continue;
             }
-            let decision_pending = waiting
-                .iter()
-                .any(|w| w["number"] == json!(t.number) && w.get("blocked_comment").is_some());
-            if decision_pending {
+            if decision_pending(&waiting, t.number) {
                 continue;
             }
             // A claimed card on hold, left out by the goal, an epic or blocked is not the next

@@ -726,6 +726,76 @@ fn two_live_cards_stop_pick_issue() {
     assert_eq!(kind(&r), json!("continue_card"), "{r}");
     assert_eq!(r["next"]["target"]["number"], json!(2501));
     assert_eq!(r["waiting"], cap(vec![2501, 2502]), "{r}");
+    // Another lane's live claim is not this lane's card (#2954 audit N1): N = 1 own + 1 other.
+    let mut s = snap(&[(2501, json!({}))]);
+    s["threads"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"number": 2502, "title": "card", "comments": [claim(25020, "agent-99")]}));
+    let r = next(&s);
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    assert_eq!(r["waiting"], json!([]));
+}
+
+/// #2954 audit B1: a card the lane cannot work on now — on hold (`hold`, `needs:decision`)
+/// or waiting for a decision (`LANE-BLOCKED kind=decision` with no leader decision yet) — is
+/// not counted toward the card cap; the cap still stops at two startable cards.
+#[test]
+fn held_and_decision_cards_do_not_count_toward_the_cap() {
+    let free = json!([{"number": 2600, "title": "free", "comments": []}]);
+    let card = |n: u64, labels: &[&str], comments: Vec<Value>| {
+        let mut c = vec![claim(n * 10, LANE)];
+        c.extend(comments);
+        json!({"number": n, "title": "card", "labels": labels, "comments": c})
+    };
+    let no_cap = |r: &Value| {
+        assert!(
+            !r["waiting"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|w| w["reason"] == json!("card_cap")),
+            "{r}"
+        )
+    };
+    // A held card and a card waiting on `needs:decision`: the free Issue is offered.
+    let r = next(&json!({
+        "threads": [card(2501, &["hold"], vec![]), card(2502, &["needs:decision"], vec![])],
+        "open_issues": free.clone(),
+    }));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    no_cap(&r);
+    // Two cards whose decision request has no answer yet: the free Issue is offered.
+    let blocked = |id: u64| json!({"id": id, "body": "LANE-BLOCKED kind=decision owner=leader #1 — (가)/(나)"});
+    let r = next(&json!({
+        "threads": [card(2501, &[], vec![blocked(25011)]), card(2502, &[], vec![blocked(25021)])],
+        "open_issues": free.clone(),
+    }));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    no_cap(&r);
+    // One held card and two live startable ones (each with the lane's open pull request): the
+    // cap holds at the two live cards.
+    let prs: Vec<Value> = [2502u64, 2503]
+        .iter()
+        .map(|n| {
+            json!({"number": n + 100, "head": h('a'), "author_lane": LANE,
+                "claim_issue": n, "comments": []})
+        })
+        .collect();
+    let r = next(&json!({
+        "threads": [card(2501, &["hold"], vec![]), card(2502, &[], vec![]), card(2503, &[], vec![])],
+        "prs": prs,
+        "open_issues": free,
+    }));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["waiting"],
+        json!([{"reason": "card_cap", "cards": [2502, 2503], "limit": 2}]),
+        "{r}"
+    );
 }
 
 /// #2933 S1: the lane's own pull request with nothing to fix and its own draft are named too,
