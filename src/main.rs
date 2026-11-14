@@ -468,11 +468,27 @@ enum Command {
     /// Check claim ownership before a commit or push
     ///
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
-    /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
+    /// request on stdin, the same request as flags (`--issue N --comment ID --lane NAME`,
+    /// #2838), or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
         project: PathBuf,
-        #[arg(long)]
+        #[arg(long, conflicts_with = "issue")]
         hook: bool,
+        /// Issue number of the claim; with it, the request comes from flags, not stdin.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..), requires_all = ["comment", "lane"])]
+        issue: Option<i64>,
+        /// Id of your claim comment on the Issue.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..), requires = "issue")]
+        comment: Option<i64>,
+        /// Your session name, as written in the claim line (`session=`).
+        #[arg(long, requires = "issue")]
+        lane: Option<String>,
+        /// OWNER/REPO; default: the project's `origin` remote on GitHub.
+        #[arg(long, requires = "issue")]
+        repo: Option<String>,
+        /// GitHub login whose claim lines count (repeatable); default: any author.
+        #[arg(long = "allowed-author", requires = "issue")]
+        allowed_author: Vec<String>,
     },
     /// Show the current claim record of a task
     ///
@@ -2281,7 +2297,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::ClaimVerify { project, hook } => {
+        Command::ClaimVerify {
+            project,
+            hook,
+            issue,
+            comment,
+            lane,
+            repo,
+            allowed_author,
+        } => {
             let clock = moai_cli::forge::policy::SystemClock;
             if hook {
                 // Host hook stdin can carry large tool input; read a bounded prefix.
@@ -2304,7 +2328,21 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 moai_cli::claim_verify::hook_cli(&project, &bytes, &transport, &clock)
             } else {
                 let transport = moai_cli::forge::transport::GhTransport::from_env()?;
-                let request = input::<moai_cli::claim_verify::VerifyRequest>()?;
+                // #2838: with `--issue` the request comes from flags and stdin is not read;
+                // clap's `requires` makes `--comment` and `--lane` present with it.
+                let request = match (issue, comment, lane) {
+                    (Some(issue), Some(comment), Some(lane)) => {
+                        moai_cli::claim_verify::request_from_flags(
+                            &project,
+                            issue,
+                            comment,
+                            &lane,
+                            repo.as_deref(),
+                            &allowed_author,
+                        )?
+                    }
+                    _ => input::<moai_cli::claim_verify::VerifyRequest>()?,
+                };
                 moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
             }
         }
