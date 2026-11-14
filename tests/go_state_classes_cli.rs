@@ -1591,3 +1591,160 @@ fn the_project_workflow_names_what_the_restore_check_really_reads() {
         "project.md still claims the restore excludes secrets in general"
     );
 }
+
+// ---- #2966 audit follow-ups N5 and F3 ----
+
+/// `go-state-apply` run with `umask` set in the child only (the test process keeps its own).
+fn apply_with_umask(fx: &Fx, digest: &str, umask: u32) -> Value {
+    use std::os::unix::process::CommandExt;
+    let mut cmd = Command::new(EXE);
+    cmd.args([
+        "go-state-apply",
+        fx.p(),
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        REF,
+    ])
+    .clean_env()
+    .env("HOME", &fx.home)
+    .env("PATH", "/usr/bin:/bin")
+    .env("LC_ALL", "C")
+    .stdin(Stdio::null());
+    // SAFETY: the closure only calls `umask`, which is async-signal-safe.
+    unsafe {
+        cmd.pre_exec(move || {
+            libc::umask(umask as libc::mode_t);
+            Ok(())
+        });
+    }
+    let out = cmd.output().unwrap();
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+/// N5 (a): a restored file gets its mode by an explicit chmod, so a strict umask does not
+/// narrow it. Without that chmod the file would be created 0600 here.
+#[test]
+fn restored_files_keep_their_mode_under_a_strict_umask() {
+    let fx = go_fx();
+    let cases = [
+        (".moai/specs/SPEC-1/spec.md", 0o644),
+        (".moai/plans/p.md", 0o664),
+        (".moai/docs/run.md", 0o755),
+    ];
+    for (rel, m) in cases {
+        fx.write(rel, &prose(rel));
+        chmod(&fx.root.join(rel), m);
+    }
+    fx.manifest();
+    let plan = fx.plan();
+    let v = apply_with_umask(&fx, plan["plan_digest"].as_str().unwrap(), 0o077);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    for (rel, m) in cases {
+        assert_eq!(mode(&fx.root.join(rel)), m, "{rel} under umask 077");
+    }
+}
+
+/// N5 (b): `.moai/backups/.gitignore` is written before anything that may hold a token. A
+/// move stopped right before the root files and the settings copy (the test seam) has the
+/// ignore file already, and no copy yet.
+#[test]
+fn the_backups_gitignore_exists_before_the_settings_copy_is_written() {
+    let mut fx = go_fx();
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.write(
+        ".claude/settings.local.json",
+        "{\"env\":{\"ANTHROPIC_AUTH_TOKEN\":\"not-a-real-token\"}}",
+    );
+    fx.write("CLAUDE.md", "# rules\n");
+    fx.deployed(".claude/rules/r.md", "r: 1\n");
+    fx.manifest();
+    let plan = fx.plan();
+    let v = fx.run_env(
+        &[
+            "go-state-apply",
+            fx.p(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            REF,
+        ],
+        &[("MOAI_CLI_TEST_FAULT", "go_state_before_root_files")],
+    );
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(
+        v.to_string()
+            .contains("injected test fault at go_state_before_root_files"),
+        "{v}"
+    );
+    let backups = fx.root.join(".moai/backups");
+    assert_eq!(
+        fs::read_to_string(backups.join(".gitignore")).unwrap(),
+        "*\n",
+        "the ignore file is there before the copy would be"
+    );
+    // No copy of the settings anywhere in the backup area, and the root file has not moved.
+    let mut stack = vec![backups.clone()];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            assert_ne!(
+                p.file_name().unwrap(),
+                "settings.local.json",
+                "{} exists before the ignore file would have",
+                p.display()
+            );
+            if fs::symlink_metadata(&p).unwrap().is_dir() {
+                stack.push(p);
+            }
+        }
+    }
+    assert!(fx.root.join("CLAUDE.md").exists());
+}
+
+/// F3: a folder the restore recreates is private when the folder it comes from is, and an
+/// ordinary one stays ordinary (the child runs with umask 022).
+#[test]
+fn a_private_user_data_folder_is_restored_private() {
+    let fx = go_fx();
+    for rel in [
+        ".moai/specs/SPEC-1/spec.md",
+        ".moai/docs/private/deep/note.md",
+        ".moai/plans/open/p.md",
+    ] {
+        fx.write(rel, &prose(rel));
+    }
+    for private in [
+        ".moai/specs",
+        ".moai/docs/private",
+        ".moai/docs/private/deep",
+    ] {
+        chmod(&fx.root.join(private), 0o700);
+    }
+    fx.manifest();
+    let plan = fx.plan();
+    let v = apply_with_umask(&fx, plan["plan_digest"].as_str().unwrap(), 0o022);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    for private in [
+        ".moai/specs",
+        ".moai/specs/SPEC-1",
+        ".moai/docs/private",
+        ".moai/docs/private/deep",
+    ] {
+        let m = mode(&fx.root.join(private));
+        // `SPEC-1` was an ordinary folder under a private one: it stays ordinary.
+        let want = if private == ".moai/specs/SPEC-1" {
+            0o755
+        } else {
+            0o700
+        };
+        assert_eq!(m, want, "{private}");
+    }
+    assert_eq!(mode(&fx.root.join(".moai/plans/open")), 0o755);
+}
