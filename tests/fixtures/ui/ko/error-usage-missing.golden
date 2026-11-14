@@ -1,0 +1,3 @@
+오류: 꼭 필요한 인자가 빠졌어요:
+  <PROJECT>
+  다음: `moai-cli project-plan --help` 로 인자를 확인하세요

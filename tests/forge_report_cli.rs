@@ -709,3 +709,23 @@ fn cli(project: &Path, gh: &Path, input: &str, permission: &str) -> (Value, Stri
         String::from_utf8_lossy(&out.stderr).into(),
     )
 }
+
+/// The stdin limit of `forge-report` stays where it was when the command left `src/main.rs`
+/// (#2834 R2b): 64 KiB is read and judged as JSON, one byte more is refused as too large, and
+/// neither reaches `gh`.
+#[test]
+fn cli_stdin_limit_is_64_kib_exactly() {
+    let (tmp, project) = new_project();
+    let gh = stub_gh(tmp.path());
+    let (at, _) = cli(&project, &gh, &"a".repeat(65536), "ref-2834");
+    assert_eq!(at["error"]["kind"], "invalid_input", "{at}");
+    assert_eq!(at["error"]["message"], "invalid typed JSON input");
+    let (over, stderr) = cli(&project, &gh, &"a".repeat(65537), "ref-2834");
+    assert_eq!(over["error"]["kind"], "input_too_large", "{over}");
+    assert_eq!(
+        over["error"]["message"],
+        "input exceeds 64 KiB; put large output in an artifact reference, not the payload"
+    );
+    assert!(stderr.contains("input exceeds 64 KiB"), "{stderr}");
+    assert!(!tmp.path().join("gh-called").exists());
+}
