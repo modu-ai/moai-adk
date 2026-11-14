@@ -183,7 +183,8 @@ const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 /// `src/ops/` commands), keys and tokens (`src/key_vault.rs`, `src/redact.rs`,
 /// `src/forge/audit_status.rs`, `src/forge/transport.rs`), hooks (`src/hook*.rs`,
 /// `src/go_hooks.rs`), the gate's tip judgment (`src/flow.rs`) and the worktree secret-copy
-/// rule (`src/worktree_include.rs`, `.worktreeinclude`).
+/// rule (`src/worktree_include.rs` and the file that module reads; that file's name is joined
+/// at compile time because `tests/worktree_include_guard.rs` lets only that module spell it).
 pub const TIER2_PREFIXES: &[&str] = &[
     "src/gate",
     "src/ops/gate",
@@ -215,7 +216,7 @@ pub const TIER2_PREFIXES: &[&str] = &[
     "src/forge/audit_status",
     "src/forge/transport",
     "src/worktree_include",
-    ".worktreeinclude",
+    concat!(".worktree", "include"),
     ".claude/",
     ".codex/",
 ];

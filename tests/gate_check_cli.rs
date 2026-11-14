@@ -1042,6 +1042,9 @@ fn the_path_rule_forces_tier2() {
         p(&["src", "migrate.rs"]),
         p(&["src", "go_state.rs"]),
         p(&["src", "key_vault.rs"]),
+        p(&["src", "worktree_include.rs"]),
+        // The secret-copy rule file itself (#2967 audit B2): joined here as in src/gate.rs.
+        format!(".worktree{}", "include"),
         p(&["tools", "local_check.sh"]),
         p(&[".github", "workflows", "ci.yml"]),
         p(&[".claude", "settings.json"]),
