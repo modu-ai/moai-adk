@@ -7,11 +7,13 @@
 //! and picks one task in the order of the user's priority list (#1975 6855190942):
 //!
 //! 1. P0 the tip is red (`gate_collect::tip_ci`, the D8(a) judgment the merge gate uses);
-//! 2. P1 the lane's own pull request: an audit FAIL on its head, a conflict, a failed CI; then
-//!    a claimed card whose pull request merged with no close table posted (SYNC, #2880 W3);
+//! 2. P1 the lane's own pull request: its head moved past an audit FAIL with no re-audit
+//!    request since (#2933 S3), an audit FAIL on its head, a conflict, a failed CI; then a
+//!    claimed card whose pull request merged with no close table posted (SYNC, #2880 W3);
 //! 3. P1 a pull request the lane reserved to audit: not judged yet, its head moved past the
 //!    lane's verdict (an update-branch too) or a re-audit was asked for — with the head now;
-//! 4. P1 another lane's pull request no auditor reserved;
+//! 4. P1 another lane's pull request no auditor reserved; then a pull request with a PASS on
+//!    its head and green CI that is still open — read the gate's reason (#2933 S3);
 //! 5. a `LANE-BLOCKED kind=decision` of the lane that a `LEADER-DECISION` now answers;
 //! 6. P2 the next step of a card the lane claims (no open pull request of its own for it);
 //! 7. P2–P4 an open Issue nobody claims.
@@ -110,6 +112,9 @@ pub struct Pr {
     /// The failed checks with their run ids, when `ci` is `red`.
     #[serde(default)]
     pub ci_detail: Option<String>,
+    /// The workflow run of a passed check on the head, when `ci` was read (#2933 S3).
+    #[serde(default)]
+    pub ci_run: Option<u64>,
     /// The body carries a `moai-tip-repair:` line: the pull request that repairs a red tip.
     #[serde(default)]
     pub tip_repair: bool,
@@ -380,13 +385,40 @@ fn pr_target(pr: &Pr) -> Value {
     json!({"type": "pull_request", "number": pr.number, "head": pr.head})
 }
 
-/// The lane's own pull request: what blocks it, if anything (audit FAIL on this head,
-/// conflict, failed CI — in that order).
-fn own_pr_task(pr: &Pr) -> Option<Value> {
-    let fail = pr.comments.iter().rev().find_map(|c| {
+/// The newest verdict on the head now: its comment id and `PASS` or `FAIL`.
+fn head_verdict(pr: &Pr) -> Option<(u64, &'static str)> {
+    pr.comments.iter().rev().find_map(|c| {
         let (head, v) = verdict(c)?;
         (head == pr.head).then_some((c.id, v))
-    });
+    })
+}
+
+/// The lane's own pull request: what blocks it, if anything (a FAIL on an older head with no
+/// re-audit request after it, an audit FAIL on this head, conflict, failed CI — in that order).
+fn own_pr_task(pr: &Pr) -> Option<Value> {
+    // #2933 S3 ①: the newest verdict is a FAIL on an older head — the head moved since — and
+    // no comment after it asks for the re-audit.
+    let newest = pr
+        .comments
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(i, c)| verdict(c).map(|(head, v)| (i, c.id, head, v)));
+    if let Some((i, id, fail_head, "FAIL")) = newest {
+        if fail_head != pr.head && !pr.comments[i + 1..].iter().any(reaudit_request) {
+            return Some(task(
+                "P1",
+                "request_reaudit",
+                pr_target(pr),
+                format!(
+                    "ask the auditor of PR #{} for a re-audit: the FAIL was on {fail_head}, the head is now {} (a comment starting `REPAIR` that names the head)",
+                    pr.number, pr.head
+                ),
+                json!({"fail_comment": id, "fail_head": fail_head, "head": pr.head}),
+            ));
+        }
+    }
+    let fail = head_verdict(pr);
     if let Some((id, "FAIL")) = fail {
         return Some(task(
             "P1",
@@ -481,6 +513,34 @@ fn audit_task(pr: &Pr, lane: &str) -> Option<Value> {
             json!({"request_comment": c.id, "verdict_comment": vid}),
         )
     })
+}
+
+/// #2933 S3 ⑥: the PASS comment of a pull request (not a draft) whose newest verdict on the
+/// head now is a PASS — the pull requests whose CI another lane reads (leader decision C).
+fn pass_on_head(pr: &Pr) -> Option<u64> {
+    match head_verdict(pr) {
+        Some((id, "PASS")) if !pr.draft => Some(id),
+        _ => None,
+    }
+}
+
+/// #2933 S3 ⑥: a PASS on the head now and that head's CI green, yet still open — the merge
+/// gate stopped on something; the lane reads why without writing and does what it can.
+fn unstick_task(pr: &Pr) -> Option<Value> {
+    let pass = pass_on_head(pr)?;
+    if pr.ci.as_deref() != Some("green") {
+        return None;
+    }
+    Some(task(
+        "P1",
+        "unstick_passed_pr",
+        pr_target(pr),
+        format!(
+            "PR #{} has a PASS on its head and green CI but is not merged: run `moai gate-loop --once --dry-run` (writes nothing) to read the gate's stop reason for it, and do what can be done (for example ask its author for an update-branch)",
+            pr.number
+        ),
+        json!({"pass_comment": pass, "head": pr.head, "ci_run": pr.ci_run}),
+    ))
 }
 
 /// The newest audit reservation of a pull request: its comment id and lane.
@@ -595,6 +655,10 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             if let Some(t) = own_pr_task(pr) {
                 return Some(t);
             }
+            // A PASS with green CI is still work (4b), not passed over.
+            if unstick_task(pr).is_some() {
+                continue;
+            }
             let reason = if pr.draft { "draft" } else { "own_no_blocker" };
             pr_skipped.push(json!({"pr": pr.number, "reason": reason}));
         }
@@ -644,6 +708,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 continue;
             }
             if let Some((comment, by)) = latest_audit_claim(pr) {
+                if unstick_task(pr).is_some() {
+                    continue;
+                }
                 pr_skipped.push(json!({"pr": pr.number, "reason": "audit_reserved",
                     "by": by, "comment": comment}));
                 continue;
@@ -658,6 +725,11 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 ),
                 json!({"author_lane": pr.author_lane}),
             ));
+        }
+        // 4b. P1: a pull request with a PASS on its head and green CI that is still open (#2933
+        // S3 ⑥) — another lane's, or the lane's own: its author can act on the gate's reason too.
+        if let Some(t) = prs.iter().find_map(|p| unstick_task(p)) {
+            return Some(t);
         }
         // 5. A decision request of the lane that a leader decision now answers.
         let threads = snap
@@ -1133,7 +1205,8 @@ fn tip_d8a<T: Transport>(
 
 /// Reads one snapshot for `target`, higher priorities first, within [`API_BUDGET`] requests:
 /// one GraphQL request for the lists, the tip's CI (REST), one GraphQL request per
-/// [`ISSUES_PER_QUERY`] Issues, then the CI of the lane's own pull requests (REST).
+/// [`ISSUES_PER_QUERY`] Issues, then the CI of the lane's own pull requests and of the others
+/// with a PASS on their head now (REST).
 pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     let t = Budgeted {
         inner: transport,
@@ -1405,16 +1478,31 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             snap.open_issues.push(th);
         }
     }
-    // The CI of the lane's own pull requests.
-    for pr in snap.prs.iter_mut() {
-        if pr.author_lane.as_deref() != Some(target.lane) {
-            continue;
-        }
+    // The CI of the lane's own pull requests, then of the others with a PASS on their head now
+    // (#2933 S3 ⑥, leader decision C): what the budget leaves unread is named in `partial`.
+    let own_first: Vec<usize> = (0..snap.prs.len())
+        .filter(|i| snap.prs[*i].author_lane.as_deref() == Some(target.lane))
+        .chain((0..snap.prs.len()).filter(|i| {
+            let p = &snap.prs[*i];
+            p.author_lane.as_deref() != Some(target.lane)
+                && pass_on_head(p).is_some()
+                && !is_external(p, snap.tip_branch.as_deref())
+        }))
+        .collect();
+    for i in own_first {
+        let pr = &mut snap.prs[i];
         match crate::gate_collect::tip_runs(&t, &base, &pr.head) {
             Ok(runs) => {
                 let j = crate::gate_collect::completed_judgment(&runs);
                 pr.ci = j["state"].as_str().map(str::to_string);
                 pr.ci_detail = j.get("failed").map(Value::to_string);
+                pr.ci_run = runs
+                    .iter()
+                    .filter(|r| r["conclusion"].as_str() == Some("success"))
+                    .find_map(|r| {
+                        let rest = r["details_url"].as_str()?.split("/runs/").nth(1)?;
+                        rest.split('/').next()?.parse().ok()
+                    });
             }
             Err(e) => snap.partial.push(if e == "budget" {
                 format!(
@@ -1667,6 +1755,109 @@ mod tests {
         assert!(snap.tip.is_some());
         assert_eq!(snap.prs.len(), 40);
         assert_eq!(API_BUDGET, 30, "the leader's number (#2831 D4)");
+    }
+
+    /// `prs` open pull requests of other lanes (no claim in their bodies), head `{n:040x}`; the
+    /// numbers in `passed` carry a PASS on that head, 2 a PASS on an older head and 3 is a
+    /// draft with a PASS on its head. Every check run read is green (run 77). Records the
+    /// commits whose check runs were asked for.
+    struct PassedHeads {
+        prs: u64,
+        passed: Vec<u64>,
+        read: std::cell::RefCell<Vec<String>>,
+    }
+
+    fn head_of(n: u64) -> String {
+        format!("{n:040x}")
+    }
+
+    impl Transport for PassedHeads {
+        fn send(&self, req: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
+            let ok = |b: Value| Ok(crate::forge::transport::HttpResponse::new(200).with_body(b));
+            if req.url == GRAPHQL_URL {
+                let pass = |head: &str| json!({"databaseId": 1, "body": format!("AUDIT #1 (x) head {head} — verdict: PASS")});
+                let prs: Vec<Value> = (1..=self.prs)
+                    .map(|n| {
+                        let comments = if n == 2 {
+                            vec![pass(&"e".repeat(40))]
+                        } else if n == 3 || self.passed.contains(&n) {
+                            vec![pass(&head_of(n))]
+                        } else {
+                            vec![]
+                        };
+                        json!({"number": n, "title": "t", "body": "", "headRefOid": head_of(n),
+                            "isDraft": n == 3, "mergeable": "MERGEABLE", "baseRefName": "main",
+                            "authorAssociation": "MEMBER",
+                            "comments": {"totalCount": comments.len(), "nodes": comments}})
+                    })
+                    .collect();
+                return ok(json!({"data": {
+                    "repository": {"pullRequests": {"totalCount": self.prs, "nodes": prs},
+                        "issues": {"totalCount": 0, "nodes": []}},
+                    "claims": {"nodes": []}, "blocked": {"nodes": []}}}));
+            }
+            if req.url.contains("/branches/") {
+                return ok(json!({"commit": {"sha": "b".repeat(40)}}));
+            }
+            let sha = req.url.split("/commits/").nth(1).unwrap_or("");
+            let sha = sha.split('/').next().unwrap_or("").to_string();
+            if sha != "b".repeat(40) {
+                self.read.borrow_mut().push(sha);
+            }
+            ok(
+                json!({"check_runs": [{"name": "ci", "status": "completed", "conclusion": "success",
+                "details_url": "https://github.com/o/r/actions/runs/77/job/1"}]}),
+            )
+        }
+    }
+
+    /// #2933 S3 ⑥ (leader decision C default): another lane's check runs are read only for a
+    /// pull request with a PASS on its head now — not one with a PASS on an older head, not a
+    /// draft, not one without a verdict — and only within the request budget: after the list,
+    /// the tip branch and the tip's check runs, 27 reads fit; the 28th is named in `partial`.
+    #[test]
+    fn other_lanes_ci_is_read_only_for_a_pass_on_the_head_within_the_budget() {
+        let dir = tempfile::TempDir::new().unwrap();
+        // No verdict (1), the older-head PASS (2), the draft (3), 27 passed (4–30), no verdict
+        // (31).
+        let passed: Vec<u64> = (4..4 + 27).collect();
+        let t = PassedHeads {
+            prs: 31,
+            passed: passed.clone(),
+            read: Default::default(),
+        };
+        let snap = collect(&target(dir.path()), &t);
+        assert_eq!(
+            *t.read.borrow(),
+            passed.iter().map(|n| head_of(*n)).collect::<Vec<_>>()
+        );
+        assert_eq!(snap.api_calls, API_BUDGET);
+        assert!(
+            !snap.partial.iter().any(|p| p.contains("budget")),
+            "{:?}",
+            snap.partial
+        );
+        assert_eq!(snap.prs[3].ci.as_deref(), Some("green"));
+        assert_eq!(snap.prs[3].ci_run, Some(77));
+        assert_eq!(snap.prs[0].ci, None);
+        // One more passed pull request than the budget holds: named, not guessed.
+        let passed: Vec<u64> = (4..4 + 28).collect();
+        let t = PassedHeads {
+            prs: 31,
+            passed: passed.clone(),
+            read: Default::default(),
+        };
+        let snap = collect(&target(dir.path()), &t);
+        assert_eq!(t.read.borrow().len(), 27);
+        assert_eq!(
+            snap.partial
+                .iter()
+                .filter(|p| p.contains("request budget (30) spent"))
+                .cloned()
+                .collect::<Vec<_>>(),
+            vec!["CI of PR #31: request budget (30) spent".to_string()]
+        );
+        assert_eq!(snap.prs[30].ci, None);
     }
 
     /// No open pull request; `held` of the `issues` oldest open Issues carry `HOLD`, the rest

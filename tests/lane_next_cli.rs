@@ -86,8 +86,12 @@ fn each_case_is_found() {
     let r = next(&mine(json!({"comments": [verdict(5, &h('a'), "FAIL")]})));
     assert_eq!(kind(&r), json!("repair_audit_fail"), "{r}");
     assert_eq!(r["next"]["evidence"]["verdict_comment"], json!(5));
-    // A FAIL on an earlier head is already answered by the push.
+    // A FAIL on an earlier head is answered by the push and a re-audit request (#2933 S3);
+    // the push alone leaves the request to post.
     let r = next(&mine(json!({"comments": [verdict(5, &h('b'), "FAIL")]})));
+    assert_eq!(kind(&r), json!("request_reaudit"), "{r}");
+    let r = next(&mine(json!({"comments": [verdict(5, &h('b'), "FAIL"),
+        {"id": 6, "body": "REPAIR #10 — B1 fixed"}]})));
     assert_eq!(r["next"], json!(null), "{r}");
     assert_eq!(
         kind(&next(&mine(json!({"conflicting": true})))),
@@ -665,4 +669,138 @@ fn explain_is_only_added_when_asked() {
     assert!(explained["explain"].is_array(), "{explained}");
     explained.as_object_mut().unwrap().remove("explain");
     assert_eq!(explained.to_string(), plain.to_string());
+}
+
+/// #2933 S3 ①: my pull request's head moved past an audit FAIL on an older head and no
+/// re-audit request follows that FAIL — ask for the re-audit (P1, ahead of reserving another
+/// lane's audit). A request after the FAIL (`REPAIR…`, `재감사 요청`, `re-audit request`) ends it;
+/// one before the FAIL does not. A FAIL on the head now is still a repair.
+#[test]
+fn own_pr_with_new_head_after_fail_asks_reaudit() {
+    let own = |comments: Value| json!({"prs": [pr(60, &h('b'), Some(LANE), comments)]});
+    let r = next(&own(json!([
+        verdict(5, &h('a'), "FAIL"),
+        {"id": 6, "body": "pushed the fix"}
+    ])));
+    assert_eq!(kind(&r), json!("request_reaudit"), "{r}");
+    assert_eq!(r["next"]["priority"], json!("P1"));
+    assert_eq!(r["next"]["target"]["head"], json!(h('b')));
+    assert_eq!(
+        r["next"]["evidence"],
+        json!({"fail_comment": 5, "fail_head": h('a'), "head": h('b')})
+    );
+    assert_eq!(r["pr_skipped"], json!([]), "{r}");
+    for body in [
+        "REPAIR #60 — B1 fixed at the new head",
+        "재감사 요청(agent-27 께) — 수리 설명",
+        "Re-audit request: head moved",
+    ] {
+        let r = next(&own(
+            json!([verdict(5, &h('a'), "FAIL"), {"id": 7, "body": body}]),
+        ));
+        assert_eq!(r["next"], json!(null), "{body}: {r}");
+        assert_eq!(
+            r["pr_skipped"],
+            json!([{"pr": 60, "reason": "own_no_blocker"}])
+        );
+    }
+    // A request posted before the FAIL answers an earlier round, not this one.
+    let r = next(&own(json!([
+        {"id": 4, "body": "REPAIR #60 — round 1"},
+        verdict(5, &h('a'), "FAIL")
+    ])));
+    assert_eq!(kind(&r), json!("request_reaudit"), "{r}");
+    // A FAIL on the head now: repair, not a request.
+    let r = next(&own(json!([verdict(5, &h('b'), "FAIL")])));
+    assert_eq!(kind(&r), json!("repair_audit_fail"), "{r}");
+    // A PASS on an older head is the auditor's delta re-audit, and a verdict on the head now
+    // after the FAIL ends it.
+    assert_eq!(
+        next(&own(json!([verdict(5, &h('a'), "PASS")])))["next"],
+        json!(null)
+    );
+    assert_eq!(
+        next(&own(json!([
+            verdict(5, &h('a'), "FAIL"),
+            verdict(8, &h('b'), "PASS")
+        ])))["next"],
+        json!(null)
+    );
+    // Ahead of reserving another lane's audit.
+    let r = next(&json!({"prs": [
+        pr(59, &h('e'), Some("agent-29"), json!([])),
+        pr(60, &h('b'), Some(LANE), json!([verdict(5, &h('a'), "FAIL")])),
+    ]}));
+    assert_eq!(kind(&r), json!("request_reaudit"), "{r}");
+}
+
+/// #2933 S3 ⑥: a pull request (not a draft) with a PASS on its head now and that head's CI
+/// green, still open — read the merge gate's stop reason with `moai gate-loop --once --dry-run`
+/// (after reserving an unreserved audit, before a leader decision). A PASS on an older head,
+/// a later FAIL on the head, a red, pending or unread CI and a draft are none. My own pull
+/// request counts too: its author can act on the reason.
+#[test]
+fn passed_green_unmerged_pr_points_to_gate_dry_run() {
+    let passed = |author: &str, vhead: char, ci: Value, extra: Vec<Value>| {
+        let mut comments = vec![
+            audit_claim(1, "agent-27", &h(vhead)),
+            verdict(2, &h(vhead), "PASS"),
+        ];
+        comments.extend(extra);
+        json!({"number": 70, "head": h('c'), "author_lane": author, "ci": ci, "ci_run": 123,
+            "comments": comments})
+    };
+    let r = next(&json!({"prs": [passed("agent-29", 'c', json!("green"), vec![])]}));
+    assert_eq!(kind(&r), json!("unstick_passed_pr"), "{r}");
+    assert_eq!(r["next"]["priority"], json!("P1"));
+    assert_eq!(
+        r["next"]["evidence"],
+        json!({"pass_comment": 2, "head": h('c'), "ci_run": 123})
+    );
+    assert!(r["next"]["action"]
+        .as_str()
+        .unwrap()
+        .contains("moai gate-loop --once --dry-run"));
+    assert_eq!(r["pr_skipped"], json!([]), "{r}");
+    let none = |p: Value, why: &str| {
+        let r = next(&json!({"prs": [p]}));
+        assert_eq!(r["next"], json!(null), "{why}: {r}");
+    };
+    none(
+        passed("agent-29", 'b', json!("green"), vec![]),
+        "PASS on an older head",
+    );
+    none(passed("agent-29", 'c', json!("red"), vec![]), "red CI");
+    none(
+        passed("agent-29", 'c', json!("pending"), vec![]),
+        "pending CI",
+    );
+    none(passed("agent-29", 'c', json!(null), vec![]), "CI not read");
+    none(
+        passed(
+            "agent-29",
+            'c',
+            json!("green"),
+            vec![verdict(3, &h('c'), "FAIL")],
+        ),
+        "a later FAIL on the head",
+    );
+    let mut draft = passed("agent-29", 'c', json!("green"), vec![]);
+    draft["draft"] = json!(true);
+    none(draft, "draft");
+    // My own pull request with its PASS and green CI.
+    let r = next(&json!({"prs": [passed(LANE, 'c', json!("green"), vec![])]}));
+    assert_eq!(kind(&r), json!("unstick_passed_pr"), "{r}");
+    // Order: an unreserved audit first, then this, then a leader decision.
+    let mut snap = json!({
+        "prs": [passed("agent-29", 'c', json!("green"), vec![]), pr(71, &h('d'), Some("agent-28"), json!([]))],
+        "threads": [{"number": 40, "comments": [claim(4, LANE),
+            {"id": 5, "body": "LANE-BLOCKED kind=decision owner=leader #40 — x"},
+            {"id": 6, "body": "LEADER-DECISION #40 — (가)"}]}],
+    });
+    assert_eq!(kind(&next(&snap)), json!("reserve_audit"));
+    snap["prs"][1]["comments"] = json!([audit_claim(9, "agent-27", &h('d'))]);
+    assert_eq!(kind(&next(&snap)), json!("unstick_passed_pr"));
+    snap["prs"][0]["ci"] = json!("pending");
+    assert_eq!(kind(&next(&snap)), json!("resume_decision"));
 }
