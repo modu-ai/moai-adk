@@ -120,6 +120,7 @@ pub const GROUPS: &[Group] = &[
         commands: &[
             ("claim-acquire", false),
             ("claim-verify", false),
+            ("claim-timeout-check", false),
             ("claim-show", false),
             ("claim-release", false),
             ("claim-handoff", false),
@@ -306,6 +307,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("baseline-inventory", &["baseline-inventory ."]),
     ("claim-acquire", &["claim-acquire . < request.json"]),
     ("claim-verify", &["claim-verify . < request.json"]),
+    (
+        "claim-timeout-check",
+        &["claim-timeout-check --issue 7 --claim 101 --request 202 --lane agent-1"],
+    ),
     ("claim-show", &["claim-show --task <task> ."]),
     ("claim-release", &["claim-release --task <task> --epoch 1 ."]),
     ("claim-handoff", &["claim-handoff --task <task> --from-epoch 1 --reason <reason> ."]),
