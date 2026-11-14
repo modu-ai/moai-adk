@@ -190,12 +190,11 @@ fn writes(t: &RecordedTransport) -> Vec<String> {
 }
 
 #[test]
-fn a_passing_pull_request_is_merged_and_a_draft_is_skipped() {
+fn a_passing_pull_request_is_merged() {
     let (dir, a, b) = repo(false);
     let cs = comments(&b, &a, "agent-10", None);
     let mut ex = vec![list(json!([
-        {"number": 9, "draft": false, "head": {"sha": b}},
-        {"number": 10, "draft": true, "head": {"sha": b}}
+        {"number": 9, "draft": false, "head": {"sha": b}}
     ]))];
     ex.extend(reads(&dir, &b, &cs));
     ex.extend(remote(&dir, &b));
@@ -218,18 +217,26 @@ fn a_passing_pull_request_is_merged_and_a_draft_is_skipped() {
         },
     ]);
     let t = RecordedTransport::new(ex);
-    // #2806: one static progress line per non-draft pull request, counted without drafts.
+    // #2806: one static progress line per pull request.
     let seen: std::rc::Rc<std::cell::RefCell<Vec<String>>> = Default::default();
     let keep = seen.clone();
     moai_cli::progress::install(Box::new(move |l| keep.borrow_mut().push(l.to_string())));
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock);
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    );
     moai_cli::progress::uninstall();
     let out = out.unwrap();
     assert_eq!(
         out["pull_requests"],
         json!([{"pr": 9, "outcome": "merged", "merge_commit": "9999999999999999999999999999999999999999"}])
     );
-    assert_eq!(t.remaining(), 0, "the draft is never read");
+    assert_eq!(t.remaining(), 0);
     assert_eq!(*seen.borrow(), ["checking pull request #9 (1/1)"]);
 }
 
@@ -251,7 +258,16 @@ fn a_code_overlap_updates_the_branch_once_per_head() {
         response: created(),
     });
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(
         out["pull_requests"][0]["outcome"],
         json!("updated_branch"),
@@ -280,7 +296,16 @@ fn a_code_overlap_updates_the_branch_once_per_head() {
     ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("already_updated"));
     assert!(writes(&t).is_empty());
 }
@@ -299,7 +324,16 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
         response: created(),
     });
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("asked_auditor"));
     assert_eq!(writes(&t), vec!["POST /issues/9/comments"]);
 
@@ -311,7 +345,16 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
     ex.extend(reads(&dir, &b, &cs));
     ex.push(marker_read(&cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("already_asked"));
     assert!(writes(&t).is_empty());
 }
@@ -326,7 +369,16 @@ fn a_head_not_fetched_is_skipped_and_no_permission_reads_nothing() {
     )];
     ex.extend(reads(&dir, missing, &cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("skipped"));
     assert!(writes(&t).is_empty());
 
@@ -352,7 +404,16 @@ fn a_conflict_is_reported_not_updated() {
     )];
     ex.extend(reads(&dir, &b, &cs));
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(
         out["pull_requests"][0]["outcome"],
         json!("stopped"),
@@ -375,7 +436,16 @@ fn a_red_tip_stops_the_loop_without_any_write() {
         ex.extend(reads(&dir, &b, &cs));
         ex[5] = tip_ci(&dir, json!([{"name": "ci", "conclusion": "failure"}]));
         let t = RecordedTransport::new(ex);
-        let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+        let out = once(
+            &target(&dir),
+            "fixture-approved",
+            false,
+            false,
+            &t,
+            &t,
+            &NoClock,
+        )
+        .unwrap();
         let row = &out["pull_requests"][0];
         assert_eq!(row["outcome"], json!("stopped"), "overlap={overlap} {out}");
         assert_eq!(row["rule"], json!("G8"), "overlap={overlap} {out}");
@@ -458,7 +528,16 @@ fn a_merge_that_cannot_be_read_back_is_reported_uncertain() {
         response: ok(json!({})),
     });
     let t = RecordedTransport::new(ex);
-    let out = once(&target(&dir), "fixture-approved", false, false, &t, &t, &NoClock).unwrap();
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
     assert_eq!(
         out["pull_requests"][0]["outcome"],
         json!("uncertain"),
@@ -471,4 +550,199 @@ fn a_merge_that_cannot_be_read_back_is_reported_uncertain() {
             "PUT /pulls/9/merge".to_string()
         ]
     );
+}
+
+/// #2860 rule 5: the oldest pull request goes first. GitHub lists newest first; three numbers
+/// listed out of order are read 3, 7, 12 (each then fails its first read and is skipped).
+#[test]
+fn pull_requests_are_handled_oldest_number_first() {
+    let (dir, _a, b) = repo(false);
+    let t = RecordedTransport::new(vec![list(json!([
+        {"number": 12, "draft": false, "head": {"sha": b}},
+        {"number": 3, "draft": true, "head": {"sha": b}},
+        {"number": 7, "draft": false, "head": {"sha": b}}
+    ]))]);
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
+    let order: Vec<u64> = out["pull_requests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["pr"].as_u64().unwrap())
+        .collect();
+    assert_eq!(order, [3, 7, 12], "{out}");
+    let reads: Vec<String> = t
+        .sent
+        .borrow()
+        .iter()
+        .skip(1)
+        .map(|r| r.url.trim_start_matches(API).to_string())
+        .collect();
+    assert_eq!(reads, ["/pulls/3", "/pulls/7", "/pulls/12"]);
+}
+
+/// The PR read gate-merge makes after the gate passes, for a draft (node id for GraphQL).
+fn remote_draft(dir: &TempDir, head: &str) -> Vec<Exchange> {
+    let mut ex = remote(dir, head);
+    ex[0].response = ok(
+        json!({"head": {"sha": head}, "base": {"ref": "main"}, "draft": true, "node_id": "PR_node9"}),
+    );
+    ex
+}
+
+fn ready_exchange(response: HttpResponse) -> Exchange {
+    Exchange {
+        request: HttpRequest::new("POST", "https://api.github.com/graphql"),
+        response,
+    }
+}
+
+/// #2860 rule 4 (leader decision 6870150891): a passing draft is gated like any other pull
+/// request and marked ready after the status, right before the merge.
+#[test]
+fn a_passing_draft_is_marked_ready_then_merged() {
+    let (dir, a, b) = repo(false);
+    let cs = comments(&b, &a, "agent-10", None);
+    let mut ex = vec![list(
+        json!([{"number": 9, "draft": true, "head": {"sha": b}}]),
+    )];
+    ex.extend(reads(&dir, &b, &cs));
+    ex.extend(remote_draft(&dir, &b));
+    ex.extend(status_exchanges(&b));
+    ex.push(ready_exchange(ok(
+        json!({"data": {"markPullRequestReadyForReview": {"pullRequest": {"isDraft": false}}}}),
+    )));
+    ex.extend([
+        Exchange {
+            request: HttpRequest::new("PUT", format!("{API}/pulls/9/merge")),
+            response: ok(json!({"sha": "9999999999999999999999999999999999999999"})),
+        },
+        Exchange {
+            request: HttpRequest::new("POST", format!("{API}/issues/9/comments")),
+            response: created(),
+        },
+    ]);
+    let t = RecordedTransport::new(ex);
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
+    assert_eq!(out["pull_requests"][0]["outcome"], json!("merged"), "{out}");
+    assert_eq!(t.remaining(), 0);
+    {
+        let sent = t.sent.borrow();
+        let ready = sent
+            .iter()
+            .find(|r| r.url.ends_with("/graphql"))
+            .expect("ready mutation sent");
+        let body = ready.body.as_ref().unwrap();
+        assert!(body["query"]
+            .as_str()
+            .unwrap()
+            .contains("markPullRequestReadyForReview"));
+        assert_eq!(body["variables"]["id"], json!("PR_node9"));
+    }
+    let order = writes(&t);
+    let status = order
+        .iter()
+        .position(|w| w.starts_with("POST /statuses"))
+        .unwrap();
+    let merge = order
+        .iter()
+        .position(|w| w.starts_with("PUT /pulls/9/merge"))
+        .unwrap();
+    let ready_at = order.iter().position(|w| w.ends_with("/graphql")).unwrap();
+    assert!(status < ready_at && ready_at < merge, "{order:?}");
+}
+
+/// A ready mutation that GitHub refuses (or answers with errors) merges nothing.
+#[test]
+fn a_draft_that_cannot_be_marked_ready_is_not_merged() {
+    for response in [
+        ok(json!({"errors": [{"message": "no"}]})),
+        HttpResponse {
+            status: 502,
+            headers: Default::default(),
+            body: None,
+        },
+    ] {
+        let (dir, a, b) = repo(false);
+        let cs = comments(&b, &a, "agent-10", None);
+        let mut ex = vec![list(
+            json!([{"number": 9, "draft": true, "head": {"sha": b}}]),
+        )];
+        ex.extend(reads(&dir, &b, &cs));
+        ex.extend(remote_draft(&dir, &b));
+        ex.extend(status_exchanges(&b));
+        ex.push(ready_exchange(response));
+        let t = RecordedTransport::new(ex);
+        let out = once(
+            &target(&dir),
+            "fixture-approved",
+            false,
+            false,
+            &t,
+            &t,
+            &NoClock,
+        )
+        .unwrap();
+        let row = &out["pull_requests"][0];
+        assert_eq!(row["outcome"], json!("stopped"), "{out}");
+        assert_eq!(row["rule"], json!("READY"), "{out}");
+        assert!(
+            !writes(&t).iter().any(|w| w.contains("/merge")),
+            "{:?}",
+            writes(&t)
+        );
+    }
+}
+
+/// #2860 D2: a dry run reads, writes nothing, needs no permission reference, and names what the
+/// pass would do — merge a passing pull request, update the branch on a code overlap.
+#[test]
+fn a_dry_run_writes_nothing_and_names_each_decision() {
+    let (dir, a, b) = repo(false);
+    let cs = comments(&b, &a, "agent-10", None);
+    let mut ex = vec![list(
+        json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+    )];
+    ex.extend(reads(&dir, &b, &cs));
+    let t = RecordedTransport::new(ex);
+    let out = once(&target(&dir), "", false, true, &t, &t, &NoClock).unwrap();
+    assert_eq!(out["dry_run"], json!(true));
+    assert_eq!(
+        out["pull_requests"][0]["outcome"],
+        json!("would_merge"),
+        "{out}"
+    );
+    assert!(writes(&t).is_empty(), "{:?}", writes(&t));
+    assert_eq!(t.remaining(), 0);
+
+    let (dir, a, b) = repo(true);
+    let cs = comments(&b, &a, "agent-10", None);
+    let mut ex = vec![list(
+        json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+    )];
+    ex.extend(reads(&dir, &b, &cs));
+    ex.push(marker_read(&cs));
+    let t = RecordedTransport::new(ex);
+    let out = once(&target(&dir), "", false, true, &t, &t, &NoClock).unwrap();
+    let row = &out["pull_requests"][0];
+    assert_eq!(row["outcome"], json!("would_update_branch"), "{out}");
+    assert_eq!(row["rule"], json!("G6"));
+    assert!(writes(&t).is_empty(), "{:?}", writes(&t));
 }
