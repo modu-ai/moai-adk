@@ -67,6 +67,9 @@ pub const GROUPS: &[Group] = &[
             ("home-state-plan", true),
             ("home-state-apply", true),
             ("home-state-revert", true),
+            ("home-retire-plan", false),
+            ("home-retire-apply", false),
+            ("home-retire-revert", false),
             ("worktree-move-plan", true),
             ("worktree-move-apply", true),
             ("update-plan", false),
@@ -282,6 +285,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-state-plan", &["home-state-plan", "home-state-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-state-apply", &["home-state-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-state-revert", &["home-state-revert --permission-reference <ref>"]),
+    ("home-retire-plan", &["home-retire-plan", "home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
+    ("home-retire-apply", &["home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
+    ("home-retire-revert", &["home-retire-revert --permission-reference <ref>"]),
     ("worktree-move-plan", &["worktree-move-plan .", "worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-move-apply", &["worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update-plan", &["update-plan ~ <stage>", "update-apply --plan-digest <digest> --permission-reference <ref> ~ <stage> < request.json"]),
@@ -1149,6 +1155,29 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          지우지 않아요.",
     ),
     (
+        "home-retire-plan",
+        "`~/.moai` 안 Go 세대 항목의 은퇴를 미리 봐요(#2871): HOME 이름 표로 맨 위 항목마다 \
+         `retire`(`~/.moai-go-retired/<UTC>/` 로 이동)·`keep`(사용자 자료, 주인 모름, 표에 없는 \
+         이름, 이 세대 이름, 병합 단계를 기다리는 키 파일, 링크)·`skip-in-use`(돌고 있는 \
+         프로그램이 씀)로 나눠요. 비밀은 이름만 보고 절대 열지 않아요. 이동을 막는 것과 적용에 \
+         필요한 `plan_digest` 를 보여 줘요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "home-retire-apply",
+        "미리 보기가 `retire` 로 정한 항목을 `~/.moai-go-retired/<UTC>/` 로 옮겨요(#2871): 먼저 \
+         매니페스트와 이동 저널을 쓰고, 항목마다 rename 한 번(덮어쓰지 않음, 같은 파일 \
+         시스템)이에요. 같은 입력으로 다시 계산한 미리 보기의 `plan_digest` 가 같고 동작이 \
+         `retire` 일 때만 실행해요. 복사도 삭제도 없고, 돌고 있는 프로그램이 쥔 항목은 건너뛰어요. \
+         실제 HOME 에서는 사용자가 확인한 뒤에만 리더가 실행해요.",
+    ),
+    (
+        "home-retire-revert",
+        "은퇴 저널을 거꾸로 되짚어 항목을 되돌려 놓아요(#2871): 항목은 옮긴 그 항목이 \
+         그대로이고 옛 자리가 비어 있을 때만 돌아가요. 그 사이 바뀐 항목은 그 자리에 두고 \
+         상태가 `revert_partial` 이에요. `--stamp` 가 없으면 가장 새 은퇴 저널을 써요. 아무것도 \
+         지우지 않아요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1414,6 +1443,21 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-state-apply",
         "now",
         "미리 보기가 읽은 것과 같은 `--now`",
+    ),
+    (
+        "home-retire-plan",
+        "now",
+        "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계(날짜 폴더 이름)",
+    ),
+    (
+        "home-retire-apply",
+        "now",
+        "미리 보기가 읽은 것과 같은 `--now`",
+    ),
+    (
+        "home-retire-revert",
+        "stamp",
+        "되돌릴 은퇴의 표지(`YYYYMMDDTHHMMSSZ`). 없으면 가장 새 은퇴",
     ),
     (
         "home-state-revert",
