@@ -151,6 +151,20 @@ class ErrorFrameTty(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn(" project-plan --help` to see its arguments", err.splitlines()[-1])
 
+    def test_help_all_reads_the_line_without_a_leading_color_flag(self):
+        # Audit #2952 B2: `help --all` is answered before parsing from position 1.
+        want = piped(["help", "--all"], self.env(), self.home)
+        self.assertEqual(want[0], 0)
+        for flag in (["--color", "never"], ["--color=always"]):
+            self.assertEqual(piped([*flag, "help", "--all"], self.env(), self.home), want, flag)
+
+    def test_a_hook_word_after_a_leading_color_flag_is_still_a_hook(self):
+        # Audit #2952 B3: hook mode is judged from position 1 (`hook-receipt`), so a leading
+        # `--color` must not turn a hook call into an ordinary usage error.
+        want = piped(["hook-receipt"], self.env(), self.home)
+        got = piped(["--color", "never", "hook-receipt"], self.env(), self.home)
+        self.assertEqual(got, want)
+
     def test_an_unknown_color_value_is_a_usage_error(self):
         code, out, err = piped(["--color", "bogus", "claim-verify", "."], self.env(), self.home)
         self.assertEqual(code, 2)
