@@ -1901,3 +1901,406 @@ fn the_fails_auditor_is_the_holder_after_a_handoff_before_the_fail() {
     assert_eq!(r["next"], json!(null), "{r}");
     assert_eq!(r["pr_skipped"][0]["by"], json!("agent-10"), "{r}");
 }
+
+// --- #2933 S6: a lane's wait record `waiting: <what> since <UTC>` ----------------------------
+
+const WAIT_NOW: &str = "2026-11-14T10:20:00Z";
+const WAIT_SINCE: &str = "2026-11-14T10:00:00Z";
+
+/// A comment whose body is `body`.
+fn wait_note(id: u64, body: &str) -> Value {
+    json!({"id": id, "body": body})
+}
+
+/// A comment naming `LANE` on its first line with `line` below it.
+fn lane_line(id: u64, line: &str) -> Value {
+    wait_note(id, &format!("lane={LANE}\n{line}"))
+}
+
+/// A comment of the lane holding the wait record `waiting: <what> since <since>`.
+fn rec(id: u64, what: &str, since: &str) -> Value {
+    lane_line(id, &format!("waiting: {what} since {since}"))
+}
+
+/// The `lane_waiting` entries of a result, in order.
+fn lane_waiting(r: &Value) -> Vec<Value> {
+    r["waiting"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|w| w["reason"] == json!("lane_waiting"))
+        .cloned()
+        .collect()
+}
+
+/// Issue 2933 with the lane's live claim (comment 10), then `rest`, read at `WAIT_NOW`.
+fn wait_issue(rest: Vec<Value>) -> Value {
+    let mut comments = vec![claim(10, LANE)];
+    comments.extend(rest);
+    json!({"now": WAIT_NOW, "threads": [{"number": 2933, "title": "card", "comments": comments}]})
+}
+
+fn entry(number: u64, what: &str, comment: u64) -> Value {
+    json!({"reason": "lane_waiting", "number": number, "what": what, "since": WAIT_SINCE,
+        "age_secs": 1200, "comment": comment})
+}
+
+/// A wait record on the Issue the lane holds a live claim on is read, with its age on the
+/// injected clock; the same on the lane's own pull request and on one whose audit the lane
+/// reserved. A pull request of another lane that the lane did not reserve is not the lane's.
+#[test]
+fn a_wait_record_is_read_from_a_claimed_issue_an_own_pr_and_a_reserved_audit() {
+    let line = format!("waiting: CI of PR #5 since {WAIT_SINCE}");
+    // The record is the first line; the lane is named further down.
+    let r = next(&wait_issue(vec![wait_note(
+        11,
+        &format!("{line}\nlane={LANE}"),
+    )]));
+    assert_eq!(
+        lane_waiting(&r),
+        vec![entry(2933, "CI of PR #5", 11)],
+        "{r}"
+    );
+    // The record sits below the lane's name, after an empty line.
+    let r = next(&wait_issue(vec![wait_note(
+        11,
+        &format!("lane={LANE}\n\n{line}\n"),
+    )]));
+    assert_eq!(
+        lane_waiting(&r),
+        vec![entry(2933, "CI of PR #5", 11)],
+        "{r}"
+    );
+    // Own pull request, and a pull request of another lane whose audit this lane reserved.
+    let note = lane_line(21, &line);
+    let snap = json!({"now": WAIT_NOW, "prs": [
+        pr(7, &h('a'), Some(LANE), json!([note.clone()])),
+        pr(8, &h('b'), Some("agent-29"), json!([audit_claim(20, LANE, &h('b')), note.clone()])),
+        pr(9, &h('c'), Some("agent-29"), json!([audit_claim(20, "agent-3", &h('c')), note.clone()])),
+        pr(10, &h('d'), Some("agent-29"), json!([note.clone()])),
+    ]});
+    let r = next(&snap);
+    assert_eq!(
+        lane_waiting(&r),
+        vec![entry(7, "CI of PR #5", 21), entry(8, "CI of PR #5", 21)],
+        "{r}"
+    );
+    // The entry carries exactly these keys.
+    let first = lane_waiting(&r)[0].clone();
+    let mut keys: Vec<&str> = first
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        ["age_secs", "comment", "number", "reason", "since", "what"],
+        "{r}"
+    );
+}
+
+/// An Issue is the lane's only with a live claim: another lane's claim, a released claim and a
+/// thread with no claim at all give no entry.
+#[test]
+fn a_wait_record_on_an_issue_without_a_live_claim_of_the_lane_is_not_its_own() {
+    let note = rec(11, "a reply", WAIT_SINCE);
+    let other = json!({"now": WAIT_NOW, "threads": [{"number": 2933, "title": "card",
+        "comments": [claim(10, "agent-99"), note.clone()]}]});
+    assert_eq!(lane_waiting(&next(&other)), Vec::<Value>::new());
+    let released = json!({"now": WAIT_NOW, "threads": [{"number": 2933, "title": "card",
+        "comments": [claim(10, LANE),
+            {"id": 12, "body": format!("moai-claim-release: comment=10 by={LANE}")}, note.clone()]}]});
+    assert_eq!(lane_waiting(&next(&released)), Vec::<Value>::new());
+    let bare = json!({"now": WAIT_NOW, "threads": [{"number": 2933, "title": "card",
+        "comments": [note]}]});
+    assert_eq!(lane_waiting(&next(&bare)), Vec::<Value>::new());
+}
+
+/// Every lane posts as one account, so a record counts as the lane's only when its comment names
+/// the lane — as a whole word, under a session spelling too. Another lane's comment, `agent-100`
+/// and `agent-1` are not `agent-10`, and another lane's `waiting: done` clears nothing.
+#[test]
+fn only_a_comment_that_names_the_lane_carries_its_wait_record() {
+    let line = format!("waiting: a reply since {WAIT_SINCE}");
+    let by = |who: &str| wait_note(11, &format!("{who}\n{line}"));
+    for who in [
+        "lane=agent-10",
+        "agent-10",
+        "agent-10-59cb6a",
+        "session=agent-10-59cb6a",
+        "by=agent-10-hBp17,",
+    ] {
+        let r = next(&wait_issue(vec![by(who)]));
+        assert_eq!(
+            lane_waiting(&r),
+            vec![entry(2933, "a reply", 11)],
+            "{who}: {r}"
+        );
+    }
+    for who in [
+        "lane=agent-3",
+        "lane=agent-100",
+        "agent-1",
+        "agent-10x",
+        "just a note",
+    ] {
+        let r = next(&wait_issue(vec![by(who)]));
+        assert_eq!(lane_waiting(&r), Vec::<Value>::new(), "{who}: {r}");
+    }
+    // Another lane's `waiting: done` leaves mine standing.
+    let r = next(&wait_issue(vec![
+        rec(11, "a reply", WAIT_SINCE),
+        wait_note(12, "lane=agent-3\nwaiting: done"),
+    ]));
+    assert_eq!(lane_waiting(&r), vec![entry(2933, "a reply", 11)], "{r}");
+    // The same on a pull request the lane did not author or reserve.
+    let theirs = json!({"now": WAIT_NOW, "prs": [
+        pr(5, &h('a'), Some("agent-29"), json!([rec(11, "a reply", WAIT_SINCE)]))]});
+    assert_eq!(lane_waiting(&next(&theirs)), Vec::<Value>::new());
+}
+
+/// The newest record of a number stands; a later comment that is no wait record clears nothing; a
+/// later `waiting: done` or `waiting: -` clears it, and a record after that arms it again.
+#[test]
+fn the_newest_wait_record_stands_and_waiting_done_clears_it() {
+    let chatter = lane_line(13, "just a note");
+    // Newest wins (the list order is the age order).
+    let r = next(&wait_issue(vec![
+        rec(11, "CI", "2026-11-14T09:00:00Z"),
+        rec(12, "an audit", WAIT_SINCE),
+    ]));
+    assert_eq!(lane_waiting(&r), vec![entry(2933, "an audit", 12)], "{r}");
+    // A later comment of the lane that is no wait record does not clear it.
+    let r = next(&wait_issue(vec![rec(12, "an audit", WAIT_SINCE), chatter]));
+    assert_eq!(lane_waiting(&r), vec![entry(2933, "an audit", 12)], "{r}");
+    // `done` and `-` clear it.
+    for clear in [
+        "waiting: done",
+        "waiting: -",
+        "waiting: done since 2026-11-14T10:10:00Z",
+    ] {
+        let r = next(&wait_issue(vec![
+            rec(12, "an audit", WAIT_SINCE),
+            lane_line(13, clear),
+        ]));
+        assert_eq!(lane_waiting(&r), Vec::<Value>::new(), "{clear}: {r}");
+        // A record after the clearing line arms it again.
+        let r = next(&wait_issue(vec![
+            rec(12, "an audit", WAIT_SINCE),
+            lane_line(13, clear),
+            rec(14, "a shell", WAIT_SINCE),
+        ]));
+        assert_eq!(
+            lane_waiting(&r),
+            vec![entry(2933, "a shell", 14)],
+            "{clear}: {r}"
+        );
+    }
+    // Within one comment the last line wins.
+    let r = next(&wait_issue(vec![lane_line(
+        12,
+        &format!("waiting: CI since {WAIT_SINCE}\nwaiting: done"),
+    )]));
+    assert_eq!(lane_waiting(&r), Vec::<Value>::new(), "{r}");
+    // The number decides: a clearing line on one Issue does not clear another's record.
+    let snap = json!({"now": WAIT_NOW, "threads": [
+        {"number": 2933, "title": "a", "comments": [claim(10, LANE), rec(11, "CI", WAIT_SINCE)]},
+        {"number": 2934, "title": "b", "comments": [claim(20, LANE), lane_line(21, "waiting: done")]}]});
+    let r = next(&snap);
+    assert_eq!(lane_waiting(&r), vec![entry(2933, "CI", 11)], "{r}");
+}
+
+/// A line that is not `waiting: <what> since <YYYY-MM-DDTHH:MM:SSZ>` at column 0 is no record: it
+/// is ignored, and it neither clears nor replaces an older valid record.
+#[test]
+fn a_malformed_wait_line_is_ignored() {
+    let valid = rec(11, "CI", WAIT_SINCE);
+    let bad = [
+        "waiting: CI",
+        "waiting: CI since",
+        "waiting: CI since yesterday",
+        "waiting: CI since 2026-11-14T10:00:00",
+        "waiting: CI since 2026-11-14 10:00:00Z",
+        "waiting: CI since 2026-13-14T10:00:00Z",
+        "waiting: CI since 2026-11-14T25:00:00Z",
+        "waiting: CI since 2026-11-14T-1:00:00Z",
+        "waiting: CI since 2026-11-14T10:00:00Z extra",
+        "waiting: since 2026-11-14T10:00:00Z",
+        "waiting:",
+        "waiting: finished",
+        " waiting: CI since 2026-11-14T10:00:00Z",
+        "\twaiting: CI since 2026-11-14T10:00:00Z",
+        "Waiting: CI since 2026-11-14T10:00:00Z",
+        "not waiting: CI since 2026-11-14T10:00:00Z",
+    ];
+    for (i, line) in bad.iter().enumerate() {
+        let id = 20 + i as u64;
+        // Alone: nothing.
+        let r = next(&wait_issue(vec![lane_line(id, line)]));
+        assert_eq!(lane_waiting(&r), Vec::<Value>::new(), "{line:?}: {r}");
+        // After a valid record: the valid one stands.
+        let r = next(&wait_issue(vec![valid.clone(), lane_line(id, line)]));
+        assert_eq!(
+            lane_waiting(&r),
+            vec![entry(2933, "CI", 11)],
+            "{line:?}: {r}"
+        );
+    }
+}
+
+/// `<what>` is cut at 160 characters (N = 160 stays whole, N + 1 is cut), counted in characters;
+/// control characters are stripped, never echoed.
+#[test]
+fn what_is_capped_at_160_characters_and_carries_no_control_character() {
+    for (n, kept) in [(1, 1), (159, 159), (160, 160), (161, 160), (400, 160)] {
+        let r = next(&wait_issue(vec![rec(11, &"x".repeat(n), WAIT_SINCE)]));
+        let got = lane_waiting(&r);
+        assert_eq!(got.len(), 1, "{n}: {r}");
+        assert_eq!(got[0]["what"], json!("x".repeat(kept)), "{n}: {r}");
+    }
+    // Characters, not bytes: 160 two-byte characters are whole, 161 are cut.
+    for (n, kept) in [(160, 160), (161, 160)] {
+        let r = next(&wait_issue(vec![rec(11, &"é".repeat(n), WAIT_SINCE)]));
+        assert_eq!(
+            lane_waiting(&r)[0]["what"],
+            json!("é".repeat(kept)),
+            "{n}: {r}"
+        );
+    }
+    // Escape, tab, bell and a bare carriage return are stripped; the text between stays.
+    let r = next(&wait_issue(vec![rec(
+        11,
+        "\u{1b}[31mred\u{7}\ta\rb",
+        WAIT_SINCE,
+    )]));
+    assert_eq!(lane_waiting(&r)[0]["what"], json!("[31mredab"), "{r}");
+    // Stripped to nothing: no record.
+    let r = next(&wait_issue(vec![rec(11, "\u{1b}\u{7}", WAIT_SINCE)]));
+    assert_eq!(lane_waiting(&r), Vec::<Value>::new(), "{r}");
+}
+
+/// `age_secs` is `now` − `since` on the injected clock; with no (or an unreadable) `now` it is
+/// `null` — never the real clock — and a `since` ahead of `now` is age 0.
+#[test]
+fn the_age_comes_from_the_injected_clock() {
+    let note = rec(11, "CI", WAIT_SINCE);
+    for (now, age) in [
+        ("2026-11-14T10:00:00Z", 0),
+        ("2026-11-14T10:00:01Z", 1),
+        ("2026-11-14T10:20:00Z", 1200),
+        ("2026-11-15T10:00:00Z", 86_400),
+        ("2026-11-14T09:59:59Z", 0),
+    ] {
+        let mut s = wait_issue(vec![note.clone()]);
+        s["now"] = json!(now);
+        let r = next(&s);
+        assert_eq!(lane_waiting(&r)[0]["age_secs"], json!(age), "{now}: {r}");
+        assert_eq!(
+            lane_waiting(&r)[0]["since"],
+            json!(WAIT_SINCE),
+            "{now}: {r}"
+        );
+    }
+    let mut s = wait_issue(vec![note.clone()]);
+    s.as_object_mut().unwrap().remove("now");
+    let r = next(&s);
+    assert_eq!(lane_waiting(&r).len(), 1, "{r}");
+    assert_eq!(lane_waiting(&r)[0]["age_secs"], json!(null), "{r}");
+    assert!(r.get("now").is_none(), "{r}");
+    let mut s = wait_issue(vec![note]);
+    s["now"] = json!("soon");
+    let r = next(&s);
+    assert_eq!(lane_waiting(&r)[0]["age_secs"], json!(null), "{r}");
+}
+
+/// A wait record is information only: the same snapshot with and without it gives the same task,
+/// the same skipped lists and the same other `waiting` entries, in every branch of the list.
+#[test]
+fn a_wait_record_changes_no_task_and_no_order() {
+    // Each builder puts `extra` comments on a thread the lane owns: its own pull request 7, a
+    // pull request whose audit it reserved, or its claimed Issue 2933.
+    type Build = Box<dyn Fn(Vec<Value>) -> Value>;
+    let cases: Vec<(Build, Value)> = vec![
+        // An own pull request with an audit FAIL, a free Issue behind it.
+        (
+            Box::new(|extra| {
+                let mut c = vec![verdict(30, &h('a'), "FAIL")];
+                c.extend(extra);
+                json!({"now": WAIT_NOW, "prs": [pr(7, &h('a'), Some(LANE), json!(c))],
+                    "open_issues": [{"number": 2600, "title": "f", "comments": []}]})
+            }),
+            json!("repair_audit_fail"),
+        ),
+        // An audit the lane reserved.
+        (
+            Box::new(|extra| {
+                let mut c = vec![audit_claim(30, LANE, &h('a'))];
+                c.extend(extra);
+                json!({"now": WAIT_NOW, "prs": [pr(7, &h('a'), Some("agent-29"), json!(c))]})
+            }),
+            json!("audit"),
+        ),
+        // A claimed card to continue.
+        (
+            Box::new(|extra| {
+                let mut c = vec![claim(10, LANE)];
+                c.extend(extra);
+                json!({"now": WAIT_NOW,
+                    "threads": [{"number": 2933, "title": "card", "comments": c}]})
+            }),
+            json!("continue_card"),
+        ),
+        // A free Issue to pick after a held one.
+        (
+            Box::new(|extra| {
+                json!({"now": WAIT_NOW,
+                    "open_issues": [
+                        {"number": 2601, "title": "held", "labels": ["hold"], "comments": []},
+                        {"number": 2600, "title": "free", "comments": []}],
+                    "prs": [pr(7, &h('a'), Some(LANE), json!(extra))]})
+            }),
+            json!("pick_issue"),
+        ),
+        // Nothing to do at all.
+        (
+            Box::new(
+                |extra| json!({"now": WAIT_NOW, "prs": [pr(7, &h('a'), Some(LANE), json!(extra))]}),
+            ),
+            json!(null),
+        ),
+    ];
+    let others = |r: &Value| -> Vec<Value> {
+        r["waiting"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|w| w["reason"] != json!("lane_waiting"))
+            .cloned()
+            .collect()
+    };
+    for (i, (build, expected)) in cases.iter().enumerate() {
+        let without = next(&build(vec![]));
+        let with = next(&build(vec![rec(40, "CI", WAIT_SINCE)]));
+        assert_eq!(without["next"]["kind"], *expected, "case {i}: {without}");
+        assert_eq!(lane_waiting(&without), Vec::<Value>::new(), "case {i}");
+        // The record is read ...
+        assert_eq!(lane_waiting(&with).len(), 1, "case {i}: {with}");
+        // ... and changes nothing else.
+        for key in [
+            "next",
+            "skipped",
+            "pr_skipped",
+            "end_condition",
+            "partial",
+            "now",
+        ] {
+            assert_eq!(
+                with[key], without[key],
+                "case {i} {key}: {with} vs {without}"
+            );
+        }
+        assert_eq!(others(&with), others(&without), "case {i}: {with}");
+    }
+}
