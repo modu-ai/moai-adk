@@ -746,3 +746,95 @@ fn a_dry_run_writes_nothing_and_names_each_decision() {
     assert_eq!(row["rule"], json!("G6"));
     assert!(writes(&t).is_empty(), "{:?}", writes(&t));
 }
+
+/// #2860 AC-3 (C2, #2833): the loop itself reaches the mechanical-delta acceptance. The PASS is
+/// on head `b`; the open head `n` only merged the tip into `b` (an update-branch). One pass
+/// records AUTO-DELTA first and merges `n` without a new verdict.
+#[test]
+fn the_loop_merges_a_tip_only_update_without_a_new_verdict() {
+    let (dir, a, b) = repo(false);
+    let d = dir.path();
+    git_ok(d, &["checkout", "-q", "pr"]);
+    git_ok(
+        d,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "Merge main",
+            "main",
+        ],
+    );
+    let n = git(d, &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(d, &["checkout", "-q", "main"]);
+    // The claim and the PASS name the earlier head `b`.
+    let cs = comments(&b, &a, "agent-10", None);
+    let mut ex = vec![list(
+        json!([{"number": 9, "draft": false, "head": {"sha": n}}]),
+    )];
+    ex.extend(reads(&dir, &n, &cs));
+    ex.extend(remote(&dir, &n));
+    ex.push(Exchange {
+        request: HttpRequest::new("POST", format!("{API}/issues/9/comments")),
+        response: created(),
+    });
+    ex.extend(status_exchanges(&n));
+    ex.extend([
+        Exchange {
+            request: HttpRequest::new("PUT", format!("{API}/pulls/9/merge")),
+            response: ok(json!({"sha": "9999999999999999999999999999999999999999"})),
+        },
+        Exchange {
+            request: HttpRequest::new("POST", format!("{API}/issues/9/comments")),
+            response: created(),
+        },
+    ]);
+    let t = RecordedTransport::new(ex);
+    let out = once(
+        &target(&dir),
+        "fixture-approved",
+        false,
+        false,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
+    assert_eq!(out["pull_requests"][0]["outcome"], json!("merged"), "{out}");
+    assert_eq!(t.remaining(), 0);
+    let sent = t.sent.borrow();
+    let first_note = sent
+        .iter()
+        .find(|r| r.method == "POST" && r.url.ends_with("/issues/9/comments"))
+        .unwrap();
+    let body = first_note.body.as_ref().unwrap()["body"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        body.lines().next().unwrap(),
+        format!("AUTO-DELTA #9 {b}→{n}")
+    );
+    let merge_put = sent.iter().find(|r| r.method == "PUT").unwrap();
+    assert_eq!(merge_put.body.as_ref().unwrap()["sha"], json!(n));
+    drop(sent);
+
+    // The dry run names the same decision without writing.
+    let mut ex = vec![list(
+        json!([{"number": 9, "draft": false, "head": {"sha": n}}]),
+    )];
+    ex.extend(reads(&dir, &n, &cs));
+    let t = RecordedTransport::new(ex);
+    let out = once(&target(&dir), "", false, true, &t, &t, &NoClock).unwrap();
+    assert_eq!(
+        out["pull_requests"][0]["outcome"],
+        json!("would_merge_auto_delta"),
+        "{out}"
+    );
+    assert!(writes(&t).is_empty());
+}
