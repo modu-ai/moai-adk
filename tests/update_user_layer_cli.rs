@@ -203,7 +203,7 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     let top = p["plan_digest"].as_str().unwrap();
     assert_eq!(
         p["confirm_with"],
-        json!(format!("moai-cli update --confirm {top}"))
+        json!(format!("moai update --confirm {top}"))
     );
     assert_eq!(p["agents"]["hosts"].as_array().unwrap().len(), 3, "{p}");
     assert_eq!(p["routing"]["hosts"].as_array().unwrap().len(), 2, "{p}");
@@ -222,11 +222,11 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert!(r["revert"]["agents"]
         .as_str()
         .unwrap()
-        .starts_with("moai-cli agents-home-revert"));
+        .starts_with("moai agents-home-revert"));
     assert!(r["revert"]["routing"]
         .as_str()
         .unwrap()
-        .starts_with("moai-cli home-routing-revert"));
+        .starts_with("moai home-routing-revert"));
     // The global instruction files carry the section; `~/.agents/AGENTS.md` is never made.
     assert!(fs::read_to_string(home.join(".claude/CLAUDE.md"))
         .unwrap()

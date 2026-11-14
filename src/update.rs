@@ -1595,7 +1595,7 @@ pub fn update_command(
                 "routing": layer.routing,
                 "bin_names": layer.bin_names.to_json(),
                 "skipped": layer.skipped,
-                "confirm_with": format!("moai-cli update --confirm {}", layer.plan_digest),
+                "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
             }))
         }
     };
@@ -1670,9 +1670,9 @@ pub fn update_command(
         || routing["state"] == json!("applied")
         || bin_names["state"] == json!("applied");
     let revert = |op: &str, r: &serde_json::Value| {
-        r["receipt"].as_str().map(|id| {
-            format!("moai-cli {op} <HOME> --receipt {id} --permission-reference <reference>")
-        })
+        r["receipt"]
+            .as_str()
+            .map(|id| format!("moai {op} <HOME> --receipt {id} --permission-reference <reference>"))
     };
     Ok(json!({
         "mode": "applied",

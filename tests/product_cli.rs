@@ -2197,10 +2197,20 @@ fn envelope_fields_and_error_codes() {
             "{name}: exit {exit} kind {kind}"
         );
         let line = f["stderr"].as_str().unwrap();
-        assert_eq!(line.lines().count(), 1, "{name}: stderr is one human line");
         if kind == "usage" {
+            // #2804 (D2 §4): a usage error keeps clap's list of missing arguments after its
+            // first line — indented names such as `<PROJECT>`, never other text.
+            let mut lines = line.lines();
+            assert!(lines.next().is_some(), "{name}: a first line");
+            for extra in lines {
+                assert!(
+                    extra.starts_with("  ") && extra.contains('<') && extra.ends_with('>'),
+                    "{name}: only argument names follow the first line: {extra:?}"
+                );
+            }
             seen.2 += 1;
         } else {
+            assert_eq!(line.lines().count(), 1, "{name}: stderr is one human line");
             assert_eq!(line.trim_end(), err["message"].as_str().unwrap(), "{name}");
             seen.1 += 1;
         }
