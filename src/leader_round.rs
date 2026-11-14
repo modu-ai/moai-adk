@@ -347,6 +347,15 @@ fn last_line_is_restart(tail: &str) -> bool {
         .is_some_and(|l| l.strip_prefix(PROMPT_MARKS).unwrap_or(l).trim() == RESTART_LINE)
 }
 
+/// Text read from a screen or the observer, safe to hand on (#2948 audit I3): every control
+/// character becomes `\xNN` ([`crate::ui::visible`]) and the Unicode line and paragraph
+/// separators ` ` and ` `, which the JSON output would carry as they are.
+fn shown(text: &str) -> String {
+    crate::ui::visible(text)
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
+}
+
 /// Rows 0–7 of the plan, first match wins; `now` is Unix seconds. `end_met` is the
 /// `startable::end_condition` `met` value (`None` while unknown).
 pub fn decide(
@@ -365,7 +374,7 @@ pub fn decide(
         data: None,
         findings: Vec::new(),
         notes: Vec::new(),
-        ignored: found.ignored.clone(),
+        ignored: found.ignored.iter().map(|l| shown(l)).collect(),
     };
     let leave = |mut a: Action, reason: &str| {
         a.action = Act::Leave;
@@ -374,7 +383,7 @@ pub fn decide(
     };
     // 0. An observation the round cannot rely on.
     if let Some(why) = unusable(obs, now) {
-        a.notes.push(why);
+        a.notes.push(shown(&why));
         return leave(a, "observation_unusable");
     }
     // 1. A pane the leader must not type into (a permission prompt is not answered).
@@ -414,7 +423,7 @@ pub fn decide(
     if let Some(m) = last.filter(|m| m.kind == MarkerKind::Blocked) {
         a.action = Act::Answer;
         a.reason = "lane_blocked".into();
-        a.data = Some(m.text.clone());
+        a.data = Some(shown(&m.text));
         return a;
     }
     // 6. A card boundary: clear and redispatch only on a `safe` reset verdict.
@@ -544,7 +553,8 @@ pub fn handoff_candidates(snap: &Snapshot, now: i64) -> Vec<Value> {
 }
 
 /// What the whole round shares. Without a snapshot every part is `not_run` with the reason;
-/// without `repo` the gate line is.
+/// without `repo` the gate line is. The parts read from a snapshot whose `partial` names a
+/// gap are `partial`, never `ok` (#2948 audit I2).
 pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i64) -> Value {
     let Some(snap) = snap else {
         let why = "no GitHub snapshot: pass --repo OWNER/REPO or --snapshot FILE";
@@ -555,12 +565,17 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
             "end_condition": not_run(why),
         });
     };
+    let status = if snap.partial.is_empty() {
+        "ok"
+    } else {
+        "partial"
+    };
     let mut end = crate::lane_next::end_condition(snap);
-    end["status"] = json!("ok");
+    end["status"] = json!(status);
     json!({
-        "close_candidates": {"status": "ok", "items": close_candidates(snap)},
+        "close_candidates": {"status": status, "items": close_candidates(snap)},
         "handoff_candidates": {
-            "status": "ok",
+            "status": status,
             "items": handoff_candidates(snap, now),
             "note": "the lease has ended; the other two D2 conditions are the leader's to check",
         },
@@ -855,6 +870,73 @@ mod tests {
         let a = safe(&wait("2026-11-14T09:00:00Z"));
         assert_eq!(a.action, Act::Restart);
         assert_eq!(a.send, vec![RESTART_LINE.to_string()]);
+    }
+
+    /// #2948 audit N2: the `until` second itself has passed (the round goes on); one second
+    /// later the lane still waits.
+    #[test]
+    fn a_wait_ends_at_its_until_second() {
+        let wait =
+            |until: &str| with_tail(&format!("⏺ LANE-WAIT agent-29 usage-limit until {until}"));
+        assert_eq!(parse_utc("2026-11-14T09:21:00Z"), Some(now()));
+        let a = safe(&wait("2026-11-14T09:21:00Z"));
+        assert_eq!((a.action, a.reason.as_str()), (Act::Restart, "continue"));
+        let a = safe(&wait("2026-11-14T09:21:01Z"));
+        assert_eq!((a.action, a.reason.as_str()), (Act::Leave, "lane_wait"));
+    }
+
+    /// #2948 audit I3: screen text placed in `data`, `ignored` and `notes` carries no DEL, no
+    /// C1 control (CSI U+009B) and no Unicode line or paragraph separator as it is.
+    #[test]
+    fn screen_text_in_the_action_is_made_visible() {
+        let raw = ["\u{7f}", "\u{9b}2J", "\u{2028}", "\u{2029}"];
+        let shown = ["\\x7f", "\\x9b2J", "\\u2028", "\\u2029"];
+        let (raw, shown) = (raw.concat(), shown.concat());
+        let a = safe(&with_tail(&format!(
+            "⏺ LANE-BLOCKED agent-7 x{raw}z\n⏺ LANE-BLOCKED agent-29 y{raw}z"
+        )));
+        assert_eq!(a.action, Act::Answer);
+        assert_eq!(
+            a.data.as_deref(),
+            Some(format!("LANE-BLOCKED agent-29 y{shown}z").as_str())
+        );
+        assert_eq!(a.ignored, vec![format!("LANE-BLOCKED agent-7 x{shown}z")]);
+        let mut obs = lane(LANE_DONE);
+        obs.terminal.status = format!("exited{raw}z");
+        let a = safe(&obs);
+        assert_eq!(a.reason, "observation_unusable");
+        assert_eq!(
+            a.notes,
+            vec![format!(
+                "terminal status is `exited{shown}z`, not `running`"
+            )]
+        );
+        let raw: Vec<char> = raw.chars().filter(|c| !c.is_ascii_alphanumeric()).collect();
+        for s in a.notes.iter().chain(&a.ignored).chain(&a.data) {
+            assert!(!s.chars().any(|c| raw.contains(&c)), "{s:?}");
+        }
+    }
+
+    /// #2948 audit I2: a snapshot read only in part never reports the round's shared parts as
+    /// `ok`, and a whole one does.
+    #[test]
+    fn a_partial_snapshot_is_reported_partial() {
+        let mut snap = Snapshot {
+            cards: Some(Vec::new()),
+            ..Snapshot::default()
+        };
+        let r = round(Some(&snap), Some("o/r"), Path::new("/p"), now());
+        for key in ["close_candidates", "handoff_candidates", "end_condition"] {
+            assert_eq!(r[key]["status"], "ok", "{key}: {r}");
+        }
+        assert_eq!(r["end_condition"]["met"], true);
+        snap.partial
+            .push("lists: Could not resolve to a Repository".into());
+        let r = round(Some(&snap), Some("o/r"), Path::new("/p"), now());
+        for key in ["close_candidates", "handoff_candidates", "end_condition"] {
+            assert_eq!(r[key]["status"], "partial", "{key}: {r}");
+        }
+        assert_eq!(r["gate"]["status"], "ok");
     }
 
     // AC9: input limits.

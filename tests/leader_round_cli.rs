@@ -42,8 +42,17 @@ struct Fixture {
 /// A remote, a primary checkout on `main` and the lane's worktree on `issue/2902-card`, both
 /// pushed; an empty HOME.
 fn fixture() -> Fixture {
+    fixture_in("")
+}
+
+/// [`fixture`] inside the folder `sub` of the temporary folder (`""` for the folder itself).
+fn fixture_in(sub: &str) -> Fixture {
     let tmp = TempDir::new().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let mut root = tmp.path().canonicalize().unwrap();
+    if !sub.is_empty() {
+        root.push(sub);
+        fs::create_dir_all(&root).unwrap();
+    }
     let remote = root.join("remote.git");
     let primary = root.join("primary");
     git_ok(&root, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
@@ -249,6 +258,83 @@ fn an_unpushed_head_leaves_the_lane_with_the_finding() {
     );
     assert_eq!(a["send"], json!([]));
     assert_eq!(a["release"], Value::Null);
+}
+
+/// The action and reason of the round's only lane.
+fn act(r: &Value) -> (Option<&str>, Option<&str>) {
+    let a = &r["lanes"][0];
+    (a["action"].as_str(), a["reason"].as_str())
+}
+
+/// #2948 audit I1: without the session's folder the real reset check answers `unknown`; the
+/// finished lane is left, never cleared.
+#[test]
+fn a_reset_check_without_the_session_folder_leaves_the_lane() {
+    let f = fixture();
+    let mut obs = observations(&f);
+    obs["lanes"][0]["reset"]
+        .as_object_mut()
+        .unwrap()
+        .remove("session_cwd");
+    let r = round(&f, &obs, None);
+    assert_eq!(act(&r), (Some("leave"), Some("reset_unknown")), "{r}");
+    assert!(
+        texts(&r["lanes"][0]["findings"])
+            .iter()
+            .any(|u| u.starts_with("no session_cwd observation")),
+        "{r}"
+    );
+    assert_eq!(r["lanes"][0]["send"], json!([]));
+}
+
+/// #2948 audit I1: a project the reset check cannot read (no git repository) is an error of
+/// the check; the finished lane is left, never cleared.
+#[test]
+fn a_reset_check_that_cannot_run_leaves_the_lane() {
+    let f = fixture();
+    let plain = f.root.join("plain");
+    fs::create_dir_all(&plain).unwrap();
+    let mut args = inputs(&f, &observations(&f), None);
+    args[1] = plain.to_string_lossy().into_owned();
+    let r = run_round(&f, &args);
+    assert_eq!(act(&r), (Some("leave"), Some("reset_unknown")), "{r}");
+    assert_eq!(
+        texts(&r["lanes"][0]["findings"]),
+        vec!["git worktree list unavailable for the project".to_string()]
+    );
+    assert_eq!(r["lanes"][0]["send"], json!([]));
+}
+
+/// #2948 audit N3: the release names a project path with a space as one shell word.
+#[test]
+fn the_release_quotes_the_project_path() {
+    let f = fixture_in("with space");
+    let reg = moai(
+        &f,
+        &[
+            "session-register",
+            "--name",
+            LANE,
+            "--now",
+            READ_AT,
+            f.primary.to_str().unwrap(),
+        ],
+    );
+    let instance = reg["result"]["instance"].as_str().unwrap().to_string();
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(
+        act(&r),
+        (Some("clear_redispatch"), Some("card_boundary")),
+        "{r}"
+    );
+    assert!(f.primary.to_str().unwrap().contains("with space/primary"));
+    assert_eq!(
+        r["lanes"][0]["release"],
+        json!(format!(
+            "moai session-register --release --by leader --name {LANE} --instance {instance} '{}'",
+            f.primary.display()
+        ))
+    );
 }
 
 /// Every path under `dir` with its kind, bytes and modification time.

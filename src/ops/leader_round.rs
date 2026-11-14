@@ -71,6 +71,20 @@ fn reset_verdict(project: &Path, lane: &LaneObservation, now: i64) -> ResetVerdi
     }
 }
 
+/// `word` as one POSIX shell word: bare when it holds only safe characters, else single-quoted
+/// with each `'` written `'\''` (#2948 audit N3; the `lane_env` and `gate_schedule` quoting).
+fn shell_word(word: &str) -> String {
+    if !word.is_empty()
+        && word
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "/._-:,+=@".contains(c))
+    {
+        word.to_string()
+    } else {
+        format!("'{}'", word.replace('\'', "'\\''"))
+    }
+}
+
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let now_text = args.now.unwrap_or_else(moai_cli::audit::utc_now);
     let now = moai_cli::forge::policy::parse_utc(&now_text)
@@ -116,7 +130,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                         "moai session-register --release --by leader --name {} --instance {} {}",
                         lane.lane,
                         v["instance"].as_str().unwrap_or(""),
-                        args.project.display()
+                        shell_word(&args.project.to_string_lossy())
                     ));
                 }
                 Ok(_) => a

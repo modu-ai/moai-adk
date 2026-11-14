@@ -1483,11 +1483,16 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
         used: Cell::new(0),
     };
     let mut snap = Snapshot::default();
+    // False when a list came back with errors, without its nodes or with pull requests left
+    // out: the cards then stay unknown, so the end condition is never met on a gap (#2948
+    // audit I2). Issues left past the budget are `cards_truncated` instead.
+    let mut lists_whole = true;
     let vars = json!({"owner": owner, "repo": repo});
     let first = match graphql(&t, FLEET_FIRST_QUERY, vars.clone()) {
         Ok((data, errors)) => {
             if let Some(e) = errors {
                 snap.partial.push(format!("lists: {e}"));
+                lists_whole = false;
             }
             data
         }
@@ -1501,6 +1506,13 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
             return snap;
         }
     };
+    if !first["repository"]["pullRequests"]["nodes"].is_array()
+        || !first["repository"]["issues"]["nodes"].is_array()
+    {
+        snap.partial
+            .push("lists: the answer holds no open pull request or Issue list".into());
+        lists_whole = false;
+    }
     let pulls = first["repository"]["pullRequests"]["nodes"]
         .as_array()
         .cloned()
@@ -1514,6 +1526,7 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
             "only the oldest {} open pull requests read",
             pulls.len()
         ));
+        lists_whole = false;
     }
     let mut issues: Vec<Thread> = Vec::new();
     let mut page = first["repository"]["issues"].clone();
@@ -1544,6 +1557,7 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
             Ok((data, errors)) => {
                 if let Some(e) = errors {
                     snap.partial.push(format!("open Issues: {e}"));
+                    lists_whole = false;
                 }
                 page = data["repository"]["issues"].clone();
             }
@@ -1612,15 +1626,15 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
         Ok(_) => {}
         Err(e) => snap.partial.push(format!("goal exclusions: {e}")),
     }
-    snap.cards = Some(
+    snap.cards = lists_whole.then(|| {
         issues
             .iter()
             .map(|th| Thread {
                 comments: Vec::new(),
                 ..th.clone()
             })
-            .collect(),
-    );
+            .collect()
+    });
     snap.threads = issues;
     snap.api_calls = t.used.get();
     snap
@@ -2487,6 +2501,42 @@ mod tests {
         );
         // Startable cards were read, so the end is not met although the list is partial.
         assert_eq!(end_condition(&snap)["met"], json!(false));
+    }
+
+    /// A repository GitHub cannot resolve: HTTP 200 with `repository: null` and `errors`.
+    struct NoRepo;
+
+    impl Transport for NoRepo {
+        fn send(&self, _: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
+            Ok(
+                crate::forge::transport::HttpResponse::new(200).with_body(json!({
+                    "data": {"repository": null},
+                    "errors": [{"type": "NOT_FOUND", "path": ["repository"],
+                        "message": "Could not resolve to a Repository with the name 'o/r'."}]
+                })),
+            )
+        }
+    }
+
+    /// #2948 audit I2: a list read that failed leaves the cards unknown, so the end condition
+    /// is unknown (never met) and the leader's round reports its shared parts as partial.
+    #[test]
+    fn a_failed_fleet_read_leaves_the_end_unknown() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let snap = collect_fleet("o", "r", dir.path(), &NoRepo);
+        assert!(
+            snap.partial.iter().any(|p| p.starts_with("lists: ")),
+            "{:?}",
+            snap.partial
+        );
+        assert!(snap.cards.is_none());
+        assert_eq!(
+            end_condition(&snap),
+            json!({"open_prs": null, "startable": null, "met": null})
+        );
+        let r = crate::leader_round::round(Some(&snap), Some("o/r"), dir.path(), 0);
+        assert_eq!(r["end_condition"]["met"], Value::Null, "{r}");
+        assert_eq!(r["end_condition"]["status"], "partial", "{r}");
     }
 
     /// The read-only check itself refuses a mutation, a REST write and a GraphQL GET body.
