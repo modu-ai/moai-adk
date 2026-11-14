@@ -124,6 +124,7 @@ enum W {
     Blocked,
     OutsideLayout,
     NoHookSet,
+    NotGitTree,
     AllUpToDate,
     NothingApplied,
     NotWritten,
@@ -287,6 +288,13 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "이 프로젝트에 MoAI hook 없음"
             } else {
                 "no MoAI hook set in this project"
+            }
+        }
+        NotGitTree => {
+            if ko {
+                "git 작업 트리 밖이에요"
+            } else {
+                "not inside a git work tree"
             }
         }
         AllUpToDate => {
@@ -630,10 +638,14 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     if hook_hosts.is_empty() {
         if let Some(s) = hk["skipped"].as_array().and_then(|s| s.first()) {
             let reason = s["reason"].as_str().unwrap_or("");
-            let reason = if reason == "no MoAI hook set is installed in this project" {
-                w(lang, W::NoHookSet).to_string()
-            } else {
-                reason.to_string()
+            // The two reasons `update_hooks` gives most often, in the screen's language; any
+            // other reason is shown as the result has it.
+            let reason = match reason {
+                "no MoAI hook set is installed in this project" => {
+                    w(lang, W::NoHookSet).to_string()
+                }
+                "not inside a git work tree" => w(lang, W::NotGitTree).to_string(),
+                other => other.to_string(),
             };
             rows.push(row(
                 Mark::Skip,
@@ -1232,6 +1244,8 @@ fn applied(v: &Value, view: &View) -> String {
             ),
         ));
     }
+    // A blank line after the answer typed at the question.
+    o.blank();
     o.heading(W::Applying);
     o.rows(&rows);
     o.blank();
