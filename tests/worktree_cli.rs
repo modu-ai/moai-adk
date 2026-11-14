@@ -938,11 +938,14 @@ fn worktree_plan_refuses_a_path_inside_a_cargo_build_folder() {
     fs::write(krate.join("Cargo.toml"), "[package]\nname = \"k\"\n").unwrap();
     // A link that leads into the tagged folder.
     std::os::unix::fs::symlink(&tagged, base.join("link")).unwrap();
+    // A link into the middle of it: only resolving the path finds the tag above `debug`.
+    std::os::unix::fs::symlink(tagged.join("debug"), base.join("inner-link")).unwrap();
     for bad in [
         tagged.join("wt-a"),
         tagged.join("debug/deep/wt-b"),
         krate.join("target/wt-c"),
         base.join("link/wt-d"),
+        base.join("inner-link/wt-f"),
     ] {
         let path = bad.to_string_lossy().to_string();
         let out = run(
