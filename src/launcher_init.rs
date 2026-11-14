@@ -167,6 +167,89 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
     }
 }
 
+/// The `init` answer (#2835): the folder, whether this run created it, and the one line
+/// [`prepare`] reported.
+fn init_answer(project: &Path, created: bool, p: Prepared, dry_run: bool) -> Value {
+    json!({
+        "project": project.to_string_lossy(),
+        "created": created,
+        "note": p.note,
+        "git_pending": p.git_pending,
+        "writes": !dry_run,
+    })
+}
+
+/// `init` with no `--new` (#2835 D1): the current folder, initialized exactly as a first
+/// launch does it — HOME and the file-system root are still refused.
+pub fn init_here(cwd: &Path, host: &str, dry_run: bool) -> Result<Value, String> {
+    let p = prepare(cwd, host, dry_run)?;
+    let dir = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
+    Ok(init_answer(&dir, false, p, dry_run))
+}
+
+/// `init --new <name>` (#2835 D1–D2): make `<HOME>/.moai/projects/<name>/` and initialize it
+/// through [`prepare`]. Refused before any write: a name that is not a safe path component, a
+/// `~/.moai` or `~/.moai/projects` that is a symbolic link (its target is never written), and
+/// a name that already exists (never overwritten). `projects/` is created on first use.
+pub fn init_new(home: &Path, name: &str, host: &str, dry_run: bool) -> Result<Value, String> {
+    let dir = crate::home_workdir::project_dir(home, name)?;
+    for parent in [
+        crate::home_workdir::root(home),
+        crate::home_workdir::projects_root(home),
+    ] {
+        if fs::symlink_metadata(&parent).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(format!(
+                "{} is a symbolic link; init --new refuses to create a project through it",
+                parent.display()
+            ));
+        }
+    }
+    if fs::symlink_metadata(&dir).is_ok() {
+        return Err(format!(
+            "{} already exists; init --new never overwrites a folder",
+            dir.display()
+        ));
+    }
+    // Git is checked before the folder exists, so a missing git leaves nothing behind
+    // (#2846 audit B1).
+    if identity(home).is_ok_and(|id| id["identity_status"] == "git_unavailable") {
+        return Err(install_guidance());
+    }
+    if dry_run {
+        let p = Prepared {
+            note: Some(format!(
+                "would create {} and initialize it: git init, {}/project.yaml, AGENTS.md (--dry-run writes nothing)",
+                dir.display(),
+                crate::state_root::create_dir(&dir)
+            )),
+            git_pending: true,
+        };
+        return Ok(init_answer(&dir, false, p, true));
+    }
+    fs::create_dir_all(crate::home_workdir::projects_root(home))
+        .map_err(|e| format!("cannot create the projects folder: {e}"))?;
+    // Exclusive: a folder made by someone else between the check and here is refused.
+    fs::create_dir(&dir).map_err(|e| match e.kind() {
+        std::io::ErrorKind::AlreadyExists => format!(
+            "{} already exists; init --new never overwrites a folder",
+            dir.display()
+        ),
+        _ => format!("cannot create {}: {e}", dir.display()),
+    })?;
+    match prepare(&dir, host, false) {
+        Ok(p) => Ok(init_answer(&dir, true, p, false)),
+        Err(e) => {
+            // Only the folder this run made, and only while it is still empty: anything
+            // written into it (a partial `git init`) is kept for the user to look at.
+            let empty = fs::read_dir(&dir).is_ok_and(|mut rd| rd.next().is_none());
+            if empty {
+                let _ = fs::remove_dir(&dir);
+            }
+            Err(e)
+        }
+    }
+}
+
 /// `Some(description)` when `dir` (canonical) is a file-system root or `home` (HOME, already
 /// resolved, so a HOME given through a symlink is recognized).
 pub fn home_or_root(dir: &Path, home: Option<&Path>) -> Option<&'static str> {

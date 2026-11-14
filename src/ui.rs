@@ -350,6 +350,22 @@ impl Painter {
     }
 }
 
+/// The language of human output on `stream` (S6a, Issue #2825; design 2.1, S6-2): English
+/// whenever the stream is not a terminal, otherwise `MOAI_LANG`, the profile's
+/// `language.user_chat` of the project holding the current folder, the locale, English
+/// ([`crate::ui_text::choose`]). Nothing is read for a pipe, and a failed read is silently the
+/// next step.
+pub fn ui_lang(stream: Stream) -> crate::ui_text::Lang {
+    let cwd = std::env::current_dir().ok();
+    let home = crate::home_workdir::home().ok();
+    crate::ui_text::for_stream(
+        stream.is_terminal(),
+        &|k| std::env::var(k).ok(),
+        cwd.as_deref(),
+        home.as_deref(),
+    )
+}
+
 /// Whether stderr is a terminal: the error frame (D2 §4) is drawn only there, so a pipe — a
 /// lane, a script, a test — keeps today's one-line message byte for byte (D3 6865936070).
 pub fn stderr_is_terminal() -> bool {

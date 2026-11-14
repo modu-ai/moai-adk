@@ -9,6 +9,8 @@ Start
   glm                     Start a Claude Code session on
                           z.ai GLM
 Project
+  init                    Initialize this folder or a new
+                          project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile
@@ -39,6 +41,8 @@ Project
   hooks-plan              Preview the MoAI hook set for one
                           host
   hooks-apply             Write a previewed hook set
+  hooks-revert            Undo the hook set one update
+                          applied
 Update and move
   update                  Update MoAI from the installed
                           package
@@ -128,6 +132,7 @@ Lane and leader
   queue-query             Read the merge train from the
                           leader's comment
   leader-tick             Run one leader supervision tick
+  lane-next               Find the lane's next task
   lane-status             Show the status table of the named
                           lanes
   lane-handoff-check      Check that a worktree is safe to

@@ -551,6 +551,44 @@ fn copy_tree(from: &Path, to: &Path) {
 }
 const PERMISSION: &str = "test-approval-2241";
 
+/// #2834 R2a audit N1: `--allow-implicit-invocation` reaches the installed `openai.yaml` through
+/// `codex-projection-apply`, not only through the plan.
+#[test]
+fn codex_projection_apply_carries_allow_implicit_invocation() {
+    let f = fixture();
+    let target = f.home.join(".agents/skills/moai");
+    let pkg = package();
+    let flag = ["--allow-implicit-invocation", "true"];
+    let mut plan_args = vec![
+        "codex-projection-plan",
+        pkg.as_str(),
+        "--target",
+        s(&target),
+    ];
+    plan_args.extend_from_slice(&flag);
+    let (ok, v) = run(&plan_args);
+    assert!(ok, "{v}");
+    let digest = v["result"]["plan_digest"].as_str().unwrap().to_string();
+    let mut apply_args = vec![
+        "codex-projection-apply",
+        pkg.as_str(),
+        "--target",
+        s(&target),
+        "--plan-digest",
+        digest.as_str(),
+        "--permission-reference",
+        PERMISSION,
+    ];
+    apply_args.extend_from_slice(&flag);
+    let (ok, v) = run(&apply_args);
+    assert!(ok, "{v}");
+    let yaml = fs::read_to_string(target.join("agents/openai.yaml")).unwrap();
+    assert!(
+        yaml.ends_with("policy:\n  allow_implicit_invocation: true\n"),
+        "{yaml}"
+    );
+}
+
 #[test]
 fn codex_projection_apply_installs_verifies_and_reinstalls_as_noop() {
     let f = fixture();

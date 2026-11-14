@@ -25,6 +25,7 @@ pub const GROUPS: &[Group] = &[
     Group {
         heading: "Project",
         commands: &[
+            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),
@@ -44,6 +45,7 @@ pub const GROUPS: &[Group] = &[
             ("codex-config-apply", false),
             ("hooks-plan", false),
             ("hooks-apply", false),
+            ("hooks-revert", false),
         ],
     },
     Group {
@@ -115,6 +117,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("lane-next", false),
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
@@ -218,6 +221,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
     ("glm", &["glm -a"]),
+    ("init", &["init", "init --new demo", "init --new demo --dry-run"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -237,6 +241,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("codex-config-apply", &["codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
+    ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -288,6 +293,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
+    (
+        "lane-next",
+        &[
+            "lane-next --lane agent-1 --repo modu-ai/moai-adk",
+            "lane-next --lane agent-1 --repo modu-ai/moai-adk --wait 1800",
+        ],
+    ),
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
