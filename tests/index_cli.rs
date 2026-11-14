@@ -173,6 +173,26 @@ fn query(project: &Path) -> Value {
     envelope(&out)["result"].clone()
 }
 
+/// The command left `src/main.rs` for `src/ops/index_query.rs` (#2834 R2c): its envelope
+/// still names `index.query`, on an answer and on a refused request alike.
+#[test]
+fn index_query_answers_under_its_operation_name() {
+    let (_tmp, project) = setup_project();
+    let ok = cli(
+        &project,
+        &["index-query", "."],
+        r#"{"protocol_version": 1}"#,
+    );
+    assert_eq!(envelope(&ok)["operation"], "index.query");
+    let bad = cli(&project, &["index-query", "."], "nope");
+    assert_eq!(bad.status.code(), Some(1));
+    let v = envelope(&bad);
+    assert_eq!(
+        (v["operation"].clone(), v["error"]["kind"].clone()),
+        (json!("index.query"), json!("invalid_input"))
+    );
+}
+
 fn pointer_gen(project: &Path) -> Option<String> {
     let bytes = fs::read(project.join(".moai-cli/index/current.json")).ok()?;
     let v: Value = serde_json::from_slice(&bytes).ok()?;

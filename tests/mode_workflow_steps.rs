@@ -789,3 +789,68 @@ fn codex_leader_timer_is_the_measured_orca_automation() {
     }
     assert!(!wake.contains("O6이 실측하고"), "{wake}");
 }
+
+// #2664 (inspection P2 items, done in place instead of new Issues): E1 external pull requests
+// are the leader's to report and never a lane's to audit; E2 a rule change names the record
+// it replaces and a quick reversal is asked once; E3 the final report ends with the person's
+// check list and the decisions made for them; E4 the reduced mode without the `moai` command.
+#[test]
+fn inspection_p2_rules_are_written_where_they_are_used() {
+    let agent = workflow("mode-agent.md");
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &agent,
+        "self-pick",
+        &[
+            "An external pull request — its author's association is not `OWNER`, `MEMBER` or `COLLABORATOR`, or it does not target the integration branch — is never a lane's to reserve or audit",
+            "`external_pr`",
+        ],
+    );
+    assert_says(
+        &leader,
+        "merge-train",
+        &[
+            "is not on the train and no lane audits it: report it to the user once, with its number, author and base",
+        ],
+    );
+    let spec = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/design-review/autonomy-modes-spec.md"),
+    )
+    .unwrap();
+    let row = spec
+        .lines()
+        .find(|l| l.starts_with("| 외부 PR(#2664) |"))
+        .expect("SPEC §2 external pull request row");
+    assert!(
+        row.contains("`external_pr`") && row.contains("사용자에게"),
+        "{row}"
+    );
+    let rules = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/references/internal/core-rules.md"),
+    )
+    .unwrap();
+    for p in [
+        "A rule change is a decision record that names the record it replaces",
+        "reverses a rule recorded less than an hour earlier, ask the person who made it once, before applying it",
+        "the checks to try themselves, every item touching a HOLD category or `guarded` setting first",
+        "the decisions made for them, each with how to undo it",
+        "Mark test data as test data",
+    ] {
+        assert!(rules.contains(p), "core-rules.md must say `{p}`");
+    }
+    let reduced = &agent[agent
+        .find("## Without the `moai` command")
+        .expect("reduced-mode section")..];
+    let reduced = &reduced[..reduced[3..].find("\n## ").map_or(reduced.len(), |i| i + 3)];
+    for p in [
+        // Audit #2938 B1: the lowest open claim holds even when its lease has expired, as
+        // `claim-verify` judges it (`stale`) — no takeover by time alone.
+        "take the lowest claim comment that no release or handoff line closes — expired or not — and write only when it is yours and its lease is live",
+        "An expired holder stays the holder, as `claim-verify` judges it `stale`: never take the card over by time alone",
+        "When the read fails, is paged short or the order of the claims cannot be read, write nothing",
+        "kind=claim owner=leader",
+        "are reported `not_run` with the substitute, never as passed",
+    ] {
+        assert!(reduced.contains(p), "reduced mode must say `{p}`:\n{reduced}");
+    }
+}

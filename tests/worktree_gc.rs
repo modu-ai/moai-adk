@@ -405,3 +405,21 @@ fn an_unknown_integration_ref_is_refused() {
     assert_eq!(v["ok"], false, "{v}");
     assert!(v.to_string().contains("integration ref not found"), "{v}");
 }
+
+/// `--now-unix` is a test seam: it works but stays out of the help, as it did before the
+/// two commands left `src/main.rs` for `src/ops/` (#2834 R2c).
+#[test]
+fn the_clock_seam_is_hidden_from_help() {
+    let home = tempfile::tempdir().unwrap();
+    for word in ["worktree-gc-plan", "worktree-gc-apply"] {
+        let out = Command::new(BIN)
+            .args([word, "--help"])
+            .env("HOME", home.path())
+            .output()
+            .unwrap();
+        let help = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success(), "{word}: {help}");
+        assert!(help.contains("--integration-ref"), "{word}: {help}");
+        assert!(!help.contains("--now-unix"), "{word}: {help}");
+    }
+}
