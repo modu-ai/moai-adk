@@ -30,7 +30,6 @@ pub const GROUPS: &[Group] = &[
         heading: "Project",
         heading_ko: "프로젝트",
         commands: &[
-            ("init", false),
             ("project-detect", true),
             ("project-plan", true),
             ("project-apply", true),
@@ -250,7 +249,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
     ("glm", &["glm -a"]),
-    ("init", &["init", "init --new demo", "init --new demo --dry-run"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -1178,14 +1176,6 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          함께 와요.",
     ),
     (
-        "init",
-        "`--new` 이 없으면 지금 폴더를, 첫 `cc|glm|codex` 실행과 똑같이 초기화해요(필요하면 `git \
-         init`, 표식이 붙은 프로젝트 설정, `AGENTS.md`. 있는 파일은 절대 건드리지 않고, HOME 자체와 \
-         파일 시스템 루트는 거절). `--new <name>` 이면 `<HOME>/.moai/projects/<name>/` 을 만들고 같은 \
-         방식으로 초기화해요(HOME 은 `$HOME`, Windows 는 `%USERPROFILE%`). 이미 있는 이름, 안전한 \
-         경로 한 칸이 아닌 이름, 심볼릭 링크인 `~/.moai`·`~/.moai/projects` 는 쓰기 전에 거절해요.",
-    ),
-    (
         "generation-plan",
         "프로젝트 맞춤 생성 파일을 읽기만 하고 계획해요(03-C #1997): typed 요청은 stdin, 판정 봉투는 \
          stdout. 아무것도 쓰지 않아요.",
@@ -1411,7 +1401,6 @@ const MORE_ABOUT_KO: &[(&str, &str)] = &[
     ("cc", "Claude Code 세션 시작"),
     ("codex", "Codex CLI 세션 시작"),
     ("glm", "z.ai GLM 으로 Claude Code 세션 시작"),
-    ("init", "이 폴더나 새 프로젝트 초기화"),
     ("agents-plan", "AGENTS.md 관리 구간 미리 보기"),
     ("agents-apply", "미리 본 AGENTS.md 관리 구간 쓰기"),
     (
@@ -1511,21 +1500,6 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("parity-check", "template", "템플릿 트리"),
     ("parity-check", "generated", "템플릿과 비교할 생성 트리"),
     ("parity-check", "doc", "선택 셋째 묶음: 문서로 적은 트리"),
-    (
-        "init",
-        "new",
-        "`<HOME>/.moai/projects/<name>/` 을 만들고 초기화",
-    ),
-    (
-        "init",
-        "host",
-        "기본 프로젝트 설정이 이름 댈 호스트: `claude`(기본)·`codex`·`glm`",
-    ),
-    (
-        "init",
-        "dry_run",
-        "만들 것을 알려 주기만 하고 아무것도 쓰지 않기",
-    ),
     (
         "claude-settings-plan",
         "scope",
@@ -2150,8 +2124,8 @@ mod tests {
         assert!(ko.contains("About index-query"), "{ko}");
         assert!(!ko.contains("About project-detect"), "{ko}");
         // S6e-7: a moved command outside the root list and the launchers read Korean here too.
-        assert!(!ko.contains("About init"), "{ko}");
-        assert!(ko.contains("이 폴더나 새 프로젝트 초기화"), "{ko}");
+        assert!(!ko.contains("About agents-plan"), "{ko}");
+        assert!(ko.contains("AGENTS.md 관리 구간 미리 보기"), "{ko}");
         assert!(ko.contains("Claude Code 세션 시작"), "{ko}");
         assert!(!ko.contains("About cc"), "{ko}");
         for g in GROUPS {

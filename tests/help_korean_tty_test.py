@@ -185,19 +185,18 @@ class KoreanHelp(unittest.TestCase):
     def test_the_project_group_outside_the_root_list_reads_korean(self):
         """S6e-7: the Project group's commands that only `help --all` lists, in their own help
         and in the full list."""
-        init = self.help(["init", "--help"], **KOREAN)
-        self.assertIn("`--new` 이 없으면 지금 폴더를", init)
-        self.assertIn("만들 것을 알려 주기만 하고 아무것도 쓰지 않기", init)
-        self.assertIn("[default: claude]", init)
+        plan = self.help(["claude-settings-plan", "--help"], **KOREAN)
+        self.assertIn("관리 키(`outputStyle`·`statusLine`·`permissions`)", plan)
+        self.assertIn("[default: project]", plan)
         settings = self.help(["claude-settings-apply", "--help"], **KOREAN)
         self.assertIn("계획이 만들어진 범위(#2581)", settings)
         self.assertIn("충돌 계획이 내준 `confirm_token`", settings)
         self.assertIn("`claude` 또는 `codex`", self.help(["hooks-apply", "--help"], **KOREAN))
         self.assertIn("프로젝트(기본: 지금 폴더)", self.help(["go-hooks-revert", "--help"], **KOREAN))
         listing = self.help(["help", "--all"], **KOREAN)
-        self.assertIn("이 폴더나 새 프로젝트 초기화", listing)
+        self.assertIn("AGENTS.md 관리 구간 미리 보기", listing)
         self.assertIn("Claude Code 세션 시작", listing)
-        self.assertNotIn("Initialize this folder or a new project", listing)
+        self.assertNotIn("Preview the AGENTS.md managed section", listing)
 
     def test_the_checks_group_reads_korean(self):
         """S6e-8: the Checks group (all outside the root list), per-command argument lines."""
