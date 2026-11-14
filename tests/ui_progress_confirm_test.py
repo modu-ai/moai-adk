@@ -135,6 +135,15 @@ class KeyRemovePrompt(unittest.TestCase):
         flag, _, _ = run_pipe(["key-remove", "glm", "--shared", "--yes"], self.env, self.cwd)
         self.assertEqual(out, flag, "an interactive yes answers like --yes, byte for byte")
 
+    def test_key_set_refuses_a_terminal_stdin(self):
+        # The command left src/main.rs for src/ops/ (#2834 R3); a typed value would be echoed.
+        out, term, code = run_tty(["key-set", "glm", "--shared"], self.env, self.cwd)
+        self.assertEqual(code, 1, term)
+        self.assertEqual(json.loads(out)["error"]["message"],
+                         "key-set reads the value from stdin and refuses a terminal (the value "
+                         "would be echoed); pipe it in instead")
+        self.assertFalse(os.path.exists(os.path.join(self.home, ".moai-cli", "vault")))
+
     def test_nothing_to_remove_asks_nothing(self):
         out, term, code = run_tty(["key-remove", "glm", "--shared"], self.env, self.cwd,
                                   answer=b"y\n")
