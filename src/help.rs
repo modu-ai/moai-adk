@@ -417,7 +417,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "key-remove",
         "yes",
-        "Remove the key; without it only report what would go",
+        "Remove without asking; without it a preview, or one question on a terminal",
     ),
     (
         "migrate-apply",
@@ -539,7 +539,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "worktree-apply",
         "path",
-        "Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`",
+        "Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`",
     ),
     (
         "worktree-gc-apply",
@@ -608,7 +608,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "decision-record",
         "run",
-        "Run id; the record goes to `.moai-cli/decisions/<RUN>.jsonl`",
+        "Run id; the record goes to `decisions/<RUN>.jsonl` in the project state folder",
     ),
     ("audit-clone-plan", "pr", "Pull request number"),
     ("audit-clone-plan", "head_branch", "Branch of the PR head"),
