@@ -1,13 +1,12 @@
-"""Korean human output on a terminal (CLI design S6b and S6c, Issue #2825; design
-`docs/design-review/cli-s6-korean-2026-11-14.md` §6, leader decision 6870716572).
+"""The terminal speaks English whatever the language settings say (Issue #2825 R1, user
+decision 6878265192: the CLI's human output is English only; the user's language belongs to the
+LLM session).
 
-The S4 summary, the S5 progress lines, the `key-remove` confirm screen (S6b) and the S3 error
-frame (S6c) are compared with per-language goldens under `tests/fixtures/ui/{en,ko}/`. The
-English goldens were captured from the binary before each card, so an equal English run means
-the English bytes did not change. A
-stream that is not a terminal stays English whatever the language settings say (S6-2), and
-the stdout envelope is the same bytes on a pipe, on an English terminal and on a Korean one
-(D3). POSIX only (the `pty` module); the binary is the one `self_audit_run.rust_bin` finds.
+The S4 summary, the S5 progress lines, the `key-remove` confirm screen and the S3 error frame
+are compared with the English goldens under `tests/fixtures/ui/en/`, with `MOAI_LANG=ko`, a
+Korean locale and a profile `user_chat: ko` as well: every run gives the English bytes, on a
+terminal and on a pipe, and the stdout envelope is the same bytes. POSIX only (the `pty`
+module); the binary is the one `self_audit_run.rust_bin` finds.
 """
 
 import json
@@ -115,20 +114,19 @@ class KoreanTerminal(unittest.TestCase):
         _, err = self.summary()
         self.assertEqual(err, golden("en", "home-routing-plan"))
 
-    def test_moai_lang_ko_gives_the_korean_summary_and_the_same_envelope(self):
+    def test_moai_lang_ko_keeps_the_english_summary_and_envelope(self):
         en_out, _ = self.summary()
         ko_out, err = self.summary(**KOREAN)
-        self.assertEqual(err, golden("ko", "home-routing-plan"))
+        self.assertEqual(err, golden("en", "home-routing-plan"))
         self.assertEqual(ko_out, en_out, "the stdout envelope does not follow the language")
 
-    def test_the_locale_chooses_korean_when_nothing_else_does(self):
-        _, err = self.summary(LANG="ko_KR.UTF-8")
-        self.assertEqual(err, golden("ko", "home-routing-plan"))
-        # MOAI_LANG beats the locale.
-        _, err = self.summary(LANG="ko_KR.UTF-8", MOAI_LANG="en")
-        self.assertEqual(err, golden("en", "home-routing-plan"))
+    def test_a_korean_locale_keeps_the_english_summary(self):
+        for extra in ({"LANG": "ko_KR.UTF-8"}, {"LC_ALL": "ko_KR.UTF-8"},
+                      {"LC_MESSAGES": "ko_KR.UTF-8"}):
+            _, err = self.summary(**extra)
+            self.assertEqual(err, golden("en", "home-routing-plan"), extra)
 
-    def test_the_project_profile_chooses_korean(self):
+    def test_a_korean_project_profile_keeps_the_english_summary(self):
         project = os.path.join(self.tmp.name, "proj")
         os.makedirs(project)
         # The first `moai cc` in a folder prepares it (#2935 L3: `moai init` is gone); a stand-in
@@ -151,7 +149,7 @@ class KoreanTerminal(unittest.TestCase):
             json.dump(profile, f)
         out, err, code = capture_summary(self.home, cwd=project)
         self.assertEqual(code, 0, out)
-        self.assertEqual(normal(ESC.sub("", err), self.home), golden("ko", "home-routing-plan"))
+        self.assertEqual(normal(ESC.sub("", err), self.home), golden("en", "home-routing-plan"))
 
     def test_a_pipe_stays_english_whatever_the_language_says(self):
         tty_out, _ = self.summary()
@@ -161,24 +159,18 @@ class KoreanTerminal(unittest.TestCase):
             self.assertEqual(err, "", f"{extra}: nothing human on a pipe")
             self.assertEqual(out, tty_out, f"{extra}: the same envelope bytes")
 
-    def test_korean_lines_fit_sixty_cells(self):
-        _, err = self.summary(**KOREAN)
-        for line in err.splitlines():
-            if line.strip().startswith("--plan-digest"):
-                continue  # copied whole, never cut (the S4 rule)
-            self.assertLessEqual(cells(line), 60, line)
-
-    def test_plain_output_keeps_the_language(self):
+    def test_plain_output_under_a_korean_setting_is_english(self):
         _, err = self.summary(MOAI_OUTPUT="plain", **KOREAN)
         self.assertNotIn("\x1b", err)
-        self.assertIn("동작", err)
-        self.assertIn("-> 다음:", err)
+        self.assertIn("ACTION", err)
+        self.assertIn("-> next:", err)
+        self.assertFalse(any("가" <= c <= "힣" for c in err), err)
 
-    def test_the_key_remove_screen_in_english_and_korean(self):
+    def test_the_key_remove_screen_is_english_under_a_korean_setting(self):
         out, term = capture_key_refusal(self.home, self.work)
         self.assertEqual(normal(term, self.home), golden("en", "key-remove-refused"))
         out_ko, term_ko = capture_key_refusal(self.home, self.work, **KOREAN)
-        self.assertEqual(normal(term_ko, self.home), golden("ko", "key-remove-refused"))
+        self.assertEqual(normal(term_ko, self.home), golden("en", "key-remove-refused"))
         self.assertEqual(out_ko, out, "the refusal answers with the same envelope")
         # The key is still there (both answers were no): a pipe never asks, in any language,
         # and answers with the same preview envelope.
@@ -191,20 +183,18 @@ class KoreanTerminal(unittest.TestCase):
         self.assertEqual(piped, out)
         # `MOAI_OUTPUT=quiet` still asks (without it the answer is no), in the same language.
         _, quiet = capture_key_refusal(self.home, self.work, MOAI_OUTPUT="quiet", **KOREAN)
-        self.assertEqual(normal(quiet, self.home), golden("ko", "key-remove-refused"))
+        self.assertEqual(normal(quiet, self.home), golden("en", "key-remove-refused"))
 
-    def test_the_index_stages_in_english_and_korean(self):
+    def test_the_index_stages_are_english_under_a_korean_setting(self):
         a = git_project(self.tmp.name, self.home, "a")
         self.assertEqual(capture_index_stages(a, self.home), golden("en", "index-build-stages"))
         b = git_project(self.tmp.name, self.home, "b")
         self.assertEqual(capture_index_stages(b, self.home, **KOREAN),
-                         golden("ko", "index-build-stages"))
+                         golden("en", "index-build-stages"))
 
 
-# S6c (#2825, design 5 and 8): the S3 error frame. The frame's labels and next step follow the
-# terminal's language; a usage error's first line is our sentence on a Korean terminal (clap's
-# missing-argument names stay, nothing the user typed is put in); an operation error's message
-# is the envelope's `error.message` and stays English.
+# The S3 error frame: English labels, clap's first line and the English next step under every
+# language setting (R1, user decision 6878265192).
 ERROR_CASES = {
     "usage-missing": ["project-plan"],
     "usage-unknown": ["project-plan", "--nope", "{proj}"],
@@ -264,17 +254,13 @@ class KoreanErrorFrame(unittest.TestCase):
             _, _, err = self.frame(name)
             self.assertEqual(err, golden("en", f"error-{name}"), name)
 
-    def test_korean_frames_and_the_same_envelope(self):
-        for name in ERROR_CASES:
-            code_en, out_en, _ = self.frame(name)
-            code_ko, out_ko, err = self.frame(name, **KOREAN)
-            self.assertEqual(err, golden("ko", f"error-{name}"), name)
-            self.assertEqual((code_ko, out_ko), (code_en, out_en), f"{name}: same exit, envelope")
-        # The typed argument never reaches a Korean frame.
-        _, _, err = self.frame("usage-unknown", **KOREAN)
-        self.assertNotIn("--nope", err)
-        _, _, err = self.frame("usage-invalid", **KOREAN)
-        self.assertNotIn("bogus", err)
+    def test_a_korean_setting_keeps_the_english_frames_and_envelope(self):
+        for extra in (KOREAN, {"LANG": "ko_KR.UTF-8"}):
+            for name in ERROR_CASES:
+                code_en, out_en, _ = self.frame(name)
+                code_ko, out_ko, err = self.frame(name, **extra)
+                self.assertEqual(err, golden("en", f"error-{name}"), (name, extra))
+                self.assertEqual((code_ko, out_ko), (code_en, out_en), f"{name}: same exit, envelope")
 
     def test_a_pipe_keeps_the_english_bytes_in_any_language(self):
         for name in ERROR_CASES:
@@ -303,7 +289,7 @@ class KoreanErrorFrame(unittest.TestCase):
                 os.environ["MOAI_CLI_BIN"] = old
         self.assertNotIn("\x1b]", err)
         self.assertNotIn("\x07", err)
-        self.assertIn("`mo\\x1b]0;T\\x07ai project-plan --help` 로 인자를 확인하세요", err)
+        self.assertIn("run `mo\\x1b]0;T\\x07ai project-plan --help` to see its arguments", err)
 
 
 if __name__ == "__main__":
