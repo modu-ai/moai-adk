@@ -77,6 +77,7 @@ pub mod leader;
 pub mod local_build;
 pub mod message;
 pub mod migrate;
+pub mod move_journal;
 pub mod ontology;
 pub mod optimize;
 pub mod parity;
