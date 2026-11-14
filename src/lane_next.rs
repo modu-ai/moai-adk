@@ -671,7 +671,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
         };
         if let Some((issue, comment)) = body_claim(p["body"].as_str().unwrap_or("")) {
             pr.claim_issue = Some(issue);
-            if !claim_lane.contains_key(&comment) {
+            if let std::collections::btree_map::Entry::Vacant(slot) = claim_lane.entry(comment) {
                 let lane = match crate::gate_collect::get_json(
                     &t,
                     &format!("{base}/issues/comments/{comment}"),
@@ -689,7 +689,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
                         None
                     }
                 };
-                claim_lane.insert(comment, lane);
+                slot.insert(lane);
             }
             pr.author_lane = claim_lane[&comment].clone();
         }
