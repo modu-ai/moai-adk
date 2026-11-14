@@ -113,7 +113,8 @@ fn creates_the_file_when_missing_and_never_writes_trust() {
     let plan = apply(&f, &all_managed());
     assert_eq!(plan["action"], "create");
     assert_eq!(plan["trust"]["writes"], false);
-    assert!(plan["status_line_unverified"]["reason"].is_string());
+    // #2928 S-5: both items are Codex 0.169.0 identifiers, so nothing is unverified.
+    assert!(plan["status_line_unverified"]["reason"].is_null());
     let text = read(&f);
     assert!(!text.contains("trust"), "{text}");
     assert!(!text.contains("projects"), "{text}");
@@ -386,4 +387,269 @@ fn refuses_a_symlinked_codex_directory() {
     std::os::unix::fs::symlink(f.home.as_path(), f.project.join(".codex")).unwrap();
     let err = config_plan(&f.project, &f.home, &all_managed()).unwrap_err();
     assert!(err.contains("symlink"), "{err}");
+}
+
+// ---- #2928 S-5: Codex status line in Claude Code order -------------------------------------
+
+/// The `moai` preset, literal: the Claude Code status-line elements Codex 0.169.0 can show,
+/// in Claude Code order (Issue #2928 comment 6877416640).
+const MOAI_PRESET: [&str; 10] = [
+    "model",
+    "reasoning",
+    "codex-version",
+    "project-name",
+    "pull-request-number",
+    "git-branch",
+    "branch-changes",
+    "thread-name",
+    "context-remaining",
+    "weekly-limit",
+];
+
+/// Every identifier Codex 0.169.0 parses, aliases included, literal (openai/codex
+/// rust-v0.169.0 a41fe5b443652cbdbee57717fbb9fd78d8d8b32a,
+/// codex-rs/tui/src/bottom_pane/status_line_setup.rs:57-169).
+const CODEX_0169_IDS: [&str; 41] = [
+    "model",
+    "model-name",
+    "model-with-reasoning",
+    "reasoning",
+    "current-dir",
+    "project-name",
+    "project",
+    "project-root",
+    "hostname",
+    "git-branch",
+    "pull-request-number",
+    "branch-changes",
+    "run-state",
+    "status",
+    "permissions",
+    "approval-mode",
+    "approval",
+    "context-remaining",
+    "context-used",
+    "context-usage",
+    "five-hour-limit",
+    "weekly-limit",
+    "codex-version",
+    "context-window-size",
+    "used-tokens",
+    "total-input-tokens",
+    "total-output-tokens",
+    "thread-credits",
+    "estimated-thread-cost",
+    "thread-id",
+    "session-id",
+    "fast-mode",
+    "daybreak",
+    "raw-output",
+    "thread-name",
+    "thread-title",
+    "workspace-headline",
+    "task-progress",
+    "profile",
+    "provider",
+    "model-provider",
+];
+
+const USER_STATUS: &str = r#"# my codex settings
+model = "gpt-6"  # keep me
+
+[tui]
+# footer
+theme = "dark"
+status_line = ["model", "current-dir"]  # mine
+
+[mcp_servers.docs]
+command = "docs-mcp"
+"#;
+
+fn preset_line() -> String {
+    let quoted: Vec<String> = MOAI_PRESET.iter().map(|s| format!("\"{s}\"")).collect();
+    format!("status_line = [{}]", quoted.join(", "))
+}
+
+/// Every path under `dir` with its bytes, for a before/after comparison of a whole tree.
+fn tree(dir: &std::path::Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for entry in fs::read_dir(&d).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                out.push((path.clone(), Vec::new()));
+                stack.push(path);
+            } else {
+                out.push((path.clone(), fs::read(&path).unwrap()));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+fn receipt(f: &Fixture) -> Value {
+    serde_json::from_slice(
+        &fs::read(f.project.join(".moai-cli/manifests/codex-config.json")).unwrap(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn moai_preset_resolves_to_the_claude_code_order() {
+    let f = fixture(None);
+    let want = desired(json!({"tui.status_line": "moai"}));
+    let plan = apply(&f, &want);
+    assert_eq!(plan["status_line"]["preset"], "moai");
+    assert_eq!(plan["status_line"]["after"], json!(MOAI_PRESET));
+    assert_eq!(plan["status_line"]["before"], Value::Null);
+    let doc: toml_edit::DocumentMut = read(&f).parse().unwrap();
+    let written: Vec<&str> = doc["tui"]["status_line"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(written, MOAI_PRESET);
+    // The same request again is unchanged; an explicit list still works beside the preset.
+    assert_eq!(
+        config_plan(&f.project, &f.home, &want).unwrap()["action"],
+        "unchanged"
+    );
+    let explicit = desired(json!({"tui.status_line": ["model", "git-branch"]}));
+    let plan = apply(&f, &explicit);
+    assert_eq!(plan["status_line"]["preset"], Value::Null);
+    assert_eq!(plan["status_line"]["before"], json!(MOAI_PRESET));
+    assert!(read(&f).contains("status_line = [\"model\", \"git-branch\"]"));
+    // An unknown preset name is refused, and so is a near miss.
+    for name in ["Moai", "moai ", "claude-code", ""] {
+        let err = config_plan(
+            &f.project,
+            &f.home,
+            &desired(json!({"tui.status_line": name})),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err, "invalid codex config value for tui.status_line",
+            "{name:?}"
+        );
+    }
+}
+
+#[test]
+fn plan_with_the_preset_writes_nothing() {
+    for (text, action, before) in [
+        (USER_CONFIG, "update", Value::Null),
+        (USER_STATUS, "conflict", json!(["model", "current-dir"])),
+    ] {
+        let f = fixture(Some(text));
+        let root = f.project.parent().unwrap().to_path_buf();
+        let tree_before = tree(&root);
+        let want = desired(json!({"tui.status_line": "moai"}));
+        let plan = config_plan(&f.project, &f.home, &want).unwrap();
+        assert_eq!(plan["action"], action);
+        assert_eq!(plan["writes"], false);
+        assert_eq!(plan["status_line"]["before"], before);
+        // A conflict writes nothing, so the list after is the list before.
+        let after = if action == "conflict" {
+            before
+        } else {
+            json!(MOAI_PRESET)
+        };
+        assert_eq!(plan["status_line"]["after"], after);
+        assert_eq!(tree(&root), tree_before);
+    }
+}
+
+#[test]
+fn apply_changes_only_the_status_line_line() {
+    let f = fixture(Some(USER_CONFIG));
+    apply(&f, &desired(json!({"tui.status_line": "moai"})));
+    let expected = USER_CONFIG.replace(
+        "theme = \"dark\"\n",
+        &format!("theme = \"dark\"\n{}\n", preset_line()),
+    );
+    assert_ne!(expected, USER_CONFIG);
+    assert_eq!(read(&f), expected);
+    assert_eq!(receipt(&f)["owned"]["tui.status_line"], json!(MOAI_PRESET));
+
+    // The user's own list is theirs: a conflict, nothing written, the bytes kept.
+    let g = fixture(Some(USER_STATUS));
+    let want = desired(json!({"tui.status_line": "moai"}));
+    let plan = config_plan(&g.project, &g.home, &want).unwrap();
+    let digest = plan["plan_digest"].as_str().unwrap();
+    let err = config_apply(&g.project, &g.home, &want, digest, "p").unwrap_err();
+    assert!(err.starts_with("conflict in .codex/config.toml"), "{err}");
+    assert_eq!(read(&g), USER_STATUS);
+}
+
+#[test]
+fn dropping_the_preset_restores_the_original_bytes() {
+    let g = fixture(Some(USER_CONFIG));
+    apply(&g, &desired(json!({"tui.status_line": "moai"})));
+    assert_ne!(read(&g), USER_CONFIG);
+    // Through an explicit list and back, then out: the receipt-owned key is removed.
+    apply(&g, &desired(json!({"tui.status_line": ["model"]})));
+    let plan = apply(&g, &Map::new());
+    assert_eq!(plan["status_line"]["before"], json!(["model"]));
+    assert_eq!(plan["status_line"]["after"], Value::Null);
+    assert_eq!(
+        fs::read(g.project.join(".codex/config.toml")).unwrap(),
+        USER_CONFIG.as_bytes()
+    );
+    assert_eq!(receipt(&g)["owned"], json!({}));
+}
+
+#[test]
+fn known_ids_are_not_flagged_and_unknown_ids_are_reported() {
+    let f = fixture(None);
+    // Every 0.169.0 identifier and alias is known (two requests: the list bound is 32).
+    for chunk in CODEX_0169_IDS.chunks(21) {
+        let want = desired(json!({ "tui.status_line": chunk }));
+        let plan = config_plan(&f.project, &f.home, &want).unwrap();
+        assert_eq!(plan["status_line_unverified"]["items"], json!([]), "{plan}");
+        assert_eq!(plan["status_line_unverified"]["reason"], Value::Null);
+        let items = plan["status_line"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), chunk.len());
+        for item in items {
+            assert_eq!(item["status"], "known", "{item}");
+        }
+    }
+    // The picker's colour toggle is not a status-line item, and near misses are unknown.
+    let asked = [
+        "model",
+        "moai-version",
+        "status-line-use-theme-colors",
+        "Model",
+        "git_branch",
+    ];
+    let plan = apply(&f, &desired(json!({ "tui.status_line": asked })));
+    assert_eq!(
+        plan["status_line"]["items"],
+        json!([
+            {"id": "model", "status": "known"},
+            {"id": "moai-version", "status": "unknown_item"},
+            {"id": "status-line-use-theme-colors", "status": "unknown_item"},
+            {"id": "Model", "status": "unknown_item"},
+            {"id": "git_branch", "status": "unknown_item"},
+        ])
+    );
+    assert_eq!(
+        plan["status_line_unverified"]["items"],
+        json!([
+            "moai-version",
+            "status-line-use-theme-colors",
+            "Model",
+            "git_branch"
+        ])
+    );
+    assert!(plan["status_line_unverified"]["reason"]
+        .as_str()
+        .unwrap()
+        .contains("a41fe5b443652cbdbee57717fbb9fd78d8d8b32a"));
+    // Written as given, nothing silently dropped.
+    let doc: toml_edit::DocumentMut = read(&f).parse().unwrap();
+    let written = doc["tui"]["status_line"].as_array().unwrap();
+    assert_eq!(written.len(), asked.len());
 }
