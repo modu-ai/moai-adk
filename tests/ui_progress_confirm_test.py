@@ -70,6 +70,10 @@ def run_tty(args, env, cwd, answer=None, stdin_tty=True, stdin_text=None):
                     answered = True
             elif proc.poll() is not None:
                 break
+        if proc.poll() is None:
+            # Past the deadline a child still waiting (e.g. on terminal input) fails the test
+            # instead of hanging it (#2834 R3: a key-set that read the terminal hung here).
+            proc.kill()
         out = proc.stdout.read().decode()
         proc.wait(timeout=60)
     finally:
