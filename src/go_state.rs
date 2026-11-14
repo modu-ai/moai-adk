@@ -2058,6 +2058,36 @@ fn make_dirs_with(project: &Path, rel: &str, private: bool) -> Result<()> {
     Ok(())
 }
 
+/// [`make_dirs`] for a restore (#2966 F3): `to_dir` is under the new `.moai/`, `from_dir` is the
+/// same folder in the Go backup, with as many components. A folder that has to be created is
+/// 0700 when the folder it comes from has no group or other bits, and an ordinary one
+/// otherwise; a folder that exists is left as it is.
+fn make_dirs_like(project: &Path, to_dir: &str, from_dir: &str) -> Result<()> {
+    let from: Vec<_> = Path::new(from_dir).components().collect();
+    let mut cur = project.to_path_buf();
+    let mut src = project.to_path_buf();
+    for (i, part) in Path::new(to_dir).components().enumerate() {
+        cur.push(part);
+        if let Some(s) = from.get(i) {
+            src.push(s);
+        }
+        match fs::symlink_metadata(&cur) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Err(format!("{to_dir}: a path component is a symlink; refused"))
+            }
+            Ok(m) if m.is_dir() => {}
+            Ok(_) => return Err(format!("{to_dir}: a path component is not a folder")),
+            Err(_) => {
+                let private = from.len() == Path::new(to_dir).components().count()
+                    && mode_bits(&src).is_some_and(|m| m & 0o077 == 0);
+                create_dir_with(&cur, private)
+                    .map_err(|_| format!("{to_dir}: folder create failed"))?
+            }
+        }
+    }
+    Ok(())
+}
+
 /// `.moai/backups/.gitignore` holding `*`: nothing under the backup area is ever offered to
 /// git, whose copies may hold tokens. An existing file is left as it is.
 fn keep_backups_out_of_git(project: &Path) -> Result<()> {
@@ -2354,7 +2384,7 @@ fn apply_moving_folder(
                 r.from
             ));
         }
-        make_dirs(project, &parent_of(&r.to)?)?;
+        make_dirs_like(project, &parent_of(&r.to)?, &parent_of(&src_rel)?)?;
         // The restored copy keeps the mode of the file in the Go backup.
         let mode = mode_bits(&project.join(&src_rel));
         crate::apply::publish_exclusive_mode(&project.join(&r.to), &bytes, mode)?;
@@ -2365,7 +2395,9 @@ fn apply_moving_folder(
         saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     }
     // 6. The root instruction files move into `root-files/` (O4); the local settings stay
-    //    and a copy goes there (O3).
+    //    and a copy goes there (O3). The ignore file of the backup area was written in step 2,
+    //    before anything that may hold a token (test seam: a stop right here).
+    crate::update::test_fault("go_state_before_root_files")?;
     for f in fresh.root_files.iter().filter(|f| f.action != "leave") {
         refuse_linked(project, &f.path)?;
         match fs::symlink_metadata(project.join(&f.path)) {
