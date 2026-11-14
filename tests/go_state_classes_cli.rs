@@ -1542,12 +1542,7 @@ fn the_project_workflow_says_the_root_instruction_files_are_moved() {
 /// the move of the root instruction files, not the copy they replaced.
 #[test]
 fn the_product_path_rows_describe_the_move_of_the_root_files() {
-    let doc = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("docs")
-            .join("rust-product-path.md"),
-    )
-    .unwrap();
+    let doc = include_str!("../docs/rust-product-path.md");
     let row = |name: &str| {
         doc.lines()
             .find(|l| l.starts_with(&format!("| `{name}` ")))
