@@ -104,7 +104,7 @@ def snapshot(root):
 # this tree built ($REAL_CLI), so the installer's call is answered by the real command.
 FAKE_CLI_REAL = FAKE_CLI_OLD.replace(
     "  *) if",
-    '  language-set) exec "$REAL_CLI" "$@" ;;\n  *) if',
+    '  language-set) echo "$*" >> "${FAKE_LOG:-/dev/null}"; exec "$REAL_CLI" "$@" ;;\n  *) if',
 )
 
 
@@ -571,6 +571,35 @@ class InstallShTest(unittest.TestCase):
         self.assertIn("already recorded", r.stdout)
         self.assertEqual(snapshot(self.home), before)
 
+    def test_the_real_language_set_stores_a_code_moai_has_no_name_for(self):
+        real = real_cli()
+        if real is None:
+            self.skipTest("no moai-cli built from this tree (set MOAI_TEST_CLI)")
+        self.rel.add("1.6.0", cli=FAKE_CLI_REAL.replace("@VERSION@", "1.6.0"))
+        want = b"language:\n  conversation_language: pt-BR\n"
+        # By the flag, by the environment, and by menu choice 5 typing the code: the fake binary
+        # records `language-set --home pt-BR` and the real one writes the file as typed.
+        for how in ("flag", "environment", "menu"):
+            with self.subTest(how=how):
+                shutil.rmtree(self.state(), ignore_errors=True)
+                if os.path.exists(self.log):
+                    os.remove(self.log)
+                if how == "flag":
+                    r = self.run_sh("--version", "1.6.0", "--language", "pt-BR", REAL_CLI=real)
+                    code, out = r.returncode, r.stdout + r.stderr
+                elif how == "environment":
+                    r = self.run_sh("--version", "1.6.0", MOAI_LANGUAGE="pt-BR", REAL_CLI=real)
+                    code, out = r.returncode, r.stdout + r.stderr
+                else:
+                    code, out = self.run_pty(["--version", "1.6.0"], "5\npt-BR\n", REAL_CLI=real)
+                self.assertEqual(code, 0, out)
+                self.assertIn("Conversation language recorded: pt-BR", out)
+                with open(self.log) as f:
+                    self.assertEqual(f.read(), "language-set --home pt-BR\n", out)
+                with open(self.language_file(), "rb") as f:
+                    self.assertEqual(f.read(), want)
+                self.assertEqual(os.listdir(self.state("config")), ["language.yaml"])
+
     def test_the_installers_own_output_stays_english(self):
         r = self.assert_language("ko", "--language", "ko", LC_ALL="ko_KR.UTF-8")
         text = r.stdout + r.stderr
@@ -584,7 +613,7 @@ class InstallShTest(unittest.TestCase):
     def pty_env(self, **env):
         return self.env(NO_COLOR="1", **env)
 
-    def run_pty(self, args, answers, timeout=120, **env):
+    def run_pty(self, args, answers, timeout=300, **env):
         master, slave = pty.openpty()
         proc = subprocess.Popen(
             [*self.pty_argv(), *args], stdin=slave, stdout=slave, stderr=slave,

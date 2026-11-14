@@ -220,41 +220,76 @@ fn a_dangling_state_folder_link_creates_nothing() {
     assert!(!h.join("nowhere").exists());
 }
 
-/// The accepted codes are exactly `language::CODES`: the last passing value (N) and the first
-/// failing neighbour (N+1) of each, and the empty case. Rejected codes exit 2 and leave the
-/// whole tree as it was.
+/// The longest code (35 bytes) and the first too long (36).
+fn longest() -> String {
+    format!("ko{}-abcde", "-abcdefgh".repeat(3))
+}
+
+/// Any language-code-shaped text is stored, exactly as given: the grammar's last passing value
+/// at each edge (2 and 3 letters, a 2- and an 8-character group, 35 bytes in all) and the
+/// codes MoAI has names for. The file holds the two lines and nothing else.
 #[test]
-fn only_the_accepted_codes_pass_and_a_bad_one_changes_nothing() {
-    for code in ["en", "ko", "ja", "zh"] {
+fn a_code_of_the_right_shape_is_stored_exactly_as_given() {
+    let longest = longest();
+    assert_eq!(longest.len(), 35);
+    for code in [
+        "en",
+        "ko",
+        "ja",
+        "zh",
+        "fr",
+        "kor",
+        "KO",
+        "pt-BR",
+        "es-419",
+        "ko-ab",
+        "ko-abcdefgh",
+        "zh-Hant-TW",
+        longest.as_str(),
+    ] {
         let (_d, h) = home_with_state();
         let (status, json) = set(&h, code);
         assert_eq!(status, 0, "{code}: {json}");
-        assert_eq!(result(&json)["written"], json!(true), "{code}");
+        let r = result(&json);
+        assert_eq!(r["written"], json!(true), "{code}");
+        assert_eq!(r["code"], json!(code));
+        assert_eq!(
+            fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+            format!("language:\n  conversation_language: {code}\n").into_bytes(),
+            "{code}: written as given"
+        );
     }
+}
+
+/// The first value past each edge is a usage error (exit 2) and the whole tree stays as it was:
+/// one letter, four letters, a trailing or doubled `-`, a one- or nine-character group, 36
+/// bytes in all, and anything outside ASCII letters, digits and `-`.
+#[test]
+fn a_code_of_the_wrong_shape_changes_nothing() {
+    let too_long = format!("{}f", longest());
+    assert_eq!(too_long.len(), 36);
     let bad = [
         "",
         "e",
         "k",
-        "z",
-        "eng",
-        "kor",
-        "jpn",
-        "zho",
-        "EN",
-        "Ko",
-        "kO",
-        "JA",
-        "ZH",
-        "xx",
-        "fr",
-        "ko-KR",
+        "abcd",
+        "ko-",
+        "-ko",
+        "ko--KR",
+        "ko-a",
+        "ko-abcdefghi",
+        "ko_KR",
         "ko_",
         "ko ",
         " ko",
         "ko\n",
+        "ko\t",
+        "ko'",
+        "ko\"",
         "ko\0",
         "k\u{6f}\u{301}",
         "한",
+        "ko-한국",
         "../ko",
         "ko/../..",
         "ko;",
@@ -262,6 +297,7 @@ fn only_the_accepted_codes_pass_and_a_bad_one_changes_nothing() {
         "~",
         "-",
         "--home",
+        too_long.as_str(),
     ];
     for code in bad {
         let (_d, h) = home_with_state();
@@ -458,6 +494,31 @@ fn the_home_value_beats_the_go_backup() {
     // Without a HOME value the Go backup still applies, as before.
     let (_e, empty) = home_with_state();
     assert_eq!(conversation(&empty, &root, &[]), "zh");
+}
+
+/// A stored code that is well-formed but is not one MoAI has a name for (`fr`, `pt-BR`, `KO`) is
+/// not used by `language-setup`: no panic, and it falls through to the next source, the Go
+/// backup's value, and then `en`.
+#[test]
+fn a_stored_code_without_a_name_falls_through_without_a_panic() {
+    let (_p, none) = project(None);
+    let (_b, backup) = project(None);
+    let sections = backup.join(".moai-backup/config/sections");
+    fs::create_dir_all(&sections).unwrap();
+    fs::write(
+        sections.join("language.yaml"),
+        "language:\n  conversation_language: zh\n",
+    )
+    .unwrap();
+    for code in ["fr", "pt-BR", "es-419", "KO", "kor", "zh-Hant-TW"] {
+        let (_h, h) = home_with_state();
+        let (status, json) = set(&h, code);
+        assert_eq!(status, 0, "{code}: {json}");
+        assert_eq!(conversation(&h, &none, &[]), "en", "{code}: next is en");
+        assert_eq!(conversation(&h, &backup, &[]), "zh", "{code}: next is Go");
+        // The explicit flag still wins over any stored value.
+        assert_eq!(conversation(&h, &none, &["--conversation", "ja"]), "ja");
+    }
 }
 
 /// A missing, garbled, oversized, linked or wrong-typed HOME file silently means `en`.
