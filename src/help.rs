@@ -5,12 +5,15 @@
 //! help is text for people. clap has no way to put subcommands under several headings, so the
 //! root help body is drawn from [`GROUPS`] and handed to clap as the root's help template.
 
+use crate::ui_text::Lang;
 use clap::Command;
 use unicode_width::UnicodeWidthStr;
 
 /// One help group: its heading and its commands, each with whether the root help shows it.
 pub struct Group {
     pub heading: &'static str,
+    /// The heading on a Korean terminal (S6d, #2825).
+    pub heading_ko: &'static str,
     pub commands: &'static [(&'static str, bool)],
 }
 
@@ -20,10 +23,12 @@ pub struct Group {
 pub const GROUPS: &[Group] = &[
     Group {
         heading: "Start",
+        heading_ko: "시작",
         commands: &[("cc", true), ("codex", true), ("glm", true)],
     },
     Group {
         heading: "Project",
+        heading_ko: "프로젝트",
         commands: &[
             ("init", false),
             ("project-detect", true),
@@ -53,6 +58,7 @@ pub const GROUPS: &[Group] = &[
     },
     Group {
         heading: "Update and move",
+        heading_ko: "업데이트와 이동",
         commands: &[
             ("update", true),
             ("go-state-plan", true),
@@ -95,6 +101,7 @@ pub const GROUPS: &[Group] = &[
     },
     Group {
         heading: "Keys",
+        heading_ko: "키",
         commands: &[
             ("key-set", true),
             ("key-status", true),
@@ -105,6 +112,7 @@ pub const GROUPS: &[Group] = &[
     },
     Group {
         heading: "Diagnose",
+        heading_ko: "진단",
         commands: &[
             ("claude-doctor", true),
             ("codex-doctor", true),
@@ -117,6 +125,7 @@ pub const GROUPS: &[Group] = &[
     },
     Group {
         heading: "Lane and leader",
+        heading_ko: "레인과 리더",
         commands: &[
             ("claim-acquire", false),
             ("claim-verify", false),
@@ -170,6 +179,7 @@ pub const GROUPS: &[Group] = &[
     },
     Group {
         heading: "Checks",
+        heading_ko: "검사",
         commands: &[
             ("review-package", false),
             ("review-check", false),
@@ -186,6 +196,7 @@ pub const GROUPS: &[Group] = &[
     },
     Group {
         heading: "Internal",
+        heading_ko: "내부",
         commands: &[
             ("statusline", false),
             ("hook-receipt", false),
@@ -702,6 +713,84 @@ const LAUNCHER_LINE: (&str, &str) = (
     "Start a Claude Code, Codex or GLM session",
 );
 
+/// The Korean one-line about of each command the root help shows (S6d, #2825; design 8). The
+/// other commands keep their English about in `help --all` until S6e moves the command help.
+/// `the_korean_abouts_cover_exactly_the_root_commands` keeps this table in step with [`GROUPS`].
+pub const ABOUT_KO: &[(&str, &str)] = &[
+    ("project-detect", "프로젝트의 사실 알아내기"),
+    ("project-plan", "프로젝트 프로필 미리 보기"),
+    ("project-apply", "미리 본 프로젝트 프로필 쓰기"),
+    ("language-setup", "쓰는 언어를 항목마다 고르기"),
+    ("index-build", "코드 지도 색인 만들기"),
+    ("update", "설치된 패키지로 MoAI 업데이트"),
+    ("go-state-plan", "Go 세대 .moai 폴더 옮기기 미리 보기"),
+    ("go-state-apply", "미리 본 Go 세대 .moai 폴더 옮기기"),
+    (
+        "go-state-revert-plan",
+        "Go 세대 폴더 옮기기 되돌리기 미리 보기",
+    ),
+    ("go-state-revert", "Go 세대 폴더 옮기기 되돌리기"),
+    ("home-state-plan", "Go 세대 ~/.moai 폴더 옮기기 미리 보기"),
+    ("home-state-apply", "미리 본 Go 세대 ~/.moai 폴더 옮기기"),
+    ("home-state-revert", "~/.moai 폴더 옮기기 되돌리기"),
+    ("worktree-move-plan", "이 클론의 worktree 옮기기 미리 보기"),
+    ("worktree-move-apply", "미리 본 worktree 옮기기"),
+    ("key-set", "공급자 키를 금고에 저장"),
+    ("key-status", "공급자 키를 보이지 않고 확인"),
+    ("key-remove", "금고에서 공급자 키 지우기"),
+    ("key-import-plan", "옛 키 파일 가져오기 미리 보기"),
+    ("key-import-apply", "미리 본 옛 키 파일 가져오기"),
+    ("claude-doctor", "Claude Code 가 AGENTS.md 를 읽는지 확인"),
+    ("codex-doctor", "Codex 지침과 스킬 확인"),
+    ("install-inspect", "설치된 MoAI 실행 파일 보기"),
+    ("identity", "경로가 클론 안 어디에 있는지 보기"),
+    ("worktree-report", "worktree 가 쓰는 공간 보고"),
+    ("optimize-plan", "비울 수 있는 공간 미리 보기"),
+    ("baseline-inventory", "체크아웃의 기준 사실 목록"),
+];
+
+/// The launcher line's about on a Korean terminal.
+const LAUNCHER_LINE_KO: &str = "Claude Code·Codex·GLM 세션 시작";
+/// clap's `Usage:` heading on a Korean terminal.
+const USAGE_KO: &str = "사용법:";
+/// clap's `Options:` heading of `help --all` on a Korean terminal.
+const OPTIONS_KO: &str = "옵션:";
+/// The usage's second line ends with what `-l`/`-a` start.
+const LEAD_OR_AGENT: &str = "lead or agent session";
+const LEAD_OR_AGENT_KO: &str = "리더·에이전트 세션";
+
+/// A group's heading in `lang`.
+pub fn heading_in(g: &Group, lang: Lang) -> &'static str {
+    match lang {
+        Lang::En => g.heading,
+        Lang::Ko => g.heading_ko,
+    }
+}
+
+/// The about of a root command on a Korean terminal, when the table has one.
+fn about_ko(word: &str) -> Option<&'static str> {
+    ABOUT_KO.iter().find(|(w, _)| *w == word).map(|(_, t)| *t)
+}
+
+/// The lines under the grouped list: where every command is, and where the details are.
+fn footer(lang: Lang, bin: &str, all: bool) -> String {
+    let (every, details) = match lang {
+        Lang::En => (
+            format!("Run '{bin} help --all' for every command."),
+            format!("Run '{bin} <command> --help' for details and examples."),
+        ),
+        Lang::Ko => (
+            format!("모든 명령 보기: '{bin} help --all'"),
+            format!("자세한 설명과 예시: '{bin} <command> --help'"),
+        ),
+    };
+    if all {
+        details
+    } else {
+        format!("{every}\n{details}")
+    }
+}
+
 /// The group heading of a command word, or `None` for a word in no group.
 pub fn group_of(word: &str) -> Option<&'static str> {
     GROUPS
@@ -746,7 +835,17 @@ fn width() -> usize {
 /// `  name  about` rows under each heading, the about column wrapped to `width` with a hanging
 /// indent; `all` lists every command, otherwise only the root ones (launchers on one line).
 pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
+    render_groups_in(cmd, all, width, Lang::En)
+}
+
+/// [`render_groups`] in `lang`: headings, the launcher line and the root commands' abouts.
+pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> String {
     let about = |word: &str| -> String {
+        if lang == Lang::Ko {
+            if let Some(text) = about_ko(word) {
+                return text.to_string();
+            }
+        }
         cmd.find_subcommand(word)
             .and_then(|s| s.get_about())
             .map(|a| a.to_string())
@@ -761,14 +860,18 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
             }
             if !all && LAUNCHERS.contains(word) {
                 if *word == LAUNCHERS[0] {
-                    list.push((LAUNCHER_LINE.0.to_string(), LAUNCHER_LINE.1.to_string()));
+                    let text = match lang {
+                        Lang::En => LAUNCHER_LINE.1,
+                        Lang::Ko => LAUNCHER_LINE_KO,
+                    };
+                    list.push((LAUNCHER_LINE.0.to_string(), text.to_string()));
                 }
                 continue;
             }
             list.push((word.to_string(), about(word)));
         }
         if !list.is_empty() {
-            rows.push((g.heading, list));
+            rows.push((heading_in(g, lang), list));
         }
     }
     let name_w = rows
@@ -820,21 +923,43 @@ fn wrap(text: &str, indent: usize, width: usize) -> String {
 /// The root command with the people-facing layout: usage and help name the typed `bin`, and the
 /// root help body is the grouped list (`all` for `help --all`).
 pub fn configure(cmd: Command, bin: &'static str, version: &str, all: bool) -> Command {
-    let groups = render_groups(&cmd, all, width());
-    let footer = if all {
-        format!("Run '{bin} <command> --help' for details and examples.")
-    } else {
-        format!(
-            "Run '{bin} help --all' for every command.\n\
-             Run '{bin} <command> --help' for details and examples."
-        )
+    // Help goes to stdout, so its language is stdout's: English whenever stdout is not a
+    // terminal (S6-2), whatever stderr is.
+    let lang = crate::ui::ui_lang(crate::ui::Stream::Stdout);
+    configure_in(cmd, bin, version, all, lang)
+}
+
+/// [`configure`] in `lang` (S6d, #2825). The first line names the product and stays English
+/// (design 1, like the banner's identity line).
+pub fn configure_in(
+    cmd: Command,
+    bin: &'static str,
+    version: &str,
+    all: bool,
+    lang: Lang,
+) -> Command {
+    let groups = render_groups_in(&cmd, all, width(), lang);
+    let footer = footer(lang, bin, all);
+    let (usage_heading, options_heading, lead_or_agent) = match lang {
+        Lang::En => ("{usage-heading}", "Options:", LEAD_OR_AGENT),
+        Lang::Ko => (USAGE_KO, OPTIONS_KO, LEAD_OR_AGENT_KO),
     };
+    // The usage's second line starts under the first one's command, whatever the heading's
+    // width (`Usage:` is six cells, a Korean heading counts two per letter).
+    let usage_indent = match lang {
+        Lang::En => "Usage:".width(),
+        Lang::Ko => USAGE_KO.width(),
+    } + 1;
     // The template is literal text plus clap's `{usage-heading} {usage}` and, for `--all`,
     // `{options}`; braces in the group text would read as template tags, and command abouts
     // carry none (pinned by `help_text_has_no_template_braces`).
-    let options = if all { "\nOptions:\n{options}\n" } else { "" };
+    let options = if all {
+        format!("\n{options_heading}\n{{options}}\n")
+    } else {
+        String::new()
+    };
     let template = format!(
-        "MoAI-ADK {version} — agentic development kit\n\n{{usage-heading}} {{usage}}\n\n{groups}{options}\n{footer}\n"
+        "MoAI-ADK {version} — agentic development kit\n\n{usage_heading} {{usage}}\n\n{groups}{options}\n{footer}\n"
     );
     // `mut_subcommands` keeps the command order and never panics on a name the table lacks
     // (`mut_subcommand` moves the command to the end and panics on an unknown one).
@@ -868,7 +993,8 @@ pub fn configure(cmd: Command, bin: &'static str, version: &str, all: bool) -> C
     cmd.bin_name(bin)
         .max_term_width(MAX_WIDTH)
         .override_usage(format!(
-            "{bin} <command> [options]\n       {bin} cc|codex|glm -l|-a    lead or agent session"
+            "{bin} <command> [options]\n{}{bin} cc|codex|glm -l|-a    {lead_or_agent}",
+            " ".repeat(usage_indent)
         ))
         .help_template(template)
 }
@@ -943,5 +1069,141 @@ mod tests {
         for g in GROUPS {
             assert!(seen.insert(g.heading), "{}", g.heading);
         }
+    }
+
+    /// A stand-in root command: every grouped word with an English about of its own.
+    fn root_cmd() -> Command {
+        let mut cmd = Command::new("moai");
+        for g in GROUPS {
+            for (w, _) in g.commands {
+                cmd = cmd.subcommand(Command::new(*w).about(format!("About {w}")));
+            }
+        }
+        cmd
+    }
+
+    /// S6d AC-1 (#2825): every heading has its own Korean twin; English stays the table's word.
+    #[test]
+    fn every_heading_has_a_distinct_korean_twin() {
+        let mut seen = std::collections::BTreeSet::new();
+        for g in GROUPS {
+            assert_eq!(heading_in(g, Lang::En), g.heading);
+            let ko = heading_in(g, Lang::Ko);
+            assert!(!ko.is_empty() && ko != g.heading, "{}", g.heading);
+            assert!(ko.chars().any(|c| ('가'..='힣').contains(&c)), "{ko}");
+            assert!(seen.insert(ko), "{ko}");
+        }
+    }
+
+    /// S6d AC-2: the Korean table covers exactly the commands the root help shows (launchers on
+    /// their own line), so a new root command without a Korean about fails here.
+    #[test]
+    fn the_korean_abouts_cover_exactly_the_root_commands() {
+        let root: std::collections::BTreeSet<&str> = GROUPS
+            .iter()
+            .flat_map(|g| g.commands.iter())
+            .filter(|(w, r)| *r && !LAUNCHERS.contains(w))
+            .map(|(w, _)| *w)
+            .collect();
+        let table: std::collections::BTreeSet<&str> = ABOUT_KO.iter().map(|(w, _)| *w).collect();
+        assert_eq!(table, root);
+        assert_eq!(ABOUT_KO.len(), table.len(), "a word twice");
+    }
+
+    /// S6d AC-2 and design 3.2: Korean constants carry no control character and no template
+    /// brace (the group text goes into clap's help template).
+    #[test]
+    fn korean_help_text_is_plain() {
+        let mut all: Vec<&str> = ABOUT_KO.iter().map(|(_, t)| *t).collect();
+        all.extend(GROUPS.iter().map(|g| g.heading_ko));
+        all.extend([LAUNCHER_LINE_KO, USAGE_KO, OPTIONS_KO, LEAD_OR_AGENT_KO]);
+        all.extend(
+            [
+                footer(Lang::Ko, "moai", true),
+                footer(Lang::Ko, "moai", false),
+            ]
+            .map(|s| Box::leak(s.into_boxed_str()) as &str),
+        );
+        for t in all {
+            assert!(!t.is_empty());
+            assert!(!t.chars().any(|c| c.is_control() && c != '\n'), "{t:?}");
+            assert!(!t.contains('{') && !t.contains('}'), "{t:?}");
+        }
+    }
+
+    /// S6d AC-1/2: a Korean root list has Korean headings and abouts, the launcher line in
+    /// Korean, and the same names; English output is today's.
+    #[test]
+    fn a_korean_root_list_is_korean_and_english_is_unchanged() {
+        let cmd = root_cmd();
+        let en = render_groups(&cmd, false, 100);
+        assert_eq!(render_groups_in(&cmd, false, 100, Lang::En), en);
+        assert!(en.starts_with("Start\n  cc, codex, glm"), "{en}");
+        let ko = render_groups_in(&cmd, false, 100, Lang::Ko);
+        assert!(ko.starts_with("시작\n  cc, codex, glm"), "{ko}");
+        assert!(ko.contains(LAUNCHER_LINE_KO), "{ko}");
+        assert!(!ko.contains("About "), "{ko}");
+        assert!(ko.contains("  project-detect  "), "{ko}");
+        assert_eq!(ko.lines().count(), en.lines().count());
+    }
+
+    /// S6d AC-2: `help --all` shows the root commands in Korean and keeps the other abouts in
+    /// English until S6e.
+    #[test]
+    fn a_korean_full_list_keeps_the_other_abouts_english() {
+        let cmd = root_cmd();
+        let ko = render_groups_in(&cmd, true, 100, Lang::Ko);
+        assert!(ko.contains("About init"), "{ko}");
+        assert!(!ko.contains("About project-detect"), "{ko}");
+        for g in GROUPS {
+            assert!(
+                ko.contains(&format!("{}\n", g.heading_ko)),
+                "{}",
+                g.heading_ko
+            );
+        }
+    }
+
+    /// S6d AC-3: the Korean help names its usage and options headings and the two footer lines
+    /// in Korean; the usage's second line stays under the first command; English is today's.
+    #[test]
+    fn the_korean_frame_has_korean_heads_and_footer() {
+        let render = |all: bool, lang: Lang| -> String {
+            configure_in(root_cmd(), "moai", "9.9.9", all, lang)
+                .render_help()
+                .to_string()
+        };
+        let en = render(false, Lang::En);
+        assert!(
+            en.contains("\nUsage: moai <command> [options]\n       moai cc|"),
+            "{en}"
+        );
+        assert!(
+            en.contains("Run 'moai help --all' for every command."),
+            "{en}"
+        );
+        let ko = render(false, Lang::Ko);
+        assert!(
+            ko.starts_with("MoAI-ADK 9.9.9 — agentic development kit\n"),
+            "{ko}"
+        );
+        let usage = format!("\n{USAGE_KO} moai <command> [options]\n");
+        assert!(ko.contains(&usage), "{ko}");
+        let second = ko.lines().find(|l| l.contains("cc|codex|glm")).unwrap();
+        let first = ko.lines().find(|l| l.starts_with(USAGE_KO)).unwrap();
+        assert_eq!(
+            second.find("moai").map(|i| second[..i].width()),
+            first.find("moai").map(|i| first[..i].width()),
+            "{ko}"
+        );
+        assert!(second.ends_with(LEAD_OR_AGENT_KO), "{second}");
+        assert!(
+            ko.ends_with(&format!("{}\n", footer(Lang::Ko, "moai", false))),
+            "{ko}"
+        );
+        assert!(!ko.contains("Run '"), "{ko}");
+        let all = render(true, Lang::Ko);
+        assert!(all.contains(&format!("\n{OPTIONS_KO}\n")), "{all}");
+        assert!(!all.contains("\nOptions:\n"), "{all}");
     }
 }
