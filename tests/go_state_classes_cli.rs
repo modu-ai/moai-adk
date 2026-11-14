@@ -1088,8 +1088,8 @@ fn prose_markdown_in_every_user_data_folder_is_restored() {
         fx.write(&format!(".moai/{f}/note.md"), &prose(f));
     }
     fx.write(".moai/research/회의.txt", "회의 메모\n\n정해진 것 없음\n");
-    fx.write(".moai/docs/nested/deep/guide.md", &prose("guide"));
-    fx.write(".moai/docs/README", "확장자 없는 안내문\n");
+    fx.write(".moai/plans/nested/deep/guide.md", &prose("guide"));
+    fx.write(".moai/todo/README", "확장자 없는 안내문\n");
     fx.manifest();
     let before = fx.project_tree();
     let p = fx.plan();
@@ -1097,8 +1097,8 @@ fn prose_markdown_in_every_user_data_folder_is_restored() {
     want.extend(
         [
             "research/회의.txt",
-            "docs/nested/deep/guide.md",
-            "docs/README",
+            "plans/nested/deep/guide.md",
+            "todo/README",
         ]
         .map(String::from),
     );
@@ -1513,4 +1513,27 @@ fn a_root_file_of_exactly_the_file_limit_moves_and_one_byte_more_stays() {
         fs::metadata(fx.root.join("CLAUDE.md")).unwrap().len(),
         FILE_LIMIT
     );
+}
+
+// ---- B2: what the skill tells an agent to say ----
+
+/// The PROJECT workflow must not tell an agent that `CLAUDE.md` and `AGENTS.md` stay in the
+/// root: after the apply they are moved into the backup's `root-files/` (`action` `move`).
+#[test]
+fn the_project_workflow_says_the_root_instruction_files_are_moved() {
+    let workflow = include_str!("../skills/moai/workflows/project.md");
+    for sentence in [
+        "the root instruction files `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md` are moved to `.moai/backups/<UTC>/root-files/`",
+        "A `root_files` row with `action` `move` is no longer in the project root after the apply",
+        "a copy of `.claude/settings.local.json` (the original settings file stays)",
+        "`.moai/backups/.gitignore` keeps them out of git",
+    ] {
+        assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
+    }
+    for stale in [
+        "`CLAUDE.md` and `AGENTS.md` themselves stay as they are",
+        "the copies of `CLAUDE.md` and `AGENTS.md` go to",
+    ] {
+        assert!(!workflow.contains(stale), "project.md still says: {stale}");
+    }
 }

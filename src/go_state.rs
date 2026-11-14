@@ -18,7 +18,8 @@
 //! it is kept whole under a new name — `.moai-backup`, or `.moai-backup-<UTC>` when that name
 //! is taken, never overwritten — and a new `.moai/` becomes this generation's state folder:
 //! the earlier `.moai-cli/` product state moves into it, SPECs are copied from the backup,
-//! `CLAUDE.md`/`AGENTS.md` are copied aside for the user to decide on, and the marker
+//! `CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md` are moved into the backup's `root-files/` (#2936
+//! O4; the local settings are copied there, 0600), and the marker
 //! `.moai/moai-cli.json` is written last. The stage-2 section below has the layout.
 
 use serde::{Deserialize, Serialize};
@@ -202,8 +203,9 @@ pub struct GoStatePlan {
     pub go_backup: Option<String>,
     /// #2696: the earlier root's entries, each `move` (into `.moai/`) or `leave`.
     pub state_moves: Vec<StateMove>,
-    /// #2696: `CLAUDE.md` and `AGENTS.md`, copied aside (`copy`) or not (`leave`); the file
-    /// itself stays as it is until the user decides (`user_choice`).
+    /// #2696, #2936 O4: `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md`, moved into the backup
+    /// (`move`: gone from the project root until the install step writes a new one) or left
+    /// (`leave`), and `.claude/settings.local.json`, copied (`copy`, the original stays).
     pub root_files: Vec<RootFile>,
     /// #2696: the Go folder's top-level entries; all of them stay in the backup.
     pub left_in_backup: Vec<String>,
@@ -249,19 +251,51 @@ pub struct Restore {
     pub to: String,
     pub sha256: String,
     pub action: String,
+    /// Why a file is not copied (`excluded_secret`, `excluded_unclassifiable`, `leave_link`);
+    /// empty for `copy` and `conflict`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub reason: String,
+}
+
+/// `.json`, `.toml`, `.yaml` and `.yml` (any case): the only restore candidates the config
+/// classifier of `migrate` is meant for. Every other file is a document (#2966 audit B1).
+fn config_shaped(name: &str) -> bool {
+    Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| {
+            matches!(
+                e.to_ascii_lowercase().as_str(),
+                "json" | "toml" | "yaml" | "yml"
+            )
+        })
 }
 
 /// The restore candidates under the Go folder's user-data folders ([`USER_DATA_FROM`], #2936
 /// O1; `.moai/specs` was the first, AC-5): regular files are copied unless the target exists
 /// (never overwritten) or the name or content is or may be a secret (a secret name is
-/// excluded before any read; the content goes through the `migrate` filter, fail-closed);
-/// links and special files are never followed or opened. The copy reads the file from the Go
+/// excluded before any read). A document (`.md`, `.txt`, anything but a config file) passes on
+/// its name and size; a config-shaped file (`.json`, `.toml`, `.yaml`, `.yml`) and anything
+/// under `specs/` goes through the `migrate` filter, fail-closed, and a refusal carries its
+/// reason. Links, a linked user-data folder and special files are never followed or opened. The copy reads the file from the Go
 /// backup after the rename. A folder the earlier root also moves into `.moai/` (only `specs/`)
 /// lands there first, so a file already at `.moai-cli/<folder>/<same path>` is the conflict.
 fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
     let mut out = Vec::new();
     for folder in USER_DATA_FROM {
         let top = project.join(MOAI_DIR).join(folder);
+        // A folder that is itself a link is never entered: the apply refuses to read through
+        // it (after the Go folder was renamed), so the preview leaves it where it is.
+        if fs::symlink_metadata(&top).is_ok_and(|m| m.file_type().is_symlink()) {
+            out.push(Restore {
+                from: format!("{go_backup}/{folder}"),
+                to: format!("{MOAI_DIR}/{folder}"),
+                sha256: String::new(),
+                action: "leave_link".into(),
+                reason: "the folder is a link; never followed, it stays in the backup".into(),
+            });
+            continue;
+        }
         let mut stack = vec![top.clone()];
         while let Some(dir) = stack.pop() {
             let Ok(entries) = fs::read_dir(&dir) else {
@@ -285,9 +319,11 @@ fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
                         to,
                         sha256: String::new(),
                         action: "excluded_secret".into(),
+                        reason: "a secret name; never opened".into(),
                     });
                     continue;
                 }
+                let name = e.file_name().to_string_lossy().into_owned();
                 let Ok(m) = fs::symlink_metadata(&p) else {
                     continue;
                 };
@@ -298,29 +334,58 @@ fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
                 let lands = STATE_ENTRIES
                     .contains(&folder)
                     .then(|| format!("{LEGACY_ROOT}/{folder}/{rel}"));
-                let (sha, action) = if !m.is_file() {
-                    (String::new(), "leave_link")
+                let unreadable = "larger than the file limit or not readable; not copied";
+                let (sha, action, reason) = if !m.is_file() {
+                    (
+                        String::new(),
+                        "leave_link",
+                        "a link or special file; never opened or followed".to_string(),
+                    )
                 } else if m.len() > FILE_LIMIT {
-                    (String::new(), "excluded_unclassifiable")
+                    (
+                        String::new(),
+                        "excluded_unclassifiable",
+                        format!("larger than the file limit ({FILE_LIMIT} bytes); not read"),
+                    )
                 } else {
                     match fs::read(&p) {
                         Ok(bytes) if (bytes.len() as u64) <= FILE_LIMIT => {
                             let sha = format!("sha256:{:x}", Sha256::digest(&bytes));
                             let is_spec = folder == "specs";
-                            let action = match crate::migrate::sensitive_content(&bytes, is_spec) {
-                                Ok(true) => "excluded_secret",
-                                Err(_) => "excluded_unclassifiable",
-                                Ok(false) => match &lands {
-                                    Some(l) if linked_component(project, l) => "conflict_link",
-                                    Some(l) if fs::symlink_metadata(project.join(l)).is_ok() => {
-                                        "conflict"
-                                    }
-                                    _ => "copy",
-                                },
+                            // The config classifier is for config files. A document in a
+                            // user-data folder passes on its name and size alone; SPECs keep
+                            // the stricter text check they have always had.
+                            let verdict = if is_spec || config_shaped(&name) {
+                                crate::migrate::sensitive_content(&bytes, is_spec)
+                            } else {
+                                Ok(false)
                             };
-                            (sha, action)
+                            let (action, reason) = match verdict {
+                                Ok(true) => (
+                                    "excluded_secret",
+                                    "the content looks like a credential; not copied".to_string(),
+                                ),
+                                Err(why) => ("excluded_unclassifiable", why),
+                                Ok(false) => (
+                                    match &lands {
+                                        Some(l) if linked_component(project, l) => "conflict_link",
+                                        Some(l)
+                                            if fs::symlink_metadata(project.join(l)).is_ok() =>
+                                        {
+                                            "conflict"
+                                        }
+                                        _ => "copy",
+                                    },
+                                    String::new(),
+                                ),
+                            };
+                            (sha, action, reason)
                         }
-                        _ => (String::new(), "excluded_unclassifiable"),
+                        _ => (
+                            String::new(),
+                            "excluded_unclassifiable",
+                            unreadable.to_string(),
+                        ),
                     }
                 };
                 out.push(Restore {
@@ -328,6 +393,7 @@ fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
                     to,
                     sha256: sha,
                     action: action.into(),
+                    reason,
                 });
             }
         }
@@ -1432,7 +1498,8 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
 //   3. the proven `.claude/` files move to `.moai/backups/<UTC>/go-state/<same path>`;
 //   4. the earlier root's product state moves, `.moai-cli/<entry>` → `.moai/<entry>`;
 //   5. SPECs are copied from the backup into `.moai/specs`;
-//   6. `CLAUDE.md`/`AGENTS.md` are copied to `.moai/backups/<UTC>/root-files/`;
+//   6. `CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md` move to `.moai/backups/<UTC>/root-files/`, a
+//      0600 copy of the local settings goes there too;
 //   7. the marker `.moai/moai-cli.json` is written last, then the receipt says `committed`.
 //   Stopped anywhere after step 1, `state_root` says `interrupted` and the revert takes over.
 // * The Go folder stays (settings name it, a worktree is inside, …): only the proven
@@ -1608,14 +1675,58 @@ fn save_receipt(
     let bytes = serde_json::to_vec_pretty(receipt).map_err(|_| "encode failed")?;
     let path = project.join(&rel);
     match before {
-        None => crate::apply::publish_exclusive(&path, &bytes)?,
+        None => crate::apply::publish_exclusive_mode(&path, &bytes, Some(PRIVATE_FILE))?,
         Some(b) => crate::apply::publish_replace(&path, Some(b), &bytes)?,
     }
     Ok(bytes)
 }
 
+/// Owner-only bits for a backup folder, and for a receipt or a copy that may hold a token
+/// (#2966 audit B3).
+const PRIVATE_DIR: u32 = 0o700;
+const PRIVATE_FILE: u32 = 0o600;
+
+/// Create one folder (not its parents); a private one is 0700 from its creation.
+#[cfg(unix)]
+fn create_dir_with(path: &Path, private: bool) -> std::io::Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+    let mut builder = fs::DirBuilder::new();
+    if private {
+        builder.mode(PRIVATE_DIR);
+    }
+    builder.create(path)
+}
+
+#[cfg(not(unix))]
+fn create_dir_with(path: &Path, _private: bool) -> std::io::Result<()> {
+    fs::create_dir(path)
+}
+
+/// The permission bits of a file, never following a link; `None` where there are none.
+#[cfg(unix)]
+fn mode_bits(path: &Path) -> Option<u32> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::symlink_metadata(path)
+        .ok()
+        .map(|m| m.permissions().mode() & 0o777)
+}
+
+#[cfg(not(unix))]
+fn mode_bits(_path: &Path) -> Option<u32> {
+    None
+}
+
 /// Create the folders of `rel` (relative to `project`) one by one, refusing a link.
 fn make_dirs(project: &Path, rel: &str) -> Result<()> {
+    make_dirs_with(project, rel, false)
+}
+
+/// [`make_dirs`] for a backup area: every folder it creates is 0700.
+fn make_private_dirs(project: &Path, rel: &str) -> Result<()> {
+    make_dirs_with(project, rel, true)
+}
+
+fn make_dirs_with(project: &Path, rel: &str, private: bool) -> Result<()> {
     let mut cur = project.to_path_buf();
     for part in Path::new(rel).components() {
         cur.push(part);
@@ -1625,10 +1736,22 @@ fn make_dirs(project: &Path, rel: &str) -> Result<()> {
             }
             Ok(m) if m.is_dir() => {}
             Ok(_) => return Err(format!("{rel}: a path component is not a folder")),
-            Err(_) => fs::create_dir(&cur).map_err(|_| format!("{rel}: folder create failed"))?,
+            Err(_) => create_dir_with(&cur, private)
+                .map_err(|_| format!("{rel}: folder create failed"))?,
         }
     }
     Ok(())
+}
+
+/// `.moai/backups/.gitignore` holding `*`: nothing under the backup area is ever offered to
+/// git, whose copies may hold tokens. An existing file is left as it is.
+fn keep_backups_out_of_git(project: &Path) -> Result<()> {
+    let rel = format!("{MOAI_DIR}/backups/.gitignore");
+    refuse_linked(project, &rel)?;
+    match fs::symlink_metadata(project.join(&rel)) {
+        Ok(_) => Ok(()),
+        Err(_) => crate::apply::publish_exclusive(&project.join(&rel), b"*\n"),
+    }
 }
 
 fn parent_of(rel: &str) -> Result<String> {
@@ -1771,8 +1894,8 @@ pub fn apply_with_stamp(
     let backup_rel = format!("{base}/backups/{stamp}");
     // `make_dirs` refuses a linked state folder or `backups`; the stamp folder itself is
     // created exclusively, so a link already at that name fails the create.
-    make_dirs(&project, &format!("{base}/backups"))?;
-    fs::create_dir(project.join(&backup_rel)).map_err(|e| {
+    make_private_dirs(&project, &format!("{base}/backups"))?;
+    create_dir_with(&project.join(&backup_rel), true).map_err(|e| {
         if e.kind() == std::io::ErrorKind::AlreadyExists {
             "exclusive create refused: backup already exists".to_string()
         } else {
@@ -1785,7 +1908,7 @@ pub fn apply_with_stamp(
         let rel = receipt.moves[i].path.clone();
         refuse_linked(&project, &rel)?;
         let dest_rel = format!("{backup_rel}/go-state/{rel}");
-        make_dirs(&project, &parent_of(&dest_rel)?)?;
+        make_private_dirs(&project, &parent_of(&dest_rel)?)?;
         move_exclusive(&project.join(&rel), &project.join(&dest_rel))?;
         receipt.moves[i].moved = true;
         saved = save_receipt(&project, base, &receipt, Some(&saved))?;
@@ -1844,7 +1967,7 @@ fn apply_moving_folder(
     //    nothing else has changed yet.
     let made = fs::create_dir(project.join(MOAI_DIR))
         .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
-        .and_then(|_| make_dirs(project, &area))
+        .and_then(|_| make_private_dirs(project, &area))
         .and_then(|_| crate::update::test_fault("go_state_after_rename"))
         .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
     let mut saved = match made {
@@ -1865,6 +1988,7 @@ fn apply_moving_folder(
             );
         }
     };
+    keep_backups_out_of_git(project)?;
     receipt.moves[0].sha256 = crate::baseline::tree_digest(&project.join(&go_backup), &[])?;
     saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     // 3. The proven `.claude/` and `.agents/` entries: files, the mirror links (as links) and
@@ -1884,7 +2008,7 @@ fn apply_moving_folder(
         } else {
             refuse_linked(project, &rel)?;
         }
-        make_dirs(project, &parent_of(&format!("{area}/go-state/{rel}"))?)?;
+        make_private_dirs(project, &parent_of(&format!("{area}/go-state/{rel}"))?)?;
         match kind.as_str() {
             "link" => move_link(&from, &to, &receipt.moves[i].target)?,
             "mirror_copy" => {
@@ -1916,7 +2040,9 @@ fn apply_moving_folder(
             ));
         }
         make_dirs(project, &parent_of(&r.to)?)?;
-        crate::apply::publish_exclusive(&project.join(&r.to), &bytes)?;
+        // The restored copy keeps the mode of the file in the Go backup.
+        let mode = mode_bits(&project.join(&src_rel));
+        crate::apply::publish_exclusive_mode(&project.join(&r.to), &bytes, mode)?;
         receipt.restored.push(Restored {
             path: r.to.clone(),
             sha256: r.sha256.clone(),
@@ -1936,7 +2062,7 @@ fn apply_moving_folder(
             return Err(format!("{} changed after the preview; stopped", f.path));
         }
         let to = format!("{area}/root-files/{}", f.path);
-        make_dirs(project, &parent_of(&to)?)?;
+        make_private_dirs(project, &parent_of(&to)?)?;
         if f.action == "move" {
             let i = receipt
                 .moves
@@ -1946,7 +2072,9 @@ fn apply_moving_folder(
             move_exclusive(&project.join(&f.path), &project.join(&to))?;
             receipt.moves[i].moved = true;
         } else {
-            crate::apply::publish_exclusive(&project.join(&to), &bytes)?;
+            // The copy of the local settings may hold tokens: owner-only, whatever the
+            // original's mode (the original stays as it is).
+            crate::apply::publish_exclusive_mode(&project.join(&to), &bytes, Some(PRIVATE_FILE))?;
             receipt.copied.push(Restored {
                 path: to,
                 sha256: f.sha256.clone(),
@@ -2023,7 +2151,7 @@ fn apply_legacy_move(
     receipt.state = "pending".into();
     let made = fs::create_dir(project.join(MOAI_DIR))
         .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
-        .and_then(|_| make_dirs(project, &area))
+        .and_then(|_| make_private_dirs(project, &area))
         .and_then(|_| crate::update::test_fault("go_state_legacy_after_mkdir"))
         .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
     let saved = match made {
@@ -2035,6 +2163,7 @@ fn apply_legacy_move(
             return Err(format!("{e}; nothing else changed"));
         }
     };
+    keep_backups_out_of_git(project)?;
     let saved = move_state_entries(project, &mut receipt, saved)?;
     let marker = crate::state_root::marker_bytes("legacy-move", &[]);
     finish_with_marker(project, receipt, saved, &marker)
