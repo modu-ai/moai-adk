@@ -39,6 +39,23 @@ pub const CODEX_GOAL_LIMIT: usize = 4000;
 /// Who clears a wait.
 pub const CLEARS: &[&str] = &["leader", "user", "lane", "author"];
 
+/// Seconds Codex may run the lane Stop hook (its handler `timeout`).
+pub const STOP_HOOK_TIMEOUT_SECS: u64 = 120;
+
+/// The longest GitHub read of one Stop answer, inside [`STOP_HOOK_TIMEOUT_SECS`]; past it the
+/// reading is unknown.
+pub const STOP_READ_SECS: u64 = 90;
+
+/// Bytes of the Codex Stop input read (and dropped).
+pub const STOP_STDIN_LIMIT: u64 = 64 * 1024;
+
+/// Bytes of a `--snapshot` file read.
+const SNAPSHOT_LIMIT: u64 = 16 * 1024 * 1024;
+
+/// Blocks in a row for one next task before the hook lets the turn end (#2904 Q1 (a): the lane
+/// hook ignores `stop_hook_active` and keeps its own bound). A new next task starts at zero.
+pub const STOP_BLOCK_CAP: u32 = 48;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Host {
     Claude,
@@ -78,7 +95,7 @@ pub fn lane_ok(lane: &str) -> bool {
 }
 
 /// `OWNER/REPO`, each part 1–100 of `A-Z a-z 0-9 . _ -`.
-fn repo_ok(repo: &str) -> bool {
+pub fn repo_ok(repo: &str) -> bool {
     repo.split_once('/')
         .is_some_and(|(o, r)| token_ok(o, 100) && token_ok(r, 100))
 }
@@ -214,6 +231,176 @@ pub fn codex_blocked_line(lane: &str, state: &str) -> Option<String> {
              next=install the lane Stop hook in .codex/hooks.json and trust it in Codex /hooks"
         )
     })
+}
+
+/// What a lane's Stop hook read: a snapshot, or nothing it can trust (a failed or timed-out
+/// GitHub read, an unreadable `--snapshot`).
+pub enum Reading {
+    Snapshot(crate::lane_next::Snapshot),
+    Unknown,
+}
+
+/// The Stop hook's count between stops, per lane under the project state root.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct StopState {
+    /// The next task the blocks are for (`lane_next::summary_line`, or `wait`).
+    #[serde(default)]
+    pub key: String,
+    /// Blocks in a row for `key`.
+    #[serde(default)]
+    pub blocks: u32,
+    /// The last stop blocked on an unknown reading; the next unknown one passes.
+    #[serde(default)]
+    pub unknown_blocked: bool,
+}
+
+/// The lane's Stop decision: the reason to keep working, or `None` to let the turn end.
+/// - the lane has a next task → block (fixed words and `lane_next::summary_line` only, no text
+///   read from GitHub);
+/// - nothing of its own is startable but pull requests are open → block, telling it to wait
+///   with `lane-next --wait 1800` (#2904 Q2 (a));
+/// - no open pull request and no startable Issue (the end condition, as `lane_next` reads it)
+///   → pass;
+/// - unknown (no reading, or a partial reading with no next task) → block once, then pass;
+/// - [`STOP_BLOCK_CAP`] blocks in a row for the same next task → pass.
+pub fn stop_decision(
+    lane: &str,
+    repo: &str,
+    reading: &Reading,
+    state: &mut StopState,
+) -> Option<String> {
+    let known = match reading {
+        Reading::Snapshot(s) => {
+            let v = crate::lane_next::decide(lane, s);
+            let open_prs = s.prs.len();
+            (!v["next"].is_null() || s.partial.is_empty()).then_some((v, open_prs))
+        }
+        Reading::Unknown => None,
+    };
+    let Some((v, open_prs)) = known else {
+        if state.unknown_blocked {
+            state.unknown_blocked = false;
+            return None;
+        }
+        state.unknown_blocked = true;
+        return Some(format!(
+            "레인 {lane}: 다음 일을 읽지 못했어요(GitHub 읽기 실패·시간 초과). `moai lane-next --lane {lane} --repo {repo}` 로 한 번 더 확인하고 이어 가세요. 다음 멈춤은 그대로 통과합니다."
+        ));
+    };
+    state.unknown_blocked = false;
+    let (key, reason) = if !v["next"].is_null() {
+        let summary = crate::lane_next::summary_line(&v);
+        let reason = format!(
+            "레인 {lane}: 할 일이 남았어요({summary}). `moai lane-next --lane {lane} --repo {repo}` 로 그 일을 읽고 이어서 하세요. 끝 조건: {END_CONDITION}"
+        );
+        (summary, reason)
+    } else if open_prs > 0 {
+        let reason = format!(
+            "레인 {lane}: 지금 시작할 내 일은 없지만 열린 PR {open_prs}개가 남았어요. `moai lane-next --lane {lane} --repo {repo} --wait 1800` 으로 다음 일을 기다리세요. 끝 조건: {END_CONDITION}"
+        );
+        ("wait".to_string(), reason)
+    } else {
+        *state = StopState::default();
+        return None;
+    };
+    if key != state.key {
+        state.key = key;
+        state.blocks = 0;
+    }
+    if state.blocks >= STOP_BLOCK_CAP {
+        return None;
+    }
+    state.blocks += 1;
+    Some(reason)
+}
+
+/// The state file of `lane` in the project `root`.
+pub fn stop_state_path(root: &Path, lane: &str) -> std::path::PathBuf {
+    crate::state_root::path(root, &format!("lane-stop-hook/{lane}.json"))
+}
+
+fn load_state(path: &Path) -> StopState {
+    match std::fs::symlink_metadata(path) {
+        Ok(m) if m.is_file() && m.len() <= 4096 => std::fs::read(path)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default(),
+        _ => StopState::default(),
+    }
+}
+
+/// Writes the state only under an existing state root, never through a link.
+fn save_state(root: &Path, path: &Path, state: &StopState) -> Result<(), ()> {
+    let real_dir = |p: &Path| std::fs::symlink_metadata(p).is_ok_and(|m| m.is_dir());
+    if !real_dir(&crate::state_root::path(root, "")) {
+        return Err(());
+    }
+    let dir = path.parent().ok_or(())?;
+    if std::fs::symlink_metadata(dir).is_err() {
+        std::fs::create_dir(dir).map_err(|_| ())?;
+    }
+    if !real_dir(dir) {
+        return Err(());
+    }
+    if std::fs::symlink_metadata(path).is_ok_and(|m| !m.is_file()) {
+        return Err(());
+    }
+    let bytes = serde_json::to_vec(state).map_err(|_| ())?;
+    std::fs::write(path, bytes).map_err(|_| ())
+}
+
+/// The Codex Stop answer of `lane` in the project `root`: `{"decision":"block","reason":…}`,
+/// or empty to let the turn end. A block whose count cannot be saved (no state root, a link)
+/// is not sent: an uncounted block could not be bounded.
+pub fn stop_hook(root: &Path, lane: &str, repo: &str, reading: &Reading) -> String {
+    let path = stop_state_path(root, lane);
+    let mut state = load_state(&path);
+    let reason = stop_decision(lane, repo, reading, &mut state);
+    match (reason, save_state(root, &path, &state)) {
+        (Some(reason), Ok(())) => json!({"decision": "block", "reason": reason}).to_string(),
+        _ => String::new(),
+    }
+}
+
+/// A `--snapshot` file (a regular file of at most 16 MiB holding a `lane_next::Snapshot`).
+pub fn read_snapshot(file: &Path) -> Reading {
+    match std::fs::metadata(file) {
+        Ok(m) if m.is_file() && m.len() <= SNAPSHOT_LIMIT => std::fs::read(file)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .map_or(Reading::Unknown, Reading::Snapshot),
+        _ => Reading::Unknown,
+    }
+}
+
+/// One `lane_next::collect` read of GitHub (no wait), in the working directory's clone; a
+/// transport that cannot start or a read past [`STOP_READ_SECS`] is unknown.
+pub fn read_github(lane: &str, repo: &str) -> Reading {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (lane, repo) = (lane.to_string(), repo.to_string());
+    std::thread::spawn(move || {
+        let Ok(t) = crate::forge::transport::GhTransport::from_env() else {
+            let _ = tx.send(None);
+            return;
+        };
+        let Some((owner, name)) = repo.split_once('/') else {
+            let _ = tx.send(None);
+            return;
+        };
+        let dir = std::path::PathBuf::from(".");
+        let target = crate::lane_next::Target {
+            owner,
+            repo: name,
+            lane: &lane,
+            tip_branch: None,
+            dir: &dir,
+        };
+        let _ = tx.send(Some(crate::lane_next::collect(&target, &t)));
+    });
+    match rx.recv_timeout(std::time::Duration::from_secs(STOP_READ_SECS)) {
+        Ok(Some(s)) => Reading::Snapshot(s),
+        _ => Reading::Unknown,
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -547,6 +734,86 @@ mod tests {
             )));
             assert!(l.contains("kind=outside owner=user next="), "{l}");
         }
+    }
+
+    fn snap(v: Value) -> Reading {
+        Reading::Snapshot(serde_json::from_value(v).unwrap())
+    }
+
+    fn issue(n: u64) -> Reading {
+        snap(json!({"open_issues": [{"number": n, "title": "t"}]}))
+    }
+
+    #[test]
+    fn the_stop_decision_blocks_until_the_end_condition() {
+        let mut st = StopState::default();
+        let r = stop_decision("a", "o/r", &issue(7), &mut st).unwrap();
+        assert!(r.contains("lane-next: P2 pick_issue #7"), "{r}");
+        assert!(r.contains(END_CONDITION), "{r}");
+        assert_eq!(st.blocks, 1);
+        // Another lane's open draft: nothing of its own, but a pull request is open.
+        let draft = snap(json!({"prs": [{"number": 9, "head": "x", "draft": true,
+            "author_lane": "b"}]}));
+        let r = stop_decision("a", "o/r", &draft, &mut st).unwrap();
+        assert!(
+            r.contains("--wait 1800") && r.contains("열린 PR 1개"),
+            "{r}"
+        );
+        assert_eq!((st.key.as_str(), st.blocks), ("wait", 1));
+        // The end condition passes and clears the count.
+        assert_eq!(stop_decision("a", "o/r", &snap(json!({})), &mut st), None);
+        assert_eq!(st, StopState::default());
+    }
+
+    #[test]
+    fn the_stop_cap_passes_at_48_blocks_in_a_row_until_the_next_task_changes() {
+        let mut st = StopState::default();
+        stop_decision("a", "o/r", &issue(7), &mut st).unwrap();
+        st.blocks = 46;
+        assert!(
+            stop_decision("a", "o/r", &issue(7), &mut st).is_some(),
+            "47th"
+        );
+        assert!(
+            stop_decision("a", "o/r", &issue(7), &mut st).is_some(),
+            "48th"
+        );
+        assert_eq!(st.blocks, STOP_BLOCK_CAP);
+        assert_eq!(stop_decision("a", "o/r", &issue(7), &mut st), None, "49th");
+        assert_eq!(stop_decision("a", "o/r", &issue(7), &mut st), None);
+        // A new next task starts again.
+        assert!(stop_decision("a", "o/r", &issue(8), &mut st).is_some());
+        assert_eq!(st.blocks, 1);
+    }
+
+    #[test]
+    fn an_unknown_reading_blocks_once_then_passes() {
+        let mut st = StopState::default();
+        for unknown in [Reading::Unknown, snap(json!({"partial": ["lists: down"]}))] {
+            let r = stop_decision("a", "o/r", &unknown, &mut st).unwrap();
+            assert!(r.contains("읽지 못했어요"), "{r}");
+            assert_eq!(stop_decision("a", "o/r", &unknown, &mut st), None);
+        }
+        // A partial reading that still names a next task is known.
+        let partial_work = snap(json!({"partial": ["x"],
+            "open_issues": [{"number": 7, "title": "t"}]}));
+        assert!(stop_decision("a", "o/r", &partial_work, &mut st)
+            .unwrap()
+            .contains("#7"));
+    }
+
+    #[test]
+    fn the_stop_hook_counts_only_under_a_state_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        // No state root: nothing can be counted, so nothing blocks.
+        assert_eq!(stop_hook(root, "a", "o/r", &issue(7)), "");
+        std::fs::create_dir_all(crate::state_root::path(root, "")).unwrap();
+        let out: Value = serde_json::from_str(&stop_hook(root, "a", "o/r", &issue(7))).unwrap();
+        assert_eq!(out["decision"], json!("block"));
+        let saved: StopState =
+            serde_json::from_slice(&std::fs::read(stop_state_path(root, "a")).unwrap()).unwrap();
+        assert_eq!(saved.blocks, 1);
     }
 
     #[test]

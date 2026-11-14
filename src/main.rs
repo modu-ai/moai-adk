@@ -92,6 +92,32 @@ struct LaunchOpts {
     dry_run: bool,
 }
 
+/// The Codex lane Stop hook of `hooks-plan` / `hooks-apply` (#2904 stage 2). Without either
+/// flag the plan keeps what the Codex receipt records.
+#[derive(Args)]
+struct LaneLoopArgs {
+    /// Add this lane's Stop hook (`lane-stop-hook`) to `.codex/hooks.json` (codex only).
+    #[arg(long, requires = "repo", conflicts_with = "lane_loop_off")]
+    lane_loop: Option<String>,
+    /// `OWNER/REPO` the lane Stop hook reads (with `--lane-loop`).
+    #[arg(long, requires = "lane_loop")]
+    repo: Option<String>,
+    /// Remove the lane Stop hook: the file returns to the base hook set (codex only).
+    #[arg(long)]
+    lane_loop_off: bool,
+}
+
+impl LaneLoopArgs {
+    fn lane_loop(self) -> moai_cli::hooks::LaneLoop {
+        use moai_cli::hooks::LaneLoop;
+        match (self.lane_loop, self.repo, self.lane_loop_off) {
+            (Some(lane), Some(repo), _) => LaneLoop::Set { lane, repo },
+            (_, _, true) => LaneLoop::Off,
+            _ => LaneLoop::Keep,
+        }
+    }
+}
+
 /// `moai-cli cc|glm|codex [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
 /// session: no role is guessed (Issue #2053).
 #[derive(Args)]
@@ -668,6 +694,8 @@ enum Command {
         /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
         #[arg(long)]
         host: String,
+        #[command(flatten)]
+        lane: LaneLoopArgs,
     },
     /// Write a previewed hook set
     ///
@@ -680,6 +708,26 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        #[command(flatten)]
+        lane: LaneLoopArgs,
+    },
+    /// Answer a Codex lane's Stop hook
+    ///
+    /// The Stop hook a Codex lane installs with `hooks-plan --host codex --lane-loop` (#2904):
+    /// reads the Stop input on stdin (64 KiB, dropped), reads the lane's next task once
+    /// (`lane-next`, or `--snapshot`) and prints only the Codex answer — `{"decision":"block",
+    /// "reason":…}` while the lane has work or open pull requests remain, nothing at the end
+    /// condition, after 48 blocks in a row for one task, or on the second unknown reading.
+    LaneStopHook {
+        /// The lane name as it appears in claims (`session=<lane>`).
+        #[arg(long)]
+        lane: String,
+        /// `OWNER/REPO`.
+        #[arg(long)]
+        repo: String,
+        /// Decide from a saved `lane-next` snapshot (JSON) instead of reading GitHub.
+        #[arg(long)]
+        snapshot: Option<PathBuf>,
     },
     /// Undo the hook set one update applied
     ///
@@ -1460,6 +1508,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
+        LaneStopHook { .. } => "lane.stop_hook",
         LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
@@ -2254,9 +2303,14 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
-        Command::HooksPlan { project, host } => {
+        Command::HooksPlan {
+            project,
+            host,
+            lane,
+        } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
+            let mut out =
+                moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
             merge_binary_state(&mut out);
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -2274,14 +2328,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             host,
             plan_digest,
             permission_reference,
+            lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::apply(
+            let mut out = moai_cli::hooks::apply_with(
                 &project,
                 &host,
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
+                lane.lane_loop(),
             )?;
             merge_binary_state(&mut out);
             Ok(out)
@@ -2289,6 +2345,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
         Command::HookDispatch { .. } => {
             Err("hook-dispatch is answered before internal dispatch".into())
+        }
+        // Printed by `lane_stop_hook_main`, which `main` calls before any internal dispatch.
+        Command::LaneStopHook { .. } => {
+            Err("lane-stop-hook is answered before internal dispatch".into())
         }
         Command::HookReceipt { host } => {
             // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
@@ -2812,7 +2872,7 @@ fn print_operation_error(kind: contract::Kind, message: &str) {
 /// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
 fn hook_mode_argv(args: &[String]) -> bool {
     args.get(1)
-        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch")
+        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch" || w == "lane-stop-hook")
         || args.iter().skip(1).any(|a| a == "--hook")
 }
 
@@ -2843,6 +2903,37 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
         eprintln!("{}", answer.stderr);
     }
     ExitCode::from(answer.exit)
+}
+
+/// `lane-stop-hook` (#2904): prints exactly the Codex Stop answer — one
+/// `{"decision":"block",…}` line or nothing — and exits 0. The Stop input is read (bounded) and
+/// dropped: `stop_hook_active` is not used (Q1 (a)) and bad JSON changes nothing. A refused
+/// lane or repository is a non-blocking hook error (exit 1, stdout empty).
+fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path>) -> ExitCode {
+    use moai_cli::lane_loop as l;
+    use std::io::IsTerminal as _;
+    if !l::lane_ok(lane) || !l::repo_ok(repo) {
+        eprintln!(
+            "moai lane-stop-hook: --lane must be 1-64 of A-Z a-z 0-9 . _ - and --repo OWNER/REPO"
+        );
+        return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
+    }
+    if !io::stdin().is_terminal() {
+        let _ = io::copy(&mut io::stdin().take(l::STOP_STDIN_LIMIT), &mut io::sink());
+    }
+    let Ok(cwd) = std::env::current_dir() else {
+        eprintln!("moai lane-stop-hook: working directory unavailable; the turn ends");
+        return ExitCode::SUCCESS;
+    };
+    let reading = match snapshot {
+        Some(file) => l::read_snapshot(file),
+        None => l::read_github(lane, repo),
+    };
+    let answer = l::stop_hook(&cwd, lane, repo, &reading);
+    if !answer.is_empty() {
+        println!("{answer}");
+    }
+    ExitCode::SUCCESS
 }
 
 /// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
@@ -3023,6 +3114,14 @@ pub(crate) fn main() -> ExitCode {
     };
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
+    }
+    if let Some(Command::LaneStopHook {
+        lane,
+        repo,
+        snapshot,
+    }) = &cli.command
+    {
+        return lane_stop_hook_main(lane, repo, snapshot.as_deref());
     }
     if let Some(Command::HeavySlotAcquire {
         max,
@@ -3746,8 +3845,13 @@ mod help_rules {
     }
 
     /// Commands `main` answers before the internal dispatch; each reads standard input there
-    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
-    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
+    /// (`statusline`, `pr-self-audit-check`, `hook_dispatch_main` and `lane_stop_hook_main`).
+    const READ_BEFORE_DISPATCH: [&str; 4] = [
+        "hook-dispatch",
+        "lane-stop-hook",
+        "pr-self-audit-check",
+        "statusline",
+    ];
 
     /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
     /// more than asking whether it is a terminal.

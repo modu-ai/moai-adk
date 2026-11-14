@@ -272,6 +272,93 @@ pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     Ok(out)
 }
 
+/// The opt-in lane `Stop` hook of a Codex project (#2904 stage 2, #2899 D-O2): a second `Stop`
+/// matcher group after the receipt group that runs `lane-stop-hook --lane L --repo O/R`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LaneLoop {
+    /// What the Codex ownership receipt records under `lane_loop`; none recorded → the base
+    /// set. Every caller that does not name a lane (`hooks-plan` without the flags, `update`).
+    Keep,
+    /// Add the lane's Stop hook.
+    Set { lane: String, repo: String },
+    /// The base set, without a lane Stop hook (the revert).
+    Off,
+}
+
+/// A lane Stop hook as a plan renders it and the receipt records it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Lane {
+    lane: String,
+    repo: String,
+}
+
+impl Lane {
+    fn checked(lane: &str, repo: &str) -> Option<Lane> {
+        (crate::lane_loop::lane_ok(lane) && crate::lane_loop::repo_ok(repo)).then(|| Lane {
+            lane: lane.into(),
+            repo: repo.into(),
+        })
+    }
+
+    fn command(&self) -> String {
+        crate::lane_loop::stop_hook_command(&self.lane, &self.repo)
+    }
+
+    fn json(&self) -> Value {
+        json!({"lane": self.lane, "repo": self.repo})
+    }
+}
+
+/// A lane is named for Codex only, and only a well-formed one.
+fn check_lane(host: &str, lane: &LaneLoop) -> Result<()> {
+    if host != "codex" && *lane != LaneLoop::Keep {
+        return Err("--lane-loop and --lane-loop-off are for --host codex only".into());
+    }
+    match lane {
+        LaneLoop::Set { lane, repo } if Lane::checked(lane, repo).is_none() => {
+            Err("--lane-loop must be 1-64 of A-Z a-z 0-9 . _ - and --repo OWNER/REPO".into())
+        }
+        _ => Ok(()),
+    }
+}
+
+/// The Codex hooks object: the hook set, plus the lane's Stop group after the receipt group.
+fn codex_hooks(lane: Option<&Lane>) -> Result<Map<String, Value>> {
+    let mut out = hooks_object("codex")?;
+    if let Some(l) = lane {
+        if let Some(stop) = out.get_mut("Stop").and_then(Value::as_array_mut) {
+            stop.push(json!({"hooks": [{"type": "command", "command": l.command(),
+                "timeout": crate::lane_loop::STOP_HOOK_TIMEOUT_SECS}]}));
+        }
+    }
+    Ok(out)
+}
+
+/// [`hook_list`] with the lane's Stop hook last, when there is one.
+fn hook_list_for(host: &str, lane: Option<&Lane>) -> Value {
+    let mut list = hook_list(host);
+    if let (Some(l), Some(items)) = (lane, list.as_array_mut()) {
+        items.push(
+            json!({"event": "Stop", "matcher": null, "command": l.command(),
+            "timeout": crate::lane_loop::STOP_HOOK_TIMEOUT_SECS}),
+        );
+    }
+    list
+}
+
+/// The lane a Codex receipt records; a malformed `lane_loop` stops for review.
+fn receipt_lane(receipt: &[u8], fh: &FileHost) -> Result<Option<Lane>> {
+    let review = || format!("{} receipt requires preservation review", fh.file);
+    let r: Value = serde_json::from_slice(receipt).map_err(|_| review())?;
+    match &r["lane_loop"] {
+        Value::Null => Ok(None),
+        v => match (v["lane"].as_str(), v["repo"].as_str()) {
+            (Some(lane), Some(repo)) => Lane::checked(lane, repo).map(Some).ok_or_else(review),
+            _ => Err(review()),
+        },
+    }
+}
+
 /// The generated hook list a plan and a receipt report (no secrets: fixed strings only).
 fn hook_list(host: &str) -> Value {
     if host == "omp" {
@@ -347,20 +434,22 @@ struct CodexState {
     after: Option<Vec<u8>>,
     rendered: Vec<u8>,
     digest: String,
+    /// The lane Stop hook the rendered file carries (Codex only).
+    lane: Option<Lane>,
 }
 
-fn codex_render() -> Result<Vec<u8>> {
-    let doc = json!({"description": CODEX_DESCRIPTION, "hooks": hooks_object("codex")?});
+fn codex_render(lane: Option<&Lane>) -> Result<Vec<u8>> {
+    let doc = json!({"description": CODEX_DESCRIPTION, "hooks": codex_hooks(lane)?});
     let mut bytes = serde_json::to_vec_pretty(&doc).map_err(|_| "encode failed")?;
     bytes.push(b'\n');
     Ok(bytes)
 }
 
-fn file_render(fh: &FileHost) -> Result<Vec<u8>> {
+fn file_render(fh: &FileHost, lane: Option<&Lane>) -> Result<Vec<u8>> {
     if fh.host == "omp" {
         Ok(OMP_MODULE.as_bytes().to_vec())
     } else {
-        codex_render()
+        codex_render(lane)
     }
 }
 
@@ -376,7 +465,7 @@ fn codex_owned(receipt: &[u8], fh: &FileHost) -> Result<(Option<String>, Option<
     Ok((sha("sha256"), sha("pending_sha256")))
 }
 
-fn codex_state(root: &Path, fh: &FileHost) -> Result<CodexState> {
+fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop) -> Result<CodexState> {
     let state_dir = crate::state_root::path(root, "");
     let mut dirs: Vec<PathBuf> = fh.dirs.iter().map(|d| root.join(d)).collect();
     dirs.extend([state_dir.clone(), state_dir.join("manifests")]);
@@ -400,18 +489,27 @@ fn codex_state(root: &Path, fh: &FileHost) -> Result<CodexState> {
             return Err(format!("existing {} requires preservation review", fh.file));
         }
     }
-    let rendered = file_render(fh)?;
+    let lane = match want {
+        LaneLoop::Keep => match &receipt_before {
+            Some(r) if fh.host == "codex" => receipt_lane(r, fh)?,
+            _ => None,
+        },
+        LaneLoop::Set { lane, repo } => Lane::checked(lane, repo),
+        LaneLoop::Off => None,
+    };
+    let rendered = file_render(fh, lane.as_ref())?;
     let after = (before.as_deref() != Some(rendered.as_slice())).then(|| rendered.clone());
-    let digest = crate::digest(
-        &serde_json::to_vec(&(
-            1,
-            fh.host,
-            before.as_deref().map(crate::digest),
-            receipt_before.as_deref().map(crate::digest),
-            after.as_deref().map(crate::digest),
-        ))
-        .map_err(|_| "encode failed")?,
+    let (b, r, a) = (
+        before.as_deref().map(crate::digest),
+        receipt_before.as_deref().map(crate::digest),
+        after.as_deref().map(crate::digest),
     );
+    // The lane joins the digest only when set, so a plan without one keeps its old digest.
+    let bound = match &lane {
+        None => serde_json::to_vec(&(1, fh.host, b, r, a)),
+        Some(l) => serde_json::to_vec(&(1, fh.host, b, r, a, l.json())),
+    };
+    let digest = crate::digest(&bound.map_err(|_| "encode failed")?);
     Ok(CodexState {
         file,
         receipt,
@@ -420,18 +518,27 @@ fn codex_state(root: &Path, fh: &FileHost) -> Result<CodexState> {
         after,
         rendered,
         digest,
+        lane,
     })
 }
 
-fn codex_receipt_bytes(fh: &FileHost, sha256: Option<&str>, pending: Option<&str>) -> Vec<u8> {
+fn codex_receipt_bytes(
+    fh: &FileHost,
+    sha256: Option<&str>,
+    pending: Option<&str>,
+    lane: Option<&Lane>,
+) -> Vec<u8> {
     let mut r = json!({
         "schema_version": 1,
         "hooks_path": fh.file,
         "sha256": sha256,
-        "hooks": hook_list(fh.host),
+        "hooks": hook_list_for(fh.host, lane),
     });
     if let Some(p) = pending {
         r["pending_sha256"] = json!(p);
+    }
+    if let Some(l) = lane {
+        r["lane_loop"] = l.json();
     }
     let mut bytes = serde_json::to_vec_pretty(&r).expect("receipt");
     bytes.push(b'\n');
@@ -441,8 +548,16 @@ fn codex_receipt_bytes(fh: &FileHost, sha256: Option<&str>, pending: Option<&str
 /// Previews generating the MoAI hook set for `host` in PROJECT. Never writes. The returned
 /// `plan_digest` binds the current files and the result; `hooks-apply` requires it.
 pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
+    plan_with(project, host, home, LaneLoop::Keep)
+}
+
+/// [`plan`] with the Codex lane Stop hook set, kept or removed (#2904 stage 2). `Keep` is what
+/// the ownership receipt records; a plan with a lane reports it under `lane_loop`.
+pub fn plan_with(project: &Path, host: &str, home: Option<&Path>, lane: LaneLoop) -> Result<Value> {
     check_host(host)?;
+    check_lane(host, &lane)?;
     let root = project_root(project, home)?;
+    let mut planned_lane = None;
     let mut out = if host == "claude" {
         let mut v = crate::claude::settings_plan(&root, &claude_desired(&root)?)?;
         v["path"] = v["settings_path"].take();
@@ -450,7 +565,8 @@ pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
         v
     } else {
         let fh = file_host(host);
-        let s = codex_state(&root, fh)?;
+        let s = codex_state(&root, fh, &lane)?;
+        planned_lane = s.lane.clone();
         let action = match (&s.after, &s.before) {
             (None, _) => "unchanged",
             (Some(_), None) => "create",
@@ -467,7 +583,10 @@ pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
         })
     };
     out["host"] = json!(host);
-    out["hooks"] = hook_list(host);
+    out["hooks"] = hook_list_for(host, planned_lane.as_ref());
+    if let Some(l) = &planned_lane {
+        out["lane_loop"] = l.json();
+    }
     // Outside the plan digest: what the hook engine covers on this host (#2391 stage 3).
     out["engine_capabilities"] = crate::hook_engine::capabilities(host);
     Ok(out)
@@ -483,9 +602,23 @@ pub fn apply(
     plan_digest: &str,
     permission: &str,
 ) -> Result<Value> {
+    apply_with(project, host, home, plan_digest, permission, LaneLoop::Keep)
+}
+
+/// [`apply`] of a [`plan_with`] plan: the same `lane` the plan was made with.
+pub fn apply_with(
+    project: &Path,
+    host: &str,
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+    lane: LaneLoop,
+) -> Result<Value> {
     check_host(host)?;
+    check_lane(host, &lane)?;
     check_permission(permission)?;
     let root = project_root(project, home)?;
+    let mut applied_lane = None;
     let mut out = if host == "claude" {
         let mut v =
             crate::claude::settings_apply(&root, &claude_desired(&root)?, plan_digest, permission)?;
@@ -496,18 +629,26 @@ pub fn apply(
         v
     } else {
         let fh = file_host(host);
-        let s = codex_state(&root, fh)?;
+        let s = codex_state(&root, fh, &lane)?;
         if s.digest != plan_digest {
             return Err("stale or altered plan; re-preview required".into());
         }
+        applied_lane = s.lane.clone();
         let rel = crate::state_root::rel(&root, fh.receipt);
         let rendered_sha = crate::digest(&s.rendered);
-        let final_receipt = codex_receipt_bytes(fh, Some(&rendered_sha), None);
+        let final_receipt = codex_receipt_bytes(fh, Some(&rendered_sha), None, s.lane.as_ref());
         let mut receipt_now = s.receipt_before.clone();
         let mut files = Vec::new();
         if let Some(after) = &s.after {
             let before_sha = s.before.as_deref().map(crate::digest);
-            let pending = codex_receipt_bytes(fh, before_sha.as_deref(), Some(&rendered_sha));
+            // The pending receipt already names the new lane: a re-plan after an interrupted
+            // apply (Keep) renders the file this apply was writing.
+            let pending = codex_receipt_bytes(
+                fh,
+                before_sha.as_deref(),
+                Some(&rendered_sha),
+                s.lane.as_ref(),
+            );
             crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &pending)?;
             receipt_now = Some(pending);
             crate::agents::write_replace(&s.file, s.before.as_deref(), after)?;
@@ -536,7 +677,10 @@ pub fn apply(
         })
     };
     out["host"] = json!(host);
-    out["hooks_generated"] = hook_list(host);
+    out["hooks_generated"] = hook_list_for(host, applied_lane.as_ref());
+    if let Some(l) = &applied_lane {
+        out["lane_loop"] = l.json();
+    }
     out["trust_required"] = json!(match host {
         "claude" => "Claude Code runs project hooks only in a trusted workspace",
         "omp" => "OMP loads project extensions from .omp/extensions with no trust prompt in its docs (docs/extension-loading.md, read 2026-11-13)",
@@ -634,7 +778,17 @@ pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -
     let root = project_root(project, home)?;
     // Compared directly, not through the plan: the Claude settings plan preserves a user's
     // edit to an owned key and then reports `unchanged`, which is not "configured as generated".
-    let generated = Value::Object(hooks_object(host)?);
+    // Codex: the set its receipt records, so an installed lane Stop hook is `yes` (#2904). An
+    // unreadable or malformed receipt compares with the base set.
+    let generated = Value::Object(if host == "codex" {
+        let receipt = crate::claude::read_existing(&crate::state_root::path(&root, CODEX_RECEIPT))
+            .ok()
+            .flatten();
+        let lane = receipt.and_then(|r| receipt_lane(&r, &CODEX_HOST).ok().flatten());
+        codex_hooks(lane.as_ref())?
+    } else {
+        hooks_object(host)?
+    });
     let configured = match crate::claude::read_existing(&root.join(host_config_path(host)))? {
         None => "no",
         // The OMP module is code, not a hooks object: configured means byte-equal (#2633).
@@ -779,4 +933,114 @@ pub fn receipt(host: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Value
         "fields": fields,
         "dropped": dropped,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The bytes of a Codex install without a lane, captured from the code before #2904
+    /// stage 2 (a869647cb7): the hook file, its receipt and a fresh project's plan digest.
+    const BASE_CODEX_SHA: &str =
+        "sha256:80876935d7e0ac2589cca21678f760508d2046d22fd1c6fe7d23e2105679841c";
+    const BASE_RECEIPT_SHA: &str =
+        "sha256:3785f9474d91580d34d89a1144f1318462859c1f3b0affe7191f7cd578b571af";
+    const BASE_PLAN_DIGEST: &str =
+        "sha256:403c6a05153198a5249ad4c0d9a04dfdf1090ae657d0edda5e1902bf6189524d";
+
+    #[test]
+    fn a_codex_install_without_a_lane_keeps_its_bytes() {
+        let file = codex_render(None).unwrap();
+        assert_eq!(crate::digest(&file), BASE_CODEX_SHA);
+        let receipt = codex_receipt_bytes(&CODEX_HOST, Some(&crate::digest(&file)), None, None);
+        assert_eq!(crate::digest(&receipt), BASE_RECEIPT_SHA);
+        let dir = tempfile::tempdir().unwrap();
+        for lane in [LaneLoop::Keep, LaneLoop::Off] {
+            let v = plan_with(dir.path(), "codex", None, lane).unwrap();
+            assert_eq!(v["plan_digest"], json!(BASE_PLAN_DIGEST));
+            assert!(v.get("lane_loop").is_none(), "{v}");
+        }
+    }
+
+    fn set(lane: &str, repo: &str) -> LaneLoop {
+        LaneLoop::Set {
+            lane: lane.into(),
+            repo: repo.into(),
+        }
+    }
+
+    fn install(root: &Path, lane: LaneLoop) -> Value {
+        let v = plan_with(root, "codex", None, lane.clone()).unwrap();
+        let digest = v["plan_digest"].as_str().unwrap().to_string();
+        apply_with(root, "codex", None, &digest, "test-permission", lane).unwrap()
+    }
+
+    #[test]
+    fn a_lane_adds_a_second_stop_group_that_keep_preserves_and_off_removes() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        install(root, LaneLoop::Keep);
+        let file = root.join(CODEX_FILE);
+        let base = fs::read(&file).unwrap();
+        let receipt = crate::state_root::path(root, CODEX_RECEIPT);
+        let base_receipt = fs::read(&receipt).unwrap();
+        // The lane's plan differs from the base plan only by the lane.
+        let with = plan_with(root, "codex", None, set("agent-1", "o/r")).unwrap();
+        assert_eq!(with["action"], json!("update"));
+        assert_eq!(with["lane_loop"], json!({"lane": "agent-1", "repo": "o/r"}));
+        assert_eq!(fs::read(&file).unwrap(), base, "a plan writes nothing");
+        install(root, set("agent-1", "o/r"));
+        let v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
+        let stop = v["hooks"]["Stop"].as_array().unwrap();
+        assert_eq!(stop.len(), 2);
+        assert_eq!(
+            stop[0]["hooks"][0]["command"],
+            json!("moai-cli hook-receipt --host codex")
+        );
+        assert_eq!(
+            stop[1],
+            json!({"hooks": [{"type": "command",
+                "command": "moai-cli lane-stop-hook --lane agent-1 --repo o/r", "timeout": 120}]})
+        );
+        let r: Value = serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
+        assert_eq!(r["lane_loop"], json!({"lane": "agent-1", "repo": "o/r"}));
+        assert_eq!(r["hooks"].as_array().unwrap().len(), 5);
+        // Keep re-plans to the same file; the status reads the receipt's set.
+        let keep = plan(root, "codex", None).unwrap();
+        assert_eq!(keep["action"], json!("unchanged"), "{keep}");
+        assert_eq!(keep["lane_loop"]["lane"], json!("agent-1"));
+        let st = status(root, "codex", None, "").unwrap();
+        assert_eq!(st["configured"], json!("yes"), "{st}");
+        // Off returns both files to the base bytes.
+        install(root, LaneLoop::Off);
+        assert_eq!(fs::read(&file).unwrap(), base);
+        assert_eq!(fs::read(&receipt).unwrap(), base_receipt);
+        assert_eq!(
+            plan(root, "codex", None).unwrap()["action"],
+            json!("unchanged")
+        );
+    }
+
+    #[test]
+    fn a_lane_is_codex_only_and_well_formed() {
+        let dir = tempfile::tempdir().unwrap();
+        for host in ["claude", "omp"] {
+            for lane in [set("agent-1", "o/r"), LaneLoop::Off] {
+                let e = plan_with(dir.path(), host, None, lane).unwrap_err();
+                assert!(e.contains("--host codex only"), "{e}");
+            }
+        }
+        for (lane, repo) in [("agent 1", "o/r"), ("", "o/r"), ("a", "o"), ("a", "o/r/x")] {
+            let e = plan_with(dir.path(), "codex", None, set(lane, repo)).unwrap_err();
+            assert!(e.contains("OWNER/REPO"), "{e}");
+        }
+        // A receipt whose lane_loop is malformed stops for review instead of dropping it.
+        install(dir.path(), set("agent-1", "o/r"));
+        let receipt = crate::state_root::path(dir.path(), CODEX_RECEIPT);
+        let mut r: Value = serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
+        r["lane_loop"]["repo"] = json!("no-slash");
+        fs::write(&receipt, serde_json::to_vec(&r).unwrap()).unwrap();
+        let e = plan(dir.path(), "codex", None).unwrap_err();
+        assert!(e.contains("preservation review"), "{e}");
+    }
 }
