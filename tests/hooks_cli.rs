@@ -733,7 +733,10 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
         .unwrap()
         .contains("claim-verify"));
     // The tools the engine guards (hook_engine::capabilities("claude")).
-    assert_eq!(pre[1]["matcher"], json!("Bash|Write|Edit|MultiEdit|NotebookEdit"));
+    assert_eq!(
+        pre[1]["matcher"],
+        json!("Bash|Write|Edit|MultiEdit|NotebookEdit")
+    );
     let command = pre[1]["hooks"][0]["command"].as_str().unwrap();
     assert_eq!(
         command,
