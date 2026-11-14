@@ -438,3 +438,58 @@ fn a_bare_repositorys_first_worktree_is_not_a_primary_checkout() {
         "{r}"
     );
 }
+
+/// #2811 AC-3: a lane with one worktree in the old place (inside the primary checkout) and one
+/// in the new place `<HOME>/.moai/worktrees/<project>-<id>` (outside it) gets both mapped,
+/// left work in the new-place one is a finding, and a session folder inside the new-place
+/// worktree belongs to that worktree, not to the primary checkout.
+#[test]
+fn old_and_new_place_worktrees_of_a_lane_are_both_checked() {
+    let f = fixture();
+    let home = f.tmp.path().canonicalize().unwrap().join("home");
+    let new_wt = home.join(".moai/worktrees/primary-8-next");
+    g(
+        &f.primary,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/8-next",
+            new_wt.to_str().unwrap(),
+            "main",
+        ],
+    );
+    g(&new_wt, &["push", "-q", "origin", "issue/8-next"]);
+    fs::create_dir_all(new_wt.join("sub")).unwrap();
+    let mut obs = clean_obs(&f);
+    obs["claims"]["items"] = json!([
+        {"issue": 7, "claim_comment": 70, "resume_note": 71},
+        {"issue": 8, "claim_comment": 80, "resume_note": 81}
+    ]);
+    obs["session_cwd"]["path"] = json!(new_wt.join("sub"));
+    let r = run(&f, "agent-9", Some(obs.clone()));
+    let res = result(&r);
+    assert_eq!(res["verdict"], "safe", "{res}");
+    let by_path = |p: &Path| {
+        res["worktrees"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|w| w["path"] == p.to_str().unwrap())
+            .unwrap_or_else(|| panic!("no {}: {res}", p.display()))
+            .clone()
+    };
+    assert_eq!(by_path(&f.wt7)["matched_by"], json!(["claim #7"]));
+    assert_eq!(
+        by_path(&new_wt)["matched_by"],
+        json!(["claim #8", "session_cwd"])
+    );
+    // Uncommitted work in the new place is the lane's finding.
+    fs::write(new_wt.join("draft.txt"), "x\n").unwrap();
+    let r = run(&f, "agent-9", Some(obs));
+    assert_eq!(
+        texts(result(&r), "findings"),
+        vec![format!("{}: 1 uncommitted change(s)", new_wt.display())]
+    );
+}

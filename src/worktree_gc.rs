@@ -393,6 +393,27 @@ pub(crate) fn census(wt: &Path) -> Option<(usize, usize, bool)> {
     Some((untracked, ignored, target_ignored))
 }
 
+/// The home worktree folder and the Go generation's folder (#2811), each as written and as
+/// resolved; empty when no home is known.
+fn work_roots() -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let Ok(home) = crate::home_workdir::home() else {
+        return (Vec::new(), Vec::new());
+    };
+    let both = |p: PathBuf| {
+        let mut v = vec![p.clone()];
+        if let Ok(real) = fs::canonicalize(&p) {
+            if real != p {
+                v.push(real);
+            }
+        }
+        v
+    };
+    (
+        both(crate::home_workdir::worktrees_root(&home)),
+        both(crate::home_workdir::go_worktrees_root(&home)),
+    )
+}
+
 fn shown(path: &Path, root: &Path) -> String {
     match path.strip_prefix(root) {
         Ok(rel) if rel.as_os_str().is_empty() => ".".into(),
@@ -462,6 +483,9 @@ pub fn plan_with(
             .collect::<Vec<_>>()
     });
     let window = recent.as_secs();
+    // #2811: the home work folders, as written and resolved, so a linked `~/.moai` still
+    // names its worktrees. The Go generation's `worktrees/projects` is never touched (D8a).
+    let (home_roots, go_roots) = work_roots();
 
     let mut candidates = Vec::new();
     for (i, e) in entries.iter().enumerate() {
@@ -471,10 +495,20 @@ pub fn plan_with(
         let path = fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone());
         let target = path.join("target");
         let (cargo, preserved) = split_target(&target);
+        let location = if i == 0 {
+            "primary"
+        } else {
+            crate::home_workdir::location_in(&path, &home_roots, &go_roots, &primary)
+        };
         let mut f = Facts {
             primary: i == 0,
-            preserved_location: path.components().any(|c| c.as_os_str() == ".claude")
-                && path.to_string_lossy().contains("/.claude/worktrees/"),
+            // Without a known home the Go folder's shape alone still keeps it (fail-safe).
+            preserved_location: location == "go"
+                || path
+                    .to_string_lossy()
+                    .contains("/.moai/worktrees/projects/")
+                || (path.components().any(|c| c.as_os_str() == ".claude")
+                    && path.to_string_lossy().contains("/.claude/worktrees/")),
             current_directory: cwd.as_ref().is_some_and(|c| c.starts_with(&path)) && i != 0,
             locked: e.locked,
             prunable: e.prunable,
@@ -519,6 +553,7 @@ pub fn plan_with(
         };
         candidates.push(json!({
             "path": shown(&path, &primary),
+            "location": location,
             "branch": e.branch,
             "head": e.head,
             "action": action,
