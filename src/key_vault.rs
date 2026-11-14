@@ -668,6 +668,22 @@ fn ensure_dir(home: &Path, dir: &Path) -> Result<()> {
 /// renames it over the entry. Makes the machine key on the first write. Answers without the
 /// value.
 pub fn set(home: &Path, scope: &Scope, provider: &str, value: &str) -> Result<Value> {
+    write_entry(home, scope, provider, value, false)
+}
+
+/// [`set`] that never replaces an entry (#2871 I2 S3, the `update` keys layer): the new file is
+/// published with a hard link, which fails when the entry exists.
+pub(crate) fn set_new(home: &Path, scope: &Scope, provider: &str, value: &str) -> Result<Value> {
+    write_entry(home, scope, provider, value, true)
+}
+
+fn write_entry(
+    home: &Path,
+    scope: &Scope,
+    provider: &str,
+    value: &str,
+    exclusive: bool,
+) -> Result<Value> {
     check_provider(provider)?;
     let value = usable_value(value).ok_or("no usable value")?;
     if value.len() > VALUE_MAX {
@@ -709,10 +725,22 @@ pub fn set(home: &Path, scope: &Scope, provider: &str, value: &str) -> Result<Va
         let mut f = options.open(&tmp)?;
         f.write_all(&sealed)?;
         f.sync_all()?;
-        fs::rename(&tmp, &entry)
+        if exclusive {
+            let linked = fs::hard_link(&tmp, &entry);
+            let _ = fs::remove_file(&tmp);
+            linked
+        } else {
+            fs::rename(&tmp, &entry)
+        }
     })();
-    if written.is_err() {
+    if let Err(e) = written {
         let _ = fs::remove_file(&tmp);
+        if exclusive && e.kind() == std::io::ErrorKind::AlreadyExists {
+            return Err(format!(
+                "{} already exists; nothing replaced",
+                entry.display()
+            ));
+        }
         return Err(format!("cannot write {}", entry.display()));
     }
     Ok(json!({
@@ -997,7 +1025,7 @@ pub fn import_apply(
 
 /// Writes one receipt file under `~/.moai-cli/receipts/` (folder `0700`, file `0600`, never
 /// replaced). It holds no value.
-fn write_home_receipt(home: &Path, name: &str, receipt: &Value) -> Result<PathBuf> {
+pub(crate) fn write_home_receipt(home: &Path, name: &str, receipt: &Value) -> Result<PathBuf> {
     let dir = state_dir(home).join("receipts");
     let mut builder = fs::DirBuilder::new();
     builder.recursive(true);
@@ -1024,6 +1052,141 @@ fn write_home_receipt(home: &Path, name: &str, receipt: &Value) -> Result<PathBu
         .and_then(|_| f.write_all(b"\n"))
         .map_err(|_| format!("cannot write {}", path.display()))?;
     Ok(path)
+}
+
+/// A receipt [`write_home_receipt`] wrote: `Ok(None)` when absent, `Err` when it breaks the
+/// private-file rules or is not JSON.
+pub(crate) fn read_home_receipt(home: &Path, name: &str) -> Result<Option<Value>> {
+    let path = state_dir(home)
+        .join("receipts")
+        .join(format!("{name}.json"));
+    let to_text = |b: Blocked| format!("{}: {}", b.code, b.reason);
+    let Some(bytes) =
+        read_private(home, &path, VALUE_FILE_MAX, "move the receipt away").map_err(to_text)?
+    else {
+        return Ok(None);
+    };
+    serde_json::from_slice(&bytes)
+        .map(Some)
+        .map_err(|_| format!("{} is not a receipt", path.display()))
+}
+
+// ---- #2871 I2 S3: the keys layer of `moai update` ----
+
+/// The digest of an entry's sealed bytes (never of the value: the nonce is random), or `None`
+/// when it is absent. The vault and scope folders and the file pass the safety rules first.
+pub(crate) fn entry_digest(home: &Path, scope: &Scope, provider: &str) -> Result<Option<String>> {
+    check_provider(provider)?;
+    let to_text = |b: Blocked| format!("{}: {}", b.code, b.reason);
+    if !check_dir(home, &vault_dir(home)).map_err(to_text)?
+        || !check_dir(home, &scope_dir(home, scope)).map_err(to_text)?
+    {
+        return Ok(None);
+    }
+    let path = entry_path(home, scope, provider);
+    Ok(
+        read_private(home, &path, ENTRY_FILE_MAX, "move the entry away")
+            .map_err(to_text)?
+            .map(|b| crate::digest(&b)),
+    )
+}
+
+/// Removes the entry only while its sealed bytes have `digest`; says whether it removed it.
+pub(crate) fn remove_if_digest(
+    home: &Path,
+    scope: &Scope,
+    provider: &str,
+    digest: &str,
+) -> Result<bool> {
+    if digest.is_empty() || entry_digest(home, scope, provider)?.as_deref() != Some(digest) {
+        return Ok(false);
+    }
+    let entry = entry_path(home, scope, provider);
+    fs::remove_file(&entry).map_err(|_| format!("cannot remove {}", entry.display()))?;
+    Ok(true)
+}
+
+/// The metadata that changes when a file is replaced or rewritten.
+fn identity_of(meta: &fs::Metadata) -> Value {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        json!([
+            meta.dev(),
+            meta.ino(),
+            meta.len(),
+            meta.mode(),
+            meta.mtime(),
+            meta.mtime_nsec()
+        ])
+    }
+    #[cfg(not(unix))]
+    {
+        json!([meta.len(), format!("{:?}", meta.modified().ok())])
+    }
+}
+
+/// Why a legacy source is kept unread under the keys layer's rules, if it is.
+fn layer_unsafe(home: &Path, meta: &fs::Metadata) -> Option<&'static str> {
+    let kind = meta.file_type();
+    if kind.is_symlink() {
+        return Some("a symlink is not followed");
+    }
+    if kind.is_dir() {
+        return Some("a directory, not a key file");
+    }
+    if !kind.is_file() {
+        return Some("not a regular file (a FIFO, socket or device)");
+    }
+    if meta.len() > VALUE_FILE_MAX {
+        return Some("larger than 64 KiB");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let Ok(home_meta) = fs::metadata(home) else {
+            return Some("HOME is unreadable, so the owner cannot be checked");
+        };
+        match owner_mode_problem(meta.uid(), meta.mode(), home_meta.uid()) {
+            Some(OwnerModeProblem::Owner) => return Some("not owned by the owner of HOME"),
+            Some(OwnerModeProblem::Mode) => {
+                return Some("mode looser than 0600 (readable or writable by others)")
+            }
+            None => {}
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = home;
+    None
+}
+
+/// One legacy source for the `update` keys layer: `Err(reason)` when it is kept unread (checked
+/// on the path without following it, then again on the opened handle), else the token it holds
+/// (if any) and its metadata. The token never leaves the crate's keys layer.
+pub(crate) fn layer_source(
+    home: &Path,
+    path: &Path,
+) -> std::result::Result<(Option<String>, Value), &'static str> {
+    let meta = fs::symlink_metadata(path).map_err(|_| "unreadable")?;
+    if let Some(why) = layer_unsafe(home, &meta) {
+        return Err(why);
+    }
+    let file = open_nofollow(path).map_err(|_| "unreadable")?;
+    let opened = file.metadata().map_err(|_| "unreadable")?;
+    if layer_unsafe(home, &opened).is_some() || identity_of(&opened) != identity_of(&meta) {
+        return Err("changed while it was checked");
+    }
+    let mut bytes = Vec::new();
+    file.take(VALUE_FILE_MAX + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "unreadable")?;
+    if bytes.len() as u64 > VALUE_FILE_MAX {
+        return Err("larger than 64 KiB");
+    }
+    let token = String::from_utf8(bytes)
+        .ok()
+        .and_then(|t| legacy_token_in(&t));
+    Ok((token, identity_of(&opened)))
 }
 
 #[cfg(test)]

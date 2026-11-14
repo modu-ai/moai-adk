@@ -8,7 +8,6 @@ Start
   codex                   Start a Codex CLI session
   glm                     Start a Claude Code session on z.ai GLM
 Project
-  init                    Initialize this folder or a new project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile
@@ -77,6 +76,7 @@ Keys
   key-remove              Remove a provider key from the vault
   key-import-plan         Preview importing an old key file
   key-import-apply        Import a previewed old key file
+  keys-revert             Undo the keys one update imported
 Diagnose
   claude-doctor           Check that Claude Code reads AGENTS.md
   codex-doctor            Check the Codex instructions and skills
@@ -190,6 +190,8 @@ Internal
 Options:
   -l, --leader             Start a leader session on the default host (cc)
   -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|codex; default cc)
+      --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or
+                           never; put it before the command
       --name <NAME>        Session name (default `leader` for -l, the project's next `agent-N` for
                            -a; none without a role)
       --model <MODEL>      Main model (Claude hosts default `opus`; codex uses its own default

@@ -105,6 +105,55 @@ fn the_cleanup_is_shown_with_its_own_command() {
     }
 }
 
+/// #2871 I2 S3 on the screens: each legacy key file is one plain line — provider, file and what
+/// the keys layer does — in English and Korean; the import is a change, the applied run shows
+/// the `keys-revert` command, and no value appears.
+#[test]
+fn the_keys_rows_are_one_plain_line_each() {
+    let keys = serde_json::json!({
+        "rows": [
+            {"provider": "glm", "source": "/home/u/.moai/.env.glm", "action": "import", "reason": null},
+            {"provider": "glm", "source": "/home/u/.moai-cli/.env.glm", "action": "keep",
+             "reason": "another glm file is imported"},
+            {"provider": "openai", "source": "/home/u/.moai/.env.openai", "action": "keep",
+             "reason": "unknown provider: only glm is imported"},
+        ],
+        "destination": "/home/u/.moai-cli/vault/_shared/glm.key",
+        "plan_digest": "sha256:0", "value_shown": false,
+    });
+    let mut changes = fixture("preview-changes");
+    changes["keys"] = keys;
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 100, None);
+        let (import, keep) = if lang == Lang::Ko {
+            ("금고로 가져오기(원본 유지)", "그대로 둠")
+        } else {
+            ("import into the vault (original kept)", "keep")
+        };
+        let q = question(&changes, &v);
+        for want in [
+            format!("glm .moai/.env.glm — {import}"),
+            format!("glm .moai-cli/.env.glm — {keep}: another glm file is imported"),
+            format!("openai .moai/.env.openai — {keep}: unknown provider: only glm is imported"),
+        ] {
+            let lines: Vec<&str> = q.lines().filter(|l| l.contains(&want)).collect();
+            assert_eq!(lines.len(), 1, "{want}: {q}");
+        }
+        assert!(q.contains("~/.moai-cli/vault/_shared/glm.key"), "{q}");
+        let mut done = fixture("preview-changes");
+        done["mode"] = serde_json::json!("applied");
+        done["keys_result"] = serde_json::json!({"state": "applied",
+            "written": ["/home/u/.moai-cli/vault/_shared/glm.key"], "receipt": "keys-1-2"});
+        done["revert"] = serde_json::json!({
+            "keys": "moai keys-revert <HOME> --receipt keys-1-2 --permission-reference <reference>"});
+        let text = screen(&done, Asked::Yes, &v);
+        assert!(
+            text.contains("moai keys-revert <HOME> --receipt keys-1-2"),
+            "{text}"
+        );
+    }
+}
+
 fn moai_project() -> Option<Project> {
     Some(Project {
         path: "/home/u/work/app".into(),
