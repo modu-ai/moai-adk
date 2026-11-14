@@ -136,6 +136,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
             ("lane-stop-hook", false),
@@ -335,6 +336,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
+    (
+        "leader-round",
+        &[
+            "leader-round --observations screens.json --repo modu-ai/moai-adk .",
+            "leader-round --observations screens.json --snapshot fleet.json .",
+        ],
+    ),
     (
         "lane-next",
         &[

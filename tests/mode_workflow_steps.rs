@@ -196,6 +196,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-next --wait",
             // #2900 (#2899 G2): the leader clears a lane only on `safe`.
             "lane-safe-to-reset --lane",
+            // #2902 O3b: the leader's round, one action per lane.
+            "leader-round --observations",
             "pr-confirm",
             // #2840 D3: the PR body is checked locally before the push and before opening.
             "pr-self-audit-check --file",
