@@ -1,2 +1,2 @@
 # moai gate-loop acme/widgets (moai.gate-loop.acme.widgets)
-*/2 * * * * cd /work/widgets && PATH=/usr/local/bin:/usr/bin:/bin flock -n <HOME>/.moai-cli/schedule/gate-loop.lock /opt/moai/bin/moai gate-loop --once --dry-run --repo acme/widgets --dir /work/widgets >> <HOME>/.moai-cli/logs/gate-loop.log 2>&1
+*/2 * * * * cd /work/widgets && PATH=/usr/local/bin:/usr/bin:/bin flock -n <HOME>/.moai-cli/schedule/gate-loop.lock /opt/moai/bin/moai gate-loop --once --fetch --dry-run --repo acme/widgets --dir /work/widgets >> <HOME>/.moai-cli/logs/gate-loop.log 2>&1
