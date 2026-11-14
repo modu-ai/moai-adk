@@ -137,6 +137,10 @@ pub const GROUPS: &[Group] = &[
             ("queue-query", false),
             ("leader-tick", false),
             ("lane-next", false),
+            ("lane-loop-line", false),
+            ("lane-resume-note", false),
+            ("lane-resume-check", false),
+            ("lane-duty-line", false),
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
@@ -331,10 +335,36 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "lane-next --lane agent-1 --repo modu-ai/moai-adk --wait 1800",
         ],
     ),
+    (
+        "lane-loop-line",
+        &[
+            "lane-loop-line --host claude --lane agent-1",
+            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
+        ],
+    ),
+    (
+        "lane-resume-note",
+        &["lane-resume-note --lane agent-1 --issue 2904 --claim 6874514212 --lease-until 2026-11-14T14:00:00Z --branch issue/2904-x --head <40-hex> --uncommitted 0 --next push"],
+    ),
+    ("lane-resume-check", &["lane-resume-check --file comment.md"]),
+    (
+        "lane-duty-line",
+        &[
+            "lane-duty-line --lane 1",
+            "lane-duty-line --lane 1 --host codex --first <task>",
+        ],
+    ),
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
-    ("session-register", &["session-register --name agent-1 ."]),
+    (
+        "session-register",
+        &[
+            "session-register --name agent-1 .",
+            "session-register --show --name agent-1 .",
+            "session-register --release --by leader --name agent-1 --instance <instance> .",
+        ],
+    ),
     ("usage-limit", &["usage-limit ~"]),
     ("heavy-slot-acquire", &["heavy-slot-acquire --max 2 --name agent-1 -- cargo test"]),
     ("heavy-slot-status", &["heavy-slot-status"]),

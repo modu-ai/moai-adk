@@ -1,0 +1,27 @@
+◆ MoAI update
+  installed 2026.11.0-rc.1 = package
+  2026.11.0-rc.1
+  HOME ~
+
+Checking
+  ✗ skills claude
+    blocked: SKILL.md was changed by
+    hand since the last update
+  ✓ skills codex
+    32 up to date
+  ✓ agents
+    claude 5 · codex 5 · omp 5 — 15 up
+    to date
+  ✓ routing
+    CLAUDE.md up to date · AGENTS.md up
+    to date
+  ✓ output style
+    3 up to date
+  ✓ command names
+    up to date
+  – hooks
+    skipped: no MoAI hook set in this
+    project
+
+✗ Nothing can be applied — clear the
+  blocked part first

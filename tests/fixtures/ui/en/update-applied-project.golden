@@ -1,0 +1,19 @@
+
+Applied
+  ✓ skills claude  31 changed
+  ✓ skills codex   31 changed
+  ✓ agents         15 changed
+  ✓ routing        2 changed
+  ✓ output style   3 changed
+  ✓ command names  1 changed
+
+✓ Done — 83 changed
+  revert: moai home-style-revert <HOME> --receipt style-1794640615603369000-0 --permission-reference <reference>
+  revert: moai home-routing-revert <HOME> --receipt routing-1794640615516508000-0 --permission-reference <reference>
+  revert: moai agents-home-revert <HOME> --receipt agents-1794640614651673000-0 --permission-reference <reference>
+  running sessions need /reload
+
+→ Next: in each existing project, run /moai update in a session there
+  ($moai update in Codex CLI) to update the project's settings.
+  this folder: app — MoAI project · the session's /moai update checks its
+  settings
