@@ -92,7 +92,7 @@ fn layout_bin(home: &Path, exe: &Path) -> Option<PathBuf> {
     let canonical_home = fs::canonicalize(home).ok()?;
     let canonical_exe = fs::canonicalize(exe).ok()?;
     let bin = canonical_exe.parent()?;
-    let versions = canonical_home.join(crate::HOME_STATE_DIR).join("versions");
+    let versions = crate::home_root::path(&canonical_home).join("versions");
     (bin.file_name()? == "bin" && bin.parent()?.parent()? == versions).then(|| bin.to_path_buf())
 }
 
@@ -104,7 +104,7 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
             "outside_layout",
             Some(format!(
                 "this binary is not in the version folder layout ~/{}/versions/<version>/bin/; nothing is linked",
-                crate::HOME_STATE_DIR
+                crate::home_root::dir(home)
             )),
             None,
             None,
