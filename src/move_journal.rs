@@ -20,9 +20,14 @@
 //!   source is still there and whose destination is free is moved; an unfinished item whose
 //!   rename may or may not have happened (a `moving` one, or a `planned` one whose source is
 //!   gone while something is at its destination) becomes `needs_review`.
-//! - [`revert`] replays the `moved` items in reverse order, each only when the original path
-//!   is free and the moved entry is still at its destination; otherwise that item is a
-//!   `conflict` and stays where it is.
+//! - Each item records the identity of the entry it moves (device and inode, which a rename
+//!   keeps) when it is marked `moving`.
+//! - [`revert`] replays the items in reverse order: a `moved` one, and an unfinished one
+//!   (`moving` or `needs_review`) whose rename may have happened. An item goes back only when
+//!   the entry at its destination is the recorded one (same kind and identity) and the original
+//!   path is free; an unfinished item whose recorded entry is still at the original path was
+//!   never moved and needs nothing. Any other item is a `conflict`, stays where it is, and the
+//!   journal ends `revert_partial`.
 //! - An entry the caller's `in_use` check reports open (or cannot judge) is skipped (R2).
 //!
 //! The caller chooses the journal folder; this module never decides HOME paths.
@@ -81,7 +86,8 @@ pub struct MoveEnv<'a> {
     pub in_use: &'a dyn Fn(&Path) -> InUse,
     pub same_device: &'a dyn Fn(&Path, &Path) -> Option<bool>,
     /// Test seam: stop with an error at this point, leaving everything as it is, the way a
-    /// crash would (`after_journal`, `after_mark_moving`, `after_move:<n>`, `before_commit`).
+    /// crash would (`after_journal`, `after_mark_moving`, `after_rename`, `after_move:<n>`,
+    /// `before_commit`).
     /// Consulted in debug builds only.
     pub fault: Option<&'a str>,
 }
@@ -139,6 +145,11 @@ pub struct JournalItem {
     /// `file` or `folder`, recorded at the move so a revert only moves back the same kind.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub entry: Option<String>,
+    /// `<device>:<inode>` of the moved entry (a file adds size and mtime), recorded with
+    /// `moving`, so a revert only moves
+    /// back that same entry, never a later one under the same name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -227,7 +238,7 @@ pub fn resume(path: &Path, env: &MoveEnv) -> Result<Report> {
     run(path, journal, env)
 }
 
-/// Move the `moved` items of the journal at `path` back, last first (see the module comment).
+/// Move the items of the journal at `path` back, last first (see the module comment).
 pub fn revert(path: &Path) -> Result<Report> {
     let mut j = read_journal(path)?;
     if j.state == JournalState::Reverted {
@@ -237,26 +248,38 @@ pub fn revert(path: &Path) -> Result<Report> {
     let mut conflict = false;
     let mut outcomes = vec![None; j.items.len()];
     for i in (0..j.items.len()).rev() {
-        if j.items[i].status != ItemStatus::Moved {
+        let status = j.items[i].status;
+        if !matches!(
+            status,
+            ItemStatus::Moved | ItemStatus::Moving | ItemStatus::NeedsReview
+        ) {
             continue;
         }
         let from = PathBuf::from(&j.items[i].from);
         let to = PathBuf::from(&j.items[i].to);
-        let back = match (entry_kind(&to), &j.items[i].entry) {
-            (Some(k), Some(rec)) if &k == rec => match destination_free(&from) {
-                Ok(()) => rename_exclusive(&to, &from),
-                Err(e) => Err(e),
-            },
-            _ => Err((
+        let recorded = |p: &Path| {
+            j.items[i].identity.is_some()
+                && identity(p) == j.items[i].identity
+                && entry_kind(p) == j.items[i].entry
+        };
+        // Ok(true): moved back; Ok(false): the rename never happened, nothing to do.
+        let back = if recorded(&to) {
+            destination_free(&from)
+                .and_then(|()| rename_exclusive(&to, &from))
+                .map(|()| true)
+        } else if status != ItemStatus::Moved && recorded(&from) {
+            Ok(false)
+        } else {
+            Err((
                 ItemStatus::Conflict,
                 "moved_entry_not_at_destination".into(),
-            )),
+            ))
         };
         match back {
-            Ok(()) => {
+            Ok(moved_back) => {
                 j.items[i].status = ItemStatus::Reverted;
-                j.items[i].reason = None;
-                changed = true;
+                j.items[i].reason = (!moved_back).then(|| "never_moved".to_string());
+                changed |= moved_back;
                 outcomes[i] = Some("reverted".to_string());
             }
             Err((_, why)) => {
@@ -327,6 +350,7 @@ fn planned(m: &PlannedMove) -> Result<JournalItem> {
         status: ItemStatus::Planned,
         reason: None,
         entry: None,
+        identity: None,
     })
 }
 
@@ -361,10 +385,12 @@ fn run(path: &Path, mut j: Journal, env: &MoveEnv) -> Result<Report> {
         };
         j.items[i].status = ItemStatus::Moving;
         j.items[i].entry = Some(entry.to_string());
+        j.items[i].identity = identity(&from);
         save(path, &j)?;
         env.fault("after_mark_moving")?;
         match rename_exclusive(&from, &to) {
             Ok(()) => {
+                env.fault("after_rename")?;
                 j.items[i].status = ItemStatus::Moved;
                 save(path, &j)?;
                 moves += 1;
@@ -445,6 +471,28 @@ fn entry_kind(p: &Path) -> Option<String> {
     } else if m.is_file() {
         Some("file".into())
     } else {
+        None
+    }
+}
+
+/// `<device>:<inode>` of the entry at `p`, not followed, and for a file also
+/// `:<size>:<mtime s>.<ns>` (a rename keeps all of them; a freed inode number can be reused by
+/// a new file); `None` where that is not available (which makes a revert of the item a
+/// conflict).
+fn identity(p: &Path) -> Option<String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let m = fs::symlink_metadata(p).ok()?;
+        let mut id = format!("{}:{}", m.dev(), m.ino());
+        if m.is_file() {
+            id.push_str(&format!(":{}:{}.{}", m.size(), m.mtime(), m.mtime_nsec()));
+        }
+        Some(id)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = p;
         None
     }
 }
@@ -1040,6 +1088,128 @@ mod tests {
         // The conflicting items stay `moved` in the journal, so a later revert can retry.
         let j = read_journal(&path).unwrap();
         assert_eq!(j.items[0].status, ItemStatus::Moved);
+    }
+
+    /// A stop after the rename but before its `moved` record (PR #2957 audit B1): revert still
+    /// moves the item back, straight away or after a resume marked it for review.
+    #[test]
+    fn move_journal_revert_after_a_stop_between_rename_and_record() {
+        for resume_first in [false, true] {
+            let f = fixture();
+            let items = plan(&f);
+            let before = digest_tree(&f.tree);
+            let crash = env_with(&never_in_use, Some("after_rename"));
+            let err = apply(&f.journals, "test", &items, &aliases(), NOW, &crash).unwrap_err();
+            assert!(err.contains("after_rename"), "{err}");
+            let path = journal_path(&f.journals, STAMP);
+            assert_eq!(statuses(&path).1[0], ItemStatus::Moving);
+            assert!(f.tree.join("new/versions/a.bin").exists());
+            if resume_first {
+                let r = resume(&path, &MoveEnv::new(&never_in_use)).unwrap();
+                assert_eq!(outcomes(&r)[0], "needs_review");
+            }
+            let back = revert(&path).unwrap();
+            assert_eq!(
+                back.state,
+                JournalState::Reverted,
+                "resume first: {resume_first}"
+            );
+            assert!(back.changed);
+            assert_eq!(outcomes(&back)[0], "reverted");
+            assert_eq!(digest_tree(&f.tree), before, "resume first: {resume_first}");
+        }
+    }
+
+    /// A stop before the rename: revert finds the recorded entry still at its original path and
+    /// records that it never moved.
+    #[test]
+    fn move_journal_revert_of_an_item_that_never_moved() {
+        let f = fixture();
+        let items = plan(&f);
+        let before = digest_tree(&f.tree);
+        let crash = env_with(&never_in_use, Some("after_mark_moving"));
+        apply(&f.journals, "test", &items, &aliases(), NOW, &crash).unwrap_err();
+        let path = journal_path(&f.journals, STAMP);
+        let back = revert(&path).unwrap();
+        assert_eq!(back.state, JournalState::Reverted);
+        assert!(!back.changed);
+        let j = read_journal(&path).unwrap();
+        assert_eq!(j.items[0].status, ItemStatus::Reverted);
+        assert_eq!(j.items[0].reason.as_deref(), Some("never_moved"));
+        assert_eq!(digest_tree(&f.tree), before);
+    }
+
+    /// Another entry of the same kind under the moved name (PR #2957 audit B2): revert leaves
+    /// it where it is and reports a conflict; the original path stays empty.
+    #[test]
+    fn move_journal_revert_never_carries_back_a_later_entry_of_the_same_kind() {
+        let f = fixture();
+        let items = plan(&f);
+        let path = journal_path(&f.journals, STAMP);
+        apply(
+            &f.journals,
+            "test",
+            &items,
+            &aliases(),
+            NOW,
+            &MoveEnv::new(&never_in_use),
+        )
+        .unwrap();
+        // Another tool replaced the moved file and the moved folder with new ones. Each new
+        // entry is made while the moved one still exists, so its inode differs.
+        let n = f.tree.join("new");
+        file(&n.join("path.new"), b"WRITTEN-LATER-BY-OTHER-TOOL", 0o644);
+        fs::remove_file(n.join("path")).unwrap();
+        fs::rename(n.join("path.new"), n.join("path")).unwrap();
+        fs::create_dir(n.join("versions.new")).unwrap();
+        fs::remove_dir_all(n.join("versions")).unwrap();
+        fs::rename(n.join("versions.new"), n.join("versions")).unwrap();
+        let r = revert(&path).unwrap();
+        assert_eq!(r.state, JournalState::RevertPartial);
+        assert_eq!(
+            outcomes(&r),
+            ["conflict", "conflict", "reverted", "conflict"]
+        );
+        assert!(!f.tree.join("old/path").exists());
+        assert!(!f.tree.join("old/versions").exists());
+        assert_eq!(
+            fs::read(f.tree.join("new/path")).unwrap(),
+            b"WRITTEN-LATER-BY-OTHER-TOOL"
+        );
+        // The unchanged item went back.
+        assert_eq!(
+            fs::read(f.tree.join("old/my notes.")).unwrap(),
+            b"spaces and a dot"
+        );
+    }
+
+    /// A moved file rewritten in place keeps its inode, but not its size: revert leaves it.
+    #[test]
+    fn move_journal_revert_leaves_a_file_rewritten_in_place() {
+        let f = fixture();
+        let items = plan(&f);
+        let path = journal_path(&f.journals, STAMP);
+        apply(
+            &f.journals,
+            "test",
+            &items,
+            &aliases(),
+            NOW,
+            &MoveEnv::new(&never_in_use),
+        )
+        .unwrap();
+        let n = f.tree.join("new/my notes.");
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&n)
+            .unwrap()
+            .write_all(b" and more")
+            .unwrap();
+        let r = revert(&path).unwrap();
+        assert_eq!(r.state, JournalState::RevertPartial);
+        assert_eq!(outcomes(&r)[2], "conflict");
+        assert_eq!(fs::read(&n).unwrap(), b"spaces and a dot and more");
+        assert!(!f.tree.join("old/my notes.").exists());
     }
 
     #[test]
