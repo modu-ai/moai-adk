@@ -10,7 +10,8 @@
 //!
 //! "Once per head" is kept in the pull request itself: each note carries a hidden marker
 //! `<!-- moai:gate-loop <kind> head=<sha> -->`, and a marker already present means done. No
-//! local state file is written. A head that is not in the local repository is skipped.
+//! local state file is written. A head that is not in the local repository is skipped;
+//! with `fetch` (#2906 S3) the pass first fetches the base branch and every open head.
 //!
 //! Like gate-merge, everything goes through the operator's transport `t` except the status,
 //! which goes through `status_t` (the audit App token when set; #2735 audit F3).
@@ -33,6 +34,9 @@ pub struct LoopTarget<'a> {
     /// Local ref or SHA of its tip.
     pub tip: &'a str,
     pub review_confirmed_prs: Vec<u64>,
+    /// Fetch the base branch and every open pull request's head from `origin` before the
+    /// pass (#2906 S3); off by default.
+    pub fetch: bool,
 }
 
 fn marker(kind: &str, head: &str) -> String {
@@ -158,6 +162,17 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
     // newer ones every pass (GitHub lists newest first by default).
     open.sort_by_key(|p| p["number"].as_u64().unwrap_or(u64::MAX));
     let total = open.len();
+    // #2906 S3: `--fetch` brings the base branch and every open head in first, the way the
+    // shell loop fetched per pull request. A failed fetch is reported and the pass goes on
+    // with what is local (a head still missing is skipped below).
+    let fetched = target.fetch.then(|| {
+        let prs: Vec<u64> = open.iter().filter_map(|p| p["number"].as_u64()).collect();
+        let refspecs = fetch_refspecs(target.base_branch, &prs);
+        match fetch(target.dir, &refspecs) {
+            Ok(()) => json!({"ok": true, "refspecs": refspecs}),
+            Err(e) => json!({"ok": false, "refspecs": refspecs, "error": e}),
+        }
+    });
     for (seen, p) in open.into_iter().enumerate() {
         // #2860 rule 4 (leader decision 6870150891): drafts are gated too; a passing draft is
         // marked ready by gate-merge just before its merge.
@@ -243,5 +258,43 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         };
         rows.push(json!({"pr": pr, "outcome": action, "rule": rule, "reason": reason}));
     }
-    Ok(json!({"dry_run": dry_run, "pull_requests": rows}))
+    let mut out = json!({"dry_run": dry_run, "pull_requests": rows});
+    if let Some(f) = fetched {
+        out["fetch"] = f;
+    }
+    Ok(out)
+}
+
+/// Explicit refspecs into named remote refs, so nothing depends on FETCH_HEAD (#2906 S3).
+fn fetch_refspecs(base: &str, prs: &[u64]) -> Vec<String> {
+    let mut specs = vec![format!("+refs/heads/{base}:refs/remotes/origin/{base}")];
+    specs.extend(
+        prs.iter()
+            .map(|n| format!("+refs/pull/{n}/head:refs/remotes/origin/pull/{n}")),
+    );
+    specs
+}
+
+/// One `git fetch origin` with `refspecs`; FETCH_HEAD is not written. The operator's git
+/// configuration stays in effect (credentials, URL rewrites), as in the shell loop.
+fn fetch(dir: &Path, refspecs: &[String]) -> Result<()> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+        .args(["fetch", "--quiet", "--no-write-fetch-head", "origin"])
+        .args(refspecs)
+        .current_dir(dir)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .map_err(|e| format!("cannot execute git: {e}"))?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "git fetch failed: {}",
+            crate::identity::failure_summary(&out.stderr)
+        ))
+    }
 }
