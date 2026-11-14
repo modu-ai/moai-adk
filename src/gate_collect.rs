@@ -541,6 +541,75 @@ pub fn completed_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
     crate::flow::tip_ci_judgment(&kept, &[TIP_REQUIRED.to_string()])
 }
 
+/// #2554 D8(a) (#2860, the judgment #2856 `lane-next` uses too): the aggregate check
+/// (`ci`/`rc-ci`) is not judged on its own — a newer push cancels the older run's waiting jobs
+/// and the aggregate then reads `failure` with every real job passed or cancelled — and a
+/// cancelled job says nothing about the code. The remaining jobs are judged with
+/// [`crate::flow::tip_ci_judgment`]: `red` only when a job itself failed with no success on the
+/// same commit; no job left reads `pending`.
+pub fn d8a_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
+    let kept: Vec<serde_json::Value> = runs
+        .iter()
+        .filter(|r| {
+            let name = r["name"].as_str().unwrap_or("");
+            !crate::flow::CI_CHECK_NAMES.contains(&name)
+                && r["conclusion"].as_str() != Some("cancelled")
+        })
+        .cloned()
+        .collect();
+    let mut names: Vec<String> = kept
+        .iter()
+        .filter_map(|r| r["name"].as_str().map(str::to_string))
+        .collect();
+    names.sort();
+    names.dedup();
+    if names.is_empty() {
+        return serde_json::json!({"state": "pending"});
+    }
+    crate::flow::tip_ci_judgment(&kept, &names)
+}
+
+/// G8's judgment of one commit: [`d8a_judgment`] whenever the commit has any job besides the
+/// aggregate (a cancelled one included). A commit whose CI is the aggregate alone — a project
+/// whose workflow has a single job named `ci` — is judged by that check ([`completed_judgment`]),
+/// so D8(a) never reads such a project as forever pending.
+fn g8_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
+    let has_jobs = runs.iter().any(|r| {
+        r["name"]
+            .as_str()
+            .is_some_and(|n| !crate::flow::CI_CHECK_NAMES.contains(&n))
+    });
+    if has_jobs {
+        d8a_judgment(runs)
+    } else {
+        completed_judgment(runs)
+    }
+}
+
+/// The cancelled jobs on one commit that D8(a) does not excuse for the merge gate (#2860,
+/// leader tool `green_tip.py`): a cancelled job with no success on the same commit counts only
+/// when it is a macOS job that succeeded on a newer tip commit (`newer_ok`); anything else
+/// leaves the commit undecided, and G8 reads the next older one.
+fn unexcused_cancels(runs: &[serde_json::Value], newer_ok: &[String]) -> Vec<String> {
+    let succeeded = |name: &str| {
+        runs.iter().any(|r| {
+            r["name"].as_str() == Some(name) && r["conclusion"].as_str() == Some("success")
+        })
+    };
+    let mut out: Vec<String> = runs
+        .iter()
+        .filter(|r| r["conclusion"].as_str() == Some("cancelled"))
+        .filter_map(|r| r["name"].as_str())
+        .filter(|n| !crate::flow::CI_CHECK_NAMES.contains(n))
+        .filter(|n| !succeeded(n))
+        .filter(|n| !(n.contains("macos") && newer_ok.iter().any(|ok| ok == n)))
+        .map(str::to_string)
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
 /// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
 /// visible), at most ten pages.
 fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_json::Value>> {
@@ -588,13 +657,26 @@ fn tip_ci<T: Transport>(t: &T, base_url: &str, dir: &Path, tip: &str) -> Result<
         detail,
     };
     let mut waited = Vec::new();
+    // Jobs that succeeded on a newer tip commit already read (newest first): a macOS job a
+    // newer push cancelled here counts as passed when one of these is it (#2860, D8(a)).
+    let mut newer_ok: Vec<String> = Vec::new();
     for sha in walk.lines().filter(|l| !l.is_empty()) {
         let runs = match tip_runs(t, base_url, sha) {
             Ok(runs) => runs,
             Err(e) => return Ok(unknown(format!("check runs of {sha} unreadable: {e}"))),
         };
-        let j = completed_judgment(&runs);
-        let state = j["state"].as_str().unwrap_or("unknown").to_string();
+        // #2860: D8(a) instead of the aggregate `ci` — the aggregate fails whenever a newer
+        // push cancels a waiting macOS job, which would read a green tip as red.
+        let j = g8_judgment(&runs);
+        let mut state = j["state"].as_str().unwrap_or("unknown").to_string();
+        if state != "red" && !unexcused_cancels(&runs, &newer_ok).is_empty() {
+            state = "pending".into();
+        }
+        newer_ok.extend(
+            runs.iter()
+                .filter(|r| r["conclusion"].as_str() == Some("success"))
+                .filter_map(|r| r["name"].as_str().map(str::to_string)),
+        );
         if state == "pending" {
             waited.push(sha.get(..10).unwrap_or(sha).to_string());
             continue;

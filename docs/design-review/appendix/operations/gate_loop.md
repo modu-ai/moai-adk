@@ -33,4 +33,9 @@ operation `gate.loop` · 코드 `src/ops/gate_loop.rs`, `src/gate_loop.rs` · Is
 - G2: 댓글 **첫 줄**의 `moai-claim-handoff: comment=<id> to=<lane> by=leader` 가 허용된 예약을 그 레인으로 옮긴다. 허용된 예약을 가리키고 그 뒤에 쓴 것만 인정하며, 마지막 인계가 이긴다.
 - G1: 판정 base 가 7–39자 짧은 SHA 여도 collect 가 `rev-parse --verify` 로 커밋 하나로 풀면(`verdict_base_full`) 인정한다. head 는 40자 그대로다.
 - G6: `src/lib.rs` 겹침은 PR 쪽 변경이 `mod x;`/`pub mod x;` 추가 줄뿐이고 병합 tree 에 모두 남으면(`lib_mod_only_kept`) 허용한다.
+- G8(tip 빨강 멈춤)은 #2554 D8(a) 로 판정한다(#2860 범위 추가, 근거 #2856 감사 N10; 리더 도구 `green_tip.py` 와 같은 규칙).
+  - 모음 job `ci` 는 보지 않고, 남은 job 을 `gate_collect::d8a_judgment` 로 판정한다. 이 함수는 #2856 `lane-next` 와 같은 함수다.
+  - 진짜 job 실패는 빨강이다.
+  - 다음 병합이 취소한 macOS job 은, tip 쪽 더 새 커밋에서 같은 job 이 성공했을 때만 통과로 본다. 그렇지 않거나 macOS 가 아닌 job 이 취소됐으면 그 커밋은 아직 판정하지 않고 더 오래된 커밋을 읽는다.
+  - job 이 모음 `ci` 하나뿐인 저장소(사용자 프로젝트)는 예전처럼 그 check 로 판정한다.
 - 쉘판의 마감 인계 자동 게시(`auto_handoff.py`)는 옮기지 않았다. 제품 설계가 "자동 인계 없음"(`src/claim.rs`, `src/handoff.rs`)이라서다. counts 갱신은 상태줄 렌더가 TTL 로 한다.
