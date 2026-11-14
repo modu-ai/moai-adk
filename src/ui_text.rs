@@ -656,6 +656,28 @@ mod tests {
         assert_eq!(placeholders("open { only"), Vec::<&str>::new());
     }
 
+    /// #2935 L3-c (audit 6877895608 N2): the `moai init` guidance names the new flow in both
+    /// languages — the launchers, their `-l`/`-a` flags and `/moai project` in the session.
+    /// `tests/cli_unknown_command.rs` reads stderr through a pipe, so only English; this pins
+    /// the Korean text too.
+    #[test]
+    fn init_guidance_names_the_launcher_flow_in_every_language() {
+        for lang in [Lang::En, Lang::Ko] {
+            let t = text(Msg::InitRemoved, lang);
+            for p in [
+                "moai init",
+                "moai cc",
+                "moai glm",
+                "moai codex",
+                "-l",
+                "-a",
+                "/moai project",
+            ] {
+                assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");
+            }
+        }
+    }
+
     /// The profile is found from a subfolder of the project, stops at `.git`, skips HOME, and
     /// a missing or unreadable profile is silently nothing.
     #[test]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Limit how many heavy checks run at once on a shared machine (Issue #2491).
 
-    heavy_check_slot.py acquire --max N --name LANE [--dir DIR]
+    heavy_check_slot.py acquire [--max N] --name LANE [--dir DIR]
                                 [--min-free-gb G] [--max-swap-pct P] -- COMMAND...
     heavy_check_slot.py status [--dir DIR]
 
@@ -10,8 +10,15 @@ when the working folder's file system has less than --min-free-gb free (default 
 GB = 10^9 bytes) or swap use is above --max-swap-pct (default 80), `acquire` starts nothing
 and exits 75 (sysexits EX_TEMPFAIL, "try again later") with the measured values on stderr.
 It judges before queueing and again right before COMMAND after a wait, since a wait can eat
-the space. A value the system does not give is not a reason to refuse. `--min-free-gb 0
---max-swap-pct 100` turns both off. Nothing is ever deleted (cleanup is a person's job).
+the space. A value the system does not give is not a reason to refuse. Nothing is ever
+deleted (cleanup is a person's job).
+
+The machine's limits live in one file beside the slots, `<folder>/limits.json` (Issue #2930
+R-2): `max`, `min_free_gb`, `max_swap_pct`, each optional (defaults 3, 50, 80). A caller's
+flag wins only when it is stricter, so no caller turns a limit off; only the file loosens
+one. A limits file that is not a plain file (a symlink, even to a valid file, or a folder),
+is over 4096 bytes, does not parse, has another key or sets `max` 0 is refused: `acquire`
+exits 125 without running COMMAND or writing anything.
 Tests set MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n> (or `@<file>` holding that text,
 read on every check) — the same test-only input the Rust debug build reads.
 
@@ -64,6 +71,11 @@ BUSY = 75
 # The leader's numbers (Issue #2677 comment 6850581277), src/heavy_slot.rs DEFAULT_LIMITS.
 DEFAULT_MIN_FREE_GB = 50
 DEFAULT_MAX_SWAP_PCT = 80
+# Issue #2930 R-2 (src/heavy_slot.rs DEFAULT_MAX, LIMITS_FILE).
+DEFAULT_MAX = 3
+LIMITS_FILE = "limits.json"
+LIMITS_FILE_MAX_BYTES = 4096
+LIMIT_KEYS = {"max": 2**64 - 1, "min_free_gb": 2**64 - 1, "max_swap_pct": 2**64 - 1}
 FORWARDED = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
 
@@ -133,6 +145,75 @@ def over_limits(folder, min_free_gb, max_swap_pct):
     if swap is not None and swap > max_swap_pct:
         why.append(f"swap use {swap}% is above {max_swap_pct}%")
     return "; ".join(why) or None
+
+
+class BadLimitsFile(Exception):
+    """A limits file that cannot be used (exit REFUSED, COMMAND not run)."""
+
+
+def read_limits_file(folder):
+    """The limits file in `folder` as a dict, or None when there is none (src/heavy_slot.rs
+    read_limits_file): a plain file of at most 4096 bytes, an object of known keys holding
+    whole numbers (or null), `max` at least 1."""
+    path = os.path.join(folder, LIMITS_FILE)
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        raise BadLimitsFile(f"{path}: {e}") from None
+    if not stat.S_ISREG(st.st_mode):
+        raise BadLimitsFile(f"{path}: not a plain file (symlink, FIFO, device or folder)")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as f:
+            data = f.read(LIMITS_FILE_MAX_BYTES + 1)
+    except OSError as e:
+        raise BadLimitsFile(f"{path}: {e}") from None
+    if len(data) > LIMITS_FILE_MAX_BYTES:
+        raise BadLimitsFile(f"{path}: larger than {LIMITS_FILE_MAX_BYTES} bytes")
+    try:
+        doc = json.loads(data.decode("utf-8"))
+    except ValueError as e:
+        raise BadLimitsFile(f"{path}: {e}") from None
+    if not isinstance(doc, dict):
+        raise BadLimitsFile(f"{path}: not a JSON object")
+    for key, value in doc.items():
+        if key not in LIMIT_KEYS:
+            raise BadLimitsFile(f"{path}: unknown field `{key}`")
+        if value is not None and (type(value) is not int or not 0 <= value <= LIMIT_KEYS[key]):
+            raise BadLimitsFile(f"{path}: `{key}` must be a whole number from 0")
+    if doc.get("max") == 0:
+        raise BadLimitsFile(f"{path}: max must be at least 1")
+    return doc
+
+
+def effective(file, caller_max, caller_free, caller_swap):
+    """(max, min_free_gb, max_swap_pct, notes): the stricter of the file (or the defaults) and
+    the caller's flags, one note per flag a stricter value overrode (src/heavy_slot.rs
+    effective)."""
+    file = file or {}
+    source = LIMITS_FILE if file else "the default"
+    base_max = file.get("max") if file.get("max") is not None else DEFAULT_MAX
+    base_free = file.get("min_free_gb")
+    base_free = DEFAULT_MIN_FREE_GB if base_free is None else base_free
+    base_swap = file.get("max_swap_pct")
+    base_swap = DEFAULT_MAX_SWAP_PCT if base_swap is None else base_swap
+    notes = []
+
+    def pick(flag, given, base, stricter):
+        if given is None:
+            return base
+        if stricter(given, base) or given == base:
+            return given
+        notes.append(f"heavy-check-slot: {flag} {given} is looser than {source} ({base}); "
+                     f"using {base}")
+        return base
+
+    maximum = pick("--max", caller_max, base_max, lambda a, b: a < b)
+    free = pick("--min-free-gb", caller_free, base_free, lambda a, b: a > b)
+    swap = pick("--max-swap-pct", caller_swap, base_swap, lambda a, b: a < b)
+    return maximum, free, swap, notes
 
 
 def machine_line(folder):
@@ -336,13 +417,16 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="op", required=True)
     a = sub.add_parser("acquire", help="wait for a slot, run COMMAND, release")
-    a.add_argument("--max", type=int, required=True)
+    a.add_argument("--max", type=int, default=None,
+                   help="slot count; only a value below limits.json's (default 3) takes effect")
     a.add_argument("--name", required=True)
     a.add_argument("--dir", default=None)
-    a.add_argument("--min-free-gb", type=int, default=DEFAULT_MIN_FREE_GB,
-                   help="start nothing below this much free space (decimal GB; 0 turns it off)")
-    a.add_argument("--max-swap-pct", type=int, default=DEFAULT_MAX_SWAP_PCT,
-                   help="start nothing above this swap use in percent (100 turns it off)")
+    a.add_argument("--min-free-gb", type=int, default=None,
+                   help="start nothing below this much free space (decimal GB); only a value "
+                        "above limits.json's (default 50) takes effect")
+    a.add_argument("--max-swap-pct", type=int, default=None,
+                   help="start nothing above this swap use in percent; only a value below "
+                        "limits.json's (default 80) takes effect")
     a.add_argument("command", nargs=argparse.REMAINDER)
     s = sub.add_parser("status", help="list held slots (read only)")
     s.add_argument("--dir", default=None)
@@ -354,11 +438,24 @@ def main(argv=None):
     if args.op == "status":
         return status(folder)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
-    if args.max < 1 or not command:
+    flags = (args.max, args.min_free_gb, args.max_swap_pct)
+    if any(v is not None and v < 0 for v in flags):
+        parser.error("--max, --min-free-gb and --max-swap-pct take whole numbers from 0")
+    # Issue #2930 R-2: the machine's limits file beside the slots; a flag only tightens it.
+    try:
+        file = read_limits_file(folder)
+    except BadLimitsFile as e:
+        print(f"heavy-check-slot: refused {e}; nothing was written and COMMAND did not run",
+              file=sys.stderr)
+        return REFUSED
+    maximum, min_free_gb, max_swap_pct, notes = effective(file, *flags)
+    for note in notes:
+        print(note, file=sys.stderr)
+    if maximum < 1 or not command:
         parser.error("acquire needs --max >= 1 and a command after --")
     os.makedirs(folder, mode=0o700, exist_ok=True)
     try:
-        return acquire(folder, args.max, args.name, command, args.min_free_gb, args.max_swap_pct)
+        return acquire(folder, maximum, args.name, command, min_free_gb, max_swap_pct)
     except NotASlotFile as e:
         print(f"heavy-check-slot: refused {e}: not a plain file (symlink, FIFO, device, folder "
               f"or hard link); nothing was written and COMMAND did not run — remove it or pass "

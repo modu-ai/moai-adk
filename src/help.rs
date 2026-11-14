@@ -137,6 +137,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
             ("lane-stop-hook", false),
@@ -338,6 +339,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
     (
+        "leader-round",
+        &[
+            "leader-round --observations screens.json --repo modu-ai/moai-adk .",
+            "leader-round --observations screens.json --snapshot fleet.json .",
+        ],
+    ),
+    (
         "lane-next",
         &[
             "lane-next --lane agent-1 --repo modu-ai/moai-adk",
@@ -380,7 +388,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     ("usage-limit", &["usage-limit ~"]),
-    ("heavy-slot-acquire", &["heavy-slot-acquire --max 2 --name agent-1 -- cargo test"]),
+    ("heavy-slot-acquire", &["heavy-slot-acquire --name agent-1 -- cargo test"]),
     ("heavy-slot-status", &["heavy-slot-status"]),
     ("goal-show", &["goal-show ."]),
     ("goal-plan", &["goal-plan --request <request> .", "goal-apply --request <request> --plan-digest <digest> ."]),

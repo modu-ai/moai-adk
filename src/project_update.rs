@@ -216,7 +216,8 @@ fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, Stri
                 })
             ),
         )),
-        "none" => held(crate::PROJECT_STATE_DIR).map(|r| {
+        // Without a Rust marker `state_root::dir` names the earlier `.moai-cli` folder.
+        "none" => held(state_root::dir(root)).map(|r| {
             (
                 "blocked",
                 format!("the earlier .moai-cli/ state stays: {r}"),

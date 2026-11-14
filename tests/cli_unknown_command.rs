@@ -128,3 +128,18 @@ fn init_names_the_launcher_flow_instead_of_an_unknown_command() {
     let near: Value = serde_json::from_slice(&run(&["inti"]).stdout).unwrap();
     assert_eq!(near, envelope());
 }
+
+/// #2935 L3-c (audit 6877895608 N3): `moai help init` gives the same guidance as `moai init`
+/// (stdout, stderr, exit 2) instead of clap's "unrecognized subcommand 'init'". Other
+/// `help <word>` lines keep clap's output (`other_command_line_errors_keep_their_output`).
+#[test]
+fn help_init_gives_the_init_guidance() {
+    let init = run(&["init"]);
+    let help = run(&["help", "init"]);
+    assert_eq!(help.status.code(), Some(2));
+    assert_eq!(help.stdout, init.stdout);
+    assert_eq!(help.stderr, init.stderr);
+    let stderr = String::from_utf8(help.stderr).unwrap();
+    assert!(stderr.contains("/moai project"), "{stderr}");
+    assert!(!stderr.contains("unrecognized subcommand"), "{stderr}");
+}
