@@ -136,6 +136,9 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     }
     let preview = json!({
         "classes": classes,
+        "kinds": plan.kinds,
+        "counterparts": plan.counterparts,
+        "after_move": plan.after_move,
         "secrets": plan.secrets,
         "items": plan.items,
         "go_backup": plan.go_backup,

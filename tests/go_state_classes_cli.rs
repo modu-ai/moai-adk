@@ -1527,6 +1527,8 @@ fn the_project_workflow_says_the_root_instruction_files_are_moved() {
         "A `root_files` row with `action` `move` is no longer in the project root after the apply",
         "a copy of `.claude/settings.local.json` (the original settings file stays)",
         "`.moai/backups/.gitignore` keeps them out of git",
+        // #2936 R-fix R-A: read out what the move takes away before the second yes.
+        "`counterparts` and `after_move`, and read them out before asking for the second yes",
     ] {
         assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
     }

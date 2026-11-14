@@ -164,6 +164,11 @@ pub struct Item {
     /// `go_mirror` (the mirror link), `go_mirror_copy`, `conflict`, `settings`,
     /// `local_settings`, `instructions`, `legacy_state`, `outside` or `unknown`.
     pub class: String,
+    /// #2936 R-A: what the file is for under `.claude/` and `.agents/` — `hook`,
+    /// `output_style`, `rule`, `command`, `workflow`, `loop`, `skill`, `agent`, `settings` or
+    /// `other`; empty elsewhere. See [`kind_of`].
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub kind: String,
     /// What proves the class (the manifest record and hash, or the link body); may be empty.
     pub proof: String,
     /// U4: for a moving item, `modified`, `untracked`, `clean` or `unknown` (read-only
@@ -209,11 +214,55 @@ pub struct GoStatePlan {
     pub root_files: Vec<RootFile>,
     /// #2696: the Go folder's top-level entries; all of them stay in the backup.
     pub left_in_backup: Vec<String>,
+    /// #2936 R-A: how many moving items each [`Item::kind`] has.
+    pub kinds: BTreeMap<String, u64>,
+    /// #2936 R-A: for each kind that moves, what this generation puts in its place.
+    pub counterparts: Vec<Counterpart>,
+    /// #2936 R-A: what the move leaves behind.
+    pub after_move: AfterMove,
     /// #2936 O6: secret-named entries under `.claude/` and `.agents/`; only counted, never
     /// listed, read or moved.
     pub secrets: u64,
     pub warnings: Vec<String>,
     pub plan_digest: String,
+}
+
+/// #2936 R-A: what takes the place of one kind of moved file.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct Counterpart {
+    pub kind: String,
+    /// How many files of the kind move.
+    pub moved: u64,
+    /// `reinstalled by <step>` (a step of `project-update-plan`), `user layer after moai
+    /// update` (HOME, not read here) or `no counterpart — will be gone`.
+    pub counterpart: String,
+    pub note: String,
+}
+
+/// #2936 R-A: what the move leaves behind, computed from the plan alone.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq, Default)]
+pub struct AfterMove {
+    /// Folders under the project that hold nothing once the moving files are gone; a folder
+    /// that keeps a script the settings name is not listed.
+    pub empty_folders: Vec<String>,
+    /// Include and ignore lines that select a moving path.
+    pub dangling: Vec<crate::worktree_include::ListHit>,
+    /// Set when the settings file moves: the hook entries and deny rules it carried.
+    pub wiring_lost: Option<WiringLost>,
+    /// `true` when a bounded read gave up (the folder walk passed its limit, or an include or
+    /// ignore list was not read): the lists above may be incomplete.
+    pub unknown: bool,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct WiringLost {
+    pub file: String,
+    /// Go-generation hook entries in the settings.
+    pub go_hook_entries: usize,
+    /// `permissions.deny` rules in the settings.
+    pub deny_rules: usize,
+    /// The settings file's top-level keys; the install step writes only the keys MoAI owns.
+    pub keys: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -547,11 +596,16 @@ fn policy(
         "user_modified"
     };
     for (file, text) in settings {
-        if referenced(text, key) {
-            let reason = if *file == SETTINGS_LOCAL {
-                "referenced by .claude/settings.local.json"
-            } else {
-                "referenced by .claude/settings.json"
+        if let Some(named) = referenced(project, text, key) {
+            let reason = match (named, *file == SETTINGS_LOCAL) {
+                (Named::Path, true) => "referenced by .claude/settings.local.json",
+                (Named::Path, false) => "referenced by .claude/settings.json",
+                (Named::StyleName, true) => {
+                    "referenced by .claude/settings.local.json: its outputStyle names this style"
+                }
+                (Named::StyleName, false) => {
+                    "referenced by .claude/settings.json: its outputStyle names this style"
+                }
             };
             return ("leave", reason, class, proof);
         }
@@ -837,26 +891,66 @@ fn git_state(rows: &Option<Vec<(String, &'static str)>>, path: &str) -> &'static
     state
 }
 
+/// How a settings file names a recorded file.
+enum Named {
+    /// By path (hooks, statusline).
+    Path,
+    /// An output style, by the style name in `outputStyle`.
+    StyleName,
+}
+
+/// The `name:` of a Markdown file's frontmatter (the first `---` block), read from at most
+/// the first 16 KiB; `None` when there is none or the file is not readable.
+fn style_frontmatter_name(path: &Path) -> Option<String> {
+    use std::io::Read as _;
+    let m = fs::symlink_metadata(path).ok().filter(|m| m.is_file())?;
+    let mut buf = Vec::new();
+    fs::File::open(path)
+        .ok()?
+        .take(m.len().min(16 * 1024))
+        .read_to_end(&mut buf)
+        .ok()?;
+    let text = String::from_utf8_lossy(&buf);
+    let mut lines = text.lines();
+    (lines.next()?.trim_end() == "---").then_some(())?;
+    for line in lines {
+        let line = line.trim_end();
+        if line == "---" {
+            return None;
+        }
+        if let Some(v) = line.strip_prefix("name:") {
+            let v = v.trim().trim_matches(|c| c == '"' || c == '\'');
+            return (!v.is_empty()).then(|| v.to_string());
+        }
+    }
+    None
+}
+
 /// `.claude/settings.json` names the file by path (hooks, statusline) or, for an output
-/// style, by the style name in `outputStyle`.
-fn referenced(settings: &str, key: &str) -> bool {
+/// style, by the style name in `outputStyle`. The style name is compared without case with
+/// the file's name and with the `name:` of its frontmatter (#2936 O-6): the settings say
+/// `MoAI-Easy` while the file is `moai-easy.md`.
+fn referenced(project: &Path, settings: &str, key: &str) -> Option<Named> {
     if settings.is_empty() {
-        return false;
+        return None;
     }
     if settings.contains(key) {
-        return true;
+        return Some(Named::Path);
     }
-    if let Some(name) = key
+    let stem = key
         .strip_prefix(".claude/output-styles/")
         .and_then(|r| Path::new(r).file_stem())
-        .and_then(|s| s.to_str())
-    {
-        let style = serde_json::from_str::<serde_json::Value>(settings)
-            .ok()
-            .and_then(|v| v["outputStyle"].as_str().map(str::to_string));
-        return style.as_deref() == Some(name);
+        .and_then(|s| s.to_str())?;
+    let style = serde_json::from_str::<serde_json::Value>(settings)
+        .ok()
+        .and_then(|v| v["outputStyle"].as_str().map(str::to_string))?;
+    if style == stem {
+        return Some(Named::Path);
     }
-    false
+    let named = style.eq_ignore_ascii_case(stem)
+        || style_frontmatter_name(&project.join(key))
+            .is_some_and(|n| style.eq_ignore_ascii_case(&n));
+    named.then_some(Named::StyleName)
 }
 
 fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<String>> {
@@ -1200,6 +1294,207 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
     out
 }
 
+/// #2936 R-A: what a recorded file under `.claude/` or `.agents/` is for, by its place; empty
+/// for any other path.
+fn kind_of(path: &str) -> &'static str {
+    let top = top_of(path);
+    if top != ".claude" && top != ".agents" {
+        return "";
+    }
+    let under = |dir: &str| path.starts_with(&format!("{dir}/"));
+    if path == SETTINGS {
+        "settings"
+    } else if path.rsplit('/').next() == Some("loop.md") {
+        "loop"
+    } else if under(".claude/hooks") {
+        "hook"
+    } else if under(".claude/output-styles") {
+        "output_style"
+    } else if under(".claude/rules") {
+        "rule"
+    } else if under(".claude/commands") {
+        "command"
+    } else if under(".claude/workflows") {
+        "workflow"
+    } else if under(".claude/skills") || under(AGENTS_SKILLS) {
+        "skill"
+    } else if under(".claude/agents") {
+        "agent"
+    } else {
+        "other"
+    }
+}
+
+/// #2936 R-A: what this generation puts in place of one kind of moved file, and a note. The
+/// user layer is named, never read (O-3: this preview does not read HOME).
+fn counterpart_of(kind: &str) -> (&'static str, &'static str) {
+    const GONE: &str = "no counterpart \u{2014} will be gone";
+    const USER_LAYER: &str = "user layer after moai update";
+    match kind {
+        "hook" => (
+            "reinstalled by hooks",
+            "the MoAI hook set is written into .claude/settings.json by the hooks step; the \
+             moved scripts themselves are not reinstalled",
+        ),
+        "output_style" => (
+            USER_LAYER,
+            "the style name resolves from HOME's output-styles only; this project keeps no \
+             file for it (HOME is not read here)",
+        ),
+        "skill" | "agent" => (
+            USER_LAYER,
+            "moai update installs it under HOME; the project keeps no copy",
+        ),
+        "settings" => (
+            "reinstalled by claude-settings",
+            "only the keys MoAI owns are written; hooks, permissions.deny and the other keys \
+             come back with the merge phase (a later slice)",
+        ),
+        _ => (
+            GONE,
+            "this generation installs nothing in its place; the files stay in the backup",
+        ),
+    }
+}
+
+/// #2936 R-A: the moving items grouped by kind, and the counterpart of each kind.
+fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>) {
+    let mut kinds = BTreeMap::new();
+    for i in items
+        .iter()
+        .filter(|i| moving_file(i) && !i.kind.is_empty())
+    {
+        *kinds.entry(i.kind.clone()).or_insert(0u64) += 1;
+    }
+    let rows = kinds
+        .iter()
+        .map(|(kind, moved)| {
+            let (counterpart, note) = counterpart_of(kind);
+            Counterpart {
+                kind: kind.clone(),
+                moved: *moved,
+                counterpart: counterpart.into(),
+                note: note.into(),
+            }
+        })
+        .collect();
+    (kinds, rows)
+}
+
+/// An item that moves on its own (not the two folders that move whole).
+fn moving_file(i: &Item) -> bool {
+    i.action == "move" && i.path != MOAI_DIR && i.path != LEGACY_ROOT
+}
+
+/// #2936 R-A: the folders under the project that hold nothing once `moving` is gone, deepest
+/// first so a folder whose only content is an emptied folder counts. A folder is listed only
+/// when every entry in it moves or is itself listed; a script the settings name stays and
+/// keeps its folders. The walk reads at most `limit` entries (all of a folder's, or none of
+/// it); the second value is `true` when it stopped there.
+fn empty_after(
+    project: &Path,
+    moving: &std::collections::BTreeSet<&str>,
+    limit: u64,
+) -> (std::collections::BTreeSet<String>, bool) {
+    let mut candidates = std::collections::BTreeSet::new();
+    for path in moving {
+        let mut cur = Path::new(path).parent();
+        while let Some(p) = cur.filter(|p| !p.as_os_str().is_empty()) {
+            if let Some(s) = p.to_str() {
+                candidates.insert(s.to_string());
+            }
+            cur = p.parent();
+        }
+    }
+    let mut ordered: Vec<String> = candidates.into_iter().collect();
+    ordered.sort_by(|a, b| {
+        let depth = |s: &str| s.matches('/').count();
+        depth(b).cmp(&depth(a)).then_with(|| a.cmp(b))
+    });
+    let mut empty = std::collections::BTreeSet::new();
+    let mut seen = 0u64;
+    for folder in ordered {
+        let dir = project.join(&folder);
+        if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
+        let Ok(rd) = fs::read_dir(&dir) else {
+            continue;
+        };
+        let names: Vec<String> = rd
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        seen += names.len() as u64;
+        if seen > limit {
+            return (empty, true);
+        }
+        let gone = |name: &String| {
+            let rel = format!("{folder}/{name}");
+            moving.contains(rel.as_str()) || empty.contains(&rel)
+        };
+        if !names.is_empty() && names.iter().all(gone) {
+            empty.insert(folder);
+        }
+    }
+    (empty, false)
+}
+
+/// #2936 R-A: the hook entries and deny rules of the settings file that is about to move.
+fn wiring_of(settings_text: &str) -> Option<WiringLost> {
+    let v: serde_json::Value = serde_json::from_str(settings_text).ok()?;
+    let go_hook_entries = v["hooks"]
+        .as_object()
+        .map(|h| crate::go_hooks::split(h).0.len())
+        .unwrap_or(0);
+    let deny_rules = v["permissions"]["deny"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
+    let mut keys: Vec<String> = v.as_object()?.keys().cloned().collect();
+    keys.sort();
+    Some(WiringLost {
+        file: SETTINGS.into(),
+        go_hook_entries,
+        deny_rules,
+        keys,
+    })
+}
+
+/// #2936 R-A: what the move leaves behind. Reads only; nothing is written.
+fn plan_after_move(
+    project: &Path,
+    items: &[Item],
+    settings: &[(&'static str, String)],
+) -> AfterMove {
+    let moving: std::collections::BTreeSet<&str> = items
+        .iter()
+        .filter(|i| moving_file(i))
+        .map(|i| i.path.as_str())
+        .collect();
+    if moving.is_empty() {
+        return AfterMove::default();
+    }
+    let (empty, walk_stopped) = empty_after(project, &moving, unrecorded_limit());
+    let paths: Vec<String> = moving.iter().map(|p| p.to_string()).collect();
+    let (dangling, unread) = crate::worktree_include::lists_selecting(project, &paths);
+    let wiring_lost = moving
+        .contains(SETTINGS)
+        .then(|| {
+            settings
+                .iter()
+                .find(|(f, _)| *f == SETTINGS)
+                .and_then(|(_, text)| wiring_of(text))
+        })
+        .flatten();
+    AfterMove {
+        empty_folders: empty.into_iter().collect(),
+        dangling,
+        wiring_lost,
+        unknown: walk_stopped || unread,
+    }
+}
+
 /// The read-only preview over one project folder.
 pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
@@ -1463,6 +1758,11 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
             hint(&f.path, &f.git);
         }
     }
+    for i in items.iter_mut() {
+        i.kind = kind_of(&i.path).into();
+    }
+    let (kinds, counterparts) = plan_counterparts(&items);
+    let after_move = plan_after_move(&project, &items, &settings);
     let mut plan = GoStatePlan {
         schema_version: SCHEMA_VERSION,
         project: project
@@ -1477,6 +1777,9 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         state_moves,
         root_files,
         left_in_backup,
+        kinds,
+        counterparts,
+        after_move,
         secrets,
         warnings,
         plan_digest: String::new(),

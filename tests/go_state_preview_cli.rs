@@ -83,7 +83,7 @@ fn empty_folders(plan: &Value) -> Vec<String> {
 
 #[test]
 fn every_moved_kind_gets_a_counterpart_row() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     fx.write(
         ".claude/settings.json",
@@ -95,7 +95,10 @@ fn every_moved_kind_gets_a_counterpart_row() {
         json!({"command": 1, "hook": 2, "loop": 1, "output_style": 2, "rule": 1, "workflow": 1}),
         "{plan}"
     );
-    assert_eq!(item(&plan, ".claude/hooks/moai/handle-b.sh")["kind"], "hook");
+    assert_eq!(
+        item(&plan, ".claude/hooks/moai/handle-b.sh")["kind"],
+        "hook"
+    );
     assert_eq!(item(&plan, ".claude/loop.md")["kind"], "loop");
     for (kind, moved, text) in [
         ("hook", 2, "reinstalled by hooks"),
@@ -119,7 +122,7 @@ fn every_moved_kind_gets_a_counterpart_row() {
 
 #[test]
 fn an_output_style_name_resolves_only_from_home() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     let plan = fx.plan();
     let note = counterpart(&plan, "output_style")["note"].as_str().unwrap();
@@ -150,7 +153,7 @@ fn a_kind_that_does_not_move_has_no_row() {
 
 #[test]
 fn the_update_preview_carries_the_counterparts_and_the_after_move() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     fx.write(".gitignore", ".claude/loop.md\n");
     let plan = fx.plan();
@@ -169,7 +172,7 @@ fn the_update_preview_carries_the_counterparts_and_the_after_move() {
 
 #[test]
 fn only_the_folders_that_end_up_empty_are_listed() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     // handle-a.sh is named by the settings, so it stays and keeps its folders.
     fx.write(
@@ -194,7 +197,7 @@ fn only_the_folders_that_end_up_empty_are_listed() {
 
 #[test]
 fn when_every_script_moves_the_hook_folders_and_the_claude_folder_are_listed() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     let plan = fx.plan();
     let folders = empty_folders(&plan);
@@ -260,7 +263,7 @@ fn the_empty_folder_walk_stops_at_its_limit() {
 
 #[test]
 fn a_line_that_names_a_moved_path_is_dangling() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     fx.write(
         ".claude/settings.json",
@@ -283,7 +286,11 @@ fn a_line_that_names_a_moved_path_is_dangling() {
     let (include, ignore) = (by(".worktreeinclude"), by(".gitignore"));
     assert_eq!(include["line"], json!(1), "{include}");
     assert_eq!(include["pattern"], json!(".claude/workflows/"), "{include}");
-    assert_eq!(include["paths"], json!([".claude/workflows/w1.md"]), "{include}");
+    assert_eq!(
+        include["paths"],
+        json!([".claude/workflows/w1.md"]),
+        "{include}"
+    );
     assert_eq!(ignore["line"], json!(2), "{ignore}");
     assert_eq!(ignore["pattern"], json!(".claude/loop.md"), "{ignore}");
     assert_eq!(plan["after_move"]["unknown"], json!(false), "{plan}");
@@ -292,7 +299,7 @@ fn a_line_that_names_a_moved_path_is_dangling() {
 /// The miss direction: lines that select only what stays, or nothing, are not dangling.
 #[test]
 fn a_line_that_names_what_stays_is_not_dangling() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     fx.write(
         ".claude/settings.json",
@@ -311,7 +318,7 @@ fn a_line_that_names_what_stays_is_not_dangling() {
 /// does not know.
 #[test]
 fn the_include_list_is_read_up_to_its_size_limit() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     let list = |len: usize| {
         let head = ".claude/loop.md\n";
@@ -319,7 +326,11 @@ fn the_include_list_is_read_up_to_its_size_limit() {
     };
     fx.write(".worktreeinclude", &list(LIST_LIMIT));
     let at = fx.plan();
-    assert_eq!(at["after_move"]["dangling"].as_array().unwrap().len(), 1, "N: {at}");
+    assert_eq!(
+        at["after_move"]["dangling"].as_array().unwrap().len(),
+        1,
+        "N: {at}"
+    );
     assert_eq!(at["after_move"]["unknown"], json!(false), "N: {at}");
 
     fx.write(".worktreeinclude", &list(LIST_LIMIT + 1));
@@ -330,7 +341,7 @@ fn the_include_list_is_read_up_to_its_size_limit() {
 
 #[test]
 fn the_ignore_list_is_read_up_to_its_size_limit() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     let list = |len: usize| {
         let head = ".claude/loop.md\n";
@@ -338,7 +349,10 @@ fn the_ignore_list_is_read_up_to_its_size_limit() {
     };
     fx.write(".gitignore", &list(LIST_LIMIT));
     let at = fx.plan();
-    assert_eq!(at["after_move"]["dangling"][0]["file"], ".gitignore", "N: {at}");
+    assert_eq!(
+        at["after_move"]["dangling"][0]["file"], ".gitignore",
+        "N: {at}"
+    );
     fx.write(".gitignore", &list(LIST_LIMIT + 1));
     let over = fx.plan();
     assert_eq!(over["after_move"]["dangling"], json!([]), "N+1: {over}");
@@ -371,7 +385,7 @@ fn a_moved_settings_file_reports_the_wiring_that_goes_with_it() {
 /// The miss direction: settings that stay lose nothing.
 #[test]
 fn settings_that_stay_report_no_lost_wiring() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     fx.write(
         ".claude/settings.json",
@@ -390,7 +404,10 @@ fn style_fx(style: &str, files: &[(&str, &str)]) -> GoFx {
         fx.deployed(rel, body);
     }
     fx.manifest();
-    fx.write(".claude/settings.json", &settings_body(&[], Some(style), &[]));
+    fx.write(
+        ".claude/settings.json",
+        &settings_body(&[], Some(style), &[]),
+    );
     fx
 }
 
@@ -399,8 +416,14 @@ fn a_style_is_kept_when_its_frontmatter_name_matches_without_case() {
     let fx = style_fx(
         "moai-easy",
         &[
-            (".claude/output-styles/moai/custom.md", "---\nname: MoAI-Easy\n---\nb\n"),
-            (".claude/output-styles/moai/other.md", "---\nname: Other\n---\nb\n"),
+            (
+                ".claude/output-styles/moai/custom.md",
+                "---\nname: MoAI-Easy\n---\nb\n",
+            ),
+            (
+                ".claude/output-styles/moai/other.md",
+                "---\nname: Other\n---\nb\n",
+            ),
         ],
     );
     let plan = fx.plan();
@@ -418,12 +441,18 @@ fn a_style_is_kept_when_its_file_name_matches_without_case() {
     let fx = style_fx(
         "MoAI-Easy",
         &[
-            (".claude/output-styles/moai/moai-easy.md", "no frontmatter\n"),
+            (
+                ".claude/output-styles/moai/moai-easy.md",
+                "no frontmatter\n",
+            ),
             (".claude/output-styles/moai/moai.md", "no frontmatter\n"),
         ],
     );
     let plan = fx.plan();
-    assert_eq!(action(&plan, ".claude/output-styles/moai/moai-easy.md"), "leave");
+    assert_eq!(
+        action(&plan, ".claude/output-styles/moai/moai-easy.md"),
+        "leave"
+    );
     assert_eq!(action(&plan, ".claude/output-styles/moai/moai.md"), "move");
 }
 
@@ -432,17 +461,23 @@ fn a_style_is_kept_when_its_file_name_matches_without_case() {
 fn a_style_named_exactly_is_kept() {
     let fx = style_fx(
         "moai-easy",
-        &[(".claude/output-styles/moai/moai-easy.md", "no frontmatter\n")],
+        &[(
+            ".claude/output-styles/moai/moai-easy.md",
+            "no frontmatter\n",
+        )],
     );
     let plan = fx.plan();
-    assert_eq!(action(&plan, ".claude/output-styles/moai/moai-easy.md"), "leave");
+    assert_eq!(
+        action(&plan, ".claude/output-styles/moai/moai-easy.md"),
+        "leave"
+    );
 }
 
 // ---- AC-8: the new fields are part of the digest ----
 
 #[test]
 fn a_new_dangling_line_changes_the_plan_digest_and_the_old_digest_is_refused() {
-    let mut fx = go_fx();
+    let fx = go_fx();
     fx.manifest();
     let before = fx.plan();
     fx.write(".gitignore", ".claude/loop.md\n");

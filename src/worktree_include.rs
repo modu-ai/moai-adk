@@ -251,6 +251,77 @@ pub fn secret_lines(text: &str) -> Vec<Finding> {
     findings
 }
 
+/// One line of the include list or the ignore list that selects paths a move takes away
+/// (#2936 R-A).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct ListHit {
+    /// The list: `.worktreeinclude` or `.gitignore`.
+    pub file: String,
+    /// 1-based line number.
+    pub line: usize,
+    /// The pattern as written (trimmed).
+    pub pattern: String,
+    /// The paths of the move this line selects (at most [`HIT_PATHS`], in the order given).
+    pub paths: Vec<String>,
+    /// How many paths of the move the line selects.
+    pub count: usize,
+}
+
+/// Paths named in one [`ListHit`]; `count` has the full number.
+pub const HIT_PATHS: usize = 5;
+const IGNORE_FILE: &str = ".gitignore";
+
+/// The lines of the include list and of the ignore list at the project root that select a path
+/// in `paths` (`/`-separated, from the project root), as git reads them. The second value is
+/// `true` when a list exists but was not read (a link, not a regular file, over the size limit
+/// or not UTF-8): the answer is then incomplete. Reads only; a missing list is not unknown.
+pub(crate) fn lists_selecting(project: &Path, paths: &[String]) -> (Vec<ListHit>, bool) {
+    let mut hits = Vec::new();
+    let mut unknown = false;
+    for name in [IGNORE_FILE, FILE] {
+        let path = project.join(name);
+        let meta = match fs::symlink_metadata(&path) {
+            Ok(m) => m,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => {
+                unknown = true;
+                continue;
+            }
+        };
+        let text = if meta.file_type().is_symlink() || !meta.is_file() || meta.len() > LIMIT {
+            None
+        } else {
+            fs::read(&path).ok().and_then(|b| String::from_utf8(b).ok())
+        };
+        let Some(text) = text else {
+            unknown = true;
+            continue;
+        };
+        let rules = parse(&text);
+        let mut by_line: Vec<(&Rule, Vec<String>)> = Vec::new();
+        for p in paths {
+            let Some(rule) = deciding_rule(&rules, p).filter(|r| !r.negate) else {
+                continue;
+            };
+            match by_line.iter_mut().find(|(r, _)| r.line == rule.line) {
+                Some((_, selected)) => selected.push(p.clone()),
+                None => by_line.push((rule, vec![p.clone()])),
+            }
+        }
+        by_line.sort_by_key(|(r, _)| r.line);
+        for (rule, selected) in by_line {
+            hits.push(ListHit {
+                file: name.to_string(),
+                line: rule.line,
+                pattern: rule.text.clone(),
+                count: selected.len(),
+                paths: selected.into_iter().take(HIT_PATHS).collect(),
+            });
+        }
+    }
+    (hits, unknown)
+}
+
 /// Read-only check of `<project>/.worktreeinclude`, as warning lines for a preview. A missing
 /// file gives none; a link is never followed and a file that cannot be read is named, never
 /// guessed. Nothing is written.

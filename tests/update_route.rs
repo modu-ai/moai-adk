@@ -70,6 +70,10 @@ fn the_update_route_is_the_project_layer() {
         "A step that read `blocked`, `skip` or `re-run after …` in that run was not shown with its content, so no earlier yes covers it",
         "An answer such as \"continue\" or \"install\" is not an approval of a step the user has not seen",
         "the yes given before the backup phase does not carry over",
+        // #2936 R-fix R-A: the preview says what the move takes away before the user agrees.
+        "the go-state `items`, `go_backup`, `state_moves`, `restores`, `root_files`, `counterparts`, `after_move` and `warnings`",
+        "each moved kind reads `reinstalled by <step>`, `user layer after moai update` or `no counterpart \u{2014} will be gone`",
+        "`unknown: true` means a bounded read gave up",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }
