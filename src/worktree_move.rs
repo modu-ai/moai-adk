@@ -496,7 +496,7 @@ pub fn apply(
         let head = it["head"].as_str();
         let branch = it["branch"].as_str();
         let outcome: std::result::Result<&str, String> = (|| {
-            if let Some(why) = crate::worktree_gc::busy_now(&src, false) {
+            if let Some(why) = crate::worktree_gc::busy_now(&src, false, None) {
                 return Err(format!("refused: {why}"));
             }
             if dst.exists() || fs::symlink_metadata(&dst).is_ok() {

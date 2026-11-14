@@ -218,5 +218,57 @@ class IndexBuildProgress(unittest.TestCase):
         self.assertTrue(json.loads(out)["ok"])
 
 
+GH_STUB = """#!/bin/sh
+for a in "$@"; do last="$a"; done
+case "$last" in
+  *issues/comments*) printf 'HTTP/2.0 200 OK\\r\\nEtag: W/"c-1"\\r\\n\\r\\n[]';;
+  *issues*page=2*) printf 'HTTP/2.0 200 OK\\r\\nEtag: W/"i-2"\\r\\n\\r\\n[]';;
+  *issues*) printf 'HTTP/2.0 200 OK\\r\\nEtag: W/"i-1"\\r\\nLink: <https://api.github.com/repos/acme/widgets/issues?state=all&page=2>; rel="next"\\r\\n\\r\\n[]';;
+  *) printf 'HTTP/2.0 200 OK\\r\\nEtag: "repo-1"\\r\\n\\r\\n{"id":101,"full_name":"acme/widgets"}';;
+esac
+"""
+
+
+@unittest.skipUnless(os.name == "posix", "pseudo-terminals are POSIX only")
+class ForgeReadProgress(unittest.TestCase):
+    """`forge-read` names the page it reads from the second page on, on a terminal only. Its
+    command left `src/main.rs` for `src/ops/forge_read.rs` (#2834 R2b), so the terminal check
+    moved from `shows_progress` into the operation; this pins that it still runs."""
+
+    def setUp(self):
+        if not rust_bin().exists():
+            raise AssertionError(f"moai-cli not built at {rust_bin()}; run cargo build first")
+        self.tmp = tempfile.TemporaryDirectory()
+        home = os.path.join(self.tmp.name, "home")
+        os.makedirs(home)
+        gh = os.path.join(self.tmp.name, "gh-stub")
+        with open(gh, "w") as f:
+            f.write(GH_STUB)
+        os.chmod(gh, 0o755)
+        self.env = env_for(home, MOAI_FORGE_GH_BIN=gh, GH_TOKEN="not-a-real-token")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def project(self, name):
+        root = os.path.join(self.tmp.name, name)
+        os.makedirs(root)
+        return root
+
+    def test_the_second_page_shows_on_a_terminal_and_never_on_a_pipe(self):
+        req = '{"schema_version":1,"owner":"acme","repo":"widgets"}'
+        a = self.project("a")
+        piped, err, code = run_pipe(["forge-read", a], self.env, a, stdin=req)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "", "no progress byte on a pipe")
+        b = self.project("b")
+        out, term, code = run_tty(["forge-read", b], self.env, b, stdin_text=req)
+        self.assertEqual(code, 0, term)
+        lines = [line for line in term.splitlines() if line.startswith("->")]
+        self.assertEqual(lines, ["-> reading page 2 of /repos/acme/widgets/issues"], term)
+        self.assertTrue(json.loads(out)["ok"])
+        self.assertEqual(json.loads(out)["operation"], json.loads(piped)["operation"])
+
+
 if __name__ == "__main__":
     unittest.main()

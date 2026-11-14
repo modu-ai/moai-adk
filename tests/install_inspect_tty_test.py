@@ -19,6 +19,11 @@ NOTE = (
     "moai-cli: hooks are generated with moai-cli until R5; put a Rust moai first on PATH "
     "to let them use moai (nothing was changed)\n"
 )
+# #2825 S6 follow-up: a Korean terminal reads the note in Korean; the envelope keeps NOTE.
+NOTE_KO = (
+    "moai-cli: R5 전까지 hook 은 moai-cli 로 만들어져요. hook 이 moai 를 쓰게 하려면 "
+    "Rust moai 를 PATH 맨 앞에 두세요(바꾼 것 없음)\n"
+)
 
 
 def piped(args, env, cwd):
@@ -94,19 +99,36 @@ class InstallInspectTty(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def env(self, first_dir):
-        return {
+    def env(self, first_dir, **extra):
+        env = {
             "PATH": f"{first_dir}:/usr/bin:/bin",
             "HOME": self.home,
             "LANG": "en_US.UTF-8",
             "TERM": "xterm-256color",
         }
+        env.update(extra)
+        return env
 
-    def run_both(self, first_dir):
+    def run_both(self, first_dir, **extra):
         args = ["install-inspect", "--json"]
-        piped_run = piped(args, self.env(first_dir), self.proj)
-        tty_run = stderr_on_tty(args, self.env(first_dir), self.proj)
+        piped_run = piped(args, self.env(first_dir, **extra), self.proj)
+        tty_run = stderr_on_tty(args, self.env(first_dir, **extra), self.proj)
         return piped_run, tty_run
+
+    def test_a_korean_terminal_reads_the_note_in_korean(self):
+        """#2825: the terminal line follows stderr's language; the envelope stays English, and a
+        pipe stays silent whatever the language says."""
+        (_, out_en, _), _ = self.run_both(self.go)
+        for extra in ({"MOAI_LANG": "ko"}, {"LANG": "ko_KR.UTF-8"}):
+            (code_p, out_p, err_p), (code_t, out_t, err_t) = self.run_both(self.go, **extra)
+            self.assertEqual((code_p, code_t), (0, 0), err_p + err_t)
+            self.assertEqual(err_p, "", f"{extra}: a piped stderr carries no note")
+            self.assertEqual(err_t, NOTE_KO, f"{extra}: the Korean note exactly once")
+            self.assertEqual(out_t, out_en, f"{extra}: the envelope bytes do not follow the language")
+            self.assertEqual(out_p, out_en, extra)
+        # MOAI_LANG=en beats a Korean locale.
+        _, (_, _, err_t) = self.run_both(self.go, LANG="ko_KR.UTF-8", MOAI_LANG="en")
+        self.assertEqual(err_t, NOTE)
 
     def test_a_go_first_moai_prints_the_note_once_on_a_terminal_only(self):
         (code_p, out_p, err_p), (code_t, out_t, err_t) = self.run_both(self.go)

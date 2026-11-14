@@ -2771,18 +2771,28 @@ mod skill_package {
     }
 
     #[test]
-    fn mode_leader_refuses_codex_with_decision_d3() {
-        // REQ-A1-02: leader mode is Claude Code only (D-3); the refusal comes first.
+    fn mode_leader_refuses_only_without_orca_and_timer() {
+        // #2900 (#2899 G4): D-O3 replaced D-3 — any host may lead; the mode follows the
+        // channel, and the first step refuses only with neither Orca nor a timer.
         let body = mode_workflow("MODE-LEADER");
         let procedure = &body[body.find("## Procedure").unwrap()..];
         let first = procedure.lines().find(|l| l.starts_with("1. ")).unwrap();
+        assert!(first.contains("**mode-channel**"), "{first}");
         assert!(
-            first.contains("Codex CLI") && first.contains("refuse"),
+            first.contains("D-O3") && first.contains("replaces D-3"),
             "{first}"
         );
         assert!(
-            first.contains("D-3") && first.contains("Claude Code only"),
+            first.contains("Claude Code, Codex CLI and OMP may all lead"),
             "{first}"
+        );
+        assert!(
+            first.contains("Refuse to enter only when there is neither Orca nor a timer"),
+            "{first}"
+        );
+        assert!(
+            !first.contains("Claude Code only"),
+            "the old D-3 restriction is gone: {first}"
         );
         assert!(
             first.contains("`$moai --mode-agent`"),
