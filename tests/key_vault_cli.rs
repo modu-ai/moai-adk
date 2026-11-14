@@ -394,6 +394,18 @@ fn each_key_command_answers_under_its_operation_name() {
         (vec!["key-set", "glm"], Some(key.as_str()), "key.set"),
         (vec!["key-remove", "glm"], None, "key.remove"),
         (vec!["key-import-plan", "glm"], None, "key.import_plan"),
+        (
+            vec![
+                "key-import-apply",
+                "glm",
+                "--plan-digest",
+                "x",
+                "--permission-reference",
+                "r",
+            ],
+            None,
+            "key.import_apply",
+        ),
     ];
     for (args, stdin, op) in names {
         let v = envelope(&run(&home, &args, stdin), &key);
