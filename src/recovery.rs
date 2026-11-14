@@ -97,7 +97,7 @@ const REPLACED_TREE: &str = "replaced";
 /// The manifest's file list, only when the manifest still has the receipt's digest.
 fn backup_manifest(home: &Path, b: &ReplaceBackup) -> Option<(PathBuf, Vec<BackupFile>)> {
     let dir = PathBuf::from(&b.dir);
-    let backups = home.join(crate::HOME_STATE_DIR).join("backups");
+    let backups = crate::home_root::path(home).join("backups");
     if dir.parent() != Some(backups.as_path()) || refuse_state_symlinks(&dir, "backup").is_err() {
         return None;
     }
@@ -221,7 +221,7 @@ fn known_good_path(home: &Path, install_id: &str, host: &str, sha: &str) -> Resu
 fn known_good(home: &Path, install_id: &str, host: &str, sha: &str) -> Result<Option<Vec<u8>>> {
     let path = known_good_path(home, install_id, host, sha)?;
     let mut cursor = path.as_path();
-    let stop = home.join(crate::HOME_STATE_DIR);
+    let stop = crate::home_root::path(home);
     while cursor.starts_with(&stop) && cursor != stop {
         if let Ok(m) = fs::symlink_metadata(cursor) {
             if m.file_type().is_symlink() {

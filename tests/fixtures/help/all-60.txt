@@ -134,6 +134,7 @@ Lane and leader
                           leave
   lane-safe-to-reset      Check that a lane's session is
                           safe to clear
+  lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   usage-limit             Report how close the usage limits
                           are
