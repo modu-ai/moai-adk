@@ -14,7 +14,7 @@ use crate::agents_local_merge;
 use crate::claude::{self, SettingsScope};
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
-use crate::{go_state, profile, project_detect, state_root, Profile};
+use crate::{go_state, profile, project_detect, project_hosts, state_root, Profile};
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
@@ -35,8 +35,8 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
      (go-state-plan); .agents, .codex, settings and instruction files are not covered yet \
      (a later slice, #2936 S2)";
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
-     files), Claude Code settings, GitHub templates; host bundles for .codex, .agents and .omp \
-     are a later slice (#2936 S3)";
+     files), Claude Code settings, GitHub templates, the Codex and OMP hook sets; the Codex \
+     config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
@@ -534,7 +534,30 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-const INSTALL: [&str; 4] = ["profile", "generation", "claude-settings", "github"];
+const INSTALL: [&str; 7] = [
+    "profile",
+    "generation",
+    "claude-settings",
+    "github",
+    "codex-hooks",
+    "omp-hooks",
+    "omp-config",
+];
+
+/// The host steps (#2936 R9 S5a) as this module's steps.
+fn host_steps(root: &Path, shown: &str) -> Vec<Step> {
+    project_hosts::steps(root, shown)
+        .into_iter()
+        .map(|h| Step {
+            name: h.name,
+            state: h.state,
+            reason: h.reason,
+            preview: h.preview,
+            plan_digest: h.plan_digest,
+            apply: h.apply.map(|argv| (argv, Value::Null)),
+        })
+        .collect()
+}
 
 fn install_steps(
     root: &Path,
@@ -554,6 +577,7 @@ fn install_steps(
             steps.push(Step::waiting("generation", "blocked", &e));
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
             steps.push(or_blocked("github", github_step(root, shown)));
+            steps.extend(host_steps(root, shown));
             return steps;
         }
     };
@@ -563,12 +587,14 @@ fn install_steps(
     } else {
         or_blocked("generation", generation_step(root, shown, &profile))
     };
-    vec![
+    let mut steps = vec![
         profile_step,
         generation,
         or_blocked("claude-settings", settings_step(root, shown)),
         or_blocked("github", github_step(root, shown)),
-    ]
+    ];
+    steps.extend(host_steps(root, shown));
+    steps
 }
 
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
