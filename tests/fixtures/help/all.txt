@@ -117,6 +117,8 @@ Lane and leader
   gate-check              Check every rule of the leader merge gate
   gate-merge              Merge one pull request when the gate passes
   gate-loop               Run one pass of the leader merge loop
+  gate-schedule-plan      Preview a scheduler entry for gate-loop
+  gate-schedule-apply     Write a previewed gate-loop scheduler entry
   wait                    Wait until a condition holds on GitHub
   scope-check             Check a claim's write scope against others
   worktree-plan           Preview the branch and worktree of a claim

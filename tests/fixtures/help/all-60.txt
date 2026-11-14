@@ -187,6 +187,10 @@ Lane and leader
                           gate passes
   gate-loop               Run one pass of the leader merge
                           loop
+  gate-schedule-plan      Preview a scheduler entry for
+                          gate-loop
+  gate-schedule-apply     Write a previewed gate-loop
+                          scheduler entry
   wait                    Wait until a condition holds on
                           GitHub
   scope-check             Check a claim's write scope
