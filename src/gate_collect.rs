@@ -28,7 +28,10 @@ pub struct Target<'a> {
     pub review_confirmed_prs: Vec<u64>,
 }
 
-fn get_json<T: Transport>(t: &T, url: &str) -> Result<(serde_json::Value, Option<String>)> {
+pub(crate) fn get_json<T: Transport>(
+    t: &T,
+    url: &str,
+) -> Result<(serde_json::Value, Option<String>)> {
     let resp = t.send(&HttpRequest::new("GET", url))?;
     if resp.status != 200 {
         return Err(format!("GET {url} returned HTTP {}", resp.status));
@@ -654,7 +657,11 @@ pub fn completed_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
 
 /// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
 /// visible), at most ten pages.
-fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_json::Value>> {
+pub(crate) fn tip_runs<T: Transport>(
+    t: &T,
+    base_url: &str,
+    sha: &str,
+) -> Result<Vec<serde_json::Value>> {
     let mut out = Vec::new();
     let mut url = Some(format!(
         "{base_url}/commits/{sha}/check-runs?filter=all&per_page=100"
@@ -682,7 +689,12 @@ fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_
 /// its CI runs or was only cancelled, the earlier tip commits (first parents, at most
 /// [`TIP_WALK`]) are read in turn and the first with completed CI decides. A read that fails,
 /// or no completed CI within the walk, is `unknown`.
-fn tip_ci<T: Transport>(t: &T, base_url: &str, dir: &Path, tip: &str) -> Result<gate::TipCi> {
+pub(crate) fn tip_ci<T: Transport>(
+    t: &T,
+    base_url: &str,
+    dir: &Path,
+    tip: &str,
+) -> Result<gate::TipCi> {
     let walk = git_ok(
         dir,
         &[

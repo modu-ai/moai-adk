@@ -59,6 +59,7 @@ pub mod key_vault;
 pub mod labels_check;
 pub mod lane_env;
 pub mod lane_handoff;
+pub mod lane_next;
 pub mod lane_registry;
 pub mod lane_reset;
 pub mod lane_status;
