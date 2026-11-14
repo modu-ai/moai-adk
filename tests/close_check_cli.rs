@@ -66,8 +66,17 @@ fn each_reason_keeps_the_issue_open() {
     assert_eq!(r["verdict"], json!("keep_open"), "{r}");
     assert_eq!(r["unmet"], json!(["| AC-2 | later | 후속 #12 |"]));
     // A met word undone by what follows it (audit 6874717869 B1, its end-to-end probe).
-    for verdict_cell in ["병합 대기", "충족 아님", "완료 예정", "충족(일부)", "pass?"]
-    {
+    for verdict_cell in [
+        "병합 대기",
+        "충족 아님",
+        "완료 예정",
+        "충족(일부)",
+        "pass?",
+        // Re-audit 6875342005 B1 end-to-end.
+        "병합 대기중",
+        "충족 안됨",
+        "충족(일부만)",
+    ] {
         let t = format!(
             "CLOSE-TABLE #7\n\n| AC | 상태 | 근거 |\n| --- | --- | --- |\n| AC-1 | 충족 | test |\n| AC-2 | {verdict_cell} | PR #9 열림 |"
         );

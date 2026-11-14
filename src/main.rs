@@ -764,6 +764,16 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
+        /// `next_cursor` says where the next run goes on (#2879).
+        #[arg(long)]
+        max_checked: Option<usize>,
+        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
+        #[arg(long = "worktree", value_name = "PATH")]
+        only: Vec<PathBuf>,
     },
     /// Remove or trim the previewed worktrees
     ///
@@ -781,6 +791,16 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
+        /// `next_cursor` says where the next run goes on (#2879).
+        #[arg(long)]
+        max_checked: Option<usize>,
+        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
+        #[arg(long = "worktree", value_name = "PATH")]
+        only: Vec<PathBuf>,
         #[arg(long)]
         plan_digest: String,
         #[arg(long)]
@@ -1045,7 +1065,9 @@ enum Command {
     ///
     /// Update the skill from the package installed with this binary (#2522): previews like
     /// update-plan and writes nothing unless confirmed — in a terminal it asks once; elsewhere
-    /// pass the preview's digest with --confirm. HOME comes from the environment.
+    /// pass the preview's digest with --confirm. HOME comes from the environment. On a
+    /// terminal it shows what it checked, what changes and what to do next instead of the JSON
+    /// envelope (#2894); a pipe gets the envelope unchanged.
     Update {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
@@ -1054,6 +1076,9 @@ enum Command {
         /// Without --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_cleanup: Option<String>,
+        /// Print the JSON envelope on a terminal too, instead of the screens.
+        #[arg(long)]
+        json: bool,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -2280,12 +2305,21 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             recent_minutes,
             budget_ms,
             now_unix,
-        } => moai_cli::worktree_gc::plan(
+            max_checked,
+            cursor,
+            only,
+        } => moai_cli::worktree_gc::plan_paced(
             &project,
             &integration_ref,
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+            false,
+            &moai_cli::worktree_gc::Pace {
+                max_checked,
+                cursor,
+                only,
+            },
         ),
         Command::WorktreeGcApply {
             project,
@@ -2293,6 +2327,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             recent_minutes,
             budget_ms,
             now_unix,
+            max_checked,
+            cursor,
+            only,
             plan_digest,
             permission_reference,
         } => moai_cli::worktree_gc::apply(
@@ -2301,6 +2338,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+            &moai_cli::worktree_gc::Pace {
+                max_checked,
+                cursor,
+                only,
+            },
             &plan_digest,
             &permission_reference,
         ),
@@ -2362,24 +2404,62 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::Update {
             confirm,
             confirm_cleanup,
+            json: _,
         } => {
+            use moai_cli::update_tux::{self as tux, Asked};
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
-            // The shared confirm prompt (#2806): same terminal rule and question as before.
-            moai_cli::update::update_command(
+            // The shared confirm prompt (#2806): same terminal rule and question as before. With
+            // screens on (#2894) the question shows the check and change lists instead of the
+            // summary text, and what was answered is kept for the end screen.
+            let result = moai_cli::update::update_command(
                 &home,
                 confirm.as_deref(),
                 confirm_cleanup.as_deref(),
-                |summary| {
+                |summary, preview| {
                     use moai_cli::ui_text::Msg;
-                    moai_cli::progress::ask_terminal(
-                        |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                    if !tux::human() {
+                        return moai_cli::progress::ask_terminal(
+                            |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                            Msg::ApplyUpdate,
+                        );
+                    }
+                    let asked = tux::can_ask();
+                    // The question screen paints itself (its result text is made visible
+                    // inside), so it is written as it is (PR #2908 review 4572504804).
+                    let yes = moai_cli::progress::ask_terminal_screen(
+                        |p| {
+                            let mut view = tux::view_for(moai_cli::ui::Stream::Stderr);
+                            view.painter = *p;
+                            tux::question(preview, &view)
+                        },
                         Msg::ApplyUpdate,
-                    )
+                    )?;
+                    tux::set_asked(match (asked, yes) {
+                        (false, _) => Asked::NotAsked,
+                        (true, true) => Asked::Yes,
+                        (true, false) => Asked::No,
+                    });
+                    Ok(yes)
                 },
-            )
+            );
+            match result {
+                // Confirmed on the screen, but the plan or the package moved before the write
+                // (the combined digest check, or the package re-read): refused, nothing written,
+                // and the person sees the new preview (#2894 U-4). The envelope path keeps its
+                // error.
+                Err(e)
+                    if tux::human()
+                        && tux::asked() == Asked::Yes
+                        && (e.contains("stale or altered plan") || e.contains("preview again")) =>
+                {
+                    tux::set_asked(Asked::Stale);
+                    moai_cli::update::update_command(&home, None, None, |_, _| Ok(false))
+                }
+                other => other,
+            }
         }
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
@@ -2923,6 +3003,14 @@ pub(crate) fn main() -> ExitCode {
             min_free_gb: *min_free_gb,
             max_swap_pct: *max_swap_pct,
         };
+        if let Some(note) = moai_cli::heavy_slot::build_folder_note(
+            name,
+            command,
+            std::env::var_os("CARGO_TARGET_DIR").as_deref(),
+            &moai_cli::lane_env::default_base(),
+        ) {
+            eprintln!("{note}");
+        }
         return ExitCode::from(moai_cli::heavy_slot::acquire(
             &dir, *max, name, command, limits,
         ));
@@ -2930,8 +3018,22 @@ pub(crate) fn main() -> ExitCode {
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
     let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
+    // #2894 (D3-U): `update` on a terminal without --json shows screens instead of the envelope.
+    let screens = match &cli.command {
+        Some(Command::Update { json, .. }) => moai_cli::update_tux::wants_screens(*json),
+        _ => false,
+    };
+    moai_cli::update_tux::set_human(screens);
     match run_internal(cli.command.expect("internal operation")) {
         Ok(_) if hook_mode => ExitCode::SUCCESS,
+        Ok(result) if screens => {
+            let view = moai_cli::update_tux::view_for(moai_cli::ui::Stream::Stdout);
+            print!(
+                "{}",
+                moai_cli::update_tux::screen(&result, moai_cli::update_tux::asked(), &view)
+            );
+            ExitCode::SUCCESS
+        }
         Ok(result) => {
             // A computed delta is evidence, not audit admission; only a pure replay exits 0.
             let exit = if op == "audit.delta" && result["status"] != "pure_merge" {
@@ -2952,6 +3054,11 @@ pub(crate) fn main() -> ExitCode {
         Err(e) if hook_mode => {
             eprintln!("{e}");
             ExitCode::from(if guard { 2 } else { HOOK_NON_BLOCKING_ERROR })
+        }
+        Err(e) if screens => {
+            // The error frame on stderr is the screen; no JSON on the terminal (#2894).
+            print_operation_error(e.kind, &e.message);
+            ExitCode::from(1)
         }
         Err(e) => {
             // #2345: the journal lock-busy error carries its kind from the raise site;
@@ -2980,11 +3087,14 @@ mod tests {
             let bin = moai_cli::help::bin_name(argv0);
             let mut argv = vec![argv0];
             argv.extend_from_slice(args);
-            let out = match moai_cli::help::configure(
+            // English whatever the terminal running the tests says (audit #2909 N1): this pins
+            // the names, not the language.
+            let out = match moai_cli::help::configure_in(
                 Cli::command(),
                 bin,
                 moai_cli::BUILD_VERSION,
                 false,
+                moai_cli::ui_text::Lang::En,
             )
             .try_get_matches_from(argv)
             {
@@ -3548,9 +3658,70 @@ mod help_rules {
         }
     }
 
-    /// The command as people see it: the layout `main` parses with (examples attached).
+    /// The command as people see it: the layout `main` parses with (examples attached), in
+    /// English whatever the terminal running the tests says (audit #2909 N1).
     fn configured() -> clap::Command {
-        moai_cli::help::configure(Cli::command(), "moai", moai_cli::BUILD_VERSION, false)
+        moai_cli::help::configure_in(
+            Cli::command(),
+            "moai",
+            moai_cli::BUILD_VERSION,
+            false,
+            moai_cli::ui_text::Lang::En,
+        )
+    }
+
+    /// S6e-2 (#2825): on a Korean terminal every command of the groups moved so far has a Korean
+    /// about, a Korean long about when it has an English one, and a Korean help on every
+    /// argument but the help flag — a new argument without its Korean line fails here.
+    #[test]
+    fn the_moved_groups_read_korean_in_their_help() {
+        let hangul = |t: &str| t.chars().any(|c| ('가'..='힣').contains(&c));
+        let english = configured();
+        let mut korean = moai_cli::help::configure_in(
+            Cli::command(),
+            "moai",
+            moai_cli::BUILD_VERSION,
+            false,
+            moai_cli::ui_text::Lang::Ko,
+        );
+        korean.build();
+        let mut seen = 0;
+        for group in moai_cli::help::KOREAN_GROUPS {
+            let g = moai_cli::help::GROUPS
+                .iter()
+                .find(|g| g.heading == *group)
+                .unwrap_or_else(|| panic!("{group}"));
+            for (word, _) in g.commands.iter().filter(|(_, root)| *root) {
+                let ko = korean.find_subcommand(word).unwrap();
+                let en = english.find_subcommand(word).unwrap();
+                let about = ko.get_about().map(|a| a.to_string()).unwrap_or_default();
+                assert!(hangul(&about), "{word} about: {about:?}");
+                if en.get_long_about().is_some() {
+                    let long = ko
+                        .get_long_about()
+                        .map(|a| a.to_string())
+                        .unwrap_or_default();
+                    assert!(hangul(&long), "{word} long about: {long:?}");
+                }
+                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                    let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
+                    assert!(hangul(&help), "{word} {}: {help:?}", arg.get_id());
+                }
+                seen += 1;
+            }
+            // The slice boundary (mutation P5): the group's commands outside the root list
+            // keep their own texts until their slice.
+            for (word, _) in g.commands.iter().filter(|(_, root)| !*root) {
+                let ko = korean.find_subcommand(word).unwrap();
+                let en = english.find_subcommand(word).unwrap();
+                assert_eq!(ko.get_about(), en.get_about(), "{word}");
+                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                    let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
+                    assert!(!hangul(&help), "{word} {}: {help:?}", arg.get_id());
+                }
+            }
+        }
+        assert!(seen >= 5, "{seen}");
     }
 
     /// Every command's `--help` carries an `Examples:` section (#2802 S1c).

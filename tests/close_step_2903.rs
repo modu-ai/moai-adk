@@ -21,6 +21,8 @@ fn the_agent_workflow_closes_its_own_card_through_close_check() {
         "once the card's last pull request has merged",
         "first line is `CLOSE-TABLE #<n>`",
         "a verdict column (`상태`, `판정` or `결과`)",
+        "the verdict cell is the met word alone (`충족`, `해당 없음`, `끝`) or followed only by commits, numbers and code",
+        "any explanation goes in the evidence column",
         "`moai close-check <n> --repo <owner>/<repo>`",
         "On `close`, release the claim and close the Issue with `gh issue close <n> --comment` naming the close table by its link",
         "read the Issue's state back",

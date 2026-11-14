@@ -4,12 +4,15 @@
 //!
 //! The close table is the newest comment whose first line starts `CLOSE-TABLE #<n>`. A
 //! Markdown table in it is a criteria table when a header cell after the first starts with a
-//! verdict heading ([`VERDICT_HEADINGS`]); a row whose verdict cell does not start with a word
-//! that means "met" ([`MET`]) — and is not undone by a later word ([`UNDOING`]) or a `?` —
-//! keeps the Issue open, and so does an open pull request whose body names this Issue in
-//! `Moai-Claim: <n>#<comment>`. Fenced code blocks are not read as tables. Both word lists come from the close tables
-//! of the 25 newest closed Issues on 2026-11-14 (상태 / 판정 / 결과 columns; 충족 76, 끝 20,
-//! 병합 3, 지킴 2, `CLOSED …` 6 rows); tables without such a column (남은 것 | 근거 | 몫) list
+//! verdict heading ([`VERDICT_HEADINGS`]). A row is met only when its verdict cell is a word
+//! that means "met" ([`MET`]) followed by nothing but evidence — code spans and words that hold
+//! a digit (commits, `#<n>`, numbers, dates, ids such as `B2`) between punctuation (leader
+//! decision 6875953130, audit 6875910836 N1): any other word, a `?` or an unknown symbol keeps
+//! the Issue open, so the rule errs only toward leaving an Issue open. An open pull request
+//! whose body names this Issue in `Moai-Claim: <n>#<comment>` keeps it open too. Fenced code
+//! blocks are not read as tables. The met words and headings come from the close tables of the
+//! 25 newest closed Issues on 2026-11-14 (상태 / 판정 / 결과 columns; 충족 76, 끝 20, 병합 3,
+//! 지킴 2, `CLOSED …` 6 rows); tables without such a column (남은 것 | 근거 | 몫) list
 //! leftovers, not criteria.
 
 use crate::forge::transport::{HttpRequest, Transport};
@@ -20,10 +23,10 @@ use serde_json::{json, Value};
 /// Comments read (GraphQL's largest page); a longer thread is read newest first.
 pub const COMMENTS_READ: u64 = 100;
 
-/// Verdict words that mean a row is met. A cell is met when it starts with one of them and the
+/// Verdict words that mean a row is met. A cell is met when it starts with one of them, the
 /// next character is not a letter or digit (so `metadata` is not `met`, `미충족` is not `충족`,
-/// `끝남` is not `끝`), case ignored.
-pub const MET: [&str; 11] = [
+/// `끝남` is not `끝`), case ignored, and only evidence follows ([`is_met`]).
+pub const MET: [&str; 12] = [
     "충족",
     "해당 없음",
     "끝",
@@ -31,52 +34,16 @@ pub const MET: [&str; 11] = [
     "지킴",
     "완료",
     "closed",
+    "completed",
     "met",
     "pass",
     "done",
     "n/a",
 ];
 
-/// Words that undo a met word when they follow it anywhere in the cell, as a whole word (case
-/// ignored): negation and not-yet (`충족 아님`, `병합 대기`, `완료 예정`, `충족(일부)`,
-/// `충족 — B2 남음`, `pass 아님`, `met? no` — audit 6874717869 B1). A `?` anywhere after the
-/// met word does the same. Wrong in this direction leaves an Issue open for a person to close;
-/// the other way an unmet criterion would vanish.
-pub const UNDOING: [&str; 33] = [
-    "아님",
-    "아니",
-    "아니요",
-    "아니오",
-    "않음",
-    "안",
-    "전",
-    "전에",
-    "예정",
-    "대기",
-    "남음",
-    "남은",
-    "남아",
-    "일부",
-    "부분",
-    "보류",
-    "미정",
-    "미완",
-    "후속",
-    "진행",
-    "진행중",
-    "실패",
-    "no",
-    "not",
-    "pending",
-    "partial",
-    "partially",
-    "todo",
-    "tbd",
-    "wip",
-    "later",
-    "fail",
-    "failed",
-];
+/// Symbols allowed between evidence besides ASCII punctuation (other than `?`): dashes, the
+/// middle dot, an ellipsis and a check mark. Anything else (`✗`, `❌`, `⚠`) is not evidence.
+pub const EVIDENCE_SYMBOLS: &str = "—–·…✓✅";
 
 /// Header cells (after the first column) that name the verdict column; a prefix match, case
 /// ignored, the first such cell wins.
@@ -170,7 +137,7 @@ fn cells(line: &str) -> Vec<String> {
         }
     }
     out.iter()
-        .map(|c| c.trim().replace(['*', '`'], "").trim().to_string())
+        .map(|c| c.trim().replace('*', "").trim().to_string())
         .collect()
 }
 
@@ -180,20 +147,39 @@ fn is_separator(line: &str) -> bool {
         .all(|c| !c.is_empty() && c.chars().all(|ch| matches!(ch, '-' | ':' | ' ')))
 }
 
-/// A verdict cell that means the row is met.
+/// A verdict cell that means the row is met: a [`MET`] word and nothing after it but evidence.
 pub fn is_met(cell: &str) -> bool {
-    let lower = cell.trim().to_lowercase();
+    let lower = cell.replace('*', "").trim().to_lowercase();
     MET.iter().any(|w| {
-        lower.strip_prefix(w).is_some_and(|rest| {
-            !rest.starts_with(char::is_alphanumeric) && !rest.contains('?') && !undone(rest)
-        })
+        lower
+            .strip_prefix(w)
+            .is_some_and(|rest| !rest.starts_with(char::is_alphanumeric) && evidence_only(rest))
     })
 }
 
-/// The rest of a cell after its met word holds an [`UNDOING`] word.
-fn undone(rest: &str) -> bool {
-    rest.split(|c: char| !c.is_alphanumeric())
-        .any(|word| UNDOING.contains(&word))
+/// The rest of a verdict cell holds only evidence: code spans (dropped whole; an unclosed one is
+/// not evidence), words that hold a digit or are themselves met words, whitespace, ASCII
+/// punctuation other than `?`, and [`EVIDENCE_SYMBOLS`] (leader decision 6875953130).
+fn evidence_only(rest: &str) -> bool {
+    let mut text = String::new();
+    let mut in_code = false;
+    for c in rest.chars() {
+        if c == '`' {
+            in_code = !in_code;
+        } else if !in_code {
+            text.push(c);
+        }
+    }
+    !in_code
+        && text.chars().all(|c| {
+            c.is_alphanumeric()
+                || c.is_whitespace()
+                || (c.is_ascii_punctuation() && c != '?')
+                || EVIDENCE_SYMBOLS.contains(c)
+        })
+        && text
+            .split(|c: char| !c.is_alphanumeric())
+            .all(|w| w.is_empty() || w.chars().any(|c| c.is_ascii_digit()) || MET.contains(&w))
 }
 
 /// The verdict column of a header row: the first cell after the first that starts with a
@@ -426,19 +412,24 @@ mod tests {
             "충족",
             "**충족**",
             "met",
-            "PASS (agent-9)",
             "n/a",
             "해당 없음",
-            "충족 — 감사 확인",
-            "충족(범위 밖 종료)",
             "끝",
-            "병합 `cf05c3ea6f`",
             "지킴",
-            "CLOSED completed 2026-11-09",
             "완료",
             "done",
+            "PASS",
+            // Evidence only: code spans, words with a digit, punctuation, allowed symbols.
+            "병합 `cf05c3ea6f`",
+            "충족 (6873016131)",
+            "충족 — #2919 `87c6dc3eee`",
+            "PASS 6875042988 · 43578802502",
+            "CLOSED completed 2026-11-09T04",
+            "충족 ✓",
+            "충족 (B2, R5)",
+            "끝 — `progress_painter` `the_loop_merges_a_tip_only_update`",
         ] {
-            assert!(is_met(&yes.replace(['*', '`'], "")), "{yes}");
+            assert!(is_met(yes), "{yes}");
         }
         for no in [
             "미충족",
@@ -454,7 +445,7 @@ mod tests {
             "열림(감사 대기)",
             "metric",
             "closedown",
-            // Audit 6874717869 B1: a met word undone by what follows it.
+            // Audit 6874717869 B1 and re-audit 6875342005 B1.
             "충족 아님",
             "충족(일부)",
             "충족 — B2 남음",
@@ -466,21 +457,37 @@ mod tests {
             "완료 예정",
             "n/a?",
             "병합 대기",
-            "충족 (pending)",
-            "done, not yet merged",
-            "PASS — 재감사 후속",
+            "병합 대기중",
+            "충족 안됨",
+            "충족(일부만)",
+            "충족 아직",
+            "충족 — 미확인",
+            "충족, 단 B2 미해결",
+            // Audit 6875910836 N1: words no list named — any non-evidence word is enough.
+            "충족 못함",
+            "충족 — 못 함",
+            "충족 — 확인 필요",
+            "충족 검토중",
+            "충족 (누락)",
+            "충족 막힘",
+            "충족 차단됨",
+            "충족 취소",
+            "충족 — 재감사 필요",
+            "충족 부족",
+            "충족 오류",
+            "충족 X",
+            "충족 ✗",
+            "met, blocked",
+            // Description belongs in the evidence column now (leader decision 6875953130).
+            "PASS (agent-9)",
+            "충족 — 감사 확인",
+            "충족(범위 밖 종료)",
+            // An unclosed code span is not evidence.
+            "충족 `abc",
+            "PASS 6875042988 · CI 43578802502",
+            "끝 — `progress_painter` 단위 시험",
         ] {
             assert!(!is_met(no), "{no}");
-        }
-        // Words that merely contain an undoing word stay met (`전역` is not `전`, `notes`
-        // is not `not`, `안내` is not `안`).
-        for yes in [
-            "충족 — 판정 함수는 ColorFlag 를 받음. 전역",
-            "met (notes in PR body)",
-            "충족 — 안내 줄 한 번",
-            "끝(대용, 리더 결정 6868714203)",
-        ] {
-            assert!(is_met(yes), "{yes}");
         }
     }
 
