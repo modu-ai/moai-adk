@@ -178,12 +178,6 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Build the code map index
-    ///
-    /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
-    /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
-    /// build keeps the previous generation and marks partial (REQ-C6-01).
-    IndexBuild { project: PathBuf },
     /// Preview moving MoAI state into the home layout
     ///
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
@@ -515,35 +509,6 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
         total_cap: u64,
     },
-    /// Preview the managed Claude Code settings keys
-    ///
-    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
-    /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
-    ClaudeSettingsPlan {
-        project: PathBuf,
-        /// `project` (default): .claude/settings.json. `local`: .claude/settings.local.json, the
-        /// file Claude Code also reads for sessions in a linked worktree (#2581).
-        #[arg(long, default_value = "project")]
-        scope: String,
-    },
-    /// Write previewed Claude Code settings keys
-    ///
-    /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
-    /// reference. Writes the project settings file and its receipt only; home is refused.
-    ClaudeSettingsApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-        /// The scope the plan was made for (#2581); the digest binds it.
-        #[arg(long, default_value = "project")]
-        scope: String,
-        /// The `confirm_token` a conflict plan offered (#2383): after the user confirms, keep
-        /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
-        #[arg(long)]
-        confirm_replace: Option<String>,
-    },
     /// Preview the managed Codex config keys
     ///
     /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
@@ -558,31 +523,6 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
-    },
-    /// Preview the MoAI hook set for one host
-    ///
-    /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
-    HooksPlan {
-        project: PathBuf,
-        /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
-        #[arg(long)]
-        host: String,
-        #[command(flatten)]
-        lane: LaneLoopArgs,
-    },
-    /// Write a previewed hook set
-    ///
-    /// Write a previewed hook set and its receipt; requires the plan digest.
-    HooksApply {
-        project: PathBuf,
-        #[arg(long)]
-        host: String,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-        #[command(flatten)]
-        lane: LaneLoopArgs,
     },
     /// Answer a Codex lane's Stop hook
     ///
@@ -602,21 +542,6 @@ enum Command {
         /// Decide from a saved `lane-next` snapshot (JSON) instead of reading GitHub.
         #[arg(long)]
         snapshot: Option<PathBuf>,
-    },
-    /// Undo the hook set one update applied
-    ///
-    /// Undo the hook layer one confirmed `update` applied in PROJECT (#2853), from its receipt:
-    /// a host's files get their earlier bytes back only while all of them still hold what the
-    /// update wrote; a host changed since is skipped and named.
-    HooksRevert {
-        /// The project the update ran in.
-        project: PathBuf,
-        /// The receipt id the update printed under `hooks_result.receipt`.
-        #[arg(long)]
-        receipt: String,
-        /// Caller-supplied permission reference (recorded; not an authorization verifier).
-        #[arg(long)]
-        permission_reference: String,
     },
     /// Run one MoAI hook duty for a host
     ///
@@ -806,11 +731,6 @@ enum Command {
     /// Plan the GitHub templates of a project (08-B #2013): typed request on stdin
     /// (`github_issues` opts in); read-only.
     GithubPlan { project: PathBuf },
-    /// Preview syncing the project's GitHub labels
-    ///
-    /// Plan a project's label sync from `.github/moai/labels.yml` (#2434 decision 40): typed
-    /// request `{schema_version, owner, repo}` on stdin; GET only, never deletes.
-    LabelsPlan { project: PathBuf },
     /// Sync previewed GitHub labels
     ///
     /// Apply an approved label sync plan (#2434 decision 40): the exact plan on stdin,
@@ -1216,8 +1136,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         ClaimRelease { .. } => "claim.release",
         ClaimShow { .. } => "claim.show",
         ClaimVerify { .. } => "claim.verify",
-        ClaudeSettingsApply { .. } => "claude.settings_apply",
-        ClaudeSettingsPlan { .. } => "claude.settings_plan",
         CodexConfigApply { .. } => "codex.config_apply",
         CodexConfigPlan { .. } => "codex.config_plan",
         DecisionAppend { .. } => "decision.append",
@@ -1230,12 +1148,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         GithubApply { .. } => "github.apply",
         GithubPlan { .. } => "github.plan",
         HookDispatch { .. } => "hook.dispatch",
-        HooksApply { .. } => "hooks.apply",
-        HooksPlan { .. } => "hooks.plan",
-        HooksRevert { .. } => "hooks.revert",
-        IndexBuild { .. } => "index.build",
         LabelsApply { .. } => "labels.apply",
-        LabelsPlan { .. } => "labels.plan",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
         LaneStopHook { .. } => "lane.stop_hook",
@@ -1374,9 +1287,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
 fn shows_progress(command: &Command) -> bool {
     matches!(
         command,
-        Command::IndexBuild { .. }
-            | Command::LabelsPlan { .. }
-            | Command::QueueFree { .. }
+        Command::QueueFree { .. }
             | Command::LeaderTick { .. }
             | Command::LaneStatus { .. }
             | Command::FlowWipCheck { .. }
@@ -1710,11 +1621,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             receipt,
             permission_reference,
         } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
-        Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
-            &project,
-            &input::<moai_cli::index::IndexBuildRequest>()?,
-        )?)
-        .map_err(|_| "encode failed".into()),
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1870,45 +1776,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             );
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
-        Command::HooksPlan {
-            project,
-            host,
-            lane,
-        } => {
-            let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out =
-                moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
-            merge_binary_state(&mut out);
-            // Outside the plan digest: the #2391 hook state from local evidence, read only.
-            let path_env = std::env::var("PATH").unwrap_or_default();
-            out["hook_status"] =
-                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
-            Ok(out)
-        }
-        Command::HooksRevert {
-            project,
-            receipt,
-            permission_reference,
-        } => moai_cli::update_hooks::revert(&project, &receipt, &permission_reference),
-        Command::HooksApply {
-            project,
-            host,
-            plan_digest,
-            permission_reference,
-            lane,
-        } => {
-            let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::apply_with(
-                &project,
-                &host,
-                home.as_deref(),
-                &plan_digest,
-                &permission_reference,
-                lane.lane_loop(),
-            )?;
-            merge_binary_state(&mut out);
-            Ok(out)
-        }
         // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
         Command::HookDispatch { .. } => {
             Err("hook-dispatch is answered before internal dispatch".into())
@@ -1927,29 +1794,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 None => moai_cli::heavy_slot::default_dir()?,
             };
             moai_cli::heavy_slot::status(&dir)
-        }
-        Command::ClaudeSettingsPlan { project, scope } => {
-            let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
-            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_plan_in(&project, &desired, scope)
-        }
-        Command::ClaudeSettingsApply {
-            project,
-            plan_digest,
-            permission_reference,
-            scope,
-            confirm_replace,
-        } => {
-            let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
-            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_apply_in(
-                &project,
-                &desired,
-                &plan_digest,
-                &permission_reference,
-                scope,
-                confirm_replace.as_deref(),
-            )
         }
         Command::CodexConfigPlan { project } => {
             let home = codex_config_home(&project)?;
@@ -2134,12 +1978,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             )?)
             .map_err(|_| "encode failed".into())
         }
-        Command::LabelsPlan { project } => moai_cli::forge::labels::labels_plan_cli(
-            &project,
-            input::<moai_cli::forge::labels::LabelsRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
         Command::LabelsApply {
             project,
             plan_digest,
