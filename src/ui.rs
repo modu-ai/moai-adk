@@ -44,12 +44,27 @@ impl Stream {
     }
 }
 
-/// An explicit color choice from the command line.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// An explicit color choice from the command line (`moai --color <auto|always|never>`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum ColorFlag {
     Auto,
     Always,
     Never,
+}
+
+static COLOR_CHOICE: std::sync::OnceLock<ColorFlag> = std::sync::OnceLock::new();
+
+/// Records the command line's `--color` once per process (#2799 ③); the first call wins.
+pub fn set_color_choice(flag: ColorFlag) {
+    let _ = COLOR_CHOICE.set(flag);
+}
+
+/// `flag`, except that `Auto` takes the process's `--color` choice when one was recorded.
+fn resolved(flag: ColorFlag, choice: Option<ColorFlag>) -> ColorFlag {
+    match flag {
+        ColorFlag::Auto => choice.unwrap_or(ColorFlag::Auto),
+        explicit => explicit,
+    }
 }
 
 /// The environment values the decisions read, captured once so tests can pass their own.
@@ -319,7 +334,11 @@ impl Painter {
     pub fn for_stream(stream: Stream, flag: ColorFlag) -> Painter {
         let env = Env::from_process();
         Painter {
-            color: color_enabled(flag, &env, stream.is_terminal()),
+            color: color_enabled(
+                resolved(flag, COLOR_CHOICE.get().copied()),
+                &env,
+                stream.is_terminal(),
+            ),
             unicode: unicode_enabled(&env),
             lang: ui_lang(stream),
         }
@@ -515,6 +534,22 @@ mod tests {
                 *want,
                 "{flag:?} {pairs:?} tty={tty}"
             );
+        }
+    }
+
+    #[test]
+    fn auto_takes_the_command_line_choice_and_an_explicit_flag_keeps_its_own() {
+        use ColorFlag::*;
+        // (call site's flag, recorded `--color`, result) — #2799 ③.
+        for (flag, choice, want) in [
+            (Auto, None, Auto),
+            (Auto, Some(Auto), Auto),
+            (Auto, Some(Never), Never),
+            (Auto, Some(Always), Always),
+            (Always, Some(Never), Always),
+            (Never, Some(Always), Never),
+        ] {
+            assert_eq!(resolved(flag, choice), want, "{flag:?} {choice:?}");
         }
     }
 

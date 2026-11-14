@@ -391,7 +391,9 @@ pub fn is_active(state: &str) -> bool {
     ACTIVE_STATES.contains(&state)
 }
 
-fn is_live(lease_until: &str, now: i64) -> bool {
+/// Whether a lease still holds at `now`: the lease-end second itself is expired (#2902 O3b
+/// reads the same rule for its handoff candidates).
+pub(crate) fn is_live(lease_until: &str, now: i64) -> bool {
     parse_utc(lease_until).is_some_and(|t| t > now)
 }
 

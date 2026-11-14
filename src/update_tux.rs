@@ -149,6 +149,10 @@ enum W {
     CleanupNext,
     Cleaned,
     CleanupFailed,
+    Keys,
+    KeyImport,
+    KeyInVault,
+    KeyKeep,
 }
 
 /// Whether a confirmed cleanup, when there is one, ended committed.
@@ -246,6 +250,34 @@ fn w(lang: Lang, word: W) -> &'static str {
             }
         }
         Hooks => "hooks",
+        Keys => {
+            if ko {
+                "키"
+            } else {
+                "keys"
+            }
+        }
+        KeyImport => {
+            if ko {
+                "금고로 가져오기(원본 유지)"
+            } else {
+                "import into the vault (original kept)"
+            }
+        }
+        KeyInVault => {
+            if ko {
+                "이미 금고에 있음"
+            } else {
+                "already in the vault"
+            }
+        }
+        KeyKeep => {
+            if ko {
+                "그대로 둠"
+            } else {
+                "keep"
+            }
+        }
         UpToDate => {
             if ko {
                 "최신"
@@ -729,6 +761,7 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
         let (m, text) = tally_text(lang, tally(hook_hosts));
         rows.push(row(m, w(lang, W::Hooks).into(), text));
     }
+    rows.extend(key_rows(v, lang));
     for s in v["skipped"].as_array().into_iter().flatten() {
         rows.push(row(
             Mark::Skip,
@@ -758,6 +791,39 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
                 counted(lang, W::Archive, n("archive")),
                 counted(lang, W::Keep, n("keep"))
             ),
+        ));
+    }
+    rows
+}
+
+/// #2871 I2 S3: one plain line per legacy key file — provider, the file (its folder and name)
+/// and what the keys layer does with it. Never a value: the result carries none.
+fn key_rows(v: &Value, lang: Lang) -> Vec<Row> {
+    let mut rows = Vec::new();
+    for r in v["keys"]["rows"].as_array().into_iter().flatten() {
+        let source = r["source"].as_str().unwrap_or("");
+        let mut parts = source.rsplit('/');
+        let name = parts.next().unwrap_or("");
+        let file = match parts.next() {
+            Some(dir) if !dir.is_empty() => format!("{dir}/{name}"),
+            _ => name.to_string(),
+        };
+        let (m, action) = match r["action"].as_str().unwrap_or("") {
+            "import" => (Mark::Update, w(lang, W::KeyImport).to_string()),
+            "already_in_vault" => (Mark::Ok, w(lang, W::KeyInVault).to_string()),
+            _ => (
+                Mark::Skip,
+                format!(
+                    "{}: {}",
+                    w(lang, W::KeyKeep),
+                    r["reason"].as_str().unwrap_or("")
+                ),
+            ),
+        };
+        rows.push(row(
+            m,
+            w(lang, W::Keys).into(),
+            format!("{} {file} — {action}", r["provider"].as_str().unwrap_or("")),
         ));
     }
     rows
@@ -1138,6 +1204,21 @@ impl Out<'_> {
                 ));
             }
         }
+        let keys: Vec<(Mark, String)> = v["keys"]["rows"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|r| r["action"].as_str() == Some("import"))
+            .map(|_| {
+                (
+                    Mark::Update,
+                    self.home(v["keys"]["destination"].as_str().unwrap_or("")),
+                )
+            })
+            .collect();
+        if !keys.is_empty() {
+            groups.push((w(lang, W::Keys).into(), keys));
+        }
         if groups.is_empty() {
             return;
         }
@@ -1414,6 +1495,7 @@ fn applied(v: &Value, view: &View) -> String {
     part(W::Style, &v["style_result"], &mut rows);
     part(W::BinNames, &v["bin_names_result"], &mut rows);
     part(W::Hooks, &v["hooks_result"], &mut rows);
+    part(W::Keys, &v["keys_result"], &mut rows);
     for s in v["skipped"].as_array().into_iter().flatten() {
         rows.push(row(
             Mark::Skip,
@@ -1440,9 +1522,9 @@ fn applied(v: &Value, view: &View) -> String {
         format!("{total} {}", w(lang, W::Changed))
     };
     o.status(m, &format!("{} — {total}", w(lang, head)));
-    // Last applied first (the apply order is agents, routing, style, command names, hooks): a file
+    // Last applied first (the apply order is agents, routing, style, command names, hooks, keys): a file
     // two layers changed, such as Codex's AGENTS.md, is only restored in that order.
-    let reverts: Vec<String> = ["hooks", "style", "routing", "agents"]
+    let reverts: Vec<String> = ["keys", "hooks", "style", "routing", "agents"]
         .iter()
         .filter_map(|k| v["revert"][*k].as_str())
         .map(|c| o.home(c))

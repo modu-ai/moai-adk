@@ -118,6 +118,7 @@ Keys
                           vault
   key-import-plan         Preview importing an old key file
   key-import-apply        Import a previewed old key file
+  keys-revert             Undo the keys one update imported
 Diagnose
   claude-doctor           Check that Claude Code reads
                           AGENTS.md
@@ -146,6 +147,8 @@ Lane and leader
   queue-query             Read the merge train from the
                           leader's comment
   leader-tick             Run one leader supervision tick
+  leader-round            Build the leader's per-lane action
+                          list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its
                           host
@@ -304,6 +307,10 @@ Options:
   -a, --agent [<HOST>]
           Start an agent session on HOST (cc|glm|codex;
           default cc)
+      --color <WHEN>
+          Color on a terminal: auto, always (even with
+          NO_COLOR or TERM=dumb) or never; put it before the
+          command
       --name <NAME>
           Session name (default `leader` for -l, the
           project's next `agent-N` for -a; none without a
