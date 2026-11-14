@@ -3728,6 +3728,17 @@ mod help_rules {
                 }
                 seen += 1;
             }
+            // The slice boundary (mutation P5): the group's commands outside the root list
+            // keep their own texts until their slice.
+            for (word, _) in g.commands.iter().filter(|(_, root)| !*root) {
+                let ko = korean.find_subcommand(word).unwrap();
+                let en = english.find_subcommand(word).unwrap();
+                assert_eq!(ko.get_about(), en.get_about(), "{word}");
+                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                    let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
+                    assert!(!hangul(&help), "{word} {}: {help:?}", arg.get_id());
+                }
+            }
         }
         assert!(seen >= 5, "{seen}");
     }
