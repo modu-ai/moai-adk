@@ -20,13 +20,16 @@
 
 use crate::ui::{ColorFlag, Painter, Stream, Token};
 use crate::ui_summary::OutputMode;
-use std::cell::RefCell;
+use crate::ui_text::{Lang, Msg};
+use std::cell::{Cell, RefCell};
 use std::io::{self, BufRead, IsTerminal, Write};
 
 type Sink = Box<dyn FnMut(&str)>;
 
 thread_local! {
     static SINK: RefCell<Option<Sink>> = const { RefCell::new(None) };
+    /// The language of the installed sink's lines (S6b); English without one.
+    static LANG: Cell<Lang> = const { Cell::new(Lang::En) };
 }
 
 /// Reports one stage of a long-running command; a no-op unless a sink is installed.
@@ -38,14 +41,34 @@ pub fn note(text: &str) {
     });
 }
 
-/// Installs `sink` for this thread's later [`note`] calls (tests pass a recorder).
-pub fn install(sink: Sink) {
-    SINK.with(|s| *s.borrow_mut() = Some(sink));
+/// [`note`] of one sentence in the sink's language, with `values` filled in (S6b). Nothing is
+/// formatted when no sink listens.
+pub fn note_msg(msg: Msg, values: &[(&str, &str)]) {
+    if SINK.with(|s| s.borrow().is_some()) {
+        note(&say(msg, values));
+    }
 }
 
-/// Removes the sink; later [`note`] calls write nothing.
+/// `msg` in the sink's language with `values` filled in: the text a progress line would show.
+pub fn say(msg: Msg, values: &[(&str, &str)]) -> String {
+    crate::ui_text::fill(msg, LANG.with(Cell::get), values)
+}
+
+/// Installs `sink` for this thread's later [`note`] calls (tests pass a recorder), in English.
+pub fn install(sink: Sink) {
+    install_in(sink, Lang::En);
+}
+
+/// Installs `sink` with the language its sentences are written in.
+pub fn install_in(sink: Sink, lang: Lang) {
+    SINK.with(|s| *s.borrow_mut() = Some(sink));
+    LANG.with(|l| l.set(lang));
+}
+
+/// Removes the sink; later [`note`] calls write nothing and sentences are English again.
 pub fn uninstall() {
     SINK.with(|s| *s.borrow_mut() = None);
+    LANG.with(|l| l.set(Lang::En));
 }
 
 /// One progress line: the info mark (`→`, or `->` without UTF-8) and the text, with any
@@ -67,11 +90,12 @@ pub fn visible_lines(text: &str) -> String {
         .join("\n")
 }
 
-/// The stderr painter `MOAI_OUTPUT` asks for; `None` for progress under `quiet`.
+/// The stderr painter `MOAI_OUTPUT` asks for; `None` for progress under `quiet`. `plain` drops
+/// color and UTF-8 symbols but keeps the normal painter's language (S6b).
 pub fn progress_painter(mode: OutputMode, normal: impl FnOnce() -> Painter) -> Option<Painter> {
     match mode {
         OutputMode::Quiet => None,
-        OutputMode::Plain => Some(Painter::plain()),
+        OutputMode::Plain => Some(Painter::plain().with_lang(normal().lang)),
         OutputMode::Normal => Some(normal()),
     }
 }
@@ -91,11 +115,14 @@ pub fn install_stderr() {
     }) else {
         return;
     };
-    install(Box::new(move |text| {
-        let mut err = io::stderr();
-        let _ = err.write_all(line(&painter, text).as_bytes());
-        let _ = err.flush();
-    }));
+    install_in(
+        Box::new(move |text| {
+            let mut err = io::stderr();
+            let _ = err.write_all(line(&painter, text).as_bytes());
+            let _ = err.flush();
+        }),
+        painter.lang,
+    );
 }
 
 /// After this long in one unchanged state, a waiting command says it is still waiting
@@ -121,7 +148,7 @@ impl StateNotes {
         }
         if now - self.since >= STILL_WAITING_SECS {
             self.since = now;
-            return Some(format!("still waiting: {state}"));
+            return Some(say(Msg::StillWaiting, &[("what", state)]));
         }
         None
     }
@@ -150,8 +177,13 @@ pub fn ask<R: BufRead, W: Write>(
 }
 
 /// [`ask`] on the process's stdin and stderr, only when both are terminals; otherwise no,
-/// with nothing written.
-pub fn ask_terminal(preview: &str, question: &str) -> Result<bool, String> {
+/// with nothing written. The preview is written by `preview` for the painter that asks, and the
+/// question is one sentence, so both come in the stream's language (S6b); the answer is still
+/// `y`/`yes` and the prompt `[y/N]` (leader decision S6-4).
+pub fn ask_terminal(
+    preview: impl FnOnce(&Painter) -> String,
+    question: Msg,
+) -> Result<bool, String> {
     if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
         return Ok(false);
     }
@@ -159,13 +191,14 @@ pub fn ask_terminal(preview: &str, question: &str) -> Result<bool, String> {
     let painter = progress_painter(output_mode(), || {
         Painter::for_stream(Stream::Stderr, ColorFlag::Auto)
     })
-    .unwrap_or_else(Painter::plain);
+    .unwrap_or_else(|| Painter::plain().with_lang(crate::ui::ui_lang(Stream::Stderr)));
+    let preview = preview(&painter);
     ask(
         &mut io::stdin().lock(),
         &mut io::stderr(),
         &painter,
-        preview,
-        question,
+        &preview,
+        painter.text(question),
     )
     .map_err(|_| "could not read the answer".to_string())
 }
@@ -196,6 +229,7 @@ mod tests {
             &Painter {
                 color: true,
                 unicode: true,
+                lang: crate::ui_text::Lang::En,
             },
             "x",
         );
@@ -294,6 +328,7 @@ mod tests {
         let colored = Painter {
             color: true,
             unicode: true,
+            lang: crate::ui_text::Lang::En,
         };
         assert_eq!(progress_painter(OutputMode::Quiet, || colored), None);
         assert_eq!(
@@ -304,5 +339,105 @@ mod tests {
             progress_painter(OutputMode::Normal, || colored),
             Some(colored)
         );
+        // `plain` drops color and symbols, never the language (S6b).
+        let korean = colored.with_lang(Lang::Ko);
+        assert_eq!(
+            progress_painter(OutputMode::Plain, || korean),
+            Some(Painter::plain().with_lang(Lang::Ko))
+        );
+    }
+
+    /// S6b: a sentence is written in the language of the sink that listens; nothing is said
+    /// without a sink, and uninstalling goes back to English.
+    #[test]
+    fn notes_follow_the_language_of_the_installed_sink() {
+        let seen: Rc<RefCell<Vec<String>>> = Rc::default();
+        let keep = seen.clone();
+        install_in(
+            Box::new(move |t| keep.borrow_mut().push(t.to_string())),
+            Lang::Ko,
+        );
+        note_msg(Msg::ScanningTrackedFiles, &[]);
+        note_msg(
+            Msg::CheckingPullRequest,
+            &[("pr", "12"), ("seen", "1"), ("ready", "3")],
+        );
+        assert_eq!(
+            say(Msg::CiNoRunYet, &[("head", "0123abcd")]),
+            "0123abcd 의 ci: 아직 워크플로 실행 없음"
+        );
+        let mut n = StateNotes::default();
+        n.observe("상태", 0);
+        assert_eq!(
+            n.observe("상태", STILL_WAITING_SECS).as_deref(),
+            Some("아직 기다리는 중: 상태")
+        );
+        uninstall();
+        assert_eq!(
+            *seen.borrow(),
+            [
+                "추적 중인 파일 훑는 중 (1/3)",
+                "풀 리퀘스트 #12 확인 중 (1/3)"
+            ]
+        );
+        assert_eq!(
+            say(Msg::CiNoRunYet, &[("head", "0123abcd")]),
+            "ci on 0123abcd: no workflow run yet"
+        );
+        // English sentences are today's strings, byte for byte.
+        install(Box::new(|_| {}));
+        assert_eq!(say(Msg::BuildingViews, &[]), "building the views (2/3)");
+        assert_eq!(
+            say(
+                Msg::CiRunsCompleted,
+                &[("head", "01234567"), ("done", "0"), ("total", "1")]
+            ),
+            "ci on 01234567: 0 of 1 runs completed"
+        );
+        assert_eq!(
+            say(Msg::PullRequestStillAt, &[("pr", "7"), ("head", "abc")]),
+            "pull request #7 still at abc"
+        );
+        assert_eq!(
+            say(Msg::NoNewComment, &[("issue", "9")]),
+            "no new comment on #9"
+        );
+        assert_eq!(
+            say(
+                Msg::ReadingPage,
+                &[("n", "2"), ("path", "/repos/o/r/issues")]
+            ),
+            "reading page 2 of /repos/o/r/issues"
+        );
+        uninstall();
+    }
+
+    /// A Korean question keeps `[y/N]` and the `y`/`yes` answers (leader decision S6-4):
+    /// `예`/`네` are not a yes.
+    #[test]
+    fn a_korean_question_keeps_the_y_n_answers() {
+        let painter = Painter::plain().with_lang(Lang::Ko);
+        for (answer, want) in [
+            ("y\n", true),
+            ("yes\n", true),
+            ("예\n", false),
+            ("네\n", false),
+            ("\n", false),
+        ] {
+            let mut err = Vec::new();
+            let got = ask(
+                &mut answer.as_bytes(),
+                &mut err,
+                &painter,
+                "미리보기\n",
+                painter.text(Msg::RemoveIt),
+            )
+            .unwrap();
+            assert_eq!(got, want, "{answer:?}");
+            assert_eq!(
+                String::from_utf8(err).unwrap(),
+                "미리보기\n! 지울까요? [y/N] "
+            );
+        }
     }
 }

@@ -117,7 +117,14 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         let pr = p["number"].as_u64().ok_or("pull request without number")?;
         seen += 1;
         // One static progress line per pull request (#2806); silent without a stderr sink.
-        crate::progress::note(&format!("checking pull request #{pr} ({seen}/{ready})"));
+        crate::progress::note_msg(
+            crate::ui_text::Msg::CheckingPullRequest,
+            &[
+                ("pr", &pr.to_string()),
+                ("seen", &seen.to_string()),
+                ("ready", &ready.to_string()),
+            ],
+        );
         let head = p["head"]["sha"].as_str().unwrap_or("").to_string();
         let one = Target {
             dir: target.dir,
