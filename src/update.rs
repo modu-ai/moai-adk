@@ -662,7 +662,7 @@ fn known_good_copies(
     Ok(())
 }
 
-fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
+pub(crate) fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
     let mut map = BTreeMap::new();
     if let Some(r) = receipt {
         for f in &r.owned {
