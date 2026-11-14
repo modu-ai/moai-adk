@@ -46,9 +46,15 @@ impl HostStep {
 /// edited by hand) and the others still run.
 pub fn steps(root: &Path, shown: &str) -> Vec<HostStep> {
     let home = std::env::var_os("HOME").map(PathBuf::from);
+    steps_in(root, shown, home.as_deref())
+}
+
+/// [`steps`] with the user's HOME given: a project that is the HOME, or lies in a host's own
+/// settings folder under it, is refused by `hooks::plan` and shows as `blocked`.
+fn steps_in(root: &Path, shown: &str, home: Option<&Path>) -> Vec<HostStep> {
     vec![
-        hooks_step("codex-hooks", "codex", root, shown, home.as_deref()),
-        hooks_step("omp-hooks", "omp", root, shown, home.as_deref()),
+        hooks_step("codex-hooks", "codex", root, shown, home),
+        hooks_step("omp-hooks", "omp", root, shown, home),
         HostStep::bare("omp-config", "skip", OMP_CONFIG_REASON),
     ]
 }
@@ -106,5 +112,57 @@ fn from_plan(name: &'static str, host: &str, shown: &str, plan: &Value) -> HostS
         }),
         plan_digest: digest,
         apply,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn plan(action: &str) -> Value {
+        json!({"action": action, "plan_digest": "sha256:fixture", "path": ".codex/hooks.json",
+               "hooks": []})
+    }
+
+    /// agent-25's audit of #2993 P19: a hook file MoAI wrote earlier is brought up to date.
+    #[test]
+    fn an_update_is_ready_and_prints_its_command() {
+        let step = from_plan("codex-hooks", "codex", "/p", &plan("update"));
+        assert_eq!(step.state, "ready");
+        let argv = step.apply.expect("a ready step prints its command");
+        assert_eq!(&argv[..2], ["moai", "hooks-apply"]);
+        assert_eq!(argv.last().map(String::as_str), Some(PLACEHOLDER));
+    }
+
+    /// P18: an action this module does not know is never offered for apply.
+    #[test]
+    fn an_unknown_action_is_blocked_without_a_command() {
+        let step = from_plan("codex-hooks", "codex", "/p", &plan("something-new"));
+        assert_eq!(step.state, "blocked");
+        assert!(step.apply.is_none());
+    }
+
+    /// P12: a project that is the user's HOME is refused, not previewed.
+    #[test]
+    fn a_project_that_is_the_home_is_blocked() {
+        let t = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(t.path()).unwrap();
+        let shown = root.to_str().unwrap();
+        for s in steps_in(&root, shown, Some(&root))
+            .iter()
+            .filter(|s| s.name.ends_with("-hooks"))
+        {
+            assert_eq!(s.state, "blocked", "{}: {}", s.name, s.reason);
+            assert!(s.apply.is_none(), "{}", s.name);
+        }
+        // The same folder as a project of a different HOME is previewed.
+        let other = tempfile::tempdir().unwrap();
+        let home = std::fs::canonicalize(other.path()).unwrap();
+        for s in steps_in(&root, shown, Some(&home))
+            .iter()
+            .filter(|s| s.name.ends_with("-hooks"))
+        {
+            assert_eq!(s.state, "ready", "{}: {}", s.name, s.reason);
+        }
     }
 }
