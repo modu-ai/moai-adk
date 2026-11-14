@@ -259,12 +259,25 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         })).collect::<Vec<_>>(),
     });
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
-    // The same facts without the dated folder: the clock the preview ran at is not one of
-    // them, so `moai update` can hand it out as a confirmation token for a later run.
-    let mut stable = bound;
-    if let Some(o) = stable.as_object_mut() {
-        o.remove("folder");
-    }
+    // What the confirmation binds, without the clock: the HOME it was made for, the generation,
+    // the action, the blocks and the retirement set (the entries that retire or are in use).
+    // The dated folder is out, so `moai update` can hand the digest out as a token for a later
+    // run. An entry that stays is out too: the layer's own writes (a store like `.moai/agents`)
+    // add some, and they confirm nothing. A new or vanished retire candidate still moves it.
+    let stable = json!({
+        "mode": "retire",
+        "home": home.display().to_string(),
+        "generation": c.generation,
+        "action": action,
+        "blocks": blocks,
+        "entries": entries
+            .iter()
+            .filter(|e| e["action"] != "keep")
+            .map(|e| json!({
+                "name": e["name"], "kind": e["kind"], "action": e["action"], "reason": e["reason"],
+            }))
+            .collect::<Vec<_>>(),
+    });
     let content_digest = crate::digest(
         serde_json::to_string(&stable)
             .unwrap_or_default()
@@ -610,8 +623,10 @@ mod tests {
     }
 
     /// The `content_digest` holds no clock: two previews at different times give the same one
-    /// (the `plan_digest` names the dated folder, so it differs), and a new top-level entry
-    /// changes it.
+    /// (the `plan_digest` names the dated folder, so it differs). It follows the retirement set
+    /// (what retires or is in use) and the HOME it was made for, and nothing else: an entry
+    /// that stays (a name this generation writes, user data, an unknown name) does not move it,
+    /// so the layer's own writes do not make a confirmed token stale.
     #[test]
     fn the_content_digest_is_clock_free_and_follows_the_entries() {
         let dir = tempfile::tempdir().unwrap();
@@ -626,9 +641,36 @@ mod tests {
         assert_eq!(a["action"], json!("retire"), "{a}");
         assert_eq!(a["content_digest"], b["content_digest"]);
         assert_ne!(a["plan_digest"], b["plan_digest"]);
+        // Entries that stay do not move the digest.
         fs::write(moai.join("appeared-later"), "x").unwrap();
+        fs::create_dir_all(moai.join("agents")).unwrap();
+        let kept = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        assert_eq!(a["content_digest"], kept["content_digest"], "{kept}");
+        // A new retire candidate does.
+        fs::create_dir_all(moai.join("run")).unwrap();
         let c = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
         assert_ne!(a["content_digest"], c["content_digest"]);
+    }
+
+    /// Two HOMEs with the same layout do not share a `content_digest`.
+    #[test]
+    fn the_content_digest_names_its_home() {
+        let make = || {
+            let dir = tempfile::tempdir().unwrap();
+            let home = fs::canonicalize(dir.path()).unwrap();
+            let moai = home.join(".moai");
+            fs::create_dir_all(moai.join("state")).unwrap();
+            fs::write(moai.join("user-assets.json"), "{}").unwrap();
+            fs::write(moai.join("state/active-sessions.json"), "[]").unwrap();
+            fs::create_dir_all(moai.join("cache")).unwrap();
+            (dir, home)
+        };
+        let (_a, ha) = make();
+        let (_b, hb) = make();
+        let now = "2026-11-14T12:00:00Z";
+        let (pa, pb) = (plan(&ha, None, now).unwrap(), plan(&hb, None, now).unwrap());
+        assert_eq!(pa["action"], pb["action"]);
+        assert_ne!(pa["content_digest"], pb["content_digest"]);
     }
 
     #[test]

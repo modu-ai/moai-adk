@@ -248,6 +248,55 @@ fn update_confirm_and_confirm_home_together_apply_the_layer_then_the_home_part()
     assert!(!home.join(".moai/cache").exists());
 }
 
+/// Codex review on #2983: the token names the HOME it was previewed for. A second HOME with the
+/// same Go layout gets another token, and the first one retires nothing there.
+#[test]
+fn update_home_token_is_bound_to_its_home() {
+    let (_t1, home1, exe1) = setup();
+    let (_t2, home2, exe2) = setup();
+    go_items(&home1);
+    go_items(&home2);
+    let t1 = token(&preview(&exe1, &home1));
+    let t2 = token(&preview(&exe2, &home2));
+    assert_ne!(t1, t2, "two HOMEs with the same layout share a token");
+    let before = state(&home2);
+    let e = refused(&run(&exe2, &home2, &["update", "--confirm-home", &t1]));
+    assert!(e.contains("home token"), "{e}");
+    assert_eq!(state(&home2), before, "a foreign token wrote something");
+    assert!(!home2.join(".moai-go-retired").exists());
+}
+
+/// Codex review on #2983: on a `rust-first` HOME the layer's own writes (`.moai/agents/…`) are
+/// new top-level entries, but the confirmed retirement set has not changed. The combined run
+/// applies the layer and then the home part.
+#[test]
+fn update_confirm_and_confirm_home_together_on_a_rust_first_home() {
+    let (_t, home, exe) = setup();
+    go_items(&home);
+    write(
+        &home,
+        ".moai/moai-cli.json",
+        r#"{"schema_version":2,"generation":"moai-cli"}"#,
+    );
+    let p = preview(&exe, &home);
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let t = token(&p);
+    assert!(!home.join(".moai/agents").exists());
+    let r = result(&run(
+        &exe,
+        &home,
+        &["update", "--confirm", &top, "--confirm-home", &t],
+    ));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    assert!(
+        home.join(".moai/agents").is_dir(),
+        "the layer wrote its store into the schema-2 HOME root"
+    );
+    assert_eq!(r["home_result"]["state"], json!("applied"), "{r}");
+    assert!(!home.join(".moai/cache").exists(), "{r}");
+    assert!(home.join(".moai-go-retired").is_dir());
+}
+
 #[test]
 fn update_home_refuses_a_wrong_stale_or_doubled_token_before_any_write() {
     let (_t, home, exe) = setup();
@@ -286,8 +335,9 @@ fn update_home_refuses_a_wrong_stale_or_doubled_token_before_any_write() {
     ));
     assert!(e.contains("home") && e.contains("cleanup"), "{e}");
     assert_eq!(state(&home), before, "a refused run wrote something");
-    // A top-level entry appeared after the preview: the token is stale.
-    write(&home, ".moai/appeared-later.bin", "z");
+    // A kept entry appearing changes nothing the token confirmed (the layer writes some too);
+    // a new retire candidate after the preview makes the token stale.
+    write(&home, ".moai/logs/go.log", "z");
     let before = state(&home);
     let e = refused(&run(&exe, &home, &["update", "--confirm-home", &t]));
     assert!(e.contains("home token"), "{e}");

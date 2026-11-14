@@ -256,12 +256,14 @@ mod tests {
             assert!(e.contains("home token"), "{e}");
             assert!(moai.join("cache").is_dir() && !home.join(".moai-go-retired").exists());
         }
-        // A top-level entry appeared after the preview: the token is stale.
-        std::fs::write(moai.join("appeared-later"), "x").unwrap();
+        // A new retire candidate appeared after the preview: the token is stale.
+        std::fs::create_dir_all(moai.join("logs")).unwrap();
         assert!(apply(&home, &token, "unit test").is_err());
         assert!(moai.join("cache").is_dir());
-        // The fresh token moves the Go items and names the revert.
+        // The fresh token moves the Go items and names the revert. An entry that stays
+        // appearing in between (the layer's own writes are such) does not stale it.
         let token = plan(&home).unwrap().token().unwrap().to_string();
+        std::fs::write(moai.join("appeared-later"), "x").unwrap();
         let r = apply(&home, &token, "unit test").unwrap();
         assert_eq!(r["state"], json!("applied"), "{r}");
         assert!(!moai.join("cache").exists() && moai.join("appeared-later").is_file());
