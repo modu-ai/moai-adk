@@ -10,6 +10,7 @@
 //! enabled = true
 //! repos = ["/Users/me/src/moai-adk"]
 //! allow_commands = ["git switch v2026.11.0"]
+//! deny_commits_on = ["main"]       # #2878: no commit/revert/cherry-pick on these branches
 //! ```
 //!
 //! A config that is absent, not a regular file (a symlink too), over 64 KiB or not valid TOML
@@ -46,6 +47,9 @@ pub struct PrimaryRule {
     pub repos: Vec<PathBuf>,
     /// Exact command lines that are let through.
     pub allow_commands: Vec<String>,
+    /// Branches on which a primary checkout takes no new commit, revert or cherry-pick
+    /// (#2878 E2, the Go generation's `deny_commits_on`). Empty: none.
+    pub deny_commits_on: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -214,6 +218,11 @@ fn parse_checked(text: &str, home: &Path) -> Option<HookConfig> {
                 .into_iter()
                 .map(|c| c.trim().to_string())
                 .collect(),
+            deny_commits_on: strings(t, "deny_commits_on")?
+                .into_iter()
+                .map(|b| b.trim().to_string())
+                .filter(|b| !b.is_empty())
+                .collect(),
         })
     });
     Some(HookConfig { outside, primary })
@@ -314,6 +323,25 @@ mod tests {
         let p = c.primary.unwrap();
         assert_eq!(p.repos, vec![PathBuf::from("/no/such/repo/a")]);
         assert_eq!(p.allow_commands, vec!["git switch main".to_string()]);
+        // #2878 E2: absent means none.
+        assert!(p.deny_commits_on.is_empty());
+    }
+
+    /// #2878 E2: `deny_commits_on` is a list of branch names, trimmed, blanks dropped; a
+    /// non-list or a non-string entry turns the rule off like any malformed list.
+    #[test]
+    fn deny_commits_on_is_read_as_branch_names() {
+        let home = Path::new("/home/u");
+        let c = parse(
+            "[hooks.primary_checkout]\nenabled = true\nrepos = [\"/r\"]\ndeny_commits_on = [\" main \", \"\", \"release\"]\n",
+            home,
+        );
+        assert_eq!(c.primary.unwrap().deny_commits_on, ["main", "release"]);
+        for bad in ["deny_commits_on = \"main\"", "deny_commits_on = [1]"] {
+            let text =
+                format!("[hooks.primary_checkout]\nenabled = true\nrepos = [\"/r\"]\n{bad}\n");
+            assert_eq!(parse(&text, home).primary, None, "{bad}");
+        }
     }
 
     /// N2: the bound is on the bytes actually read, so a file that grows after its size was

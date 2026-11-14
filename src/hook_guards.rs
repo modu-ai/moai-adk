@@ -680,7 +680,8 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
 }
 
 const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/config to permit it.";
-const PRIMARY_CHECKOUT: &str = "MoAI tool-preflight: this primary checkout is shared with linked worktrees; switching, resetting, stashing or rebasing it is refused (add the exact command to `allow_commands` under [hooks.primary_checkout] in ~/.moai-cli/config to permit it).";
+const PRIMARY_CHECKOUT: &str = "MoAI tool-preflight: this primary checkout is shared with linked worktrees; switching, resetting, stashing, rebasing, merging or changing its branches is refused (use a worktree; add the exact command to `allow_commands` under [hooks.primary_checkout] in ~/.moai-cli/config to permit it).";
+const PROTECTED_BRANCH_COMMIT: &str = "MoAI tool-preflight: this primary checkout is on a branch listed in `deny_commits_on` under [hooks.primary_checkout] in ~/.moai-cli/config; a commit, revert or cherry-pick there is refused (commit in a worktree on its own branch).";
 
 /// The folder holding the nearest `.git` (a folder or a file) at or above `dir`, resolved.
 /// Found from the file system only: no git process.
@@ -731,15 +732,131 @@ pub fn outside_project_guard(
 /// Whether a git subcommand changes which commit or branch the work tree holds, or its
 /// uncommitted state (B3): `switch`; `checkout` naming a branch or commit (not a path restore
 /// after `--`, not a bare `checkout`); every `reset`; `stash` other than `list`/`show`;
-/// every `rebase`.
+/// every `rebase`; every `merge` (#2878 E2); a `git branch` that changes branches.
 fn moves_the_checkout(sub: &crate::claim_verify::GitSub) -> bool {
     let rest = &sub.rest;
     match sub.verb.as_str() {
-        "switch" | "rebase" | "reset" => true,
+        "switch" | "rebase" | "reset" | "merge" => true,
         "checkout" => !rest.iter().any(|a| a == "--") && !rest.is_empty(),
         "stash" => !matches!(rest.first().map(String::as_str), Some("list" | "show")),
+        "branch" => changes_branches(rest),
         _ => false,
     }
+}
+
+/// `git branch` arguments that create, delete, rename, copy, force or re-track a branch
+/// (#2878 E2, the Go generation's branch guard). Listing forms — no arguments, `--list`,
+/// `-a`, `-r`, `-v`, `--contains <c>`, `--merged <c>`, `--show-current` … — change nothing.
+fn changes_branches(args: &[String]) -> bool {
+    const CHANGING_LONG: &[&str] = &[
+        "--delete",
+        "--move",
+        "--copy",
+        "--force",
+        "--edit-description",
+        "--set-upstream-to",
+        "--unset-upstream",
+        "--track",
+        "--no-track",
+        "--create-reflog",
+        "--recurse-submodules",
+    ];
+    // Listing options that take the next word as their value.
+    const LIST_WITH_VALUE: &[&str] = &[
+        "--contains",
+        "--no-contains",
+        "--merged",
+        "--no-merged",
+        "--points-at",
+        "--format",
+        "--sort",
+        "--column",
+    ];
+    const LIST_ONLY: &[&str] = &[
+        "-l",
+        "--list",
+        "-a",
+        "--all",
+        "-r",
+        "--remotes",
+        "-v",
+        "-vv",
+        "--verbose",
+        "--show-current",
+        "-i",
+        "--ignore-case",
+        "--no-column",
+        "--color",
+        "--no-color",
+        "--abbrev",
+        "--no-abbrev",
+        "-q",
+        "--quiet",
+    ];
+    let mut listing = false;
+    let mut positional = false;
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        let flag = a.split('=').next().unwrap_or(a);
+        if CHANGING_LONG.contains(&flag) || flag.starts_with("--set-upstream") {
+            return true;
+        }
+        if LIST_WITH_VALUE.contains(&flag) {
+            listing = true;
+            if !a.contains('=') {
+                it.next();
+            }
+            continue;
+        }
+        if LIST_ONLY.contains(&flag)
+            || flag.starts_with("--color=")
+            || flag.starts_with("--abbrev=")
+        {
+            if !matches!(flag, "-q" | "--quiet") {
+                listing = true;
+            }
+            continue;
+        }
+        if let Some(cluster) = a
+            .strip_prefix('-')
+            .filter(|c| !c.starts_with('-') && !c.is_empty())
+        {
+            // A short-option cluster such as `-D`, `-df`, `-Mf`: any changing letter changes.
+            if cluster.chars().any(|c| "dDmMcCfut".contains(c)) {
+                return true;
+            }
+            if cluster.chars().any(|c| "lavr".contains(c)) {
+                listing = true;
+            }
+            continue;
+        }
+        if a.starts_with("--") {
+            continue;
+        }
+        positional = true;
+    }
+    // `git branch <name> [<start>]` creates a branch; with a listing flag the words are
+    // patterns.
+    positional && !listing
+}
+
+/// The branch a primary checkout's HEAD names (`ref: refs/heads/<b>` in `.git/HEAD`), read
+/// from the file system; `None` when detached, missing or unreadable.
+fn head_branch(top: &Path) -> Option<String> {
+    let head = std::fs::read_to_string(top.join(".git").join("HEAD")).ok()?;
+    head.trim()
+        .strip_prefix("ref: refs/heads/")
+        .map(str::to_string)
+}
+
+/// Whether a git subcommand makes a new commit on the current branch (#2878 E2): `commit`,
+/// `revert` and `cherry-pick` (their `--abort`/`--quit`/`--skip` end an operation without one).
+fn makes_a_commit(sub: &crate::claim_verify::GitSub) -> bool {
+    matches!(sub.verb.as_str(), "commit" | "revert" | "cherry-pick")
+        && !sub
+            .rest
+            .iter()
+            .any(|a| matches!(a.as_str(), "--abort" | "--quit" | "--skip"))
 }
 
 /// The directory a git subcommand runs in: `cwd`, changed by each `-C <dir>` before the verb.
@@ -765,8 +882,10 @@ fn shared_primary(top: &Path) -> bool {
 }
 
 /// B3 (opt-in, decision 6779829826): in a primary checkout listed in `repos` that has linked
-/// worktrees, a git command that switches, resets, stashes or rebases it is refused unless
-/// the whole command line is in `allow_commands`. File writes are out of scope.
+/// worktrees, a git command that switches, resets, stashes, rebases, merges or changes its
+/// branches is refused unless the whole command line is in `allow_commands`. In a listed
+/// primary checkout whose HEAD is a `deny_commits_on` branch, a commit, revert or cherry-pick
+/// is refused too, with or without linked worktrees (#2878 E2). File writes are out of scope.
 pub fn primary_checkout_guard(
     command: &str,
     cwd: &Path,
@@ -780,14 +899,26 @@ pub fn primary_checkout_guard(
             continue;
         }
         for sub in crate::claim_verify::git_subcommands(&args) {
-            if !moves_the_checkout(&sub) {
+            let moves = moves_the_checkout(&sub);
+            let commits = makes_a_commit(&sub);
+            if !moves && !commits {
                 continue;
             }
             let Some(top) = work_tree_top(&git_dir_of(&sub.global, cwd)) else {
                 continue;
             };
-            if rule.repos.contains(&top) && shared_primary(&top) {
+            if !rule.repos.contains(&top) {
+                continue;
+            }
+            if moves && shared_primary(&top) {
                 return Some(PRIMARY_CHECKOUT);
+            }
+            let primary = std::fs::symlink_metadata(top.join(".git")).is_ok_and(|m| m.is_dir());
+            if commits
+                && primary
+                && head_branch(&top).is_some_and(|b| rule.deny_commits_on.contains(&b))
+            {
+                return Some(PROTECTED_BRANCH_COMMIT);
             }
         }
     }
@@ -1347,6 +1478,7 @@ mod tests {
         let rule = crate::hook_config::PrimaryRule {
             repos: vec![repo.clone()],
             allow_commands: vec!["git switch v2026.11.0".into()],
+            deny_commits_on: vec![],
         };
         for (cmd, want) in [
             ("git switch main", Some(PRIMARY_CHECKOUT)),
@@ -1382,6 +1514,7 @@ mod tests {
         let unlisted = crate::hook_config::PrimaryRule {
             repos: vec![],
             allow_commands: vec![],
+            deny_commits_on: vec![],
         };
         assert_eq!(
             primary_checkout_guard("git switch main", &repo, &unlisted),
@@ -1397,9 +1530,135 @@ mod tests {
         let rule2 = crate::hook_config::PrimaryRule {
             repos: vec![linked.clone()],
             allow_commands: vec![],
+            deny_commits_on: vec![],
         };
         assert_eq!(
             primary_checkout_guard("git switch main", &linked, &rule2),
+            None
+        );
+    }
+
+    /// #2878 E2 (the Go generation's branch guard): `git merge` and every `git branch` that
+    /// changes branches are refused in a shared primary checkout; listing forms pass.
+    #[test]
+    fn merges_and_branch_changes_are_refused_in_a_shared_primary_checkout() {
+        let (_d, root) = layout();
+        let repo = root.join("repo");
+        std::fs::create_dir_all(repo.join(".git/worktrees/lane-1")).unwrap();
+        let rule = crate::hook_config::PrimaryRule {
+            repos: vec![repo.clone()],
+            allow_commands: vec![],
+            deny_commits_on: vec![],
+        };
+        for (cmd, want) in [
+            ("git merge feature/x", Some(PRIMARY_CHECKOUT)),
+            ("git merge --no-ff lane", Some(PRIMARY_CHECKOUT)),
+            ("git merge --abort", Some(PRIMARY_CHECKOUT)),
+            ("git branch newbranch", Some(PRIMARY_CHECKOUT)),
+            ("git branch newbranch origin/main", Some(PRIMARY_CHECKOUT)),
+            ("git branch -d old", Some(PRIMARY_CHECKOUT)),
+            ("git branch -D old", Some(PRIMARY_CHECKOUT)),
+            ("git branch -df old", Some(PRIMARY_CHECKOUT)),
+            ("git branch -m a b", Some(PRIMARY_CHECKOUT)),
+            ("git branch -M a b", Some(PRIMARY_CHECKOUT)),
+            ("git branch -c a b", Some(PRIMARY_CHECKOUT)),
+            ("git branch -f main HEAD~1", Some(PRIMARY_CHECKOUT)),
+            ("git branch -u origin/x", Some(PRIMARY_CHECKOUT)),
+            (
+                "git branch --set-upstream-to=origin/x",
+                Some(PRIMARY_CHECKOUT),
+            ),
+            ("git branch --unset-upstream", Some(PRIMARY_CHECKOUT)),
+            ("git branch --delete old", Some(PRIMARY_CHECKOUT)),
+            ("git branch --move a b", Some(PRIMARY_CHECKOUT)),
+            ("git branch -q quiet-new", Some(PRIMARY_CHECKOUT)),
+            ("git branch", None),
+            ("git branch -a", None),
+            ("git branch -vv", None),
+            ("git branch -r", None),
+            ("git branch --list 'issue/*'", None),
+            ("git branch -l 'issue/*'", None),
+            ("git branch --contains HEAD", None),
+            ("git branch --merged main", None),
+            ("git branch --no-merged=main", None),
+            ("git branch --show-current", None),
+            ("git branch --format '%(refname)'", None),
+            ("git merge-base HEAD main", None),
+            ("git merge-tree --write-tree a b", None),
+        ] {
+            assert_eq!(primary_checkout_guard(cmd, &repo, &rule), want, "{cmd}");
+        }
+        // A linked worktree is not this rule, whatever the command.
+        let linked = root.join("nogit");
+        std::fs::write(linked.join(".git"), "gitdir: /elsewhere\n").unwrap();
+        let rule2 = crate::hook_config::PrimaryRule {
+            repos: vec![linked.clone()],
+            allow_commands: vec![],
+            deny_commits_on: vec![],
+        };
+        assert_eq!(primary_checkout_guard("git merge x", &linked, &rule2), None);
+    }
+
+    /// #2878 E2 (the Go generation's `deny_commits_on`): in a listed primary checkout whose
+    /// HEAD is a protected branch, a new commit, revert or cherry-pick is refused — with or
+    /// without linked worktrees; other branches, a detached HEAD and `--abort` pass.
+    #[test]
+    fn commits_on_a_protected_branch_are_refused_in_the_primary_checkout() {
+        let (_d, root) = layout();
+        let repo = root.join("repo");
+        std::fs::create_dir_all(repo.join(".git")).unwrap();
+        let head = |s: &str| std::fs::write(repo.join(".git/HEAD"), s).unwrap();
+        head("ref: refs/heads/main\n");
+        let rule = crate::hook_config::PrimaryRule {
+            repos: vec![repo.clone()],
+            allow_commands: vec!["git commit -m release".into()],
+            deny_commits_on: vec!["main".into()],
+        };
+        for (cmd, want) in [
+            ("git commit -m x", Some(PROTECTED_BRANCH_COMMIT)),
+            (
+                "git commit --amend --no-edit",
+                Some(PROTECTED_BRANCH_COMMIT),
+            ),
+            ("git revert abc123", Some(PROTECTED_BRANCH_COMMIT)),
+            ("git cherry-pick abc123", Some(PROTECTED_BRANCH_COMMIT)),
+            ("git -C . commit -m x", Some(PROTECTED_BRANCH_COMMIT)),
+            ("git cherry-pick --abort", None),
+            ("git revert --quit", None),
+            ("git commit -m release", None),
+            ("git status", None),
+        ] {
+            assert_eq!(primary_checkout_guard(cmd, &repo, &rule), want, "{cmd}");
+        }
+        head("ref: refs/heads/issue/1-x\n");
+        assert_eq!(
+            primary_checkout_guard("git commit -m x", &repo, &rule),
+            None
+        );
+        head("0123456789abcdef0123456789abcdef01234567\n");
+        assert_eq!(
+            primary_checkout_guard("git commit -m x", &repo, &rule),
+            None
+        );
+        // Without the list, commits are not this rule's business.
+        head("ref: refs/heads/main\n");
+        let no_list = crate::hook_config::PrimaryRule {
+            repos: vec![repo.clone()],
+            allow_commands: vec![],
+            deny_commits_on: vec![],
+        };
+        assert_eq!(
+            primary_checkout_guard("git commit -m x", &repo, &no_list),
+            None
+        );
+        // Not listed: not this rule.
+        let unlisted = crate::hook_config::PrimaryRule {
+            repos: vec![],
+            allow_commands: vec![],
+            deny_commits_on: vec!["main".into()],
+        };
+        assert_eq!(
+            primary_checkout_guard("git commit -m x", &repo, &unlisted),
             None
         );
     }
