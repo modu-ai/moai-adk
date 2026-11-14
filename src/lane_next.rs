@@ -86,6 +86,13 @@ pub struct Pr {
     pub head: String,
     #[serde(default)]
     pub draft: bool,
+    /// The branch it targets (`baseRefName`); empty when not read.
+    #[serde(default)]
+    pub base: String,
+    /// GitHub's `authorAssociation` of its author (`OWNER`, `MEMBER`, `COLLABORATOR`,
+    /// `CONTRIBUTOR`, …); empty when not read.
+    #[serde(default)]
+    pub author_association: String,
     /// The lane whose claim the body's `Moai-Claim:` names; `None` when unknown.
     #[serde(default)]
     pub author_lane: Option<String>,
@@ -192,6 +199,9 @@ pub struct Tip {
 pub struct Snapshot {
     #[serde(default)]
     pub tip: Option<Tip>,
+    /// The integration branch the tip was read from; `None` when not known.
+    #[serde(default)]
+    pub tip_branch: Option<String>,
     #[serde(default)]
     pub prs: Vec<Pr>,
     /// Issue threads: the lane's claim threads and threads holding its decision requests.
@@ -338,6 +348,22 @@ fn decision_applied(c: &Comment, decision: u64) -> bool {
 fn is_tip_repair(body: &str) -> bool {
     body.lines()
         .any(|l| l.trim_start().starts_with("moai-tip-repair:"))
+}
+
+/// An external pull request (#2664 E1): its author is not the repository's `OWNER`, a
+/// `MEMBER` or a `COLLABORATOR`, or it targets another branch than the integration branch.
+/// A value that was not read (empty, or no tip branch known) never makes it external.
+fn is_external(pr: &Pr, tip_branch: Option<&str>) -> bool {
+    let outsider = !pr.author_association.is_empty()
+        && !matches!(
+            pr.author_association.as_str(),
+            "OWNER" | "MEMBER" | "COLLABORATOR"
+        );
+    let elsewhere = match tip_branch {
+        Some(tip) => !pr.base.is_empty() && pr.base != tip,
+        None => false,
+    };
+    outsider || elsewhere
 }
 
 // --- decision ----------------------------------------------------------------------------
@@ -541,6 +567,16 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         let mut prs: Vec<&Pr> = snap.prs.iter().collect();
         prs.sort_by_key(|p| p.number);
+        // An external pull request is the leader's to report to the user, never lane work
+        // (#2664 E1): listed once, then left out of every step below.
+        prs.retain(|p| {
+            let external = is_external(p, snap.tip_branch.as_deref());
+            if external {
+                waiting.push(json!({"number": p.number, "reason": "external_pr",
+                    "author_association": p.author_association, "base": p.base}));
+            }
+            !external
+        });
         // 2. P1: the lane's own pull requests.
         for pr in prs
             .iter()
@@ -832,7 +868,7 @@ const LISTS_QUERY: &str = concat!(
     "query($owner:String!,$repo:String!,$claims:String!,$blocked:String!){\
 repository(owner:$owner,name:$repo){\
 pullRequests(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{\
-number title body headRefOid isDraft mergeable baseRefName \
+number title body headRefOid isDraft mergeable baseRefName authorAssociation \
 comments(last:100){totalCount nodes{databaseId body createdAt}}}}\
 issues(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{",
     card_fields!(),
@@ -1101,6 +1137,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             .max_by_key(|(_, n)| **n)
             .map(|(b, _)| (*b).to_string())
     });
+    snap.tip_branch = tip_branch.clone();
     match tip_branch {
         None => snap
             .partial
@@ -1142,6 +1179,8 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
             title: p["title"].as_str().unwrap_or("").to_string(),
             head: p["headRefOid"].as_str().unwrap_or("").to_string(),
             draft: p["isDraft"].as_bool().unwrap_or(false),
+            base: p["baseRefName"].as_str().unwrap_or("").to_string(),
+            author_association: p["authorAssociation"].as_str().unwrap_or("").to_string(),
             claim_issue: claim.map(|(i, _)| i),
             conflicting: match p["mergeable"].as_str() {
                 Some("CONFLICTING") => Some(true),
@@ -1408,6 +1447,7 @@ mod tests {
                                 "headRefOid": "a".repeat(40), "isDraft": false,
                                 "mergeable": if n == 2 { "CONFLICTING" } else { "MERGEABLE" },
                                 "baseRefName": "main",
+                                "authorAssociation": if n == 2 { "CONTRIBUTOR" } else { "MEMBER" },
                                 "comments": {"totalCount": 1, "nodes": [
                                     {"databaseId": 5000 + n, "body": "note", "createdAt": "2026-11-14T00:00:00Z"}]}})
                         })
@@ -1527,7 +1567,16 @@ mod tests {
                 assert!(!snap.prs[1].tip_repair);
             }
             assert_eq!(snap.prs[0].conflicting, Some(false));
+            // #2664 E1: the base, the author association and the tip branch come from the
+            // same read.
+            assert_eq!(snap.tip_branch.as_deref(), Some("main"));
+            assert_eq!(snap.prs[0].base, "main");
+            assert_eq!(snap.prs[0].author_association, "MEMBER");
+            if prs > 1 {
+                assert_eq!(snap.prs[1].author_association, "CONTRIBUTOR");
+            }
         }
+        assert!(LISTS_QUERY.contains(" authorAssociation "));
         assert_eq!(ISSUES_PER_QUERY, 25);
     }
 
