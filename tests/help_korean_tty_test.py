@@ -199,6 +199,17 @@ class KoreanHelp(unittest.TestCase):
         self.assertIn("Claude Code 세션 시작", listing)
         self.assertNotIn("Initialize this folder or a new project", listing)
 
+    def test_the_checks_group_reads_korean(self):
+        """S6e-8: the Checks group (all outside the root list), per-command argument lines."""
+        package = self.help(["review-package", "--help"], **KOREAN)
+        self.assertIn("\n          저장소 루트\n", package)
+        self.assertIn("검토하는 head 리비전", package)
+        self.assertIn("지적이 인용하는 head 리비전", self.help(["review-check", "--help"], **KOREAN))
+        record = self.help(["flake-record", "--help"], **KOREAN)
+        self.assertIn("이 쓰기에 대한 운영자의 권한 참조", record)
+        self.assertIn("[default: modu-ai/moai-adk]", record)
+        self.assertIn("PR 본문의 Self-Audit 절 확인", self.help(["help", "--all"], **KOREAN))
+
     def test_the_keys_group_reads_its_own_texts_in_korean(self):
         """S6e-3: the Keys group's root commands — about, long about, argument help — and
         every line inside 60 and 80 cells but the usage and example lines clap never wraps."""

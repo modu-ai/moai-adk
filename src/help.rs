@@ -1074,11 +1074,18 @@ pub fn configure_in(
 /// The groups whose root commands' own help texts read Korean on a Korean terminal (S6e-2…,
 /// one group per slice; `the_moved_groups_read_korean_in_their_help` in `main.rs` checks
 /// every about, long about and argument of them).
-pub const KOREAN_GROUPS: &[&str] = &["Start", "Project", "Update and move", "Keys", "Diagnose"];
+pub const KOREAN_GROUPS: &[&str] = &[
+    "Start",
+    "Project",
+    "Update and move",
+    "Keys",
+    "Diagnose",
+    "Checks",
+];
 
 /// The groups of [`KOREAN_GROUPS`] whose commands outside the root list (shown only by
 /// `help --all`) have moved too (S6e-7…).
-pub const KOREAN_FULL_GROUPS: &[&str] = &["Project"];
+pub const KOREAN_FULL_GROUPS: &[&str] = &["Project", "Checks"];
 
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
@@ -1263,6 +1270,71 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          번을 되돌려요(#2877): 둘 다 앞 바이트로 돌아가고 스크립트는 `.claude/hooks/moai` 로 \
          돌아와요. 아무것도 지우지 않아요.",
     ),
+    (
+        "review-package",
+        "AUDIT 을 위한 결정적 검토 묶음이에요(#2614): merge base 에서 HEAD 까지의 diff, 바뀐 \
+         파일, 그리고 BASE 에서만 읽은 검토 지침(`REVIEW.md` 와 그 include)과 맥락(`AGENTS.md`·\
+         `CLAUDE.md`). git 을 읽기만 하고 아무것도 쓰지 않아요.",
+    ),
+    (
+        "review-check",
+        "검토 지적을 올리기 전에 형식을 확인해요(#2614 AC-3): stdin \
+         `{\"schema_version\":1,\"findings\":[…]}`. 지적마다 심각도, HEAD 의 `file:line`, 제목, 그 \
+         줄에서 인용한 근거, 확인된 검증이 있어야 해요. 판정(`important` 가 하나라도 있으면 FAIL)·\
+         개수·올릴 본문·digest 를 찍어요. git 만 읽어요.",
+    ),
+    (
+        "repo-scans",
+        "병합이 먼저 돌려야 할 저장소 전체 훑기 시험을 나열해요(#2681, #2708 이 \
+         tools/repo_scans.py 에서 옮김). `--refs <tip> <head>` 면 바뀐 파일은 merge-base 부터의 \
+         `git diff --name-only` 이고 표는 두 ref 의 `tools/repo_scans.json` 을 합친 것, 없으면 stdin \
+         `{\"pr\": [...], \"tip\": [...]}` 를 예비 표로 판정해요. 결과는 `{remerge, hits, checks, \
+         reasons}`. 내부 오류는 모든 검사와 함께 `remerge: true` 로 안전하게 실패하고, 읽을 표가 \
+         없으면 병합을 멈춰요. 읽기만 해요.",
+    ),
+    (
+        "pr-self-audit-check",
+        "PR 본문의 Self-Audit 절을 확인해요(#2708, 옛 tools/check_pr_self_audit.py): 본문은 --file \
+         또는 stdin. 한 줄을 찍어요 — `self-audit: pass (…)`(exit 0) 또는 `self-audit: blocked \
+         missing=…`(exit 1), 사용 오류는 exit 2. 봉투가 아니라 날 글이라 결과와 exit 코드가 Python \
+         검사기와 같아요.",
+    ),
+    (
+        "flake-classify",
+        "흔들리는 시험을 나눠요(#2666): 실패한 CI 실행의 로그와 같은 head 의 나중 실행 로그(`gh \
+         run view <id> --log` 를 파일로 저장)를 받아, 처음엔 실패하고 나중엔 통과한 시험(흔들림), \
+         둘 다 실패(계속 실패), 나중 로그에 없음을 나열해요. 두 파일만 읽고 아무것도 쓰지 않아요.",
+    ),
+    (
+        "flake-record",
+        "흔들리는 시험을 기록해요(#2666): `flake-classify` 결과의 흔들림 줄마다, 그 시험을 추적하는 \
+         열린 Issue(첫 줄의 숨은 표식)에 댓글을 달거나, 없으면 `[flake] <test>` 를 만들어요. 이미 \
+         기록한 실행·job 은 아무것도 쓰지 않아요. 권한 참조가 필요해요.",
+    ),
+    (
+        "audit-delta",
+        "로컬의 부모 둘인 병합 하나를 통제된 재현과 비교해요. 증거일 뿐 AUDIT PASS 가 아니에요.",
+    ),
+    (
+        "audit-reduce",
+        "임시(05-D #2004, 이름은 P06 뒤 확정): PROJECT 를 독립 감사해요. 승인된 검증을 직접 다시 \
+         돌려 들일지 정하고, stdin 의 영수증은 절대 세지 않아요.",
+    ),
+    (
+        "parity-check",
+        "TEMPLATE 과 GENERATED(선택 셋째 DOC 묶음, D6 #2192)의 의미상 같음을 봐요: 키마다 00-A \
+         어휘(missing / extra / value_mismatch / identical / doc_only)로 나눠요. 읽기만 해요.",
+    ),
+    (
+        "plan-admit",
+        "임시(05-B #2002, 이름은 P06 뒤 확정): 승인된 계획의 RUN 들이기. typed 요청은 stdin, \
+         프로젝트의 `HEAD^{commit}` 을 git 으로 읽고 아무것도 쓰지 않아요.",
+    ),
+    (
+        "run-verify",
+        "임시(05-C #2003, 이름은 P06 뒤 확정): 고정된 계약을 다시 확인하고 승인된 검증 명령을 \
+         PROJECT 에서 argv 로 돌려요. 영수증을 돌려줘요.",
+    ),
     ("cc", "Claude Code 세션 실행기: `cc -l|-a`."),
     ("codex", "Codex CLI 세션 실행기: `codex -l|-a`."),
     (
@@ -1364,12 +1436,81 @@ const MORE_ABOUT_KO: &[(&str, &str)] = &[
     ("go-hooks-plan", "Go 세대 프로젝트 hook 바꾸기 미리 보기"),
     ("go-hooks-apply", "Go 세대 프로젝트 hook 바꾸기"),
     ("go-hooks-revert", "Go 세대 hook 바꾸기 되돌리기"),
+    ("review-package", "감사용 검토 묶음 만들기"),
+    ("review-check", "올리기 전에 검토 지적 확인"),
+    ("repo-scans", "병합이 먼저 돌릴 저장소 전체 훑기 시험 목록"),
+    ("pr-self-audit-check", "PR 본문의 Self-Audit 절 확인"),
+    ("flake-classify", "CI 로그 둘로 흔들리는 시험 나누기"),
+    ("flake-record", "나눈 흔들리는 시험을 Issue 에 기록"),
+    ("audit-delta", "부모 둘인 병합을 다시 만든 것과 비교"),
+    ("audit-reduce", "후보를 독립 감사"),
+    ("parity-check", "템플릿과 생성 파일 비교"),
+    ("plan-admit", "계획을 실행에 들이기"),
+    ("run-verify", "실행의 고정 검증 다시 확인"),
 ];
 
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    ("review-package|review-check", "project", "저장소 루트"),
+    (
+        "review-package",
+        "base",
+        "base 리비전(pull request 의 base 가지 끝)",
+    ),
+    ("review-package", "head", "검토하는 head 리비전"),
+    ("review-check", "head", "지적이 인용하는 head 리비전"),
+    (
+        "repo-scans",
+        "refs",
+        "`<tip> <head>`: 이 저장소의 두 ref 를 판정",
+    ),
+    ("repo-scans", "repo", "Git 을 돌릴 저장소(기본: 지금 폴더)"),
+    (
+        "repo-scans",
+        "table",
+        "예비 표(기본: `<repo>/tools/repo_scans.json`)",
+    ),
+    (
+        "pr-self-audit-check",
+        "reaudit",
+        "재감사의 `## 독립 review` 절도 요구(#2388)",
+    ),
+    (
+        "pr-self-audit-check",
+        "file",
+        "PR 본문을 stdin 대신 이 파일(UTF-8)에서 읽기",
+    ),
+    ("flake-classify", "failed", "시험이 실패한 실행의 로그"),
+    ("flake-classify", "later", "같은 head 의 나중 실행 로그"),
+    (
+        "flake-classify",
+        "job",
+        "이 job 만(정확한 이름, 예: `ci / macos-arm64`)",
+    ),
+    (
+        "flake-record",
+        "classified",
+        "`flake-classify` 의 JSON 출력",
+    ),
+    ("flake-record", "run", "줄들이 나온 실패한 CI 실행의 id"),
+    (
+        "flake-record",
+        "permission_reference",
+        "이 쓰기에 대한 운영자의 권한 참조",
+    ),
+    ("flake-record", "repo", "기록할 저장소 `OWNER/REPO`"),
+    (
+        "audit-delta",
+        "pass_head",
+        "앞서 감사한 커밋(소문자 40자리 hex)",
+    ),
+    ("audit-delta", "tip", "합친 base 끝(소문자 40자리 hex)"),
+    ("audit-delta", "head", "후보 병합 커밋(소문자 40자리 hex)"),
+    ("parity-check", "template", "템플릿 트리"),
+    ("parity-check", "generated", "템플릿과 비교할 생성 트리"),
+    ("parity-check", "doc", "선택 셋째 묶음: 문서로 적은 트리"),
     (
         "init",
         "new",
