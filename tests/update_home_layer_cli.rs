@@ -266,6 +266,46 @@ fn update_home_token_is_bound_to_its_home() {
     assert!(!home2.join(".moai-go-retired").exists());
 }
 
+/// Stops the program it holds when the test ends, however it ends.
+struct Holder(std::process::Child);
+
+impl Drop for Holder {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+/// An item a program was using at the preview and is free at the confirmation joins the
+/// retirement set, so the token the user saw no longer matches.
+#[test]
+fn update_home_token_goes_stale_when_an_item_in_use_is_freed() {
+    let (_t, home, exe) = setup();
+    go_items(&home);
+    let holder = Holder(
+        Command::new("sleep")
+            .arg("60")
+            .current_dir(home.join(".moai/cache"))
+            .spawn()
+            .unwrap(),
+    );
+    let p = preview(&exe, &home);
+    let cache = p["home"]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["name"] == "cache")
+        .unwrap();
+    assert_eq!(cache["action"], json!("skip-in-use"), "{p}");
+    let t = token(&p);
+    drop(holder);
+    let before = state(&home);
+    let e = refused(&run(&exe, &home, &["update", "--confirm-home", &t]));
+    assert!(e.contains("home token"), "{e}");
+    assert_eq!(state(&home), before, "a stale token wrote something");
+    assert!(home.join(".moai/cache").is_dir());
+}
+
 /// Codex review on #2983: on a `rust-first` HOME the layer's own writes (`.moai/agents/…`) are
 /// new top-level entries, but the confirmed retirement set has not changed. The combined run
 /// applies the layer and then the home part.

@@ -260,10 +260,12 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     });
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     // What the confirmation binds, without the clock: the HOME it was made for, the generation,
-    // the action, the blocks and the retirement set (the entries that retire or are in use).
-    // The dated folder is out, so `moai update` can hand the digest out as a token for a later
-    // run. An entry that stays is out too: the layer's own writes (a store like `.moai/agents`)
-    // add some, and they confirm nothing. A new or vanished retire candidate still moves it.
+    // the action, the blocks and the retirement set (the entries that retire). The dated folder
+    // is out, so `moai update` can hand the digest out as a token for a later run. An entry
+    // that stays or is in use is out too: the layer's own writes (a store like `.moai/agents`)
+    // add some, and they confirm nothing. An entry that starts or stops being retired moves
+    // the digest, so a program that frees (or takes) an item between preview and confirmation
+    // makes the token stale.
     let stable = json!({
         "mode": "retire",
         "home": home.display().to_string(),
@@ -272,7 +274,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "blocks": blocks,
         "entries": entries
             .iter()
-            .filter(|e| e["action"] != "keep")
+            .filter(|e| e["action"] == "retire")
             .map(|e| json!({
                 "name": e["name"], "kind": e["kind"], "action": e["action"], "reason": e["reason"],
             }))
