@@ -294,9 +294,14 @@ fn empty_project() {
         assert_eq!(s["apply"], Value::Null, "{name}: {s}");
     }
     assert_eq!(phase(&plan, "install")["state"], "needs_decision");
+    // #2936 R10: the merge phase is a real phase; with no AGENTS.local.md it has nothing to do.
     let merge = phase(&plan, "merge");
-    assert_eq!(merge["state"], "not_run", "{merge}");
-    assert_eq!(merge["candidates"], json!([]), "{merge}");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(
+        step(&plan, "agents-local-merge")["state"],
+        "skip",
+        "{merge}"
+    );
     assert_eq!(plan["all_unchanged"], json!(false));
 }
 
@@ -813,4 +818,65 @@ fn request_defaults() {
             .any(|p| p.contains("review-flow")),
         "{generation}"
     );
+}
+
+/// #2936 R10: a settled project with a personal `AGENTS.local.md` gets the merge as a decision
+/// that prints the apply command; applying it settles the preview again.
+#[test]
+fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
+    let fx = Fx::new();
+    fx.settled();
+    let settled = fx.plan();
+    assert_eq!(
+        step(&settled, "agents-local-merge")["state"],
+        "skip",
+        "{settled}"
+    );
+
+    let mine = "# My notes\n\nReply in Korean.\n";
+    fs::write(fx.root.join("AGENTS.local.md"), mine).unwrap();
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "needs_decision", "{merge}");
+    assert_eq!(merge["preview"]["body"], json!(mine), "{merge}");
+    assert!(
+        merge["preview"]["commit_notice"]
+            .as_str()
+            .unwrap()
+            .contains("committed"),
+        "{merge}"
+    );
+    let argv: Vec<&str> = merge["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .collect();
+    assert_eq!(&argv[..2], ["moai", "agents-merge-apply"], "{merge}");
+    assert_eq!(argv.last(), Some(&"<permission-reference>"), "{merge}");
+    assert_eq!(plan["all_unchanged"], json!(false));
+
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    let after = fx.plan();
+    assert_eq!(
+        step(&after, "agents-local-merge")["state"],
+        "unchanged",
+        "{after}"
+    );
+    assert_eq!(after["all_unchanged"], json!(true), "{after}");
+}
+
+/// #2936 R10: while the generation step still has files to write, the merge waits: that step's
+/// digest binds the `AGENTS.md` bytes the merge would change.
+#[test]
+fn the_merge_waits_for_the_install_phase() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    fs::write(fx.root.join("AGENTS.local.md"), "# mine\n\ntext\n").unwrap();
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "generation")["state"], "ready", "{plan}");
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "blocked", "{merge}");
+    assert_eq!(merge["reason"], "re-run after the install phase", "{merge}");
+    assert_eq!(merge["apply"], Value::Null, "{merge}");
 }
