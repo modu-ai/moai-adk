@@ -1030,7 +1030,15 @@ mod tests {
                 assert!(e.contains("--host codex only"), "{e}");
             }
         }
-        for (lane, repo) in [("agent 1", "o/r"), ("", "o/r"), ("a", "o"), ("a", "o/r/x")] {
+        for (lane, repo) in [
+            ("agent 1", "o/r"),
+            ("", "o/r"),
+            ("a", "o"),
+            ("a", "o/r/x"),
+            // A leading dash would read as a flag in the generated command (AUDIT #2917 N1).
+            ("-a", "o/r"),
+            ("a", "-o/r"),
+        ] {
             let e = plan_with(dir.path(), "codex", None, set(lane, repo)).unwrap_err();
             assert!(e.contains("OWNER/REPO"), "{e}");
         }

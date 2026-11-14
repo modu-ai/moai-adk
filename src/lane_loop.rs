@@ -49,9 +49,6 @@ pub const STOP_READ_SECS: u64 = 90;
 /// Bytes of the Codex Stop input read (and dropped).
 pub const STOP_STDIN_LIMIT: u64 = 64 * 1024;
 
-/// Bytes of a `--snapshot` file read.
-const SNAPSHOT_LIMIT: u64 = 16 * 1024 * 1024;
-
 /// Blocks in a row for one next task before the hook lets the turn end (#2904 Q1 (a): the lane
 /// hook ignores `stop_hook_active` and keeps its own bound). A new next task starts at zero.
 pub const STOP_BLOCK_CAP: u32 = 48;
@@ -382,15 +379,13 @@ pub fn stop_hook(root: &Path, lane: &str, repo: &str, reading: &Reading) -> Stri
     }
 }
 
-/// A `--snapshot` file (a regular file of at most 16 MiB holding a `lane_next::Snapshot`).
+/// A `--snapshot` file ([`read_bounded`]: a regular file of at most [`READ_LIMIT`]) holding a
+/// `lane_next::Snapshot`; anything else is unknown.
 pub fn read_snapshot(file: &Path) -> Reading {
-    match std::fs::metadata(file) {
-        Ok(m) if m.is_file() && m.len() <= SNAPSHOT_LIMIT => std::fs::read(file)
-            .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok())
-            .map_or(Reading::Unknown, Reading::Snapshot),
-        _ => Reading::Unknown,
-    }
+    read_bounded(file)
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .map_or(Reading::Unknown, Reading::Snapshot)
 }
 
 /// One `lane_next::collect` read of GitHub (no wait), in the working directory's clone; a
@@ -857,6 +852,14 @@ mod tests {
             assert!(r.contains("읽지 못했어요"), "{r}");
             assert_eq!(stop_decision("a", "o/r", &unknown, &mut st), None);
         }
+        // A snapshot over the read cap is unknown, never judged on its first MiB.
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("s.json");
+        let body = json!({"open_issues": [{"number": 7, "title": "t"}]}).to_string();
+        std::fs::write(&file, &body).unwrap();
+        assert!(matches!(read_snapshot(&file), Reading::Snapshot(_)));
+        std::fs::write(&file, format!("{body}{}", " ".repeat(READ_LIMIT as usize))).unwrap();
+        assert!(matches!(read_snapshot(&file), Reading::Unknown));
         // A partial reading that still names a next task is known.
         let partial_work = snap(json!({"partial": ["x"],
             "open_issues": [{"number": 7, "title": "t"}]}));
