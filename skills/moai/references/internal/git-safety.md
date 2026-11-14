@@ -9,6 +9,7 @@ When to read: before you commit, push, merge or switch branches in a worktree.
 5. After every push, read the remote head back (`git ls-remote`) and the pull request's merge state; a conflicting pull request runs no CI until the tip is merged in.
 6. Take every SHA you write down from command output, never typed from memory.
 7. Enter and leave a worktree with the host's built-in worktree tool where it has one; where it has none, name the worktree on every git call as `git -C <worktree> <verb>`, one git command per call (user decision, Issue #2673). The commit guard reads the branch in the folder `-C` names; a line that commits or pushes in two folders is refused, so run each on its own line.
+8. In a checkout other sessions share, stage by explicit path — never `git add -A`, `git add .` or `git commit -a` — and re-read `git status`, the branch and `HEAD` immediately before staging, committing or pushing; never switch, create, reset, stash, rebase or merge branches in the shared primary checkout (#2876, from the Go generation's main-checkout branch guard).
 
 | Host | Enter and leave a worktree | Git inside it |
 | --- | --- | --- |

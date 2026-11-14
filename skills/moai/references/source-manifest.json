@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "2cda667921b8579d793c90712c8f15fe17003010dbbae1c5e38b0ad29d2d27d6",
+      "sha256": "0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -55,7 +55,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "6fd0159994da8440f7afe3a8eb8930a529636289b548a7b451bf0c71bc09dfda",
+      "sha256": "d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -100,7 +100,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "d747e80bb098f513846565caf62bbf257973a10dcf48d59c57dd72e708a5c1a5",
+      "sha256": "529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -172,7 +172,7 @@
       }
     },
     "references/internal/review.md": {
-      "sha256": "9fd0ee153f775716179de1a958d7b7188e837519bca73a57914988fedc55aa93",
+      "sha256": "c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-review",
@@ -208,7 +208,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "bcdec4f3bd1caf2be3fe0e660882b81988fd81f3b9c69d7e3f7bc20dc57ae57b",
+      "sha256": "8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -301,6 +301,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/core-rules.md": {
+      "sha256": "a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-core-rules",
+        "adoption": "adapted",
+        "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`."
       }
     },
     "workflows/optimize.md": {
