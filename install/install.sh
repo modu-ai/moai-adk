@@ -108,7 +108,8 @@ detect_target() {
 # fetch URL FILE — curl first, wget second; file:// works with curl (tests use it).
 fetch() {
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL --connect-timeout 10 --max-time 300 "$1" -o "$2"
+        # No redirect may leave https (audit #2943 note 2); file:// is for the tests.
+        curl -fsSL --proto '=https,file' --proto-redir '=https' --connect-timeout 10 --max-time 300 "$1" -o "$2"
     elif command -v wget >/dev/null 2>&1; then
         wget -q --timeout=30 --tries=2 "$1" -O "$2"
     else
@@ -148,7 +149,7 @@ latest_version() {
         # that order, so each prerelease line closes one candidate. Escaped quotes inside
         # text (\"tag_name\") do not match.
         pick_version <<EOF
-$(tr ',{}' '\n\n\n' <"$api_file" | sed -n -E 's/^[[:space:]]*"(tag_name|draft|prerelease)"[[:space:]]*:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1 \2/p' |
+$(tr ',' '\n' <"$api_file" | tr '{' '\n' | tr '}' '\n' | sed -n -E 's/^[[:space:]]*"(tag_name|draft|prerelease)"[[:space:]]*:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1 \2/p' |
     awk '$1 == "tag_name" { t = $2; d = "" } $1 == "draft" { d = $2 } $1 == "prerelease" && t != "" { print t, d, $2; t = "" }')
 EOF
     fi
@@ -161,7 +162,7 @@ EOF
         # The feed lists published releases only and has no prerelease field: a `-` in the
         # version marks a release candidate.
         pick_version <<EOF
-$(tr '<>"' '\n\n\n' <"$feed_file" | sed -n "s|^.*/releases/tag/\\($TAG_PREFIX[^/?#]*\\)\$|\\1 false false|p")
+$(tr '<' '\n' <"$feed_file" | tr '>' '\n' | tr '"' '\n' | sed -n "s|^.*/releases/tag/\\(${TAG_PREFIX}[^/?#]*\\)\$|\\1 false false|p")
 EOF
     fi
     if [ -z "$VERSION" ]; then
