@@ -2681,7 +2681,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 project_dir: project_dir.as_deref(),
                 gobin: gobin.as_deref(),
             };
-            moai_cli::install::inspect(&home, &path_env, &places)
+            let result = moai_cli::install::inspect(&home, &path_env, &places)?;
+            // #2867: a person at a terminal sees the note once; the envelope carries it too.
+            if let Some(note) = result["path_first_moai"]["note"].as_str() {
+                use std::io::IsTerminal as _;
+                if std::io::stderr().is_terminal() {
+                    eprintln!("moai-cli: {note}");
+                }
+            }
+            Ok(result)
         }
         Command::Update { confirm } => {
             let home = std::env::var_os("HOME")
