@@ -370,6 +370,16 @@ fn build_folders_count_only_past_retention_and_only_cargo_output() {
         (rep["action"].as_str(), reasons(rep)),
         (Some("keep"), vec!["reports_kept".to_string()])
     );
+    // AUDIT #2832 B1: a project still on the earlier root has one reports folder, listed once
+    // (the state folder and the earlier root are the same `.moai-cli` there).
+    let report_paths: Vec<&str> = r["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["kind"] == "report")
+        .map(|x| x["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(report_paths, [".moai-cli/reports"], "{r}");
 }
 
 /// #2696 C4d: a project on `.moai/` (marker present) lists the reports of both roots — the
