@@ -337,6 +337,45 @@ fn unresolvable_or_missing_home_is_refused_before_any_write() {
     assert_eq!(fs::read_dir(project.path()).unwrap().count(), 0);
 }
 
+/// #2928 S-5: the `moai` status-line preset through the CLI, with a temporary CODEX_HOME
+/// holding a synthetic user config that must stay byte for byte.
+#[test]
+fn moai_status_line_preset_through_the_cli_leaves_codex_home_alone() {
+    let (home, project, user) = (
+        tempfile::tempdir().unwrap(),
+        tempfile::tempdir().unwrap(),
+        tempfile::tempdir().unwrap(),
+    );
+    let synthetic = b"# Synthetic user config\n[tui]\nstatus_line = [\"model\"]\n";
+    fs::write(user.path().join("config.toml"), synthetic).unwrap();
+    let input = br#"{"tui.status_line":"moai"}"#;
+    let (code, e) = run(project.path(), home.path(), Some(user.path()), None, input);
+    assert_eq!(code, 0, "{e}");
+    let p = &e["result"];
+    assert_eq!(p["status_line"]["preset"], "moai");
+    assert_eq!(p["status_line"]["after"][7], "thread-name");
+    assert!(!project.path().join(".codex").exists());
+    let (code, e) = run(
+        project.path(),
+        home.path(),
+        Some(user.path()),
+        Some((p["plan_digest"].as_str().unwrap(), "fixture-2928")),
+        input,
+    );
+    assert_eq!(code, 0, "{e}");
+    assert_eq!(e["result"]["state"], "applied");
+    let text = fs::read_to_string(project.path().join(".codex/config.toml")).unwrap();
+    assert!(
+        text.contains("\"model\", \"reasoning\", \"codex-version\""),
+        "{text}"
+    );
+    assert_eq!(
+        fs::read(user.path().join("config.toml")).unwrap(),
+        synthetic
+    );
+    assert!(!home.path().join(".codex").exists());
+}
+
 #[test]
 fn apply_has_the_same_literal_64_kib_input_boundary() {
     let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
