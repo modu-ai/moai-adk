@@ -882,6 +882,32 @@ mod tests {
         assert_eq!(saved.blocks, 1);
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn the_stop_hook_never_counts_through_a_link() {
+        use std::os::unix::fs::symlink;
+        let dir = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        // The state file is a link to a file elsewhere: no write through it, so no block.
+        let root = dir.path().join("p1");
+        std::fs::create_dir_all(crate::state_root::path(&root, "lane-stop-hook")).unwrap();
+        let target = outside.path().join("victim.json");
+        std::fs::write(&target, b"keep").unwrap();
+        symlink(&target, stop_state_path(&root, "a")).unwrap();
+        assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
+        assert_eq!(std::fs::read(&target).unwrap(), b"keep");
+        // The `lane-stop-hook` folder is a link to a folder elsewhere: nothing is written there.
+        let root = dir.path().join("p2");
+        std::fs::create_dir_all(crate::state_root::path(&root, "")).unwrap();
+        symlink(
+            outside.path(),
+            crate::state_root::path(&root, "lane-stop-hook"),
+        )
+        .unwrap();
+        assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
+        assert!(!outside.path().join("a.json").exists());
+    }
+
     #[test]
     fn a_resume_note_round_trips() {
         let n = note();
