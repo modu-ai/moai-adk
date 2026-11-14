@@ -2,8 +2,9 @@
 //!
 //! Claim ownership is judged by the session name alone, so two lanes started under one name
 //! cannot be told apart, and under decision D1 the second lane's claim line silently renews the
-//! first lane's card. The launcher hands out each `agent-<n>` once, but a session started
-//! without it can pick any name. `session-register` closes that gap on one machine and one
+//! first lane's card. The launcher never hands out an `agent-<n>` that is alive (#2971; it
+//! reads this folder with [`live_agent_numbers`]), but a session started without it can pick
+//! any name. `session-register` closes that gap on one machine and one
 //! clone: it keeps `<clone common dir>/.moai-cli/sessions/<name>.json` with a random
 //! `instance` and a lease, and refuses a name that another instance holds under a live lease.
 //! A lane registers once at start and renews with the same instance at every wake; the
@@ -202,6 +203,44 @@ pub fn mode_of(common: &Path, name: &str, now: i64) -> Option<&'static str> {
         (_, lease, mode) if lease > now => accepted_mode(mode.as_deref()),
         _ => None,
     }
+}
+
+/// The numbers `n` of the `agent-<n>.json` entries in the registry folder `dir` whose lease
+/// still runs past `now` (`lease_until > now`; an entry that ends exactly at `now` is over),
+/// for the launcher's `agent-N` numbering (#2971). Read only: no lock, no write and no folder
+/// created; a missing folder has no entries. Files that are not `agent-<n>.json` are ignored,
+/// but an entry that is one and is a symlink, not a regular file, oversized or malformed is an
+/// error, never "absent" (see [`read_entry`]). The caller has refused a symlinked `dir`.
+pub fn live_agent_numbers(dir: &Path, now: i64) -> Result<Vec<u64>, String> {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => {
+            return Err(format!(
+                "session registry {} cannot be read: {e}",
+                dir.display()
+            ))
+        }
+    };
+    let mut live = Vec::new();
+    for entry in entries {
+        let entry =
+            entry.map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
+        let file_name = entry.file_name();
+        let Some(n) = file_name
+            .to_str()
+            .and_then(|f| crate::session::agent_number_of(f, ".json"))
+        else {
+            continue;
+        };
+        let name = format!("agent-{n}");
+        if let Some((_, lease, _)) = read_entry(&entry.path(), &name)? {
+            if lease > now {
+                live.push(n);
+            }
+        }
+    }
+    Ok(live)
 }
 
 /// Who may release on a lane's behalf (#2902 O3a): only the leader, which passes the instance
@@ -512,6 +551,84 @@ mod tests {
         for bad in ["", "../leader", ".leader", "a b"] {
             assert_eq!(mode_of(common, bad, now), None, "{bad:?}");
         }
+    }
+
+    fn numbered_entry(n: u64, lease: i64) -> String {
+        format!(
+            "{{\"schema_version\":1,\"name\":\"agent-{n}\",\"instance\":\"{}\",\"lease_until\":{lease}}}",
+            "0".repeat(32)
+        )
+    }
+
+    /// #2971: a lease that ends exactly at `now` is over; one second more is running.
+    #[test]
+    fn live_agent_numbers_split_at_the_lease_end() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("sessions");
+        fs::create_dir(&dir).unwrap();
+        let end = 1_000;
+        fs::write(dir.join("agent-4.json"), numbered_entry(4, end)).unwrap();
+        fs::write(dir.join("agent-7.json"), numbered_entry(7, end + 1)).unwrap();
+        let at = |now: i64| {
+            let mut live = live_agent_numbers(&dir, now).unwrap();
+            live.sort_unstable();
+            live
+        };
+        assert_eq!(at(end - 1), [4, 7]);
+        assert_eq!(at(end), [7]);
+        assert_eq!(at(end + 1), Vec::<u64>::new());
+    }
+
+    /// #2971: only canonical `agent-<n>.json` names count; a folder that is missing is empty and
+    /// stays missing; nothing is written.
+    #[test]
+    fn live_agent_numbers_ignore_other_names_and_write_nothing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("sessions");
+        assert_eq!(live_agent_numbers(&dir, 0).unwrap(), Vec::<u64>::new());
+        assert!(!dir.exists(), "no folder is created");
+        fs::create_dir(&dir).unwrap();
+        for ignored in [
+            "leader.json",
+            "agent-.json",
+            "agent-x.json",
+            "agent-01.json",
+            "agent--1.json",
+            "agent-4294967296.json",
+            "agent-5.json.tmp-1",
+            "agent-5.live",
+            "agent-5",
+        ] {
+            fs::write(dir.join(ignored), "not json").unwrap();
+        }
+        fs::write(dir.join("agent-12.json"), numbered_entry(12, 10)).unwrap();
+        let before = fs::read_dir(&dir).unwrap().count();
+        assert_eq!(live_agent_numbers(&dir, 0).unwrap(), [12]);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), before);
+    }
+
+    /// #2971: an entry that is one but cannot be trusted is an error, never "absent".
+    #[test]
+    fn live_agent_numbers_refuse_a_broken_entry() {
+        for bad in [
+            "not json".to_string(),
+            "{}".to_string(),
+            numbered_entry(9, 10),
+            format!("{}{}", numbered_entry(4, 10), " ".repeat(5_000)),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            fs::write(tmp.path().join("agent-4.json"), &bad).unwrap();
+            let e = live_agent_numbers(tmp.path(), 0).unwrap_err();
+            assert!(e.contains("agent-4.json"), "{e}");
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        fs::create_dir(tmp.path().join("agent-4.json")).unwrap();
+        assert!(live_agent_numbers(tmp.path(), 0).is_err(), "directory");
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("real"), numbered_entry(4, 10)).unwrap();
+        std::os::unix::fs::symlink(tmp.path().join("real"), tmp.path().join("agent-4.json"))
+            .unwrap();
+        assert!(live_agent_numbers(tmp.path(), 0).is_err(), "symlink");
     }
 
     #[test]

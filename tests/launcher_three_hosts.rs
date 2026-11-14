@@ -72,20 +72,12 @@ impl Fixture {
             .unwrap()
     }
 
-    /// No number was taken: no `agent-<n>.live` file exists and the old store is as seeded.
+    /// No number was taken: a launch that took one would have locked `agent-1.live` (nothing is
+    /// alive, so the number is 1), and the old store is as seeded.
     fn took_no_number(&self) -> bool {
         let dir = self.project.path().join(".git/.moai-cli/sessions");
-        let lives = fs::read_dir(&dir)
-            .unwrap()
-            .filter(|e| {
-                e.as_ref()
-                    .unwrap()
-                    .file_name()
-                    .to_string_lossy()
-                    .ends_with(".live")
-            })
-            .count();
-        lives == 0 && fs::read_to_string(dir.join("agent-seq")).unwrap() == "5\n"
+        !dir.join("agent-1.live").exists()
+            && fs::read_to_string(dir.join("agent-seq")).unwrap() == "5\n"
     }
 
     fn host_started(&self) -> bool {

@@ -825,14 +825,7 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
         ]
     };
     let codex = |prompt: &'static str| -> Vec<&'static str> {
-        vec![
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            prompt,
-        ]
+        vec!["codex", "-s", "danger-full-access", "-a", "never", prompt]
     };
     let cases: [(&[&str], Vec<&str>); 6] = [
         (&["cc", "-l"], claude("leader")),
@@ -840,7 +833,10 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
         (&["codex", "-l"], codex("MoAI session name: leader")),
         (&["cc", "-a", "--name", "x"], claude("x")),
         (&["glm", "-a", "--name", "x"], claude("x")),
-        (&["codex", "-a", "--name", "x"], codex("MoAI session name: x")),
+        (
+            &["codex", "-a", "--name", "x"],
+            codex("MoAI session name: x"),
+        ),
     ];
     for (args, want) in cases {
         let out = run(&f, args);
@@ -860,4 +856,3 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
     }
     assert!(!sessions(&f).exists(), "--name and -l take no number");
 }
-

@@ -14,7 +14,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Child, Command, Output, Stdio},
+    time::{Duration, Instant},
 };
 
 const INIT_LINE: &str = "moai: initialized";
@@ -28,16 +29,78 @@ fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
     for host in ["claude", "codex"] {
         let path = bin.path().join(host);
-        fs::write(
-            &path,
-            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\nexit 0\n",
-        )
-        .unwrap();
+        fs::write(&path, STUB).unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     }
     Fixture {
         bin,
         home: tempfile::tempdir().unwrap(),
+    }
+}
+
+/// A host stub that exits at once, or, when `MOAI_TEST_HOLD_UNTIL` is set, writes its pid to
+/// `MOAI_TEST_READY` and stays alive until the `MOAI_TEST_HOLD_UNTIL` file exists (#2971: a
+/// launcher keeps its `agent-N` number live while its host runs).
+const STUB: &str = "#!/bin/sh
+printf started > \"$MOAI_TEST_HOST_MARKER\"
+if [ -n \"$MOAI_TEST_HOLD_UNTIL\" ]; then
+  echo $$ > \"$MOAI_TEST_READY.tmp\" && mv \"$MOAI_TEST_READY.tmp\" \"$MOAI_TEST_READY\"
+  while [ ! -e \"$MOAI_TEST_HOLD_UNTIL\" ]; do sleep 0.05; done
+fi
+exit 0
+";
+
+/// A launch whose stub host stays alive until released. The drop releases the stub and kills the
+/// launcher, so no test path leaves a process behind.
+struct Held {
+    child: Option<Child>,
+    release: PathBuf,
+    ready: PathBuf,
+}
+
+impl Held {
+    fn spawn(f: &Fixture, dir: &Path, path_var: &str, args: &[&str], tag: &str) -> Held {
+        let release = f.home.path().join(format!("release-{tag}"));
+        let ready = f.home.path().join(format!("ready-{tag}"));
+        let child = command(f, dir, path_var, args)
+            .env("MOAI_TEST_HOLD_UNTIL", &release)
+            .env("MOAI_TEST_READY", &ready)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        Held {
+            child: Some(child),
+            release,
+            ready,
+        }
+    }
+
+    fn wait_ready(&self) {
+        let start = Instant::now();
+        while !self.ready.exists() {
+            // #2511: a hang guard, so the bound is generous on a loaded machine.
+            assert!(
+                start.elapsed() < Duration::from_secs(120),
+                "the stub host never started"
+            );
+            std::thread::sleep(Duration::from_millis(25));
+        }
+    }
+
+    fn finish(mut self) -> Output {
+        fs::write(&self.release, "").unwrap();
+        self.child.take().unwrap().wait_with_output().unwrap()
+    }
+}
+
+impl Drop for Held {
+    fn drop(&mut self) {
+        let _ = fs::write(&self.release, "");
+        if let Some(mut child) = self.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
     }
 }
 
@@ -154,7 +217,8 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
         let yaml = fs::read(dir.join(".moai/project.yaml")).unwrap();
         let agents = fs::read(dir.join("AGENTS.md")).unwrap();
         let out = run_in(&f, &dir, &[host, "-a"]);
-        assert_eq!(json(&out)["name"], "agent-2", "{host}");
+        // The first session has ended, so no `agent-*` is alive: the number starts over (#2971).
+        assert_eq!(json(&out)["name"], "agent-1", "{host}");
         assert_eq!(init_lines(&out), 0, "{host}: {}", text(&out));
         assert_eq!(fs::read(dir.join(".moai/project.yaml")).unwrap(), yaml);
         assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
@@ -320,21 +384,24 @@ fn dry_run_creates_nothing_and_reports_what_it_would_initialize() {
 fn concurrent_first_launches_initialize_once_and_never_share_a_number() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    let children: Vec<_> = (0..4)
-        .map(|_| {
-            command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .unwrap()
+    // The stubs stay alive, so every number stays live and the four numbers must differ.
+    let held: Vec<Held> = (0..4)
+        .map(|i| {
+            Held::spawn(
+                &f,
+                plain.path(),
+                &with_git(&f),
+                &["cc", "-a"],
+                &format!("c{i}"),
+            )
         })
         .collect();
-    let mut names: Vec<String> = children
+    for h in &held {
+        h.wait_ready();
+    }
+    let mut names: Vec<String> = held
         .into_iter()
-        .map(|c| {
-            let out = c.wait_with_output().unwrap();
-            json(&out)["name"].as_str().unwrap().to_string()
-        })
+        .map(|h| json(&h.finish())["name"].as_str().unwrap().to_string())
         .collect();
     names.sort();
     assert_eq!(names, ["agent-1", "agent-2", "agent-3", "agent-4"]);
@@ -464,7 +531,7 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
     assert!(!marker_file.exists(), "the marker is removed once finished");
 
     let out = run_in(&f, dir, &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-2");
+    assert_eq!(json(&out)["name"], "agent-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
     assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
 }
@@ -480,7 +547,7 @@ fn an_agents_md_deleted_after_a_finished_first_launch_stays_deleted() {
     assert!(!dir.join(".git/.moai-cli/sessions/.init-pending").exists());
     fs::remove_file(dir.join("AGENTS.md")).unwrap();
     let out = run_in(&f, dir, &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-2");
+    assert_eq!(json(&out)["name"], "agent-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
     assert!(!dir.join("AGENTS.md").exists());
 }
@@ -517,11 +584,7 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
     fs::set_permissions(&shim, fs::Permissions::from_mode(0o755)).unwrap();
     let path_var = format!("{}:{}", shims.path().display(), with_git(&f));
     let plain = tempfile::tempdir().unwrap();
-    let first = command(&f, plain.path(), &path_var, &["cc", "-a"])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let first = Held::spawn(&f, plain.path(), &path_var, &["cc", "-a"], "first");
     let start = std::time::Instant::now();
     while !plain.path().join(".init-race").exists() {
         assert!(
@@ -530,10 +593,12 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
         );
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
-    let second = command(&f, plain.path(), &path_var, &["cc", "-a"])
-        .output()
-        .unwrap();
-    let first = first.wait_with_output().unwrap();
+    let second = Held::spawn(&f, plain.path(), &path_var, &["cc", "-a"], "second");
+    // Both stubs stay alive, so both numbers are live and must differ.
+    first.wait_ready();
+    second.wait_ready();
+    let second = second.finish();
+    let first = first.finish();
     let mut names = vec![
         json(&first)["name"].as_str().unwrap().to_string(),
         json(&second)["name"].as_str().unwrap().to_string(),
