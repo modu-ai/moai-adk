@@ -139,11 +139,6 @@ pub fn lines(
             let goal = format!(
                 "/goal {END_CONDITION} — 레인 {lane}: 매 회차 $moai --mode-agent 로 self-pick (1)부터. {RESUME_FIRST}"
             );
-            if goal.chars().count() > CODEX_GOAL_LIMIT {
-                return Err(format!(
-                    "the goal is longer than {CODEX_GOAL_LIMIT} characters"
-                ));
-            }
             out["lines"] = json!([
                 line("shell", "codex features enable goals".into()),
                 line("prompt", goal),
@@ -614,7 +609,12 @@ mod tests {
             .map(|l| format!("> {l}"))
             .collect::<Vec<_>>()
             .join("\n");
-        assert!(parse(&quoted).is_err());
+        assert!(parse(&quoted).unwrap_err()[0].contains("no moai-resume"));
+        // A comment that quotes another note above its own reads its own, not "more than one".
+        let mut mine = note();
+        mine.next = vec!["mine".into()];
+        let both = format!("{quoted}\n\n{}", render(&mine).unwrap());
+        assert_eq!(parse(&both).unwrap(), mine);
         let missing = text.replacen(" branch=issue/2904-lane-loop-line", "", 1);
         assert!(parse(&missing)
             .unwrap_err()
