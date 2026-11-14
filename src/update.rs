@@ -1389,6 +1389,9 @@ pub struct UserLayerPlan {
     pub hooks: crate::update_hooks::Layer,
     /// #2871 I2 S3: legacy `.env.<provider>` key files under HOME and the vault import of `glm`.
     pub keys: crate::update_keys::Layer,
+    /// #2871 I2 U2b: the Go generation's `~/.moai` items a `--confirm-home <token>` run retires.
+    /// Not part of `plan_digest`: only its own token applies it.
+    pub home: crate::update_home::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
@@ -1453,6 +1456,7 @@ fn user_layer_plan(
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
+    let home_layer = crate::update_home::plan(home)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1484,6 +1488,7 @@ fn user_layer_plan(
         bin_names,
         hooks,
         keys,
+        home: home_layer,
         skipped,
         plan_digest,
         cleanup,
@@ -1666,6 +1671,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
     out.push_str(&p.hooks.summary());
     out.push_str(&p.keys.summary());
+    out.push_str(&p.home.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1703,10 +1709,17 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// can be archived. Neither `confirm` nor the terminal yes applies it; only `confirm_cleanup`
 /// (`--confirm-cleanup`, the preview's `confirm_token`) does, after the layer — or alone, with
 /// the layer left a preview. A token that is not the preview's is refused before any write.
+///
+/// #2871 I2 U2b: the preview carries `home` (an `update_home::Layer`) when the HOME holds
+/// Go-generation items. Like the cleanup it has its own token: only `confirm_home`
+/// (`--confirm-home`, the preview's `home.confirm_token`) moves them to the dated backup,
+/// after the layer or alone. It is refused together with `confirm_cleanup`: both move items of
+/// `~/.moai`, so each would leave the other's preview stale.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
+    confirm_home: Option<&str>,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
@@ -1728,6 +1741,12 @@ pub fn update_command(
         || layer.hooks.writes()
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
+    let home_token = crate::update_home::check_token(&layer.home, confirm_home)?;
+    if home_token.is_some() && cleanup.is_some() {
+        return Err(
+            "the home token and the cleanup token both move items of ~/.moai and would make each other's preview stale; confirm one at a time, nothing applied".into(),
+        );
+    }
     // The preview value: what a pipe gets as the envelope result and what the terminal question
     // shows (#2894).
     let preview = || {
@@ -1753,11 +1772,19 @@ pub fn update_command(
         if let Some(c) = &layer.cleanup {
             out["cleanup"] = c.clone();
         }
+        // #2871 I2 U2b: only a HOME with Go-generation items has a `home` part.
+        if let Some(h) = layer.home.to_json() {
+            out["home"] = h.clone();
+        }
         out
     };
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if asks(cleanup, writes) && ask(&layer_summary(&layer), &preview())? => {
+        // A cleanup or home run without `--confirm` leaves the layer a preview: a yes at the
+        // question never applies a part with its own token.
+        None if asks(cleanup.or(home_token), writes)
+            && ask(&layer_summary(&layer), &preview())? =>
+        {
             layer.plan_digest.clone()
         }
         None => {
@@ -1766,6 +1793,11 @@ pub fn update_command(
                 let r = run_cleanup(home, &staged, t, PERMISSION)?;
                 out["revert"] = json!({"cleanup": cleanup_revert(&r)});
                 out["cleanup_result"] = r;
+            }
+            if let Some(t) = home_token {
+                let r = crate::update_home::apply(home, t, PERMISSION)?;
+                out["revert"] = json!({"home": r["revert"]});
+                out["home_result"] = r;
             }
             return Ok(out);
         }
@@ -1868,6 +1900,8 @@ pub fn update_command(
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
+    // #2871 I2 U2b: the confirmed home part, after the layer; an error is reported beside it.
+    let home_part = home_token.map(|t| part(crate::update_home::apply(home, t, PERMISSION)));
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -1902,6 +1936,10 @@ pub fn update_command(
     if let Some(c) = cleanup {
         out["revert"]["cleanup"] = json!(cleanup_revert(&c));
         out["cleanup_result"] = c;
+    }
+    if let Some(h) = home_part {
+        out["revert"]["home"] = h["revert"].clone();
+        out["home_result"] = h;
     }
     Ok(out)
 }
