@@ -3763,6 +3763,113 @@ mod help_rules {
         );
     }
 
+    /// Attaching the examples keeps the commands in their declared order (#2839 audit N1).
+    #[test]
+    fn configure_keeps_the_command_order() {
+        let names = |c: &clap::Command| {
+            c.get_subcommands()
+                .map(|s| s.get_name().to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(&configured()), names(&Cli::command()));
+    }
+
+    /// Commands `main` answers before the internal dispatch; each reads standard input there
+    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
+    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
+
+    /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
+    /// more than asking whether it is a terminal.
+    fn reads_stdin(text: &str) -> bool {
+        text.contains("input::<")
+            || text.contains("input()")
+            || text.contains("plan_input")
+            || text
+                .match_indices("stdin()")
+                .any(|(i, m)| !text[i + m.len()..].trim_start().starts_with(".is_terminal"))
+    }
+
+    /// The commands whose handling reads standard input, from the source: each
+    /// `Command::<Variant>` match arm before the first test module, and each `src/ops` file.
+    fn commands_reading_stdin() -> BTreeSet<String> {
+        let source = include_str!("main.rs");
+        let code = &source[..source.find("\n#[cfg(test)]").unwrap()];
+        let lines: Vec<&str> = code.lines().collect();
+        let indent = |l: &str| l.len() - l.trim_start().len();
+        let kebab = |v: &str| {
+            let mut out = String::new();
+            for (i, ch) in v.chars().enumerate() {
+                if ch.is_uppercase() && i > 0 {
+                    out.push('-');
+                }
+                out.push(ch.to_ascii_lowercase());
+            }
+            out
+        };
+        let mut reads = BTreeSet::new();
+        for (i, line) in lines.iter().enumerate() {
+            let Some(rest) = line.trim_start().strip_prefix("Command::") else {
+                continue;
+            };
+            let variant: String = rest.chars().take_while(|c| c.is_alphanumeric()).collect();
+            let after = rest[variant.len()..].trim_start();
+            if variant.is_empty() || !["{", "(", "=>"].iter().any(|p| after.starts_with(p)) {
+                continue;
+            }
+            // The arm runs until the next arm at its indent or a line indented less.
+            let depth = indent(line);
+            let end = (i + 1..lines.len())
+                .find(|&j| {
+                    let l = lines[j];
+                    !l.trim().is_empty()
+                        && (indent(l) < depth
+                            || (indent(l) == depth && l.trim_start().starts_with("Command::")))
+                })
+                .unwrap_or(lines.len());
+            if reads_stdin(&lines[i..end].join("\n")) {
+                reads.insert(kebab(&variant));
+            }
+        }
+        let ops = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ops");
+        for entry in std::fs::read_dir(ops).unwrap() {
+            let path = entry.unwrap().path();
+            let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
+            if stem != "mod" && reads_stdin(&std::fs::read_to_string(&path).unwrap()) {
+                reads.insert(stem.replace('_', "-"));
+            }
+        }
+        reads
+    }
+
+    /// An example carries ` < file` exactly when the command it runs reads standard input, so
+    /// an example typed as written gets its input (#2839 audit B1: ten typed-request commands
+    /// lacked it).
+    #[test]
+    fn stdin_examples_match_the_commands_that_read_stdin() {
+        let reads = commands_reading_stdin();
+        for word in READ_BEFORE_DISPATCH {
+            assert!(
+                !reads.contains(word),
+                "{word} is found by the scan; drop it from the list"
+            );
+        }
+        let mut off = Vec::new();
+        for (_, examples) in moai_cli::help::EXAMPLES {
+            for example in *examples {
+                let word = example.split_whitespace().next().unwrap();
+                let wants = reads.contains(word) || READ_BEFORE_DISPATCH.contains(&word);
+                if example.contains(" < ") != wants {
+                    off.push(format!("`{example}` (reads stdin: {wants})"));
+                }
+            }
+        }
+        assert!(
+            off.is_empty(),
+            "examples off the stdin rule:\n{}",
+            off.join("\n")
+        );
+    }
+
     /// The grouped list goes into clap's help template, where `{name}` is a tag; no about may
     /// carry one of clap's tags (an unknown `{…}` is printed as it is).
     #[test]

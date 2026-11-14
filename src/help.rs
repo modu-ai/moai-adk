@@ -210,6 +210,8 @@ pub const GROUPS: &[Group] = &[
 /// Examples per command (#2802 S1c): shown under `Examples:` in `<command> --help`, each
 /// after the binary name. Every one parses with this binary's own command line (pinned by
 /// `every_example_parses`); ` < file` marks standard input and is not part of the arguments.
+/// An example carries ` < file` exactly when its command reads standard input (pinned by
+/// `stdin_examples_match_the_commands_that_read_stdin`).
 pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("codex", &["codex -a"]),
@@ -218,7 +220,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("language-setup", &["language-setup . < request.json"]),
-    ("index-build", &["index-build ."]),
+    ("index-build", &["index-build . < request.json"]),
     ("agents-plan", &["agents-plan . < request.json", "agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("agents-apply", &["agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("generation-plan", &["generation-plan . < request.json", "generation-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -282,7 +284,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("claim-handoff", &["claim-handoff --task <task> --from-epoch 1 --reason <reason> ."]),
     ("queue-next", &["queue-next . < request.json"]),
     ("queue-free", &["queue-free . < request.json"]),
-    ("queue-query", &["queue-query ."]),
+    ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
@@ -312,8 +314,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("decision-append", &["decision-append --log docs/decisions-log.md . < request.json"]),
     ("flow-wip-check", &["flow-wip-check --owner modu-ai --repo modu-ai/moai-adk --lane agent-1"]),
     ("dispatch-record", &["dispatch-record --permission-reference <ref> . < request.json"]),
-    ("dispatch-ack", &["dispatch-ack --permission-reference <ref> ."]),
-    ("dispatch-check", &["dispatch-check"]),
+    ("dispatch-ack", &["dispatch-ack --permission-reference <ref> . < request.json"]),
+    ("dispatch-check", &["dispatch-check < request.json"]),
     ("message-record", &["message-record --permission-reference <ref> . < request.json"]),
     ("message-ack", &["message-ack --permission-reference <ref> . < request.json"]),
     ("message-reconcile", &["message-reconcile . < request.json"]),
@@ -330,19 +332,19 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("audit-reduce", &["audit-reduce . < request.json"]),
     ("parity-check", &["parity-check template generated"]),
     ("plan-admit", &["plan-admit . < request.json"]),
-    ("run-verify", &["run-verify ."]),
+    ("run-verify", &["run-verify . < request.json"]),
     ("statusline", &["statusline < session.json"]),
     ("hook-receipt", &["hook-receipt --host claude < hook.json"]),
     ("hook-dispatch", &["hook-dispatch --host claude --event <event> < hook.json"]),
     ("forge-read", &["forge-read . < request.json"]),
-    ("forge-links-probe", &["forge-links-probe ."]),
+    ("forge-links-probe", &["forge-links-probe . < request.json"]),
     ("forge-report", &["forge-report --permission-reference <ref> . < request.json"]),
     ("forge-audit-status", &["forge-audit-status --permission-reference <ref> . < request.json"]),
-    ("index-query", &["index-query ."]),
-    ("atlas-map", &["atlas-map ."]),
-    ("atlas-graph", &["atlas-graph ."]),
+    ("index-query", &["index-query . < request.json"]),
+    ("atlas-map", &["atlas-map . < request.json"]),
+    ("atlas-graph", &["atlas-graph . < request.json"]),
     ("atlas-tag-scan", &["atlas-tag-scan ."]),
-    ("search", &["search ."]),
+    ("search", &["search . < request.json"]),
     ("context-bundle", &["context-bundle . < request.json"]),
     ("context-verify", &["context-verify . < request.json"]),
     ("decision-record", &["decision-record --run <run> --permission-reference <ref> . < request.json"]),
@@ -496,15 +498,21 @@ pub fn configure(cmd: Command, bin: &'static str, version: &str, all: bool) -> C
     let template = format!(
         "MoAI-ADK {version} — agentic development kit\n\n{{usage-heading}} {{usage}}\n\n{groups}{options}\n{footer}\n"
     );
-    let mut cmd = cmd;
-    for (word, examples) in EXAMPLES {
-        let text = examples
-            .iter()
-            .map(|e| format!("  {bin} {e}"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        cmd = cmd.mut_subcommand(*word, |c| c.after_long_help(format!("Examples:\n{text}")));
-    }
+    // `mut_subcommands` keeps the command order and never panics on a name the table lacks
+    // (`mut_subcommand` moves the command to the end and panics on an unknown one).
+    let cmd = cmd.mut_subcommands(
+        |c| match EXAMPLES.iter().find(|(w, _)| *w == c.get_name()) {
+            Some((_, examples)) => {
+                let text = examples
+                    .iter()
+                    .map(|e| format!("  {bin} {e}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                c.after_long_help(format!("Examples:\n{text}"))
+            }
+            None => c,
+        },
+    );
     cmd.bin_name(bin)
         .override_usage(format!(
             "{bin} <command> [options]\n       {bin} cc|codex|glm -l|-a    lead or agent session"
