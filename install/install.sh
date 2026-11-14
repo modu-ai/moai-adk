@@ -300,6 +300,12 @@ finish() {
     esac
     echo ""
     print_success "Installation complete!"
+    echo ""
+    print_info "Next steps:"
+    echo "  1. Make a project folder and enter it: mkdir my-project && cd my-project"
+    echo "  2. Start a session there: moai cc (or moai glm, moai codex; -l for leader mode, -a for agent mode)"
+    echo "  3. In the session, set the project up: /moai project"
+    echo ""
     print_info "Documentation: $REPO_URL"
 }
 
