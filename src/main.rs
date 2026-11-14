@@ -39,10 +39,13 @@ impl RecordSource {
 
 #[derive(Parser)]
 #[command(
+    // `--version` prints `<name> <version>`: it stays `moai-cli <ver> (rust)`, the build
+    // signature other tools compare (#2799 D3 decision 2(a), `bin_names` same-build check).
     name = "moai-cli",
-    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1): usage and help name
-    // `moai-cli` whichever name ran, so the two binaries print the same text.
-    bin_name = "moai-cli",
+    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). The default command
+    // name is `moai` (#2812 W3; `moai-cli` stays an alias): usage and help name `moai`
+    // whichever name ran, so the two binaries print the same text.
+    bin_name = "moai",
     version = moai_cli::VERSION_SIGNATURE,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
@@ -2633,7 +2636,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             // The shared confirm prompt (#2806): same terminal rule and question as before.
             moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
                 moai_cli::progress::ask_terminal(
-                    &format!("moai-cli update preview:\n{summary}"),
+                    &format!("moai update preview:\n{summary}"),
                     "Apply this update?",
                 )
             })
@@ -3029,7 +3032,7 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
         }
         Err(_) => moai_cli::hook_engine::Answer {
             stdout: String::new(),
-            stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
+            stderr: "moai hook-dispatch: engine error: working directory unavailable".into(),
             exit: moai_cli::hook_engine::ENGINE_ERROR_EXIT,
         },
     };
@@ -3153,7 +3156,7 @@ pub(crate) fn main() -> ExitCode {
             }
             let rendered = e.render().to_string();
             eprintln!(
-                "moai-cli hook: {}",
+                "moai hook: {}",
                 rendered.lines().next().unwrap_or("invalid command line")
             );
             return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
@@ -3270,6 +3273,68 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// #2812 W3 AC-4, through the path `main` takes (`help::bin_name` + `help::configure`,
+    /// #2802 S1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and `moai-cli`
+    /// (the `.exe` never shows), help and usage errors differ only in the name that ran, and
+    /// `--version` is the same build signature `moai-cli <ver> (rust)` for every name. Windows
+    /// paths are written with `/` so the test reads them the same on every OS.
+    #[test]
+    fn every_binary_name_renders_the_same_moai_help() {
+        let render = |argv0: &'static str, args: &[&str]| -> (&'static str, String) {
+            let bin = moai_cli::help::bin_name(argv0);
+            let mut argv = vec![argv0];
+            argv.extend_from_slice(args);
+            let out = match moai_cli::help::configure(
+                Cli::command(),
+                bin,
+                moai_cli::BUILD_VERSION,
+                false,
+            )
+            .try_get_matches_from(argv)
+            {
+                Ok(_) => String::from("parsed"),
+                Err(e) => e.render().to_string(),
+            };
+            (bin, out)
+        };
+        let names = [
+            ("C:/Users/u/.moai/path/moai.exe", "moai"),
+            ("C:/Users/u/.moai/path/moai-cli.exe", "moai-cli"),
+            ("/usr/local/bin/moai", "moai"),
+            ("moai-cli", "moai-cli"),
+        ];
+        for args in [
+            &["--help"][..],
+            &["no-such-command"][..],
+            &["claim-verify", "--help"][..],
+            &["--version"][..],
+        ] {
+            let (_, first) = render(names[0].0, args);
+            for (argv0, want) in names {
+                let (bin, out) = render(argv0, args);
+                assert_eq!(bin, want, "{argv0}");
+                assert!(!out.contains(".exe"), "{argv0} {args:?}: {out}");
+                if args == ["--version"] {
+                    assert_eq!(
+                        out.trim_end(),
+                        format!("moai-cli {}", moai_cli::VERSION_SIGNATURE),
+                        "{argv0}"
+                    );
+                } else {
+                    assert!(
+                        out.contains(&format!("Usage: {bin} ")),
+                        "{argv0} {args:?}: {out}"
+                    );
+                    assert_eq!(
+                        out.replace("moai-cli", "moai"),
+                        first.replace("moai-cli", "moai"),
+                        "{argv0} {args:?}"
+                    );
+                }
+            }
+        }
+    }
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
     const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
 

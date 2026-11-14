@@ -114,7 +114,7 @@ pub const ENGINE_ERROR_EXIT: u8 = 1;
 fn engine_error(reason: &str) -> Answer {
     Answer {
         stdout: String::new(),
-        stderr: format!("moai-cli hook-dispatch: engine error: {reason}"),
+        stderr: format!("moai hook-dispatch: engine error: {reason}"),
         exit: ENGINE_ERROR_EXIT,
     }
 }
@@ -478,7 +478,7 @@ fn session_check(cwd: &Path) -> Verdict {
         "absent"
     };
     Verdict::Context(format!(
-        "MoAI session-check (moai-cli {}): project state directory {}: {state_dir}; lane branch: \
+        "MoAI session-check (moai {}): project state directory {}: {state_dir}; lane branch: \
          {lane}; local claim record: {record}. Read locally; no network was used.",
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),

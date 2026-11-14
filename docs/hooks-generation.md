@@ -49,7 +49,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - 그래서 이 guard는 경계가 아니라 guardrail이다.
 - `timeout`은 모든 handler에 명시한다. 호스트 기본값(Claude command 600초, Codex 대부분 600초)에 기대지 않는다.
 - `command`는 bare 이름이다. 개인 절대 경로가 들어가지 않는다.
-- PATH 해석(#2348): 호스트가 훅 프로세스에 주는 PATH에서 `moai-cli`를 찾지 못하면 그 훅은 실패한다.
+- PATH 해석(#2348): 호스트가 훅 프로세스에 주는 PATH에서 `moai-cli`를 찾지 못하면 그 훅은 실패한다. 명령 기본 이름은 `moai`가 됐지만(#2812 W3) 생성 훅은 별칭 은퇴(R5) 전까지 `moai-cli`를 부른다: Go 세대 `moai`가 PATH에서 먼저면 `moai claim-verify …`를 Go가 받아 exit 1로 끝나고, 호스트는 그것을 막지 않는 오류로 읽어 claim 가드가 조용히 꺼지기 때문이다(감사 6868377245 B1, 리더 결정 6868439066).
   - macOS·Linux, 그리고 Git Bash가 있는 Windows에서는 비차단 오류로 끝나고 동작은 진행된다(Claude: "Non-blocking error… The action goes ahead"). 이때 claim guard는 돌지 않는다.
   - **Git Bash가 없는 Windows는 다르다.** Claude 문서에 따르면 shell 형식 `PreToolUse` 훅이 `onFailure` 없이 0·2 외의 코드로 실패하면 도구 호출이 막힌다("Failed hooks on Windows without Git Bash"). 생성 훅은 shell 형식이고 `onFailure`를 두지 않으므로, 그 환경에서는 `moai-cli`가 없을 때 모든 Bash 호출이 막힐 수 있다. exec 형식(`args`)과 `onFailure` 값은 guard 정책 결정(D5)·훅 소유 방식(D7)과 함께 정하며, 그 전까지 HOLD다.
   - `hooks-plan`·`hooks-apply`는 자기 PATH에서 `moai-cli`를 찾았는지 `hook_binary.state`(`resolved` / `binary_unresolved`)로 보고한다. 못 찾으면 `hooks_active: false`, 찾아도 호스트 영수증이 있기 전에는 `hooks_active: "not_run"`이다. 호스트 훅 프로세스의 PATH는 셸과 다를 수 있으므로 `resolved`는 "이 PATH에서 찾았다"는 뜻일 뿐이다.
