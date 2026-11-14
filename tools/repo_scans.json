@@ -743,6 +743,41 @@
         }
       ],
       "rejects": "core-rules.md over 4096 bytes, unnumbered or naming a host-only tool; a base agent whose reads do not start with internal/core-rules; a route table without core_rules (#2876)"
+    },
+    {
+      "id": "test-identity-emails-listed",
+      "tests": [
+        "tests/test_identity_list_2878.rs (all 3)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_identity_list_2878"
+      ],
+      "rules": [
+        "tests/test_identity_list_2878.rs",
+        "src/hook_guards.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".py"
+          ]
+        },
+        {
+          "prefix": "tools/",
+          "suffixes": [
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a user.email / GIT_AUTHOR_EMAIL / GIT_COMMITTER_EMAIL value in src/, tests/ or tools/ (Rust, Python) that is not on TEST_IDENTITY_EMAILS (#2878 audit N3)"
     }
   ]
 }
