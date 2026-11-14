@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Preview moving the Go-era ~/.moai folder
+///
 /// Preview the HOME state folder (#2723): classify `~/.moai` with the project's verdict table
 /// and the HOME's Go markers, name the backup (`~/.moai-backup`, or `~/.moai-backup-<UTC>` when
 /// that exists; never overwritten), list what blocks the move (a live Go session, a process

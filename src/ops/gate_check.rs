@@ -6,6 +6,8 @@ use moai_cli::gate_collect::{self, Target};
 use std::io::Read;
 use std::path::PathBuf;
 
+/// Check every rule of the leader merge gate
+///
 /// The leader merge gate (#2674), read-only: decides whether every rule G1–G11 holds for one pull
 /// request (G8: the tip's last completed push CI is not red, or this PR is its repair, #2777;
 /// G9: the auditor is not an author; G10: every PR commit but a merge has a `Moai-Claim`

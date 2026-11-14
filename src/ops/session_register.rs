@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Register this session's lane name
+///
 /// Register this session's lane name in the clone's registry (`<clone common dir>/
 /// .moai-cli/sessions/<name>.json`) before claiming (#2592 S-C). A name another instance holds
 /// under a live lease is refused (`conflict`); the first call returns a fresh `instance`, and

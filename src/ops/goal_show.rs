@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Show the standing goal of this clone
+///
 /// Show the standing goal of this clone (#2679): `state` is `active`, `cleared` or `none`,
 /// with the stored text, end condition, exclusions, source, start time and revision. The leader
 /// and every lane read it at the start of a round. Reads only.

@@ -134,7 +134,16 @@ fn help(args: &[&str]) -> String {
 /// AC-3: every op a mode workflow names exists in this binary, with every flag it shows.
 #[test]
 fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
-    let top = help(&[]);
+    // Every command is listed in `help --all` (#2802 S1); the root help holds only the
+    // person-facing ones.
+    let top = {
+        let out = Command::new(crate::common::MOAI_BIN)
+            .args(["help", "--all"])
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "`moai help --all` failed");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
     let mut seen = Vec::new();
     for name in ["mode-agent.md", "mode-leader.md"] {
         for (op, flags) in cli_spans(&workflow(name)) {

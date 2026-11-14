@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Move the previewed worktrees
+///
 /// Move the worktrees a `worktree-move-plan` listed as `move` (#2723), only when the plan
 /// recomputed from the same inputs has the same `plan_digest`. Each move re-checks processes
 /// and open files, runs `git worktree move` (never `--force`), then checks git lists it at the
