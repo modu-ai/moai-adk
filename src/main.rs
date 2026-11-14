@@ -2229,7 +2229,12 @@ fn names_no_command(e: &clap::Error, first: &str) -> bool {
 /// the launchers and words that name no operation keep clap's own output.
 fn usage_error(e: clap::Error) -> ExitCode {
     let first = std::env::args().nth(1);
-    if first.as_deref() == Some("init") && names_no_command(&e, "init") {
+    // #2935 L3-c (audit 6877895608 N3): `help init` names the same flow as `init`.
+    let help_init = first.as_deref() == Some("help")
+        && std::env::args().nth(2).as_deref() == Some("init")
+        && matches!(e.kind(), ErrorKind::InvalidSubcommand)
+        && Cli::command().find_subcommand("init").is_none();
+    if help_init || (first.as_deref() == Some("init") && names_no_command(&e, "init")) {
         let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
         eprintln!(
             "{}",
