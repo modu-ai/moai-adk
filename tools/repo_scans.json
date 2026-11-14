@@ -2,6 +2,27 @@
   "about": "Tests whose input is the checked-in tree itself (#2681). Each entry splits into rule files (the test, the code or tool that does the walk, and any expected-set file) and the scope the walk reads. Two branches that touch disjoint files still break when one changes a rule file and the other changes a path in that entry's scope (#2642 + #2632). `moai-cli repo-scans` judges a pull request against the tip with this table (#2708; formerly tools/repo_scans.py); tests/repo_scans_test.py keeps the table complete.",
   "scans": [
     {
+      "id": "clone-state-dir-resolved-per-clone",
+      "tests": [
+        "src/clone_root.rs::tests::clone_state_paths_are_resolved_per_clone"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib clone_state_paths_are_resolved_per_clone"
+      ],
+      "rules": [
+        "src/clone_root.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "CLONE_STATE_DIR used outside src/lib.rs and src/clone_root.rs instead of clone_root::{dir, path} (#2696 C4c)"
+    },
+    {
       "id": "home-state-dir-resolved-per-home",
       "tests": [
         "src/home_root.rs::tests::home_state_paths_are_resolved_per_home"
@@ -679,6 +700,26 @@
         }
       ],
       "rejects": "a shipped skill line that runs python3 on a tools/ path, or a tools/<name>.py mention that does not say it belongs to the moai-adk repository (#2708 AC-1)"
+    },
+    {
+      "id": "source-manifest-tool-output",
+      "tests": [
+        "tests/source_manifest_test.py::test_this_repository_manifest_is_what_the_tool_writes"
+      ],
+      "checks": [
+        "python3 -m unittest tests.source_manifest_test"
+      ],
+      "rules": [
+        "tests/source_manifest_test.py",
+        "tools/source_manifest.py",
+        "skills/moai/references/source-manifest.json"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        }
+      ],
+      "rejects": "a skill package manifest other than what tools/source_manifest.py write produces from the package files (#2837)"
     }
   ]
 }
