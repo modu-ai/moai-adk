@@ -766,7 +766,7 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`.
+        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
         #[arg(long)]
         path: Option<PathBuf>,
     },
@@ -1927,6 +1927,7 @@ fn run_internal(
             source.task.is_some(),
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
             &plan_digest,
             moai_cli::worktree::Capacity {
                 floor_bytes: disk_floor_bytes,
@@ -2526,6 +2527,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
         ),
         Command::WorktreeGcPlan {
             project,
@@ -2934,10 +2936,71 @@ fn usage_error(e: clap::Error) -> ExitCode {
         eprintln!("{message}");
     } else {
         let rendered = e.render().to_string();
-        eprintln!("{}", rendered.lines().next().unwrap_or(message));
+        let mut lines = rendered.lines();
+        let first = lines.next().unwrap_or(message);
+        // #2804 (D2 §4): keep clap's list of the missing arguments — names such as
+        // `--project <PROJECT>`, never a value the user typed. Other kinds keep one line.
+        let detail: Vec<&str> = if matches!(e.kind(), ErrorKind::MissingRequiredArgument) {
+            lines.take_while(|l| !l.trim().is_empty()).collect()
+        } else {
+            Vec::new()
+        };
+        if moai_cli::ui::stderr_is_terminal() {
+            let word = std::env::args().nth(1);
+            let next = moai_cli::error_next::next_action(
+                contract::Kind::Usage,
+                &program_name(),
+                word.as_deref(),
+                message,
+            );
+            let what = first.strip_prefix("error: ").unwrap_or(first);
+            eprint!(
+                "{}",
+                moai_cli::ui::error_frame(&stderr_painter(), what, &detail, None, next.as_deref())
+            );
+        } else {
+            eprintln!("{first}");
+            for line in &detail {
+                eprintln!("{line}");
+            }
+        }
     }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
     ExitCode::from(2)
+}
+
+/// The name the user ran (`moai` or `moai-cli`), for the error frame's help pointer.
+fn program_name() -> String {
+    std::env::args_os()
+        .next()
+        .and_then(|a| {
+            std::path::Path::new(&a)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+        })
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "moai".to_string())
+}
+
+/// The painter for the stderr error frame: S2's per-stream color decision (#2803).
+fn stderr_painter() -> moai_cli::ui::Painter {
+    moai_cli::ui::Painter::for_stream(moai_cli::ui::Stream::Stderr, moai_cli::ui::ColorFlag::Auto)
+}
+
+/// An operation failure on stderr (card #2804, D2 §4): the error frame with its next step on a
+/// terminal; on a pipe the message line exactly as before, so lanes and scripts read the same
+/// bytes. The stdout envelope is printed by the caller and never changes here.
+fn print_operation_error(kind: contract::Kind, message: &str) {
+    if !moai_cli::ui::stderr_is_terminal() {
+        eprintln!("{message}");
+        return;
+    }
+    let word = std::env::args().nth(1);
+    let next = moai_cli::error_next::next_action(kind, &program_name(), word.as_deref(), message);
+    eprint!(
+        "{}",
+        moai_cli::ui::error_frame(&stderr_painter(), message, &[], None, next.as_deref())
+    );
 }
 
 /// True when the command line is a generated host hook (#2348): `hook-receipt` or any word
@@ -3196,7 +3259,7 @@ pub(crate) fn main() -> ExitCode {
             // #2345: the journal lock-busy error carries its kind from the raise site;
             // every other error was classified at the dispatch boundary.
             println!("{}", contract::failure(op, e.kind, &e.message));
-            eprintln!("{e}");
+            print_operation_error(e.kind, &e.message);
             ExitCode::from(1)
         }
     }

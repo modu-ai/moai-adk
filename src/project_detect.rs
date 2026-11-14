@@ -571,6 +571,12 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
              read-only preview `moai-cli go-state-plan {shown}`, show it, and apply only after a \
              second agreement (see the PROJECT workflow)"
         )),
+        // #2696 C4a: the state is still in the earlier `.moai-cli/`; the same preview moves it.
+        "none" if state_root.legacy_root => Some(format!(
+            "the project state is still in the earlier .moai-cli/: ask the user first; only \
+             after the user agrees run the read-only preview `moai-cli go-state-plan {shown}`, \
+             show it, and apply only after a second agreement (see the PROJECT workflow)"
+        )),
         "interrupted" => Some(format!(
             "a Go-state move stopped midway: show the read-only `moai-cli go-state-revert-plan \
              {shown} --backup <UTC>` (the stamp is the folder name under .moai/backups/) and move \
