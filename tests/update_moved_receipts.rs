@@ -436,3 +436,164 @@ fn install_inspect_knows_a_receipt_recorded_before_the_move() {
     let without = ok(&run(&moved, &f.home, &["install-inspect", "--json"], None));
     assert_eq!(without["self"]["state"], json!("unrecorded"), "{without}");
 }
+
+/// Replaces the journal's alias table (the file is the user's own state, so a test may write
+/// what a hand edit or a bad build could).
+fn set_aliases(journal: &Path, pairs: &[(&str, &str)]) {
+    let mut v: Value = serde_json::from_slice(&fs::read(journal).unwrap()).unwrap();
+    v["id_aliases"] = Value::Object(
+        pairs
+            .iter()
+            .map(|(a, b)| (a.to_string(), json!(b)))
+            .collect(),
+    );
+    fs::write(journal, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+}
+
+/// A host receipt file of installation `id`, as JSON.
+fn host_receipt_file(state: &Path, id: &str, host: &str) -> PathBuf {
+    state
+        .join("installations")
+        .join(id)
+        .join(format!("hosts/moai/{host}.json"))
+}
+
+// Audit 6884416142 B1: an alias is a path part under `installations/`. A journal edited (or
+// written by a bad build) to name `../../elsewhere` must not make `update` read a receipt
+// outside the store and take it as the baseline.
+#[test]
+fn a_journal_alias_shaped_like_a_path_lends_nothing_for_the_own_receipt() {
+    let f = fixture();
+    let old = f.home.join(".moai-cli");
+    let a = version_exe(&old, "a");
+    install(&a, &f.home, &f.v1);
+    let a_old = id_of(&a);
+    let journal = move_home(&f.home, &["a"]);
+    let moved = f.home.join(".moai/versions/a/bin/moai-cli");
+    let a_new = id_of(&moved);
+    all_unchanged(&plan(&moved, &f.home, &f.v1));
+
+    let state = f.home.join(".moai");
+    for h in HOSTS {
+        let src = host_receipt_file(&state, &a_old, h);
+        let mut r: Value = serde_json::from_slice(&fs::read(&src).unwrap()).unwrap();
+        r["install_id"] = json!("../../elsewhere");
+        let dst = f.home.join(format!("elsewhere/hosts/moai/{h}.json"));
+        fs::create_dir_all(dst.parent().unwrap()).unwrap();
+        fs::write(&dst, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+    }
+    fs::remove_dir_all(state.join("installations").join(&a_old)).unwrap();
+    set_aliases(&journal, &[("../../elsewhere", &a_new)]);
+    blocked_unmanaged(&plan(&moved, &f.home, &f.v1));
+}
+
+// The same through the other reader: an earlier folder's receipts, looked up by the ids the
+// journal lends it.
+#[test]
+fn a_journal_alias_shaped_like_a_path_lends_nothing_for_an_earlier_folder() {
+    let f = fixture();
+    let old = f.home.join(".moai-cli");
+    let a = version_exe(&old, "a");
+    let b = version_exe(&old, "b");
+    install(&a, &f.home, &f.v1);
+    install(&b, &f.home, &f.v2);
+    let (a_old, b_old) = (id_of(&a), id_of(&b));
+    let journal = move_home(&f.home, &["a", "b"]);
+    let a2 = f.home.join(".moai/versions/a/bin/moai-cli");
+    let b_new = id_of(&f.home.join(".moai/versions/b/bin/moai-cli"));
+    let a_new = id_of(&a2);
+
+    let state = f.home.join(".moai");
+    for h in HOSTS {
+        let src = host_receipt_file(&state, &b_old, h);
+        let mut r: Value = serde_json::from_slice(&fs::read(&src).unwrap()).unwrap();
+        r["install_id"] = json!("../../elsewhere");
+        let dst = f.home.join(format!("elsewhere/hosts/moai/{h}.json"));
+        fs::create_dir_all(dst.parent().unwrap()).unwrap();
+        fs::write(&dst, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+    }
+    fs::remove_dir_all(state.join("installations").join(&b_old)).unwrap();
+    set_aliases(&journal, &[(&a_old, &a_new), ("../../elsewhere", &b_new)]);
+    // a keeps its own (older) receipt as the baseline; the outside file, newer and written for
+    // the other package, is not read. The disk holds b's package (installed last), so a's v1
+    // baseline shows as `preserved`; an adopted v2 baseline would equal the disk instead.
+    let p = plan(&a2, &f.home, &f.v1);
+    for h in HOSTS {
+        let hp = host(&p, h);
+        assert_eq!(hp["preflight"], json!("ok"), "{h}: {p}");
+        assert!(hp.get("receipt_from").is_none(), "{h}: {p}");
+        for file in hp["files"].as_array().unwrap() {
+            assert_eq!(file["baseline_sha256"], file["new_sha256"], "{h}: {p}");
+            assert_ne!(file["baseline_sha256"], file["current_sha256"], "{h}: {p}");
+        }
+    }
+}
+
+// Audit B2: an alias counts for `install-inspect` only when it leads to THIS build's id. A
+// receipt that another moved build wrote is that build's: its old path is gone, so from here it
+// is foreign (the digest alone, equal for two copies of one binary, must not make it `self`).
+#[test]
+fn install_inspect_does_not_take_another_builds_moved_receipt_for_itself() {
+    let f = fixture();
+    let old = f.home.join(".moai-cli");
+    let a = version_exe(&old, "a");
+    let b = version_exe(&old, "b");
+    for exe in [&a, &b] {
+        let receipt = plan_receipt(exe, &f.home, InstallerOwner::Unknown).unwrap();
+        record_receipt(&f.home, &receipt).unwrap();
+    }
+    let (a_old, b_old) = (id_of(&a), id_of(&b));
+    move_home(&f.home, &["a", "b"]);
+    let b2 = f.home.join(".moai/versions/b/bin/moai-cli");
+
+    let out = ok(&run(&b2, &f.home, &["install-inspect", "--json"], None));
+    let state_of = |id: &str| {
+        out["installations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["install_id"] == json!(id))
+            .map(|e| e["match_state"].clone())
+            .unwrap_or_else(|| panic!("{id} not listed: {out}"))
+    };
+    assert_eq!(state_of(&b_old), json!("self"), "{out}");
+    assert_eq!(state_of(&a_old), json!("foreign"), "{out}");
+    assert_eq!(out["self"]["state"], json!("self"), "{out}");
+}
+
+// Audit B3: when the journal lends a folder two earlier ids, the receipt that finished last is
+// the baseline. The older id sorts first and its receipt is an interrupted (pending) write; if
+// the comparison picked the older one the plan would stop on that pending receipt.
+#[test]
+fn of_two_earlier_ids_of_this_folder_the_newer_receipt_is_the_baseline() {
+    let f = fixture();
+    let old = f.home.join(".moai-cli");
+    let a = version_exe(&old, "a");
+    install(&a, &f.home, &f.v1);
+    let a_old = id_of(&a);
+    let journal = move_home(&f.home, &["a"]);
+    let moved = f.home.join(".moai/versions/a/bin/moai-cli");
+    let a_new = id_of(&moved);
+
+    let x2 = "f".repeat(64);
+    assert!(a_old < x2, "the older id must be read first");
+    let state = f.home.join(".moai");
+    for h in HOSTS {
+        let src = host_receipt_file(&state, &a_old, h);
+        let finished: Value = serde_json::from_slice(&fs::read(&src).unwrap()).unwrap();
+        // The newer receipt, under the second id: a copy of the finished one.
+        let mut newer = finished.clone();
+        newer["install_id"] = json!(x2);
+        let dst = host_receipt_file(&state, &x2, h);
+        fs::create_dir_all(dst.parent().unwrap()).unwrap();
+        fs::write(&dst, serde_json::to_vec_pretty(&newer).unwrap()).unwrap();
+        // The older one, under the first id: an apply that never finished.
+        let mut older = finished;
+        older["status"] = json!("pending");
+        older["finished_at"] = Value::Null;
+        older["started_at"] = json!("2000-01-01T00:00:00Z");
+        fs::write(&src, serde_json::to_vec_pretty(&older).unwrap()).unwrap();
+    }
+    set_aliases(&journal, &[(&a_old, &a_new), (&x2, &a_new)]);
+    all_unchanged(&plan(&moved, &f.home, &f.v1));
+}

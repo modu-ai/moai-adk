@@ -506,6 +506,14 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
 /// this many and the rest ignored (the reader is a lookup, never a gate).
 const ALIAS_JOURNAL_LIMIT: usize = 64;
 
+/// An install id as `install::install_id` makes it: the lower-case hex of a SHA-256, 64 digits.
+/// A journal is a file in the user's HOME and its aliases become path parts under
+/// `installations/`, so a name of any other shape (`../x`, `a/b`, empty, long) is never used
+/// (audit 6884416142 B1).
+pub(crate) fn install_id_shaped(s: &str) -> bool {
+    s.len() == 64 && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
 /// R5 (#2871 U3b): old install id to new install id, from the `committed` install journals in
 /// `<home>/<HOME_STATE_DIR>/home-install/`.
 ///
@@ -534,7 +542,11 @@ pub fn committed_aliases(home: &Path) -> BTreeMap<String, String> {
             continue;
         };
         if j.kind == KIND && j.state == move_journal::JournalState::Committed {
-            out.extend(j.id_aliases);
+            out.extend(
+                j.id_aliases
+                    .into_iter()
+                    .filter(|(old, new)| install_id_shaped(old) && install_id_shaped(new)),
+            );
         }
     }
     out
@@ -684,6 +696,12 @@ mod tests {
         .unwrap();
     }
 
+    /// An install id as the real one is made: the SHA-256 of a tag, in lower-case hex.
+    fn hid(tag: &str) -> String {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(tag.as_bytes()))
+    }
+
     /// R5 (#2871 U3b): only committed journals lend ids; a later one wins for the same old id.
     #[test]
     fn committed_aliases_read_committed_journals_and_the_later_one_wins() {
@@ -692,24 +710,66 @@ mod tests {
         let home = t.path();
         assert!(committed_aliases(home).is_empty(), "no folder, no ids");
         let dir = old_dir(home).join(JOURNAL_DIR);
-        journal(
-            &dir,
-            "20261114T100000Z",
-            Committed,
-            &[("a", "a1"), ("b", "b1")],
-        );
-        journal(&dir, "20261114T110000Z", Committed, &[("a", "a2")]);
-        journal(&dir, "20261114T120000Z", Pending, &[("c", "c1")]);
-        journal(&dir, "20261114T130000Z", Reverted, &[("d", "d1")]);
+        let (a, a1, a2, b, b1) = (hid("a"), hid("a1"), hid("a2"), hid("b"), hid("b1"));
+        let (c, c1, d, d1) = (hid("c"), hid("c1"), hid("d"), hid("d1"));
+        journal(&dir, "20261114T100000Z", Committed, &[(&a, &a1), (&b, &b1)]);
+        journal(&dir, "20261114T110000Z", Committed, &[(&a, &a2)]);
+        journal(&dir, "20261114T120000Z", Pending, &[(&c, &c1)]);
+        journal(&dir, "20261114T130000Z", Reverted, &[(&d, &d1)]);
         let got = committed_aliases(home);
-        assert_eq!(got.get("a").map(String::as_str), Some("a2"), "{got:?}");
-        assert_eq!(got.get("b").map(String::as_str), Some("b1"), "{got:?}");
-        assert!(!got.contains_key("c") && !got.contains_key("d"), "{got:?}");
-        assert_eq!(earlier_ids_of(home, "a2"), vec!["a".to_string()]);
+        assert_eq!(got.get(&a), Some(&a2), "{got:?}");
+        assert_eq!(got.get(&b), Some(&b1), "{got:?}");
+        assert!(!got.contains_key(&c) && !got.contains_key(&d), "{got:?}");
+        assert_eq!(earlier_ids_of(home, &a2), vec![a.clone()]);
         assert!(
-            earlier_ids_of(home, "a1").is_empty(),
+            earlier_ids_of(home, &a1).is_empty(),
             "replaced by a later journal"
         );
+    }
+
+    /// Audit 6884416142 B1: a journal is a file in the HOME, and an alias becomes a path part
+    /// under `installations/`. Only a SHA-256 in lower-case hex (64 digits) is an install id;
+    /// anything else lends nothing, key or value, and never fails the lookup.
+    #[test]
+    fn committed_aliases_lend_only_ids_shaped_like_an_install_id() {
+        use move_journal::JournalState::Committed;
+        assert!(install_id_shaped(&hid("x")));
+        let good = hid("good");
+        let upper = good.to_ascii_uppercase();
+        let long = format!("{good}0");
+        let short = &good[..63];
+        let non_hex = format!("{}g", &good[..63]);
+        let bad: Vec<&str> = vec![
+            "../../elsewhere",
+            "a/b",
+            "..",
+            ".",
+            "",
+            "old",
+            &upper,
+            &long,
+            short,
+            &non_hex,
+        ];
+        let huge = "a".repeat(100_000);
+        let t = tempfile::tempdir().unwrap();
+        let dir = old_dir(t.path()).join(JOURNAL_DIR);
+        let mut pairs: Vec<(&str, &str)> = Vec::new();
+        for b in &bad {
+            pairs.push((b, &good));
+            pairs.push((&good, b));
+        }
+        pairs.push((&huge, &good));
+        let (old_id, new_id) = (hid("old"), hid("new"));
+        pairs.push((&old_id, &new_id));
+        journal(&dir, "20261114T100000Z", Committed, &pairs);
+        let got = committed_aliases(t.path());
+        assert_eq!(
+            got.into_iter().collect::<Vec<_>>(),
+            vec![(old_id.clone(), new_id.clone())],
+            "only the well-formed pair stands"
+        );
+        assert!(earlier_ids_of(t.path(), &good).is_empty());
     }
 
     /// A file that is not a journal, a journal folder that is a link and a bad file lend nothing
@@ -721,7 +781,12 @@ mod tests {
         let t = tempfile::tempdir().unwrap();
         let home = t.path();
         let dir = old_dir(home).join(JOURNAL_DIR);
-        journal(&dir, "20261114T100000Z", Committed, &[("a", "a1")]);
+        journal(
+            &dir,
+            "20261114T100000Z",
+            Committed,
+            &[(&hid("a"), &hid("a1"))],
+        );
         fs::write(dir.join("move-journal-20261114T110000Z.json"), "{not json").unwrap();
         fs::write(dir.join("notes.txt"), "x").unwrap();
         assert_eq!(committed_aliases(home).len(), 1);
@@ -740,7 +805,12 @@ mod tests {
         let dir = old_dir(t.path()).join(JOURNAL_DIR);
         for i in 0..=ALIAS_JOURNAL_LIMIT {
             let stamp = format!("20261114T{:02}{:02}00Z", i / 60, i % 60);
-            journal(&dir, &stamp, Committed, &[(&format!("old{i:03}"), "new")]);
+            journal(
+                &dir,
+                &stamp,
+                Committed,
+                &[(&hid(&format!("old{i:03}")), &hid("new"))],
+            );
         }
         let got = committed_aliases(t.path());
         assert_eq!(
@@ -749,6 +819,6 @@ mod tests {
             "the {}th is ignored",
             ALIAS_JOURNAL_LIMIT + 1
         );
-        assert!(got.contains_key("old063") && !got.contains_key("old064"));
+        assert!(got.contains_key(&hid("old063")) && !got.contains_key(&hid("old064")));
     }
 }
