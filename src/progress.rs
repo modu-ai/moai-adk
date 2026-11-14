@@ -357,7 +357,7 @@ mod tests {
         note_msg(Msg::ScanningTrackedFiles, &[]);
         note_msg(
             Msg::CheckingPullRequest,
-            &[("pr", "12"), ("seen", "1"), ("ready", "3")],
+            &[("pr", "12"), ("at", "1"), ("total", "3")],
         );
         assert_eq!(
             say(Msg::CiNoRunYet, &[("head", "0123abcd")]),

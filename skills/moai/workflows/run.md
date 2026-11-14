@@ -47,6 +47,8 @@ Keep the browser's default permission mode; use a wider mode only when the user 
 
 Never lower acceptance to hide a failure. A provider acknowledgement, an agent's statement that it finished, or a result from another worktree is not evidence of success.
 
+Before adding a dependency, look its exact name and version up in its registry and cite the output. An automatic CI repair runs at most three rounds, each as a new commit without a force-push; it never patches a semantic failure (a race, a deadlock, a panic, a failed assertion) and never edits secret or credential files or the CI definitions (#2876, from the Go generation's coding standards and CI repair protocol).
+
 ## Completion Check
 
 Bind the output to the task and the exact snapshot. Never report a verification or external effect that was not performed as complete.

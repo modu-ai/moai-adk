@@ -155,7 +155,7 @@ pub enum Msg {
     ScanningTrackedFiles,
     BuildingViews,
     PublishingGeneration,
-    /// `gate-loop` progress; `{pr}`, `{seen}`, `{ready}` are numbers.
+    /// `gate-loop` progress; `{pr}`, `{at}` (1-based) and `{total}` are numbers.
     CheckingPullRequest,
     /// Paging through an API list; `{n}` is a number, `{path}` the API path.
     ReadingPage,
@@ -259,8 +259,8 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (BuildingViews, Ko) => "보기 만드는 중 (2/3)",
         (PublishingGeneration, En) => "publishing the generation (3/3)",
         (PublishingGeneration, Ko) => "새 세대 내보내는 중 (3/3)",
-        (CheckingPullRequest, En) => "checking pull request #{pr} ({seen}/{ready})",
-        (CheckingPullRequest, Ko) => "풀 리퀘스트 #{pr} 확인 중 ({seen}/{ready})",
+        (CheckingPullRequest, En) => "checking pull request #{pr} ({at}/{total})",
+        (CheckingPullRequest, Ko) => "풀 리퀘스트 #{pr} 확인 중 ({at}/{total})",
         (ReadingPage, En) => "reading page {n} of {path}",
         (ReadingPage, Ko) => "{path} 의 {n}쪽 읽는 중",
         (CiNoRunYet, En) => "ci on {head}: no workflow run yet",

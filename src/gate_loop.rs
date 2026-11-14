@@ -80,16 +80,61 @@ fn comment<T: Transport>(t: &T, api: &str, pr: u64, body: String) -> Result<()> 
     Ok(())
 }
 
-/// One pass over the open pull requests. Returns one row per pull request.
+/// What a dry run decides for one pull request: the gate's verdict and the action the pass
+/// would take, from reads only (#2860 D2). It does not re-read the remote base and head the way
+/// [`crate::gate_merge::merge`] does just before its first write, so a `would_merge` row still
+/// meets that check in a real pass.
+fn dry_decision<T: Transport>(
+    one: &Target<'_>,
+    t: &T,
+    api: &str,
+    head: &str,
+) -> Result<(String, String, String)> {
+    let snapshot = crate::gate_collect::collect(one, t)?;
+    match crate::gate::check(&snapshot) {
+        Ok(_) => {
+            let action = if crate::gate::accepted_auto_delta(&snapshot).is_some() {
+                "would_merge_auto_delta"
+            } else {
+                "would_merge"
+            };
+            Ok((action.into(), String::new(), String::new()))
+        }
+        Err(stop) => {
+            let action = if stop.rule == "G6" && stop.reason.starts_with("overlap in non-doc file")
+            {
+                if marked(t, api, one.pr, &marker("update-branch", head))? {
+                    "already_updated"
+                } else {
+                    "would_update_branch"
+                }
+            } else if stop.rule == "G2" {
+                if marked(t, api, one.pr, &marker("auditor", head))? {
+                    "already_asked"
+                } else {
+                    "would_ask_auditor"
+                }
+            } else {
+                "stopped"
+            };
+            Ok((action.into(), stop.rule.to_string(), stop.reason))
+        }
+    }
+}
+
+/// One pass over the open pull requests, oldest number first (#2860 rule 5). Returns one row
+/// per pull request. With `dry_run` it only reads and reports what it would do (#2860 D2).
 pub fn once<T: Transport, S: Transport, C: Clock>(
     target: &LoopTarget<'_>,
     permission: &str,
     app: bool,
+    dry_run: bool,
     t: &T,
     status_t: &S,
     clock: &C,
 ) -> Result<Value> {
-    if !crate::contract::permission_reference_ok(permission) {
+    // A dry run writes nothing, so it needs no permission reference.
+    if !dry_run && !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was read or written".into());
     }
     let api = format!(
@@ -104,25 +149,26 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         ),
     )?;
     let mut rows = Vec::new();
-    let open = list.as_array().ok_or("pull request list is not a list")?;
-    let ready = open
+    let mut open: Vec<&Value> = list
+        .as_array()
+        .ok_or("pull request list is not a list")?
         .iter()
-        .filter(|p| p["draft"].as_bool() != Some(true))
-        .count();
-    let mut seen = 0;
-    for p in open {
-        if p["draft"].as_bool() == Some(true) {
-            continue;
-        }
+        .collect();
+    // #2860 rule 5: the oldest pull request first, so a long-waiting one is not passed over by
+    // newer ones every pass (GitHub lists newest first by default).
+    open.sort_by_key(|p| p["number"].as_u64().unwrap_or(u64::MAX));
+    let total = open.len();
+    for (seen, p) in open.into_iter().enumerate() {
+        // #2860 rule 4 (leader decision 6870150891): drafts are gated too; a passing draft is
+        // marked ready by gate-merge just before its merge.
         let pr = p["number"].as_u64().ok_or("pull request without number")?;
-        seen += 1;
         // One static progress line per pull request (#2806); silent without a stderr sink.
         crate::progress::note_msg(
             crate::ui_text::Msg::CheckingPullRequest,
             &[
                 ("pr", &pr.to_string()),
-                ("seen", &seen.to_string()),
-                ("ready", &ready.to_string()),
+                ("at", &(seen + 1).to_string()),
+                ("total", &total.to_string()),
             ],
         );
         let head = p["head"]["sha"].as_str().unwrap_or("").to_string();
@@ -134,6 +180,16 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
             tip: target.tip,
             review_confirmed_prs: target.review_confirmed_prs.clone(),
         };
+        if dry_run {
+            let row = match dry_decision(&one, t, &api, &head) {
+                Ok((action, rule, reason)) => {
+                    json!({"pr": pr, "head": head, "outcome": action, "rule": rule, "reason": reason})
+                }
+                Err(e) => json!({"pr": pr, "head": head, "outcome": "skipped", "reason": e}),
+            };
+            rows.push(row);
+            continue;
+        }
         let out = match crate::gate_merge::merge(&one, permission, app, t, status_t, clock) {
             Ok(out) => out,
             Err(e) => {
@@ -187,5 +243,5 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         };
         rows.push(json!({"pr": pr, "outcome": action, "rule": rule, "reason": reason}));
     }
-    Ok(json!({"pull_requests": rows}))
+    Ok(json!({"dry_run": dry_run, "pull_requests": rows}))
 }
