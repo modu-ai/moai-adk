@@ -1052,7 +1052,7 @@ pub fn configure_in(
 /// The groups whose root commands' own help texts read Korean on a Korean terminal (S6e-2…,
 /// one group per slice; `the_moved_groups_read_korean_in_their_help` in `main.rs` checks
 /// every about, long about and argument of them).
-pub const KOREAN_GROUPS: &[&str] = &["Project", "Update and move", "Keys"];
+pub const KOREAN_GROUPS: &[&str] = &["Project", "Update and move", "Keys", "Diagnose"];
 
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
@@ -1145,6 +1145,40 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          함께 와요.",
     ),
     (
+        "claude-doctor",
+        "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
+    ),
+    (
+        "codex-doctor",
+        "Codex 를 읽기만 하고 진단해요: AGENTS 사슬과 크기 한도, 겹친 스킬, `.codex/` 층.",
+    ),
+    (
+        "install-inspect",
+        "설치를 읽기만 하고 살펴봐요(04-A #1998): PATH 의 세대, `~/.moai-cli/installations/` 의 \
+         영수증, Go 세대 경로가 있는지. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "identity",
+        "경로의 클론·작업 공간 정체와 상태 루트를 읽기만 하고 알려 줘요(stdout 에 typed JSON).",
+    ),
+    (
+        "worktree-report",
+        "저장소의 worktree, 그 빌드 폴더, 임시 `moai-*` 폴더가 쓰는 공간을 읽기만 하고 보고해요 \
+         (WT-1, #2380). 사실만 — 지울 후보는 판단하지 않아요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "optimize-plan",
+        "비울 수 있는 공간을 읽기만 하고 미리 봐요(#2724): 병합 뒤의 linked worktree(squash 병합 \
+         포함), 이름 댄 루트 아래의 cargo 빌드 폴더, 보고서 — 크기, 마지막 변경, 보관 기간, 남기는 \
+         까닭, 되살리는 법. worktree 는 정확한 HEAD 에 대한 독립 감사 PASS 가 있을 때만 `remove` \
+         후보이고, 살아 있는 claim·HOLD·관측 안 된 부분이 있으면 남겨요. 아무것도 지우지 않아요 — \
+         적용은 사용자 확인 뒤 `worktree-gc-apply`.",
+    ),
+    (
+        "baseline-inventory",
+        "체크아웃의 기준 사실 목록을 읽기만 하고 만들어요(stdout 에 typed JSON).",
+    ),
+    (
         "key-set",
         "공급자 키를 암호화해 금고에 저장해요(#2393): 지금 프로젝트용, 또는 `--shared` 면 모든 \
          프로젝트용. 값은 stdin 에서만 읽고(argv 로는 받지 않음) 대화형 터미널이면 거절해요. 답에는 \
@@ -1177,6 +1211,95 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    (
+        "codex-doctor",
+        "project",
+        "프로젝트 루트(Codex 는 여기서 작업 폴더까지 내려가며 읽음)",
+    ),
+    (
+        "codex-doctor",
+        "cwd",
+        "프로젝트 안의 작업 폴더(기본: 프로젝트 루트)",
+    ),
+    (
+        "codex-doctor",
+        "codex_home",
+        "전역 AGENTS 파일이 있는 Codex home(기본: $CODEX_HOME, 없으면 ~/.codex)",
+    ),
+    (
+        "codex-doctor",
+        "home",
+        "`.agents/skills` 가 있는 home(기본: $HOME)",
+    ),
+    (
+        "codex-doctor",
+        "fallback",
+        "`project_doc_fallback_filenames` 항목(되풀이 가능, config.toml 은 안 읽음)",
+    ),
+    (
+        "codex-doctor",
+        "max_bytes",
+        "`project_doc_max_bytes`(기본 32768, config.toml 은 안 읽음)",
+    ),
+    (
+        "install-inspect",
+        "json",
+        "REQ-04A-02 호출 형식용으로 받음 — 출력은 늘 JSON 봉투",
+    ),
+    ("identity", "path", "클론이나 worktree 안의 아무 경로"),
+    (
+        "worktree-report",
+        "tmp_root",
+        "`moai-*` 자식을 나눌 폴더(기본 `/tmp`)",
+    ),
+    (
+        "worktree-report",
+        "budget_ms",
+        "크기 훑기의 시간 예산(밀리초). 넘으면 그 갈래는 `partial`",
+    ),
+    ("optimize-plan", "project", "저장소의 아무 체크아웃"),
+    (
+        "optimize-plan",
+        "integration_ref",
+        "통합 가지의 로컬 ref, 예: `origin/v2026.11.0`. 아무것도 fetch 하지 않음",
+    ),
+    (
+        "optimize-plan",
+        "recent_minutes",
+        "이 분보다 최근에 바뀌면 그 줄을 남김(최소 60)",
+    ),
+    (
+        "optimize-plan",
+        "budget_ms",
+        "시간 예산(밀리초). 넘으면 남은 worktree 는 `skip`, 크기는 partial",
+    ),
+    (
+        "optimize-plan",
+        "retention_days",
+        "worktree 밖 빌드 폴더의 자식은 이 날수가 지나야 셈",
+    ),
+    (
+        "optimize-plan",
+        "build_roots",
+        "자식 폴더가 cargo 빌드 폴더인 절대 폴더(되풀이 가능, 예: `/tmp/moai-rc-target-*` 용 \
+         `/tmp`). 기본 없음",
+    ),
+    (
+        "optimize-plan",
+        "observations",
+        "JSON 파일: `schema_version` 1 과 선택 `audits`·`claims`·`holds`(각각 source·items). \
+         빠진 부분이 필요한 줄은 남김",
+    ),
+    (
+        "baseline-inventory",
+        "go_baseline_commit",
+        "`.claude` 트리를 비교할 Go 세대 기준 커밋(ls-tree 로만 읽음)",
+    ),
+    (
+        "baseline-inventory",
+        "go_repo",
+        "프로젝트에 기준 커밋이 없을 때 찾아볼 추가 저장소",
+    ),
     ("update", "json", "터미널에서도 화면 대신 JSON 봉투 찍기"),
     (
         "update",
@@ -1402,11 +1525,38 @@ fn korean_texts(c: Command, name: &str, width: usize) -> Command {
     let name = name.to_string();
     c.mut_args(move |a| match arg_help_ko(&name, a.get_id().as_str()) {
         Some(text) => {
-            let wrapped = wrap(text, 0, room);
-            a.help(wrapped.clone()).long_help(wrapped)
+            // A short help ends its last line with clap's ` [default: …]` and
+            // ` [possible values: …]`; a long help puts them on lines of their own.
+            let short = wrap(text, 0, room.saturating_sub(short_suffix_width(&a)));
+            a.help(short).long_help(wrap(text, 0, room))
         }
         None => a,
     })
+}
+
+/// The width of what clap appends to an argument's short help line: ` [default: …]` and
+/// ` [possible values: …]` (clap's words, left in English).
+fn short_suffix_width(a: &clap::Arg) -> usize {
+    let join = |v: Vec<String>| v.join(", ");
+    let defaults: Vec<String> = a
+        .get_default_values()
+        .iter()
+        .map(|v| v.to_string_lossy().into_owned())
+        .collect();
+    let mut width = 0;
+    if !defaults.is_empty() && !a.is_hide_default_value_set() {
+        width += format!(" [default: {}]", join(defaults)).width();
+    }
+    let possible: Vec<String> = a
+        .get_possible_values()
+        .iter()
+        .filter(|p| !p.is_hide_set())
+        .map(|p| p.get_name().to_string())
+        .collect();
+    if !possible.is_empty() && !a.is_hide_possible_values_set() {
+        width += format!(" [possible values: {}]", join(possible)).width();
+    }
+    width
 }
 
 #[cfg(test)]
@@ -1601,9 +1751,10 @@ mod tests {
         }
     }
 
-    /// The frame tests use `identity`: a command of a group whose own texts have not moved.
+    /// The frame tests use `index-query`: a command outside the root list, whose own texts move
+    /// in the last slice.
     fn sub_help(lang: Lang, long: bool) -> String {
-        sub_help_of("identity", lang, long)
+        sub_help_of("index-query", lang, long)
     }
 
     /// S6e-2: a command of a moved group takes its Korean about, long about and argument help;
@@ -1669,7 +1820,7 @@ mod tests {
             ko.contains("Detect the project's facts, reading only."),
             "{ko}"
         );
-        assert!(ko.contains("moai identity ."), "{ko}");
+        assert!(ko.contains("moai index-query . < request.json"), "{ko}");
         // `-h` keeps the short form with its own Korean line.
         let short = sub_help(Lang::Ko, false);
         assert!(short.contains(HELP_FLAG_SHORT_KO), "{short}");

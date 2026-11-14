@@ -139,13 +139,13 @@ class KoreanHelp(unittest.TestCase):
 
     def test_a_subcommand_help_has_a_korean_frame(self):
         """S6e-1: the usage, arguments, options and examples headings and the help flag's line
-        read Korean; a command of a group not moved yet keeps its own texts."""
-        text = self.help(["identity", "--help"], **KOREAN)
-        for head in ("\n사용법: moai identity <PATH>\n", "\n인자:\n", "\n옵션:\n",
-                     "\n예시:\n  moai identity .\n"):
+        read Korean; a command outside the root list keeps its own texts."""
+        text = self.help(["index-query", "--help"], **KOREAN)
+        for head in ("\n사용법: moai index-query <PROJECT>\n", "\n인자:\n", "\n옵션:\n",
+                     "\n예시:\n  moai index-query . < request.json\n"):
             self.assertIn(head, text)
         self.assertIn("도움말 보기 (요약은 '-h')", text)
-        self.assertIn("Any path inside a clone or worktree", text)
+        self.assertIn("\n          Project root\n", text)
         for word in ("Usage:", "Arguments:", "Options:", "Examples:", "Print help"):
             self.assertNotIn(word, text)
         short = self.help(["key-set", "-h"], **KOREAN)
@@ -153,7 +153,7 @@ class KoreanHelp(unittest.TestCase):
         self.assertIn("\n옵션:\n      --shared", short)
         # The help flag's Korean lines are wrapped at the indent too: at 40 columns they break.
         for flag in ("-h", "--help"):
-            narrow = self.help(["identity", flag], COLUMNS="40", **KOREAN)
+            narrow = self.help(["index-query", flag], COLUMNS="40", **KOREAN)
             lines = [line for line in narrow.splitlines() if "도움말" in line or "'-" in line]
             self.assertTrue(lines, narrow)
             for line in lines:
@@ -217,6 +217,23 @@ class KoreanHelp(unittest.TestCase):
                       self.help(["worktree-move-apply", "--help"], **KOREAN))
         self.assertTrue(self.help(["update", "-h"], **KOREAN)
                         .startswith("설치된 패키지로 MoAI 업데이트\n"))
+
+    def test_the_diagnose_group_reads_its_own_texts_in_korean(self):
+        """S6e-5: per-command lines where the English differs (`--home`, `--json`, `PROJECT`,
+        `--budget-ms`); clap's own `[default: …]` lines stay as clap writes them."""
+        codex = self.help(["codex-doctor", "--help"], **KOREAN)
+        self.assertIn("`.agents/skills` 가 있는 home", codex)
+        self.assertIn("Codex 는 여기서 작업 폴더까지", codex)
+        self.assertIn("REQ-04A-02 호출 형식용", self.help(["install-inspect", "--help"], **KOREAN))
+        report = self.help(["worktree-report", "--help"], **KOREAN)
+        self.assertIn("크기 훑기의 시간 예산", report)
+        self.assertIn("[default: 30000]", report)
+        plan = self.help(["optimize-plan", "--help"], **KOREAN)
+        self.assertIn("넘으면 남은 worktree 는 `skip`", plan)
+        self.assertIn("저장소의 아무 체크아웃", plan)
+        self.assertNotIn("now-unix", plan)
+        self.assertTrue(self.help(["identity", "-h"], **KOREAN)
+                        .startswith("경로가 클론 안 어디에 있는지 보기\n"))
 
     def test_no_korean_line_of_any_command_help_runs_past_sixty_cells(self):
         """Every command's `-h` and `--help` at 60 columns: no line with Hangul past 60 cells
