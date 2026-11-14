@@ -673,7 +673,27 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
                                 detail: ci.detail,
                             })
                         }
-                        Err(e) => miss("tip CI".into(), e, &mut snap),
+                        // The local clone may not hold the newest tip yet (no fetch here: D1
+                        // reads only). Judge the tip commit's own check runs instead, without
+                        // the walk to earlier commits, and say so.
+                        Err(e) => match crate::gate_collect::tip_runs(&t, &base, &sha) {
+                            Ok(runs) => {
+                                let j = crate::gate_collect::completed_judgment(&runs);
+                                snap.tip = Some(Tip {
+                                    state: j["state"].as_str().unwrap_or("unknown").to_string(),
+                                    tip: sha.clone(),
+                                    decided_by: Some(sha.clone()),
+                                    detail: j
+                                        .get("failed")
+                                        .map(Value::to_string)
+                                        .unwrap_or_default(),
+                                });
+                                snap.partial.push(format!(
+                                    "tip CI: {e}; judged the tip commit alone, without earlier commits"
+                                ));
+                            }
+                            Err(e2) => miss("tip CI".into(), format!("{e}; {e2}"), &mut snap),
+                        },
                     }
                 }
                 Err(e) => miss("tip branch".into(), e, &mut snap),
@@ -736,12 +756,8 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
                 }
                 Err(e) => miss(format!("mergeable of PR #{number}"), e, &mut snap),
             }
-            match crate::gate_collect::get_json(
-                &t,
-                &format!("{base}/commits/{}/check-runs?per_page=100", pr.head),
-            ) {
-                Ok((v, _)) => {
-                    let runs = v["check_runs"].as_array().cloned().unwrap_or_default();
+            match crate::gate_collect::tip_runs(&t, &base, &pr.head) {
+                Ok(runs) => {
                     let j = crate::gate_collect::completed_judgment(&runs);
                     pr.ci = j["state"].as_str().map(str::to_string);
                     pr.ci_detail = j.get("failed").map(Value::to_string);
@@ -953,6 +969,49 @@ mod tests {
         assert_eq!(once["rounds"], json!(1));
         assert!(run(&target, &Quiet, &clock, MAX_WAIT_SECS + 1).is_err());
         assert_eq!((POLL_SECS, MAX_WAIT_SECS), (60, 3600));
+    }
+
+    /// The tip branch, and a failed check run on the tip commit; nothing else.
+    struct RedTip;
+    impl Transport for RedTip {
+        fn send(&self, req: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
+            let body = if req.url.contains("/branches/") {
+                json!({"commit": {"sha": "c".repeat(40)}})
+            } else if req.url.contains("/check-runs") {
+                json!({"check_runs": [{"name": "ci", "status": "completed",
+                    "conclusion": "failure",
+                    "details_url": "https://github.com/o/r/actions/runs/9/job/1"}]})
+            } else {
+                json!([])
+            };
+            Ok(crate::forge::transport::HttpResponse::new(200).with_body(body))
+        }
+    }
+
+    /// The local clone lacks the newest tip (no fetch: reads only): the tip commit's own check
+    /// runs still decide, `partial` says the walk was skipped, and a red tip is P0.
+    #[test]
+    fn a_tip_the_clone_lacks_is_judged_from_its_own_check_runs() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let target = Target {
+            owner: "o",
+            repo: "r",
+            lane: "agent-10",
+            tip_branch: Some("main"),
+            dir: dir.path(),
+        };
+        let snap = collect(&target, &RedTip);
+        let tip = snap.tip.clone().expect("judged");
+        assert_eq!(tip.state, "red", "{snap:?}");
+        assert_eq!(tip.tip, "c".repeat(40));
+        assert!(
+            snap.partial
+                .iter()
+                .any(|p| p.contains("judged the tip commit alone")),
+            "{:?}",
+            snap.partial
+        );
+        assert_eq!(decide("agent-10", &snap)["next"]["kind"], json!("tip_red"));
     }
 
     #[test]

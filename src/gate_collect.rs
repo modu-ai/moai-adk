@@ -263,7 +263,11 @@ pub fn completed_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
 
 /// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
 /// visible), at most ten pages.
-fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_json::Value>> {
+pub(crate) fn tip_runs<T: Transport>(
+    t: &T,
+    base_url: &str,
+    sha: &str,
+) -> Result<Vec<serde_json::Value>> {
     let mut out = Vec::new();
     let mut url = Some(format!(
         "{base_url}/commits/{sha}/check-runs?filter=all&per_page=100"
