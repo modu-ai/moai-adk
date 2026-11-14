@@ -69,7 +69,7 @@ fn installed_follows_the_given_path_only() {
     let (_d, root) = project();
     let bin = root.join("home/bin");
     fs::create_dir_all(&bin).unwrap();
-    common::write_executable(&bin.join("moai"), "#!/bin/sh\nexit 0\n");
+    common::write_executable(&bin.join("moai-cli"), "#!/bin/sh\nexit 0\n");
     assert_eq!(
         status(&root, "codex", bin.to_str().unwrap())["installed"],
         json!(true)

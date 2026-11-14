@@ -20,7 +20,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
    - Codex: "Project-local hooks load only when the project `.codex/` layer is trusted." "Non-managed hooks must be reviewed and trusted before they run." "Codex records trust against the hook's current hash, so new or changed hooks are marked for review and skipped until trusted." 즉 MoAI가 쓴 훅도 사용자가 `/hooks`에서 검토하기 전에는 돌지 않는다.
    - Claude Code: "Frontmatter hooks in a project skill follow the same workspace trust rule as hooks in settings files." "Project subagent hooks run only after you accept the workspace trust dialog." settings 파일 훅의 신뢰 규칙 본문은 permissions 문서에 있고, 이번에는 그 문서를 읽지 않았다(아래 §6 미확인).
 2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅 4개만 쓴다. 요청으로 훅을 더하거나 바꿀 수 없다.
-3. **기록 훅 3개는 기록만 하고, 차단 훅은 하나뿐이다.** 기록 훅은 `moai hook-receipt`를 부르고 차단하지 않는다(항상 exit 0). 도구 입력·출력·prompt는 저장하지 않는다. 차단 훅은 `PreToolUse`(Bash)의 `moai claim-verify . --hook` 하나다(rc.2 A9 #2255 AC-2). Bash 구간의 첫 단어가 `git`이고 `commit`이나 `push`를 실행하는데, 그 레인 worktree의 claim이 확인되지 않을 때만 exit 2로 막는다. 나머지 호출은 모두 통과시킨다. 권한을 넓히지 않고 쓰기 경계를 좁히기만 한다.
+3. **기록 훅 3개는 기록만 하고, 차단 훅은 하나뿐이다.** 기록 훅은 `moai-cli hook-receipt`를 부르고 차단하지 않는다(항상 exit 0). 도구 입력·출력·prompt는 저장하지 않는다. 차단 훅은 `PreToolUse`(Bash)의 `moai-cli claim-verify . --hook` 하나다(rc.2 A9 #2255 AC-2). Bash 구간의 첫 단어가 `git`이고 `commit`이나 `push`를 실행하는데, 그 레인 worktree의 claim이 확인되지 않을 때만 exit 2로 막는다. 나머지 호출은 모두 통과시킨다. 권한을 넓히지 않고 쓰기 경계를 좁히기만 한다.
 4. **사용자 설정을 덮어쓰지 않는다.** Claude는 기존 3-way 소유 규칙을 그대로 쓴다. 사용자가 이미 `hooks` 키를 두었으면 plan이 `conflict`가 되고 아무것도 쓰지 않는다. Codex는 MoAI 영수증과 sha256이 맞지 않는 `.codex/hooks.json`을 만나면 `requires preservation review`로 멈춘다.
 5. **홈은 쓰지 않는다.** project가 HOME 자체이거나 HOME의 `.claude`·`.codex`·`.agents`·`.moai-cli` 안이면 거부한다. 훅은 project 트리에만 생긴다.
 
@@ -28,9 +28,9 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 | event | matcher | handler |
 | --- | --- | --- |
-| `SessionStart` | 없음 | `moai hook-receipt --host <host>`, timeout 10초 |
-| `PreToolUse` | `Bash` | `moai claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
-| `PostToolUse` | `Bash` | `moai hook-receipt --host <host>`, timeout 10초 |
+| `SessionStart` | 없음 | `moai-cli hook-receipt --host <host>`, timeout 10초 |
+| `PreToolUse` | `Bash` | `moai-cli claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
+| `PostToolUse` | `Bash` | `moai-cli hook-receipt --host <host>`, timeout 10초 |
 | `Stop` | 없음 | 같음 |
 
 - 두 호스트가 모두 받는 교집합만 쓴다: 이벤트 4개와 handler 필드 `type: "command"`·`command`·`timeout`. `PreToolUse`는 두 호스트 모두 matcher `Bash`, stdin `tool_name`·`tool_input.command`·`cwd`, exit 2 + stderr 사유로 차단한다(§5 출처). guard의 `.`은 project다. 두 호스트 모두 command 훅을 세션의 작업 디렉터리에서 실행한다.
@@ -49,10 +49,10 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - 그래서 이 guard는 경계가 아니라 guardrail이다.
 - `timeout`은 모든 handler에 명시한다. 호스트 기본값(Claude command 600초, Codex 대부분 600초)에 기대지 않는다.
 - `command`는 bare 이름이다. 개인 절대 경로가 들어가지 않는다.
-- PATH 해석(#2348): 호스트가 훅 프로세스에 주는 PATH에서 `moai`를 찾지 못하면 그 훅은 실패한다(생성 명령 이름은 #2812 W3부터 `moai`, 그 전에 생성된 설정의 `moai-cli`는 호환 별칭으로 계속 돈다).
+- PATH 해석(#2348): 호스트가 훅 프로세스에 주는 PATH에서 `moai-cli`를 찾지 못하면 그 훅은 실패한다. 명령 기본 이름은 `moai`가 됐지만(#2812 W3) 생성 훅은 별칭 은퇴(R5) 전까지 `moai-cli`를 부른다: Go 세대 `moai`가 PATH에서 먼저면 `moai claim-verify …`를 Go가 받아 exit 1로 끝나고, 호스트는 그것을 막지 않는 오류로 읽어 claim 가드가 조용히 꺼지기 때문이다(감사 6868377245 B1, 리더 결정 6868439066).
   - macOS·Linux, 그리고 Git Bash가 있는 Windows에서는 비차단 오류로 끝나고 동작은 진행된다(Claude: "Non-blocking error… The action goes ahead"). 이때 claim guard는 돌지 않는다.
   - **Git Bash가 없는 Windows는 다르다.** Claude 문서에 따르면 shell 형식 `PreToolUse` 훅이 `onFailure` 없이 0·2 외의 코드로 실패하면 도구 호출이 막힌다("Failed hooks on Windows without Git Bash"). 생성 훅은 shell 형식이고 `onFailure`를 두지 않으므로, 그 환경에서는 `moai-cli`가 없을 때 모든 Bash 호출이 막힐 수 있다. exec 형식(`args`)과 `onFailure` 값은 guard 정책 결정(D5)·훅 소유 방식(D7)과 함께 정하며, 그 전까지 HOLD다.
-  - `hooks-plan`·`hooks-apply`는 자기 PATH에서 `moai`를 찾았는지 `hook_binary.state`(`resolved` / `binary_unresolved`)로 보고한다. 못 찾으면 `hooks_active: false`, 찾아도 호스트 영수증이 있기 전에는 `hooks_active: "not_run"`이다. 호스트 훅 프로세스의 PATH는 셸과 다를 수 있으므로 `resolved`는 "이 PATH에서 찾았다"는 뜻일 뿐이다.
+  - `hooks-plan`·`hooks-apply`는 자기 PATH에서 `moai-cli`를 찾았는지 `hook_binary.state`(`resolved` / `binary_unresolved`)로 보고한다. 못 찾으면 `hooks_active: false`, 찾아도 호스트 영수증이 있기 전에는 `hooks_active: "not_run"`이다. 호스트 훅 프로세스의 PATH는 셸과 다를 수 있으므로 `resolved`는 "이 PATH에서 찾았다"는 뜻일 뿐이다.
 - 훅 모드 출력과 종료 코드(#2348):
   - `hook-receipt`와 `claim-verify --hook`은 성공(exit 0)할 때 stdout에 아무것도 쓰지 않는다. 두 호스트 모두 stdout의 JSON 객체를 훅 출력으로 읽기 때문이다. 다른 호출은 envelope를 그대로 쓴다.
   - exit 2(차단)는 guard의 거부 하나뿐이다. 사용법 오류(알 수 없는 플래그·단어)와 `hook-receipt`의 오류는 exit 1(비차단 오류)이고, 사유는 stderr에 쓴다.
@@ -63,16 +63,16 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 ## 3a. 명령 경로와 trust — 세 가지 선택지와 현재 선택 (#2391 R3)
 
-#2391 본문은 "버전 경로(업데이트마다 재신뢰) 대 고정 링크(변경 미탐지)의 선택과 이유"를 요구한다. 실제 생성기는 둘 중 어느 것도 아닌 세 번째 안, **PATH의 bare 이름 `moai`** 를 쓴다(#2812 W3 전에는 `moai-cli`)(`src/hooks.rs` `hook_command`·`HOOK_BINARY`, #2348). 아래 표는 세 안을 같은 기준으로 비교한다.
+#2391 본문은 "버전 경로(업데이트마다 재신뢰) 대 고정 링크(변경 미탐지)의 선택과 이유"를 요구한다. 실제 생성기는 둘 중 어느 것도 아닌 세 번째 안, **PATH의 bare 이름 `moai-cli`** 를 쓴다(`src/hooks.rs` `hook_command`·`HOOK_BINARY`, #2348). 아래 표는 세 안을 같은 기준으로 비교한다.
 
 | 안 | `command` 예 | 업데이트 뒤 재신뢰 | 실행체가 바뀐 것을 host가 알아채는가 | 개인 경로 노출 |
 | --- | --- | --- | --- | --- |
 | 버전 경로 | `~/.moai-cli/versions/<v>/moai-cli …` | 필요(업데이트마다 hook 정의가 바뀐다) | 정의가 바뀌므로 Codex는 재검토를 요구한다 | 있음(절대 경로) |
 | 고정 링크 | `~/.moai-cli/bin/moai-cli …`(링크 대상만 교체) | 불필요 | 아니다(정의가 그대로) | 있음(절대 경로) |
-| **PATH bare 이름(현재)** | `moai …` | 불필요 | 아니다(정의가 그대로) | 없음 |
+| **PATH bare 이름(현재)** | `moai-cli …` | 불필요 | 아니다(정의가 그대로) | 없음 |
 
 - **현재 선택과 이유**: bare 이름. ① 생성 파일(`.claude/settings.json`·`.codex/hooks.json`)은 project 트리에 들어가므로 개인 절대 경로를 넣지 않는다(§3). ② 업데이트마다 사용자가 hook을 다시 검토해야 하는 부담이 없다.
-- **대가**: 고정 링크와 같이, 같은 이름 아래 실행체가 바뀌어도 host 재검토는 일어나지 않는다. 또 host가 hook 프로세스에 주는 PATH에 따라 다른 `moai`(예: Go 세대 `moai`)가 실행될 수 있다(§3 PATH 해석, 옛 바이너리 한계). 이것을 막는 장치는 지금 없다.
+- **대가**: 고정 링크와 같이, 같은 이름 아래 실행체가 바뀌어도 host 재검토는 일어나지 않는다. 또 host가 hook 프로세스에 주는 PATH에 따라 다른 `moai-cli`가 실행될 수 있다(§3 PATH 해석, 옛 바이너리 한계). 이것을 막는 장치는 지금 없다.
 - **Codex hash가 무엇을 덮는가**: 문서는 "Codex requires you to review and trust the exact hook definition", "Codex records trust against the hook's current hash, so new or changed hooks are marked for review and skipped until trusted"라고만 적는다. hash가 정의(명령 문자열·JSON 항목)에 걸리는지 실행 파일에 걸리는지는 **적혀 있지 않다(미확인)**. 실행 파일 변경에 재검토가 붙는다고 명시된 경우는 plugin 번들 훅뿐이다: "If a plugin update changes a bundled script, Codex requires a new review even if the hook definition stays the same." MoAI 생성 훅은 plugin 번들이 아니므로 이 문장에 기대지 않는다. 위 표의 "알아채지 않는다"는 hash가 정의에 걸린다는 가정 위의 판단이며, 실제 Codex로 확인하지 않았다(not_run).
 - **Claude Code**: hooks 페이지에는 hash나 재검토 문장이 없다. settings 파일 훅의 신뢰 규칙("workspace trust")은 링크된 다른 절에 있고 이번에도 원문을 읽지 못했다(미확인, §6).
 - **명령 실행 방식**: Claude는 `args`가 없으면 `command`를 "passed to a shell: `sh -c` on macOS and Linux"로, `args`가 있으면 "resolves `command` as an executable on `PATH`"로 실행한다. Codex는 "Commands run with the session `cwd` as their working directory"만 적고 shell과 PATH 조회 방식은 적지 않는다.
