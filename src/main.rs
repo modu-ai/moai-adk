@@ -2464,12 +2464,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 gobin: gobin.as_deref(),
             };
             let result = moai_cli::install::inspect(&home, &path_env, &places)?;
-            // #2867: a person at a terminal sees the note once; the envelope carries it too.
-            if let Some(note) = result["path_first_moai"]["note"].as_str() {
-                use std::io::IsTerminal as _;
-                if std::io::stderr().is_terminal() {
-                    eprintln!("moai-cli: {note}");
-                }
+            // #2867: a person at a terminal sees the note once, in stderr's language (#2825);
+            // the envelope carries the English note in every language.
+            if result["path_first_moai"]["note"].is_string() && moai_cli::ui::stderr_is_terminal() {
+                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+                let note = moai_cli::ui_text::text(moai_cli::ui_text::Msg::PathFirstNote, lang);
+                eprintln!("moai-cli: {note}");
             }
             Ok(result)
         }
