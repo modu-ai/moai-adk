@@ -171,6 +171,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
     assert_eq!(
         seen,
         [
+            "claim-acquire",
             "claim-verify",
             "claim-verify --hook",
             // #2903 (#2899 O4): the lane closes its own card through `close-check` (its
@@ -194,7 +195,6 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // #2840 D3: the PR body is checked locally before the push and before opening.
             "pr-self-audit-check --file",
             "queue-free",
-            "queue-next",
             "repo-scans --refs",
             "scope-check",
             "session-register",
@@ -210,10 +210,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
 #[test]
 fn spans_parse_ops_and_flags() {
     assert_eq!(
-        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-next` and `moai --version`"),
+        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-free` and `moai --version`"),
         [
             ("claim-verify".to_string(), vec!["--hook".to_string()]),
-            ("queue-next".to_string(), vec![])
+            ("queue-free".to_string(), vec![])
         ]
     );
 }
@@ -748,4 +748,47 @@ fn blocked_lines_name_kind_owner_and_next_check() {
     assert!(agents_md.contains(
         "A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step)."
     ));
+}
+
+// #2905 (#2899 O6, measurement 6874337375): a Codex or OMP leader's timer is an Orca
+// automation. `--reuse-session` reuses only the automation's own idle session and starts a
+// new one when that session is busy, so the leader workflow and SPEC §5 name the precheck,
+// the short grace window and the first run that starts the leader session.
+#[test]
+fn codex_leader_timer_is_the_measured_orca_automation() {
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "mode-channel",
+        &[
+            "`--trigger \"*/5 * * * *\"`",
+            "`--reuse-session` sends a later run only to the session an earlier run of the same automation started, and only while that session is idle; when it is busy, Orca starts a new session",
+            "`--precheck`",
+            "`tui-idle`",
+            "`--missed-run-grace-minutes 10`",
+            "the automation's first run starts the leader session",
+        ],
+    );
+    assert!(
+        !step(&leader, "mode-channel").contains("O6 measures"),
+        "the measured result replaces the O6 placeholder"
+    );
+    let spec = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/design-review/autonomy-modes-spec.md"),
+    )
+    .unwrap();
+    let wake = spec
+        .lines()
+        .find(|l| l.starts_with("- 깨우기 수단(#2899 G9"))
+        .expect("SPEC §5 wake line");
+    for p in [
+        "`--reuse-session`",
+        "새 세션",
+        "`--precheck`",
+        "`tui-idle`",
+        "`--missed-run-grace-minutes 10`",
+    ] {
+        assert!(wake.contains(p), "SPEC §5 must say `{p}`: {wake}");
+    }
+    assert!(!wake.contains("O6이 실측하고"), "{wake}");
 }

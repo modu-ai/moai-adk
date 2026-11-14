@@ -1,10 +1,13 @@
 //! Deterministic `/goal` paste block (A4 #2163, REQ-A4-01/02), moved from
 //! `tools/gen_goal_block.py` (#2708) so the shipped mode workflows need only `moai-cli`.
 //!
-//! From the state a session read — `milestone`, `issues` and `prs` (each `{number, state}`)
-//! and `keep_set` (each `{number, reason}`) — it builds the leader's milestone-wide condition,
+//! From the state a session read — `milestone`, `issues` and `prs` (each `{number, state}`;
+//! an Issue may also carry `title`, `labels`, `body`, `open_children` and `blocked_by`) and
+//! `keep_set` (each `{number, reason}`) — it builds the leader's milestone-wide condition,
 //! the agent's lane-wide `loop_line` (no open PR and no startable Issue, #2515) with the
-//! card-scoped `goal_lines`, and the Codex line with its caveat. Open entries are sorted by
+//! card-scoped `goal_lines`, and the Codex line with its caveat. Which open Issues are
+//! startable is [`crate::startable::judge`], the judgment `lane-next` uses (#2901): `startable`,
+//! `held` (each with its reason) and `end_condition`; once it is met there is no loop line. Open entries are sorted by
 //! number, so any input order gives the same block. The model cannot type `/goal` itself; the
 //! user pastes the line (`model_can_input: false`). Reads and writes nothing else.
 use serde_json::{json, Map, Value};
@@ -44,9 +47,60 @@ fn group<'a>(
             if name == "keep_set" && !obj.get("reason").is_some_and(Value::is_string) {
                 return Err(invalid("keep_set entries require a string reason"));
             }
+            if name == "issues" {
+                card_fields(obj)?;
+            }
             Ok(obj)
         })
         .collect()
+}
+
+/// An Issue entry's optional startable fields (#2901): `title`, `labels` (strings), `body`,
+/// `open_children` (open sub-issues) and `blocked_by` (open blocking Issues, positive numbers).
+/// A missing field is empty; a field of the wrong type is refused.
+type Fields<'a> = (&'a str, Vec<String>, &'a str, u64, Vec<u64>);
+
+fn card_fields(item: &Map<String, Value>) -> Result<Fields<'_>, String> {
+    let text = |key: &str| match item.get(key) {
+        None => Ok(""),
+        Some(Value::String(s)) => Ok(s.as_str()),
+        Some(_) => Err(invalid(&format!("issues {key} must be a string"))),
+    };
+    let labels = match item.get("labels") {
+        None => Vec::new(),
+        Some(Value::Array(a)) => a
+            .iter()
+            .map(|l| l.as_str().map(str::to_string))
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| invalid("issues labels must be a list of strings"))?,
+        Some(_) => return Err(invalid("issues labels must be a list of strings")),
+    };
+    let open_children = match item.get("open_children") {
+        None => 0,
+        Some(v) => v
+            .as_u64()
+            .ok_or_else(|| invalid("issues open_children must be a non-negative integer"))?,
+    };
+    let blocked_by = match item.get("blocked_by") {
+        None => Vec::new(),
+        Some(Value::Array(a)) => a
+            .iter()
+            .map(|n| n.as_u64().filter(|n| *n > 0))
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| invalid("issues blocked_by must be a list of positive integers"))?,
+        Some(_) => {
+            return Err(invalid(
+                "issues blocked_by must be a list of positive integers",
+            ))
+        }
+    };
+    Ok((
+        text("title")?,
+        labels,
+        text("body")?,
+        open_children,
+        blocked_by,
+    ))
 }
 
 /// The block for one fixture, or `invalid fixture: …`.
@@ -75,6 +129,43 @@ pub fn build(fixture: &Value) -> Result<Value, String> {
         out
     };
     let (issues, prs) = (open(&issues_all), open(&prs_all));
+    // #2901: the open Issues judged by the one startable judgment `lane-next` uses — on hold,
+    // left out by `keep_set`, an epic or blocked are not startable, each with its reason.
+    let mut open_issues: Vec<&Map<String, Value>> = issues_all
+        .iter()
+        .copied()
+        .filter(|i| i.get("state").and_then(Value::as_str) == Some("open"))
+        .collect();
+    open_issues.sort_by_key(|i| number(i));
+    let open_set: std::collections::BTreeSet<u64> =
+        open_issues.iter().filter_map(|i| number(i)).collect();
+    let keep: Vec<crate::goal::Exclusion> = keep_set
+        .iter()
+        .map(|k| crate::goal::Exclusion {
+            number: number(k).unwrap_or(0),
+            reason: k["reason"].as_str().unwrap_or("").to_string(),
+        })
+        .collect();
+    let (mut startable, mut held) = (Vec::new(), Vec::new());
+    for i in &open_issues {
+        let n = number(i).unwrap_or(0);
+        let (title, labels, body, open_children, blocked_by) = card_fields(i)?;
+        let card = crate::startable::Card {
+            number: n,
+            title,
+            labels: &labels,
+            body,
+            open_children,
+            blocked_by: &blocked_by,
+        };
+        match crate::startable::judge(&card, &open_set, &keep) {
+            Some(s) => held.push(s.entry(n)),
+            None => startable.push(n),
+        }
+    }
+    let end_condition =
+        crate::startable::end_condition(Some(prs.len() as u64), Some(startable.len() as u64));
+    let met = end_condition["met"] == json!(true);
 
     let subject = match (issues.is_empty(), prs.is_empty()) {
         (false, true) => "Issue",
@@ -103,7 +194,9 @@ pub fn build(fixture: &Value) -> Result<Value, String> {
         condition.push_str(&format!(" — 다음은 제외: {exclusions}"));
     }
     let leader_line = any_open.then(|| format!("/goal {condition}"));
-    let loop_line = any_open.then(|| {
+    // The loop line holds until the end condition is met; once it is, offering it would set a
+    // goal that is already reached (#2901: held Issues alone do not keep the loop going).
+    let loop_line = (!met).then(|| {
         let mut line = format!(
             "/goal 저장소에 열린 PR이 0이고 시작할 수 있는 Issue가 0임(milestone {milestone}, HOLD·needs:decision 제외)"
         );
@@ -133,5 +226,8 @@ pub fn build(fixture: &Value) -> Result<Value, String> {
             .collect::<Vec<_>>(),
         "model_can_input": false,
         "writes": false,
+        "startable": startable,
+        "held": held,
+        "end_condition": end_condition,
     }))
 }
