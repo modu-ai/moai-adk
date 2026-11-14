@@ -43,6 +43,10 @@ pub struct Snapshot {
     /// Whether every skill file in the merged tree matches its source-manifest sha256.
     #[serde(default)]
     pub merged_manifest_ok: bool,
+    /// Whether the PR's own change to `src/lib.rs` is only added module lines that the merged
+    /// tree keeps (#2860 rule 2); then a tip change to that file is no code overlap.
+    #[serde(default)]
+    pub lib_mod_only_kept: bool,
     /// PR numbers whose REVIEW.md draft the user confirmed (#2614 decision).
     #[serde(default)]
     pub review_confirmed_prs: Vec<u64>,
@@ -618,6 +622,8 @@ fn g6(s: &Snapshot) -> Result<Vec<String>, Stop> {
             if !s.docs_lines_kept.contains(f) {
                 return Err(stop(format!("merged {f} lost lines one side added")));
             }
+        } else if f == "src/lib.rs" && s.lib_mod_only_kept {
+            // #2860 rule 2: only module lines added on the PR side, all kept in the merge.
         } else {
             return Err(stop(format!("overlap in non-doc file: {f}")));
         }

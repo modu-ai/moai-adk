@@ -388,6 +388,45 @@ pub fn has_body_claim(body: &str) -> bool {
     body.contains("Moai-Claim: ")
 }
 
+const LIB_RS: &str = "src/lib.rs";
+
+/// A module declaration line, `mod x;` or `pub mod x;` (lowercase name).
+fn is_mod_line(line: &str) -> bool {
+    let rest = line.strip_prefix("pub ").unwrap_or(line);
+    let Some(name) = rest.strip_prefix("mod ").and_then(|r| r.strip_suffix(';')) else {
+        return false;
+    };
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_ascii_lowercase() || c == '_')
+        && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// #2860 rule 2 (shell gate_merge.sh): the PR's own change to `src/lib.rs` is only added module
+/// lines (`mod x;` / `pub mod x;`, any number, nothing removed or changed), and the merged tree
+/// still has every one of them. Then a tip change to the same file is not a code overlap.
+fn lib_mods_only_kept(dir: &Path, tree: &str, merge_base: &str, head: &str) -> Result<bool> {
+    let diff = git_ok(
+        dir,
+        &["diff", "--no-color", "-U0", merge_base, head, "--", LIB_RS],
+    )?;
+    let changed: Vec<&str> = diff
+        .lines()
+        .filter(|l| {
+            (l.starts_with('+') || l.starts_with('-'))
+                && !l.starts_with("+++")
+                && !l.starts_with("---")
+        })
+        .collect();
+    let added: Vec<&str> = changed.iter().filter_map(|l| l.strip_prefix('+')).collect();
+    if changed.is_empty() || added.len() != changed.len() || !added.iter().all(|l| is_mod_line(l)) {
+        return Ok(false);
+    }
+    let (ok, merged) = git(dir, &["show", &format!("{tree}:{LIB_RS}")])?;
+    Ok(ok && added.iter().all(|l| merged.lines().any(|m| m == *l)))
+}
+
 fn is_commit(dir: &Path, sha: &str) -> Result<bool> {
     Ok(git(dir, &["cat-file", "-e", &format!("{sha}^{{commit}}")])?.0)
 }
@@ -734,10 +773,13 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
 
     let mut docs_lines_kept = Vec::new();
     let mut merged_manifest_ok = false;
+    let mut lib_mod_only_kept = false;
     if merge_clean {
         for f in pr_files.iter().filter(|f| tip_files.contains(f)) {
             if f == MANIFEST {
                 merged_manifest_ok = manifest_matches(dir, &merged_tree)?;
+            } else if f == LIB_RS {
+                lib_mod_only_kept = lib_mods_only_kept(dir, &merged_tree, &merge_base, &head)?;
             } else if f.starts_with("docs/") {
                 let from = tip_since.clone().unwrap_or_default();
                 let sides = [
@@ -766,6 +808,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         merge_clean,
         docs_lines_kept,
         merged_manifest_ok,
+        lib_mod_only_kept,
         review_confirmed_prs: target.review_confirmed_prs.clone(),
         body_check_ok: body_check(&body),
         verdict_base_known,

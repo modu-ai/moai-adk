@@ -1455,3 +1455,61 @@ fn a_short_verdict_base_is_resolved_to_one_commit() {
     assert_eq!(s.verdict_base_full, None);
     assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
 }
+
+/// A repository whose base already has `src/lib.rs`; the PR and the tip each rewrite it.
+fn repo_lib(pr_lib: &str, tip_lib: &str) -> Repo {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let base = "pub mod a;\n\npub mod m;\n\npub mod z;\n";
+    let a = commit(d, &[("src/lib.rs", base), ("src/a.rs", "a\n")], "base");
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    let b = commit(
+        d,
+        &[("src/lib.rs", pr_lib), ("src/new.rs", "n\n")],
+        "pr\n\nMoai-Claim: 9#555",
+    );
+    git_ok(d, &["checkout", "-q", "main"]);
+    let c = commit(d, &[("src/lib.rs", tip_lib)], "tip");
+    Repo { _dir: dir, a, b, c }
+}
+
+/// #2860 rule 2 (shell gate_merge.sh): when the PR only adds module lines to `src/lib.rs` and
+/// the merged tree keeps them, the tip's change to that file is no code overlap. Any other PR
+/// change there (a non-module line, a removed line) stays an overlap and stops at G6.
+#[test]
+fn a_lib_rs_overlap_of_added_module_lines_is_allowed() {
+    let tip = "pub mod a;\n\npub mod m;\n\npub mod z;\npub mod zz;\n";
+    let check = |pr_lib: &str| {
+        let r = repo_lib(pr_lib, tip);
+        let t = exchanges(
+            &r.b,
+            &r.c,
+            vec![claim(&r.b), verdict(&r.b, &r.a)],
+            PASS_BODY,
+        );
+        let s = collect(&target(&r), &t).unwrap();
+        assert!(s.merge_clean, "{pr_lib}");
+        assert!(s
+            .tip_files_since_verdict_base
+            .contains(&"src/lib.rs".to_string()));
+        (s.lib_mod_only_kept, gate::check(&s).err().map(|e| e.rule))
+    };
+    // Two added module lines (`pub mod` and `mod`), nothing else: allowed.
+    assert_eq!(
+        check("pub mod a;\npub mod b;\n\npub mod m;\nmod n;\n\npub mod z;\n"),
+        (true, None)
+    );
+    // An added line that is not a module declaration.
+    assert_eq!(
+        check("pub mod a;\npub use a::x;\n\npub mod m;\n\npub mod z;\n"),
+        (false, Some("G6"))
+    );
+    // A removed module line.
+    assert_eq!(check("pub mod a;\n\n\npub mod z;\n"), (false, Some("G6")));
+    // A module name with an upper-case letter is not the declaration form the rule allows.
+    assert_eq!(
+        check("pub mod a;\npub mod Bad;\n\npub mod m;\n\npub mod z;\n"),
+        (false, Some("G6"))
+    );
+}
