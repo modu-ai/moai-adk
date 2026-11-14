@@ -5,13 +5,13 @@
 
 mod common;
 
-use common::git::{git, git_ok};
+use common::git::{git, git_ok, git_raw};
 use moai_cli::forge::policy::Clock;
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
 use moai_cli::gate_loop::{once, LoopTarget};
 use serde_json::{json, Value};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 const API: &str = "https://api.github.com/repos/o/r";
@@ -184,6 +184,7 @@ fn target(dir: &TempDir) -> LoopTarget<'_> {
         base_branch: "main",
         tip: "main",
         review_confirmed_prs: vec![],
+        fetch: false,
     }
 }
 
@@ -892,5 +893,176 @@ fn a_dry_run_with_a_permission_reference_still_writes_nothing() {
             writes(&t)
         );
         assert_eq!(t.remaining(), 0);
+    }
+}
+
+/// #2906 S3: a bare `origin` whose base branch moved on to `c` and that carries
+/// `refs/pull/9/head` = `b`, and a clone made before either (`--no-local`, so it holds only
+/// `a`). `work` keeps `main` at `c`, so `reads(&work, …)` answers the tip read the gate makes
+/// once `c` is fetched. Returns (work, root, clone, a, b, c).
+fn origin_ahead() -> (TempDir, TempDir, PathBuf, String, String, String) {
+    let (work, a, b) = repo(false);
+    let c = git(work.path(), &["rev-parse", "main"]);
+    let root = TempDir::new().unwrap();
+    let origin = root.path().join("origin.git");
+    let local = root.path().join("local");
+    let o = origin.to_str().unwrap();
+    git_ok(
+        root.path(),
+        &["clone", "-q", "--bare", work.path().to_str().unwrap(), o],
+    );
+    git_ok(&origin, &["update-ref", "-d", "refs/heads/pr"]);
+    git_ok(&origin, &["update-ref", "refs/heads/main", &a]);
+    git_ok(
+        root.path(),
+        &["clone", "-q", "--no-local", o, local.to_str().unwrap()],
+    );
+    git_ok(&origin, &["update-ref", "refs/heads/main", &c]);
+    git_ok(&origin, &["update-ref", "refs/pull/9/head", &b]);
+    (work, root, local, a, b, c)
+}
+
+fn clone_target(dir: &Path, fetch: bool) -> LoopTarget<'_> {
+    LoopTarget {
+        dir,
+        owner: "o",
+        repo: "r",
+        base_branch: "main",
+        tip: "refs/remotes/origin/main",
+        review_confirmed_prs: vec![],
+        fetch,
+    }
+}
+
+/// #2906 S3 AC14: without `--fetch` a head the clone does not hold is skipped; with it the
+/// pass first fetches the base branch and `refs/pull/<n>/head` into named remote refs (no
+/// FETCH_HEAD) and judges the pull request on the fetched tip.
+#[test]
+fn fetch_brings_open_heads_before_the_pass() {
+    let (work, _root, local, a, b, c) = origin_ahead();
+    let cs = comments(&b, &a, "agent-10", None);
+    let pr = json!([{"number": 9, "draft": false, "head": {"sha": b}}]);
+
+    let mut ex = vec![list(pr.clone())];
+    ex.extend(reads(&work, &b, &cs));
+    let t = RecordedTransport::new(ex);
+    let out = once(
+        &clone_target(&local, false),
+        "",
+        false,
+        true,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
+    assert_eq!(
+        out["pull_requests"][0]["outcome"],
+        json!("skipped"),
+        "{out}"
+    );
+    assert!(out.get("fetch").is_none(), "{out}");
+    let probe = format!("{b}^{{commit}}");
+    assert!(!git_raw(&local, &["cat-file", "-e", &probe]).success);
+    assert_eq!(git(&local, &["rev-parse", "refs/remotes/origin/main"]), a);
+
+    let mut ex = vec![list(pr)];
+    ex.extend(reads(&work, &b, &cs));
+    let t = RecordedTransport::new(ex);
+    let out = once(
+        &clone_target(&local, true),
+        "",
+        false,
+        true,
+        &t,
+        &t,
+        &NoClock,
+    )
+    .unwrap();
+    assert_eq!(out["fetch"]["ok"], json!(true), "{out}");
+    assert_eq!(
+        out["pull_requests"][0]["outcome"],
+        json!("would_merge"),
+        "{out}"
+    );
+    assert_eq!(git(&local, &["rev-parse", "refs/remotes/origin/pull/9"]), b);
+    assert_eq!(git(&local, &["rev-parse", "refs/remotes/origin/main"]), c);
+    assert!(!local.join(".git").join("FETCH_HEAD").exists());
+    assert!(writes(&t).is_empty(), "{:?}", writes(&t));
+    assert_eq!(t.remaining(), 0);
+}
+
+/// #2906 S3: a fetch that fails is reported in the output, and the pass goes on with what is
+/// local (here the repository has no `origin` at all, and the head is already local).
+#[test]
+fn a_failed_fetch_is_reported_and_the_pass_goes_on() {
+    let (dir, a, b) = repo(false);
+    let cs = comments(&b, &a, "agent-10", None);
+    let mut ex = vec![list(
+        json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+    )];
+    ex.extend(reads(&dir, &b, &cs));
+    let t = RecordedTransport::new(ex);
+    let mut tg = target(&dir);
+    tg.fetch = true;
+    let out = once(&tg, "", false, true, &t, &t, &NoClock).unwrap();
+    assert_eq!(out["fetch"]["ok"], json!(false), "{out}");
+    assert!(
+        out["fetch"]["error"]
+            .as_str()
+            .is_some_and(|e| !e.trim().is_empty()),
+        "{out}"
+    );
+    assert_eq!(
+        out["pull_requests"][0]["outcome"],
+        json!("would_merge"),
+        "{out}"
+    );
+    assert!(writes(&t).is_empty(), "{:?}", writes(&t));
+}
+
+/// #2906 S3 AC15: the shell loop's jq list (`auto_loop.sh`) never hands these to its gate —
+/// the last `ci`/`rc-ci` conclusion is not SUCCESS, or the last verdict is not a PASS on the
+/// current head. The dry run reaches the same end: `stopped`, never a `would_*` action.
+#[test]
+fn shell_prefilter_cases_stop_in_a_dry_run() {
+    let older = "efefefefefefefefefefefefefefefefefefefef";
+    let (dir, a, b) = repo(false);
+    let pass = comments(&b, &a, "agent-10", None);
+    let checks = |c: Value| Exchange {
+        request: HttpRequest::new("GET", format!("{API}/commits/{b}/check-runs?per_page=100")),
+        response: ok(json!({"check_runs": [{"name": "ci", "conclusion": c}]})),
+    };
+    let fail_on_head = json!([
+        {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={b}\n")},
+        {"id": 200, "body": format!("AUDIT #9 (x) head {b} base {a} — verdict: FAIL\n\n감사: agent-10.\n")},
+    ]);
+    let cases: Vec<(&str, Value, Option<Value>)> = vec![
+        ("ci failure", pass.clone(), Some(json!("failure"))),
+        ("ci pending", pass.clone(), Some(Value::Null)),
+        (
+            "PASS on an older head",
+            comments(older, &a, "agent-10", None),
+            None,
+        ),
+        ("FAIL on the current head", fail_on_head, None),
+    ];
+    for (name, cs, ci) in cases {
+        let mut ex = vec![list(
+            json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+        )];
+        ex.extend(reads(&dir, &b, &cs));
+        if let Some(c) = ci {
+            ex[3] = checks(c);
+        }
+        let t = RecordedTransport::new(ex);
+        let out = once(&target(&dir), "", false, true, &t, &t, &NoClock).unwrap();
+        let row = &out["pull_requests"][0];
+        assert_eq!(row["outcome"], json!("stopped"), "{name}: {out}");
+        assert!(
+            row["rule"].as_str().is_some_and(|r| !r.is_empty()),
+            "{name}: {out}"
+        );
+        assert!(writes(&t).is_empty(), "{name}: {:?}", writes(&t));
     }
 }
