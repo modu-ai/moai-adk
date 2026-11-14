@@ -333,3 +333,30 @@ fn a_name_the_tool_writes_is_never_copied() {
         assert_eq!(tree(&home), before, "{name}");
     }
 }
+
+/// #2811 D7/D8a: with a work folder in the Go `~/.moai` (any letter case) the apply refuses
+/// before any write — the Go worktree folder is never moved, renamed or copied.
+#[test]
+fn a_work_folder_keeps_the_go_folder_where_it_is() {
+    for rel in [
+        "worktrees/projects/repo/feat/a.txt",
+        "projects/p/a.txt",
+        "Worktrees/x",
+    ] {
+        let (_d, home) = go_home();
+        write(&home, &format!(".moai/{rel}"), "work\n");
+        let p = plan(&home);
+        assert_eq!(p["action"], json!("blocked"), "{rel}: {p}");
+        let before = tree(&home);
+        let top = rel.split('/').next().unwrap();
+        let a = apply(
+            &home,
+            p["plan_digest"].as_str().unwrap(),
+            "approved",
+            &[top],
+        );
+        assert!(a.to_string().contains("not `migrate`"), "{rel}: {a}");
+        assert_eq!(tree(&home), before, "{rel}");
+        assert!(!home.join(".moai-backup").exists(), "{rel}");
+    }
+}

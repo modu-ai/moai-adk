@@ -92,3 +92,59 @@ fn baseline_git_failures_follow_the_identity_rule() {
     assert!(!out.status.success());
     assert_eq!(error_kind(&out), Value::from("not_found"));
 }
+
+/// #2811 AC-3 (D4): a worktree in the new home place sits outside the project, so the
+/// baseline names it `<outside-project>` — never its absolute path — and the old-place one
+/// keeps its relative path. Temporary HOME only.
+#[test]
+fn a_home_place_worktree_reads_outside_project() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let project = root.join("repo");
+    fs::create_dir_all(&project).unwrap();
+    repo(&project, "p");
+    fs::write(project.join(".gitignore"), ".moai-cli/\n").unwrap();
+    let home = root.join("home");
+    let new_wt = home.join(".moai/worktrees/repo-1-x");
+    let old_wt = project.join(".moai-cli/worktrees/1-y");
+    git(
+        &project,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/1-x",
+            new_wt.to_str().unwrap(),
+        ],
+    );
+    git(
+        &project,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/1-y",
+            old_wt.to_str().unwrap(),
+        ],
+    );
+    let (out, v) = inventory(&project, &[("HOME", &home)]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let paths: Vec<&str> = v["baseline"]["worktrees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, [".", ".moai-cli/worktrees/1-y", "<outside-project>"]);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !text.contains(home.to_str().unwrap()),
+        "absolute home path leaked"
+    );
+}
