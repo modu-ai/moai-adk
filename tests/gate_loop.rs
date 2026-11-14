@@ -674,6 +674,9 @@ fn a_passing_draft_is_marked_ready_then_merged() {
 fn a_draft_that_cannot_be_marked_ready_is_not_merged() {
     for response in [
         ok(json!({"errors": [{"message": "no"}]})),
+        // GraphQL may answer partial data with errors: still not ready enough to merge.
+        ok(json!({"errors": [{"message": "partial"}],
+            "data": {"markPullRequestReadyForReview": {"pullRequest": {"isDraft": false}}}})),
         HttpResponse {
             status: 502,
             headers: Default::default(),
