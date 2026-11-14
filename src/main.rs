@@ -2050,15 +2050,30 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             if !(terminal && preview["exists"] == serde_json::json!(true)) {
                 return Ok(preview);
             }
-            let what = format!(
-                "key-remove deletes 1 file\n  {provider} key, {} scope: {}\n",
-                preview["scope"].as_str().unwrap_or("?"),
-                preview["path"].as_str().unwrap_or("?")
-            );
-            if moai_cli::progress::ask_terminal(&what, "Remove it?")? {
+            use moai_cli::ui_text::Msg;
+            let what = |p: &moai_cli::ui::Painter| {
+                format!(
+                    "{}\n  {}\n",
+                    p.text(Msg::KeyRemoveDeletes),
+                    p.fill(
+                        Msg::KeyRemoveWhich,
+                        &[
+                            ("provider", provider.as_str()),
+                            ("scope", preview["scope"].as_str().unwrap_or("?")),
+                            ("path", preview["path"].as_str().unwrap_or("?")),
+                        ],
+                    )
+                )
+            };
+            if moai_cli::progress::ask_terminal(what, Msg::RemoveIt)? {
                 moai_cli::key_vault::remove(&home, &scope, &provider, true)
             } else {
-                eprintln!("next: run with --yes to remove it without asking");
+                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+                eprintln!(
+                    "{}: {}",
+                    moai_cli::ui::Token::Info.word_in(lang),
+                    moai_cli::ui_text::text(Msg::RemoveWithYes, lang)
+                );
                 Ok(preview)
             }
         }
@@ -2453,9 +2468,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 .ok_or("home directory missing; update requires HOME")?;
             // The shared confirm prompt (#2806): same terminal rule and question as before.
             moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
+                use moai_cli::ui_text::Msg;
                 moai_cli::progress::ask_terminal(
-                    &format!("moai update preview:\n{summary}"),
-                    "Apply this update?",
+                    |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                    Msg::ApplyUpdate,
                 )
             })
         }
@@ -3501,6 +3517,28 @@ mod help_rules {
             && !about.ends_with('.')
             && !about.contains('#')
             && !about.contains('`')
+    }
+
+    /// #2824 re-audit B2: the rule itself at its edges. clap drops a doc comment's closing
+    /// period, so the period case is reachable only by calling the rule directly.
+    #[test]
+    fn the_one_line_rule_holds_at_its_edges() {
+        let sixty = format!("A{}", "b".repeat(59));
+        assert_eq!(sixty.chars().count(), 60);
+        assert!(about_ok(&sixty));
+        assert!(!about_ok(&format!("{sixty}c")), "61 characters");
+        // Characters, not bytes: 60 Hangul syllables are 180 bytes.
+        assert!(about_ok(&format!("A{}", "가".repeat(59))));
+        assert!(about_ok("Show the installed MoAI binaries"));
+        for off in [
+            "Show the installed MoAI binaries.",
+            "show the installed MoAI binaries",
+            "Show the binaries (#2802)",
+            "Show the `moai` binaries",
+            "",
+        ] {
+            assert!(!about_ok(off), "{off:?}");
+        }
     }
 
     fn meeting(rule: impl Fn(&clap::Command) -> bool) -> BTreeSet<String> {

@@ -1,0 +1,9 @@
+◆ home-routing-plan  <home>
+
+ACTION    HOST
+→ create  claude
+→ create  codex
+
+2 create · writes nothing
+→ next: moai home-routing-apply <same arguments>
+  --plan-digest sha256:<digest>
