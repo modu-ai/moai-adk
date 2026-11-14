@@ -500,6 +500,72 @@ fn install_plans_the_path_stub() {
     assert_eq!(find("moai")["repoint"], json!(false), "{p}");
 }
 
+// #2871 U3c-pre (plan 5.2): a link into the old `versions` folder is re-pointed only when
+// `versions` and `path` both move. A `versions` that stays (here a link) leaves the old target
+// valid, and the new one would not exist.
+#[test]
+fn install_does_not_repoint_a_stub_when_versions_stays() {
+    let (d, home) = rust_home();
+    fs::create_dir_all(home.join(".moai-cli/versions/1.0.0")).unwrap();
+    let version_bin = home.join(".moai-cli/versions/1.0.0/bin/moai-cli");
+    symlink(&version_bin, home.join(".moai-cli/path/moai-cli")).unwrap();
+    let repoint = |p: &Value| {
+        p["stub"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["name"] == "moai-cli")
+            .unwrap()["repoint"]
+            .clone()
+    };
+    // Control: both move, so the link is re-pointed.
+    let moving = plan(&home);
+    assert_eq!(act(&moving, "versions").0, "move", "{moving}");
+    assert_eq!(repoint(&moving), json!(true), "{moving}");
+    // `versions` becomes a link: it stays where it is.
+    let parked = d.path().join("parked-versions");
+    fs::rename(home.join(".moai-cli/versions"), &parked).unwrap();
+    symlink(&parked, home.join(".moai-cli/versions")).unwrap();
+    let staying = plan(&home);
+    assert_eq!(act(&staying, "versions").0, "keep", "{staying}");
+    assert_eq!(repoint(&staying), json!(false), "{staying}");
+}
+
+// #2871 U3c-pre (plan 5.1): the apply creates the install journal folder (for its lock and its
+// manifest) before it re-plans; that arrival must not change the digest it compares. The folder
+// is still listed, as kept.
+#[test]
+fn install_digest_ignores_the_journal_folder_the_apply_creates() {
+    let (_d, home) = rust_home();
+    // The fixture already holds a journal folder; start from a HOME without one.
+    fs::remove_dir_all(home.join(".moai-cli/home-install")).unwrap();
+    let before = plan(&home);
+    assert!(
+        before["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|e| e["name"] != "home-install"),
+        "{before}"
+    );
+    fs::create_dir_all(home.join(".moai-cli/home-install")).unwrap();
+    let after = plan(&home);
+    assert_eq!(
+        act(&after, "home-install"),
+        ("keep".into(), "install_journal".into()),
+        "{after}"
+    );
+    assert_eq!(before["content_digest"], after["content_digest"], "{after}");
+    assert_eq!(before["confirm_token"], after["confirm_token"], "{after}");
+    // The digest still binds every other entry: a new top-level name changes it.
+    write(&home, ".moai-cli/zz-new/x.json", "{}");
+    let changed = plan(&home);
+    assert_ne!(
+        after["content_digest"], changed["content_digest"],
+        "{changed}"
+    );
+}
+
 #[test]
 fn install_blocks_when_moai_home_points_elsewhere() {
     let (_d, home) = rust_home();
