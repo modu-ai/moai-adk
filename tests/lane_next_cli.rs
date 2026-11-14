@@ -352,3 +352,61 @@ fn an_applied_decision_is_not_resumed_again() {
     let r = next(&thread(json!({"id": 52, "body": "DECISION-APPLIED"})));
     assert_eq!(kind(&r), json!("resume_decision"), "{r}");
 }
+
+/// #2880 W3 (AC-2): SYNC before new work — a merged card of mine with no close table is a P1
+/// task ahead of an audit I reserved; once `CLOSE-TABLE` is posted after the claim it is no
+/// task, and another open pull request of mine for the card keeps it in progress.
+#[test]
+fn a_merged_card_without_its_close_table_comes_before_audits() {
+    let snap = |extra: Vec<Value>, prs: Value| {
+        let mut comments = vec![claim(100, LANE)];
+        comments.extend(extra);
+        json!({"threads": [{"number": 2831, "comments": comments,
+            "merged": [{"number": 2856, "claim": 100, "merged_at": "2026-11-14T03:00:00Z"}]}],
+            "prs": prs})
+    };
+    let audit = json!([pr(
+        11,
+        &h('c'),
+        Some("agent-28"),
+        json!([audit_claim(1, LANE, &h('c'))])
+    )]);
+    let r = next(&snap(vec![], audit.clone()));
+    assert_eq!(kind(&r), json!("card_pr_merged"), "{r}");
+    assert_eq!(r["next"]["priority"], json!("P1"));
+    assert!(r["next"]["action"]
+        .as_str()
+        .unwrap()
+        .contains("CLOSE-TABLE #2831"));
+    // Close table posted: the audit is next, and the card is no task.
+    let table = json!({"id": 101, "body": "CLOSE-TABLE #2831\n\n| AC | ... |"});
+    let r = next(&snap(vec![table.clone()], audit));
+    assert_eq!(kind(&r), json!("audit"), "{r}");
+    let r = next(&snap(vec![table], json!([])));
+    assert_eq!(r["next"], json!(null), "{r}");
+    // A table line that is not the first line does not count.
+    let quoted = json!({"id": 102, "body": "note\nCLOSE-TABLE #2831"});
+    assert_eq!(
+        kind(&next(&snap(vec![quoted], json!([])))),
+        json!("card_pr_merged")
+    );
+    // Another open pull request of mine for the card: still in progress, not closed yet.
+    let open = json!([{"number": 2870, "head": h('a'), "author_lane": LANE, "claim_issue": 2831,
+        "comments": [audit_claim(1, "agent-26", &h('a'))]}]);
+    assert_eq!(next(&snap(vec![], open))["next"], json!(null));
+    // #2891 audit B1 (Ma): an earlier stage's close table, posted before this claim (#2825: S6a
+    // CLOSE-TABLE then the S6b claim), does not close the new card.
+    let staged = json!({"threads": [{"number": 2831, "comments": [
+            {"id": 90, "body": "CLOSE-TABLE #2831 (S6a)\n\n| AC | ... |"}, claim(100, LANE)],
+        "merged": [{"number": 2856, "claim": 100, "merged_at": "2026-11-14T03:00:00Z"}]}]});
+    let r = next(&staged);
+    assert_eq!(kind(&r), json!("card_pr_merged"), "{r}");
+    assert_eq!(r["next"]["priority"], json!("P1"));
+    // #2891 audit B1 (Mf): another lane's open pull request on the same (split) Issue does not
+    // hold my card's SYNC (#2802, #2825).
+    let theirs = json!([{"number": 2871, "head": h('b'), "author_lane": "agent-29", "claim_issue": 2831,
+        "comments": [audit_claim(1, "agent-26", &h('b'))]}]);
+    let r = next(&snap(vec![], theirs));
+    assert_eq!(kind(&r), json!("card_pr_merged"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2831));
+}

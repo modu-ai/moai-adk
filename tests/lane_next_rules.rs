@@ -34,6 +34,17 @@ fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
     }
 }
 
+/// #2880 W4 (AC-3): the project rules say the lane's PLAN comment is part of the design, next
+/// to the Issue body.
+#[test]
+fn agents_md_names_the_plan_comment_as_part_of_the_design() {
+    let agents =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md")).unwrap();
+    assert!(agents
+        .contains("Each Issue body plus the lane's `PLAN #<issue>` comment is the design (#2880)"));
+    assert!(!agents.contains("Each Issue body is the design;"));
+}
+
 /// Every flag the workflow names exists on the command, and the limits it states match.
 #[test]
 fn the_flags_the_workflow_names_are_the_commands_own() {
