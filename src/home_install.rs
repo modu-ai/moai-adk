@@ -256,7 +256,8 @@ fn vault_facts(old: &Path) -> Value {
         .count();
     let multi_link = names
         .iter()
-        .filter(|n| link_count(&vault.join(n)) > 1)
+        // A folder's link count grows with its sub-folders; only a file with several names counts.
+        .filter(|n| kind_of(&vault.join(n)) != "folder" && link_count(&vault.join(n)) > 1)
         .count();
     let loose = [mode_of(&vault), master_mode]
         .into_iter()
@@ -390,7 +391,11 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             let kind = kind_of(&raw);
             let row = home_layout::lookup(n);
             let (mut action, mut reason) = decide(row, n, kind);
-            if action == "move" && taken.contains(&n.to_ascii_lowercase()) {
+            // The listing compare folds ASCII case only; the file system is asked as well, so a
+            // volume that folds more (case-insensitive APFS, Unicode forms) still reports the clash.
+            let clash = taken.contains(&n.to_ascii_lowercase())
+                || fs::symlink_metadata(moai.join(n)).is_ok();
+            if action == "move" && clash {
                 action = "blocked";
                 reason = "destination_taken";
                 blocks.push(format!("destination_taken:{n}"));
@@ -410,6 +415,17 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
                 "destination": destination,
                 "identity": identity(&raw),
             }));
+        }
+    }
+
+    if listed && movable {
+        // The alias table and the stub plan are bounded lists the later steps rely on; a cut one
+        // would leave a version folder without an alias or a `path` link pointing nowhere.
+        if names_of(&old.join("versions")).0.len() > CANDIDATE_LIMIT {
+            blocks.push("versions_not_fully_listed".into());
+        }
+        if names_of(&old.join("path")).0.len() > STUB_LIMIT {
+            blocks.push("path_not_fully_listed".into());
         }
     }
 
