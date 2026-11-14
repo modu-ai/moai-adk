@@ -97,6 +97,7 @@ Lane and leader
   leader-tick             Run one leader supervision tick
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host
+  lane-stop-hook          Answer a Codex lane's Stop hook
   lane-resume-note        Write a card's resume note
   lane-resume-check       Read a card's resume note from a comment
   lane-duty-line          Print the line a leader types into a lane
@@ -116,6 +117,8 @@ Lane and leader
   gate-check              Check every rule of the leader merge gate
   gate-merge              Merge one pull request when the gate passes
   gate-loop               Run one pass of the leader merge loop
+  gate-schedule-plan      Preview a scheduler entry for gate-loop
+  gate-schedule-apply     Write a previewed gate-loop scheduler entry
   wait                    Wait until a condition holds on GitHub
   scope-check             Check a claim's write scope against others
   worktree-plan           Preview the branch and worktree of a claim
