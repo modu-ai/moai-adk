@@ -34,16 +34,6 @@ pub fn is_new_home(home: &Path) -> bool {
             == "none"
 }
 
-/// The folder a writer that creates HOME state uses: `.moai` for a new HOME (which
-/// [`adopt_new`] then marks), otherwise [`dir`]. A preview and its apply both name it.
-pub fn create_dir(home: &Path) -> &'static str {
-    if is_new_home(home) {
-        MOAI_DIR
-    } else {
-        dir(home)
-    }
-}
-
 /// Make a new HOME's `~/.moai/` and its marker, so every later read and write resolves to
 /// `~/.moai`. Does nothing for any other HOME (an earlier `~/.moai-cli`, a Go `~/.moai`) and says
 /// whether it wrote. The folder is created exclusively and the marker published without
@@ -105,7 +95,6 @@ mod tests {
         // New HOME: `.moai` and a marker that `dir` then reads.
         let home = tempfile::tempdir().unwrap();
         assert!(is_new_home(home.path()));
-        assert_eq!(create_dir(home.path()), MOAI_DIR);
         assert_eq!(adopt_new(home.path(), "test"), Ok(true));
         assert_eq!(dir(home.path()), MOAI_DIR);
         assert_eq!(adopt_new(home.path(), "test"), Ok(false), "only once");
@@ -113,7 +102,6 @@ mod tests {
         let earlier = tempfile::tempdir().unwrap();
         fs::create_dir(earlier.path().join(crate::HOME_STATE_DIR)).unwrap();
         assert!(!is_new_home(earlier.path()));
-        assert_eq!(create_dir(earlier.path()), crate::HOME_STATE_DIR);
         assert_eq!(adopt_new(earlier.path(), "test"), Ok(false));
         assert!(!earlier.path().join(MOAI_DIR).exists());
         // A Go `~/.moai`: not ours, nothing written into it.
@@ -121,7 +109,6 @@ mod tests {
         fs::create_dir_all(go.path().join(".moai/state")).unwrap();
         fs::write(go.path().join(".moai/state/active-sessions.json"), "{}").unwrap();
         assert!(!is_new_home(go.path()));
-        assert_eq!(create_dir(go.path()), crate::HOME_STATE_DIR);
         assert_eq!(adopt_new(go.path(), "test"), Ok(false));
         assert!(!go.path().join(".moai/moai-cli.json").exists());
     }

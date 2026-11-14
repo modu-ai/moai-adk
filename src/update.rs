@@ -506,9 +506,7 @@ pub(crate) fn host_receipt_path(
     host: &str,
     create: bool,
 ) -> Result<PathBuf> {
-    // #2696 C4b2: a preview names the folder a new HOME's apply creates (`~/.moai`).
-    let dir = home
-        .join(crate::home_root::create_dir(home))
+    let dir = crate::home_root::path(home)
         .join("installations")
         .join(install_id)
         .join("hosts")
