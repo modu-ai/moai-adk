@@ -167,8 +167,9 @@ fn only_the_first_word_hook_is_taken_and_its_input_never_blocks() {
     }
 }
 
-/// AC-2: both names print the same `--version` line, `moai-cli <ver> (rust)`, the same help
-/// and the same usage error, byte for byte.
+/// AC-2: both names print the same `--version` line, `moai-cli <ver> (rust)`, and the same help
+/// and usage error except the binary name: since #2802 S1 (design #2799 D2 section 9) usage and
+/// help name the binary that ran, so `moai`'s text equals `moai-cli`'s with that name swapped.
 #[test]
 fn both_names_print_the_same_output() {
     let version = run(MOAI, &["--version"], b"");
@@ -181,8 +182,12 @@ fn both_names_print_the_same_output() {
         first.contains(env!("CARGO_PKG_VERSION")),
         "{first} names the package version"
     );
+    // `--version` is the one line both names print as it is (D3 decision 2).
+    assert_eq!(
+        text(&run(MOAI, &["--version"], b"").stdout),
+        text(&run(MOAI_CLI, &["--version"], b"").stdout)
+    );
     for args in [
-        vec!["--version"],
         vec!["--help"],
         vec!["claim-verify", "--help"],
         vec!["no-such-command"],
@@ -191,13 +196,23 @@ fn both_names_print_the_same_output() {
         let a = run(MOAI, &args, b"");
         let b = run(MOAI_CLI, &args, b"");
         assert_eq!(a.status.code(), b.status.code(), "{args:?}");
-        assert_eq!(text(&a.stdout), text(&b.stdout), "{args:?} stdout");
-        assert_eq!(text(&a.stderr), text(&b.stderr), "{args:?} stderr");
+        let named = |s: String| s.replace("moai-cli", "moai");
+        assert_eq!(
+            named(text(&a.stdout)),
+            named(text(&b.stdout)),
+            "{args:?} stdout"
+        );
+        assert_eq!(
+            named(text(&a.stderr)),
+            named(text(&b.stderr)),
+            "{args:?} stderr"
+        );
     }
-    // The usage line names `moai` whichever binary ran (clap `bin_name`, #2812 W3).
+    // The usage line names the binary that ran.
     let help = text(&run(MOAI, &["--help"], b"").stdout);
-    assert!(help.contains("Usage: moai "), "{help}");
-    assert!(!help.contains("Usage: moai-cli"), "{help}");
+    assert!(help.contains("Usage: moai <command>"), "{help}");
+    let help = text(&run(MOAI_CLI, &["--help"], b"").stdout);
+    assert!(help.contains("Usage: moai-cli <command>"), "{help}");
 }
 
 /// Impact table B2: a `moai` hard-linked beside `moai-cli` is the same installation — the

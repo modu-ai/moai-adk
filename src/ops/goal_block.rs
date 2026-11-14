@@ -2,6 +2,8 @@
 
 use std::io::Read;
 
+/// Build the goal paste block from the state
+///
 /// Build the `/goal` paste block from the state on stdin (#2163; #2708 moved it from
 /// tools/gen_goal_block.py): `{milestone, issues, prs, keep_set}` in, the leader line, the
 /// agent's lane-wide loop line and card lines, and the Codex line out. Reads only stdin.

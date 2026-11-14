@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Install previewed base agents into HOME
+///
 /// Apply a previewed base agent install (#2592): only create and update are written, with a
 /// receipt holding the before bytes. The digest must match a fresh preview.
 #[derive(clap::Args)]

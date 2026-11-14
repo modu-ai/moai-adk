@@ -31,7 +31,7 @@
         "detail": null
       },
       {
-        "path": ".moai-cli/manifests/generation.json",
+        "path": ".moai/manifests/generation.json",
         "action": "create",
         "tracked_by_default": true,
         "expected_sha256": null,
@@ -55,7 +55,7 @@
       "receipt": "<masked>",
       "applied": [
         "AGENTS.md",
-        ".moai-cli/manifests/generation.json"
+        ".moai/manifests/generation.json"
       ],
       "files_created": true,
       "manifest_sha256": "sha256:f1fae6ea9efe4f613cb5d786f52602b564bdad63972d469e70335bc7b9d6327a",

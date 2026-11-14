@@ -125,7 +125,8 @@ fn removed_installers_are_unknown_and_preserve_home_and_project_bytes() {
 #[test]
 fn help_excludes_removed_installers_and_keeps_search_atlas_and_project_generation() {
     let root = tempfile::tempdir().unwrap();
-    let out = run(root.path(), root.path(), &["--help"]);
+    // `help --all` lists every command (#2802 S1); the root help shows only the person-facing ones.
+    let out = run(root.path(), root.path(), &["help", "--all"]);
     assert!(out.status.success(), "{:?}", out);
     let help = String::from_utf8(out.stdout).unwrap();
     for removed in REMOVED {

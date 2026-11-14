@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// List legacy moai-* skill folders
+///
 /// List legacy `moai-*` skill folders (every `moai-` entry except `moai` itself) under the
 /// user skill folders of the supported hosts in HOME (the list is `skills_legacy::ROOTS`), with
 /// `count` and a `summary` line that says `0건` when there are none, plus the Codex
