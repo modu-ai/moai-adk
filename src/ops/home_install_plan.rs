@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-/// Preview moving this generation's items from ~/.moai-cli to ~/.moai
+/// Preview moving ~/.moai-cli items to ~/.moai
 ///
 /// Classify each top-level entry of `~/.moai-cli` with the HOME name table (#2871): `move` (a
 /// name this generation writes, renamed to `~/.moai/<name>`), `keep` (user data, the old shared
