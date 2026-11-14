@@ -1,8 +1,5 @@
 use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
-use moai_cli::{
-    agents_apply, agents_plan, apply, contract, plan, session_launch, AgentsPlan, AgentsRequest,
-    Plan, Profile, SessionRequest,
-};
+use moai_cli::{contract, session_launch, SessionRequest};
 use std::{
     io::{self, Read},
     path::PathBuf,
@@ -139,32 +136,6 @@ enum Command {
     /// The one-file operations under `src/ops/` (#2617): add a file there, not a variant here.
     #[command(flatten)]
     Op(ops::Ops),
-    /// Preview the project profile
-    ProjectPlan { project: PathBuf },
-    /// Detect the project's facts
-    ///
-    /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
-    /// manifests, languages, language servers, configured MCP server names, databases. Reads
-    /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
-    ProjectDetect { project: PathBuf },
-    /// Write a previewed project profile
-    ProjectApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Preview the AGENTS.md managed section
-    AgentsPlan { project: PathBuf },
-    /// Write a previewed AGENTS.md managed section
-    AgentsApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Revert the files one apply published
     ///
     /// Revert exactly the files one apply request published, from its receipt
@@ -354,23 +325,6 @@ enum Command {
     /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
     /// named Issues, their open PRs and the local worktrees; writes nothing.
     LaneStatus { project: PathBuf },
-    /// Choose the writing language item by item
-    ///
-    /// Per-item writing-language setup (#2293): asks one question per item and returns a
-    /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
-    /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
-    /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
-    LanguageSetup {
-        project: PathBuf,
-        #[arg(long, conflicts_with = "answers")]
-        questions: bool,
-        #[arg(long)]
-        answers: bool,
-        /// Conversation language code for the conversation-default items; else the
-        /// profile's `language.user_chat`, else `en`.
-        #[arg(long)]
-        conversation: Option<String>,
-    },
     /// Check claim ownership before a commit or push
     ///
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
@@ -543,21 +497,6 @@ enum Command {
         /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
         #[arg(long)]
         confirm_replace: Option<String>,
-    },
-    /// Preview the managed Codex config keys
-    ///
-    /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
-    CodexConfigPlan { project: PathBuf },
-    /// Write previewed Codex config keys
-    ///
-    /// Apply a previewed project config with the same stdin, digest and permission reference.
-    /// User HOME and CODEX_HOME config targets are refused; trust is never changed.
-    CodexConfigApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
     },
     /// Preview the MoAI hook set for one host
     ///
@@ -796,54 +735,11 @@ enum Command {
         #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
         pr_seq: u32,
     },
-    /// Preview the project's generated agent and skill files
-    ///
-    /// Plan project-specific generated files read-only (03-C #1997): typed request on
-    /// stdin; judgment envelope on stdout; writes nothing.
-    GenerationPlan { project: PathBuf },
-    /// Preview the project's GitHub templates
-    ///
-    /// Plan the GitHub templates of a project (08-B #2013): typed request on stdin
-    /// (`github_issues` opts in); read-only.
-    GithubPlan { project: PathBuf },
     /// Preview syncing the project's GitHub labels
     ///
     /// Plan a project's label sync from `.github/moai/labels.yml` (#2434 decision 40): typed
     /// request `{schema_version, owner, repo}` on stdin; GET only, never deletes.
     LabelsPlan { project: PathBuf },
-    /// Sync previewed GitHub labels
-    ///
-    /// Apply an approved label sync plan (#2434 decision 40): the exact plan on stdin,
-    /// `--plan-digest` and `--permission-reference`; POST/PATCH only.
-    LabelsApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Write previewed GitHub templates
-    ///
-    /// Apply an approved GitHub template plan (08-B #2013): the exact plan on stdin,
-    /// `--plan-digest` and `--permission-reference`.
-    GithubApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Write previewed generated agent and skill files
-    ///
-    /// Apply an approved generation plan (03-C #1997): the exact plan on stdin,
-    /// `--plan-digest` and `--permission-reference`.
-    GenerationApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Preview an independent audit clone
     ///
     /// Read-only plan of an independent audit clone (WT-3, #2380): the single-branch,
@@ -1206,8 +1102,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         | LaneEnv { .. }
         | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
-        AgentsApply { .. } => "agents.apply",
-        AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
@@ -1218,28 +1112,20 @@ fn operation(command: &Command) -> Option<&'static str> {
         ClaimVerify { .. } => "claim.verify",
         ClaudeSettingsApply { .. } => "claude.settings_apply",
         ClaudeSettingsPlan { .. } => "claude.settings_plan",
-        CodexConfigApply { .. } => "codex.config_apply",
-        CodexConfigPlan { .. } => "codex.config_plan",
         DecisionAppend { .. } => "decision.append",
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
         EffectsReconcile { .. } => "effects.reconcile",
         FlowWipCheck { .. } => "flow.wip_check",
-        GenerationApply { .. } => "generation.apply",
-        GenerationPlan { .. } => "generation.plan",
-        GithubApply { .. } => "github.apply",
-        GithubPlan { .. } => "github.plan",
         HookDispatch { .. } => "hook.dispatch",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         HooksRevert { .. } => "hooks.revert",
         IndexBuild { .. } => "index.build",
-        LabelsApply { .. } => "labels.apply",
         LabelsPlan { .. } => "labels.plan",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
         LaneStopHook { .. } => "lane.stop_hook",
-        LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1255,9 +1141,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
-        ProjectApply { .. } => "project.apply",
-        ProjectDetect { .. } => "project.detect",
-        ProjectPlan { .. } => "project.plan",
         HeavySlotAcquire { .. } => "heavy_slot.acquire",
         HeavySlotStatus { .. } => "heavy_slot.status",
         QueueFree { .. } => "queue.free",
@@ -1673,38 +1556,6 @@ fn run_internal(
 fn run_internal_classified(command: Command) -> Result<serde_json::Value, String> {
     match command {
         Command::Op(op) => op.run(),
-        Command::ProjectDetect { project } => moai_cli::project_detect::detect_cli(&project),
-        Command::ProjectPlan { project } => {
-            // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
-            // the profile message; no input value is echoed.
-            let profile: Profile = serde_json::from_value(input::<serde_json::Value>()?)
-                .map_err(|_| "invalid or nonportable profile; no values were logged".to_string())?;
-            serde_json::to_value(plan(&project, profile)?).map_err(|_| "encode failed".into())
-        }
-        Command::ProjectApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => apply(
-            &project,
-            plan_input::<Plan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::AgentsPlan { project } => {
-            serde_json::to_value(agents_plan(&project, input::<AgentsRequest>()?)?)
-                .map_err(|_| "encode failed".into())
-        }
-        Command::AgentsApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => agents_apply(
-            &project,
-            plan_input::<AgentsPlan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
         Command::ApplyRecover {
             project,
             receipt,
@@ -1738,34 +1589,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::LanguageSetup {
-            project,
-            questions,
-            answers,
-            conversation,
-        } => {
-            use moai_cli::language::{setup, SetupMode};
-            let mode = if questions {
-                SetupMode::Questions
-            } else if answers {
-                let value = input::<serde_json::Value>()?;
-                SetupMode::Answers(
-                    value
-                        .as_object()
-                        .cloned()
-                        .ok_or("answers must be a JSON object")?,
-                )
-            } else {
-                SetupMode::Interactive
-            };
-            setup(
-                &project,
-                mode,
-                conversation.as_deref(),
-                &mut io::stdin().lock(),
-                &mut io::stderr(),
-            )
-        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -1951,26 +1774,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 confirm_replace.as_deref(),
             )
         }
-        Command::CodexConfigPlan { project } => {
-            let home = codex_config_home(&project)?;
-            let desired = input()?;
-            moai_cli::hosts::codex_config::config_plan(&project, &home, &desired)
-        }
-        Command::CodexConfigApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => {
-            let home = codex_config_home(&project)?;
-            let desired = input()?;
-            moai_cli::hosts::codex_config::config_apply(
-                &project,
-                &home,
-                &desired,
-                &plan_digest,
-                &permission_reference,
-            )
-        }
         Command::WorktreePlan {
             project,
             source,
@@ -2127,62 +1930,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
-        Command::GithubPlan { project } => {
-            serde_json::to_value(moai_cli::github_templates::github_plan(
-                &project,
-                input::<moai_cli::github_templates::GithubRequest>()?,
-            )?)
-            .map_err(|_| "encode failed".into())
-        }
         Command::LabelsPlan { project } => moai_cli::forge::labels::labels_plan_cli(
             &project,
             input::<moai_cli::forge::labels::LabelsRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::LabelsApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => {
-            if !moai_cli::contract::permission_reference_ok(&permission_reference) {
-                return Err("permission reference required".into());
-            }
-            moai_cli::forge::labels::labels_apply_cli(
-                &project,
-                plan_input::<serde_json::Value>()?,
-                &plan_digest,
-                &permission_reference,
-                &moai_cli::forge::transport::GhTransport::from_env()?,
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
-        Command::GithubApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::github_templates::github_apply(
-            &project,
-            plan_input::<moai_cli::github_templates::GithubPlan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::GenerationPlan { project } => {
-            serde_json::to_value(moai_cli::generation::generation_plan(
-                &project,
-                input::<moai_cli::generation::GenerationRequest>()?,
-            )?)
-            .map_err(|_| "encode failed".into())
-        }
-        Command::GenerationApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::generation::generation_apply(
-            &project,
-            plan_input::<moai_cli::generation::GenerationPlan>()?,
-            &plan_digest,
-            &permission_reference,
         ),
         Command::DecisionAppend {
             project,
