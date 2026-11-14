@@ -73,6 +73,70 @@ pub struct Snapshot {
     /// `flow-gate-verdict` made). Absent means no.
     #[serde(default)]
     pub body_claim: bool,
+    /// The mechanical delta from the last verdict's head to the current head (#2833): absent
+    /// when they are the same head or the last verdict is not a PASS.
+    #[serde(default)]
+    pub auto_delta: Option<AutoDelta>,
+    /// Other open pull requests whose own commits this one would bring into the tip (#2859),
+    /// each with what G12 needs to see that a PASS covers them. Absent means not read, and the
+    /// gate stops (unknown is never a pass).
+    #[serde(default)]
+    pub stacked_below: Option<Vec<StackedBelow>>,
+}
+
+/// One pull request below a stacked one (#2859): another open PR whose commits this PR's head
+/// carries. The collector fills it; G12 decides from it.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct StackedBelow {
+    pub pr: u64,
+    /// That PR's commits this PR brings in that no other brought commit of it descends from
+    /// (the newest ones), 40 hex: what a PASS on that PR must cover.
+    pub brought: Vec<String>,
+    /// Head and verdict word of that PR's last verdict line; absent when it has none.
+    #[serde(default)]
+    pub verdict_head: Option<String>,
+    #[serde(default)]
+    pub verdict: Option<String>,
+    /// The auditor lane that last verdict names (`auditor`); absent when it names none.
+    #[serde(default)]
+    pub auditor: Option<String>,
+    /// Sessions of the claims the brought commits name in `Moai-Claim` trailers (G9 for that
+    /// PR's part).
+    #[serde(default)]
+    pub authors: Vec<String>,
+    /// Brought commits, merges skipped, without a `Moai-Claim` trailer (G10 for that part).
+    #[serde(default)]
+    pub commits_without_claim: Vec<String>,
+    /// Whether every `brought` commit is the verdict head or one of its ancestors; false when
+    /// the verdict head is absent or not a local commit.
+    pub covered: bool,
+}
+
+/// The mechanical delta (#2833): whether the current head `to` is the verdict head `from` with
+/// only the base branch merged in. `ok` is the collector's finding; the gate also checks that
+/// every file's patch-id is the same on both sides before it counts the PASS on `from` for `to`.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AutoDelta {
+    pub from: String,
+    pub to: String,
+    pub ok: bool,
+    /// Why it is not a mechanical delta, or a summary when it is.
+    #[serde(default)]
+    pub detail: String,
+    /// The PR's files, each with its change's patch-id against its merge base on both heads.
+    #[serde(default)]
+    pub files: Vec<DeltaFile>,
+}
+
+/// One PR file of a mechanical delta: `git patch-id --stable` of its change on each head.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeltaFile {
+    pub path: String,
+    pub patch_id_from: String,
+    pub patch_id_to: String,
 }
 
 /// The tip's push CI for G8: `state` is `green`, `flaky` or `red` from the last completed CI
@@ -103,6 +167,11 @@ pub struct Stop {
     pub reason: String,
 }
 
+/// Whether `s` is a full commit id as verdict lines spell it: 40 lowercase hex.
+pub fn is_full_sha(s: &str) -> bool {
+    is_hex40(s)
+}
+
 fn is_hex40(s: &str) -> bool {
     s.len() == 40
         && s.bytes()
@@ -128,6 +197,35 @@ pub fn parse_verdict(line: &str) -> Option<(String, String, String)> {
         return None;
     }
     Some((head.into(), base.into(), verdict.into()))
+}
+
+/// The first line of a verdict comment (#2833 D4): `AUDIT #<pr> (<title>) head <head> base
+/// <base> — verdict: <verdict>`, refused unless [`parse_verdict`] reads back exactly these
+/// values — the line the gate's G1 reads is the line the helper prints.
+pub fn format_verdict_line(
+    pr: u64,
+    title: &str,
+    head: &str,
+    base: &str,
+    verdict: &str,
+) -> Result<String, String> {
+    if !is_hex40(head) || !is_hex40(base) {
+        return Err("head and base must be 40 lowercase hex".into());
+    }
+    if !matches!(verdict, "PASS" | "FAIL") {
+        return Err("verdict must be PASS or FAIL".into());
+    }
+    if title.trim().is_empty() || title.contains(['\n', '\r']) {
+        return Err("title must be one non-empty line".into());
+    }
+    let line = format!(
+        "AUDIT #{pr} ({}) head {head} base {base} — verdict: {verdict}",
+        title.trim()
+    );
+    match parse_verdict(&line) {
+        Some((h, b, v)) if h == head && b == base && v == verdict => Ok(line),
+        _ => Err("the line would not read back as this head, base and verdict".into()),
+    }
 }
 
 /// The auditor of a verdict: the first lane name (`agent-N`, `pr-N`, with an optional
@@ -220,8 +318,35 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
     out
 }
 
-/// G1: the last verdict is a PASS on the current head with a 40-hex base. Returns the base.
-fn g1(s: &Snapshot) -> Result<String, Stop> {
+/// The mechanical delta the gate accepts (#2833 D1): the last verdict is a PASS on `from`, the
+/// current head is `to`, the collector found only base-branch merges in between, and every PR
+/// file's patch-id is the same on both heads (checked here again — a snapshot may come from
+/// stdin). `None` otherwise.
+pub fn accepted_auto_delta(s: &Snapshot) -> Option<&AutoDelta> {
+    let d = s.auto_delta.as_ref()?;
+    let line = s
+        .comments
+        .iter()
+        .filter_map(|c| verdict_line(&c.body).map(|l| (c.id, l)))
+        .max_by_key(|(id, _)| *id)?
+        .1;
+    let (head, _, verdict) = parse_verdict(line)?;
+    let same = |f: &DeltaFile| !f.patch_id_from.is_empty() && f.patch_id_from == f.patch_id_to;
+    (d.ok
+        && verdict == "PASS"
+        && head == d.from
+        && d.to == s.head
+        && d.from != d.to
+        && is_hex40(&d.from)
+        && !d.files.is_empty()
+        && d.files.iter().all(same))
+    .then_some(d)
+}
+
+/// G1: the last verdict is a PASS on the current head with a 40-hex base, or a PASS on an
+/// earlier head the current one is a mechanical delta of (#2833). Returns the base and the
+/// head the verdict judged.
+fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
     let last = s
         .comments
         .iter()
@@ -234,9 +359,14 @@ fn g1(s: &Snapshot) -> Result<String, Stop> {
             "the last verdict line does not read `head <40hex> base <40hex> — verdict: <V>`".into(),
         )
     })?;
-    if head != s.head {
+    if head != s.head && accepted_auto_delta(s).is_none() {
+        let why = match &s.auto_delta {
+            Some(d) if !d.ok => format!("; not a mechanical delta: {}", d.detail),
+            Some(_) => "; the delta's patch-ids or heads do not match".to_string(),
+            None => String::new(),
+        };
         return Err(stop(format!(
-            "the last verdict is on {head}, not the current head"
+            "the last verdict is on {head}, not the current head{why}"
         )));
     }
     if verdict != "PASS" {
@@ -247,12 +377,12 @@ fn g1(s: &Snapshot) -> Result<String, Stop> {
             "the verdict base {base} is not a known commit"
         )));
     }
-    Ok(base)
+    Ok((base, head))
 }
 
 /// G2: the last verdict's auditor holds the PR's lowest audit claim or the lowest claim on the
 /// current head. No claim at all passes (nothing to check).
-fn g2(s: &Snapshot) -> Result<(), Stop> {
+fn g2(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     let claims = audit_claims(&s.comments);
     if claims.is_empty() {
         return Ok(());
@@ -266,7 +396,7 @@ fn g2(s: &Snapshot) -> Result<(), Stop> {
         .max_by_key(|(id, _)| *id)
         .ok_or_else(|| stop("no verdict".into()))?;
     let mut allowed = vec![&claims[0]];
-    if let Some(on_head) = claims.iter().find(|c| c.2 == s.head) {
+    if let Some(on_head) = claims.iter().find(|c| c.2 == judged) {
         if on_head.0 != claims[0].0 {
             allowed.push(on_head);
         }
@@ -354,15 +484,79 @@ fn g11(s: &Snapshot) -> Result<(), Stop> {
     }
 }
 
+/// G12 (#2859): a pull request stacked on another open one merges only when the PR below has
+/// a PASS on the commits this one would bring in — the head it carries or a newer head of that
+/// PR — by an auditor who wrote none of them, and every brought commit names its claim (D1:
+/// the same verdict, G9 and G10 rules). A PR below that already merged is not open and not
+/// listed (D2). Unknown stops the gate rather than passes it.
+fn g12(s: &Snapshot) -> Result<(), Stop> {
+    let stop = |reason: String| Stop {
+        rule: "G12",
+        reason,
+    };
+    let below = s
+        .stacked_below
+        .as_ref()
+        .ok_or_else(|| stop("the open pull requests below this one were not read".into()))?;
+    for b in below {
+        let carried = b
+            .brought
+            .iter()
+            .map(|c| c.get(..10).unwrap_or(c.as_str()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let at = |why: String| stop(format!("PR #{} below carries {carried}: {why}", b.pr));
+        let head = b
+            .verdict_head
+            .as_deref()
+            .ok_or_else(|| at("it has no AUDIT verdict".into()))?;
+        if b.verdict.as_deref() != Some("PASS") {
+            return Err(at(format!(
+                "its last verdict, on {}, is {}",
+                head.get(..10).unwrap_or(head),
+                b.verdict.as_deref().unwrap_or("unreadable")
+            )));
+        }
+        if b.brought.is_empty() || !b.covered {
+            return Err(at(format!(
+                "its PASS is on {}, which does not hold the commits this PR brings in",
+                head.get(..10).unwrap_or(head)
+            )));
+        }
+        let who = b
+            .auditor
+            .as_deref()
+            .ok_or_else(|| at("its last verdict names no auditor lane".into()))?;
+        if let Some(a) = b.authors.iter().find(|a| a.eq_ignore_ascii_case(who)) {
+            return Err(at(format!(
+                "its PASS is by {who}, and {a} wrote commits of it (Moai-Claim trailer)"
+            )));
+        }
+        if !b.commits_without_claim.is_empty() {
+            let short: Vec<&str> = b
+                .commits_without_claim
+                .iter()
+                .map(|c| c.get(..10).unwrap_or(c.as_str()))
+                .collect();
+            return Err(at(format!(
+                "{} of its commits carry no `Moai-Claim` trailer: {}",
+                short.len(),
+                short.join(", ")
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// G3: a FAIL on the current head blocks unless every FAIL there and the later last PASS
 /// come from the same auditor (it reversed itself).
-fn g3(s: &Snapshot) -> Result<(), Stop> {
+fn g3(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     let mut on_head: Vec<(u64, String, String)> = s
         .comments
         .iter()
         .filter_map(|c| {
             let (h, _, v) = parse_verdict(verdict_line(&c.body)?)?;
-            (h == s.head).then(|| (c.id, v, auditor(&c.body).unwrap_or_default()))
+            (h == judged).then(|| (c.id, v, auditor(&c.body).unwrap_or_default()))
         })
         .collect();
     on_head.sort();
@@ -522,11 +716,14 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
         });
     }
     g8(s)?;
-    let base = g1(s)?;
-    g2(s)?;
+    // `judged` is the head the last verdict read: the current head, or the earlier head of an
+    // accepted mechanical delta (#2833). The audit rules (G2 claims, G3 open FAILs) apply to
+    // it, so a delta never carries a verdict past an unresolved FAIL on that head (D2).
+    let (base, judged) = g1(s)?;
+    g2(s, &judged)?;
     g9(s)?;
     g10(s)?;
-    g3(s)?;
+    g3(s, &judged)?;
     if !s.body_check_ok {
         return Err(Stop {
             rule: "G4",
@@ -534,6 +731,7 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
         });
     }
     g11(s)?;
+    g12(s)?;
     g5(s)?;
     let overlap = g6(s)?;
     g7(s)?;

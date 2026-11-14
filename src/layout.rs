@@ -87,11 +87,7 @@ fn claims_legacy_dir(project: &Path) -> Result<Option<PathBuf>> {
     let Some(common) = id["clone_anchor"].as_str() else {
         return Ok(None);
     };
-    source_dir(
-        Path::new(common)
-            .join(crate::CLONE_STATE_DIR)
-            .join("claims"),
-    )
+    source_dir(crate::clone_root::path(Path::new(common)).join("claims"))
 }
 
 fn source_dir(dir: PathBuf) -> Result<Option<PathBuf>> {

@@ -1,13 +1,16 @@
 //! `worktree-move-plan` / `worktree-move-apply` (Issue #2723): an inventory of a clone's
-//! linked worktrees with a preview of moving each under one common root
-//! `<root>/<project key>/<name>`, and a move that runs only on a fresh, identical preview.
+//! linked worktrees with a preview of moving each into one common root as
+//! `<root>/<project>-<name>`, and a move that runs only on a fresh, identical preview.
 //!
-//! The root defaults to `$HOME/<HOME_STATE_DIR>/worktrees` ([`default_root`]; user decision
-//! #1975 6859326988 puts it in the HOME state folder, whose name lives only in
-//! `crate::HOME_STATE_DIR`); `--root` names another absolute folder. The project key is
-//! `<repository folder name>-<first 12 hex of clone_id>`, the clone id of `identity` (sha256
-//! of the canonical common git folder), so two projects with the same name on one machine
-//! never share a folder.
+//! The root defaults to `<HOME>/.moai/worktrees` ([`default_root`]) and the destination name is
+//! the one `worktree-plan` gives a new worktree (`crate::home_workdir::worktree_name`), so a
+//! moved worktree and a new one sit side by side (#2835 D3, user instruction #1975 6866725877);
+//! `--root` names another absolute folder. Two projects with the same folder name map to the
+//! same destination name: the second is `destination_exists`, never merged into the first. The
+//! project key (`<repository folder name>-<first 12 hex of clone_id>`) is still reported to
+//! name the clone. Worktrees already in the root, in the earlier common root
+//! `<HOME>/.moai-cli/worktrees/<project key>/<name>` and in the Go generation's
+//! `<HOME>/.moai/worktrees/projects/` are kept and named by `location`, never moved.
 //!
 //! A worktree is a move candidate only when every fact was read and none blocks it. Blocked:
 //! the main worktree (git cannot move it), a bare entry, a missing (prunable) or locked
@@ -24,7 +27,7 @@
 //! its new path with the same HEAD and branch and that git works inside it; if not, it runs
 //! `git worktree repair` there once and checks again. The answer names, for each moved
 //! worktree, the `git worktree move` that puts it back. Nothing else under the project's
-//! state folders is written; the only folder created is `<root>/<project key>`.
+//! state folders is written; the only folder created is `<root>` itself.
 
 use crate::identity::scrub_git_env;
 use crate::worktree_report::parse_worktree_list;
@@ -169,18 +172,25 @@ fn has_submodules(wt: &Path) -> Option<bool> {
     Some(staged.lines().any(|l| l.starts_with("160000 ")))
 }
 
-/// The common root when the caller names none: `$HOME/<HOME_STATE_DIR>/worktrees` (#2723,
-/// user decision #1975 6859326988: the HOME state folder is the one place for it; the folder
-/// name comes only from `crate::HOME_STATE_DIR`, so the switch of #2725 follows by itself).
+/// The common root when the caller names none: `<HOME>/.moai/worktrees`, the place
+/// `worktree-plan` creates new worktrees in (#2835 D3; `$HOME`, on Windows `%USERPROFILE%`).
 pub fn default_root() -> Result<PathBuf> {
-    let home = std::env::var_os("HOME")
-        .filter(|h| !h.is_empty())
-        .map(PathBuf::from)
-        .ok_or("HOME is not set; pass --root")?;
+    let home = crate::home_workdir::home().map_err(|e| format!("{e}; pass --root"))?;
     if !home.is_absolute() {
         return Err("HOME is not an absolute path; pass --root".into());
     }
-    Ok(crate::home_root::path(&home).join("worktrees"))
+    Ok(crate::home_workdir::worktrees_root(&home))
+}
+
+/// The earlier common root `<HOME>/.moai-cli/worktrees` (#2723 before #2835): its worktrees
+/// are recognised and kept, never moved again.
+fn old_root() -> Option<PathBuf> {
+    crate::home_workdir::home()
+        .ok()
+        // The historical name (`fixed_state!`, which does not follow HOME_STATE_DIR): when
+        // the HOME state folder becomes `.moai` (#2725) this must not turn into the new root
+        // (#2846 audit N1).
+        .map(|h| h.join(crate::fixed_state!("worktrees")))
 }
 
 /// The plan for the clone holding `project`; `root` defaults to [`default_root`].
@@ -244,7 +254,18 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
             inside.display()
         ));
     }
-    let project_root = root_resolved.join(&key);
+    // #2835 D3: one level — destinations sit directly in the root.
+    let project_root = root_resolved.clone();
+    let home = crate::home_workdir::home().ok();
+    let go_roots: Vec<PathBuf> = home
+        .iter()
+        .map(|h| crate::home_workdir::go_worktrees_root(h))
+        .chain(std::iter::once(
+            root_resolved.join(crate::home_workdir::PROJECTS),
+        ))
+        .flat_map(|p| [fs::canonicalize(&p).unwrap_or_else(|_| p.clone()), p])
+        .collect();
+    let old = old_root().map(|p| fs::canonicalize(&p).unwrap_or(p));
     let cwd = std::env::current_dir()
         .ok()
         .and_then(|p| fs::canonicalize(p).ok());
@@ -262,14 +283,32 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
             .file_name()
             .map(|n| safe_name(&n.to_string_lossy()))
             .unwrap_or_else(|| "p".into());
-        let destination = project_root.join(&base);
+        let destination = project_root.join(
+            crate::home_workdir::worktree_name(&primary, &base)
+                .unwrap_or_else(|_| format!("{}-{base}", safe_name(&name))),
+        );
+        let location = if i == 0 {
+            "primary"
+        } else if old.as_ref().is_some_and(|o| {
+            path.strip_prefix(o)
+                .is_ok_and(|r| r.components().count() == 2)
+        }) {
+            "old_root"
+        } else {
+            crate::home_workdir::location_in(
+                &path,
+                std::slice::from_ref(&root_resolved),
+                &go_roots,
+                &primary,
+            )
+        };
         let mut reasons: Vec<String> = Vec::new();
         let mut action = "move";
         if e.bare {
             reasons.push("bare".into());
         } else if i == 0 {
             reasons.push("main_worktree".into());
-        } else if path.parent() == Some(project_root.as_path()) {
+        } else if path == destination || matches!(location, "home" | "go" | "old_root") {
             action = "keep";
         } else if e.prunable {
             reasons.push("missing".into());
@@ -337,6 +376,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         }
         items.push(json!({
             "path": path.display().to_string(),
+            "location": location,
             "branch": e.branch,
             "head": e.head,
             "action": action,

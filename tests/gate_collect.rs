@@ -80,6 +80,14 @@ fn ok(body: Value) -> HttpResponse {
     HttpResponse::new(200).with_body(body)
 }
 
+/// #2859: the open pull request list `collect` reads before the tip; only this PR is open.
+fn open_prs() -> Exchange {
+    Exchange {
+        request: HttpRequest::new("GET", format!("{API}/pulls?state=open&per_page=100")),
+        response: ok(json!([{"number": 9}])),
+    }
+}
+
 /// The tip's push CI read (every attempt) for `sha`, answering `runs`.
 fn tip_runs(sha: &str, runs: Value) -> Exchange {
     Exchange {
@@ -114,6 +122,7 @@ fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> Recorde
             ]})),
         },
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
         tip_runs(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ])
 }
@@ -258,6 +267,7 @@ fn comment_pages_are_followed() {
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
         tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &t).unwrap();
@@ -406,6 +416,7 @@ fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> Recorded
             response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
         },
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
     ];
     ex.extend(tips);
     RecordedTransport::new(ex)
@@ -457,8 +468,8 @@ fn a_red_tip_stops_an_ordinary_pr_and_passes_its_repair() {
     assert_eq!(t.remaining(), 0);
     assert_eq!(
         t.sent.borrow().len(),
-        5,
-        "PR, comments, checks, claim, tip: the earlier tip commit is not read"
+        6,
+        "PR, comments, checks, claim, open PRs (#2859), tip: the earlier tip commit is not read"
     );
     let ci = s.tip_ci.clone().unwrap();
     assert_eq!(
@@ -816,6 +827,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
             555,
             "moai-claim: session=agent-26 epoch=1 lease_until=2026-11-13T19:00:00Z",
         ),
+        open_prs(),
         tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
     ]);
     let s = collect(&target(&r), &ex).unwrap();
@@ -928,6 +940,7 @@ fn twenty_claims_are_read_and_twenty_one_are_refused() {
         ));
     }
     ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=1"));
+    ex.push(open_prs());
     ex.push(tip_runs(
         &r.c,
         json!([{"name": "ci", "conclusion": "success"}]),
@@ -951,6 +964,7 @@ fn one_claim_named_by_several_commits_is_read_once() {
     let r = repo_with_claim_ids(&[555, 555, 555]);
     let mut ex = three_reads(&r);
     ex.push(claim_comment(555, "moai-claim: session=agent-26 epoch=2"));
+    ex.push(open_prs());
     ex.push(tip_runs(
         &r.c,
         json!([{"name": "ci", "conclusion": "success"}]),
@@ -959,7 +973,11 @@ fn one_claim_named_by_several_commits_is_read_once() {
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.pr_authors, Some(vec!["agent-26".to_string()]));
     assert_eq!(t.remaining(), 0);
-    assert_eq!(t.sent.borrow().len(), 5, "three reads, one claim, the tip");
+    assert_eq!(
+        t.sent.borrow().len(),
+        6,
+        "three reads, one claim, the open PRs (#2859), the tip"
+    );
 }
 
 /// Audit 6864692054 B1: G10 and G11 carry over `flow-gate-verdict`'s claim-line checks. A PR
@@ -1018,4 +1036,412 @@ fn commits_without_a_claim_trailer_and_the_body_claim_are_collected() {
     assert_eq!(gate::check(&fixed).unwrap_err().rule, "G11");
     fixed.body_claim = true;
     assert!(gate::check(&fixed).is_ok(), "{:?}", gate::check(&fixed));
+}
+
+// ---- #2833: the mechanical delta ----
+
+const EIGHT: &str = "1\n2\n3\n4\n5\n6\n7\n8\n";
+
+fn git_as(dir: &Path, args: &[&str]) {
+    let mut all = vec!["-c", "user.name=t", "-c", "user.email=t@example.invalid"];
+    all.extend_from_slice(args);
+    git_ok(dir, &all);
+}
+
+/// Base A; the PR's verdict head H changes line 1 of src/a.rs and adds src/p.rs; the tip C
+/// changes line 8 of src/a.rs (the same file, other lines) and src/b.rs. The work tree is left
+/// on the PR branch at H.
+struct Delta {
+    dir: TempDir,
+    a: String,
+    h: String,
+    c: String,
+}
+
+fn delta_repo() -> Delta {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let a = commit(
+        d,
+        &[
+            ("src/a.rs", EIGHT),
+            ("src/b.rs", "b\n"),
+            ("src/c.rs", "c\n"),
+        ],
+        "base",
+    );
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    let h = commit(
+        d,
+        &[
+            ("src/a.rs", "one\n2\n3\n4\n5\n6\n7\n8\n"),
+            ("src/p.rs", "p\n"),
+        ],
+        "pr\n\nMoai-Claim: 9#555",
+    );
+    git_ok(d, &["checkout", "-q", "main"]);
+    let c = commit(
+        d,
+        &[
+            ("src/a.rs", "1\n2\n3\n4\n5\n6\n7\neight\n"),
+            ("src/b.rs", "b2\n"),
+        ],
+        "tip",
+    );
+    git_ok(d, &["checkout", "-q", "pr"]);
+    Delta { dir, a, h, c }
+}
+
+impl Delta {
+    fn d(&self) -> &Path {
+        self.dir.path()
+    }
+    fn head(&self) -> String {
+        git(self.d(), &["rev-parse", "HEAD"]).trim().to_string()
+    }
+    /// The leader loop's update-branch: merge the tip into the PR branch.
+    fn merge_tip(&self) -> String {
+        git_as(
+            self.d(),
+            &["merge", "-q", "--no-ff", "-m", "Merge main", "main"],
+        );
+        self.head()
+    }
+    /// A merge of the tip whose commit also carries `edit`.
+    fn merge_tip_with(&self, edit: &[(&str, &str)]) -> String {
+        git_as(self.d(), &["merge", "-q", "--no-ff", "--no-commit", "main"]);
+        commit(self.d(), edit, "Merge main")
+    }
+    fn delta(&self, to: &str) -> gate::AutoDelta {
+        gate_collect::mechanical_delta(self.d(), &self.h, to, "main").unwrap()
+    }
+}
+
+/// AC-1 (accepted): a merge of only the tip — even with the tip changing other lines of a PR
+/// file — keeps every PR file's patch-id.
+#[test]
+fn a_tip_only_merge_is_a_mechanical_delta() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let d = r.delta(&n);
+    assert!(d.ok, "{}", d.detail);
+    let paths: Vec<&str> = d.files.iter().map(|f| f.path.as_str()).collect();
+    assert_eq!(paths, ["src/a.rs", "src/p.rs"]);
+    for f in &d.files {
+        assert!(
+            !f.patch_id_from.is_empty() && f.patch_id_from == f.patch_id_to,
+            "{f:?}"
+        );
+    }
+    assert_eq!((d.from.as_str(), d.to.as_str()), (r.h.as_str(), n.as_str()));
+    let _ = (&r.a, &r.c);
+}
+
+/// AC-1 (refused): the PR's author added a commit after the verdict head.
+#[test]
+fn an_author_commit_after_the_verdict_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    r.merge_tip();
+    let n = commit(r.d(), &[("src/p.rs", "p2\n")], "more\n\nMoai-Claim: 9#555");
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail
+            .contains("1 commit(s) after the verdict head are not merges"),
+        "{}",
+        d.detail
+    );
+    assert!(d.detail.contains(&n[..10]), "{}", d.detail);
+    assert!(d.files.is_empty());
+}
+
+/// AC-1 (refused): the merge changed a PR line in an overlapping file.
+#[test]
+fn a_merge_that_changes_a_pr_line_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    let n = r.merge_tip_with(&[("src/a.rs", "ONE\n2\n3\n4\n5\n6\n7\neight\n")]);
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail.contains("src/a.rs: the PR's change differs"),
+        "{}",
+        d.detail
+    );
+}
+
+/// AC-1 (refused): the merge changed a file outside the PR's file set (and outside the tip's).
+#[test]
+fn a_merge_that_changes_a_file_outside_the_pr_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    let n = r.merge_tip_with(&[("src/c.rs", "c-evil\n")]);
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail
+            .contains("only on the current head: [\"src/c.rs\"]"),
+        "{}",
+        d.detail
+    );
+}
+
+/// A merge that changes a PR binary file: its patch keeps the bytes (`--binary`), so the change
+/// differs; without them both sides would read "Binary files differ" and look the same.
+#[test]
+fn a_merge_that_changes_a_pr_binary_file_is_not_a_mechanical_delta() {
+    let r = delta_repo();
+    commit(
+        r.d(),
+        &[("img.bin", "\u{0}\u{1}\u{2}bin-one\u{0}")],
+        "image\n\nMoai-Claim: 9#555",
+    );
+    let h = r.head();
+    let n = r.merge_tip_with(&[("img.bin", "\u{0}\u{1}\u{2}bin-two\u{0}")]);
+    let d = gate_collect::mechanical_delta(r.d(), &h, &n, "main").unwrap();
+    assert!(!d.ok);
+    assert!(
+        d.detail.contains("img.bin: the PR's change differs"),
+        "{}",
+        d.detail
+    );
+    // The same history with the binary left alone is a mechanical delta.
+    let r = delta_repo();
+    commit(
+        r.d(),
+        &[("img.bin", "\u{0}\u{1}\u{2}bin-one\u{0}")],
+        "image\n\nMoai-Claim: 9#555",
+    );
+    let h = r.head();
+    let n = r.merge_tip();
+    let d = gate_collect::mechanical_delta(r.d(), &h, &n, "main").unwrap();
+    assert!(d.ok, "{}", d.detail);
+}
+
+/// AC-2: a head the verdict head is not an ancestor of (the change re-made on the tip).
+#[test]
+fn a_head_that_does_not_descend_from_the_verdict_head_is_refused() {
+    let r = delta_repo();
+    git_ok(r.d(), &["checkout", "-q", "-b", "redo", "main"]);
+    let n = commit(
+        r.d(),
+        &[
+            ("src/a.rs", "one\n2\n3\n4\n5\n6\n7\neight\n"),
+            ("src/p.rs", "p\n"),
+        ],
+        "redo\n\nMoai-Claim: 9#555",
+    );
+    let d = r.delta(&n);
+    assert!(!d.ok);
+    assert!(
+        d.detail.contains("is not an ancestor of the current head"),
+        "{}",
+        d.detail
+    );
+    // An unknown verdict head is refused too, not an error.
+    let d = gate_collect::mechanical_delta(r.d(), &"e".repeat(40), &n, "main").unwrap();
+    assert!(
+        !d.ok && d.detail.contains("not a local commit"),
+        "{}",
+        d.detail
+    );
+}
+
+/// The file limit's boundary: as many files as the limit pass, one more is refused.
+#[test]
+fn the_delta_compares_at_most_its_file_limit() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let at = gate_collect::mechanical_delta_limited(r.d(), &r.h, &n, "main", 2).unwrap();
+    assert!(at.ok, "{}", at.detail);
+    let over = gate_collect::mechanical_delta_limited(r.d(), &r.h, &n, "main", 1).unwrap();
+    assert!(!over.ok);
+    assert!(
+        over.detail.contains("2 PR files, more than the 1"),
+        "{}",
+        over.detail
+    );
+    assert_eq!(gate_collect::MAX_DELTA_FILES, 200);
+}
+
+/// End to end: `collect` measures the delta for a PASS on the verdict head, counts the tip's
+/// changes from where the current head meets it (the overlap the merge resolved is not an
+/// overlap any more), and the gate passes the current head.
+#[test]
+fn collect_carries_a_pass_across_an_update_branch_merge() {
+    let r = delta_repo();
+    let n = r.merge_tip();
+    let target = Target {
+        dir: r.d(),
+        owner: "o",
+        repo: "r",
+        pr: 9,
+        tip: "main",
+        review_confirmed_prs: vec![],
+    };
+    let t = exchanges(&n, &r.c, vec![claim(&r.h), verdict(&r.h, &r.a)], PASS_BODY);
+    let s = collect(&target, &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let d = s.auto_delta.clone().expect("a delta is measured");
+    assert!(d.ok, "{}", d.detail);
+    assert!(
+        s.tip_files_since_verdict_base.is_empty(),
+        "{:?}",
+        s.tip_files_since_verdict_base
+    );
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+    assert!(gate::accepted_auto_delta(&s).is_some());
+    // `gate-merge` and `gate-check` ask for the accepted delta directly: a FAIL on the verdict
+    // head is never one.
+    let mut failed = s.clone();
+    for c in failed.comments.iter_mut() {
+        c.body = c.body.replace("verdict: PASS", "verdict: FAIL");
+    }
+    assert!(gate::accepted_auto_delta(&failed).is_none());
+
+    // The same head with a verdict on itself measures no delta.
+    let t = exchanges(&n, &r.c, vec![claim(&n), verdict(&n, &r.a)], PASS_BODY);
+    let s = collect(&target, &t).unwrap();
+    assert!(s.auto_delta.is_none());
+}
+
+// ---- #2833 D4 / AC-3: the verdict first line ----
+
+fn pr_head(head: &str) -> RecordedTransport {
+    RecordedTransport::new(vec![Exchange {
+        request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+        response: ok(json!({"head": {"sha": head}})),
+    }])
+}
+
+fn delta_target(r: &Delta) -> Target<'_> {
+    Target {
+        dir: r.d(),
+        owner: "o",
+        repo: "r",
+        pr: 9,
+        tip: "main",
+        review_confirmed_prs: vec![],
+    }
+}
+
+/// AC-3: the line names the head the auditor examined, read back through the gate's own
+/// parser, while that head is still the PR's head; the base is the merge base unless given.
+#[test]
+fn the_verdict_line_names_the_audited_head_and_reads_back() {
+    let r = delta_repo();
+    let target = delta_target(&r);
+    let t = pr_head(&r.h);
+    let v = gate_collect::verdict_line_for(&target, &r.h, "S3", "PASS", None, &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let line = v["line"].as_str().unwrap();
+    let (h, b, verdict) = gate::parse_verdict(line).expect("the gate reads the line");
+    assert_eq!((h.as_str(), verdict.as_str()), (r.h.as_str(), "PASS"));
+    assert_eq!(b, r.a, "the merge base of the PR head and the tip");
+    assert_eq!(v["base_from"], json!("merge-base"));
+    assert!(v.get("auto_delta").is_none());
+    assert!(line.starts_with("AUDIT #9 (S3) head "), "{line}");
+
+    // A given base (a delta re-audit names the earlier head) is used as it is.
+    let v = gate_collect::verdict_line_for(&target, &r.h, "re", "FAIL", Some(&r.c), &pr_head(&r.h))
+        .unwrap();
+    let (_, b, verdict) = gate::parse_verdict(v["line"].as_str().unwrap()).unwrap();
+    assert_eq!((b.as_str(), verdict.as_str()), (r.c.as_str(), "FAIL"));
+    assert_eq!(v["base_from"], json!("given"));
+
+    // `--head` must be a full commit id.
+    let err =
+        gate_collect::verdict_line_for(&target, &r.h[..10], "x", "PASS", None, &pr_head(&r.h))
+            .unwrap_err();
+    assert!(err.contains("--head must be the audited head"), "{err}");
+    // Refused before any read: the PR is not even fetched.
+    let t = pr_head(&r.h);
+    let _ = gate_collect::verdict_line_for(&target, "abc", "x", "PASS", None, &t);
+    assert_eq!(t.remaining(), 1, "no request before --head is checked");
+}
+
+/// Audit 6869947940 B1: a head that moved during the audit never gets a line for a head nobody
+/// examined. An author commit (or any move that is not a mechanical delta) is refused with the
+/// delta to audit; an update-branch merge of the tip gives the line for the audited head, which
+/// the gate carries (AUTO-DELTA) — a PASS only.
+#[test]
+fn a_head_that_moved_during_the_audit_is_never_named_unaudited() {
+    let r = delta_repo();
+    let target = delta_target(&r);
+    let n = r.merge_tip();
+    let v =
+        gate_collect::verdict_line_for(&target, &r.h, "S3", "PASS", None, &pr_head(&n)).unwrap();
+    let (h, _, _) = gate::parse_verdict(v["line"].as_str().unwrap()).unwrap();
+    assert_eq!(h, r.h, "the line names the audited head, not the merge");
+    assert_eq!(v["current_head"], json!(n));
+    assert_eq!(v["auto_delta"], json!(true));
+    let v =
+        gate_collect::verdict_line_for(&target, &r.h, "S3", "FAIL", None, &pr_head(&n)).unwrap();
+    assert_eq!(v["auto_delta"], json!(false), "a FAIL is never carried");
+
+    // The author added a commit after the audited head: refused, nothing printed.
+    let m = commit(r.d(), &[("src/p.rs", "p2\n")], "more\n\nMoai-Claim: 9#555");
+    let err = gate_collect::verdict_line_for(&target, &r.h, "S3", "PASS", None, &pr_head(&m))
+        .unwrap_err();
+    assert!(
+        err.contains(&format!("now {m}, not the audited head {}", r.h)),
+        "{err}"
+    );
+    assert!(err.contains("not a mechanical delta"), "{err}");
+    assert!(
+        err.contains(&format!("audit the delta {}..{m}", r.h)),
+        "{err}"
+    );
+
+    // A new head that was never fetched cannot be checked: refused, not guessed.
+    let missing = "f".repeat(40);
+    let err = gate_collect::verdict_line_for(&target, &r.h, "x", "PASS", None, &pr_head(&missing))
+        .unwrap_err();
+    assert!(err.contains("fetch refs/pull/9/head"), "{err}");
+    assert!(err.contains("no line printed"), "{err}");
+}
+
+#[test]
+fn a_verdict_line_the_gate_would_not_read_is_refused() {
+    let h = "a".repeat(40);
+    let b = "b".repeat(40);
+    assert!(gate::format_verdict_line(9, "t", &h, &b, "PASS").is_ok());
+    for (title, head, base, verdict) in [
+        ("t", "A".repeat(40), b.clone(), "PASS"),
+        ("t", "a".repeat(39), b.clone(), "PASS"),
+        ("t", h.clone(), "b".repeat(41), "PASS"),
+        ("t", h.clone(), b.clone(), "Pass"),
+        ("t", h.clone(), b.clone(), "PASS WITH NOTES"),
+        ("two\nlines", h.clone(), b.clone(), "PASS"),
+        ("  ", h.clone(), b.clone(), "PASS"),
+    ] {
+        assert!(
+            gate::format_verdict_line(9, title, &head, &base, verdict).is_err(),
+            "{title:?} {head} {base} {verdict}"
+        );
+    }
+    // A title that itself says " head " still reads back: the gate takes the last one.
+    let line = gate::format_verdict_line(9, "the head moved", &h, &b, "FAIL").unwrap();
+    assert_eq!(gate::parse_verdict(&line), Some((h, b, "FAIL".to_string())));
+}
+
+/// AC-3 (document and gate agree): the example verdict line in the AUDIT workflow is exactly
+/// what the helper prints for the same values.
+#[test]
+fn the_audit_workflow_example_is_the_helpers_line() {
+    let text = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
+    )
+    .unwrap();
+    let example = text
+        .lines()
+        .map(str::trim)
+        .find(|l| l.starts_with("AUDIT #2786 "))
+        .expect("the example line");
+    let (h, b, v) = gate::parse_verdict(example).expect("the gate reads the example");
+    let built = gate::format_verdict_line(2786, "#2708 4/4 repo-scans", &h, &b, &v).unwrap();
+    assert_eq!(built, example);
+    assert!(text.contains(
+        "moai audit-verdict-line --pr <n> --head <audited 40-hex> --verdict PASS|FAIL --title <scope>"
+    ));
+    assert!(text.contains("a verdict never names a head nobody audited"));
 }

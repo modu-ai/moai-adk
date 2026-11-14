@@ -1765,6 +1765,9 @@ pub fn apply_update(
         }
     }
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
+    // #2696 C4b2: the first install into a HOME with no MoAI state makes `~/.moai` and its
+    // marker before anything else is written there.
+    crate::home_root::adopt_new(&canonical_home, "update-apply")?;
     let install_id = current_install_id(&canonical_home)?;
 
     let mut outcomes: Vec<HostOutcome> = Vec::new();

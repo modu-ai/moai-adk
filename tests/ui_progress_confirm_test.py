@@ -193,6 +193,30 @@ class IndexBuildProgress(unittest.TestCase):
         self.assertNotIn("\r", term.replace("\n", ""))
         self.assertEqual(self.stable(out).keys(), self.stable(piped).keys())
 
+    def test_moai_output_quiet_drops_the_stages_and_plain_drops_color_and_symbols(self):
+        req = '{"protocol_version":1}'
+        utf8 = dict(self.env, LANG="en_US.UTF-8", LC_ALL="en_US.UTF-8")
+        stages = ("scanning tracked files (1/3)", "building the views (2/3)",
+                  "publishing the generation (3/3)")
+
+        def shown(name, **extra):
+            root = self.project(name)
+            out, term, code = run_tty(["index-build", root], dict(utf8, **extra), root,
+                                      stdin_text=req)
+            self.assertEqual(code, 0, term)
+            return out, term
+
+        _, normal = shown("n")
+        self.assertIn("→ scanning tracked files (1/3)", ESC.sub("", normal))
+        _, plain = shown("p", MOAI_OUTPUT="plain")
+        self.assertEqual([line for line in plain.splitlines() if line.startswith("->")],
+                         [f"-> {s}" for s in stages])
+        self.assertNotIn("\x1b", plain)
+        self.assertNotIn("→", plain)
+        out, quiet = shown("q", MOAI_OUTPUT="quiet")
+        self.assertFalse(any(s in quiet for s in stages), quiet)
+        self.assertTrue(json.loads(out)["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

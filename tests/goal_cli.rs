@@ -362,3 +362,21 @@ fn bad_requests_are_refused() {
     }
     assert_eq!(show(&f, &f.primary)["state"], "none");
 }
+
+/// #2696 C4c: the clone-shared store follows `clone_root` — `.git/.moai` once it holds this
+/// generation's marker, seen alike from the primary checkout and a linked worktree.
+#[test]
+fn a_marked_clone_keeps_its_goal_under_git_moai() {
+    let f = fixture();
+    let common = f.primary.join(".git");
+    fs::create_dir_all(common.join(".moai")).unwrap();
+    fs::write(
+        common.join(".moai/moai-cli.json"),
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    )
+    .unwrap();
+    for from in [&f.primary, &f.worktree] {
+        let store = show(&f, from)["store"].as_str().unwrap().to_string();
+        assert!(store.ends_with(".git/.moai/goal/goal.json"), "{store}");
+    }
+}
