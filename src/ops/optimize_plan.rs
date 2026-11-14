@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Preview space that can be freed
+///
 /// Read-only space preview (#2724): linked worktrees after their merge (squash merges
 /// included), cargo build folders under the roots you name, and reports — size, last change,
 /// retention, the reasons each is kept, and how to restore it. A worktree is a `remove`

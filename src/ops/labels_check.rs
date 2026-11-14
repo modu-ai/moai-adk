@@ -4,6 +4,8 @@ use moai_cli::forge::transport::GhTransport;
 use moai_cli::labels_check;
 use std::path::PathBuf;
 
+/// Report Issues whose labels break the rule
+///
 /// Report the open Issues whose labels break the axis rule of the project's
 /// `.github/moai/labels.yml` (exactly one `type:*`, exactly one `priority:*`, one or two
 /// `area:*`, no `not_used` or unlisted label). Reads GitHub with GET only and never adds or

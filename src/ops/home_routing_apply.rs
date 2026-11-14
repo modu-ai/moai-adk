@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Write a previewed routing section into HOME
+///
 /// Apply a previewed MoAI routing section (#2638): only the managed block changes, with a
 /// receipt holding the before bytes. The digest must match a fresh preview.
 #[derive(clap::Args)]

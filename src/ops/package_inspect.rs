@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+/// Inspect a skill package's digests
 #[derive(clap::Args)]
 pub struct Args {
     package: PathBuf,
