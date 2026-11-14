@@ -183,7 +183,7 @@ fn exists(path: &Path) -> bool {
 /// `<clone common dir>/.moai-cli/sessions`, the folder of the agent-number store
 /// (`session::agent_seq_dir`), read from an identity already resolved.
 fn init_lock_dir(common: &Path) -> PathBuf {
-    common.join(crate::CLONE_STATE_DIR).join("sessions")
+    crate::clone_root::path(common).join("sessions")
 }
 
 /// Waits until no first launch holds `lock` (a regular file only; never created here).

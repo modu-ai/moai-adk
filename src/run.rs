@@ -540,8 +540,7 @@ fn baseline_store_dir(project: &Path) -> Option<std::path::PathBuf> {
     let id = crate::identity::identity(project).ok()?;
     let common = id["clone_anchor"].as_str()?;
     Some(
-        Path::new(common)
-            .join(crate::CLONE_STATE_DIR)
+        crate::clone_root::path(Path::new(common))
             .join("receipts")
             .join("run"),
     )
