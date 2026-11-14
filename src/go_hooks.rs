@@ -23,27 +23,77 @@ pub const GO_HOOK_DIR: &str = ".claude/hooks/moai";
 
 const SETTINGS: &str = ".claude/settings.json";
 
-/// The Go hook script a handler runs, when it runs one: the first `command` or `args` value
-/// that names a path under [`GO_HOOK_DIR`] (with or without `${CLAUDE_PROJECT_DIR}/` or `$CLAUDE_PROJECT_DIR/`
-/// in front). `None` for every other handler.
-pub fn go_script(handler: &Value) -> Option<String> {
-    let mut texts: Vec<&str> = Vec::new();
-    if let Some(c) = handler["command"].as_str() {
-        texts.push(c);
-    }
-    if let Some(args) = handler["args"].as_array() {
-        texts.extend(args.iter().filter_map(Value::as_str));
-    }
+/// What may stand before [`GO_HOOK_DIR`] in a Go-generation handler: nothing (the project is
+/// the hook's working folder) or the project folder variable, as the Go generation wrote it.
+const PROJECT_PREFIXES: &[&str] = &[
+    "${CLAUDE_PROJECT_DIR}/",
+    "$CLAUDE_PROJECT_DIR/",
+    "\"$CLAUDE_PROJECT_DIR\"/",
+    "\"${CLAUDE_PROJECT_DIR}\"/",
+    "",
+];
+
+/// The script name when one whole token is this project's Go hook script: an optional pair of
+/// surrounding quotes, one of [`PROJECT_PREFIXES`], [`GO_HOOK_DIR`]`/` and a plain file name
+/// (letters, digits, `-`, `_`, `.`; never `.` or `..`) up to the token's end.
+fn script_token(token: &str) -> Option<String> {
+    let t = ['"', '\'']
+        .iter()
+        .find_map(|q| {
+            token
+                .strip_prefix(*q)
+                .and_then(|r| r.strip_suffix(*q))
+                .filter(|inner| !inner.contains(*q))
+        })
+        .unwrap_or(token);
     let marker = format!("{GO_HOOK_DIR}/");
-    texts.into_iter().find_map(|t| {
-        let at = t.find(&marker)?;
-        let rest = &t[at + marker.len()..];
-        let name: String = rest
-            .chars()
-            .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
-            .collect();
-        (!name.is_empty()).then_some(name)
+    PROJECT_PREFIXES.iter().find_map(|p| {
+        let name = t.strip_prefix(p)?.strip_prefix(&marker)?;
+        let plain = !name.is_empty()
+            && name != "."
+            && name != ".."
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'));
+        plain.then(|| name.to_string())
     })
+}
+
+/// Whether a command runs a script given as its argument (`bash`, `sh`, by name or path).
+fn is_shell(token: &str) -> bool {
+    matches!(
+        token,
+        "bash" | "sh" | "/bin/bash" | "/bin/sh" | "/usr/bin/bash"
+    )
+}
+
+/// The Go hook script a handler runs, when it runs one (#2884 audit B1): the command itself is
+/// the script, or a shell (`bash`/`sh`) runs it — as the command's next word, or as one whole
+/// `args` value. A path anywhere else, under another folder or with another prefix (another
+/// project, HOME, `~/`), a name like `..`, or a command that only reads the folder is not a Go
+/// hook: `None`.
+pub fn go_script(handler: &Value) -> Option<String> {
+    let command = handler["command"].as_str()?;
+    let mut words = command.split_whitespace();
+    let first = words.next()?;
+    if let Some(name) = script_token(first) {
+        return Some(name);
+    }
+    if !is_shell(first) {
+        return None;
+    }
+    // `bash <script>` in the command, or `bash` with the script among its arguments.
+    let rest: Vec<&str> = words.filter(|w| !w.starts_with('-')).collect();
+    if let [only] = rest.as_slice() {
+        if let Some(name) = script_token(only) {
+            return Some(name);
+        }
+    }
+    handler["args"]
+        .as_array()?
+        .iter()
+        .filter_map(Value::as_str)
+        .find_map(script_token)
 }
 
 /// One Go-generation handler found in a `hooks` object.
@@ -574,11 +624,36 @@ mod tests {
         let as_command = json!({"type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/handle-stop.sh"});
         assert_eq!(go_script(&as_command).as_deref(), Some("handle-stop.sh"));
+        // Every prefix the Go generation wrote, as a command and as `bash <script>`.
+        for (command, name) in [
+            ("${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/a.sh", "a.sh"),
+            ("$CLAUDE_PROJECT_DIR/.claude/hooks/moai/b.sh", "b.sh"),
+            ("\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/moai/c.sh", "c.sh"),
+            (".claude/hooks/moai/d.sh", "d.sh"),
+            (
+                "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/e.sh\"",
+                "e.sh",
+            ),
+            ("sh -e .claude/hooks/moai/f.sh", "f.sh"),
+        ] {
+            let h = json!({"type": "command", "command": command});
+            assert_eq!(go_script(&h).as_deref(), Some(name), "{command}");
+        }
         for other in [
             json!({"type": "command", "command": "moai-cli hook-receipt claude"}),
             json!({"type": "command", "command": "orca hook"}),
             json!({"type": "command", "command": "bash", "args": [".claude/hooks/mine/x.sh"]}),
             json!({"type": "command", "command": "echo .claude/hooks/moai/"}),
+            // #2884 audit B1: another project, HOME, `..`, a reader, a glued prefix.
+            json!({"type": "command", "command": "bash /opt/other-project/.claude/hooks/moai/x.sh"}),
+            json!({"type": "command", "command": "bash ~/.claude/hooks/moai/x.sh"}),
+            json!({"type": "command", "command": "bash .claude/hooks/moai/../../evil.sh"}),
+            json!({"type": "command", "command": "bash .claude/hooks/moai/.."}),
+            json!({"type": "command", "command": "cat .claude/hooks/moai/README >> log"}),
+            json!({"type": "command", "command": "my.claude/hooks/moai/y.sh"}),
+            json!({"type": "command", "command": "bash", "args": ["-c", "bash .claude/hooks/moai/x.sh"]}),
+            json!({"type": "command", "command": "python3", "args": [".claude/hooks/moai/x.sh"]}),
+            json!({"type": "command", "command": "bash .claude/hooks/moai/x.sh other.sh"}),
         ] {
             assert_eq!(go_script(&other), None, "{other}");
         }
