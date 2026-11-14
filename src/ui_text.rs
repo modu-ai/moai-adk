@@ -195,11 +195,15 @@ pub enum Msg {
     UsageUnknownArgument,
     UsageInvalidValue,
     UsageOther,
+    /// `install-inspect`'s terminal note when the first `moai` on PATH is not this generation's
+    /// (#2867; S6 follow-up of #2825). The English text is `install::PATH_FIRST_NOTE`, which the
+    /// envelope keeps in every language.
+    PathFirstNote,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 43] = [
+    pub const ALL: [Msg; 44] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -243,6 +247,7 @@ impl Msg {
         Msg::UsageUnknownArgument,
         Msg::UsageInvalidValue,
         Msg::UsageOther,
+        Msg::PathFirstNote,
     ];
 }
 
@@ -345,6 +350,11 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (UsageInvalidValue, Ko) => "인자 값이 올바르지 않아요",
         (UsageOther, En) => "invalid command line",
         (UsageOther, Ko) => "명령줄이 올바르지 않아요",
+        (PathFirstNote, En) => crate::install::PATH_FIRST_NOTE,
+        (PathFirstNote, Ko) => {
+            "R5 전까지 hook 은 moai-cli 로 만들어져요. hook 이 moai 를 쓰게 하려면 Rust moai 를 \
+             PATH 맨 앞에 두세요(바꾼 것 없음)"
+        }
     }
 }
 
