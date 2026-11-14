@@ -171,6 +171,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
     assert_eq!(
         seen,
         [
+            "claim-acquire",
             "claim-verify",
             "claim-verify --hook",
             "gate-check",
@@ -191,7 +192,6 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // #2840 D3: the PR body is checked locally before the push and before opening.
             "pr-self-audit-check --file",
             "queue-free",
-            "queue-next",
             "repo-scans --refs",
             "scope-check",
             "session-register",
@@ -207,10 +207,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
 #[test]
 fn spans_parse_ops_and_flags() {
     assert_eq!(
-        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-next` and `moai --version`"),
+        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-free` and `moai --version`"),
         [
             ("claim-verify".to_string(), vec!["--hook".to_string()]),
-            ("queue-next".to_string(), vec![])
+            ("queue-free".to_string(), vec![])
         ]
     );
 }

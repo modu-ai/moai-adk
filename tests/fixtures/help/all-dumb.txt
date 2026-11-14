@@ -87,10 +87,10 @@ Diagnose
 Lane and leader
   claim-acquire           Claim a task with one Issue comment
   claim-verify            Check claim ownership before a commit or push
+  claim-timeout-check     Check the three timeout takeover conditions of a claim
   claim-show              Show the current claim record of a task
   claim-release           Close the active claim as cancelled
   claim-handoff           Hand a claim to another session
-  queue-next              Claim the next free card
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
