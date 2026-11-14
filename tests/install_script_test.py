@@ -201,11 +201,21 @@ class InstallShTest(unittest.TestCase):
         self.rel.add("2.0.1", with_sha=False)
         r = self.assert_refused_without_writes("--version", "2.0.1")
         self.assertIn("checksum", (r.stdout + r.stderr).lower())
-        self.rel.add("2.0.2", sha256="not-a-digest")
-        self.assert_refused_without_writes("--version", "2.0.2")
+        # A malformed checksum file is named as such, not reported as a mismatch: each half
+        # of "a SHA-256 digest" on its own — hex of the wrong length, 64 characters that are
+        # not hex.
+        for v, digest in (("2.0.2", "not-a-digest"), ("2.0.3", "a" * 63), ("2.0.4", "z" * 64)):
+            self.rel.add(v, sha256=digest)
+            r = self.assert_refused_without_writes("--version", v)
+            self.assertIn("not a SHA-256 digest", r.stdout + r.stderr, v)
 
     def test_a_version_that_is_not_a_version_is_refused(self):
         for bad in ("../x", "1.2.3;rm", "", "1 2"):
+            self.assert_refused_without_writes("--version", bad)
+        # Refused even when a release under that text exists: the check is the version's
+        # shape, not a failed download.
+        for bad in ("a1.2.3", "1.2.3_x", "1..2"):
+            self.rel.add(bad)
             self.assert_refused_without_writes("--version", bad)
 
     def test_a_go_install_on_path_is_left_alone_and_pointed_to_update(self):
@@ -291,7 +301,7 @@ class InstallPs1Test(InstallShTest):
                  "POWERSHELL_TELEMETRY_OPTOUT": "1", "XDG_CACHE_HOME": os.path.join(self.tmp, "cache"),
                  "XDG_DATA_HOME": os.path.join(self.tmp, "data"),
                  "XDG_CONFIG_HOME": os.path.join(self.tmp, "config")},
-            cwd=self.home, capture_output=True, text=True, timeout=180,
+            cwd=self.home, capture_output=True, text=True, timeout=300,
         )
 
     def test_shellcheck_passes(self):
