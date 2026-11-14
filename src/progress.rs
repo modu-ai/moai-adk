@@ -11,8 +11,15 @@
 //! line; the default is no. [`ask_terminal`] asks only when stdin and stderr are both
 //! terminals and otherwise answers no without writing anything, so the caller keeps its
 //! non-interactive refusal and its `next:` hint.
+//!
+//! Every text this module writes to the terminal goes through [`crate::ui::visible`] first
+//! (leader decision 6867586011): a path or a state line carrying a control character can never
+//! move the cursor or retitle the window. `MOAI_OUTPUT=quiet` installs no progress sink and
+//! `MOAI_OUTPUT=plain` writes without color or UTF-8 symbols, as the S4 summary does; the
+//! confirm question is still asked under `quiet`, because without it the answer is no.
 
 use crate::ui::{ColorFlag, Painter, Stream, Token};
+use crate::ui_summary::OutputMode;
 use std::cell::RefCell;
 use std::io::{self, BufRead, IsTerminal, Write};
 
@@ -41,17 +48,49 @@ pub fn uninstall() {
     SINK.with(|s| *s.borrow_mut() = None);
 }
 
-/// One progress line: the info mark (`→`, or `->` without UTF-8) and the text.
+/// One progress line: the info mark (`→`, or `->` without UTF-8) and the text, with any
+/// control character shown as `\xNN`.
 pub fn line(painter: &Painter, text: &str) -> String {
-    format!("{} {text}\n", painter.mark(Token::Info))
+    format!(
+        "{} {}\n",
+        painter.mark(Token::Info),
+        crate::ui::visible(text)
+    )
 }
 
-/// Installs a stderr sink when stderr is a terminal; otherwise leaves [`note`] silent.
+/// `text` with each line made [`crate::ui::visible`]; the line breaks themselves stay, so a
+/// multi-line preview keeps its shape while a control character inside a line is shown.
+pub fn visible_lines(text: &str) -> String {
+    text.split('\n')
+        .map(|l| crate::ui::visible(l).into_owned())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The stderr painter `MOAI_OUTPUT` asks for; `None` for progress under `quiet`.
+pub fn progress_painter(mode: OutputMode, normal: impl FnOnce() -> Painter) -> Option<Painter> {
+    match mode {
+        OutputMode::Quiet => None,
+        OutputMode::Plain => Some(Painter::plain()),
+        OutputMode::Normal => Some(normal()),
+    }
+}
+
+fn output_mode() -> OutputMode {
+    crate::ui_summary::output_mode(std::env::var_os("MOAI_OUTPUT").as_deref())
+}
+
+/// Installs a stderr sink when stderr is a terminal and `MOAI_OUTPUT` is not `quiet`;
+/// otherwise leaves [`note`] silent.
 pub fn install_stderr() {
     if !io::stderr().is_terminal() {
         return;
     }
-    let painter = Painter::for_stream(Stream::Stderr, ColorFlag::Auto);
+    let Some(painter) = progress_painter(output_mode(), || {
+        Painter::for_stream(Stream::Stderr, ColorFlag::Auto)
+    }) else {
+        return;
+    };
     install(Box::new(move |text| {
         let mut err = io::stderr();
         let _ = err.write_all(line(&painter, text).as_bytes());
@@ -99,8 +138,10 @@ pub fn ask<R: BufRead, W: Write>(
 ) -> io::Result<bool> {
     write!(
         err,
-        "{preview}{} {question} [y/N] ",
-        painter.mark(Token::Warn)
+        "{}{} {} [y/N] ",
+        visible_lines(preview),
+        painter.mark(Token::Warn),
+        crate::ui::visible(question)
     )?;
     err.flush()?;
     let mut answer = String::new();
@@ -114,7 +155,11 @@ pub fn ask_terminal(preview: &str, question: &str) -> Result<bool, String> {
     if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
         return Ok(false);
     }
-    let painter = Painter::for_stream(Stream::Stderr, ColorFlag::Auto);
+    // The question is asked under `quiet` too; `plain` only drops color and UTF-8 symbols.
+    let painter = progress_painter(output_mode(), || {
+        Painter::for_stream(Stream::Stderr, ColorFlag::Auto)
+    })
+    .unwrap_or_else(Painter::plain);
     ask(
         &mut io::stdin().lock(),
         &mut io::stderr(),
@@ -217,5 +262,47 @@ mod tests {
                 "preview\n! Remove it? [y/N] "
             );
         }
+    }
+
+    #[test]
+    fn terminal_text_shows_control_characters_and_keeps_preview_lines() {
+        // Leader decision 6867586011: no raw control byte reaches the terminal from here.
+        let plain = Painter::plain();
+        assert_eq!(
+            line(&plain, "ci on a\u{1b}]0;x\u{7}b"),
+            "-> ci on a\\x1b]0;x\\x07b\n"
+        );
+        let mut err = Vec::new();
+        ask(
+            &mut "n\n".as_bytes(),
+            &mut err,
+            &plain,
+            "remove /tmp/a\u{1b}[2Jb\n  shared key\n",
+            "Remove\u{9b}it?",
+        )
+        .unwrap();
+        let shown = String::from_utf8(err).unwrap();
+        assert_eq!(
+            shown,
+            "remove /tmp/a\\x1b[2Jb\n  shared key\n! Remove\\x9bit? [y/N] "
+        );
+        assert!(!shown.chars().any(|c| c.is_control() && c != '\n'));
+    }
+
+    #[test]
+    fn moai_output_quiet_drops_progress_and_plain_drops_color() {
+        let colored = Painter {
+            color: true,
+            unicode: true,
+        };
+        assert_eq!(progress_painter(OutputMode::Quiet, || colored), None);
+        assert_eq!(
+            progress_painter(OutputMode::Plain, || colored),
+            Some(Painter::plain())
+        );
+        assert_eq!(
+            progress_painter(OutputMode::Normal, || colored),
+            Some(colored)
+        );
     }
 }

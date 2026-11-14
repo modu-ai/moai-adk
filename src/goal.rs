@@ -80,8 +80,7 @@ pub fn store(project: &Path) -> Result<PathBuf> {
     let common = id["clone_anchor"]
         .as_str()
         .ok_or("the goal file requires a git repository")?;
-    Ok(Path::new(common)
-        .join(crate::CLONE_STATE_DIR)
+    Ok(crate::clone_root::path(Path::new(common))
         .join("goal")
         .join("goal.json"))
 }

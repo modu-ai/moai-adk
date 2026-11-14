@@ -4,9 +4,11 @@
 //! after a refusal: POSIX `eval` of an empty string returns 0.)
 //!
 //! - `CARGO_TARGET_DIR` is `<base>/moai-rc-target-<lane>`: one build folder per lane, kept when
-//!   the lane moves to another worktree. cargo then rebuilds only `moai-cli` itself for the new
-//!   path and reuses every dependency. Sources restored with `git restore`, `git checkout --` or
-//!   extracted from `git archive` keep an old mtime, so `touch` them before the next build.
+//!   the lane moves to another worktree, so dependencies are reused. cargo decides what to
+//!   rebuild from file mtimes, so after switching worktree, and after `git restore`,
+//!   `git checkout --` or `git archive`, `touch` `build.rs` and the sources before the next build:
+//!   otherwise the other worktree's build, or its build-script output (the `src/ops` command list),
+//!   can stay (seen in a #2846 audit, 2026-11-14).
 //! - `CARGO_HOME` is the lane's own `<base>/moai-rc-cargo-<lane>` when it holds a prepared
 //!   registry (`registry/src`), else the shared `<base>/moai-rc-product-cargo` when that does,
 //!   else it is left unset (cargo's own default) and a comment line says why. Nothing is created
@@ -161,8 +163,8 @@ pub fn render(lane: &str, env: &LaneEnv) -> String {
         None => out.push_str(&format!("# {}\n", env.cargo_home_why)),
     }
     out.push_str(
-        "# One build folder for every worktree of this lane: after switching, cargo rebuilds \
-         only moai-cli; touch sources restored by git restore/checkout or git archive.\n",
+        "# One build folder for every worktree of this lane: after switching worktree or after \
+         git restore/checkout/archive, touch build.rs and the sources before building.\n",
     );
     out
 }
