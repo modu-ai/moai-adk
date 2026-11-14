@@ -42,7 +42,12 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn plan_raw(home: &Path, extra: &[&str]) -> Value {
+    plan_env(home, extra, &[])
+}
+
+fn plan_env(home: &Path, extra: &[&str], envs: &[(&str, &str)]) -> Value {
     let mut c = Command::new(BIN);
+    c.envs(envs.iter().copied());
     c.args([
         "home-state-plan",
         "--home",
@@ -210,8 +215,7 @@ fn worktrees_and_entries_in_use_stay_in_place() {
             .spawn()
             .unwrap(),
     );
-    // Let the processes appear in the process table.
-    std::thread::sleep(Duration::from_millis(300));
+    // `spawn` returns after the exec, so the processes are already in the process table.
     let p = selective(&home);
     assert_eq!(
         class_of(&p, "logs"),
@@ -293,7 +297,10 @@ fn the_whole_folder_mode_is_unchanged() {
             "writes"
         ]
     );
-    assert_eq!(p["action"], json!("migrate"), "{p}");
+    // Since #2811 D7 the whole-folder move refuses while `worktrees/` is there — the case the
+    // selective plan exists for.
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert_eq!(p["blocks"], json!(["work_folder_present:worktrees"]), "{p}");
 
     // An empty or Rust HOME: nothing to select.
     let dir = tempfile::tempdir().unwrap();
@@ -319,6 +326,136 @@ fn a_live_go_session_blocks_the_selective_plan() {
         .as_array()
         .unwrap()
         .contains(&json!("go_session_live")));
+}
+
+fn blocks(p: &Value) -> Vec<String> {
+    p["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| b.as_str().unwrap().to_string())
+        .collect()
+}
+
+/// #2823 audit B1: the listing limit is fail-closed at its edge — 500 entries are judged,
+/// 501 block the plan (`not_fully_listed`).
+#[test]
+fn more_than_five_hundred_entries_block_the_plan() {
+    for (count, blocked) in [(500usize, false), (501, true)] {
+        let (_d, home) = go_home();
+        let have = fs::read_dir(home.join(".moai")).unwrap().count();
+        for i in 0..count - have {
+            write(&home, &format!(".moai/u-{i:04}"), "");
+        }
+        let p = selective(&home);
+        assert_eq!(p["total"], json!(count));
+        assert_eq!(
+            blocks(&p).contains(&"not_fully_listed".to_string()),
+            blocked,
+            "{count}: {:?}",
+            blocks(&p)
+        );
+        let want = if blocked { "blocked" } else { "select" };
+        assert_eq!(p["action"], json!(want), "{count}");
+        assert_eq!(p["entries"].as_array().unwrap().len(), 500);
+    }
+}
+
+/// #2823 audit B1: an existing backup is never overwritten — the plan names the stamped
+/// alternative, and blocks when that is taken too.
+#[test]
+fn taken_backup_names_move_to_the_stamp_then_block() {
+    let (_d, home) = go_home();
+    fs::create_dir_all(home.join(".moai-backup")).unwrap();
+    let alt = home.join(".moai-backup-20261113T232000Z");
+    let p = selective(&home);
+    assert_eq!(p["backup"], json!(alt.display().to_string()), "{p}");
+    assert_eq!(
+        entry(&p, "cache")["destination"],
+        json!(alt.join("cache").display().to_string())
+    );
+    assert!(!blocks(&p).contains(&"backup_name_taken".to_string()));
+
+    fs::create_dir_all(&alt).unwrap();
+    let p = selective(&home);
+    assert_eq!(p["backup"], Value::Null, "{p}");
+    assert!(blocks(&p).contains(&"backup_name_taken".to_string()), "{p}");
+    assert_eq!(p["action"], json!("blocked"));
+    assert_eq!(entry(&p, "cache")["destination"], Value::Null);
+}
+
+/// #2823 audit B2: a process that only holds a file open inside an entry (no working folder,
+/// no path on its command line) keeps that entry in place.
+#[test]
+fn an_open_file_keeps_its_entry_in_place() {
+    let (_d, home) = go_home();
+    let held = fs::File::open(home.join(".moai/cache/a.bin")).unwrap();
+    let _open = Kill(
+        Command::new("sh")
+            .args(["-c", "sleep 60; :"])
+            .current_dir(&home)
+            .stdin(Stdio::from(held))
+            .spawn()
+            .unwrap(),
+    );
+    let p = selective(&home);
+    assert_eq!(
+        class_of(&p, "cache"),
+        ("keep-in-place".into(), "file_open".into())
+    );
+    assert_eq!(class_of(&p, "logs").0, "move-to-backup");
+}
+
+/// #2823 audit B2: a Go HOME with nothing to move plans `none`, not `select`.
+#[test]
+fn nothing_to_move_plans_none() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = fs::canonicalize(dir.path()).unwrap();
+    write(&home, ".moai/credentials.yaml", "token: PLACEHOLDER\n");
+    write(&home, ".moai/worktrees/w/README", "x\n");
+    write(&home, ".moai/projects/p/README", "x\n");
+    write(&home, ".moai/odd-entry", "x");
+    let p = selective(&home);
+    assert_eq!(p["state"]["generation"], json!("go"), "{p}");
+    assert_eq!(p["counts"]["move-to-backup"], json!(0), "{p}");
+    assert_eq!(p["action"], json!("none"), "{p}");
+    assert_eq!(
+        class_of(&p, "projects"),
+        ("keep-in-place".into(), "work_folder".into())
+    );
+}
+
+/// #2823 audit N1: when the process table cannot be read, run data stays in place
+/// (fail-closed); other classes keep their reasons.
+#[test]
+fn an_unreadable_process_table_keeps_run_data_in_place() {
+    let (_d, home) = go_home();
+    let p = plan_env(
+        &home,
+        &["--selective"],
+        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
+    );
+    for name in [
+        "cache",
+        "logs",
+        "run",
+        "state",
+        "tmp-123",
+        "user-assets.json",
+    ] {
+        assert_eq!(
+            class_of(&p, name),
+            ("keep-in-place".into(), "process_check_unavailable".into()),
+            "{name}"
+        );
+    }
+    assert_eq!(
+        class_of(&p, "worktrees"),
+        ("keep-in-place".into(), "worktree_root".into())
+    );
+    assert_eq!(class_of(&p, "odd-entry").0, "unknown");
+    assert_eq!(class_of(&p, "gateway-auth").0, "secret-manual");
+    assert_eq!(p["action"], json!("none"), "{p}");
 }
 
 fn snapshot(root: &Path) -> Vec<(String, u64)> {

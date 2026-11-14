@@ -16,7 +16,7 @@ operation `home_state.plan` · 코드 `src/ops/home_state_plan.rs`, `src/home_st
 
 - 분류표는 코드 한 곳 `home_state::SELECTIVE_TABLE` 에 있다(D1). 대소문자는 무시하고, `*` 로 끝나면 접두어로 맞춘다.
   - 비밀 행이 먼저다: `.env*`·`credentials*`·`secrets`·`gateway-auth` → `secret-manual`.
-  - `worktrees` → `keep-in-place`(`worktree_root`, #2811 D8).
+  - `worktrees` → `keep-in-place`(`worktree_root`, #2811 D8), `projects` → `keep-in-place`(`work_folder`, #2811 D7/D8a, 통째 이동의 `is_work_folder` 와 같은 이름).
   - `cache`·`logs`·`run`·`state`·`releases`·`rescue`·`scratch`·`tmp-*`·`user-assets.json` → `move-to-backup`(`go_run_data`).
   - 표에 없는 이름은 `unknown`(`not_in_table`)이고 옮기지 않는다.
 - `secret-manual` 은 이름만으로 정한다. 열지도, 안을 걷지도, 프로세스와 맞춰 보지도 않는다(AC-3).
@@ -24,7 +24,7 @@ operation `home_state.plan` · 코드 `src/ops/home_state_plan.rs`, `src/home_st
   - `process_cwd`: 작업 폴더가 그 안에 있음
   - `file_open`: 그 안의 파일이 열려 있음
   - `process_command_line`: 명령 줄이 그 경로나 그 안을 가리킴
-  - 프로세스 목록을 읽지 못하면 `move-to-backup` 항목은 `keep-in-place` 가 되고, 사유는 `process_check_unavailable` 등이다(fail-closed).
+  - 프로세스 목록을 읽지 못하면 `move-to-backup` 항목은 `keep-in-place` 가 되고, 사유는 `process_check_unavailable` 등이다(fail-closed). 시험용 빌드(debug)에서는 `MOAI_CLI_TEST_PROCESS_CHECK=unavailable` 로 이 경우를 흉내 낸다. 릴리스 빌드에는 없다.
 - `move-to-backup` 항목에 중첩 checkout 이 있으면 `keep-in-place`(`nested_checkout`)다. 상한 안에서 다 보지 못하면 `not_fully_checked` 다.
 - `destination` 은 `move-to-backup` 일 때만 `<backup>/<이름>` 이다. `backup` 고르기는 통째 이동과 같다.
 - `action`: `select`(Go 이고 막는 이유가 없고 옮길 항목이 있음), `none`, `blocked`. 세션 막음(`go_session_live` 등)과 `backup_name_taken` 은 통째 이동과 같다. 항목이 500개를 넘으면 `not_fully_listed`, 이름을 UTF-8 로 읽을 수 없는 항목이 있으면 `unreadable_names:N` 으로 막는다.

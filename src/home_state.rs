@@ -365,6 +365,8 @@ pub const SELECTIVE_TABLE: &[(&str, EntryClass, &str)] = &[
     ("gateway-auth", EntryClass::SecretManual, "secret_name"),
     // #2811 W2 D8: the worktree root stays `~/.moai/worktrees`; no migration moves it.
     ("worktrees", EntryClass::KeepInPlace, "worktree_root"),
+    // #2811 D7/D8a: user work folders never move (`is_work_folder` in the whole-folder plan).
+    ("projects", EntryClass::KeepInPlace, "work_folder"),
     ("cache", EntryClass::MoveToBackup, "go_run_data"),
     ("logs", EntryClass::MoveToBackup, "go_run_data"),
     ("run", EntryClass::MoveToBackup, "go_run_data"),
@@ -441,6 +443,16 @@ struct InUse {
 
 impl InUse {
     fn read() -> InUse {
+        // Test builds only: simulate a machine whose process table cannot be read, so the
+        // fail-closed path is pinned by a test (#2823 audit N1).
+        #[cfg(debug_assertions)]
+        if std::env::var_os("MOAI_CLI_TEST_PROCESS_CHECK").is_some_and(|v| v == "unavailable") {
+            return InUse {
+                cwds: None,
+                open: None,
+                lines: None,
+            };
+        }
         InUse {
             cwds: crate::worktree_gc::process_cwds().map(|v| {
                 v.into_iter()
@@ -942,6 +954,9 @@ mod tests {
         use super::{table_class, EntryClass::*};
         let cases = [
             ("worktrees", KeepInPlace),
+            ("projects", KeepInPlace),
+            ("PROJECTS", KeepInPlace),
+            ("projects2", Unknown),
             ("cache", MoveToBackup),
             ("tmp-", MoveToBackup),
             ("tmp-9", MoveToBackup),
