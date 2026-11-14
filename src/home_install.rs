@@ -898,7 +898,10 @@ mod tests {
             ALIAS_JOURNAL_LIMIT + 1
         );
         assert!(!got.contains_key(&hid("old000")), "the oldest was read");
-        assert!(got.contains_key(&hid("old001")), "the 2nd oldest is the first kept");
+        assert!(
+            got.contains_key(&hid("old001")),
+            "the 2nd oldest is the first kept"
+        );
         assert!(got.contains_key(&hid("old064")), "the newest was not read");
     }
 }

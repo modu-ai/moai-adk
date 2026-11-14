@@ -560,7 +560,10 @@ fn install_digest_ignores_the_journal_folder_the_apply_creates() {
     // The digest still binds every other entry: a new top-level name changes it.
     write(&home, ".moai-cli/zz-new/x.json", "{}");
     let changed = plan(&home);
-    assert_ne!(after["content_digest"], changed["content_digest"], "{changed}");
+    assert_ne!(
+        after["content_digest"], changed["content_digest"],
+        "{changed}"
+    );
 }
 
 #[test]
