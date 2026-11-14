@@ -154,6 +154,8 @@ Lane and leader
   lane-resume-note        Write a card's resume note
   lane-resume-check       Read a card's resume note from a
                           comment
+  lane-duty-line          Print the line a leader types into
+                          a lane
   lane-status             Show the status table of the named
                           lanes
   lane-handoff-check      Check that a worktree is safe to

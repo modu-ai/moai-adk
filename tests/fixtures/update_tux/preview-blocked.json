@@ -1,0 +1,878 @@
+{
+ "mode": "preview",
+ "applied": false,
+ "nothing_to_apply": true,
+ "package": "/home/u/.moai-cli/versions/2026.11.0-rc.1/skills/moai",
+ "plan_digest": "sha256:39e96ed4f4e48eafc3021a9a0ae0195676f254b98654112c2358cebd8e9777a5",
+ "plan": {
+  "schema_version": 1,
+  "protocol_version": 1,
+  "protocol_range": {
+   "min": 1,
+   "max": 1
+  },
+  "home": "/home/u",
+  "scope": [
+   "claude",
+   "codex"
+  ],
+  "source_version": "2026.11.0-rc.1",
+  "target_version": "2026.11.0-rc.1",
+  "package_digest": "sha256:27d5cdaffecd890d553df7c34e54ee2ec4c2cfc6081f5bfb2669d188daf19267",
+  "hosts": [
+   {
+    "host": "claude",
+    "projection_root": "/home/u/.claude/skills/moai",
+    "preflight": "blocked",
+    "blocked_reason": "SKILL.md was changed by hand since the last update",
+    "files": [
+     {
+      "host": "claude",
+      "path": "SKILL.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "current_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "new_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25"
+     },
+     {
+      "host": "claude",
+      "path": "references/adapters/aside.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "current_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "new_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0"
+     },
+     {
+      "host": "claude",
+      "path": "references/adapters/orca.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "current_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "new_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0"
+     },
+     {
+      "host": "claude",
+      "path": "references/chains/index.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "current_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "new_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e"
+     },
+     {
+      "host": "claude",
+      "path": "references/home/output-style.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "current_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "new_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded"
+     },
+     {
+      "host": "claude",
+      "path": "references/home/routing.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "current_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "new_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/boundary-checks.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "current_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "new_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/check-completeness.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "current_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "new_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/core-rules.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "current_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "new_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/decide.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "current_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "new_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/doc-claims.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "current_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "new_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/git-safety.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "current_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "new_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/interview.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "current_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "new_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/review.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "current_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "new_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/security-checklist.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "current_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "new_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/tdd-results.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "current_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "new_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df"
+     },
+     {
+      "host": "claude",
+      "path": "references/internal/test-design.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "current_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "new_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f"
+     },
+     {
+      "host": "claude",
+      "path": "references/routes.json",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "current_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "new_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e"
+     },
+     {
+      "host": "claude",
+      "path": "references/routes.md",
+      "action": "create",
+      "baseline_sha256": null,
+      "current_sha256": null,
+      "new_sha256": "sha256:cd2aaedfdf65bec5bac30efffc536c1fb9a7735619bd3d69a026cbfaf7e68a38"
+     },
+     {
+      "host": "claude",
+      "path": "references/source-manifest.json",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a",
+      "current_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a",
+      "new_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/audit.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "current_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "new_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/mode-agent.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
+      "current_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
+      "new_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/mode-leader.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768",
+      "current_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768",
+      "new_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/optimize.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "current_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "new_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/plan.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3",
+      "current_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3",
+      "new_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/project.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
+      "current_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
+      "new_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/read.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357",
+      "current_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357",
+      "new_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/run.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "current_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "new_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/setup.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "current_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "new_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/sync.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "current_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "new_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/update.md",
+      "action": "update",
+      "baseline_sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
+      "current_sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
+      "new_sha256": "sha256:617dbf0115142594cb5c70421f9cda35f34420bc7219814b25163f4b70e38373"
+     },
+     {
+      "host": "claude",
+      "path": "workflows/verify.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23",
+      "current_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23",
+      "new_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23"
+     }
+    ]
+   },
+   {
+    "host": "codex",
+    "projection_root": "/home/u/.agents/skills/moai",
+    "preflight": "ok",
+    "blocked_reason": null,
+    "files": [
+     {
+      "host": "codex",
+      "path": "SKILL.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "current_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "new_sha256": "sha256:0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25"
+     },
+     {
+      "host": "codex",
+      "path": "references/adapters/aside.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "current_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+      "new_sha256": "sha256:597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0"
+     },
+     {
+      "host": "codex",
+      "path": "references/adapters/orca.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "current_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0",
+      "new_sha256": "sha256:bd8490ec29b7722b46daff7ff14a5cc47b3d9da4d574fff5475797afbb3042d0"
+     },
+     {
+      "host": "codex",
+      "path": "references/chains/index.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "current_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e",
+      "new_sha256": "sha256:122afdcc008ae361f4b71bd29e67717423434c3879891b3208c88921dd1a7f0e"
+     },
+     {
+      "host": "codex",
+      "path": "references/home/output-style.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "current_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+      "new_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded"
+     },
+     {
+      "host": "codex",
+      "path": "references/home/routing.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "current_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "new_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/boundary-checks.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "current_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "new_sha256": "sha256:e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/check-completeness.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "current_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "new_sha256": "sha256:2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/core-rules.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "current_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28",
+      "new_sha256": "sha256:a49c90cfbf42aa4082974f5f6b555ba829d12c911fc185850ad86ac2ef32aa28"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/decide.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "current_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "new_sha256": "sha256:cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/doc-claims.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "current_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
+      "new_sha256": "sha256:edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/git-safety.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "current_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "new_sha256": "sha256:8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/interview.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "current_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "new_sha256": "sha256:f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/review.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "current_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "new_sha256": "sha256:c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/security-checklist.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "current_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d",
+      "new_sha256": "sha256:b9ee220a0c4621084894b07fbf0fd373ca4d76ee7da0bb4d847d66b51a83a21d"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/tdd-results.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "current_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+      "new_sha256": "sha256:4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df"
+     },
+     {
+      "host": "codex",
+      "path": "references/internal/test-design.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "current_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
+      "new_sha256": "sha256:7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f"
+     },
+     {
+      "host": "codex",
+      "path": "references/routes.json",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "current_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "new_sha256": "sha256:d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e"
+     },
+     {
+      "host": "codex",
+      "path": "references/routes.md",
+      "action": "unchanged",
+      "baseline_sha256": null,
+      "current_sha256": null,
+      "new_sha256": "sha256:cd2aaedfdf65bec5bac30efffc536c1fb9a7735619bd3d69a026cbfaf7e68a38"
+     },
+     {
+      "host": "codex",
+      "path": "references/source-manifest.json",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a",
+      "current_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a",
+      "new_sha256": "sha256:fe05b2f9b3a757ee824b7453ffe72490cfd106f488132c997e2995aad000d58a"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/audit.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "current_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6",
+      "new_sha256": "sha256:d4578c900315c42bb27c9c2ebce53086ad68aaab12d09979603b887bdca68ce6"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/mode-agent.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
+      "current_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27",
+      "new_sha256": "sha256:d1c61e3aa95fa29cbdc89129f23b38b3c4a524fc248c0b53d290f571a9be2c27"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/mode-leader.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768",
+      "current_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768",
+      "new_sha256": "sha256:d0625dfe3873722c3c6ca348dffc8b68e8453820731e75e4287bf6f2838a4768"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/optimize.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "current_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc",
+      "new_sha256": "sha256:64e2ccb2a1c036eaefac8258debf07dd5a0b59e308beb87bad93bb25790ba3dc"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/plan.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3",
+      "current_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3",
+      "new_sha256": "sha256:2436d06ea08fd8432e3f632234dd6921dc4c6274f7c9bcdb49baa15e0bf7e9d3"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/project.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
+      "current_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
+      "new_sha256": "sha256:556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/read.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357",
+      "current_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357",
+      "new_sha256": "sha256:0ee348b94b7befd74f842fde7b5c011c9cc6f41528c888d1941f10db40cde357"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/run.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "current_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "new_sha256": "sha256:529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/setup.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "current_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "new_sha256": "sha256:9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/sync.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "current_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "new_sha256": "sha256:0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/update.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
+      "current_sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
+      "new_sha256": "sha256:617dbf0115142594cb5c70421f9cda35f34420bc7219814b25163f4b70e38373"
+     },
+     {
+      "host": "codex",
+      "path": "workflows/verify.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23",
+      "current_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23",
+      "new_sha256": "sha256:091c31b74fa436149af2e68bec4650debb7c90a661c92d434e1d84c19ce07a23"
+     }
+    ]
+   }
+  ],
+  "expected_file_hashes": [
+   {
+    "host": "claude",
+    "path": "references/routes.md",
+    "sha256": "sha256:cd2aaedfdf65bec5bac30efffc536c1fb9a7735619bd3d69a026cbfaf7e68a38"
+   },
+   {
+    "host": "claude",
+    "path": "workflows/update.md",
+    "sha256": "sha256:617dbf0115142594cb5c70421f9cda35f34420bc7219814b25163f4b70e38373"
+   },
+   {
+    "host": "codex",
+    "path": "references/routes.md",
+    "sha256": "sha256:cd2aaedfdf65bec5bac30efffc536c1fb9a7735619bd3d69a026cbfaf7e68a38"
+   },
+   {
+    "host": "codex",
+    "path": "workflows/update.md",
+    "sha256": "sha256:617dbf0115142594cb5c70421f9cda35f34420bc7219814b25163f4b70e38373"
+   }
+  ],
+  "rollback_manifest": [
+   {
+    "host": "claude",
+    "path": "workflows/update.md",
+    "sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a"
+   },
+   {
+    "host": "codex",
+    "path": "workflows/update.md",
+    "sha256": "sha256:ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a"
+   }
+  ],
+  "plan_digest": "sha256:7d21decfc40d6713ca90c1a2c23532a602a6b442c1bc1d4fce41d52b8011a8df"
+ },
+ "agents": {
+  "schema_version": 1,
+  "home": "/home/u",
+  "package_digest": "sha256:27d5cdaffecd890d553df7c34e54ee2ec4c2cfc6081f5bfb2669d188daf19267",
+  "agents_digest": "sha256:9dafba230570c9bfba0292e3f5eae787d506ca08e642e6be79a69d0553f05d09",
+  "hosts": [
+   {
+    "host": "claude",
+    "dir": "/home/u/.claude/agents",
+    "preflight": "ok",
+    "blocked_reason": null,
+    "files": [
+     {
+      "file": "moai-audit.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:ba18c09a18e604d6ddd5b4deaa2bcca320d246b350b7dbf427185e666cfe7570",
+      "current_sha256": "sha256:ba18c09a18e604d6ddd5b4deaa2bcca320d246b350b7dbf427185e666cfe7570",
+      "new_sha256": "sha256:ba18c09a18e604d6ddd5b4deaa2bcca320d246b350b7dbf427185e666cfe7570"
+     },
+     {
+      "file": "moai-docs.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:b95d493976b9adf6f1ce39bc141ea822aa80ef189ff6b97e78be61b4576cd463",
+      "current_sha256": "sha256:b95d493976b9adf6f1ce39bc141ea822aa80ef189ff6b97e78be61b4576cd463",
+      "new_sha256": "sha256:b95d493976b9adf6f1ce39bc141ea822aa80ef189ff6b97e78be61b4576cd463"
+     },
+     {
+      "file": "moai-impl.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:8d296f683dab9a828848b2a9bf4eb0f84c7fe836489bf45935684fa7d655fd20",
+      "current_sha256": "sha256:8d296f683dab9a828848b2a9bf4eb0f84c7fe836489bf45935684fa7d655fd20",
+      "new_sha256": "sha256:8d296f683dab9a828848b2a9bf4eb0f84c7fe836489bf45935684fa7d655fd20"
+     },
+     {
+      "file": "moai-plan.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:1fcd7095904b50f01980259ec798673a9ee7c97b576f484260e936acd432a39f",
+      "current_sha256": "sha256:1fcd7095904b50f01980259ec798673a9ee7c97b576f484260e936acd432a39f",
+      "new_sha256": "sha256:1fcd7095904b50f01980259ec798673a9ee7c97b576f484260e936acd432a39f"
+     },
+     {
+      "file": "moai-research.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:9f581d604c3b15b4ac0dfd7ea1352f28fe28e7c762d7515a89f1e07a3312e9cf",
+      "current_sha256": "sha256:9f581d604c3b15b4ac0dfd7ea1352f28fe28e7c762d7515a89f1e07a3312e9cf",
+      "new_sha256": "sha256:9f581d604c3b15b4ac0dfd7ea1352f28fe28e7c762d7515a89f1e07a3312e9cf"
+     }
+    ],
+    "not_supported": {}
+   },
+   {
+    "host": "codex",
+    "dir": "/home/u/.codex/agents",
+    "preflight": "ok",
+    "blocked_reason": null,
+    "files": [
+     {
+      "file": "moai-audit.toml",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:6e44399cbbf0229cf0fc919620044d678dce6835264ae73e1f65bfed987b7a1c",
+      "current_sha256": "sha256:6e44399cbbf0229cf0fc919620044d678dce6835264ae73e1f65bfed987b7a1c",
+      "new_sha256": "sha256:6e44399cbbf0229cf0fc919620044d678dce6835264ae73e1f65bfed987b7a1c"
+     },
+     {
+      "file": "moai-docs.toml",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:172dc081a5f0d3476ab4273dd12bba2b5d600d85ef5a0aae9d953a635bf3df5e",
+      "current_sha256": "sha256:172dc081a5f0d3476ab4273dd12bba2b5d600d85ef5a0aae9d953a635bf3df5e",
+      "new_sha256": "sha256:172dc081a5f0d3476ab4273dd12bba2b5d600d85ef5a0aae9d953a635bf3df5e"
+     },
+     {
+      "file": "moai-impl.toml",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:8378139b508693f2127248c5d29c3ea73ff5d61afeb30d9eef12f51ba35f7898",
+      "current_sha256": "sha256:8378139b508693f2127248c5d29c3ea73ff5d61afeb30d9eef12f51ba35f7898",
+      "new_sha256": "sha256:8378139b508693f2127248c5d29c3ea73ff5d61afeb30d9eef12f51ba35f7898"
+     },
+     {
+      "file": "moai-plan.toml",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:a6fb5b2dc83ef4e4212e4a1a3820cf5b313c8105e1c20eb2630997778e73222b",
+      "current_sha256": "sha256:a6fb5b2dc83ef4e4212e4a1a3820cf5b313c8105e1c20eb2630997778e73222b",
+      "new_sha256": "sha256:a6fb5b2dc83ef4e4212e4a1a3820cf5b313c8105e1c20eb2630997778e73222b"
+     },
+     {
+      "file": "moai-research.toml",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:7c5462b46f762b43df21db1448d5d1d09514bba37eadab36cf6bd166e6c3b354",
+      "current_sha256": "sha256:7c5462b46f762b43df21db1448d5d1d09514bba37eadab36cf6bd166e6c3b354",
+      "new_sha256": "sha256:7c5462b46f762b43df21db1448d5d1d09514bba37eadab36cf6bd166e6c3b354"
+     }
+    ],
+    "not_supported": {
+     "moai-audit.toml": [
+      "readonly: a Codex agent inherits the parent sandbox; read-only is an instruction only",
+      "isolation: Codex agents have no worktree isolation; they run in the parent folder"
+     ],
+     "moai-impl.toml": [
+      "isolation: Codex agents have no worktree isolation; they run in the parent folder"
+     ],
+     "moai-plan.toml": [
+      "readonly: a Codex agent inherits the parent sandbox; read-only is an instruction only"
+     ],
+     "moai-research.toml": [
+      "readonly: a Codex agent inherits the parent sandbox; read-only is an instruction only"
+     ]
+    }
+   },
+   {
+    "host": "omp",
+    "dir": "/home/u/.omp/agent/agents",
+    "preflight": "ok",
+    "blocked_reason": null,
+    "files": [
+     {
+      "file": "moai-audit.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:30f8e079960dd002fe85a265c84f056ca3740f1cfb2b06b260f3e0489e256d3f",
+      "current_sha256": "sha256:30f8e079960dd002fe85a265c84f056ca3740f1cfb2b06b260f3e0489e256d3f",
+      "new_sha256": "sha256:30f8e079960dd002fe85a265c84f056ca3740f1cfb2b06b260f3e0489e256d3f"
+     },
+     {
+      "file": "moai-docs.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:ac1027b6cb7d3317ce5475366292a06299fe7fa5bf9f3b6572c53e38f34d2abc",
+      "current_sha256": "sha256:ac1027b6cb7d3317ce5475366292a06299fe7fa5bf9f3b6572c53e38f34d2abc",
+      "new_sha256": "sha256:ac1027b6cb7d3317ce5475366292a06299fe7fa5bf9f3b6572c53e38f34d2abc"
+     },
+     {
+      "file": "moai-impl.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:e53adaed4653d1a42a890f904a7830087a1f62a04d7761c6546bd15b61ffe52e",
+      "current_sha256": "sha256:e53adaed4653d1a42a890f904a7830087a1f62a04d7761c6546bd15b61ffe52e",
+      "new_sha256": "sha256:e53adaed4653d1a42a890f904a7830087a1f62a04d7761c6546bd15b61ffe52e"
+     },
+     {
+      "file": "moai-plan.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:cb38c978816e650101cd477faeea676e92668d6277ab03618d536a5025838d05",
+      "current_sha256": "sha256:cb38c978816e650101cd477faeea676e92668d6277ab03618d536a5025838d05",
+      "new_sha256": "sha256:cb38c978816e650101cd477faeea676e92668d6277ab03618d536a5025838d05"
+     },
+     {
+      "file": "moai-research.md",
+      "action": "unchanged",
+      "baseline_sha256": "sha256:c8602f82a7c4bbee34a897a579db993c987334d3a9c8a098f9d176716b1a125e",
+      "current_sha256": "sha256:c8602f82a7c4bbee34a897a579db993c987334d3a9c8a098f9d176716b1a125e",
+      "new_sha256": "sha256:c8602f82a7c4bbee34a897a579db993c987334d3a9c8a098f9d176716b1a125e"
+     }
+    ],
+    "not_supported": {
+     "moai-audit.md": [
+      "isolation: OMP isolates per task call (isolated: true with task.isolation.enabled), not in the agent file"
+     ],
+     "moai-impl.md": [
+      "isolation: OMP isolates per task call (isolated: true with task.isolation.enabled), not in the agent file"
+     ]
+    }
+   }
+  ],
+  "plan_digest": "sha256:0f715ae67a5615ff3cfd08b629b4154fb806d847da785613cc2a2a5a13cc19ba"
+ },
+ "routing": {
+  "schema_version": 1,
+  "home": "/home/u",
+  "package_digest": "sha256:27d5cdaffecd890d553df7c34e54ee2ec4c2cfc6081f5bfb2669d188daf19267",
+  "source_sha256": "sha256:bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+  "hosts": [
+   {
+    "host": "claude",
+    "file": "/home/u/.claude/CLAUDE.md",
+    "preflight": "ok",
+    "blocked_reason": null,
+    "section": {
+     "path": "/home/u/.claude/CLAUDE.md",
+     "action": "unchanged",
+     "tracked_by_default": false,
+     "expected_sha256": "sha256:40f2bc7c9b3acc519b3970f2983ed13474c147d84626fc97430615a3672dcff1",
+     "section_id": "moai-routing",
+     "baseline_sha256": "sha256:40f2bc7c9b3acc519b3970f2983ed13474c147d84626fc97430615a3672dcff1",
+     "rendered_sha256": "sha256:40f2bc7c9b3acc519b3970f2983ed13474c147d84626fc97430615a3672dcff1",
+     "detail": null
+    }
+   },
+   {
+    "host": "codex",
+    "file": "/home/u/.codex/AGENTS.md",
+    "preflight": "ok",
+    "blocked_reason": null,
+    "section": {
+     "path": "/home/u/.codex/AGENTS.md",
+     "action": "unchanged",
+     "tracked_by_default": false,
+     "expected_sha256": "sha256:342c7d8e7c90f9ce3e23267fd49b21bace18f22e85e9d1e8a352aaf4f2d499f3",
+     "section_id": "moai-routing",
+     "baseline_sha256": "sha256:15fc613f200633f785855ecc519744e68ee7ba77763f713e66a33e1ef9e24429",
+     "rendered_sha256": "sha256:15fc613f200633f785855ecc519744e68ee7ba77763f713e66a33e1ef9e24429",
+     "detail": null
+    }
+   }
+  ],
+  "not_supported": [
+   {
+    "host": "omp",
+    "reason": "~/.omp/agent/AGENTS.md, once present, shadows every other user context file OMP reads; not created by this tool"
+   },
+   {
+    "host": "kiro",
+    "reason": "~/.kiro/steering is documented but not measured (Kiro not installed); not written"
+   },
+   {
+    "host": "cursor",
+    "reason": "Cursor CLI has no user-level instruction file (rules live in the app); the project AGENTS.md carries it"
+   }
+  ],
+  "plan_digest": "sha256:93b942792d384ce962fde69cd7f0f259d52cc2426f07bf6b265ccfaddf49e92d"
+ },
+ "style": {
+  "schema_version": 1,
+  "home": "/home/u",
+  "package_digest": "sha256:27d5cdaffecd890d553df7c34e54ee2ec4c2cfc6081f5bfb2669d188daf19267",
+  "source_sha256": "sha256:d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
+  "targets": [
+   {
+    "host": "claude",
+    "kind": "style_file",
+    "path": "/home/u/.claude/output-styles/MoAI-Easy.md",
+    "action": "unchanged",
+    "expected_sha256": "sha256:d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
+    "baseline_sha256": "sha256:d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
+    "detail": null
+   },
+   {
+    "host": "claude",
+    "kind": "setting",
+    "path": "/home/u/.claude/settings.json",
+    "action": "unchanged",
+    "expected_sha256": "sha256:c658e6de8135196bc09840bf1d196ad9e98de584e163631b1e7bf00a3a18aea5",
+    "baseline_sha256": null,
+    "detail": null
+   },
+   {
+    "host": "codex",
+    "kind": "block",
+    "path": "/home/u/.codex/AGENTS.md",
+    "action": "unchanged",
+    "expected_sha256": "sha256:342c7d8e7c90f9ce3e23267fd49b21bace18f22e85e9d1e8a352aaf4f2d499f3",
+    "baseline_sha256": "sha256:06a7d46733c73f6071768d4369cc65562a3515c5eae5fe01f651462ca61e4f37",
+    "detail": null
+   }
+  ],
+  "not_supported": [
+   {
+    "host": "omp",
+    "reason": "~/.omp/agent/AGENTS.md, once present, shadows every other user context file OMP reads; not created by this tool"
+   },
+   {
+    "host": "kiro",
+    "reason": "~/.kiro/steering is documented but not measured (Kiro not installed); not written"
+   },
+   {
+    "host": "cursor",
+    "reason": "Cursor CLI has no user-level instruction file (rules live in the app); the project AGENTS.md carries it"
+   }
+  ],
+  "plan_digest": "sha256:df7d590ce7cdc081d1804e8d93522f2cd645567e3eb2fc804ec8049c4e7c1ee8"
+ },
+ "bin_names": {
+  "state": "unchanged",
+  "reason": null,
+  "canonical": "/home/u/.moai-cli/versions/2026.11.0-rc.1/bin/moai-cli",
+  "alias": "/home/u/.moai-cli/versions/2026.11.0-rc.1/bin/moai",
+  "canonical_sha256": "sha256:63218f8f7680b2c07b3934b95d50a2dab5891ce3246dc60421b0a489c6337d02",
+  "alias_sha256": "sha256:63218f8f7680b2c07b3934b95d50a2dab5891ce3246dc60421b0a489c6337d02",
+  "plan_digest": "sha256:0f0e8c89985e6069b518c557105d4855d500eeded79499058eb05327c23dc2f0"
+ },
+ "hooks": {
+  "project": "/home/u/work/site",
+  "hosts": [],
+  "skipped": [
+   {
+    "part": "hooks",
+    "reason": "no MoAI hook set is installed in this project"
+   }
+  ],
+  "plan_digest": "sha256:0e99f363d2c5ef84d1e7c633a597181b54ccb7cf8fbe1b165f60b8b1e774fffc"
+ },
+ "skipped": [],
+ "confirm_with": "moai update --confirm sha256:39e96ed4f4e48eafc3021a9a0ae0195676f254b98654112c2358cebd8e9777a5",
+ "_note": "built from preview-changes: claude preflight blocked, codex unchanged"
+}
