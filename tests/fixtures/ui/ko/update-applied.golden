@@ -1,0 +1,15 @@
+적용
+  ✓ 스킬 claude     31개 바뀜
+  ✓ 스킬 codex      31개 바뀜
+  ✓ 에이전트        15개 바뀜
+  ✓ 라우팅          2개 바뀜
+  ✓ 출력 스타일     3개 바뀜
+  ✓ 실행 파일 이름  1개 바뀜
+
+✓ 다 바꿨어요 — 83개
+  되돌리기: moai agents-home-revert <HOME> --receipt agents-1794640614651673000-0 --permission-reference <reference>
+  되돌리기: moai home-routing-revert <HOME> --receipt routing-1794640615516508000-0 --permission-reference <reference>
+  실행 중인 세션은 /reload 가 필요해요
+
+→ 다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai update (Codex CLI 는
+  $moai update)를 실행해 프로젝트 설정을 꼭 업데이트하세요.

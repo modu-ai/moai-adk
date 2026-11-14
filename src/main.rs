@@ -1102,11 +1102,16 @@ enum Command {
     ///
     /// Update the skill from the package installed with this binary (#2522): previews like
     /// update-plan and writes nothing unless confirmed — in a terminal it asks once; elsewhere
-    /// pass the preview's digest with --confirm. HOME comes from the environment.
+    /// pass the preview's digest with --confirm. HOME comes from the environment. On a
+    /// terminal it shows what it checked, what changes and what to do next instead of the JSON
+    /// envelope (#2894); a pipe gets the envelope unchanged.
     Update {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+        /// Print the JSON envelope on a terminal too, instead of the screens.
+        #[arg(long)]
+        json: bool,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -2461,19 +2466,55 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             };
             moai_cli::install::inspect(&home, &path_env, &places)
         }
-        Command::Update { confirm } => {
+        Command::Update { confirm, json: _ } => {
+            use moai_cli::update_tux::{self as tux, Asked};
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
-            // The shared confirm prompt (#2806): same terminal rule and question as before.
-            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                use moai_cli::ui_text::Msg;
-                moai_cli::progress::ask_terminal(
-                    |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
-                    Msg::ApplyUpdate,
-                )
-            })
+            // The shared confirm prompt (#2806): same terminal rule and question as before. With
+            // screens on (#2894) the question shows the check and change lists instead of the
+            // summary text, and what was answered is kept for the end screen.
+            let result =
+                moai_cli::update::update_command(&home, confirm.as_deref(), |summary, preview| {
+                    use moai_cli::ui_text::Msg;
+                    if !tux::human() {
+                        return moai_cli::progress::ask_terminal(
+                            |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                            Msg::ApplyUpdate,
+                        );
+                    }
+                    let asked = tux::can_ask();
+                    let yes = moai_cli::progress::ask_terminal(
+                        |p| {
+                            let mut view = tux::view_for(moai_cli::ui::Stream::Stderr);
+                            view.painter = *p;
+                            tux::question(preview, &view)
+                        },
+                        Msg::ApplyUpdate,
+                    )?;
+                    tux::set_asked(match (asked, yes) {
+                        (false, _) => Asked::NotAsked,
+                        (true, true) => Asked::Yes,
+                        (true, false) => Asked::No,
+                    });
+                    Ok(yes)
+                });
+            match result {
+                // Confirmed on the screen, but the plan or the package moved before the write
+                // (the combined digest check, or the package re-read): refused, nothing written,
+                // and the person sees the new preview (#2894 U-4). The envelope path keeps its
+                // error.
+                Err(e)
+                    if tux::human()
+                        && tux::asked() == Asked::Yes
+                        && (e.contains("stale or altered plan") || e.contains("preview again")) =>
+                {
+                    tux::set_asked(Asked::Stale);
+                    moai_cli::update::update_command(&home, None, |_, _| Ok(false))
+                }
+                other => other,
+            }
         }
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
@@ -3008,8 +3049,22 @@ pub(crate) fn main() -> ExitCode {
     // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs); the
     // guard's refusal is the one error that may block. A receipt hook never blocks.
     let guard = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
+    // #2894 (D3-U): `update` on a terminal without --json shows screens instead of the envelope.
+    let screens = match &cli.command {
+        Some(Command::Update { json, .. }) => moai_cli::update_tux::wants_screens(*json),
+        _ => false,
+    };
+    moai_cli::update_tux::set_human(screens);
     match run_internal(cli.command.expect("internal operation")) {
         Ok(_) if hook_mode => ExitCode::SUCCESS,
+        Ok(result) if screens => {
+            let view = moai_cli::update_tux::view_for(moai_cli::ui::Stream::Stdout);
+            print!(
+                "{}",
+                moai_cli::update_tux::screen(&result, moai_cli::update_tux::asked(), &view)
+            );
+            ExitCode::SUCCESS
+        }
         Ok(result) => {
             // A computed delta is evidence, not audit admission; only a pure replay exits 0.
             let exit = if op == "audit.delta" && result["status"] != "pure_merge" {
@@ -3030,6 +3085,11 @@ pub(crate) fn main() -> ExitCode {
         Err(e) if hook_mode => {
             eprintln!("{e}");
             ExitCode::from(if guard { 2 } else { HOOK_NON_BLOCKING_ERROR })
+        }
+        Err(e) if screens => {
+            // The error frame on stderr is the screen; no JSON on the terminal (#2894).
+            print_operation_error(e.kind, &e.message);
+            ExitCode::from(1)
         }
         Err(e) => {
             // #2345: the journal lock-busy error carries its kind from the raise site;

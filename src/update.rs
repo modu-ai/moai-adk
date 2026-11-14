@@ -1616,7 +1616,8 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// Always computes every preview from one package snapshot. Without a confirmation it
 /// writes nothing and returns them with the exact confirming command. `confirm` is the
 /// combined `plan_digest` (`--confirm`) — a single part's digest is refused; `ask` is the
-/// terminal question, called only when no digest was given, with the summary it shows. A
+/// terminal question, called only when no digest was given, with the summary it shows and the
+/// preview value the person is asked about (#2894: the human screen draws it). A
 /// confirmed run recomputes them all and compares the combined digest before any write, then
 /// applies the skills, and the agents, the section and the style only for hosts whose skill
 /// copy applied.
@@ -1630,7 +1631,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
-    ask: impl FnOnce(&str) -> Result<bool>,
+    ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
     let package = installed_package_dir()?;
@@ -1649,26 +1650,27 @@ pub fn update_command(
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
         || layer.hooks.writes();
+    let preview = || {
+        json!({
+            "mode": "preview",
+            "applied": false,
+            "nothing_to_apply": !writes,
+            "package": package_text,
+            "plan_digest": layer.plan_digest,
+            "plan": layer.skills,
+            "agents": layer.agents,
+            "routing": layer.routing,
+            "style": layer.style,
+            "bin_names": layer.bin_names.to_json(),
+            "hooks": layer.hooks.to_json(),
+            "skipped": layer.skipped,
+            "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
+        })
+    };
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if writes && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
-        None => {
-            return Ok(json!({
-                "mode": "preview",
-                "applied": false,
-                "nothing_to_apply": !writes,
-                "package": package_text,
-                "plan_digest": layer.plan_digest,
-                "plan": layer.skills,
-                "agents": layer.agents,
-                "routing": layer.routing,
-                "style": layer.style,
-                "bin_names": layer.bin_names.to_json(),
-                "hooks": layer.hooks.to_json(),
-                "skipped": layer.skipped,
-                "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
-            }))
-        }
+        None if writes && ask(&layer_summary(&layer), &preview())? => layer.plan_digest.clone(),
+        None => return Ok(preview()),
     };
     // Verify the whole layer before any write.
     let fresh = user_layer_plan(home, &package, &agents_dir, &staged)?;

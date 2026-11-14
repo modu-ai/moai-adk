@@ -1,0 +1,18 @@
+[35m◆[0m [1mMoAI update[0m
+  [90m설치본 2026.11.0-rc.1 = 패키지 2026.11.0-rc.1[0m
+  [90mHOME ~[0m
+
+[1m검사[0m
+  [36m↑[0m 스킬 claude     최신 30개 · 새로 1개 · 갱신 1개
+  [36m↑[0m 스킬 codex      최신 30개 · 새로 1개 · 갱신 1개
+  [32m✓[0m 에이전트        claude 5 · codex 5 · omp 5 — 최신 15개
+  [32m✓[0m 라우팅          CLAUDE.md 최신 · AGENTS.md 최신
+  [32m✓[0m 출력 스타일     최신 3개
+  [32m✓[0m 실행 파일 이름  최신
+  [90m–[0m hooks           건너뜀: 이 프로젝트에 MoAI hook 없음
+
+[1m바뀔 것[0m
+  스킬 claude  [36m↑[0m references/routes.md
+               [36m↑[0m workflows/update.md
+  스킬 codex   같은 파일 2개
+
