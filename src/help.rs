@@ -58,6 +58,8 @@ pub const GROUPS: &[Group] = &[
             ("agents-merge-plan", false),
             ("agents-merge-apply", false),
             ("agents-merge-revert", false),
+            ("agents-project-plan", false),
+            ("agents-project-apply", false),
         ],
     },
     Group {
@@ -290,6 +292,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-merge-plan", &["agents-merge-plan .", "agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-apply", &["agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
+    ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
+    ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
