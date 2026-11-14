@@ -257,3 +257,93 @@ fn moai_beside_the_same_build_reads_the_moai_cli_receipt() {
     assert_ne!(std::fs::read(&moai).unwrap(), std::fs::read(&cli).unwrap());
     assert_eq!(inspect(&moai)["self"]["state"], "unrecorded");
 }
+
+/// #2812 W3, audit 6868377245 B1 and leader decision 6868439066 (나): the generated hook
+/// commands keep calling `moai-cli` until the alias retires (R5). With a Go-generation `moai`
+/// first on PATH, `hooks-plan` still resolves the hook binary, and the generated claim guard
+/// reaches this tool — the Go `moai` (which has no `claim-verify` and exits 1, switching the
+/// guard off) is never run. The fake Go records every call. Temporary HOME, project and PATH.
+#[test]
+fn generated_hooks_call_moai_cli_so_a_go_moai_first_on_path_never_takes_the_guard() {
+    use std::fs;
+    let tmp = TempDir::new().unwrap();
+    let root = std::fs::canonicalize(tmp.path()).unwrap();
+    let home = root.join("home");
+    let p = root.join("p");
+    let go = root.join("go-bin");
+    let rust = root.join("rust-bin");
+    for d in [&home, &p, &go, &rust] {
+        fs::create_dir_all(d).unwrap();
+    }
+    fs::create_dir_all(p.join(".moai-cli")).unwrap();
+    common::git::git_ok(&p, &["init", "-q", "."]);
+    let go_log = root.join("go-calls");
+    common::write_executable(
+        &go.join("moai"),
+        &format!(
+            "#!/bin/sh\necho \"$*\" >> '{}'\nif [ \"$1\" = --version ]; then echo 'moai-adk v3.2.0-rc.23'; exit 0; fi\necho \"Error: unknown command \\\"$1\\\"\" >&2\nexit 1\n",
+            go_log.display()
+        ),
+    );
+    common::copy_executable(std::path::Path::new(MOAI_CLI), &rust.join("moai-cli"));
+    let path = format!("{}:{}:/usr/bin:/bin", go.display(), rust.display());
+
+    let plan_with = |host: &str| -> serde_json::Value {
+        let out = Command::new(MOAI)
+            .args(["hooks-plan", ".", "--host", host])
+            .env("HOME", &home)
+            .env("PATH", &path)
+            .current_dir(&p)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()["result"].clone()
+    };
+    for host in ["claude", "codex"] {
+        let plan = plan_with(host);
+        assert_eq!(plan["hook_binary"]["name"], "moai-cli", "{host}: {plan}");
+        assert_eq!(plan["hook_binary"]["state"], "resolved", "{host}: {plan}");
+        for h in plan["hooks"].as_array().unwrap() {
+            let c = h["command"].as_str().unwrap();
+            assert!(c.starts_with("moai-cli "), "{host}: {c}");
+        }
+    }
+
+    // Run the generated claim guard the way a host does: its command string through a shell
+    // with that PATH, the PreToolUse input on stdin.
+    let plan = plan_with("claude");
+    let guard = plan["hooks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["event"] == "PreToolUse")
+        .map(|h| h["command"].as_str().unwrap().to_string())
+        .unwrap();
+    let input = format!(
+        r#"{{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{{"command":"git commit -m x"}},"cwd":"{}"}}"#,
+        p.display()
+    );
+    let mut child = Command::new("/bin/sh")
+        .args(["-c", &guard])
+        .env("HOME", &home)
+        .env("PATH", &path)
+        .current_dir(&p)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, input.as_bytes());
+    let out = child.wait_with_output().unwrap();
+    assert!(
+        !go_log.exists(),
+        "the Go moai was called: {:?}",
+        fs::read_to_string(&go_log)
+    );
+    assert!(
+        !text(&out.stderr).contains("unknown command"),
+        "{}",
+        text(&out.stderr)
+    );
+    assert_ne!(out.status.code(), Some(1), "{}", text(&out.stderr));
+}
