@@ -14,6 +14,7 @@ pub mod baseline;
 pub mod bin_names;
 pub mod claim;
 pub mod claim_cache;
+pub mod claim_timeout;
 pub mod claim_verify;
 pub mod claude;
 pub mod clone_root;
