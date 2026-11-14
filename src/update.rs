@@ -1385,9 +1385,11 @@ pub struct UserLayerPlan {
     pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
+    /// The MoAI hook set installed in the project the command runs from (#2853).
+    pub hooks: crate::update_hooks::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the five plan digests; the only value `--confirm` accepts.
+    /// One digest over the six plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
 }
 
@@ -1442,6 +1444,8 @@ fn user_layer_plan(
     let style = crate::home_style::plan_for(home, package, &style_hosts)?;
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
+    let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+    let hooks = crate::update_hooks::plan(home, &cwd)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1455,6 +1459,7 @@ fn user_layer_plan(
             agents.plan_digest,
             routing.plan_digest,
             bin_names.plan_digest,
+            hooks.plan_digest,
             style.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
@@ -1465,6 +1470,7 @@ fn user_layer_plan(
         routing,
         style,
         bin_names,
+        hooks,
         skipped,
         plan_digest,
     })
@@ -1590,6 +1596,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
         ));
     }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
+    out.push_str(&p.hooks.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1615,6 +1622,11 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// copy applied.
 /// A backup-then-replace is never confirmed here: it keeps its explicit
 /// `update-apply --confirm-backup-replace` token.
+///
+/// #2853: the hook layer (`update_hooks`) — the MoAI hook set already installed in the git work
+/// tree the command runs from — is planned with the rest and bound into the same digest; a
+/// confirmed run applies it with a revert receipt (`hooks-revert`). A hook entry the user
+/// changed is a conflict and is left as it is.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
@@ -1635,7 +1647,8 @@ pub fn update_command(
         || agents_write_anything(&layer.agents)
         || routing_writes_anything(&layer.routing)
         || crate::home_style::writes_anything(&layer.style)
-        || layer.bin_names.writes();
+        || layer.bin_names.writes()
+        || layer.hooks.writes();
     let digest = match confirm {
         Some(d) => d.to_string(),
         None if writes && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
@@ -1651,6 +1664,7 @@ pub fn update_command(
                 "routing": layer.routing,
                 "style": layer.style,
                 "bin_names": layer.bin_names.to_json(),
+                "hooks": layer.hooks.to_json(),
                 "skipped": layer.skipped,
                 "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
             }))
@@ -1735,12 +1749,20 @@ pub fn update_command(
             &crate::audit::utc_now(),
         )
     })());
+    // #2853: the project's hook set, independent of the skill copies; its plan was confirmed.
+    let hooks = part(crate::update_hooks::apply(
+        home,
+        &fresh.hooks,
+        &digest,
+        PERMISSION,
+    ));
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
-        || bin_names["state"] == json!("applied");
+        || bin_names["state"] == json!("applied")
+        || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -1756,11 +1778,15 @@ pub fn update_command(
         "routing_result": routing,
         "style_result": style,
         "bin_names_result": bin_names,
+        "hooks_result": hooks,
         "skipped": skipped,
         "revert": {
             "agents": revert("agents-home-revert", &agents),
             "routing": revert("home-routing-revert", &routing),
             "style": revert("home-style-revert", &style),
+            "hooks": hooks["receipt"].as_str().map(|id| format!(
+                "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
+            )),
             "skills": "recovery-plan / recovery-apply for a host left pending",
         },
     }))
