@@ -234,6 +234,11 @@ class KoreanHelp(unittest.TestCase):
         self.assertNotIn("now-unix", plan)
         self.assertTrue(self.help(["identity", "-h"], **KOREAN)
                         .startswith("경로가 클론 안 어디에 있는지 보기\n"))
+        # A flag gets no ` [default: false]` from clap, so its short help keeps the full room
+        # (mutation L2: reserving it squeezed `--json` to about 34 cells at 60).
+        lines = self.help(["install-inspect", "-h"], **KOREAN).splitlines()
+        first = lines[lines.index("      --json") + 1]
+        self.assertGreater(cells(first), 40, first)
 
     def test_the_launchers_read_korean_with_arguments_first(self):
         """S6e-6: cc, codex and glm in Korean; the arguments section comes before the options as
