@@ -11,6 +11,10 @@
 //! repos = ["/Users/me/src/moai-adk"]
 //! allow_commands = ["git switch v2026.11.0"]
 //! deny_commits_on = ["main"]       # #2878: no commit/revert/cherry-pick on these branches
+//!
+//! [hooks.commit_identity]          # #2878: no commit under a test identity
+//! enabled = true
+//! deny_emails = ["ci@example.com"] # added to the built-in test addresses
 //! ```
 //!
 //! A config that is absent, not a regular file (a symlink too), over 64 KiB or not valid TOML
@@ -52,10 +56,19 @@ pub struct PrimaryRule {
     pub deny_commits_on: Vec<String>,
 }
 
+/// The commit-identity rule (#2878 E3, the Go generation's `commit_identity_guard`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct IdentityRule {
+    /// Extra author or committer emails to refuse, besides the built-in test addresses;
+    /// compared trimmed and without case.
+    pub deny_emails: Vec<String>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HookConfig {
     pub outside: Option<OutsideRule>,
     pub primary: Option<PrimaryRule>,
+    pub identity: Option<IdentityRule>,
 }
 
 /// Why a present config file was not used (both rules are then off).
@@ -225,7 +238,23 @@ fn parse_checked(text: &str, home: &Path) -> Option<HookConfig> {
                 .collect(),
         })
     });
-    Some(HookConfig { outside, primary })
+    let identity = table("commit_identity").and_then(|t| {
+        if !enabled(t) {
+            return None;
+        }
+        Some(IdentityRule {
+            deny_emails: strings(t, "deny_emails")?
+                .into_iter()
+                .map(|e| e.trim().to_ascii_lowercase())
+                .filter(|e| !e.is_empty())
+                .collect(),
+        })
+    });
+    Some(HookConfig {
+        outside,
+        primary,
+        identity,
+    })
 }
 
 /// `~` or `~/…` expanded against `home`; a relative path is ignored (None).
@@ -325,6 +354,38 @@ mod tests {
         assert_eq!(p.allow_commands, vec!["git switch main".to_string()]);
         // #2878 E2: absent means none.
         assert!(p.deny_commits_on.is_empty());
+    }
+
+    /// #2878 E3: `[hooks.commit_identity]` is off unless enabled; `deny_emails` are trimmed,
+    /// lowercased and blanks dropped; a malformed list turns the rule off.
+    #[test]
+    fn commit_identity_is_opt_in() {
+        let home = Path::new("/home/u");
+        assert_eq!(parse("[hooks.commit_identity]\n", home).identity, None);
+        assert_eq!(
+            parse("[hooks.commit_identity]\nenabled = false\n", home).identity,
+            None
+        );
+        let on = parse(
+            "[hooks.commit_identity]\nenabled = true\ndeny_emails = [\" CI@Corp.Example \", \"\"]\n",
+            home,
+        );
+        assert_eq!(on.identity.unwrap().deny_emails, ["ci@corp.example"]);
+        assert_eq!(
+            parse("[hooks.commit_identity]\nenabled = true\n", home)
+                .identity
+                .unwrap()
+                .deny_emails,
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            parse(
+                "[hooks.commit_identity]\nenabled = true\ndeny_emails = \"x\"\n",
+                home
+            )
+            .identity,
+            None
+        );
     }
 
     /// #2878 E2: `deny_commits_on` is a list of branch names, trimmed, blanks dropped; a

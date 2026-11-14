@@ -925,6 +925,130 @@ pub fn primary_checkout_guard(
     None
 }
 
+/// Author and committer emails this repository's tests use (#2878 E3). A commit under one of
+/// them in a real checkout means a test's identity leaked into git config or the environment.
+pub const TEST_IDENTITY_EMAILS: &[&str] = &[
+    "t@example.invalid",
+    "fixture@example.invalid",
+    "test@example.invalid",
+    "f@example.invalid",
+    "bench@example.invalid",
+    "t@example.com",
+    "t@t",
+];
+
+/// The git verbs that write a commit with an author and a committer (#2878 E3).
+const COMMITTING_VERBS: &[&str] = &[
+    "commit",
+    "merge",
+    "cherry-pick",
+    "revert",
+    "rebase",
+    "am",
+    "commit-tree",
+    "pull",
+];
+
+/// The email inside `Name <email>` (or a bare `email`), trimmed and lowercased.
+fn email_of(ident: &str) -> Option<String> {
+    let inner = match (ident.find('<'), ident.rfind('>')) {
+        (Some(a), Some(b)) if a < b => &ident[a + 1..b],
+        _ => ident,
+    };
+    let e = inner.trim().to_ascii_lowercase();
+    e.contains('@').then_some(e)
+}
+
+/// `git var <name>` in `dir` with the inherited git environment scrubbed, so the probe reads
+/// the identity the repository's configuration gives; `None` on any failure.
+fn git_ident(dir: &Path, name: &str) -> Option<String> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .arg("-C")
+        .arg(dir)
+        .args(["var", name])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
+/// #2878 E3 (opt-in, the Go generation's commit-identity guard): a git command that writes a
+/// commit is refused when its author or committer email is a test address
+/// ([`TEST_IDENTITY_EMAILS`]) or one in `deny_emails`. The email comes from the command itself
+/// when it sets one (`--author`, `-c user.email=…`, `GIT_AUTHOR_EMAIL=`/`GIT_COMMITTER_EMAIL=`
+/// before `git`), otherwise from `git var GIT_AUTHOR_IDENT`/`GIT_COMMITTER_IDENT` in the
+/// folder the command runs in. Anything it cannot read lets the command through (fail-open,
+/// like the Go guard); commands inside `sh -c` are not opened.
+pub fn commit_identity_guard(
+    command: &str,
+    cwd: &Path,
+    rule: &crate::hook_config::IdentityRule,
+) -> Option<String> {
+    let denied = |email: &str| {
+        TEST_IDENTITY_EMAILS.contains(&email) || rule.deny_emails.iter().any(|d| d == email)
+    };
+    for (env, name, args) in crate::claim_verify::shell_commands_with_env(command) {
+        if name != "git" {
+            continue;
+        }
+        for sub in crate::claim_verify::git_subcommands(&args) {
+            if !COMMITTING_VERBS.contains(&sub.verb.as_str()) {
+                continue;
+            }
+            let from_env = |key: &str| {
+                env.iter()
+                    .find_map(|w| w.strip_prefix(&format!("{key}=")))
+                    .and_then(email_of)
+            };
+            let mut user_email = None;
+            let mut g = sub.global.iter();
+            while let Some(a) = g.next() {
+                let kv = if a == "-c" {
+                    g.next().map(String::as_str)
+                } else {
+                    a.strip_prefix("-c")
+                };
+                // Config keys ignore case (`USER.EMAIL` is `user.email`); the value is kept.
+                if let Some((key, v)) = kv.and_then(|kv| kv.split_once('=')) {
+                    if key.eq_ignore_ascii_case("user.email") {
+                        user_email = email_of(v);
+                    }
+                }
+            }
+            let mut author_flag = None;
+            let mut r = sub.rest.iter();
+            while let Some(a) = r.next() {
+                if a == "--author" {
+                    author_flag = r.next().and_then(|v| email_of(v));
+                } else if let Some(v) = a.strip_prefix("--author=") {
+                    author_flag = email_of(v);
+                }
+            }
+            let dir = git_dir_of(&sub.global, cwd);
+            let author = author_flag
+                .or_else(|| from_env("GIT_AUTHOR_EMAIL"))
+                .or_else(|| user_email.clone())
+                .or_else(|| git_ident(&dir, "GIT_AUTHOR_IDENT").and_then(|i| email_of(&i)));
+            let committer = from_env("GIT_COMMITTER_EMAIL")
+                .or_else(|| user_email.clone())
+                .or_else(|| git_ident(&dir, "GIT_COMMITTER_IDENT").and_then(|i| email_of(&i)));
+            for (role, email) in [("author", author), ("committer", committer)] {
+                if let Some(e) = email.filter(|e| denied(e)) {
+                    return Some(format!(
+                        "MoAI tool-preflight: the {role} identity <{e}> is a test address; the commit is refused. Fix the identity git would use (git config user.email, or GIT_AUTHOR_EMAIL/GIT_COMMITTER_EMAIL) — a test's identity has leaked into this checkout ([hooks.commit_identity] in ~/.moai-cli/config)."
+                    ));
+                }
+            }
+        }
+    }
+    None
+}
+
 /// The path as written and as resolved through existing symlinks; either one in a protected
 /// place is enough.
 fn is_protected_path(path: &Path, cwd: &Path) -> bool {
