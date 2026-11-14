@@ -1539,11 +1539,11 @@ fn korean_frame(c: Command) -> Command {
     // The arguments and options sections are spelled out in the template, arguments first as in
     // English: a custom `help_heading` would be drawn in the order the arguments are declared,
     // which put `옵션:` before `인자:` for the launchers (their options come first).
-    let positionals = c
-        .get_positionals()
-        .any(|a| !a.is_hide_set())
-        .then(|| format!("{ARGUMENTS_KO}\n{{positionals}}\n\n"))
-        .unwrap_or_default();
+    let positionals = if c.get_positionals().any(|a| !a.is_hide_set()) {
+        format!("{ARGUMENTS_KO}\n{{positionals}}\n\n")
+    } else {
+        String::new()
+    };
     let template = format!(
         "{{before-help}}{{about-with-newline}}\n{USAGE_KO} {{usage}}\n\n{positionals}{OPTIONS_KO}\n{{options}}{{after-help}}"
     );
