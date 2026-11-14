@@ -183,6 +183,18 @@ class UpdateScreens(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 30)
         self.assertFalse(os.path.exists(self.skill_file()))
 
+    def test_an_error_on_a_terminal_is_the_frame_not_json(self):
+        """D3-U: a failed run on a terminal shows the error frame only; a pipe still gets the
+        failure envelope."""
+        shutil.rmtree(self.package)
+        text, code = run_pty(["update"], self.env, self.work)
+        self.assertEqual(code, 1, text)
+        self.assertIn("no skill package installed", text)
+        self.assertNotIn('"protocol_version"', text)
+        out, _, code = self.pipe("update")
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out)["ok"], False)
+
     def test_korean_on_a_korean_terminal(self):
         """U item 8: the profile/terminal language picks Korean sentences."""
         env = dict(self.env, MOAI_LANG="ko")

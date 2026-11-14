@@ -71,6 +71,11 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
     let latest = fixture("preview-latest");
     let applied = fixture("applied");
     let blocked = fixture("preview-blocked");
+    // A partly applied run (one part failed after the skills were written) ends with what
+    // failed, not with the next step.
+    let mut partial = applied.clone();
+    partial["routing_result"] =
+        serde_json::json!({"state": "error", "message": "routing file changed during apply"});
     for (lang, block, codex) in [
         (
             Lang::Ko,
@@ -108,6 +113,7 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
                 screen(&changes, Asked::Stale, &v),
                 screen(&blocked, Asked::NotAsked, &v),
                 question(&changes, &v),
+                screen(&partial, Asked::Yes, &v),
             ] {
                 let flat = flat(&text);
                 assert!(!flat.contains(block) && !flat.contains(codex), "{text}");
@@ -227,8 +233,13 @@ fn the_update_screens_match_their_goldens() {
 #[test]
 fn control_characters_in_the_result_are_shown_not_sent() {
     let mut changes = fixture("preview-changes");
-    changes["plan"]["hosts"][0]["files"][0]["path"] =
-        Value::String("SKILL\u{1b}]0;owned\u{7}.md".into());
+    // A file that changes, so its name is drawn in the change list too.
+    let files = changes["plan"]["hosts"][0]["files"].as_array_mut().unwrap();
+    let changed = files
+        .iter_mut()
+        .find(|f| f["action"] != "unchanged")
+        .expect("the fixture changes a file");
+    changed["path"] = Value::String("SKILL\u{1b}]0;owned\u{7}.md".into());
     changes["hooks"]["skipped"][0]["reason"] = Value::String("bad\u{1b}[2Jreason".into());
     for look in [Look::Plain, Look::Color] {
         let v = view(Lang::En, look, 80, None);
