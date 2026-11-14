@@ -271,4 +271,46 @@ mod tests {
             Some(true)
         );
     }
+
+    #[test]
+    fn an_idle_build_output_is_kept_while_process_sources_are_unreadable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let build = tmp.path().join("old-target");
+        fs::create_dir(&build).unwrap();
+        fs::write(
+            build.join("CACHEDIR.TAG"),
+            "Signature: 8a477f597d28d172789f06886806bc55",
+        )
+        .unwrap();
+        let newest = newest_top(&build).unwrap();
+        let mk = |cwds: Option<Vec<PathBuf>>, text: Option<String>| Inputs {
+            project: tmp.path(),
+            integration_ref: "origin/main",
+            tmp_root: tmp.path(),
+            home: tmp.path(),
+            now: newest + TMP_MIN_AGE_SECS,
+            cwds,
+            process_text: text,
+        };
+        let one = |inp: &Inputs| {
+            let items = tmp_builds(inp, Instant::now() + SIZE_BUDGET);
+            assert_eq!(items.len(), 1, "{items:?}");
+            (items[0]["action"].clone(), items[0]["reason"].clone())
+        };
+        let free = (Some(vec![]), Some(String::new()));
+        assert_eq!(
+            one(&mk(free.0, free.1)),
+            (json!("hold"), json!("idle_build_output"))
+        );
+        for (cwds, text) in [
+            (None, Some(String::new())),
+            (Some(vec![]), None),
+            (None, None),
+        ] {
+            assert_eq!(
+                one(&mk(cwds, text)),
+                (json!("keep"), json!("in_use_unknown"))
+            );
+        }
+    }
 }
