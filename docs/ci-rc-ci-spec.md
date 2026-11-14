@@ -18,6 +18,18 @@
 | CI-8 | merge conflict로 실행되지 않은 경우를 PASS로 읽지 않는다. | CI 쪽에서 할 일은 없다. GitHub은 충돌이 있는 PR에서 `pull_request` workflow를 실행하지 않는다. SYNC 절차 6단계가 이 경우를 `not_run`으로 적는다. |
 | CI-9 | `rc-ci`를 필수 검사로 둘지 정한다. | 미결. 현재 ruleset `RC1 integration gate (v2026.11.0)`(id 26791615)의 필수 status는 `moai/audit` 하나다. `rc-ci`를 추가하는 일은 08-D #2015의 범위다. |
 
+## 로컬 검사 정본 `tools/local_check.sh` (#2906 S5a)
+
+`ci.yml`의 `check` job이 돌리는 검사 단계(fetch, test(cargo-nextest), doctest, clippy, fmt, unittest, diff-check)는 `tools/local_check.sh` 한 파일에 같은 순서·인자로 있고, CI의 "Check set" 단계는 이 파일을 부른다. 그래서 로컬 검사와 CI 검사가 갈라지지 않는다. `tests/local_check_test.py`가 단계 목록을 고정한다(AC20). 체크아웃·도구 설치·캐시·docs-only 범위 판정 같은 CI 준비 단계는 `ci.yml`에 남는다.
+
+- 저장소 루트가 아닌 곳에서 불러도 스스로 루트로 옮겨 돈다. 기본은 첫 실패에서 멈춘다. CI는 `LOCAL_CHECK_KEEP_GOING=1`로 모든 단계를 돌리고 단계마다 exit을 summary 표에 남긴다(CI-4 그대로).
+- 마지막 줄은 기계가 읽는 한 줄이다: `local-check: head=<40자 HEAD> result=pass|fail [dirty=1 ]cmd=tools/local_check.sh at=<UTC>`. 시작이나 끝에 커밋하지 않은 변경(무시 파일 제외)이 있으면 확인한 것이 HEAD가 아니므로 `result=fail dirty=1`이다. exit 0은 `result=pass`일 때뿐이다.
+- `LOCAL_CHECK_DRY_RUN=1`은 돌릴 단계와 마지막 줄만 출력하고 아무것도 돌리지 않는다. 확인한 것이 없으므로 늘 `result=fail`이다.
+- `moai heavy-slot-acquire`가 있으면 test·doctest·clippy를 각각 기계 공용 슬롯 안에서 돌린다(`MOAI_HEAVY_SLOT_MAX` 기본 4, `MOAI_HEAVY_SLOT_MIN_FREE_GB` 기본 50). 없으면(CI 포함) 바로 돌린다.
+- diff-check 범위는 `LOCAL_CHECK_BASE`(기본 `origin/v2026.11.0`, 없으면 `HEAD~1`)`...LOCAL_CHECK_DIFF_HEAD`(기본 `HEAD`)다. CI는 PR base·head SHA를 넘긴다.
+
+병합 조건은 이 단계에서 바뀌지 않는다. 지금 게이트(head의 GitHub CI 성공 + 감사 PASS)가 그대로이고, `local-check:` 줄을 병합 조건으로 읽는 일은 S5b의 범위다.
+
 ## SYNC가 CI 결과를 읽는 방법
 
 후보 SHA마다 아래 명령으로 조회해 integration receipt의 `ci_checks[]`에 넣는다. 결과가 없으면 `not_run`이다.
