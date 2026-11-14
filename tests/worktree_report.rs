@@ -443,3 +443,21 @@ fn output_keys_equal_the_schema_both_ways() {
         assert_eq!(sch["additionalProperties"], false);
     }
 }
+
+/// Without `--tmp-root` the report classifies `/tmp` (the default the command kept when it
+/// moved to `src/ops/`, #2834 R3). A 1 ms budget keeps the walk short; nothing is written.
+#[test]
+fn the_tmp_root_defaults_to_slash_tmp() {
+    let fx = fixture();
+    let out = Command::new(BIN)
+        .args(["worktree-report"])
+        .arg(&fx.root)
+        .args(["--budget-ms", "1"])
+        .env("HOME", &fx.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["result"]["tmp_root"], "/tmp", "{v}");
+}

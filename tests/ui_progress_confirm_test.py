@@ -70,6 +70,10 @@ def run_tty(args, env, cwd, answer=None, stdin_tty=True, stdin_text=None):
                     answered = True
             elif proc.poll() is not None:
                 break
+        if proc.poll() is None:
+            # Past the deadline a child still waiting (e.g. on terminal input) fails the test
+            # instead of hanging it (#2834 R3: a key-set that read the terminal hung here).
+            proc.kill()
         out = proc.stdout.read().decode()
         proc.wait(timeout=60)
     finally:
@@ -134,6 +138,15 @@ class KeyRemovePrompt(unittest.TestCase):
         self.set_key()
         flag, _, _ = run_pipe(["key-remove", "glm", "--shared", "--yes"], self.env, self.cwd)
         self.assertEqual(out, flag, "an interactive yes answers like --yes, byte for byte")
+
+    def test_key_set_refuses_a_terminal_stdin(self):
+        # The command left src/main.rs for src/ops/ (#2834 R3); a typed value would be echoed.
+        out, term, code = run_tty(["key-set", "glm", "--shared"], self.env, self.cwd)
+        self.assertEqual(code, 1, term)
+        self.assertEqual(json.loads(out)["error"]["message"],
+                         "key-set reads the value from stdin and refuses a terminal (the value "
+                         "would be echoed); pipe it in instead")
+        self.assertFalse(os.path.exists(os.path.join(self.home, ".moai-cli", "vault")))
 
     def test_nothing_to_remove_asks_nothing(self):
         out, term, code = run_tty(["key-remove", "glm", "--shared"], self.env, self.cwd,

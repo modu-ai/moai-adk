@@ -345,6 +345,12 @@ function Main {
     }
     Write-Host ""
     Print-Success "Installation complete!"
+    Write-Host ""
+    Print-Info "Next steps:"
+    Write-Host "  1. Make a project folder and enter it: New-Item -ItemType Directory my-project; Set-Location my-project"
+    Write-Host "  2. Start a session there: moai cc (or moai glm, moai codex; -l for leader mode, -a for agent mode)"
+    Write-Host "  3. In the session, set the project up: /moai project"
+    Write-Host ""
     Print-Info "Documentation: $RepoUrl"
 }
 

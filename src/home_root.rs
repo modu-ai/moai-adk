@@ -3,35 +3,39 @@
 //! HOME's Go markers says `rust` (a valid marker `~/.moai/moai-cli.json`), otherwise the earlier
 //! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME without the marker
 //! keeps exactly the paths it had, and the Go generation's `~/.moai` is never written here.
-//! Reads only.
+//! A schema-2 marker (#2871 I2 R1, [`crate::state_root::classify_home`]) makes the HOME
+//! `rust-first`: `~/.moai` is this generation's even beside Go markers, laid out by
+//! [`crate::home_layout`]. Reads only.
 
 use std::path::{Path, PathBuf};
 
 /// This generation's HOME state folder name once the marker is there (#2696 C4).
 pub const MOAI_DIR: &str = crate::state_root::MOAI_DIR;
 
-/// `.moai` when `home/.moai` is this generation's (verdict `rust`), else `.moai-cli`.
+/// `.moai` when `home/.moai` is this generation's (verdict `rust`, or `rust-first` for a
+/// schema-2 marker, #2871 I2 R1), else `.moai-cli`.
 pub fn dir(home: &Path) -> &'static str {
-    if crate::state_root::classify_with(home, crate::home_state::home_go_markers).generation
-        == "rust"
-    {
-        MOAI_DIR
-    } else {
-        crate::HOME_STATE_DIR
+    match crate::state_root::classify_home(home).generation {
+        "rust" | "rust-first" => MOAI_DIR,
+        _ => crate::HOME_STATE_DIR,
     }
 }
 
-/// `home/<dir(home)>`.
+/// `home/<dir(home)>`; a `rust-first` HOME resolves to the layout's root
+/// ([`crate::home_layout::rust_path`], user decision D-M1).
 pub fn path(home: &Path) -> PathBuf {
-    home.join(dir(home))
+    match crate::state_root::classify_home(home).generation {
+        "rust-first" => crate::home_layout::rust_path(home, ""),
+        "rust" => home.join(MOAI_DIR),
+        _ => home.join(crate::HOME_STATE_DIR),
+    }
 }
 
 /// #2696 C4b2: a HOME with no MoAI state at all — no earlier `~/.moai-cli` and verdict `none`
 /// (no `~/.moai` of any kind, Go's included) — starts on `~/.moai`.
 pub fn is_new_home(home: &Path) -> bool {
     std::fs::symlink_metadata(home.join(crate::HOME_STATE_DIR)).is_err()
-        && crate::state_root::classify_with(home, crate::home_state::home_go_markers).generation
-            == "none"
+        && crate::state_root::classify_home(home).generation == "none"
 }
 
 /// Make a new HOME's `~/.moai/` and its marker, so every later read and write resolves to
@@ -113,6 +117,31 @@ mod tests {
         assert!(!go.path().join(".moai/moai-cli.json").exists());
     }
 
+    /// #2871 I2 R1 (D-M1): a schema-2 marker resolves HOME paths to the layout's root even
+    /// beside Go markers; a schema-1 marker beside Go markers stays `mixed` → the earlier root.
+    #[test]
+    fn a_schema_2_home_resolves_to_the_layout_root() {
+        let v2 = r#"{"schema_version":2,"generation":"moai-cli"}"#;
+        let v1 = r#"{"schema_version":1,"generation":"moai-cli"}"#;
+        let home = |marker: &str| {
+            let t = tempfile::tempdir().unwrap();
+            fs::create_dir_all(t.path().join(".moai/state")).unwrap();
+            fs::write(t.path().join(".moai/state/active-sessions.json"), "[]").unwrap();
+            fs::write(t.path().join(".moai/moai-cli.json"), marker).unwrap();
+            t
+        };
+        let shared = home(v2);
+        let h = shared.path();
+        assert_eq!(dir(h), MOAI_DIR);
+        assert_eq!(path(h), crate::home_layout::rust_path(h, ""));
+        assert_eq!(path(h), h.join(".moai"));
+        assert!(!is_new_home(h));
+        assert_eq!(adopt_new(h, "test"), Ok(false));
+        let mixed = home(v1);
+        assert_eq!(dir(mixed.path()), crate::HOME_STATE_DIR);
+        assert_eq!(path(mixed.path()), mixed.path().join(crate::HOME_STATE_DIR));
+    }
+
     /// Production code asks [`dir`]/[`path`]; the earlier name is spelled only where both
     /// names are meant, plus unit-test fixtures of the earlier layout.
     #[test]
@@ -127,6 +156,11 @@ mod tests {
                 "statusline/render.rs",
                 1,
                 "unit-test fixture of the earlier layout",
+            ),
+            (
+                "update_keys.rs",
+                1,
+                "the keys layer lists legacy key files under either HOME state root",
             ),
             (
                 "usage_limit.rs",

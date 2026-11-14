@@ -124,6 +124,55 @@ class ErrorFrameTty(unittest.TestCase):
         self.assertEqual(err_t, "unexpected argument; see --help\n")
         self.assertNotIn(b"sk-ant", out_t)
 
+    def test_the_color_flag_comes_before_the_environment(self):
+        # #2799 ③ (D2 order): `--color=never|always` first, then NO_COLOR, TERM=dumb, the TTY.
+        args = ["claim-verify", "."]
+        _, out_auto, _ = piped(args, self.env(), self.home)
+        for flag in (["--color", "never"], ["--color=never"]):
+            code, out, err = stderr_on_tty([*flag, *args], self.env(), self.home)
+            self.assertEqual(code, 1, flag)
+            self.assertEqual(out, out_auto, "the envelope is byte-identical")
+            self.assertEqual(err, "error: invalid typed JSON input\n", flag)
+        for extra in ({"NO_COLOR": "1"}, {"TERM": "dumb"}):
+            _, _, err = stderr_on_tty(["--color", "always", *args], self.env(**extra), self.home)
+            self.assertEqual(err, "\x1b[31merror:\x1b[0m invalid typed JSON input\n", extra)
+        _, _, err = stderr_on_tty(["--color", "auto", *args], self.env(NO_COLOR="1"), self.home)
+        self.assertEqual(err, "error: invalid typed JSON input\n")
+
+    def test_the_color_flag_keeps_the_pipe_bytes(self):
+        args = ["claim-verify", "."]
+        code_p, out_p, err_p = piped(args, self.env(), self.home)
+        for flag in ("always", "never", "auto"):
+            code, out, err = piped(["--color", flag, *args], self.env(), self.home)
+            self.assertEqual((code, out, err), (code_p, out_p, err_p), flag)
+
+    def test_a_flag_before_the_command_keeps_the_next_step_of_that_command(self):
+        code, _, err = stderr_on_tty(["--color", "never", "project-plan"], self.env(), self.home)
+        self.assertEqual(code, 2)
+        self.assertIn(" project-plan --help` to see its arguments", err.splitlines()[-1])
+
+    def test_help_all_reads_the_line_without_a_leading_color_flag(self):
+        # Audit #2952 B2: `help --all` is answered before parsing from position 1.
+        want = piped(["help", "--all"], self.env(), self.home)
+        self.assertEqual(want[0], 0)
+        for flag in (["--color", "never"], ["--color=always"]):
+            self.assertEqual(piped([*flag, "help", "--all"], self.env(), self.home), want, flag)
+
+    def test_a_hook_word_after_a_leading_color_flag_is_still_a_hook(self):
+        # Audit #2952 B3: hook mode is judged from position 1 (`hook-receipt`), so a leading
+        # `--color` must not turn a hook call into an ordinary usage error.
+        want = piped(["hook-receipt"], self.env(), self.home)
+        got = piped(["--color", "never", "hook-receipt"], self.env(), self.home)
+        self.assertEqual(got, want)
+
+    def test_an_unknown_color_value_is_a_usage_error(self):
+        code, out, err = piped(["--color", "bogus", "claim-verify", "."], self.env(), self.home)
+        self.assertEqual(code, 2)
+        self.assertEqual(out, b"")
+        self.assertIn("bogus", err)
+        for value in ("auto", "always", "never"):
+            self.assertIn(value, err)
+
 
 if __name__ == "__main__":
     unittest.main()

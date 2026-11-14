@@ -1,8 +1,5 @@
 use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
-use moai_cli::{
-    agents_apply, agents_plan, apply, contract, hosts::codex, plan, session_launch, AgentsPlan,
-    AgentsRequest, Plan, Profile, SessionRequest,
-};
+use moai_cli::{contract, session_launch, SessionRequest};
 use std::{
     io::{self, Read},
     path::PathBuf,
@@ -57,10 +54,50 @@ struct Cli {
     /// Start an agent session on HOST (cc|glm|codex; default cc).
     #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
     agent: Option<String>,
+    /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
+    #[arg(
+        long,
+        value_enum,
+        value_name = "WHEN",
+        default_value = "auto",
+        hide_default_value = true,
+        hide_possible_values = true
+    )]
+    color: moai_cli::ui::ColorFlag,
     #[command(flatten)]
     launch: LaunchOpts,
     #[command(subcommand)]
     command: Option<Command>,
+}
+
+/// A leading `--color <WHEN>` or `--color=<WHEN>` with a valid value (#2799 ③): the choice and
+/// how many words it takes. Anything else is left to clap, which reports it.
+fn leading_color(argv: &[String]) -> Option<(moai_cli::ui::ColorFlag, usize)> {
+    use clap::ValueEnum;
+    let parse = |v: &str| moai_cli::ui::ColorFlag::from_str(v, false).ok();
+    let first = argv.get(1)?;
+    if first == "--color" {
+        return parse(argv.get(2)?).map(|c| (c, 2));
+    }
+    first
+        .strip_prefix("--color=")
+        .and_then(parse)
+        .map(|c| (c, 1))
+}
+
+/// The command line with a leading `--color` taken out, so every place that reads the
+/// command word from position 1 (hook mode, `help --all`, the usage and error frames) reads
+/// the same word with or without it.
+fn command_argv() -> &'static [String] {
+    static ARGV: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    ARGV.get_or_init(|| without_leading_color(std::env::args().collect()))
+}
+
+fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
+    if let Some((_, words)) = leading_color(&argv) {
+        argv.drain(1..1 + words);
+    }
+    argv
 }
 
 /// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm|codex -l|-a` (00-F #2028).
@@ -139,32 +176,6 @@ enum Command {
     /// The one-file operations under `src/ops/` (#2617): add a file there, not a variant here.
     #[command(flatten)]
     Op(ops::Ops),
-    /// Preview the project profile
-    ProjectPlan { project: PathBuf },
-    /// Detect the project's facts
-    ///
-    /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
-    /// manifests, languages, language servers, configured MCP server names, databases. Reads
-    /// only and writes nothing; returns the profile with `detected` set for `project-plan`.
-    ProjectDetect { project: PathBuf },
-    /// Write a previewed project profile
-    ProjectApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Preview the AGENTS.md managed section
-    AgentsPlan { project: PathBuf },
-    /// Write a previewed AGENTS.md managed section
-    AgentsApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Revert the files one apply published
     ///
     /// Revert exactly the files one apply request published, from its receipt
@@ -178,87 +189,12 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// List a checkout's baseline facts
-    ///
-    /// Read-only baseline inventory of a checkout (typed JSON on stdout).
-    BaselineInventory {
-        project: PathBuf,
-        /// Go-generation baseline commit whose `.claude` trees are compared (read with ls-tree only).
-        #[arg(long)]
-        go_baseline_commit: Option<String>,
-        /// Extra repository to look up the baseline commit in when the project lacks it.
-        #[arg(long)]
-        go_repo: Option<PathBuf>,
-    },
-    /// Show where a path sits in its clone
-    ///
-    /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
-    Identity { path: PathBuf },
     /// Build the code map index
     ///
     /// Build an incremental-index generation (C6 #2182): scan the tracked files, stage an
     /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
     /// build keeps the previous generation and marks partial (REQ-C6-01).
     IndexBuild { project: PathBuf },
-    /// Import a previewed old key file
-    ///
-    /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
-    /// preview's digest and a permission reference; the read-back must match; the legacy file
-    /// is kept. Destination: the current project's folder, or `_shared` with `--shared`.
-    KeyImportApply {
-        provider: String,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Preview importing an old key file
-    ///
-    /// Preview of moving a legacy key file into the encrypted vault (#2393 S3): which file,
-    /// which destination folder, never the value. Writes nothing.
-    KeyImportPlan {
-        provider: String,
-        /// Import into `~/.moai-cli/vault/_shared/` (every project) instead of the project.
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Remove a provider key from the vault
-    ///
-    /// Remove a provider's key from the vault (#2393): the current project's entry, or the
-    /// shared one with `--shared`. Without `--yes` it only reports what would be removed. The
-    /// machine key and any legacy key file are never touched.
-    KeyRemove {
-        provider: String,
-        #[arg(long)]
-        yes: bool,
-        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Store a provider key in the vault
-    ///
-    /// Store a provider's key, encrypted, in the vault (#2393): for the current project, or
-    /// for every project with `--shared`. The value is read from stdin only (never argv); an
-    /// interactive terminal is refused. The answer never contains the value.
-    KeySet {
-        provider: String,
-        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
-        #[arg(long)]
-        shared: bool,
-    },
-    /// Check a provider key without showing it
-    ///
-    /// Whether a provider's entry (current project, or `--shared`) exists, is safe and
-    /// decrypts (#2393). Never the value, its length or a fingerprint.
-    KeyStatus {
-        provider: String,
-        /// The key every project uses (`~/.moai-cli/vault/_shared/`).
-        #[arg(long)]
-        shared: bool,
-    },
     /// Preview moving MoAI state into the home layout
     ///
     /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
@@ -432,23 +368,6 @@ enum Command {
     /// Lane status table (rc.2 A11 #2265): typed JSON request on stdin; GET-only read of the
     /// named Issues, their open PRs and the local worktrees; writes nothing.
     LaneStatus { project: PathBuf },
-    /// Choose the writing language item by item
-    ///
-    /// Per-item writing-language setup (#2293): asks one question per item and returns a
-    /// complete profile for `project-plan`; writes nothing. `--questions` prints the question
-    /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
-    /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
-    LanguageSetup {
-        project: PathBuf,
-        #[arg(long, conflicts_with = "answers")]
-        questions: bool,
-        #[arg(long)]
-        answers: bool,
-        /// Conversation language code for the conversation-default items; else the
-        /// profile's `language.user_chat`, else `en`.
-        #[arg(long)]
-        conversation: Option<String>,
-    },
     /// Check claim ownership before a commit or push
     ///
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
@@ -593,10 +512,6 @@ enum Command {
         #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
         total_cap: u64,
     },
-    /// Check that Claude Code reads AGENTS.md
-    ///
-    /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
-    ClaudeDoctor { project: PathBuf },
     /// Preview the managed Claude Code settings keys
     ///
     /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
@@ -625,21 +540,6 @@ enum Command {
         /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
         #[arg(long)]
         confirm_replace: Option<String>,
-    },
-    /// Preview the managed Codex config keys
-    ///
-    /// Preview managed dotted keys from stdin in PROJECT/.codex/config.toml; never writes.
-    CodexConfigPlan { project: PathBuf },
-    /// Write previewed Codex config keys
-    ///
-    /// Apply a previewed project config with the same stdin, digest and permission reference.
-    /// User HOME and CODEX_HOME config targets are refused; trust is never changed.
-    CodexConfigApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
     },
     /// Preview the MoAI hook set for one host
     ///
@@ -712,28 +612,6 @@ enum Command {
         #[arg(long)]
         event: String,
     },
-    /// Check the Codex instructions and skills
-    ///
-    /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
-    CodexDoctor {
-        /// Project root (Codex walks from here down to the working directory).
-        project: PathBuf,
-        /// Working directory inside the project (default: the project root).
-        #[arg(long)]
-        cwd: Option<PathBuf>,
-        /// Codex home holding the global AGENTS files (default: $CODEX_HOME, else ~/.codex).
-        #[arg(long)]
-        codex_home: Option<PathBuf>,
-        /// Home holding `.agents/skills` (default: $HOME).
-        #[arg(long)]
-        home: Option<PathBuf>,
-        /// `project_doc_fallback_filenames` entry (repeatable; config.toml is not read).
-        #[arg(long)]
-        fallback: Vec<String>,
-        /// `project_doc_max_bytes` (default 32768; config.toml is not read).
-        #[arg(long)]
-        max_bytes: Option<u64>,
-    },
     /// Preview the branch and worktree of a claim
     ///
     /// Plan the branch and worktree of a claim (06-C #2007). Writes nothing.
@@ -769,20 +647,6 @@ enum Command {
         /// Test seam (WT-5): the project-total warning line in bytes instead of 40 GiB.
         #[arg(long, hide = true, default_value_t = moai_cli::worktree::PROJECT_WARN_BYTES)]
         warn_total_bytes: u64,
-    },
-    /// Report the space worktrees use
-    ///
-    /// Read-only space report of the repository's worktrees, their build folders and the
-    /// temporary `moai-*` folders (WT-1, #2380). Facts only; removal candidates are not
-    /// evaluated. Writes nothing.
-    WorktreeReport {
-        project: PathBuf,
-        /// Folder whose `moai-*` children are classified (default `/tmp`).
-        #[arg(long)]
-        tmp_root: Option<PathBuf>,
-        /// Time budget in milliseconds for the size walk; past it a class is `partial`.
-        #[arg(long, default_value_t = moai_cli::worktree_report::DEFAULT_BUDGET_MS)]
-        budget_ms: u64,
     },
     /// Show the code map
     ///
@@ -914,63 +778,11 @@ enum Command {
         #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=999))]
         pr_seq: u32,
     },
-    /// Show the installed MoAI binaries
-    ///
-    /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
-    /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
-    InstallInspect {
-        /// Accepted for the REQ-04A-02 invocation form; output is always the JSON envelope.
-        #[arg(long)]
-        json: bool,
-    },
-    /// Preview the project's generated agent and skill files
-    ///
-    /// Plan project-specific generated files read-only (03-C #1997): typed request on
-    /// stdin; judgment envelope on stdout; writes nothing.
-    GenerationPlan { project: PathBuf },
-    /// Preview the project's GitHub templates
-    ///
-    /// Plan the GitHub templates of a project (08-B #2013): typed request on stdin
-    /// (`github_issues` opts in); read-only.
-    GithubPlan { project: PathBuf },
     /// Preview syncing the project's GitHub labels
     ///
     /// Plan a project's label sync from `.github/moai/labels.yml` (#2434 decision 40): typed
     /// request `{schema_version, owner, repo}` on stdin; GET only, never deletes.
     LabelsPlan { project: PathBuf },
-    /// Sync previewed GitHub labels
-    ///
-    /// Apply an approved label sync plan (#2434 decision 40): the exact plan on stdin,
-    /// `--plan-digest` and `--permission-reference`; POST/PATCH only.
-    LabelsApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Write previewed GitHub templates
-    ///
-    /// Apply an approved GitHub template plan (08-B #2013): the exact plan on stdin,
-    /// `--plan-digest` and `--permission-reference`.
-    GithubApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
-    /// Write previewed generated agent and skill files
-    ///
-    /// Apply an approved generation plan (03-C #1997): the exact plan on stdin,
-    /// `--plan-digest` and `--permission-reference`.
-    GenerationApply {
-        project: PathBuf,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
-    },
     /// Preview an independent audit clone
     ///
     /// Read-only plan of an independent audit clone (WT-3, #2380): the single-branch,
@@ -1333,50 +1145,30 @@ fn operation(command: &Command) -> Option<&'static str> {
         | LaneEnv { .. }
         | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
-        AgentsApply { .. } => "agents.apply",
-        AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
-        BaselineInventory { .. } => "baseline.inventory",
         ClaimAcquire { .. } => "claim.acquire",
         ClaimHandoff { .. } => "claim.handoff",
         ClaimRelease { .. } => "claim.release",
         ClaimShow { .. } => "claim.show",
         ClaimVerify { .. } => "claim.verify",
-        ClaudeDoctor { .. } => "claude.doctor",
         ClaudeSettingsApply { .. } => "claude.settings_apply",
         ClaudeSettingsPlan { .. } => "claude.settings_plan",
-        CodexConfigApply { .. } => "codex.config_apply",
-        CodexConfigPlan { .. } => "codex.config_plan",
-        CodexDoctor { .. } => "codex.doctor",
         DecisionAppend { .. } => "decision.append",
         EffectConfirm { .. } => "effect.confirm",
         EffectIntend { .. } => "effect.intend",
         EffectsReconcile { .. } => "effects.reconcile",
         FlowWipCheck { .. } => "flow.wip_check",
-        GenerationApply { .. } => "generation.apply",
-        GenerationPlan { .. } => "generation.plan",
-        GithubApply { .. } => "github.apply",
-        GithubPlan { .. } => "github.plan",
         HookDispatch { .. } => "hook.dispatch",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         HooksRevert { .. } => "hooks.revert",
-        Identity { .. } => "identity",
         IndexBuild { .. } => "index.build",
-        InstallInspect { .. } => "install.inspect",
-        KeyImportApply { .. } => "key.import_apply",
-        LabelsApply { .. } => "labels.apply",
         LabelsPlan { .. } => "labels.plan",
-        KeyImportPlan { .. } => "key.import_plan",
-        KeyRemove { .. } => "key.remove",
-        KeySet { .. } => "key.set",
-        KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
         LaneStopHook { .. } => "lane.stop_hook",
-        LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
         LeaderTick { .. } => "leader.tick",
@@ -1392,9 +1184,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
-        ProjectApply { .. } => "project.apply",
-        ProjectDetect { .. } => "project.detect",
-        ProjectPlan { .. } => "project.plan",
         HeavySlotAcquire { .. } => "heavy_slot.acquire",
         HeavySlotStatus { .. } => "heavy_slot.status",
         QueueFree { .. } => "queue.free",
@@ -1414,7 +1203,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
-        WorktreeReport { .. } => "worktree.report",
     })
 }
 
@@ -1811,140 +1599,16 @@ fn run_internal(
 fn run_internal_classified(command: Command) -> Result<serde_json::Value, String> {
     match command {
         Command::Op(op) => op.run(),
-        Command::ProjectDetect { project } => moai_cli::project_detect::detect_cli(&project),
-        Command::ProjectPlan { project } => {
-            // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
-            // the profile message; no input value is echoed.
-            let profile: Profile = serde_json::from_value(input::<serde_json::Value>()?)
-                .map_err(|_| "invalid or nonportable profile; no values were logged".to_string())?;
-            serde_json::to_value(plan(&project, profile)?).map_err(|_| "encode failed".into())
-        }
-        Command::ProjectApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => apply(
-            &project,
-            plan_input::<Plan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::AgentsPlan { project } => {
-            serde_json::to_value(agents_plan(&project, input::<AgentsRequest>()?)?)
-                .map_err(|_| "encode failed".into())
-        }
-        Command::AgentsApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => agents_apply(
-            &project,
-            plan_input::<AgentsPlan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
         Command::ApplyRecover {
             project,
             receipt,
             permission_reference,
         } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
-        Command::BaselineInventory {
-            project,
-            go_baseline_commit,
-            go_repo,
-        } => moai_cli::baseline::inventory(
-            &project,
-            go_baseline_commit.as_deref(),
-            go_repo.as_deref(),
-        ),
-        Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
             &project,
             &input::<moai_cli::index::IndexBuildRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
-        Command::KeyImportApply {
-            provider,
-            plan_digest,
-            permission_reference,
-            shared,
-        } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::import_apply(
-                &moai_cli::key_vault::home()?,
-                &scope,
-                &provider,
-                &plan_digest,
-                &permission_reference,
-            )
-        }
-        Command::KeyImportPlan { provider, shared } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::import_plan(&moai_cli::key_vault::home()?, &scope, &provider)
-        }
-        Command::KeyRemove {
-            provider,
-            yes,
-            shared,
-        } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            let home = moai_cli::key_vault::home()?;
-            if yes {
-                return moai_cli::key_vault::remove(&home, &scope, &provider, true);
-            }
-            // Without `--yes`: the preview removes nothing. On a terminal (stdin and stderr)
-            // with an entry to delete, ask once (#2806, design #2799 D2 §7); elsewhere the
-            // preview with its `next:` hint is the answer, byte for byte as before.
-            let preview = moai_cli::key_vault::remove(&home, &scope, &provider, false)?;
-            use std::io::IsTerminal as _;
-            let terminal = io::stdin().is_terminal() && io::stderr().is_terminal();
-            if !(terminal && preview["exists"] == serde_json::json!(true)) {
-                return Ok(preview);
-            }
-            use moai_cli::ui_text::Msg;
-            let what = |p: &moai_cli::ui::Painter| {
-                format!(
-                    "{}\n  {}\n",
-                    p.text(Msg::KeyRemoveDeletes),
-                    p.fill(
-                        Msg::KeyRemoveWhich,
-                        &[
-                            ("provider", provider.as_str()),
-                            ("scope", preview["scope"].as_str().unwrap_or("?")),
-                            ("path", preview["path"].as_str().unwrap_or("?")),
-                        ],
-                    )
-                )
-            };
-            if moai_cli::progress::ask_terminal(what, Msg::RemoveIt)? {
-                moai_cli::key_vault::remove(&home, &scope, &provider, true)
-            } else {
-                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
-                eprintln!(
-                    "{}: {}",
-                    moai_cli::ui::Token::Info.word_in(lang),
-                    moai_cli::ui_text::text(Msg::RemoveWithYes, lang)
-                );
-                Ok(preview)
-            }
-        }
-        Command::KeySet { provider, shared } => {
-            use std::io::IsTerminal;
-            if io::stdin().is_terminal() {
-                return Err(
-                    "key-set reads the value from stdin and refuses a terminal (the \
-                            value would be echoed); pipe it in instead"
-                        .into(),
-                );
-            }
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            let value = moai_cli::key_vault::read_value(io::stdin())?;
-            moai_cli::key_vault::set(&moai_cli::key_vault::home()?, &scope, &provider, &value)
-        }
-        Command::KeyStatus { provider, shared } => {
-            let scope = moai_cli::key_vault::scope_here(shared)?;
-            moai_cli::key_vault::status(&moai_cli::key_vault::home()?, &scope, &provider)
-        }
         Command::LaneHandoffCheck { project } => {
             let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
             // The CLI positional project wins over any stdin value (consistency
@@ -1968,34 +1632,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::LanguageSetup {
-            project,
-            questions,
-            answers,
-            conversation,
-        } => {
-            use moai_cli::language::{setup, SetupMode};
-            let mode = if questions {
-                SetupMode::Questions
-            } else if answers {
-                let value = input::<serde_json::Value>()?;
-                SetupMode::Answers(
-                    value
-                        .as_object()
-                        .cloned()
-                        .ok_or("answers must be a JSON object")?,
-                )
-            } else {
-                SetupMode::Interactive
-            };
-            setup(
-                &project,
-                mode,
-                conversation.as_deref(),
-                &mut io::stdin().lock(),
-                &mut io::stderr(),
-            )
-        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
@@ -2100,7 +1736,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             );
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
-        Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::HooksPlan {
             project,
             host,
@@ -2182,43 +1817,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 confirm_replace.as_deref(),
             )
         }
-        Command::CodexConfigPlan { project } => {
-            let home = codex_config_home(&project)?;
-            let desired = input()?;
-            moai_cli::hosts::codex_config::config_plan(&project, &home, &desired)
-        }
-        Command::CodexConfigApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => {
-            let home = codex_config_home(&project)?;
-            let desired = input()?;
-            moai_cli::hosts::codex_config::config_apply(
-                &project,
-                &home,
-                &desired,
-                &plan_digest,
-                &permission_reference,
-            )
-        }
-        Command::CodexDoctor {
-            project,
-            cwd,
-            codex_home,
-            home,
-            fallback,
-            max_bytes,
-        } => {
-            let home = home
-                .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
-                .ok_or("home directory missing; pass --home")?;
-            let codex_home = codex_home
-                .or_else(|| std::env::var_os("CODEX_HOME").map(PathBuf::from))
-                .unwrap_or_else(|| home.join(".codex"));
-            let cwd = cwd.unwrap_or_else(|| project.clone());
-            codex::doctor(&project, &cwd, &codex_home, &home, &fallback, max_bytes)
-        }
         Command::WorktreePlan {
             project,
             source,
@@ -2250,41 +1848,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
         ),
-        Command::WorktreeReport {
-            project,
-            tmp_root,
-            budget_ms,
-        } => moai_cli::worktree_report::report(
-            &project,
-            &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
-            std::time::Duration::from_millis(budget_ms),
-        ),
-        Command::InstallInspect { json: _ } => {
-            let home = std::env::var_os("HOME")
-                .filter(|h| !h.is_empty())
-                .map(PathBuf::from)
-                .ok_or("home directory missing; install-inspect requires HOME")?;
-            let path_env = std::env::var("PATH").unwrap_or_default();
-            let env_dir = |k: &str| {
-                std::env::var_os(k)
-                    .filter(|v| !v.is_empty())
-                    .map(PathBuf::from)
-            };
-            let (project_dir, gobin) = (env_dir("CLAUDE_PROJECT_DIR"), env_dir("GOBIN"));
-            let places = moai_cli::install::CandidatePlaces {
-                project_dir: project_dir.as_deref(),
-                gobin: gobin.as_deref(),
-            };
-            let result = moai_cli::install::inspect(&home, &path_env, &places)?;
-            // #2867: a person at a terminal sees the note once, in stderr's language (#2825);
-            // the envelope carries the English note in every language.
-            if result["path_first_moai"]["note"].is_string() && moai_cli::ui::stderr_is_terminal() {
-                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
-                let note = moai_cli::ui_text::text(moai_cli::ui_text::Msg::PathFirstNote, lang);
-                eprintln!("moai-cli: {note}");
-            }
-            Ok(result)
-        }
         Command::Update {
             confirm,
             confirm_cleanup,
@@ -2410,62 +1973,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let plan = plan_input::<moai_cli::recovery::RecoveryPlan>()?;
             moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
-        Command::GithubPlan { project } => {
-            serde_json::to_value(moai_cli::github_templates::github_plan(
-                &project,
-                input::<moai_cli::github_templates::GithubRequest>()?,
-            )?)
-            .map_err(|_| "encode failed".into())
-        }
         Command::LabelsPlan { project } => moai_cli::forge::labels::labels_plan_cli(
             &project,
             input::<moai_cli::forge::labels::LabelsRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::LabelsApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => {
-            if !moai_cli::contract::permission_reference_ok(&permission_reference) {
-                return Err("permission reference required".into());
-            }
-            moai_cli::forge::labels::labels_apply_cli(
-                &project,
-                plan_input::<serde_json::Value>()?,
-                &plan_digest,
-                &permission_reference,
-                &moai_cli::forge::transport::GhTransport::from_env()?,
-                &moai_cli::forge::policy::SystemClock,
-            )
-        }
-        Command::GithubApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::github_templates::github_apply(
-            &project,
-            plan_input::<moai_cli::github_templates::GithubPlan>()?,
-            &plan_digest,
-            &permission_reference,
-        ),
-        Command::GenerationPlan { project } => {
-            serde_json::to_value(moai_cli::generation::generation_plan(
-                &project,
-                input::<moai_cli::generation::GenerationRequest>()?,
-            )?)
-            .map_err(|_| "encode failed".into())
-        }
-        Command::GenerationApply {
-            project,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::generation::generation_apply(
-            &project,
-            plan_input::<moai_cli::generation::GenerationPlan>()?,
-            &plan_digest,
-            &permission_reference,
         ),
         Command::DecisionAppend {
             project,
@@ -2492,6 +2004,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
 /// decision 1 (a)); no operation ran, so it names the command line itself.
 const UNKNOWN_COMMAND_OPERATION: &str = "cli";
 const UNKNOWN_COMMAND: &str = "unknown command; see --help";
+/// #2935 L3 (user instruction 2026-11-14T12:05Z): `init` is gone; its envelope names the
+/// launcher flow that replaces it, and stderr says it in the terminal's language.
+const INIT_REMOVED: &str =
+    "moai init was removed; in a project folder run moai cc, moai glm or moai codex";
 
 /// True when clap refused `first` as a subcommand and `first` is a bare word that names no
 /// command (nor `help`): `moai no-such-command`. An option, `help <word>` or a known command
@@ -2507,7 +2023,23 @@ fn names_no_command(e: &clap::Error, first: &str) -> bool {
 /// message that echoes no argument; stderr keeps clap's first line for people. Help, version,
 /// the launchers and words that name no operation keep clap's own output.
 fn usage_error(e: clap::Error) -> ExitCode {
-    let first = std::env::args().nth(1);
+    let first = command_argv().get(1).cloned();
+    if first.as_deref() == Some("init") && names_no_command(&e, "init") {
+        let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+        eprintln!(
+            "{}",
+            moai_cli::ui_text::text(moai_cli::ui_text::Msg::InitRemoved, lang)
+        );
+        println!(
+            "{}",
+            contract::failure(
+                UNKNOWN_COMMAND_OPERATION,
+                contract::Kind::Usage,
+                INIT_REMOVED
+            )
+        );
+        return ExitCode::from(2);
+    }
     if first.as_deref().is_some_and(|w| names_no_command(&e, w)) {
         // #2799 D3 decision 1 (a): an unknown first word is a usage error like any other, so
         // stdout carries the `usage` envelope too. Its message echoes no argument (the word
@@ -2530,7 +2062,7 @@ fn usage_error(e: clap::Error) -> ExitCode {
         // Root help carries the logo above clap's help body (Issue #2363);
         // subcommand help and version stay logo-free.
         if matches!(e.kind(), ErrorKind::DisplayHelp) {
-            let rest: Vec<String> = std::env::args().skip(1).collect();
+            let rest: Vec<String> = command_argv().get(1..).unwrap_or_default().to_vec();
             moai_cli::banner::maybe_print_logo_for(&rest);
         }
         e.exit()
@@ -2560,7 +2092,7 @@ fn usage_error(e: clap::Error) -> ExitCode {
         };
         if moai_cli::ui::stderr_is_terminal() {
             let painter = stderr_painter();
-            let word = std::env::args().nth(1);
+            let word = command_argv().get(1).cloned();
             let next = moai_cli::error_next::next_action_in(
                 contract::Kind::Usage,
                 painter.lang,
@@ -2628,7 +2160,7 @@ fn print_operation_error(kind: contract::Kind, message: &str) {
         return;
     }
     let painter = stderr_painter();
-    let word = std::env::args().nth(1);
+    let word = command_argv().get(1).cloned();
     // S6c (#2825): the labels and the next step in the stream's language; the message itself
     // is the envelope's `error.message` and stays as it is (D3).
     let next = moai_cli::error_next::next_action_in(
@@ -2823,17 +2355,41 @@ pub(crate) fn main() -> ExitCode {
     if argv.get(1).is_some_and(|w| w == GO_HOOK_WORD) {
         return go_hook_main(&argv);
     }
-    let hook_mode = hook_mode_argv(&argv);
+    // #2799 ③: a leading `--color` is recorded before parsing, so a usage error drawn by the
+    // failure paths below follows it too; the word readers see the line without it.
+    if let Some((choice, _)) = leading_color(&argv) {
+        moai_cli::ui::set_color_choice(choice);
+    }
+    let words = command_argv();
+    let hook_mode = hook_mode_argv(words);
     let bin = moai_cli::help::bin_name(argv.first().map(String::as_str).unwrap_or(""));
     // `help --all` (#2802 S1): every command in its group. clap's `help` takes command names
     // only, so this form is answered before parsing.
-    if argv.len() == 3 && argv[1] == "help" && argv[2] == "--all" {
+    if words.len() == 3 && words[1] == "help" && words[2] == "--all" {
         let mut cmd = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, true);
         print!("{}", cmd.render_help());
         return ExitCode::SUCCESS;
     }
+    // A leading `--color` with a value clap rejects: clap's own error, which lists the values.
+    // (The root's options conflict with a subcommand, so a valid one is parsed out above.)
+    if leading_color(&argv).is_none() {
+        let take = match argv.get(1).map(String::as_str) {
+            Some("--color") => 3,
+            Some(w) if w.starts_with("--color=") => 2,
+            _ => 0,
+        };
+        if take > 0 {
+            let only: Vec<&String> = argv.iter().take(take).collect();
+            if let Err(e) =
+                moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, false)
+                    .try_get_matches_from(only)
+            {
+                return usage_error(e);
+            }
+        }
+    }
     let parsed = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, false)
-        .try_get_matches_from(&argv)
+        .try_get_matches_from(words)
         .and_then(|m| Cli::from_arg_matches(&m));
     let cli = match parsed {
         Ok(cli) => cli,
@@ -2850,6 +2406,7 @@ pub(crate) fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
+    moai_cli::ui::set_color_choice(cli.color);
     if let Some(Command::Statusline {
         refresh_counts: true,
         board_root: Some(root),
@@ -3007,6 +2564,58 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// #2799 ③ C5: a leading valid `--color` is taken out before the word readers look at
+    /// position 1; an invalid value, a later `--color` or a bare flag is left for clap.
+    #[test]
+    fn a_leading_color_flag_is_taken_out_before_the_command_word() {
+        use moai_cli::ui::ColorFlag::*;
+        let v = |s: &[&str]| s.iter().map(|w| w.to_string()).collect::<Vec<_>>();
+        for (line, choice, rest) in [
+            (
+                &["moai", "--color", "never", "update"][..],
+                Some(Never),
+                &["moai", "update"][..],
+            ),
+            (
+                &["moai", "--color=always", "hook-receipt"],
+                Some(Always),
+                &["moai", "hook-receipt"],
+            ),
+            (
+                &["moai", "--color", "auto", "help", "--all"],
+                Some(Auto),
+                &["moai", "help", "--all"],
+            ),
+            (
+                &["moai", "--color", "bogus", "update"],
+                None,
+                &["moai", "--color", "bogus", "update"],
+            ),
+            (
+                &["moai", "--color=", "update"],
+                None,
+                &["moai", "--color=", "update"],
+            ),
+            (&["moai", "--color"], None, &["moai", "--color"]),
+            (
+                &["moai", "update", "--color", "never"],
+                None,
+                &["moai", "update", "--color", "never"],
+            ),
+            (&["moai"], None, &["moai"]),
+        ] {
+            assert_eq!(leading_color(&v(line)).map(|(c, _)| c), choice, "{line:?}");
+            assert_eq!(without_leading_color(v(line)), v(rest), "{line:?}");
+        }
+        // Hook mode reads the stripped line: the hook word stays the hook word.
+        assert!(hook_mode_argv(&without_leading_color(v(&[
+            "moai",
+            "--color",
+            "never",
+            "hook-receipt"
+        ]))));
+    }
 
     /// #2812 W3 AC-4, through the path `main` takes (`help::bin_name` + `help::configure`,
     /// #2802 S1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and `moai-cli`
