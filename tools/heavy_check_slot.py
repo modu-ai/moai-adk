@@ -10,7 +10,9 @@ when the working folder's file system has less than --min-free-gb free (default 
 GB = 10^9 bytes) or swap use is above --max-swap-pct (default 80), `acquire` starts nothing
 and exits 75 (sysexits EX_TEMPFAIL, "try again later") with the measured values on stderr.
 It judges before queueing and again right before COMMAND after a wait, since a wait can eat
-the space. A value the system does not give is not a reason to refuse. Nothing is ever
+the space. A run that does start with under 100 GB free first prints one warning line on
+stderr (Issue #2930 item 6; stdout and the exit code do not change). A value the system does
+not give is not a reason to refuse. Nothing is ever
 deleted (cleanup is a person's job).
 
 The machine's limits live in one file beside the slots, `<folder>/limits.json` (Issue #2930
@@ -71,6 +73,9 @@ BUSY = 75
 # The leader's numbers (Issue #2677 comment 6850581277), src/heavy_slot.rs DEFAULT_LIMITS.
 DEFAULT_MIN_FREE_GB = 50
 DEFAULT_MAX_SWAP_PCT = 80
+# Issue #2930 item 6 (src/heavy_slot.rs WARN_FREE_GB): a run that starts with less free space
+# than this (decimal GB) first prints one warning line on stderr.
+WARN_FREE_GB = 100
 # Issue #2930 R-2 (src/heavy_slot.rs DEFAULT_MAX, LIMITS_FILE).
 DEFAULT_MAX = 3
 LIMITS_FILE = "limits.json"
@@ -145,6 +150,17 @@ def over_limits(folder, min_free_gb, max_swap_pct):
     if swap is not None and swap > max_swap_pct:
         why.append(f"swap use {swap}% is above {max_swap_pct}%")
     return "; ".join(why) or None
+
+
+def low_space_line(folder, min_free_gb):
+    """The warning for a run that starts with less than WARN_FREE_GB free, or None (same text as
+    src/heavy_slot.rs low_space_line)."""
+    injected = _test_machine()
+    free = injected[0] if injected is not None else free_bytes(folder)
+    if free is None or free >= WARN_FREE_GB * 1_000_000_000:
+        return None
+    return (f"free disk space is under {WARN_FREE_GB} GB (disk free {free / 1e9:.1f} GB at "
+            f"{folder}); the floor is {min_free_gb} GB")
 
 
 class BadLimitsFile(Exception):
@@ -371,6 +387,9 @@ def acquire(folder, maximum, name, command, min_free_gb=DEFAULT_MIN_FREE_GB,
         if why:
             os.close(fd)
             return busy(name, why, cwd)
+    warning = low_space_line(cwd, min_free_gb)
+    if warning:
+        print(f"heavy-check-slot: {warning}", file=sys.stderr, flush=True)
     # Handlers go in before the slot is announced and the command starts, so no signal lands in
     # a gap where the wrapper would die and leave the command running; one that arrives before
     # the command exists is held and passed on as soon as it does.
