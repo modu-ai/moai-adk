@@ -417,14 +417,28 @@ fn a_failed_cleanup_is_shown_as_failed_with_its_message() {
 /// screen still ends with the blank line that sets the `[y/N]` prompt apart.
 #[test]
 fn goldens_end_with_one_newline_and_the_question_keeps_its_blank_line() {
+    // The named goldens this file writes (no tree walk: tools/repo_scans.json rule).
+    const NAMES: &[&str] = &[
+        "applied-project",
+        "applied",
+        "blocked-40",
+        "changes-not-asked",
+        "declined",
+        "go-project",
+        "latest",
+        "question-40",
+        "question-ascii-40",
+        "question-color",
+        "question",
+        "stale",
+    ];
     for dir in ["en", "ko"] {
-        for e in fs::read_dir(root().join("tests/fixtures/ui").join(dir)).unwrap() {
-            let p = e.unwrap().path();
-            let name = p.file_name().unwrap().to_string_lossy().to_string();
-            if !name.starts_with("update-") {
+        for name in NAMES {
+            let p = root().join(format!("tests/fixtures/ui/{dir}/update-{name}.golden"));
+            // Not every golden exists in both languages (color is ko only, ascii en only).
+            let Ok(text) = fs::read_to_string(&p) else {
                 continue;
-            }
-            let text = fs::read_to_string(&p).unwrap();
+            };
             assert!(
                 !text.ends_with("\n\n"),
                 "{} ends with a blank line",
