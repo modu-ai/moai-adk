@@ -28,6 +28,10 @@
 //! list goes on. `end_condition` is the lane-wide end: no open pull request and no startable
 //! open Issue.
 //!
+//! A lane that waits for CI, an audit, a shell or a reply leaves one line `waiting: <what> since
+//! <UTC>` and goes on; `waiting` lists it as `lane_waiting` (#2933 S6). It is information only:
+//! it never makes, blocks or reorders a task.
+//!
 //! Reads only (leader decision D1): reservations and comments stay with the existing commands.
 //! One collection sends at most [`API_BUDGET`] GitHub requests (D4), taking the higher
 //! priorities first; what the budget left unread is named in `partial`, never guessed. The open
@@ -906,6 +910,108 @@ fn decision_pending(waiting: &[Value], number: u64) -> bool {
         .any(|w| w["number"] == json!(number) && w.get("blocked_comment").is_some())
 }
 
+/// The most characters of `<what>` a wait record keeps (#2933 S6); the rest is cut.
+pub const WAIT_WHAT_MAX: usize = 160;
+
+/// What one `waiting:` line says.
+enum WaitLine {
+    /// `waiting: <what> since <UTC>`.
+    Record { what: String, since: String },
+    /// `waiting: done` or `waiting: -`: the lane waits for nothing any more.
+    Clear,
+}
+
+/// `YYYY-MM-DDTHH:MM:SSZ` with digits only where digits belong, as seconds since the epoch.
+fn strict_utc(s: &str) -> Option<i64> {
+    let b = s.as_bytes();
+    let shaped = b.len() == 20
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| matches!(i, 4 | 7 | 10 | 13 | 16 | 19) || c.is_ascii_digit());
+    if shaped {
+        crate::forge::policy::parse_utc(s)
+    } else {
+        None
+    }
+}
+
+/// A wait line (#2933 S6): `waiting: <what> since <UTC>` starting at column 0 of the line.
+/// `<what>` loses its control characters (nothing a comment says reaches a terminal raw) and is
+/// cut at [`WAIT_WHAT_MAX`] characters. A line with no `since`, or a `since` that is not a UTC
+/// time, is no record; only `done` and `-` may come without one.
+fn wait_line(line: &str) -> Option<WaitLine> {
+    let rest = line.strip_prefix("waiting:")?.trim();
+    let (what, since) = match rest.rsplit_once(" since ") {
+        Some((what, since)) => (what, Some(since.trim())),
+        None => (rest, None),
+    };
+    let what: String = what.chars().filter(|c| !c.is_control()).collect();
+    let what = what.trim();
+    if matches!(what, "done" | "-") && since.is_none_or(|s| strict_utc(s).is_some()) {
+        return Some(WaitLine::Clear);
+    }
+    let since = since.filter(|s| strict_utc(s).is_some())?;
+    if what.is_empty() {
+        return None;
+    }
+    Some(WaitLine::Record {
+        what: what.chars().take(WAIT_WHAT_MAX).collect(),
+        since: since.to_string(),
+    })
+}
+
+/// The lane's wait records (#2933 S6): on each Issue the lane holds a live claim on, and each
+/// pull request the lane authored or reserved the audit of, the newest `waiting:` line of a
+/// comment that names the lane — every lane posts as one account, so the name decides
+/// ([`names_lane`]). A later `waiting: done` line clears it; any other later comment does not.
+/// Information only: `decide` adds these to `waiting` after the task is chosen.
+fn wait_records(lane: &str, snap: &Snapshot) -> Vec<Value> {
+    let now = snap
+        .now
+        .as_deref()
+        .and_then(crate::forge::policy::parse_utc);
+    let issues = snap
+        .threads
+        .iter()
+        .filter(|t| live_claim(&t.comments, lane).is_some())
+        .map(|t| (t.number, &t.comments));
+    let prs = snap
+        .prs
+        .iter()
+        .filter(|p| {
+            p.author_lane.as_deref() == Some(lane)
+                || reserved_by(p).is_some_and(|(_, by)| same_lane(&by, lane))
+        })
+        .map(|p| (p.number, &p.comments));
+    let mut found: Vec<Value> = issues
+        .chain(prs)
+        .filter_map(|(number, comments)| {
+            let mut record = None;
+            for c in comments.iter().filter(|c| names_lane(c, lane)) {
+                for line in c.body.lines() {
+                    match wait_line(line) {
+                        Some(WaitLine::Record { what, since }) => {
+                            record = Some((what, since, c.id))
+                        }
+                        Some(WaitLine::Clear) => record = None,
+                        None => {}
+                    }
+                }
+            }
+            let (what, since, comment) = record?;
+            let age = now
+                .zip(crate::forge::policy::parse_utc(&since))
+                .map(|(now, at)| (now - at).max(0));
+            Some(
+                json!({"reason": "lane_waiting", "number": number, "what": what,
+                "since": since, "age_secs": age, "comment": comment}),
+            )
+        })
+        .collect();
+    found.sort_by_key(|w| w["number"].as_u64());
+    found
+}
+
 /// Decides the next task of `lane` from `snap`. Pure: the same snapshot gives the same bytes.
 pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
@@ -1245,6 +1351,8 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         None
     })();
+    // The lane's own wait records (#2933 S6) come last and change nothing above.
+    waiting.extend(wait_records(lane, snap));
     // The lane-wide end (#2901, #2515): shared with `leader-round` through [`end_condition`]
     // (#2902 O3b), which judges with the same `judge_within`, open set and read-through.
     let mut v = json!({

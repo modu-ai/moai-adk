@@ -979,3 +979,49 @@ fn agent_workflow_opens_with_the_leader_busy_summary_and_reads_screens_only_with
         }
     }
 }
+
+// #2933 S6 (P-4): a lane that waits for CI, an audit, a shell or a reply leaves one
+// `waiting: <what> since <UTC>` line and takes the next job in the same turn; `wake` is only for
+// a `moai lane-next` with no task and no startable Issue, and then the passed-over lists go into
+// the report; the leader reads a lane that only armed a watch as idle and names it PR work first,
+// then a startable Issue.
+#[test]
+fn waiting_is_a_line_and_the_next_job_and_an_armed_watch_is_idle() {
+    let agent = workflow("mode-agent.md");
+    assert_says(
+        &agent,
+        "keep-going",
+        &[
+            "While you wait for CI, an audit, a shell or a reply, leave one line `waiting: <what> since <UTC>` on the Issue or pull request",
+            "the UTC from `date -u`, never typed from memory",
+            "take the next job in the same turn",
+            "when the reply comes, go back to it",
+            "`waiting: done` clears the line",
+        ],
+    );
+    assert_says(
+        &agent,
+        "self-pick",
+        &[
+            "`moai lane-next` reads that line back under `waiting` as `lane_waiting`",
+            "information only: it adds no task and changes no order",
+        ],
+    );
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "A wake is only for a `moai lane-next` that returns no task while no Issue is startable",
+            "put the `pr_skipped`, `skipped` and `waiting` lists of its output into the report",
+        ],
+    );
+    assert_says(
+        &workflow("mode-leader.md"),
+        "supervise",
+        &[
+            "A lane that only armed a watch and ended its turn is IDLE, not working",
+            "each round count the idle lanes",
+            "name pull request work first, then a startable Issue",
+        ],
+    );
+}
