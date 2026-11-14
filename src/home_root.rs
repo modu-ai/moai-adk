@@ -26,6 +26,31 @@ pub fn path(home: &Path) -> PathBuf {
     home.join(dir(home))
 }
 
+/// #2696 C4b2: a HOME with no MoAI state at all — no earlier `~/.moai-cli` and verdict `none`
+/// (no `~/.moai` of any kind, Go's included) — starts on `~/.moai`.
+pub fn is_new_home(home: &Path) -> bool {
+    std::fs::symlink_metadata(home.join(crate::HOME_STATE_DIR)).is_err()
+        && crate::state_root::classify_with(home, crate::home_state::home_go_markers).generation
+            == "none"
+}
+
+/// Make a new HOME's `~/.moai/` and its marker, so every later read and write resolves to
+/// `~/.moai`. Does nothing for any other HOME (an earlier `~/.moai-cli`, a Go `~/.moai`) and says
+/// whether it wrote. The folder is created exclusively and the marker published without
+/// overwriting.
+pub fn adopt_new(home: &Path, created_by: &str) -> Result<bool, String> {
+    if !is_new_home(home) {
+        return Ok(false);
+    }
+    std::fs::create_dir(home.join(MOAI_DIR))
+        .map_err(|_| format!("~/{MOAI_DIR}: folder create failed"))?;
+    crate::apply::publish_exclusive(
+        &home.join(MOAI_DIR).join(crate::state_root::RUST_MARKER),
+        &crate::state_root::marker_bytes(created_by, &[]),
+    )?;
+    Ok(true)
+}
+
 /// A folder name that is a HOME state root of either name (walks that look for the root).
 pub fn is_state_dir_name(name: &std::ffi::OsStr) -> bool {
     name == crate::HOME_STATE_DIR || name == MOAI_DIR
@@ -63,6 +88,29 @@ mod tests {
             crate::HOME_STATE_DIR
         )));
         assert!(!is_state_dir_name(std::ffi::OsStr::new(".moai-backup")));
+    }
+
+    #[test]
+    fn only_a_home_with_no_state_is_adopted() {
+        // New HOME: `.moai` and a marker that `dir` then reads.
+        let home = tempfile::tempdir().unwrap();
+        assert!(is_new_home(home.path()));
+        assert_eq!(adopt_new(home.path(), "test"), Ok(true));
+        assert_eq!(dir(home.path()), MOAI_DIR);
+        assert_eq!(adopt_new(home.path(), "test"), Ok(false), "only once");
+        // An earlier `~/.moai-cli`: kept, nothing written.
+        let earlier = tempfile::tempdir().unwrap();
+        fs::create_dir(earlier.path().join(crate::HOME_STATE_DIR)).unwrap();
+        assert!(!is_new_home(earlier.path()));
+        assert_eq!(adopt_new(earlier.path(), "test"), Ok(false));
+        assert!(!earlier.path().join(MOAI_DIR).exists());
+        // A Go `~/.moai`: not ours, nothing written into it.
+        let go = tempfile::tempdir().unwrap();
+        fs::create_dir_all(go.path().join(".moai/state")).unwrap();
+        fs::write(go.path().join(".moai/state/active-sessions.json"), "{}").unwrap();
+        assert!(!is_new_home(go.path()));
+        assert_eq!(adopt_new(go.path(), "test"), Ok(false));
+        assert!(!go.path().join(".moai/moai-cli.json").exists());
     }
 
     /// Production code asks [`dir`]/[`path`]; the earlier name is spelled only where both

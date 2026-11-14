@@ -41,6 +41,9 @@ fn setup() -> (TempDir, PathBuf, PathBuf, PathBuf) {
     let rootp = root.path().to_path_buf();
     let home = rootp.join("home");
     fs::create_dir_all(&home).unwrap();
+    // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 gives a HOME with no
+    // state `~/.moai`; that layout is pinned by home_root tests and update_cli).
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
     let stage1 = rootp.join("stage-v1");
     let stage2 = rootp.join("stage-v2");
     write_pkg(
