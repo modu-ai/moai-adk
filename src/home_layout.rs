@@ -53,6 +53,23 @@ pub enum RustUse {
     None,
 }
 
+/// What kind of item a name holds (PLAN v2 6876772276 table A, column "분류").
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Class {
+    /// This generation's own item.
+    Rust,
+    /// A Go tool asset: backed up when Go retires.
+    ToolAsset,
+    /// Go settings or instructions: backed up; some values are merge candidates.
+    ConfigGuide,
+    /// A secret: renamed as a whole, never read.
+    Secret,
+    /// User data: kept in place.
+    UserData,
+    /// Owner not known: kept in place and reported.
+    Unknown,
+}
+
 /// One row of the HOME name table.
 #[derive(Clone, Copy, Debug)]
 pub struct Entry {
@@ -61,75 +78,100 @@ pub struct Entry {
     pub rust: RustUse,
     /// The Go generation uses this name in its `~/.moai`.
     pub go: bool,
+    pub class: Class,
     pub rule: Rule,
-    /// Who writes it (file:line at base `ba5ef23bab`) and why the rule.
+    /// A merge candidate (PLAN v2 table A, column "병합 후보"): the U4 step offers this item's
+    /// user values from the backup manifest; only the rows marked here are offered.
+    pub merge: bool,
+    /// Who writes it (file:line at base `ba5ef23bab`, Go paths from PLAN v2 table A) and why the
+    /// rule.
     pub why: &'static str,
 }
 
-const fn row(name: &'static str, rust: RustUse, go: bool, rule: Rule, why: &'static str) -> Entry {
+const fn row(
+    name: &'static str,
+    rust: RustUse,
+    go: bool,
+    class: Class,
+    rule: Rule,
+    merge: bool,
+    why: &'static str,
+) -> Entry {
     Entry {
         name,
         rust,
         go,
+        class,
         rule,
+        merge,
         why,
     }
 }
 
+use Class::{ConfigGuide, Secret, ToolAsset, Unknown, UserData};
 use Rule::*;
 use RustUse::{Reads, Writes};
 
-/// The HOME name table. Names are unique ignoring case (the default macOS file system does not
-/// tell them apart).
+const MERGE: bool = true;
+const NO: bool = false;
+
+/// The HOME name table, row values from PLAN v2 6876772276 table A (class, action, merge
+/// candidate; its open choices Z2, Z3, Z5 and Z8 at their defaults). Names are unique ignoring
+/// case (the default macOS file system does not tell them apart), except that an exact name may
+/// sit under a pattern with the same class and rule; [`lookup`] takes the exact name first.
 pub const HOME_TABLE: &[Entry] = &[
     // This generation's names (PLAN 1-A).
-    row("agents", Writes, false, RustName, "agent_install.rs:28,44"),
-    row("backups", Writes, true, GoRetires, "update.rs:1213,2398, recovery.rs:100; Go update backups (clean --home removes backups/removed-*, clean_home.go:147-153)"),
-    row("bin", RustUse::None, true, UnknownKeep, "no writer in src (only versions/<v>/bin); Go EnsureHomeLayout makes it (clean_home.go:38); owner unknown"),
-    row("cleanup", Writes, false, RustName, "update_cleanup.rs:39,894"),
-    row("config", Writes, true, GoRetires, "session.rs:209 config/launcher.yaml; Go config/sections/*.yaml; the hook TOML file moves to hook-config.toml"),
-    row("hook-config.toml", RustUse::None, false, RustName, "new name for the hook TOML file now at `config` (hook_config.rs:112), which clashes with the config/ folder of both generations; rule only, nothing renamed yet"),
-    row("home-routing", Writes, false, RustName, "home_routing.rs:30,134"),
-    row("home-style", Writes, false, RustName, "home_style.rs:31,135"),
-    row("installations", Writes, false, RustName, "install.rs:368,445, update.rs:960"),
-    row("path", Writes, false, RustName, "update.rs:509,600, bin_names.rs:95; on PATH via shims"),
-    row("projects", Writes, false, RustName, "layout.rs:46,122,254 (home project store) and home_workdir.rs:30 (#2811 new-project parent)"),
-    row("receipts", Writes, false, RustName, "key_vault.rs:1001"),
-    row("state", Writes, true, GoRetires, "usage_limit.rs:50, statusline/state.rs:88; Go state/active-sessions.json (a live registry: skip-in-use)"),
-    row("vault", Writes, false, SecretRenameOnly, "key_vault.rs:37,239 (.master.key and entries; 0700/0600)"),
-    row("versions", Writes, false, RustName, "update.rs:901, bin_names.rs:95"),
-    row("worktrees", Writes, true, UserDataKeep, "worktree_move.rs:175, home_workdir.rs (#2811 D8: shared; Go worktrees/projects never moved)"),
-    row("moai-cli.json", Writes, false, RustName, "state_root.rs:35 marker"),
-    row("home-state-receipt.json", Writes, false, RustName, "home_state.rs:677"),
-    // Go names (survey §1, PLAN 1-A list).
-    row(".env*", Reads, true, SecretRenameOnly, "Go key files; key_vault.rs:773 reads .env.glm as a legacy source"),
-    row("credentials*", RustUse::None, true, SecretRenameOnly, "Go credentials.yaml(.bak)"),
-    row("secrets", RustUse::None, true, SecretRenameOnly, "Go secrets"),
-    row("gateway-auth", RustUse::None, true, SecretRenameOnly, "Go gateway auth"),
-    row("claude-profiles", RustUse::None, true, SecretRenameOnly, "Go Claude profile homes (sign-ins inside)"),
-    row("cache", RustUse::None, true, GoRetires, "Go cache"),
-    row("run", RustUse::None, true, GoRetires, "Go run state (sqlite; skip-in-use)"),
-    row("db", RustUse::None, true, GoRetires, "Go databases (sqlite; skip-in-use)"),
-    row("logs", RustUse::None, true, GoRetires, "Go logs (Go update recreates it)"),
-    row("releases", RustUse::None, true, GoRetires, "Go releases"),
-    row("integrations", RustUse::None, true, GoRetires, "Go integrations"),
-    row("user-assets*.json", RustUse::None, true, GoRetires, "Go asset manifest (a Go HOME marker)"),
-    row("user-assets.acquire-guard.guard", RustUse::None, true, GoRetires, "Go asset lock"),
-    row(".migrate-tx-*.json", RustUse::None, true, GoRetires, "Go migration journals"),
-    row("specs", RustUse::None, true, UserDataKeep, "user SPECs (D-M1 item 3)"),
-    row("reports", RustUse::None, true, UserDataKeep, "user reports (D-M1 item 3)"),
-    row("handoffs", RustUse::None, true, UserDataKeep, "session handoff notes"),
-    row("todo", RustUse::None, true, UserDataKeep, "user todo"),
-    row("kanban", RustUse::None, true, UserDataKeep, "user board"),
-    row("backup", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("dev-login.sh", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("gpt-appserver", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("local-plugins", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("mcp", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("search", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("studio", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("holding", RustUse::None, true, UnknownKeep, "owner unknown"),
-    row("locks", RustUse::None, true, UnknownKeep, "owner unknown"),
+    row("agents", Writes, false, Class::Rust, RustName, NO, "agent_install.rs:28,44"),
+    row("backups", Writes, true, ToolAsset, GoRetires, NO, "update.rs:1213,2398, recovery.rs:100; Go homestate/paths.go:463 update backups"),
+    row("bin", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:461 (table A: tool asset, backed up); no writer in src (only versions/<v>/bin)"),
+    row("cleanup", Writes, false, Class::Rust, RustName, NO, "update_cleanup.rs:39,894"),
+    row("config", Writes, true, ConfigGuide, GoRetires, MERGE, "session.rs:209 config/launcher.yaml; Go paths.go:450 config/sections/*.yaml (merge: sections/statusline.yaml user values); the hook TOML file moves to hook-config.toml"),
+    row("hook-config.toml", RustUse::None, false, Class::Rust, RustName, NO, "new name for the hook TOML file now at `config` (hook_config.rs:112), which clashes with the config/ folder of both generations; rule only, nothing renamed yet"),
+    row("home-routing", Writes, false, Class::Rust, RustName, NO, "home_routing.rs:30,134"),
+    row("home-style", Writes, false, Class::Rust, RustName, NO, "home_style.rs:31,135"),
+    row("installations", Writes, false, Class::Rust, RustName, NO, "install.rs:368,445, update.rs:960"),
+    row("path", Writes, false, Class::Rust, RustName, NO, "update.rs:509,600, bin_names.rs:95; on PATH via shims"),
+    row("projects", Writes, true, UserData, UserDataKeep, NO, "layout.rs:46,122,254 (home project store) and home_workdir.rs:30 (#2811 new-project parent); Go carve-out clean_home.go:33 with another meaning (Z3: kept in place)"),
+    row("receipts", Writes, false, Class::Rust, RustName, NO, "key_vault.rs:1001"),
+    row("state", Writes, true, ToolAsset, GoRetires, NO, "usage_limit.rs:50, statusline/state.rs:88; Go paths.go:456 state/active-sessions.json (a live registry: skip-in-use)"),
+    row("vault", Writes, false, Class::Rust, SecretRenameOnly, NO, "key_vault.rs:37,239 (.master.key and entries; 0700/0600)"),
+    row("versions", Writes, false, Class::Rust, RustName, NO, "update.rs:901, bin_names.rs:95"),
+    row("worktrees", Writes, true, UserData, UserDataKeep, NO, "worktree_move.rs:175, home_workdir.rs; Go worktreeroot.go:70 (#2811 D8: shared, never moved)"),
+    row("moai-cli.json", Writes, false, Class::Rust, RustName, NO, "state_root.rs:35 marker"),
+    row("home-state-receipt.json", Writes, false, Class::Rust, RustName, NO, "home_state.rs:677"),
+    // Go names (survey §1, PLAN v2 table A).
+    row("settings.json", RustUse::None, true, ConfigGuide, GoRetires, MERGE, "Go paths.go:130 (merge: user keys the user picks, Z5)"),
+    // The pattern stands before the exact name on purpose: `lookup` must still pick the exact row.
+    row(".env*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go key files such as .env.typesafe (defs/dirs.go:404)"),
+    row(".env.glm", Reads, true, Secret, SecretRenameOnly, MERGE, "Go defs/dirs.go:401; key_vault.rs:773 reads it as a legacy source (merge: vault import only, the value never shown)"),
+    row("credentials*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go paths.go:451 credentials.yaml(.bak)"),
+    row("secrets", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go secrets (no current writer, home_state.rs:71)"),
+    row("gateway-auth", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go gateway auth (no current writer)"),
+    row("claude-profiles", RustUse::None, true, Unknown, UnknownKeep, NO, "Go paths.go:449 (Z2: owner unknown, kept and reported)"),
+    row("cache", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:459"),
+    row("run", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:322 run state (sqlite; skip-in-use)"),
+    row("db", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:286 databases (sqlite; skip-in-use)"),
+    row("logs", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:452 logs (Go update recreates it)"),
+    row("releases", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:436"),
+    row("evidence", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:457"),
+    row("todo", RustUse::None, true, ToolAsset, GoRetires, NO, "Go factory/state_dir.go:43-56"),
+    row("integrations", RustUse::None, true, Unknown, UnknownKeep, NO, "Go paths.go:460 (Z2: owner unknown, kept and reported)"),
+    row("user-assets*.json", RustUse::None, true, ToolAsset, GoRetires, NO, "Go userassets/paths.go:192 asset manifest (a Go HOME marker; read before the backup)"),
+    row("user-assets.acquire-guard.guard", RustUse::None, true, ToolAsset, GoRetires, NO, "Go lock_guard_unix.go:24 asset lock"),
+    row(".migrate-tx-*.json", RustUse::None, true, ToolAsset, GoRetires, NO, "Go migrate_home_state.go:331 migration journals"),
+    row("specs", RustUse::None, true, UserData, UserDataKeep, NO, "user SPECs (D-M1 item 3)"),
+    row("reports", RustUse::None, true, Unknown, UnknownKeep, NO, "Go paths.go:464 (Z2: owner unknown, kept and reported)"),
+    row("handoffs", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("kanban", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("backup", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("dev-login.sh", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("gpt-appserver", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("local-plugins", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("mcp", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("search", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("studio", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
+    row("holding", RustUse::None, true, Unknown, UnknownKeep, NO, "held open by another tool (lsof: hided), never touched (Z8)"),
+    row("locks", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
 ];
 
 /// `name` matches `pattern` ignoring ASCII case; one `*` in the pattern matches any run.
@@ -143,9 +185,13 @@ pub fn matches(pattern: &str, name: &str) -> bool {
     }
 }
 
-/// The row for a top-level name, ignoring case; `None` for a name the table does not know.
+/// The row for a top-level name, ignoring case, an exact name before a pattern; `None` for a
+/// name the table does not know.
 pub fn lookup(name: &str) -> Option<&'static Entry> {
-    HOME_TABLE.iter().find(|e| matches(e.name, name))
+    HOME_TABLE
+        .iter()
+        .find(|e| !e.name.contains('*') && matches(e.name, name))
+        .or_else(|| HOME_TABLE.iter().find(|e| matches(e.name, name)))
 }
 
 /// The folder this generation's HOME items live in under `layout`. Pure.
@@ -290,14 +336,124 @@ mod tests {
         for (i, a) in HOME_TABLE.iter().enumerate() {
             for b in &HOME_TABLE[i + 1..] {
                 let lit = |e: &Entry| e.name.replace('*', "x");
+                if !matches(a.name, &lit(b)) && !matches(b.name, &lit(a)) {
+                    continue;
+                }
+                // Only an exact name under a pattern of the same class and rule.
+                let one_pattern = a.name.contains('*') != b.name.contains('*');
                 assert!(
-                    !matches(a.name, &lit(b)) && !matches(b.name, &lit(a)),
+                    one_pattern && a.class == b.class && a.rule == b.rule,
                     "{} and {} overlap",
                     a.name,
                     b.name
                 );
             }
         }
+        // The exact name wins over the pattern it sits under.
+        assert!(lookup(".ENV.GLM").unwrap().merge);
+        assert!(!lookup(".env.typesafe").unwrap().merge);
+        assert_eq!(lookup(".env.typesafe").unwrap().name, ".env*");
+    }
+
+    /// The class decides the action (PLAN v2 table A): a secret is only renamed, user data and
+    /// unknown items stay, Go tool assets and settings retire to the backup, and this
+    /// generation's own rows are never Go's.
+    #[test]
+    fn every_class_has_its_rule() {
+        for e in HOME_TABLE {
+            let ok = match e.class {
+                Secret => e.rule == SecretRenameOnly && e.go,
+                UserData => e.rule == UserDataKeep,
+                Unknown => e.rule == UnknownKeep && e.go,
+                ToolAsset | ConfigGuide => e.rule == GoRetires && e.go,
+                Class::Rust => {
+                    !e.go
+                        && (e.rule == RustName || (e.name == "vault" && e.rule == SecretRenameOnly))
+                }
+            };
+            assert!(ok, "{}: {:?} with {:?}", e.name, e.class, e.rule);
+        }
+    }
+
+    /// Row values pinned to PLAN v2 6876772276 table A: (name looked up, class, rule, Go uses it).
+    #[test]
+    fn rows_follow_plan_v2_table_a() {
+        let want: &[(&str, Class, Rule, bool)] = &[
+            ("backups", ToolAsset, GoRetires, true),
+            ("bin", ToolAsset, GoRetires, true),
+            ("config", ConfigGuide, GoRetires, true),
+            ("state", ToolAsset, GoRetires, true),
+            ("db", ToolAsset, GoRetires, true),
+            ("run", ToolAsset, GoRetires, true),
+            ("logs", ToolAsset, GoRetires, true),
+            ("releases", ToolAsset, GoRetires, true),
+            ("cache", ToolAsset, GoRetires, true),
+            ("evidence", ToolAsset, GoRetires, true),
+            ("todo", ToolAsset, GoRetires, true),
+            (
+                "user-assets.acquire-guard.guard",
+                ToolAsset,
+                GoRetires,
+                true,
+            ),
+            ("user-assets.json", ToolAsset, GoRetires, true),
+            ("settings.json", ConfigGuide, GoRetires, true),
+            (".env.glm", Secret, SecretRenameOnly, true),
+            (".env.typesafe", Secret, SecretRenameOnly, true),
+            ("credentials", Secret, SecretRenameOnly, true),
+            ("credentials.yaml.bak", Secret, SecretRenameOnly, true),
+            ("secrets", Secret, SecretRenameOnly, true),
+            ("gateway-auth", Secret, SecretRenameOnly, true),
+            ("worktrees", UserData, UserDataKeep, true),
+            ("projects", UserData, UserDataKeep, true),
+            ("claude-profiles", Unknown, UnknownKeep, true),
+            ("integrations", Unknown, UnknownKeep, true),
+            ("reports", Unknown, UnknownKeep, true),
+            ("holding", Unknown, UnknownKeep, true),
+        ];
+        for &(name, class, rule, go) in want {
+            let e = lookup(name).unwrap_or_else(|| panic!("{name} is not in HOME_TABLE"));
+            assert_eq!((e.class, e.rule, e.go), (class, rule, go), "{name}");
+        }
+        for name in [
+            "kanban",
+            "mcp",
+            "search",
+            "studio",
+            "backup",
+            "locks",
+            "gpt-appserver",
+            "handoffs",
+            "local-plugins",
+            "dev-login.sh",
+        ] {
+            assert_eq!(lookup(name).unwrap().class, Unknown, "{name}");
+        }
+        for name in [
+            "agents",
+            "cleanup",
+            "home-routing",
+            "home-style",
+            "installations",
+            "path",
+            "receipts",
+            "vault",
+            "versions",
+            "moai-cli.json",
+        ] {
+            assert_eq!(lookup(name).unwrap().class, Class::Rust, "{name}");
+        }
+    }
+
+    /// The merge candidates are exactly the "예" rows of PLAN v2 table A.
+    #[test]
+    fn merge_candidates_are_the_plan_rows() {
+        let merge: Vec<&str> = HOME_TABLE
+            .iter()
+            .filter(|e| e.merge)
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(merge, ["config", "settings.json", ".env.glm"]);
     }
 
     /// A name both generations use is declared as a clash with a rule that says who yields;
