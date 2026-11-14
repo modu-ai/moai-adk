@@ -764,6 +764,16 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
+        /// `next_cursor` says where the next run goes on (#2879).
+        #[arg(long)]
+        max_checked: Option<usize>,
+        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
+        #[arg(long = "worktree", value_name = "PATH")]
+        only: Vec<PathBuf>,
     },
     /// Remove or trim the previewed worktrees
     ///
@@ -781,6 +791,16 @@ enum Command {
         /// Test seam: the current time in Unix seconds instead of the clock.
         #[arg(long, hide = true)]
         now_unix: Option<u64>,
+        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
+        /// `next_cursor` says where the next run goes on (#2879).
+        #[arg(long)]
+        max_checked: Option<usize>,
+        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
+        #[arg(long = "worktree", value_name = "PATH")]
+        only: Vec<PathBuf>,
         #[arg(long)]
         plan_digest: String,
         #[arg(long)]
@@ -2280,12 +2300,21 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             recent_minutes,
             budget_ms,
             now_unix,
-        } => moai_cli::worktree_gc::plan(
+            max_checked,
+            cursor,
+            only,
+        } => moai_cli::worktree_gc::plan_paced(
             &project,
             &integration_ref,
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+            false,
+            &moai_cli::worktree_gc::Pace {
+                max_checked,
+                cursor,
+                only,
+            },
         ),
         Command::WorktreeGcApply {
             project,
@@ -2293,6 +2322,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             recent_minutes,
             budget_ms,
             now_unix,
+            max_checked,
+            cursor,
+            only,
             plan_digest,
             permission_reference,
         } => moai_cli::worktree_gc::apply(
@@ -2301,6 +2333,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
             std::time::Duration::from_millis(budget_ms),
             now_unix,
+            &moai_cli::worktree_gc::Pace {
+                max_checked,
+                cursor,
+                only,
+            },
             &plan_digest,
             &permission_reference,
         ),
@@ -2923,6 +2960,14 @@ pub(crate) fn main() -> ExitCode {
             min_free_gb: *min_free_gb,
             max_swap_pct: *max_swap_pct,
         };
+        if let Some(note) = moai_cli::heavy_slot::build_folder_note(
+            name,
+            command,
+            std::env::var_os("CARGO_TARGET_DIR").as_deref(),
+            &moai_cli::lane_env::default_base(),
+        ) {
+            eprintln!("{note}");
+        }
         return ExitCode::from(moai_cli::heavy_slot::acquire(
             &dir, *max, name, command, limits,
         ));
