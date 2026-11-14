@@ -53,7 +53,8 @@ fn claude_plan_apply_replan_is_noop() {
     .unwrap();
     assert_eq!(applied["state"], json!("applied"));
     assert_eq!(applied["host_loaded"], json!("not_run"));
-    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 4);
+    // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 4).
+    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 5);
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(
         settings["hooks"],
@@ -716,4 +717,85 @@ fn omp_symlinked_folders_are_refused() {
             "{linked}: wrote through the link"
         );
     }
+}
+
+/// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
+/// the generated command, run as the host runs it, denies a dangerous Bash call and a write
+/// into `.git`, and lets an ordinary call through. Codex keeps its four hooks.
+#[test]
+fn claude_runs_the_preflight_guard_and_codex_does_not() {
+    let claude = hooks::hooks_object("claude").unwrap();
+    let pre = claude["PreToolUse"].as_array().unwrap();
+    assert_eq!(pre.len(), 2, "{pre:?}");
+    assert_eq!(pre[0]["matcher"], json!("Bash"));
+    assert!(pre[0]["hooks"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("claim-verify"));
+    // The tools the engine guards (hook_engine::capabilities("claude")).
+    assert_eq!(
+        pre[1]["matcher"],
+        json!("Bash|Write|Edit|MultiEdit|NotebookEdit")
+    );
+    let command = pre[1]["hooks"][0]["command"].as_str().unwrap();
+    assert_eq!(
+        command,
+        "moai-cli hook-dispatch --host claude --event tool-preflight"
+    );
+    let codex = hooks::hooks_object("codex").unwrap();
+    assert_eq!(codex["PreToolUse"].as_array().unwrap().len(), 1);
+    assert!(!codex
+        .values()
+        .any(|v| v.to_string().contains("hook-dispatch")));
+
+    // Run it the way Claude Code would: the command's words, our binary for `moai-cli`.
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    fs::create_dir_all(root.join("home")).unwrap();
+    let args: Vec<&str> = command.split_whitespace().skip(1).collect();
+    let run = |input: Value| {
+        let mut child = Command::new(common::MOAI_BIN)
+            .args(&args)
+            .current_dir(&root)
+            .env("HOME", root.join("home"))
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        common::feed_stdin(&mut child, input.to_string().as_bytes());
+        let out = child.wait_with_output().unwrap();
+        (
+            out.status.code().unwrap(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+        )
+    };
+    let tool = |name: &str, input: Value| {
+        json!({"session_id": "s", "hook_event_name": "PreToolUse", "tool_name": name,
+               "tool_use_id": "t1", "tool_input": input, "cwd": root})
+    };
+    for denied in [
+        tool("Bash", json!({"command": "rm -rf /"})),
+        tool(
+            "Write",
+            json!({"file_path": root.join(".git/config"), "content": "x"}),
+        ),
+    ] {
+        let (code, stdout) = run(denied.clone());
+        assert_eq!(code, 0, "{denied}");
+        let v: Value = serde_json::from_str(&stdout).unwrap_or(Value::Null);
+        assert_eq!(
+            v["hookSpecificOutput"]["permissionDecision"],
+            json!("deny"),
+            "{denied} -> {stdout}"
+        );
+    }
+    let (code, stdout) = run(tool("Bash", json!({"command": "ls"})));
+    assert_eq!(
+        (code, stdout.as_str()),
+        (0, ""),
+        "an ordinary call goes through"
+    );
 }

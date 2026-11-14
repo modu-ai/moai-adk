@@ -41,6 +41,12 @@ Project
   hooks-plan              Preview the MoAI hook set for one
                           host
   hooks-apply             Write a previewed hook set
+  hooks-revert            Undo the hook set one update
+                          applied
+  go-hooks-plan           Preview replacing Go-era project
+                          hooks
+  go-hooks-apply          Replace Go-era project hooks
+  go-hooks-revert         Undo a Go-era hook replacement
 Update and move
   update                  Update MoAI from the installed
                           package
@@ -63,6 +69,12 @@ Update and move
                           copy
   update-apply            Apply a previewed update host by
                           host
+  cleanup-plan            Preview archiving leftover MoAI
+                          files in HOME
+  cleanup-apply           Archive the previewed leftover
+                          MoAI files
+  cleanup-revert-plan     Preview undoing one HOME cleanup
+  cleanup-revert          Undo one HOME cleanup
   recovery-plan           Preview recovering hosts an update
                           left pending
   recovery-apply          Revert one update's changes on
@@ -95,6 +107,11 @@ Update and move
   home-routing-apply      Write a previewed routing section
                           into HOME
   home-routing-revert     Undo one routing section apply
+  home-style-plan         Preview the MoAI-Easy output style
+                          in HOME
+  home-style-apply        Write a previewed output style
+                          into HOME
+  home-style-revert       Undo one output style apply
 Keys
   key-set                 Store a provider key in the vault
   key-status              Check a provider key without

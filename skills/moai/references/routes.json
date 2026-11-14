@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "chains": "chains/index.md",
+  "core_rules": "internal/core-rules.md",
   "routes": {
     "READ": {
       "reference": "../workflows/read.md",

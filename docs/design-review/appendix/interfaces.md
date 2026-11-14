@@ -96,6 +96,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `hook-receipt`
 - `hooks-apply`
 - `hooks-plan`
+- `hooks-revert`
 - `identity`
 - `index-build`
 - `index-query`

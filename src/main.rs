@@ -653,6 +653,21 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Undo the hook set one update applied
+    ///
+    /// Undo the hook layer one confirmed `update` applied in PROJECT (#2853), from its receipt:
+    /// a host's files get their earlier bytes back only while all of them still hold what the
+    /// update wrote; a host changed since is skipped and named.
+    HooksRevert {
+        /// The project the update ran in.
+        project: PathBuf,
+        /// The receipt id the update printed under `hooks_result.receipt`.
+        #[arg(long)]
+        receipt: String,
+        /// Caller-supplied permission reference (recorded; not an authorization verifier).
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Record one hook receipt line
     ///
     /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
@@ -1035,6 +1050,10 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+        /// The preview's `cleanup.confirm_token` (#2872): archive the Go leftovers it lists.
+        /// Without --confirm the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_cleanup: Option<String>,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -1362,6 +1381,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
+        HooksRevert { .. } => "hooks.revert",
         Identity { .. } => "identity",
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
@@ -1920,15 +1940,30 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             if !(terminal && preview["exists"] == serde_json::json!(true)) {
                 return Ok(preview);
             }
-            let what = format!(
-                "key-remove deletes 1 file\n  {provider} key, {} scope: {}\n",
-                preview["scope"].as_str().unwrap_or("?"),
-                preview["path"].as_str().unwrap_or("?")
-            );
-            if moai_cli::progress::ask_terminal(&what, "Remove it?")? {
+            use moai_cli::ui_text::Msg;
+            let what = |p: &moai_cli::ui::Painter| {
+                format!(
+                    "{}\n  {}\n",
+                    p.text(Msg::KeyRemoveDeletes),
+                    p.fill(
+                        Msg::KeyRemoveWhich,
+                        &[
+                            ("provider", provider.as_str()),
+                            ("scope", preview["scope"].as_str().unwrap_or("?")),
+                            ("path", preview["path"].as_str().unwrap_or("?")),
+                        ],
+                    )
+                )
+            };
+            if moai_cli::progress::ask_terminal(what, Msg::RemoveIt)? {
                 moai_cli::key_vault::remove(&home, &scope, &provider, true)
             } else {
-                eprintln!("next: run with --yes to remove it without asking");
+                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+                eprintln!(
+                    "{}: {}",
+                    moai_cli::ui::Token::Info.word_in(lang),
+                    moai_cli::ui_text::text(Msg::RemoveWithYes, lang)
+                );
                 Ok(preview)
             }
         }
@@ -2115,6 +2150,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
+        Command::HooksRevert {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::update_hooks::revert(&project, &receipt, &permission_reference),
         Command::HooksApply {
             project,
             host,
@@ -2309,20 +2349,37 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 project_dir: project_dir.as_deref(),
                 gobin: gobin.as_deref(),
             };
-            moai_cli::install::inspect(&home, &path_env, &places)
+            let result = moai_cli::install::inspect(&home, &path_env, &places)?;
+            // #2867: a person at a terminal sees the note once; the envelope carries it too.
+            if let Some(note) = result["path_first_moai"]["note"].as_str() {
+                use std::io::IsTerminal as _;
+                if std::io::stderr().is_terminal() {
+                    eprintln!("moai-cli: {note}");
+                }
+            }
+            Ok(result)
         }
-        Command::Update { confirm } => {
+        Command::Update {
+            confirm,
+            confirm_cleanup,
+        } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
             // The shared confirm prompt (#2806): same terminal rule and question as before.
-            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                moai_cli::progress::ask_terminal(
-                    &format!("moai update preview:\n{summary}"),
-                    "Apply this update?",
-                )
-            })
+            moai_cli::update::update_command(
+                &home,
+                confirm.as_deref(),
+                confirm_cleanup.as_deref(),
+                |summary| {
+                    use moai_cli::ui_text::Msg;
+                    moai_cli::progress::ask_terminal(
+                        |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                        Msg::ApplyUpdate,
+                    )
+                },
+            )
         }
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
@@ -2538,17 +2595,36 @@ fn usage_error(e: clap::Error) -> ExitCode {
             Vec::new()
         };
         if moai_cli::ui::stderr_is_terminal() {
+            let painter = stderr_painter();
             let word = std::env::args().nth(1);
-            let next = moai_cli::error_next::next_action(
+            let next = moai_cli::error_next::next_action_in(
                 contract::Kind::Usage,
+                painter.lang,
                 &program_name(),
                 word.as_deref(),
                 message,
             );
-            let what = first.strip_prefix("error: ").unwrap_or(first);
+            // S6c (#2825, design 5): an English terminal keeps clap's first line; a Korean one
+            // reads our sentence for the kind. Clap's list of missing argument names (`detail`)
+            // stays, and nothing the user typed is put in.
+            let what = match painter.lang {
+                moai_cli::ui_text::Lang::En => first.strip_prefix("error: ").unwrap_or(first),
+                lang => {
+                    use moai_cli::ui_text::Msg;
+                    let msg = match e.kind() {
+                        ErrorKind::MissingRequiredArgument => Msg::UsageMissingArguments,
+                        ErrorKind::UnknownArgument => Msg::UsageUnknownArgument,
+                        ErrorKind::InvalidValue | ErrorKind::ValueValidation => {
+                            Msg::UsageInvalidValue
+                        }
+                        _ => Msg::UsageOther,
+                    };
+                    moai_cli::ui_text::text(msg, lang)
+                }
+            };
             eprint!(
                 "{}",
-                moai_cli::ui::error_frame(&stderr_painter(), what, &detail, None, next.as_deref())
+                moai_cli::ui::error_frame(&painter, what, &detail, None, next.as_deref())
             );
         } else {
             eprintln!("{first}");
@@ -2587,11 +2663,20 @@ fn print_operation_error(kind: contract::Kind, message: &str) {
         eprintln!("{message}");
         return;
     }
+    let painter = stderr_painter();
     let word = std::env::args().nth(1);
-    let next = moai_cli::error_next::next_action(kind, &program_name(), word.as_deref(), message);
+    // S6c (#2825): the labels and the next step in the stream's language; the message itself
+    // is the envelope's `error.message` and stays as it is (D3).
+    let next = moai_cli::error_next::next_action_in(
+        kind,
+        painter.lang,
+        &program_name(),
+        word.as_deref(),
+        message,
+    );
     eprint!(
         "{}",
-        moai_cli::ui::error_frame(&stderr_painter(), message, &[], None, next.as_deref())
+        moai_cli::ui::error_frame(&painter, message, &[], None, next.as_deref())
     );
 }
 
@@ -3354,6 +3439,28 @@ mod help_rules {
             && !about.ends_with('.')
             && !about.contains('#')
             && !about.contains('`')
+    }
+
+    /// #2824 re-audit B2: the rule itself at its edges. clap drops a doc comment's closing
+    /// period, so the period case is reachable only by calling the rule directly.
+    #[test]
+    fn the_one_line_rule_holds_at_its_edges() {
+        let sixty = format!("A{}", "b".repeat(59));
+        assert_eq!(sixty.chars().count(), 60);
+        assert!(about_ok(&sixty));
+        assert!(!about_ok(&format!("{sixty}c")), "61 characters");
+        // Characters, not bytes: 60 Hangul syllables are 180 bytes.
+        assert!(about_ok(&format!("A{}", "가".repeat(59))));
+        assert!(about_ok("Show the installed MoAI binaries"));
+        for off in [
+            "Show the installed MoAI binaries.",
+            "show the installed MoAI binaries",
+            "Show the binaries (#2802)",
+            "Show the `moai` binaries",
+            "",
+        ] {
+            assert!(!about_ok(off), "{off:?}");
+        }
     }
 
     fn meeting(rule: impl Fn(&clap::Command) -> bool) -> BTreeSet<String> {

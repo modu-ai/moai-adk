@@ -662,7 +662,7 @@ fn known_good_copies(
     Ok(())
 }
 
-fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
+pub(crate) fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
     let mut map = BTreeMap::new();
     if let Some(r) = receipt {
         for f in &r.owned {
@@ -1374,18 +1374,27 @@ fn skill_host_of(agent_host: &str) -> &'static str {
     }
 }
 
-/// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents and
-/// the routing section of the global instruction files, all from one package snapshot.
+/// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents, the
+/// routing section of the global instruction files and the MoAI-Easy output style (#2875), all
+/// from one package snapshot.
 pub struct UserLayerPlan {
     pub skills: UpdatePlan,
     pub agents: crate::agent_install::Plan,
     pub routing: crate::home_routing::Plan,
+    /// The MoAI-Easy output style (#2875): Claude's style file and `outputStyle`, Codex's block.
+    pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
-    /// Agent and routing hosts left out because their skill copy is blocked.
+    /// The MoAI hook set installed in the project the command runs from (#2853).
+    pub hooks: crate::update_hooks::Layer,
+    /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the four plan digests; the only value `--confirm` accepts.
+    /// One digest over the six plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
+    /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
+    /// package, only when it archives something. Not part of `plan_digest`: only
+    /// `--confirm-cleanup <confirm_token>` applies it.
+    pub cleanup: Option<serde_json::Value>,
 }
 
 fn user_layer_plan(
@@ -1422,12 +1431,30 @@ fn user_layer_plan(
             skipped.push(json!({"part": "routing", "host": h, "reason": format!("the {h} skill copy is blocked")}));
         }
     }
+    let mut style_hosts = Vec::new();
+    // A package from before #2875 carries no style source: the style is left out, named.
+    let has_style = staged.files.contains_key(crate::home_style::SOURCE);
+    for h in crate::home_style::HOSTS {
+        if !has_style {
+            skipped.push(json!({"part": "style", "host": h, "reason": format!("the package has no {}", crate::home_style::SOURCE)}));
+        } else if skill_ok(h) {
+            style_hosts.push(h);
+        } else {
+            skipped.push(json!({"part": "style", "host": h, "reason": format!("the {h} skill copy is blocked")}));
+        }
+    }
     let agents = crate::agent_install::plan_for(home, package, agents, &agent_hosts)?;
     let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
+    let style = crate::home_style::plan_for(home, package, &style_hosts)?;
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
+    let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+    let hooks = crate::update_hooks::plan(home, &cwd)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
-    if agents.package_digest != staged.digest || routing.package_digest != staged.digest {
+    if agents.package_digest != staged.digest
+        || routing.package_digest != staged.digest
+        || style.package_digest != staged.digest
+    {
         return Err("the package changed while it was read; nothing applied, preview again".into());
     }
     let plan_digest = crate::digest(
@@ -1435,24 +1462,88 @@ fn user_layer_plan(
             skills.plan_digest,
             agents.plan_digest,
             routing.plan_digest,
-            bin_names.plan_digest
+            bin_names.plan_digest,
+            hooks.plan_digest,
+            style.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
     );
+    // A plan without archive items carries no token: no section, the preview stays as it was.
+    let cleanup = crate::update_cleanup::plan(home, staged)
+        .ok()
+        .filter(|c| c["confirm_token"].is_string());
     Ok(UserLayerPlan {
         skills,
         agents,
         routing,
+        style,
         bin_names,
+        hooks,
         skipped,
         plan_digest,
+        cleanup,
     })
+}
+
+/// The cleanup block of the terminal summary; empty when nothing would be archived.
+fn cleanup_summary(cleanup: Option<&serde_json::Value>) -> String {
+    let Some(c) = cleanup else {
+        return String::new();
+    };
+    format!(
+        "cleanup\n  archive {} · keep {} · confirm with: moai update --confirm-cleanup {}\n",
+        c["counts"]["archive"],
+        c["counts"]["keep"],
+        c["confirm_token"].as_str().unwrap_or("")
+    )
+}
+
+/// #2872 stage 2: refuse a `--confirm-cleanup` token that is not the preview's before anything
+/// is written.
+fn cleanup_token<'a>(layer: &UserLayerPlan, given: Option<&'a str>) -> Result<Option<&'a str>> {
+    let Some(t) = given else {
+        return Ok(None);
+    };
+    let offered = layer
+        .cleanup
+        .as_ref()
+        .and_then(|c| c["confirm_token"].as_str());
+    if offered != Some(t) {
+        return Err(
+            "the cleanup token differs from the preview's; nothing applied, preview again".into(),
+        );
+    }
+    Ok(Some(t))
+}
+
+/// Whether the terminal is asked to apply the layer: only for a plan that writes and only
+/// without `--confirm-cleanup` — a cleanup run without `--confirm` leaves the layer a preview,
+/// so a yes there never applies it (#2872 stage 2).
+fn asks(cleanup: Option<&str>, writes: bool) -> bool {
+    cleanup.is_none() && writes
+}
+
+/// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
+fn run_cleanup(
+    home: &Path,
+    staged: &StagedPackage,
+    token: &str,
+    permission: &str,
+) -> Result<serde_json::Value> {
+    crate::update_cleanup::apply(home, staged, token, permission, &crate::audit::utc_now())
+}
+
+fn cleanup_revert(r: &serde_json::Value) -> Option<String> {
+    r["stamp"]
+        .as_str()
+        .map(|s| format!("moai cleanup-revert-plan <HOME> --stamp {s}"))
 }
 
 /// Which hosts get agents and the section after the skill apply, and which are skipped.
 struct SkillGate {
     agents: Vec<String>,
     routing: Vec<String>,
+    style: Vec<String>,
     skipped: Vec<serde_json::Value>,
 }
 
@@ -1468,6 +1559,7 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
     let mut gate = SkillGate {
         agents: Vec::new(),
         routing: Vec::new(),
+        style: Vec::new(),
         skipped: Vec::new(),
     };
     for h in &layer.agents.hosts {
@@ -1488,7 +1580,30 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
             );
         }
     }
+    let mut style_hosts: Vec<&str> = layer
+        .style
+        .targets
+        .iter()
+        .map(|t| t.host.as_str())
+        .collect();
+    style_hosts.dedup();
+    for h in style_hosts {
+        if landed(h) {
+            gate.style.push(h.to_string());
+        } else {
+            gate.skipped.push(
+                json!({"part": "style", "host": h, "reason": "the skill copy did not apply"}),
+            );
+        }
+    }
     gate
+}
+
+/// How many hosts a style plan covers (Claude has two targets, Codex one).
+fn count_hosts(p: &crate::home_style::Plan) -> usize {
+    let mut hosts: Vec<&str> = p.targets.iter().map(|t| t.host.as_str()).collect();
+    hosts.dedup();
+    hosts.len()
 }
 
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
@@ -1536,7 +1651,15 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
             h.host, h.preflight, h.file
         ));
     }
+    out.push_str("output style\n");
+    for t in &p.style.targets {
+        out.push_str(&format!(
+            "  {} {}: {} {}\n",
+            t.host, t.kind, t.action, t.path
+        ));
+    }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
+    out.push_str(&p.hooks.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1545,24 +1668,38 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
             s["reason"].as_str().unwrap_or("")
         ));
     }
+    out.push_str(&cleanup_summary(p.cleanup.as_ref()));
     out
 }
 
 /// #2522, #2638: one-line `moai-cli update` over the package installed with this binary — the
-/// user layer: the skill copies, the base agents (`agent_install`) and the routing section of
-/// the global instruction files (`home_routing`).
+/// user layer: the skill copies, the base agents (`agent_install`), the routing section of
+/// the global instruction files (`home_routing`) and the MoAI-Easy output style (`home_style`,
+/// #2875).
 ///
-/// Always computes the three previews from one package snapshot. Without a confirmation it
+/// Always computes every preview from one package snapshot. Without a confirmation it
 /// writes nothing and returns them with the exact confirming command. `confirm` is the
 /// combined `plan_digest` (`--confirm`) — a single part's digest is refused; `ask` is the
 /// terminal question, called only when no digest was given, with the summary it shows. A
-/// confirmed run recomputes all three and compares the combined digest before any write, then
-/// applies the skills, and the agents and the section only for hosts whose skill copy applied.
+/// confirmed run recomputes them all and compares the combined digest before any write, then
+/// applies the skills, and the agents, the section and the style only for hosts whose skill
+/// copy applied.
 /// A backup-then-replace is never confirmed here: it keeps its explicit
 /// `update-apply --confirm-backup-replace` token.
+///
+/// #2853: the hook layer (`update_hooks`) — the MoAI hook set already installed in the git work
+/// tree the command runs from — is planned with the rest and bound into the same digest; a
+/// confirmed run applies it with a revert receipt (`hooks-revert`). A hook entry the user
+/// changed is a conflict and is left as it is.
+///
+/// #2872 stage 2: the preview carries `cleanup` (an `update_cleanup::plan`) when Go leftovers
+/// can be archived. Neither `confirm` nor the terminal yes applies it; only `confirm_cleanup`
+/// (`--confirm-cleanup`, the preview's `confirm_token`) does, after the layer — or alone, with
+/// the layer left a preview. A token that is not the preview's is refused before any write.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
+    confirm_cleanup: Option<&str>,
     ask: impl FnOnce(&str) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
@@ -1579,12 +1716,15 @@ pub fn update_command(
     let writes = plan_writes_anything(&layer.skills)
         || agents_write_anything(&layer.agents)
         || routing_writes_anything(&layer.routing)
-        || layer.bin_names.writes();
+        || crate::home_style::writes_anything(&layer.style)
+        || layer.bin_names.writes()
+        || layer.hooks.writes();
+    let cleanup = cleanup_token(&layer, confirm_cleanup)?;
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if writes && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
+        None if asks(cleanup, writes) && ask(&layer_summary(&layer))? => layer.plan_digest.clone(),
         None => {
-            return Ok(json!({
+            let mut out = json!({
                 "mode": "preview",
                 "applied": false,
                 "nothing_to_apply": !writes,
@@ -1593,10 +1733,21 @@ pub fn update_command(
                 "plan": layer.skills,
                 "agents": layer.agents,
                 "routing": layer.routing,
+                "style": layer.style,
                 "bin_names": layer.bin_names.to_json(),
+                "hooks": layer.hooks.to_json(),
                 "skipped": layer.skipped,
                 "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
-            }))
+            });
+            if let Some(c) = &layer.cleanup {
+                out["cleanup"] = c.clone();
+            }
+            if let Some(t) = cleanup {
+                let r = run_cleanup(home, &staged, t, PERMISSION)?;
+                out["revert"] = json!({"cleanup": cleanup_revert(&r)});
+                out["cleanup_result"] = r;
+            }
+            return Ok(out);
         }
     };
     // Verify the whole layer before any write.
@@ -1617,6 +1768,7 @@ pub fn update_command(
     skipped.extend(gate.skipped);
     let agent_hosts: Vec<&str> = gate.agents.iter().map(String::as_str).collect();
     let routing_hosts: Vec<&str> = gate.routing.iter().map(String::as_str).collect();
+    let style_hosts: Vec<&str> = gate.style.iter().map(String::as_str).collect();
     // From here the skills are written: a later part's error is reported beside the skills
     // result instead of hiding it (audit 6847256437 note 3).
     let part = |r: Result<serde_json::Value>| {
@@ -1652,6 +1804,19 @@ pub fn update_command(
         }
         crate::home_routing::apply_for(home, &package, &routing_hosts, &p.plan_digest, PERMISSION)
     })());
+    // #2875: the style, for the same confirmed hosts whose skill copy applied.
+    let style = part((|| {
+        let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
+        // The routing apply may have just written the same Codex file: compare what is written.
+        if style_hosts.len() == count_hosts(&fresh.style)
+            && !crate::home_style::same_writes(&p, &fresh.style)
+        {
+            return Ok(
+                json!({"state": "refused", "reason": "the style plan changed after the confirmed preview; nothing written"}),
+            );
+        }
+        crate::home_style::apply_for(home, &package, &style_hosts, &p.plan_digest, PERMISSION)
+    })());
     // #2791: the `moai` link is independent of the skill copies; its own plan was confirmed.
     let bin_names = part((|| {
         let exe =
@@ -1664,17 +1829,28 @@ pub fn update_command(
             &crate::audit::utc_now(),
         )
     })());
+    // #2853: the project's hook set, independent of the skill copies; its plan was confirmed.
+    let hooks = part(crate::update_hooks::apply(
+        home,
+        &fresh.hooks,
+        &digest,
+        PERMISSION,
+    ));
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
         || routing["state"] == json!("applied")
-        || bin_names["state"] == json!("applied");
+        || style["state"] == json!("applied")
+        || bin_names["state"] == json!("applied")
+        || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
+    // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
+    let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
             .map(|id| format!("moai {op} <HOME> --receipt {id} --permission-reference <reference>"))
     };
-    Ok(json!({
+    let mut out = json!({
         "mode": "applied",
         "applied": applied,
         "package": package_text,
@@ -1682,14 +1858,25 @@ pub fn update_command(
         "result": skills,
         "agents_result": agents,
         "routing_result": routing,
+        "style_result": style,
         "bin_names_result": bin_names,
+        "hooks_result": hooks,
         "skipped": skipped,
         "revert": {
             "agents": revert("agents-home-revert", &agents),
             "routing": revert("home-routing-revert", &routing),
+            "style": revert("home-style-revert", &style),
+            "hooks": hooks["receipt"].as_str().map(|id| format!(
+                "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
+            )),
             "skills": "recovery-plan / recovery-apply for a host left pending",
         },
-    }))
+    });
+    if let Some(c) = cleanup {
+        out["revert"]["cleanup"] = json!(cleanup_revert(&c));
+        out["cleanup_result"] = c;
+    }
+    Ok(out)
 }
 
 /// True when confirming `plan` would write at least one file (#2540): some host is not
@@ -2470,6 +2657,43 @@ mod user_layer_tests {
         assert!(e.contains("package changed"), "{e}");
     }
 
+    /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan
+    /// archives something; otherwise it is the summary it was.
+    #[test]
+    fn the_summary_shows_cleanup_only_when_something_is_archived() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        assert!(layer.cleanup.is_none(), "an empty HOME archives nothing");
+        let plain = layer_summary(&layer);
+        assert!(!plain.contains("cleanup"), "{plain}");
+        layer.cleanup = Some(
+            json!({"counts": {"archive": 2, "keep": 3}, "confirm_token": "cleanup:0123456789abcdef"}),
+        );
+        assert_eq!(
+            layer_summary(&layer),
+            format!("{plain}cleanup\n  archive 2 · keep 3 · confirm with: moai update --confirm-cleanup cleanup:0123456789abcdef\n")
+        );
+        // A token not offered by the preview is refused; none given is no cleanup.
+        assert!(cleanup_token(&layer, None).unwrap().is_none());
+        assert_eq!(
+            cleanup_token(&layer, Some("cleanup:0123456789abcdef")).unwrap(),
+            Some("cleanup:0123456789abcdef")
+        );
+        assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdee")).is_err());
+        layer.cleanup = None;
+        assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdef")).is_err());
+        // The terminal is asked only for a plan that writes and never on a cleanup run.
+        assert!(asks(None, true));
+        assert!(!asks(None, false));
+        assert!(!asks(Some("cleanup:0123456789abcdef"), true));
+    }
+
     /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the
     /// apply (`failed`), or is missing from the result, gets no agents and no section.
     #[test]
@@ -2500,13 +2724,19 @@ mod user_layer_tests {
         let g = gate_on_skills(&ok, &layer);
         assert_eq!(hosts(&g.agents), "claude,codex,omp");
         assert_eq!(hosts(&g.routing), "claude,codex");
+        assert_eq!(hosts(&g.style), "claude,codex");
         assert!(g.skipped.is_empty());
         // The Codex copy failed during the apply: codex and omp agents and the codex section stop.
         let failed = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "failed"}]});
         let g = gate_on_skills(&failed, &layer);
         assert_eq!(hosts(&g.agents), "claude");
         assert_eq!(hosts(&g.routing), "claude");
-        assert_eq!(skipped(&g), "agents:codex,agents:omp,routing:codex");
+        // #2875: the codex style block points at the same copy, so it stops too.
+        assert_eq!(hosts(&g.style), "claude");
+        assert_eq!(
+            skipped(&g),
+            "agents:codex,agents:omp,routing:codex,style:codex"
+        );
         assert!(g
             .skipped
             .iter()
@@ -2516,5 +2746,6 @@ mod user_layer_tests {
         let g = gate_on_skills(&missing, &layer);
         assert_eq!(hosts(&g.agents), "codex,omp");
         assert_eq!(hosts(&g.routing), "codex");
+        assert_eq!(hosts(&g.style), "codex");
     }
 }

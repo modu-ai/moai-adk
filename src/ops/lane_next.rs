@@ -12,8 +12,8 @@ use std::path::PathBuf;
 /// judged, head moved, re-audit asked — with the head now), a pull request with no auditor, a
 /// decision request the leader answered, its claimed card, an unclaimed Issue. Reads GitHub
 /// (at most 30 requests a run) and the local clone only; writes nothing. `--wait` reads again
-/// every 432 seconds (ten lanes on one token stay within half of GitHub's hourly limit) until
-/// a task appears.
+/// every 432 seconds for the default ten lanes on one token (within half of GitHub's hourly
+/// limit; `--shared-lanes` changes the count) until a task appears.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane name as it appears in claims (`session=<lane>`) and audit reservations.
@@ -29,6 +29,10 @@ pub struct Args {
     /// Seconds to keep reading until a task appears (0 = read once; at most 3600).
     #[arg(long, default_value_t = 0)]
     wait: u64,
+    /// Lanes polling with the same GitHub token: the `--wait` interval is
+    /// ⌈3600 × 30 × lanes / 2500⌉ seconds (432 for 10; 1 to 50).
+    #[arg(long, default_value_t = moai_cli::lane_next::SHARED_LANES)]
+    shared_lanes: u64,
     /// The local clone the tip judgment walks.
     #[arg(long, default_value = ".")]
     dir: PathBuf,
@@ -59,7 +63,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 tip_branch: args.tip.as_deref(),
                 dir: &args.dir,
             };
-            moai_cli::lane_next::run(&target, &GhTransport::from_env()?, &SystemClock, args.wait)?
+            moai_cli::lane_next::run(&target, &GhTransport::from_env()?, &SystemClock,
+                args.wait,
+                args.shared_lanes,
+            )?
         }
     };
     // A person at a terminal gets one line on stderr (#2831 D2); stdout stays the envelope.

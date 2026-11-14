@@ -19,7 +19,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 1. **두 호스트 모두 project 훅을 신뢰 뒤에만 실행한다.**
    - Codex: "Project-local hooks load only when the project `.codex/` layer is trusted." "Non-managed hooks must be reviewed and trusted before they run." "Codex records trust against the hook's current hash, so new or changed hooks are marked for review and skipped until trusted." 즉 MoAI가 쓴 훅도 사용자가 `/hooks`에서 검토하기 전에는 돌지 않는다.
    - Claude Code: "Frontmatter hooks in a project skill follow the same workspace trust rule as hooks in settings files." "Project subagent hooks run only after you accept the workspace trust dialog." settings 파일 훅의 신뢰 규칙 본문은 permissions 문서에 있고, 이번에는 그 문서를 읽지 않았다(아래 §6 미확인).
-2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅 4개만 쓴다. 요청으로 훅을 더하거나 바꿀 수 없다.
+2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅만 쓴다(Codex 4개, Claude Code 5개). 요청으로 훅을 더하거나 바꿀 수 없다.
 3. **기록 훅 3개는 기록만 하고, 차단 훅은 하나뿐이다.** 기록 훅은 `moai-cli hook-receipt`를 부르고 차단하지 않는다(항상 exit 0). 도구 입력·출력·prompt는 저장하지 않는다. 차단 훅은 `PreToolUse`(Bash)의 `moai-cli claim-verify . --hook` 하나다(rc.2 A9 #2255 AC-2). Bash 구간의 첫 단어가 `git`이고 `commit`이나 `push`를 실행하는데, 그 레인 worktree의 claim이 확인되지 않을 때만 exit 2로 막는다. 나머지 호출은 모두 통과시킨다. 권한을 넓히지 않고 쓰기 경계를 좁히기만 한다.
 4. **사용자 설정을 덮어쓰지 않는다.** Claude는 기존 3-way 소유 규칙을 그대로 쓴다. 사용자가 이미 `hooks` 키를 두었으면 plan이 `conflict`가 되고 아무것도 쓰지 않는다. Codex는 MoAI 영수증과 sha256이 맞지 않는 `.codex/hooks.json`을 만나면 `requires preservation review`로 멈춘다.
 5. **홈은 쓰지 않는다.** project가 HOME 자체이거나 HOME의 `.claude`·`.codex`·`.agents`·`.moai-cli` 안이면 거부한다. 훅은 project 트리에만 생긴다.
@@ -30,6 +30,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 | --- | --- | --- |
 | `SessionStart` | 없음 | `moai-cli hook-receipt --host <host>`, timeout 10초 |
 | `PreToolUse` | `Bash` | `moai-cli claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
+| `PreToolUse`(Claude Code 만) | `Bash\|Write\|Edit\|MultiEdit\|NotebookEdit` | `moai-cli hook-dispatch --host claude --event tool-preflight`, timeout 10초 — 훅 엔진의 위험 Bash·`.git`·자격 증명 폴더·개인 키·토큰 쓰기 가드, 문서화된 PreToolUse `deny` 로만 답함(#2877 리더 Q1: Go 세대 hook 을 바꾼 뒤에도 그 보호가 남게) |
 | `PostToolUse` | `Bash` | `moai-cli hook-receipt --host <host>`, timeout 10초 |
 | `Stop` | 없음 | 같음 |
 
@@ -86,6 +87,13 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 - Claude: `.moai-cli/manifests/claude-settings.json`의 `owned.hooks`가 생성한 훅 집합이다(기존 settings 영수증, pending 복구 포함).
 - Codex: `.moai-cli/manifests/codex-hooks.json` — `schema_version`, `hooks_path`, `sha256`, `hooks`(event·matcher·command·timeout 목록). apply는 먼저 `pending_sha256`을 적고 파일을 쓴 뒤 영수증을 확정한다. 중간에 끊기면 다음 plan이 sha256으로 판정한다.
 - `hook-receipt` 실행 기록: `.moai-cli/receipts/hooks.jsonl` 한 줄에 `schema_version`·`host`·`unix_ms`와 허용 필드 `hook_event_name`·`tool_name`·`source`만 남긴다. 128자 초과·제어 문자·비밀 모양 값은 버리고 `dropped`로 알린다. `.moai-cli/`가 없는 디렉터리에서는 아무것도 쓰지 않는다. 로그가 4 MiB를 넘으면 더 쓰지 않는다(자르지 않는다).
+
+## 4a. `moai update` 의 훅 층 (#2853)
+
+- 대상: `moai update` 를 실행한 폴더가 속한 git 작업 트리 하나, 그중 MoAI 훅 집합이 **이미 설치된** host 만(Claude 는 settings 영수증이 `hooks` 를 소유, Codex·OMP 는 소유 영수증이 있음). `update` 는 훅을 새로 설치하지 않는다 — 설치는 계속 `hooks-plan` → `hooks-apply`. 프로젝트 밖이거나 설치된 host 가 없으면 `hooks.skipped` 에 이유 한 줄.
+- 미리보기: host 마다 `hooks-plan` 과 같은 규칙으로 `create`·`update`·`unchanged`·`conflict`. 생성 명령은 `moai-cli`(#2812 결정 (나)). 사용자가 바꾼 항목은 덮지 않는다 — MoAI 가 바꿀 것이 없으면 그대로 두고(`unchanged`), 바꿀 것이 있으면 `conflict` 로 보고만 한다. Codex·OMP 파일을 손으로 바꿨으면 `conflict`(이유: preservation review).
+- 확인: 훅 층의 digest 는 `moai update --confirm` 이 받는 하나의 `plan_digest` 에 들어간다. 확인 때 host 마다 `hooks-apply` 규칙으로 쓰고, 바꾼 두 파일(host 파일·소유 영수증)의 앞 바이트를 `.moai-cli/receipts/hooks-<id>/` 에 남긴다. 결과는 `hooks_result`, 되돌리기 명령은 `revert.hooks`.
+- 되돌리기: `moai hooks-revert <PROJECT> --receipt <id> --permission-reference <ref>` — host 의 두 파일이 모두 update 가 쓴 바이트 그대로일 때만 앞 바이트로 되돌린다(만든 파일은 지움). 하나라도 바뀌었으면 그 host 는 `user_changed_since_apply` 로 건너뛴다. 영수증은 한 번만 되돌린다.
 
 ## 5. 출처 (확인일 2026-11-09)
 

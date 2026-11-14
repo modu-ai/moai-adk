@@ -15,7 +15,11 @@
 //! - The stdout JSON envelope, `--version`, hook stderr and the status line never come here
 //!   (D3 6865936070): they stay English bytes.
 //!
-//! S6a adds only the mechanism and the first sentences; the screens move to [`text`] in S6b–S6d.
+//! S6a added the mechanism and the first sentences. S6b moves the S2 token words, the S4
+//! summary (heads, counts, `next:`), the S5 progress lines and the `key-remove`/`update`
+//! confirm screens here; each screen takes its language from its stream's
+//! [`crate::ui::Painter`]. Data inside a sentence (paths, action words from the result, the
+//! `update` summary body) stays as the envelope has it. S6c–S6e move the error frame and help.
 
 use std::path::Path;
 
@@ -128,15 +132,74 @@ pub enum Msg {
     WritesNothing,
     /// An apply that finished (S4 summary).
     Done,
-    /// Rows left out of a long summary table; `{count}` is a number.
+    /// Rows left out of a long summary table; `{count}` is a number, `{ellipsis}` the
+    /// painter's `…` or `...`.
     MoreRows,
     /// The note while a wait goes on; `{what}` names what is awaited (S5 progress).
     StillWaiting,
+    /// S4 summary table heads (S6b): the action column, the note column and the name column
+    /// under each name key (`path`, `host`, `target`, `selection`, anything else).
+    HeadAction,
+    HeadNote,
+    HeadPath,
+    HeadHost,
+    HeadTarget,
+    HeadSelection,
+    HeadName,
+    /// A note cell that holds the first of several reasons; `{first}` is data, `{count}` a
+    /// number.
+    MoreReasons,
+    /// Stands for the arguments of the preview in the `next:` line of a summary.
+    SameArguments,
+    /// `index-build` stages (S5 progress).
+    ScanningTrackedFiles,
+    BuildingViews,
+    PublishingGeneration,
+    /// `gate-loop` progress; `{pr}`, `{at}` (1-based) and `{total}` are numbers.
+    CheckingPullRequest,
+    /// Paging through an API list; `{n}` is a number, `{path}` the API path.
+    ReadingPage,
+    /// `forge wait` states; `{head}` is a short commit id, the rest numbers.
+    CiNoRunYet,
+    CiRunsCompleted,
+    PullRequestStillAt,
+    NoNewComment,
+    /// `key-remove` confirm preview: the first line, then `{provider}`, `{scope}`, `{path}`.
+    KeyRemoveDeletes,
+    KeyRemoveWhich,
+    /// `key-remove` confirm question.
+    RemoveIt,
+    /// After a refused `key-remove` question: what to run instead.
+    RemoveWithYes,
+    /// `update` confirm preview title and question.
+    UpdatePreview,
+    ApplyUpdate,
+    /// S6c: the error frame's `cause:` label (the `error:` and `next:` labels are token words).
+    LabelCause,
+    /// S6c: a usage error's next step for one command; `{program}` and `{word}` as typed.
+    NextUsageWord,
+    /// S6c: a usage error's next step without a command word; `{program}` as typed.
+    NextUsageCommands,
+    /// S6c: the next step of a missing permission reference.
+    NextPermission,
+    /// S6c: the next step of an unsupported protocol version.
+    NextProtocol,
+    /// S6c: the next step of a stale plan.
+    NextStalePlan,
+    /// S6c: the next step of an input over its size limit.
+    NextInputTooLarge,
+    /// S6c: the first line of a usage error on a Korean terminal, by kind (design 5). The
+    /// English texts are clap's own words, which an English terminal keeps showing as clap
+    /// renders them; the argument a user typed is never put in.
+    UsageMissingArguments,
+    UsageUnknownArgument,
+    UsageInvalidValue,
+    UsageOther,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 8] = [
+    pub const ALL: [Msg; 43] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -145,6 +208,41 @@ impl Msg {
         Msg::Done,
         Msg::MoreRows,
         Msg::StillWaiting,
+        Msg::HeadAction,
+        Msg::HeadNote,
+        Msg::HeadPath,
+        Msg::HeadHost,
+        Msg::HeadTarget,
+        Msg::HeadSelection,
+        Msg::HeadName,
+        Msg::MoreReasons,
+        Msg::SameArguments,
+        Msg::ScanningTrackedFiles,
+        Msg::BuildingViews,
+        Msg::PublishingGeneration,
+        Msg::CheckingPullRequest,
+        Msg::ReadingPage,
+        Msg::CiNoRunYet,
+        Msg::CiRunsCompleted,
+        Msg::PullRequestStillAt,
+        Msg::NoNewComment,
+        Msg::KeyRemoveDeletes,
+        Msg::KeyRemoveWhich,
+        Msg::RemoveIt,
+        Msg::RemoveWithYes,
+        Msg::UpdatePreview,
+        Msg::ApplyUpdate,
+        Msg::LabelCause,
+        Msg::NextUsageWord,
+        Msg::NextUsageCommands,
+        Msg::NextPermission,
+        Msg::NextProtocol,
+        Msg::NextStalePlan,
+        Msg::NextInputTooLarge,
+        Msg::UsageMissingArguments,
+        Msg::UsageUnknownArgument,
+        Msg::UsageInvalidValue,
+        Msg::UsageOther,
     ];
 }
 
@@ -165,10 +263,88 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (WritesNothing, Ko) => "쓰는 것 없음",
         (Done, En) => "done",
         (Done, Ko) => "완료",
-        (MoreRows, En) => "… {count} more",
-        (MoreRows, Ko) => "… 외 {count}개",
+        (MoreRows, En) => "{ellipsis} {count} more",
+        (MoreRows, Ko) => "{ellipsis} 외 {count}개",
         (StillWaiting, En) => "still waiting: {what}",
         (StillWaiting, Ko) => "아직 기다리는 중: {what}",
+        (HeadAction, En) => "ACTION",
+        (HeadAction, Ko) => "동작",
+        (HeadNote, En) => "NOTE",
+        (HeadNote, Ko) => "메모",
+        (HeadPath, En) => "PATH",
+        (HeadPath, Ko) => "경로",
+        (HeadHost, En) => "HOST",
+        (HeadHost, Ko) => "호스트",
+        (HeadTarget, En) => "TARGET",
+        (HeadTarget, Ko) => "대상",
+        (HeadSelection, En) => "SELECTION",
+        (HeadSelection, Ko) => "선택",
+        (HeadName, En) => "NAME",
+        (HeadName, Ko) => "이름",
+        (MoreReasons, En) => "{first} (+{count} more)",
+        (MoreReasons, Ko) => "{first} (외 {count}개)",
+        (SameArguments, En) => "<same arguments>",
+        (SameArguments, Ko) => "<같은 인자>",
+        (ScanningTrackedFiles, En) => "scanning tracked files (1/3)",
+        (ScanningTrackedFiles, Ko) => "추적 중인 파일 훑는 중 (1/3)",
+        (BuildingViews, En) => "building the views (2/3)",
+        (BuildingViews, Ko) => "보기 만드는 중 (2/3)",
+        (PublishingGeneration, En) => "publishing the generation (3/3)",
+        (PublishingGeneration, Ko) => "새 세대 내보내는 중 (3/3)",
+        (CheckingPullRequest, En) => "checking pull request #{pr} ({at}/{total})",
+        (CheckingPullRequest, Ko) => "풀 리퀘스트 #{pr} 확인 중 ({at}/{total})",
+        (ReadingPage, En) => "reading page {n} of {path}",
+        (ReadingPage, Ko) => "{path} 의 {n}쪽 읽는 중",
+        (CiNoRunYet, En) => "ci on {head}: no workflow run yet",
+        (CiNoRunYet, Ko) => "{head} 의 ci: 아직 워크플로 실행 없음",
+        (CiRunsCompleted, En) => "ci on {head}: {done} of {total} runs completed",
+        (CiRunsCompleted, Ko) => "{head} 의 ci: 실행 {total}개 중 {done}개 끝남",
+        (PullRequestStillAt, En) => "pull request #{pr} still at {head}",
+        (PullRequestStillAt, Ko) => "풀 리퀘스트 #{pr} 의 head 가 아직 {head}",
+        (NoNewComment, En) => "no new comment on #{issue}",
+        (NoNewComment, Ko) => "#{issue} 에 새 댓글 없음",
+        (KeyRemoveDeletes, En) => "key-remove deletes 1 file",
+        (KeyRemoveDeletes, Ko) => "key-remove 가 파일 1개를 지워요",
+        (KeyRemoveWhich, En) => "{provider} key, {scope} scope: {path}",
+        (KeyRemoveWhich, Ko) => "{provider} 키, {scope} 범위: {path}",
+        (RemoveIt, En) => "Remove it?",
+        (RemoveIt, Ko) => "지울까요?",
+        (RemoveWithYes, En) => "run with --yes to remove it without asking",
+        (RemoveWithYes, Ko) => "묻지 않고 지우려면 --yes 를 붙여 실행하세요",
+        (UpdatePreview, En) => "moai update preview:",
+        (UpdatePreview, Ko) => "moai update 미리보기:",
+        (ApplyUpdate, En) => "Apply this update?",
+        (ApplyUpdate, Ko) => "이 업데이트를 적용할까요?",
+        (LabelCause, En) => "cause",
+        (LabelCause, Ko) => "원인",
+        (NextUsageWord, En) => "run `{program} {word} --help` to see its arguments",
+        (NextUsageWord, Ko) => "`{program} {word} --help` 로 인자를 확인하세요",
+        (NextUsageCommands, En) => "run `{program} --help` to see the commands",
+        (NextUsageCommands, Ko) => "`{program} --help` 로 명령 목록을 확인하세요",
+        (NextPermission, En) => {
+            "pass `--permission-reference <ref>`, the approval reference the host gives for this plan"
+        }
+        (NextPermission, Ko) => {
+            "이 plan 에 호스트가 준 승인 참조를 `--permission-reference <ref>` 로 넘기세요"
+        }
+        (NextProtocol, En) => {
+            "send version 1 (`protocol_version: 1`, or `schema_version: 1` in a request file)"
+        }
+        (NextProtocol, Ko) => {
+            "버전 1 로 보내세요(`protocol_version: 1`, 요청 파일이면 `schema_version: 1`)"
+        }
+        (NextStalePlan, En) => "make the plan again and apply it with the new digest",
+        (NextStalePlan, Ko) => "plan 을 다시 만들고 새 digest 로 적용하세요",
+        (NextInputTooLarge, En) => "send a smaller input",
+        (NextInputTooLarge, Ko) => "더 작은 입력을 보내세요",
+        (UsageMissingArguments, En) => "the following required arguments were not provided:",
+        (UsageMissingArguments, Ko) => "꼭 필요한 인자가 빠졌어요:",
+        (UsageUnknownArgument, En) => "unexpected argument",
+        (UsageUnknownArgument, Ko) => "알 수 없는 인자예요",
+        (UsageInvalidValue, En) => "invalid argument value",
+        (UsageInvalidValue, Ko) => "인자 값이 올바르지 않아요",
+        (UsageOther, En) => "invalid command line",
+        (UsageOther, Ko) => "명령줄이 올바르지 않아요",
     }
 }
 
@@ -359,17 +535,31 @@ mod tests {
         }
     }
 
-    /// The English texts are today's strings, so the English screens keep their bytes.
+    /// `ALL` lists each sentence once, so the table walks above see every one.
+    #[test]
+    fn all_lists_each_sentence_once() {
+        for (i, a) in Msg::ALL.iter().enumerate() {
+            assert!(!Msg::ALL[i + 1..].contains(a), "{a:?} twice");
+        }
+    }
+
+    /// The English texts are today's strings, so the English screens keep their bytes; the
+    /// token words now come from this table (S6b), so they are pinned here as literals.
     #[test]
     fn english_words_match_the_current_tokens() {
         use crate::ui::Token;
-        for (m, t) in [
-            (Msg::WordOk, Token::Ok),
-            (Msg::WordWarning, Token::Warn),
-            (Msg::WordError, Token::Error),
-            (Msg::WordNext, Token::Info),
+        for (m, t, word) in [
+            (Msg::WordOk, Token::Ok, "ok"),
+            (Msg::WordWarning, Token::Warn, "warning"),
+            (Msg::WordError, Token::Error, "error"),
+            (Msg::WordNext, Token::Info, "next"),
         ] {
-            assert_eq!(text(m, Lang::En), t.word(), "{m:?}");
+            assert_eq!(text(m, Lang::En), word, "{m:?}");
+            assert_eq!(t.word(), word, "{t:?}");
+            assert_eq!(t.word_in(Lang::Ko), text(m, Lang::Ko), "{t:?}");
+        }
+        for t in [Token::Accent, Token::Muted, Token::Code, Token::Strong] {
+            assert_eq!(t.word_in(Lang::Ko), "", "{t:?} has no word");
         }
     }
 
@@ -386,8 +576,18 @@ mod tests {
             s.starts_with("아직 기다리는 중: ci \\x1b]0;x\\x07\\x9b31m"),
             "{s}"
         );
-        assert_eq!(fill(Msg::MoreRows, Lang::En, &[("count", "3")]), "… 3 more");
-        assert_eq!(fill(Msg::MoreRows, Lang::Ko, &[]), "… 외 {count}개");
+        assert_eq!(
+            fill(
+                Msg::MoreRows,
+                Lang::En,
+                &[("ellipsis", "…"), ("count", "3")]
+            ),
+            "… 3 more"
+        );
+        assert_eq!(
+            fill(Msg::MoreRows, Lang::Ko, &[("ellipsis", "...")]),
+            "... 외 {count}개"
+        );
     }
 
     /// The function `ui::ui_lang` calls: a pipe is English whatever the environment says, and

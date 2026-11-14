@@ -18,6 +18,8 @@ SECTION = """## Self-Audit
 - clone: check set from a fresh clone
 - host: gh exercised via a fake executable, no network
 - receipt: digest re-read before PASS
+- plan: PLAN comment 6872621175
+- red: check failed first without the plan line
 {extra}
 ## Notes
 """

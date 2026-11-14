@@ -38,7 +38,16 @@ pub enum Handler {
     /// except a Bash `git commit` / `git push` in a lane worktree whose claim does not verify,
     /// which it refuses with exit 2 — the code both hosts treat as blocking.
     ClaimGuard,
+    /// `hook-dispatch --event tool-preflight`: the hook engine's write and command guards
+    /// (dangerous Bash, `.git` internals, credential folders, private keys and tokens). Claude
+    /// Code only for now (#2877 leader Q1): it keeps the protection the Go-generation hooks gave
+    /// once those are replaced. Answers with the documented PreToolUse deny object, never allow.
+    Preflight,
 }
+
+/// The tools the Claude preflight guard sees: the hook engine's Bash and write guards
+/// (`hook_engine::capabilities("claude")`).
+pub const CLAUDE_PREFLIGHT_MATCHER: &str = "Bash|Write|Edit|MultiEdit|NotebookEdit";
 
 /// The MoAI hook set: (event, matcher, handler). Receipts at session start, after each Bash
 /// tool call and at turn end; one blocking guard before each Bash tool call, which refuses
@@ -183,6 +192,9 @@ pub fn hook_command(host: &str, handler: Handler) -> String {
     match handler {
         Handler::Receipt => format!("{HOOK_BINARY} hook-receipt --host {host}"),
         Handler::ClaimGuard => format!("{HOOK_BINARY} claim-verify . --hook"),
+        Handler::Preflight => {
+            format!("{HOOK_BINARY} hook-dispatch --host {host} --event tool-preflight")
+        }
     }
 }
 
@@ -215,20 +227,47 @@ pub fn binary_state(path_env: &str) -> Value {
     }
 }
 
-/// The hook set as a host `hooks` object (event -> matcher groups -> handlers).
+/// The hook set of one host: [`HOOK_SET`], and for Claude Code the preflight guard after the
+/// claim guard (#2877 Q1).
+pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
+    let mut set = HOOK_SET.to_vec();
+    if host == "claude" {
+        let at = set
+            .iter()
+            .position(|(e, _, _)| *e == "PreToolUse")
+            .map_or(set.len(), |i| i + 1);
+        set.insert(
+            at,
+            (
+                "PreToolUse",
+                Some(CLAUDE_PREFLIGHT_MATCHER),
+                Handler::Preflight,
+            ),
+        );
+    }
+    set
+}
+
+/// The hook set as a host `hooks` object (event -> matcher groups -> handlers); two entries of
+/// one event are two matcher groups, in [`hook_set`] order.
 pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     check_host(host)?;
     let mut out = Map::new();
-    for (event, matcher, handler) in HOOK_SET {
+    for (event, matcher, handler) in hook_set(host) {
         let mut group = Map::new();
         if let Some(m) = matcher {
             group.insert("matcher".into(), json!(m));
         }
         group.insert(
             "hooks".into(),
-            json!([{"type": "command", "command": hook_command(host, *handler), "timeout": HOOK_TIMEOUT_SECS}]),
+            json!([{"type": "command", "command": hook_command(host, handler), "timeout": HOOK_TIMEOUT_SECS}]),
         );
-        out.insert((*event).into(), json!([group]));
+        let groups = out
+            .entry(event.to_string())
+            .or_insert_with(|| Value::Array(Vec::new()));
+        if let Some(list) = groups.as_array_mut() {
+            list.push(Value::Object(group));
+        }
     }
     Ok(out)
 }
@@ -244,17 +283,17 @@ fn hook_list(host: &str) -> Value {
             })
             .collect();
     }
-    HOOK_SET
-        .iter()
+    hook_set(host)
+        .into_iter()
         .map(|(event, matcher, handler)| {
-            json!({"event": event, "matcher": matcher, "command": hook_command(host, *handler),
+            json!({"event": event, "matcher": matcher, "command": hook_command(host, handler),
                    "timeout": HOOK_TIMEOUT_SECS})
         })
         .collect()
 }
 
 /// Refuses a project that is the home directory or lies inside a host's home configuration.
-fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
+pub(crate) fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
@@ -513,6 +552,48 @@ fn host_config_path(host: &str) -> &'static str {
     } else {
         file_host(host).file
     }
+}
+
+/// Whether MoAI's hook set is installed for `host` in the project `root` (#2853): Claude Code
+/// when its settings receipt owns `hooks`, Codex and OMP when their ownership receipt exists.
+/// An unreadable receipt is an error for the caller to report, never "not installed".
+pub fn installed(root: &Path, host: &str) -> Result<bool> {
+    check_host(host)?;
+    if host == "claude" {
+        return Ok(crate::claude::owned_settings(root)?.contains_key("hooks"));
+    }
+    let receipt = crate::state_root::path(root, file_host(host).receipt);
+    match fs::symlink_metadata(&receipt) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err(format!("{} unavailable", receipt.display())),
+        Ok(m) if m.file_type().is_symlink() => Err("symlink receipt refused".into()),
+        Ok(_) => Ok(true),
+    }
+}
+
+/// The two files a hook apply for `host` writes in the project `root`, relative to it: the host
+/// file and MoAI's ownership receipt for it (#2853 revert). Each folder between `root` and
+/// these files is listed in `dirs`, so a caller can refuse one that became a link.
+pub fn written_files(root: &Path, host: &str) -> Result<(Vec<String>, Vec<PathBuf>)> {
+    check_host(host)?;
+    let receipt = if host == "claude" {
+        "manifests/claude-settings.json"
+    } else {
+        file_host(host).receipt
+    };
+    let files = vec![
+        host_config_path(host).to_string(),
+        crate::state_root::rel(root, receipt),
+    ];
+    let host_dirs: &[&str] = if host == "claude" {
+        &[".claude"]
+    } else {
+        file_host(host).dirs
+    };
+    let state = crate::state_root::path(root, "");
+    let mut dirs: Vec<PathBuf> = host_dirs.iter().map(|d| root.join(d)).collect();
+    dirs.extend([state.clone(), state.join("manifests")]);
+    Ok((files, dirs))
 }
 
 /// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];

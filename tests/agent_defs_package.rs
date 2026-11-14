@@ -233,12 +233,20 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     };
     assert_eq!(
         reads("moai-plan"),
-        ["internal/decide", "internal/interview"]
+        [
+            "internal/core-rules",
+            "internal/decide",
+            "internal/interview"
+        ]
     );
-    assert_eq!(reads("moai-research"), ["adapters/aside", "adapters/orca"]);
+    assert_eq!(
+        reads("moai-research"),
+        ["internal/core-rules", "adapters/aside", "adapters/orca"]
+    );
     assert_eq!(
         reads("moai-impl"),
         [
+            "internal/core-rules",
             "internal/test-design",
             "internal/git-safety",
             "internal/tdd-results"
@@ -247,6 +255,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     assert_eq!(
         reads("moai-audit"),
         [
+            "internal/core-rules",
             "internal/review",
             "internal/test-design",
             "internal/check-completeness",
@@ -256,7 +265,11 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     );
     assert_eq!(
         reads("moai-docs"),
-        ["internal/decide", "internal/doc-claims"]
+        [
+            "internal/core-rules",
+            "internal/decide",
+            "internal/doc-claims"
+        ]
     );
     for d in &defs {
         for entry in &d.reads {
@@ -326,6 +339,8 @@ fn internal_references_say_when_to_read_them() {
         "boundary-checks",
         "doc-claims",
         "security-checklist",
+        // #2876: the rules every route, host and base agent follows.
+        "core-rules",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
