@@ -30,7 +30,7 @@ pub const KIND: &str = "go-retire";
 const MANIFEST_PREFIX: &str = "retire-manifest-";
 
 /// The kind of a top-level entry, from its own metadata (a link is never followed).
-fn kind_of(p: &Path) -> &'static str {
+pub(crate) fn kind_of(p: &Path) -> &'static str {
     match fs::symlink_metadata(p) {
         Ok(m) if m.file_type().is_symlink() => "link",
         Ok(m) if m.is_dir() => "folder",
@@ -39,7 +39,7 @@ fn kind_of(p: &Path) -> &'static str {
     }
 }
 
-fn class_str(c: Class) -> &'static str {
+pub(crate) fn class_str(c: Class) -> &'static str {
     match c {
         Class::Rust => "rust",
         Class::ToolAsset => "tool-asset",
@@ -50,7 +50,7 @@ fn class_str(c: Class) -> &'static str {
     }
 }
 
-fn rule_str(r: Rule) -> &'static str {
+pub(crate) fn rule_str(r: Rule) -> &'static str {
     match r {
         Rule::RustName => "rust-name",
         Rule::GoRetires => "go-retires",

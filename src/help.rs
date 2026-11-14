@@ -74,6 +74,7 @@ pub const GROUPS: &[Group] = &[
             ("home-retire-plan", false),
             ("home-retire-apply", false),
             ("home-retire-revert", false),
+            ("home-install-plan", false),
             ("worktree-move-plan", true),
             ("worktree-move-apply", true),
             ("update-plan", false),
@@ -298,6 +299,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-retire-plan", &["home-retire-plan", "home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-retire-apply", &["home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-retire-revert", &["home-retire-revert --permission-reference <ref>"]),
+    ("home-install-plan", &["home-install-plan"]),
     ("worktree-move-plan", &["worktree-move-plan .", "worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-move-apply", &["worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update-plan", &["update-plan ~ <stage>", "update-apply --plan-digest <digest> --permission-reference <ref> ~ <stage> < request.json"]),
@@ -1190,6 +1192,15 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          지우지 않아요.",
     ),
     (
+        "home-install-plan",
+        "`~/.moai-cli` 의 이 세대 항목을 `~/.moai` 맨 위로 옮기는 일을 미리 봐요(#2871 U3a): \
+         HOME 이름 표로 맨 위 항목마다 `move`(`~/.moai/<이름>` 으로 rename)·`keep`(사용자 자료, \
+         옛 worktrees, 표에 없는 이름, 링크, 표식)·`blocked`(자리가 이미 있음)로 나눠요. Go \
+         항목이 아직 은퇴 전이면 막혀요. 버전 폴더마다 이동 전후 설치 id, `path` 항목을 어디로 \
+         다시 가리킬지, vault 의 모드를 함께 보여 줘요(이름·모드만 보고 열지 않아요). 아무것도 \
+         쓰지 않고 확인 토큰을 줘요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1470,6 +1481,11 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-retire-revert",
         "stamp",
         "되돌릴 은퇴의 표지(`YYYYMMDDTHHMMSSZ`). 없으면 가장 새 은퇴",
+    ),
+    (
+        "home-install-plan",
+        "now",
+        "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계(저널 이름)",
     ),
     (
         "home-state-revert",
