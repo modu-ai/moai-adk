@@ -57,10 +57,50 @@ struct Cli {
     /// Start an agent session on HOST (cc|glm|codex; default cc).
     #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
     agent: Option<String>,
+    /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
+    #[arg(
+        long,
+        value_enum,
+        value_name = "WHEN",
+        default_value = "auto",
+        hide_default_value = true,
+        hide_possible_values = true
+    )]
+    color: moai_cli::ui::ColorFlag,
     #[command(flatten)]
     launch: LaunchOpts,
     #[command(subcommand)]
     command: Option<Command>,
+}
+
+/// A leading `--color <WHEN>` or `--color=<WHEN>` with a valid value (#2799 ③): the choice and
+/// how many words it takes. Anything else is left to clap, which reports it.
+fn leading_color(argv: &[String]) -> Option<(moai_cli::ui::ColorFlag, usize)> {
+    use clap::ValueEnum;
+    let parse = |v: &str| moai_cli::ui::ColorFlag::from_str(v, false).ok();
+    let first = argv.get(1)?;
+    if first == "--color" {
+        return parse(argv.get(2)?).map(|c| (c, 2));
+    }
+    first
+        .strip_prefix("--color=")
+        .and_then(parse)
+        .map(|c| (c, 1))
+}
+
+/// The command line with a leading `--color` taken out, so every place that reads the
+/// command word from position 1 (hook mode, `help --all`, the usage and error frames) reads
+/// the same word with or without it.
+fn command_argv() -> &'static [String] {
+    static ARGV: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    ARGV.get_or_init(|| without_leading_color(std::env::args().collect()))
+}
+
+fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
+    if let Some((_, words)) = leading_color(&argv) {
+        argv.drain(1..1 + words);
+    }
+    argv
 }
 
 /// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm|codex -l|-a` (00-F #2028).
@@ -2504,7 +2544,7 @@ fn names_no_command(e: &clap::Error, first: &str) -> bool {
 /// message that echoes no argument; stderr keeps clap's first line for people. Help, version,
 /// the launchers and words that name no operation keep clap's own output.
 fn usage_error(e: clap::Error) -> ExitCode {
-    let first = std::env::args().nth(1);
+    let first = command_argv().get(1).cloned();
     if first.as_deref().is_some_and(|w| names_no_command(&e, w)) {
         // #2799 D3 decision 1 (a): an unknown first word is a usage error like any other, so
         // stdout carries the `usage` envelope too. Its message echoes no argument (the word
@@ -2527,7 +2567,7 @@ fn usage_error(e: clap::Error) -> ExitCode {
         // Root help carries the logo above clap's help body (Issue #2363);
         // subcommand help and version stay logo-free.
         if matches!(e.kind(), ErrorKind::DisplayHelp) {
-            let rest: Vec<String> = std::env::args().skip(1).collect();
+            let rest: Vec<String> = command_argv().get(1..).unwrap_or_default().to_vec();
             moai_cli::banner::maybe_print_logo_for(&rest);
         }
         e.exit()
@@ -2557,7 +2597,7 @@ fn usage_error(e: clap::Error) -> ExitCode {
         };
         if moai_cli::ui::stderr_is_terminal() {
             let painter = stderr_painter();
-            let word = std::env::args().nth(1);
+            let word = command_argv().get(1).cloned();
             let next = moai_cli::error_next::next_action_in(
                 contract::Kind::Usage,
                 painter.lang,
@@ -2625,7 +2665,7 @@ fn print_operation_error(kind: contract::Kind, message: &str) {
         return;
     }
     let painter = stderr_painter();
-    let word = std::env::args().nth(1);
+    let word = command_argv().get(1).cloned();
     // S6c (#2825): the labels and the next step in the stream's language; the message itself
     // is the envelope's `error.message` and stays as it is (D3).
     let next = moai_cli::error_next::next_action_in(
@@ -2820,17 +2860,41 @@ pub(crate) fn main() -> ExitCode {
     if argv.get(1).is_some_and(|w| w == GO_HOOK_WORD) {
         return go_hook_main(&argv);
     }
-    let hook_mode = hook_mode_argv(&argv);
+    // #2799 ③: a leading `--color` is recorded before parsing, so a usage error drawn by the
+    // failure paths below follows it too; the word readers see the line without it.
+    if let Some((choice, _)) = leading_color(&argv) {
+        moai_cli::ui::set_color_choice(choice);
+    }
+    let words = command_argv();
+    let hook_mode = hook_mode_argv(words);
     let bin = moai_cli::help::bin_name(argv.first().map(String::as_str).unwrap_or(""));
     // `help --all` (#2802 S1): every command in its group. clap's `help` takes command names
     // only, so this form is answered before parsing.
-    if argv.len() == 3 && argv[1] == "help" && argv[2] == "--all" {
+    if words.len() == 3 && words[1] == "help" && words[2] == "--all" {
         let mut cmd = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, true);
         print!("{}", cmd.render_help());
         return ExitCode::SUCCESS;
     }
+    // A leading `--color` with a value clap rejects: clap's own error, which lists the values.
+    // (The root's options conflict with a subcommand, so a valid one is parsed out above.)
+    if leading_color(&argv).is_none() {
+        let take = match argv.get(1).map(String::as_str) {
+            Some("--color") => 3,
+            Some(w) if w.starts_with("--color=") => 2,
+            _ => 0,
+        };
+        if take > 0 {
+            let only: Vec<&String> = argv.iter().take(take).collect();
+            if let Err(e) =
+                moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, false)
+                    .try_get_matches_from(only)
+            {
+                return usage_error(e);
+            }
+        }
+    }
     let parsed = moai_cli::help::configure(Cli::command(), bin, moai_cli::BUILD_VERSION, false)
-        .try_get_matches_from(&argv)
+        .try_get_matches_from(words)
         .and_then(|m| Cli::from_arg_matches(&m));
     let cli = match parsed {
         Ok(cli) => cli,
@@ -2847,6 +2911,7 @@ pub(crate) fn main() -> ExitCode {
         }
         Err(e) => return usage_error(e),
     };
+    moai_cli::ui::set_color_choice(cli.color);
     if let Some(Command::Statusline {
         refresh_counts: true,
         board_root: Some(root),
@@ -2995,6 +3060,58 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// #2799 ③ C5: a leading valid `--color` is taken out before the word readers look at
+    /// position 1; an invalid value, a later `--color` or a bare flag is left for clap.
+    #[test]
+    fn a_leading_color_flag_is_taken_out_before_the_command_word() {
+        use moai_cli::ui::ColorFlag::*;
+        let v = |s: &[&str]| s.iter().map(|w| w.to_string()).collect::<Vec<_>>();
+        for (line, choice, rest) in [
+            (
+                &["moai", "--color", "never", "update"][..],
+                Some(Never),
+                &["moai", "update"][..],
+            ),
+            (
+                &["moai", "--color=always", "hook-receipt"],
+                Some(Always),
+                &["moai", "hook-receipt"],
+            ),
+            (
+                &["moai", "--color", "auto", "help", "--all"],
+                Some(Auto),
+                &["moai", "help", "--all"],
+            ),
+            (
+                &["moai", "--color", "bogus", "update"],
+                None,
+                &["moai", "--color", "bogus", "update"],
+            ),
+            (
+                &["moai", "--color=", "update"],
+                None,
+                &["moai", "--color=", "update"],
+            ),
+            (&["moai", "--color"], None, &["moai", "--color"]),
+            (
+                &["moai", "update", "--color", "never"],
+                None,
+                &["moai", "update", "--color", "never"],
+            ),
+            (&["moai"], None, &["moai"]),
+        ] {
+            assert_eq!(leading_color(&v(line)).map(|(c, _)| c), choice, "{line:?}");
+            assert_eq!(without_leading_color(v(line)), v(rest), "{line:?}");
+        }
+        // Hook mode reads the stripped line: the hook word stays the hook word.
+        assert!(hook_mode_argv(&without_leading_color(v(&[
+            "moai",
+            "--color",
+            "never",
+            "hook-receipt"
+        ]))));
+    }
 
     /// #2812 W3 AC-4, through the path `main` takes (`help::bin_name` + `help::configure`,
     /// #2802 S1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and `moai-cli`
