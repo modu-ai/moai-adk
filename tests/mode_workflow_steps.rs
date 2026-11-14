@@ -74,7 +74,8 @@ fn mode_leader_first_run_steps_are_fixed() {
     assert_eq!(
         procedure_keys(&workflow("mode-leader.md")),
         [
-            "codex-refusal",
+            // #2900 (#2899 G4, D-O3): the mode follows the channel, not the host.
+            "mode-channel",
             "mode-only",
             "banner",
             "state",
@@ -170,6 +171,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
     assert_eq!(
         seen,
         [
+            "claim-acquire",
             "claim-verify",
             "claim-verify --hook",
             "gate-check",
@@ -179,18 +181,24 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "heavy-slot-acquire",
             "labels-apply",
             "labels-plan",
+            // #2879: the lane's one build folder and the card cleanup.
+            "lane-env",
             "lane-next",
             "lane-next --lane",
             "lane-next --wait",
+            // #2900 (#2899 G2): the leader clears a lane only on `safe`.
+            "lane-safe-to-reset --lane",
             "pr-confirm",
             // #2840 D3: the PR body is checked locally before the push and before opening.
             "pr-self-audit-check --file",
             "queue-free",
-            "queue-next",
             "repo-scans --refs",
             "scope-check",
             "session-register",
-            "usage-limit"
+            "session-register --release",
+            "usage-limit",
+            "worktree-gc-apply",
+            "worktree-gc-plan --integration-ref"
         ],
         "the op list the workflows name"
     );
@@ -199,10 +207,10 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
 #[test]
 fn spans_parse_ops_and_flags() {
     assert_eq!(
-        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-next` and `moai --version`"),
+        cli_spans("run `moai claim-verify --hook`, `moai-cli queue-free` and `moai --version`"),
         [
             ("claim-verify".to_string(), vec!["--hook".to_string()]),
-            ("queue-next".to_string(), vec![])
+            ("queue-free".to_string(), vec![])
         ]
     );
 }
@@ -304,11 +312,22 @@ fn self_opening_rules_are_pinned_in_both_mode_workflows() {
 #[test]
 fn the_round_keeps_going_until_its_end_condition() {
     let agent = workflow("mode-agent.md");
+    // #2910 audit 6874564526 B1: the claim step chooses by channel, never by host (D-O3).
+    assert_says(
+        &agent,
+        "claim",
+        &["Which of the two applies follows the channel, never the host"],
+    );
+    assert!(
+        !step(&agent, "claim").contains("Codex CLI and others"),
+        "the claim step still names a host instead of the channel"
+    );
     assert_says(
         &agent,
         "keep-going",
         &[
-            "A turn ends only when (i) the repository has no open pull request and no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed)",
+            // #2900: the end condition is defined once, in SPEC §12 (user decision D-O1).
+            "A turn ends only when (i) the repository has no open pull request and no startable Issue (the end condition of SPEC §12, user decision D-O1: not on HOLD, not `needs:decision`, not in the keep-set, prerequisites closed, not a parent epic with open children)",
             "(ii) the user says stop",
             "In every other case do not end the turn",
             "A card's completion report closes the card, never the round.",
@@ -361,9 +380,13 @@ fn the_round_keeps_going_until_its_end_condition() {
         &leader,
         "supervise",
         &[
-            "Restart, do not dispatch",
+            // #2900 (#2899 G1): four actions replace "Restart, do not dispatch".
+            "give each lane exactly one of four actions",
+            "`restart`, `clear_redispatch`, `answer` or `leave`",
             "`순환 계속 — self-pick (1)부터`",
             "only when its input box is empty",
+            // #2900 (#2899 G2): the clear contract and its order.
+            "answers `safe` — send `/clear`, read the screen again until the input box is empty, and only then send the duty line",
         ],
     );
     assert_says(
@@ -379,7 +402,7 @@ fn the_round_keeps_going_until_its_end_condition() {
     assert_says(
         &agent,
         "self-pick",
-        &["no startable Issue (not on HOLD, not `needs:decision`, prerequisites closed) — the same end condition as the `keep-going` step"],
+        &["no startable Issue (SPEC §12) — the same end condition as the `keep-going` step"],
     );
     // Cause 8 (6824158448): no bare "no startable Issue"; expired foreign claims go up.
     assert_says(&agent, "state", &["expired claims of other sessions"]);
@@ -722,4 +745,47 @@ fn blocked_lines_name_kind_owner_and_next_check() {
     assert!(agents_md.contains(
         "A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step)."
     ));
+}
+
+// #2905 (#2899 O6, measurement 6874337375): a Codex or OMP leader's timer is an Orca
+// automation. `--reuse-session` reuses only the automation's own idle session and starts a
+// new one when that session is busy, so the leader workflow and SPEC §5 name the precheck,
+// the short grace window and the first run that starts the leader session.
+#[test]
+fn codex_leader_timer_is_the_measured_orca_automation() {
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "mode-channel",
+        &[
+            "`--trigger \"*/5 * * * *\"`",
+            "`--reuse-session` sends a later run only to the session an earlier run of the same automation started, and only while that session is idle; when it is busy, Orca starts a new session",
+            "`--precheck`",
+            "`tui-idle`",
+            "`--missed-run-grace-minutes 10`",
+            "the automation's first run starts the leader session",
+        ],
+    );
+    assert!(
+        !step(&leader, "mode-channel").contains("O6 measures"),
+        "the measured result replaces the O6 placeholder"
+    );
+    let spec = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/design-review/autonomy-modes-spec.md"),
+    )
+    .unwrap();
+    let wake = spec
+        .lines()
+        .find(|l| l.starts_with("- 깨우기 수단(#2899 G9"))
+        .expect("SPEC §5 wake line");
+    for p in [
+        "`--reuse-session`",
+        "새 세션",
+        "`--precheck`",
+        "`tui-idle`",
+        "`--missed-run-grace-minutes 10`",
+    ] {
+        assert!(wake.contains(p), "SPEC §5 must say `{p}`: {wake}");
+    }
+    assert!(!wake.contains("O6이 실측하고"), "{wake}");
 }

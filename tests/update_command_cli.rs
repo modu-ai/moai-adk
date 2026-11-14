@@ -370,12 +370,21 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     let before = state(&f.home);
+    // #2894 U1: a terminal gets the person's screen, not the envelope.
     let text = run_in_terminal(&a, &f.home, "n\n");
     assert!(text.contains("Apply this update? [y/N]"), "{text}");
-    assert!(text.contains("\"mode\":\"preview\""), "{text}");
+    assert!(text.contains("Nothing was written."), "{text}");
+    assert!(
+        !text.contains("\"mode\""),
+        "no envelope on a terminal: {text}"
+    );
     assert_eq!(state(&f.home), before);
     let text = run_in_terminal(&a, &f.home, "y\n");
-    assert!(text.contains("\"mode\":\"applied\""), "{text}");
+    assert!(text.contains("Applied") && text.contains("Done"), "{text}");
+    assert!(
+        !text.contains("\"mode\""),
+        "no envelope on a terminal: {text}"
+    );
     assert!(f.home.join(".claude/skills/moai/SKILL.md").is_file());
 }
 
@@ -582,7 +591,11 @@ fn in_a_terminal_nothing_to_write_asks_nothing() {
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
-    assert!(text.contains("\"mode\":\"preview\""), "{text}");
+    // #2894 U1: the blocked screen instead of the preview envelope.
+    assert!(
+        text.contains("Nothing can be applied — clear the blocked part first"),
+        "{text}"
+    );
     assert_eq!(state(&f.home), before);
 }
 
@@ -595,7 +608,8 @@ fn in_a_terminal_an_already_applied_package_asks_nothing() {
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
-    assert!(text.contains("\"nothing_to_apply\":true"), "{text}");
+    // #2894 U1: the up-to-date screen instead of `nothing_to_apply` in the envelope.
+    assert!(text.contains("Everything is up to date"), "{text}");
     assert_eq!(state(&f.home), before);
 }
 
@@ -635,7 +649,13 @@ fn with_stderr_away_from_the_terminal_update_does_not_ask() {
         !err.contains("[y/N]"),
         "asked on a stderr nobody sees: {err}"
     );
-    assert!(shown.contains("\"mode\":\"preview\""), "{shown}");
+    // #2894 U1: stdout is a terminal, so the person's screen ends with the way to answer
+    // later instead of a question nobody would see.
+    assert!(
+        shown.contains("next: run it again in a terminal to answer, or"),
+        "{shown}"
+    );
+    assert!(shown.contains("moai update --confirm sha256:"), "{shown}");
     assert_eq!(state(&f.home), before);
 }
 

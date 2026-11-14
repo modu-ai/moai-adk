@@ -1,0 +1,11 @@
+◆ MoAI update
+  installed 2026.11.0-rc.1 = package 2026.11.0-rc.1
+  HOME ~
+
+✓ Everything is up to date
+  skills claude 31 · skills codex 31 · agents 15 · routing 2
+
+  – hooks  skipped: no MoAI hook set in this project
+
+→ Next: in each existing project, run /moai update in a session there
+  ($moai update in Codex CLI) to update the project's settings.

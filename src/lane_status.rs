@@ -795,7 +795,8 @@ fn blocker_open(n: i64, snap: &Snapshot) -> bool {
     }
 }
 
-/// Issues with no claim-family line and no open blocker (the `queue-next` rule).
+/// Issues with no claim-family line and no open blocker (the rule of the retired `queue-next`;
+/// `lane-next` uses `startable::judge`, #2901).
 fn ready(snap: &Snapshot) -> Vec<i64> {
     snap.issues
         .iter()

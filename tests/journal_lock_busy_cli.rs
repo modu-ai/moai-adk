@@ -3,6 +3,7 @@
 //! kind `unavailable`, `retryable: true`, exit 1, one shared message. Before #2345 the
 //! ops answered per op: `claim-acquire`/`claim-release`/`queue-next` returned an `ok: true`
 //! `busy` outcome, the 06-B/06-C ops a `conflict` error the classifier made non-retryable.
+//! `queue-next` is retired since (#2901), so eleven operations remain.
 //! Each case runs the real binary as a subprocess against a real git repository while this
 //! test process holds `<git common dir>/.moai-cli/claims/.lock`.
 
@@ -90,23 +91,6 @@ fn acquire_request(lease_until: &str, session: &str) -> String {
         "spec_ref": {"id": "SPEC-BUSY", "revision": "r1", "digest": null},
         "lease_until": lease_until,
         "projection_intents": [],
-    })
-    .to_string()
-}
-
-fn queue_request(lease_until: &str) -> String {
-    json!({
-        "schema_version": 1,
-        "owner": "modu-ai",
-        "repo": "moai-adk",
-        "milestone": 3,
-        "claim": {
-            "owner": {"kind": "session", "id": "busy-test"},
-            "base_revision": "a".repeat(40),
-            "write_scope": ["src/busy.rs"],
-            "spec_ref": {"id": "SPEC-BUSY", "revision": "r1", "digest": null},
-            "lease_until": lease_until,
-        },
     })
     .to_string()
 }
@@ -272,11 +256,6 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
             "claim.acquire",
         ),
         (
-            vec!["queue-next".into(), ".".into()],
-            Some(queue_request(&lease)),
-            "queue.next",
-        ),
-        (
             vec![
                 "claim-release".into(),
                 ".".into(),
@@ -413,7 +392,7 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
     ];
     assert_eq!(
         cases.len(),
-        12,
+        11,
         "all journal-writing operations are covered"
     );
 
