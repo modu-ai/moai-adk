@@ -591,3 +591,70 @@ fn install_calls_a_group_writable_vault_loose() {
     chmod(&vault.join(".master.key"), 0o640);
     assert_eq!(plan(&home)["vault"]["loose"], json!(true));
 }
+
+// Codex review P2 on #2987: a version folder or its `bin` that is a link would make the canonical
+// path (old identity) differ from the moved path (new identity); such a folder gets no alias.
+#[test]
+fn alias_table_skips_a_version_folder_or_bin_that_is_a_link() {
+    let (_d, home) = rust_home();
+    let outside = tempfile::tempdir().unwrap();
+    let outside = fs::canonicalize(outside.path()).unwrap();
+    write(&outside, "folder/bin/moai-cli", "external-1");
+    write(&outside, "bin/moai-cli", "external-2");
+    symlink(
+        outside.join("folder"),
+        home.join(".moai-cli/versions/9.0.0"),
+    )
+    .unwrap();
+    fs::create_dir_all(home.join(".moai-cli/versions/8.0.0")).unwrap();
+    symlink(
+        outside.join("bin"),
+        home.join(".moai-cli/versions/8.0.0/bin"),
+    )
+    .unwrap();
+    let p = plan(&home);
+    let table = p["alias_table"].as_object().unwrap();
+    assert_eq!(table.len(), 1, "only 1.0.0 is a real folder: {p}");
+    assert_eq!(p["alias_skipped"], json!(["8.0.0", "9.0.0"]), "{p}");
+}
+
+// Codex review P2 on #2987: a folder that cannot be listed is not an empty one.
+#[test]
+fn install_blocks_a_state_folder_it_cannot_list() {
+    let (_d, home) = rust_home();
+    let old = home.join(".moai-cli");
+    chmod(&old, 0o000);
+    let listable = fs::read_dir(&old).is_ok();
+    let p = plan(&home);
+    chmod(&old, 0o755);
+    if listable {
+        return; // running as a user the mode does not bind (root): nothing to show
+    }
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(
+        blocks(&p).contains(&"state_dir_unreadable".to_string()),
+        "{p}"
+    );
+    assert!(
+        p["confirm_token"].is_null(),
+        "no token for a blocked plan: {p}"
+    );
+}
+
+// Codex review P2 on #2987: the retirement preview lists at most 500 names. When it is blocked
+// for that, "zero pending" proves nothing, so the install preview is blocked too.
+#[test]
+fn install_blocks_when_the_go_retirement_preview_is_incomplete() {
+    let (_d, home) = rust_home();
+    add_go_state(&home);
+    for i in 0..501 {
+        fs::create_dir_all(home.join(format!(".moai/a{i:04}"))).unwrap();
+    }
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(
+        blocks(&p).contains(&"go_retire_preview_blocked".to_string()),
+        "{p}"
+    );
+    assert!(p["confirm_token"].is_null(), "{p}");
+}

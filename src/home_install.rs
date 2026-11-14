@@ -35,8 +35,11 @@ pub const TOKEN_PREFIX: &str = "install:";
 const MANIFEST_PREFIX: &str = "install-manifest-";
 /// The `path` entries listed in a stub plan, and the longest link target shown.
 const STUB_LIMIT: usize = 50;
-/// The binary every version folder holds.
-const VERSION_BIN: &str = "bin/moai-cli";
+/// The binary every version folder holds, relative to the folder: `bin/moai-cli` with the
+/// platform's executable suffix (`.exe` on Windows, where the installer places it).
+fn version_bin(suffix: &str) -> String {
+    format!("bin/moai-cli{suffix}")
+}
 
 /// What happens to the top-level entry `name` of `kind` that the table row `entry` names:
 /// `("move" | "keep", reason)`. Pure; whether the destination is free is judged afterwards.
@@ -134,20 +137,27 @@ fn canon(p: &Path) -> std::path::PathBuf {
     fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
 }
 
-/// The names under `dir`, sorted; `unreadable` counts names that are not UTF-8.
+/// The names under `dir`, sorted; `unreadable` counts names that are not UTF-8 and entries the
+/// listing could not read. A folder that cannot be listed at all gives nothing here: callers that
+/// must not take that for "empty" ask [`listable`] first.
 fn names_of(dir: &Path) -> (Vec<String>, usize) {
     let mut names = Vec::new();
     let mut unreadable = 0;
     if let Ok(rd) = fs::read_dir(dir) {
-        for e in rd.flatten() {
-            match e.file_name().into_string() {
-                Ok(n) => names.push(n),
-                Err(_) => unreadable += 1,
+        for e in rd {
+            match e.map(|e| e.file_name().into_string()) {
+                Ok(Ok(n)) => names.push(n),
+                Ok(Err(_)) | Err(_) => unreadable += 1,
             }
         }
     }
     names.sort();
     (names, unreadable)
+}
+
+/// Whether the entries of `dir` can be listed.
+fn listable(dir: &Path) -> bool {
+    fs::read_dir(dir).is_ok()
 }
 
 fn install_id_of(path: &Path) -> Option<String> {
@@ -165,13 +175,22 @@ fn alias_table(home: &Path, old: &Path) -> (BTreeMap<String, String>, Vec<String
     }
     let chome = canon(home);
     let (names, _) = names_of(&versions);
+    let rel = version_bin(std::env::consts::EXE_SUFFIX);
     for v in names.iter().take(CANDIDATE_LIMIT) {
-        let bin = versions.join(v).join(VERSION_BIN);
-        if !fs::symlink_metadata(&bin).is_ok_and(|m| m.is_file()) {
+        // Every component is judged by `lstat`: a version folder or its `bin` that is a link
+        // would make the canonical path (the old identity) another one than the moved path (the
+        // new identity), so such a folder gets no alias.
+        let folder = versions.join(v);
+        let real_dir = |p: &Path| fs::symlink_metadata(p).is_ok_and(|m| m.is_dir());
+        let bin = folder.join(&rel);
+        if !real_dir(&folder)
+            || !real_dir(&folder.join("bin"))
+            || !fs::symlink_metadata(&bin).is_ok_and(|m| m.is_file())
+        {
             skipped.push(v.clone());
             continue;
         }
-        let new_bin = home_layout::rust_path(&chome, &format!("versions/{v}/{VERSION_BIN}"));
+        let new_bin = home_layout::rust_path(&chome, &format!("versions/{v}/{rel}"));
         match (install_id_of(&canon(&bin)), install_id_of(&new_bin)) {
             (Some(a), Some(b)) => {
                 table.insert(a, b);
@@ -284,6 +303,10 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     }
 
     let listed = old_kind == "folder";
+    if listed && !listable(&old) {
+        // A folder that cannot be listed is not an empty one: say so instead of "nothing to do".
+        blocks.push("state_dir_unreadable".into());
+    }
     let (names, unreadable) = if listed {
         names_of(&old)
     } else {
@@ -306,6 +329,9 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
 
     if listed && movable {
         let taken: BTreeSet<String> = if fs::symlink_metadata(&moai).is_ok_and(|m| m.is_dir()) {
+            if !listable(&moai) {
+                blocks.push("destination_unreadable".into());
+            }
             names_of(&moai)
                 .0
                 .iter()
@@ -352,6 +378,10 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
                 .sum::<u64>();
             if pending > 0 {
                 blocks.push(format!("go_items_not_retired:{pending}"));
+            } else if retire["action"] == "blocked" {
+                // The retirement preview could not list or judge everything (it lists at most
+                // 500 names), so zero pending items proves nothing about the Go items.
+                blocks.push("go_retire_preview_blocked".into());
             }
         }
 
@@ -505,6 +535,13 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Codex review P2 on #2987: the installer places `bin/moai-cli.exe` on Windows.
+    #[test]
+    fn the_version_binary_carries_the_platform_suffix() {
+        assert_eq!(version_bin(""), "bin/moai-cli");
+        assert_eq!(version_bin(".exe"), "bin/moai-cli.exe");
+    }
 
     fn row(name: &str) -> Option<&'static Entry> {
         home_layout::lookup(name)
