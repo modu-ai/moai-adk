@@ -174,11 +174,36 @@ pub enum Msg {
     /// `update` confirm preview title and question.
     UpdatePreview,
     ApplyUpdate,
+    /// S6c: the error frame's `cause:` label (the `error:` and `next:` labels are token words).
+    LabelCause,
+    /// S6c: a usage error's next step for one command; `{program}` and `{word}` as typed.
+    NextUsageWord,
+    /// S6c: a usage error's next step without a command word; `{program}` as typed.
+    NextUsageCommands,
+    /// S6c: the next step of a missing permission reference.
+    NextPermission,
+    /// S6c: the next step of an unsupported protocol version.
+    NextProtocol,
+    /// S6c: the next step of a stale plan.
+    NextStalePlan,
+    /// S6c: the next step of an input over its size limit.
+    NextInputTooLarge,
+    /// S6c: the first line of a usage error on a Korean terminal, by kind (design 5). The
+    /// English texts are clap's own words, which an English terminal keeps showing as clap
+    /// renders them; the argument a user typed is never put in.
+    UsageMissingArguments,
+    UsageUnknownArgument,
+    UsageInvalidValue,
+    UsageOther,
+    /// `install-inspect`'s terminal note when the first `moai` on PATH is not this generation's
+    /// (#2867; S6 follow-up of #2825). The English text is `install::PATH_FIRST_NOTE`, which the
+    /// envelope keeps in every language.
+    PathFirstNote,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 32] = [
+    pub const ALL: [Msg; 44] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -211,6 +236,18 @@ impl Msg {
         Msg::RemoveWithYes,
         Msg::UpdatePreview,
         Msg::ApplyUpdate,
+        Msg::LabelCause,
+        Msg::NextUsageWord,
+        Msg::NextUsageCommands,
+        Msg::NextPermission,
+        Msg::NextProtocol,
+        Msg::NextStalePlan,
+        Msg::NextInputTooLarge,
+        Msg::UsageMissingArguments,
+        Msg::UsageUnknownArgument,
+        Msg::UsageInvalidValue,
+        Msg::UsageOther,
+        Msg::PathFirstNote,
     ];
 }
 
@@ -283,6 +320,41 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (UpdatePreview, Ko) => "moai update 미리보기:",
         (ApplyUpdate, En) => "Apply this update?",
         (ApplyUpdate, Ko) => "이 업데이트를 적용할까요?",
+        (LabelCause, En) => "cause",
+        (LabelCause, Ko) => "원인",
+        (NextUsageWord, En) => "run `{program} {word} --help` to see its arguments",
+        (NextUsageWord, Ko) => "`{program} {word} --help` 로 인자를 확인하세요",
+        (NextUsageCommands, En) => "run `{program} --help` to see the commands",
+        (NextUsageCommands, Ko) => "`{program} --help` 로 명령 목록을 확인하세요",
+        (NextPermission, En) => {
+            "pass `--permission-reference <ref>`, the approval reference the host gives for this plan"
+        }
+        (NextPermission, Ko) => {
+            "이 plan 에 호스트가 준 승인 참조를 `--permission-reference <ref>` 로 넘기세요"
+        }
+        (NextProtocol, En) => {
+            "send version 1 (`protocol_version: 1`, or `schema_version: 1` in a request file)"
+        }
+        (NextProtocol, Ko) => {
+            "버전 1 로 보내세요(`protocol_version: 1`, 요청 파일이면 `schema_version: 1`)"
+        }
+        (NextStalePlan, En) => "make the plan again and apply it with the new digest",
+        (NextStalePlan, Ko) => "plan 을 다시 만들고 새 digest 로 적용하세요",
+        (NextInputTooLarge, En) => "send a smaller input",
+        (NextInputTooLarge, Ko) => "더 작은 입력을 보내세요",
+        (UsageMissingArguments, En) => "the following required arguments were not provided:",
+        (UsageMissingArguments, Ko) => "꼭 필요한 인자가 빠졌어요:",
+        (UsageUnknownArgument, En) => "unexpected argument",
+        (UsageUnknownArgument, Ko) => "알 수 없는 인자예요",
+        (UsageInvalidValue, En) => "invalid argument value",
+        (UsageInvalidValue, Ko) => "인자 값이 올바르지 않아요",
+        (UsageOther, En) => "invalid command line",
+        (UsageOther, Ko) => "명령줄이 올바르지 않아요",
+        (PathFirstNote, En) => crate::install::PATH_FIRST_NOTE,
+        (PathFirstNote, Ko) => {
+            "R5 전까지 hook 은 moai-cli 로 만들어져요. hook 이 moai 를 쓰게 하려면 Rust moai 를 \
+             PATH 맨 앞에 두세요(바꾼 것 없음)"
+        }
     }
 }
 

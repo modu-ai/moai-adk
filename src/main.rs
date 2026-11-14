@@ -1107,6 +1107,10 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+        /// The preview's `cleanup.confirm_token` (#2872): archive the Go leftovers it lists.
+        /// Without --confirm the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_cleanup: Option<String>,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -2459,21 +2463,37 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 project_dir: project_dir.as_deref(),
                 gobin: gobin.as_deref(),
             };
-            moai_cli::install::inspect(&home, &path_env, &places)
+            let result = moai_cli::install::inspect(&home, &path_env, &places)?;
+            // #2867: a person at a terminal sees the note once, in stderr's language (#2825);
+            // the envelope carries the English note in every language.
+            if result["path_first_moai"]["note"].is_string() && moai_cli::ui::stderr_is_terminal() {
+                let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+                let note = moai_cli::ui_text::text(moai_cli::ui_text::Msg::PathFirstNote, lang);
+                eprintln!("moai-cli: {note}");
+            }
+            Ok(result)
         }
-        Command::Update { confirm } => {
+        Command::Update {
+            confirm,
+            confirm_cleanup,
+        } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
             // The shared confirm prompt (#2806): same terminal rule and question as before.
-            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                use moai_cli::ui_text::Msg;
-                moai_cli::progress::ask_terminal(
-                    |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
-                    Msg::ApplyUpdate,
-                )
-            })
+            moai_cli::update::update_command(
+                &home,
+                confirm.as_deref(),
+                confirm_cleanup.as_deref(),
+                |summary| {
+                    use moai_cli::ui_text::Msg;
+                    moai_cli::progress::ask_terminal(
+                        |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                        Msg::ApplyUpdate,
+                    )
+                },
+            )
         }
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)
@@ -2701,17 +2721,36 @@ fn usage_error(e: clap::Error) -> ExitCode {
             Vec::new()
         };
         if moai_cli::ui::stderr_is_terminal() {
+            let painter = stderr_painter();
             let word = std::env::args().nth(1);
-            let next = moai_cli::error_next::next_action(
+            let next = moai_cli::error_next::next_action_in(
                 contract::Kind::Usage,
+                painter.lang,
                 &program_name(),
                 word.as_deref(),
                 message,
             );
-            let what = first.strip_prefix("error: ").unwrap_or(first);
+            // S6c (#2825, design 5): an English terminal keeps clap's first line; a Korean one
+            // reads our sentence for the kind. Clap's list of missing argument names (`detail`)
+            // stays, and nothing the user typed is put in.
+            let what = match painter.lang {
+                moai_cli::ui_text::Lang::En => first.strip_prefix("error: ").unwrap_or(first),
+                lang => {
+                    use moai_cli::ui_text::Msg;
+                    let msg = match e.kind() {
+                        ErrorKind::MissingRequiredArgument => Msg::UsageMissingArguments,
+                        ErrorKind::UnknownArgument => Msg::UsageUnknownArgument,
+                        ErrorKind::InvalidValue | ErrorKind::ValueValidation => {
+                            Msg::UsageInvalidValue
+                        }
+                        _ => Msg::UsageOther,
+                    };
+                    moai_cli::ui_text::text(msg, lang)
+                }
+            };
             eprint!(
                 "{}",
-                moai_cli::ui::error_frame(&stderr_painter(), what, &detail, None, next.as_deref())
+                moai_cli::ui::error_frame(&painter, what, &detail, None, next.as_deref())
             );
         } else {
             eprintln!("{first}");
@@ -2750,11 +2789,20 @@ fn print_operation_error(kind: contract::Kind, message: &str) {
         eprintln!("{message}");
         return;
     }
+    let painter = stderr_painter();
     let word = std::env::args().nth(1);
-    let next = moai_cli::error_next::next_action(kind, &program_name(), word.as_deref(), message);
+    // S6c (#2825): the labels and the next step in the stream's language; the message itself
+    // is the envelope's `error.message` and stays as it is (D3).
+    let next = moai_cli::error_next::next_action_in(
+        kind,
+        painter.lang,
+        &program_name(),
+        word.as_deref(),
+        message,
+    );
     eprint!(
         "{}",
-        moai_cli::ui::error_frame(&stderr_painter(), message, &[], None, next.as_deref())
+        moai_cli::ui::error_frame(&painter, message, &[], None, next.as_deref())
     );
 }
 

@@ -22,7 +22,9 @@ const PASS_BODY: &str = "Refs #2200\nMoai-Claim: 9#555\n\n## Self-Audit\n\n\
 - mutation: claim-verify guard mutated (claim filter removed) -> check FAILED, measured\n\
 - clone: check set from a fresh clone, not the /tmp symlink path\n\
 - host: api.github.com exercised via fake gh executable, no network\n\
-- receipt: receipt digest re-read and matched before PASS recorded\n";
+- receipt: receipt digest re-read and matched before PASS recorded\n\
+- plan: PLAN comment 6872621175\n\
+- red: gate_check failed first without the plan line\n";
 
 fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> String {
     for (path, text) in files {

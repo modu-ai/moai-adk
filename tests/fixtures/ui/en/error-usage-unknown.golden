@@ -1,0 +1,2 @@
+error: unexpected argument '--nope' found
+  next: run `moai-cli project-plan --help` to see its arguments

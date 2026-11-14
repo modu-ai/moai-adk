@@ -4,7 +4,7 @@
 
 MoAI ADK는 Claude Code와 Codex 안에서 하나의 공통 `moai` skill로 같은 작업 흐름(읽기 → 계획 → 실행 → 검증 → 감사 → 동기화)을 돌리고, GitHub Issues를 작업 장부로 쓰는 오픈소스 개발 도구입니다.
 
-> **상태: 출시 전 릴리스 후보(RC)입니다.** 이 가지(`v2026.11.0`)에는 Rust 세대 `moai-cli 2026.11.0-rc.1`이 있습니다. 아직 릴리스 자산은 게시되지 않았습니다. 지금의 안정판은 [`main`](https://github.com/modu-ai/moai-adk/tree/main) 가지의 Go 3.x 세대입니다([릴리스 목록](https://github.com/modu-ai/moai-adk/releases)).
+> **상태: 출시 전 릴리스 후보(RC)입니다.** 이 가지(`v2026.11.0`)에는 Rust 세대 버전 `2026.11.0-rc.1`(명령 `moai`)이 있습니다. 아직 릴리스 자산은 게시되지 않았습니다. 지금의 안정판은 [`main`](https://github.com/modu-ai/moai-adk/tree/main) 가지의 Go 3.x 세대입니다([릴리스 목록](https://github.com/modu-ai/moai-adk/releases)).
 
 ## 누구를 위한 것인가
 
@@ -35,12 +35,12 @@ host가 읽는 작업 흐름 원문은 [skills/moai/](skills/moai/SKILL.md)에 �
 | 항목 | RC1 (`v2026.11.0` 가지) | Go 3.x (`main` 가지) |
 | --- | --- | --- |
 | 언어 | Rust | Go |
-| 명령 | `moai-cli` | `moai` |
+| 명령 | `moai`(별칭 `moai-cli`) | `moai` |
 | 버전 | `2026.11.0-rc.1` (prerelease, 미출시) | 최신 릴리스 `v3.1.2` |
 | 상태 폴더 | `.moai-cli/`(프로젝트), `~/.moai-cli/`(사용자) | `.moai/`, `~/.moai/` |
 | host 진입 | Claude Code `/moai <요청>`, Codex `$moai <요청>` | Claude Code의 `/moai` 명령 |
 
-두 세대는 상태 폴더를 따로 쓰고, 서로를 업데이트하지 않습니다.
+두 세대는 상태 폴더를 따로 쓰고, 서로를 업데이트하지 않습니다. 두 세대 모두 명령 이름이 `moai`이므로 `moai --version`으로 구별합니다(릴리스 후보는 줄 끝에 `(rust)`가 붙습니다). 릴리스 후보는 별칭 `moai-cli`도 함께 빌드합니다. 별칭은 같은 `--version` 줄을 출력하고, 도움말에는 명령 이름이 `moai-cli`로 나옵니다.
 
 **RC1 목표 범위**는 Apple silicon macOS(`aarch64-apple-darwin`)에서 쓰는 Claude Code와 Codex입니다. 이것은 목표이지 지원 보증이 아닙니다. host가 skill을 읽는 종단 간 시험은 아직 돌리지 않았습니다. Linux, Intel macOS, Windows는 RC1 범위 밖입니다(일부는 CI에서 빌드와 시험만 합니다). 조합별 측정 상태는 [docs/support-matrix.md](docs/support-matrix.md)와 [docs/host-support-matrix.md](docs/host-support-matrix.md)에 있습니다.
 
@@ -61,10 +61,10 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 git checkout v2026.11.0
 cargo build --release --locked
-./target/release/moai-cli --version
+./target/release/moai --version
 ```
 
-마지막 명령은 `moai-cli 2026.11.0-rc.1`을 출력합니다. 이 명령들은 2026-11-11에 macOS 27.0.1(arm64)에서 빈 Cargo home으로, 가지 커밋 `1aad1ce01a`에서 실행해 확인했습니다. crate를 받은 뒤 release 빌드는 약 26초 걸렸습니다. 다른 플랫폼에서는 이 절차를 그대로 시험하지 않았습니다.
+마지막 명령은 `moai-cli 2026.11.0-rc.1 (rust)`를 출력합니다. `./target/release/moai-cli --version`도 같은 줄을 출력합니다. 이 명령들은 2026-11-14에 macOS 27.0.1(arm64)에서 빈 Cargo home으로, 가지 커밋 `0e9ad36fc4`에서 실행해 확인했습니다. crate를 받은 뒤 빈 빌드 폴더에서 release 빌드는 부하가 큰 기계에서 약 1분 26초 걸렸습니다. 다른 플랫폼에서는 이 절차를 그대로 시험하지 않았습니다.
 
 ## 첫 실행
 
@@ -75,14 +75,14 @@ cargo build --release --locked
 
 프로젝트에 `moai` skill을 추가하는 일과 위의 첫 요청은 **아직 종단 간으로 시험하지 않았습니다**(`not_run`, RC1 출시 대기). 사용자 흐름 초안은 [docs/user-entry-draft.md](docs/user-entry-draft.md)에 있습니다.
 
-`moai-cli --help`는 작업 흐름이 부르는 내부 명령을 보여 줍니다. skill이 쓰는 부품이지 매일 직접 쓰는 화면은 아닙니다.
+`moai --help`는 작업 흐름이 부르는 내부 명령을 보여 줍니다. skill이 쓰는 부품이지 매일 직접 쓰는 화면은 아닙니다.
 
 ## 사실 정리
 
 - 이름: MoAI ADK (Agentic Development Kit)
 - 저장소: https://github.com/modu-ai/moai-adk
 - 라이선스: Apache-2.0 ([LICENSE](LICENSE))
-- RC1 구현 언어: Rust, 실행 파일 이름 `moai-cli`
+- RC1 구현 언어: Rust, 실행 파일 이름 `moai`와 별칭 `moai-cli`
 - RC1 버전: `2026.11.0-rc.1` (prerelease, 미출시)
 - RC1 목표 host: macOS arm64의 Claude Code와 Codex (host 종단 간 시험 `not_run`)
 - 작업 장부: GitHub Issues, 병합 관문: `moai/audit` commit status

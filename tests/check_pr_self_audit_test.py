@@ -19,6 +19,8 @@ FULL = """Refs #2200
 - clone: check set from a fresh clone, not the /tmp symlink path
 - host: api.github.com exercised via fake gh executable, no network
 - receipt: receipt digest re-read and matched before PASS recorded
+- plan: PLAN comment 6872621175
+- red: check failed first without the plan line
 
 ## Notes
 """

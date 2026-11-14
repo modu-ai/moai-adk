@@ -1,0 +1,2 @@
+error: permission reference required
+  next: pass `--permission-reference <ref>`, the approval reference the host gives for this plan

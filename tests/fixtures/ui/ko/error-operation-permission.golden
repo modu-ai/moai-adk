@@ -1,0 +1,2 @@
+오류: permission reference required
+  다음: 이 plan 에 호스트가 준 승인 참조를 `--permission-reference <ref>` 로 넘기세요
