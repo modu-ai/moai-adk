@@ -415,3 +415,62 @@ fn the_two_day_limit_holds_through_the_apply() {
     assert_eq!(moved.len(), 1, "{v}");
     assert_eq!(moved[0]["original"], fx.build().to_string_lossy().as_ref());
 }
+
+/// Audit B1 on PR #2963: a merged worktree with an untracked file and a build output is the
+/// gc's `trim` case. The plan keeps it and the apply leaves it, its files and its git
+/// registration alone while the other items move.
+#[test]
+fn a_worktree_with_untracked_files_is_not_moved() {
+    let fx = fixture();
+    let wt = fx.root.join("wt-trim");
+    git(
+        &fx.repo,
+        &["worktree", "add", "-q", "-b", "trim", wt.to_str().unwrap()],
+    );
+    fs::write(wt.join("scratch.txt"), "mine\n").unwrap();
+    fs::create_dir_all(wt.join("target/debug")).unwrap();
+    fs::write(wt.join("target/debug/CACHEDIR.TAG"), TAG).unwrap();
+    let now = far(&fx);
+    let r = plan(&fx, now);
+    assert!(!held(&r).contains(&wt.to_string_lossy().to_string()), "{r}");
+    let v = apply(&fx, now, r["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(wt.join("scratch.txt").exists(), "{v}");
+    assert!(worktree_listed(&fx, &wt), "{v}");
+    assert!(!fx.wt().exists() && !fx.build().exists(), "{v}");
+    let manifest = fs::read_to_string(v["result"]["manifest"].as_str().unwrap()).unwrap();
+    assert!(!manifest.contains("wt-trim"), "{manifest}");
+}
+
+/// Audit B2 on PR #2963: a process that only names a held worktree in its command line is
+/// invisible to the plan (the gc looks at working folders), so the digest matches; the
+/// re-check right before the move sees the name, skips that worktree as `in_use` and the
+/// other item still moves.
+#[test]
+fn a_worktree_named_by_a_process_is_skipped_right_before_the_move() {
+    let fx = fixture();
+    let now = far(&fx);
+    let digest = plan(&fx, now)["plan_digest"].as_str().unwrap().to_string();
+    let mut namer = Command::new("/bin/sh")
+        .args(["-c", "/bin/sleep 30; :", "sh"])
+        .arg(fx.wt())
+        .current_dir(&fx.home)
+        .stdin(Stdio::null())
+        .spawn()
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    let v = apply(&fx, now, &digest);
+    let _ = namer.kill();
+    let _ = namer.wait();
+    assert_eq!(v["ok"], true, "{v}");
+    let res = &v["result"];
+    let skipped = res["skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 1, "{v}");
+    assert_eq!(skipped[0]["path"], fx.wt().to_string_lossy().as_ref());
+    assert_eq!(skipped[0]["reason"], "in_use", "{v}");
+    assert!(fx.wt().exists() && worktree_listed(&fx, &fx.wt()), "{v}");
+    assert!(!fx.build().exists(), "{v}");
+    let manifest = fs::read_to_string(res["manifest"].as_str().unwrap()).unwrap();
+    assert_eq!(manifest.lines().count(), 2, "{manifest}");
+    assert!(!manifest.contains("wt-merged"), "{manifest}");
+}

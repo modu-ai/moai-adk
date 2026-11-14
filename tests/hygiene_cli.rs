@@ -231,3 +231,28 @@ fn a_build_output_is_held_from_exactly_two_days_on() {
     let r = plan(&fx, newest_top(&d) + limit);
     assert_ne!(r["plan_digest"], before);
 }
+
+/// Audit B1 on PR #2963: a merged worktree whose tracked files are clean but that holds an
+/// untracked file next to a build output is the gc's `trim` case, not `remove`. Only `remove`
+/// is held, so the plan keeps it with the gc's first reason and lists it among the kept ones.
+#[test]
+fn a_merged_worktree_with_untracked_files_and_a_build_output_is_kept() {
+    let fx = fixture();
+    let wt = fx.repo.parent().unwrap().join("wt-trim");
+    git(
+        &fx.repo,
+        &["worktree", "add", "-q", "-b", "trim", wt.to_str().unwrap()],
+    );
+    fs::write(wt.join("scratch.txt"), "mine\n").unwrap();
+    fs::create_dir_all(wt.join("target/debug")).unwrap();
+    fs::write(wt.join("target/debug/CACHEDIR.TAG"), TAG).unwrap();
+    let far = newest_top(&fx.tmp.join("build-idle")) + 10 * 86_400;
+    let r = plan(&fx, far);
+    assert_eq!(
+        action(&r, "/wt-trim"),
+        ("keep".into(), "untracked_files".into()),
+        "{r}"
+    );
+    // The clean, merged one next to it is still held: the keep above is the untracked file's.
+    assert_eq!(action(&r, "/wt-merged").0, "hold", "{r}");
+}
