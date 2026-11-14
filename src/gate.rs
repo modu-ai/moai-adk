@@ -677,9 +677,58 @@ fn g3(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     }
 }
 
-/// G5: the `ci` aggregate succeeded, and every `ci / …` or `windows-build` run succeeded
-/// (`windows-build` may be `skipped` on a pull request: it runs after the merge, U10).
+/// `(head, result)` from the line `tools/local_check.sh` prints last (#2906 S5a): exactly
+/// `local-check: head=<40 lowercase hex> result=<pass|fail> cmd=tools/local_check.sh
+/// at=<YYYY-MM-DDTHH:MM:SSZ>`, from column 0, these fields in this order. Anything else (a
+/// short or long head, uppercase, no `at=`, another command, a `dirty=1` field) is `None`.
+pub fn parse_local_check(line: &str) -> Option<(&str, &str)> {
+    let rest = line.strip_prefix("local-check: head=")?;
+    let (head, rest) = rest.split_once(' ')?;
+    let (result, rest) = rest.strip_prefix("result=")?.split_once(' ')?;
+    let at = rest.strip_prefix("cmd=tools/local_check.sh at=")?;
+    let at_ok = at.len() == 20
+        && at.bytes().enumerate().all(|(i, b)| match i {
+            4 | 7 => b == b'-',
+            10 => b == b'T',
+            13 | 16 => b == b':',
+            19 => b == b'Z',
+            _ => b.is_ascii_digit(),
+        });
+    (is_hex40(head) && matches!(result, "pass" | "fail") && at_ok).then_some((head, result))
+}
+
+/// G5 (#2906 S5b, user decision 6877084436): the PR comments carry a `local-check:` line for
+/// this head ([`parse_local_check`]) and the last such line (highest comment id, last line
+/// within it) says `pass`. GitHub check runs do not block; [`ci_info`] reports them.
 fn g5(s: &Snapshot) -> Result<(), Stop> {
+    let last = s
+        .comments
+        .iter()
+        .flat_map(|c| {
+            c.body.lines().enumerate().filter_map(move |(i, l)| {
+                let (head, result) = parse_local_check(l)?;
+                (head == s.head).then_some((c.id, i, result))
+            })
+        })
+        .max_by_key(|&(id, i, _)| (id, i));
+    match last {
+        Some((_, _, "pass")) => Ok(()),
+        Some(_) => Err(Stop {
+            rule: "G5",
+            reason: "local-check result=fail on this head".into(),
+        }),
+        None => Err(Stop {
+            rule: "G5",
+            reason: "no local-check line for this head".into(),
+        }),
+    }
+}
+
+/// The head's GitHub CI, as information only (#2906 S5b): `ci=failure` when a `ci`, `rc-ci`,
+/// `ci / …`, `rc-ci / …` or `windows-build` run ended other than success (`windows-build` may
+/// be `skipped`: it runs after the merge, U10), else `ci=pending` while one runs or before a
+/// `ci`/`rc-ci` aggregate succeeded, `ci=success`, or `ci=none` when there is no such run.
+pub fn ci_info(s: &Snapshot) -> String {
     let watched = |n: &str| {
         n == "ci"
             || n == "rc-ci"
@@ -687,32 +736,26 @@ fn g5(s: &Snapshot) -> Result<(), Stop> {
             || n.starts_with("rc-ci / ")
             || n.starts_with("windows-build")
     };
-    let mut bad = Vec::new();
-    let mut aggregate = false;
-    for c in s.checks.iter().filter(|c| watched(&c.name)) {
-        let concl = c.conclusion.as_deref().unwrap_or("pending");
-        // `rc-ci` is the aggregate's earlier name (flow.rs `CI_CHECK_NAMES`, audit N1).
-        if (c.name == "ci" || c.name == "rc-ci") && concl == "success" {
-            aggregate = true;
-        }
-        let skipped_windows = c.name.starts_with("windows-build") && concl == "skipped";
-        if concl != "success" && !skipped_windows {
-            bad.push(format!("{}={concl}", c.name));
-        }
-    }
-    if !bad.is_empty() {
-        return Err(Stop {
-            rule: "G5",
-            reason: format!("check runs not successful: {}", bad.join(", ")),
-        });
-    }
-    if !aggregate {
-        return Err(Stop {
-            rule: "G5",
-            reason: "no successful `ci` aggregate on this head".into(),
-        });
-    }
-    Ok(())
+    let runs: Vec<&CheckRun> = s.checks.iter().filter(|c| watched(&c.name)).collect();
+    let failed = runs.iter().any(|c| match c.conclusion.as_deref() {
+        Some("success") | None => false,
+        Some("skipped") => !c.name.starts_with("windows-build"),
+        Some(_) => true,
+    });
+    // `rc-ci` is the aggregate's earlier name (flow.rs `CI_CHECK_NAMES`, audit N1).
+    let aggregate = runs.iter().any(|c| {
+        (c.name == "ci" || c.name == "rc-ci") && c.conclusion.as_deref() == Some("success")
+    });
+    let state = if runs.is_empty() {
+        "none"
+    } else if failed {
+        "failure"
+    } else if runs.iter().any(|c| c.conclusion.is_none()) || !aggregate {
+        "pending"
+    } else {
+        "success"
+    };
+    format!("ci={state}")
 }
 
 /// G6: a clean merge with the tip; files both the PR and the tip (since the verdict's base)
@@ -834,4 +877,58 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
     let overlap = g6(s)?;
     g7(s)?;
     Ok((base, overlap))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_local_check;
+
+    const AT: &str = "at=2026-11-14T12:00:00Z";
+
+    fn line(head: &str, result: &str) -> String {
+        format!("local-check: head={head} result={result} cmd=tools/local_check.sh {AT}")
+    }
+
+    /// #2906 S5b: 40 lowercase hex is read (N); 39 and 41 digits, uppercase or a non-hex
+    /// letter are not, whatever head the snapshot has.
+    #[test]
+    fn a_local_check_head_is_exactly_40_lowercase_hex() {
+        let h = "0123456789abcdef0123456789abcdef01234567";
+        assert_eq!(parse_local_check(&line(h, "pass")), Some((h, "pass")));
+        assert_eq!(parse_local_check(&line(h, "fail")), Some((h, "fail")));
+        assert_eq!(parse_local_check(&line(&h[..39], "pass")), None);
+        assert_eq!(parse_local_check(&line(&format!("{h}8"), "pass")), None);
+        assert_eq!(parse_local_check(&line(&h.to_uppercase(), "pass")), None);
+        assert_eq!(parse_local_check(&line(&h.replace('a', "g"), "pass")), None);
+        assert_eq!(parse_local_check(&line(h, "ok")), None);
+        assert_eq!(parse_local_check(&line(h, "")), None);
+    }
+
+    /// The time is `YYYY-MM-DDTHH:MM:SSZ` and nothing follows it.
+    #[test]
+    fn a_local_check_time_is_utc_seconds() {
+        let h = "0123456789abcdef0123456789abcdef01234567";
+        let with_at = |at: &str| {
+            format!("local-check: head={h} result=pass cmd=tools/local_check.sh at={at}")
+        };
+        assert!(parse_local_check(&with_at("2026-11-14T12:00:00Z")).is_some());
+        for bad in [
+            "",
+            "2026-11-14T12:00:00",
+            "2026-11-14T12:00:00Z ",
+            "2026-11-14T12:00:0Z",
+            "2026-11-14 12:00:00Z",
+            "2026/11/14T12:00:00Z",
+            "2026-11-14T12-00-00Z",
+            "2026-11-14T12:00:0aZ",
+        ] {
+            assert_eq!(parse_local_check(&with_at(bad)), None, "{bad:?}");
+        }
+        assert_eq!(
+            parse_local_check(&format!(
+                "local-check: head={h} result=pass cmd=tools/local_check.sh"
+            )),
+            None
+        );
+    }
 }

@@ -132,7 +132,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
             .any(|c| c.body.lines().next() == Some(first.as_str()));
         if !already {
             let mut body = format!(
-                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {verdict_id} on {} counts for {}. CI on {}: success (G5).\n\n| file | patch-id |\n| --- | --- |\n",
+                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {verdict_id} on {} counts for {}. local-check on {}: pass (G5).\n\n| file | patch-id |\n| --- | --- |\n",
                 short(&d.to),
                 short(&d.from),
                 short(&d.from),

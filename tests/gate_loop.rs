@@ -100,6 +100,8 @@ fn comments(head: &str, base: &str, auditor: &str, extra: Option<&str>) -> Value
     let mut v = vec![
         json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")}),
         json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: {auditor}.\n")}),
+        // #2906 S5b: G5 reads the local check line for the head.
+        json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")}),
     ];
     if let Some(e) = extra {
         v.push(json!({"id": 300, "body": e}));
@@ -786,7 +788,11 @@ fn the_loop_merges_a_tip_only_update_without_a_new_verdict() {
     let n = git(d, &["rev-parse", "HEAD"]).trim().to_string();
     git_ok(d, &["checkout", "-q", "main"]);
     // The claim and the PASS name the earlier head `b`.
-    let cs = comments(&b, &a, "agent-10", None);
+    // #2906 S5b: the local check line names the current head `n` (G5 reads it there).
+    let lc = format!(
+        "local-check: head={n} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n"
+    );
+    let cs = comments(&b, &a, "agent-10", Some(&lc));
     let mut ex = vec![list(
         json!([{"number": 9, "draft": false, "head": {"sha": n}}]),
     )];
@@ -1024,6 +1030,8 @@ fn a_failed_fetch_is_reported_and_the_pass_goes_on() {
 /// #2906 S3 AC15: the shell loop's jq list (`auto_loop.sh`) never hands these to its gate —
 /// the last `ci`/`rc-ci` conclusion is not SUCCESS, or the last verdict is not a PASS on the
 /// current head. The dry run reaches the same end: `stopped`, never a `would_*` action.
+/// #2906 S5b: CI no longer blocks, so a failed or running `ci` stops only without a
+/// `local-check:` pass line for the head (G5); with one the PR would merge.
 #[test]
 fn shell_prefilter_cases_stop_in_a_dry_run() {
     let older = "efefefefefefefefefefefefefefefefefefefef";
@@ -1037,9 +1045,14 @@ fn shell_prefilter_cases_stop_in_a_dry_run() {
         {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={b}\n")},
         {"id": 200, "body": format!("AUDIT #9 (x) head {b} base {a} — verdict: FAIL\n\n감사: agent-10.\n")},
     ]);
+    let mut no_local_check = pass.clone();
+    no_local_check
+        .as_array_mut()
+        .unwrap()
+        .retain(|c| c["id"] != json!(250));
     let cases: Vec<(&str, Value, Option<Value>)> = vec![
-        ("ci failure", pass.clone(), Some(json!("failure"))),
-        ("ci pending", pass.clone(), Some(Value::Null)),
+        ("ci failure", no_local_check.clone(), Some(json!("failure"))),
+        ("ci pending", no_local_check, Some(Value::Null)),
         (
             "PASS on an older head",
             comments(older, &a, "agent-10", None),
@@ -1064,5 +1077,17 @@ fn shell_prefilter_cases_stop_in_a_dry_run() {
             "{name}: {out}"
         );
         assert!(writes(&t).is_empty(), "{name}: {:?}", writes(&t));
+    }
+    for ci in [json!("failure"), Value::Null] {
+        let mut ex = vec![list(
+            json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+        )];
+        ex.extend(reads(&dir, &b, &pass));
+        ex[3] = checks(ci.clone());
+        let t = RecordedTransport::new(ex);
+        let out = once(&target(&dir), "", false, true, &t, &t, &NoClock).unwrap();
+        let row = &out["pull_requests"][0];
+        assert_eq!(row["outcome"], json!("would_merge"), "ci={ci}: {out}");
+        assert!(writes(&t).is_empty(), "ci={ci}: {:?}", writes(&t));
     }
 }

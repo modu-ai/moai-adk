@@ -96,7 +96,9 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
             response: ok(json!([
                 {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")},
-                {"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10.\n")}
+                {"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10.\n")},
+                // #2906 S5b: G5 reads the local check line for the head.
+                local_check(head)
             ])),
         },
         Exchange {
@@ -120,6 +122,11 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
         },
         tip_ci(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ]
+}
+
+/// The `local-check:` pass line for `head` (#2906 S5b, G5).
+fn local_check(head: &str) -> Value {
+    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
 }
 
 /// The tip's push CI read (every attempt) answering `runs`.
@@ -510,6 +517,7 @@ fn delta_reads(dir: &TempDir, n: &str, h: &str, base: &str, extra: &[Value]) -> 
     let mut comments = vec![
         json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={h}\n")}),
         json!({"id": 200, "body": format!("AUDIT #9 (x) head {h} base {base} — verdict: PASS\n\n감사: agent-10.\n")}),
+        local_check(n),
     ];
     comments.extend(extra.iter().cloned());
     let mut ex = reads(n, base, &tip, PASS_BODY);
@@ -552,6 +560,12 @@ fn a_mechanical_delta_is_recorded_first_then_merged() {
         "{body}"
     );
     assert!(body.contains("| `src/a.rs` |"), "{body}");
+    // #2906 S5b: the record names the local check line G5 read, not GitHub CI.
+    assert!(
+        body.contains(&format!("local-check on {}: pass (G5).", &n[..10])),
+        "{body}"
+    );
+    assert!(!body.contains("CI on"), "{body}");
     // The merge pins the current head, not the verdict head.
     let merge_put = sent.iter().find(|r| r.method == "PUT").unwrap();
     assert_eq!(merge_put.body.as_ref().unwrap()["sha"], json!(n));

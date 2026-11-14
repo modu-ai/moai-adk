@@ -101,8 +101,15 @@ fn tip_runs(sha: &str, runs: Value) -> Exchange {
     }
 }
 
-/// The reads `collect` makes, with a green tip push CI on `tip`.
-fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> RecordedTransport {
+/// The `local-check:` pass line for `head` (#2906 S5b, G5).
+fn local_check(head: &str) -> Value {
+    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+}
+
+/// The reads `collect` makes, with a green tip push CI on `tip`; the comments end with the
+/// local check pass line for `head` (#2906 S5b).
+fn exchanges(head: &str, tip: &str, mut comments: Vec<Value>, body: &str) -> RecordedTransport {
+    comments.push(local_check(head));
     RecordedTransport::new(vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
@@ -408,7 +415,7 @@ fn with_tip(head: &str, body: &str, tips: Vec<Exchange>, base: &str) -> Recorded
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
-            response: ok(json!([claim(head), verdict(head, base)])),
+            response: ok(json!([claim(head), verdict(head, base), local_check(head)])),
         },
         Exchange {
             request: HttpRequest::new(

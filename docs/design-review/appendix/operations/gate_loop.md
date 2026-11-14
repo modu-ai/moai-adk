@@ -53,7 +53,7 @@ operation `gate.loop` · 코드 `src/ops/gate_loop.rs`, `src/gate_loop.rs` · Is
 | --- | --- | --- |
 | `auto_handoff.py --post`(마감 인계 자동 게시) | 옮기지 않음 | 제품 설계가 "자동 인계 없음"이다(`src/claim.rs`, `src/handoff.rs`). 인계는 사람이나 리더가 쓴다. |
 | `refresh_counts.sh`(상태줄 counts 갱신) | 옮기지 않음 | 상태줄 렌더가 TTL 로 스스로 갱신하므로 루프가 할 일이 없다. |
-| `gh pr list … --jq`(CI SUCCESS 이고 지금 head 에 PASS 가 있는 PR 만 고름) | `gate-loop` 이 열린 PR 을 모두 게이트에 돌림 | 미리 거르지 않는다. 쉘이 거르던 두 경우(CI 가 SUCCESS 가 아님, 지금 head 에 PASS 없음)는 게이트가 멈춰 `stopped` 가 된다(`tests/gate_loop.rs` `shell_prefilter_cases_stop_in_a_dry_run`). |
+| `gh pr list … --jq`(CI SUCCESS 이고 지금 head 에 PASS 가 있는 PR 만 고름) | `gate-loop` 이 열린 PR 을 모두 게이트에 돌림 | 미리 거르지 않는다. 지금 head 에 PASS 가 없으면 게이트가 멈춰 `stopped` 가 된다. #2906 S5b 부터 CI 는 막지 않는다: CI 가 SUCCESS 가 아니어도 지금 head 의 `local-check:` pass 줄이 있으면 병합 대상이고, 그 줄이 없을 때만 G5 에서 `stopped` 가 된다(`tests/gate_loop.rs` `shell_prefilter_cases_stop_in_a_dry_run`). |
 | `git fetch -q origin <base> refs/pull/$N/head`(PR 마다) | `gate-loop --fetch` | 한 번의 fetch 에 명시 refspec 을 모두 담는다. `FETCH_HEAD` 에 기대지 않는다(`fetch_brings_open_heads_before_the_pass`). |
 | `gate_merge.sh $n` | `gate-merge`(루프 안에서 PR 마다) | 같은 게이트 규칙 G1–G9. |
 | "STOP overlap in non-doc file" → update-branch + 안내 | G6 → update-branch(`expected_head_sha`) + 안내, head 마다 한 번 | 쉘의 `auto-updated.txt` 대신 PR 댓글 속 숨은 표지. |
