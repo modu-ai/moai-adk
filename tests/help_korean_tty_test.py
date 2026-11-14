@@ -198,14 +198,16 @@ class KoreanHelp(unittest.TestCase):
     def test_a_usage_error_on_a_piped_stderr_stays_english(self):
         """Audit #2909 B1: clap prints the root usage in a usage error, so with stdout a Korean
         terminal and stderr a pipe the error bytes are the all-pipe bytes."""
-        for args in (["--bogus"], ["bogus"], ["project-detect"]):
-            _, piped_err, piped_code = pipe(args, env_for(self.home))
-            out, err, code = run_help(args, env_for(self.home, **KOREAN), stdout_tty=True,
-                                      stderr_tty=False)
-            self.assertEqual(code, piped_code, args)
-            self.assertNotEqual(code, 0, args)
-            self.assertEqual(err, piped_err, args)
-            self.assertNotIn("에이전트", err, args)
+        # Both ways to Korean (re-audit 6874932388 note: the locale was only probed).
+        for korean in (KOREAN, {"LANG": "ko_KR.UTF-8"}):
+            for args in (["--bogus"], ["bogus"], ["project-detect"]):
+                _, piped_err, piped_code = pipe(args, env_for(self.home))
+                out, err, code = run_help(args, env_for(self.home, **korean), stdout_tty=True,
+                                          stderr_tty=False)
+                self.assertEqual(code, piped_code, (korean, args))
+                self.assertNotEqual(code, 0, (korean, args))
+                self.assertEqual(err, piped_err, (korean, args))
+                self.assertNotIn("에이전트", err, (korean, args))
 
     def test_help_follows_stdout_not_stderr(self):
         """stdout a pipe and stderr a terminal: English help; stdout a terminal and stderr a
