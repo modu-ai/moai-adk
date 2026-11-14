@@ -59,7 +59,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `apply-recover`
 - `atlas-graph`
 - `atlas-map`
-- `atlas-tag-scan`
 - `audit-claim`
 - `audit-clone-plan`
 - `baseline-inventory`
@@ -93,13 +92,11 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `heavy-slot-acquire`
 - `heavy-slot-status`
 - `hook-dispatch`
-- `hook-receipt`
 - `hooks-apply`
 - `hooks-plan`
 - `hooks-revert`
 - `identity`
 - `index-build`
-- `index-query`
 - `install-inspect`
 - `key-import-apply`
 - `key-import-plan`
@@ -122,7 +119,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `migrate-plan`
 - `migrate-recover`
 - `migrate-recovery-plan`
-- `package-resolve`
 - `pr-body-render`
 - `pr-confirm`
 - `project-apply`
@@ -138,8 +134,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
-- `worktree-gc-apply`
-- `worktree-gc-plan`
 - `worktree-plan`
 - `worktree-report`
 
