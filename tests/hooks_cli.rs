@@ -307,7 +307,8 @@ fn home_directory_is_refused() {
         let err = hooks::apply(home.path(), host, Some(home.path()), "x", PERMISSION).unwrap_err();
         assert!(err.contains("home directory refused"), "{err}");
     }
-    for dir in [".claude", ".codex", ".omp", ".agents", ".moai-cli"] {
+    // #2696 C4b: both HOME state roots, the earlier `.moai-cli` and this generation's `.moai`.
+    for dir in [".claude", ".codex", ".omp", ".agents", ".moai-cli", ".moai"] {
         let inside = home.path().join(dir).join("p");
         fs::create_dir_all(&inside).unwrap();
         let err = hooks::plan(&inside, "codex", Some(home.path())).unwrap_err();
