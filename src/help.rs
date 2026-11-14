@@ -940,16 +940,25 @@ pub fn configure_in(
 ) -> Command {
     let groups = render_groups_in(&cmd, all, width(), lang);
     let footer = footer(lang, bin, all);
-    let (usage_heading, options_heading, lead_or_agent) = match lang {
-        Lang::En => ("{usage-heading}", "Options:", LEAD_OR_AGENT),
-        Lang::Ko => (USAGE_KO, OPTIONS_KO, LEAD_OR_AGENT_KO),
+    let options_heading = match lang {
+        Lang::En => "Options:",
+        Lang::Ko => OPTIONS_KO,
     };
-    // The usage's second line starts under the first one's command, whatever the heading's
-    // width (`Usage:` is six cells, a Korean heading counts two per letter).
-    let usage_indent = match lang {
-        Lang::En => "Usage:".width(),
-        Lang::Ko => USAGE_KO.width(),
-    } + 1;
+    // clap prints the root usage in a usage error on stderr too (`moai --bogus`), so the usage
+    // it holds stays English whatever stdout's language (audit #2909 B1, S6-2): a Korean help
+    // spells its usage lines out in the template instead. The second line starts under the
+    // first one's command (`Usage:` is six cells, a Korean heading two per letter).
+    let usage = format!(
+        "{bin} <command> [options]\n{}{bin} cc|codex|glm -l|-a    {LEAD_OR_AGENT}",
+        " ".repeat("Usage:".width() + 1)
+    );
+    let usage_lines = match lang {
+        Lang::En => "{usage-heading} {usage}".to_string(),
+        Lang::Ko => format!(
+            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|codex|glm -l|-a    {LEAD_OR_AGENT_KO}",
+            " ".repeat(USAGE_KO.width() + 1)
+        ),
+    };
     // The template is literal text plus clap's `{usage-heading} {usage}` and, for `--all`,
     // `{options}`; braces in the group text would read as template tags, and command abouts
     // carry none (pinned by `help_text_has_no_template_braces`).
@@ -959,7 +968,7 @@ pub fn configure_in(
         String::new()
     };
     let template = format!(
-        "MoAI-ADK {version} — agentic development kit\n\n{usage_heading} {{usage}}\n\n{groups}{options}\n{footer}\n"
+        "MoAI-ADK {version} — agentic development kit\n\n{usage_lines}\n\n{groups}{options}\n{footer}\n"
     );
     // `mut_subcommands` keeps the command order and never panics on a name the table lacks
     // (`mut_subcommand` moves the command to the end and panics on an unknown one).
@@ -992,10 +1001,7 @@ pub fn configure_in(
     // included, with no cap of its own; the cap holds every help line to `MAX_WIDTH`.
     cmd.bin_name(bin)
         .max_term_width(MAX_WIDTH)
-        .override_usage(format!(
-            "{bin} <command> [options]\n{}{bin} cc|codex|glm -l|-a    {lead_or_agent}",
-            " ".repeat(usage_indent)
-        ))
+        .override_usage(usage)
         .help_template(template)
 }
 
@@ -1168,6 +1174,20 @@ mod tests {
     /// in Korean; the usage's second line stays under the first command; English is today's.
     #[test]
     fn the_korean_frame_has_korean_heads_and_footer() {
+        // Audit #2909 B1: clap prints the root usage in a usage error on stderr, so a Korean
+        // help leaves the usage clap holds English — the error bytes do not follow stdout.
+        for args in [&["moai", "--bogus"][..], &["moai", "bogus"][..]] {
+            let error = |lang: Lang| {
+                configure_in(root_cmd(), "moai", "9.9.9", false, lang)
+                    .try_get_matches_from(args)
+                    .unwrap_err()
+                    .render()
+                    .to_string()
+            };
+            let en = error(Lang::En);
+            assert!(en.contains("lead or agent session"), "{en}");
+            assert_eq!(error(Lang::Ko), en, "{args:?}");
+        }
         let render = |all: bool, lang: Lang| -> String {
             configure_in(root_cmd(), "moai", "9.9.9", all, lang)
                 .render_help()

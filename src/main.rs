@@ -3058,11 +3058,14 @@ mod tests {
             let bin = moai_cli::help::bin_name(argv0);
             let mut argv = vec![argv0];
             argv.extend_from_slice(args);
-            let out = match moai_cli::help::configure(
+            // English whatever the terminal running the tests says (audit #2909 N1): this pins
+            // the names, not the language.
+            let out = match moai_cli::help::configure_in(
                 Cli::command(),
                 bin,
                 moai_cli::BUILD_VERSION,
                 false,
+                moai_cli::ui_text::Lang::En,
             )
             .try_get_matches_from(argv)
             {
@@ -3626,9 +3629,16 @@ mod help_rules {
         }
     }
 
-    /// The command as people see it: the layout `main` parses with (examples attached).
+    /// The command as people see it: the layout `main` parses with (examples attached), in
+    /// English whatever the terminal running the tests says (audit #2909 N1).
     fn configured() -> clap::Command {
-        moai_cli::help::configure(Cli::command(), "moai", moai_cli::BUILD_VERSION, false)
+        moai_cli::help::configure_in(
+            Cli::command(),
+            "moai",
+            moai_cli::BUILD_VERSION,
+            false,
+            moai_cli::ui_text::Lang::En,
+        )
     }
 
     /// Every command's `--help` carries an `Examples:` section (#2802 S1c).
