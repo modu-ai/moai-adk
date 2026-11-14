@@ -157,19 +157,14 @@ pub fn apply(home: &Path, token: &str, permission_reference: &str) -> Result<Val
             "the home token differs from the preview's; nothing applied, preview again".into(),
         );
     }
-    let mut r = home_retire::apply_confirmed(
+    // The result already names the revert command, with the `--home` it ran against.
+    home_retire::apply_confirmed(
         home,
         moai_home.as_deref(),
         &now,
         content,
         permission_reference,
-    )?;
-    if let Some(stamp) = r["stamp"].as_str().map(str::to_string) {
-        r["revert"] = json!(format!(
-            "moai home-retire-revert --stamp {stamp} --permission-reference <reference>"
-        ));
-    }
-    Ok(r)
+    )
 }
 
 #[cfg(test)]
@@ -272,6 +267,10 @@ mod tests {
         assert!(!moai.join("cache").exists() && moai.join("appeared-later").is_file());
         let revert = r["revert"].as_str().unwrap();
         assert!(revert.contains(&format!("--stamp {}", r["stamp"].as_str().unwrap())));
+        assert!(
+            revert.contains(&format!("--home {}", home.display())),
+            "{revert}"
+        );
     }
 
     #[test]

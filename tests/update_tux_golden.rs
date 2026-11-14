@@ -507,6 +507,7 @@ fn the_home_part_is_shown_with_its_own_command() {
         assert!(text.contains(retired), "{text}");
         assert!(text.contains("moai home-retire-revert --stamp 20261114T080000Z"));
         assert!(!text.contains("--confirm-home"), "{text}");
+        assert!(!text.contains(counts), "the old preview row stays: {text}");
         // Blocked, or everything in use: a row, no command.
         for part in [
             serde_json::json!({"action": "blocked", "counts": {"retire": 0, "keep": 2, "skip-in-use": 0},
