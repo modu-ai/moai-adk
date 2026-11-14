@@ -645,7 +645,7 @@ pub struct ClaimFields {
     pub relay: bool,
 }
 
-/// The one claim-line generator: acquire, queue-next and a relaying leader all render
+/// The one claim-line generator: acquire and a relaying leader all render
 /// through it, and `claim_verify::classify_comment` parses what it writes.
 pub fn render_claim_line(f: &ClaimFields) -> String {
     let mut line = format!(

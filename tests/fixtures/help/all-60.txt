@@ -136,12 +136,13 @@ Lane and leader
                           comment
   claim-verify            Check claim ownership before a
                           commit or push
+  claim-timeout-check     Check the three timeout takeover
+                          conditions of a claim
   claim-show              Show the current claim record of a
                           task
   claim-release           Close the active claim as
                           cancelled
   claim-handoff           Hand a claim to another session
-  queue-next              Claim the next free card
   queue-free              List the open cards a lane may
                           take
   queue-query             Read the merge train from the
@@ -150,6 +151,7 @@ Lane and leader
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its
                           host
+  lane-stop-hook          Answer a Codex lane's Stop hook
   lane-resume-note        Write a card's resume note
   lane-resume-check       Read a card's resume note from a
                           comment
@@ -183,6 +185,10 @@ Lane and leader
                           gate passes
   gate-loop               Run one pass of the leader merge
                           loop
+  gate-schedule-plan      Preview a scheduler entry for
+                          gate-loop
+  gate-schedule-apply     Write a previewed gate-loop
+                          scheduler entry
   wait                    Wait until a condition holds on
                           GitHub
   scope-check             Check a claim's write scope
