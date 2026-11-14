@@ -418,6 +418,9 @@ mod tests {
     fn claim_issue_is_read_only_at_a_line_start() {
         assert_eq!(claim_issue("x\nMoai-Claim: 7#123\n"), Some(7));
         assert_eq!(claim_issue("receipt: `Moai-Claim: 7#123` in commits"), None);
+        // Mid-line, even when the rest would parse (#2898's body before its edit).
+        assert_eq!(claim_issue("trailer is Moai-Claim: 7#123"), None);
+        assert_eq!(claim_issue("  Moai-Claim: 7#123  "), Some(7));
         assert_eq!(claim_issue("Moai-Claim: 7#abc"), None);
     }
 
