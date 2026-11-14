@@ -56,6 +56,7 @@ pub mod hook_engine;
 pub mod hook_guards;
 pub mod hooks;
 pub mod hosts;
+pub mod hygiene;
 pub mod identity;
 pub mod index;
 pub mod index_records;

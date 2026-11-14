@@ -297,6 +297,8 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  hygiene-plan            Preview what may move to the
+                          holding folder
   session                 Start a Claude Code session
                           (legacy form)
 

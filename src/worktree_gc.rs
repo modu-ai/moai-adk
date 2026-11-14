@@ -283,7 +283,7 @@ pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
 }
 
 /// Working directories of the processes this user can see; `None` without a source.
-pub(crate) fn process_cwds() -> Option<Vec<PathBuf>> {
+pub fn process_cwds() -> Option<Vec<PathBuf>> {
     if Path::new("/proc/self/cwd").exists() {
         let mut out = Vec::new();
         for e in fs::read_dir("/proc").ok()?.flatten() {

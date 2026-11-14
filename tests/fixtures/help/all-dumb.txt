@@ -184,6 +184,7 @@ Internal
   archive-search          Search the archived SPECs
   worktree-gc-plan        Preview removing or trimming merged worktrees
   worktree-gc-apply       Remove or trim the previewed worktrees
+  hygiene-plan            Preview what may move to the holding folder
   session                 Start a Claude Code session (legacy form)
 
 Options:
