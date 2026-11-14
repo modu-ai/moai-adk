@@ -44,6 +44,8 @@ pub struct Args {
 pub const OPERATION: &str = "wait";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    // Static progress lines on a stderr terminal (#2806); silent on a pipe.
+    moai_cli::progress::install_stderr();
     let (owner, repo) = args
         .repo
         .split_once('/')

@@ -68,6 +68,7 @@ pub mod parity;
 pub mod plan;
 pub mod pr_link;
 pub mod profile;
+pub mod progress;
 pub mod project_detect;
 pub mod project_skills;
 pub mod queue;
