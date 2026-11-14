@@ -762,9 +762,6 @@ fn git_subcommand_positions(args: &[String]) -> Vec<usize> {
     out
 }
 
-/// Every command a shell line runs, as (name without its path, arguments), past assignments
-/// and wrapper words, with a shell's `-c` script expanded one level deep — the same reading
-/// `runs_git` uses. Quoted text stays one argument and is never a command.
 /// Like [`shell_commands`] for the top level of `command`, with the `NAME=value` assignments
 /// written before each command (#2878: `GIT_AUTHOR_EMAIL=x git commit`). Commands inside
 /// `sh -c` are not opened here.
@@ -787,6 +784,9 @@ pub(crate) fn shell_commands_with_env(command: &str) -> Vec<(Vec<String>, String
         .collect()
 }
 
+/// Every command a shell line runs, as (name without its path, arguments), past assignments
+/// and wrapper words, with a shell's `-c` script expanded one level deep — the same reading
+/// `runs_git` uses. Quoted text stays one argument and is never a command.
 pub(crate) fn shell_commands(command: &str) -> Vec<(String, Vec<String>)> {
     let mut out = Vec::new();
     collect_commands(command, 0, &mut out);
