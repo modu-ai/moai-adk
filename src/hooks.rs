@@ -38,7 +38,16 @@ pub enum Handler {
     /// except a Bash `git commit` / `git push` in a lane worktree whose claim does not verify,
     /// which it refuses with exit 2 — the code both hosts treat as blocking.
     ClaimGuard,
+    /// `hook-dispatch --event tool-preflight`: the hook engine's write and command guards
+    /// (dangerous Bash, `.git` internals, credential folders, private keys and tokens). Claude
+    /// Code only for now (#2877 leader Q1): it keeps the protection the Go-generation hooks gave
+    /// once those are replaced. Answers with the documented PreToolUse deny object, never allow.
+    Preflight,
 }
+
+/// The tools the Claude preflight guard sees: the hook engine's Bash and write guards
+/// (`hook_engine::capabilities("claude")`).
+pub const CLAUDE_PREFLIGHT_MATCHER: &str = "Bash|Write|Edit|MultiEdit|NotebookEdit";
 
 /// The MoAI hook set: (event, matcher, handler). Receipts at session start, after each Bash
 /// tool call and at turn end; one blocking guard before each Bash tool call, which refuses
@@ -183,6 +192,9 @@ pub fn hook_command(host: &str, handler: Handler) -> String {
     match handler {
         Handler::Receipt => format!("{HOOK_BINARY} hook-receipt --host {host}"),
         Handler::ClaimGuard => format!("{HOOK_BINARY} claim-verify . --hook"),
+        Handler::Preflight => {
+            format!("{HOOK_BINARY} hook-dispatch --host {host} --event tool-preflight")
+        }
     }
 }
 
@@ -215,20 +227,47 @@ pub fn binary_state(path_env: &str) -> Value {
     }
 }
 
-/// The hook set as a host `hooks` object (event -> matcher groups -> handlers).
+/// The hook set of one host: [`HOOK_SET`], and for Claude Code the preflight guard after the
+/// claim guard (#2877 Q1).
+pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
+    let mut set = HOOK_SET.to_vec();
+    if host == "claude" {
+        let at = set
+            .iter()
+            .position(|(e, _, _)| *e == "PreToolUse")
+            .map_or(set.len(), |i| i + 1);
+        set.insert(
+            at,
+            (
+                "PreToolUse",
+                Some(CLAUDE_PREFLIGHT_MATCHER),
+                Handler::Preflight,
+            ),
+        );
+    }
+    set
+}
+
+/// The hook set as a host `hooks` object (event -> matcher groups -> handlers); two entries of
+/// one event are two matcher groups, in [`hook_set`] order.
 pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     check_host(host)?;
     let mut out = Map::new();
-    for (event, matcher, handler) in HOOK_SET {
+    for (event, matcher, handler) in hook_set(host) {
         let mut group = Map::new();
         if let Some(m) = matcher {
             group.insert("matcher".into(), json!(m));
         }
         group.insert(
             "hooks".into(),
-            json!([{"type": "command", "command": hook_command(host, *handler), "timeout": HOOK_TIMEOUT_SECS}]),
+            json!([{"type": "command", "command": hook_command(host, handler), "timeout": HOOK_TIMEOUT_SECS}]),
         );
-        out.insert((*event).into(), json!([group]));
+        let groups = out
+            .entry(event.to_string())
+            .or_insert_with(|| Value::Array(Vec::new()));
+        if let Some(list) = groups.as_array_mut() {
+            list.push(Value::Object(group));
+        }
     }
     Ok(out)
 }
@@ -244,10 +283,10 @@ fn hook_list(host: &str) -> Value {
             })
             .collect();
     }
-    HOOK_SET
-        .iter()
+    hook_set(host)
+        .into_iter()
         .map(|(event, matcher, handler)| {
-            json!({"event": event, "matcher": matcher, "command": hook_command(host, *handler),
+            json!({"event": event, "matcher": matcher, "command": hook_command(host, handler),
                    "timeout": HOOK_TIMEOUT_SECS})
         })
         .collect()
