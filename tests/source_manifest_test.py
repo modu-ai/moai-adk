@@ -262,6 +262,46 @@ class SourceManifestTest(unittest.TestCase):
         report = r.assert_tool("write", 2)
         self.assertIn("workflows/link.md is a link", report["needs_person"])
 
+    def test_a_fifo_in_the_package_is_refused_without_reading_it(self):
+        # #2849 audit B1: reading a FIFO would block forever; the timeout only turns a hang
+        # into a failure (a normal run takes well under a second).
+        r = self.repo
+        os.mkfifo(r.root / PKG / "workflows/pipe")
+        for command in ("check", "write"):
+            out = subprocess.run([sys.executable, "-I", str(TOOL), command, "--root", str(r.root)],
+                                 capture_output=True, text=True, timeout=60)
+            self.assertEqual(out.returncode, 2, out.stdout + out.stderr)
+            self.assertIn("workflows/pipe is not a regular file", out.stdout)
+
+    def test_a_linked_path_to_the_manifest_is_refused_and_nothing_outside_is_written(self):
+        # #2849 audit B2: a linked package root would send the write outside the repository.
+        for linked in ("skills", "skills/moai", "skills/moai/references",
+                       "skills/moai/references/source-manifest.json"):
+            with self.subTest(linked=linked), tempfile.TemporaryDirectory() as tmp:
+                r = Repo(tmp)
+                outside = Path(tmp) / "outside"
+                real = r.root / linked
+                os.rename(real, outside)
+                os.symlink(outside, real)
+                r.put("workflows/a.md", LINES + "more\n")
+                before = {p: p.read_bytes() for p in outside.rglob("*") if p.is_file()} \
+                    if outside.is_dir() else {outside: outside.read_bytes()}
+                for command in ("check", "write"):
+                    report = r.assert_tool(command, 2)
+                    self.assertIn(f"{linked} is a link", report["needs_person"])
+                after = {p: p.read_bytes() for p in outside.rglob("*") if p.is_file()} \
+                    if outside.is_dir() else {outside: outside.read_bytes()}
+                self.assertEqual(after, before, "nothing outside the repository changes")
+
+    def test_write_keeps_the_manifest_mode(self):
+        # #2849 audit N1: mkstemp makes 0600; the rewritten manifest keeps its own mode.
+        r = self.repo
+        path = r.root / PKG / MANIFEST
+        os.chmod(path, 0o640)
+        r.put("workflows/a.md", LINES + "more\n")
+        self.assertTrue(r.assert_tool("write", 0)["written"])
+        self.assertEqual(os.stat(path).st_mode & 0o777, 0o640)
+
     def test_a_markdown_heading_underline_is_not_a_conflict(self):
         r = self.repo
         r.put("workflows/a.md", "Title\n=======\n")

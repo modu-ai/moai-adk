@@ -14,7 +14,8 @@ as JSON, the `files` maps are joined (our order first, then entries only the oth
 has) and every sha256 is recomputed from the files on disk. It writes nothing and exits 2
 when a person has to decide: an entry whose `origin` differs between the sides, a
 top-level value other than `files` that differs, a skill file that still holds conflict
-markers, a new file with no entry (its `origin` is the author's to write), or a link.
+markers, a new file with no entry (its `origin` is the author's to write), a link anywhere from the repository root to the
+manifest or in the package, or a file that is not a regular file (a FIFO would block).
 Entries of deleted files are dropped and reported. The file is written in its existing
 form, `json.dumps(indent=2, ensure_ascii=False)` plus a newline, and only when it changes.
 """
@@ -22,6 +23,7 @@ import argparse
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -223,11 +225,35 @@ def package_files(package):
         for name in filenames:
             path = base / name
             rel = path.relative_to(package).as_posix()
-            if path.is_symlink():
+            mode = os.lstat(path).st_mode
+            if stat.S_ISLNK(mode):
                 raise NeedsPerson(f"{rel} is a link")
+            # A FIFO or device would block or never end a read (#2849 audit B1).
+            if not stat.S_ISREG(mode):
+                raise NeedsPerson(f"{rel} is not a regular file")
             if rel != MANIFEST:
                 out.append(rel)
     return sorted(out)
+
+
+def guard(root):
+    """Refuse a package path that is not plain: every folder from the repository root down to
+    the manifest's must be a real folder and the manifest a regular file, never a link that
+    would send a write outside the repository (#2849 audit B2)."""
+    here = Path(root)
+    parts = (PACKAGE / MANIFEST).parts
+    for i, part in enumerate(parts):
+        here = here / part
+        rel = Path(*parts[: i + 1]).as_posix()
+        try:
+            mode = os.lstat(here).st_mode
+        except FileNotFoundError:
+            raise NeedsPerson(f"{rel} is missing") from None
+        if stat.S_ISLNK(mode):
+            raise NeedsPerson(f"{rel} is a link")
+        last = i == len(parts) - 1
+        if (last and not stat.S_ISREG(mode)) or (not last and not stat.S_ISDIR(mode)):
+            raise NeedsPerson(f"{rel} is not a regular {'file' if last else 'folder'}")
 
 
 def sha256(path):
@@ -237,6 +263,7 @@ def sha256(path):
 def rebuild(root, stages=None):
     """`(manifest_object, report)` with every sha256 recomputed; raises `NeedsPerson`.
     `stages` defaults to the git index's unmerged versions of the manifest, if any."""
+    guard(root)
     package = Path(root) / PACKAGE
     text = (package / MANIFEST).read_text(encoding="utf-8")
     if stages is None:
@@ -277,6 +304,7 @@ def render(data):
 
 
 def check(root):
+    guard(root)
     package = Path(root) / PACKAGE
     text = (package / MANIFEST).read_text(encoding="utf-8")
     data, report = rebuild(root)
@@ -290,10 +318,13 @@ def write(root, stages=None):
     new = render(data)
     report["written"] = new != path.read_text(encoding="utf-8")
     if report["written"]:
+        mode = stat.S_IMODE(os.lstat(path).st_mode)
         fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".source-manifest.", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
                 f.write(new)
+            # mkstemp makes 0600; keep the manifest's own mode (#2849 audit N1).
+            os.chmod(tmp, mode)
             os.replace(tmp, path)
         except BaseException:
             Path(tmp).unlink(missing_ok=True)
