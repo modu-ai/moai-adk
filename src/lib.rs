@@ -34,6 +34,7 @@ pub mod gate;
 pub mod gate_collect;
 pub mod gate_loop;
 pub mod gate_merge;
+pub mod gate_schedule;
 pub mod generation;
 pub mod github_templates;
 pub mod go_hooks;
