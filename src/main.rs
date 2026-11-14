@@ -681,6 +681,21 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Undo the hook set one update applied
+    ///
+    /// Undo the hook layer one confirmed `update` applied in PROJECT (#2853), from its receipt:
+    /// a host's files get their earlier bytes back only while all of them still hold what the
+    /// update wrote; a host changed since is skipped and named.
+    HooksRevert {
+        /// The project the update ran in.
+        project: PathBuf,
+        /// The receipt id the update printed under `hooks_result.receipt`.
+        #[arg(long)]
+        receipt: String,
+        /// Caller-supplied permission reference (recorded; not an authorization verifier).
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Record one hook receipt line
     ///
     /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
@@ -1427,6 +1442,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
+        HooksRevert { .. } => "hooks.revert",
         Identity { .. } => "identity",
         IndexBuild { .. } => "index.build",
         IndexQuery { .. } => "index.query",
@@ -2244,6 +2260,11 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
             Ok(out)
         }
+        Command::HooksRevert {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::update_hooks::revert(&project, &receipt, &permission_reference),
         Command::HooksApply {
             project,
             host,
