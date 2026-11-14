@@ -97,6 +97,40 @@ fn canon(p: &Path) -> PathBuf {
     fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
 }
 
+/// The top-level names (lower-cased, the default macOS volume does not tell the case) that hold a
+/// Go marker: the entry itself, or the folder the marker file sits in.
+fn marker_holders(markers: &[String]) -> Vec<String> {
+    markers
+        .iter()
+        .filter_map(|m| m.strip_prefix(MOAI_DIR)?.strip_prefix('/'))
+        .filter_map(|rest| rest.split('/').next())
+        .map(str::to_ascii_lowercase)
+        .collect()
+}
+
+/// #2970 Codex review 4574332849: the Go markers are what makes a HOME `go` (or, beside a Rust
+/// marker, `mixed`). A retire that takes them while an entry is in use leaves a HOME that no
+/// longer reads as either, so the next preview lists nothing and that entry can never retire.
+/// While any entry is in use, the entries that hold a marker wait; the rest retire now, and the
+/// markers go with the entry in use once it is free. Other generations keep their verdict from
+/// the Rust marker, so they are not held.
+fn hold_markers_while_in_use(generation: &str, markers: &[String], entries: &mut [Value]) {
+    if !matches!(generation, "go" | "mixed")
+        || !entries.iter().any(|e| e["action"] == "skip-in-use")
+    {
+        return;
+    }
+    let holders = marker_holders(markers);
+    for e in entries.iter_mut() {
+        let name = e["name"].as_str().unwrap_or_default().to_ascii_lowercase();
+        if e["action"] == "retire" && holders.contains(&name) {
+            e["action"] = json!("keep");
+            e["reason"] = json!("marker_waits_for_in_use");
+            e["destination"] = Value::Null;
+        }
+    }
+}
+
 /// The preview for the HOME at `home`. `moai_home` is the `MOAI_HOME` value, `now` the clock
 /// as `YYYY-MM-DDTHH:MM:SSZ` (names the dated folder). Writes nothing.
 pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, String> {
@@ -162,7 +196,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     let in_use = (active && blocks.is_empty()).then(InUse::read);
     let canon_moai = canon(&moai);
     let limit = crate::go_state::unrecorded_limit();
-    let entries: Vec<Value> = names
+    let mut entries: Vec<Value> = names
         .iter()
         .take(CANDIDATE_LIMIT)
         .map(|n| {
@@ -218,6 +252,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             })
         })
         .collect();
+    hold_markers_while_in_use(c.generation, &c.go_markers, &mut entries);
 
     let count = |a: &str| entries.iter().filter(|e| e["action"] == a).count();
     let counts = json!({
@@ -245,6 +280,16 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         .any(|e| e["reason"] == "merge_candidate_kept")
     {
         warnings.push("a key file stays in place until the merge step has offered it".to_string());
+    }
+    if entries
+        .iter()
+        .any(|e| e["reason"] == "marker_waits_for_in_use")
+    {
+        warnings.push(
+            "an entry is in use, so the entries that hold a Go marker wait and the rest retire; \
+             preview again once the program stops"
+                .to_string(),
+        );
     }
 
     let folder_shown = active.then(|| folder.display().to_string());
@@ -467,8 +512,23 @@ fn apply_checked(
             "outcome": i.outcome,
         })).collect::<Vec<_>>(),
         "revert": format!("home-retire-revert --home {} --stamp {stamp} --permission-reference <ref>", home.display()),
-        "rerun": "home-retire-plan again: with no Go marker left the action is `none`",
+        "partial": report.items.len() > moved,
+        "rerun": rerun_text(report.items.len() - moved),
     }))
+}
+
+/// What to do next. An entry the journal skipped (a program started using it after the preview)
+/// may have been left behind with its Go markers already retired; then the HOME can read as no
+/// generation, the next preview lists nothing, and the way forward is the revert, then a new
+/// preview.
+fn rerun_text(not_moved: usize) -> &'static str {
+    if not_moved == 0 {
+        "home-retire-plan again: with no Go marker left the action is `none`"
+    } else {
+        "some entries were not moved (a program started using them after the preview): run \
+         home-retire-plan again; if it lists nothing while Go items remain, run home-retire-revert \
+         with this stamp, then preview again once the program has stopped"
+    }
 }
 
 /// Create `path` exclusively and write `bytes` into it, fsynced.
@@ -540,6 +600,16 @@ pub fn revert(
                 root.display()
             ))
         }
+    }
+    // #2970 Codex review 4574332851: the replay renames into `~/.moai`; a link there would send
+    // the retired entries (a credentials file among them) to wherever it points. Absent is left
+    // to the replay (it reports what it cannot put back).
+    let moai = home.join(MOAI_DIR);
+    if fs::symlink_metadata(&moai).is_ok_and(|m| !m.is_dir()) {
+        return Err(format!(
+            "{} is a link or not a folder; nothing was moved",
+            moai.display()
+        ));
     }
     let path = find_journal(&root, stamp)?;
     let journal = move_journal::read_journal(&path)?;
@@ -687,5 +757,84 @@ mod tests {
                 assert_eq!(action, "keep", "{name}");
             }
         }
+    }
+
+    #[test]
+    fn a_marker_is_held_by_the_top_level_name_it_sits_in() {
+        let markers = [
+            ".moai/user-assets.json".to_string(),
+            ".moai/state/active-sessions.json".to_string(),
+            ".moai/Credentials.yaml".to_string(),
+            // Not under `.moai/`, and the folder itself: no holder.
+            "other/x.json".to_string(),
+            ".moai".to_string(),
+        ];
+        assert_eq!(
+            marker_holders(&markers),
+            vec!["user-assets.json", "state", "credentials.yaml"]
+        );
+        assert!(marker_holders(&[]).is_empty());
+    }
+
+    fn row(name: &str, action: &str) -> Value {
+        json!({"name": name, "action": action, "reason": "r", "destination": "/to"})
+    }
+
+    /// While an entry is in use, only the entries that hold a Go marker wait, and only on a
+    /// generation whose verdict the markers decide. The match ignores case.
+    #[test]
+    fn the_markers_wait_only_while_an_entry_is_in_use_and_only_on_go_and_mixed() {
+        let markers = vec![
+            ".moai/user-assets.json".to_string(),
+            ".moai/state/active-sessions.json".to_string(),
+        ];
+        let entries = || {
+            vec![
+                row("User-Assets.json", "retire"),
+                row("state", "retire"),
+                row("cache", "retire"),
+                row("Logs", "skip-in-use"),
+                row("specs", "keep"),
+            ]
+        };
+        let actions = |v: &[Value]| -> Vec<String> {
+            v.iter()
+                .map(|e| e["action"].as_str().unwrap().to_string())
+                .collect()
+        };
+        for g in ["go", "mixed"] {
+            let mut e = entries();
+            hold_markers_while_in_use(g, &markers, &mut e);
+            assert_eq!(
+                actions(&e),
+                ["keep", "keep", "retire", "skip-in-use", "keep"],
+                "{g}"
+            );
+            assert_eq!(e[0]["reason"], json!("marker_waits_for_in_use"));
+            assert_eq!(e[0]["destination"], Value::Null);
+            // An entry that already stays keeps its own reason.
+            assert_eq!(e[4]["reason"], json!("r"));
+        }
+        for g in ["rust-first", "rust", "unknown", "empty", "none"] {
+            let mut e = entries();
+            hold_markers_while_in_use(g, &markers, &mut e);
+            assert_eq!(
+                actions(&e),
+                ["retire", "retire", "retire", "skip-in-use", "keep"],
+                "{g}"
+            );
+        }
+        // Nothing in use: nothing waits.
+        let mut free = vec![row("user-assets.json", "retire"), row("state", "retire")];
+        hold_markers_while_in_use("go", &markers, &mut free);
+        assert_eq!(actions(&free), ["retire", "retire"]);
+    }
+
+    #[test]
+    fn the_next_step_after_an_apply_says_when_something_was_not_moved() {
+        assert!(rerun_text(0).contains("`none`"));
+        let partial = rerun_text(1);
+        assert!(partial.contains("home-retire-revert") && partial.contains("not moved"));
+        assert_ne!(rerun_text(0), partial);
     }
 }
