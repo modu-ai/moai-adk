@@ -378,30 +378,13 @@ impl Painter {
     }
 }
 
-/// The language of human output on `stream` (S6a, Issue #2825; design 2.1, S6-2): English
-/// whenever the stream is not a terminal, otherwise `MOAI_LANG`, the profile's
-/// `language.user_chat` of the project holding the current folder, the locale, English
-/// ([`crate::ui_text::choose`]). Nothing is read for a pipe, and a failed read is silently the
-/// next step. The answer is computed once per stream and process (S6b, audit #2862 N3): a
-/// command that paints many lines reads the profile once.
-pub fn ui_lang(stream: Stream) -> crate::ui_text::Lang {
-    use std::sync::OnceLock;
-    static STDOUT: OnceLock<crate::ui_text::Lang> = OnceLock::new();
-    static STDERR: OnceLock<crate::ui_text::Lang> = OnceLock::new();
-    let cell = match stream {
-        Stream::Stdout => &STDOUT,
-        Stream::Stderr => &STDERR,
-    };
-    *cell.get_or_init(|| {
-        let cwd = std::env::current_dir().ok();
-        let home = crate::home_workdir::home().ok();
-        crate::ui_text::for_stream(
-            stream.is_terminal(),
-            &|k| std::env::var(k).ok(),
-            cwd.as_deref(),
-            home.as_deref(),
-        )
-    })
+/// The language of human output on `stream`: English, on every stream and under every setting
+/// (Issue #2825 R1, user decision 6878265192 — the CLI's human output is English only; the
+/// user's language belongs to the LLM session). `MOAI_LANG`, the profile's `language.user_chat`
+/// and the locale are not read. The Korean texts that S6a–S6e added stay unused until R2 removes
+/// them.
+pub fn ui_lang(_stream: Stream) -> crate::ui_text::Lang {
+    crate::ui_text::Lang::En
 }
 
 /// Whether stderr is a terminal: the error frame (D2 §4) is drawn only there, so a pipe — a
