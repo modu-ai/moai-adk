@@ -373,12 +373,6 @@ enum Command {
         #[arg(long)]
         dir: Option<PathBuf>,
     },
-    /// Claim the next free card
-    ///
-    /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
-    /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
-    /// candidate through `claim-acquire` under one journal lock.
-    QueueNext { project: PathBuf },
     /// List the open cards a lane may take
     ///
     /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
@@ -1478,7 +1472,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         ProjectPlan { .. } => "project.plan",
         HeavySlotAcquire { .. } => "heavy_slot.acquire",
         HeavySlotStatus { .. } => "heavy_slot.status",
-        QueueNext { .. } => "queue.next",
         QueueFree { .. } => "queue.free",
         QueueQuery { .. } => "queue.query",
         RecoveryApply { .. } => "recovery.apply",
@@ -1618,12 +1611,6 @@ fn run_internal(
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
             input::<moai_cli::claim::ClaimRequest>()?,
-            &moai_cli::forge::transport::GhTransport::from_env()?,
-            &moai_cli::forge::policy::SystemClock,
-        ),
-        Command::QueueNext { project } => moai_cli::queue::next_cli(
-            &project,
-            input::<moai_cli::queue::QueueRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),

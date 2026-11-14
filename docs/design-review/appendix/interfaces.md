@@ -136,7 +136,6 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `project-detect`
 - `project-plan`
 - `queue-free`
-- `queue-next`
 - `queue-query`
 - `recovery-apply`
 - `recovery-plan`
