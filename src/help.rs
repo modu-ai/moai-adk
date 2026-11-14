@@ -138,6 +138,7 @@ pub const GROUPS: &[Group] = &[
             ("leader-tick", false),
             ("lane-next", false),
             ("lane-loop-line", false),
+            ("lane-stop-hook", false),
             ("lane-resume-note", false),
             ("lane-resume-check", false),
             ("lane-duty-line", false),
@@ -265,7 +266,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("claude-settings-apply", &["claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("codex-config-plan", &["codex-config-plan . < request.json", "codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("codex-config-apply", &["codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
+    ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> .", "hooks-plan --host codex --lane-loop agent-1 --repo modu-ai/moai-adk ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
     ("go-hooks-plan", &["go-hooks-plan .", "go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -351,6 +352,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &["lane-resume-note --lane agent-1 --issue 2904 --claim 6874514212 --lease-until 2026-11-14T14:00:00Z --branch issue/2904-x --head <40-hex> --uncommitted 0 --next push"],
     ),
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
+    (
+        "lane-stop-hook",
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+    ),
     (
         "lane-duty-line",
         &[
