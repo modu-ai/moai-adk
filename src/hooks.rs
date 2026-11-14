@@ -269,7 +269,14 @@ fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
         ]
         .iter()
         .any(|d| root.starts_with(home.join(d)));
-        if root == home || inside_config {
+        // #2696 C4b: `~/.moai` is refused only when it is this generation's HOME state folder
+        // (marker present), and even then not under its worktree folder, where W2 creates
+        // worktrees and the Go generation keeps its own (`home_workdir::worktrees_root`). A Go
+        // `~/.moai` without the marker is not ours and is not refused here (audit #2848 B1).
+        let inside_state = crate::home_root::dir(&home) == crate::home_root::MOAI_DIR
+            && root.starts_with(home.join(crate::home_root::MOAI_DIR))
+            && !root.starts_with(crate::home_workdir::worktrees_root(&home));
+        if root == home || inside_config || inside_state {
             return Err("home directory refused; hooks are written to a project tree only".into());
         }
     }
