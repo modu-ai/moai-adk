@@ -65,6 +65,16 @@ fn each_reason_keeps_the_issue_open() {
     let r = verdict(&snap("OPEN", json!([c(2, &unmet)]), json!([])));
     assert_eq!(r["verdict"], json!("keep_open"), "{r}");
     assert_eq!(r["unmet"], json!(["| AC-2 | later | 후속 #12 |"]));
+    // A met word undone by what follows it (audit 6874717869 B1, its end-to-end probe).
+    for verdict_cell in ["병합 대기", "충족 아님", "완료 예정", "충족(일부)", "pass?"]
+    {
+        let t = format!(
+            "CLOSE-TABLE #7\n\n| AC | 상태 | 근거 |\n| --- | --- | --- |\n| AC-1 | 충족 | test |\n| AC-2 | {verdict_cell} | PR #9 열림 |"
+        );
+        let r = verdict(&snap("OPEN", json!([c(2, &t)]), json!([])));
+        assert_eq!(r["verdict"], json!("keep_open"), "{verdict_cell}: {r}");
+        assert_eq!(r["unmet"].as_array().unwrap().len(), 1, "{verdict_cell}");
+    }
     // An open pull request that claims this Issue; one that only mentions it does not count.
     let r = verdict(&snap(
         "OPEN",

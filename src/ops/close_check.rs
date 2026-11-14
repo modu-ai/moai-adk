@@ -9,9 +9,10 @@ use std::path::PathBuf;
 /// Answer whether a lane may close its own card now: the newest comment whose first line is
 /// `CLOSE-TABLE #<n>` holds criteria tables (a column headed 판정, 상태, 결과, verdict or
 /// status) whose every row is met (충족, 해당 없음, 끝, 병합, 지킴, 완료, closed, met, pass,
-/// done, n/a), and no open pull request claims the Issue (`Moai-Claim: <n>#…` at a body line
-/// start). Verdicts: close, keep_open, no_table, already_closed, uncertain. One GraphQL
-/// request; writes nothing.
+/// done, n/a) with no undoing word after it (아님, 전, 예정, 대기, 남음, 일부, not, pending, …) or
+/// `?`, and no open pull request claims the Issue (`Moai-Claim: <n>#…` at a body line start,
+/// found by cross-reference or by search). Verdicts: close, keep_open, no_table,
+/// already_closed, uncertain. One GraphQL request; writes nothing.
 #[derive(clap::Args)]
 pub struct Args {
     /// The Issue number.

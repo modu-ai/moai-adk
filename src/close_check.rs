@@ -5,8 +5,9 @@
 //! The close table is the newest comment whose first line starts `CLOSE-TABLE #<n>`. A
 //! Markdown table in it is a criteria table when a header cell after the first starts with a
 //! verdict heading ([`VERDICT_HEADINGS`]); a row whose verdict cell does not start with a word
-//! that means "met" ([`MET`]) keeps the Issue open, and so does an open pull request whose body
-//! names this Issue in `Moai-Claim: <n>#<comment>`. Both word lists come from the close tables
+//! that means "met" ([`MET`]) — and is not undone by a later word ([`UNDOING`]) or a `?` —
+//! keeps the Issue open, and so does an open pull request whose body names this Issue in
+//! `Moai-Claim: <n>#<comment>`. Fenced code blocks are not read as tables. Both word lists come from the close tables
 //! of the 25 newest closed Issues on 2026-11-14 (상태 / 판정 / 결과 columns; 충족 76, 끝 20,
 //! 병합 3, 지킴 2, `CLOSED …` 6 rows); tables without such a column (남은 것 | 근거 | 몫) list
 //! leftovers, not criteria.
@@ -34,6 +35,47 @@ pub const MET: [&str; 11] = [
     "pass",
     "done",
     "n/a",
+];
+
+/// Words that undo a met word when they follow it anywhere in the cell, as a whole word (case
+/// ignored): negation and not-yet (`충족 아님`, `병합 대기`, `완료 예정`, `충족(일부)`,
+/// `충족 — B2 남음`, `pass 아님`, `met? no` — audit 6874717869 B1). A `?` anywhere after the
+/// met word does the same. Wrong in this direction leaves an Issue open for a person to close;
+/// the other way an unmet criterion would vanish.
+pub const UNDOING: [&str; 33] = [
+    "아님",
+    "아니",
+    "아니요",
+    "아니오",
+    "않음",
+    "안",
+    "전",
+    "전에",
+    "예정",
+    "대기",
+    "남음",
+    "남은",
+    "남아",
+    "일부",
+    "부분",
+    "보류",
+    "미정",
+    "미완",
+    "후속",
+    "진행",
+    "진행중",
+    "실패",
+    "no",
+    "not",
+    "pending",
+    "partial",
+    "partially",
+    "todo",
+    "tbd",
+    "wip",
+    "later",
+    "fail",
+    "failed",
 ];
 
 /// Header cells (after the first column) that name the verdict column; a prefix match, case
@@ -65,6 +107,12 @@ pub struct Snapshot {
     /// What was left unread (older comments, a failed read).
     #[serde(default)]
     pub partial: Vec<String>,
+}
+
+/// The search for open pull requests whose text names `Moai-Claim: <n>#`; the hits are then
+/// read by [`claim_issue`], so a loose search match is never taken as a claim.
+pub fn claim_search(owner: &str, repo: &str, n: u64) -> String {
+    format!("repo:{owner}/{repo} is:pr is:open \"Moai-Claim: {n}#\"")
 }
 
 /// `Moai-Claim: <issue>#<comment>` at the start of a body line: the Issue.
@@ -120,10 +168,16 @@ fn is_separator(line: &str) -> bool {
 pub fn is_met(cell: &str) -> bool {
     let lower = cell.trim().to_lowercase();
     MET.iter().any(|w| {
-        lower
-            .strip_prefix(w)
-            .is_some_and(|rest| !rest.starts_with(char::is_alphanumeric))
+        lower.strip_prefix(w).is_some_and(|rest| {
+            !rest.starts_with(char::is_alphanumeric) && !rest.contains('?') && !undone(rest)
+        })
     })
+}
+
+/// The rest of a cell after its met word holds an [`UNDOING`] word.
+fn undone(rest: &str) -> bool {
+    rest.split(|c: char| !c.is_alphanumeric())
+        .any(|word| UNDOING.contains(&word))
 }
 
 /// The verdict column of a header row: the first cell after the first that starts with a
@@ -140,14 +194,31 @@ fn verdict_column(header: &str) -> Option<usize> {
 
 /// Criterion rows of the criteria tables in `body`, and those whose verdict cell is not met.
 /// The first row of each table is its header and the row under it the separator; neither is a
-/// criterion. A row too short to have the verdict cell is not met.
+/// criterion. A row too short to have the verdict cell is not met. Lines inside a fenced code
+/// block (```` ``` ```` or `~~~`) are text, not a table (audit 6874717869 N2).
 pub fn unmet_rows(body: &str) -> (usize, Vec<String>) {
     let mut rows = 0;
     let mut unmet = Vec::new();
     // `None` outside a table; `Some(col)` inside one, `col` its verdict column if any.
     let mut table: Option<Option<usize>> = None;
+    let mut fence: Option<&str> = None;
     for line in body.lines() {
-        if !line.trim_start().starts_with('|') {
+        let t = line.trim_start();
+        let marker = ["```", "~~~"].into_iter().find(|m| t.starts_with(m));
+        match (fence, marker) {
+            (None, Some(m)) => {
+                fence = Some(m);
+                table = None;
+                continue;
+            }
+            (Some(f), Some(m)) if f == m => {
+                fence = None;
+                continue;
+            }
+            (Some(_), _) => continue,
+            (None, None) => {}
+        }
+        if !t.starts_with('|') {
             table = None;
             continue;
         }
@@ -246,16 +317,21 @@ pub fn decide(snap: &Snapshot) -> Value {
 const GRAPHQL_URL: &str = "https://api.github.com/graphql";
 
 const QUERY: &str =
-    "query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){\
+    "query($owner:String!,$repo:String!,$n:Int!,$claims:String!){repository(owner:$owner,name:$repo){\
 issue(number:$n){number state comments(last:100){totalCount nodes{databaseId body createdAt}} \
 timelineItems(itemTypes:[CROSS_REFERENCED_EVENT],last:100){nodes{...on CrossReferencedEvent{\
-source{...on PullRequest{number state body}}}}}}}}";
+source{...on PullRequest{number state body}}}}}}} \
+claimers:search(query:$claims,type:ISSUE,first:30){nodes{...on PullRequest{number state body}}}}";
 
 /// Reads the Issue, its newest comments and the pull requests that refer to it in one GraphQL
-/// request.
+/// request: those that cross-reference it (`#<n>` in their text) and the open ones a search for
+/// `Moai-Claim: <n>#` finds, since a body with only the claim line may make no cross-reference
+/// (audit 6874717869 N1).
 pub fn collect<T: Transport>(owner: &str, repo: &str, n: u64, t: &T) -> Result<Snapshot, String> {
-    let req = HttpRequest::new("POST", GRAPHQL_URL)
-        .with_body(json!({"query": QUERY, "variables": {"owner": owner, "repo": repo, "n": n}}));
+    let req = HttpRequest::new("POST", GRAPHQL_URL).with_body(
+        json!({"query": QUERY, "variables": {"owner": owner, "repo": repo, "n": n,
+            "claims": claim_search(owner, repo, n)}}),
+    );
     let resp = t.send(&req)?;
     if resp.status != 200 {
         return Err(format!("GraphQL returned HTTP {}", resp.status));
@@ -289,12 +365,16 @@ pub fn collect<T: Transport>(owner: &str, repo: &str, n: u64, t: &T) -> Result<S
         ));
     }
     let mut prs: Vec<RefPr> = Vec::new();
-    for e in issue["timelineItems"]["nodes"]
+    let referring = issue["timelineItems"]["nodes"]
         .as_array()
         .into_iter()
         .flatten()
-    {
-        let pr = &e["source"];
+        .map(|e| &e["source"]);
+    let claiming = body["data"]["claimers"]["nodes"]
+        .as_array()
+        .into_iter()
+        .flatten();
+    for pr in referring.chain(claiming) {
         let Some(number) = pr["number"].as_u64() else {
             continue;
         };
@@ -358,9 +438,46 @@ mod tests {
             "열림(감사 대기)",
             "metric",
             "closedown",
+            // Audit 6874717869 B1: a met word undone by what follows it.
+            "충족 아님",
+            "충족(일부)",
+            "충족 — B2 남음",
+            "pass 아님",
+            "met? no",
+            "끝 아님",
+            "done? 아니요",
+            "병합 전",
+            "완료 예정",
+            "n/a?",
+            "병합 대기",
+            "충족 (pending)",
+            "done, not yet merged",
+            "PASS — 재감사 후속",
         ] {
             assert!(!is_met(no), "{no}");
         }
+        // Words that merely contain an undoing word stay met (`전역` is not `전`, `notes`
+        // is not `not`, `안내` is not `안`).
+        for yes in [
+            "충족 — 판정 함수는 ColorFlag 를 받음. 전역",
+            "met (notes in PR body)",
+            "충족 — 안내 줄 한 번",
+            "끝(대용, 리더 결정 6868714203)",
+        ] {
+            assert!(is_met(yes), "{yes}");
+        }
+    }
+
+    #[test]
+    fn fenced_code_is_not_a_table() {
+        let fenced = format!("{TABLE}\n\n```\n| a | 상태 |\n| - | - |\n| x | 미충족 |\n```\n~~~md\n| b | 상태 |\n| - | - |\n| y | 일부 |\n~~~\n");
+        assert_eq!(unmet_rows(&fenced), (2, vec![]));
+        // An unclosed fence hides the rest; a table after a closed fence is read again.
+        let after = "```\nx\n```\n| a | 상태 |\n| - | - |\n| x | 일부 |";
+        assert_eq!(unmet_rows(after).1.len(), 1);
+        // A ``` line does not close a ~~~ fence.
+        let mixed = "~~~\n```\n| a | 상태 |\n| - | - |\n| x | 일부 |\n~~~";
+        assert_eq!(unmet_rows(mixed), (0, vec![]));
     }
 
     #[test]
@@ -454,7 +571,8 @@ mod tests {
         assert_eq!(t.0.borrow().len(), 1);
         assert_eq!(
             t.0.borrow()[0]["variables"],
-            json!({"owner": "o", "repo": "r", "n": 7})
+            json!({"owner": "o", "repo": "r", "n": 7,
+                   "claims": "repo:o/r is:pr is:open \"Moai-Claim: 7#\""})
         );
         assert_eq!(snap.prs.len(), 2);
         assert_eq!(snap.prs[0].claim_issue, Some(7));
@@ -463,6 +581,31 @@ mod tests {
         // A table found among the comments read decides even when older ones are unread.
         assert_eq!(decide(&snap)["verdict"], json!("close"));
         assert_eq!(decide(&snap)["merged_prs"], json!([9]));
+    }
+
+    /// Audit 6874717869 N1: an open pull request whose body carries only the claim line (no
+    /// `#<n>`, so no cross-reference) is found by the search and keeps the Issue open; a search
+    /// hit that claims another Issue does not.
+    #[test]
+    fn a_claim_only_pull_request_is_found_by_the_search() {
+        let answer = json!({"data": {
+            "repository": {"issue": {
+                "number": 7, "state": "OPEN",
+                "comments": {"totalCount": 1, "nodes": [{"databaseId": 5, "body": TABLE}]},
+                "timelineItems": {"nodes": [
+                    {"source": {"number": 9, "state": "MERGED", "body": "Moai-Claim: 7#1"}}]}}},
+            "claimers": {"nodes": [
+                {"number": 9, "state": "MERGED", "body": "Moai-Claim: 7#1"},
+                {"number": 11, "state": "OPEN", "body": "## x\nMoai-Claim: 7#1"},
+                {"number": 12, "state": "OPEN", "body": "Moai-Claim: 77#1"}]}}});
+        let t = Fixed(RefCell::new(Vec::new()), answer);
+        let snap = collect("o", "r", 7, &t).unwrap();
+        assert_eq!(t.0.borrow().len(), 1);
+        let numbers: Vec<u64> = snap.prs.iter().map(|p| p.number).collect();
+        assert_eq!(numbers, vec![9, 11, 12]);
+        let r = decide(&snap);
+        assert_eq!(r["verdict"], json!("keep_open"), "{r}");
+        assert_eq!(r["open_prs"], json!([11]));
     }
 
     #[test]
