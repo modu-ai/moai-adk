@@ -15,7 +15,7 @@
       "retryable": false
     }
   },
-  "stderr": "error: the following required arguments were not provided:\n",
+  "stderr": "error: the following required arguments were not provided:\n  <PROJECT>\n",
   "masked_keys": [
     "target_binding",
     "plan_digest",

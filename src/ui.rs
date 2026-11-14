@@ -327,6 +327,37 @@ impl Painter {
     }
 }
 
+/// Whether stderr is a terminal: the error frame (D2 §4) is drawn only there, so a pipe — a
+/// lane, a script, a test — keeps today's one-line message byte for byte (D3 6865936070).
+pub fn stderr_is_terminal() -> bool {
+    Stream::Stderr.is_terminal()
+}
+
+/// The stderr error frame (D2 §4, card #2804): what failed, then the indented `detail` lines
+/// as given (a usage error's missing argument names), then why and what to do next. The last
+/// line is always the next step when there is one (clig.dev "Errors"). Every label is a word,
+/// so the frame reads the same without color.
+pub fn error_frame(
+    p: &Painter,
+    what: &str,
+    detail: &[&str],
+    cause: Option<&str>,
+    next: Option<&str>,
+) -> String {
+    let mut out = format!("{} {what}\n", p.paint(Token::Error, "error:"));
+    for line in detail {
+        out.push_str(line);
+        out.push('\n');
+    }
+    if let Some(cause) = cause {
+        out.push_str(&format!("  {} {cause}\n", p.paint(Token::Muted, "cause:")));
+    }
+    if let Some(next) = next {
+        out.push_str(&format!("  {} {next}\n", p.paint(Token::Info, "next:")));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,5 +521,68 @@ mod tests {
             assert!(!s.contains("38;5;") && !s.contains("38;2;"), "{t:?}: {s:?}");
         }
         assert_eq!(p.paint(Token::Ok, ""), "");
+    }
+
+    /// Card #2804: the frame's golden shapes. Plain (NO_COLOR, TERM=dumb, ASCII) is the same
+    /// text with no escape; color paints only the labels; `next` is always the last line.
+    #[test]
+    fn the_error_frame_reads_what_detail_cause_then_next() {
+        let plain = Painter::plain();
+        assert_eq!(
+            error_frame(
+                &plain,
+                "the following required arguments were not provided:",
+                &["  <PROJECT>"],
+                Some("the plan is older than the files"),
+                Some("run `moai project-plan --help` to see its arguments"),
+            ),
+            "error: the following required arguments were not provided:\n  <PROJECT>\n  cause: the plan is older than the files\n  next: run `moai project-plan --help` to see its arguments\n"
+        );
+        // Nothing optional: one line, the same words a pipe would show after `error: `.
+        assert_eq!(
+            error_frame(&plain, "invalid typed JSON input", &[], None, None),
+            "error: invalid typed JSON input\n"
+        );
+        let ascii = Painter {
+            color: false,
+            unicode: false,
+        };
+        let unicode = Painter {
+            color: false,
+            unicode: true,
+        };
+        let f = |p: &Painter| error_frame(p, "x", &[], None, Some("y"));
+        assert_eq!(f(&ascii), f(&unicode), "no symbol rides in the frame");
+
+        let color = Painter {
+            color: true,
+            unicode: true,
+        };
+        let painted = error_frame(&color, "x", &["  d"], Some("c"), Some("n"));
+        assert_eq!(
+            painted,
+            "\u{1b}[31merror:\u{1b}[0m x\n  d\n  \u{1b}[90mcause:\u{1b}[0m c\n  \u{1b}[36mnext:\u{1b}[0m n\n"
+        );
+        // Stripping the escapes gives the plain frame back: color carries no meaning alone.
+        let stripped: String = {
+            let mut out = String::new();
+            let mut it = painted.chars().peekable();
+            while let Some(ch) = it.next() {
+                if ch == '\u{1b}' {
+                    for c in it.by_ref() {
+                        if c == 'm' {
+                            break;
+                        }
+                    }
+                } else {
+                    out.push(ch);
+                }
+            }
+            out
+        };
+        assert_eq!(
+            stripped,
+            error_frame(&plain, "x", &["  d"], Some("c"), Some("n"))
+        );
     }
 }
