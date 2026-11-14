@@ -194,7 +194,7 @@ fn update_previews_then_applies_on_confirmation_then_is_unchanged() {
     assert!(p["confirm_with"]
         .as_str()
         .unwrap()
-        .contains(&format!("moai-cli update --confirm {}", digest(&p))));
+        .contains(&format!("moai update --confirm {}", digest(&p))));
     for h in HOSTS {
         assert_eq!(
             host(&p["plan"]["hosts"], h)["preflight"],
