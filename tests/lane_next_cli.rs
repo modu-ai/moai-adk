@@ -15,12 +15,17 @@ fn h(c: char) -> String {
 }
 
 fn next(snap: &Value) -> Value {
+    next_with(snap, &[])
+}
+
+fn next_with(snap: &Value, args: &[&str]) -> Value {
     let d = TempDir::new().unwrap();
     let file = d.path().join("snap.json");
     std::fs::write(&file, snap.to_string()).unwrap();
     let out = Command::new(EXE)
         .args(["lane-next", "--lane", LANE, "--repo", "o/r", "--snapshot"])
         .arg(&file)
+        .args(args)
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout)
@@ -297,6 +302,66 @@ fn an_open_tip_repair_takes_p0_off_the_other_lanes() {
     assert_eq!(r["waiting"], json!([]));
 }
 
+/// #2664 E1: a pull request from outside the project (author association not OWNER, MEMBER or
+/// COLLABORATOR) or one that does not target the integration branch is the leader's to report
+/// to the user: no lane reserves or runs its audit; it is listed in `waiting` as `external_pr`.
+/// A pull request whose association and base were not read stays a lane pull request.
+#[test]
+fn an_external_pull_request_is_not_audited_by_a_lane() {
+    let ext = |n: u64, assoc: &str, base: &str, comments: Value| {
+        json!({"number": n, "head": h('x'), "author_lane": "agent-29", "author_association": assoc,
+            "base": base, "comments": comments})
+    };
+    // An outside contributor's pull request into the integration branch.
+    for assoc in [
+        "CONTRIBUTOR",
+        "FIRST_TIME_CONTRIBUTOR",
+        "FIRST_TIMER",
+        "NONE",
+    ] {
+        let r = next(&json!({"tip_branch": "v2026.11.0",
+            "prs": [ext(50, assoc, "v2026.11.0", json!([]))]}));
+        assert_eq!(r["next"], json!(null), "{assoc}: {r}");
+        assert_eq!(
+            r["waiting"][0]["reason"],
+            json!("external_pr"),
+            "{assoc}: {r}"
+        );
+        assert_eq!(r["waiting"][0]["number"], json!(50));
+    }
+    // A member's pull request into another branch than the integration branch.
+    let r = next(&json!({"tip_branch": "v2026.11.0",
+        "prs": [ext(51, "MEMBER", "main", json!([]))]}));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["waiting"][0]["reason"], json!("external_pr"), "{r}");
+    // Even with this lane's reservation on it, the audit is not run by the lane.
+    let r = next(&json!({"tip_branch": "v2026.11.0",
+        "prs": [ext(52, "NONE", "v2026.11.0", json!([audit_claim(1, LANE, &h('x'))]))]}));
+    assert_eq!(r["next"], json!(null), "{r}");
+    // Members, owners and collaborators into the integration branch stay lane work, and so does
+    // a pull request whose association, base or tip branch was not read.
+    for assoc in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let r = next(&json!({"tip_branch": "v2026.11.0",
+            "prs": [ext(53, assoc, "v2026.11.0", json!([]))]}));
+        assert_eq!(kind(&r), json!("reserve_audit"), "{assoc}: {r}");
+        assert_eq!(r["waiting"], json!([]), "{assoc}: {r}");
+    }
+    let r = next(&json!({"prs": [ext(54, "", "", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    let r = next(&json!({"tip_branch": "v2026.11.0", "prs": [ext(58, "MEMBER", "", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "no base read: {r}");
+    let r = next(&json!({"prs": [ext(55, "MEMBER", "main", json!([]))]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "no tip branch read: {r}");
+    // An external pull request never hides the next lane task behind it.
+    let r = next(&json!({"tip_branch": "v2026.11.0", "prs": [
+        ext(56, "NONE", "v2026.11.0", json!([])),
+        pr(57, &h('y'), Some("agent-29"), json!([])),
+    ]}));
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(57));
+    assert_eq!(r["waiting"][0]["number"], json!(56));
+}
+
 /// #2873 N8: a card whose pull request (its body naming this claim) has merged is not a draft
 /// to open: `card_pr_merged`. A merge before the `pr-wait` line, or one for another claim,
 /// leaves the draft task.
@@ -558,6 +623,42 @@ fn startable_issue_is_picked_when_no_pr_work() {
     );
 }
 
+/// #2933 S1: with nothing to do, the result says why — each pull request passed over with its
+/// reason (`pr_skipped`), each Issue skipped, and with `--explain` one line for each and a last
+/// line for the end condition. The snapshot's `now` is echoed.
+#[test]
+fn explain_says_why_nothing_is_next() {
+    let snap = json!({
+        "now": "2026-11-14T12:00:00Z",
+        "prs": [
+            pr(5, &h('a'), Some("agent-3"), json!([audit_claim(9, "agent-3", &h('a'))])),
+            {"number": 6, "head": h('b'), "author_lane": "agent-4", "draft": true, "comments": []},
+        ],
+        "cards": [{"number": 7, "title": "held", "labels": ["HOLD"]}],
+    });
+    let r = next_with(&snap, &["--explain"]);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["pr_skipped"],
+        json!([
+            {"pr": 5, "reason": "audit_reserved", "by": "agent-3", "comment": 9},
+            {"pr": 6, "reason": "draft"},
+        ]),
+        "{r}"
+    );
+    assert_eq!(r["now"], json!("2026-11-14T12:00:00Z"));
+    assert_eq!(
+        r["explain"],
+        json!([
+            "PR #5 passed over: audit_reserved by agent-3 (comment 9)",
+            "PR #6 passed over: draft",
+            "Issue #7 skipped: held",
+            "end_condition: open_prs=2 startable=0 met=false",
+        ]),
+        "{r}"
+    );
+}
+
 /// #2933 E: a lane with two live claims on open cards takes no new Issue — `waiting` names
 /// the cap; one live claim does not stop it, and a card closed (`CLOSE-TABLE`) or merged
 /// does not count.
@@ -625,4 +726,37 @@ fn two_live_cards_stop_pick_issue() {
     assert_eq!(kind(&r), json!("continue_card"), "{r}");
     assert_eq!(r["next"]["target"]["number"], json!(2501));
     assert_eq!(r["waiting"], cap(vec![2501, 2502]), "{r}");
+}
+
+/// #2933 S1: the lane's own pull request with nothing to fix and its own draft are named too,
+/// and naming them changes nothing about the task chosen.
+#[test]
+fn each_passed_over_pr_names_its_reason() {
+    let snap = json!({"prs": [
+        pr(3, &h('c'), Some(LANE), json!([])),
+        {"number": 4, "head": h('d'), "author_lane": LANE, "draft": true, "comments": []},
+        pr(8, &h('e'), Some("agent-29"), json!([])),
+    ]});
+    let r = next(&snap);
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(8));
+    assert_eq!(
+        r["pr_skipped"],
+        json!([{"pr": 3, "reason": "own_no_blocker"}, {"pr": 4, "reason": "draft"}]),
+        "{r}"
+    );
+}
+
+/// #2933 S1: without `--explain` the result has no `explain` key and is otherwise the same
+/// bytes; a snapshot without `now` gives no `now` (the clock fills it only when reading GitHub).
+#[test]
+fn explain_is_only_added_when_asked() {
+    let snap = json!({"prs": [pr(5, &h('a'), Some("agent-3"), json!([audit_claim(9, "agent-3", &h('a'))]))]});
+    let plain = next(&snap);
+    assert!(plain.get("explain").is_none(), "{plain}");
+    assert!(plain.get("now").is_none(), "{plain}");
+    let mut explained = next_with(&snap, &["--explain"]);
+    assert!(explained["explain"].is_array(), "{explained}");
+    explained.as_object_mut().unwrap().remove("explain");
+    assert_eq!(explained.to_string(), plain.to_string());
 }

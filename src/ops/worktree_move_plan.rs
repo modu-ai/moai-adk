@@ -17,7 +17,7 @@ pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
     project: PathBuf,
     /// Absolute folder the worktrees move into (default `<HOME>/.moai/worktrees`, #2835).
-    /// Must lie outside every worktree.
+    /// Must lie outside every worktree and every Cargo build folder (#2930 R-3).
     #[arg(long)]
     root: Option<PathBuf>,
     /// JSON file: `schema_version` 1 and optional `holds` {source, branches [{branch,
