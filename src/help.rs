@@ -309,6 +309,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("pr-body-render", &["pr-body-render --receipts <receipts> --base-sha <sha> --base-branch <base-branch> --default-branch <default-branch> ."]),
     ("pr-confirm", &["pr-confirm --task <task> --operation-id <operation-id> --observed-state <observed-state> ."]),
     ("audit-claim", &["audit-claim < request.json"]),
+    ("audit-verdict-line", &["audit-verdict-line --pr 2850 --head <head> --verdict PASS --title <scope>", "audit-verdict-line --pr 2850 --head <head> --verdict FAIL --title <scope> --base <earlier-head>"]),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
     ("labels-check", &["labels-check --repo modu-ai/moai-adk ."]),
     ("decision-due", &["decision-due docs/decisions/bundle.md"]),
