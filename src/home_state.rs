@@ -324,6 +324,343 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     }))
 }
 
+// ---- per-entry (selective) plan (#2815) ----
+//
+// Moving the whole `~/.moai` is refused on a machine whose `~/.moai/worktrees` holds other
+// projects' worktrees with processes inside (leader measurement #2815). The selective plan
+// classifies each top-level entry instead: `keep-in-place` (shared with Rust, or in use),
+// `move-to-backup` (Go run data, renamed into the backup folder by a later apply),
+// `secret-manual` (listed by name only, never opened) and `unknown` (not in the table: moves
+// nothing, fail-closed, leader decision D1). Writes nothing (D3); the apply is the next card
+// (D4).
+
+/// What the selective plan does with one top-level entry of `~/.moai`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum EntryClass {
+    KeepInPlace,
+    MoveToBackup,
+    SecretManual,
+    Unknown,
+}
+
+impl EntryClass {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EntryClass::KeepInPlace => "keep-in-place",
+            EntryClass::MoveToBackup => "move-to-backup",
+            EntryClass::SecretManual => "secret-manual",
+            EntryClass::Unknown => "unknown",
+        }
+    }
+}
+
+/// The selective table (#2815 D1), the one place that names entries: `(pattern, class,
+/// reason)`. A pattern ending in `*` matches a prefix; names compare without case (the macOS
+/// default file system does not tell them apart). Secret rows come first so a secret name
+/// never matches a later row. A name in no row is `unknown`.
+pub const SELECTIVE_TABLE: &[(&str, EntryClass, &str)] = &[
+    (".env*", EntryClass::SecretManual, "secret_name"),
+    ("credentials*", EntryClass::SecretManual, "secret_name"),
+    ("secrets", EntryClass::SecretManual, "secret_name"),
+    ("gateway-auth", EntryClass::SecretManual, "secret_name"),
+    // #2811 W2 D8: the worktree root stays `~/.moai/worktrees`; no migration moves it.
+    ("worktrees", EntryClass::KeepInPlace, "worktree_root"),
+    // #2811 D7/D8a: user work folders never move (`is_work_folder` in the whole-folder plan).
+    ("projects", EntryClass::KeepInPlace, "work_folder"),
+    ("cache", EntryClass::MoveToBackup, "go_run_data"),
+    ("logs", EntryClass::MoveToBackup, "go_run_data"),
+    ("run", EntryClass::MoveToBackup, "go_run_data"),
+    ("state", EntryClass::MoveToBackup, "go_run_data"),
+    ("releases", EntryClass::MoveToBackup, "go_run_data"),
+    ("rescue", EntryClass::MoveToBackup, "go_run_data"),
+    ("scratch", EntryClass::MoveToBackup, "go_run_data"),
+    ("tmp-*", EntryClass::MoveToBackup, "go_run_data"),
+    ("user-assets.json", EntryClass::MoveToBackup, "go_run_data"),
+];
+
+/// The table row for `name`: its class and reason; `unknown` when no row matches.
+pub fn table_class(name: &str) -> (EntryClass, &'static str) {
+    let n = name.to_ascii_lowercase();
+    for (pattern, class, reason) in SELECTIVE_TABLE {
+        let hit = match pattern.strip_suffix('*') {
+            Some(prefix) => n.starts_with(prefix),
+            None => n == *pattern,
+        };
+        if hit {
+            return (*class, reason);
+        }
+    }
+    (EntryClass::Unknown, "not_in_table")
+}
+
+/// The command lines of the machine's processes, one string each (arguments joined by a
+/// space); `None` when they cannot be read.
+fn process_command_lines() -> Option<Vec<String>> {
+    if Path::new("/proc/self/cmdline").exists() {
+        let mut out = Vec::new();
+        for e in fs::read_dir("/proc").ok()?.flatten() {
+            if let Ok(b) = fs::read(e.path().join("cmdline")) {
+                let s = String::from_utf8_lossy(&b).replace('\0', " ");
+                out.push(s);
+            }
+        }
+        return Some(out);
+    }
+    let o = std::process::Command::new("ps")
+        .args(["-axww", "-o", "args="])
+        .env("LC_ALL", "C")
+        .output()
+        .ok()?;
+    if !o.status.success() {
+        return None;
+    }
+    Some(
+        String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .map(str::to_string)
+            .collect(),
+    )
+}
+
+/// Whether `line` names `path` or a path inside it: the path followed by the end, `/` or
+/// whitespace.
+fn line_names(line: &str, path: &str) -> bool {
+    line.match_indices(path).any(|(i, _)| {
+        line[i + path.len()..]
+            .chars()
+            .next()
+            .is_none_or(|c| c == '/' || c.is_whitespace())
+    })
+}
+
+/// What the machine's processes use, gathered once: their working folders, open files and
+/// command lines. A part that cannot be read is `None`.
+struct InUse {
+    cwds: Option<Vec<PathBuf>>,
+    open: Option<Vec<PathBuf>>,
+    lines: Option<Vec<String>>,
+}
+
+impl InUse {
+    fn read() -> InUse {
+        // Test builds only: simulate a machine whose process table cannot be read, so the
+        // fail-closed path is pinned by a test (#2823 audit N1).
+        #[cfg(debug_assertions)]
+        if std::env::var_os("MOAI_CLI_TEST_PROCESS_CHECK").is_some_and(|v| v == "unavailable") {
+            return InUse {
+                cwds: None,
+                open: None,
+                lines: None,
+            };
+        }
+        InUse {
+            cwds: crate::worktree_gc::process_cwds().map(|v| {
+                v.into_iter()
+                    .map(|p| fs::canonicalize(&p).unwrap_or(p))
+                    .collect()
+            }),
+            open: crate::worktree_gc::open_file_paths(),
+            lines: process_command_lines(),
+        }
+    }
+
+    /// `Some(reason)` when a process uses `entry` (given as written and canonical), `None`
+    /// when none does; `Err` when a part could not be read (the caller keeps it in place).
+    fn uses(&self, raw: &Path, canon: &Path) -> Result<Option<&'static str>, &'static str> {
+        let cwds = self.cwds.as_ref().ok_or("process_check_unavailable")?;
+        if cwds
+            .iter()
+            .any(|p| p.starts_with(canon) || p.starts_with(raw))
+        {
+            return Ok(Some("process_cwd"));
+        }
+        let open = self.open.as_ref().ok_or("open_file_check_unavailable")?;
+        if open
+            .iter()
+            .any(|p| p.starts_with(canon) || p.starts_with(raw))
+        {
+            return Ok(Some("file_open"));
+        }
+        let lines = self
+            .lines
+            .as_ref()
+            .ok_or("command_line_check_unavailable")?;
+        let (r, c) = (raw.display().to_string(), canon.display().to_string());
+        if lines.iter().any(|l| line_names(l, &r) || line_names(l, &c)) {
+            return Ok(Some("process_command_line"));
+        }
+        Ok(None)
+    }
+}
+
+/// The per-entry preview for the HOME at `home` (#2815). Arguments as [`plan`].
+pub fn plan_selective(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, String> {
+    if !home.is_absolute() {
+        return Err("HOME is not an absolute path".into());
+    }
+    let stamp = stamp(now)?;
+    let moai = home.join(MOAI_DIR);
+    let c = classify_with(home, home_go_markers);
+
+    let primary = home.join(BACKUP_NAME);
+    let alternative = home.join(format!("{BACKUP_NAME}-{stamp}"));
+    let backup: Option<PathBuf> = if !exists(&primary) {
+        Some(primary)
+    } else if !exists(&alternative) {
+        Some(alternative)
+    } else {
+        None
+    };
+
+    let mut names: Vec<String> = Vec::new();
+    let mut unreadable_names = 0usize;
+    if c.moai_dir == "folder" {
+        if let Ok(rd) = fs::read_dir(&moai) {
+            for e in rd.flatten() {
+                match e.file_name().into_string() {
+                    Ok(n) => names.push(n),
+                    Err(_) => unreadable_names += 1,
+                }
+            }
+        }
+    }
+    names.sort();
+    let total = names.len() + unreadable_names;
+
+    let mut blocks: Vec<String> = Vec::new();
+    if c.generation == "go" {
+        if backup.is_none() {
+            blocks.push("backup_name_taken".into());
+        }
+        let lock = session_lock_held(&moai);
+        let registered = live_sessions(&moai);
+        if lock == Some(true) || registered.is_some_and(|n| n > 0) {
+            blocks.push("go_session_live".into());
+        } else if lock.is_none() {
+            blocks.push("session_lock_unknown".into());
+        } else if registered.is_none() {
+            blocks.push("session_registry_unknown".into());
+        }
+        if total > CANDIDATE_LIMIT {
+            blocks.push("not_fully_listed".into());
+        }
+        if unreadable_names > 0 {
+            blocks.push(format!("unreadable_names:{unreadable_names}"));
+        }
+    }
+
+    // Entries are judged only for the Go generation; the processes are read once.
+    let in_use = (c.generation == "go").then(InUse::read);
+    let canon_moai = fs::canonicalize(&moai).unwrap_or_else(|_| moai.clone());
+    let limit = crate::go_state::unrecorded_limit();
+    let entries: Vec<Value> = names
+        .iter()
+        .take(CANDIDATE_LIMIT)
+        .map(|n| {
+            let (mut class, mut reason) = table_class(n);
+            // A secret is judged by its name alone: never opened, walked or matched (AC-3).
+            if class != EntryClass::SecretManual {
+                if let Some(in_use) = &in_use {
+                    let raw = moai.join(n);
+                    let canon = canon_moai.join(n);
+                    match in_use.uses(&raw, &canon) {
+                        // D2: whatever the table says, an entry in use stays.
+                        Ok(Some(why)) => {
+                            class = EntryClass::KeepInPlace;
+                            reason = why;
+                        }
+                        Ok(None) => {}
+                        Err(why) if class == EntryClass::MoveToBackup => {
+                            class = EntryClass::KeepInPlace;
+                            reason = why;
+                        }
+                        Err(_) => {}
+                    }
+                }
+                // A nested checkout would lose its registration if renamed.
+                if class == EntryClass::MoveToBackup {
+                    let rel = format!("{MOAI_DIR}/{n}");
+                    match crate::go_state::nested_checkouts_under(home, &rel, limit) {
+                        Some(0) => {}
+                        Some(_) => {
+                            class = EntryClass::KeepInPlace;
+                            reason = "nested_checkout";
+                        }
+                        None => {
+                            class = EntryClass::KeepInPlace;
+                            reason = "not_fully_checked";
+                        }
+                    }
+                }
+            }
+            let destination = match (class, &backup) {
+                (EntryClass::MoveToBackup, Some(b)) => Value::from(b.join(n).display().to_string()),
+                _ => Value::Null,
+            };
+            json!({"name": n, "class": class.as_str(), "reason": reason,
+                   "destination": destination})
+        })
+        .collect();
+
+    let count = |k: EntryClass| entries.iter().filter(|e| e["class"] == k.as_str()).count();
+    let counts = json!({
+        "keep-in-place": count(EntryClass::KeepInPlace),
+        "move-to-backup": count(EntryClass::MoveToBackup),
+        "secret-manual": count(EntryClass::SecretManual),
+        "unknown": count(EntryClass::Unknown),
+    });
+    let action = match c.generation {
+        "go" if blocks.is_empty() && count(EntryClass::MoveToBackup) > 0 => "select",
+        "go" if blocks.is_empty() => "none",
+        "none" | "empty" | "rust" => "none",
+        _ => "blocked",
+    };
+
+    let mut warnings = Vec::new();
+    if let Some(m) = moai_home.filter(|m| !m.is_empty()) {
+        if Path::new(m) != moai {
+            warnings.push(format!(
+                "MOAI_HOME is set to {m}: the Go generation's live state may be there; this plan \
+                 handles {} only",
+                moai.display()
+            ));
+        }
+    }
+    if total > CANDIDATE_LIMIT {
+        warnings.push(format!(
+            "{total} entries in {}; the first {CANDIDATE_LIMIT} are listed",
+            moai.display()
+        ));
+    }
+
+    let backup_shown = backup.as_ref().map(|b| b.display().to_string());
+    let bound = json!({
+        "mode": "selective",
+        "generation": c.generation,
+        "action": action,
+        "backup": backup_shown,
+        "blocks": blocks,
+        "entries": entries,
+    });
+    let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
+    Ok(json!({
+        "schema_version": 1,
+        "mode": "selective",
+        "home": home.display().to_string(),
+        "state": c.to_json(),
+        "action": action,
+        "backup": backup_shown,
+        "blocks": blocks,
+        "entries": entries,
+        "counts": counts,
+        "total": total,
+        "warnings": warnings,
+        "plan_digest": plan_digest,
+        "apply": "not yet: the selective apply is the next card after #2815; on a real HOME it runs only after the user confirms",
+        "writes": false,
+    }))
+}
+
 // ---- apply and revert (#2723) ----
 //
 // The apply acts only on an identical fresh preview whose action is `migrate`, with a
@@ -612,6 +949,54 @@ pub fn revert(home: &Path, now: &str, permission_reference: &str) -> Result<Valu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_selective_table_classifies_by_name_and_fails_closed() {
+        use super::{table_class, EntryClass::*};
+        let cases = [
+            ("worktrees", KeepInPlace),
+            ("projects", KeepInPlace),
+            ("PROJECTS", KeepInPlace),
+            ("projects2", Unknown),
+            ("cache", MoveToBackup),
+            ("tmp-", MoveToBackup),
+            ("tmp-9", MoveToBackup),
+            ("TMP-9", MoveToBackup),
+            ("tmp", Unknown),
+            ("user-assets.json", MoveToBackup),
+            (".env", SecretManual),
+            (".ENV.local", SecretManual),
+            ("credentials", SecretManual),
+            ("Secrets", SecretManual),
+            ("gateway-auth", SecretManual),
+            ("gateway-auth2", Unknown),
+            ("cache2", Unknown),
+            ("worktrees.bak", Unknown),
+            ("", Unknown),
+        ];
+        for (name, want) in cases {
+            assert_eq!(table_class(name).0, want, "{name}");
+        }
+        // Every name the old copy list treats as secret is a secret row here too.
+        for name in [".env.glm", "credentials.yaml", "secrets"] {
+            assert!(super::is_secret(name));
+            assert_eq!(table_class(name).0, SecretManual, "{name}");
+        }
+    }
+
+    #[test]
+    fn a_command_line_names_a_path_only_at_a_boundary() {
+        use super::line_names;
+        assert!(line_names("tail -f /h/.moai/logs", "/h/.moai/logs"));
+        assert!(line_names("tail -f /h/.moai/logs/a.log x", "/h/.moai/logs"));
+        assert!(line_names("x /h/.moai/logs y", "/h/.moai/logs"));
+        assert!(!line_names("x /h/.moai/logs2/a", "/h/.moai/logs"));
+        assert!(!line_names("x /h/.moai/log", "/h/.moai/logs"));
+        assert!(line_names(
+            "x /h/.moai/logs2 /h/.moai/logs",
+            "/h/.moai/logs"
+        ));
+    }
+
     use super::*;
 
     #[test]
