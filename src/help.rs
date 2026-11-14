@@ -118,6 +118,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-status", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
+            ("lane-env", false),
             ("session-register", false),
             ("usage-limit", false),
             ("heavy-slot-acquire", false),
@@ -364,6 +365,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-gc-apply", &["worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("session", &["session --name agent-1"]),
+    ("lane-env", &["lane-env --lane agent-1"]),
 ];
 
 /// Descriptions of arguments that share one meaning wherever they appear (#2802 S1d), by clap

@@ -35,7 +35,7 @@ pub fn default_home_root() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(PathBuf::from)
         .filter(|h| !h.as_os_str().is_empty())
-        .map(|h| h.join(crate::HOME_STATE_DIR))
+        .map(|h| crate::home_root::path(&h))
 }
 
 /// The active home project directory — `Some` only when `layout.json` (the pointer a

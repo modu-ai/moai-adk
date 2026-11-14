@@ -85,7 +85,7 @@ impl Context {
     /// tool's variable — is not consulted, so a Go setting cannot point back at it.
     fn home_state(&self) -> Option<PathBuf> {
         self.home()
-            .map(|h| h.join(crate::HOME_STATE_DIR).join("state"))
+            .map(|h| crate::home_root::path(&h).join("state"))
     }
 
     pub fn no_color(&self) -> bool {
@@ -1051,6 +1051,46 @@ mod tests {
         let canon = std::fs::canonicalize(&main).unwrap();
         assert_eq!(main_checkout_of(&wt.join("sub")), Some(canon.clone()));
         assert_eq!(main_checkout_of(&main), Some(canon));
+    }
+
+    /// #2811 AC-3: real `git worktree add` worktrees in the new home place and in the Go
+    /// generation's folder, both outside the main checkout, anchor to the main checkout.
+    #[test]
+    fn anchor_follows_home_and_go_place_worktrees_to_the_main_checkout() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(tmp.path()).unwrap();
+        let main = root.join("repo");
+        std::fs::create_dir_all(&main).unwrap();
+        git_init(&main);
+        let git = |args: &[&str]| {
+            let mut cmd = Command::new("git");
+            cmd.args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(&main);
+            crate::identity::scrub_git_env(&mut cmd);
+            assert!(cmd.status().unwrap().success(), "{args:?}");
+        };
+        git(&["commit", "-q", "--allow-empty", "-m", "init"]);
+        let home = root.join("home");
+        for (wt, branch) in [
+            (home.join(".moai/worktrees/repo-1-x"), "issue/1-x"),
+            (home.join(".moai/worktrees/projects/repo/feat"), "feat"),
+        ] {
+            git(&["worktree", "add", "-q", "-b", branch, wt.to_str().unwrap()]);
+            std::fs::create_dir_all(wt.join("sub")).unwrap();
+            assert_eq!(
+                main_checkout_of(&wt.join("sub")),
+                Some(main.clone()),
+                "{wt:?}"
+            );
+        }
     }
 
     #[test]

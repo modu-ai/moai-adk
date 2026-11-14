@@ -1,5 +1,6 @@
 """tools/heavy_check_slot.py (Issue #2491): real processes, a temporary slot folder only."""
 import json
+import re
 import os
 import signal
 import subprocess
@@ -41,12 +42,31 @@ def holder_names(folder):
     return [h.get("name") for h in held(folder)]
 
 
+ROOMY = "free_gb=1000,swap_pct=0"
+
+
+def roomy_machine(test):
+    """Every slot test runs on an injected roomy machine (#2829): the real disk of a busy
+    runner or lane machine must not turn a slot test into a 75 'machine busy' exit."""
+    before = os.environ.get("MOAI_CLI_TEST_MACHINE")
+    os.environ["MOAI_CLI_TEST_MACHINE"] = ROOMY
+
+    def restore():
+        if before is None:
+            os.environ.pop("MOAI_CLI_TEST_MACHINE", None)
+        else:
+            os.environ["MOAI_CLI_TEST_MACHINE"] = before
+
+    test.addCleanup(restore)
+
+
 @unittest.skipUnless(UNIX, "flock slots are unix only")
 class HeavyCheckSlotTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.folder = Path(self.tmp.name) / "slots"
         self.addCleanup(self.tmp.cleanup)
+        roomy_machine(self)
 
     def acquire(self, maximum, name, *command, **kw):
         return subprocess.Popen(
@@ -257,6 +277,137 @@ class HeavyCheckSlotTest(unittest.TestCase):
         for args in (["--max", "0", "--name", "x", "--", "true"], ["--max", "1", "--name", "x", "--"]):
             r = subprocess.run(tool(self.folder, "acquire", *args), capture_output=True)
             self.assertEqual(r.returncode, 2, args)
+
+
+ROOT = Path(__file__).resolve().parent.parent
+REASON = re.compile(r"not started — (.*); load ")
+
+
+def rust_bin():
+    """The debug `moai-cli` the cargo steps built (debug builds read MOAI_CLI_TEST_MACHINE)."""
+    target = os.environ.get("CARGO_TARGET_DIR")
+    base = Path(target) if target else ROOT / "target"
+    return base / "debug" / "moai-cli"
+
+
+@unittest.skipUnless(UNIX, "flock slots are unix only")
+class MachineLimitTest(unittest.TestCase):
+    """#2829: free disk and swap limits, the same rule and words as src/heavy_slot.rs."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(os.path.realpath(self.tmp.name))
+        self.folder = self.root / "slots"
+        self.marker = self.root / "ran"
+
+    def run_python(self, machine, *extra, name="lane"):
+        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=machine)
+        args = tool(self.folder, "acquire", "--max", "1", "--name", name, *extra,
+                    "--", sys.executable, "-c", f"open({str(self.marker)!r}, 'w')")
+        return subprocess.run(args, capture_output=True, text=True, env=env, cwd=self.root,
+                              timeout=30)
+
+    def run_rust(self, machine, *extra, name="lane"):
+        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=machine)
+        args = [str(rust_bin()), "heavy-slot-acquire", "--max", "1", "--name", name,
+                "--dir", str(self.folder), *extra,
+                "--", sys.executable, "-c", f"open({str(self.marker)!r}, 'w')"]
+        return subprocess.run(args, capture_output=True, text=True, env=env, cwd=self.root,
+                              timeout=30)
+
+    def ran(self):
+        found = self.marker.exists()
+        if found:
+            self.marker.unlink()
+        return found
+
+    def test_ac1_free_disk_boundary_49_50_51_gb(self):
+        r = self.run_python("free_gb=49,swap_pct=0")
+        self.assertEqual(r.returncode, 75, r.stderr)
+        self.assertFalse(self.ran(), "COMMAND must not run below the limit")
+        self.assertIn(f"disk free 49.0 GB at {self.root} is below 50 GB", r.stderr)
+        self.assertIn("COMMAND did not run, try again later", r.stderr)
+        self.assertEqual(held(self.folder) if self.folder.exists() else [], [])
+        for free in (50, 51):
+            r = self.run_python(f"free_gb={free},swap_pct=0")
+            self.assertEqual(r.returncode, 0, (free, r.stderr))
+            self.assertTrue(self.ran(), free)
+
+    def test_swap_boundary_80_81_and_both_reasons(self):
+        r = self.run_python("free_gb=1000,swap_pct=80")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(self.ran())
+        r = self.run_python("free_gb=1000,swap_pct=81")
+        self.assertEqual(r.returncode, 75, r.stderr)
+        self.assertIn("swap use 81% is above 80%", r.stderr)
+        self.assertFalse(self.ran())
+        r = self.run_python("free_gb=10,swap_pct=95")
+        self.assertEqual(r.returncode, 75)
+        self.assertRegex(r.stderr, r"is below 50 GB; swap use 95% is above 80%")
+
+    def test_limits_can_be_set_or_turned_off_and_unknown_values_do_not_refuse(self):
+        r = self.run_python("free_gb=60,swap_pct=0", "--min-free-gb", "61")
+        self.assertEqual(r.returncode, 75, r.stderr)
+        self.assertIn("is below 61 GB", r.stderr)
+        r = self.run_python("free_gb=0,swap_pct=100", "--min-free-gb", "0", "--max-swap-pct", "100")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(self.ran())
+        r = self.run_python("nothing=1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(self.ran())
+
+    def test_d2_the_machine_is_judged_again_after_a_wait(self):
+        machine = self.root / "machine"
+        machine.write_text(ROOMY)
+        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=f"@{machine}")
+        hold = subprocess.Popen(
+            tool(self.folder, "acquire", "--max", "1", "--name", "holder", "--",
+                 sys.executable, "-c", "import time; time.sleep(30)"),
+            env=env, cwd=self.root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        self.addCleanup(lambda: hold.poll() is None and os.killpg(hold.pid, signal.SIGKILL))
+        self.assertTrue(wait_for(lambda: "holder" in holder_names(self.folder)))
+        waiter = subprocess.Popen(
+            tool(self.folder, "acquire", "--max", "1", "--name", "waiter", "--",
+                 sys.executable, "-c", f"open({str(self.marker)!r}, 'w')"),
+            env=env, cwd=self.root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        waiting = self.folder / "waiting"
+        self.assertTrue(wait_for(lambda: waiting.is_dir() and any(waiting.iterdir())))
+        machine.write_text("free_gb=5,swap_pct=0")
+        os.killpg(hold.pid, signal.SIGKILL)
+        out, err = waiter.communicate(timeout=30)
+        self.assertEqual(waiter.returncode, 75, (out, err))
+        self.assertIn("disk free 5.0 GB", err)
+        self.assertFalse(self.ran(), "COMMAND must not run when the wait ate the space")
+        self.assertTrue(wait_for(lambda: held(self.folder) == []), "the slot is freed")
+
+    def test_ac2_python_and_rust_judge_the_same_inputs_the_same_way(self):
+        exe = rust_bin()
+        if not exe.exists():
+            raise AssertionError(f"moai-cli not built at {exe}; run cargo build first")
+        cases = [
+            ("free_gb=49,swap_pct=0", ()),
+            ("free_gb=50,swap_pct=0", ()),
+            ("free_gb=51,swap_pct=0", ()),
+            ("free_gb=1000,swap_pct=80", ()),
+            ("free_gb=1000,swap_pct=81", ()),
+            ("free_gb=10,swap_pct=95", ()),
+            ("free_gb=60,swap_pct=0", ("--min-free-gb", "61")),
+            ("free_gb=0,swap_pct=100", ("--min-free-gb", "0", "--max-swap-pct", "100")),
+            ("nothing=1", ()),
+        ]
+        for machine, extra in cases:
+            py = self.run_python(machine, *extra)
+            py_ran = self.ran()
+            rs = self.run_rust(machine, *extra)
+            rs_ran = self.ran()
+            self.assertEqual(py.returncode, rs.returncode, (machine, extra, py.stderr, rs.stderr))
+            self.assertEqual(py_ran, rs_ran, (machine, extra))
+            py_why, rs_why = REASON.search(py.stderr), REASON.search(rs.stderr)
+            self.assertEqual(bool(py_why), bool(rs_why), (machine, py.stderr, rs.stderr))
+            if py_why:
+                self.assertEqual(py_why.group(1), rs_why.group(1), machine)
 
 
 if __name__ == "__main__":

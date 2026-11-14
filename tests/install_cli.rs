@@ -571,3 +571,36 @@ fn go_updater_feed_contamination_table() {
     assert_eq!(go_channel_of("go-v3.2.1-rc.2"), "rc");
     assert_eq!(go_channel_of("dev"), "rc");
 }
+
+/// #2696 C4b: the HOME state root follows `home_root` — the earlier `~/.moai-cli` until
+/// `~/.moai` holds this generation's marker, the Go generation's `~/.moai` never.
+#[test]
+fn install_inspect_names_the_home_state_root_by_its_marker() {
+    let root = TempDir::new().unwrap();
+    let home = root.path().join("home");
+    let fakebin = home.join("fakebin");
+    let proj = root.path().join("proj");
+    fs::create_dir_all(&fakebin).unwrap();
+    fs::create_dir_all(&proj).unwrap();
+    let state_root = |home: &Path| -> String {
+        let out = run_inspect(home, &fakebin, &proj);
+        ok_result(&out)["home_state_root"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    // Go generation `~/.moai` (no marker): the earlier root.
+    fs::create_dir_all(home.join(".moai/state")).unwrap();
+    fs::write(home.join(".moai/state/active-sessions.json"), "{}").unwrap();
+    assert!(state_root(&home).ends_with("/.moai-cli"), "go HOME");
+    // This generation's marker alone: `~/.moai`.
+    let fresh = root.path().join("fresh");
+    fs::create_dir_all(fresh.join(".moai")).unwrap();
+    fs::write(
+        fresh.join(".moai/moai-cli.json"),
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
+    )
+    .unwrap();
+    let marked = state_root(&fresh);
+    assert!(marked.ends_with("/.moai"), "{marked}");
+}

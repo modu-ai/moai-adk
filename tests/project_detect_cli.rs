@@ -511,7 +511,8 @@ fn a_profile_without_a_baseline_takes_the_answers_in_two_steps() {
 /// after the user agrees; nothing is moved or created by detection.
 #[test]
 fn go_generation_state_is_reported_and_its_preview_only_suggested() {
-    // No `.moai/`: absent, no suggestion.
+    // No `.moai/`: absent, no Go-folder step. (`with_profile` keeps the profile in the earlier
+    // `.moai-cli/`, so the earlier-root move is suggested instead — #2696 C4a.)
     let root = with_profile();
     let result = detect(&root);
     assert_eq!(
@@ -519,7 +520,12 @@ fn go_generation_state_is_reported_and_its_preview_only_suggested() {
         json!({"moai_dir": "absent", "go_manifest": false}),
         "{result}"
     );
-    assert!(!result["next_actions"].to_string().contains("go-state-plan"));
+    let actions = result["next_actions"].to_string();
+    assert!(!actions.contains("Go-generation .moai/ found"), "{actions}");
+    assert!(
+        actions.contains("still in the earlier .moai-cli/"),
+        "{actions}"
+    );
     assert!(result["detected"].get("go_state").is_none(), "{result}");
 
     // A Go `.moai/` with its manifest: reported, and the preview is suggested after consent.
@@ -607,9 +613,16 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
         // #2696: the Go-state step follows the verdict, not the folder kind (a `rust`
         // `.moai/` is a folder too).
         let actions = result["next_actions"].to_string();
+        // `with_profile` keeps its profile in the earlier root, so `none` is offered the move
+        // into a new `.moai/` too (#2696 C4a).
         assert_eq!(
             actions.contains("moai-cli go-state-plan"),
-            want == "go",
+            want == "go" || want == "none",
+            "{want}: {actions}"
+        );
+        assert_eq!(
+            actions.contains("still in the earlier .moai-cli/"),
+            want == "none",
             "{want}: {actions}"
         );
     }
@@ -630,7 +643,7 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
         "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and let the user decide. `interrupted` is handled in step 2."
     ));
     assert!(workflow
-        .contains("2. **Go-generation state (only when `state_root.generation` is `go`).**"));
+        .contains("2. **Earlier-generation state (when `state_root.generation` is `go`, or `none` with `legacy_root`).**"));
 }
 
 /// #2561: a linked `.moai` is reported as a link and never followed (its target's manifest is

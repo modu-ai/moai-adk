@@ -39,10 +39,13 @@ impl RecordSource {
 
 #[derive(Parser)]
 #[command(
+    // `--version` prints `<name> <version>`: it stays `moai-cli <ver> (rust)`, the build
+    // signature other tools compare (#2799 D3 decision 2(a), `bin_names` same-build check).
     name = "moai-cli",
-    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1): usage and help name
-    // `moai-cli` whichever name ran, so the two binaries print the same text.
-    bin_name = "moai-cli",
+    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). The default command
+    // name is `moai` (#2812 W3; `moai-cli` stays an alias): usage and help name `moai`
+    // whichever name ran, so the two binaries print the same text.
+    bin_name = "moai",
     version = moai_cli::VERSION_SIGNATURE,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
@@ -468,11 +471,27 @@ enum Command {
     /// Check claim ownership before a commit or push
     ///
     /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
-    /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
+    /// request on stdin, the same request as flags (`--issue N --comment ID --lane NAME`,
+    /// #2838), or `--hook` with a host PreToolUse input (refusal exits 2).
     ClaimVerify {
         project: PathBuf,
-        #[arg(long)]
+        #[arg(long, conflicts_with = "issue")]
         hook: bool,
+        /// Issue number of the claim; with it, the request comes from flags, not stdin.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..), requires_all = ["comment", "lane"])]
+        issue: Option<i64>,
+        /// Id of your claim comment on the Issue.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..), requires = "issue")]
+        comment: Option<i64>,
+        /// Your session name, as written in the claim line (`session=`).
+        #[arg(long, requires = "issue")]
+        lane: Option<String>,
+        /// OWNER/REPO; default: the project's `origin` remote on GitHub.
+        #[arg(long, requires = "issue")]
+        repo: Option<String>,
+        /// GitHub login whose claim lines count (repeatable); default: any author.
+        #[arg(long = "allowed-author", requires = "issue")]
+        allowed_author: Vec<String>,
     },
     /// Show the current claim record of a task
     ///
@@ -766,7 +785,7 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`.
+        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
         #[arg(long)]
         path: Option<PathBuf>,
     },
@@ -892,6 +911,22 @@ enum Command {
     /// namespaces normalize into one node shape, duplicates are diagnosed only,
     /// nothing is written. PATH is a file or a directory.
     AtlasTagScan { path: PathBuf },
+    /// Print a lane's cargo folders
+    ///
+    /// Print a lane's build environment as shell `export` lines (#2841): one
+    /// `CARGO_TARGET_DIR` per lane for all its worktrees, and a prepared `CARGO_HOME` (the
+    /// lane's own, else the shared one, else unset). Use it as
+    /// `e=$(moai lane-env --lane NAME) && eval "$e"`. Reads only. Raw text, not the envelope; a refusal
+    /// prints nothing on stdout and exits 1, a usage error exits 2.
+    LaneEnv {
+        /// The lane name, as in the claim line (`session=`).
+        #[arg(long)]
+        lane: String,
+        /// Absolute folder that holds the lane folders (default `/tmp`, on Windows the system
+        /// temporary folder).
+        #[arg(long)]
+        base: Option<PathBuf>,
+    },
     /// Check a pull request body's Self-Audit section
     ///
     /// Check a PR body's Self-Audit section (#2708, formerly tools/check_pr_self_audit.py):
@@ -1531,6 +1566,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         | Codex(_)
         | Session { .. }
         | Statusline { .. }
+        | LaneEnv { .. }
         | PrSelfAuditCheck { .. } => return None,
         Op(op) => op.operation(),
         AgentsApply { .. } => "agents.apply",
@@ -1927,6 +1963,7 @@ fn run_internal(
             source.task.is_some(),
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
             &plan_digest,
             moai_cli::worktree::Capacity {
                 floor_bytes: disk_floor_bytes,
@@ -2280,7 +2317,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
-        Command::ClaimVerify { project, hook } => {
+        Command::ClaimVerify {
+            project,
+            hook,
+            issue,
+            comment,
+            lane,
+            repo,
+            allowed_author,
+        } => {
             let clock = moai_cli::forge::policy::SystemClock;
             if hook {
                 // Host hook stdin can carry large tool input; read a bounded prefix.
@@ -2303,7 +2348,21 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 moai_cli::claim_verify::hook_cli(&project, &bytes, &transport, &clock)
             } else {
                 let transport = moai_cli::forge::transport::GhTransport::from_env()?;
-                let request = input::<moai_cli::claim_verify::VerifyRequest>()?;
+                // #2838: with `--issue` the request comes from flags and stdin is not read;
+                // clap's `requires` makes `--comment` and `--lane` present with it.
+                let request = match (issue, comment, lane) {
+                    (Some(issue), Some(comment), Some(lane)) => {
+                        moai_cli::claim_verify::request_from_flags(
+                            &project,
+                            issue,
+                            comment,
+                            &lane,
+                            repo.as_deref(),
+                            &allowed_author,
+                        )?
+                    }
+                    _ => input::<moai_cli::claim_verify::VerifyRequest>()?,
+                };
                 moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
             }
         }
@@ -2526,6 +2585,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &source.load(&project)?,
             &branch_prefix,
             path.as_deref(),
+            moai_cli::home_workdir::home().ok().as_deref(),
         ),
         Command::WorktreeGcPlan {
             project,
@@ -2631,7 +2691,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             // The shared confirm prompt (#2806): same terminal rule and question as before.
             moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
                 moai_cli::progress::ask_terminal(
-                    &format!("moai-cli update preview:\n{summary}"),
+                    &format!("moai update preview:\n{summary}"),
                     "Apply this update?",
                 )
             })
@@ -2934,10 +2994,71 @@ fn usage_error(e: clap::Error) -> ExitCode {
         eprintln!("{message}");
     } else {
         let rendered = e.render().to_string();
-        eprintln!("{}", rendered.lines().next().unwrap_or(message));
+        let mut lines = rendered.lines();
+        let first = lines.next().unwrap_or(message);
+        // #2804 (D2 §4): keep clap's list of the missing arguments — names such as
+        // `--project <PROJECT>`, never a value the user typed. Other kinds keep one line.
+        let detail: Vec<&str> = if matches!(e.kind(), ErrorKind::MissingRequiredArgument) {
+            lines.take_while(|l| !l.trim().is_empty()).collect()
+        } else {
+            Vec::new()
+        };
+        if moai_cli::ui::stderr_is_terminal() {
+            let word = std::env::args().nth(1);
+            let next = moai_cli::error_next::next_action(
+                contract::Kind::Usage,
+                &program_name(),
+                word.as_deref(),
+                message,
+            );
+            let what = first.strip_prefix("error: ").unwrap_or(first);
+            eprint!(
+                "{}",
+                moai_cli::ui::error_frame(&stderr_painter(), what, &detail, None, next.as_deref())
+            );
+        } else {
+            eprintln!("{first}");
+            for line in &detail {
+                eprintln!("{line}");
+            }
+        }
     }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
     ExitCode::from(2)
+}
+
+/// The name the user ran (`moai` or `moai-cli`), for the error frame's help pointer.
+fn program_name() -> String {
+    std::env::args_os()
+        .next()
+        .and_then(|a| {
+            std::path::Path::new(&a)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+        })
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "moai".to_string())
+}
+
+/// The painter for the stderr error frame: S2's per-stream color decision (#2803).
+fn stderr_painter() -> moai_cli::ui::Painter {
+    moai_cli::ui::Painter::for_stream(moai_cli::ui::Stream::Stderr, moai_cli::ui::ColorFlag::Auto)
+}
+
+/// An operation failure on stderr (card #2804, D2 §4): the error frame with its next step on a
+/// terminal; on a pipe the message line exactly as before, so lanes and scripts read the same
+/// bytes. The stdout envelope is printed by the caller and never changes here.
+fn print_operation_error(kind: contract::Kind, message: &str) {
+    if !moai_cli::ui::stderr_is_terminal() {
+        eprintln!("{message}");
+        return;
+    }
+    let word = std::env::args().nth(1);
+    let next = moai_cli::error_next::next_action(kind, &program_name(), word.as_deref(), message);
+    eprint!(
+        "{}",
+        moai_cli::ui::error_frame(&stderr_painter(), message, &[], None, next.as_deref())
+    );
 }
 
 /// True when the command line is a generated host hook (#2348): `hook-receipt` or any word
@@ -2966,7 +3087,7 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
         }
         Err(_) => moai_cli::hook_engine::Answer {
             stdout: String::new(),
-            stderr: "moai-cli hook-dispatch: engine error: working directory unavailable".into(),
+            stderr: "moai hook-dispatch: engine error: working directory unavailable".into(),
             exit: moai_cli::hook_engine::ENGINE_ERROR_EXIT,
         },
     };
@@ -2997,6 +3118,24 @@ const HOOK_NON_BLOCKING_ERROR: u8 = 1;
 
 /// `pr-self-audit-check` (#2708): the Python checker's text and exit codes. With no `--file`,
 /// the body comes from stdin; a terminal on stdin is a usage error, as before.
+/// `lane-env` (#2841): the export lines on stdout, or the refusal on stderr with exit 1 and
+/// nothing on stdout, so the documented `e=$(…) && eval "$e"` stops and nothing is exported.
+fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
+    let base = base
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(moai_cli::lane_env::default_base);
+    match moai_cli::lane_env::resolve(lane, &base) {
+        Ok(env) => {
+            print!("{}", moai_cli::lane_env::render(lane, &env));
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCode {
     use std::io::IsTerminal as _;
     let body = match file {
@@ -3090,7 +3229,7 @@ pub(crate) fn main() -> ExitCode {
             }
             let rendered = e.render().to_string();
             eprintln!(
-                "moai-cli hook: {}",
+                "moai hook: {}",
                 rendered.lines().next().unwrap_or("invalid command line")
             );
             return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
@@ -3120,6 +3259,9 @@ pub(crate) fn main() -> ExitCode {
     }
     if let Some(Command::PrSelfAuditCheck { reaudit, file }) = &cli.command {
         return pr_self_audit_check(*reaudit, file.as_deref());
+    }
+    if let Some(Command::LaneEnv { lane, base }) = &cli.command {
+        return lane_env(lane, base.as_deref());
     }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
@@ -3189,7 +3331,7 @@ pub(crate) fn main() -> ExitCode {
             // #2345: the journal lock-busy error carries its kind from the raise site;
             // every other error was classified at the dispatch boundary.
             println!("{}", contract::failure(op, e.kind, &e.message));
-            eprintln!("{e}");
+            print_operation_error(e.kind, &e.message);
             ExitCode::from(1)
         }
     }
@@ -3200,8 +3342,70 @@ mod tests {
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// #2812 W3 AC-4, through the path `main` takes (`help::bin_name` + `help::configure`,
+    /// #2802 S1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and `moai-cli`
+    /// (the `.exe` never shows), help and usage errors differ only in the name that ran, and
+    /// `--version` is the same build signature `moai-cli <ver> (rust)` for every name. Windows
+    /// paths are written with `/` so the test reads them the same on every OS.
+    #[test]
+    fn every_binary_name_renders_the_same_moai_help() {
+        let render = |argv0: &'static str, args: &[&str]| -> (&'static str, String) {
+            let bin = moai_cli::help::bin_name(argv0);
+            let mut argv = vec![argv0];
+            argv.extend_from_slice(args);
+            let out = match moai_cli::help::configure(
+                Cli::command(),
+                bin,
+                moai_cli::BUILD_VERSION,
+                false,
+            )
+            .try_get_matches_from(argv)
+            {
+                Ok(_) => String::from("parsed"),
+                Err(e) => e.render().to_string(),
+            };
+            (bin, out)
+        };
+        let names = [
+            ("C:/Users/u/.moai/path/moai.exe", "moai"),
+            ("C:/Users/u/.moai/path/moai-cli.exe", "moai-cli"),
+            ("/usr/local/bin/moai", "moai"),
+            ("moai-cli", "moai-cli"),
+        ];
+        for args in [
+            &["--help"][..],
+            &["no-such-command"][..],
+            &["claim-verify", "--help"][..],
+            &["--version"][..],
+        ] {
+            let (_, first) = render(names[0].0, args);
+            for (argv0, want) in names {
+                let (bin, out) = render(argv0, args);
+                assert_eq!(bin, want, "{argv0}");
+                assert!(!out.contains(".exe"), "{argv0} {args:?}: {out}");
+                if args == ["--version"] {
+                    assert_eq!(
+                        out.trim_end(),
+                        format!("moai-cli {}", moai_cli::VERSION_SIGNATURE),
+                        "{argv0}"
+                    );
+                } else {
+                    assert!(
+                        out.contains(&format!("Usage: {bin} ")),
+                        "{argv0} {args:?}: {out}"
+                    );
+                    assert_eq!(
+                        out.replace("moai-cli", "moai"),
+                        first.replace("moai-cli", "moai"),
+                        "{argv0} {args:?}"
+                    );
+                }
+            }
+        }
+    }
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
-    const RAW_OUTPUT: [&str; 2] = ["statusline", "pr-self-audit-check"];
+    const RAW_OUTPUT: [&str; 3] = ["statusline", "pr-self-audit-check", "lane-env"];
 
     /// #2722 AC-5: `--version` shows the build version, which is the package version plus
     /// `+local.<n>` exactly when this build set `MOAI_LOCAL_BUILD`.
@@ -3511,6 +3715,18 @@ mod operations_doc {
             .iter()
             .any(|w| w == "pr-self-audit-check"));
         assert!(DOC.contains("envelope 예외 하위 명령: `pr-self-audit-check`(#2708)"));
+    }
+
+    /// #2841: `lane-env` prints shell `export` lines for `eval`, so it is outside OPERATIONS
+    /// and documented as an envelope exception.
+    #[test]
+    fn lane_env_is_the_documented_envelope_exception() {
+        let cli = Cli::command();
+        assert!(cli.get_subcommands().any(|s| s.get_name() == "lane-env"));
+        assert_eq!(operation_of("lane-env"), None);
+        assert!(!doc_list(DOC).unwrap().iter().any(|w| w == "lane-env"));
+        assert!(DOC.contains("envelope 예외 하위 명령: `lane-env`(#2841)"));
+        assert!(DOC.contains("`lane_env_is_the_documented_envelope_exception`"));
     }
 
     fn render(words: &[&str]) -> String {

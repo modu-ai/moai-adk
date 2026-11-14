@@ -445,3 +445,113 @@ fn a_target_symlinked_outside_the_worktree_is_never_trimmed() {
         .file_type()
         .is_symlink());
 }
+
+// ---- #2811 W2: old, new and Go worktree folders together (AC-3, D3, D8a) ----
+
+/// Adds a merged worktree with cargo output at `wt` (branch `issue/1-<name>`).
+fn add_merged(fx: &Fixture, wt: &Path, name: &str) {
+    let branch = format!("issue/1-{name}");
+    git(
+        &fx.root,
+        &["worktree", "add", "-q", "-b", &branch, wt.to_str().unwrap()],
+    );
+    cargo_output(wt, "debug");
+}
+
+/// A new-place worktree (`<HOME>/.moai/worktrees/repo-1-h`) is cleaned like an old-place one,
+/// while a worktree in the Go generation's folder — reached through a `~/.moai` that is a
+/// symbolic link to another folder — is planned `skip preserved_location` and the apply
+/// leaves it, its cargo output and the link's target folder exactly as they were.
+#[test]
+fn new_place_worktrees_are_cleaned_and_go_place_ones_never_touched() {
+    let fx = fixture();
+    let real = fx.home.parent().unwrap().join("real-moai");
+    fs::create_dir_all(real.join("worktrees/projects/repo")).unwrap();
+    fs::write(real.join("settings.yaml"), "go: true\n").unwrap();
+    std::os::unix::fs::symlink(&real, fx.home.join(".moai")).unwrap();
+    let new_wt = fx.home.join(".moai/worktrees/repo-1-h");
+    let go_wt = fx.home.join(".moai/worktrees/projects/repo/feat");
+    add_merged(&fx, &new_wt, "h");
+    add_merged(&fx, &go_wt, "go");
+    let before_real = tree(&real.join("worktrees/projects"));
+
+    let now = later();
+    let r = plan(&fx, now);
+    // git lists the resolved path; the plan still names both places.
+    let new_e = entry(&r, real.join("worktrees/repo-1-h").to_str().unwrap());
+    assert_eq!(new_e["location"], "home", "{new_e}");
+    assert_eq!(new_e["action"], "remove", "{new_e}");
+    let go_e = entry(
+        &r,
+        real.join("worktrees/projects/repo/feat").to_str().unwrap(),
+    );
+    assert_eq!(go_e["location"], "go", "{go_e}");
+    assert_eq!(go_e["action"], "skip", "{go_e}");
+    assert_eq!(go_e["reasons"], serde_json::json!(["preserved_location"]));
+    assert_eq!(entry(&r, ".moai-cli/worktrees/a")["location"], "project");
+    assert_eq!(entry(&r, ".")["location"], "primary");
+
+    let v = apply(&fx, now, r["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(!real.join("worktrees/repo-1-h").exists(), "{v}");
+    assert!(!fx.wt("a").exists(), "old place cleaned the same way: {v}");
+    // The Go folder: same files, same cargo output, link and its other files intact.
+    assert_eq!(tree(&real.join("worktrees/projects")), before_real);
+    assert!(go_wt.join("target/debug").is_dir());
+    assert_eq!(
+        fs::read_to_string(real.join("settings.yaml")).unwrap(),
+        "go: true\n"
+    );
+    assert!(fs::symlink_metadata(fx.home.join(".moai"))
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}
+
+/// Without any home in the environment the Go folder's shape alone keeps its worktree.
+#[test]
+fn without_a_home_the_go_folder_shape_still_preserves() {
+    let fx = fixture();
+    let go_wt = fx.home.join(".moai/worktrees/projects/repo/feat");
+    add_merged(&fx, &go_wt, "go");
+    let out = Command::new(BIN)
+        .args(plan_args(&fx, later(), &[]))
+        .current_dir(&fx.root)
+        .env_remove("HOME")
+        .env_remove("USERPROFILE")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .unwrap();
+    let r = envelope(&out)["result"].clone();
+    let e = entry(&r, go_wt.to_str().unwrap());
+    assert_eq!(e["action"], "skip", "{e}");
+    assert_eq!(e["reasons"], serde_json::json!(["preserved_location"]));
+}
+
+/// The recent-change window at its edge for a new-place worktree: a change exactly
+/// `window - 1` seconds old keeps it, one `window` seconds old does not (N/N+1).
+#[test]
+fn the_recent_window_edge_holds_for_a_new_place_worktree() {
+    let fx = fixture();
+    let new_wt = fx.home.join(".moai/worktrees/repo-1-h");
+    add_merged(&fx, &new_wt, "h");
+    let probe = later();
+    let shown = new_wt.to_str().unwrap().to_string();
+    let age = plan(&fx, probe)["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["path"] == shown.as_str())
+        .unwrap()["change_age_secs"]
+        .as_u64()
+        .unwrap();
+    let changed_at = probe - age;
+    let window = 120 * 60;
+    let kept = plan(&fx, changed_at + window - 1);
+    let e = entry(&kept, &shown);
+    assert_eq!(e["action"], "skip", "{e}");
+    assert!(e["reasons"].to_string().contains("recent_change"), "{e}");
+    let gone = plan(&fx, changed_at + window);
+    assert_eq!(entry(&gone, &shown)["action"], "remove");
+}

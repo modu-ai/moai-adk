@@ -73,7 +73,7 @@
       }
     },
     "workflows/setup.md": {
-      "sha256": "955e61101878d22341f0e2e8a53a783188a2947bceaac52b361a26f7c9f146ba",
+      "sha256": "9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-setup",
@@ -82,7 +82,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "9bafd99be4eb7ed6f9ce56bd1a81ff0499afb7d2e2a419b0b503d27926faecad",
+      "sha256": "ddbd1c70067d64210533bc21c3ce1795539b3c558f15c0d2c2f9f258f2fa5f8a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "31a2941b8528aa14da83cdf9013cfaa537a0331c1fa4b7ecda36b70a4893a1e3",
+      "sha256": "39418e58ce02d6dc6e4d051c7038406c7db4f00061633d6e591260ed56b8c2f8",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "7955e783026fd5ac07dd24a45f6f85a06e1d7d915c51dca2792eca1bbfcad1e9",
+      "sha256": "5beff459caeb558ad71a873cd2884f720a1cd4ff7d3cb908c35a2fb2d1abd1b8",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "e23e3be4158324aadc8679543b108a2a1b61e3273357ae193d40e687b0140e73",
+      "sha256": "556b1b95b696f8e86794d4b5af2410e9285689d901a6178ee14b95c4350bd5ee",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -208,12 +208,12 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "fa9686ef07aa02069e38d80b014600382dc00259041e5767c77cac852955595b",
+      "sha256": "bcdec4f3bd1caf2be3fe0e660882b81988fd81f3b9c69d7e3f7bc20dc57ae57b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006)."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
       }
     },
     "references/home/routing.md": {

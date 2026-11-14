@@ -418,6 +418,42 @@ pub fn verify_cli<T: Transport, C: Clock>(
     }
 }
 
+/// The flag form of `claim-verify` (#2838): `--issue N --comment ID --lane NAME
+/// [--repo OWNER/REPO] [--allowed-author LOGIN]…` builds the same typed request the stdin form
+/// reads, so both forms reach [`verify_cli`] with equal input and give the same verdict. Without
+/// `--repo` the repository is read from the project's `origin` remote.
+pub fn request_from_flags(
+    project: &Path,
+    issue: i64,
+    comment: i64,
+    lane: &str,
+    repo: Option<&str>,
+    allowed_authors: &[String],
+) -> Result<VerifyRequest> {
+    let (owner, repo) = match repo {
+        Some(slug) => slug
+            .split_once('/')
+            .filter(|(_, r)| !r.contains('/'))
+            .map(|(o, r)| (o.to_string(), r.to_string()))
+            .ok_or_else(|| format!("claim-verify: invalid --repo `{slug}`: expected OWNER/REPO"))?,
+        None => git_out(project, &["remote", "get-url", "origin"])
+            .and_then(|url| github_owner_repo(&url))
+            .ok_or(
+                "claim-verify: pass --repo OWNER/REPO: the project's origin remote is not a \
+                 GitHub repository",
+            )?,
+    };
+    Ok(VerifyRequest {
+        schema_version: 1,
+        owner,
+        repo,
+        issue_number: issue,
+        session: lane.to_string(),
+        comment_id: Some(comment),
+        allowed_authors: allowed_authors.to_vec(),
+    })
+}
+
 /// Words that run the command after them (#2306). Their options, `NAME=value` assignments and
 /// a leading number or duration (`nice -n 10`, `timeout 30`) are skipped to reach the command.
 const WRAPPERS: &[&str] = &[

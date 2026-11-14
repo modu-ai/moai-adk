@@ -186,7 +186,11 @@ pub fn hook_command(host: &str, handler: Handler) -> String {
     }
 }
 
-/// The binary every generated hook command names.
+/// The binary every generated hook command names. It stays `moai-cli` while the default command
+/// name is `moai` (#2812 W3, leader decision 6868439066 (나), until the alias retires in R5): a
+/// Go-generation `moai` first on PATH would otherwise receive the claim guard, exit 1 and so
+/// switch the guard off silently, while `binary_state` reported `resolved` (audit 6868377245 B1).
+/// Only this Rust tool has a `moai-cli`.
 pub const HOOK_BINARY: &str = "moai-cli";
 
 /// Whether the generated command's binary resolves on `path_env` (#2348). `hooks-plan` and
@@ -265,7 +269,14 @@ fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
         ]
         .iter()
         .any(|d| root.starts_with(home.join(d)));
-        if root == home || inside_config {
+        // #2696 C4b: `~/.moai` is refused only when it is this generation's HOME state folder
+        // (marker present), and even then not under its worktree folder, where W2 creates
+        // worktrees and the Go generation keeps its own (`home_workdir::worktrees_root`). A Go
+        // `~/.moai` without the marker is not ours and is not refused here (audit #2848 B1).
+        let inside_state = crate::home_root::dir(&home) == crate::home_root::MOAI_DIR
+            && root.starts_with(home.join(crate::home_root::MOAI_DIR))
+            && !root.starts_with(crate::home_workdir::worktrees_root(&home));
+        if root == home || inside_config || inside_state {
             return Err("home directory refused; hooks are written to a project tree only".into());
         }
     }

@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
 """Limit how many heavy checks run at once on a shared machine (Issue #2491).
 
-    heavy_check_slot.py acquire --max N --name LANE [--dir DIR] -- COMMAND...
+    heavy_check_slot.py acquire --max N --name LANE [--dir DIR]
+                                [--min-free-gb G] [--max-swap-pct P] -- COMMAND...
     heavy_check_slot.py status [--dir DIR]
+
+Machine limits (Issue #2829, the same rule as the Rust `heavy-slot-acquire`, src/heavy_slot.rs):
+when the working folder's file system has less than --min-free-gb free (default 50, decimal
+GB = 10^9 bytes) or swap use is above --max-swap-pct (default 80), `acquire` starts nothing
+and exits 75 (sysexits EX_TEMPFAIL, "try again later") with the measured values on stderr.
+It judges before queueing and again right before COMMAND after a wait, since a wait can eat
+the space. A value the system does not give is not a reason to refuse. `--min-free-gb 0
+--max-swap-pct 100` turns both off. Nothing is ever deleted (cleanup is a person's job).
+Tests set MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n> (or `@<file>` holding that text,
+read on every check) — the same test-only input the Rust debug build reads.
 
 `acquire` waits for one of N slots, runs COMMAND, and returns COMMAND's exit code
 (128 + signal number when COMMAND ends on a signal). While waiting it prints one line
@@ -33,6 +44,7 @@ to a single lock".
 import argparse
 import json
 import os
+import re
 import signal
 import stat
 import subprocess
@@ -47,7 +59,96 @@ except ImportError:  # pragma: no cover - non-unix
 POLL_SECONDS = 0.2
 # The wrapper's own refusal, kept apart from COMMAND's codes like env(1) and timeout(1) do.
 REFUSED = 125
+# Too short of disk or too deep in swap to start now (src/heavy_slot.rs BUSY).
+BUSY = 75
+# The leader's numbers (Issue #2677 comment 6850581277), src/heavy_slot.rs DEFAULT_LIMITS.
+DEFAULT_MIN_FREE_GB = 50
+DEFAULT_MAX_SWAP_PCT = 80
 FORWARDED = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+
+def _test_machine():
+    """(free_bytes, swap_pct) from MOAI_CLI_TEST_MACHINE, or None when it is not set."""
+    text = os.environ.get("MOAI_CLI_TEST_MACHINE")
+    if text is None:
+        return None
+    if text.startswith("@"):
+        try:
+            with open(text[1:]) as f:
+                text = f.read()
+        except OSError:
+            text = ""
+    free = swap = None
+    for part in text.strip().split(","):
+        key, _, value = part.partition("=")
+        try:
+            if key == "free_gb":
+                free = int(value) * 1_000_000_000
+            elif key == "swap_pct":
+                swap = int(value)
+        except ValueError:
+            pass
+    return free, swap
+
+
+def free_bytes(folder):
+    try:
+        s = os.statvfs(folder)
+    except OSError:
+        return None
+    return s.f_bavail * s.f_frsize
+
+
+def swap_pct():
+    """Swap in use, percent of the swap size (0 without swap); None when unknown."""
+    if sys.platform == "darwin":
+        try:
+            out = subprocess.run(["/usr/sbin/sysctl", "-n", "vm.swapusage"], capture_output=True,
+                                 text=True, timeout=5).stdout
+        except (OSError, subprocess.SubprocessError):
+            return None
+        fields = dict(re.findall(r"(\w+) = ([\d.]+)M", out))
+        try:
+            total, used = float(fields["total"]), float(fields["used"])
+        except (KeyError, ValueError):
+            return None
+        return 0 if total == 0 else int(used * 100 // total)
+    try:
+        with open("/proc/meminfo") as f:
+            info = dict(line.split(":", 1) for line in f if ":" in line)
+        total = int(info["SwapTotal"].split()[0])
+        free = int(info["SwapFree"].split()[0])
+    except (OSError, KeyError, ValueError, IndexError):
+        return None
+    return 0 if total == 0 else (total - free) * 100 // total
+
+
+def over_limits(folder, min_free_gb, max_swap_pct):
+    """Why a heavy run must not start now, or None (same text as src/heavy_slot.rs)."""
+    injected = _test_machine()
+    free, swap = injected if injected is not None else (free_bytes(folder), swap_pct())
+    why = []
+    if free is not None and free < min_free_gb * 1_000_000_000:
+        why.append(f"disk free {free / 1e9:.1f} GB at {folder} is below {min_free_gb} GB")
+    if swap is not None and swap > max_swap_pct:
+        why.append(f"swap use {swap}% is above {max_swap_pct}%")
+    return "; ".join(why) or None
+
+
+def machine_line(folder):
+    try:
+        load = "/".join(f"{x:.2f}" for x in os.getloadavg())
+    except OSError:
+        load = "unknown"
+    free = free_bytes(folder)
+    disk = "unknown" if free is None else f"{free / (1 << 30):.1f} GiB"
+    return f"load {load}; disk free {disk} at {folder}"
+
+
+def busy(name, why, folder):
+    print(f"heavy-check-slot: {name} not started — {why}; {machine_line(folder)}; COMMAND did "
+          f"not run, try again later", file=sys.stderr, flush=True)
+    return BUSY
 
 
 def default_dir():
@@ -152,10 +253,16 @@ def queue_place(waiting, me):
     return live.index(me) + 1, len(live)
 
 
-def acquire(folder, maximum, name, command):
+def acquire(folder, maximum, name, command, min_free_gb=DEFAULT_MIN_FREE_GB,
+            max_swap_pct=DEFAULT_MAX_SWAP_PCT):
+    cwd = os.getcwd()
+    why = over_limits(cwd, min_free_gb, max_swap_pct)
+    if why:
+        return busy(name, why, cwd)
     waiting = os.path.join(folder, "waiting")
     os.makedirs(waiting, mode=0o700, exist_ok=True)
     slot, fd = take_slot(folder, maximum)
+    waited = fd is None
     if fd is None:
         me = f"{time.time_ns():020d}-{os.getpid()}"
         wait_path = os.path.join(waiting, me)
@@ -176,6 +283,13 @@ def acquire(folder, maximum, name, command):
                 os.unlink(wait_path)
             except FileNotFoundError:
                 pass
+    if waited:
+        # The machine may have changed during the wait (#2829 D2): judge it again before
+        # starting; closing the slot file frees the slot.
+        why = over_limits(cwd, min_free_gb, max_swap_pct)
+        if why:
+            os.close(fd)
+            return busy(name, why, cwd)
     # Handlers go in before the slot is announced and the command starts, so no signal lands in
     # a gap where the wrapper would die and leave the command running; one that arrives before
     # the command exists is held and passed on as soon as it does.
@@ -225,6 +339,10 @@ def main(argv=None):
     a.add_argument("--max", type=int, required=True)
     a.add_argument("--name", required=True)
     a.add_argument("--dir", default=None)
+    a.add_argument("--min-free-gb", type=int, default=DEFAULT_MIN_FREE_GB,
+                   help="start nothing below this much free space (decimal GB; 0 turns it off)")
+    a.add_argument("--max-swap-pct", type=int, default=DEFAULT_MAX_SWAP_PCT,
+                   help="start nothing above this swap use in percent (100 turns it off)")
     a.add_argument("command", nargs=argparse.REMAINDER)
     s = sub.add_parser("status", help="list held slots (read only)")
     s.add_argument("--dir", default=None)
@@ -240,7 +358,7 @@ def main(argv=None):
         parser.error("acquire needs --max >= 1 and a command after --")
     os.makedirs(folder, mode=0o700, exist_ok=True)
     try:
-        return acquire(folder, args.max, args.name, command)
+        return acquire(folder, args.max, args.name, command, args.min_free_gb, args.max_swap_pct)
     except NotASlotFile as e:
         print(f"heavy-check-slot: refused {e}: not a plain file (symlink, FIFO, device, folder "
               f"or hard link); nothing was written and COMMAND did not run — remove it or pass "
