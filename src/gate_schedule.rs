@@ -8,10 +8,16 @@
 //! token-like variable (in either) is refused, so no credential lands in a file.
 //!
 //! `plan` writes nothing. `apply` re-plans, refuses any other digest, keeps the previous bytes
-//! in a receipt and writes the one file; it never runs `launchctl` or `crontab` — the enable
-//! and disable commands are printed as text for the operator (decision Q5). Windows is refused
-//! with a named reason (decision Q1). A symlinked folder on the way to the target or the
-//! receipt is refused.
+//! in a receipt and writes the one file under the state root (`<state>/schedule/`); it never
+//! runs `launchctl` or `crontab` — the enable and disable commands are printed as text for the
+//! operator (decision Q5). On macOS the plist is never written into `~/Library/LaunchAgents`:
+//! launchd loads that folder at login, so a file there is already enabled; enabling is the
+//! operator's `cp` into it plus `launchctl bootstrap`. Windows is refused with a named reason
+//! (decision Q1). A symlinked folder on the way to the target or the receipt, or a symlink in
+//! the target's place, is refused.
+//!
+//! Until `gate-loop --fetch` (S3) exists the scheduled pass does not fetch, so a `--merge`
+//! entry gates on a stale `origin/<base>`; the plan's enable steps say so.
 
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
 use serde::{Deserialize, Serialize};
@@ -32,7 +38,13 @@ const SCHEDULE_DIR: &str = "schedule";
 const CRON_FILE: &str = "gate-loop.crontab";
 const LOCK_FILE: &str = "gate-loop.lock";
 const LOG_FILE: &str = "logs/gate-loop.log";
+/// The folder launchd loads at login; only the operator's enable step copies into it.
 const LAUNCH_AGENTS: &str = "Library/LaunchAgents";
+/// The enable steps' warning until `gate-loop --fetch` (S3) exists.
+const NO_FETCH_NOTE: &str =
+    "# note: the scheduled pass does not fetch until gate-loop --fetch (S3); \
+                             a --merge entry gates on a stale origin/<base>, so enable the \
+                             dry-run entry until then";
 /// Named variables a scheduler entry must never carry.
 const TOKEN_NAMES: [&str; 3] = ["GH_TOKEN", "GITHUB_TOKEN", "MOAI_AUDIT_APP_TOKEN"];
 const TOKEN_SUFFIXES: [&str; 3] = ["_TOKEN", "_KEY", "_SECRET"];
@@ -399,8 +411,13 @@ pub fn plan(req: &Request) -> Result<Plan> {
     program.extend(loop_args(&req.repo, &dir, merge_reference));
     let (target, entry, enable, disable) = match os {
         Os::Macos => {
-            let target = home.join(LAUNCH_AGENTS).join(format!("{label}.plist"));
-            let t = target.to_str().ok_or("non UTF-8 target")?.to_string();
+            let target = schedule_dir(&home).join(format!("{label}.plist"));
+            let t = sh(target.to_str().ok_or("non UTF-8 target")?);
+            let agents = home.join(LAUNCH_AGENTS);
+            let a = sh(agents
+                .join(format!("{label}.plist"))
+                .to_str()
+                .ok_or("non UTF-8 path")?);
             let entry = render_plist(&label, &program, &dir, &env, &log);
             let logs = sh(&state.join("logs").display().to_string());
             (
@@ -408,12 +425,14 @@ pub fn plan(req: &Request) -> Result<Plan> {
                 entry,
                 vec![
                     "# stop target/leader/auto_loop.sh (the shell loop) first".to_string(),
-                    format!("mkdir -p {logs}"),
-                    format!("launchctl bootstrap gui/$(id -u) {}", sh(&t)),
+                    NO_FETCH_NOTE.to_string(),
+                    format!("mkdir -p {logs} {}", sh(&agents.display().to_string())),
+                    format!("cp {t} {a}"),
+                    format!("launchctl bootstrap gui/$(id -u) {a}"),
                 ],
                 vec![
                     format!("launchctl bootout gui/$(id -u)/{label}"),
-                    format!("rm {}", sh(&t)),
+                    format!("rm {a}"),
                 ],
             )
         }
@@ -428,8 +447,9 @@ pub fn plan(req: &Request) -> Result<Plan> {
                 entry,
                 vec![
                     "# stop target/leader/auto_loop.sh (the shell loop) first".to_string(),
+                    NO_FETCH_NOTE.to_string(),
                     format!("mkdir -p {logs}"),
-                    format!("(crontab -l 2>/dev/null; cat {t}) | crontab -"),
+                    format!("(crontab -l 2>/dev/null | grep -vxF -f {t}; cat {t}) | crontab -"),
                 ],
                 vec![format!("crontab -l | grep -vxF -f {t} | crontab -")],
             )

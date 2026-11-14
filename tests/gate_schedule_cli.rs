@@ -143,13 +143,28 @@ fn launchd_entry_matches_the_golden() {
     let p = plan(&home, "macos", &[]);
     assert_eq!(
         p["target_path"].as_str().unwrap(),
-        home.join("Library/LaunchAgents/moai.gate-loop.acme.widgets.plist")
+        home.join(".moai-cli/schedule/moai.gate-loop.acme.widgets.plist")
             .to_str()
             .unwrap()
     );
     assert_eq!(p["label"], "moai.gate-loop.acme.widgets");
     let enable = p["enable"].to_string();
     assert!(enable.contains("launchctl bootstrap"), "{enable}");
+    // Enabling is the operator's copy into LaunchAgents, after the shell loop is stopped.
+    let agents = home.join("Library/LaunchAgents/moai.gate-loop.acme.widgets.plist");
+    let steps: Vec<&str> = p["enable"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    let at = |needle: &str| steps.iter().position(|s| s.contains(needle));
+    let cp = at("cp ").expect("a cp step");
+    assert!(steps[cp].ends_with(agents.to_str().unwrap()), "{steps:?}");
+    assert!(at("auto_loop.sh").unwrap() < cp, "{steps:?}");
+    assert!(cp < at("launchctl bootstrap").unwrap(), "{steps:?}");
+    let disable = p["disable"].to_string();
+    assert!(disable.contains(agents.to_str().unwrap()), "{disable}");
     assert!(
         p["disable"].to_string().contains("launchctl bootout"),
         "{p}"
@@ -405,15 +420,172 @@ fn windows_is_refused_with_a_named_reason() {
     assert_eq!(tree(&home), before);
 }
 
+/// B1 (PLAN Q5): apply writes the plist under the state root, never into
+/// `~/Library/LaunchAgents` — launchd loads that folder at login, so a file there is enabled.
+#[test]
+fn apply_never_writes_into_launch_agents() {
+    let (_d, home) = temp_home();
+    let p = plan(&home, "macos", &[]);
+    let (code, env) = apply(
+        &home,
+        "macos",
+        p["plan_digest"].as_str().unwrap(),
+        PERM,
+        &[],
+    );
+    assert_eq!(code, 0, "{env}");
+    let target = PathBuf::from(env["result"]["target_path"].as_str().unwrap());
+    assert!(
+        target.starts_with(home.join(".moai-cli/schedule")),
+        "{target:?}"
+    );
+    assert_eq!(
+        fs::read_to_string(&target).unwrap(),
+        p["entry"].as_str().unwrap()
+    );
+    assert!(
+        !home.join("Library/LaunchAgents").exists(),
+        "apply wrote into LaunchAgents: {:?}",
+        tree(&home)
+    );
+}
+
+/// A fake file-backed `crontab` first on PATH: `-l` prints the store (exit 1 when there is
+/// none), `-` replaces the store with stdin.
+fn fake_crontab(home: &Path) -> (PathBuf, PathBuf) {
+    let bin = home.join("fake-bin");
+    fs::create_dir_all(&bin).unwrap();
+    let store = home.join("crontab.store");
+    common::write_executable(
+        &bin.join("crontab"),
+        &format!(
+            "#!/bin/sh\nstore='{s}'\ncase \"$1\" in\n\
+             -l) [ -f \"$store\" ] || {{ echo 'no crontab for user' >&2; exit 1; }}; cat \"$store\" ;;\n\
+             -) cat > \"$store.new\" && mv \"$store.new\" \"$store\" ;;\n\
+             *) echo \"fake crontab: $*\" >&2; exit 2 ;;\nesac\n",
+            s = store.display()
+        ),
+    );
+    (bin, store)
+}
+
+/// Runs each printed command line with `sh -c`, the fake bin first on PATH.
+fn run_lines(home: &Path, bin: &Path, lines: &Value) {
+    for line in lines.as_array().unwrap() {
+        let line = line.as_str().unwrap();
+        let out = Command::new("sh")
+            .args(["-c", line])
+            .env_clear()
+            .env("HOME", home)
+            .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+            .current_dir(home)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{line}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+}
+
+/// The Linux plan and apply; returns the plan result.
+fn linux_applied(home: &Path) -> Value {
+    let p = plan(home, "linux", &[]);
+    let (code, env) = apply(home, "linux", p["plan_digest"].as_str().unwrap(), PERM, &[]);
+    assert_eq!(code, 0, "{env}");
+    p
+}
+
+/// B2: the printed Linux enable keeps every user crontab line and adds the moai line; the
+/// printed disable restores the user crontab byte for byte.
+#[test]
+fn cron_enable_and_disable_keep_the_user_crontab() {
+    let (_d, home) = temp_home();
+    let (bin, store) = fake_crontab(&home);
+    let user = "MAILTO=ops@example.com\nSHELL=/bin/sh\n0 3 * * * /usr/bin/backup --all   \n# a comment\n*/5 * * * * echo hi\n";
+    fs::write(&store, user).unwrap();
+    let original = home.join("crontab.original");
+    fs::write(&original, user).unwrap();
+    let p = linux_applied(&home);
+    let line = p["entry"]
+        .as_str()
+        .unwrap()
+        .lines()
+        .nth(1)
+        .unwrap()
+        .to_string();
+
+    run_lines(&home, &bin, &p["enable"]);
+    let after = fs::read_to_string(&store).unwrap();
+    for l in user.lines() {
+        assert!(after.lines().any(|a| a == l), "lost {l:?}: {after:?}");
+    }
+    assert_eq!(after.lines().filter(|a| *a == line).count(), 1, "{after:?}");
+
+    run_lines(&home, &bin, &p["disable"]);
+    let cmp = Command::new("cmp")
+        .arg(&store)
+        .arg(&original)
+        .status()
+        .unwrap();
+    assert!(cmp.success(), "{:?}", fs::read_to_string(&store));
+}
+
+/// N1: enabling twice leaves exactly one moai line; with no crontab yet, enable creates one
+/// holding only the entry and disable leaves it empty.
+#[test]
+fn cron_enable_is_idempotent_and_works_without_a_crontab() {
+    let (_d, home) = temp_home();
+    let (bin, store) = fake_crontab(&home);
+    let p = linux_applied(&home);
+    let entry = p["entry"].as_str().unwrap();
+    let line = entry.lines().nth(1).unwrap();
+
+    run_lines(&home, &bin, &p["enable"]);
+    assert_eq!(fs::read_to_string(&store).unwrap(), entry);
+    run_lines(&home, &bin, &p["enable"]);
+    let after = fs::read_to_string(&store).unwrap();
+    assert_eq!(after.lines().filter(|a| *a == line).count(), 1, "{after:?}");
+    assert_eq!(after, entry);
+
+    run_lines(&home, &bin, &p["disable"]);
+    assert_eq!(fs::read_to_string(&store).unwrap(), "");
+}
+
+/// N3 (M4b): a symlink in the target file's place is refused by plan and apply, never
+/// followed.
+#[test]
+fn apply_refuses_a_symlinked_target_file() {
+    for os in ["macos", "linux"] {
+        let (_d, home) = temp_home();
+        let first = plan(&home, os, &[]);
+        let target = PathBuf::from(first["target_path"].as_str().unwrap());
+        let elsewhere = home.join("elsewhere.txt");
+        fs::write(&elsewhere, "keep\n").unwrap();
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, &target).unwrap();
+        let (code, env) = run(&home, "gate-schedule-plan", os, &[]);
+        assert_ne!(code, 0, "{os}: {env}");
+        assert!(env.to_string().contains("symlink"), "{os}: {env}");
+        let (code, env) = apply(&home, os, first["plan_digest"].as_str().unwrap(), PERM, &[]);
+        assert_ne!(code, 0, "{os}: {env}");
+        assert_eq!(fs::read_to_string(&elsewhere).unwrap(), "keep\n");
+        assert!(fs::symlink_metadata(&target)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+    }
+}
+
 /// A symlinked target folder (or state folder) is refused, and nothing is written through it.
 #[test]
 fn symlinked_target_folder_is_refused() {
-    // macOS: ~/Library/LaunchAgents is a link to another folder.
+    // macOS: the state root itself is a link to another folder.
     let (_d, home) = temp_home();
     let elsewhere = home.join("elsewhere");
     fs::create_dir_all(&elsewhere).unwrap();
-    fs::create_dir_all(home.join("Library")).unwrap();
-    std::os::unix::fs::symlink(&elsewhere, home.join("Library/LaunchAgents")).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, home.join(".moai-cli")).unwrap();
     let (code, env) = run(&home, "gate-schedule-plan", "macos", &[]);
     assert_ne!(code, 0, "{env}");
     assert!(env.to_string().contains("symlink"), "{env}");
