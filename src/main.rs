@@ -1107,6 +1107,10 @@ enum Command {
         /// The `plan_digest` of the preview being confirmed; applies only if it still matches.
         #[arg(long, value_name = "PLAN_DIGEST")]
         confirm: Option<String>,
+        /// The preview's `cleanup.confirm_token` (#2872): archive the Go leftovers it lists.
+        /// Without --confirm the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_cleanup: Option<String>,
     },
     /// Preview moving the Go-era .moai folder
     ///
@@ -2461,19 +2465,27 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             };
             moai_cli::install::inspect(&home, &path_env, &places)
         }
-        Command::Update { confirm } => {
+        Command::Update {
+            confirm,
+            confirm_cleanup,
+        } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
                 .map(PathBuf::from)
                 .ok_or("home directory missing; update requires HOME")?;
             // The shared confirm prompt (#2806): same terminal rule and question as before.
-            moai_cli::update::update_command(&home, confirm.as_deref(), |summary| {
-                use moai_cli::ui_text::Msg;
-                moai_cli::progress::ask_terminal(
-                    |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
-                    Msg::ApplyUpdate,
-                )
-            })
+            moai_cli::update::update_command(
+                &home,
+                confirm.as_deref(),
+                confirm_cleanup.as_deref(),
+                |summary| {
+                    use moai_cli::ui_text::Msg;
+                    moai_cli::progress::ask_terminal(
+                        |p| format!("{}\n{summary}", p.text(Msg::UpdatePreview)),
+                        Msg::ApplyUpdate,
+                    )
+                },
+            )
         }
         Command::GoStatePlan { project } => {
             serde_json::to_value(moai_cli::go_state::plan(&project)?)

@@ -8,3 +8,4 @@ operation `cleanup.apply` · 코드 `src/ops/cleanup_apply.rs`, `src/update_clea
 - 옮기기 전에 모든 원본의 부모 폴더와 보관 폴더가 같은 파일 시스템인지(unix 장치 번호) 본다. 하나라도 다르면 아무것도 옮기지 않는다.
 - `manifest.tsv`(`<원래 절대 경로>\t<보관 절대 경로>` 줄)와 `receipt.json`(상태 `pending`, 항목·digest)을 임시 파일·fsync·rename 으로 먼저 쓴다.
 - 항목마다 digest 가 그대로인지 다시 보고(다르면 그 항목에 `changed` 를 적고 멈추며 receipt 는 `pending` 으로 남는다), 보관 폴더 안에 HOME 기준 경로를 그대로 만들어 `rename` 한다. 옮긴 항목은 `moved: true`. 끝나면 `committed`. 그 뒤 `cleanup-plan` 의 archive 항목은 0 이다. 지우지 않는다.
+- `moai update --confirm-cleanup TOKEN` (2단계) 은 같은 apply 를 설치된 패키지로 부른다. 미리 보기의 `cleanup.confirm_token` 만 받고, `--confirm` 이나 터미널의 yes 로는 옮기지 않는다. 결과의 `cleanup_result` 와 `revert.cleanup`(`moai cleanup-revert-plan <HOME> --stamp <stamp>`).
