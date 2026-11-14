@@ -421,10 +421,20 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     if listed && movable {
         // The alias table and the stub plan are bounded lists the later steps rely on; a cut one
         // would leave a version folder without an alias or a `path` link pointing nowhere.
-        if names_of(&old.join("versions")).0.len() > CANDIDATE_LIMIT {
+        // A link or a plain file there is not a list the later steps walk (`alias_table` and the
+        // stub plan skip it), so what it points at must not count against the bound.
+        let listed_in = |sub: &str| {
+            let dir = old.join(sub);
+            if fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
+                names_of(&dir).0.len()
+            } else {
+                0
+            }
+        };
+        if listed_in("versions") > CANDIDATE_LIMIT {
             blocks.push("versions_not_fully_listed".into());
         }
-        if names_of(&old.join("path")).0.len() > STUB_LIMIT {
+        if listed_in("path") > STUB_LIMIT {
             blocks.push("path_not_fully_listed".into());
         }
     }
