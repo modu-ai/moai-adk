@@ -59,6 +59,7 @@ pub mod index_records;
 pub mod install;
 pub mod key_vault;
 pub mod labels_check;
+pub mod lane_duty;
 pub mod lane_env;
 pub mod lane_handoff;
 pub mod lane_next;

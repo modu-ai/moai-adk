@@ -162,10 +162,47 @@ fn open_locked(project: &Path, name: &str) -> Result<(PathBuf, PathBuf, fs::File
     Ok((dir, file, lock))
 }
 
+/// Who may release on a lane's behalf (#2902 O3a): only the leader, which passes the instance
+/// it read with `show`.
+pub const RELEASED_BY: &[&str] = &["leader"];
+
+/// The live holder of `name`, read without writing anything (#2902 O3a): `held` with its
+/// `instance` and `lease_until`, or `free` when there is no entry or its lease has ended. No
+/// lock is taken and no folder is created; a leader passes the instance to `release` with
+/// `by = Some("leader")`, which compares it again under the lock.
+pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
+    check_name(name)?;
+    let dir = registry_dir(project)?;
+    refuse_symlink(&dir)?;
+    let file = dir.join(format!("{name}.json"));
+    refuse_symlink(&file)?;
+    Ok(match read_entry(&file, name)? {
+        Some((instance, lease)) if lease > now => json!({
+            "status": "held",
+            "name": name,
+            "instance": instance,
+            "lease_until": crate::forge::policy::format_utc(lease),
+        }),
+        _ => json!({"status": "free", "name": name}),
+    })
+}
+
 /// Release `name` held by `instance` (before a lane's session is cleared), so the next
 /// session may register it at once. Only the holding instance releases a live entry; an
-/// entry whose lease has ended, or none, is `already_free`.
-pub fn release(project: &Path, name: &str, instance: &str, now: i64) -> Result<Value, String> {
+/// entry whose lease has ended, or none, is `already_free`. `by` (`leader`, #2902 O3a) is
+/// recorded as `released_by` on a release; the compare-and-delete is the same.
+pub fn release(
+    project: &Path,
+    name: &str,
+    instance: &str,
+    by: Option<&str>,
+    now: i64,
+) -> Result<Value, String> {
+    if let Some(b) = by {
+        if !RELEASED_BY.contains(&b) {
+            return Err("release --by is invalid: only `leader` is accepted".into());
+        }
+    }
     check_name(name)?;
     if !valid_instance(instance) {
         return Err(
@@ -191,7 +228,11 @@ pub fn release(project: &Path, name: &str, instance: &str, now: i64) -> Result<V
         }
     };
     drop(lock);
-    Ok(json!({"status": status, "name": name}))
+    let mut out = json!({"status": status, "name": name});
+    if let (Some(b), "released") = (by, status) {
+        out["released_by"] = json!(b);
+    }
+    Ok(out)
 }
 
 /// Register `name` for `instance` (a fresh one when `None`) until `now + lease_secs`.
@@ -310,6 +351,18 @@ mod tests {
         ] {
             assert!(!valid_name(bad), "{bad:?}");
         }
+    }
+
+    /// #2902 O3a: a release names only `leader` as `by`, refused before any path is read.
+    #[test]
+    fn release_by_accepts_only_leader() {
+        let nowhere = Path::new("/nonexistent/moai-o3a");
+        for by in ["other", "Leader", ""] {
+            let e = release(nowhere, "agent-8", &"0".repeat(32), Some(by), 0).unwrap_err();
+            assert!(e.contains("--by is invalid"), "{by:?}: {e}");
+        }
+        let e = release(nowhere, "agent-8", &"0".repeat(32), Some("leader"), 0).unwrap_err();
+        assert!(!e.contains("--by"), "{e}");
     }
 
     #[test]
