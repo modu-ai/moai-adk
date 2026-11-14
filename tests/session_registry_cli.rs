@@ -3,7 +3,7 @@
 #![cfg(unix)]
 mod common;
 
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -495,5 +495,170 @@ fn a_release_sees_the_lease_end_second_as_free() {
     assert_eq!(
         ok(&release_at("2026-11-13T11:00:00Z"))["status"],
         "already_free"
+    );
+}
+
+/// #2902 O3a: `--show` reports the live holder (or `free`) and writes nothing, not even the
+/// registry folder or its lock.
+#[test]
+fn show_reports_the_holder_and_writes_nothing() {
+    let fx = Fixture::new();
+    let free = ok(&run(&fx, &["--show", "--name", "agent-8", "--now", T0]));
+    assert_eq!(free, json!({"status": "free", "name": "agent-8"}));
+    assert!(!fx.sessions().exists(), "show creates no registry folder");
+
+    let first = ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let before = fs::read(fx.entry("agent-8")).unwrap();
+    let held = ok(&run(&fx, &["--show", "--name", "agent-8", "--now", T0]));
+    assert_eq!(
+        held,
+        json!({
+            "status": "held",
+            "name": "agent-8",
+            "instance": first["instance"],
+            "lease_until": "2026-11-13T11:00:00Z",
+        })
+    );
+    assert_eq!(fs::read(fx.entry("agent-8")).unwrap(), before);
+    // At the lease end second the name is free again, as for a registration.
+    let ended = ok(&run(
+        &fx,
+        &[
+            "--show",
+            "--name",
+            "agent-8",
+            "--now",
+            "2026-11-13T11:00:00Z",
+        ],
+    ));
+    assert_eq!(ended["status"], "free");
+    assert!(fx.entry("agent-8").exists(), "show removes nothing");
+    // `--show` takes no instance and does not combine with a release.
+    let zeros = "0".repeat(32);
+    for extra in [
+        vec!["--instance", zeros.as_str()],
+        vec!["--release", "--instance", zeros.as_str()],
+    ] {
+        let mut args = vec!["--show", "--name", "agent-8", "--now", T0];
+        args.extend_from_slice(&extra);
+        assert_eq!(run(&fx, &args).status.code(), Some(2), "{args:?}");
+    }
+    let (kind, _) = refused(&run(&fx, &["--show", "--name", "../x", "--now", T0]));
+    assert_eq!(kind, "invalid_input");
+}
+
+fn release_by_leader(fx: &Fixture, instance: &str, now: &str) -> Output {
+    run(
+        fx,
+        &[
+            "--release",
+            "--by",
+            "leader",
+            "--name",
+            "agent-8",
+            "--instance",
+            instance,
+            "--now",
+            now,
+        ],
+    )
+}
+
+/// #2902 O3a: the leader releases the instance it read with `--show`; the release is still
+/// compare-and-delete, so a name registered again since then is a conflict and is kept.
+#[test]
+fn the_leader_releases_the_instance_it_saw() {
+    let fx = Fixture::new();
+    ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let seen = ok(&run(&fx, &["--show", "--name", "agent-8", "--now", T0]));
+    let seen = seen["instance"].as_str().unwrap().to_string();
+    let released = ok(&release_by_leader(&fx, &seen, T0));
+    assert_eq!(
+        released,
+        json!({"status": "released", "name": "agent-8", "released_by": "leader"})
+    );
+    assert!(!fx.entry("agent-8").exists());
+
+    // The leader reads the holder, then the lane's lease ends and it registers again.
+    let stale = ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let stale = stale["instance"].as_str().unwrap().to_string();
+    let later = "2026-11-13T11:00:00Z";
+    let fresh = ok(&run(&fx, &["--name", "agent-8", "--now", later]));
+    assert_eq!(fresh["previous"], "expired");
+    let fresh = fresh["instance"].as_str().unwrap().to_string();
+    assert_ne!(fresh, stale);
+    let before = fs::read(fx.entry("agent-8")).unwrap();
+    let (kind, message) = refused(&release_by_leader(&fx, &stale, later));
+    assert_eq!(kind, "conflict");
+    assert!(!message.contains(&fresh), "{message}");
+    assert_eq!(fs::read(fx.entry("agent-8")).unwrap(), before);
+
+    // An ended lease, or no entry, is `already_free` and records no release.
+    let ended = ok(&release_by_leader(&fx, &fresh, "2026-11-13T12:00:00Z"));
+    assert_eq!(ended, json!({"status": "already_free", "name": "agent-8"}));
+    let fx2 = Fixture::new();
+    assert_eq!(
+        ok(&release_by_leader(&fx2, &"0".repeat(32), T0)),
+        json!({"status": "already_free", "name": "agent-8"})
+    );
+}
+
+/// `--by` accepts only `leader`, and only with `--release`; a plain `--release` keeps its
+/// output byte for byte.
+#[test]
+fn by_accepts_only_leader_and_plain_release_is_unchanged() {
+    let fx = Fixture::new();
+    let first = ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let instance = first["instance"].as_str().unwrap();
+    for by in ["other", "Leader", "lane", ""] {
+        let out = run(
+            &fx,
+            &[
+                "--release",
+                "--by",
+                by,
+                "--name",
+                "agent-8",
+                "--instance",
+                instance,
+                "--now",
+                T0,
+            ],
+        );
+        assert_eq!(out.status.code(), Some(2), "--by {by:?}");
+        assert_eq!(envelope(&out)["error"]["kind"], "usage");
+    }
+    let out = run(
+        &fx,
+        &[
+            "--by",
+            "leader",
+            "--name",
+            "agent-8",
+            "--instance",
+            instance,
+            "--now",
+            T0,
+        ],
+    );
+    assert_eq!(out.status.code(), Some(2), "--by without --release");
+    assert!(fx.entry("agent-8").exists());
+
+    let out = run(
+        &fx,
+        &[
+            "--release",
+            "--name",
+            "agent-8",
+            "--instance",
+            instance,
+            "--now",
+            T0,
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap(),
+        "{\"protocol_version\":1,\"operation\":\"session.register\",\"ok\":true,\"result\":{\"status\":\"released\",\"name\":\"agent-8\"}}\n"
     );
 }
