@@ -94,6 +94,7 @@ Lane and leader
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
+  leader-round            Build the leader's per-lane action list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host
   lane-resume-note        Write a card's resume note
