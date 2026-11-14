@@ -15,12 +15,17 @@ fn h(c: char) -> String {
 }
 
 fn next(snap: &Value) -> Value {
+    next_with(snap, &[])
+}
+
+fn next_with(snap: &Value, args: &[&str]) -> Value {
     let d = TempDir::new().unwrap();
     let file = d.path().join("snap.json");
     std::fs::write(&file, snap.to_string()).unwrap();
     let out = Command::new(EXE)
         .args(["lane-next", "--lane", LANE, "--repo", "o/r", "--snapshot"])
         .arg(&file)
+        .args(args)
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout)
@@ -591,4 +596,237 @@ fn the_end_condition_counts_open_prs_and_startable_cards() {
         let r = next(&snap);
         assert_eq!(r["end_condition"], want, "{snap}");
     }
+}
+
+/// #2933 P-3: with no pull request work, a startable Issue nobody claims is the result even
+/// when the five oldest startable ones are claimed by other lanes.
+#[test]
+fn startable_issue_is_picked_when_no_pr_work() {
+    let issues: Vec<Value> = (1..=6u64)
+        .map(|n| {
+            let comments = if n <= 5 {
+                json!([claim(n * 10, &format!("agent-{}", 20 + n))])
+            } else {
+                json!([])
+            };
+            json!({"number": n, "title": format!("issue {n}"), "comments": comments})
+        })
+        .collect();
+    let r = next(&json!({"open_issues": issues}));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(6));
+    let skipped = r["skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 5, "{r}");
+    assert!(
+        skipped.iter().all(|s| s["reason"] == json!("claimed")),
+        "{r}"
+    );
+}
+
+/// #2933 S1: with nothing to do, the result says why — each pull request passed over with its
+/// reason (`pr_skipped`), each Issue skipped, and with `--explain` one line for each and a last
+/// line for the end condition. The snapshot's `now` is echoed.
+#[test]
+fn explain_says_why_nothing_is_next() {
+    let snap = json!({
+        "now": "2026-11-14T12:00:00Z",
+        "prs": [
+            pr(5, &h('a'), Some("agent-3"), json!([audit_claim(9, "agent-3", &h('a'))])),
+            {"number": 6, "head": h('b'), "author_lane": "agent-4", "draft": true, "comments": []},
+        ],
+        "cards": [{"number": 7, "title": "held", "labels": ["HOLD"]}],
+    });
+    let r = next_with(&snap, &["--explain"]);
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["pr_skipped"],
+        json!([
+            {"pr": 5, "reason": "audit_reserved", "by": "agent-3", "comment": 9},
+            {"pr": 6, "reason": "draft"},
+        ]),
+        "{r}"
+    );
+    assert_eq!(r["now"], json!("2026-11-14T12:00:00Z"));
+    assert_eq!(
+        r["explain"],
+        json!([
+            "PR #5 passed over: audit_reserved by agent-3 (comment 9)",
+            "PR #6 passed over: draft",
+            "Issue #7 skipped: held",
+            "end_condition: open_prs=2 startable=0 met=false",
+        ]),
+        "{r}"
+    );
+}
+
+/// #2933 E: a lane with two live claims on open cards takes no new Issue — `waiting` names
+/// the cap; one live claim does not stop it, and a card closed (`CLOSE-TABLE`) or merged
+/// does not count.
+#[test]
+fn two_live_cards_stop_pick_issue() {
+    let free = json!([{"number": 2600, "title": "free", "comments": []}]);
+    // Each claimed card has the lane's own open pull request, so step 6 passes over it.
+    let snap = |cards: &[(u64, Value)]| {
+        let threads: Vec<Value> = cards
+            .iter()
+            .map(|(n, extra)| {
+                let mut t =
+                    json!({"number": n, "title": "card", "comments": [claim(n * 10, LANE)]});
+                t.as_object_mut()
+                    .unwrap()
+                    .extend(extra.as_object().unwrap().clone());
+                t
+            })
+            .collect();
+        let prs: Vec<Value> = cards
+            .iter()
+            .map(|(n, _)| {
+                json!({"number": n + 100, "head": h('a'), "author_lane": LANE,
+                    "claim_issue": n, "comments": []})
+            })
+            .collect();
+        json!({"threads": threads, "prs": prs, "open_issues": free.clone()})
+    };
+    let cap = |cards: Vec<u64>| json!([{"reason": "card_cap", "cards": cards, "limit": 2}]);
+    // N = 1: the free Issue is offered.
+    let r = next(&snap(&[(2501, json!({}))]));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    assert_eq!(r["waiting"], json!([]));
+    // N = 2: no new Issue; the cap waits.
+    let r = next(&snap(&[(2501, json!({})), (2502, json!({}))]));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(r["waiting"], cap(vec![2501, 2502]), "{r}");
+    // A card with its close table posted after the claim does not count.
+    let closed = json!({"comments": [claim(25020, LANE),
+        {"id": 25021, "body": "CLOSE-TABLE #2502\n\n| AC | ... |"}]});
+    let r = next(&snap(&[(2501, json!({})), (2502, closed)]));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["waiting"], json!([]));
+    // A card whose pull request for this claim merged does not count.
+    let merged =
+        json!({"merged": [{"number": 90, "claim": 25020, "merged_at": "2026-11-14T03:00:00Z"}]});
+    let r = next(&snap(&[(2501, json!({})), (2502, merged)]));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["waiting"], json!([]));
+    // Without its own pull requests the lane continues its oldest card (step 6 comes first);
+    // with two such cards the cap is named as well, with one it is not.
+    let bare = |ns: &[u64]| {
+        let threads: Vec<Value> = ns
+            .iter()
+            .map(|n| json!({"number": n, "title": "card", "comments": [claim(n * 10, LANE)]}))
+            .collect();
+        json!({"threads": threads, "open_issues": free.clone()})
+    };
+    let r = next(&bare(&[2501]));
+    assert_eq!(kind(&r), json!("continue_card"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2501));
+    assert_eq!(r["waiting"], json!([]));
+    let r = next(&bare(&[2501, 2502]));
+    assert_eq!(kind(&r), json!("continue_card"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2501));
+    assert_eq!(r["waiting"], cap(vec![2501, 2502]), "{r}");
+    // Another lane's live claim is not this lane's card (#2954 audit N1): N = 1 own + 1 other.
+    let mut s = snap(&[(2501, json!({}))]);
+    s["threads"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"number": 2502, "title": "card", "comments": [claim(25020, "agent-99")]}));
+    let r = next(&s);
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    assert_eq!(r["waiting"], json!([]));
+}
+
+/// #2954 audit B1: a card the lane cannot work on now — on hold (`hold`, `needs:decision`)
+/// or waiting for a decision (`LANE-BLOCKED kind=decision` with no leader decision yet) — is
+/// not counted toward the card cap; the cap still stops at two startable cards.
+#[test]
+fn held_and_decision_cards_do_not_count_toward_the_cap() {
+    let free = json!([{"number": 2600, "title": "free", "comments": []}]);
+    let card = |n: u64, labels: &[&str], comments: Vec<Value>| {
+        let mut c = vec![claim(n * 10, LANE)];
+        c.extend(comments);
+        json!({"number": n, "title": "card", "labels": labels, "comments": c})
+    };
+    let no_cap = |r: &Value| {
+        assert!(
+            !r["waiting"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|w| w["reason"] == json!("card_cap")),
+            "{r}"
+        )
+    };
+    // A held card and a card waiting on `needs:decision`: the free Issue is offered.
+    let r = next(&json!({
+        "threads": [card(2501, &["hold"], vec![]), card(2502, &["needs:decision"], vec![])],
+        "open_issues": free.clone(),
+    }));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    no_cap(&r);
+    // Two cards whose decision request has no answer yet: the free Issue is offered.
+    let blocked = |id: u64| json!({"id": id, "body": "LANE-BLOCKED kind=decision owner=leader #1 — (가)/(나)"});
+    let r = next(&json!({
+        "threads": [card(2501, &[], vec![blocked(25011)]), card(2502, &[], vec![blocked(25021)])],
+        "open_issues": free.clone(),
+    }));
+    assert_eq!(kind(&r), json!("pick_issue"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(2600));
+    no_cap(&r);
+    // One held card and two live startable ones (each with the lane's open pull request): the
+    // cap holds at the two live cards.
+    let prs: Vec<Value> = [2502u64, 2503]
+        .iter()
+        .map(|n| {
+            json!({"number": n + 100, "head": h('a'), "author_lane": LANE,
+                "claim_issue": n, "comments": []})
+        })
+        .collect();
+    let r = next(&json!({
+        "threads": [card(2501, &["hold"], vec![]), card(2502, &[], vec![]), card(2503, &[], vec![])],
+        "prs": prs,
+        "open_issues": free,
+    }));
+    assert_eq!(r["next"], json!(null), "{r}");
+    assert_eq!(
+        r["waiting"],
+        json!([{"reason": "card_cap", "cards": [2502, 2503], "limit": 2}]),
+        "{r}"
+    );
+}
+
+/// #2933 S1: the lane's own pull request with nothing to fix and its own draft are named too,
+/// and naming them changes nothing about the task chosen.
+#[test]
+fn each_passed_over_pr_names_its_reason() {
+    let snap = json!({"prs": [
+        pr(3, &h('c'), Some(LANE), json!([])),
+        {"number": 4, "head": h('d'), "author_lane": LANE, "draft": true, "comments": []},
+        pr(8, &h('e'), Some("agent-29"), json!([])),
+    ]});
+    let r = next(&snap);
+    assert_eq!(kind(&r), json!("reserve_audit"), "{r}");
+    assert_eq!(r["next"]["target"]["number"], json!(8));
+    assert_eq!(
+        r["pr_skipped"],
+        json!([{"pr": 3, "reason": "own_no_blocker"}, {"pr": 4, "reason": "draft"}]),
+        "{r}"
+    );
+}
+
+/// #2933 S1: without `--explain` the result has no `explain` key and is otherwise the same
+/// bytes; a snapshot without `now` gives no `now` (the clock fills it only when reading GitHub).
+#[test]
+fn explain_is_only_added_when_asked() {
+    let snap = json!({"prs": [pr(5, &h('a'), Some("agent-3"), json!([audit_claim(9, "agent-3", &h('a'))]))]});
+    let plain = next(&snap);
+    assert!(plain.get("explain").is_none(), "{plain}");
+    assert!(plain.get("now").is_none(), "{plain}");
+    let mut explained = next_with(&snap, &["--explain"]);
+    assert!(explained["explain"].is_array(), "{explained}");
+    explained.as_object_mut().unwrap().remove("explain");
+    assert_eq!(explained.to_string(), plain.to_string());
 }

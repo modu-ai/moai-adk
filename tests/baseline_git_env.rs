@@ -148,3 +148,29 @@ fn a_home_place_worktree_reads_outside_project() {
         "absolute home path leaked"
     );
 }
+
+/// A baseline commit that only `--go-repo` holds is read from there (#2834 R3 moved the
+/// command to `src/ops/` and must still pass the flag on).
+#[test]
+fn a_commit_only_in_the_go_repo_is_read_from_it() {
+    let project = tempfile::tempdir().unwrap();
+    let go = tempfile::tempdir().unwrap();
+    repo(project.path(), "project");
+    let commit = repo(go.path(), "go");
+    let run = |extra: &[&std::ffi::OsStr]| {
+        let out = Command::new(crate::common::MOAI_BIN)
+            .arg("baseline-inventory")
+            .arg(project.path())
+            .args(["--go-baseline-commit", &commit])
+            .args(extra)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE")
+            .output()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        v["result"]["claude_diff"].clone()
+    };
+    assert_eq!(run(&[])["status"], "commit_not_found");
+    let with = run(&["--go-repo".as_ref(), go.path().as_os_str()]);
+    assert_eq!(with["source"], "go-repo", "{with}");
+}

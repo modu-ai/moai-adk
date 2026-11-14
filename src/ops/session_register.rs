@@ -10,7 +10,8 @@ use std::path::PathBuf;
 /// under a live lease is refused (`conflict`); the first call returns a fresh `instance`, and
 /// later calls with `--instance` renew the lease. `--release` frees the name before the
 /// session is cleared. `--show` reads the holder without writing; the leader then releases
-/// that instance with `--release --by leader` (#2902 O3a).
+/// that instance with `--release --by leader` (#2902 O3a). `--mode leader|agent` records the
+/// session's mode for the statusline tag (#2928).
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
@@ -33,6 +34,10 @@ pub struct Args {
     /// Print the current holder's `instance` and lease end, or `free`; writes nothing.
     #[arg(long, conflicts_with_all = ["instance", "release"])]
     show: bool,
+    /// The session's mode, `leader` or `agent`, kept in the entry for the statusline (#2928);
+    /// stored only when given, so pass it again with every renewal.
+    #[arg(long, conflicts_with_all = ["show", "release"], value_parser = moai_cli::lane_registry::MODES.to_vec())]
+    mode: Option<String>,
     /// `YYYY-MM-DDTHH:MM:SSZ` to judge leases against; the system clock when absent.
     #[arg(long)]
     now: Option<String>,
@@ -61,6 +66,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &args.name,
             instance,
             args.lease_secs,
+            args.mode.as_deref(),
             now,
         ),
     }

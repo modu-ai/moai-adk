@@ -1,0 +1,17 @@
+{
+  "cwd": "{PROJECT}",
+  "session_id": "fixture-d01",
+  "session_name": "leader",
+  "model": {"id": "claude-opus-5-5", "display_name": "Opus"},
+  "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"},
+  "version": "2.1.90",
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 54,
+    "current_usage": {"input_tokens": 100, "output_tokens": 50, "cache_creation_input_tokens": 1000, "cache_read_input_tokens": 9000}
+  },
+  "rate_limits": {
+    "five_hour": {"used_percentage": 23.5, "resets_at": 1738440000},
+    "seven_day": {"used_percentage": 80, "resets_at": 1738857600}
+  }
+}

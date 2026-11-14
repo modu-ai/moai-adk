@@ -16,8 +16,8 @@
 //! (decision Q1). A symlinked folder on the way to the target or the receipt, or a symlink in
 //! the target's place, is refused.
 //!
-//! Until `gate-loop --fetch` (S3) exists the scheduled pass does not fetch, so a `--merge`
-//! entry gates on a stale `origin/<base>`; the plan's enable steps say so.
+//! The entry runs `gate-loop --once --fetch` (S3, #2925), so each scheduled pass brings the
+//! base branch and every open head in before it gates (#2945 audit B1).
 
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
 use serde::{Deserialize, Serialize};
@@ -40,11 +40,6 @@ const LOCK_FILE: &str = "gate-loop.lock";
 const LOG_FILE: &str = "logs/gate-loop.log";
 /// The folder launchd loads at login; only the operator's enable step copies into it.
 const LAUNCH_AGENTS: &str = "Library/LaunchAgents";
-/// The enable steps' warning until `gate-loop --fetch` (S3) exists.
-const NO_FETCH_NOTE: &str =
-    "# note: the scheduled pass does not fetch until gate-loop --fetch (S3); \
-                             a --merge entry gates on a stale origin/<base>, so enable the \
-                             dry-run entry until then";
 /// Named variables a scheduler entry must never carry.
 const TOKEN_NAMES: [&str; 3] = ["GH_TOKEN", "GITHUB_TOKEN", "MOAI_AUDIT_APP_TOKEN"];
 const TOKEN_SUFFIXES: [&str; 3] = ["_TOKEN", "_KEY", "_SECRET"];
@@ -226,9 +221,10 @@ pub fn label(owner: &str, repo: &str) -> String {
     format!("moai.gate-loop.{owner}.{repo}")
 }
 
-/// The `gate-loop` arguments after the binary. Never `--review-confirmed`.
+/// The `gate-loop` arguments after the binary. Always `--fetch` (S3); never
+/// `--review-confirmed`.
 fn loop_args(repo: &str, dir: &str, merge_reference: Option<&str>) -> Vec<String> {
-    let mut args = vec!["gate-loop".to_string(), "--once".into()];
+    let mut args = vec!["gate-loop".to_string(), "--once".into(), "--fetch".into()];
     match merge_reference {
         Some(r) => args.extend(["--permission-reference".into(), r.to_string()]),
         None => args.push("--dry-run".into()),
@@ -425,7 +421,6 @@ pub fn plan(req: &Request) -> Result<Plan> {
                 entry,
                 vec![
                     "# stop target/leader/auto_loop.sh (the shell loop) first".to_string(),
-                    NO_FETCH_NOTE.to_string(),
                     format!("mkdir -p {logs} {}", sh(&agents.display().to_string())),
                     format!("cp {t} {a}"),
                     format!("launchctl bootstrap gui/$(id -u) {a}"),
@@ -447,7 +442,6 @@ pub fn plan(req: &Request) -> Result<Plan> {
                 entry,
                 vec![
                     "# stop target/leader/auto_loop.sh (the shell loop) first".to_string(),
-                    NO_FETCH_NOTE.to_string(),
                     format!("mkdir -p {logs}"),
                     format!("(crontab -l 2>/dev/null | grep -vxF -f {t}; cat {t}) | crontab -"),
                 ],

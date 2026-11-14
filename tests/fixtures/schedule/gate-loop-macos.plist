@@ -9,6 +9,7 @@
 		<string>/opt/moai/bin/moai</string>
 		<string>gate-loop</string>
 		<string>--once</string>
+		<string>--fetch</string>
 		<string>--dry-run</string>
 		<string>--repo</string>
 		<string>acme/widgets</string>

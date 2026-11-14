@@ -104,6 +104,10 @@ pub struct Status {
     pub claude_version: String,
     pub output_style: String,
     pub session_name: String,
+    /// #2928 (decision D1 = (A)): the clone's lane registry holds a live `leader` entry for the
+    /// stdin `session_name`. The tag shows `leader` only then and `agent` otherwise; the name
+    /// text itself is never shown.
+    pub leader: bool,
     /// `Some` when `effort` is present, even with an empty level.
     pub effort: Option<String>,
     pub thinking: Option<bool>,
@@ -188,6 +192,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         .unwrap_or(0);
     status.memory = collect_memory(input, ctx, auto_compact);
     status.session_name = input::text(&input.session_name).to_string();
+    status.leader = is_leader(input, &status.session_name, ctx.now);
     status.output_style = input
         .output_style
         .as_ref()
@@ -404,13 +409,42 @@ pub fn resolve_anchor(input: &Input) -> Option<PathBuf> {
     main_checkout_of(Path::new(dir))
 }
 
-/// The parent of the git common directory for `dir`: `.git` as a directory, or a `.git`
-/// file naming a worktree git dir whose `commondir` points back to the main repository.
-fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
+/// #2928: the session is the leader when its `session_name` is a valid lane name and the lane
+/// registry of the clone holding the session's directory (`workspace.current_dir`, else `cwd`)
+/// has a live entry for that name with mode `leader` (`lane_registry::mode_of`).
+fn is_leader(input: &Input, session_name: &str, now: i64) -> bool {
+    if !crate::lane_registry::valid_name(session_name) {
+        return false;
+    }
+    let dir = input
+        .workspace
+        .as_ref()
+        .map_or("", |w| input::text(&w.current_dir));
+    let dir = if dir.is_empty() {
+        input::text(&input.cwd)
+    } else {
+        dir
+    };
+    if dir.is_empty() {
+        return false;
+    }
+    common_dir_of(Path::new(dir)).is_some_and(|common| {
+        crate::lane_registry::mode_of(&common, session_name, now) == Some("leader")
+    })
+}
+
+/// Where the git common directory of `dir` is, found on disk: the main checkout's `.git`
+/// folder (with that checkout's top), or the folder a linked worktree's `commondir` names.
+enum GitCommon {
+    Main { top: PathBuf, dot_git: PathBuf },
+    Linked(PathBuf),
+}
+
+fn find_common(dir: &Path) -> Option<GitCommon> {
     let dir = std::fs::canonicalize(dir).ok()?;
     let (top, dot_git) = find_dot_git(&dir)?;
     if dot_git.is_dir() {
-        return Some(top);
+        return Some(GitCommon::Main { top, dot_git });
     }
     let text = std::fs::read_to_string(&dot_git).ok()?;
     let git_dir = PathBuf::from(text.trim().strip_prefix("gitdir:")?.trim());
@@ -430,10 +464,25 @@ fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
         }
         Err(_) => git_dir,
     };
-    std::fs::canonicalize(common)
-        .ok()?
-        .parent()
-        .map(Path::to_path_buf)
+    std::fs::canonicalize(common).ok().map(GitCommon::Linked)
+}
+
+/// The parent of the git common directory for `dir`: `.git` as a directory, or a `.git`
+/// file naming a worktree git dir whose `commondir` points back to the main repository.
+fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
+    match find_common(dir)? {
+        GitCommon::Main { top, .. } => Some(top),
+        GitCommon::Linked(common) => common.parent().map(Path::to_path_buf),
+    }
+}
+
+/// #2928: the git common directory of `dir`, canonical — the folder the clone's lane registry
+/// lives under (`identity`'s `clone_anchor`).
+fn common_dir_of(dir: &Path) -> Option<PathBuf> {
+    match find_common(dir)? {
+        GitCommon::Main { dot_git, .. } => std::fs::canonicalize(dot_git).ok(),
+        GitCommon::Linked(common) => Some(common),
+    }
 }
 
 pub(crate) fn find_dot_git(start: &Path) -> Option<(PathBuf, PathBuf)> {
@@ -1050,7 +1099,11 @@ mod tests {
         std::fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
         let canon = std::fs::canonicalize(&main).unwrap();
         assert_eq!(main_checkout_of(&wt.join("sub")), Some(canon.clone()));
-        assert_eq!(main_checkout_of(&main), Some(canon));
+        assert_eq!(main_checkout_of(&main), Some(canon.clone()));
+        // #2928: the common dir under both, the folder the lane registry lives in.
+        assert_eq!(common_dir_of(&wt.join("sub")), Some(canon.join(".git")));
+        assert_eq!(common_dir_of(&main), Some(canon.join(".git")));
+        assert_eq!(common_dir_of(tmp.path()), None, "no repository");
     }
 
     /// #2811 AC-3: real `git worktree add` worktrees in the new home place and in the Go
@@ -1179,6 +1232,68 @@ mod extras_tests {
         let mut ctx = Context::for_test(&[], None);
         ctx.now = now;
         collect(Some(&input), &ctx)
+    }
+
+    /// #2928 S-2/S-3 (decision D1 = (A)): the session is the leader only when the stdin
+    /// `session_name` is a valid lane name and the clone's registry holds a live entry for it
+    /// with mode `leader`; the registry is found from the session's directory, in the main
+    /// checkout or in a linked worktree. Every other case — no entry, an ended lease, mode
+    /// `agent`, a title or escape text, no directory — is the agent.
+    #[test]
+    fn the_leader_tag_needs_a_live_leader_entry_for_a_valid_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let main = tmp.path().join("main");
+        let sessions = main.join(".git/.moai-cli/sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        let gitdir = main.join(".git/worktrees/wt");
+        std::fs::create_dir_all(&gitdir).unwrap();
+        std::fs::write(gitdir.join("commondir"), "../..\n").unwrap();
+        let wt = tmp.path().join("wt");
+        std::fs::create_dir_all(&wt).unwrap();
+        std::fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
+        let now = 1_000;
+        let put = |name: &str, lease: i64, mode: &str| {
+            let entry = json!({
+                "schema_version": 1, "name": name, "instance": "1".repeat(32),
+                "lease_until": lease, "registered_at": 0, "mode": mode,
+            });
+            std::fs::write(sessions.join(format!("{name}.json")), entry.to_string()).unwrap();
+        };
+        let leader = |name: &str, dir: &Path| {
+            collect_json(
+                json!({"session_name": name, "workspace": {"current_dir": dir}}),
+                now,
+            )
+            .leader
+        };
+        put("leader", now + 1, "leader");
+        put("agent-3", now + 1, "agent");
+        put("old", now, "leader");
+        assert!(leader("leader", &main), "live leader entry, main checkout");
+        assert!(leader("leader", &wt), "live leader entry, linked worktree");
+        assert!(
+            collect_json(json!({"session_name": "leader", "cwd": main}), now).leader,
+            "the cwd when there is no workspace"
+        );
+        assert!(!leader("agent-3", &main), "mode agent");
+        assert!(!leader("old", &main), "the lease ended at this second");
+        assert!(!leader("nobody", &main), "no entry");
+        for title in [
+            "\u{1b}]0;leader\u{7}",
+            "leader\u{9b}",
+            "#2388·#2403 Issue 닫기 대조",
+            "/moai",
+            "",
+        ] {
+            assert!(!leader(title, &main), "{title:?}");
+        }
+        assert!(
+            !collect_json(json!({"session_name": "leader"}), now).leader,
+            "no directory: no registry"
+        );
+        let elsewhere = tmp.path().join("elsewhere");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        assert!(!leader("leader", &elsewhere), "outside the repository");
     }
 
     #[test]

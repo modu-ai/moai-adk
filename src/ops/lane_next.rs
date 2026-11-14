@@ -39,12 +39,15 @@ pub struct Args {
     /// Decide from a saved snapshot (JSON) instead of reading GitHub.
     #[arg(long)]
     snapshot: Option<PathBuf>,
+    /// Add `explain`: why each pull request and Issue was passed over.
+    #[arg(long)]
+    explain: bool,
 }
 
 pub const OPERATION: &str = "lane.next";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    let v = match &args.snapshot {
+    let mut v = match &args.snapshot {
         Some(file) => {
             let bytes = std::fs::read(file).map_err(|e| format!("snapshot unreadable: {e}"))?;
             let snap: moai_cli::lane_next::Snapshot =
@@ -69,6 +72,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             )?
         }
     };
+    if args.explain {
+        v["explain"] = serde_json::json!(moai_cli::lane_next::explain_lines(&v));
+    }
     // A person at a terminal gets one line on stderr (#2831 D2); stdout stays the envelope.
     use std::io::IsTerminal as _;
     if std::io::stderr().is_terminal() {

@@ -117,3 +117,112 @@ fn a_missing_lane_is_a_usage_error() {
     assert!(out.stdout.is_empty());
     assert!(String::from_utf8_lossy(&out.stderr).contains("--lane"));
 }
+
+/// The `export NAME=` lines of one `lane-env` run from `cwd`, after checking it succeeded.
+fn exports_from(cwd: &Path, lane: &str, base: &Path) -> Vec<String> {
+    let out = Command::new(common::MOAI_BIN)
+        .clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .current_dir(cwd)
+        .args(["lane-env", "--lane", lane, "--base"])
+        .arg(base)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{lane}: {out:?}");
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter(|l| l.starts_with("export "))
+        .map(str::to_string)
+        .collect()
+}
+
+fn target_line(exports: &[String]) -> String {
+    let lines: Vec<_> = exports
+        .iter()
+        .filter(|l| l.starts_with("export CARGO_TARGET_DIR="))
+        .collect();
+    assert_eq!(lines.len(), 1, "{exports:?}");
+    lines[0].clone()
+}
+
+/// #2930 R-1: two linked worktrees of one lane get the same build folder, so dependencies
+/// are built once per lane; another lane gets its own.
+#[test]
+fn two_worktrees_of_one_lane_share_the_target_dir() {
+    use common::git::git;
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    let repo = root.join("repo");
+    let base = root.join("base");
+    fs::create_dir(&repo).unwrap();
+    fs::create_dir(&base).unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    fs::write(repo.join("f"), "x\n").unwrap();
+    git(&repo, &["add", "f"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=F",
+            "-c",
+            "user.email=f@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    );
+    let (one, two) = (root.join("wt-one"), root.join("wt-two"));
+    for (path, branch) in [(&one, "one"), (&two, "two")] {
+        git(
+            &repo,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                branch,
+                path.to_str().unwrap(),
+            ],
+        );
+    }
+
+    let a = target_line(&exports_from(&one, "agent-7", &base));
+    let b = target_line(&exports_from(&two, "agent-7", &base));
+    assert_eq!(a, b, "one lane, two worktrees");
+    assert!(
+        a.contains(&base.join("moai-rc-target-agent-7").display().to_string()),
+        "{a}"
+    );
+    let other = target_line(&exports_from(&two, "agent-8", &base));
+    assert_ne!(a, other, "another lane gets its own folder");
+}
+
+/// #2930 R-1: every lane build runs with incremental compilation off (exactly one line).
+#[test]
+fn lane_env_exports_cargo_incremental_off() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let base = fs::canonicalize(dir.path()).unwrap();
+    let exports = exports_from(&base, "agent-7", &base);
+    let count = exports
+        .iter()
+        .filter(|l| *l == "export CARGO_INCREMENTAL=0")
+        .count();
+    assert_eq!(count, 1, "{exports:?}");
+}
+
+/// The lane-name limit at its edge: 64 characters pass, 65 are refused with stdout empty.
+#[test]
+fn lane_name_length_edge() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let base = fs::canonicalize(dir.path()).unwrap();
+    let longest = "x".repeat(64);
+    let exports = exports_from(&base, &longest, &base);
+    assert!(target_line(&exports).ends_with(&format!("moai-rc-target-{longest}'")));
+
+    let too_long = "x".repeat(65);
+    let out = lane_env(&["--lane", &too_long, "--base", base.to_str().unwrap()]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(out.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("invalid lane name"));
+}
