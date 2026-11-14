@@ -239,17 +239,26 @@ fn fixture() -> Fixture {
     write(&home, ".claude/agents/mine.md", "my agent\n");
     write(&home, ".codex/agents/moai-c.toml", "agent c\n");
 
-    let files = json!({
-        "claude-skills/moai/legacy.md": {"sha256": sha(b"go legacy\n"), "bundle": "core"},
-        "claude-skills/moai-proven/SKILL.md": {"sha256": sha(b"proven\n"), "bundle": "core"},
-        "claude-skills/moai-proven/refs/x.md": {"sha256": sha(b"x\n"), "bundle": "core"},
-        "claude-skills/moai-extra/SKILL.md": {"sha256": sha(b"extra\n"), "bundle": "core"},
-        "agents-skills/moai-mismatch/SKILL.md": {"sha256": sha(b"original\n"), "bundle": "core"},
-        "claude-agents/moai-a.md": {"sha256": sha(b"agent a\n"), "bundle": "core"},
-        "claude-agents/moai-b.md": {"sha256": sha(b"agent b\n"), "bundle": "core"},
-        "codex-agents/moai-c.toml": {"sha256": sha(b"agent c\n"), "bundle": "core"},
-        "claude-agents@work/moai-a.md": {"sha256": sha(b"agent a\n"), "bundle": "core"},
-    });
+    // Keys are `<slug>/<path>`. The skill slugs are joined at run time: a literal
+    // `…-skills/<path>` reads as a repository skill path to tests/skill_references_test.py
+    // (#2885 re-audit B3).
+    let mut files = serde_json::Map::new();
+    for (slug, rel, body) in [
+        ("claude-skills", "moai/legacy.md", "go legacy\n"),
+        ("claude-skills", "moai-proven/SKILL.md", "proven\n"),
+        ("claude-skills", "moai-proven/refs/x.md", "x\n"),
+        ("claude-skills", "moai-extra/SKILL.md", "extra\n"),
+        ("agents-skills", "moai-mismatch/SKILL.md", "original\n"),
+        ("claude-agents", "moai-a.md", "agent a\n"),
+        ("claude-agents", "moai-b.md", "agent b\n"),
+        ("codex-agents", "moai-c.toml", "agent c\n"),
+        ("claude-agents@work", "moai-a.md", "agent a\n"),
+    ] {
+        files.insert(
+            format!("{slug}/{rel}"),
+            json!({"sha256": sha(body.as_bytes()), "bundle": "core"}),
+        );
+    }
     write(
         &home,
         ".moai/user-assets.json",
