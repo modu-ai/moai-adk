@@ -1003,3 +1003,24 @@ fn the_omp_config_step_writes_nothing_and_prints_no_command() {
         "the install phase created .omp/config.yml"
     );
 }
+
+#[test]
+fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    // The profile lives in the state folder; find it where PROJECT wrote it.
+    let stored = [".moai/project.yaml", ".moai-cli/project.yaml"]
+        .into_iter()
+        .find(|rel| fx.root.join(rel).is_file())
+        .expect("the profile file");
+    fx.write(stored, "{not a profile\n");
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "profile")["state"], "blocked", "{plan}");
+    assert_eq!(step(&plan, "generation")["state"], "blocked", "{plan}");
+    for name in ["codex-hooks", "omp-hooks"] {
+        let s = step(&plan, name);
+        assert_eq!(s["state"], "ready", "{name}: {s}");
+        assert!(s["apply"]["argv"].is_array(), "{name}: {s}");
+    }
+    assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
+}
