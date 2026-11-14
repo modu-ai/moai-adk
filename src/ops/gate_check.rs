@@ -78,6 +78,9 @@ fn decide(snapshot: &Snapshot) -> serde_json::Value {
                 "pass": true,
                 "verdict_base": base,
                 "overlap": overlap,
+                "ci_info": gate::ci_info(snapshot),
+                "effective_tier": gate::effective_tier(snapshot),
+                "body_tier": snapshot.body_tier,
             });
             // #2833 D1: a PASS carried by a mechanical delta shows its evidence.
             if let Some(d) = gate::accepted_auto_delta(snapshot) {
@@ -91,6 +94,9 @@ fn decide(snapshot: &Snapshot) -> serde_json::Value {
             "pass": false,
             "rule": stop.rule,
             "reason": stop.reason,
+            "ci_info": gate::ci_info(snapshot),
+            "effective_tier": gate::effective_tier(snapshot),
+            "body_tier": snapshot.body_tier,
         }),
     }
 }

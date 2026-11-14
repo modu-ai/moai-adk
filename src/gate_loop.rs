@@ -93,8 +93,10 @@ fn dry_decision<T: Transport>(
     t: &T,
     api: &str,
     head: &str,
-) -> Result<(String, String, String)> {
+) -> Result<(String, String, String, u8)> {
     let snapshot = crate::gate_collect::collect(one, t)?;
+    // #2906 T: every row names the audit tier the gate judged by.
+    let tier = crate::gate::effective_tier(&snapshot);
     match crate::gate::check(&snapshot) {
         Ok(_) => {
             let action = if crate::gate::accepted_auto_delta(&snapshot).is_some() {
@@ -102,7 +104,7 @@ fn dry_decision<T: Transport>(
             } else {
                 "would_merge"
             };
-            Ok((action.into(), String::new(), String::new()))
+            Ok((action.into(), String::new(), String::new(), tier))
         }
         Err(stop) => {
             let action = if stop.rule == "G6" && stop.reason.starts_with("overlap in non-doc file")
@@ -121,7 +123,7 @@ fn dry_decision<T: Transport>(
             } else {
                 "stopped"
             };
-            Ok((action.into(), stop.rule.to_string(), stop.reason))
+            Ok((action.into(), stop.rule.to_string(), stop.reason, tier))
         }
     }
 }
@@ -197,8 +199,8 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         };
         if dry_run {
             let row = match dry_decision(&one, t, &api, &head) {
-                Ok((action, rule, reason)) => {
-                    json!({"pr": pr, "head": head, "outcome": action, "rule": rule, "reason": reason})
+                Ok((action, rule, reason, tier)) => {
+                    json!({"pr": pr, "head": head, "outcome": action, "rule": rule, "reason": reason, "effective_tier": tier})
                 }
                 Err(e) => json!({"pr": pr, "head": head, "outcome": "skipped", "reason": e}),
             };
@@ -212,13 +214,14 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
                 continue;
             }
         };
+        let tier = out["effective_tier"].clone();
         if out["merged"] == json!(true) {
-            rows.push(json!({"pr": pr, "outcome": "merged", "merge_commit": out["merge_commit"]}));
+            rows.push(json!({"pr": pr, "outcome": "merged", "merge_commit": out["merge_commit"], "effective_tier": tier}));
             continue;
         }
         // A merge whose effect could not be read back: report it, act on nothing else.
         if out["merged"] == json!("uncertain") {
-            rows.push(json!({"pr": pr, "outcome": "uncertain", "reason": out["reason"]}));
+            rows.push(json!({"pr": pr, "outcome": "uncertain", "reason": out["reason"], "effective_tier": tier}));
             continue;
         }
         let rule = out["rule"].as_str().unwrap_or("");
@@ -256,7 +259,7 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         } else {
             "stopped"
         };
-        rows.push(json!({"pr": pr, "outcome": action, "rule": rule, "reason": reason}));
+        rows.push(json!({"pr": pr, "outcome": action, "rule": rule, "reason": reason, "effective_tier": tier}));
     }
     let mut out = json!({"dry_run": dry_run, "pull_requests": rows});
     if let Some(f) = fetched {

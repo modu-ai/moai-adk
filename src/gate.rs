@@ -90,6 +90,14 @@ pub struct Snapshot {
     /// gate stops (unknown is never a pass).
     #[serde(default)]
     pub stacked_below: Option<Vec<StackedBelow>>,
+    /// The audit tier the PR body declares (#2906 T, [`parse_body_tier`]). Absent means none
+    /// was read, and [`effective_tier`] counts it as tier 2.
+    #[serde(default)]
+    pub body_tier: Option<u8>,
+    /// Where the head meets the tip, 40 hex: the base a tier-0 pass names. Absent means
+    /// unknown, and a tier-0 PR stops.
+    #[serde(default)]
+    pub merge_base: Option<String>,
 }
 
 /// One pull request below a stacked one (#2859): another open PR whose commits this PR's head
@@ -165,6 +173,102 @@ pub struct TipCi {
 }
 
 const MANIFEST: &str = "skills/moai/references/source-manifest.json";
+
+/// Paths that force audit tier 2 (#2906 T; user decision 6878414880, Issue #1975: "the path
+/// rule forces tier 2" for HOME/project migration, secrets and keys, install scripts, the merge
+/// gate and hooks). Each entry is a path prefix. Besides the decision's list this holds the
+/// modules that do that work here: install (`src/install.rs`, `src/agent_install.rs`), update
+/// (`src/update*.rs`, `src/self_update.rs`), HOME and Go-state migration (`src/home_*.rs`,
+/// `src/migrate.rs`, `src/go_state.rs`, `src/go_settings.rs`, `src/state_root.rs` and their
+/// `src/ops/` commands), keys and tokens (`src/key_vault.rs`, `src/redact.rs`,
+/// `src/forge/audit_status.rs`, `src/forge/transport.rs`), hooks (`src/hook*.rs`,
+/// `src/go_hooks.rs`), the gate's tip judgment (`src/flow.rs`) and the worktree secret-copy
+/// rule (`src/worktree_include.rs` and the file that module reads; that file's name is joined
+/// at compile time because `tests/worktree_include_guard.rs` lets only that module spell it).
+pub const TIER2_PREFIXES: &[&str] = &[
+    "src/gate",
+    "src/ops/gate",
+    "src/flow.rs",
+    "src/hook",
+    "src/ops/hook",
+    "src/go_hooks",
+    "src/ops/go_hooks",
+    ".github/",
+    "tools/local_check.sh",
+    "install",
+    "scripts/install",
+    "src/install",
+    "src/agent_install",
+    "src/update",
+    "src/self_update",
+    "src/home",
+    "src/ops/home",
+    "src/ops/agents_home",
+    "src/migrat",
+    "src/go_state",
+    "src/go_settings",
+    "src/state_root",
+    "src/secret",
+    "src/vault",
+    "src/keys",
+    "src/key_vault",
+    "src/redact",
+    "src/forge/audit_status",
+    "src/forge/transport",
+    "src/worktree_include",
+    concat!(".worktree", "include"),
+    ".claude/",
+    ".codex/",
+];
+
+/// Whether a changed path may be tier 0 (#2906 T, user decision 6878414880): `docs/**`,
+/// `tests/**`, or a Markdown file outside `skills/` that is not an agent instruction file
+/// (`AGENTS.md`, `CLAUDE.md`). Skill Markdown is product instructions, so it is tier 1 or more.
+fn tier0_safe(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    path.starts_with("docs/")
+        || path.starts_with("tests/")
+        || (path.ends_with(".md")
+            && !path.starts_with("skills/")
+            && name != "AGENTS.md"
+            && name != "CLAUDE.md")
+}
+
+/// The audit tier a PR body declares (#2906 T): among its first 10 lines, the first that
+/// starts with `audit-tier:` decides, and it counts only as exactly `audit-tier: 0`, `1` or
+/// `2` followed by the end of the line or a space (the reason). Anything else is `None`.
+pub fn parse_body_tier(body: &str) -> Option<u8> {
+    let line = body
+        .lines()
+        .take(10)
+        .find(|l| l.starts_with("audit-tier:"))?;
+    let line = line.strip_suffix('\r').unwrap_or(line);
+    let rest = line.strip_prefix("audit-tier: ")?;
+    let mut chars = rest.chars();
+    let tier = match chars.next()? {
+        '0' => 0,
+        '1' => 1,
+        '2' => 2,
+        _ => return None,
+    };
+    matches!(chars.next(), None | Some(' ')).then_some(tier)
+}
+
+/// The tier the gate judges by (#2906 T, user decision 6878414880): the body's tier, or 2 when
+/// it declared none (unknown is audited); a [`TIER2_PREFIXES`] path raises it to 2, and any
+/// path that is not [`tier0_safe`] to at least 1. The path rule only raises.
+pub fn effective_tier(s: &Snapshot) -> u8 {
+    let mut tier = s.body_tier.filter(|t| *t <= 2).unwrap_or(2);
+    for f in &s.pr_files {
+        if TIER2_PREFIXES.iter().any(|p| f.starts_with(p)) {
+            return 2;
+        }
+        if !tier0_safe(f) {
+            tier = tier.max(1);
+        }
+    }
+    tier
+}
 
 /// A stop: the rule id (G1…G8 of Issue #2674 comment 6849084101, G8 is #2777; G9 of the
 /// leader scope 6850215811; G10 and G11 carry over the claim-line checks of the removed
@@ -677,9 +781,63 @@ fn g3(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     }
 }
 
-/// G5: the `ci` aggregate succeeded, and every `ci / …` or `windows-build` run succeeded
-/// (`windows-build` may be `skipped` on a pull request: it runs after the merge, U10).
+/// `(head, result)` from the line `tools/local_check.sh` prints last (#2906 S5a): exactly
+/// `local-check: head=<40 lowercase hex> result=<pass|fail> cmd=tools/local_check.sh
+/// at=<YYYY-MM-DDTHH:MM:SSZ>`, from column 0, these fields in this order. Anything else (a
+/// short or long head, uppercase, no `at=`, another command, a `dirty=1` field) is `None`.
+pub fn parse_local_check(line: &str) -> Option<(&str, &str)> {
+    let rest = line.strip_prefix("local-check: head=")?;
+    let (head, rest) = rest.split_once(' ')?;
+    let (result, rest) = rest.strip_prefix("result=")?.split_once(' ')?;
+    let at = rest.strip_prefix("cmd=tools/local_check.sh at=")?;
+    let at_ok = at.len() == 20
+        && at.bytes().enumerate().all(|(i, b)| match i {
+            4 | 7 => b == b'-',
+            10 => b == b'T',
+            13 | 16 => b == b':',
+            19 => b == b'Z',
+            _ => b.is_ascii_digit(),
+        });
+    (is_hex40(head) && matches!(result, "pass" | "fail") && at_ok).then_some((head, result))
+}
+
+/// The `local-check:` line G5 decides from: `(comment id, line, result)` of the last line for
+/// this head (highest comment id, last line within it), or `None` when there is none.
+pub fn local_check_of(s: &Snapshot) -> Option<(u64, &str, &str)> {
+    s.comments
+        .iter()
+        .flat_map(|c| {
+            c.body.lines().enumerate().filter_map(move |(i, l)| {
+                let (head, result) = parse_local_check(l)?;
+                (head == s.head).then_some((c.id, i, l, result))
+            })
+        })
+        .max_by_key(|&(id, i, _, _)| (id, i))
+        .map(|(id, _, l, r)| (id, l, r))
+}
+
+/// G5 (#2906 S5b, user decision 6877084436): the PR comments carry a `local-check:` line for
+/// this head ([`parse_local_check`]) and the last such line (highest comment id, last line
+/// within it) says `pass`. GitHub check runs do not block; [`ci_info`] reports them.
 fn g5(s: &Snapshot) -> Result<(), Stop> {
+    match local_check_of(s) {
+        Some((_, _, "pass")) => Ok(()),
+        Some(_) => Err(Stop {
+            rule: "G5",
+            reason: "local-check result=fail on this head".into(),
+        }),
+        None => Err(Stop {
+            rule: "G5",
+            reason: "no local-check line for this head".into(),
+        }),
+    }
+}
+
+/// The head's GitHub CI, as information only (#2906 S5b): `ci=failure` when a `ci`, `rc-ci`,
+/// `ci / …`, `rc-ci / …` or `windows-build` run ended other than success (`windows-build` may
+/// be `skipped`: it runs after the merge, U10), else `ci=pending` while one runs or before a
+/// `ci`/`rc-ci` aggregate succeeded, `ci=success`, or `ci=none` when there is no such run.
+pub fn ci_info(s: &Snapshot) -> String {
     let watched = |n: &str| {
         n == "ci"
             || n == "rc-ci"
@@ -687,32 +845,26 @@ fn g5(s: &Snapshot) -> Result<(), Stop> {
             || n.starts_with("rc-ci / ")
             || n.starts_with("windows-build")
     };
-    let mut bad = Vec::new();
-    let mut aggregate = false;
-    for c in s.checks.iter().filter(|c| watched(&c.name)) {
-        let concl = c.conclusion.as_deref().unwrap_or("pending");
-        // `rc-ci` is the aggregate's earlier name (flow.rs `CI_CHECK_NAMES`, audit N1).
-        if (c.name == "ci" || c.name == "rc-ci") && concl == "success" {
-            aggregate = true;
-        }
-        let skipped_windows = c.name.starts_with("windows-build") && concl == "skipped";
-        if concl != "success" && !skipped_windows {
-            bad.push(format!("{}={concl}", c.name));
-        }
-    }
-    if !bad.is_empty() {
-        return Err(Stop {
-            rule: "G5",
-            reason: format!("check runs not successful: {}", bad.join(", ")),
-        });
-    }
-    if !aggregate {
-        return Err(Stop {
-            rule: "G5",
-            reason: "no successful `ci` aggregate on this head".into(),
-        });
-    }
-    Ok(())
+    let runs: Vec<&CheckRun> = s.checks.iter().filter(|c| watched(&c.name)).collect();
+    let failed = runs.iter().any(|c| match c.conclusion.as_deref() {
+        Some("success") | None => false,
+        Some("skipped") => !c.name.starts_with("windows-build"),
+        Some(_) => true,
+    });
+    // `rc-ci` is the aggregate's earlier name (flow.rs `CI_CHECK_NAMES`, audit N1).
+    let aggregate = runs.iter().any(|c| {
+        (c.name == "ci" || c.name == "rc-ci") && c.conclusion.as_deref() == Some("success")
+    });
+    let state = if runs.is_empty() {
+        "none"
+    } else if failed {
+        "failure"
+    } else if runs.iter().any(|c| c.conclusion.is_none()) || !aggregate {
+        "pending"
+    } else {
+        "success"
+    };
+    format!("ci={state}")
 }
 
 /// G6: a clean merge with the tip; files both the PR and the tip (since the verdict's base)
@@ -806,6 +958,13 @@ fn g8(s: &Snapshot) -> Result<(), Stop> {
 /// The gate: every rule in order, stopping at the first that fails. G8 (a red tip) comes
 /// first: it stops every PR alike, so nothing else is acted on while the tip is red. On
 /// success returns the verdict base and the accepted overlap.
+///
+/// The audit tier (#2906 T, user decision 6878414880) is decided before any rule
+/// ([`effective_tier`]). Tier 0 needs no audit: G1 (the PASS) and G2 (the audit claim) are not
+/// applied, G9 only needs the authors to be known (there is no auditor to compare), and the
+/// base returned is the merge base. G3 still runs on the current head, so an auditor's open
+/// FAIL there is not passed over. Every other rule runs as for tiers 1 and 2, which are
+/// unchanged.
 pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
     if s.schema_version != 1 || !is_hex40(&s.head) {
         return Err(Stop {
@@ -813,15 +972,34 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
             reason: "schema_version 1 and a 40-hex head are required".into(),
         });
     }
+    let tier = effective_tier(s);
     g8(s)?;
-    // `judged` is the head the last verdict read: the current head, or the earlier head of an
-    // accepted mechanical delta (#2833). The audit rules (G2 claims, G3 open FAILs) apply to
-    // it, so a delta never carries a verdict past an unresolved FAIL on that head (D2).
-    let (base, judged) = g1(s)?;
-    g2(s, &judged)?;
-    g9(s)?;
-    g10(s)?;
-    g3(s, &judged)?;
+    let base = if tier == 0 {
+        let base = s.merge_base.clone().filter(|b| is_hex40(b)).ok_or(Stop {
+            rule: "tier",
+            reason: "audit tier 0: merge base unknown; the gate stops".into(),
+        })?;
+        if s.pr_authors.is_none() {
+            return Err(Stop {
+                rule: "G9",
+                reason: "the authors of the PR's commits are unknown".into(),
+            });
+        }
+        g10(s)?;
+        g3(s, &s.head)?;
+        base
+    } else {
+        // `judged` is the head the last verdict read: the current head, or the earlier head of
+        // an accepted mechanical delta (#2833). The audit rules (G2 claims, G3 open FAILs)
+        // apply to it, so a delta never carries a verdict past an unresolved FAIL on that head
+        // (D2).
+        let (base, judged) = g1(s)?;
+        g2(s, &judged)?;
+        g9(s)?;
+        g10(s)?;
+        g3(s, &judged)?;
+        base
+    };
     if !s.body_check_ok {
         return Err(Stop {
             rule: "G4",
@@ -834,4 +1012,130 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
     let overlap = g6(s)?;
     g7(s)?;
     Ok((base, overlap))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_body_tier, parse_local_check, tier0_safe};
+
+    /// #2906 T: `audit-tier: <0|1|2>` at column 0, then the end of the line or a space.
+    #[test]
+    fn a_body_tier_is_exactly_one_digit_after_the_prefix() {
+        for (body, want) in [
+            ("audit-tier: 0", Some(0)),
+            ("audit-tier: 1\nrest", Some(1)),
+            ("audit-tier: 2 src/gate.rs changed", Some(2)),
+            ("audit-tier: 0 docs only\r\nbody", Some(0)),
+            ("audit-tier: 0\r\n", Some(0)),
+            ("title\naudit-tier: 0 docs", Some(0)),
+            ("audit-tier: 3", None),
+            ("audit-tier: 9 x", None),
+            ("audit-tier:0", None),
+            ("audit-tier:  0", None),
+            ("audit-tier: 01", None),
+            ("audit-tier: 0x", None),
+            ("audit-tier: 0,docs", None),
+            ("audit-tier: ", None),
+            ("audit-tier:", None),
+            ("Audit-tier: 0", None),
+            (" audit-tier: 0", None),
+            ("> audit-tier: 0", None),
+            ("audit-tier 0", None),
+            ("", None),
+        ] {
+            assert_eq!(parse_body_tier(body), want, "{body:?}");
+        }
+    }
+
+    /// The first `audit-tier:` line decides, even when it is malformed and a later one is
+    /// not; only the first 10 lines are read (line 10 is read, line 11 is not).
+    #[test]
+    fn the_first_tier_line_in_the_first_ten_lines_decides() {
+        assert_eq!(parse_body_tier("audit-tier: 2\naudit-tier: 0"), Some(2));
+        assert_eq!(parse_body_tier("audit-tier: 3\naudit-tier: 0"), None);
+        assert_eq!(parse_body_tier("audit-tier:0\naudit-tier: 0"), None);
+        let at = |n: usize| format!("{}audit-tier: 0\n", "x\n".repeat(n - 1));
+        assert_eq!(parse_body_tier(&at(10)), Some(0));
+        assert_eq!(parse_body_tier(&at(11)), None);
+        // In the middle of a line it is not a tier line.
+        assert_eq!(parse_body_tier("see audit-tier: 0"), None);
+    }
+
+    /// Tier-0-safe paths: documents, tests, Markdown outside `skills/` but for agent
+    /// instruction files.
+    #[test]
+    fn tier0_safe_paths() {
+        for p in [
+            "docs/a.md",
+            "docs/img/y.png",
+            "tests/a.rs",
+            "README.md",
+            "a/b.md",
+        ] {
+            assert!(tier0_safe(p), "{p}");
+        }
+        for p in [
+            "skills/a.md",
+            "skills/moai/SKILL.md",
+            "CLAUDE.md",
+            "AGENTS.md",
+            "x/CLAUDE.md",
+            "src/a.rs",
+            "docs",
+            "tests",
+            "a.mdx",
+            "Cargo.toml",
+        ] {
+            assert!(!tier0_safe(p), "{p}");
+        }
+    }
+
+    const AT: &str = "at=2026-11-14T12:00:00Z";
+
+    fn line(head: &str, result: &str) -> String {
+        format!("local-check: head={head} result={result} cmd=tools/local_check.sh {AT}")
+    }
+
+    /// #2906 S5b: 40 lowercase hex is read (N); 39 and 41 digits, uppercase or a non-hex
+    /// letter are not, whatever head the snapshot has.
+    #[test]
+    fn a_local_check_head_is_exactly_40_lowercase_hex() {
+        let h = "0123456789abcdef0123456789abcdef01234567";
+        assert_eq!(parse_local_check(&line(h, "pass")), Some((h, "pass")));
+        assert_eq!(parse_local_check(&line(h, "fail")), Some((h, "fail")));
+        assert_eq!(parse_local_check(&line(&h[..39], "pass")), None);
+        assert_eq!(parse_local_check(&line(&format!("{h}8"), "pass")), None);
+        assert_eq!(parse_local_check(&line(&h.to_uppercase(), "pass")), None);
+        assert_eq!(parse_local_check(&line(&h.replace('a', "g"), "pass")), None);
+        assert_eq!(parse_local_check(&line(h, "ok")), None);
+        assert_eq!(parse_local_check(&line(h, "")), None);
+    }
+
+    /// The time is `YYYY-MM-DDTHH:MM:SSZ` and nothing follows it.
+    #[test]
+    fn a_local_check_time_is_utc_seconds() {
+        let h = "0123456789abcdef0123456789abcdef01234567";
+        let with_at = |at: &str| {
+            format!("local-check: head={h} result=pass cmd=tools/local_check.sh at={at}")
+        };
+        assert!(parse_local_check(&with_at("2026-11-14T12:00:00Z")).is_some());
+        for bad in [
+            "",
+            "2026-11-14T12:00:00",
+            "2026-11-14T12:00:00Z ",
+            "2026-11-14T12:00:0Z",
+            "2026-11-14 12:00:00Z",
+            "2026/11/14T12:00:00Z",
+            "2026-11-14T12-00-00Z",
+            "2026-11-14T12:00:0aZ",
+        ] {
+            assert_eq!(parse_local_check(&with_at(bad)), None, "{bad:?}");
+        }
+        assert_eq!(
+            parse_local_check(&format!(
+                "local-check: head={h} result=pass cmd=tools/local_check.sh"
+            )),
+            None
+        );
+    }
 }
