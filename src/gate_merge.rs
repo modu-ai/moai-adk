@@ -56,12 +56,16 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         return Err("a permission reference is required; nothing was read or written".into());
     }
     let snapshot = gate_collect::collect(target, transport)?;
+    // #2906 T (user decision 6878414880): the audit tier decides what the merge cites — the
+    // verdict for tiers 1 and 2, the local-check line for tier 0, which has no verdict.
+    let tier = gate::effective_tier(&snapshot);
     let (base, overlap) = match gate::check(&snapshot) {
         Ok(pass) => pass,
         Err(stop) => {
             return Ok(json!({
                 "pr": target.pr, "head": snapshot.head, "merged": false,
                 "rule": stop.rule, "reason": stop.reason, "writes": [],
+                "effective_tier": tier,
             }))
         }
     };
@@ -76,8 +80,16 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
                 .is_some_and(|l| l.starts_with("AUDIT #"))
         })
         .map(|c| c.id)
-        .max()
-        .ok_or("no verdict comment")?;
+        .max();
+    let (local_check_id, local_check_line) = gate::local_check_of(&snapshot)
+        .map(|(id, line, _)| (id, line.to_string()))
+        .ok_or("no local-check line")?;
+    // The comment the status and the record cite: the verdict, or for tier 0 the local check.
+    let cited = if tier == 0 {
+        local_check_id
+    } else {
+        verdict_id.ok_or("no verdict comment")?
+    };
     let (owner, repo, pr) = (target.owner, target.repo, target.pr);
     let tip = crate::audit_delta::command(target.dir)
         .args([
@@ -111,7 +123,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
     let remote_head = pr_body["head"]["sha"].as_str().unwrap_or_default();
     if remote_tip != tip || remote_head != head {
         return Ok(json!({
-            "pr": pr, "head": head, "merged": false, "rule": "G6",
+            "pr": pr, "head": head, "effective_tier": tier, "merged": false, "rule": "G6",
             "reason": format!(
                 "the gate judged tip {} and head {}, but GitHub has base {base_ref} at {} and head {}; fetch and run again",
                 short(&tip), short(&head), short(&remote_tip), short(remote_head)
@@ -124,7 +136,8 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
     // write, once per `from → to`, so the audit trail names the head it now covers. A failed
     // record writes nothing else.
     let mut writes = Vec::new();
-    if let Some(d) = gate::accepted_auto_delta(&snapshot) {
+    // A tier-0 merge cites no PASS (#2906 T), so a delta carries nothing to record.
+    if let Some(d) = gate::accepted_auto_delta(&snapshot).filter(|_| tier != 0) {
         let first = format!("AUTO-DELTA #{pr} {}→{}", d.from, d.to);
         let already = snapshot
             .comments
@@ -132,7 +145,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
             .any(|c| c.body.lines().next() == Some(first.as_str()));
         if !already {
             let mut body = format!(
-                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {verdict_id} on {} counts for {}. local-check on {}: pass (G5).\n\n| file | patch-id |\n| --- | --- |\n",
+                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {cited} on {} counts for {}. local-check on {}: pass (G5).\n\n| file | patch-id |\n| --- | --- |\n",
                 short(&d.to),
                 short(&d.from),
                 short(&d.from),
@@ -153,14 +166,14 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
                 Ok(r) if r.status == 201 => writes.push(json!("auto_delta")),
                 Ok(r) => {
                     return Ok(json!({
-                        "pr": pr, "head": head, "merged": false, "rule": "G1",
+                        "pr": pr, "head": head, "effective_tier": tier, "merged": false, "rule": "G1",
                         "reason": format!("the AUTO-DELTA record returned HTTP {}; nothing else written", r.status),
                         "writes": [],
                     }))
                 }
                 Err(e) => {
                     return Ok(json!({
-                        "pr": pr, "head": head, "merged": false, "rule": "G1",
+                        "pr": pr, "head": head, "effective_tier": tier, "merged": false, "rule": "G1",
                         "reason": format!("the AUTO-DELTA record failed ({e}); check the PR before running again"),
                         "writes": [],
                     }))
@@ -175,15 +188,22 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         repo: repo.into(),
         sha: head.clone(),
         state: "success".into(),
-        target_url: format!(
-            "https://github.com/{owner}/{repo}/pull/{pr}#issuecomment-{verdict_id}"
-        ),
-        description: format!(
-            "AUDIT PASS head {}; tip {} clean, overlap {}",
-            short(&head),
-            short(&tip),
-            overlap.len()
-        ),
+        target_url: format!("https://github.com/{owner}/{repo}/pull/{pr}#issuecomment-{cited}"),
+        description: if tier == 0 {
+            format!(
+                "audit-tier 0 (no audit) head {}; local-check pass; tip {} clean, overlap {}",
+                short(&head),
+                short(&tip),
+                overlap.len()
+            )
+        } else {
+            format!(
+                "AUDIT PASS head {}; tip {} clean, overlap {}",
+                short(&head),
+                short(&tip),
+                overlap.len()
+            )
+        },
     };
     audit_status::post(&status, permission, app, status_transport, clock).map_err(|e| e.message)?;
     writes.push(json!("status"));
@@ -210,7 +230,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
                 Err(e) => e,
             };
             return Ok(json!({
-                "pr": pr, "head": head, "merged": false, "rule": "READY",
+                "pr": pr, "head": head, "effective_tier": tier, "merged": false, "rule": "READY",
                 "reason": format!("marking the draft ready failed ({why}); not merged"),
                 "writes": writes,
             }));
@@ -234,13 +254,13 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
                 }
                 Some((false, _)) => {
                     return Ok(json!({
-                        "pr": pr, "head": head, "merged": false, "writes": writes,
+                        "pr": pr, "head": head, "effective_tier": tier, "merged": false, "writes": writes,
                         "reason": format!("merge PUT failed ({e}); read back: not merged; no merge record posted"),
                     }))
                 }
                 None => {
                     return Ok(json!({
-                        "pr": pr, "head": head, "merged": "uncertain", "writes": writes,
+                        "pr": pr, "head": head, "effective_tier": tier, "merged": "uncertain", "writes": writes,
                         "reason": format!("merge PUT failed ({e}) and the pull request could not be read back; check it before anything else"),
                     }))
                 }
@@ -264,7 +284,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
     }
     let Some(merge_sha) = merged_sha else {
         return Ok(json!({
-            "pr": pr, "head": head, "merged": false, "writes": writes,
+            "pr": pr, "head": head, "effective_tier": tier, "merged": false, "writes": writes,
             "reason": format!("not merged after the attempts (last HTTP {last}); no merge record posted"),
         }));
     };
@@ -280,14 +300,26 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
     } else {
         format!(" 겹친 파일: {}.", overlap.join(", "))
     };
-    let record = format!(
-        "리더 병합 기록 (`moai-cli gate-merge`, #2674): 판정 {verdict_id} PASS(head {}, base {}), check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, 판정 base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
-        short(&head),
-        short(&base),
-        short(&tip),
-        overlap.len(),
-        short(&merge_sha),
-    );
+    // #2906 T: a tier-0 record names the tier and the local-check line in place of a verdict.
+    let record = if tier == 0 {
+        format!(
+            "리더 병합 기록 (`moai-cli gate-merge`, #2674): audit-tier: 0 (실효 등급 0, 감사 없음 — 사용자 결정 6878414880), local-check {local_check_id}: `{local_check_line}` (head {}, merge base {}), check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, merge base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
+            short(&head),
+            short(&base),
+            short(&tip),
+            overlap.len(),
+            short(&merge_sha),
+        )
+    } else {
+        format!(
+            "리더 병합 기록 (`moai-cli gate-merge`, #2674): 판정 {cited} PASS(head {}, base {}), audit-tier: {tier}, check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, 판정 base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
+            short(&head),
+            short(&base),
+            short(&tip),
+            overlap.len(),
+            short(&merge_sha),
+        )
+    };
     let sent = transport.send(
         &HttpRequest::new(
             "POST",
@@ -305,9 +337,10 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         writes.push(json!("record"));
     }
     let mut out = json!({
-        "pr": pr, "head": head, "merged": true, "merge_commit": merge_sha,
-        "verdict": verdict_id, "verdict_base": base, "overlap": overlap,
+        "pr": pr, "head": head, "effective_tier": tier, "merged": true, "merge_commit": merge_sha,
+        "verdict": (tier != 0).then_some(cited), "verdict_base": base, "overlap": overlap,
         "record_posted": record_posted, "writes": writes,
+        "local_check": local_check_id,
     });
     if let Some(e) = record_error {
         out["record_error"] = json!(e);

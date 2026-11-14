@@ -244,7 +244,7 @@ fn a_passing_pull_request_is_merged() {
     let out = out.unwrap();
     assert_eq!(
         out["pull_requests"],
-        json!([{"pr": 9, "outcome": "merged", "merge_commit": "9999999999999999999999999999999999999999"}])
+        json!([{"pr": 9, "outcome": "merged", "merge_commit": "9999999999999999999999999999999999999999", "effective_tier": 2}])
     );
     assert_eq!(t.remaining(), 0);
     assert_eq!(*seen.borrow(), ["checking pull request #9 (1/1)"]);
@@ -459,6 +459,8 @@ fn a_red_tip_stops_the_loop_without_any_write() {
         let row = &out["pull_requests"][0];
         assert_eq!(row["outcome"], json!("stopped"), "overlap={overlap} {out}");
         assert_eq!(row["rule"], json!("G8"), "overlap={overlap} {out}");
+        // #2906 T: a stopped row names the tier too (no body tier: 2).
+        assert_eq!(row["effective_tier"], json!(2), "overlap={overlap} {out}");
         assert!(writes(&t).is_empty(), "overlap={overlap}");
         assert_eq!(t.remaining(), 0);
     }
@@ -744,6 +746,7 @@ fn a_dry_run_writes_nothing_and_names_each_decision() {
         json!("would_merge"),
         "{out}"
     );
+    assert_eq!(out["pull_requests"][0]["effective_tier"], json!(2), "{out}");
     assert!(writes(&t).is_empty(), "{:?}", writes(&t));
     assert_eq!(t.remaining(), 0);
 

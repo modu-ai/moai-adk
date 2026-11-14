@@ -939,3 +939,208 @@ fn g2_a_withdrawn_lane_no_longer_holds_the_audit() {
         assert_eq!(stopped(&gate(&s)), (false, "G2".into()), "{body}");
     }
 }
+
+// #2906 T (user decision 6878414880, Issue #1975): audit by risk tier. Tier 0 (docs, wording,
+// tests) merges on its local-check line without a verdict; tiers 1 and 2 need the PASS as
+// before; the path rule raises the tier, never lowers it. Paths are joined at run time so the
+// repository's path scans do not read them as files.
+
+const MB: &str = "4444444444444444444444444444444444444444";
+
+fn p(parts: &[&str]) -> String {
+    parts.join("/")
+}
+
+/// `passing()` as a tier-0 pull request: the body says tier 0, the merge base is known, it
+/// changes one document and one test, and the comments hold only the local-check pass line.
+fn tier0() -> Value {
+    let mut s = passing();
+    s["body_tier"] = json!(0);
+    s["merge_base"] = json!(MB);
+    s["pr_files"] = json!([doc(), p(&["tests", "x.rs"])]);
+    s["comments"] = json!([lc()]);
+    s
+}
+
+fn tier_of(v: &Value) -> Value {
+    v["result"]["effective_tier"].clone()
+}
+
+/// AC25: a tier-0 body with only document and test files and a local-check pass merges with no
+/// verdict and no claim; the base it names is the merge base. Without a merge base it stops.
+#[test]
+fn tier0_docs_and_tests_merge_on_the_local_check_alone() {
+    let v = gate(&tier0());
+    assert_eq!(v["result"]["pass"], json!(true), "{v}");
+    assert_eq!(tier_of(&v), json!(0), "{v}");
+    assert_eq!(v["result"]["body_tier"], json!(0), "{v}");
+    assert_eq!(v["result"]["verdict_base"], json!(MB), "{v}");
+    // A root Markdown file is tier-0-safe too.
+    let mut s = tier0();
+    s["pr_files"] = json!(["README.md"]);
+    assert_eq!(gate(&s)["result"]["pass"], json!(true), "{}", gate(&s));
+    let mut s = tier0();
+    s.as_object_mut().unwrap().remove("merge_base");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "tier".into()), "{v}");
+    assert!(
+        v["result"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("merge base unknown"),
+        "{v}"
+    );
+}
+
+/// AC25b: a tier-0 body that changes a code file is tier 1 and needs its PASS (G1). Skill
+/// Markdown is product instructions, and agent instruction files too: never tier 0.
+#[test]
+fn tier0_with_code_or_skill_text_is_tier1_and_needs_a_pass() {
+    for extra in [
+        p(&["src", "foo.rs"]),
+        p(&["skills", "x.md"]),
+        p(&["skills", "moai", "workflows", "a.md"]),
+        "CLAUDE.md".to_string(),
+        p(&["sub", "AGENTS.md"]),
+        p(&["tools", "x.py"]),
+    ] {
+        let mut s = tier0();
+        s["pr_files"] = json!([doc(), extra.clone()]);
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (false, "G1".into()), "{extra}: {v}");
+        assert_eq!(tier_of(&v), json!(1), "{extra}: {v}");
+    }
+    // `skills/x.md` alone is not tier 0 either.
+    let mut s = tier0();
+    s["pr_files"] = json!([p(&["skills", "x.md"])]);
+    assert_eq!(tier_of(&gate(&s)), json!(1));
+    // With its PASS (the passing() comments) a tier-1 PR merges as before.
+    let mut s = passing();
+    s["body_tier"] = json!(0);
+    s["merge_base"] = json!(MB);
+    let v = gate(&s);
+    assert_eq!(v["result"]["pass"], json!(true), "{v}");
+    assert_eq!(tier_of(&v), json!(1), "{v}");
+    assert_eq!(v["result"]["verdict_base"], json!(B), "{v}");
+}
+
+/// AC26: a merge gate, install, hook, update, HOME, migration, key, CI or host settings path
+/// forces tier 2 whatever the body says; the PASS is still needed.
+#[test]
+fn the_path_rule_forces_tier2() {
+    for path in [
+        p(&["src", "gate.rs"]),
+        p(&["src", "gate_collect.rs"]),
+        p(&["src", "ops", "gate_merge.rs"]),
+        p(&["src", "install.rs"]),
+        p(&["src", "agent_install.rs"]),
+        p(&["src", "hook_engine.rs"]),
+        p(&["src", "hooks.rs"]),
+        p(&["src", "update.rs"]),
+        p(&["src", "self_update.rs"]),
+        p(&["src", "home_state.rs"]),
+        p(&["src", "migrate.rs"]),
+        p(&["src", "go_state.rs"]),
+        p(&["src", "key_vault.rs"]),
+        p(&["tools", "local_check.sh"]),
+        p(&[".github", "workflows", "ci.yml"]),
+        p(&[".claude", "settings.json"]),
+        p(&[".codex", "config.toml"]),
+        "install.sh".to_string(),
+        p(&["scripts", "install.sh"]),
+    ] {
+        for body in [0, 1] {
+            let mut s = tier0();
+            s["body_tier"] = json!(body);
+            s["pr_files"] = json!([doc(), path.clone()]);
+            let v = gate(&s);
+            assert_eq!(stopped(&v), (false, "G1".into()), "{path} body {body}: {v}");
+            assert_eq!(tier_of(&v), json!(2), "{path} body {body}: {v}");
+        }
+    }
+    // Documents and tests of those areas are not the code: tier 0 stays 0.
+    let mut s = tier0();
+    s["pr_files"] = json!([p(&["tests", "gate_check_cli.rs"]), doc()]);
+    assert_eq!(tier_of(&gate(&s)), json!(0));
+    // With its PASS a tier-2 PR merges as before.
+    let mut s = passing();
+    s["body_tier"] = json!(0);
+    s["pr_files"] = json!([p(&["src", "gate.rs"])]);
+    let v = gate(&s);
+    assert_eq!(v["result"]["pass"], json!(true), "{v}");
+    assert_eq!(tier_of(&v), json!(2), "{v}");
+}
+
+/// AC27: no tier from the body (the collector found no well-formed line) or a value outside
+/// 0–2 is tier 2: unknown is audited.
+#[test]
+fn an_unknown_body_tier_is_tier2() {
+    for body in [None, Some(json!(3)), Some(json!(255))] {
+        let mut s = tier0();
+        match &body {
+            Some(b) => s["body_tier"] = b.clone(),
+            None => {
+                s.as_object_mut().unwrap().remove("body_tier");
+            }
+        }
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (false, "G1".into()), "{body:?}: {v}");
+        assert_eq!(tier_of(&v), json!(2), "{body:?}: {v}");
+    }
+    // passing() has no body tier: tier 2, and it passes with its PASS.
+    let v = gate(&passing());
+    assert_eq!(tier_of(&v), json!(2), "{v}");
+    assert_eq!(v["result"]["body_tier"], json!(null), "{v}");
+}
+
+/// Tier 0 skips only the audit rules: the local check (G5), the overlap with the tip (G6), a
+/// red tip (G8), the body checker (G4), the claim rules (G10, G11), unknown authors (G9) and an
+/// open FAIL on this head (G3) still stop it.
+#[test]
+fn tier0_still_meets_every_other_rule() {
+    let mut s = tier0();
+    s["comments"] = json!([]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    let mut s = tier0();
+    s["comments"] = json!([local_check(900, H, "fail")]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    let mut s = tier0();
+    s["tip_files_since_verdict_base"] = json!([p(&["tests", "x.rs"])]);
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G6".into()), "{v}");
+    assert!(v["result"]["reason"]
+        .as_str()
+        .unwrap()
+        .contains("overlap in non-doc file"));
+    let mut s = tier0();
+    s["merge_clean"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G6".into()));
+    let mut s = tier0();
+    s["tip_ci"] =
+        json!({"state": "red", "tip": OTHER, "decided_by": OTHER, "detail": "ci failure run 7"});
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G8".into()), "{v}");
+    assert_eq!(tier_of(&v), json!(0), "{v}");
+    let mut s = tier0();
+    s["body_check_ok"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G4".into()));
+    let mut s = tier0();
+    s["commits_without_claim"] = json!([OTHER]);
+    assert_eq!(stopped(&gate(&s)), (false, "G10".into()));
+    let mut s = tier0();
+    s["body_claim"] = json!(false);
+    assert_eq!(stopped(&gate(&s)), (false, "G11".into()));
+    let mut s = tier0();
+    s.as_object_mut().unwrap().remove("pr_authors");
+    assert_eq!(stopped(&gate(&s)), (false, "G9".into()));
+    let mut s = tier0();
+    s["stacked_below"] = json!(null);
+    assert_eq!(stopped(&gate(&s)), (false, "G12".into()));
+    // An auditor's FAIL on this head is not ignored because the body says tier 0.
+    let mut s = tier0();
+    s["comments"] = json!([verdict(200, "agent-10", H, "FAIL"), lc()]);
+    assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
+    // A FAIL on an older head does not block the current one.
+    s["comments"] = json!([verdict(200, "agent-10", OTHER, "FAIL"), lc()]);
+    assert_eq!(gate(&s)["result"]["pass"], json!(true), "{}", gate(&s));
+}

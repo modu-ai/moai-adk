@@ -20,6 +20,7 @@ operation `gate.loop` · 코드 `src/ops/gate_loop.rs`, `src/gate_loop.rs` · Is
   - 쓰기는 `--dir` 저장소의 원격 ref 뿐이다. `--dry-run` 과 함께 써도 이 ref 는 바뀐다.
 - tip 이 빨강이면(G8, #2777 — `gate-check` 와 같은 판정) 수리 PR 이 아닌 PR 은 `stopped`·`rule: "G8"` 로 적고, 병합·update-branch·안내 댓글을 하나도 쓰지 않는다.
 - 위 C2 기계적 delta(#2833)는 루프 안에서도 쓰인다. PASS 받은 head 에 tip 만 합친 PR 은 새 판정 없이 `AUTO-DELTA` 기록 뒤 병합된다.
+- 감사 등급(#2906 T, 사용자 결정 6878414880, 규칙은 `gate-check` 문서): PR 마다 나오는 줄(`--dry-run` 포함)에 게이트가 정한 `effective_tier` 가 붙는다. 실효 0 등급 PR 은 판정 없이 `local-check:` pass 줄과 나머지 규칙만으로 병합된다(`merged`·`would_merge`). 읽기 실패로 건너뛴 줄(`skipped`)에는 등급이 없다.
 
 `--dry-run`(#2860 D2)은 읽기만 하고 아무것도 쓰지 않으며, 권한 참조가 필요 없다. PR 마다 `outcome` 이 하나 나온다.
 

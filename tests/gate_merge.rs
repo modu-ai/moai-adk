@@ -608,3 +608,83 @@ fn a_failed_auto_delta_record_writes_nothing_else() {
         .iter()
         .all(|r| !r.url.contains("/statuses") && r.method != "PUT"));
 }
+
+/// #2906 T (user decision 6878414880, Issue #1975): a tier-0 pull request — its body says
+/// `audit-tier: 0` and it changes only a document — merges with no verdict. The status points
+/// at the local-check comment, and the record names the tier and the local-check line instead
+/// of a verdict.
+#[test]
+fn a_tier0_merge_records_the_tier_and_the_local_check() {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let doc = ["docs", "a.md"].join("/");
+    commit(d, &[(&doc, "one\n"), ("src/b.rs", "b\n")], "base");
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    let b = commit(d, &[(&doc, "one\ntwo\n")], "pr\n\nMoai-Claim: 9#555");
+    git_ok(d, &["checkout", "-q", "main"]);
+    commit(d, &[("src/b.rs", "b2\n")], "tip");
+    let tip = tip_of(&dir);
+    let body = format!("audit-tier: 0 docs only ({doc})\n{PASS_BODY}");
+    let mut ex = reads(&b, &b, &tip, &body);
+    // Only the local-check line: no claim, no verdict.
+    ex[1] = Exchange {
+        request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+        response: ok(json!([local_check(&b)])),
+    };
+    ex.extend(remote(&b, &tip));
+    ex.extend(status(&b, 201));
+    ex.push(put(200));
+    ex.push(record());
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(true), "{out}");
+    assert_eq!(out["effective_tier"], json!(0), "{out}");
+    assert_eq!(out["local_check"], json!(250), "{out}");
+    assert_eq!(out["writes"], json!(["status", "merge", "record"]));
+    assert_eq!(t.remaining(), 0);
+    let sent = t.sent.borrow();
+    let st = sent.iter().find(|r| r.url.contains("/statuses/")).unwrap();
+    let st = st.body.as_ref().unwrap();
+    assert!(
+        st["target_url"]
+            .as_str()
+            .unwrap()
+            .ends_with("#issuecomment-250"),
+        "{st}"
+    );
+    assert!(
+        st["description"].as_str().unwrap().contains("tier 0"),
+        "{st}"
+    );
+    let rec = sent.iter().rfind(|r| r.method == "POST").unwrap();
+    let rec = rec.body.as_ref().unwrap()["body"].as_str().unwrap();
+    assert!(rec.contains("audit-tier: 0"), "{rec}");
+    assert!(rec.contains("local-check 250"), "{rec}");
+    assert!(
+        rec.contains(&format!(
+            "local-check: head={b} result=pass cmd=tools/local_check.sh"
+        )),
+        "{rec}"
+    );
+    assert!(!rec.contains("판정"), "{rec}");
+}
+
+/// A tier-1 or tier-2 merge still names its verdict, and now its tier.
+#[test]
+fn an_audited_merge_record_names_its_tier() {
+    let (dir, a, b) = repo();
+    let mut ex = passing(&dir, &b, &a);
+    ex.extend(status(&b, 201));
+    ex.push(put(200));
+    ex.push(record());
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(true), "{out}");
+    assert_eq!(out["effective_tier"], json!(2), "{out}");
+    let sent = t.sent.borrow();
+    let rec = sent.iter().rfind(|r| r.method == "POST").unwrap();
+    let rec = rec.body.as_ref().unwrap()["body"].as_str().unwrap();
+    assert!(rec.contains("판정 200 PASS"), "{rec}");
+    assert!(rec.contains("audit-tier: 2"), "{rec}");
+}

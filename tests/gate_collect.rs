@@ -1645,3 +1645,46 @@ fn the_d8a_judgment_ignores_the_aggregate_and_cancelled_jobs() {
     ];
     assert_eq!(d8a_judgment(&nothing)["state"], json!("pending"));
 }
+
+/// #2906 T (user decision 6878414880, Issue #1975): a tier-0 pull request has no verdict, so
+/// the tip's changes are measured from the merge base — G6 never skips the overlap check. A
+/// tip change to another file is listed; one to the PR's own document is an overlap whose
+/// kept lines are measured as with a verdict.
+#[test]
+fn without_a_verdict_the_tip_changes_count_from_the_merge_base() {
+    let r = repo(
+        &[("docs/a.md", "one\nPR line\n\ntwo\n")],
+        &[("src/b.rs", "b2\n")],
+    );
+    let t = exchanges(&r.b, &r.c, vec![], PASS_BODY);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
+    // No tier line: tier 2, and without a verdict G1 stops.
+    assert_eq!(s.body_tier, None);
+    assert_eq!(s.merge_base.as_deref(), Some(r.a.as_str()));
+    assert_eq!(gate::effective_tier(&s), 2);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+    // A tier line at the top of the body: tier 0, and it passes with the merge base as base.
+    let body = format!("audit-tier: 0 docs only\n{PASS_BODY}");
+    let t = exchanges(&r.b, &r.c, vec![], &body);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.body_tier, Some(0));
+    assert_eq!(gate::effective_tier(&s), 0);
+    assert_eq!(gate::check(&s), Ok((r.a.clone(), vec![])));
+    // On line 11 it is not read.
+    let body = format!("{}audit-tier: 0 docs only\n{PASS_BODY}", "x\n".repeat(10));
+    let t = exchanges(&r.b, &r.c, vec![], &body);
+    assert_eq!(collect(&target(&r), &t).unwrap().body_tier, None);
+    let r = repo(
+        &[("docs/a.md", "one\nPR line\n\ntwo\n")],
+        &[("docs/a.md", "one\n\ntwo\ntip line\n")],
+    );
+    let t = exchanges(&r.b, &r.c, vec![], PASS_BODY);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(
+        s.tip_files_since_verdict_base,
+        vec!["docs/a.md".to_string()]
+    );
+    assert_eq!(s.docs_lines_kept, vec!["docs/a.md".to_string()]);
+}
