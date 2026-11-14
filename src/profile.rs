@@ -127,6 +127,41 @@ pub struct Profile {
     pub detected: Option<crate::project_detect::Detected>,
 }
 
+/// What a first launch writes into `tools` and `development_methods` until the project
+/// interview replaces it (`launcher_init::default_profile`).
+const UNSPECIFIED: &str = "unspecified";
+
+impl Profile {
+    /// Whether this is still the placeholder a first launch writes (#2936 R3): `tools` and
+    /// `development_methods` are both exactly `["unspecified"]` and no decision came from the
+    /// user or the repository. One answered axis or one such decision makes it an interviewed
+    /// profile.
+    pub fn is_placeholder(&self) -> bool {
+        let unspecified = |v: &[String]| v.len() == 1 && v[0] == UNSPECIFIED;
+        unspecified(&self.tools)
+            && unspecified(&self.development_methods)
+            && self.decisions.iter().all(|d| d.source == "default")
+    }
+}
+
+/// The refusal for a placeholder profile (#2936 R3); its prefix maps to the `blocked` kind and
+/// the message names the way out, so no second `next:` line is added.
+pub fn placeholder_refusal() -> String {
+    "profile blocked: the project profile is still the placeholder a first launch writes \
+     (tools and development methods unspecified, no interview answer); run `/moai project` \
+     to answer the interview, then plan again"
+        .into()
+}
+
+/// Refuses a project whose profile is still the placeholder (#2936 R3). A missing or unreadable
+/// profile passes: the command that follows reports that itself, as before.
+pub fn require_interviewed(root: &Path) -> Result<()> {
+    match read_profile(root) {
+        Ok((profile, _)) if profile.is_placeholder() => Err(placeholder_refusal()),
+        _ => Ok(()),
+    }
+}
+
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
 /// the plan digest is order-stable; every managed key lands in exactly one list (except
 /// `github_issues` and `leader` while absent everywhere, which land in none), and

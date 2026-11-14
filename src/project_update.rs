@@ -375,6 +375,16 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
             apply: None,
         });
     }
+    // R3 (#2936): a profile that is still the first-launch placeholder cannot generate; the
+    // interview comes first, so no apply is printed that `generation-apply` would refuse.
+    if profile.is_placeholder() {
+        return Ok(Step::waiting(
+            "generation",
+            "needs_decision",
+            "the project profile is still the placeholder a first launch writes; run \
+             /moai project to answer the interview before generating",
+        ));
+    }
     let request = match generation_request(root, profile, &manifest) {
         Ok(r) => r,
         Err(reason) => return Ok(Step::waiting("generation", "needs_decision", &reason)),
