@@ -78,6 +78,18 @@ pub const UNDOING: [&str; 33] = [
     "failed",
 ];
 
+/// Korean attaches particles and endings to a word (`대기중`, `안됨`, `일부만`, `미확인`), so a
+/// Hangul word after the met word undoes it when it *starts* with one of these (re-audit
+/// 6875342005 B1). Wrong in this direction only leaves an Issue open.
+pub const UNDOING_KO_PREFIXES: [&str; 16] = [
+    "대기", "예정", "일부", "부분", "남", "보류", "진행", "실패", "안", "않", "아니", "아님",
+    "아직", "미", "후속", "전에",
+];
+
+/// Hangul words that start like an undoing prefix but say nothing is left: `안내`, `안전`,
+/// `전역`, `미리`(보기). A prefix match, checked before [`UNDOING_KO_PREFIXES`].
+pub const KO_NOT_UNDOING: [&str; 4] = ["안내", "안전", "전역", "미리"];
+
 /// Header cells (after the first column) that name the verdict column; a prefix match, case
 /// ignored, the first such cell wins.
 pub const VERDICT_HEADINGS: [&str; 5] = ["판정", "상태", "결과", "verdict", "status"];
@@ -176,8 +188,17 @@ pub fn is_met(cell: &str) -> bool {
 
 /// The rest of a cell after its met word holds an [`UNDOING`] word.
 fn undone(rest: &str) -> bool {
-    rest.split(|c: char| !c.is_alphanumeric())
-        .any(|word| UNDOING.contains(&word))
+    rest.split(|c: char| !c.is_alphanumeric()).any(|word| {
+        UNDOING.contains(&word)
+            || (word.chars().any(is_hangul)
+                && !KO_NOT_UNDOING.iter().any(|p| word.starts_with(p))
+                && UNDOING_KO_PREFIXES.iter().any(|p| word.starts_with(p)))
+    })
+}
+
+/// A Hangul syllable or jamo.
+fn is_hangul(c: char) -> bool {
+    matches!(c, '\u{AC00}'..='\u{D7A3}' | '\u{1100}'..='\u{11FF}' | '\u{3130}'..='\u{318F}')
 }
 
 /// The verdict column of a header row: the first cell after the first that starts with a
@@ -453,6 +474,15 @@ mod tests {
             "충족 (pending)",
             "done, not yet merged",
             "PASS — 재감사 후속",
+            // Re-audit 6875342005 B1: Korean particles and endings attached to the word.
+            "병합 대기중",
+            "충족 안됨",
+            "충족(일부만)",
+            "충족 아직",
+            "충족 — 미확인",
+            "충족, 단 B2 미해결",
+            "끝 (남은 일 있음)",
+            "완료 예정임",
         ] {
             assert!(!is_met(no), "{no}");
         }
@@ -463,6 +493,10 @@ mod tests {
             "met (notes in PR body)",
             "충족 — 안내 줄 한 번",
             "끝(대용, 리더 결정 6868714203)",
+            "충족 — 미리보기 출력 그대로",
+            "충족 — 안전하게 거부",
+            "충족(범위 밖 종료)",
+            "충족 — POSIX 만(pty)",
         ] {
             assert!(is_met(yes), "{yes}");
         }
