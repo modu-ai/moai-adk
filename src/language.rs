@@ -104,7 +104,7 @@ fn item(id: &str) -> Option<&'static Item> {
     ITEMS.iter().find(|i| i.id == id)
 }
 
-pub(crate) fn is_code(code: &str) -> bool {
+pub fn is_code(code: &str) -> bool {
     CODES.iter().any(|(c, _, _)| *c == code)
 }
 
@@ -187,6 +187,18 @@ pub fn conversation_language(
     explicit: Option<&str>,
     current: Option<&LanguageSettings>,
 ) -> Result<String> {
+    conversation_language_in(explicit, current, None)
+}
+
+/// [`conversation_language`] with the HOME value between the profile and English (#2935 L1):
+/// `--conversation`, then the profile's `user_chat`, then `home` (the code
+/// [`home_conversation`] read, so this function touches no file), then `en`. The flag is
+/// checked; `home` is trusted to be a code already.
+pub fn conversation_language_in(
+    explicit: Option<&str>,
+    current: Option<&LanguageSettings>,
+    home: Option<&str>,
+) -> Result<String> {
     if let Some(code) = explicit {
         if !is_code(code) {
             return Err(INVALID.into());
@@ -195,8 +207,124 @@ pub fn conversation_language(
     }
     Ok(current
         .and_then(|c| c.get("user_chat"))
-        .cloned()
-        .unwrap_or_else(|| "en".into()))
+        .map(String::as_str)
+        .or(home)
+        .unwrap_or("en")
+        .into())
+}
+
+/// The file the installer's choice lives in, below the HOME state folder (#2935 L1). It is not
+/// the Go generation's `config/sections/language.yaml`: that is a project section file, this is
+/// one user value beside `config/launcher.yaml`.
+pub const HOME_FILE: [&str; 2] = ["config", "language.yaml"];
+
+/// The largest HOME language file read (bytes); a larger one means no value.
+pub const HOME_FILE_LIMIT: u64 = 4096;
+
+/// The longest language code `language-set` stores (BCP-47 allows more; this bounds the file).
+pub const TAG_MAX: usize = 35;
+
+/// Whether `code` is language-code-shaped text: `^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$` and at
+/// most [`TAG_MAX`] bytes (#2935 L1). The shape only: `fr` and `pt-BR` pass, and so does `KO`;
+/// whether MoAI has a name for the language is [`is_code`]. Nothing outside ASCII letters,
+/// digits and `-` passes, so a stored value can hold nothing else in its YAML line.
+pub fn is_language_tag(code: &str) -> bool {
+    if code.len() > TAG_MAX {
+        return false;
+    }
+    let mut parts = code.split('-');
+    let primary = parts.next().unwrap_or("");
+    (2..=3).contains(&primary.len())
+        && primary.bytes().all(|b| b.is_ascii_alphabetic())
+        && parts.all(|p| (2..=8).contains(&p.len()) && p.bytes().all(|b| b.is_ascii_alphanumeric()))
+}
+
+/// The conversation language recorded in `home`'s state folder, as stored: the
+/// `language.conversation_language` of [`HOME_FILE`] when it is [`is_language_tag`]-shaped. It
+/// may be a language MoAI has no name for (`fr`); use [`home_conversation_supported`] where a
+/// name is needed. A missing, linked, wrong-typed, oversized, non-UTF-8 or malformed file, and a
+/// value of another shape, give `None` — never an error.
+pub fn home_conversation(home: &std::path::Path) -> Option<String> {
+    let root = crate::home_root::path(home);
+    let bytes = crate::state_root::read_limited(&root, &HOME_FILE, HOME_FILE_LIMIT)?;
+    let text = String::from_utf8(bytes).ok()?;
+    crate::go_settings::section_pairs(&text, "language")?
+        .into_iter()
+        .find(|(key, _)| key == "conversation_language")
+        .map(|(_, value)| value)
+        .filter(|value| is_language_tag(value))
+}
+
+/// [`home_conversation`] when the value is also one of [`CODES`], else `None`: the conversation
+/// default of `language-setup`, whose item resolver and names only know those codes. Another
+/// language (`fr`) falls through to the next source, silently.
+pub fn home_conversation_supported(home: &std::path::Path) -> Option<String> {
+    home_conversation(home).filter(|code| is_code(code))
+}
+
+/// The bytes `language-set` writes: one key, nothing else.
+fn home_file_bytes(code: &str) -> Vec<u8> {
+    format!("language:\n  conversation_language: {code}\n").into_bytes()
+}
+
+/// `language-set --home <code>` (#2935 L1): records `code` in [`HOME_FILE`] below the HOME state
+/// folder, once. Never overwrites (an existing file gives `written: false, reason: "exists"`),
+/// never creates the state folder itself (`reason: "no_home_state"`; the installer only
+/// reports it) and creates nothing but `config/`. A `config` or target that is a link or the
+/// wrong file type is refused before any write. A state folder that is a link to a folder is
+/// followed like every other HOME path; a dangling link is no folder. `code` is any
+/// [`is_language_tag`] text and is written exactly as given (`pt-BR` stays `pt-BR`).
+pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
+    use std::fs;
+    use std::io::ErrorKind::{AlreadyExists, NotFound};
+    if !is_language_tag(code) {
+        return Err(INVALID.into());
+    }
+    let root = crate::home_root::path(home);
+    let config = root.join(HOME_FILE[0]);
+    let file = config.join(HOME_FILE[1]);
+    let report = |written: bool, reason: Option<&str>| {
+        json!({
+            "path": file.display().to_string(),
+            "written": written,
+            "code": code,
+            "reason": reason,
+        })
+    };
+    match fs::metadata(&root) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => return Err("language-set refused: the HOME state folder is not a folder".into()),
+        Err(e) if e.kind() == NotFound => return Ok(report(false, Some("no_home_state"))),
+        Err(_) => return Err("language-set refused: the HOME state folder cannot be read".into()),
+    }
+    match fs::symlink_metadata(&config) {
+        Ok(m) if m.file_type().is_dir() => {}
+        Ok(_) => return Err("language-set refused: config is a link or not a folder".into()),
+        Err(e) if e.kind() == NotFound => {
+            // Exclusive: only `config/` is made, and a folder that appeared meanwhile is fine.
+            if let Err(e) = fs::create_dir(&config) {
+                if e.kind() != AlreadyExists {
+                    return Err("language-set refused: config folder create failed".into());
+                }
+            }
+        }
+        Err(_) => return Err("language-set refused: config cannot be read".into()),
+    }
+    let exists = || match fs::symlink_metadata(&file) {
+        Ok(m) if m.file_type().is_file() => Ok(true),
+        Ok(_) => Err("language-set refused: language.yaml is a link or not a file".to_string()),
+        Err(e) if e.kind() == NotFound => Ok(false),
+        Err(_) => Err("language-set refused: language.yaml cannot be read".to_string()),
+    };
+    if exists()? {
+        return Ok(report(false, Some("exists")));
+    }
+    match crate::apply::publish_exclusive(&file, &home_file_bytes(code)) {
+        Ok(()) => Ok(report(true, None)),
+        // A writer that got there first left an existing file, not a failure.
+        Err(_) if exists()? => Ok(report(false, Some("exists"))),
+        Err(e) => Err(e),
+    }
 }
 
 fn suggested(current: Option<&LanguageSettings>, item: &Item, conversation: &str) -> String {
@@ -286,8 +414,13 @@ pub enum SetupMode {
 /// The setup input step (`moai-cli language-setup`). Reads the current profile and returns
 /// either the question set or a complete profile with every item set, ready for
 /// `project-plan`. Writes nothing; `project-apply` stays the only writer of the profile.
+///
+/// `home` is the user's HOME when the caller has one (#2935 L1): the conversation language
+/// `language-set` recorded there is the default after `conversation` and the profile's
+/// `user_chat`, before the Go backup's and before English.
 pub fn setup<R: BufRead, W: Write>(
     root: &std::path::Path,
+    home: Option<&std::path::Path>,
     mode: SetupMode,
     conversation: Option<&str>,
     input: &mut R,
@@ -298,9 +431,10 @@ pub fn setup<R: BufRead, W: Write>(
     // #2817: the Go backup's values come after the profile's and before the built-in ones.
     let go = crate::go_settings::read(root);
     let profile_chat = current.as_ref().and_then(|c| c.get("user_chat")).is_some();
-    let conversation = match (conversation, profile_chat, &go.conversation) {
-        (None, false, Some(code)) => code.clone(),
-        _ => conversation_language(conversation, current.as_ref())?,
+    let home_chat = home.and_then(home_conversation_supported);
+    let conversation = match (conversation, profile_chat, &home_chat, &go.conversation) {
+        (None, false, None, Some(code)) => code.clone(),
+        _ => conversation_language_in(conversation, current.as_ref(), home_chat.as_deref())?,
     };
     let base = with_go(current.as_ref(), &go.items);
     let base_ref = (!base.is_empty()).then_some(&base);
@@ -481,6 +615,221 @@ mod tests {
         let mut input = "xx\nyy\nko\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
         assert_eq!(out["user_chat"], "ko");
+    }
+
+    /// #2935 L1: `--conversation`, then `user_chat`, then the HOME value, then `en`.
+    #[test]
+    fn the_home_value_sits_between_the_profile_and_english() {
+        let chat = settings(&[("user_chat", "zh")]);
+        let other = settings(&[("code_comments", "zh")]);
+        let layered = |explicit, current: Option<&LanguageSettings>, home| {
+            conversation_language_in(explicit, current, home).unwrap()
+        };
+        assert_eq!(layered(Some("ko"), Some(&chat), Some("ja")), "ko");
+        assert_eq!(layered(None, Some(&chat), Some("ja")), "zh");
+        assert_eq!(layered(None, Some(&other), Some("ja")), "ja");
+        assert_eq!(layered(None, None, Some("ja")), "ja");
+        assert_eq!(layered(None, None, None), "en");
+        assert_eq!(layered(None, Some(&other), None), "en");
+        // The flag is still checked, whatever HOME says; the old two-argument form has no HOME.
+        assert!(conversation_language_in(Some("xx"), None, Some("ja")).is_err());
+        assert_eq!(conversation_language(None, None).unwrap(), "en");
+    }
+
+    /// The HOME state folder of a temporary HOME without a marker (asked of `home_root`).
+    fn state(home: &std::path::Path) -> std::path::PathBuf {
+        crate::home_root::path(home)
+    }
+
+    fn home_with(file: Option<&[u8]>) -> tempfile::TempDir {
+        let home = tempfile::tempdir().unwrap();
+        let config = state(home.path()).join("config");
+        std::fs::create_dir_all(&config).unwrap();
+        if let Some(bytes) = file {
+            std::fs::write(config.join("language.yaml"), bytes).unwrap();
+        }
+        home
+    }
+
+    #[test]
+    fn home_conversation_reads_only_a_good_file() {
+        let read = |bytes: &[u8]| home_conversation(home_with(Some(bytes)).path());
+        assert_eq!(
+            read(b"language:\n  conversation_language: ko\n").as_deref(),
+            Some("ko")
+        );
+        assert_eq!(
+            read(b"language:\n  conversation_language: \"ja\" # chosen\n").as_deref(),
+            Some("ja")
+        );
+        // Another language is returned as stored; `home_conversation_supported` is the filter.
+        for other in ["fr", "pt-BR", "es-419", "KO"] {
+            let text = format!("language:\n  conversation_language: {other}\n");
+            let home = home_with(Some(text.as_bytes()));
+            assert_eq!(home_conversation(home.path()).as_deref(), Some(other));
+            let supported = home_conversation_supported(home.path());
+            assert_eq!(supported.is_some(), is_code(other), "{other}");
+        }
+        for bad in [
+            &b""[..],
+            b"\xff\xfe",
+            b"language: ko\n",
+            b"language:\n  conversation_language: ko ja\n",
+            b"language:\n  conversation_language: k\n",
+            b"language:\n  conversation_language: ko-\n",
+            b"language:\n  conversation_language: abcd\n",
+            b"language:\n  conversation_language: [ko]\n",
+            b"conversation_language: ko\n",
+            b"language:\n  conversation_language: ko\nlanguage:\n  x: y\n",
+        ] {
+            assert_eq!(read(bad), None, "{bad:?}");
+        }
+        assert_eq!(home_conversation(home_with(None).path()), None, "no file");
+        let bare = tempfile::tempdir().unwrap();
+        assert_eq!(home_conversation(bare.path()), None, "no state folder");
+    }
+
+    /// The grammar `^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$` and the 35-byte limit, at each edge.
+    #[test]
+    fn a_language_tag_has_the_documented_shape() {
+        let longest = format!("ko{}-abcde", "-abcdefgh".repeat(3));
+        let too_long = format!("{longest}f");
+        assert_eq!((longest.len(), too_long.len()), (TAG_MAX, TAG_MAX + 1));
+        for good in [
+            "en",
+            "ko",
+            "fr",
+            "kor",
+            "KO",
+            "pt-BR",
+            "es-419",
+            "ko-ab",
+            "ko-abcdefgh",
+            "zh-Hant-TW",
+            "en-a1",
+            &longest,
+        ] {
+            assert!(is_language_tag(good), "{good}");
+        }
+        for bad in [
+            "",
+            "e",
+            "k",
+            "abcd",
+            "ko-",
+            "-ko",
+            "ko--KR",
+            "ko-a",
+            "ko-abcdefghi",
+            "ko_KR",
+            "ko ",
+            " ko",
+            "ko\n",
+            "ko\t",
+            "ko'",
+            "ko\"",
+            "ko;",
+            "한국어",
+            "ko-한국",
+            "k0",
+            "1a",
+            "../ko",
+            "$HOME",
+            &too_long,
+        ] {
+            assert!(!is_language_tag(bad), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn home_conversation_stops_at_the_size_limit() {
+        let head = "language:\n  conversation_language: ko\n";
+        let sized = |total: usize| {
+            let mut text = String::from(head);
+            text.push_str(&"#".repeat(total - head.len() - 1));
+            text.push('\n');
+            assert_eq!(text.len(), total);
+            home_conversation(home_with(Some(text.as_bytes())).path())
+        };
+        assert_eq!(sized(HOME_FILE_LIMIT as usize).as_deref(), Some("ko"));
+        assert_eq!(sized(HOME_FILE_LIMIT as usize + 1), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn home_conversation_never_follows_a_link() {
+        let good = b"language:\n  conversation_language: ko\n";
+        let home = home_with(None);
+        let dir = state(home.path());
+        std::fs::write(home.path().join("real.yaml"), good).unwrap();
+        std::os::unix::fs::symlink(
+            home.path().join("real.yaml"),
+            dir.join("config/language.yaml"),
+        )
+        .unwrap();
+        assert_eq!(home_conversation(home.path()), None, "linked file");
+        let home = home_with(None);
+        let dir = state(home.path());
+        std::fs::create_dir(home.path().join("real")).unwrap();
+        std::fs::write(home.path().join("real/language.yaml"), good).unwrap();
+        std::fs::remove_dir(dir.join("config")).unwrap();
+        std::os::unix::fs::symlink(home.path().join("real"), dir.join("config")).unwrap();
+        assert_eq!(home_conversation(home.path()), None, "linked config");
+    }
+
+    #[test]
+    fn set_home_writes_once_and_what_it_writes_is_read_back() {
+        let home = home_with(None);
+        let file = state(home.path()).join("config/language.yaml");
+        let first = set_home(home.path(), "ja").unwrap();
+        assert_eq!(first["written"], true);
+        assert_eq!(first["reason"], Value::Null);
+        assert_eq!(first["code"], "ja");
+        assert_eq!(first["path"], file.display().to_string());
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: ja\n"
+        );
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        let second = set_home(home.path(), "ko").unwrap();
+        assert_eq!(second["written"], false);
+        assert_eq!(second["reason"], "exists");
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: ja\n"
+        );
+    }
+
+    #[test]
+    fn set_home_checks_the_code_and_the_state_folder_first() {
+        let bare = tempfile::tempdir().unwrap();
+        let none = set_home(bare.path(), "ko").unwrap();
+        assert_eq!(none["written"], false);
+        assert_eq!(none["reason"], "no_home_state");
+        assert_eq!(std::fs::read_dir(bare.path()).unwrap().count(), 0);
+        assert!(set_home(bare.path(), "k").is_err());
+        let home = home_with(None);
+        for bad in ["", "k", "abcd", "ko-", "ko ", "ko\n", "ko'", "한국어"] {
+            assert!(set_home(home.path(), bad).is_err(), "{bad:?}");
+        }
+        assert!(!state(home.path()).join("config/language.yaml").exists());
+    }
+
+    /// Another language is stored exactly as given and read back as stored, but
+    /// `language-setup` does not use it.
+    #[test]
+    fn set_home_stores_another_language_exactly_as_given() {
+        let home = home_with(None);
+        let file = state(home.path()).join("config/language.yaml");
+        let r = set_home(home.path(), "pt-BR").unwrap();
+        assert_eq!(r["written"], true);
+        assert_eq!(r["code"], "pt-BR");
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: pt-BR\n"
+        );
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("pt-BR"));
+        assert_eq!(home_conversation_supported(home.path()), None);
     }
 
     #[test]

@@ -127,7 +127,7 @@ fn scalar(raw: &str) -> Option<String> {
 /// The `key: value` pairs under the top-level `section:` of a plain two-level YAML file.
 /// Any line outside that shape (a list, a nested map, a document marker, tabs, a second
 /// top-level key holding the section again) refuses the whole file: `None`.
-fn section_pairs(text: &str, section: &str) -> Option<Vec<(String, String)>> {
+pub(crate) fn section_pairs(text: &str, section: &str) -> Option<Vec<(String, String)>> {
     let mut pairs = Vec::new();
     let mut inside = false;
     let mut seen = false;

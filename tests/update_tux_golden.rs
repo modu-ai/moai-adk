@@ -462,6 +462,89 @@ fn a_failed_cleanup_is_shown_as_failed_with_its_message() {
     }
 }
 
+/// #2871 U2b on the screens: the Go items the home part would move are a row and the command
+/// that confirms them (its own token, never the `y`) is shown whole; once it ran, the count and
+/// the revert are shown and the command is not offered again. A blocked part and a part whose
+/// items are all in use say so and offer no command.
+#[test]
+fn the_home_part_is_shown_with_its_own_command() {
+    let token = "home:0123456789abcdef";
+    let pending = serde_json::json!({"action": "retire",
+        "counts": {"retire": 5, "keep": 2, "skip-in-use": 0},
+        "confirm_token": token, "apply_flag": format!("--confirm-home {token}")});
+    let mut changes = fixture("preview-changes");
+    changes["home"] = pending.clone();
+    let mut latest = fixture("preview-latest");
+    latest["home"] = pending;
+    let command = format!("moai update --confirm-home {token}");
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 80, None);
+        let (word, counts) = if lang == Lang::Ko {
+            ("Go 항목(~/.moai)", "이동 5개 · 유지 2개")
+        } else {
+            ("Go items (~/.moai)", "5 to retire · 2 kept")
+        };
+        let q = question(&changes, &v);
+        assert!(q.contains(word) && q.contains(counts), "{q}");
+        for text in [
+            screen(&changes, Asked::NotAsked, &v),
+            screen(&changes, Asked::No, &v),
+            screen(&latest, Asked::NotAsked, &v),
+        ] {
+            assert!(text.lines().any(|l| l.trim() == command), "{text}");
+        }
+        let mut done = latest.clone();
+        done["home_result"] = serde_json::json!({"state": "applied", "journal_state": "committed",
+            "moved": 5, "stamp": "20261114T080000Z"});
+        done["revert"] = serde_json::json!({
+            "home": "moai home-retire-revert --stamp 20261114T080000Z --permission-reference <reference>"});
+        let text = screen(&done, Asked::NotAsked, &v);
+        let retired = if lang == Lang::Ko {
+            "옮겼어요 — 날짜 백업으로 5개"
+        } else {
+            "Retired — moved to a dated backup: 5"
+        };
+        assert!(text.contains(retired), "{text}");
+        assert!(text.contains("moai home-retire-revert --stamp 20261114T080000Z"));
+        assert!(!text.contains("--confirm-home"), "{text}");
+        assert!(!text.contains(counts), "the old preview row stays: {text}");
+        // Blocked, or everything in use: a row, no command.
+        for part in [
+            serde_json::json!({"action": "blocked", "counts": {"retire": 0, "keep": 2, "skip-in-use": 0},
+                "confirm_token": null, "apply_flag": null}),
+            serde_json::json!({"action": "none", "counts": {"retire": 0, "keep": 2, "skip-in-use": 3},
+                "confirm_token": null, "apply_flag": null}),
+        ] {
+            let mut n = latest.clone();
+            n["home"] = part;
+            let text = screen(&n, Asked::NotAsked, &v);
+            assert!(text.contains(word), "{text}");
+            assert!(!text.contains("--confirm-home"), "{text}");
+        }
+    }
+}
+
+/// A confirmed home part that did not finish is an error with its message, never "Retired",
+/// and the run ends as partly applied.
+#[test]
+fn a_failed_home_part_is_shown_as_failed_with_its_message() {
+    let message = "the home token differs from the preview's; nothing applied, preview again";
+    let mut applied = fixture("applied");
+    applied["home_result"] = serde_json::json!({"state": "error", "message": message});
+    for lang in [Lang::En, Lang::Ko] {
+        let text = screen(&applied, Asked::Yes, &view(lang, Look::Plain, 80, None));
+        let (retired, partial) = if lang == Lang::Ko {
+            ("옮겼어요", "일부만 바꿨어요")
+        } else {
+            ("Retired", "Partly applied")
+        };
+        assert!(!text.contains(retired), "{text}");
+        assert!(text.contains(partial), "{text}");
+        assert!(flat(&text).contains(&message[..40]), "{text}");
+        assert!(text.lines().any(|l| l.starts_with("✗ ")), "{text}");
+    }
+}
+
 /// AUDIT #2908 B2: a golden file never ends with a blank line (`git diff --check`); the question
 /// screen still ends with the blank line that sets the `[y/N]` prompt apart.
 #[test]

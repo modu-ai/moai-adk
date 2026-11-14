@@ -149,6 +149,11 @@ enum W {
     CleanupNext,
     Cleaned,
     CleanupFailed,
+    Home,
+    Retire,
+    HomeNext,
+    Retired,
+    HomeFailed,
     Keys,
     KeyImport,
     KeyInVault,
@@ -159,6 +164,12 @@ enum W {
 fn cleanup_ok(v: &Value) -> bool {
     let r = &v["cleanup_result"];
     r.is_null() || r["state"].as_str() == Some("committed")
+}
+
+/// Whether a confirmed home part (#2871 U2b), when there is one, ended committed.
+fn home_ok(v: &Value) -> bool {
+    let r = &v["home_result"];
+    r.is_null() || (r["state"].as_str() == Some("applied") && r["journal_state"] == "committed")
 }
 
 fn w(lang: Lang, word: W) -> &'static str {
@@ -510,6 +521,41 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "Cleanup did not finish"
             }
         }
+        Home => {
+            if ko {
+                "Go 항목(~/.moai)"
+            } else {
+                "Go items (~/.moai)"
+            }
+        }
+        Retire => {
+            if ko {
+                "이동"
+            } else {
+                "to retire"
+            }
+        }
+        HomeNext => {
+            if ko {
+                "Go 항목은 따로 확인해요:"
+            } else {
+                "the Go items are retired on their own:"
+            }
+        }
+        Retired => {
+            if ko {
+                "옮겼어요 — 날짜 백업으로"
+            } else {
+                "Retired — moved to a dated backup:"
+            }
+        }
+        HomeFailed => {
+            if ko {
+                "Go 항목 옮기기가 끝나지 않았어요"
+            } else {
+                "Retiring the Go items did not finish"
+            }
+        }
     }
 }
 
@@ -793,6 +839,29 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             ),
         ));
     }
+    // #2871 U2b: the Go items a `--confirm-home` run would move (confirmed apart, never by the
+    // y); a blocked part says so.
+    let h = &v["home"];
+    if h.is_object() && v["home_result"].is_null() {
+        let n = |k: &str| h["counts"][k].as_u64().unwrap_or(0) as usize;
+        let text = if h["confirm_token"].is_string() {
+            format!(
+                "{} · {}",
+                counted(lang, W::Retire, n("retire")),
+                counted(lang, W::Keep, n("keep"))
+            )
+        } else if h["action"] == "blocked" {
+            w(lang, W::Blocked).to_string()
+        } else {
+            // Go items exist but every movable one is in use: nothing is offered now.
+            format!(
+                "{} · {}",
+                counted(lang, W::Keep, n("keep")),
+                counted(lang, W::Skipped, n("skip-in-use"))
+            )
+        };
+        rows.push(row(Mark::Warn, w(lang, W::Home).into(), text));
+    }
     rows
 }
 
@@ -1060,6 +1129,64 @@ impl Out<'_> {
                 .paint(Token::Code, &visible(&format!("moai update {flag}")))
         );
         self.buf.push_str(&line);
+    }
+    /// #2871 U2b: the home part is confirmed with its own token, never by the `y`; the command
+    /// is shown whole so it can be copied.
+    fn home_next(&mut self, v: &Value) {
+        let Some(flag) = v["home"]["apply_flag"].as_str() else {
+            return;
+        };
+        if !v["home_result"].is_null() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::HomeNext))
+        );
+        self.buf.push_str(&line);
+        let line = format!(
+            "  {}\n",
+            self.p()
+                .paint(Token::Code, &visible(&format!("moai update {flag}")))
+        );
+        self.buf.push_str(&line);
+    }
+    /// A home part that ran (`--confirm-home`): how many entries moved and the revert.
+    fn home_done(&mut self, v: &Value) {
+        let r = &v["home_result"];
+        if r.is_null() {
+            return;
+        }
+        let lang = self.lang();
+        self.blank();
+        if !home_ok(v) {
+            let msg = r["message"]
+                .as_str()
+                .or(r["reason"].as_str())
+                .unwrap_or(r["state"].as_str().unwrap_or(""));
+            self.status(
+                Mark::Error,
+                &format!("{}: {}", w(lang, W::HomeFailed), visible(msg)),
+            );
+            return;
+        }
+        let moved = r["moved"].as_u64().unwrap_or(0) as usize;
+        self.status(
+            Mark::Ok,
+            &format!("{} {}", w(lang, W::Retired), count(lang, moved)),
+        );
+        if let Some(c) = v["revert"]["home"].as_str() {
+            let c = self.home(c);
+            let line = format!(
+                "  {} {}\n",
+                self.p()
+                    .paint(Token::Muted, &format!("{}:", w(lang, W::Revert))),
+                self.p().paint(Token::Code, &visible(&c))
+            );
+            self.buf.push_str(&line);
+        }
     }
     /// A cleanup that ran (`--confirm-cleanup`): how many entries were archived and the revert.
     fn cleanup_done(&mut self, v: &Value) {
@@ -1340,6 +1467,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         Asked::No => {
             o.status(Mark::Skip, w(lang, W::NotWritten));
             o.cleanup_next(result);
+            o.home_next(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -1381,6 +1509,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         }
         o.cleanup_done(result);
         o.cleanup_next(result);
+        o.home_done(result);
+        o.home_next(result);
         o.project_next();
         return o.buf;
     }
@@ -1405,6 +1535,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     }
     o.cleanup_done(result);
     o.cleanup_next(result);
+    o.home_done(result);
+    o.home_next(result);
     o.buf
 }
 
@@ -1514,6 +1646,7 @@ fn applied(v: &Value, view: &View) -> String {
     o.blank();
     // A cleanup that did not commit leaves the run partly applied (AUDIT #2908 B1).
     bad |= !cleanup_ok(v);
+    bad |= !home_ok(v);
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {
@@ -1548,6 +1681,7 @@ fn applied(v: &Value, view: &View) -> String {
         o.muted(w(lang, W::Reload));
     }
     o.cleanup_done(v);
+    o.home_done(v);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

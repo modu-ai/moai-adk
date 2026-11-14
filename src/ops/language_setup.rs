@@ -38,8 +38,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     } else {
         SetupMode::Interactive
     };
+    // #2935 L1: the conversation language `language-set` recorded in HOME is a default; a HOME
+    // that is not set simply has none.
+    let home = moai_cli::key_vault::home().ok();
     setup(
         &args.project,
+        home.as_deref(),
         mode,
         args.conversation.as_deref(),
         &mut std::io::stdin().lock(),

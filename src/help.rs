@@ -35,6 +35,7 @@ pub const GROUPS: &[Group] = &[
             ("project-apply", true),
             ("project-update-plan", false),
             ("language-setup", true),
+            ("language-set", false),
             ("index-build", true),
             ("agents-plan", false),
             ("agents-apply", false),
@@ -266,6 +267,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-update-plan", &["project-update-plan ."]),
     ("language-setup", &["language-setup . < request.json"]),
+    ("language-set", &["language-set --home ko"]),
     ("index-build", &["index-build . < request.json"]),
     ("agents-plan", &["agents-plan . < request.json", "agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("agents-apply", &["agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -1440,6 +1442,13 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "confirm_cleanup",
         "미리 보기의 `cleanup.confirm_token`(#2872): 거기 적힌 Go 잔여물을 보관 폴더로. \
          --confirm 이 없으면 나머지는 미리 보기로 남음",
+    ),
+    (
+        "update",
+        "confirm_home",
+        "미리 보기의 `home.confirm_token`(#2871): 거기 적힌 Go 세대 `~/.moai` 항목을 \
+         `~/.moai-go-retired/<UTC>/` 로 옮김. --confirm 이 없으면 나머지는 미리 보기로 남고, \
+         --confirm-cleanup 과 같이 못 씀",
     ),
     (
         "go-state-plan",

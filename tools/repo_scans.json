@@ -264,10 +264,11 @@
         "tests/update_user_layer_cli.rs (package copy)",
         "tests/update_hooks_cli.rs (package copy)",
         "tests/update_keys_cli.rs (package copy)",
+        "tests/update_home_layer_cli.rs (package copy)",
         "tests/omp_agents.rs (package copy)"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test omp_agents"
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test omp_agents"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
@@ -278,6 +279,7 @@
         "tests/update_user_layer_cli.rs",
         "tests/update_hooks_cli.rs",
         "tests/update_keys_cli.rs",
+        "tests/update_home_layer_cli.rs",
         "tests/omp_agents.rs"
       ],
       "scope": [
