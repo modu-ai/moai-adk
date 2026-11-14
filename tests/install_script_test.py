@@ -2,8 +2,8 @@
 
 Every run uses a temporary HOME and a fake GitHub release served from `file://`: a feed
 (`releases.atom`), per-tag archives in the cargo-dist shape (`moai-cli-<triple>.tar.xz` plus
-`.sha256`), and a fake `moai-cli` that answers `install-inspect` and `--version` only. Nothing
-reaches the network, the real HOME or the real PATH.
+`.sha256`), and a fake `moai-cli` that answers `install-inspect`, `--version` and (#2935 L1)
+`language-set`. Nothing reaches the network, the real HOME or the real PATH.
 """
 
 import hashlib
@@ -11,24 +11,52 @@ import io
 import json
 import os
 import platform
+import pty
+import select
 import shutil
 import stat
 import subprocess
 import tarfile
 import tempfile
+import time
 import unittest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SH = os.path.join(REPO_ROOT, "install", "install.sh")
 PS1 = os.path.join(REPO_ROOT, "install", "install.ps1")
 
+# `language-set` (#2935 L1) is what the real moai-cli does, in miniature: record the argv one
+# argument per line (ended by `--`) in $FAKE_LOG, write config/language.yaml only when it is not
+# there, and answer in the real envelope's shape.
 FAKE_CLI = """#!/bin/sh
 case "$1" in
   install-inspect)
     printf '{"protocol_version":1,"operation":"install.inspect","ok":true,"result":{"home_state_root":"%s","path_first_moai":{"path":null,"generation":"%s"},"writes":false}}\\n' "${FAKE_STATE_ROOT:-$HOME/.moai-cli}" "${FAKE_GEN:-absent}"
     ;;
   --version) echo "moai-cli @VERSION@ (rust)" ;;
+  language-set)
+    if [ -n "${FAKE_LOG:-}" ]; then { for a in "$@"; do printf '%s\\n' "$a"; done; echo --; } >> "$FAKE_LOG"; fi
+    root="${FAKE_STATE_ROOT:-$HOME/.moai-cli}"
+    if [ -e "$root/config/language.yaml" ]; then
+      printf '{"ok":true,"result":{"written":false,"reason":"exists"}}\\n'
+    else
+      mkdir -p "$root/config"
+      printf 'language:\\n  conversation_language: %s\\n' "$3" > "$root/config/language.yaml"
+      printf '{"ok":true,"result":{"written":true,"reason":null}}\\n'
+    fi
+    ;;
   *) exit 2 ;;
+esac
+"""
+
+# An older moai-cli: no `language-set` (an unknown command exits 2).
+FAKE_CLI_OLD = """#!/bin/sh
+case "$1" in
+  install-inspect)
+    printf '{"protocol_version":1,"operation":"install.inspect","ok":true,"result":{"home_state_root":"%s","path_first_moai":{"path":null,"generation":"%s"},"writes":false}}\\n' "${FAKE_STATE_ROOT:-$HOME/.moai-cli}" "${FAKE_GEN:-absent}"
+    ;;
+  --version) echo "moai-cli @VERSION@ (rust)" ;;
+  *) if [ -n "${FAKE_LOG:-}" ]; then echo "$*" >> "$FAKE_LOG"; fi; exit 2 ;;
 esac
 """
 
@@ -70,6 +98,21 @@ def snapshot(root):
                 with open(p, "rb") as f:
                     out[rel] = ("file", hashlib.sha256(f.read()).hexdigest(), st.st_mtime_ns)
     return out
+
+
+# The fake for `install-inspect` and `--version`, with `language-set` handed to the real moai-cli
+# this tree built ($REAL_CLI), so the installer's call is answered by the real command.
+FAKE_CLI_REAL = FAKE_CLI_OLD.replace(
+    "  *) if",
+    '  language-set) exec "$REAL_CLI" "$@" ;;\n  *) if',
+)
+
+
+def real_cli():
+    """The moai-cli built from this tree, or None: `MOAI_TEST_CLI`, else the cargo target dir."""
+    target = os.environ.get("CARGO_TARGET_DIR") or os.path.join(REPO_ROOT, "target")
+    path = os.environ.get("MOAI_TEST_CLI") or os.path.join(target, "debug", "moai-cli")
+    return path if os.access(path, os.X_OK) else None
 
 
 class Release:
@@ -145,6 +188,8 @@ class InstallShTest(unittest.TestCase):
             "HOME": self.home,
             "PATH": "/usr/bin:/bin",
             "LC_ALL": "C",
+            # Outside HOME, so the second-run snapshots do not see it (see FAKE_CLI).
+            "FAKE_LOG": os.path.join(self.tmp, "fake.log"),
             "MOAI_RELEASE_BASE": "file://" + self.rel.download,
             "MOAI_RELEASE_FEED": "file://" + os.path.join(self.rel.root, "releases.atom"),
             # Never the real API: until a test publishes it, this file is missing, which is how
@@ -230,7 +275,7 @@ class InstallShTest(unittest.TestCase):
     def test_help_lists_the_go_options_and_unknown_options_fail(self):
         r = self.run_sh("--help")
         self.assertEqual(r.returncode, 0, r.stderr)
-        for opt in ("--version", "--install-dir", "--channel", "-h, --help"):
+        for opt in ("--version", "--install-dir", "--channel", "--language", "-h, --help"):
             self.assertIn(opt, r.stdout)
         r = self.run_sh("--nope")
         self.assertNotEqual(r.returncode, 0)
@@ -373,6 +418,256 @@ class InstallShTest(unittest.TestCase):
         self.assertIn("left as it is", r.stdout)
         self.assertTrue(os.path.islink(self.state("path", "moai-cli")))
 
+    # ---- the conversation language (#2935 L1) ---------------------------------------------
+
+    def calls(self):
+        """The `moai-cli` calls the fake recorded, as lists of arguments."""
+        if not os.path.exists(self.log):
+            return []
+        with open(self.log) as f:
+            text = f.read()
+        return [chunk.split("\n") for chunk in text.split("--\n") if chunk]
+
+    @property
+    def log(self):
+        return os.path.join(self.tmp, "fake.log")
+
+    def language_file(self):
+        return self.state("config", "language.yaml")
+
+    def assert_language(self, code, *args, **env):
+        """Runs the installer and checks the one `language-set --home <code>` call it made."""
+        if os.path.exists(self.log):
+            os.remove(self.log)
+        r = self.run_sh(*args, **env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.calls(), [["language-set", "--home", code, ""]], r.stdout)
+        return r
+
+    def test_the_language_flag_is_recorded_with_the_exact_call(self):
+        r = self.assert_language("ko", "--language", "ko")
+        self.assertIn("Conversation language recorded: ko", r.stdout)
+        with open(self.language_file()) as f:
+            self.assertEqual(f.read(), "language:\n  conversation_language: ko\n")
+        # The call is made after the commands are installed and linked, by the installed binary.
+        self.assertTrue(os.path.islink(self.state("path", "moai-cli")))
+
+    def test_the_language_comes_from_the_flag_then_the_environment_then_the_locale(self):
+        self.assert_language("ja", MOAI_LANGUAGE="ja")
+        shutil.rmtree(self.state())
+        # The flag beats the environment variable, which beats the locale.
+        self.assert_language("zh", "--language", "zh", MOAI_LANGUAGE="ja", LC_ALL="ko_KR.UTF-8")
+        shutil.rmtree(self.state())
+        self.assert_language("ja", MOAI_LANGUAGE="ja", LC_ALL="ko_KR.UTF-8")
+        shutil.rmtree(self.state())
+        # A code is passed on exactly as typed: no case folding, no region trimming.
+        self.assert_language("KO", "--language", "KO")
+        shutil.rmtree(self.state())
+        self.assert_language("pt-BR", "--language", "pt-BR")
+        shutil.rmtree(self.state())
+        self.assert_language("es-419", MOAI_LANGUAGE="es-419")
+
+    def test_the_locale_is_read_from_lc_all_then_lc_messages_then_lang(self):
+        cases = [
+            ({"LC_ALL": "ko_KR.UTF-8", "LC_MESSAGES": "ja_JP.UTF-8", "LANG": "zh_CN.UTF-8"}, "ko"),
+            ({"LC_ALL": "", "LC_MESSAGES": "ja_JP.UTF-8", "LANG": "zh_CN.UTF-8"}, "ja"),
+            ({"LC_ALL": "", "LC_MESSAGES": "", "LANG": "zh_CN.UTF-8"}, "zh"),
+            ({"LC_ALL": "", "LANG": "en_US.UTF-8@euro"}, "en"),
+            # C and POSIX are no language: English. The first locale variable that is set decides.
+            ({"LC_ALL": "C", "LANG": "ko_KR.UTF-8"}, "en"),
+            ({"LC_ALL": "", "LC_MESSAGES": "POSIX", "LANG": "ko_KR.UTF-8"}, "en"),
+            ({"LC_ALL": "C.UTF-8"}, "en"),
+            # Not a language code: English.
+            ({"LC_ALL": "toolong_XX"}, "en"),
+            ({"LC_ALL": ""}, "en"),
+        ]
+        for env, want in cases:
+            with self.subTest(env=env):
+                shutil.rmtree(self.state(), ignore_errors=True)
+                self.assert_language(want, **env)
+
+    def test_a_language_that_is_not_a_code_is_refused_before_anything_is_written(self):
+        # The edges of `^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$` and of the 35-character limit: the
+        # last text that passes and the first that does not, for the language part, for a `-`
+        # group and for the whole code.
+        longest = "ko" + "-abcdefgh" * 3 + "-abcde"
+        too_long = longest + "f"
+        self.assertEqual((len(longest), len(too_long)), (35, 36))
+        for good in ("ko", "kor", "ko-KR", "ko-ab", "ko-abcdefgh", "zh-Hant-TW", "KO-kr", longest):
+            with self.subTest(good=good):
+                shutil.rmtree(self.state(), ignore_errors=True)
+                self.assert_language(good, "--language", good)
+        for bad in ("", "k", "abcd", "ko-", "ko-a", "ko-abcdefghi", "ko--KR", "ko_KR", "ko KR",
+                    "ko;id", "$(id)", "../ko", "한국어", "ko\n", "ko\nxx", "-ko", "--home",
+                    "ko'", 'ko"', "ko\t", too_long):
+            with self.subTest(bad=bad):
+                if os.path.exists(self.log):
+                    os.remove(self.log)
+                r = self.assert_refused_without_writes("--language", bad)
+                self.assertIn("Not a language code", r.stdout + r.stderr)
+                self.assertEqual(self.calls(), [], "the binary was never run")
+        r = self.assert_refused_without_writes("--language")
+        self.assertIn("--language needs a value", r.stdout + r.stderr)
+        for bad in ("xx!", "ko\n", "abcd"):
+            with self.subTest(env=bad):
+                r = self.assert_refused_without_writes(MOAI_LANGUAGE=bad)
+                self.assertIn("Not a language code", r.stdout + r.stderr)
+        # An empty MOAI_LANGUAGE is no choice at all.
+        self.assert_language("en", MOAI_LANGUAGE="")
+
+    def test_a_moai_cli_without_language_set_still_installs_with_a_warning(self):
+        old = "1.0.0"
+        self.rel.add(old, cli=FAKE_CLI_OLD.replace("@VERSION@", old))
+        r = self.run_sh("--version", old, "--language", "ko")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Could not record the conversation language (ko)", r.stdout)
+        self.assertIn("Installation complete!", r.stdout)
+        self.assertIn("moai-cli 1.0.0 (rust)", r.stdout)
+        self.assertTrue(os.path.islink(self.state("path", "moai-cli")))
+        self.assertFalse(os.path.exists(self.language_file()))
+        # The old binary was asked, once, and said no.
+        with open(self.log) as f:
+            self.assertEqual(f.read(), "language-set --home ko\n")
+        # The second run on top of it writes nothing either.
+        before = snapshot(self.home)
+        r = self.run_sh("--version", old, "--language", "ko")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(snapshot(self.home), before)
+
+    def test_a_second_run_writes_nothing_new_and_a_recorded_language_stays(self):
+        self.assertEqual(self.run_sh("--language", "ko").returncode, 0)
+        with open(self.language_file()) as f:
+            self.assertEqual(f.read(), "language:\n  conversation_language: ko\n")
+        before = snapshot(self.home)
+        r = self.run_sh("--language", "ja")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("already recorded", r.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assertEqual(self.calls()[-1], ["language-set", "--home", "ja", ""])
+        # A HOME that already had its own value keeps it through a first install.
+        shutil.rmtree(self.state())
+        os.makedirs(self.state("config"))
+        with open(self.language_file(), "w") as f:
+            f.write("language:\n  conversation_language: zh\n")
+        self.assertEqual(self.run_sh("--language", "ko").returncode, 0)
+        with open(self.language_file()) as f:
+            self.assertEqual(f.read(), "language:\n  conversation_language: zh\n")
+
+    def test_the_real_language_set_records_the_choice_and_keeps_it(self):
+        real = real_cli()
+        if real is None:
+            self.skipTest("no moai-cli built from this tree (set MOAI_TEST_CLI)")
+        self.rel.add("1.6.0", cli=FAKE_CLI_REAL.replace("@VERSION@", "1.6.0"))
+        r = self.run_sh("--version", "1.6.0", "--language", "ko", REAL_CLI=real)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Conversation language recorded: ko", r.stdout)
+        with open(self.language_file(), "rb") as f:
+            self.assertEqual(f.read(), b"language:\n  conversation_language: ko\n")
+        # Only the one file is new under the state folder's config.
+        self.assertEqual(os.listdir(self.state("config")), ["language.yaml"])
+        before = snapshot(self.home)
+        r = self.run_sh("--version", "1.6.0", "--language", "ja", REAL_CLI=real)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("already recorded", r.stdout)
+        self.assertEqual(snapshot(self.home), before)
+
+    def test_the_installers_own_output_stays_english(self):
+        r = self.assert_language("ko", "--language", "ko", LC_ALL="ko_KR.UTF-8")
+        text = r.stdout + r.stderr
+        self.assertTrue(all(ord(c) < 128 for c in text), text)
+
+    # The menu needs a terminal on stdin and stdout: a pseudo-terminal stands in for one.
+
+    def pty_argv(self):
+        return ["/bin/sh", SH]
+
+    def pty_env(self, **env):
+        return self.env(NO_COLOR="1", **env)
+
+    def run_pty(self, args, answers, timeout=120, **env):
+        master, slave = pty.openpty()
+        proc = subprocess.Popen(
+            [*self.pty_argv(), *args], stdin=slave, stdout=slave, stderr=slave,
+            env=self.pty_env(**env), cwd=self.home, close_fds=True, start_new_session=True,
+        )
+        os.close(slave)
+        os.write(master, answers.encode())
+        out = b""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            ready, _, _ = select.select([master], [], [], 0.5)
+            if ready:
+                try:
+                    chunk = os.read(master, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                out += chunk
+            elif proc.poll() is not None:
+                break
+        else:
+            proc.kill()
+        proc.wait(timeout=30)
+        os.close(master)
+        return proc.returncode, out.decode(errors="replace").replace("\r\n", "\n")
+
+    def assert_menu_choice(self, answers, want, prompts=1, **env):
+        if os.path.exists(self.log):
+            os.remove(self.log)
+        shutil.rmtree(self.state(), ignore_errors=True)
+        code, out = self.run_pty([], answers, **env)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.count("Choose 1-5"), prompts, out)
+        self.assertEqual(self.calls(), [["language-set", "--home", want, ""]], out)
+        return out
+
+    def test_the_menu_at_a_terminal_lists_the_five_choices_in_english(self):
+        out = self.assert_menu_choice("2\n", "ko")
+        for line in ("1) English", "2) 한국어", "3) 日本語", "4) 中文", "5) Other"):
+            self.assertIn(line, out)
+        self.assertEqual(out.count("Which language should the model use"), 1)
+
+    def test_each_menu_number_picks_its_language(self):
+        for answers, want in (("1\n", "en"), ("2\n", "ko"), ("3\n", "ja"), ("4\n", "zh")):
+            with self.subTest(answers=answers):
+                self.assert_menu_choice(answers, want)
+
+    def test_menu_choice_five_takes_a_typed_code_and_asks_again_for_a_bad_one(self):
+        self.assert_menu_choice("5\nfr-CA\n", "fr-CA")
+        out = self.assert_menu_choice("5\nbad!\n5\npt-BR\n", "pt-BR", prompts=2)
+        self.assertIn("not a language code", out)
+
+    def test_a_wrong_menu_answer_is_asked_again_three_times_at_most(self):
+        # Two wrong answers, then a right one.
+        self.assert_menu_choice("9\nx\n3\n", "ja", prompts=3)
+        # Three wrong answers: the locale's language, or English, is used.
+        out = self.assert_menu_choice("9\n0\nx\n", "ja", prompts=3, LC_ALL="", LANG="ja_JP.UTF-8")
+        self.assertIn("Using ja.", out)
+        out = self.assert_menu_choice("9\n9\n9\n", "en", prompts=3)
+        self.assertIn("Using en.", out)
+        # The answer after the third wrong one is never read as an answer.
+        self.assert_menu_choice("9\n9\n9\n2\n", "en", prompts=3)
+
+    def test_an_empty_menu_answer_takes_the_default_and_the_end_of_input_too(self):
+        self.assert_menu_choice("\n", "en")
+        self.assert_menu_choice("\n", "zh", LC_ALL="", LANG="zh_CN.UTF-8")
+        # Ctrl-D on an empty line is the end of input.
+        out = self.assert_menu_choice("\x04", "ko", LC_ALL="", LANG="ko_KR.UTF-8")
+        self.assertIn("Using ko.", out)
+
+    def test_no_menu_when_the_language_is_given_or_there_is_no_terminal(self):
+        for args, env in ((["--language", "ko"], {}), ([], {"MOAI_LANGUAGE": "ko"})):
+            with self.subTest(args=args, env=env):
+                shutil.rmtree(self.state(), ignore_errors=True)
+                code, out = self.run_pty(args, "3\n", **env)
+                self.assertEqual(code, 0, out)
+                self.assertNotIn("Choose 1-5", out)
+                self.assertEqual(self.calls()[-1], ["language-set", "--home", "ko", ""])
+        # Piped output (every other test here) never shows it either.
+        r = self.run_sh()
+        self.assertNotIn("Choose 1-5", r.stdout)
+
     def test_shellcheck_passes(self):
         if shutil.which("shellcheck") is None:
             self.skipTest("shellcheck not installed on this machine")
@@ -393,17 +688,27 @@ class InstallPs1Test(InstallShTest):
             self.skipTest("pwsh not installed on this machine")
         super().setUp()
 
-    def run_sh(self, *args, **env):
+    def pwsh_env(self, **env):
         e = self.env(**env)
         # pwsh needs its own folders under HOME; keep them out of the snapshot's way.
+        return {**e, "PATH": e["PATH"] + ":" + os.path.dirname(shutil.which("pwsh")),
+                "POWERSHELL_TELEMETRY_OPTOUT": "1", "XDG_CACHE_HOME": os.path.join(self.tmp, "cache"),
+                "XDG_DATA_HOME": os.path.join(self.tmp, "data"),
+                "XDG_CONFIG_HOME": os.path.join(self.tmp, "config")}
+
+    def run_sh(self, *args, **env):
         return subprocess.run(
             [shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-File", PS1, *args],
-            env={**e, "PATH": e["PATH"] + ":" + os.path.dirname(shutil.which("pwsh")),
-                 "POWERSHELL_TELEMETRY_OPTOUT": "1", "XDG_CACHE_HOME": os.path.join(self.tmp, "cache"),
-                 "XDG_DATA_HOME": os.path.join(self.tmp, "data"),
-                 "XDG_CONFIG_HOME": os.path.join(self.tmp, "config")},
-            cwd=self.home, capture_output=True, text=True, timeout=300,
+            env=self.pwsh_env(**env), cwd=self.home, capture_output=True, text=True, timeout=300,
         )
+
+    # The menu is read with Read-Host, which a -NonInteractive host refuses: the terminal runs
+    # get an interactive one.
+    def pty_argv(self):
+        return [shutil.which("pwsh"), "-NoProfile", "-File", PS1]
+
+    def pty_env(self, **env):
+        return self.pwsh_env(NO_COLOR="1", **env)
 
     def test_shellcheck_passes(self):
         self.skipTest("shell-only check")
