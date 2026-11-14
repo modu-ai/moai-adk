@@ -17,7 +17,7 @@
 use crate::home_layout::{self, Class, Entry, Rule, RustUse};
 use crate::home_state::{live_sessions, session_lock_held, stamp, InUse, CANDIDATE_LIMIT};
 use crate::move_journal::{self, MoveEnv, PlannedMove};
-use crate::state_root::{classify_with, MOAI_DIR};
+use crate::state_root::{classify_home, MOAI_DIR};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::fs;
@@ -105,7 +105,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     }
     let stamp = stamp(now)?;
     let moai = home.join(MOAI_DIR);
-    let c = classify_with(home, crate::home_state::home_go_markers);
+    let c = classify_home(home);
     let root = home.join(RETIRED_DIR);
     let folder = root.join(&stamp);
     let active = matches!(c.generation, "go" | "mixed" | "rust-first");

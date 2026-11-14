@@ -501,3 +501,140 @@ fn retire_revert_leaves_an_entry_that_was_replaced_since() {
         "the others came back"
     );
 }
+
+/// A preview that is blocked has a digest too; the apply must still refuse to move anything.
+#[test]
+fn retire_apply_refuses_a_blocked_preview_even_with_its_own_digest() {
+    let (_d, home) = go_home();
+    let me = std::process::id();
+    write(
+        &home,
+        ".moai/state/active-sessions.json",
+        &format!(r#"[{{"pid": {me}}}]"#),
+    );
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    let before = tree(&home);
+    let a = apply(&home, p["plan_digest"].as_str().unwrap());
+    assert_eq!(a["ok"], json!(false), "{a}");
+    assert_eq!(tree(&home), before, "a blocked apply wrote something");
+    assert!(!retired(&home).exists());
+}
+
+/// A folder that holds another checkout stays: renaming it would orphan the registration.
+#[test]
+fn retire_keeps_a_folder_that_holds_a_nested_checkout() {
+    let (_d, home) = go_home();
+    fs::create_dir_all(home.join(".moai/cache/proj/.git")).unwrap();
+    let p = plan(&home);
+    assert_eq!(act(&p, "cache"), ("keep".into(), "nested_checkout".into()));
+    assert_eq!(act(&p, "run").0, "retire");
+    let a = apply(&home, p["plan_digest"].as_str().unwrap());
+    assert_eq!(a["ok"], json!(true), "{a}");
+    assert!(home.join(".moai/cache/proj/.git").is_dir());
+}
+
+/// Two retires, then a revert without `--stamp`: the newest one comes back, the older stays.
+#[test]
+fn retire_revert_without_a_stamp_undoes_the_newest_retire_only() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    assert_eq!(
+        apply(&home, p["plan_digest"].as_str().unwrap())["ok"],
+        json!(true)
+    );
+    write(
+        &home,
+        ".moai/user-assets.json",
+        r#"{"schema_version": 1, "files": {}}"#,
+    );
+    write(&home, ".moai/cache/b.bin", "y");
+    let p2 = plan_with(&home, LATER, &[]);
+    let a2 = apply_with(&home, LATER, p2["plan_digest"].as_str().unwrap(), PERM, &[]);
+    assert_eq!(a2["ok"], json!(true), "{a2}");
+    let r = revert(&home, &[]);
+    assert_eq!(r["ok"], json!(true), "{r}");
+    assert_eq!(r["result"]["state"], json!("reverted"), "{r}");
+    assert!(
+        home.join(".moai/cache/b.bin").is_file(),
+        "the newest came back"
+    );
+    assert!(
+        retired(&home).join(STAMP).join("cache/a.bin").is_file(),
+        "the older stays retired"
+    );
+    // Naming the older one brings back what it can; `cache` is occupied again, so it stays.
+    let r = revert(&home, &["--stamp", STAMP]);
+    assert_eq!(r["result"]["state"], json!("revert_partial"), "{r}");
+    assert!(home.join(".moai/run/x.pid").is_file());
+    assert!(home.join(".moai/cache/b.bin").is_file());
+}
+
+/// The dated backup folder is private to the user.
+#[test]
+fn retire_makes_the_backup_folders_private() {
+    let (_d, home) = go_home();
+    let p = plan(&home);
+    assert_eq!(
+        apply(&home, p["plan_digest"].as_str().unwrap())["ok"],
+        json!(true)
+    );
+    for dir in [retired(&home), retired(&home).join(STAMP)] {
+        assert_eq!(
+            fs::metadata(&dir).unwrap().permissions().mode() & 0o777,
+            0o700,
+            "{}",
+            dir.display()
+        );
+    }
+}
+
+/// A name that is not valid UTF-8 cannot be classified: the whole preview is blocked. (A
+/// file system that refuses such a name, like APFS, cannot hold the case; the Linux CI does.)
+#[test]
+fn retire_blocks_on_a_name_it_cannot_read() {
+    use std::os::unix::ffi::OsStrExt;
+    let (_d, home) = go_home();
+    let bad = std::ffi::OsStr::from_bytes(b"bad-\xff-name");
+    if fs::write(home.join(".moai").join(bad), "x").is_err() {
+        return;
+    }
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(p["blocks"].to_string().contains("unreadable_names"), "{p}");
+}
+
+/// A HOME with this generation's marker and Go items left over (`rust-first`) retires those
+/// Go items too, but keeps the names both generations write.
+#[test]
+fn retire_acts_on_a_rust_first_home_and_keeps_shared_names() {
+    let (_d, home) = go_home();
+    write(
+        &home,
+        ".moai/moai-cli.json",
+        r#"{"schema_version":2,"generation":"moai-cli"}"#,
+    );
+    let p = plan(&home);
+    assert_eq!(p["state"]["generation"], json!("rust-first"), "{p}");
+    assert_eq!(p["action"], json!("retire"), "{p}");
+    assert_eq!(act(&p, "cache").0, "retire");
+    assert_eq!(act(&p, "state"), ("keep".into(), "shared_name".into()));
+    assert_eq!(act(&p, "config"), ("keep".into(), "shared_name".into()));
+    assert_eq!(
+        act(&p, "moai-cli.json"),
+        ("keep".into(), "this_generation".into())
+    );
+}
+
+/// A session lock that cannot be judged (here a folder where the file should be) blocks.
+#[test]
+fn retire_blocks_when_the_session_lock_cannot_be_judged() {
+    let (_d, home) = go_home();
+    fs::create_dir_all(home.join(".moai/state/active-sessions.json.lock")).unwrap();
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(
+        p["blocks"].to_string().contains("session_lock_unknown"),
+        "{p}"
+    );
+}
