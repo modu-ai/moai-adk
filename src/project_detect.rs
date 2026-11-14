@@ -590,8 +590,9 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         Err(e) if e == "project profile missing" => (
             Value::Null,
             format!(
-                "no {} yet: create the profile first (a first launch or SETUP), then run project-detect again",
-                crate::state_root::rel(root, "project.yaml")
+                "no {}/project.yaml yet: create the profile first (a first launch or SETUP), then run project-detect again",
+                // Where the profile will be created (#2696 C2b), not where it is read now.
+                crate::state_root::create_dir(root)
             ),
         ),
         Err(e) => return Err(e),

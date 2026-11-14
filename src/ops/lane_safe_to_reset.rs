@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+/// Check that a lane's session is safe to clear
+///
 /// Before a lane's session is cleared or its card dispatched elsewhere (#2669): map the lane
 /// to its worktrees, count their uncommitted, unpushed and stashed work, and check the
 /// caller's observations of the lane's open claims (each with a resume note), session folder

@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Preview installing the base agents into HOME
+///
 /// Preview installing the base MoAI agents into HOME's host agent folders (#2592): per file
 /// create, update, unchanged, preserved (your edit), conflict or remove_blocked. Writes nothing.
 #[derive(clap::Args)]

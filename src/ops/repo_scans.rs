@@ -4,6 +4,8 @@
 use std::io::Read;
 use std::path::PathBuf;
 
+/// List the repo-wide scan tests a merge must run
+///
 /// List the repo-wide scan tests a merge must run first (#2681; #2708 moved it from
 /// tools/repo_scans.py). With `--refs <tip> <head>` the change sets are `git diff --name-only`
 /// from their merge-base and the table is the union of `tools/repo_scans.json` at both refs;

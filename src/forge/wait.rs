@@ -173,14 +173,24 @@ fn check<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     base: &str,
     condition: &Condition,
-) -> Result<(Option<Value>, bool), ForgeError> {
+) -> Result<(Option<Value>, bool, String), ForgeError> {
     match condition {
         Condition::Ci { head } => {
             let url = format!("{base}/actions/runs?head_sha={head}&per_page=100");
             let resp = client.get(&url, Some(&project_runs))?;
             let runs = projected(client, &url, &resp, &project_runs);
             let list = runs.as_array().cloned().unwrap_or_default();
-            let done = !list.is_empty() && list.iter().all(|r| r["status"] == "completed");
+            let completed = list.iter().filter(|r| r["status"] == "completed").count();
+            let done = !list.is_empty() && completed == list.len();
+            let short = head.get(..8).unwrap_or(head);
+            let state = if list.is_empty() {
+                format!("ci on {short}: no workflow run yet")
+            } else {
+                format!(
+                    "ci on {short}: {completed} of {} runs completed",
+                    list.len()
+                )
+            };
             let ok = |r: &Value| {
                 matches!(
                     r["conclusion"].as_str(),
@@ -195,14 +205,16 @@ fn check<T: Transport, C: Clock>(
                 };
                 json!({"head": head, "conclusion": conclusion, "runs": runs})
             });
-            Ok((value, resp.status == 304))
+            Ok((value, resp.status == 304, state))
         }
         Condition::Pr { pr, head } => {
             let url = format!("{base}/pulls/{pr}");
             let resp = client.get(&url, Some(&project_pr))?;
             let now = projected(client, &url, &resp, &project_pr);
             let moved = now["head"].as_str() != Some(head.as_str()) || now["state"] != "open";
-            Ok((moved.then_some(now), resp.status == 304))
+            let short = head.get(..8).unwrap_or(head);
+            let state = format!("pull request #{pr} still at {short}");
+            Ok((moved.then_some(now), resp.status == 304, state))
         }
         Condition::Comment {
             issue,
@@ -225,7 +237,7 @@ fn check<T: Transport, C: Clock>(
                 json!({"id": c["id"], "author": c["author"],
                        "first_line": first_line(c["text"].as_str().unwrap_or(""))})
             });
-            Ok((value, all_cached))
+            Ok((value, all_cached, format!("no new comment on #{issue}")))
         }
     }
 }
@@ -243,10 +255,18 @@ pub fn wait<T: Transport, C: Clock>(
     let mut cache: BTreeMap<String, CachedPage> = BTreeMap::new();
     let (mut polls, mut not_modified) = (0u64, 0u64);
     let mut rate = Value::Null;
+    // Static progress lines (#2806): one when the state changes, one every five unchanged
+    // minutes; silent unless the command installed a stderr sink.
+    let mut notes = crate::progress::StateNotes::default();
     loop {
         let client = Client::new(transport, clock, Config::default(), cache.clone());
-        let (found, all_cached) = check(&client, &base, &req.condition)?;
+        let (found, all_cached, state) = check(&client, &base, &req.condition)?;
         polls += 1;
+        if found.is_none() {
+            if let Some(line) = notes.observe(&state, clock.now()) {
+                crate::progress::note(&line);
+            }
+        }
         if all_cached {
             not_modified += 1;
         }
@@ -477,6 +497,48 @@ mod tests {
         assert_eq!(out["value"]["first_line"], "note");
     }
 
+    /// #2806: a read of several pages says which page it reads from the second on (API path
+    /// only, no host or query); the poll that matches prints no state line.
+    #[test]
+    fn a_second_page_shows_a_progress_line() {
+        let first = "https://api.github.com/repos/o/r/issues/5/comments?per_page=100";
+        let second = "https://api.github.com/repos/o/r/issues/5/comments?per_page=100&page=2";
+        let t = RecordedTransport::new(vec![
+            Exchange {
+                request: get(first, None),
+                response: ok(
+                    json!([{"id": 1, "user": {"login": "a"}, "body": "old"}]),
+                    "\"1\"",
+                    "100",
+                )
+                .with_header("link", format!("<{second}>; rel=\"next\"")),
+            },
+            Exchange {
+                request: get(second, None),
+                response: ok(
+                    json!([{"id": 40, "user": {"login": "b"}, "body": "new"}]),
+                    "\"2\"",
+                    "99",
+                ),
+            },
+        ]);
+        let seen: std::rc::Rc<RefCell<Vec<String>>> = Default::default();
+        let keep = seen.clone();
+        crate::progress::install(Box::new(move |l| keep.borrow_mut().push(l.to_string())));
+        let cond = Condition::Comment {
+            issue: 5,
+            after: 10,
+            prefix: None,
+        };
+        let out = wait(&req(cond, 60), &t, &clock());
+        crate::progress::uninstall();
+        assert_eq!(out.unwrap()["value"]["id"], 40);
+        assert_eq!(
+            *seen.borrow(),
+            ["reading page 2 of /repos/o/r/issues/5/comments"]
+        );
+    }
+
     /// `pr`: a moved head or a closed pull request ends the wait.
     #[test]
     fn pr_ends_on_a_new_head_or_a_closed_state() {
@@ -646,5 +708,51 @@ mod tests {
         let straddle = format!("{}가나\nsecond", "a".repeat(199));
         assert_eq!(first_line(&straddle), "a".repeat(199));
         assert_eq!(first_line("short\nsecond"), "short");
+    }
+
+    /// #2806 (leader decision 6866110172, Q3): a progress line when the state first shows or
+    /// changes, `still waiting: …` once five minutes pass unchanged, nothing for the poll that
+    /// matches — all on the injected clock, never the wall clock.
+    #[test]
+    fn progress_lines_follow_the_state_and_say_still_waiting_after_five_minutes() {
+        let t = RecordedTransport::new(vec![
+            Exchange {
+                request: get(RUNS, None),
+                response: ok(runs("in_progress", Value::Null), "\"a\"", "4990"),
+            },
+            Exchange {
+                request: get(RUNS, Some("\"a\"")),
+                response: not_modified("\"a\"", "4990"),
+            },
+            Exchange {
+                request: get(RUNS, Some("\"a\"")),
+                response: not_modified("\"a\"", "4990"),
+            },
+            Exchange {
+                request: get(RUNS, Some("\"a\"")),
+                response: ok(runs("completed", json!("success")), "\"b\"", "4989"),
+            },
+        ]);
+        let seen: std::rc::Rc<RefCell<Vec<String>>> = Default::default();
+        let keep = seen.clone();
+        crate::progress::install(Box::new(move |l| keep.borrow_mut().push(l.to_string())));
+        let r = WaitRequest {
+            interval_s: 150,
+            ..req(Condition::Ci { head: HEAD.into() }, 3600)
+        };
+        let c = clock();
+        let out = wait(&r, &t, &c);
+        crate::progress::uninstall();
+        assert_eq!(out.unwrap()["matched"], true);
+        // Polls at 0 s (state shown), 150 s (quiet), 300 s (five minutes unchanged), 450 s
+        // (matched, no line).
+        assert_eq!(
+            *seen.borrow(),
+            [
+                "ci on 01234567: 0 of 1 runs completed",
+                "still waiting: ci on 01234567: 0 of 1 runs completed",
+            ]
+        );
+        assert_eq!(*c.slept.borrow(), vec![150, 150, 150]);
     }
 }

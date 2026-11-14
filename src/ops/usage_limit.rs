@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+/// Report how close the usage limits are
+///
 /// Read `<HOME>/.moai-cli/state/usage-limits.json`, which the Claude Code status line writes
 /// on each render, and report `ok`, `near` (a window at 90% or more), `reached` or `unknown`,
 /// with `renew_until` (reset + 15 minutes) for near and reached. Writes nothing.
