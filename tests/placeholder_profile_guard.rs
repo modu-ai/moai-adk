@@ -214,12 +214,16 @@ fn a_placeholder_profile_blocks_agents_and_generation_plan_and_apply() {
 fn one_answered_axis_or_decision_is_enough_to_generate() {
     let mut tools_only = placeholder();
     tools_only["tools"] = json!(["Rust"]);
+    // `unspecified` next to a real answer is an answer, not the placeholder.
+    let mut tools_mixed = placeholder();
+    tools_mixed["tools"] = json!(["unspecified", "Rust"]);
     let mut methods_only = placeholder();
     methods_only["development_methods"] = json!(["TDD"]);
     let mut user_decision = placeholder();
     user_decision["decisions"][0]["source"] = json!("user");
     for (name, profile) in [
         ("tools answered", tools_only),
+        ("tools mixed with an answer", tools_mixed),
         ("methods answered", methods_only),
         ("a user decision", user_decision),
     ] {
