@@ -141,7 +141,6 @@ Lane and leader
   claim-release           Close the active claim as
                           cancelled
   claim-handoff           Hand a claim to another session
-  queue-next              Claim the next free card
   queue-free              List the open cards a lane may
                           take
   queue-query             Read the merge train from the

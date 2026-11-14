@@ -73,6 +73,8 @@ class GoalBlockSnapshotTest(unittest.TestCase):
             "codex": {"goal_line": "/goal milestone rc.2의 열린 Issue가 모두 병합되거나 종료됨", "note": NOTE},
             "counts": {"open_issues": 2, "open_prs": 0, "keep_set": 0},
             "keep_set_excluded": [], "model_can_input": False, "writes": False,
+            "startable": [202, 204], "held": [],
+            "end_condition": {"open_prs": 0, "startable": 2, "met": False},
         })
 
     def test_snapshot_prs_only(self):
@@ -84,6 +86,8 @@ class GoalBlockSnapshotTest(unittest.TestCase):
             "codex": {"goal_line": "/goal milestone rc.2의 열린 PR이 모두 병합되거나 종료됨", "note": NOTE},
             "counts": {"open_issues": 0, "open_prs": 2, "keep_set": 0},
             "keep_set_excluded": [], "model_can_input": False, "writes": False,
+            "startable": [], "held": [],
+            "end_condition": {"open_prs": 2, "startable": 0, "met": False},
         })
 
     def test_snapshot_keep_set_included(self):
@@ -100,6 +104,9 @@ class GoalBlockSnapshotTest(unittest.TestCase):
             "keep_set_excluded": [{"number": 2016, "reason": "운영자 보유"},
                                   {"number": 2017, "reason": "운영자 보유"}],
             "model_can_input": False, "writes": False,
+            "startable": [202],
+            "held": [{"issue": 2016, "reason": "keep_set", "keep_reason": "운영자 보유"}],
+            "end_condition": {"open_prs": 1, "startable": 1, "met": False},
         })
 
     def test_no_open_items_does_not_offer_an_already_satisfied_goal(self):
@@ -125,6 +132,56 @@ class GoalBlockSnapshotTest(unittest.TestCase):
         self.assertIsNone(out["agent"]["goal_lines"])
         self.assertEqual(out["agent"]["loop_line"], LOOP)
         self.assertNotIn("#", out["agent"]["loop_line"].split("—")[0])
+
+    def test_held_cards_alone_meet_the_end_condition(self):
+        # #2901 AC5: open Issues that are all on hold or waiting for a decision, and no open
+        # PR: the loop's end condition is met, so no loop line is offered.
+        out = run_generator({"milestone": "rc.2", "issues": [
+            {"number": 2345, "state": "open", "labels": ["needs:decision"]},
+            {"number": 2346, "state": "open", "labels": ["HOLD", "P1"]}]})
+        self.assertEqual(out.get("end_condition"), {"open_prs": 0, "startable": 0, "met": True})
+        self.assertEqual(out.get("startable"), [])
+        self.assertEqual(out.get("held"), [
+            {"issue": 2345, "reason": "held", "labels": ["needs:decision"]},
+            {"issue": 2346, "reason": "held", "labels": ["HOLD"]}])
+        self.assertIsNone(out["agent"]["loop_line"])
+
+    def test_an_open_pr_or_a_startable_card_keeps_the_loop(self):
+        # #2901 AC5: one open PR, or one startable Issue next to held ones: not met.
+        held = {"number": 2345, "state": "open", "labels": ["needs:decision"]}
+        for fixture, want in [
+            ({"milestone": "rc.2", "issues": [held], "prs": [{"number": 9, "state": "open"}]},
+             {"open_prs": 1, "startable": 0, "met": False}),
+            ({"milestone": "rc.2", "issues": [held, {"number": 7, "state": "open", "labels": ["threshold"]}]},
+             {"open_prs": 0, "startable": 1, "met": False}),
+        ]:
+            with self.subTest(fixture=fixture):
+                out = run_generator(fixture)
+                self.assertEqual(out.get("end_condition"), want)
+                self.assertEqual(out["agent"]["loop_line"], LOOP)
+
+    def test_each_issue_field_is_judged(self):
+        # #2901: title (epic), open sub-issues, a body Blocked-By line naming an open Issue,
+        # a blocker GitHub reports; a Blocked-By line naming a closed Issue blocks nothing.
+        out = run_generator({"milestone": "rc.2", "issues": [
+            {"number": 1, "state": "open", "title": "[rc.2][EP-A] epic"},
+            {"number": 2, "state": "open", "open_children": 2},
+            {"number": 3, "state": "open", "body": "Blocked-By: #5"},
+            {"number": 4, "state": "open", "blocked_by": [5]},
+            {"number": 5, "state": "open", "body": "Blocked-By: #6"},
+            {"number": 6, "state": "closed"}]})
+        self.assertEqual(out.get("held"), [
+            {"issue": 1, "reason": "epic", "open_children": 0},
+            {"issue": 2, "reason": "epic", "open_children": 2},
+            {"issue": 3, "reason": "blocked_by", "blocked_by": [5]},
+            {"issue": 4, "reason": "blocked_by", "blocked_by": [5]}])
+        self.assertEqual(out.get("startable"), [5])
+        for bad in [{"labels": "HOLD"}, {"labels": [1]}, {"title": 3}, {"body": None},
+                    {"open_children": -1}, {"blocked_by": [0]}, {"blocked_by": "5"}]:
+            with self.subTest(bad=bad):
+                proc = invoke({"issues": [dict({"number": 1, "state": "open"}, **bad)]})
+                self.assertEqual(proc.returncode, 1)
+                self.assertIn("invalid fixture", proc.stderr)
 
     def test_input_permutations_produce_identical_output(self):
         for fixture in [ISSUES, PRS, KEPT]:
