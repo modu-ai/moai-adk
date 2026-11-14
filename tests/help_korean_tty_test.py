@@ -202,6 +202,22 @@ class KoreanHelp(unittest.TestCase):
                         self.assertLessEqual(cells(line), int(columns),
                                              (columns, word, flag, line))
 
+    def test_the_update_and_move_group_reads_its_own_texts_in_korean(self):
+        """S6e-4: per-command argument lines where the English differs between commands."""
+        plan = self.help(["home-state-plan", "--help"], **KOREAN)
+        self.assertIn("읽을 HOME(기본 `$HOME`)", plan)
+        apply = self.help(["home-state-apply", "--help"], **KOREAN)
+        self.assertIn("바꿀 HOME(기본 `$HOME`)", apply)
+        self.assertIn("사용자 승인에 대한 호출자의 참조", apply)
+        self.assertIn("미리 보기가 읽은 것과 같은 `--now`", apply)
+        go = self.help(["go-state-plan", "--help"], **KOREAN)
+        self.assertIn("Go `.moai/manifest.json` 이 있는 프로젝트 루트", go)
+        self.assertIn("호출자가 준 권한 참조", self.help(["go-state-apply", "--help"], **KOREAN))
+        self.assertIn("이 이동들에 대한 사용자 승인의 호출자 참조",
+                      self.help(["worktree-move-apply", "--help"], **KOREAN))
+        self.assertTrue(self.help(["update", "-h"], **KOREAN)
+                        .startswith("설치된 패키지로 MoAI 업데이트\n"))
+
     def test_no_korean_line_of_any_command_help_runs_past_sixty_cells(self):
         """Every command's `-h` and `--help` at 60 columns: no line with Hangul past 60 cells
         (clap counts a Hangul letter as one cell, so a Korean help beside a wide name ran to 72
