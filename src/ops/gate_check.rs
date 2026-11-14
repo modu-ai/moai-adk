@@ -8,10 +8,11 @@ use std::path::PathBuf;
 
 /// Check every rule of the leader merge gate
 ///
-/// The leader merge gate (#2674), read-only: decides whether every rule G1–G11 holds for one pull
+/// The leader merge gate (#2674), read-only: decides whether every rule G1–G12 holds for one pull
 /// request (G8: the tip's last completed push CI is not red, or this PR is its repair, #2777;
 /// G9: the auditor is not an author; G10: every PR commit but a merge has a `Moai-Claim`
-/// trailer; G11: the PR body has a `Moai-Claim: ` line) and prints `pass`, or the rule that stopped and why. With
+/// trailer; G11: the PR body has a `Moai-Claim: ` line; G12: an open PR below this one has a
+/// PASS holding every commit this PR would bring in, #2859) and prints `pass`, or the rule that stopped and why. With
 /// `--pr` it reads the pull
 /// request from GitHub (GET only) and the local repository (the head and tip must already be
 /// fetched); without it, it decides from a snapshot on stdin. Posts nothing, merges nothing.

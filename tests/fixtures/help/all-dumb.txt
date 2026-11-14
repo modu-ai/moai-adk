@@ -8,6 +8,7 @@ Start
   codex                   Start a Codex CLI session
   glm                     Start a Claude Code session on z.ai GLM
 Project
+  init                    Initialize this folder or a new project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile
@@ -83,6 +84,7 @@ Lane and leader
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
+  lane-next               Find the lane's next task
   lane-status             Show the status table of the named lanes
   lane-handoff-check      Check that a worktree is safe to leave
   lane-safe-to-reset      Check that a lane's session is safe to clear

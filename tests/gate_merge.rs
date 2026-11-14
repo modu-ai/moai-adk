@@ -111,6 +111,11 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
             request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
             response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
         },
+        // #2859: the open pull requests (only this one), read before the tip.
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls?state=open&per_page=100")),
+            response: ok(json!([{"number": 9}])),
+        },
         tip_ci(tip, json!([{"name": "ci", "conclusion": "success"}])),
     ]
 }
@@ -234,7 +239,7 @@ fn a_stopped_gate_writes_nothing() {
     assert_eq!(out["merged"], json!(false));
     assert_eq!(out["rule"], json!("G4"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 5]);
+    assert_eq!(methods(&t), vec!["GET"; 6]);
 }
 
 /// #2777: on a red tip gate-merge stops at G8 before any write; the same PR merges once its
@@ -244,13 +249,13 @@ fn a_red_tip_stops_the_merge_before_any_write() {
     let (dir, a, b) = repo();
     let tip = tip_of(&dir);
     let mut ex = reads(&b, &a, &tip, PASS_BODY);
-    ex[4] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    ex[5] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G8"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 5]);
+    assert_eq!(methods(&t), vec!["GET"; 6]);
 
     let mut ex = reads(
         &b,
@@ -258,7 +263,7 @@ fn a_red_tip_stops_the_merge_before_any_write() {
         &tip,
         &format!("{PASS_BODY}moai-tip-repair: tip run 1\n"),
     );
-    ex[4] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
+    ex[5] = tip_ci(&tip, json!([{"name": "ci", "conclusion": "failure"}]));
     ex.extend(remote(&b, &tip));
     ex.extend(status(&b, 201));
     ex.extend([put(200), record()]);
@@ -291,7 +296,7 @@ fn not_mergeable_is_retried_up_to_three_times_and_never_recorded() {
     assert_eq!(t.remaining(), 0);
     assert_eq!(methods(&t).iter().filter(|m| *m == "PUT").count(), 3);
     assert!(
-        !methods(&t)[8..].contains(&"POST".to_string()),
+        !methods(&t)[9..].contains(&"POST".to_string()),
         "no record after a failed merge"
     );
 }
@@ -357,7 +362,7 @@ fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     assert_eq!(out["merged"], json!(false), "{out}");
     assert_eq!(out["rule"], json!("G6"));
     assert_eq!(out["writes"], json!([]));
-    assert_eq!(methods(&t), vec!["GET"; 7]);
+    assert_eq!(methods(&t), vec!["GET"; 8]);
     assert_eq!(t.remaining(), 0);
 
     // The head moved on GitHub after the snapshot.
@@ -366,7 +371,7 @@ fn a_remote_base_or_head_other_than_the_judged_one_writes_nothing() {
     let t = RecordedTransport::new(ex);
     let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
     assert_eq!(out["writes"], json!([]), "{out}");
-    assert_eq!(methods(&t), vec!["GET"; 7]);
+    assert_eq!(methods(&t), vec!["GET"; 8]);
 }
 
 #[test]

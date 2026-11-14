@@ -28,7 +28,10 @@ pub struct Target<'a> {
     pub review_confirmed_prs: Vec<u64>,
 }
 
-fn get_json<T: Transport>(t: &T, url: &str) -> Result<(serde_json::Value, Option<String>)> {
+pub(crate) fn get_json<T: Transport>(
+    t: &T,
+    url: &str,
+) -> Result<(serde_json::Value, Option<String>)> {
     let resp = t.send(&HttpRequest::new("GET", url))?;
     if resp.status != 200 {
         return Err(format!("GET {url} returned HTTP {}", resp.status));
@@ -68,15 +71,24 @@ fn pr_authors<T: Transport>(
     merge_base: &str,
     head: &str,
 ) -> Result<Vec<String>> {
-    let out = git_ok(
-        dir,
-        &[
-            "log",
-            "--no-merges",
-            "--format=%(trailers:key=Moai-Claim,valueonly,separator=%x0A)",
-            &format!("{merge_base}..{head}"),
-        ],
-    )?;
+    claim_sessions(t, base_url, dir, &[&format!("{merge_base}..{head}")])
+}
+
+/// The sessions of the claims the commits `revs` select (a range, or `--no-walk` and shas)
+/// name in `Moai-Claim` trailers, merges skipped.
+fn claim_sessions<T: Transport>(
+    t: &T,
+    base_url: &str,
+    dir: &Path,
+    revs: &[&str],
+) -> Result<Vec<String>> {
+    let mut args = vec![
+        "log",
+        "--no-merges",
+        "--format=%(trailers:key=Moai-Claim,valueonly,separator=%x0A)",
+    ];
+    args.extend_from_slice(revs);
+    let out = git_ok(dir, &args)?;
     let mut ids: Vec<u64> = Vec::new();
     for value in out.lines().map(str::trim).filter(|l| !l.is_empty()) {
         let id = value
@@ -120,15 +132,18 @@ fn pr_authors<T: Transport>(
 /// `Moai-Claim` trailer as git reads trailers (G10). A claim line that is not in the
 /// message's trailer block is not read, the same as `pr_authors` and the commit guard.
 fn commits_without_claim(dir: &Path, merge_base: &str, head: &str) -> Result<Vec<String>> {
-    let out = git_ok(
-        dir,
-        &[
-            "log",
-            "--no-merges",
-            "--format=%H%x09%(trailers:key=Moai-Claim,valueonly,separator=%x2C)",
-            &format!("{merge_base}..{head}"),
-        ],
-    )?;
+    unclaimed_in(dir, &[&format!("{merge_base}..{head}")])
+}
+
+/// [`commits_without_claim`] for the commits `revs` select (a range, or `--no-walk` and shas).
+fn unclaimed_in(dir: &Path, revs: &[&str]) -> Result<Vec<String>> {
+    let mut args = vec![
+        "log",
+        "--no-merges",
+        "--format=%H%x09%(trailers:key=Moai-Claim,valueonly,separator=%x2C)",
+    ];
+    args.extend_from_slice(revs);
+    let out = git_ok(dir, &args)?;
     Ok(out
         .lines()
         .filter_map(|l| {
@@ -140,6 +155,144 @@ fn commits_without_claim(dir: &Path, merge_base: &str, head: &str) -> Result<Vec
 
 /// PR files a mechanical delta compares at most (#2833); four git calls per file.
 pub const MAX_DELTA_FILES: usize = 200;
+
+/// Pages of a pull request's commit list read for the stacked-PR rule (GitHub lists at most
+/// 250 commits of a pull request, 100 per page).
+const MAX_PR_COMMIT_PAGES: usize = 3;
+
+/// Every page of a GitHub list, at most `max` pages.
+fn get_all<T: Transport>(t: &T, url: &str, max: usize) -> Result<Vec<serde_json::Value>> {
+    let mut items = Vec::new();
+    let mut next = Some(url.to_string());
+    let mut pages = 0;
+    while let Some(u) = next {
+        pages += 1;
+        if pages > max {
+            return Err(format!("more than {max} pages at {url}; refused"));
+        }
+        let (page, n) = get_json(t, &u)?;
+        items.extend(
+            page.as_array()
+                .ok_or_else(|| format!("GET {u} is not a list"))?
+                .iter()
+                .cloned(),
+        );
+        next = n;
+    }
+    Ok(items)
+}
+
+/// #2859: the other open pull requests whose own commits this PR's head would bring into the
+/// tip (`merge_base..head`), each with its last verdict and what G12 checks against it. A PR
+/// below that already merged is part of the tip, so its commits are not brought in (D2).
+fn stacked_below<T: Transport>(
+    t: &T,
+    base_url: &str,
+    dir: &Path,
+    pr: u64,
+    merge_base: &str,
+    head: &str,
+) -> Result<Vec<gate::StackedBelow>> {
+    let open = get_all(t, &format!("{base_url}/pulls?state=open&per_page=100"), 1)?;
+    let others: Vec<u64> = open
+        .iter()
+        .filter_map(|p| p["number"].as_u64())
+        .filter(|n| *n != pr)
+        .collect();
+    if others.is_empty() {
+        return Ok(Vec::new());
+    }
+    let incoming = names(&git_ok(
+        dir,
+        &["rev-list", &format!("{merge_base}..{head}")],
+    )?);
+    let mut out = Vec::new();
+    for n in others {
+        let commits = get_all(
+            t,
+            &format!("{base_url}/pulls/{n}/commits?per_page=100"),
+            MAX_PR_COMMIT_PAGES,
+        )?;
+        let theirs: Vec<&str> = commits.iter().filter_map(|c| c["sha"].as_str()).collect();
+        let carried: Vec<&String> = incoming
+            .iter()
+            .filter(|c| theirs.contains(&c.as_str()))
+            .collect();
+        if carried.is_empty() {
+            continue;
+        }
+        // The newest carried commits: those no other carried commit descends from.
+        let mut brought = Vec::new();
+        for c in &carried {
+            let mut newest = true;
+            for d in &carried {
+                if c != d && is_ancestor(dir, c, d)? {
+                    newest = false;
+                    break;
+                }
+            }
+            if newest {
+                brought.push((*c).clone());
+            }
+        }
+        let mut walk = vec!["--no-walk"];
+        walk.extend(carried.iter().map(|c| c.as_str()));
+        let authors = claim_sessions(t, base_url, dir, &walk)?;
+        let unclaimed = unclaimed_in(dir, &walk)?;
+        let comments = get_all(
+            t,
+            &format!("{base_url}/issues/{n}/comments?per_page=100"),
+            MAX_PAGES,
+        )?;
+        let last = comments
+            .iter()
+            .filter_map(|c| {
+                let body = c["body"].as_str()?;
+                let id = c["id"].as_u64()?;
+                body.lines()
+                    .next()
+                    .filter(|l| l.starts_with("AUDIT #"))
+                    .map(|_| (id, body))
+            })
+            .max_by_key(|(id, _)| *id)
+            .map(|(_, body)| body);
+        let parsed = last.and_then(|b| b.lines().next().and_then(gate::parse_verdict));
+        let verdict_head = parsed.as_ref().map(|(h, _, _)| h.clone());
+        let verdict = match (&last, &parsed) {
+            (_, Some((_, _, v))) => Some(v.clone()),
+            (Some(_), None) => Some("unreadable".to_string()),
+            _ => None,
+        };
+        let covered = match &verdict_head {
+            Some(v) if is_commit(dir, v)? => {
+                let mut all = true;
+                for c in &brought {
+                    if c != v && !is_ancestor(dir, c, v)? {
+                        all = false;
+                        break;
+                    }
+                }
+                all
+            }
+            _ => false,
+        };
+        out.push(gate::StackedBelow {
+            pr: n,
+            brought,
+            verdict_head,
+            verdict,
+            auditor: last.and_then(gate::auditor),
+            authors,
+            commits_without_claim: unclaimed,
+            covered,
+        });
+    }
+    Ok(out)
+}
+
+fn is_ancestor(dir: &Path, a: &str, b: &str) -> Result<bool> {
+    Ok(git(dir, &["merge-base", "--is-ancestor", a, b])?.0)
+}
 
 /// `git patch-id --stable` of `file`'s change from `a` to `b` (line numbers and whitespace do
 /// not count; the content of every added and removed line does). `--binary` keeps a binary
@@ -504,7 +657,11 @@ pub fn completed_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
 
 /// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
 /// visible), at most ten pages.
-fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_json::Value>> {
+pub(crate) fn tip_runs<T: Transport>(
+    t: &T,
+    base_url: &str,
+    sha: &str,
+) -> Result<Vec<serde_json::Value>> {
     let mut out = Vec::new();
     let mut url = Some(format!(
         "{base_url}/commits/{sha}/check-runs?filter=all&per_page=100"
@@ -532,7 +689,12 @@ fn tip_runs<T: Transport>(t: &T, base_url: &str, sha: &str) -> Result<Vec<serde_
 /// its CI runs or was only cancelled, the earlier tip commits (first parents, at most
 /// [`TIP_WALK`]) are read in turn and the first with completed CI decides. A read that fails,
 /// or no completed CI within the walk, is `unknown`.
-fn tip_ci<T: Transport>(t: &T, base_url: &str, dir: &Path, tip: &str) -> Result<gate::TipCi> {
+pub(crate) fn tip_ci<T: Transport>(
+    t: &T,
+    base_url: &str,
+    dir: &Path,
+    tip: &str,
+) -> Result<gate::TipCi> {
     let walk = git_ok(
         dir,
         &[
@@ -728,6 +890,9 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         }
     }
 
+    // #2859: open pull requests below this one, read before the tip so G8 stays last.
+    let stacked = stacked_below(t, &base_url, dir, target.pr, &merge_base, &head)?;
+
     // G8 is read last: every earlier read is unchanged, and a pull request the gate cannot read
     // locally never costs the tip reads.
     let tip_ci = tip_ci(t, &base_url, dir, &tip)?;
@@ -752,5 +917,6 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         commits_without_claim: Some(unclaimed),
         body_claim: has_body_claim(&body),
         auto_delta,
+        stacked_below: Some(stacked),
     })
 }

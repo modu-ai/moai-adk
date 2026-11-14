@@ -350,6 +350,22 @@ impl Painter {
     }
 }
 
+/// The language of human output on `stream` (S6a, Issue #2825; design 2.1, S6-2): English
+/// whenever the stream is not a terminal, otherwise `MOAI_LANG`, the profile's
+/// `language.user_chat` of the project holding the current folder, the locale, English
+/// ([`crate::ui_text::choose`]). Nothing is read for a pipe, and a failed read is silently the
+/// next step.
+pub fn ui_lang(stream: Stream) -> crate::ui_text::Lang {
+    let cwd = std::env::current_dir().ok();
+    let home = crate::home_workdir::home().ok();
+    crate::ui_text::for_stream(
+        stream.is_terminal(),
+        &|k| std::env::var(k).ok(),
+        cwd.as_deref(),
+        home.as_deref(),
+    )
+}
+
 /// Whether stderr is a terminal: the error frame (D2 §4) is drawn only there, so a pipe — a
 /// lane, a script, a test — keeps today's one-line message byte for byte (D3 6865936070).
 pub fn stderr_is_terminal() -> bool {
@@ -359,7 +375,9 @@ pub fn stderr_is_terminal() -> bool {
 /// The stderr error frame (D2 §4, card #2804): what failed, then the indented `detail` lines
 /// as given (a usage error's missing argument names), then why and what to do next. The last
 /// line is always the next step when there is one (clig.dev "Errors"). Every label is a word,
-/// so the frame reads the same without color.
+/// so the frame reads the same without color. Every text goes through [`visible`] first: an
+/// operation message can carry a file or folder name, and only the frame's own newlines and
+/// style codes may reach the terminal (leader decision 6867586011, #2818 audit B1).
 pub fn error_frame(
     p: &Painter,
     what: &str,
@@ -367,16 +385,24 @@ pub fn error_frame(
     cause: Option<&str>,
     next: Option<&str>,
 ) -> String {
-    let mut out = format!("{} {what}\n", p.paint(Token::Error, "error:"));
+    let mut out = format!("{} {}\n", p.paint(Token::Error, "error:"), visible(what));
     for line in detail {
-        out.push_str(line);
+        out.push_str(&visible(line));
         out.push('\n');
     }
     if let Some(cause) = cause {
-        out.push_str(&format!("  {} {cause}\n", p.paint(Token::Muted, "cause:")));
+        out.push_str(&format!(
+            "  {} {}\n",
+            p.paint(Token::Muted, "cause:"),
+            visible(cause)
+        ));
     }
     if let Some(next) = next {
-        out.push_str(&format!("  {} {next}\n", p.paint(Token::Info, "next:")));
+        out.push_str(&format!(
+            "  {} {}\n",
+            p.paint(Token::Info, "next:"),
+            visible(next)
+        ));
     }
     out
 }
@@ -595,6 +621,41 @@ mod tests {
                 .status(Token::Error, "con\u{1b}[2Jflict")
                 .contains("\u{1b}[2J"));
         }
+    }
+
+    /// Card #2804 follow-up (leader decision 6867586011): a control character in any part of the
+    /// frame — a path in an operation message — reaches the terminal as visible `\xNN`; the only
+    /// newlines are the frame's own and, in color, the only escapes are the painter's.
+    #[test]
+    fn the_error_frame_shows_control_characters_as_text() {
+        let evil = "/tmp/a\u{1b}]0;pwn\u{7}b\nc\u{9b}d\u{7f}";
+        let shown = "/tmp/a\\x1b]0;pwn\\x07b\\x0ac\\x9bd\\x7f";
+        let plain = Painter::plain();
+        assert_eq!(
+            error_frame(&plain, evil, &[evil], Some(evil), Some(evil)),
+            format!("error: {shown}\n{shown}\n  cause: {shown}\n  next: {shown}\n")
+        );
+        let color = Painter {
+            color: true,
+            unicode: true,
+        };
+        let painted = error_frame(&color, evil, &[evil], Some(evil), Some(evil));
+        assert_eq!(painted.lines().count(), 4, "{painted:?}");
+        assert!(
+            !painted.contains('\u{7}')
+                && !painted.contains('\u{9b}')
+                && !painted.contains('\u{7f}')
+        );
+        // Every ESC left is the start of one of the painter's own style codes (`ESC [ … m`).
+        for (i, _) in painted.match_indices('\u{1b}') {
+            assert!(painted[i..].starts_with("\u{1b}["), "{painted:?}");
+            assert!(!painted[i..].starts_with("\u{1b}]"), "{painted:?}");
+        }
+        // Text without control characters is unchanged.
+        assert_eq!(
+            error_frame(&plain, "plain text", &[], None, None),
+            "error: plain text\n"
+        );
     }
 
     /// Card #2804: the frame's golden shapes. Plain (NO_COLOR, TERM=dumb, ASCII) is the same

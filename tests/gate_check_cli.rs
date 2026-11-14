@@ -60,7 +60,8 @@ fn passing() -> Value {
         "pr_authors": ["agent-26"],
         "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"},
         "commits_without_claim": [],
-        "body_claim": true
+        "body_claim": true,
+        "stacked_below": []
     })
 }
 
