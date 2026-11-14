@@ -1,0 +1,12 @@
+◆ MoAI update
+  설치본 2026.11.0-rc.1 = 패키지 2026.11.0-rc.1
+  HOME ~ · 프로젝트 ~/work/site
+
+✓ 모두 최신이에요
+  스킬 claude 31 · 스킬 codex 31 · 에이전트 15 · 라우팅 2
+
+  – hooks  건너뜀: 이 프로젝트에 MoAI hook 없음
+
+→ 다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai update (Codex CLI 는
+  $moai update)를 실행해 프로젝트 설정을 꼭 업데이트하세요.
+  이 폴더: site — Go 세대 · 이전 대기 47개

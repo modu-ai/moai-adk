@@ -173,6 +173,57 @@ pub fn ask<R: BufRead, W: Write>(
     Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "Yes" | "YES"))
 }
 
+/// [`ask`] for a screen its caller painted: the screen is written as it is, so the painter's own
+/// style codes reach the terminal. The caller has already passed every outside text in it
+/// through [`crate::ui::visible`]; the question is still made visible here.
+pub fn ask_screen<R: BufRead, W: Write>(
+    input: &mut R,
+    err: &mut W,
+    painter: &Painter,
+    screen: &str,
+    question: &str,
+) -> io::Result<bool> {
+    write!(
+        err,
+        "{screen}{} {} [y/N] ",
+        painter.mark(Token::Warn),
+        crate::ui::visible(question)
+    )?;
+    err.flush()?;
+    let mut answer = String::new();
+    input.read_line(&mut answer)?;
+    Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "Yes" | "YES"))
+}
+
+/// [`ask_terminal`] for a screen `screen` paints itself (see [`ask_screen`]).
+pub fn ask_terminal_screen(
+    screen: impl FnOnce(&Painter) -> String,
+    question: Msg,
+) -> Result<bool, String> {
+    if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
+        return Ok(false);
+    }
+    let painter = terminal_painter();
+    let screen = screen(&painter);
+    ask_screen(
+        &mut io::stdin().lock(),
+        &mut io::stderr(),
+        &painter,
+        &screen,
+        painter.text(question),
+    )
+    .map_err(|_| "could not read the answer".to_string())
+}
+
+/// The painter a question on stderr uses: under `quiet` too; `plain` only drops color and
+/// UTF-8 symbols.
+fn terminal_painter() -> Painter {
+    progress_painter(output_mode(), || {
+        Painter::for_stream(Stream::Stderr, ColorFlag::Auto)
+    })
+    .unwrap_or_else(|| Painter::plain().with_lang(crate::ui::ui_lang(Stream::Stderr)))
+}
+
 /// [`ask`] on the process's stdin and stderr, only when both are terminals; otherwise no,
 /// with nothing written. The preview is written by `preview` for the painter that asks, and the
 /// question is one sentence, so both come in the stream's language (S6b); the answer is still
@@ -184,11 +235,7 @@ pub fn ask_terminal(
     if !(io::stdin().is_terminal() && io::stderr().is_terminal()) {
         return Ok(false);
     }
-    // The question is asked under `quiet` too; `plain` only drops color and UTF-8 symbols.
-    let painter = progress_painter(output_mode(), || {
-        Painter::for_stream(Stream::Stderr, ColorFlag::Auto)
-    })
-    .unwrap_or_else(|| Painter::plain().with_lang(crate::ui::ui_lang(Stream::Stderr)));
+    let painter = terminal_painter();
     let preview = preview(&painter);
     ask(
         &mut io::stdin().lock(),
@@ -204,6 +251,40 @@ pub fn ask_terminal(
 mod tests {
     use super::*;
     use std::rc::Rc;
+
+    /// PR #2908 review (Codex P2 4572504804): a screen its caller already painted (and whose
+    /// outside text it already made visible) keeps its own escape sequences; `ask` would turn
+    /// them into literal `\x1b[...m` text. The question sentence is still made visible.
+    #[test]
+    fn a_painted_screen_keeps_its_colors_and_the_question_is_still_made_visible() {
+        let p = Painter {
+            color: true,
+            unicode: true,
+            lang: crate::ui_text::Lang::En,
+        };
+        let screen = "\x1b[1mChecking\x1b[0m\n";
+        let mut out = Vec::new();
+        let yes = ask_screen(
+            &mut "y\n".as_bytes(),
+            &mut out,
+            &p,
+            screen,
+            "go\x1b]0;x\x07?",
+        )
+        .unwrap();
+        let out = String::from_utf8(out).unwrap();
+        assert!(yes);
+        assert!(out.starts_with("\x1b[1mChecking\x1b[0m\n"), "{out:?}");
+        assert!(!out.contains("\\x1b[1m"), "{out:?}");
+        assert!(
+            !out.contains('\x07') && out.contains("go\\x1b]0;x"),
+            "{out:?}"
+        );
+        // The plain `ask` still escapes a preview it did not paint.
+        let mut out = Vec::new();
+        ask(&mut "n\n".as_bytes(), &mut out, &p, screen, "go?").unwrap();
+        assert!(String::from_utf8(out).unwrap().contains("\\x1b[1m"));
+    }
 
     #[test]
     fn note_is_silent_without_a_sink_and_reaches_an_installed_one() {

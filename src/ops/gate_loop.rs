@@ -14,7 +14,8 @@ use std::path::PathBuf;
 /// code overlap with the tip (G6) or asks the claim holder when the verdict's author holds no
 /// allowed claim (G2). The leader or a scheduler calls it instead of a shell loop. Needs a
 /// permission reference, except with `--dry-run`, which writes nothing and lists the decision
-/// for each pull request; the heads must already be fetched (a missing one is skipped).
+/// for each pull request. The heads must be local (a missing one is skipped); `--fetch` first
+/// fetches the base branch and every open head from `origin` into named remote refs.
 #[derive(clap::Args)]
 pub struct Args {
     /// Run a single pass (the only mode; a scheduler repeats it).
@@ -41,6 +42,9 @@ pub struct Args {
     /// PR numbers whose REVIEW.md draft the user confirmed, comma-separated.
     #[arg(long, value_delimiter = ',')]
     review_confirmed: Vec<u64>,
+    /// Fetch the base branch and every open pull request head from `origin` first (#2906).
+    #[arg(long)]
+    fetch: bool,
 }
 
 pub const OPERATION: &str = "gate.loop";
@@ -62,6 +66,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         base_branch: &args.base,
         tip: &args.tip,
         review_confirmed_prs: args.review_confirmed.clone(),
+        fetch: args.fetch,
     };
     // Only the status is posted with the audit App token (Commit statuses permission only);
     // reads, merges, branch updates and notes use gh's own authentication (#2735 audit F3).

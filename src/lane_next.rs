@@ -952,11 +952,24 @@ fn gql_thread(i: &Value) -> (Thread, bool) {
 }
 
 /// `Moai-Claim: <issue>#<comment>` in a body.
+/// A bare line wins; without one, the first inline `Moai-Claim: <digits>#<digits>` (in a list
+/// item or code span) counts, the way the merge gate's G11 reads the marker anywhere in the
+/// body (`gate_collect::has_body_claim`; WF-OBS 6874554271, #2401).
 fn body_claim(body: &str) -> Option<(u64, u64)> {
-    body.lines().find_map(|l| {
+    let bare = body.lines().find_map(|l| {
         let rest = l.trim().strip_prefix("Moai-Claim:")?.trim();
         let (issue, comment) = rest.split_once('#')?;
         Some((issue.trim().parse().ok()?, comment.trim().parse().ok()?))
+    });
+    bare.or_else(|| {
+        body.match_indices("Moai-Claim:").find_map(|(at, m)| {
+            let rest = body[at + m.len()..].trim_start();
+            let digits = |s: &str| s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
+            let n = digits(rest);
+            let tail = rest[n..].strip_prefix('#')?;
+            let k = digits(tail);
+            Some((rest[..n].parse().ok()?, tail[..k].parse().ok()?))
+        })
     })
 }
 
@@ -1981,6 +1994,28 @@ mod tests {
         assert_eq!(
             body_claim("x\nMoai-Claim: 2817#6867074561\n"),
             Some((2817, 6867074561))
+        );
+    }
+
+    /// WF-OBS 6874554271 (#2401): a body that names its claim only inside a list item or code
+    /// span still names its author lane, as the merge gate's G11 (`has_body_claim`) already
+    /// reads it anywhere; a bare line wins over an inline mention, and a placeholder is no claim.
+    #[test]
+    fn body_claim_reads_an_inline_token_when_no_bare_line_exists() {
+        assert_eq!(
+            body_claim("## 요약\n- claim 토큰: `Moai-Claim: 2825#6873551363`\n"),
+            Some((2825, 6873551363))
+        );
+        assert_eq!(
+            body_claim("see `Moai-Claim: 1#2` above\nMoai-Claim: 2825#6873551363\n"),
+            Some((2825, 6873551363))
+        );
+        assert_eq!(body_claim("- token `Moai-Claim: <n>#<id>`\n"), None);
+        assert_eq!(body_claim("- token `Moai-Claim: 2825#`\n"), None);
+        assert_eq!(body_claim("- token `Moai-Claim: #6873551363`\n"), None);
+        assert_eq!(
+            body_claim("- `Moai-Claim: <n>#<id>` then `Moai-Claim:2825#7`\n"),
+            Some((2825, 7))
         );
     }
 }
