@@ -294,6 +294,37 @@ fn verdict(c: &Comment) -> Option<(String, &'static str)> {
     Some((head, v))
 }
 
+/// The newest comment that records an audit of `pr`'s head now in a form [`verdict`] does not
+/// read (#2973 T2): a heading such as `## 독립 감사 델타 … head a0f30f686`, or a short head. It is
+/// neither a verdict nor a reservation, and it is never counted as a PASS or FAIL — only as a
+/// reason not to ask a lane to reserve an audit that someone already wrote. The first line must
+/// say `감사` or `audit` and carry `head <hex>` (at least 7 hex digits) that begins the head now;
+/// a record of an older head does not count.
+fn foreign_audit_record(pr: &Pr) -> Option<u64> {
+    let head = pr.head.to_ascii_lowercase();
+    pr.comments.iter().rev().find_map(|c| {
+        if verdict(c).is_some() || audit_claim(c).is_some() {
+            return None;
+        }
+        let line = first_line(c)
+            .to_lowercase()
+            .replace(['=', ':', '(', ')', ',', '`', '*', '[', ']'], " ");
+        if !(line.contains("감사") || line.contains("audit")) {
+            return None;
+        }
+        let words: Vec<&str> = line.split_whitespace().collect();
+        words
+            .windows(2)
+            .any(|w| {
+                w[0] == "head"
+                    && (7..=40).contains(&w[1].len())
+                    && w[1].bytes().all(|b| b.is_ascii_hexdigit())
+                    && head.starts_with(w[1])
+            })
+            .then_some(c.id)
+    })
+}
+
 /// A comment asking the auditor to look again (a repair note or a re-audit request).
 fn reaudit_request(c: &Comment) -> bool {
     let l = first_line(c);
@@ -725,6 +756,15 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 }
                 pr_skipped.push(json!({"pr": pr.number, "reason": "audit_reserved",
                     "by": by, "comment": comment}));
+                continue;
+            }
+            // #2973 T2: an audit record in another form already points at this head: ask for no
+            // second reservation, and do not read the record as a verdict (the gate does not).
+            if let Some(comment) = foreign_audit_record(pr) {
+                waiting.push(
+                    json!({"number": pr.number, "reason": "foreign_audit_record",
+                    "comment": comment, "head": pr.head}),
+                );
                 continue;
             }
             return Some(task(
@@ -1812,6 +1852,60 @@ mod tests {
             body: body.into(),
             ..Comment::default()
         }
+    }
+
+    /// #2973 T2: a record in another form counts only when its first line says audit and names
+    /// the head now by at least 7 hex digits that begin it; it is never a verdict.
+    #[test]
+    fn a_foreign_audit_record_must_name_the_head_now() {
+        let head = "a0f30f6865e273a42e39c6a2e818d772704496be";
+        let pr = |comments: Vec<Comment>| Pr {
+            number: 872,
+            head: head.into(),
+            comments,
+            ..Pr::default()
+        };
+        let rec = |line: &str| foreign_audit_record(&pr(vec![c(5, &format!("{line}\n\nbody"))]));
+        // The reported record, a short head of exactly 7, the whole head, `head=` and uppercase.
+        assert_eq!(
+            rec("## 독립 감사 델타 (리드 배정 · lane-14) head a0f30f686"),
+            Some(5)
+        );
+        assert_eq!(rec("audit delta head a0f30f6"), Some(5));
+        assert_eq!(rec(&format!("Audit (lane-14) head={head}")), Some(5));
+        assert_eq!(rec("**감사** HEAD `A0F30F6865`"), Some(5));
+        // Edges: 6 digits, a head that is not this one, an older head, no `head`, no audit word.
+        assert_eq!(rec("감사 head a0f30f"), None);
+        assert_eq!(rec("감사 head b0f30f6865"), None);
+        assert_eq!(
+            rec("감사 head a0f30f6865e273a42e39c6a2e818d772704496bf"),
+            None
+        );
+        assert_eq!(rec("감사 a0f30f6865"), None);
+        assert_eq!(rec("리뷰 head a0f30f6865"), None);
+        assert_eq!(rec("감사 head a0f30f6865zz"), None, "not hex");
+        // A short head in an `AUDIT #` line is no verdict but is a record.
+        assert_eq!(rec("AUDIT #5 head a0f30f6865 — verdict: PASS"), Some(5));
+        assert!(verdict(&c(1, "AUDIT #5 head a0f30f6865 — verdict: PASS")).is_none());
+        // A real verdict and a reservation are not "foreign"; only the newest record answers.
+        let real = format!("AUDIT #5 (x) head {head} base {head} — verdict: PASS");
+        assert_eq!(foreign_audit_record(&pr(vec![c(1, &real)])), None);
+        assert_eq!(
+            foreign_audit_record(&pr(vec![c(
+                1,
+                &format!("moai-audit-claim: lane=a head={head}\n감사 head a0f30f6865")
+            )])),
+            None
+        );
+        assert_eq!(
+            foreign_audit_record(&pr(vec![
+                c(1, "감사 head a0f30f6865"),
+                c(2, "감사 head a0f30f6865e"),
+                c(3, "아무 말")
+            ])),
+            Some(2)
+        );
+        assert_eq!(foreign_audit_record(&pr(vec![])), None);
     }
 
     /// GitHub as GraphQL and REST answer it: `prs` open pull requests, each naming claim
