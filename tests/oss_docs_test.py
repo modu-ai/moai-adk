@@ -180,6 +180,8 @@ def one_line(rel, prefix):
 BINARY_LINES = {
     "README.md": ["- RC1 implementation language: ", "| Command | "],
     "README.ko.md": ["- RC1 구현 언어: ", "| 명령 | "],
+    # The in-scope list a vulnerability reporter reads.
+    "SECURITY.md": ["- the `moai"],
 }
 
 
