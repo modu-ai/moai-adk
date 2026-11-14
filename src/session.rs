@@ -340,9 +340,7 @@ pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
     let common = id["clone_anchor"]
         .as_str()
         .ok_or("agent numbering needs a git repository; pass --name")?;
-    Ok(Path::new(common)
-        .join(crate::CLONE_STATE_DIR)
-        .join("sessions"))
+    Ok(crate::clone_root::path(Path::new(common)).join("sessions"))
 }
 
 fn refuse_symlink(path: &Path) -> Result<(), String> {
