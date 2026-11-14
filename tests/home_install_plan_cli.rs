@@ -591,3 +591,199 @@ fn install_calls_a_group_writable_vault_loose() {
     chmod(&vault.join(".master.key"), 0o640);
     assert_eq!(plan(&home)["vault"]["loose"], json!(true));
 }
+
+// Codex review P2 on #2987: a version folder or its `bin` that is a link would make the canonical
+// path (old identity) differ from the moved path (new identity); such a folder gets no alias.
+#[test]
+fn alias_table_skips_a_version_folder_or_bin_that_is_a_link() {
+    let (_d, home) = rust_home();
+    let outside = tempfile::tempdir().unwrap();
+    let outside = fs::canonicalize(outside.path()).unwrap();
+    write(&outside, "folder/bin/moai-cli", "external-1");
+    write(&outside, "bin/moai-cli", "external-2");
+    symlink(
+        outside.join("folder"),
+        home.join(".moai-cli/versions/9.0.0"),
+    )
+    .unwrap();
+    fs::create_dir_all(home.join(".moai-cli/versions/8.0.0")).unwrap();
+    symlink(
+        outside.join("bin"),
+        home.join(".moai-cli/versions/8.0.0/bin"),
+    )
+    .unwrap();
+    let p = plan(&home);
+    let table = p["alias_table"].as_object().unwrap();
+    assert_eq!(table.len(), 1, "only 1.0.0 is a real folder: {p}");
+    assert_eq!(p["alias_skipped"], json!(["8.0.0", "9.0.0"]), "{p}");
+}
+
+// Codex review P2 on #2987: a folder that cannot be listed is not an empty one.
+#[test]
+fn install_blocks_a_state_folder_it_cannot_list() {
+    let (_d, home) = rust_home();
+    let old = home.join(".moai-cli");
+    chmod(&old, 0o000);
+    let listable = fs::read_dir(&old).is_ok();
+    let p = plan(&home);
+    chmod(&old, 0o755);
+    if listable {
+        return; // running as a user the mode does not bind (root): nothing to show
+    }
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(
+        blocks(&p).contains(&"state_dir_unreadable".to_string()),
+        "{p}"
+    );
+    assert!(
+        p["confirm_token"].is_null(),
+        "no token for a blocked plan: {p}"
+    );
+}
+
+// Codex review P2 on #2987: the retirement preview lists at most 500 names. When it is blocked
+// for that, "zero pending" proves nothing, so the install preview is blocked too.
+#[test]
+fn install_blocks_when_the_go_retirement_preview_is_incomplete() {
+    let (_d, home) = rust_home();
+    add_go_state(&home);
+    for i in 0..501 {
+        fs::create_dir_all(home.join(format!(".moai/a{i:04}"))).unwrap();
+    }
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(
+        blocks(&p).contains(&"go_retire_preview_blocked".to_string()),
+        "{p}"
+    );
+    assert!(p["confirm_token"].is_null(), "{p}");
+}
+
+// Audit 6883839420 note 1 (needed before U3c): the preview never opens a vault entry. A FIFO in
+// place of the master key makes any open for reading wait forever, so a read shows up as a hang
+// that this test turns into a failure (a mode-000 file would only fail the read silently).
+#[test]
+fn install_does_not_open_a_master_key_that_is_a_fifo() {
+    use std::io::Read as _;
+    let (_d, home) = rust_home();
+    let key = home.join(".moai-cli/vault/.master.key");
+    fs::remove_file(&key).unwrap();
+    assert!(Command::new("mkfifo").arg(&key).status().unwrap().success());
+    let mut child = Command::new(BIN)
+        .args([
+            "home-install-plan",
+            "--home",
+            home.to_str().unwrap(),
+            "--now",
+            NOW,
+        ])
+        .env_remove("MOAI_HOME")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    loop {
+        if child.try_wait().unwrap().is_some() {
+            break;
+        }
+        if start.elapsed() > std::time::Duration::from_secs(20) {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("the preview waited on the FIFO: it opened the master key");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let mut text = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut text)
+        .unwrap();
+    let v: Value = serde_json::from_str(&text).unwrap();
+    let p = &v["result"];
+    assert_eq!(p["vault"]["kind"], json!("folder"), "{p}");
+    assert!(p["vault"]["master_key_mode"].is_string(), "{p}");
+}
+
+// Audit note 1: modes and link counts are the entry's own (lstat), never the target's.
+#[test]
+fn install_reports_a_linked_vault_entry_by_its_own_mode_and_link_count() {
+    let (_d, home) = rust_home();
+    let outside = tempfile::tempdir().unwrap();
+    let outside = fs::canonicalize(outside.path()).unwrap();
+    write(&outside, "key", "OUTSIDE-SECRET");
+    chmod(&outside.join("key"), 0o600);
+    fs::hard_link(outside.join("key"), outside.join("key-twin")).unwrap();
+    let vault = home.join(".moai-cli/vault");
+    fs::remove_file(vault.join(".master.key")).unwrap();
+    symlink(outside.join("key"), vault.join(".master.key")).unwrap();
+    symlink(outside.join("key"), vault.join("ext")).unwrap();
+    let p = plan(&home);
+    // The target is mode 0600 with two names; neither fact may be taken from it.
+    assert_ne!(p["vault"]["master_key_mode"], json!("600"), "{p}");
+    assert_eq!(p["vault"]["links"], json!(2), "{p}");
+    // Only `anthropic` (a plain file with one name) is left besides the two links: no multi-name.
+    assert_eq!(p["vault"]["multi_link"], json!(0), "{p}");
+}
+
+// Audit note 5: a folder's link count grows with its sub-folders; that is not a second name.
+#[test]
+fn install_does_not_call_a_vault_subfolder_a_multi_named_entry() {
+    let (_d, home) = rust_home();
+    fs::create_dir_all(home.join(".moai-cli/vault/sub/deeper")).unwrap();
+    let p = plan(&home);
+    assert_eq!(p["vault"]["multi_link"], json!(0), "{p}");
+}
+
+// Audit note 2: the destination is asked of the file system too, so a volume that folds more
+// than ASCII case still reports the clash. Needs a volume that folds U+017F to `s`; without one
+// there is nothing to show (the listing compare alone is the ASCII-case rule).
+#[test]
+fn install_asks_the_file_system_about_a_folded_destination_name() {
+    let (_d, home) = rust_home();
+    add_go_state(&home);
+    write(&home, ".moai/\u{17f}chedule/x", "x");
+    if fs::symlink_metadata(home.join(".moai/schedule")).is_err() {
+        return;
+    }
+    let p = plan(&home);
+    assert_eq!(
+        act(&p, "schedule"),
+        ("blocked".into(), "destination_taken".into()),
+        "{p}"
+    );
+}
+
+// Audit note 4: the `path` stub plan (50) and the version alias table (500) are bounded lists the
+// later steps rely on; one name more than the bound blocks instead of cutting the list silently.
+#[test]
+fn install_blocks_when_the_stub_or_alias_list_would_be_cut() {
+    for (extra, blocked) in [(49usize, false), (50, true)] {
+        let (_d, home) = rust_home();
+        for i in 0..extra {
+            write(&home, &format!(".moai-cli/path/p{i:03}"), "x");
+        }
+        let p = plan(&home);
+        assert_eq!(
+            blocks(&p).contains(&"path_not_fully_listed".to_string()),
+            blocked,
+            "{extra}: {p}"
+        );
+    }
+    for (extra, blocked) in [(499usize, false), (500, true)] {
+        let (_d, home) = rust_home();
+        for i in 0..extra {
+            fs::create_dir_all(home.join(format!(".moai-cli/versions/v{i:04}"))).unwrap();
+        }
+        let p = plan(&home);
+        assert_eq!(
+            blocks(&p).contains(&"versions_not_fully_listed".to_string()),
+            blocked,
+            "{extra}: blocks {:?}",
+            blocks(&p)
+        );
+    }
+}
