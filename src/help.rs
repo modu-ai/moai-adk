@@ -288,6 +288,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
+    (
+        "lane-next",
+        &[
+            "lane-next --lane agent-1 --repo modu-ai/moai-adk",
+            "lane-next --lane agent-1 --repo modu-ai/moai-adk --wait 1800",
+        ],
+    ),
     ("lane-status", &["lane-status . < request.json"]),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
