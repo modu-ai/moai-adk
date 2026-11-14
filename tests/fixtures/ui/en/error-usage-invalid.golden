@@ -1,0 +1,2 @@
+error: invalid value 'bogus' for '--wait <WAIT>': invalid digit found in string
+  next: run `moai-cli lane-next --help` to see its arguments
