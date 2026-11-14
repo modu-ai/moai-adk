@@ -238,6 +238,59 @@ pub fn changes(project: &Path, base: &str) -> Result<Vec<(String, String)>> {
         .collect())
 }
 
+/// The Cargo build folder `path` would sit in, if any (#2934 S3, #2930 R-3: lane worktrees were
+/// made inside `target/`, so every cargo clean or trim took them along and the build output
+/// nested without end). The path is read with its longest existing ancestor resolved (symbolic
+/// links followed); a build folder is an ancestor that holds `CACHEDIR.TAG` (cargo writes one
+/// at the top of every target directory) or a folder named `target` beside a `Cargo.toml`,
+/// which counts before cargo has made it.
+pub fn cargo_build_folder(path: &Path) -> Option<PathBuf> {
+    let resolved = resolve_existing(path);
+    resolved
+        .ancestors()
+        .find(|a| {
+            a.join("CACHEDIR.TAG").is_file()
+                || (a.file_name().is_some_and(|n| n == "target")
+                    && a.parent().is_some_and(|p| p.join("Cargo.toml").is_file()))
+        })
+        .map(Path::to_path_buf)
+}
+
+/// Refuses a worktree path inside a Cargo build folder ([`cargo_build_folder`]).
+pub fn refuse_in_build_folder(path: &Path, what: &str) -> Result<()> {
+    match cargo_build_folder(path) {
+        Some(dir) => Err(format!(
+            "{what} {} is inside the Cargo build folder {} (#2930 R-3); put worktrees outside \
+             build output, under the default <HOME>/.moai/worktrees",
+            path.display(),
+            dir.display()
+        )),
+        None => Ok(()),
+    }
+}
+
+/// `path` with its longest existing ancestor canonicalised (symlinks resolved), the rest kept.
+pub(crate) fn resolve_existing(path: &Path) -> PathBuf {
+    let mut rest = Vec::new();
+    let mut cur = path.to_path_buf();
+    loop {
+        if let Ok(c) = fs::canonicalize(&cur) {
+            let mut out = c;
+            for part in rest.iter().rev() {
+                out.push(part);
+            }
+            return out;
+        }
+        match (cur.file_name().map(|n| n.to_os_string()), cur.parent()) {
+            (Some(name), Some(parent)) => {
+                rest.push(name);
+                cur = parent.to_path_buf();
+            }
+            _ => return path.to_path_buf(),
+        }
+    }
+}
+
 pub fn is_sha(s: &str) -> bool {
     s.len() == 40
         && s.bytes()
@@ -417,6 +470,7 @@ pub fn plan(
             &format!("{issue}-{}", rec.logical_key),
         )?,
     };
+    refuse_in_build_folder(&path, "worktree path")?;
     let content = json!({
         "task_key": rec.task_key,
         "logical_key": rec.logical_key,

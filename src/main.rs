@@ -1,7 +1,7 @@
 use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use moai_cli::{
-    agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
-    AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
+    agents_apply, agents_plan, apply, contract, hosts::codex, plan, session_launch, AgentsPlan,
+    AgentsRequest, Plan, Profile, SessionRequest,
 };
 use std::{
     io::{self, Read},
@@ -92,6 +92,32 @@ struct LaunchOpts {
     dry_run: bool,
 }
 
+/// The Codex lane Stop hook of `hooks-plan` / `hooks-apply` (#2904 stage 2). Without either
+/// flag the plan keeps what the Codex receipt records.
+#[derive(Args)]
+struct LaneLoopArgs {
+    /// Add this lane's Stop hook (`lane-stop-hook`) to `.codex/hooks.json` (codex only).
+    #[arg(long, requires = "repo", conflicts_with = "lane_loop_off")]
+    lane_loop: Option<String>,
+    /// `OWNER/REPO` the lane Stop hook reads (with `--lane-loop`).
+    #[arg(long, requires = "lane_loop")]
+    repo: Option<String>,
+    /// Remove the lane Stop hook: the file returns to the base hook set (codex only).
+    #[arg(long)]
+    lane_loop_off: bool,
+}
+
+impl LaneLoopArgs {
+    fn lane_loop(self) -> moai_cli::hooks::LaneLoop {
+        use moai_cli::hooks::LaneLoop;
+        match (self.lane_loop, self.repo, self.lane_loop_off) {
+            (Some(lane), Some(repo), _) => LaneLoop::Set { lane, repo },
+            (_, _, true) => LaneLoop::Off,
+            _ => LaneLoop::Keep,
+        }
+    }
+}
+
 /// `moai-cli cc|glm|codex [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
 /// session: no role is guessed (Issue #2053).
 #[derive(Args)]
@@ -128,14 +154,6 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
-    },
-    /// Resolve which skill package a project uses
-    PackageResolve {
-        project: PathBuf,
-        #[arg(long)]
-        repo_package: Option<PathBuf>,
-        #[arg(long)]
-        user_package: Option<PathBuf>,
     },
     /// Preview the AGENTS.md managed section
     AgentsPlan { project: PathBuf },
@@ -182,12 +200,6 @@ enum Command {
     /// immutable manifest directory, and publish it with an atomic pointer swap. A failed
     /// build keeps the previous generation and marks partial (REQ-C6-01).
     IndexBuild { project: PathBuf },
-    /// Query the code map index
-    ///
-    /// Query the incremental index (C6 #2182): read-only — resolves the published
-    /// generation and reports one of fresh/stale/partial/unavailable with the detected
-    /// changes (additions, deletions, modifications, untracked new files, branch switch).
-    IndexQuery { project: PathBuf },
     /// Import a previewed old key file
     ///
     /// Copy a legacy key file's key into the encrypted vault (#2393 S3): only with the
@@ -637,6 +649,8 @@ enum Command {
         /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
         #[arg(long)]
         host: String,
+        #[command(flatten)]
+        lane: LaneLoopArgs,
     },
     /// Write a previewed hook set
     ///
@@ -649,6 +663,27 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        #[command(flatten)]
+        lane: LaneLoopArgs,
+    },
+    /// Answer a Codex lane's Stop hook
+    ///
+    /// The Stop hook a Codex lane installs with `hooks-plan --host codex --lane-loop` (#2904):
+    /// reads the Stop input on stdin (64 KiB, dropped), reads the lane's next task once
+    /// (`lane-next`, or `--snapshot`) and prints only the Codex answer — `{"decision":"block",
+    /// "reason":…}` while the lane has work or open pull requests remain, nothing at the end
+    /// condition, after 48 blocks in a row for one task or 96 blocks since the last pass, or
+    /// on the second unknown reading.
+    LaneStopHook {
+        /// The lane name as it appears in claims (`session=<lane>`).
+        #[arg(long)]
+        lane: String,
+        /// `OWNER/REPO`.
+        #[arg(long)]
+        repo: String,
+        /// Decide from a saved `lane-next` snapshot (JSON) instead of reading GitHub.
+        #[arg(long)]
+        snapshot: Option<PathBuf>,
     },
     /// Undo the hook set one update applied
     ///
@@ -664,14 +699,6 @@ enum Command {
         /// Caller-supplied permission reference (recorded; not an authorization verifier).
         #[arg(long)]
         permission_reference: String,
-    },
-    /// Record one hook receipt line
-    ///
-    /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
-    /// ./.moai-cli/receipts/; never fails the hook.
-    HookReceipt {
-        #[arg(long)]
-        host: String,
     },
     /// Run one MoAI hook duty for a host
     ///
@@ -718,6 +745,7 @@ enum Command {
         #[arg(long)]
         branch_prefix: String,
         /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
+        /// Refused inside a Cargo build folder (#2930 R-3).
         #[arg(long)]
         path: Option<PathBuf>,
     },
@@ -741,67 +769,6 @@ enum Command {
         /// Test seam (WT-5): the project-total warning line in bytes instead of 40 GiB.
         #[arg(long, hide = true, default_value_t = moai_cli::worktree::PROJECT_WARN_BYTES)]
         warn_total_bytes: u64,
-    },
-    /// Preview removing or trimming merged worktrees
-    ///
-    /// Read-only removal plan (WT-4, #2380): per linked worktree `remove`, `trim` (cargo
-    /// build output only) or `skip` with reasons, and a digest. Deletes nothing.
-    WorktreeGcPlan {
-        project: PathBuf,
-        /// Local ref of the integration branch, e.g. `origin/v2026.11.0`; a worktree whose
-        /// HEAD it contains counts as merged. Nothing is fetched.
-        #[arg(long)]
-        integration_ref: String,
-        /// A change newer than this many minutes keeps a worktree (design: 120).
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
-        recent_minutes: u64,
-        /// Time budget in milliseconds; past it the remaining worktrees are `skip`.
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
-        budget_ms: u64,
-        /// Test seam: the current time in Unix seconds instead of the clock.
-        #[arg(long, hide = true)]
-        now_unix: Option<u64>,
-        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
-        /// `next_cursor` says where the next run goes on (#2879).
-        #[arg(long)]
-        max_checked: Option<usize>,
-        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
-        #[arg(long)]
-        cursor: Option<String>,
-        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
-        #[arg(long = "worktree", value_name = "PATH")]
-        only: Vec<PathBuf>,
-    },
-    /// Remove or trim the previewed worktrees
-    ///
-    /// Act on a `worktree-gc-plan` (WT-9, #2498): recomputes the plan with the same inputs,
-    /// refuses before any write unless its digest equals `--plan-digest`, then trims the
-    /// listed cargo output and removes the listed worktrees (no `--force`; branches kept).
-    WorktreeGcApply {
-        project: PathBuf,
-        #[arg(long)]
-        integration_ref: String,
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_RECENT_MINUTES)]
-        recent_minutes: u64,
-        #[arg(long, default_value_t = moai_cli::worktree_gc::DEFAULT_BUDGET_MS)]
-        budget_ms: u64,
-        /// Test seam: the current time in Unix seconds instead of the clock.
-        #[arg(long, hide = true)]
-        now_unix: Option<u64>,
-        /// Examine at most this many worktrees in one run; the rest are `budget_spent` and
-        /// `next_cursor` says where the next run goes on (#2879).
-        #[arg(long)]
-        max_checked: Option<usize>,
-        /// Start after this candidate `path` of an earlier plan (its `next_cursor`).
-        #[arg(long)]
-        cursor: Option<String>,
-        /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
-        #[arg(long = "worktree", value_name = "PATH")]
-        only: Vec<PathBuf>,
-        #[arg(long)]
-        plan_digest: String,
-        #[arg(long)]
-        permission_reference: String,
     },
     /// Report the space worktrees use
     ///
@@ -846,12 +813,6 @@ enum Command {
         #[arg(long)]
         integration_order: Option<String>,
     },
-    /// Scan for MOAI and MX tag markers
-    ///
-    /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
-    /// namespaces normalize into one node shape, duplicates are diagnosed only,
-    /// nothing is written. PATH is a file or a directory.
-    AtlasTagScan { path: PathBuf },
     /// Print a lane's cargo folders
     ///
     /// Print a lane's build environment as shell `export` lines (#2841): one
@@ -1375,7 +1336,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
-        AtlasTagScan { .. } => "atlas_tag.scan",
         AuditClaim => "audit.claim",
         AuditClonePlan { .. } => "audit.clone.plan",
         BaselineInventory { .. } => "baseline.inventory",
@@ -1400,13 +1360,11 @@ fn operation(command: &Command) -> Option<&'static str> {
         GithubApply { .. } => "github.apply",
         GithubPlan { .. } => "github.plan",
         HookDispatch { .. } => "hook.dispatch",
-        HookReceipt { .. } => "hook.receipt",
         HooksApply { .. } => "hooks.apply",
         HooksPlan { .. } => "hooks.plan",
         HooksRevert { .. } => "hooks.revert",
         Identity { .. } => "identity",
         IndexBuild { .. } => "index.build",
-        IndexQuery { .. } => "index.query",
         InstallInspect { .. } => "install.inspect",
         KeyImportApply { .. } => "key.import_apply",
         LabelsApply { .. } => "labels.apply",
@@ -1417,6 +1375,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         KeyStatus { .. } => "key.status",
         LaneHandoffCheck { .. } => "lane_handoff.check",
         LaneStatus { .. } => "lane.status",
+        LaneStopHook { .. } => "lane.stop_hook",
         LanguageSetup { .. } => "language.setup",
         LayoutApply { .. } => "layout.apply",
         LayoutPlan { .. } => "layout.plan",
@@ -1431,7 +1390,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         MigratePlan { .. } => "migrate.plan",
         MigrateRecover { .. } => "migrate.recover",
         MigrateRecoveryPlan { .. } => "migrate.recovery_plan",
-        PackageResolve { .. } => "package.resolve",
         PrBodyRender { .. } => "pr.body.render",
         PrConfirm { .. } => "pr.confirm",
         ProjectApply { .. } => "project.apply",
@@ -1457,8 +1415,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
         WorktreeReport { .. } => "worktree.report",
-        WorktreeGcPlan { .. } => "worktree.gc.plan",
-        WorktreeGcApply { .. } => "worktree.gc.apply",
     })
 }
 
@@ -1873,11 +1829,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &plan_digest,
             &permission_reference,
         ),
-        Command::PackageResolve {
-            project,
-            repo_package,
-            user_package,
-        } => resolve(&project, repo_package.as_deref(), user_package.as_deref()),
         Command::AgentsPlan { project } => {
             serde_json::to_value(agents_plan(&project, input::<AgentsRequest>()?)?)
                 .map_err(|_| "encode failed".into())
@@ -1910,11 +1861,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::IndexBuild { project } => serde_json::to_value(moai_cli::index::index_build(
             &project,
             &input::<moai_cli::index::IndexBuildRequest>()?,
-        )?)
-        .map_err(|_| "encode failed".into()),
-        Command::IndexQuery { project } => serde_json::to_value(moai_cli::index::index_query(
-            &project,
-            &input::<moai_cli::index::IndexQueryRequest>()?,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::KeyImportApply {
@@ -2155,9 +2101,14 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
-        Command::HooksPlan { project, host } => {
+        Command::HooksPlan {
+            project,
+            host,
+            lane,
+        } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
+            let mut out =
+                moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
             merge_binary_state(&mut out);
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -2175,14 +2126,16 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             host,
             plan_digest,
             permission_reference,
+            lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::apply(
+            let mut out = moai_cli::hooks::apply_with(
                 &project,
                 &host,
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
+                lane.lane_loop(),
             )?;
             merge_binary_state(&mut out);
             Ok(out)
@@ -2191,20 +2144,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::HookDispatch { .. } => {
             Err("hook-dispatch is answered before internal dispatch".into())
         }
-        Command::HookReceipt { host } => {
-            // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
-            // fails to parse and is skipped, never an error: the hook must not fail.
-            let mut bytes = Vec::new();
-            let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_millis());
-            Ok(match std::env::current_dir() {
-                Ok(cwd) => moai_cli::hooks::receipt(&host, &bytes, &cwd, now),
-                Err(_) => {
-                    serde_json::json!({"recorded": false, "reason": "working directory unavailable"})
-                }
-            })
+        // Printed by `lane_stop_hook_main`, which `main` calls before any internal dispatch.
+        Command::LaneStopHook { .. } => {
+            Err("lane-stop-hook is answered before internal dispatch".into())
         }
         // Answered in `main` before internal dispatch (no envelope, the command's exit code).
         Command::HeavySlotAcquire { .. } => {
@@ -2289,53 +2231,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             path.as_deref(),
             moai_cli::home_workdir::home().ok().as_deref(),
         ),
-        Command::WorktreeGcPlan {
-            project,
-            integration_ref,
-            recent_minutes,
-            budget_ms,
-            now_unix,
-            max_checked,
-            cursor,
-            only,
-        } => moai_cli::worktree_gc::plan_paced(
-            &project,
-            &integration_ref,
-            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
-            std::time::Duration::from_millis(budget_ms),
-            now_unix,
-            false,
-            &moai_cli::worktree_gc::Pace {
-                max_checked,
-                cursor,
-                only,
-            },
-        ),
-        Command::WorktreeGcApply {
-            project,
-            integration_ref,
-            recent_minutes,
-            budget_ms,
-            now_unix,
-            max_checked,
-            cursor,
-            only,
-            plan_digest,
-            permission_reference,
-        } => moai_cli::worktree_gc::apply(
-            &project,
-            &integration_ref,
-            std::time::Duration::from_secs(recent_minutes.saturating_mul(60)),
-            std::time::Duration::from_millis(budget_ms),
-            now_unix,
-            &moai_cli::worktree_gc::Pace {
-                max_checked,
-                cursor,
-                only,
-            },
-            &plan_digest,
-            &permission_reference,
-        ),
         Command::AuditClonePlan {
             project,
             pr,
@@ -2364,7 +2259,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             std::time::Duration::from_millis(budget_ms),
         ),
-        Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
@@ -2756,7 +2650,7 @@ fn print_operation_error(kind: contract::Kind, message: &str) {
 /// "block", so in hook mode stdout stays empty and only the guard's refusal exits 2.
 fn hook_mode_argv(args: &[String]) -> bool {
     args.get(1)
-        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch")
+        .is_some_and(|w| w == "hook-receipt" || w == "hook-dispatch" || w == "lane-stop-hook")
         || args.iter().skip(1).any(|a| a == "--hook")
 }
 
@@ -2787,6 +2681,37 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
         eprintln!("{}", answer.stderr);
     }
     ExitCode::from(answer.exit)
+}
+
+/// `lane-stop-hook` (#2904): prints exactly the Codex Stop answer — one
+/// `{"decision":"block",…}` line or nothing — and exits 0. The Stop input is read (bounded) and
+/// dropped: `stop_hook_active` is not used (Q1 (a)) and bad JSON changes nothing. A refused
+/// lane or repository is a non-blocking hook error (exit 1, stdout empty).
+fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path>) -> ExitCode {
+    use moai_cli::lane_loop as l;
+    use std::io::IsTerminal as _;
+    if !l::lane_ok(lane) || !l::repo_ok(repo) {
+        eprintln!(
+            "moai lane-stop-hook: --lane must be 1-64 of A-Z a-z 0-9 . _ - and --repo OWNER/REPO"
+        );
+        return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
+    }
+    if !io::stdin().is_terminal() {
+        let _ = io::copy(&mut io::stdin().take(l::STOP_STDIN_LIMIT), &mut io::sink());
+    }
+    let Ok(cwd) = std::env::current_dir() else {
+        eprintln!("moai lane-stop-hook: working directory unavailable; the turn ends");
+        return ExitCode::SUCCESS;
+    };
+    let reading = match snapshot {
+        Some(file) => l::read_snapshot(file),
+        None => l::read_github(lane, repo),
+    };
+    let answer = l::stop_hook(&cwd, lane, repo, &reading);
+    if !answer.is_empty() {
+        println!("{answer}");
+    }
+    ExitCode::SUCCESS
 }
 
 /// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
@@ -2967,6 +2892,14 @@ pub(crate) fn main() -> ExitCode {
     };
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
+    }
+    if let Some(Command::LaneStopHook {
+        lane,
+        repo,
+        snapshot,
+    }) = &cli.command
+    {
+        return lane_stop_hook_main(lane, repo, snapshot.as_deref());
     }
     if let Some(Command::HeavySlotAcquire {
         max,
@@ -3702,7 +3635,11 @@ mod help_rules {
                         .unwrap_or_default();
                     assert!(hangul(&long), "{word} long about: {long:?}");
                 }
-                for arg in ko.get_arguments().filter(|a| a.get_id() != "help") {
+                // A hidden argument (a test seam such as `--now-unix`) shows in no help.
+                for arg in ko
+                    .get_arguments()
+                    .filter(|a| a.get_id() != "help" && !a.is_hide_set())
+                {
                     let help = arg.get_help().map(|h| h.to_string()).unwrap_or_default();
                     assert!(hangul(&help), "{word} {}: {help:?}", arg.get_id());
                 }
@@ -3790,8 +3727,13 @@ mod help_rules {
     }
 
     /// Commands `main` answers before the internal dispatch; each reads standard input there
-    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
-    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
+    /// (`statusline`, `pr-self-audit-check`, `hook_dispatch_main` and `lane_stop_hook_main`).
+    const READ_BEFORE_DISPATCH: [&str; 4] = [
+        "hook-dispatch",
+        "lane-stop-hook",
+        "pr-self-audit-check",
+        "statusline",
+    ];
 
     /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
     /// more than asking whether it is a terminal.

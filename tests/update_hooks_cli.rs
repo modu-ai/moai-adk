@@ -404,6 +404,42 @@ fn a_current_or_absent_hook_set_leaves_nothing_to_apply() {
     assert_eq!(outside["nothing_to_apply"], json!(true));
 }
 
+/// #2904 stage 2: `update` keeps a Codex lane's Stop hook — the receipt records the lane, so
+/// the re-plan is `unchanged` and the confirmation leaves the file as it was.
+#[test]
+fn update_keeps_the_codex_lane_stop_hook() {
+    let f = setup();
+    install_hooks(&f, "codex");
+    let p = f.project.to_str().unwrap();
+    let lane = ["--lane-loop", "agent-1", "--repo", "o/r"];
+    let mut args = vec!["hooks-plan", p, "--host", "codex"];
+    args.extend(lane);
+    let plan = result(&run(&f, &f.project, &args));
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let mut apply = vec![
+        "hooks-apply",
+        p,
+        "--host",
+        "codex",
+        "--plan-digest",
+        &digest,
+        "--permission-reference",
+        "test-approval",
+    ];
+    apply.extend(lane);
+    result(&run(&f, &f.project, &apply));
+    let file = f.project.join(".codex/hooks.json");
+    let with_lane = fs::read(&file).unwrap();
+    let preview = update_preview(&f);
+    assert_eq!(
+        hook_host(&preview, "codex")["action"],
+        json!("unchanged"),
+        "{preview}"
+    );
+    update_confirm(&f);
+    assert_eq!(fs::read(&file).unwrap(), with_lane);
+}
+
 /// The confirmation binds the hook layer: a hook file changed after the preview refuses the
 /// whole update before any write.
 #[test]

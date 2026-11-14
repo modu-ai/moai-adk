@@ -142,28 +142,6 @@ fn check_root(root: &Path) -> Result<()> {
     Ok(())
 }
 
-/// `path` with its longest existing ancestor canonicalised (symlinks resolved), the rest kept.
-fn resolve_lexical(path: &Path) -> PathBuf {
-    let mut rest = Vec::new();
-    let mut cur = path.to_path_buf();
-    loop {
-        if let Ok(c) = fs::canonicalize(&cur) {
-            let mut out = c;
-            for part in rest.iter().rev() {
-                out.push(part);
-            }
-            return out;
-        }
-        match (cur.file_name().map(|n| n.to_os_string()), cur.parent()) {
-            (Some(name), Some(parent)) => {
-                rest.push(name);
-                cur = parent.to_path_buf();
-            }
-            _ => return path.to_path_buf(),
-        }
-    }
-}
-
 fn has_submodules(wt: &Path) -> Option<bool> {
     if wt.join(".gitmodules").exists() {
         return Some(true);
@@ -222,6 +200,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         }
     }
     check_root(root)?;
+    crate::worktree::refuse_in_build_folder(root, "--root")?;
     let top = git(
         project,
         &["rev-parse", "--path-format=absolute", "--show-toplevel"],
@@ -242,7 +221,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     let key = project_key(&name, clone_id)?;
-    let root_resolved = resolve_lexical(root);
+    let root_resolved = crate::worktree::resolve_existing(root);
     let all_paths: Vec<PathBuf> = entries
         .iter()
         .filter(|e| !e.bare)

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>moai.gate-loop.acme.widgets</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/moai/bin/moai</string>
+		<string>gate-loop</string>
+		<string>--once</string>
+		<string>--fetch</string>
+		<string>--dry-run</string>
+		<string>--repo</string>
+		<string>acme/widgets</string>
+		<string>--dir</string>
+		<string>/work/widgets</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/work/widgets</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>StartInterval</key>
+	<integer>90</integer>
+	<key>StandardOutPath</key>
+	<string><HOME>/.moai-cli/logs/gate-loop.log</string>
+	<key>StandardErrorPath</key>
+	<string><HOME>/.moai-cli/logs/gate-loop.log</string>
+</dict>
+</plist>
