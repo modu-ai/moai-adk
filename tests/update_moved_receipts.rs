@@ -282,6 +282,7 @@ fn a_moved_folder_finds_its_own_receipt_through_the_committed_journal() {
     let old = f.home.join(".moai-cli");
     let a = version_exe(&old, "a");
     install(&a, &f.home, &f.v1);
+    let a_old = id_of(&a);
     let journal = move_home(&f.home, &["a"]);
     let moved = f.home.join(".moai/versions/a/bin/moai-cli");
     assert!(moved.is_file());
@@ -302,6 +303,22 @@ fn a_moved_folder_finds_its_own_receipt_through_the_committed_journal() {
     v["kind"] = json!("something-else");
     fs::write(&journal, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
     blocked_unmanaged(&plan(&moved, &f.home, &f.v1));
+    v["kind"] = json!(moai_cli::home_install::KIND);
+    fs::write(&journal, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+    all_unchanged(&plan(&moved, &f.home, &f.v1));
+
+    // An old-id receipt that names another installation is not this folder's, journal or not.
+    for h in HOSTS {
+        let path = f
+            .home
+            .join(".moai/installations")
+            .join(&a_old)
+            .join(format!("hosts/moai/{h}.json"));
+        let mut r: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        r["install_id"] = json!("0".repeat(64));
+        fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+    }
+    blocked_unmanaged(&plan(&moved, &f.home, &f.v1));
 }
 
 // Going back and forth across the move: an earlier folder's receipt, written under its old id,
@@ -314,13 +331,24 @@ fn an_earlier_moved_folders_receipts_are_adopted_and_the_newest_wins() {
     let b = version_exe(&old, "b");
     install(&a, &f.home, &f.v1);
     install(&b, &f.home, &f.v2);
+    let b_old = id_of(&b);
     move_home(&f.home, &["a", "b"]);
     let a2 = f.home.join(".moai/versions/a/bin/moai-cli");
     let b2 = f.home.join(".moai/versions/b/bin/moai-cli");
 
-    // b's receipt is the newest: a (its own receipt is the older one) reads b's state.
-    all_unchanged(&plan(&a2, &f.home, &f.v2));
-    all_unchanged(&plan(&b2, &f.home, &f.v2));
+    // b's receipt is the newest: a (its own receipt is the older one) reads b's state, from the
+    // receipt b wrote under its old id.
+    let p = plan(&a2, &f.home, &f.v2);
+    all_unchanged(&p);
+    for h in HOSTS {
+        assert_eq!(host(&p, h)["receipt_from"], json!(b_old), "{h}: {p}");
+    }
+    // b itself finds its own receipt: nothing was adopted from elsewhere.
+    let own = plan(&b2, &f.home, &f.v2);
+    all_unchanged(&own);
+    for h in HOSTS {
+        assert!(host(&own, h).get("receipt_from").is_none(), "{h}: {own}");
+    }
 }
 
 // One folder, two receipts: the old-id one written before the move and a newer one the moved
@@ -381,6 +409,7 @@ fn install_inspect_knows_a_receipt_recorded_before_the_move() {
     let a = version_exe(&old, "a");
     let receipt = plan_receipt(&a, &f.home, InstallerOwner::Unknown).unwrap();
     record_receipt(&f.home, &receipt).unwrap();
+    let a_old = id_of(&a);
     let journal = move_home(&f.home, &["a"]);
     let moved = f.home.join(".moai/versions/a/bin/moai-cli");
 
@@ -389,6 +418,19 @@ fn install_inspect_knows_a_receipt_recorded_before_the_move() {
     let listed = with["installations"].as_array().unwrap();
     assert_eq!(listed.len(), 1, "{with}");
     assert_eq!(listed[0]["match_state"], json!("self"), "{with}");
+
+    // The id is the journal's word for the path; the digest still has to match the binary.
+    let file = f
+        .home
+        .join(".moai/installations")
+        .join(format!("{a_old}.json"));
+    let original = fs::read(&file).unwrap();
+    let mut r: Value = serde_json::from_slice(&original).unwrap();
+    r["binary_sha256"] = json!(format!("sha256:{}", "0".repeat(64)));
+    fs::write(&file, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+    let stale = ok(&run(&moved, &f.home, &["install-inspect", "--json"], None));
+    assert_eq!(stale["self"]["state"], json!("stale_receipt"), "{stale}");
+    fs::write(&file, original).unwrap();
 
     set_state(&journal, "reverted");
     let without = ok(&run(&moved, &f.home, &["install-inspect", "--json"], None));
