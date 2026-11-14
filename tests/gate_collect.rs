@@ -1334,7 +1334,11 @@ fn the_verdict_line_names_the_audited_head_and_reads_back() {
     let err =
         gate_collect::verdict_line_for(&target, &r.h[..10], "x", "PASS", None, &pr_head(&r.h))
             .unwrap_err();
-    assert!(err.contains("40 lowercase hex"), "{err}");
+    assert!(err.contains("--head must be the audited head"), "{err}");
+    // Refused before any read: the PR is not even fetched.
+    let t = pr_head(&r.h);
+    let _ = gate_collect::verdict_line_for(&target, "abc", "x", "PASS", None, &t);
+    assert_eq!(t.remaining(), 1, "no request before --head is checked");
 }
 
 /// Audit 6869947940 B1: a head that moved during the audit never gets a line for a head nobody
