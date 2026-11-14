@@ -137,18 +137,41 @@ class KoreanHelp(unittest.TestCase):
 
     def test_a_subcommand_help_has_a_korean_frame(self):
         """S6e-1: the usage, arguments, options and examples headings and the help flag's line
-        read Korean; the command's own texts are unchanged."""
-        text = self.help(["project-detect", "--help"], **KOREAN)
-        for head in ("\n사용법: moai project-detect <PROJECT>\n", "\n인자:\n", "\n옵션:\n",
-                     "\n예시:\n  moai project-detect .\n"):
+        read Korean; a command of a group not moved yet keeps its own texts."""
+        text = self.help(["identity", "--help"], **KOREAN)
+        for head in ("\n사용법: moai identity <PATH>\n", "\n인자:\n", "\n옵션:\n",
+                     "\n예시:\n  moai identity .\n"):
             self.assertIn(head, text)
         self.assertIn("도움말 보기 (요약은 '-h')", text)
-        self.assertIn("Detect the project's facts", text)
+        self.assertIn("Any path inside a clone or worktree", text)
         for word in ("Usage:", "Arguments:", "Options:", "Examples:", "Print help"):
             self.assertNotIn(word, text)
         short = self.help(["key-set", "-h"], **KOREAN)
         self.assertIn("도움말 보기 (자세히는 '--help')", short)
         self.assertIn("\n옵션:\n      --shared", short)
+
+    def test_the_project_group_reads_its_own_texts_in_korean(self):
+        """S6e-2: the Project group's root commands — about, long about, argument help."""
+        detect = self.help(["project-detect", "--help"], **KOREAN)
+        self.assertIn("`/moai project` 경로(#2496)", detect)
+        self.assertIn("\n          프로젝트 루트\n", detect)
+        self.assertNotIn("Detect the project's facts", detect)
+        setup = self.help(["language-setup", "--help"], **KOREAN)
+        self.assertIn("호스트 질문 도구용 질문 묶음 찍기", setup)
+        self.assertIn("대화 기본 항목의 대화 언어 코드", setup)
+        self.assertTrue(self.help(["index-build", "-h"], **KOREAN).startswith("코드 지도 색인 만들기\n"))
+        apply = self.help(["project-apply", "--help"], **KOREAN)
+        self.assertIn("호출자가 준 권한 참조", apply)
+        for columns in ("60", "80"):
+            for word in ("project-detect", "project-plan", "project-apply", "language-setup",
+                         "index-build"):
+                for flag in ("-h", "--help"):
+                    text = self.help([word, flag], COLUMNS=columns, **KOREAN)
+                    for line in text.splitlines():
+                        if line.startswith("사용법: ") or line.startswith("  moai "):
+                            continue  # clap never wraps a usage or an example, in English too
+                        self.assertLessEqual(cells(line), int(columns),
+                                             (columns, word, flag, line))
 
     def test_an_english_subcommand_help_keeps_its_bytes(self):
         for args in (["project-detect", "--help"], ["key-set", "-h"], ["cc", "--help"]):
