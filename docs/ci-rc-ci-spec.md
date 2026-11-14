@@ -25,7 +25,7 @@
 - 저장소 루트가 아닌 곳에서 불러도 스스로 루트로 옮겨 돈다. 기본은 첫 실패에서 멈춘다. CI는 `LOCAL_CHECK_KEEP_GOING=1`로 모든 단계를 돌리고 단계마다 exit을 summary 표에 남긴다(CI-4 그대로).
 - 마지막 줄은 기계가 읽는 한 줄이다: `local-check: head=<40자 HEAD> result=pass|fail [dirty=1 ]cmd=tools/local_check.sh at=<UTC>`. 시작이나 끝에 커밋하지 않은 변경(무시 파일 제외)이 있으면 확인한 것이 HEAD가 아니므로 `result=fail dirty=1`이다. exit 0은 `result=pass`일 때뿐이다.
 - `LOCAL_CHECK_DRY_RUN=1`은 돌릴 단계와 마지막 줄만 출력하고 아무것도 돌리지 않는다. 확인한 것이 없으므로 늘 `result=fail`이다.
-- `moai heavy-slot-acquire`가 있으면 test·doctest·clippy를 각각 기계 공용 슬롯 안에서 돌린다(`MOAI_HEAVY_SLOT_MAX` 기본 4, `MOAI_HEAVY_SLOT_MIN_FREE_GB` 기본 50). 없으면(CI 포함) 바로 돌린다.
+- `moai heavy-slot-acquire`가 있으면 test·doctest·clippy를 각각 기계 공용 슬롯 안에서 돌린다(`MOAI_HEAVY_SLOT_MAX` 기본 3, `MOAI_HEAVY_SLOT_MIN_FREE_GB` 기본 50). 없으면(CI 포함) 바로 돌린다.
 - diff-check 범위는 `LOCAL_CHECK_BASE`(기본 `origin/v2026.11.0`, 없으면 `HEAD~1`)`...LOCAL_CHECK_DIFF_HEAD`(기본 `HEAD`)다. CI는 PR base·head SHA를 넘긴다.
 
 병합 조건은 이 단계에서 바뀌지 않는다. 지금 게이트(head의 GitHub CI 성공 + 감사 PASS)가 그대로이고, `local-check:` 줄을 병합 조건으로 읽는 일은 S5b의 범위다.

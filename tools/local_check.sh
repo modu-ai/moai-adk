@@ -27,7 +27,7 @@
 #   LOCAL_CHECK_KEEP_GOING=1  run every step and fail at the end (CI uses it, so each step's
 #                           exit is recorded as before); the default stops at the first failure
 #   GITHUB_STEP_SUMMARY     when set, one `| step | command | exit |` row per step is appended
-#   MOAI_HEAVY_SLOT_MAX (default 4), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
+#   MOAI_HEAVY_SLOT_MAX (default 3), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
 #   MOAI_HEAVY_SLOT_NAME (default local-check): when `moai heavy-slot-acquire` exists, the
 #                           heavy cargo steps (test, doctest, clippy) each run in one of the
 #                           machine's heavy slots (leader decision 2026-11-14 12:37Z; #2930
@@ -47,7 +47,7 @@ else
   base=HEAD~1
 fi
 diff_head="${LOCAL_CHECK_DIFF_HEAD:-HEAD}"
-slot_max="${MOAI_HEAVY_SLOT_MAX:-4}"
+slot_max="${MOAI_HEAVY_SLOT_MAX:-3}"
 slot_min_free="${MOAI_HEAVY_SLOT_MIN_FREE_GB:-50}"
 slot_name="${MOAI_HEAVY_SLOT_NAME:-local-check}"
 
@@ -67,6 +67,9 @@ tree_is_dirty() {
 
 finish() {
   if tree_is_dirty; then dirty=1; fi
+  # A commit made while the checks ran means the checked tree is not the reported head
+  # (#2951 audit N1): fail, and keep the head the run started from.
+  if [ "$(git rev-parse HEAD 2>/dev/null || echo unknown)" != "$head" ]; then failed=1; fi
   result=pass
   if [ "$failed" -ne 0 ] || [ "$dirty" -ne 0 ] || [ "$dry_run" = 1 ]; then result=fail; fi
   flag=""
