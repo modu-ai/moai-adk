@@ -136,12 +136,13 @@ Lane and leader
                           comment
   claim-verify            Check claim ownership before a
                           commit or push
+  claim-timeout-check     Check the three timeout takeover
+                          conditions of a claim
   claim-show              Show the current claim record of a
                           task
   claim-release           Close the active claim as
                           cancelled
   claim-handoff           Hand a claim to another session
-  queue-next              Claim the next free card
   queue-free              List the open cards a lane may
                           take
   queue-query             Read the merge train from the
@@ -161,6 +162,7 @@ Lane and leader
                           leave
   lane-safe-to-reset      Check that a lane's session is
                           safe to clear
+  close-check             Check whether an Issue may close
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   usage-limit             Report how close the usage limits
