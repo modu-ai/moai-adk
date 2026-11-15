@@ -416,14 +416,34 @@ pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static st
         return Some("the value is not a one-line string within the size limit");
     }
     let upper = name.to_ascii_uppercase();
-    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s))
-        || crate::agents_local_merge::secret_kind(text).is_some()
-        || (text.contains("://") && text.contains('@'))
-    {
+    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s)) || credential_like(text) {
         return Some("the name or the value looks like a credential");
     }
     None
 }
+
+/// Whether a string looks like it holds a credential: a known token shape or a URL with
+/// `user:password@host`. The same rule for every settings value a file may get (audit 6888156222).
+pub(crate) fn credential_like(text: &str) -> bool {
+    crate::agents_local_merge::secret_kind(text).is_some()
+        || (text.contains("://") && text.contains('@'))
+}
+
+/// Whether any string inside `value` (a leaf or an object key) looks like a credential.
+pub(crate) fn holds_credential(value: &Value) -> bool {
+    match value {
+        Value::String(s) => credential_like(s),
+        Value::Array(items) => items.iter().any(holds_credential),
+        Value::Object(map) => map
+            .iter()
+            .any(|(k, v)| credential_like(k) || holds_credential(v)),
+        _ => false,
+    }
+}
+
+/// The settings keys, other than `env` (which has its own per-entry rule), whose value must not
+/// look like a credential: they go to a file that is usually committed.
+const CREDENTIAL_FREE_KEYS: [&str; 4] = ["permissions", "model", "statusLine", "outputStyle"];
 
 /// Validates a desired `env` value: an object of at most [`ENV_ENTRIES_MAX`] plain entries.
 fn check_env(value: &Value) -> Result<()> {
@@ -647,6 +667,13 @@ pub fn plan_settings(
         baseline.keys().chain(desired.keys()).map(String::as_str),
         MANAGED_SETTINGS,
     )?;
+    for key in CREDENTIAL_FREE_KEYS {
+        if desired.get(key).is_some_and(holds_credential) {
+            return Err(format!(
+                "{key} refused: a value looks like a credential; nothing is written"
+            ));
+        }
+    }
     if let Some(p) = desired.get("permissions") {
         check_permissions(p)?;
     }

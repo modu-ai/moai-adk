@@ -1207,6 +1207,73 @@ fn the_earlier_values_are_offered_and_merged_back_without_the_rest() {
     );
 }
 
+/// Audit 6888156222 B1: a credential-shaped value outside `env` blocks its key. The key is named,
+/// the value is neither printed in the plan nor written to the committed file, and a clean
+/// sibling key still merges. Each key is tried alone with the credential and once clean.
+#[test]
+fn a_credential_outside_env_blocks_its_key_and_is_never_shown_or_written() {
+    let secret = credential();
+    let cases: [(&str, Value, Value); 4] = [
+        (
+            "permissions",
+            json!({"allow": ["Bash(git status)", format!("Bash(curl -H 'Authorization: Bearer {secret}':*)")]}),
+            json!({"allow": ["Bash(git status)", "Bash(curl -H 'Accept: json':*)"]}),
+        ),
+        (
+            "statusLine",
+            json!({"type": "command", "command": format!("my-status --token {secret}")}),
+            json!({"type": "command", "command": "my-status --compact"}),
+        ),
+        ("model", json!(format!("opus-{secret}")), json!("opus")),
+        (
+            "outputStyle",
+            json!(format!("Style-{secret}")),
+            json!("Explanatory"),
+        ),
+    ];
+    for (key, bad, clean) in cases {
+        // The credential: the key is blocked, the clean sibling (`env`) still merges.
+        let fx = Fx::new();
+        fx.go_project_with_moved_settings(&json!({ key: bad, "env": {"EDITOR": "vim"} }));
+        fx.with_profile(false);
+        fx.apply_ready();
+        let plan = fx.plan();
+        let merge = step(&plan, "claude-settings-merge");
+        assert_eq!(merge["state"], "needs_decision", "{key}: {merge}");
+        assert_eq!(candidate(merge, key)["state"], "blocked", "{key}: {merge}");
+        assert_eq!(candidate(merge, "env")["state"], "mergeable", "{key}");
+        // The printed command carries no value of the blocked key (for `statusLine` it still
+        // carries MoAI's own, which the install step wrote).
+        let stdin = &merge["apply"]["stdin"];
+        assert!(!stdin.to_string().contains(&secret), "{key}: {merge}");
+        if key != "statusLine" {
+            assert!(stdin.get(key).is_none(), "{key}: {merge}");
+        }
+        assert!(
+            !plan.to_string().contains(&secret),
+            "{key}: the plan prints it"
+        );
+        assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{key}");
+        let written = fx.settings_json();
+        assert!(!written.to_string().contains(&secret), "{key}: written");
+        assert_eq!(written["env"], json!({"EDITOR": "vim"}), "{key}");
+
+        // The same key without a credential merges.
+        let fx = Fx::new();
+        fx.go_project_with_moved_settings(&json!({ key: clean.clone() }));
+        fx.with_profile(false);
+        fx.apply_ready();
+        let plan = fx.plan();
+        let merge = step(&plan, "claude-settings-merge");
+        assert_eq!(
+            candidate(merge, key)["state"],
+            "mergeable",
+            "{key}: {merge}"
+        );
+        assert_eq!(merge["apply"]["stdin"][key], clean, "{key}: {merge}");
+    }
+}
+
 /// R8-5: what the Go generation set up itself is not the user's, so nothing is offered.
 #[test]
 fn only_go_made_values_leave_nothing_to_merge() {

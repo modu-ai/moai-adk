@@ -206,6 +206,56 @@ fn env_and_model_are_settable_within_their_limits() {
     assert!(refused(&json!({"env": {"URL": "https://u:p@host/x"}})).contains("URL"));
 }
 
+/// Audit 6888156222 B1: the writer itself refuses a credential-shaped value in `permissions`,
+/// `model`, `statusLine` and `outputStyle`, names the key, and never echoes the value; the same
+/// keys with clean values plan fine. A merge cannot get a credential into the file this way.
+#[test]
+fn a_credential_in_any_settings_key_is_refused_and_not_echoed() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let token = format!("{}{}", "ghp_", "a".repeat(30));
+    let cases = [
+        (
+            "permissions",
+            json!({"allow": [format!("Bash(curl -H 'Authorization: Bearer {token}':*)")]}),
+            json!({"allow": ["Bash(git status)"]}),
+        ),
+        (
+            "permissions",
+            json!({"deny": ["Read(https://user:pass@host/x)"]}),
+            json!({"deny": ["Read(./.env)"]}),
+        ),
+        ("model", json!(format!("opus-{token}")), json!("opus")),
+        (
+            "statusLine",
+            json!({"type": "command", "command": format!("my-status --token {token}")}),
+            json!({"type": "command", "command": "my-status"}),
+        ),
+        (
+            "outputStyle",
+            json!(format!("Style-{token}")),
+            json!("Explanatory"),
+        ),
+    ];
+    for (key, bad, clean) in cases {
+        let (code, v) = run(
+            &["claude-settings-plan", p.to_str().unwrap()],
+            home.path(),
+            &json!({ key: bad }),
+        );
+        assert_eq!(code, Some(1), "{key}: {v}");
+        let msg = v["error"]["message"].as_str().unwrap();
+        assert!(msg.contains(key) && msg.contains("credential"), "{msg}");
+        assert!(!v.to_string().contains(&token), "{key}: echoed");
+        assert!(!p.join(".claude").exists(), "{key}: nothing written");
+        assert_eq!(
+            plan(p, home.path(), &json!({ key: clean }))["action"],
+            json!("create"),
+            "{key}"
+        );
+    }
+}
+
 /// Home writes are blocked: a project that is HOME, or whose `.claude` is
 /// CLAUDE_CONFIG_DIR, is refused at plan time, so no digest for it exists.
 #[test]

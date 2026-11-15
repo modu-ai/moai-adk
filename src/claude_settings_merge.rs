@@ -26,6 +26,11 @@ const STYLE_CHARS_MAX: usize = 128;
 const GO_HOOK_DIR: &str = ".claude/hooks/moai/";
 const GO_STATE_DIR: &str = ".moai/";
 
+/// Why a key whose value looks like a credential is not carried. Its value is not shown anywhere:
+/// it goes to a file that is usually committed (audit 6888156222 B1).
+const CREDENTIAL_BLOCK: &str =
+    "a value in it looks like a credential; the key stays in the backup and its value is not shown";
+
 /// The keys a merge may carry, in the order they are shown.
 pub const MERGEABLE: [&str; 5] = ["permissions", "env", "model", "statusLine", "outputStyle"];
 
@@ -126,6 +131,9 @@ fn permissions_row(v: &Value) -> Row {
         );
     }
     let carry = Value::Object(carry);
+    if claude::holds_credential(&carry) {
+        return Row::other("permissions", "blocked", CREDENTIAL_BLOCK, summary);
+    }
     match claude::check_permissions(&carry) {
         Ok(()) => Row::mergeable(
             "permissions",
@@ -189,6 +197,9 @@ fn shown(name: &str) -> String {
 }
 
 fn model_row(v: &Value) -> Row {
+    if claude::holds_credential(v) {
+        return Row::other("model", "blocked", CREDENTIAL_BLOCK, json!({}));
+    }
     match v.as_str() {
         Some(s) if one_line(s, claude::MODEL_CHARS_MAX) => Row::mergeable(
             "model",
@@ -206,6 +217,9 @@ fn model_row(v: &Value) -> Row {
 }
 
 fn status_line_row(v: &Value) -> Row {
+    if claude::holds_credential(v) {
+        return Row::other("statusLine", "blocked", CREDENTIAL_BLOCK, json!({}));
+    }
     let command = v["command"].as_str().unwrap_or("");
     if goes_back_to_go(command) {
         return Row::other(
@@ -236,6 +250,9 @@ fn status_line_row(v: &Value) -> Row {
 }
 
 fn output_style_row(v: &Value) -> Row {
+    if claude::holds_credential(v) {
+        return Row::other("outputStyle", "blocked", CREDENTIAL_BLOCK, json!({}));
+    }
     let Some(name) = v.as_str().filter(|s| one_line(s, STYLE_CHARS_MAX)) else {
         return Row::other(
             "outputStyle",
@@ -426,6 +443,29 @@ mod tests {
         let shown = env.summary.to_string();
         assert!(shown.contains("MY_TOKEN") && shown.contains("OTHER"));
         assert!(!shown.contains(&secret));
+    }
+
+    #[test]
+    fn a_credential_blocks_its_key_whatever_the_key_is() {
+        let secret = format!("{}{}", "ghp_", "a".repeat(30));
+        let r = rows(json!({
+            "permissions": {"allow": ["Bash(git status)", format!("Bash(curl {secret})")]},
+            "model": format!("m-{secret}"),
+            "statusLine": {"type": "command", "command": format!("s --t {secret}")},
+            "outputStyle": format!("moai-{secret}"),
+            "env": {"EDITOR": "vim"},
+        }));
+        for key in ["permissions", "model", "statusLine", "outputStyle"] {
+            let row = r.iter().find(|r| r.key == key).unwrap();
+            assert_eq!(row.state, "blocked", "{key}");
+            assert!(row.carry.is_none(), "{key}");
+            let shown = format!("{} {}", row.reason, row.summary);
+            assert!(!shown.contains(&secret), "{key}: {shown}");
+        }
+        assert_eq!(state(&r, "env"), "mergeable");
+        // A URL with a password counts too.
+        let r = rows(json!({"model": "https://u:p@host/m"}));
+        assert_eq!(state(&r, "model"), "blocked");
     }
 
     #[test]
