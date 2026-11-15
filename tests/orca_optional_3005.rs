@@ -242,6 +242,11 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         rows, route_names,
         "the table and routes.json list different workflows"
     );
+    // The list itself, not the table: a cell elsewhere must not satisfy these.
+    let list = missing
+        .lines()
+        .find(|l| l.starts_with("Unsupported today"))
+        .expect("the section has an `Unsupported today` paragraph");
     for cell in [
         "the OMP spelling",
         "an OMP lane's wake",
@@ -249,6 +254,6 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         "the settings folder of an Orca profile",
         "Issue #2936",
     ] {
-        assert!(missing.contains(cell), "the unsupported list lost `{cell}`");
+        assert!(list.contains(cell), "the unsupported list lost `{cell}`");
     }
 }
