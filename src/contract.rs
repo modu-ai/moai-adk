@@ -389,6 +389,9 @@ mod tests {
             ("encode failed", Internal),
             ("permission reference required", PermissionReferenceMissing),
             ("stale or altered plan; re-preview required", StalePlan),
+            // go-state-apply and go-state-revert (S-DIGEST, F17 #2936): the whole messages.
+            (crate::go_state::STALE_PLAN, StalePlan),
+            (crate::go_state::STALE_REVERT_PLAN, StalePlan),
             ("target changed since plan", StalePlan),
             ("target changed since plan; re-preview required", StalePlan),
             ("target changed during apply; temporary file discarded", StalePlan),

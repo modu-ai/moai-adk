@@ -141,6 +141,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("versions", Writes, false, Class::Rust, RustName, NO, "update.rs:901, bin_names.rs:95"),
     row("worktrees", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (라): `worktrees/<project_id>/<issue>-<key>/` (worktree_move.rs:175, home_workdir.rs); Go worktreeroot.go:70 shares the folder (#2811 D8: never moved or retired)"),
     row("moai-cli.json", Writes, false, Class::Rust, RustName, NO, "state_root.rs:35 marker"),
+    row("moai.json", Reads, false, Class::Rust, RustName, NO, "state_root.rs NEW_MARKER: the marker's new name (#2871, decision 6886824285 item 2); readers accept it beside moai-cli.json, no writer writes it yet"),
     row("home-state-receipt.json", Writes, false, Class::Rust, RustName, NO, "home_state.rs:677"),
     // Go names (survey §1, PLAN v2 table A).
     row("settings.json", RustUse::None, true, ConfigGuide, GoRetires, MERGE, "Go paths.go:130 (merge: user keys the user picks, Z5)"),
@@ -275,6 +276,7 @@ mod tests {
         "versions",
         "worktrees",
         "moai-cli.json",
+        "moai.json",
         "home-state-receipt.json",
         ".env.glm",
     ];
@@ -333,10 +335,13 @@ mod tests {
             .chain(RUST_TOP_NAMES.iter().copied())
         {
             let e = lookup(name).unwrap_or_else(|| panic!("{name} is not in HOME_TABLE"));
-            if name != ".env.glm" {
+            // The two read-only names: the legacy key file and the marker's new name.
+            if name != ".env.glm" && name != "moai.json" {
                 assert_eq!(e.rust, RustUse::Writes, "{name}");
             }
         }
+        assert_eq!(lookup("moai.json").unwrap().rust, RustUse::Reads);
+        assert_eq!(lookup("MOAI.JSON").unwrap().rust, RustUse::Reads);
         assert!(lookup("not-a-moai-name").is_none());
     }
 
@@ -500,6 +505,7 @@ mod tests {
             "vault",
             "versions",
             "moai-cli.json",
+            "moai.json",
         ] {
             assert_eq!(lookup(name).unwrap().class, Class::Rust, "{name}");
         }
