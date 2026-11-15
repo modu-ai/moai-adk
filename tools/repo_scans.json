@@ -777,6 +777,33 @@
       "rejects": "core-rules.md over 4096 bytes, unnumbered or naming a host-only tool; a base agent whose reads do not start with internal/core-rules; a route table without core_rules (#2876)"
     },
     {
+      "id": "orca-stays-optional",
+      "tests": [
+        "tests/orca_optional_3005.rs (all 5)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test orca_optional_3005"
+      ],
+      "rules": [
+        "tests/orca_optional_3005.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "a command in src/ that starts orca; the word orca in a src file, skill file or agent file outside the known set; an Orca command in a mode workflow without its rule for no Orca; an Orca adapter table without a row and a status word for every route (#3005 AC-7, AC-8)"
+    },
+    {
       "id": "test-identity-emails-listed",
       "tests": [
         "tests/test_identity_list_2878.rs (all 3)"
