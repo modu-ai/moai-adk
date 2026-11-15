@@ -6,8 +6,8 @@ mod common;
 
 use common::{exchange, json_response};
 use moai_cli::forge::connector::{
-    Call, ConnectorError, FakeConnector, GithubConnector, HostComment, HostConnector, HostIssue,
-    HostKind, PrPhase, PrState, ProjectRef, SummaryOutcome, SummaryTarget, Verdicts,
+    check_marker, Call, ConnectorError, FakeConnector, GithubConnector, HostComment, HostConnector,
+    HostIssue, HostKind, PrPhase, PrState, ProjectRef, SummaryOutcome, SummaryTarget, Verdicts,
 };
 use moai_cli::forge::policy::Clock;
 use moai_cli::forge::transport::{Exchange, HttpResponse, RecordedTransport};
@@ -338,12 +338,22 @@ fn a_bad_marker_or_a_refused_post_is_an_error_and_never_a_posted_summary() {
         project: project(),
         number: 42,
     };
-    for bad in [
+    let too_long = marker_of_len(201);
+    let mut bad_markers: Vec<&str> = vec![
         "",
         "no marker",
         "<!-- other -->",
+        " <!-- moai-x -->",
+        "<!-- moai-x",
+        "<!-- moai-x -->\n",
         "<!-- moai-x -->\nsecond line",
-    ] {
+        "<!-- moai-a\nb -->",
+        "<!-- moai-a\tb -->",
+        "<!-- moai-a\rb -->",
+        "<!-- moai-x --> text <!-- moai-y -->",
+    ];
+    bad_markers.push(&too_long);
+    for bad in bad_markers {
         let (outcome, transport) = with_connector(vec![], Config::default(), |c| {
             c.post_summary(&target, "summary", bad)
         });
@@ -383,6 +393,53 @@ fn a_bad_marker_or_a_refused_post_is_an_error_and_never_a_posted_summary() {
         matches!(outcome, Err(ConnectorError::Host(_))),
         "{outcome:?}"
     );
+}
+
+/// A marker of `len` bytes: `<!-- moai-` (10), filler, ` -->` (4).
+fn marker_of_len(len: usize) -> String {
+    format!("<!-- moai-{} -->", "x".repeat(len - 14))
+}
+
+/// The marker rules one at a time, each with a case that only that rule rejects.
+#[test]
+fn each_marker_rule_rejects_what_only_it_catches() {
+    // Length: 200 bytes pass, 201 do not (the numbers are written out, not read from the code).
+    assert_eq!(marker_of_len(200).len(), 200);
+    assert!(check_marker(&marker_of_len(200)).is_ok());
+    assert_eq!(marker_of_len(201).len(), 201);
+    assert!(matches!(
+        check_marker(&marker_of_len(201)),
+        Err(ConnectorError::Invalid(_))
+    ));
+    // The shortest marker passes.
+    assert!(check_marker("<!-- moai-a -->").is_ok());
+    // Only the end rule: right start, no control character, short, no inner `-->`.
+    assert!(matches!(
+        check_marker("<!-- moai-x"),
+        Err(ConnectorError::Invalid(_))
+    ));
+    // Only the control rule: it ends ` -->`, so a missing end check cannot be what rejects it.
+    for with_control in [
+        "<!-- moai-a\nb -->",
+        "<!-- moai-a\tb -->",
+        "<!-- moai-a\rb -->",
+        "<!-- moai-a\u{7}b -->",
+    ] {
+        assert!(
+            matches!(check_marker(with_control), Err(ConnectorError::Invalid(_))),
+            "{with_control:?}"
+        );
+    }
+    // Only the inner rule: a comment closed early.
+    assert!(matches!(
+        check_marker("<!-- moai-x --> text <!-- moai-y -->"),
+        Err(ConnectorError::Invalid(_))
+    ));
+    // Only the start rule.
+    assert!(matches!(
+        check_marker("<!-- other-x -->"),
+        Err(ConnectorError::Invalid(_))
+    ));
 }
 
 #[test]
