@@ -2367,7 +2367,7 @@ pub fn run_with_store<T: Transport, C: Clock>(
             .get_or_insert_with(|| crate::forge::policy::format_utc(clock.now()));
         let mut v = match store {
             Some(dir) => {
-                crate::lane_proposal::decide_and_record(dir, target.lane, &mut snap, clock.now())
+                crate::lane_proposal::decide_and_record(dir, target.lane, &mut snap, || clock.now())
             }
             None => decide(target.lane, &snap),
         };

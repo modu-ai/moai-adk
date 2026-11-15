@@ -135,11 +135,19 @@ fn write_record(registry: &Path, r: &Record) -> Result<(), &'static str> {
 }
 
 /// Decides for `lane` with the offers other live lanes hold, then keeps the offer made now.
-/// `registry` is the session registry folder (it must exist); `now` is Unix seconds. The answer
+/// `registry` is the session registry folder (it must exist); `now` reads the clock in Unix
+/// seconds and is called once, **after** the registry lock is held: a clock read before the
+/// wait could be older than the `proposed_at` of a lane that took the lock first, and that
+/// lane's live offer would then look too long to be honoured (#3055 audit B1). The answer
 /// is [`decide`]'s plus `proposal: {status, ...}`: `recorded`, `kept` (same target, first lease
 /// kept), `none` (nothing offered, an older offer removed), `caller_not_registered` or
 /// `unavailable` with a reason.
-pub fn decide_and_record(registry: &Path, lane: &str, snap: &mut Snapshot, now: i64) -> Value {
+pub fn decide_and_record(
+    registry: &Path,
+    lane: &str,
+    snap: &mut Snapshot,
+    now: impl FnOnce() -> i64,
+) -> Value {
     let unavailable = |snap: &Snapshot, why: &str| {
         let mut v = decide(lane, snap);
         v["proposal"] = json!({"status": "unavailable", "reason": why});
@@ -152,6 +160,7 @@ pub fn decide_and_record(registry: &Path, lane: &str, snap: &mut Snapshot, now: 
         Ok(l) => l,
         Err(_) => return unavailable(snap, "session registry unavailable"),
     };
+    let now = now();
     let records = match read_all(registry) {
         Ok(r) => r,
         Err(why) => return unavailable(snap, why),
@@ -265,13 +274,55 @@ mod tests {
         )
     }
 
+    /// #3055 audit B1: a lane that read the clock before it waited for the lock could hold a
+    /// time older than the `proposed_at` of the lane that got the lock first, and then drop that
+    /// lane's live offer as too long. The clock is read once, with the lock held.
+    #[test]
+    fn the_clock_is_read_once_and_only_while_the_registry_lock_is_held() {
+        let dir = registry();
+        register(dir.path(), "agent-1", NOW + 3000);
+        let reads = std::cell::Cell::new(0);
+        let v = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || {
+            reads.set(reads.get() + 1);
+            let other = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(dir.path().join("registry.lock"))
+                .unwrap();
+            assert!(
+                matches!(other.try_lock(), Err(std::fs::TryLockError::WouldBlock)),
+                "the lock must be held when the clock is read"
+            );
+            NOW
+        });
+        assert_eq!(reads.get(), 1);
+        assert_eq!(v["proposal"]["status"], "recorded", "{v}");
+    }
+
+    #[test]
+    fn the_clock_is_not_read_when_there_is_no_lock_to_take() {
+        let missing = tempfile::tempdir().unwrap().path().join("gone");
+        let reads = std::cell::Cell::new(0);
+        let v = decide_and_record(&missing, "agent-1", &mut two_prs(), || {
+            reads.set(reads.get() + 1);
+            NOW
+        });
+        assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
+        let v = decide_and_record(&missing, "bad name", &mut two_prs(), || {
+            reads.set(reads.get() + 1);
+            NOW
+        });
+        assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
+        assert_eq!(reads.get(), 0);
+    }
+
     #[test]
     fn a_second_live_lane_is_offered_the_next_target() {
         let dir = registry();
         register(dir.path(), "agent-1", NOW + 3000);
         register(dir.path(), "agent-2", NOW + 3000);
-        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW);
-        let b = decide_and_record(dir.path(), "agent-2", &mut two_prs(), NOW + 1);
+        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW);
+        let b = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || NOW + 1);
         assert_eq!(target(&a), ("reserve_audit".into(), 40), "{a}");
         assert_eq!(target(&b), ("reserve_audit".into(), 41), "{b}");
         assert_eq!(a["proposal"]["status"], "recorded");
@@ -287,17 +338,17 @@ mod tests {
         let dir = registry();
         register(dir.path(), "agent-1", NOW + 3000);
         register(dir.path(), "agent-2", NOW + 3000);
-        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW);
+        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW);
         let lease = a["proposal"]["lease_until"].as_i64().unwrap();
         assert_eq!(lease, NOW + PROPOSAL_LEASE_SECS);
         // One second before the lease ends the target is still taken; at the lease it is free.
-        let before = decide_and_record(dir.path(), "agent-2", &mut two_prs(), lease - 1);
+        let before = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || lease - 1);
         assert_eq!(target(&before).1, 41, "{before}");
         // The record of agent-2 is now the live one for 41; remove it to look at 40 alone.
         fs::remove_file(folder(dir.path()).join("agent-2.json")).unwrap();
-        let at = decide_and_record(dir.path(), "agent-2", &mut two_prs(), lease);
+        let at = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || lease);
         assert_eq!(target(&at).1, 40, "{at}");
-        let after = decide_and_record(dir.path(), "agent-2", &mut two_prs(), lease + 1);
+        let after = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || lease + 1);
         assert_eq!(target(&after).1, 40, "{after}");
     }
 
@@ -306,22 +357,22 @@ mod tests {
         let dir = registry();
         register(dir.path(), "agent-2", NOW + 3000);
         // agent-1 was never registered: its offer is kept but not honoured.
-        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW);
+        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(a["proposal"]["status"], "caller_not_registered", "{a}");
-        let b = decide_and_record(dir.path(), "agent-2", &mut two_prs(), NOW + 1);
+        let b = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || NOW + 1);
         assert_eq!(target(&b).1, 40, "{b}");
         // An entry that ends exactly at `now` is over; one second later than that is live.
         fs::remove_file(folder(dir.path()).join("agent-2.json")).unwrap();
         register(dir.path(), "agent-3", NOW + 5);
-        let c = decide_and_record(dir.path(), "agent-3", &mut two_prs(), NOW);
+        let c = decide_and_record(dir.path(), "agent-3", &mut two_prs(), || NOW);
         assert_eq!(c["proposal"]["status"], "recorded", "{c}");
         // At NOW + 5 agent-3's entry ends exactly now: its offer of 40 blocks nobody.
-        let d = decide_and_record(dir.path(), "agent-2", &mut two_prs(), NOW + 5);
+        let d = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || NOW + 5);
         assert_eq!(target(&d).1, 40, "{d}");
         // Had the entry run one second longer, agent-3 would still be live and hold 40.
         fs::remove_file(folder(dir.path()).join("agent-2.json")).unwrap();
         register(dir.path(), "agent-3", NOW + 6);
-        let e = decide_and_record(dir.path(), "agent-2", &mut two_prs(), NOW + 5);
+        let e = decide_and_record(dir.path(), "agent-2", &mut two_prs(), || NOW + 5);
         assert_eq!(
             target(&e).1,
             41,
@@ -333,13 +384,13 @@ mod tests {
     fn the_same_lane_asking_again_keeps_its_first_lease() {
         let dir = registry();
         register(dir.path(), "agent-1", NOW + 3000);
-        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW);
-        let b = decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW + 100);
+        let a = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW);
+        let b = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW + 100);
         assert_eq!(target(&b).1, 40, "{b}");
         assert_eq!(b["proposal"]["status"], "kept");
         assert_eq!(b["proposal"]["lease_until"], a["proposal"]["lease_until"]);
         // After the lease the same lane gets it again with a fresh lease.
-        let c = decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW + 700);
+        let c = decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW + 700);
         assert_eq!(c["proposal"]["status"], "recorded", "{c}");
         assert_eq!(
             c["proposal"]["lease_until"],
@@ -352,11 +403,11 @@ mod tests {
         let dir = registry();
         register(dir.path(), "agent-1", NOW + 3000);
         register(dir.path(), "agent-2", NOW + 3000);
-        decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW);
+        decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW);
         let mut moved: Snapshot = serde_json::from_value(json!({"prs": [
             {"number": 40, "head": head('c'), "author_lane": "agent-28", "comments": []}]}))
         .unwrap();
-        let b = decide_and_record(dir.path(), "agent-2", &mut moved, NOW + 1);
+        let b = decide_and_record(dir.path(), "agent-2", &mut moved, || NOW + 1);
         assert_eq!(target(&b).1, 40, "{b}");
     }
 
@@ -364,10 +415,10 @@ mod tests {
     fn an_offer_of_a_lane_that_moved_on_is_removed() {
         let dir = registry();
         register(dir.path(), "agent-1", NOW + 3000);
-        decide_and_record(dir.path(), "agent-1", &mut two_prs(), NOW);
+        decide_and_record(dir.path(), "agent-1", &mut two_prs(), || NOW);
         assert!(folder(dir.path()).join("agent-1.json").exists());
         let mut empty = Snapshot::default();
-        let v = decide_and_record(dir.path(), "agent-1", &mut empty, NOW + 1);
+        let v = decide_and_record(dir.path(), "agent-1", &mut empty, || NOW + 1);
         assert_eq!(v["proposal"]["status"], "none", "{v}");
         assert!(!folder(dir.path()).join("agent-1.json").exists());
     }
@@ -383,8 +434,8 @@ mod tests {
                 {"number": 8, "title": "b", "labels": [], "comments": []}]}))
             .unwrap()
         };
-        let a = decide_and_record(dir.path(), "agent-1", &mut snap(), NOW);
-        let b = decide_and_record(dir.path(), "agent-2", &mut snap(), NOW + 1);
+        let a = decide_and_record(dir.path(), "agent-1", &mut snap(), || NOW);
+        let b = decide_and_record(dir.path(), "agent-2", &mut snap(), || NOW + 1);
         assert_eq!(target(&a), ("pick_issue".into(), 7), "{a}");
         assert_eq!(target(&b), ("pick_issue".into(), 8), "{b}");
         assert_eq!(b["skipped"][0]["reason"], "proposed_to_other_lane", "{b}");
@@ -398,12 +449,12 @@ mod tests {
         let mut issue: Snapshot = serde_json::from_value(json!({"open_issues": [
             {"number": 40, "title": "a", "labels": [], "comments": []}]}))
         .unwrap();
-        let a = decide_and_record(dir.path(), "agent-1", &mut issue, NOW);
+        let a = decide_and_record(dir.path(), "agent-1", &mut issue, || NOW);
         assert_eq!(target(&a), ("pick_issue".into(), 40), "{a}");
         let mut pr: Snapshot = serde_json::from_value(json!({"prs": [
             {"number": 40, "head": head('a'), "author_lane": "agent-28", "comments": []}]}))
         .unwrap();
-        let b = decide_and_record(dir.path(), "agent-2", &mut pr, NOW + 1);
+        let b = decide_and_record(dir.path(), "agent-2", &mut pr, || NOW + 1);
         assert_eq!(target(&b), ("reserve_audit".into(), 40), "{b}");
     }
 
@@ -413,7 +464,7 @@ mod tests {
         let inner = dir.path().join("reg");
         fs::create_dir_all(&inner).unwrap();
         for lane in ["../escape", "a/b", "", "Agent One"] {
-            let v = decide_and_record(&inner, lane, &mut two_prs(), NOW);
+            let v = decide_and_record(&inner, lane, &mut two_prs(), || NOW);
             assert_eq!(v["proposal"]["status"], "unavailable", "{lane:?}: {v}");
             assert_eq!(target(&v).1, 40, "the decision is made anyway: {v}");
         }
@@ -429,7 +480,7 @@ mod tests {
         // No registry folder at all.
         let dir = registry();
         let missing = dir.path().join("nope");
-        let v = decide_and_record(&missing, "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(&missing, "agent-1", &mut two_prs(), || NOW);
         assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
         assert_eq!(target(&v).1, 40);
         // A malformed, a symlinked and an oversized proposal file; the reason names none of
@@ -439,7 +490,7 @@ mod tests {
         let proposals = folder(reg.path());
         fs::create_dir_all(&proposals).unwrap();
         fs::write(proposals.join("agent-2.json"), "{not json").unwrap();
-        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
         assert!(!v["proposal"]["reason"]
             .as_str()
@@ -452,7 +503,7 @@ mod tests {
             let elsewhere = reg.path().join("elsewhere.json");
             fs::write(&elsewhere, "{}").unwrap();
             std::os::unix::fs::symlink(&elsewhere, proposals.join("agent-2.json")).unwrap();
-            let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+            let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
             assert_eq!(v["proposal"]["status"], "unavailable", "link: {v}");
             fs::remove_file(proposals.join("agent-2.json")).unwrap();
         }
@@ -462,7 +513,7 @@ mod tests {
             (4097, "proposal file unusable"),
         ] {
             fs::write(proposals.join("agent-2.json"), "x".repeat(len)).unwrap();
-            let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+            let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
             assert_eq!(v["proposal"]["reason"], reason, "{len}: {v}");
         }
     }
@@ -478,7 +529,7 @@ mod tests {
             let barrier = barrier.clone();
             std::thread::spawn(move || {
                 barrier.wait();
-                let v = decide_and_record(&reg, lane, &mut two_prs(), NOW);
+                let v = decide_and_record(&reg, lane, &mut two_prs(), || NOW);
                 target(&v).1
             })
         };
@@ -503,7 +554,7 @@ mod tests {
             "lease_until": NOW + 100});
         fs::write(elsewhere.path().join("agent-2.json"), offer.to_string()).unwrap();
         std::os::unix::fs::symlink(elsewhere.path(), folder(reg.path())).unwrap();
-        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
         assert_eq!(v["proposal"]["reason"], "proposal folder is a link", "{v}");
         assert_eq!(
@@ -533,11 +584,11 @@ mod tests {
             .to_string()
         };
         fs::write(proposals.join("agent-2.json"), record(2)).unwrap();
-        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(v["proposal"]["reason"], "proposal file malformed", "{v}");
         // The same record with version 1 is read and honoured: agent-1 is offered 41.
         fs::write(proposals.join("agent-2.json"), record(1)).unwrap();
-        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(target(&v).1, 41, "{v}");
     }
 
@@ -559,16 +610,16 @@ mod tests {
         };
         // Ending exactly one lease from now still blocks; one second more does not.
         put(NOW + PROPOSAL_LEASE_SECS);
-        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(target(&v).1, 41, "{v}");
         fs::remove_file(proposals.join("agent-1.json")).unwrap();
         put(NOW + PROPOSAL_LEASE_SECS + 1);
-        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), || NOW);
         assert_eq!(target(&v).1, 40, "{v}");
         // The lane that holds such a record asks for the same target (agent-1's offer of it is
         // gone first, so the target is free): a new lease, not `kept`.
         fs::remove_file(proposals.join("agent-1.json")).unwrap();
-        let v = decide_and_record(reg.path(), "agent-2", &mut two_prs(), NOW);
+        let v = decide_and_record(reg.path(), "agent-2", &mut two_prs(), || NOW);
         assert_eq!(target(&v).1, 40, "{v}");
         assert_eq!(v["proposal"]["status"], "recorded", "{v}");
         assert_eq!(

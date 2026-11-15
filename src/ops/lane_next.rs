@@ -97,7 +97,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     dir,
                     &args.lane,
                     &mut snap,
-                    SystemClock.now(),
+                    || SystemClock.now(),
                 ),
                 _ => moai_cli::lane_next::decide(&args.lane, &snap),
             }
