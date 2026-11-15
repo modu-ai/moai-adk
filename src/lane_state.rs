@@ -35,6 +35,9 @@ pub struct OpenPr {
 /// What is known about the lane; `None` is "not read" and is never taken as "none".
 pub struct Facts<'a> {
     pub claims: Option<&'a [OpenClaim]>,
+    /// The read of the claims was cut (the search found more threads than it returned): a claim
+    /// that is not in `claims` may still be open.
+    pub claims_partial: bool,
     pub open_prs: Option<&'a [OpenPr]>,
     /// The read of the open pull requests was cut (more than one page): a claim without a
     /// pull request in it may still have one.
@@ -157,6 +160,12 @@ pub fn classify(f: &Facts) -> Value {
     if f.claims.is_none() {
         missing.push("the lane's open claims were not read".to_string());
     }
+    if f.claims.is_some() && f.claims_partial {
+        missing.push(
+            "the lane's open claims were read only in part: a claim that is not listed may be open"
+                .to_string(),
+        );
+    }
     if f.unsaved.is_none() {
         missing.push("the lane's worktrees could not be checked for unsaved work".to_string());
     }
@@ -235,6 +244,7 @@ mod tests {
     fn facts<'a>(claims: &'a [OpenClaim], prs: &'a [OpenPr]) -> Facts<'a> {
         Facts {
             claims: Some(claims),
+            claims_partial: false,
             open_prs: Some(prs),
             prs_partial: false,
             unsaved: Some(false),
@@ -392,6 +402,45 @@ mod tests {
         assert!(pr_for_claim(&c, "other", "text\nMoai-Claim: 7#70\n"));
         assert!(!pr_for_claim(&c, "other", "Moai-Claim: 7#71"));
         assert!(!pr_for_claim(&c, "other", "Moai-Claim: 8#70"));
+        // Only a line that is exactly the claim line counts: a longer id, a line that quotes it
+        // in other text and text before it do not.
+        assert!(pr_for_claim(&c, "other", "  Moai-Claim: 7#70  \n"));
+        assert!(!pr_for_claim(&c, "other", "Moai-Claim: 7#700"));
+        assert!(!pr_for_claim(
+            &c,
+            "other",
+            "see Moai-Claim: 7#70 for the claim"
+        ));
+        assert!(!pr_for_claim(&c, "other", "> Moai-Claim: 7#70"));
+        assert!(!pr_for_claim(&c, "other", "Moai-Claim: 7#70 (old)"));
+    }
+
+    #[test]
+    fn claims_read_only_in_part_are_unknown_whatever_the_listed_ones_say() {
+        // Every listed claim has a pull request, and none is listed at all: both would read as
+        // `waiting` and `idle` if the cut were ignored.
+        let claims = [claim(7, None)];
+        let prs = [pr(41, 7)];
+        let mut f = facts(&claims, &prs);
+        assert_eq!(state(&f), "waiting");
+        f.claims_partial = true;
+        let v = classify(&f);
+        assert_eq!(v["state"], "unknown");
+        assert!(v["reasons"][0]
+            .as_str()
+            .unwrap()
+            .contains("read only in part"));
+        let mut none = facts(&[], &[]);
+        assert_eq!(state(&none), "idle");
+        none.claims_partial = true;
+        assert_eq!(state(&none), "unknown");
+        // Claims that were not read at all stay `unknown` without the partial reason twice.
+        let mut unread = facts(&[], &[]);
+        unread.claims = None;
+        unread.claims_partial = true;
+        let v = classify(&unread);
+        assert_eq!(v["state"], "unknown");
+        assert_eq!(v["reasons"].as_array().unwrap().len(), 1);
     }
 
     struct Stub(Vec<Value>, std::cell::RefCell<Vec<String>>);

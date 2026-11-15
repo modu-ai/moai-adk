@@ -963,6 +963,22 @@ fn claims_that_cannot_be_read_leave_the_lane_unknown_with_the_reason() {
         texts(result(&r), "unknowns")[0].starts_with("claims read only in part:"),
         "{r}"
     );
+    // The state says the same: it never calls the lane resumable (the listed claim has a note)
+    // when a claim it could not see may be open (#3051 audit B1).
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
+    assert!(
+        texts(lane_state(&r), "reasons")
+            .iter()
+            .any(|t| t.contains("open claims were read only in part")),
+        "{r}"
+    );
+    // The search found 31 threads and showed none: no claim is listed, yet the lane is not idle.
+    let hidden = Forge {
+        search: json!({"total_count": 31, "incomplete_results": false, "items": []}),
+        ..Default::default()
+    };
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&hidden));
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
 }
 
 #[cfg(unix)]

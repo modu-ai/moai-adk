@@ -654,6 +654,7 @@ pub fn check_full(
     let open_claims: Option<Vec<OpenClaim>> = obs.claims.as_ref().map(|c| c.items.clone());
     let lane_state = crate::lane_state::classify(&crate::lane_state::Facts {
         claims: open_claims.as_deref(),
+        claims_partial: obs.claims.is_some() && claims_note.is_some(),
         open_prs: extras.open_prs.as_deref(),
         prs_partial: extras.prs_partial,
         unsaved: if unsaved_unread {
