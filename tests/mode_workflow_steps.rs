@@ -1390,26 +1390,53 @@ fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
     let section = section_of(&leader, "Dispatch through an Orca Run");
     for p in [
         "Only the leader creates Runs",
-        "`orca orchestration run-create --objective \"<round goal>\" --json`",
+        "(item 2 decides; without Orca this item is skipped)",
+        "carry a dispatch as a task of a Run, not only as typed text",
+        "Keep one Run for the supervision session, not one per round",
+        "read `orca orchestration run-current --json` first",
+        "`orca orchestration run-create --objective \"<round goal>\" --json` only when there is none or the objective changed",
+        "never clear Runs or tasks with `orca orchestration reset` without the user's confirmation",
         "`orca orchestration task-create --task-title \"<Issue #n>\" --spec-file - --json`",
+        "first read its screen under items 1 and 2 of \"Session control with Orca\"",
         "`orca orchestration worker-start --task <task_id> --terminal <handle> --worktree <selector of that lane's worktree> --json`",
         "never `--worktree current`: that is your own worktree",
+        "A started worker is the screen delivery of the pair in the `answer-requests` step",
+        "still post the Issue comment, which is the record, and do not also type the same card with `orca terminal send`",
         "`orca orchestration send --to dispatch:<dispatch_id> --type dispatch",
         "Record the task and dispatch ids beside the card in your round summary",
-        "do not retry in a loop: deliver by the Issue comment pointer",
+        "When `worker-start` fails, do not rerun it: read its `failedStage`",
+        "deliver by the Issue comment pointer of the `answer-requests` step",
         "mark the Run path `not_run` for that lane",
         "a real Run dispatch to a running lane was not executed on this machine",
         "keep the lane's own claim comment, never the Run, as the proof of ownership",
         "a retry that creates a second Run or Task is a duplicate to remove, not a retry",
+        "Detect the channel before the first send",
         "`orca: yes` or `orca: no (<reason>)`",
-        "`ORCA_TERMINAL_HANDLE` is set in your environment and `orca status --json` answers with `runtime.state` `ready`",
+        "`orca status --json` answers with `result.runtime.state` `ready`",
+        "`ORCA_TERMINAL_HANDLE` is not part of that test",
+        "It decides only whether the Run path of item 1 can be used",
+        "answers `no_active_sender_terminal` without it",
+        "`orca terminal list --json`, `orca terminal read` and `orca terminal send` with an explicit `--terminal <handle>` still work",
+        "`orca: yes (run path not_run: ORCA_TERMINAL_HANDLE missing)`, skip item 1",
+        "keep every other rule of \"Session control with Orca\", `restart` and `clear_redispatch` as they are",
         "drops `ORCA_*`",
-        "item 1 is unusable",
+        "Codex's `shell_environment_policy` must let `ORCA_*` through",
         "Do not edit the person's Codex configuration, and do not guess a `--from` handle",
+        "only then the rules for a leader without Orca apply",
     ] {
         assert!(
             section.contains(p),
             "`Dispatch through an Orca Run` must say `{p}`:\n{section}"
+        );
+    }
+    for gone in [
+        "if either is missing there is no Orca for this round",
+        "item 1 is unusable",
+        "report the session-control step `not_run`",
+    ] {
+        assert!(
+            !section.contains(gone),
+            "a missing `ORCA_TERMINAL_HANDLE` must not make the whole session control `not_run`: `{gone}`"
         );
     }
     let agent = workflow("mode-agent.md");
