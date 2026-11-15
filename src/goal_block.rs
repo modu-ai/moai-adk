@@ -18,6 +18,18 @@ fn invalid(reason: &str) -> String {
     format!("invalid fixture: {reason}")
 }
 
+/// The kind of a JSON value, for an error that says what was received without quoting it.
+fn kind_of(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a boolean",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "a list",
+        Value::Object(_) => "an object",
+    }
+}
+
 /// A positive JSON integer (a boolean or a float is refused, as in the Python tool).
 fn number(item: &Map<String, Value>) -> Option<u64> {
     item.get("number")?.as_u64().filter(|n| *n > 0)
@@ -64,7 +76,10 @@ fn card_fields(item: &Map<String, Value>) -> Result<Fields<'_>, String> {
     let text = |key: &str| match item.get(key) {
         None => Ok(""),
         Some(Value::String(s)) => Ok(s.as_str()),
-        Some(_) => Err(invalid(&format!("issues {key} must be a string"))),
+        Some(v) => Err(invalid(&format!(
+            "issues {key} must be a string, got {}",
+            kind_of(v)
+        ))),
     };
     let labels = match item.get("labels") {
         None => Vec::new(),
@@ -73,13 +88,21 @@ fn card_fields(item: &Map<String, Value>) -> Result<Fields<'_>, String> {
             .map(|l| l.as_str().map(str::to_string))
             .collect::<Option<Vec<_>>>()
             .ok_or_else(|| invalid("issues labels must be a list of strings"))?,
-        Some(_) => return Err(invalid("issues labels must be a list of strings")),
+        Some(v) => {
+            return Err(invalid(&format!(
+                "issues labels must be a list of strings, got {}",
+                kind_of(v)
+            )))
+        }
     };
     let open_children = match item.get("open_children") {
         None => 0,
-        Some(v) => v
-            .as_u64()
-            .ok_or_else(|| invalid("issues open_children must be a non-negative integer"))?,
+        Some(v) => v.as_u64().ok_or_else(|| {
+            invalid(&format!(
+                "issues open_children must be a non-negative integer, got {}",
+                kind_of(v)
+            ))
+        })?,
     };
     let blocked_by = match item.get("blocked_by") {
         None => Vec::new(),
@@ -88,10 +111,11 @@ fn card_fields(item: &Map<String, Value>) -> Result<Fields<'_>, String> {
             .map(|n| n.as_u64().filter(|n| *n > 0))
             .collect::<Option<Vec<_>>>()
             .ok_or_else(|| invalid("issues blocked_by must be a list of positive integers"))?,
-        Some(_) => {
-            return Err(invalid(
-                "issues blocked_by must be a list of positive integers",
-            ))
+        Some(v) => {
+            return Err(invalid(&format!(
+                "issues blocked_by must be a list of positive integers, got {}",
+                kind_of(v)
+            )))
         }
     };
     Ok((
@@ -111,7 +135,12 @@ pub fn build(fixture: &Value) -> Result<Value, String> {
     let milestone = match fixture.get("milestone") {
         None => "",
         Some(Value::String(s)) => s.as_str(),
-        Some(_) => return Err(invalid("milestone must be a string")),
+        Some(v) => {
+            return Err(invalid(&format!(
+                "milestone must be a string (for example \"v2026.11.0\"), got {}",
+                kind_of(v)
+            )))
+        }
     };
     let issues_all = group(fixture, "issues")?;
     let prs_all = group(fixture, "prs")?;
@@ -230,4 +259,61 @@ pub fn build(fixture: &Value) -> Result<Value, String> {
         "held": held,
         "end_condition": end_condition,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn err(fixture: Value) -> String {
+        build(&fixture).unwrap_err()
+    }
+
+    /// #3015 C8: a wrong type says what a right one looks like and what kind was received,
+    /// never the received value itself.
+    #[test]
+    fn a_wrong_milestone_shows_the_expected_form_and_the_kind_received() {
+        for (value, kind) in [
+            (json!(null), "null"),
+            (json!(3), "a number"),
+            (json!(true), "a boolean"),
+            (json!(["v1"]), "a list"),
+            (json!({"title": "v1"}), "an object"),
+        ] {
+            assert_eq!(
+                err(json!({"milestone": value})),
+                format!(
+                    "invalid fixture: milestone must be a string (for example \"v2026.11.0\"), got {kind}"
+                )
+            );
+        }
+        // The received value is not echoed.
+        let text = err(json!({"milestone": {"secret": "sk-ant-never-shown"}}));
+        assert!(!text.contains("sk-ant"), "{text}");
+    }
+
+    #[test]
+    fn the_item_fields_name_the_kind_they_got() {
+        let with = |key: &str, value: Value| {
+            let mut card = json!({"number": 1, "state": "open"});
+            card[key] = value;
+            json!({"issues": [card]})
+        };
+        assert_eq!(
+            err(with("title", json!(5))),
+            "invalid fixture: issues title must be a string, got a number"
+        );
+        assert_eq!(
+            err(with("labels", json!("x"))),
+            "invalid fixture: issues labels must be a list of strings, got a string"
+        );
+        assert_eq!(
+            err(with("open_children", json!("2"))),
+            "invalid fixture: issues open_children must be a non-negative integer, got a string"
+        );
+        assert_eq!(
+            err(with("blocked_by", json!(7))),
+            "invalid fixture: issues blocked_by must be a list of positive integers, got a number"
+        );
+    }
 }
