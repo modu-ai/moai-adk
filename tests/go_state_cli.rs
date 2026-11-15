@@ -1214,6 +1214,42 @@ fn a_marker_file_the_apply_did_not_write_refuses_the_revert() {
     }
 }
 
+/// An apply that stopped after publishing the marker and before recording its digest leaves an
+/// empty `marker` in the receipt. The old-name file is then the apply's own and goes, as it did
+/// before the rename; a `moai.json` is not something the apply wrote, so it is a `conflict`
+/// (and the revert stops before any removal).
+#[test]
+fn an_unrecorded_marker_digest_removes_only_the_old_name() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, mut r) = receipt_of(&fx, &backup);
+    r["marker"] = json!("");
+    fs::write(&path, r.to_string()).unwrap();
+    let alone = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&alone, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{alone}"
+    );
+    fx.write(
+        ".moai/moai.json",
+        r#"{"schema_version":1,"generation":"moai"}"#,
+    );
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&rp, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{rp}"
+    );
+    assert_eq!(
+        item_action(&rp, ".moai/moai.json"),
+        json!("conflict"),
+        "{rp}"
+    );
+}
+
 /// #2696: the folder was renamed but the receipt write after it did not happen (no digest):
 /// the disk decides, and the revert brings it back.
 #[test]
