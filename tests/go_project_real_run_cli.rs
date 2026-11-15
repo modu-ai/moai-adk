@@ -348,7 +348,7 @@ fn after_the_move_the_install_phase_offers_the_hooks() {
     assert_eq!(out["ok"], json!(true), "{out}");
     assert_eq!(
         settings_json(&fx)["statusLine"],
-        json!({"type": "command", "command": "moai-cli statusline"})
+        json!({"type": "command", "command": "moai statusline"})
     );
 
     // 3rd preview: nothing of the Go generation is left in the file, and the hooks step still
@@ -390,7 +390,7 @@ fn after_the_move_the_install_phase_offers_the_hooks() {
     assert!(written["hooks"].is_object(), "{written}");
     assert_eq!(
         written["statusLine"],
-        json!({"type": "command", "command": "moai-cli statusline"}),
+        json!({"type": "command", "command": "moai statusline"}),
         "{written}"
     );
 
