@@ -531,10 +531,12 @@ fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
     assert!(go.join("manifest.json").is_file());
     // The new `.moai/` is this generation's: the marker is there and nothing of Go's.
     let marker: Value =
-        serde_json::from_slice(&fs::read(fx.root.join(".moai/moai-cli.json")).unwrap()).unwrap();
+        serde_json::from_slice(&fs::read(fx.root.join(".moai/moai.json")).unwrap()).unwrap();
     assert_eq!(marker["schema_version"], json!(1), "{marker}");
-    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+    assert_eq!(marker["generation"], json!("moai"), "{marker}");
     assert_eq!(marker["go_backup"], json!(".moai-backup"), "{marker}");
+    // #2871 marker rename: the apply writes the new name only.
+    assert!(!fx.root.join(".moai/moai-cli.json").exists());
     assert!(!fx.root.join(".moai/manifest.json").exists());
     assert!(!fx.root.join(".moai/config").exists());
     let receipt: Value =
@@ -543,7 +545,7 @@ fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
     assert_eq!(receipt["go_backup"], json!(".moai-backup"), "{receipt}");
     assert_eq!(
         receipt["marker"],
-        json!(sha(&fs::read(fx.root.join(".moai/moai-cli.json")).unwrap()))
+        json!(sha(&fs::read(fx.root.join(".moai/moai.json")).unwrap()))
     );
     let folder = receipt["moves"][0].clone();
     assert_eq!(
@@ -687,6 +689,7 @@ fn revert_restores_the_project_tree() {
     assert!(!fx.root.join(".moai-backup").exists());
     // This generation's `.moai/` was set aside whole, marker removed, receipt `reverted`.
     let aside = rust_aside(&fx);
+    assert!(!aside.join("moai.json").exists());
     assert!(!aside.join("moai-cli.json").exists());
     let (path, receipt) = receipt_of(&fx, &backup);
     assert!(path.starts_with(&aside), "{path:?}");
@@ -808,6 +811,7 @@ fn a_failure_midway_leaves_a_pending_receipt_the_revert_can_use() {
             (".moai-cli/project.yaml", false),
         ]
     );
+    assert!(!fx.root.join(".moai/moai.json").exists(), "no marker");
     assert!(!fx.root.join(".moai/moai-cli.json").exists(), "no marker");
     // Stopped midway: every further preview holds.
     let again = plan(&fx);
@@ -1138,34 +1142,55 @@ fn a_changed_folder_backup_refuses_the_revert() {
     assert_eq!(fx.tree(), before);
 }
 
-/// #2871 marker rename (read both, write unchanged): the revert acts on the marker files that
-/// are there. A `moai.json` that is byte-for-byte the marker the apply recorded goes, alone or
-/// beside the old name; the aside folder keeps neither.
+/// #2871 marker rename (writers flipped): the revert acts on the marker files that are there.
+/// The apply writes `moai.json`; a marker that is byte-for-byte the one the apply recorded
+/// goes under either name (an apply of an earlier build wrote `moai-cli.json`), alone or beside
+/// the other; the aside folder keeps neither.
 #[test]
 fn the_revert_removes_each_marker_file_that_is_the_applys_own() {
-    for both_names in [false, true] {
+    // The apply's own file where it is; renamed to the earlier name; and under both names.
+    for variant in ["new_only", "old_only", "both"] {
         let fx = movable_fixture();
         let before = project_tree(&fx);
         let p = plan(&fx);
         let v = apply(&fx, p["plan_digest"].as_str().unwrap());
         let backup = v["result"]["backup"].as_str().unwrap().to_string();
-        let old = fx.root.join(".moai/moai-cli.json");
         let new = fx.root.join(".moai/moai.json");
-        if both_names {
-            fs::copy(&old, &new).unwrap();
-        } else {
-            fs::rename(&old, &new).unwrap();
+        let old = fx.root.join(".moai/moai-cli.json");
+        assert!(!old.exists(), "the apply writes the new name only");
+        match variant {
+            "old_only" => fs::rename(&new, &old).unwrap(),
+            "both" => {
+                fs::copy(&new, &old).unwrap();
+            }
+            _ => {}
         }
         let rp = revert_plan(&fx, &backup);
+        let item = |path: &str| {
+            rp["result"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|i| i["path"] == path)
+                .map(|i| i["action"].clone())
+        };
         assert_eq!(
-            item_action(&rp, ".moai/moai-cli.json"),
-            json!(if both_names { "remove" } else { "skip" }),
-            "both={both_names}: {rp}"
+            item(".moai/moai.json"),
+            Some(json!(if variant == "old_only" {
+                "skip"
+            } else {
+                "remove"
+            })),
+            "{variant}: {rp}"
         );
-        assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
+        assert_eq!(
+            item(".moai/moai-cli.json"),
+            (variant != "new_only").then(|| json!("remove")),
+            "{variant}: {rp}"
+        );
         let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
-        assert_eq!(v["ok"], json!(true), "both={both_names}: {v}");
-        assert_eq!(project_tree(&fx), before, "both={both_names}");
+        assert_eq!(v["ok"], json!(true), "{variant}: {v}");
+        assert_eq!(project_tree(&fx), before, "{variant}");
         let aside = rust_aside(&fx);
         assert!(!aside.join("moai-cli.json").exists());
         assert!(!aside.join("moai.json").exists());
@@ -1178,23 +1203,23 @@ fn the_revert_removes_each_marker_file_that_is_the_applys_own() {
 /// whole revert is refused before the first write, and nothing is removed.
 #[test]
 fn a_marker_file_the_apply_did_not_write_refuses_the_revert() {
-    // Name by name: a `moai.json` of someone else, beside the apply's own old marker; and the
-    // apply's own old marker edited afterwards.
-    for (edited, other) in [("moai.json", true), ("moai-cli.json", false)] {
+    // Name by name: a `moai-cli.json` of someone else, beside the apply's own marker; and the
+    // apply's own marker edited afterwards.
+    for (edited, other) in [("moai-cli.json", true), ("moai.json", false)] {
         let fx = movable_fixture();
         let p = plan(&fx);
         let v = apply(&fx, p["plan_digest"].as_str().unwrap());
         let backup = v["result"]["backup"].as_str().unwrap().to_string();
-        let own = fs::read(fx.root.join(".moai/moai-cli.json")).unwrap();
+        let own = fs::read(fx.root.join(".moai/moai.json")).unwrap();
         if other {
             fx.write(
-                ".moai/moai.json",
-                r#"{"schema_version":1,"generation":"moai"}"#,
+                ".moai/moai-cli.json",
+                r#"{"schema_version":1,"generation":"moai-cli"}"#,
             );
         } else {
             let mut changed = own.clone();
             changed.extend_from_slice(b" ");
-            fs::write(fx.root.join(".moai/moai-cli.json"), changed).unwrap();
+            fs::write(fx.root.join(".moai/moai.json"), changed).unwrap();
         }
         let rp = revert_plan(&fx, &backup);
         assert_eq!(
@@ -1215,11 +1240,11 @@ fn a_marker_file_the_apply_did_not_write_refuses_the_revert() {
 }
 
 /// An apply that stopped after publishing the marker and before recording its digest leaves an
-/// empty `marker` in the receipt. The old-name file is then the apply's own and goes, as it did
-/// before the rename; a `moai.json` is not something the apply wrote, so it is a `conflict`
-/// (and the revert stops before any removal).
+/// empty `marker` in the receipt. The `moai.json` this build writes is then the apply's own and
+/// goes; a `moai-cli.json` beside it is not known to be the apply's, so it is a `conflict` (and
+/// the revert stops before any removal).
 #[test]
-fn an_unrecorded_marker_digest_removes_only_the_old_name() {
+fn an_unrecorded_marker_digest_removes_only_the_name_this_build_writes() {
     let fx = movable_fixture();
     let p = plan(&fx);
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
@@ -1229,22 +1254,18 @@ fn an_unrecorded_marker_digest_removes_only_the_old_name() {
     fs::write(&path, r.to_string()).unwrap();
     let alone = revert_plan(&fx, &backup);
     assert_eq!(
-        item_action(&alone, ".moai/moai-cli.json"),
+        item_action(&alone, ".moai/moai.json"),
         json!("remove"),
         "{alone}"
     );
     fx.write(
-        ".moai/moai.json",
-        r#"{"schema_version":1,"generation":"moai"}"#,
+        ".moai/moai-cli.json",
+        r#"{"schema_version":1,"generation":"moai-cli"}"#,
     );
     let rp = revert_plan(&fx, &backup);
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
     assert_eq!(
         item_action(&rp, ".moai/moai-cli.json"),
-        json!("remove"),
-        "{rp}"
-    );
-    assert_eq!(
-        item_action(&rp, ".moai/moai.json"),
         json!("conflict"),
         "{rp}"
     );
@@ -1282,8 +1303,8 @@ fn a_revert_stopped_after_the_set_aside_finishes_on_the_next_run() {
     let backup = v["result"]["backup"].as_str().unwrap().to_string();
     // What the revert does up to the set-aside: marker removed, files back, aside recorded.
     let rp = revert_plan(&fx, &backup);
-    assert_eq!(item_action(&rp, ".moai/moai-cli.json"), json!("remove"));
-    fs::remove_file(fx.root.join(".moai/moai-cli.json")).unwrap();
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"));
+    fs::remove_file(fx.root.join(".moai/moai.json")).unwrap();
     fs::rename(
         area(&fx, &backup).join("go-state/.claude/workflows/w.md"),
         fx.root.join(".claude/workflows/w.md"),
@@ -1314,11 +1335,7 @@ fn a_revert_stopped_after_the_set_aside_finishes_on_the_next_run() {
     fx.write(".moai/logs/hook.log", "written by a live hook\n");
     let rp = revert_plan(&fx, &backup);
     assert_eq!(item_action(&rp, ".moai"), json!("conflict"), "{rp}");
-    assert_eq!(
-        item_action(&rp, ".moai/moai-cli.json"),
-        json!("skip"),
-        "{rp}"
-    );
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("skip"), "{rp}");
     fs::remove_dir_all(fx.root.join(".moai")).unwrap();
     let rp = revert_plan(&fx, &backup);
     assert_eq!(item_action(&rp, ".moai"), json!("restore"), "{rp}");
@@ -2050,8 +2067,9 @@ fn an_earlier_root_project_moves_into_a_new_moai_and_back() {
     assert_eq!(r["go_backup"], Value::Null, "{r}");
     let backup = r["backup"].as_str().unwrap().to_string();
     let marker: Value =
-        serde_json::from_slice(&fs::read(fx.root.join(".moai/moai-cli.json")).unwrap()).unwrap();
-    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+        serde_json::from_slice(&fs::read(fx.root.join(".moai/moai.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai"), "{marker}");
+    assert!(!fx.root.join(".moai/moai-cli.json").exists());
     for (rel, body) in [
         (".moai/project.yaml", "schema_version: 2\n"),
         (".moai/index/a.json", "{\"a\":1}"),
@@ -2072,11 +2090,7 @@ fn an_earlier_root_project_moves_into_a_new_moai_and_back() {
     assert_eq!(moves(&again), 0, "{again}");
     // Revert.
     let rp = revert_plan(&fx, &backup);
-    assert_eq!(
-        item_action(&rp, ".moai/moai-cli.json"),
-        json!("remove"),
-        "{rp}"
-    );
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
     assert_eq!(
         item_action(&rp, ".moai-cli/index"),
         json!("restore"),
@@ -2136,6 +2150,7 @@ fn an_earlier_root_move_stopped_midway_is_interrupted_and_reverts() {
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(!fx.root.join(".moai/moai.json").exists());
     assert!(!fx.root.join(".moai/moai-cli.json").exists());
     let again = plan(&fx);
     assert_eq!(moves(&again), 0, "{again}");
@@ -2152,11 +2167,7 @@ fn an_earlier_root_move_stopped_midway_is_interrupted_and_reverts() {
         .find(|n| n != ".gitignore")
         .unwrap();
     let rp = revert_plan(&fx, &backup);
-    assert_eq!(
-        item_action(&rp, ".moai/moai-cli.json"),
-        json!("skip"),
-        "{rp}"
-    );
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("skip"), "{rp}");
     let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(project_tree(&fx), before);
