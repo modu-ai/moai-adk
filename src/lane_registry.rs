@@ -27,9 +27,11 @@ use std::path::{Path, PathBuf};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-/// Lease length when the caller gives none: longer than the 1,800-second fallback wake
-/// (decision D6), so a lane that renews at every wake never lapses between wakes.
-pub const DEFAULT_LEASE_SECS: u64 = 3_600;
+/// Lease length when the caller gives none: four hours (#3015 C3; it was one hour). No hook
+/// renews a lane's entry, so a lane that sits idle through a long CI or audit wait must not
+/// lose its name; a dead lane's name is freed by the leader (`--release --by leader`), and the
+/// fallback wake of 1,800 seconds (decision D6) renews it well inside this.
+pub const DEFAULT_LEASE_SECS: u64 = 14_400;
 /// Shortest accepted lease.
 pub const MIN_LEASE_SECS: u64 = 60;
 /// Longest accepted lease (one day).

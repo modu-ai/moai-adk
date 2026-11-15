@@ -108,7 +108,8 @@ fn a_name_is_registered_once_and_refused_to_another_instance() {
     let first = ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
     assert_eq!(first["status"], "registered");
     assert_eq!(first["previous"], "none");
-    assert_eq!(first["lease_until"], "2026-11-13T11:00:00Z");
+    // The default lease is four hours (#3015 C3).
+    assert_eq!(first["lease_until"], "2026-11-13T14:00:00Z");
     let instance = first["instance"].as_str().unwrap().to_string();
     assert_eq!(instance.len(), 32);
     let stored: Value = serde_json::from_slice(&fs::read(fx.entry("agent-8")).unwrap()).unwrap();
@@ -118,7 +119,7 @@ fn a_name_is_registered_once_and_refused_to_another_instance() {
     // A second session under the same name, without the instance, is refused and writes nothing.
     let (kind, message) = refused(&run(&fx, &["--name", "agent-8", "--now", T0]));
     assert_eq!(kind, "conflict");
-    assert!(message.contains("until 2026-11-13T11:00:00Z"), "{message}");
+    assert!(message.contains("until 2026-11-13T14:00:00Z"), "{message}");
     assert!(
         !message.contains(&instance),
         "the holder's instance is not shown"
@@ -159,7 +160,7 @@ fn the_holder_renews_with_its_instance() {
     assert_eq!(renewed["status"], "renewed");
     assert_eq!(renewed["previous"], "same_instance");
     assert_eq!(renewed["instance"], instance);
-    assert_eq!(renewed["lease_until"], "2026-11-13T11:30:00Z");
+    assert_eq!(renewed["lease_until"], "2026-11-13T14:30:00Z");
 }
 
 /// Boundary: one second before the lease ends the name is still held; at the end it is free.
@@ -169,15 +170,77 @@ fn a_lease_holds_until_its_end_second() {
     ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
     let (kind, _) = refused(&run(
         &fx,
-        &["--name", "agent-8", "--now", "2026-11-13T10:59:59Z"],
+        &["--name", "agent-8", "--now", "2026-11-13T13:59:59Z"],
     ));
     assert_eq!(kind, "conflict");
     let taken = ok(&run(
         &fx,
-        &["--name", "agent-8", "--now", "2026-11-13T11:00:00Z"],
+        &["--name", "agent-8", "--now", "2026-11-13T14:00:00Z"],
     ));
     assert_eq!(taken["status"], "registered");
     assert_eq!(taken["previous"], "expired");
+}
+
+/// #3015 C3: `--show` without PROJECT reads the clone of the current folder (the primary
+/// checkout or a worktree) and writes nothing; every other mode still needs PROJECT.
+#[test]
+fn show_without_a_project_reads_the_clone_of_the_current_folder() {
+    let fx = Fixture::new();
+    let first = ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
+    let wt = fx.repo.join(".moai-cli/worktrees/lane");
+    git(
+        &fx.repo,
+        &["worktree", "add", "-q", "--detach", wt.to_str().unwrap()],
+    );
+    for cwd in [&fx.repo, &wt] {
+        let shown = ok(&run_in(
+            &fx,
+            cwd,
+            &["--show", "--name", "agent-8", "--now", T0],
+        ));
+        assert_eq!(shown["status"], "held", "{}", cwd.display());
+        assert_eq!(shown["instance"], first["instance"]);
+        assert_eq!(shown["lease_until"], "2026-11-13T14:00:00Z");
+        let free = ok(&run_in(
+            &fx,
+            cwd,
+            &["--show", "--name", "agent-9", "--now", T0],
+        ));
+        assert_eq!(free["status"], "free");
+    }
+    assert!(!fx.entry("agent-9").exists(), "--show writes nothing");
+    assert!(!wt.join(".moai-cli/sessions").exists());
+    // A folder that is no clone is refused, not read as "free".
+    let plain = fx.home.join("plain");
+    fs::create_dir_all(&plain).unwrap();
+    let out = run_in(&fx, &plain, &["--show", "--name", "agent-8", "--now", T0]);
+    assert_ne!(out.status.code(), Some(0), "{}", envelope(&out));
+    assert_eq!(envelope(&out)["ok"], false);
+    // Registering and releasing still name the project.
+    for args in [
+        vec!["--name", "agent-8", "--now", T0],
+        vec![
+            "--name",
+            "agent-8",
+            "--instance",
+            &"a".repeat(32),
+            "--release",
+            "--now",
+            T0,
+        ],
+    ] {
+        let out = run_in(&fx, &fx.repo, &args);
+        assert_ne!(out.status.code(), Some(0), "{args:?}");
+        let v = envelope(&out);
+        assert_eq!(v["ok"], false, "{v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("PROJECT is required"),
+            "{v}"
+        );
+    }
 }
 
 #[test]
@@ -504,10 +567,10 @@ fn a_release_sees_the_lease_end_second_as_free() {
             ],
         )
     };
-    assert_eq!(refused(&release_at("2026-11-13T10:59:59Z")).0, "conflict");
+    assert_eq!(refused(&release_at("2026-11-13T13:59:59Z")).0, "conflict");
     assert!(fx.entry("agent-8").exists());
     assert_eq!(
-        ok(&release_at("2026-11-13T11:00:00Z"))["status"],
+        ok(&release_at("2026-11-13T14:00:00Z"))["status"],
         "already_free"
     );
 }
@@ -530,7 +593,7 @@ fn show_reports_the_holder_and_writes_nothing() {
             "status": "held",
             "name": "agent-8",
             "instance": first["instance"],
-            "lease_until": "2026-11-13T11:00:00Z",
+            "lease_until": "2026-11-13T14:00:00Z",
         })
     );
     assert_eq!(fs::read(fx.entry("agent-8")).unwrap(), before);
@@ -542,7 +605,7 @@ fn show_reports_the_holder_and_writes_nothing() {
             "--name",
             "agent-8",
             "--now",
-            "2026-11-13T11:00:00Z",
+            "2026-11-13T14:00:00Z",
         ],
     ));
     assert_eq!(ended["status"], "free");
@@ -596,7 +659,7 @@ fn the_leader_releases_the_instance_it_saw() {
     // The leader reads the holder, then the lane's lease ends and it registers again.
     let stale = ok(&run(&fx, &["--name", "agent-8", "--now", T0]));
     let stale = stale["instance"].as_str().unwrap().to_string();
-    let later = "2026-11-13T11:00:00Z";
+    let later = "2026-11-13T14:00:00Z";
     let fresh = ok(&run(&fx, &["--name", "agent-8", "--now", later]));
     assert_eq!(fresh["previous"], "expired");
     let fresh = fresh["instance"].as_str().unwrap().to_string();
@@ -608,7 +671,7 @@ fn the_leader_releases_the_instance_it_saw() {
     assert_eq!(fs::read(fx.entry("agent-8")).unwrap(), before);
 
     // An ended lease, or no entry, is `already_free` and records no release.
-    let ended = ok(&release_by_leader(&fx, &fresh, "2026-11-13T12:00:00Z"));
+    let ended = ok(&release_by_leader(&fx, &fresh, "2026-11-13T18:00:00Z"));
     assert_eq!(ended, json!({"status": "already_free", "name": "agent-8"}));
     let fx2 = Fixture::new();
     assert_eq!(
