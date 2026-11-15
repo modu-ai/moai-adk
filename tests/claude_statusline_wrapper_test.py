@@ -240,6 +240,48 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
         self.assert_called_once("go")
 
+    # #3008 audit B1: with `.` or an empty entry in PATH, `command -v moai-cli` answers the bare
+    # name, and the status line runs with the project folder as its cwd. A file named moai-cli
+    # that sits there must never be executed.
+    def _plant_in_cwd(self):
+        return self._fake(self.cwd / "moai-cli", "planted", 0)
+
+    def _path_with(self, entry_first):
+        base = self.env["PATH"]
+        self.env["PATH"] = f"{entry_first}{base}"
+
+    def test_a_dot_in_path_never_runs_a_file_from_the_current_folder(self):
+        self._plant_in_cwd()
+        self._path_with(".:")
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_an_empty_path_entry_never_runs_a_file_from_the_current_folder(self):
+        self._plant_in_cwd()
+        self._path_with(":")
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_a_trailing_empty_path_entry_never_runs_a_file_from_the_current_folder(self):
+        self._plant_in_cwd()
+        self.env["PATH"] = self.env["PATH"] + ":"
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_a_real_moai_cli_before_a_dot_entry_in_path_still_wins(self):
+        self._plant_in_cwd()
+        self.env["PATH"] = self.env["PATH"] + ":."
+        self.path_cli()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-pathcli"))
+        self.assert_called_once("pathcli")
+
     def test_a_directory_named_moai_cli_on_path_falls_back_to_go(self):
         (self.pathbin / "moai-cli").mkdir()
         self.go()

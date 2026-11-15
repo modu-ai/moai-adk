@@ -8,8 +8,12 @@
 
 # A regular file that is executable: `-x` alone is true for a directory, which exec
 # cannot run (exit 126, no fallback) - #2503.
+# Only an absolute path counts: with `.` or an empty entry in PATH, `command -v` answers the bare
+# name `moai-cli` (or a shell function of that name), and exec would then run whatever sits in
+# the project folder the status line is started from - #3008 audit B1.
 for MOAI_CLI in "$HOME/.moai/path/moai-cli" "$HOME/.moai-cli/path/moai-cli" "$(command -v moai-cli)"; do
-	if [ -n "$MOAI_CLI" ] && [ -f "$MOAI_CLI" ] && [ -x "$MOAI_CLI" ]; then
+	case "$MOAI_CLI" in /*) ;; *) continue ;; esac
+	if [ -f "$MOAI_CLI" ] && [ -x "$MOAI_CLI" ]; then
 		exec "$MOAI_CLI" statusline
 	fi
 done
