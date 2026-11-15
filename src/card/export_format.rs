@@ -1053,6 +1053,17 @@ mod tests {
     }
 
     #[test]
+    fn an_events_file_that_is_valid_but_not_what_the_exporter_writes_is_refused() {
+        let mut out = render(&sample()).unwrap();
+        out.events = out
+            .events
+            .replacen("{\"event_id\":1,", "{\"event_id\": 1,", 1);
+        assert_ne!(out.events, render(&sample()).unwrap().events);
+        redigest(&mut out);
+        assert_eq!(parse(&out), Err(ExportError::Modified(EVENTS_FILE.into())));
+    }
+
+    #[test]
     fn the_events_file_must_keep_its_name_in_the_index() {
         let mut out = render(&sample()).unwrap();
         out.index = out.index.replacen("events.jsonl", "other.jsonl", 1);
