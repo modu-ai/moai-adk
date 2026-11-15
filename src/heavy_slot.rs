@@ -699,7 +699,33 @@ mod sys {
         code
     }
 
-    /// The slots held now (their records) and slot paths that are not plain files. Reads only.
+    /// Whether the process a slot record names is alive (#3033): `Some(true)` or `Some(false)`
+    /// from `kill(pid, 0)`, `None` when the record has no usable pid — missing, not an integer,
+    /// 0 or negative (those would signal a process group), or above `i32::MAX`. A live pid is
+    /// not proof that it holds the lock: the lock belongs to the open file, and the pid may
+    /// have been reused by an unrelated process.
+    pub(super) fn alive_of(record: &Value) -> Option<bool> {
+        let pid = record.get("pid")?.as_i64()?;
+        if !(1..=i64::from(i32::MAX)).contains(&pid) {
+            return None;
+        }
+        crate::home_state::pid_alive(pid)
+    }
+
+    /// One `held` entry: the record as read (any JSON object, `{}` when the file holds anything
+    /// else) plus `alive`, true/false/null as [`alive_of`] says.
+    fn held_entry(bytes: Option<Vec<u8>>) -> Value {
+        let mut rec = bytes
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}));
+        let alive = alive_of(&rec);
+        rec["alive"] = json!(alive);
+        rec
+    }
+
+    /// The slots held now (their records, each with `alive`) and slot paths that are not plain
+    /// files. Reads only.
     pub fn status(folder: &Path) -> Result<Value> {
         let (mut held, mut refused) = (Vec::new(), Vec::new());
         let mut names: Vec<String> = match fs::read_dir(folder) {
@@ -714,12 +740,7 @@ mod sys {
         for n in names {
             let p = folder.join(&n);
             match is_held(&p) {
-                Ok(true) => held.push(
-                    fs::read(&p)
-                        .ok()
-                        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-                        .unwrap_or_else(|| json!({})),
-                ),
+                Ok(true) => held.push(held_entry(fs::read(&p).ok())),
                 Ok(false) => {}
                 Err(Open::NotPlain(_)) => refused.push(n),
                 Err(Open::Io(e)) => return Err(e),
@@ -732,6 +753,44 @@ mod sys {
             "machine": machine_line(folder),
             "writes": false,
         }))
+    }
+}
+
+#[cfg(all(test, unix))]
+mod alive_tests {
+    use super::sys::alive_of;
+    use serde_json::{json, Value};
+
+    /// #3033 D1: `alive` follows `kill(pid, 0)` for a pid in 1..=i32::MAX and is null for
+    /// anything the record cannot name a process by.
+    #[test]
+    fn the_recorded_pid_decides_alive() {
+        let me = i64::from(std::process::id());
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let reaped = i64::from(child.id());
+        child.wait().unwrap();
+        let cases: Vec<(Value, Option<bool>)> = vec![
+            (json!({"pid": me}), Some(true)),
+            (json!({"pid": reaped}), Some(false)),
+            (json!({"pid": 1}), Some(true)),
+            (json!({"pid": i32::MAX}), Some(false)),
+            (json!({"pid": 2_147_483_648_i64}), None),
+            (json!({"pid": u64::MAX}), None),
+            (json!({"pid": 0}), None),
+            (json!({"pid": -1}), None),
+            (json!({"pid": i64::MIN}), None),
+            (json!({"pid": "1"}), None),
+            (json!({"pid": 1.5}), None),
+            (json!({"pid": null}), None),
+            (json!({"pid": [1]}), None),
+            (json!({"name": "x"}), None),
+            (json!({}), None),
+            (json!([1]), None),
+            (json!(7), None),
+        ];
+        for (record, want) in cases {
+            assert_eq!(alive_of(&record), want, "{record}");
+        }
     }
 }
 

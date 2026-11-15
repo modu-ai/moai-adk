@@ -224,6 +224,8 @@ fn with_one_slot_the_second_caller_waits_its_turn() {
     let held = status(d.path());
     assert_eq!(held["held"][0]["name"], "first", "{held}");
     assert_eq!(held["held"][0]["slot"], 0);
+    // #3033 D1: a live wrapper's slot reports its pid alive.
+    assert_eq!(held["held"][0]["alive"], true, "{held}");
 
     let mut c = acquire(
         d.path(),
@@ -325,6 +327,8 @@ fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_de
     assert_eq!(held.as_array().unwrap().len(), 1, "{held}");
     assert_eq!(held[0]["name"], "leaver", "{held}");
     assert_eq!(held[0]["pid"], wrapper_pid, "{held}");
+    // #3033 D1: and says so — the recorded pid is dead although the slot is held.
+    assert_eq!(held[0]["alive"], false, "{held}");
 
     // A second caller waits; it runs only after the child has gone.
     let mut c = acquire(
@@ -352,6 +356,103 @@ fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_de
     let out = second.finish();
     assert!(out.status.success(), "{}", text(&out));
     assert_eq!(status(d.path())["held"], serde_json::json!([]));
+}
+
+/// A slot file `slot-0` in `dir` holding `body`, with its lock held by this test for as long as
+/// the returned file lives (a lock on another open file description, so `status` in another
+/// process sees it as held).
+fn held_slot(dir: &Path, body: &str) -> fs::File {
+    let path = dir.join("slot-0");
+    fs::write(&path, body).unwrap();
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .unwrap();
+    f.try_lock().unwrap();
+    f
+}
+
+/// #3033 D1: every held entry says whether its recorded pid is alive — true or false by
+/// `kill(pid, 0)`, null when the record names no process (missing, 0, negative, text, a number
+/// beyond a pid, an unreadable or non-object record). One folder per case.
+#[test]
+fn status_says_whether_the_recorded_pid_is_alive() {
+    let me = std::process::id();
+    let mut gone = Command::new("true").spawn().unwrap();
+    let reaped = gone.id();
+    gone.wait().unwrap();
+    let null = Value::Null;
+    let cases: Vec<(String, Value)> = vec![
+        (format!(r#"{{"name":"a","pid":{me}}}"#), Value::Bool(true)),
+        (
+            format!(r#"{{"name":"a","pid":{reaped}}}"#),
+            Value::Bool(false),
+        ),
+        (r#"{"name":"a","pid":1}"#.into(), Value::Bool(true)),
+        (r#"{"pid":2147483647}"#.into(), Value::Bool(false)),
+        (r#"{"pid":2147483648}"#.into(), null.clone()),
+        (r#"{"pid":0}"#.into(), null.clone()),
+        (r#"{"pid":-1}"#.into(), null.clone()),
+        (r#"{"pid":"1"}"#.into(), null.clone()),
+        (r#"{"pid":1.5}"#.into(), null.clone()),
+        (r#"{"pid":null}"#.into(), null.clone()),
+        (r#"{"name":"a"}"#.into(), null.clone()),
+        ("{}".into(), null.clone()),
+        ("[1]".into(), null.clone()),
+        ("not json".into(), null.clone()),
+        (String::new(), null),
+    ];
+    for (body, want) in cases {
+        let d = tempfile::tempdir().unwrap();
+        let _lock = held_slot(d.path(), &body);
+        let held = status(d.path())["held"].clone();
+        assert_eq!(held.as_array().unwrap().len(), 1, "{body}: {held}");
+        assert_eq!(held[0]["alive"], want, "{body}: {held}");
+    }
+    // The record's own keys come back unchanged next to `alive`.
+    let d = tempfile::tempdir().unwrap();
+    let _lock = held_slot(
+        d.path(),
+        r#"{"name":"lane","command":["a","b"],"pid":1,"started_unix":5,"slot":0}"#,
+    );
+    let held = status(d.path())["held"][0].clone();
+    assert_eq!(
+        held,
+        serde_json::json!({"name":"lane","command":["a","b"],"pid":1,"started_unix":5,"slot":0,"alive":true})
+    );
+}
+
+/// `status` only reads: the slot file's bytes and modification time and the folder's names are
+/// the same after it.
+#[test]
+fn status_reads_only() {
+    let d = tempfile::tempdir().unwrap();
+    let body = format!(r#"{{"name":"a","pid":{}}}"#, std::process::id());
+    let _lock = held_slot(d.path(), &body);
+    let slot = d.path().join("slot-0");
+    let names = |p: &Path| {
+        let mut v: Vec<String> = fs::read_dir(p)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        v.sort();
+        v
+    };
+    let before = (
+        fs::read(&slot).unwrap(),
+        fs::metadata(&slot).unwrap().modified().unwrap(),
+        names(d.path()),
+    );
+    let result = status(d.path());
+    assert_eq!(result["writes"], false, "{result}");
+    assert_eq!(result["held"][0]["alive"], true, "{result}");
+    let after = (
+        fs::read(&slot).unwrap(),
+        fs::metadata(&slot).unwrap().modified().unwrap(),
+        names(d.path()),
+    );
+    assert_eq!(before, after);
 }
 
 /// SIGTERM to the wrapper reaches the command, and the wrapper returns 128 + 15.
