@@ -178,6 +178,9 @@ const STATE_ENTRIES: [&str; 18] = [
 const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];
 /// The name a revert gives this generation's `.moai/` before the Go folder comes back.
 const RUST_ASIDE: &str = ".moai.rust-";
+/// The folder of an apply's backup area where a revert keeps a `.claude/settings.json` that was
+/// written after the move, under `<UTC>/<same path>`, before the earlier one comes back.
+const REPLACED_BY_REVERT: &str = "replaced-by-revert";
 /// The Go backup name when [`crate::state_root::GO_BACKUP`] is taken; the apply fills in its
 /// stamp.
 const GO_BACKUP_STAMPED: &str = ".moai-backup-<UTC>";
@@ -668,12 +671,15 @@ fn settings_proof(project: &Path, entry: &Entry) -> std::result::Result<Settings
     let content = sha256_file(&path).map_err(|_| ("not a bounded regular file", "unknown"))?;
     let unchanged = entry.provenance == "template_managed"
         && same_hash(&entry.provenance, &entry.deployed_hash, &content);
+    // After a committed move a settings file someone wrote later is read here again (the
+    // manifest still records the path): the text says what is known, not that the bytes are
+    // the Go tool's.
     let proof = if unchanged {
         "manifest; sha256 matches the deploy"
     } else if entry.provenance == "user_modified" {
         "manifest; recorded user_modified"
     } else {
-        "manifest; sha256 differs from the deploy"
+        "manifest records this path; content differs from what the Go tool deployed"
     }
     .to_string();
     Ok(SettingsProof {
@@ -745,11 +751,26 @@ fn policy(
         return match verdict {
             Some(Ok(p)) => {
                 *content = p.content.clone();
-                let reason = if folder_moves {
-                    "the Go settings move to the backup; the install step writes new ones (O3)"
-                } else {
-                    "the Go settings move to the backup although the Go folder stays; the \
-                     install steps write new ones (S-CYCLE)"
+                let reason = match (p.edited, folder_moves) {
+                    (false, true) => {
+                        "the Go settings move to the backup; the install step writes new ones (O3)"
+                    }
+                    (false, false) => {
+                        "the Go settings move to the backup although the Go folder stays; the \
+                         install steps write new ones (S-CYCLE)"
+                    }
+                    // Not unchanged: the manifest records the path, but the file is not the
+                    // unchanged Go deploy; it still moves, byte for byte.
+                    (true, true) => {
+                        "the manifest records this settings file, which is not the unchanged Go \
+                         deploy; it moves to the backup as it is; the install step writes new \
+                         ones (O3)"
+                    }
+                    (true, false) => {
+                        "the manifest records this settings file, which is not the unchanged Go \
+                         deploy; it moves to the backup as it is although the Go folder stays; \
+                         the install steps write new ones (S-CYCLE)"
+                    }
                 };
                 ("move", reason, "settings", p.proof.clone())
             }
@@ -3233,10 +3254,12 @@ fn make_dirs_like(project: &Path, to_dir: &str, from_dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// `.moai/backups/.gitignore` holding `*`: nothing under the backup area is ever offered to
-/// git, whose copies may hold tokens. An existing file is left as it is.
-fn keep_backups_out_of_git(project: &Path) -> Result<()> {
-    let rel = format!("{MOAI_DIR}/backups/.gitignore");
+/// `<base>/backups/.gitignore` holding `*`: nothing under the backup area is ever offered to
+/// git, whose copies may hold tokens. `base` is the folder that keeps the area: `.moai` in the
+/// moving layouts, the current state folder when the Go folder stays (AUDIT #3077 B1: the
+/// proven settings move there too). An existing file is left as it is.
+fn keep_backups_out_of_git(project: &Path, base: &str) -> Result<()> {
+    let rel = format!("{base}/backups/.gitignore");
     refuse_linked(project, &rel)?;
     match fs::symlink_metadata(project.join(&rel)) {
         Ok(_) => Ok(()),
@@ -3463,6 +3486,9 @@ pub fn apply_with_stamp(
     // `make_dirs` refuses a linked state folder or `backups`; the stamp folder itself is
     // created exclusively, so a link already at that name fails the create.
     make_private_dirs(&project, &format!("{base}/backups"))?;
+    // The proven settings may hold a token (`env`): keep the area out of git before the stamp
+    // folder, the receipt or any file exists, so a failure here leaves nothing moved (B1).
+    keep_backups_out_of_git(&project, base)?;
     create_dir_with(&project.join(&backup_rel), true).map_err(|e| {
         if e.kind() == std::io::ErrorKind::AlreadyExists {
             "exclusive create refused: backup already exists".to_string()
@@ -3561,7 +3587,7 @@ fn apply_moving_folder(
         }
     };
     crate::update::test_fault("go_state_before_ignore")
-        .and_then(|_| keep_backups_out_of_git(project))
+        .and_then(|_| keep_backups_out_of_git(project, MOAI_DIR))
         .map_err(|e| {
             ignore_file_failed(
                 &e,
@@ -3755,7 +3781,7 @@ fn apply_legacy_move(
         }
     };
     crate::update::test_fault("go_state_legacy_before_ignore")
-        .and_then(|_| keep_backups_out_of_git(project))
+        .and_then(|_| keep_backups_out_of_git(project, MOAI_DIR))
         .map_err(|e| {
             ignore_file_failed(
                 &e,
@@ -3775,8 +3801,11 @@ pub fn apply(project: &Path, plan_digest: &str, permission_reference: &str) -> R
 #[derive(Clone, Debug, Serialize)]
 pub struct RevertItem {
     pub path: String,
-    /// `restore`, `conflict` (something is at the original path again), `missing` (the
-    /// backup copy is gone or changed), `skip` (never moved), `remove_restored` /
+    /// `restore`, `set_aside_then_restore` (only `.claude/settings.json`: a regular file is at
+    /// the path again; the revert moves it into `<backup area>/replaced-by-revert/<UTC>/` and
+    /// then restores the earlier one), `conflict` (something else is at the original path
+    /// again), `missing` (the backup copy is gone or changed), `skip` (never moved),
+    /// `remove_restored` /
     /// `keep_changed` (a SPEC copy), or `remove` (the marker, #2696).
     pub action: String,
 }
@@ -4162,16 +4191,22 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
                 }
             }
             _ => {
+                let here = fs::symlink_metadata(project.join(&m.path));
+                let linked = linked_component(&project, &m.path);
+                // AUDIT #3077 B2: an install step may have written a new `.claude/settings.json`
+                // after the move. A regular file there (no link on the way, not a folder) is
+                // moved aside into the backup area and the earlier one comes back; anything
+                // else at the path, and every other path, is still a `conflict`.
+                let replaceable =
+                    m.path == SETTINGS && !linked && here.as_ref().is_ok_and(|h| h.is_file());
                 if !m.moved {
                     "skip"
-                } else if fs::symlink_metadata(project.join(&m.path)).is_ok()
-                    || linked_component(&project, &m.path)
-                {
+                } else if (here.is_ok() || linked) && !replaceable {
                     "conflict"
                 } else {
                     let dest_rel = backup_rel_of(&area, m);
                     let dest = project.join(&dest_rel);
-                    match m.kind.as_str() {
+                    let ready = match m.kind.as_str() {
                         // The backup link must still carry the body the apply moved.
                         "link" => {
                             let body = fs::read_link(&dest).ok();
@@ -4199,6 +4234,11 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
                             Ok(h) if h == m.sha256 => "restore",
                             _ => "missing",
                         },
+                    };
+                    if replaceable && ready == "restore" {
+                        "set_aside_then_restore"
+                    } else {
+                        ready
                     }
                 }
             }
@@ -4237,6 +4277,8 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
 
 /// Undo one apply, all or nothing up front: any `conflict` or `missing` item refuses the whole
 /// revert before the first write. Never overwrites, never deletes what the apply did not write.
+/// A regular `.claude/settings.json` that is there again is not a conflict: it is moved aside
+/// first, into `replaced-by-revert/<UTC>/` of the backup area (`set_aside_then_restore`).
 /// For the #2696 layout, in this order: remove the marker (from then on `state_root` no longer
 /// says `rust`), remove unchanged SPEC copies, move the earlier-root entries and the `.claude/`
 /// files back, set this generation's `.moai/` aside as `.moai.rust-<UTC>` (kept, with the
@@ -4271,6 +4313,36 @@ pub fn revert(
     let project = PathBuf::from(&fresh.project);
     let (mut receipt, mut saved, mut base) = read_receipt(&project, backup)?;
     let moving = !receipt.go_backup.is_empty();
+    // AUDIT #3077 B2: a settings file written after the move is set aside first, before any
+    // other write, into `<area>/replaced-by-revert/<UTC>/` (never overwritten, never deleted);
+    // a stop later on reads the item as a plain `restore` on the next plan.
+    for item in fresh
+        .items
+        .iter()
+        .filter(|i| i.action == "set_aside_then_restore")
+    {
+        if item.path != SETTINGS {
+            return Err(format!(
+                "{}: only the shared settings are set aside; stopped",
+                item.path
+            ));
+        }
+        refuse_linked(&project, &item.path)?;
+        if !fs::symlink_metadata(project.join(&item.path)).is_ok_and(|m| m.is_file()) {
+            return Err(format!(
+                "{}: changed after the revert plan; nothing moved aside",
+                item.path
+            ));
+        }
+        let to = format!(
+            "{base}/backups/{backup}/{REPLACED_BY_REVERT}/{}/{}",
+            stamp_now(),
+            item.path
+        );
+        make_private_dirs(&project, &parent_of(&to)?)?;
+        move_exclusive(&project.join(&item.path), &project.join(&to))
+            .map_err(|e| format!("{}: {e}", item.path))?;
+    }
     // The recorded marker digest stays until every marker file is gone: with both names present,
     // clearing it after the first removal would leave a stopped revert comparing the other file
     // against an empty record (`conflict`) on the next run (Codex review of #3047).
@@ -4302,7 +4374,7 @@ pub fn revert(
     let restores: Vec<(String, Moved)> = fresh
         .items
         .iter()
-        .filter(|i| i.action == "restore")
+        .filter(|i| i.action == "restore" || i.action == "set_aside_then_restore")
         .map(|i| (i.path.clone(), entry_of(&i.path)))
         .collect();
     // Entries and files first, the folder last.
@@ -4747,6 +4819,40 @@ mod tests {
         );
     }
 
+    /// AUDIT #3077 B3: a move never overwrites. The proven settings now travel this path, so
+    /// the pin: a destination that exists (a file, or a hard link to the source itself) is
+    /// refused with its own message and both names keep their bytes. A plain `fs::rename` would
+    /// replace the file, and would report success for the hard link.
+    #[test]
+    #[cfg(unix)]
+    fn move_exclusive_never_overwrites_an_existing_destination() {
+        use std::os::unix::fs::MetadataExt;
+        let tmp = tempfile::TempDir::new().unwrap();
+        let (from, to) = (tmp.path().join("from.json"), tmp.path().join("to.json"));
+        fs::write(&from, b"source bytes").unwrap();
+        fs::write(&to, b"destination bytes").unwrap();
+        let e = move_exclusive(&from, &to).unwrap_err();
+        assert!(e.contains("the destination already exists"), "{e}");
+        assert_eq!(fs::read(&from).unwrap(), b"source bytes");
+        assert_eq!(fs::read(&to).unwrap(), b"destination bytes");
+
+        // The destination is a second name of the source.
+        let alias = tmp.path().join("alias.json");
+        fs::hard_link(&from, &alias).unwrap();
+        let e = move_exclusive(&from, &alias).unwrap_err();
+        assert!(e.contains("the destination already exists"), "{e}");
+        assert_eq!(fs::read(&from).unwrap(), b"source bytes");
+        assert_eq!(fs::read(&alias).unwrap(), b"source bytes");
+        assert_eq!(fs::metadata(&from).unwrap().nlink(), 2, "both names remain");
+
+        // A free destination takes the file, and the source name is gone.
+        fs::remove_file(&alias).unwrap();
+        let free = tmp.path().join("free.json");
+        move_exclusive(&from, &free).unwrap();
+        assert!(!from.exists());
+        assert_eq!(fs::read(&free).unwrap(), b"source bytes");
+    }
+
     /// F17: both refusals map to `stale_plan` and name the command to run next.
     #[test]
     fn the_stale_messages_have_the_stale_plan_kind_and_name_their_next_step() {
@@ -4864,7 +4970,10 @@ mod tests {
         assert_eq!(p.content, hash);
         let p = settings_proof(&project, &entry("template_managed", "sha256:00")).unwrap();
         assert!(p.edited);
-        assert_eq!(p.proof, "manifest; sha256 differs from the deploy");
+        assert_eq!(
+            p.proof,
+            "manifest records this path; content differs from what the Go tool deployed"
+        );
         let p = settings_proof(&project, &entry("user_modified", &hash)).unwrap();
         assert!(p.edited);
         assert_eq!(p.proof, "manifest; recorded user_modified");
