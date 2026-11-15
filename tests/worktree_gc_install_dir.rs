@@ -105,6 +105,7 @@ fn install(wt: &Path) {
         &wt.join("node_modules/pkg/index.js"),
         "module.exports = 1;\n",
     );
+    write(&wt.join("node_modules/pkg/package.json"), "{}\n");
     write(&wt.join("node_modules/@scope/lib/package.json"), "{}\n");
     write(&wt.join("node_modules/.package-lock.json"), "{}\n");
     fs::create_dir_all(wt.join("node_modules/.bin")).unwrap();
@@ -191,6 +192,7 @@ fn an_install_past_the_ignored_file_census_limit_is_still_rebuildable() {
     let fx = fixture(true, &["big"]);
     let pkg = fx.wt("big").join("node_modules/pkg");
     fs::create_dir_all(&pkg).unwrap();
+    write(&pkg.join("package.json"), "{}\n");
     for i in 0..20_001 {
         fs::write(pkg.join(format!("f{i}.js")), "x").unwrap();
     }
@@ -216,6 +218,106 @@ fn a_recent_write_deep_inside_the_install_keeps_the_worktree() {
     let r = plan(&fx);
     let c = row(&r, "busy");
     assert_ne!(c["action"], "remove", "{c}");
+}
+
+/// Audit B1 on #3058: something a person put at the top of `node_modules` is not install
+/// output, so the folder is not judged as one and the worktree is kept.
+#[test]
+fn a_stray_file_at_the_top_of_node_modules_keeps_the_worktree() {
+    let names = ["envf", "notes", "db", "folder"];
+    let fx = fixture(true, &names);
+    for n in names {
+        install(&fx.wt(n));
+    }
+    write(&fx.wt("envf").join("node_modules/.env"), "SECRET=1\n");
+    write(&fx.wt("notes").join("node_modules/my-notes.md"), "mine\n");
+    write(&fx.wt("db").join("node_modules/data.sqlite"), "rows\n");
+    write(&fx.wt("folder").join("node_modules/scratch/a.txt"), "x\n");
+    let r = plan(&fx);
+    for n in names {
+        let c = row(&r, n);
+        assert_ne!(c["action"], "remove", "{n}: {c}");
+        assert!(
+            c["ignored_outside_build"].as_u64().unwrap() >= 1,
+            "{n}: {c}"
+        );
+    }
+}
+
+/// Audit B1 on #3058: a file written into the install after the plan changes the digest, so
+/// `worktree-gc-apply` refuses and nothing is removed.
+#[test]
+fn a_file_written_into_the_install_after_the_plan_refuses_the_apply() {
+    let fx = fixture(true, &["inst"]);
+    install(&fx.wt("inst"));
+    let r = plan(&fx);
+    assert_eq!(row(&r, "inst")["action"], "remove", "{r}");
+    let digest = r["plan_digest"].as_str().unwrap().to_string();
+    write(&fx.wt("inst").join("node_modules/pkg/late.js"), "mine\n");
+    let now = later().to_string();
+    let v = run(
+        &fx,
+        &[
+            "worktree-gc-apply",
+            fx.root.to_str().unwrap(),
+            "--integration-ref",
+            "integ",
+            "--now-unix",
+            &now,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    );
+    assert_eq!(v["ok"], false, "{v}");
+    assert!(fx.wt("inst").join("node_modules/pkg/late.js").exists());
+}
+
+/// Audit B3 on #3058 (user decision 6892859628): a worktree Codex made is a preview row and is
+/// never removed, with or without an install folder.
+#[test]
+fn a_codex_made_worktree_is_never_a_remove_candidate() {
+    let fx = fixture(true, &[]);
+    for (id, installed) in [("ab12", true), ("cd34", false)] {
+        let wt = fx.home.join(format!(".codex/worktrees/{id}/repo"));
+        fs::create_dir_all(wt.parent().unwrap()).unwrap();
+        git(
+            &fx.root,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                &format!("codex/{id}"),
+                wt.to_str().unwrap(),
+            ],
+        );
+        fs::create_dir_all(wt.join("target/debug")).unwrap();
+        fs::write(
+            wt.join("target/CACHEDIR.TAG"),
+            "Signature: 8a477f597d28d172789f06886806bc55\n",
+        )
+        .unwrap();
+        if installed {
+            install(&wt);
+        }
+    }
+    let r = plan(&fx);
+    let rows: Vec<&Value> = r["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|c| c["location"] == "codex")
+        .collect();
+    assert_eq!(rows.len(), 2, "{r}");
+    for c in rows {
+        assert_eq!(c["action"], "skip", "{c}");
+        assert!(
+            reasons(c).contains(&"preserved_location".to_string()),
+            "{c}"
+        );
+    }
 }
 
 /// Without a tracked lockfile nothing says the install can be rebuilt: the files are kept.

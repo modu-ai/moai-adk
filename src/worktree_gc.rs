@@ -502,7 +502,7 @@ pub(crate) fn ignored_split(
     wt: &Path,
     primary: &Path,
     preserved: &[String],
-) -> Option<(usize, Vec<String>, Option<u64>)> {
+) -> Option<(usize, Vec<String>, Option<u64>, Option<(usize, u64)>)> {
     let s = git_out(
         wt,
         &[
@@ -516,6 +516,7 @@ pub(crate) fn ignored_split(
     let (mut safe, mut kept, mut seen) = (0usize, Vec::new(), 0usize);
     let (mut git_marks, mut safe_files) = (Vec::new(), Vec::new());
     let mut install_newest: Option<u64> = None;
+    let mut install_fp: Option<(usize, u64)> = None;
     for rec in s.split('\0').filter(|r| r.len() > 3) {
         let (code, entry) = rec.split_at(3);
         if code != "!! " || entry == "target/" {
@@ -526,13 +527,16 @@ pub(crate) fn ignored_split(
         // lockfile rebuilds; it is judged as one unit with its own entry limit instead of file
         // by file (one install is about 92,000 files, past the 20,000 census limit). Links
         // inside are removed as links, never followed. Anything the walk cannot vouch for
-        // falls through to the file-by-file census below, which fails closed.
-        if entry == "node_modules/" && install_proof(wt) == (true, true) {
+        // falls through to the file-by-file census below, which fails closed. The top level
+        // must look like package-manager output (`install_shaped`): a stray `.env`, note or
+        // database next to the packages is the user's, and keeps the worktree (audit B1 on #3058).
+        if entry == "node_modules/" && install_proof(wt) == (true, true) && install_shaped(&top) {
             let mut marks = Vec::new();
             if let Some(n) =
                 walk_install(&top, INSTALL_ENTRY_LIMIT, &mut marks, &mut install_newest)
             {
                 safe += n.max(1);
+                install_fp = Some((n, install_newest.unwrap_or(0)));
                 safe_files.push(top);
                 git_marks.extend(marks);
                 continue;
@@ -581,7 +585,7 @@ pub(crate) fn ignored_split(
         .max(install_newest);
     kept.sort();
     kept.dedup();
-    Some((safe, kept, newest))
+    Some((safe, kept, newest, install_fp))
 }
 
 /// How far one plan goes (#2879 D2): at most `max_checked` worktrees are examined, starting
@@ -715,6 +719,83 @@ pub(crate) fn walk_install(
         }
     }
     Some(seen)
+}
+
+/// Files a package manager writes at the top of `node_modules` besides packages.
+const INSTALL_TOP_FILES: [&str; 4] = [
+    ".package-lock.json",
+    ".yarn-integrity",
+    ".modules.yaml",
+    ".yarn-state.yml",
+];
+/// Folders a package manager or its tools keep at the top of `node_modules`.
+const INSTALL_TOP_DIRS: [&str; 3] = [".bin", ".cache", ".pnpm"];
+
+/// Whether the top level of `top` (a `node_modules`) holds only what a package manager writes:
+/// links, a package folder (one with its own `package.json`), a scope folder whose children are
+/// links or packages, and the files and folders named above. Anything else — a `.env`, a note, a
+/// database, a folder that is not a package — is something a person put there, so it is not
+/// install output and the folder is not judged as one (audit B1 on #3058). A file a person puts
+/// inside a package folder cannot be told from the package's own files; the install fingerprint
+/// in the plan digest and the recent-change check are what guard those.
+pub(crate) fn install_shaped(top: &Path) -> bool {
+    let package =
+        |dir: &Path| fs::symlink_metadata(dir.join("package.json")).is_ok_and(|m| m.is_file());
+    let Ok(entries) = fs::read_dir(top) else {
+        return false;
+    };
+    for e in entries.flatten() {
+        let name = e.file_name();
+        let Some(name) = name.to_str() else {
+            return false;
+        };
+        let Ok(meta) = fs::symlink_metadata(e.path()) else {
+            return false;
+        };
+        let ft = meta.file_type();
+        if ft.is_symlink() {
+            continue; // removed as a link, never followed
+        }
+        if ft.is_file() {
+            if INSTALL_TOP_FILES.contains(&name) || name.starts_with(".pnpm-workspace-state") {
+                continue;
+            }
+            return false;
+        }
+        if !ft.is_dir() {
+            return false;
+        }
+        if INSTALL_TOP_DIRS.contains(&name) {
+            continue;
+        }
+        if name.starts_with('@') {
+            let Ok(inner) = fs::read_dir(e.path()) else {
+                return false;
+            };
+            for c in inner.flatten() {
+                let Ok(m) = fs::symlink_metadata(c.path()) else {
+                    return false;
+                };
+                if !(m.file_type().is_symlink() || (m.is_dir() && package(&c.path()))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if !package(&e.path()) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Whether `path` is a worktree Codex made: `<home>/.codex/worktrees/<id>/<repo>`. A host-made
+/// worktree is shown in the preview and never deleted (user decision 6892859628, #3010).
+fn is_codex_worktree(path: &Path) -> bool {
+    let parts: Vec<_> = path.components().map(|c| c.as_os_str()).collect();
+    parts
+        .windows(2)
+        .any(|w| w[0] == ".codex" && w[1] == "worktrees")
 }
 
 /// Lifecycle facts of one worktree (#3010 P1). Read-only and additive: none of this enters the
@@ -904,12 +985,16 @@ pub fn plan_paced(
         let location = if i == 0 {
             "primary"
         } else {
-            crate::home_workdir::location_in(&path, &home_roots, &go_roots, &primary)
+            match crate::home_workdir::location_in(&path, &home_roots, &go_roots, &primary) {
+                "other" if is_codex_worktree(&path) => "codex",
+                l => l,
+            }
         };
         let mut f = Facts {
             primary: i == 0,
             // Without a known home the Go folder's shape alone still keeps it (fail-safe).
             preserved_location: location == "go"
+                || location == "codex"
                 || path
                     .to_string_lossy()
                     .contains("/.moai/worktrees/projects/")
@@ -925,6 +1010,7 @@ pub fn plan_paced(
         let mut ignored_safe: Option<usize> = None;
         let mut ignored_kept: Vec<String> = Vec::new();
         let mut safe_newest: Option<u64> = None;
+        let mut install_fp: Option<(usize, u64)> = None;
         let over_count = i != 0 && pace.max_checked.is_some_and(|m| checked >= m);
         if Instant::now() >= deadline || over_count {
             f.budget_spent = true;
@@ -959,7 +1045,7 @@ pub fn plan_paced(
                     f.untracked = Some(u);
                     f.ignored_outside_build = Some(ign + preserved.len());
                 }
-            } else if let (Some((u, _, _)), Some((safe, kept, newest))) =
+            } else if let (Some((u, _, _)), Some((safe, kept, newest, fp))) =
                 (census(&path), ignored_split(&path, &primary, &preserved))
             {
                 f.untracked = Some(u);
@@ -967,6 +1053,7 @@ pub fn plan_paced(
                 ignored_safe = Some(safe);
                 ignored_kept = kept;
                 safe_newest = newest;
+                install_fp = fp;
             }
             f.in_use = cwds
                 .as_ref()
@@ -993,6 +1080,7 @@ pub fn plan_paced(
             "untracked": f.untracked,
             "ignored_outside_build": f.ignored_outside_build,
             "ignored_safe": ignored_safe,
+            "install_fingerprint": install_fp.map(|(n, t)| json!({"entries": n, "newest_mtime": t})),
             "ignored_kept": ignored_kept.iter().take(5).collect::<Vec<_>>(),
             "change_age_secs": f.change_age_secs,
             "trim_bytes": trim_bytes,
@@ -1009,10 +1097,12 @@ pub fn plan_paced(
     }
     candidates.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
     // The digest binds what a later apply acts on: path, head, action, reasons and the exact
-    // trim paths (#2498 N1 — a cargo folder that appears after the plan changes the digest).
+    // trim paths (#2498 N1 — a cargo folder that appears after the plan changes the digest),
+    // and for a judged install folder its entry count and newest mtime, so a file written
+    // into it after the plan changes the digest (audit B1 on #3058).
     let bound: Vec<Value> = candidates
         .iter()
-        .map(|c| json!({"path": c["path"], "head": c["head"], "action": c["action"], "reasons": c["reasons"], "trim_paths": c["trim_paths"]}))
+        .map(|c| json!({"path": c["path"], "head": c["head"], "action": c["action"], "reasons": c["reasons"], "trim_paths": c["trim_paths"], "install_fingerprint": c["install_fingerprint"]}))
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
@@ -1083,7 +1173,7 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
         let (_, preserved) = split_target(&wt.join("target"));
         let split = primary.and_then(|p| ignored_split(wt, p, &preserved));
         match (census(wt), split) {
-            (Some((0, _, _)), Some((_, kept, _))) if kept.is_empty() => {}
+            (Some((0, _, _)), Some((_, kept, _, _))) if kept.is_empty() => {}
             (Some(_), Some(_)) => return Some("files_outside_build_output"),
             _ => return Some("file_census_unknown"),
         }
@@ -1439,6 +1529,90 @@ mod tests {
         assert_eq!(walk_install(&top, 4, &mut marks, &mut newest), None);
         assert_eq!(walk_install(&top, 6, &mut marks, &mut newest), Some(5));
         assert!(marks.is_empty());
+    }
+
+    #[cfg(unix)]
+    fn tree(files: &[&str]) -> tempfile::TempDir {
+        let d = tempfile::tempdir().unwrap();
+        for f in files {
+            let p = d.path().join(f);
+            fs::create_dir_all(p.parent().unwrap()).unwrap();
+            fs::write(p, "x").unwrap();
+        }
+        d
+    }
+
+    /// Audit B1 on #3058: only what a package manager writes at the top counts as install output.
+    #[cfg(unix)]
+    #[test]
+    fn only_package_manager_output_is_shaped_like_an_install() {
+        let ok = tree(&[
+            "a/package.json",
+            "@s/b/package.json",
+            ".bin/tool",
+            ".package-lock.json",
+            ".modules.yaml",
+            ".pnpm-workspace-state-v1.json",
+            ".cache/x",
+            ".pnpm/y/z",
+        ]);
+        std::os::unix::fs::symlink("a", ok.path().join("linked")).unwrap();
+        assert!(install_shaped(ok.path()));
+        for stray in [
+            ".env",
+            "my-notes.md",
+            "data.sqlite",
+            "scratch/a.txt",
+            "a2/index.js",
+        ] {
+            let d = tree(&["a/package.json", stray]);
+            assert!(!install_shaped(d.path()), "{stray}");
+        }
+        let scope = tree(&["@s/loose.txt"]);
+        assert!(!install_shaped(scope.path()));
+        let scope = tree(&["@s/nopkg/index.js"]);
+        assert!(!install_shaped(scope.path()));
+        assert!(!install_shaped(Path::new("/nonexistent-install-folder")));
+    }
+
+    /// Audit B4 on #3058, guard 1: a lockfile counts as tracked only when git says so; where
+    /// `git ls-files` fails the answer is "not tracked", never "tracked".
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_git_listing_never_counts_the_lockfile_as_tracked() {
+        let d = tree(&["node_modules/a/package.json", "package-lock.json"]);
+        assert_eq!(install_proof(d.path()), (true, false));
+    }
+
+    /// Audit B4 on #3058, guard 2: a folder the walk cannot read makes the walk fail, it is not
+    /// skipped.
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_folder_fails_the_install_walk() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = install_fixture(1);
+        let top = d.path().join("node_modules");
+        let locked = top.join("pkg");
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+        // a process that can still read it (root) proves nothing here
+        let readable = fs::read_dir(&locked).is_ok();
+        let (mut marks, mut newest) = (Vec::new(), None);
+        let walked = walk_install(&top, 100, &mut marks, &mut newest);
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+        if !readable {
+            assert_eq!(walked, None);
+        }
+    }
+
+    #[test]
+    fn a_codex_worktree_is_told_by_its_home_folder() {
+        assert!(is_codex_worktree(Path::new(
+            "/h/.codex/worktrees/ab12/repo"
+        )));
+        assert!(!is_codex_worktree(Path::new(
+            "/h/worktrees/.codex/ab12/repo"
+        )));
+        assert!(!is_codex_worktree(Path::new("/h/.codex-x/worktrees/ab12")));
     }
 
     #[cfg(unix)]

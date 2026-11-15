@@ -133,8 +133,9 @@ pub struct Profile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detected: Option<crate::project_detect::Detected>,
     /// Worktree scopes (#3010): named lists of repository folders, an allow list that a later
-    /// piece turns into a sparse checkout. Absent means no scope was declared and a worktree
-    /// is the whole repository, as before; a profile written before this key reads unchanged.
+    /// piece reads (the scoped install preview; rc.2 does no sparse checkout, user decision
+    /// 6892968564). Absent means no scope was declared and a worktree is the whole
+    /// repository, as before; a profile written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scopes: Option<Vec<crate::scopes::ScopeEntry>>,
 }
