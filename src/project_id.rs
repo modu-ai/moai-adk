@@ -56,7 +56,8 @@ fn file_of(project: &Path) -> PathBuf {
     project.join(PROJECT_FILE)
 }
 
-/// `.moai` or the file being a link is refused before anything is read or written through it.
+/// `.moai` or the file being a link, or `.moai` being something other than a folder, is
+/// refused before anything is read or written through it.
 fn refuse_links(project: &Path) -> Result<()> {
     for path in [dir_of(project), file_of(project)] {
         if let Ok(m) = fs::symlink_metadata(&path) {
@@ -65,6 +66,9 @@ fn refuse_links(project: &Path) -> Result<()> {
                     "{}: is a symbolic link; refused",
                     rel_of(project, &path)
                 ));
+            }
+            if path == dir_of(project) && !m.is_dir() {
+                return Err(".moai: not a folder".into());
             }
         }
     }
@@ -177,9 +181,6 @@ pub fn issue(project: &Path) -> Result<Issued> {
     }
     // A link or a plain file may have taken the place of `.moai` after the read above.
     refuse_links(project)?;
-    if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
-        return Err(".moai: not a folder".into());
-    }
     let mut last = String::new();
     for _ in 0..PUBLISH_ATTEMPTS {
         let id = new_id()?;
@@ -392,7 +393,8 @@ mod tests {
     fn a_plain_file_in_place_of_the_folder_is_refused() {
         let p = project();
         fs::write(p.path().join(".moai"), "not a folder").unwrap();
-        assert!(issue(p.path()).is_err());
+        assert_eq!(read(p.path()).unwrap_err(), ".moai: not a folder");
+        assert_eq!(issue(p.path()).unwrap_err(), ".moai: not a folder");
         assert_eq!(fs::read(p.path().join(".moai")).unwrap(), b"not a folder");
     }
 
