@@ -1,12 +1,12 @@
 //! The host steps of `project-update-plan` (#2936 R9 S5): the Codex and OMP hook sets, the Codex
-//! config line, the base agents in the project's second agent folder and the `.omp/config.yml`
-//! line. Each step calls the plan the host's own writer takes and prints that writer's command;
+//! config line, the project copy of the `moai` skill for Codex, the base agents in the project's
+//! second agent folder and the `.omp/config.yml` line. Each step calls the plan the host's own writer takes and prints that writer's command;
 //! nothing is written here.
 //!
 //! `project_update` turns a [`HostStep`] into its own step type; this module knows nothing
 //! about phases. HOME is read here, so `project_update::plan` keeps its signature.
 
-use crate::{hooks, hosts::codex_config, omp_agents, update};
+use crate::{hooks, hosts::codex_config, omp_agents, project_skills, update};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
@@ -14,9 +14,10 @@ use std::path::{Path, PathBuf};
 const PLACEHOLDER: &str = crate::project_update::PERMISSION_PLACEHOLDER;
 
 /// The step names this module makes, in plan order.
-pub const NAMES: [&str; 5] = [
+pub const NAMES: [&str; 6] = [
     "codex-hooks",
     "codex-config",
+    "codex-skill",
     "omp-hooks",
     "omp-config",
     "omp-agents",
@@ -91,6 +92,7 @@ fn steps_in(
     vec![
         hooks_step("codex-hooks", "codex", root, shown, home),
         codex_config_step(root, shown, config_home),
+        codex_skill_step(root, shown, home, &installed),
         hooks_step("omp-hooks", "omp", root, shown, home),
         HostStep::bare("omp-config", "skip", OMP_CONFIG_REASON),
         omp_agents_step(root, shown, installed),
@@ -214,6 +216,126 @@ fn config_from_plan(shown: &str, desired: &Value, plan: &Value) -> HostStep {
             "status_line_unverified": plan["status_line_unverified"],
         }),
         plan_digest: digest,
+        apply,
+    }
+}
+
+/// The project copy of the `moai` skill for Codex (`PROJECT/.agents/skills/moai`), from the
+/// skill package that came with this binary. Codex reads the user's own `~/.agents/skills`
+/// too, so a `moai` skill there means the project needs no copy (user decision 6880072221
+/// Q-H3). The step never writes HOME: it only looks for that one file. Without an installed
+/// package there is nothing to copy (`skip`); without a HOME the user decides (`needs_decision`,
+/// no command); a project that is the HOME or lies in a host configuration folder under it is
+/// `blocked` (audit #3025 B2).
+fn codex_skill_step(
+    root: &Path,
+    shown: &str,
+    home: Option<&Path>,
+    installed: &Result<Installed, String>,
+) -> HostStep {
+    const NAME: &str = "codex-skill";
+    let installed = match installed {
+        Ok(i) => i,
+        Err(e) => return HostStep::bare(NAME, "skip", e),
+    };
+    let Some(home) = home else {
+        return HostStep::bare(
+            NAME,
+            "needs_decision",
+            "HOME is not set, so the user's own Codex skill folder cannot be checked; nothing is copied",
+        );
+    };
+    // The same refusal as the hook steps (audit #3025 B2): a project that is the user's HOME, or
+    // lies in a host's configuration folder under it, would make the printed apply write the
+    // user's own skill folder, so no command is offered.
+    if hooks::project_root(root, Some(home)).is_err() {
+        return HostStep::bare(
+            NAME,
+            "blocked",
+            "the project is the user's HOME or lies inside a host configuration folder under it, \
+             or cannot be read; no project skill copy is offered",
+        );
+    }
+    let user_copy = home
+        .join(".agents")
+        .join("skills")
+        .join(update::SKILL_DIR)
+        .join("SKILL.md");
+    // `symlink_metadata`, not `exists`: a broken link there is still something the user put in
+    // their own skill folder (audit #3025 N1), so the project offers no copy next to it.
+    if user_copy.symlink_metadata().is_ok() {
+        return HostStep::bare(
+            NAME,
+            "skip",
+            "the user's Codex skill folder under HOME already has a moai skill; the project needs no copy",
+        );
+    }
+    let request = project_skills::ProjectSkillRequest {
+        protocol_version: project_skills::PROJECT_SKILL_SCHEMA_VERSION,
+        opt_in: true,
+        project_root: root.to_path_buf(),
+        home: Some(home.to_path_buf()),
+        hosts: vec!["codex".into()],
+        source_dir: installed.package.clone(),
+    };
+    let Ok(stdin) = serde_json::to_value(&request) else {
+        return HostStep::bare(NAME, "blocked", "a path is not UTF-8");
+    };
+    match project_skills::project_skill_plan(&request) {
+        Ok(plan) => skill_from_plan(shown, &stdin, &plan),
+        Err(e) => HostStep::bare(NAME, "blocked", &e),
+    }
+}
+
+fn skill_from_plan(
+    shown: &str,
+    stdin: &Value,
+    plan: &project_skills::ProjectSkillPlan,
+) -> HostStep {
+    const NAME: &str = "codex-skill";
+    let Some(entry) = plan.entries.first().filter(|_| plan.entries.len() == 1) else {
+        return HostStep::bare(NAME, "blocked", "the skill plan has no single Codex entry");
+    };
+    let (state, reason) = match entry.action.as_str() {
+        "create" | "replace" => ("ready", "MoAI skill copy to write".to_string()),
+        "unchanged" => ("unchanged", "the project skill copy is current".to_string()),
+        "blocked" => (
+            "blocked",
+            entry
+                .blocked_reason
+                .clone()
+                .unwrap_or_else(|| "the project skill folder is blocked".into()),
+        ),
+        _ => ("blocked", "the skill plan has no known action".to_string()),
+    };
+    let apply = (state == "ready").then(|| {
+        (
+            [
+                "moai",
+                "project-skill-apply",
+                shown,
+                "--plan-digest",
+                plan.plan_digest.as_str(),
+                "--permission-reference",
+                PLACEHOLDER,
+            ]
+            .map(String::from)
+            .to_vec(),
+            stdin.clone(),
+        )
+    });
+    HostStep {
+        name: NAME,
+        state,
+        reason,
+        preview: json!({
+            "host": entry.host,
+            "path": entry.path,
+            "action": entry.action,
+            "package_digest": plan.package_digest,
+            "warnings": plan.warnings,
+        }),
+        plan_digest: Some(plan.plan_digest.clone()),
         apply,
     }
 }
@@ -358,6 +480,127 @@ mod tests {
             assert_eq!(s.state, "ready", "{}: {}", s.name, s.reason);
         }
     }
+    fn skill_plan(action: &str, reason: Option<&str>) -> project_skills::ProjectSkillPlan {
+        project_skills::ProjectSkillPlan {
+            protocol_version: 1,
+            opt_in: true,
+            package_digest: "sha256:package".into(),
+            entries: vec![project_skills::ProjectSkillEntry {
+                host: "codex".into(),
+                path: ".agents/skills/moai".into(),
+                action: action.into(),
+                blocked_reason: reason.map(String::from),
+                source_sha256: "sha256:package".into(),
+                current_sha256: None,
+                home_sha256: None,
+                duplicated_with_home: false,
+                reading_order_note: String::new(),
+            }],
+            warnings: Vec::new(),
+            plan_digest: "sha256:fixture".into(),
+        }
+    }
+
+    /// Only a copy MoAI will create or replace is offered for apply, and the printed command
+    /// always carries both gate flags.
+    #[test]
+    fn the_skill_actions_set_the_step_state() {
+        let stdin = json!({"hosts": ["codex"]});
+        for (action, state, has_command) in [
+            ("create", "ready", true),
+            ("replace", "ready", true),
+            ("unchanged", "unchanged", false),
+            ("blocked", "blocked", false),
+            ("something-new", "blocked", false),
+        ] {
+            let step = skill_from_plan("/p", &stdin, &skill_plan(action, Some("linked")));
+            assert_eq!(step.state, state, "{action}");
+            assert_eq!(step.apply.is_some(), has_command, "{action}");
+        }
+        let step = skill_from_plan("/p", &stdin, &skill_plan("create", None));
+        let (argv, sent) = step.apply.unwrap();
+        assert_eq!(
+            &argv[..4],
+            ["moai", "project-skill-apply", "/p", "--plan-digest"]
+        );
+        assert_eq!(argv[4], "sha256:fixture");
+        assert_eq!(&argv[5..], ["--permission-reference", PLACEHOLDER]);
+        assert_eq!(sent, stdin);
+        let blocked = skill_from_plan("/p", &stdin, &skill_plan("blocked", Some("linked")));
+        assert_eq!(blocked.reason, "linked");
+    }
+
+    /// Without a HOME the user's own Codex skill folder cannot be checked: the step waits for
+    /// the user and prints no command.
+    #[test]
+    fn an_unknown_home_makes_the_codex_skill_step_wait_for_the_user() {
+        let t = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(t.path()).unwrap();
+        let installed = Ok(Installed {
+            package: root.clone(),
+            agents: root.clone(),
+        });
+        let step = codex_skill_step(&root, "/p", None, &installed);
+        assert_eq!(step.state, "needs_decision", "{}", step.reason);
+        assert!(step.apply.is_none());
+    }
+
+    /// Audit #3025 B2: a project that is the HOME, or lies in a host configuration folder or
+    /// the HOME state folder under it, is blocked with no command; a plain project under the
+    /// same HOME is not refused for that reason.
+    #[test]
+    fn a_project_that_is_the_home_or_in_its_host_folders_is_blocked_for_the_skill_copy() {
+        let t = tempfile::tempdir().unwrap();
+        let home = std::fs::canonicalize(t.path()).unwrap();
+        let installed = Ok(Installed {
+            package: home.clone(),
+            agents: home.clone(),
+        });
+        let mut refused = vec![home.clone()];
+        for dir in [".agents", ".codex", ".omp", ".claude"] {
+            let inner = home.join(dir).join("work");
+            std::fs::create_dir_all(&inner).unwrap();
+            refused.push(inner);
+        }
+        for root in &refused {
+            let step = codex_skill_step(root, "/p", Some(&home), &installed);
+            assert_eq!(step.state, "blocked", "{}: {}", root.display(), step.reason);
+            assert!(step.apply.is_none(), "{}", root.display());
+        }
+        // A project beside them is not refused for this reason: the step goes on to the plan
+        // (the empty package folder is then what blocks it, with another reason).
+        let plain = home.join("project");
+        std::fs::create_dir_all(&plain).unwrap();
+        let step = codex_skill_step(&plain, "/p", Some(&home), &installed);
+        assert!(
+            !step.reason.contains("no project skill copy is offered"),
+            "{}",
+            step.reason
+        );
+    }
+
+    /// Audit #3025 N1: a broken link where the user's own moai skill would be is something
+    /// the user put there; the project offers no copy next to it.
+    #[cfg(unix)]
+    #[test]
+    fn a_broken_link_in_the_users_skill_folder_counts_as_their_skill() {
+        let t = tempfile::tempdir().unwrap();
+        let base = std::fs::canonicalize(t.path()).unwrap();
+        let home = base.join("home");
+        let project = base.join("project");
+        let user_skill = home.join(".agents").join("skills").join(update::SKILL_DIR);
+        std::fs::create_dir_all(&user_skill).unwrap();
+        std::fs::create_dir_all(&project).unwrap();
+        std::os::unix::fs::symlink(base.join("missing"), user_skill.join("SKILL.md")).unwrap();
+        let installed = Ok(Installed {
+            package: base.clone(),
+            agents: base.clone(),
+        });
+        let step = codex_skill_step(&project, "/p", Some(&home), &installed);
+        assert_eq!(step.state, "skip", "{}", step.reason);
+        assert!(step.apply.is_none());
+    }
+
     fn agents_plan(files: &[(&str, &str)], preflight: &str) -> Value {
         json!({"host": "omp", "dir": ".omp/agents", "preflight": preflight,
                "blocked_reason": if preflight == "ok" { Value::Null } else { json!("linked") },
