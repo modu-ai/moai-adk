@@ -11,13 +11,17 @@ use std::path::PathBuf;
 /// the lane's own pull request (audit FAIL, conflict, failed CI), an audit it reserved (not
 /// judged, head moved, re-audit asked — with the head now), a pull request with no auditor, a
 /// decision request the leader answered, its claimed card, an unclaimed Issue. Reads GitHub
-/// (at most 30 requests a run) and the local clone only; writes nothing. `--wait` reads again
-/// every 432 seconds for the default ten lanes on one token (within half of GitHub's hourly
-/// limit; `--shared-lanes` changes the count) until a task appears. A watching lane stops by
-/// itself: each read with no task and nothing to wait for adds 1 to a count kept per lane and
-/// repository in the clone's state folder, and at `--max-empty` (6 on a GitHub read) the result
-/// says `status: idle_limit` and carries the `LANE-IDLE` line to print once. A read with a task
-/// or something to wait for sets the count back to 0.
+/// (at most 30 requests a run) and the local clone only. `--wait` reads again every 432
+/// seconds for the default ten lanes on one token (within half of GitHub's hourly limit;
+/// `--shared-lanes` changes the count) until a task appears. A watching lane stops by itself:
+/// the one thing it writes is a count kept per lane and repository in the clone's state
+/// folder (`<git common dir>/.moai-cli/lane-idle/`, result `writes: true`; nothing with
+/// `--max-empty 0` or `--snapshot`). Each read with no task, nothing to wait for and a full
+/// answer from GitHub adds 1; at `--max-empty` (6 on a GitHub read) the result says `status:
+/// idle_limit` and carries the `LANE-IDLE` line to print once, and a `--wait` ends at that
+/// read. A read with a task, something to wait for or an open pull request of the lane's own
+/// sets the count back to 0; a partial read (`partial`, or an unknown `end_condition.met`)
+/// is not counted.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane name as it appears in claims (`session=<lane>`) and audit reservations.
@@ -56,6 +60,17 @@ pub const OPERATION: &str = "lane.next";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let max_empty = moai_cli::lane_idle::resolve_max(args.max_empty, args.snapshot.is_some())?;
+    let anchor = (max_empty > 0)
+        .then(|| {
+            moai_cli::identity::identity(&args.dir)
+                .ok()
+                .filter(|id| id["identity_status"].as_str() == Some("ok"))
+                .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from))
+        })
+        .flatten();
+    // The count saved so far, so a `--wait` call stops at the Nth empty read in a row.
+    let budget =
+        moai_cli::lane_idle::budget(anchor.as_deref(), &args.lane, &args.repo, max_empty);
     let mut v = match &args.snapshot {
         Some(file) => {
             let bytes = std::fs::read(file).map_err(|e| format!("snapshot unreadable: {e}"))?;
@@ -75,17 +90,17 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 tip_branch: args.tip.as_deref(),
                 dir: &args.dir,
             };
-            moai_cli::lane_next::run(&target, &GhTransport::from_env()?, &SystemClock,
+            moai_cli::lane_next::run_counting(
+                &target,
+                &GhTransport::from_env()?,
+                &SystemClock,
                 args.wait,
                 args.shared_lanes,
+                budget,
             )?
         }
     };
     if max_empty > 0 {
-        let anchor = moai_cli::identity::identity(&args.dir)
-            .ok()
-            .filter(|id| id["identity_status"].as_str() == Some("ok"))
-            .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from));
         let now = moai_cli::forge::policy::format_utc(SystemClock.now());
         moai_cli::lane_idle::apply(
             &mut v,

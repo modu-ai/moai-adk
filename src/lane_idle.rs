@@ -46,34 +46,130 @@ pub fn resolve_max(arg: Option<u64>, snapshot: bool) -> Result<u64, String> {
     Ok(max)
 }
 
-/// A read with no task and nothing the lane waits for.
-pub fn is_empty_read(result: &Value) -> bool {
-    result["next"].is_null() && result["waiting"].as_array().is_none_or(Vec::is_empty)
+/// What one `lane-next` read says about the lane.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Read {
+    /// No task, nothing to wait for, and GitHub answered in full: the lane has nothing to do.
+    Empty,
+    /// A task, something to wait for, or an open pull request of the lane's own: work in flight.
+    Work,
+    /// GitHub answered in part (`partial`), or the lane-wide end is unknown: the read says
+    /// nothing about whether the lane has work, so it is not counted either way.
+    Unreadable,
 }
 
-/// The state after `reads` reads that were all empty (`empty`) or the last of which found
-/// something, and whether the limit is reached. `max_empty` 0 does not count: the state is
-/// returned unchanged and the limit is never reached.
-pub fn step(
-    prev: &IdleState,
-    empty: bool,
-    reads: u64,
-    max_empty: u64,
-    now: &str,
-) -> (IdleState, bool) {
-    if max_empty == 0 {
+/// Sorts a `lane-next` result. Work wins over everything: a lane with its own pull request
+/// (`pr_skipped` reason `own_no_blocker`: no blocker now, CI or audit pending) is not idle,
+/// even when the read was partial. Only a full read with no work is empty.
+pub fn classify(result: &Value) -> Read {
+    let own_pr = result["pr_skipped"]
+        .as_array()
+        .is_some_and(|l| l.iter().any(|p| p["reason"] == json!("own_no_blocker")));
+    if !result["next"].is_null()
+        || result["waiting"].as_array().is_some_and(|w| !w.is_empty())
+        || own_pr
+    {
+        return Read::Work;
+    }
+    // The note that no tip base is known is always there when nothing is open (the state in
+    // which a lane goes idle), so it does not make a read unreadable.
+    let partial = result["partial"].as_array().is_some_and(|p| {
+        p.iter()
+            .any(|n| n.as_str() != Some(crate::lane_next::TIP_BASE_UNKNOWN))
+    });
+    if partial || !result["end_condition"]["met"].is_boolean() {
+        return Read::Unreadable;
+    }
+    Read::Empty
+}
+
+/// What the reads of one `lane-next` call add to the count: `empty` reads in a row at the
+/// end of the call, and whether a read with work came before them (`reset`, which starts the
+/// count over from 0). An unreadable read changes neither.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Tally {
+    pub empty: u64,
+    pub reset: bool,
+}
+
+impl Tally {
+    pub fn add(&mut self, read: Read) {
+        match read {
+            Read::Empty => self.empty = self.empty.saturating_add(1),
+            Read::Work => {
+                self.empty = 0;
+                self.reset = true;
+            }
+            Read::Unreadable => {}
+        }
+    }
+
+    /// Whether the call counted anything (an unreadable call leaves the saved count alone).
+    pub fn counted(&self) -> bool {
+        self.empty > 0 || self.reset
+    }
+
+    fn to_json(self) -> Value {
+        json!({"empty": self.empty, "reset": self.reset})
+    }
+
+    fn from_json(v: &Value) -> Option<Self> {
+        Some(Self {
+            empty: v["empty"].as_u64()?,
+            reset: v["reset"].as_bool()?,
+        })
+    }
+}
+
+/// The limit and the count already saved, so a `--wait` call can stop at the Nth empty read
+/// instead of at the end of the wait.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IdleBudget {
+    pub max: u64,
+    pub already: u64,
+}
+
+impl IdleBudget {
+    /// Whether `tally` brings the count to the limit.
+    pub fn reached(&self, tally: &Tally) -> bool {
+        let base = if tally.reset { 0 } else { self.already };
+        self.max > 0 && tally.empty > 0 && base.saturating_add(tally.empty) >= self.max
+    }
+}
+
+/// The budget a `lane-next` run counts against: the limit and the count `lane` already has for
+/// `repo`. `None` when nothing is counted: `max_empty` 0, or no clone (`anchor` `None`).
+pub fn budget(anchor: Option<&Path>, lane: &str, repo: &str, max_empty: u64) -> Option<IdleBudget> {
+    let anchor = anchor.filter(|_| max_empty > 0)?;
+    Some(IdleBudget {
+        max: max_empty,
+        already: load(&state_file(anchor, lane, repo)).consecutive_empty,
+    })
+}
+
+/// Attaches what the reads of the call counted to the result, for [`apply`].
+pub fn attach(result: &mut Value, tally: &Tally) {
+    result["idle_read"] = tally.to_json();
+}
+
+/// The saved state after a call that counted `tally`, and whether the limit is reached.
+/// `max_empty` 0, or a call that counted nothing, returns the state unchanged and never the
+/// limit.
+pub fn step(prev: &IdleState, tally: &Tally, max_empty: u64, now: &str) -> (IdleState, bool) {
+    if max_empty == 0 || !tally.counted() {
         return (prev.clone(), false);
     }
-    let consecutive_empty = if empty {
-        prev.consecutive_empty.saturating_add(reads.max(1))
-    } else {
+    let base = if tally.reset {
         0
+    } else {
+        prev.consecutive_empty
     };
+    let consecutive_empty = base.saturating_add(tally.empty);
     let state = IdleState {
         consecutive_empty,
         last: now.to_string(),
     };
-    (state, empty && consecutive_empty >= max_empty)
+    (state, tally.empty > 0 && consecutive_empty >= max_empty)
 }
 
 /// `lane` and `part` with every character outside `A-Za-z0-9._-` replaced by `_`.
@@ -156,6 +252,9 @@ pub fn apply(
     max_empty: u64,
     now: &str,
 ) {
+    // `run` counts each read of a `--wait` call and leaves the tally here; a single read
+    // (a snapshot, or a call that did not wait) is sorted now.
+    let counted = result.as_object_mut().and_then(|o| o.remove("idle_read"));
     if max_empty == 0 {
         return;
     }
@@ -164,10 +263,27 @@ pub fn apply(
             json!({"counting": false, "reason": "not a git clone: the empty reads cannot be kept"});
         return;
     };
+    let tally = counted
+        .as_ref()
+        .and_then(Tally::from_json)
+        .unwrap_or_else(|| {
+            let mut t = Tally::default();
+            t.add(classify(result));
+            t
+        });
     let file = state_file(anchor, lane, repo);
     let prev = load(&file);
-    let reads = result["rounds"].as_u64().unwrap_or(1);
-    let (state, limit) = step(&prev, is_empty_read(result), reads, max_empty, now);
+    if !tally.counted() {
+        result["idle"] = json!({
+            "counting": true,
+            "consecutive_empty": prev.consecutive_empty,
+            "max_empty": max_empty,
+            "limit_reached": false,
+            "not_counted": "the read was partial or its end is unknown (GitHub did not answer in full), so it is not an empty read",
+        });
+        return;
+    }
+    let (state, limit) = step(&prev, &tally, max_empty, now);
     if let Err(e) = save(anchor, &file, &state) {
         result["idle"] =
             json!({"counting": false, "reason": format!("the empty reads cannot be kept: {e}")});
@@ -193,7 +309,15 @@ mod tests {
     const NOW: &str = "2026-11-15T02:00:00Z";
 
     fn run(prev: &IdleState, empty: bool, max: u64) -> (IdleState, bool) {
-        step(prev, empty, 1, max, NOW)
+        let mut tally = Tally::default();
+        tally.add(if empty { Read::Empty } else { Read::Work });
+        step(prev, &tally, max, NOW)
+    }
+
+    /// A full read of GitHub with no task, nothing to wait for and the lane-wide end known.
+    fn empty_read() -> Value {
+        json!({"next": null, "waiting": [], "pr_skipped": [], "partial": [],
+            "end_condition": {"met": false}})
     }
 
     /// The boundary: reads 1 to N-1 keep going, read N is the limit, a read that finds
@@ -248,25 +372,85 @@ mod tests {
         assert!(!limit, "a read with work is never the limit");
     }
 
-    /// A `--wait` call that read several times and found nothing counts every read.
+    fn tally(reads: &[Read]) -> Tally {
+        let mut t = Tally::default();
+        for r in reads {
+            t.add(*r);
+        }
+        t
+    }
+
+    /// A `--wait` call that read several times counts every empty read, and a read with work
+    /// inside the call starts the count over from 0, before the empty reads that follow it.
     #[test]
-    fn every_read_inside_a_wait_counts() {
+    fn every_read_inside_a_wait_counts_from_the_last_work() {
         let fresh = IdleState::default();
-        let (s, limit) = step(&fresh, true, 4, 6, NOW);
+        let (s, limit) = step(&fresh, &tally(&[Read::Empty; 4]), 6, NOW);
         assert_eq!((s.consecutive_empty, limit), (4, false));
-        let (s, limit) = step(&s, true, 4, 6, NOW);
+        let (s, limit) = step(&s, &tally(&[Read::Empty; 4]), 6, NOW);
         assert_eq!((s.consecutive_empty, limit), (8, true));
         let (s, _) = step(
             &IdleState {
                 consecutive_empty: u64::MAX,
                 last: String::new(),
             },
-            true,
-            4,
+            &tally(&[Read::Empty; 4]),
             6,
             NOW,
         );
         assert_eq!(s.consecutive_empty, u64::MAX, "the count saturates");
+        // Five empty reads saved, then a call with work and two empty reads after it: 2, not 7.
+        let five = IdleState {
+            consecutive_empty: 5,
+            last: String::new(),
+        };
+        let (s, limit) = step(
+            &five,
+            &tally(&[Read::Empty, Read::Work, Read::Empty, Read::Empty]),
+            6,
+            NOW,
+        );
+        assert_eq!((s.consecutive_empty, limit), (2, false));
+        let (s, limit) = step(&five, &tally(&[Read::Empty, Read::Work]), 6, NOW);
+        assert_eq!((s.consecutive_empty, limit), (0, false), "work last: 0");
+    }
+
+    /// A call whose reads were all unreadable counts nothing: the saved state is returned
+    /// unchanged and the limit is never reached, however high the saved count already is.
+    #[test]
+    fn an_unreadable_call_leaves_the_count_alone() {
+        let five = IdleState {
+            consecutive_empty: 5,
+            last: "before".into(),
+        };
+        let t = tally(&[Read::Unreadable; 3]);
+        assert!(!t.counted());
+        assert_eq!(step(&five, &t, 6, NOW), (five.clone(), false));
+        let at_limit = IdleState {
+            consecutive_empty: 9,
+            last: "before".into(),
+        };
+        assert_eq!(step(&at_limit, &t, 6, NOW), (at_limit.clone(), false));
+        // Unreadable reads between empty ones do not reset or add.
+        let t = tally(&[Read::Empty, Read::Unreadable, Read::Empty]);
+        assert_eq!(t.empty, 2);
+        // The budget a `--wait` call stops on agrees with `step`.
+        let b = IdleBudget { max: 6, already: 4 };
+        assert!(!b.reached(&tally(&[Read::Empty])));
+        assert!(b.reached(&tally(&[Read::Empty, Read::Empty])));
+        assert!(
+            !b.reached(&tally(&[Read::Unreadable; 5])),
+            "unreadable never"
+        );
+        assert!(
+            !b.reached(&tally(&[Read::Work, Read::Empty, Read::Empty])),
+            "work restarts the count from 0"
+        );
+        assert!(!IdleBudget { max: 0, already: 0 }.reached(&tally(&[Read::Empty])));
+        assert!(
+            !IdleBudget { max: 6, already: 9 }.reached(&tally(&[Read::Unreadable])),
+            "a count already past the limit is not reached again by a read that counted nothing"
+        );
     }
 
     /// The default is 6 on a GitHub read, a snapshot read counts only when asked, and 1000 is
@@ -283,15 +467,80 @@ mod tests {
     }
 
     #[test]
-    fn a_read_with_something_to_wait_for_is_not_empty() {
-        assert!(is_empty_read(&json!({"next": null, "waiting": []})));
-        assert!(is_empty_read(&json!({"next": null})));
-        assert!(!is_empty_read(
-            &json!({"next": null, "waiting": [{"kind": "wait"}]})
-        ));
-        assert!(!is_empty_read(
-            &json!({"next": {"kind": "audit"}, "waiting": []})
-        ));
+    fn a_read_with_work_in_flight_is_not_empty() {
+        assert_eq!(classify(&empty_read()), Read::Empty);
+        let with = |k: &str, v: Value| {
+            let mut r = empty_read();
+            r[k] = v;
+            r
+        };
+        assert_eq!(
+            classify(&with("waiting", json!([{"kind": "wait"}]))),
+            Read::Work
+        );
+        assert_eq!(
+            classify(&with("next", json!({"kind": "audit"}))),
+            Read::Work
+        );
+        // An own pull request with no blocker (CI or an audit pending) is work in flight; a
+        // foreign draft or a reserved audit that is not the lane's is not.
+        assert_eq!(
+            classify(&with(
+                "pr_skipped",
+                json!([{"pr": 10, "reason": "own_no_blocker"}])
+            )),
+            Read::Work
+        );
+        assert_eq!(
+            classify(&with(
+                "pr_skipped",
+                json!([{"pr": 11, "reason": "draft"}, {"pr": 12, "reason": "audit_reserved"}])
+            )),
+            Read::Empty
+        );
+    }
+
+    /// A read GitHub answered in part, or whose lane-wide end is unknown, says nothing about
+    /// whether the lane has work: it is neither empty nor work. Work still wins over it.
+    #[test]
+    fn a_partial_or_unknown_read_is_unreadable() {
+        let with = |k: &str, v: Value| {
+            let mut r = empty_read();
+            r[k] = v;
+            r
+        };
+        assert_eq!(
+            classify(&with("partial", json!(["open pull requests: HTTP 502"]))),
+            Read::Unreadable
+        );
+        assert_eq!(
+            classify(&with(
+                "end_condition",
+                json!({"met": null, "status": "partial"})
+            )),
+            Read::Unreadable
+        );
+        // "No tip base" is there whenever nothing is open, the very state of an idle lane: it
+        // alone leaves the read empty; next to another note the read is unreadable again.
+        let tip = crate::lane_next::TIP_BASE_UNKNOWN;
+        assert_eq!(
+            classify(&with("partial", json!([tip]))),
+            Read::Empty,
+            "a lane with nothing open can go idle"
+        );
+        assert_eq!(
+            classify(&with("partial", json!([tip, "goal exclusions: x"]))),
+            Read::Unreadable
+        );
+        assert_eq!(classify(&json!({"next": null})), Read::Unreadable);
+        assert_eq!(classify(&json!({})), Read::Unreadable);
+        let mut r = with("partial", json!(["x"]));
+        r["waiting"] = json!([{"kind": "wait"}]);
+        assert_eq!(classify(&r), Read::Work, "work wins over a partial read");
+        assert_eq!(
+            classify(&with("end_condition", json!({"met": true}))),
+            Read::Empty
+        );
     }
 
     #[test]
@@ -353,7 +602,7 @@ mod tests {
         let elsewhere = d.path().join("elsewhere");
         std::fs::create_dir(&elsewhere).unwrap();
         std::os::unix::fs::symlink(&elsewhere, crate::clone_root::path(&anchor)).unwrap();
-        let mut v = json!({"next": null, "waiting": []});
+        let mut v = empty_read();
         apply(&mut v, Some(&anchor), "agent-1", "o/r", 6, NOW);
         assert_eq!(v["idle"]["counting"], json!(false), "{v}");
         assert!(v.get("status").is_none());
@@ -364,22 +613,87 @@ mod tests {
         );
     }
 
+    /// Three partial reads, or three reads with an own pull request in flight, never reach the
+    /// limit and leave the saved count and the file alone; the tally `run` attaches is used and
+    /// removed from the output.
+    #[test]
+    fn apply_does_not_count_an_unreadable_read_or_work_in_flight() {
+        let d = tempfile::tempdir().unwrap();
+        let anchor = d.path();
+        let file = state_file(anchor, "agent-1", "o/r");
+        for _ in 0..3 {
+            let mut v = empty_read();
+            v["partial"] = json!(["open pull requests: HTTP 502"]);
+            apply(&mut v, Some(anchor), "agent-1", "o/r", 3, NOW);
+            assert_eq!(v["idle"]["consecutive_empty"], json!(0), "{v}");
+            assert_eq!(v["idle"]["limit_reached"], json!(false));
+            assert!(v["idle"]["not_counted"].is_string(), "{v}");
+            assert!(v.get("status").is_none() && v["idle"].get("line").is_none());
+            assert!(!file.exists(), "an unreadable read writes nothing");
+        }
+        for _ in 0..3 {
+            let mut v = empty_read();
+            v["pr_skipped"] = json!([{"pr": 10, "reason": "own_no_blocker"}]);
+            apply(&mut v, Some(anchor), "agent-1", "o/r", 3, NOW);
+            assert_eq!(v["idle"]["consecutive_empty"], json!(0), "{v}");
+            assert!(v.get("status").is_none(), "own PR in flight: {v}");
+        }
+        // Nothing was saved above. A `--wait` call that counted three empty reads (the tally
+        // `run` attaches) is the limit although the result itself is a single read.
+        let mut v = empty_read();
+        attach(&mut v, &tally(&[Read::Empty; 3]));
+        apply(&mut v, Some(anchor), "agent-1", "o/r", 3, NOW);
+        assert_eq!(v["status"], json!("idle_limit"), "{v}");
+        assert_eq!(v["idle"]["consecutive_empty"], json!(3), "{v}");
+        assert!(v.get("idle_read").is_none(), "the tally is not output");
+    }
+
+    /// The budget carries the saved count of this lane and repository only; no clone or
+    /// `--max-empty 0` has no budget.
+    #[test]
+    fn the_budget_is_the_saved_count_of_this_lane_and_repository() {
+        let d = tempfile::tempdir().unwrap();
+        let anchor = d.path();
+        let none = budget(Some(anchor), "agent-1", "o/r", 6).unwrap();
+        assert_eq!((none.max, none.already), (6, 0), "nothing saved yet");
+        let file = state_file(anchor, "agent-1", "o/r");
+        let state = IdleState {
+            consecutive_empty: 4,
+            last: NOW.into(),
+        };
+        save(anchor, &file, &state).unwrap();
+        let b = budget(Some(anchor), "agent-1", "o/r", 6).unwrap();
+        assert_eq!((b.max, b.already), (6, 4));
+        assert_eq!(
+            budget(Some(anchor), "agent-2", "o/r", 6).unwrap().already,
+            0
+        );
+        assert_eq!(
+            budget(Some(anchor), "agent-1", "o/s", 6).unwrap().already,
+            0
+        );
+        assert!(budget(Some(anchor), "agent-1", "o/r", 0).is_none());
+        assert!(budget(None, "agent-1", "o/r", 6).is_none());
+    }
+
     #[test]
     fn apply_counts_to_the_limit_and_writes_the_line() {
         let d = tempfile::tempdir().unwrap();
         let anchor = d.path();
         for n in 1..=3u64 {
-            let mut v = json!({"next": null, "waiting": [], "writes": false});
+            let mut v = empty_read();
+            v["writes"] = json!(false);
             apply(&mut v, Some(anchor), "agent-1", "o/r", 3, NOW);
             assert_eq!(v["idle"]["consecutive_empty"], json!(n));
             assert_eq!(v["idle"]["limit_reached"], json!(n == 3), "read {n}");
             assert_eq!(v.get("status").is_some(), n == 3);
             assert_eq!(v["writes"], json!(true));
         }
-        let mut v = json!({"next": {"kind": "issue"}, "waiting": []});
+        let mut v = empty_read();
+        v["next"] = json!({"kind": "issue"});
         apply(&mut v, Some(anchor), "agent-1", "o/r", 3, NOW);
         assert_eq!(v["idle"]["consecutive_empty"], json!(0));
-        let mut v = json!({"next": null});
+        let mut v = empty_read();
         apply(&mut v, None, "agent-1", "o/r", 3, NOW);
         assert_eq!(v["idle"]["counting"], json!(false));
         assert!(v.get("status").is_none(), "no clone never stops the lane");
