@@ -68,7 +68,7 @@ impl Blocked {
             format!(
                 "the vault holds no glm key; ~/{file} exists but is no longer read"
             ),
-            "preview the move with `moai-cli key-import-plan glm` (then `key-import-apply`), or store a key with `moai-cli key-set glm` (value on stdin); the old file is left as it is",
+            "preview the move with `moai key-import-plan glm` (then `key-import-apply`), or store a key with `moai key-set glm` (value on stdin); the old file is left as it is",
         )
     }
 
@@ -546,7 +546,7 @@ pub fn read_entry(
     }
     let path = entry_path(home, scope, provider);
     let hint = format!(
-        "remove it and run: moai-cli key-set {provider}{} (value on stdin)",
+        "remove it and run: moai key-set {provider}{} (value on stdin)",
         scope.flag()
     );
     let Some(bytes) = read_private(home, &path, ENTRY_FILE_MAX, &hint)? else {
@@ -592,7 +592,7 @@ pub fn read_here(
         Blocked::new(
             "key_absent",
             format!("cannot resolve the project for the vault: {why}"),
-            format!("run it inside the project, or store the key with `moai-cli key-set {provider} --shared`"),
+            format!("run it inside the project, or store the key with `moai key-set {provider} --shared`"),
         )
     };
     let dir = std::env::current_dir()

@@ -39,7 +39,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if result["path_first_moai"]["note"].is_string() && moai_cli::ui::stderr_is_terminal() {
         let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
         let note = moai_cli::ui_text::text(moai_cli::ui_text::Msg::PathFirstNote, lang);
-        eprintln!("moai-cli: {note}");
+        eprintln!("moai: {note}");
     }
     Ok(result)
 }

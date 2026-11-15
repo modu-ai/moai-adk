@@ -16,7 +16,7 @@ import unittest
 from tests.self_audit_run import rust_bin
 
 NOTE = (
-    "moai-cli: hooks are generated with moai-cli until R5; put a Rust moai first on PATH "
+    "moai: hooks are generated with moai-cli until R5; put a Rust moai first on PATH "
     "to let them use moai (nothing was changed)\n"
 )
 
@@ -129,7 +129,7 @@ class InstallInspectTty(unittest.TestCase):
         self.assertEqual(err_t, NOTE, "the terminal shows the note exactly once")
         self.assertEqual(out_t, out_p, "the envelope is byte-identical")
         self.assertIn(b'"generation":"go"', out_p)
-        self.assertIn(NOTE.removeprefix("moai-cli: ").rstrip("\n").encode(), out_p)
+        self.assertIn(NOTE.removeprefix("moai: ").rstrip("\n").encode(), out_p)
 
     def test_a_rust_first_moai_prints_nothing_on_a_terminal(self):
         (code_p, out_p, err_p), (code_t, out_t, err_t) = self.run_both(self.rust)

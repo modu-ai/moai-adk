@@ -734,7 +734,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
                 Err(b) => return Err(blocked_line(&b)),
                 Ok(None) => {
                     return Err(format!(
-                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment and the vault holds no glm key (store it with `moai-cli key-set glm` reading the value from stdin, or set the variable; the launcher never prints or stores the value)"
+                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment and the vault holds no glm key (store it with `moai key-set glm` reading the value from stdin, or set the variable; the launcher never prints or stores the value)"
                     ));
                 }
                 Ok(Some((_, source))) => {

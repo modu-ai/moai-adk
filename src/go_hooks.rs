@@ -316,7 +316,7 @@ pub fn plan(project: &Path, home: Option<&Path>) -> Result<Value> {
         &serde_json::to_vec(&bound).map_err(|_| "encode failed")?
     ));
     p["next_actions"] = json!([
-        "review the entries that go, stay and are added, then run `moai-cli go-hooks-apply --plan-digest <plan_digest> --permission-reference <ref> <project>`"
+        "review the entries that go, stay and are added, then run `moai go-hooks-apply --plan-digest <plan_digest> --permission-reference <ref> <project>`"
     ]);
     Ok(p)
 }
@@ -530,7 +530,7 @@ pub fn apply(
         "archive": crate::state_root::rel(&root, &format!("receipts/{id}/archive/moai")),
         "receipt": id,
         "host_loaded": "not_run",
-        "next_actions": [format!("to undo: moai-cli go-hooks-revert --receipt {id} --permission-reference <ref> <project>")],
+        "next_actions": [format!("to undo: moai go-hooks-revert --receipt {id} --permission-reference <ref> <project>")],
     }))
 }
 
