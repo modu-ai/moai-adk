@@ -188,6 +188,36 @@ fn what_is_not_a_usable_table_says_why() {
 }
 
 #[test]
+fn a_header_and_its_separator_must_both_look_like_the_table() {
+    // The first header cell is `#`.
+    assert_eq!(
+        parse_ac_table("| N | 기준 | 확인 방법 |\n|---|---|---|\n| 1 | x | y |\n"),
+        AcReading::Unreadable(AcProblem::NoTable)
+    );
+    // The separator has three cells like the header: two cells are another kind of table.
+    assert_eq!(
+        parse_ac_table("| # | 기준 | 확인 방법 |\n|---|---|\n| 1 | x | y |\n"),
+        AcReading::Unreadable(AcProblem::NoTable)
+    );
+    // Colons alone are not a separator; every cell needs its dashes.
+    assert_eq!(
+        parse_ac_table("| # | 기준 | 확인 방법 |\n| : | : | : |\n| 1 | x | y |\n"),
+        AcReading::Unreadable(AcProblem::NoTable)
+    );
+    assert_eq!(
+        parse_ac_table("| # | 기준 | 확인 방법 |\n|---|:|---|\n| 1 | x | y |\n"),
+        AcReading::Unreadable(AcProblem::NoTable)
+    );
+    // Alignment colons around dashes are fine.
+    assert_eq!(
+        rows(parse_ac_table(
+            "| # | 기준 | 확인 방법 |\n|:--|:-:|--:|\n| 1 | x | y |\n"
+        )),
+        vec![("1".into(), "x".into(), "y".into())]
+    );
+}
+
+#[test]
 fn the_row_and_cell_limits_are_exact() {
     let table = |n: usize| {
         let mut t = String::from("| # | 기준 | 확인 방법 |\n|---|---|---|\n");
@@ -486,4 +516,16 @@ fn field_boundaries_cannot_be_shifted_to_collide() {
         issue_set_digest(&open(vec![x])),
         issue_set_digest(&open(vec![y]))
     );
+    // The separator characters themselves can sit inside a value: the lengths keep them apart.
+    let mut x = issue(1, "t", "");
+    x.labels = labels(&["a:b", "c"]);
+    let mut y = issue(1, "t", "");
+    y.labels = labels(&["a", "b:c"]);
+    assert_ne!(
+        issue_set_digest(&open(vec![x])),
+        issue_set_digest(&open(vec![y]))
+    );
+    let one = open(vec![issue(1, "x:1", "")]);
+    let two = open(vec![issue(1, "x", "")]);
+    assert_ne!(issue_set_digest(&one), issue_set_digest(&two));
 }
