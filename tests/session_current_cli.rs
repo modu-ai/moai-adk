@@ -4,6 +4,7 @@
 //! a different session.
 mod common;
 
+use common::CleanEnv;
 use serde_json::Value;
 use std::process::{Command, Output};
 
@@ -21,7 +22,7 @@ fn run(vars: &[(&str, &str)]) -> (Output, Value) {
     let mut cmd = Command::new(BIN);
     cmd.arg("session-current")
         .current_dir(project.path())
-        .env_clear()
+        .clean_env()
         .env("HOME", home.path())
         .env("PATH", std::env::var("PATH").unwrap_or_default());
     for (k, v) in vars {
@@ -87,7 +88,7 @@ fn the_command_writes_nothing_into_the_project() {
     let out = Command::new(BIN)
         .arg("session-current")
         .current_dir(project.path())
-        .env_clear()
+        .clean_env()
         .env("HOME", home.path())
         .env("CLAUDE_CODE_SESSION_ID", OWN)
         .output()
