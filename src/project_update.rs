@@ -146,7 +146,7 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     for i in &plan.items {
         *classes.entry(i.class.as_str()).or_insert(0) += 1;
     }
-    let preview = json!({
+    let mut preview = json!({
         "classes": classes,
         "kinds": plan.kinds,
         "counterparts": plan.counterparts,
@@ -162,6 +162,10 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
         "unrecorded": plan.unrecorded,
         "warnings": plan.warnings,
     });
+    // #2936 S-CYCLE: which settings move and what that frees; absent when the rule does not fire.
+    if let Some(sm) = &plan.settings_move {
+        preview["settings_move"] = encode(sm)?;
+    }
     Ok(if pending {
         Step {
             name: "go-state",
@@ -570,6 +574,13 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
         "scripts_unreferenced": names("scripts_unreferenced"),
         "scripts_missing": names("scripts_missing"),
     });
+    // #2936 S-CYCLE (OQ2 H1): no Go entry is left because the Go settings moved into a backup;
+    // the MoAI hook set is then written by the ordinary `hooks-apply` for Claude.
+    if plan["action"].as_str() == Some("none") {
+        if let Some(step) = hooks_after_settings_move(root, shown, &preview)? {
+            return Ok(step);
+        }
+    }
     let (state, reason) = match plan["action"].as_str() {
         Some("replace") => (
             "ready",
@@ -598,6 +609,63 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
         plan_digest: digest,
         apply,
     })
+}
+
+/// #2936 S-CYCLE (OQ2 H1): the Go settings moved into a backup (a committed `go-state-apply`
+/// whose receipt is not reverted holds them), so the Go hook entries are gone with them and
+/// `go-hooks-apply` has nothing to replace, yet the new settings carry no hook set. The step
+/// then prints `hooks-apply --host claude`. Without such a receipt (a project that never had
+/// Go settings, or a reverted move) it offers nothing: `None`.
+fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<Option<Step>> {
+    if go_state::backed_up_settings(root)?.is_none() {
+        return Ok(None);
+    }
+    let plan = crate::hooks::plan(root, "claude", None)?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let mut preview = base.clone();
+    preview["action"] = plan["action"].clone();
+    preview["host"] = json!("claude");
+    preview["hooks"] = plan["hooks"].clone();
+    let (state, reason) = match plan["action"].as_str() {
+        Some("create" | "update") => (
+            "ready",
+            "the Go settings moved into the backup and took their hook entries with them; the \
+             MoAI hook set is not in the new settings yet",
+        ),
+        Some("unchanged") => ("unchanged", "the MoAI hook set is current"),
+        _ => (
+            "conflict",
+            "the MoAI hook set conflicts with a key the user set in .claude/settings.json; \
+             nothing is written",
+        ),
+    };
+    let apply = match (&digest, state) {
+        (Some(d), "ready") => Some((
+            [
+                "moai",
+                "hooks-apply",
+                shown,
+                "--host",
+                "claude",
+                "--plan-digest",
+                d,
+                "--permission-reference",
+                PERMISSION_PLACEHOLDER,
+            ]
+            .map(String::from)
+            .to_vec(),
+            Value::Null,
+        )),
+        _ => None,
+    };
+    Ok(Some(Step {
+        name: "hooks",
+        state,
+        reason: reason.into(),
+        preview,
+        plan_digest: digest,
+        apply,
+    }))
 }
 
 fn github_step(root: &Path, shown: &str) -> Result<Step> {
