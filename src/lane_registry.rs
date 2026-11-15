@@ -106,6 +106,20 @@ pub(crate) fn is_live(dir: &Path, name: &str, now: i64) -> Result<bool, String> 
     Ok(matches!(read_entry(&file, name)?, Some((_, lease, _)) if lease > now))
 }
 
+/// Whether `name` holds a live lease in the session registry of the clone `project` belongs
+/// to, read without a lock or a write; `None` when the registry cannot be read (not a clone, a
+/// link, an unreadable entry) — never "no" (#3015 C3b).
+pub fn session_live(project: &Path, name: &str, now: i64) -> Option<bool> {
+    let dir = registry_dir(project).ok()?;
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => is_live(&dir, name, now).ok(),
+        Ok(_) => None,
+        // No registry folder yet: no session has ever registered in this clone.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(false),
+        Err(_) => None,
+    }
+}
+
 /// Takes the registry's exclusive lock (the one `register` holds) in the existing folder `dir`;
 /// the lock is held until the returned file is dropped. The folder is not created (#3015 C2).
 pub(crate) fn lock_existing(dir: &Path) -> Result<fs::File, String> {

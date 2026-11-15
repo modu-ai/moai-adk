@@ -503,16 +503,20 @@ fn gh_comment(id: u64, login: &str, body: &str) -> Value {
     json!({"id": id, "user": {"login": login}, "body": body})
 }
 
-/// What a stub `gh` answers: the search result and Issue 7's comments (`None` answers 404).
+/// What a stub `gh` answers: the search result, Issue 7's comments (`None` answers 404) and the
+/// repository's open pull requests (`None` answers an empty list, JSON `null` answers 404).
+#[derive(Default)]
 struct Forge {
     search: Value,
     comments_7: Option<Value>,
+    pulls: Option<Value>,
 }
 
 fn forge_with(comments: Vec<Value>) -> Forge {
     Forge {
         search: json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 7}]}),
         comments_7: Some(json!(comments)),
+        ..Default::default()
     }
 }
 
@@ -534,6 +538,7 @@ fn run_flags(
         "#!/bin/sh\necho \"$@\" >> \"$GH_LOG\"\nfor a; do url=$a; done\ncase \"$url\" in\n\
          */search/issues*) body=$SEARCH_JSON ;;\n\
          */issues/7/comments*) [ -n \"$COMMENTS_7\" ] && body=$COMMENTS_7 || { printf 'HTTP/2.0 404 Not Found\\r\\n\\r\\n{\"message\":\"Not Found\"}'; exit 1; } ;;\n\
+         */pulls*) if [ \"$PULLS_JSON\" = null ]; then printf 'HTTP/2.0 404 Not Found\\r\\n\\r\\n{\"message\":\"Not Found\"}'; exit 1; fi; body=${PULLS_JSON:-[]} ;;\n\
          *) printf 'HTTP/2.0 404 Not Found\\r\\n\\r\\n{\"message\":\"Not Found\"}'; exit 1 ;;\nesac\n\
          printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$body\"\n",
     );
@@ -549,6 +554,9 @@ fn run_flags(
         cmd.env("SEARCH_JSON", forge.search.to_string());
         if let Some(c) = &forge.comments_7 {
             cmd.env("COMMENTS_7", c.to_string());
+        }
+        if let Some(p) = &forge.pulls {
+            cmd.env("PULLS_JSON", p.to_string());
         }
     }
     cmd.args([
@@ -606,12 +614,136 @@ fn without_an_observations_file_a_lane_with_a_resume_note_and_a_quiet_screen_is_
     assert_eq!(res["claims"]["source"], "github:search+issue-comments");
     assert_eq!(res["screen"]["source"], "flag");
     assert_eq!(res["session_cwd"]["source"], "flag");
-    // Reads only: a search and the claimed thread's comments, every one a GET.
-    assert_eq!(requests.len(), 2, "{requests:?}");
+    // Reads only: a search, the claimed thread's comments and the open pull requests (for the
+    // lane's state), every one a GET.
+    assert_eq!(requests.len(), 3, "{requests:?}");
     assert!(
         requests.iter().all(|l| l.starts_with("api -X GET ")),
         "{requests:?}"
     );
+}
+
+// --- #3015 C3b: the lane's state is told from its claims, pull requests and work, not from
+// a quiet screen ----
+
+fn lane_state(r: &Value) -> &Value {
+    &result(r)["lane_state"]
+}
+
+fn open_pr_7() -> Value {
+    json!([{"number": 41, "head": {"ref": "issue/7-card"}, "body": "audit-tier: 1"}])
+}
+
+#[cfg(unix)]
+#[test]
+fn a_claim_with_an_open_pull_request_is_waiting_and_one_without_is_resumable() {
+    let f = fixture();
+    let mut forge = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    let flags = clean_flags(&f);
+    // No pull request, a resume note: stopped, and it can be taken up again.
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "resumable", "{r}");
+    assert_eq!(
+        lane_state(&r)["evidence"]["open_claims"][0]["open_pr"],
+        Value::Null
+    );
+    // The claim's own pull request is open: the lane waits for its check or audit.
+    forge.pulls = Some(open_pr_7());
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "waiting", "{r}");
+    assert_eq!(
+        lane_state(&r)["evidence"]["open_claims"][0]["open_pr"],
+        41,
+        "{r}"
+    );
+    // The same pull request found by the claim line in its body, not by its branch.
+    forge.pulls = Some(json!([{
+        "number": 42, "head": {"ref": "somebody-elses-name"},
+        "body": "audit-tier: 1\n\nMoai-Claim: 7#6000070"
+    }]));
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "waiting", "{r}");
+    assert_eq!(
+        lane_state(&r)["evidence"]["open_claims"][0]["open_pr"],
+        42,
+        "{r}"
+    );
+    // A pull request of another card does not count.
+    forge.pulls = Some(json!([{"number": 43, "head": {"ref": "issue/8-other"}, "body": ""}]));
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "resumable", "{r}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_claim_with_neither_a_note_nor_a_pull_request_is_stopped_and_a_job_is_working() {
+    let f = fixture();
+    let no_note = forge_with(vec![gh_comment(6000070, "GoosLab", CLAIM_70)]);
+    let flags = clean_flags(&f);
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&no_note));
+    assert_eq!(lane_state(&r)["state"], "stopped", "{r}");
+    // A background job on the screen is a running writer, whatever else is on record.
+    let with_note = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    let mut busy = clean_flags(&f);
+    busy[3] = "2".into();
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&busy), Some(&with_note));
+    assert_eq!(lane_state(&r)["state"], "working", "{r}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_lane_with_no_claim_and_nothing_left_is_idle_and_left_work_makes_it_stopped() {
+    let f = fixture();
+    let mut forge = forge_with(vec![]);
+    forge.search = json!({"total_count": 0, "incomplete_results": false, "items": []});
+    let flags = clean_flags(&f);
+    let (r, requests) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "idle", "{r}");
+    // No claim, no pull-request read.
+    assert!(
+        requests.iter().all(|l| !l.contains("/pulls")),
+        "{requests:?}"
+    );
+    // Work left in the lane's worktree with no claim to say where it belongs.
+    fs::write(f.wt7.join("draft.txt"), "x\n").unwrap();
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "stopped", "{r}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_read_that_failed_makes_the_state_unknown_and_never_a_guess() {
+    let f = fixture();
+    let mut forge = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    // The pull requests cannot be read: neither "waiting" nor "resumable" can be told.
+    forge.pulls = Some(Value::Null);
+    let flags = clean_flags(&f);
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
+    let reasons = texts(lane_state(&r), "reasons");
+    assert!(
+        reasons.iter().any(|t| t.contains("open pull requests")),
+        "{reasons:?}"
+    );
+    // No screen observation: a running writer cannot be ruled out.
+    forge.pulls = None;
+    let no_screen: Vec<String> = vec![
+        "--repo".into(),
+        "acme/widgets".into(),
+        "--session-cwd".into(),
+        f.wt7.to_str().unwrap().into(),
+    ];
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&no_screen), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
 }
 
 #[cfg(unix)]
@@ -664,6 +796,7 @@ fn claims_that_cannot_be_read_leave_the_lane_unknown_with_the_reason() {
     let broken = Forge {
         search: json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 7}]}),
         comments_7: None,
+        ..Default::default()
     };
     let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&broken));
     assert_eq!(result(&r)["verdict"], "unknown", "{r}");
@@ -721,6 +854,7 @@ fn claims_that_cannot_be_read_leave_the_lane_unknown_with_the_reason() {
             gh_comment(6000070, "GoosLab", CLAIM_70),
             gh_comment(6000071, "GoosLab", NOTE_71)
         ])),
+        ..Default::default()
     };
     let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&cut));
     assert_eq!(result(&r)["verdict"], "unknown", "{r}");
@@ -757,6 +891,7 @@ fn a_claim_the_search_has_not_indexed_yet_is_found_through_the_lanes_local_branc
             gh_comment(6000070, "GoosLab", CLAIM_70),
             gh_comment(6000071, "GoosLab", NOTE_71)
         ])),
+        ..Default::default()
     };
     let flags = clean_flags(&f);
     let (r, requests) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&lagging));
@@ -765,7 +900,7 @@ fn a_claim_the_search_has_not_indexed_yet_is_found_through_the_lanes_local_branc
         json!([{"issue": 7, "claim_comment": 6000070, "resume_note": 6000071}]),
         "{r}"
     );
-    assert_eq!(requests.len(), 2, "{requests:?}");
+    assert_eq!(requests.len(), 3, "{requests:?}");
 }
 
 #[test]
