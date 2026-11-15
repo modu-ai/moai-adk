@@ -472,7 +472,7 @@ pub fn setup<R: BufRead, W: Write>(
         "language": chosen,
         "changed_items": changed,
         "profile_written": false,
-        "next_actions": ["pass result.profile to `moai-cli project-plan <project>` on stdin, review the plan, then `moai-cli project-apply`"]
+        "next_actions": ["pass result.profile to `moai project-plan <project>` on stdin, review the plan, then `moai project-apply`"]
     });
     if go.found {
         out["go_backup"] = go.to_json();

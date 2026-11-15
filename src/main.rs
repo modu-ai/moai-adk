@@ -1289,7 +1289,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
             // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
             if host != "claude" {
                 return Err(format!(
-                    "host {host} is not available on `session`; use `moai-cli cc|glm|codex -l|-a`"
+                    "host {host} is not available on `session`; use `moai cc|glm|codex -l|-a`"
                 ));
             }
             session_launch(

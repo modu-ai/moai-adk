@@ -120,7 +120,7 @@ fn a_legacy_key_file_is_named_and_never_read() {
             assert_eq!(v, Value::Null, "{file}");
             assert!(text.contains("blocked: legacy_key_only"), "{file}: {text}");
             assert!(text.contains(file), "{file}: {text}");
-            assert!(text.contains("moai-cli key-set glm"), "{text}");
+            assert!(text.contains("moai key-set glm"), "{text}");
             assert!(!text.contains(TOKEN), "value shown for {file}");
             assert!(!text.contains("panicked"), "{text}");
             assert_eq!(snapshot(h.path()), before, "{file} changed");

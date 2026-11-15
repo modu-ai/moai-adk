@@ -562,7 +562,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     let detected = detect(root)?;
     let shown = root.display();
     let index = format!(
-        "suggest only, run after the user agrees: moai-cli index-build {shown} with stdin {{\"protocol_version\":1}}"
+        "suggest only, run after the user agrees: moai index-build {shown} with stdin {{\"protocol_version\":1}}"
     );
     let go_state = go_state_fact(root);
     let state_root = crate::state_root::classify(root);
@@ -571,17 +571,17 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     let go_step = match state_root.generation {
         "go" => Some(format!(
             "Go-generation .moai/ found: ask the user first; only after the user agrees run the \
-             read-only preview `moai-cli go-state-plan {shown}`, show it, and apply only after a \
+             read-only preview `moai go-state-plan {shown}`, show it, and apply only after a \
              second agreement (see the PROJECT workflow)"
         )),
         // #2696 C4a: the state is still in the earlier `.moai-cli/`; the same preview moves it.
         "none" if state_root.legacy_root => Some(format!(
             "the project state is still in the earlier .moai-cli/: ask the user first; only \
-             after the user agrees run the read-only preview `moai-cli go-state-plan {shown}`, \
+             after the user agrees run the read-only preview `moai go-state-plan {shown}`, \
              show it, and apply only after a second agreement (see the PROJECT workflow)"
         )),
         "interrupted" => Some(format!(
-            "a Go-state move stopped midway: show the read-only `moai-cli go-state-revert-plan \
+            "a Go-state move stopped midway: show the read-only `moai go-state-revert-plan \
              {shown} --backup <UTC>` (the stamp is the folder name under .moai/backups/) and move \
              nothing else until the user decides"
         )),
@@ -593,7 +593,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
             profile.detected = Some(detected.clone());
             (
                 json!(profile),
-                format!("pass result.profile to `moai-cli project-plan {shown}` on stdin, review the plan, then `moai-cli project-apply`"),
+                format!("pass result.profile to `moai project-plan {shown}` on stdin, review the plan, then `moai project-apply`"),
             )
         }
         Err(e) if e == "project profile missing" => (

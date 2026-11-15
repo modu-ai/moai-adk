@@ -334,7 +334,7 @@ fn index_build_is_suggested_but_not_run() {
     let result = detect(&root);
     assert_eq!(tree(root.path()), before);
     let actions = result["next_actions"].to_string();
-    assert!(actions.contains("moai-cli index-build"), "{actions}");
+    assert!(actions.contains("moai index-build"), "{actions}");
     assert!(actions.contains("after the user agrees"), "{actions}");
     assert!(!root.path().join(".moai-cli/index").exists());
 }
@@ -545,7 +545,7 @@ fn go_generation_state_is_reported_and_its_preview_only_suggested() {
         "{result}"
     );
     let actions = result["next_actions"].to_string();
-    assert!(actions.contains("moai-cli go-state-plan"), "{actions}");
+    assert!(actions.contains("moai go-state-plan"), "{actions}");
     assert!(actions.contains("after the user agrees"), "{actions}");
     assert!(result["profile"].get("go_state").is_none(), "{result}");
 
@@ -616,7 +616,7 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
         // `with_profile` keeps its profile in the earlier root, so `none` is offered the move
         // into a new `.moai/` too (#2696 C4a).
         assert_eq!(
-            actions.contains("moai-cli go-state-plan"),
+            actions.contains("moai go-state-plan"),
             want == "go" || want == "none",
             "{want}: {actions}"
         );
@@ -632,11 +632,8 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
     let result = detect(&root);
     assert_eq!(result["state_root"]["generation"], json!("interrupted"));
     let actions = result["next_actions"].to_string();
-    assert!(
-        actions.contains("moai-cli go-state-revert-plan"),
-        "{actions}"
-    );
-    assert!(!actions.contains("moai-cli go-state-plan"), "{actions}");
+    assert!(actions.contains("moai go-state-revert-plan"), "{actions}");
+    assert!(!actions.contains("moai go-state-plan"), "{actions}");
     // The PROJECT workflow moves nothing on the verdicts that leave the choice to the user.
     let workflow = include_str!("../skills/moai/workflows/project.md");
     assert!(workflow.contains(

@@ -517,7 +517,7 @@ fn plan_inner(root: &Path) -> Result<Inner> {
     json["next_actions"] = if decision.action == "merge" {
         json!([
             "show the user the body, the position and the commit_notice; after their yes run \
-             `moai-cli agents-merge-apply --plan-digest <plan_digest> \
+             `moai agents-merge-apply --plan-digest <plan_digest> \
              --permission-reference <ref> <project>`"
         ])
     } else {
@@ -710,7 +710,7 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         "receipt": id,
         "writes": [TARGET],
         "next_actions": [format!(
-            "to undo: moai-cli agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
+            "to undo: moai agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
         )],
     }))
 }
