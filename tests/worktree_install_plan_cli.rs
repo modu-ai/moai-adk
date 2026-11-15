@@ -48,7 +48,7 @@ fn a_declared_scope_gets_a_preview_and_nothing_is_written() {
     assert_eq!(result["ran"], false);
     assert_eq!(
         result["commands"],
-        json!(["pnpm install --frozen-lockfile --filter 'apps/web' --filter 'packages/ui'"])
+        json!(["pnpm install --frozen-lockfile --filter './apps/web' --filter './packages/ui'"])
     );
     assert_eq!(tree_state(root.path()), before);
 }
