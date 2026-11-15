@@ -103,9 +103,11 @@ Lane and leader
   claim-verify            Check claim ownership before a commit or push
   claim-timeout-check     Check the three timeout takeover conditions of a claim
   claim-expired           List the open claims whose lease has ended
+  audit-claim-stale       List audit reservations left on closed pull requests
   claim-show              Show the current claim record of a task
   claim-release           Close the active claim as cancelled
   claim-handoff           Hand a claim to another session
+  claim-link              Link a claim to the worktree you work in
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
@@ -150,6 +152,7 @@ Lane and leader
   flow-wip-check          Check the open pull requests against the WIP cap
   dispatch-record         Record a dispatch revision
   dispatch-ack            Record a dispatch acknowledgement and decision
+  dispatch-start          Record that an accepted dispatch has started
   dispatch-check          Check dispatch revisions and late acknowledgements
   message-record          Publish a durable message
   message-ack             Publish a receiver acknowledgement
