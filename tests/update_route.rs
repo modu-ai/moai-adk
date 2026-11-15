@@ -65,6 +65,23 @@ fn the_update_route_is_the_project_layer() {
         "Never write a target whose current state could not be read, nor one under a recorded HOLD",
         "For the Claude Code settings, a key MoAI manages that the user set themselves",
         "`claude-settings-apply … --confirm-replace <token>` only after their explicit confirmation",
+        // #2936 R-fix R2 (AC-12): the scope of one yes is a sentence, not an inference.
+        "That yes belongs to the preview run the user was shown and covers only the steps that read `ready` in it",
+        "A step that read `blocked`, `skip` or `re-run after …` in that run was not shown with its content, so no earlier yes covers it",
+        "An answer such as \"continue\" or \"install\" is not an approval of a step the user has not seen",
+        "the yes given before the backup phase does not carry over",
+        // #2936 R-fix R-A: the preview says what the move takes away before the user agrees.
+        "the go-state `items`, `go_backup`, `state_moves`, `restores`, `root_files`, `counterparts`, `after_move` and `warnings`",
+        "each moved kind reads `reinstalled by <step>`, `user layer after moai update` or `no counterpart \u{2014} will be gone`",
+        "`unknown: true` means a bounded read gave up",
+        // #2936 S0 (F6, F16, F24): whether the Go folder moves or stays, and where the backup goes.
+        "The go-state preview says in `layout` whether the Go folder moves or stays (`folder_moves`, `folder_stays`, `legacy_into_new` or `nothing`): read it out first",
+        "`backup_to` is where the backup would go (the apply fills in `<UTC>`) and is `null` when nothing moves; `go_backup` is `null` unless `layout` is `folder_moves`",
+        "A `folder_stays` or `nothing` layout with `backup_to` `null` means no backup is made and no step waits for a confirmation on it",
+        // #2936 R-fix R-B (O-1): the hooks step.
+        "A `hooks` step reads `ready` when `.claude/settings.json` still runs Go-generation hook scripts",
+        "its printed `go-hooks-apply` moves those scripts into a receipt folder, takes the Go entries out of `hooks` and installs the MoAI hook set; `permissions` is not touched",
+        "It reads `needs_decision` without a printed command when other tools' hook entries share `hooks`",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }
@@ -73,6 +90,19 @@ fn the_update_route_is_the_project_layer() {
         !update.contains("Identify the MoAI skill, settings, and owner on every installed host"),
         "the user-layer procedure moved out of the project route"
     );
+}
+
+/// #2936 S0 (F6, F16, F24): PROJECT step 2 says the same three things as UPDATE step 2.
+#[test]
+fn project_step_two_names_the_layout_and_the_backup_destination() {
+    let project = skill("workflows/project.md");
+    for text in [
+        "The preview's `layout` says whether the Go folder moves or stays (`folder_moves`, `folder_stays`, `legacy_into_new` or `nothing`): read it out first",
+        "`backup_to` is where the backup would go (the apply fills in `<UTC>`) and is `null` when nothing moves; `go_backup` is `null` unless `layout` is `folder_moves`",
+        "A `folder_stays` or `nothing` layout with `backup_to` `null` means no backup is made and no step waits for a confirmation on it",
+    ] {
+        assert!(project.contains(text), "project.md lacks {text:?}");
+    }
 }
 
 /// Every `` `moai <op> … --flag` `` span in update.md (and the `` `moai-cli <op>` `` spelling
@@ -252,6 +282,17 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
     let plan = fx.call(&["go-state-plan", fx.p()]);
     assert_eq!(moves(&plan), 2, "{plan}");
     assert_eq!(fx.tree(), before, "a preview writes nothing");
+    // #2936 S0: the preview says the folder moves and names both backup destinations; the
+    // preview `project-update-plan` embeds says the same.
+    assert_eq!(plan["layout"], json!("folder_moves"), "{plan}");
+    assert_eq!(plan["go_backup"], json!(".moai-backup"), "{plan}");
+    assert_eq!(plan["backup_to"], json!(".moai/backups/<UTC>"), "{plan}");
+    let embedded = fx.call(&["project-update-plan", fx.p()]);
+    let preview = &embedded["phases"][0]["steps"][0]["preview"];
+    for key in ["layout", "go_backup", "backup_to"] {
+        assert_eq!(preview[key], plan[key], "{key}: {preview}");
+    }
+    assert_eq!(fx.tree(), before, "the embedded preview writes nothing");
 
     // Apply after the second yes.
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
@@ -278,6 +319,9 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
     // A second run of the route finds nothing more to move, and step 2 is not offered again.
     let again = fx.call(&["go-state-plan", fx.p()]);
     assert_eq!(moves(&again), 0, "{again}");
+    assert_eq!(again["layout"], json!("nothing"), "{again}");
+    assert_eq!(again["go_backup"], Value::Null, "{again}");
+    assert_eq!(again["backup_to"], Value::Null, "{again}");
     let detect = fx.call(&["project-detect", fx.p()]);
     assert_eq!(
         detect["state_root"]["generation"],
@@ -329,6 +373,13 @@ fn an_already_rust_project_has_nothing_to_move() {
     fx.write(".moai-cli/specs/SPEC-1/spec.md", "# spec\n");
     let legacy = fx.call(&["go-state-plan", fx.p()]);
     assert_eq!(moves(&legacy), 1, "{legacy}");
+    assert_eq!(legacy["layout"], json!("legacy_into_new"), "{legacy}");
+    assert_eq!(legacy["go_backup"], Value::Null, "{legacy}");
+    assert_eq!(
+        legacy["backup_to"],
+        json!(".moai/backups/<UTC>"),
+        "{legacy}"
+    );
     assert_eq!(
         legacy["state_moves"][0]["to"],
         json!(".moai/specs"),
@@ -347,6 +398,8 @@ fn an_already_rust_project_has_nothing_to_move() {
     );
     let plan = fx.call(&["go-state-plan", fx.p()]);
     assert_eq!(moves(&plan), 0, "{plan}");
+    assert_eq!(plan["layout"], json!("nothing"), "{plan}");
+    assert_eq!(plan["backup_to"], Value::Null, "{plan}");
     assert_eq!(fx.tree(), before);
     assert!(fx.home_is_empty());
 }

@@ -32,14 +32,16 @@ pub const AFTER_BACKUP: &str = "re-run after the backup phase";
 /// Why the generation step waits while the profile step is `ready`: the generation plan
 /// binds the profile bytes, so its digest is stale once the profile changes.
 pub const AFTER_PROFILE: &str = "re-run after the profile apply";
+/// Why the hooks step waits while the settings step has a write to make (#3028 audit B1).
+pub const AFTER_SETTINGS: &str = "re-run after the claude-settings apply";
 
 const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
      Go tool files under .claude/ and .agents/, settings and instruction files \
      (go-state-plan); .codex files are classified in the preview and nothing under .codex \
      moves yet (#2936 S1c-2)";
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
-     files), Claude Code settings, GitHub templates, the Codex and OMP hook sets; the Codex \
-     config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
+     files), Claude Code settings, Claude Code hooks, GitHub templates, the Codex and OMP hook \
+     sets; the Codex config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
@@ -146,9 +148,14 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     }
     let preview = json!({
         "classes": classes,
+        "kinds": plan.kinds,
+        "counterparts": plan.counterparts,
+        "after_move": plan.after_move,
         "secrets": plan.secrets,
         "items": plan.items,
+        "layout": plan.layout,
         "go_backup": plan.go_backup,
+        "backup_to": plan.backup_to,
         "state_moves": plan.state_moves,
         "restores": plan.restores,
         "root_files": plan.root_files,
@@ -510,6 +517,59 @@ fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> S
     }
 }
 
+/// #2936 R-B (O-1): the Go-generation hook entries in `.claude/settings.json` are replaced by
+/// the MoAI hook set with `go-hooks-apply`. `replace` prints that command (`permissions` is
+/// not touched), `blocked` (entries of other tools share `hooks`) waits for the user without a
+/// command, `none` is `unchanged`. HOME is not read (O-3).
+fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
+    let plan = crate::go_hooks::plan(root, None)?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let names = |key: &str| -> Vec<Value> {
+        plan[key]
+            .as_array()
+            .map(|a| a.iter().filter(|v| !v.is_null()).cloned().collect())
+            .unwrap_or_default()
+    };
+    let preview = json!({
+        "action": plan["action"],
+        "blocks": plan["blocks"],
+        "go_entries": names("go_entries"),
+        "kept_entries": plan["kept_entries"],
+        "added_events": plan["added"].as_object().map(|m| m.keys().cloned().collect::<Vec<_>>()),
+        "scripts": names("scripts"),
+        "scripts_unreferenced": names("scripts_unreferenced"),
+        "scripts_missing": names("scripts_missing"),
+    });
+    let (state, reason) = match plan["action"].as_str() {
+        Some("replace") => (
+            "ready",
+            "Go-generation hook entries to replace with the MoAI hook set".to_string(),
+        ),
+        Some("none") => ("unchanged", "no Go-generation hooks are left".to_string()),
+        _ => (
+            "needs_decision",
+            format!(
+                "the replacement is blocked: {}; the user decides outside this route",
+                plan["blocks"]
+            ),
+        ),
+    };
+    let apply = (state == "ready")
+        .then(|| {
+            let d = digest.as_deref().ok_or("hooks plan without a digest")?;
+            Ok::<_, String>((argv("go-hooks-apply", shown, d), Value::Null))
+        })
+        .transpose()?;
+    Ok(Step {
+        name: "hooks",
+        state,
+        reason,
+        preview,
+        plan_digest: digest,
+        apply,
+    })
+}
+
 fn github_step(root: &Path, shown: &str) -> Result<Step> {
     let plan = github_templates::github_plan(
         root,
@@ -555,10 +615,13 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-const INSTALL: [&str; 10] = [
+/// The install steps in the order they are printed and applied; `hooks` follows
+/// `claude-settings` (#2936 R-B), the host steps follow `github` (#2936 R9 S5a).
+const INSTALL: [&str; 11] = [
     "profile",
     "generation",
     "claude-settings",
+    "hooks",
     "github",
     "codex-hooks",
     "codex-config",
@@ -600,8 +663,10 @@ fn install_steps(
             let mut steps = vec![Step::waiting("profile", "blocked", &e)];
             steps.push(Step::waiting("generation", "blocked", &e));
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
+            steps.push(or_blocked("hooks", hooks_step(root, shown)));
             steps.push(or_blocked("github", github_step(root, shown)));
             steps.extend(host_steps(root, shown));
+            hooks_after_settings(&mut steps);
             return steps;
         }
     };
@@ -615,10 +680,31 @@ fn install_steps(
         profile_step,
         generation,
         or_blocked("claude-settings", settings_step(root, shown)),
+        or_blocked("hooks", hooks_step(root, shown)),
         or_blocked("github", github_step(root, shown)),
     ];
     steps.extend(host_steps(root, shown));
+    hooks_after_settings(&mut steps);
     steps
+}
+
+/// The `hooks` step waits while the `claude-settings` step has a command to run (#3028 audit
+/// B1): both rewrite `.claude/settings.json` and the `go-hooks-apply` digest binds that file's
+/// bytes, so the second command of one preview would always be refused as a stale plan. The
+/// next preview, made after the settings apply, plans the hooks step against the new file.
+fn hooks_after_settings(steps: &mut [Step]) {
+    let pending = steps
+        .iter()
+        .any(|s| s.name == "claude-settings" && s.apply.is_some());
+    if !pending {
+        return;
+    }
+    if let Some(hooks) = steps
+        .iter_mut()
+        .find(|s| s.name == "hooks" && s.apply.is_some())
+    {
+        *hooks = Step::waiting("hooks", "blocked", AFTER_SETTINGS);
+    }
 }
 
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
