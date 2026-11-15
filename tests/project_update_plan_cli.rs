@@ -522,6 +522,55 @@ fn backup_phase_first() {
     }
 }
 
+/// AC-20 (#2936 S1c-1): the backup phase's own text no longer says `.codex` is not covered, and
+/// its go-state step shows how many `.codex` items fall in each class. Nothing moves yet.
+#[test]
+fn backup_step_counts_codex_classes_and_does_not_call_codex_uncovered() {
+    let fx = Fx::new();
+    fx.go_project();
+    let manifest: Value =
+        serde_json::from_slice(&fs::read(fx.root.join(".moai/manifest.json")).unwrap()).unwrap();
+    let mut files = manifest["files"].as_object().unwrap().clone();
+    let agent = "name = \"expert\"\n";
+    let hooks = "{\"hooks\":{}}\n";
+    fx.write(".codex/agents/moai/expert.toml", agent);
+    fx.write(".codex/hooks.json", hooks);
+    let h = format!("{:x}", Sha256::digest(agent.as_bytes()));
+    files.insert(
+        ".codex/agents/moai/expert.toml".into(),
+        json!({"provenance": "template_managed", "template_hash": format!("sha256:{h}"),
+               "deployed_hash": format!("sha256:{h}"), "current_hash": format!("sha256:{h}")}),
+    );
+    // The wiring records a bare hex hash.
+    let bare = format!("{:x}", Sha256::digest(hooks.as_bytes()));
+    files.insert(
+        ".codex/hooks.json".into(),
+        json!({"provenance": "generated_managed", "template_hash": "",
+               "deployed_hash": bare, "current_hash": bare,
+               "parts": [{"kind": "whole-file", "origin": "created"}]}),
+    );
+    fx.write(
+        ".moai/manifest.json",
+        &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z", "files": files})
+            .to_string(),
+    );
+    let plan = fx.plan();
+    let go = step(&plan, "go-state");
+    // `.claude/workflows/w.md` of the fixture is the first tool asset, the agent file the second.
+    assert_eq!(go["preview"]["classes"]["tool_asset"], json!(2), "{go}");
+    assert_eq!(go["preview"]["classes"]["go_hooks"], json!(1), "{go}");
+    assert!(
+        go["preview"]["warnings"]
+            .to_string()
+            .contains("running Codex session"),
+        "{go}"
+    );
+    let reason = phase(&plan, "backup")["reason"].as_str().unwrap();
+    assert!(reason.contains(".codex"), "{reason}");
+    assert!(!reason.contains("not covered"), "{reason}");
+    assert!(reason.contains(".agents"), "{reason}");
+}
+
 /// The printed argv is a word list that names the project as one word (its full path).
 #[test]
 fn printed_argv_keeps_the_project_one_word() {

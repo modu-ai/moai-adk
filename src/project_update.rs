@@ -33,9 +33,10 @@ pub const AFTER_BACKUP: &str = "re-run after the backup phase";
 /// binds the profile bytes, so its digest is stale once the profile changes.
 pub const AFTER_PROFILE: &str = "re-run after the profile apply";
 
-const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state \
-     (go-state-plan); .agents, .codex, settings and instruction files are not covered yet \
-     (a later slice, #2936 S2)";
+const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
+     Go tool files under .claude/ and .agents/, settings and instruction files \
+     (go-state-plan); .codex files are classified in the preview and nothing under .codex \
+     moves yet (#2936 S1c-2)";
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
      files), Claude Code settings, GitHub templates, the Codex and OMP hook sets; the Codex \
      config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
@@ -772,7 +773,7 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
 
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
-    let root = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let shown = root.to_str().ok_or("non UTF-8 project path")?.to_string();
     let detected = project_detect::detect(&root);
     let backup = vec![or_blocked("go-state", go_state_step(&root, &shown))];

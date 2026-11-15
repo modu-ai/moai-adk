@@ -992,7 +992,7 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     if bytes.len() > 65536 {
         return Err("input exceeds 64 KiB".into());
     }
-    serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+    moai_cli::contract::typed_json(&bytes)
 }
 /// The config writer takes an explicit user home. Refuse a project target that is also
 /// the host's relocated user config directory before either preview or apply can run.
@@ -1014,7 +1014,7 @@ fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     if bytes.len() > PLAN_INPUT_LIMIT {
         return Err("plan input exceeds 16 MiB".into());
     }
-    serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input".into())
+    moai_cli::contract::typed_json(&bytes)
 }
 /// Maps the launcher's host word to the session host.
 fn host_of(word: &str) -> Result<&'static str, String> {

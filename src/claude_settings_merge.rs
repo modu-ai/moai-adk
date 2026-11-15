@@ -344,7 +344,8 @@ fn rows_of(old: &Map<String, Value>) -> Vec<Row> {
 /// only. An error means the copy cannot be trusted: a link on the way, a size over the limit,
 /// bytes that no longer match the receipt, or something that is not a JSON object.
 pub fn candidates(project: &Path) -> Result<Option<Candidates>> {
-    let root = std::fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let root =
+        std::fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let Some(found) = go_state::backed_up_settings(&root)? else {
         return Ok(None);
     };
