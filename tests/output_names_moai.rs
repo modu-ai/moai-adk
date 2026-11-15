@@ -138,6 +138,63 @@ fn project_detect_next_actions_say_moai() {
     }
 }
 
+/// With a profile on disk, `project-detect` hands it on to `project-plan`.
+#[test]
+fn project_detect_with_a_profile_suggests_moai_project_plan() {
+    let dir = TempDir::new().unwrap();
+    let state = dir.path().join(".moai-cli");
+    std::fs::create_dir(&state).unwrap();
+    std::fs::write(
+        state.join("project.yaml"),
+        r#"{"schema_version":2,"project_id":"demo","purpose":"p","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude"]}"#,
+    )
+    .unwrap();
+    let project = dir.path().to_string_lossy().into_owned();
+    let args = ["project-detect", project.as_str()];
+    for text in assert_no_command_moai_cli("project-detect with a profile", &args) {
+        assert!(text.contains("`moai project-plan "), "{text}");
+        assert!(text.contains("then `moai project-apply`"), "{text}");
+    }
+}
+
+/// `language-setup` hands its profile on to `project-plan`.
+#[test]
+fn language_setup_next_actions_say_moai() {
+    for bin in [common::MOAI_BIN, common::MOAI_CLI_BIN] {
+        let dir = TempDir::new().unwrap();
+        let home = dir.path().join("home");
+        std::fs::create_dir(&home).unwrap();
+        let project = dir.path().join("work");
+        std::fs::create_dir_all(project.join(".moai-cli")).unwrap();
+        std::fs::write(
+            project.join(".moai-cli/project.yaml"),
+            r#"{"schema_version":2,"project_id":"demo","purpose":"p","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude"]}"#,
+        )
+        .unwrap();
+        let mut child = Command::new(bin)
+            .args(["language-setup", project.to_str().unwrap(), "--answers"])
+            .env("HOME", &home)
+            .current_dir(&project)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        std::io::Write::write_all(&mut child.stdin.take().unwrap(), b"{}").unwrap();
+        let out = child.wait_with_output().unwrap();
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(as_command(&text).is_empty(), "{bin}: {text}");
+        assert!(
+            text.contains("`moai project-plan <project>`"),
+            "{bin}: {text}"
+        );
+    }
+}
+
 /// A usage error: the envelope and stderr say nothing about `moai-cli`. (The `next:` line is
 /// terminal-only; its sentence is pinned in `error_next`'s unit tests and the tty test.)
 #[test]
