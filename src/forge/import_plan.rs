@@ -260,6 +260,9 @@ pub struct ImportPlan {
     pub source_host: &'static str,
     pub source_project: String,
     pub cards: Vec<PlannedCard>,
+    /// Issue numbers that came more than once in the input. Which copy counts is not guessed, so
+    /// no card is planned for them; the preview lists them.
+    pub duplicate_numbers: Vec<u64>,
     pub pull_requests_skipped: usize,
     pub digest: String,
 }
@@ -338,49 +341,77 @@ fn hash(text: &str) -> String {
 }
 
 /// The digest of an issue set: everything [`plan_import`] reads, so a change to any of it is a
-/// different digest. Per project and per issue (ascending by number): number, update time, title,
-/// the labels (sorted), a hash of the body, and per comment (ascending by id) its id, its
-/// association and a hash of its body. `sha256:<hex>`.
+/// different digest. Per project, then per issue: number, update time, title, the labels, a hash
+/// of the body, and per comment its id, its author, its association and a hash of its body.
+/// Issues, labels and comments are put in a fixed order (by their encoded bytes), so the order
+/// they were read in does not matter, also for two issues that share a number.
+/// `sha256:<hex>`.
 pub fn issue_set_digest(issues: &OpenIssues) -> String {
-    let mut sorted: Vec<&HostIssue> = issues.issues.iter().collect();
-    sorted.sort_by_key(|i| i.number);
-    let mut out = b"moai-import-digest-v2\n".to_vec();
+    let mut blocks: Vec<Vec<u8>> = issues
+        .issues
+        .iter()
+        .map(|issue| {
+            let mut out = Vec::new();
+            field(&mut out, &issue.number.to_string());
+            field(&mut out, &issue.updated_at);
+            field(&mut out, &issue.title);
+            let mut labels = issue.labels.clone();
+            labels.sort();
+            list(&mut out, &labels);
+            field(&mut out, &hash(&issue.body));
+            let mut comments: Vec<Vec<u8>> = issue
+                .comments
+                .iter()
+                .map(|c| {
+                    let mut one = Vec::new();
+                    field(&mut one, &c.id.to_string());
+                    field(&mut one, &c.author);
+                    field(&mut one, &c.association);
+                    field(&mut one, &hash(&c.body));
+                    one
+                })
+                .collect();
+            comments.sort();
+            field(&mut out, &comments.len().to_string());
+            for one in comments {
+                out.extend_from_slice(&one);
+            }
+            out
+        })
+        .collect();
+    blocks.sort();
+    let mut out = b"moai-import-digest-v3\n".to_vec();
     field(&mut out, issues.project.host().as_str());
     field(&mut out, &issues.project.source_project());
-    field(&mut out, &sorted.len().to_string());
-    for issue in sorted {
-        field(&mut out, &issue.number.to_string());
-        field(&mut out, &issue.updated_at);
-        field(&mut out, &issue.title);
-        let mut labels = issue.labels.clone();
-        labels.sort();
-        list(&mut out, &labels);
-        field(&mut out, &hash(&issue.body));
-        let mut comments: Vec<&HostComment> = issue.comments.iter().collect();
-        comments.sort_by_key(|c| c.id);
-        field(&mut out, &comments.len().to_string());
-        for c in comments {
-            field(&mut out, &c.id.to_string());
-            field(&mut out, &c.association);
-            field(&mut out, &hash(&c.body));
-        }
+    field(&mut out, &blocks.len().to_string());
+    for block in blocks {
+        out.extend_from_slice(&block);
     }
     format!("sha256:{:x}", Sha256::digest(&out))
 }
 
-/// The cards the open issues would become, in issue-number order.
+/// The cards the open issues would become, in issue-number order. An issue number that came
+/// more than once gets no card (which copy counts is not guessed); it is listed in
+/// `duplicate_numbers`.
 pub fn plan_import(issues: &OpenIssues) -> ImportPlan {
     let source_host = issues.project.host().as_str();
     let project = issues.project.source_project();
     let mut sorted: Vec<&HostIssue> = issues.issues.iter().collect();
     sorted.sort_by_key(|i| i.number);
+    let mut cards: Vec<PlannedCard> = Vec::new();
+    let mut duplicate_numbers: Vec<u64> = Vec::new();
+    for group in sorted.chunk_by(|a, b| a.number == b.number) {
+        match group {
+            [only] => cards.push(plan_card(source_host, &project, only)),
+            [first, ..] => duplicate_numbers.push(first.number),
+            [] => {}
+        }
+    }
     ImportPlan {
         source_host,
-        source_project: project.clone(),
-        cards: sorted
-            .into_iter()
-            .map(|issue| plan_card(source_host, &project, issue))
-            .collect(),
+        source_project: project,
+        cards,
+        duplicate_numbers,
         pull_requests_skipped: issues.pull_requests_skipped,
         digest: issue_set_digest(issues),
     }

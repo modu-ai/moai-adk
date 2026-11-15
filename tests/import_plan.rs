@@ -66,6 +66,11 @@ fn a_kind_comes_from_exactly_one_kind_label() {
         ("fix", KindSource::Label)
     );
     assert_eq!(
+        kind_from_labels(&labels(&["kind: fix"])),
+        ("fix", KindSource::Label),
+        "a space after the colon is read as the same label"
+    );
+    assert_eq!(
         kind_from_labels(&labels(&["Research"])),
         ("research", KindSource::Label),
         "a bare kind name counts, in any case"
@@ -194,6 +199,15 @@ fn a_header_and_its_separator_must_both_look_like_the_table() {
         parse_ac_table("| N | 기준 | 확인 방법 |\n|---|---|---|\n| 1 | x | y |\n"),
         AcReading::Unreadable(AcProblem::NoTable)
     );
+    // A header of two cells is not the criteria header (and is not indexed past its end).
+    assert_eq!(
+        parse_ac_table("| # | 기준 |\n|---|---|\n| 1 | x |\n"),
+        AcReading::Unreadable(AcProblem::NoTable)
+    );
+    assert_eq!(
+        parse_ac_table("| # | 기준 | \n|---|---|---|\n| 1 | x | y |\n"),
+        AcReading::Unreadable(AcProblem::NoTable)
+    );
     // The separator has three cells like the header: two cells are another kind of table.
     assert_eq!(
         parse_ac_table("| # | 기준 | 확인 방법 |\n|---|---|\n| 1 | x | y |\n"),
@@ -272,6 +286,35 @@ fn cards_follow_issue_numbers_and_carry_the_project_in_lower_case() {
         .iter()
         .all(|c| c.source_project == "modu-ai/moai-adk"));
     assert_eq!(plan.pull_requests_skipped, 3);
+}
+
+#[test]
+fn an_issue_number_that_came_twice_gets_no_card_and_is_listed() {
+    let plan = plan_import(&open(vec![
+        issue(7, "first copy", "a"),
+        issue(3, "single", ""),
+        issue(7, "second copy", "b"),
+        issue(9, "other single", ""),
+    ]));
+    let numbers: Vec<u64> = plan.cards.iter().map(|c| c.source_number).collect();
+    assert_eq!(
+        numbers,
+        vec![3, 9],
+        "which copy of #7 counts is not guessed"
+    );
+    assert_eq!(plan.duplicate_numbers, vec![7]);
+    // Three copies are still one listed number.
+    let plan = plan_import(&open(vec![
+        issue(5, "a", ""),
+        issue(5, "b", ""),
+        issue(5, "c", ""),
+    ]));
+    assert!(plan.cards.is_empty());
+    assert_eq!(plan.duplicate_numbers, vec![5]);
+    // No duplicates: nothing listed.
+    assert!(plan_import(&open(vec![issue(1, "t", "")]))
+        .duplicate_numbers
+        .is_empty());
 }
 
 #[test]
@@ -468,6 +511,10 @@ fn any_change_to_what_the_plan_reads_changes_the_digest() {
             "comment association",
             Box::new(|v| v[0].comments[0].association = "NONE".into()),
         ),
+        (
+            "comment author",
+            Box::new(|v| v[0].comments[0].author = "someone-else".into()),
+        ),
         ("comment id", Box::new(|v| v[0].comments[0].id = 11)),
         (
             "comment added",
@@ -499,6 +546,37 @@ fn any_change_to_what_the_plan_reads_changes_the_digest() {
         issue_set_digest(&other_project),
         issue_set_digest(&same_project),
         "the project is part of the digest"
+    );
+}
+
+/// Audit B1 on #3085: the author of a member's comment is a note's author, so a set whose only
+/// difference is who wrote a comment is another set.
+#[test]
+fn a_note_author_is_part_of_the_digest_and_of_the_plan() {
+    let with_author = |author: &str| {
+        let mut i = issue(1, "t", "");
+        let mut c = comment(10, "MEMBER", "note");
+        c.author = author.to_string();
+        i.comments = vec![c];
+        open(vec![i])
+    };
+    let (alice, bob) = (with_author("alice"), with_author("bob"));
+    assert_eq!(plan_import(&alice).cards[0].notes[0].author, "alice");
+    assert_eq!(plan_import(&bob).cards[0].notes[0].author, "bob");
+    assert_ne!(issue_set_digest(&alice), issue_set_digest(&bob));
+    assert_eq!(
+        issue_set_digest(&alice),
+        issue_set_digest(&with_author("alice"))
+    );
+}
+
+#[test]
+fn two_issues_with_one_number_are_ordered_by_what_they_say_not_by_input_order() {
+    let a = issue(4, "same number", "body one");
+    let b = issue(4, "same number", "body two");
+    assert_eq!(
+        issue_set_digest(&open(vec![a.clone(), b.clone()])),
+        issue_set_digest(&open(vec![b, a]))
     );
 }
 
