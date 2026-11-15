@@ -740,6 +740,7 @@ fn moai_candidates(home: &Path, path_env: &str, places: &CandidatePlaces) -> Val
             "probed": probed,
             "version_line": line,
             "generation": generation,
+            "shim_mcp": crate::shim_check::candidate_report(&path, probed),
         });
         items.push((canonical, item));
     }

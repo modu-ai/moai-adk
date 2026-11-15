@@ -424,3 +424,24 @@ fn a_round_writes_nothing() {
     assert_eq!(r["round"]["end_condition"]["met"], false);
     assert_eq!(r["api_calls"], 0);
 }
+
+/// #3005 P9: a lane that printed the `LANE-IDLE` line (`lane-next` answered `idle_limit`) is
+/// left, never sent the restart line, and the round names it as an idle lane: a card for the
+/// leader to hand out. Without the line the same lane gets the restart line.
+#[test]
+fn an_idle_lane_is_left_for_a_dispatch_and_named_in_the_round() {
+    let f = fixture();
+    let idle = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29";
+    let mut obs = observations(&f);
+    obs["lanes"][0]["terminal"]["tail"] =
+        json!(format!("⏺ no task, nothing to wait for\n⏺ {idle}"));
+    let r = round(&f, &obs, None);
+    assert_eq!(act(&r), (Some("leave"), Some("lane_idle")), "{r}");
+    assert_eq!(r["lanes"][0]["send"], json!([]), "{r}");
+    assert_eq!(r["idle_lanes"], json!([LANE]), "{r}");
+
+    obs["lanes"][0]["terminal"]["tail"] = json!("⏺ no task, nothing to wait for");
+    let r = round(&f, &obs, None);
+    assert_eq!(act(&r), (Some("restart"), Some("continue")), "{r}");
+    assert_eq!(r["idle_lanes"], json!([]), "{r}");
+}

@@ -493,3 +493,371 @@ fn old_and_new_place_worktrees_of_a_lane_are_both_checked() {
         vec![format!("{}: 1 uncommitted change(s)", new_wt.display())]
     );
 }
+
+// --- #3015 C1: the tool reads the lane's claims itself; the caller gives only the screen ----
+
+const CLAIM_70: &str = "moai-claim: session=agent-9 epoch=1 lease_until=2026-11-15T08:00:00Z";
+const NOTE_71: &str = "moai-resume: lane=agent-9 issue=7 claim=6000070 lease_until=2026-11-15T08:00:00Z branch=issue/7-card head=0123456789abcdef0123456789abcdef01234567 uncommitted=0\nnext: push";
+
+fn gh_comment(id: u64, login: &str, body: &str) -> Value {
+    json!({"id": id, "user": {"login": login}, "body": body})
+}
+
+/// What a stub `gh` answers: the search result and Issue 7's comments (`None` answers 404).
+struct Forge {
+    search: Value,
+    comments_7: Option<Value>,
+}
+
+fn forge_with(comments: Vec<Value>) -> Forge {
+    Forge {
+        search: json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 7}]}),
+        comments_7: Some(json!(comments)),
+    }
+}
+
+/// Runs the binary with flags only (no observations file) over a stub `gh` that logs every
+/// request. Returns the answer and the logged request lines.
+fn run_flags(
+    f: &Fixture,
+    lane: &str,
+    flags: &[&str],
+    forge: Option<&Forge>,
+) -> (Value, Vec<String>) {
+    let home = f.tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    let gh = f.tmp.path().join("gh-stub");
+    let log = f.tmp.path().join("gh.log");
+    let _ = fs::remove_file(&log);
+    common::write_executable(
+        &gh,
+        "#!/bin/sh\necho \"$@\" >> \"$GH_LOG\"\nfor a; do url=$a; done\ncase \"$url\" in\n\
+         */search/issues*) body=$SEARCH_JSON ;;\n\
+         */issues/7/comments*) [ -n \"$COMMENTS_7\" ] && body=$COMMENTS_7 || { printf 'HTTP/2.0 404 Not Found\\r\\n\\r\\n{\"message\":\"Not Found\"}'; exit 1; } ;;\n\
+         *) printf 'HTTP/2.0 404 Not Found\\r\\n\\r\\n{\"message\":\"Not Found\"}'; exit 1 ;;\nesac\n\
+         printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$body\"\n",
+    );
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
+    cmd.clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("MOAI_FORGE_GH_BIN", &gh)
+        .env("GH_LOG", &log);
+    if let Some(forge) = forge {
+        cmd.env("SEARCH_JSON", forge.search.to_string());
+        if let Some(c) = &forge.comments_7 {
+            cmd.env("COMMENTS_7", c.to_string());
+        }
+    }
+    cmd.args([
+        "lane-safe-to-reset",
+        f.primary.to_str().unwrap(),
+        "--lane",
+        lane,
+        "--now",
+        NOW,
+    ])
+    .args(flags);
+    let out = cmd.output().unwrap();
+    let v = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("{e}: {}", String::from_utf8_lossy(&out.stdout)));
+    let requests = fs::read_to_string(&log)
+        .unwrap_or_default()
+        .lines()
+        .map(str::to_string)
+        .collect();
+    (v, requests)
+}
+
+fn clean_flags(f: &Fixture) -> Vec<String> {
+    vec![
+        "--repo".into(),
+        "acme/widgets".into(),
+        "--screen-jobs".into(),
+        "0".into(),
+        "--session-cwd".into(),
+        f.wt7.to_str().unwrap().into(),
+    ]
+}
+
+fn as_strs(v: &[String]) -> Vec<&str> {
+    v.iter().map(String::as_str).collect()
+}
+
+#[cfg(unix)]
+#[test]
+fn without_an_observations_file_a_lane_with_a_resume_note_and_a_quiet_screen_is_safe() {
+    let f = fixture();
+    let forge = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    let flags = clean_flags(&f);
+    let (r, requests) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    let res = result(&r);
+    assert_eq!(res["verdict"], "safe", "{res}");
+    assert_eq!(
+        res["claims"]["items"],
+        json!([{"issue": 7, "claim_comment": 6000070, "resume_note": 6000071}]),
+        "{res}"
+    );
+    assert_eq!(res["claims"]["source"], "github:search+issue-comments");
+    assert_eq!(res["screen"]["source"], "flag");
+    assert_eq!(res["session_cwd"]["source"], "flag");
+    // Reads only: a search and the claimed thread's comments, every one a GET.
+    assert_eq!(requests.len(), 2, "{requests:?}");
+    assert!(
+        requests.iter().all(|l| l.starts_with("api -X GET ")),
+        "{requests:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_claim_without_a_resume_note_or_a_running_job_makes_the_lane_not_safe() {
+    let f = fixture();
+    let no_note = forge_with(vec![gh_comment(6000070, "GoosLab", CLAIM_70)]);
+    let flags = clean_flags(&f);
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&no_note));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+    assert_eq!(
+        texts(result(&r), "findings"),
+        vec!["open claim #7 (comment 6000070) has no resume note"]
+    );
+    // A job on the screen.
+    let with_note = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    let mut busy = clean_flags(&f);
+    busy[3] = "2".into();
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&busy), Some(&with_note));
+    assert_eq!(
+        texts(result(&r), "findings"),
+        vec!["2 background job(s) still running on the lane's screen"],
+        "{r}"
+    );
+    // A resume note by someone else is no resume note.
+    let forged = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "Stranger", NOTE_71),
+    ]);
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forged));
+    assert_eq!(result(&r)["verdict"], "not_safe", "{r}");
+    // A released claim is no open claim: the lane has nothing left to note.
+    let released = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000072, "GoosLab", "moai-claim-release: comment=6000070"),
+    ]);
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&released));
+    assert_eq!(result(&r)["claims"]["items"], json!([]), "{r}");
+}
+
+#[cfg(unix)]
+#[test]
+fn claims_that_cannot_be_read_leave_the_lane_unknown_with_the_reason() {
+    let f = fixture();
+    let flags = clean_flags(&f);
+    // The comments of the found thread cannot be read.
+    let broken = Forge {
+        search: json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 7}]}),
+        comments_7: None,
+    };
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&broken));
+    assert_eq!(result(&r)["verdict"], "unknown", "{r}");
+    let unknowns = texts(result(&r), "unknowns");
+    assert_eq!(unknowns.len(), 1, "{unknowns:?}");
+    assert!(
+        unknowns[0].starts_with("claims could not be read from GitHub: the comments of #7"),
+        "{unknowns:?}"
+    );
+    // The project's origin is a local path, not a GitHub repository, and no --repo is given.
+    let (r, requests) = run_flags(
+        &f,
+        "agent-9",
+        &[
+            "--screen-jobs",
+            "0",
+            "--session-cwd",
+            f.wt7.to_str().unwrap(),
+        ],
+        None,
+    );
+    assert_eq!(result(&r)["verdict"], "unknown", "{r}");
+    assert!(
+        texts(result(&r), "unknowns")[0].contains("not a GitHub repository"),
+        "{r}"
+    );
+    assert!(
+        requests.is_empty(),
+        "no request without a repository: {requests:?}"
+    );
+    // A --repo that is not OWNER/REPO is refused before any request.
+    let (r, requests) = run_flags(
+        &f,
+        "agent-9",
+        &[
+            "--repo",
+            "acme/widgets/extra",
+            "--screen-jobs",
+            "0",
+            "--session-cwd",
+            f.wt7.to_str().unwrap(),
+        ],
+        None,
+    );
+    assert_eq!(result(&r)["verdict"], "unknown", "{r}");
+    assert!(
+        texts(result(&r), "unknowns")[0].contains("invalid --repo `acme/widgets/extra`"),
+        "{r}"
+    );
+    assert!(requests.is_empty(), "{requests:?}");
+    // A search that shows fewer threads than it found is reported, never read as complete.
+    let cut = Forge {
+        search: json!({"total_count": 31, "incomplete_results": false, "items": [{"number": 7}]}),
+        comments_7: Some(json!([
+            gh_comment(6000070, "GoosLab", CLAIM_70),
+            gh_comment(6000071, "GoosLab", NOTE_71)
+        ])),
+    };
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&cut));
+    assert_eq!(result(&r)["verdict"], "unknown", "{r}");
+    assert!(
+        texts(result(&r), "unknowns")[0].starts_with("claims read only in part:"),
+        "{r}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_claim_the_search_has_not_indexed_yet_is_found_through_the_lanes_local_branch() {
+    // Issue 7's branch (`issue/7-card`) is in a worktree named for the lane after the
+    // fixture renames nothing: the folder `wt/7-card` does not carry the lane, so use a
+    // second worktree whose folder does.
+    let f = fixture();
+    let lane_wt = f.primary.join("wt").join("agent-9-card");
+    g(
+        &f.primary,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/7-lane",
+            lane_wt.to_str().unwrap(),
+            "main",
+        ],
+    );
+    g(&lane_wt, &["push", "-q", "origin", "issue/7-lane"]);
+    let lagging = Forge {
+        search: json!({"total_count": 0, "incomplete_results": false, "items": []}),
+        comments_7: Some(json!([
+            gh_comment(6000070, "GoosLab", CLAIM_70),
+            gh_comment(6000071, "GoosLab", NOTE_71)
+        ])),
+    };
+    let flags = clean_flags(&f);
+    let (r, requests) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&lagging));
+    assert_eq!(
+        result(&r)["claims"]["items"],
+        json!([{"issue": 7, "claim_comment": 6000070, "resume_note": 6000071}]),
+        "{r}"
+    );
+    assert_eq!(requests.len(), 2, "{requests:?}");
+}
+
+#[test]
+fn a_part_given_twice_or_in_the_wrong_shape_is_refused_with_the_schema_and_an_example() {
+    let f = fixture();
+    // The screen in the file and as a flag.
+    let both = run_flags_with_file(
+        &f,
+        json!({
+            "schema_version": 1,
+            "screen": {"source": "fixture", "observed_at": "2026-11-13T08:55:00Z", "background_jobs": 0}
+        }),
+        &["--screen-jobs", "0"],
+    );
+    assert_eq!(both["ok"], false, "{both}");
+    assert!(
+        both["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("given twice"),
+        "{both}"
+    );
+    // The session folder in the file and as a flag.
+    let cwd = f.wt7.to_str().unwrap();
+    let both = run_flags_with_file(
+        &f,
+        json!({"schema_version": 1, "session_cwd": {"source": "fixture", "path": cwd}}),
+        &["--session-cwd", cwd],
+    );
+    assert_eq!(both["ok"], false, "{both}");
+    assert!(
+        both["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("session_cwd is given twice"),
+        "{both}"
+    );
+    // A list where a number belongs: the message carries the field types and a full example.
+    let wrong = run_flags_with_file(
+        &f,
+        json!({
+            "schema_version": 1,
+            "screen": {"source": "fixture", "observed_at": "2026-11-13T08:55:00Z", "background_jobs": []}
+        }),
+        &[],
+    );
+    assert_eq!(wrong["ok"], false, "{wrong}");
+    assert_eq!(wrong["error"]["kind"], "invalid_input", "{wrong}");
+    let msg = wrong["error"]["message"].as_str().unwrap();
+    assert!(msg.contains("expected u64"), "{msg}");
+    assert!(msg.contains("screen.background_jobs: a number"), "{msg}");
+    assert!(msg.contains("\"background_jobs\":0"), "{msg}");
+}
+
+/// The binary with an observations file and extra flags, no `gh` reachable.
+fn run_flags_with_file(f: &Fixture, obs: Value, flags: &[&str]) -> Value {
+    let home = f.tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    let out = Command::new(crate::common::MOAI_BIN)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .args([
+            "lane-safe-to-reset",
+            f.primary.to_str().unwrap(),
+            "--lane",
+            "agent-9",
+            "--now",
+            NOW,
+            "--observations",
+        ])
+        .arg(observations(f, obs))
+        .args(flags)
+        .output()
+        .unwrap();
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("{e}: {}", String::from_utf8_lossy(&out.stdout)))
+}
+
+#[test]
+fn help_shows_the_observations_shape_and_an_example() {
+    let out = Command::new(crate::common::MOAI_BIN)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .args(["lane-safe-to-reset", "--help"])
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+    assert!(text.contains("--screen-jobs"), "{text}");
+    assert!(text.contains("--session-cwd"), "{text}");
+    assert!(text.contains("\"background_jobs\":0"), "{text}");
+    assert!(text.contains("screen.background_jobs: a number"), "{text}");
+}

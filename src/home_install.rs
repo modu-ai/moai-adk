@@ -714,11 +714,9 @@ mod tests {
             ("moai-cli.json", "file", ("keep", "marker_written_last")),
             ("moai.json", "file", ("keep", "marker_written_last")),
             ("MOAI.JSON", "file", ("keep", "marker_written_last")),
-            (
-                "hook-config.toml",
-                "file",
-                ("keep", "not_written_by_this_generation"),
-            ),
+            // The user's hook rules move with the HOME: after the marker the loader reads only
+            // `~/.moai` (Codex review of #3019).
+            ("hook-config.toml", "file", ("move", "rust_item")),
         ] {
             assert_eq!(decide(row(name), name, kind), want, "{name} {kind}");
         }

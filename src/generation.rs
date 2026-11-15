@@ -1023,7 +1023,7 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
 
 /// Removes one generated file the plan marked `remove` (#2706 P2b): only while its bytes still
 /// equal the plan's, after saving them in the receipt (so `apply-recover` restores it), then the
-/// folder it leaves empty. A file already gone is recorded and skipped.
+/// folders it leaves empty, up to the project root. A file already gone is recorded and skipped.
 fn remove_owned(
     root: &Path,
     request_id: &str,
@@ -1062,7 +1062,8 @@ fn remove_owned(
     save_before_bytes(root, request_id, &f.path, &bytes)?;
     fs::remove_file(&path_abs).map_err(|_| format!("remove failed: {}", f.path))?;
     if let Some(dir) = path_abs.parent() {
-        let _ = fs::remove_dir(dir); // only succeeds when the folder is now empty
+        // The folders this removal emptied go, up to the project root (#2936 R-C).
+        crate::apply::prune_empty_dirs(dir, root);
     }
     receipt.entry(&f.path, "remove", Some(&digest(&bytes)), None, true, None);
     Ok(())

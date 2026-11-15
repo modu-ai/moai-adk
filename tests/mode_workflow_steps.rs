@@ -200,10 +200,14 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-loop-line --host",
             "lane-next",
             "lane-next --lane",
+            // #3005 P9 (P8 adds the flag): the tool counts the empty reads of a watching lane.
+            "lane-next --max-empty",
             "lane-next --wait",
             // #2900 (#2899 G2): the leader clears a lane only on `safe`.
             "lane-safe-to-reset --lane",
             // #2902 O3b: the leader's round, one action per lane.
+            // #3005 P9: its `idle_lanes` list names the lanes that stopped at `idle_limit`.
+            "leader-round",
             "leader-round --observations",
             "pr-confirm",
             // #2840 D3: the PR body is checked locally before the push and before opening.
@@ -1286,6 +1290,66 @@ fn a_message_the_person_typed_into_a_lane_outranks_the_leaders_dispatch() {
     }
 }
 
+/// #3005 P9 (user decision, Issue #3005 comment 6887207942): with no leader answering, a lane
+/// watches the repository itself by a ladder of tools, the tool (not the model) counts the
+/// empty reads, and at the limit the lane prints one `LANE-IDLE` line and turns the repeat off.
+#[test]
+fn a_lane_without_a_leader_watches_by_a_ladder_and_stops_at_the_idle_limit() {
+    let agent = workflow("mode-agent.md");
+    let section = section_of(&agent, "Watching on your own");
+    for p in [
+        "no leader dispatch arrives at the start",
+        "a decision request has gone one round without an answer",
+        "the Orca channel reports an error",
+        "keep your claims",
+        "Use the first rung your host has",
+        "(1) the host's watch tool",
+        "`moai lane-next --wait <seconds>`",
+        "(2) the host's own repeat",
+        "`/loop`",
+        "`/goal` with the `loop_line`",
+        "(3) in the turn",
+        "do not end the turn",
+        "Let the tool count, not the model",
+        "`moai lane-next --max-empty <n>`",
+        "default 6",
+        "`status: \"idle_limit\"`",
+        "`idle.line`",
+        "`LANE-IDLE lane=<lane> checks=<n> last=<UTC> restart=...`",
+        "once, never the same line twice",
+        "comment on the coordination Issue",
+        "turn the repeat off",
+        "stop `/loop`, clear `/goal`, stop the Monitor",
+        "The leader reads the `LANE-IDLE` line as an idle lane",
+        "a person restarts it with the `restart=` text of the line",
+    ] {
+        assert!(
+            section.contains(p),
+            "the watching section must say `{p}`:\n{section}"
+        );
+    }
+    // The third way a turn ends is named in the keep-going step.
+    assert_says(
+        &agent,
+        "keep-going",
+        &[
+            "(iii) `moai lane-next --max-empty` answered `idle_limit` and the `LANE-IDLE` line is printed",
+            "In every other case do not end the turn",
+        ],
+    );
+    // The leader hands an idle lane a card instead of typing the restart line.
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "lane-done",
+        &[
+            "On a `LANE-IDLE` line the lane stopped itself after `idle_limit`",
+            "`moai leader-round` lists it under `idle_lanes` and leaves it (`lane_idle`)",
+            "hand it the next card with a new dispatch instead of typing the restart line",
+        ],
+    );
+}
+
 /// #3005 N4, N14, N15: one different card per lane and one batched dispatch per lane, a round
 /// that changed nothing ends the turn instead of sleeping, and a lane that loses a card takes
 /// the next one at once.
@@ -1376,6 +1440,73 @@ fn orca_mail_is_checked_for_delivery_and_focus_is_never_switched() {
     assert!(
         agent.contains("Never run `orca terminal switch` to read another session"),
         "the lane's Orca section must forbid switching focus"
+    );
+}
+
+/// #3005 P3a (F1, F2): a leader with Orca carries a dispatch as a task of a Run (not only as
+/// mail to a terminal handle, which is not kept for a lane that is not checking), falls back
+/// to the Issue comment pointer when the Run path refuses a lane, and detects the channel
+/// before the first send. The section is the leader's alone; the lane's Orca section is
+/// untouched.
+#[test]
+fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
+    let leader = workflow("mode-leader.md");
+    let section = section_of(&leader, "Dispatch through an Orca Run");
+    for p in [
+        "Only the leader creates Runs",
+        "(item 2 decides; without Orca this item is skipped)",
+        "carry a dispatch as a task of a Run, not only as typed text",
+        "Keep one Run for the supervision session, not one per round",
+        "read `orca orchestration run-current --json` first",
+        "`orca orchestration run-create --objective \"<round goal>\" --json` only when there is none or the objective changed",
+        "never clear Runs or tasks with `orca orchestration reset` without the user's confirmation",
+        "`orca orchestration task-create --task-title \"<Issue #n>\" --spec-file - --json`",
+        "first read its screen under items 1 and 2 of \"Session control with Orca\"",
+        "`orca orchestration worker-start --task <task_id> --terminal <handle> --worktree <selector of that lane's worktree> --json`",
+        "never `--worktree current`: that is your own worktree",
+        "A started worker is the screen delivery of the pair in the `answer-requests` step",
+        "still post the Issue comment, which is the record, and do not also type the same card with `orca terminal send`",
+        "`orca orchestration send --to dispatch:<dispatch_id> --type dispatch",
+        "Record the task and dispatch ids beside the card in your round summary",
+        "When `worker-start` fails, do not rerun it: read its `failedStage`",
+        "deliver by the Issue comment pointer of the `answer-requests` step",
+        "mark the Run path `not_run` for that lane",
+        "a real Run dispatch to a running lane was not executed on this machine",
+        "keep the lane's own claim comment, never the Run, as the proof of ownership",
+        "a retry that creates a second Run or Task is a duplicate to remove, not a retry",
+        "Detect the channel before the first send",
+        "`orca: yes` or `orca: no (<reason>)`",
+        "`orca status --json` answers with `result.runtime.state` `ready`",
+        "`ORCA_TERMINAL_HANDLE` is not part of that test",
+        "It decides only whether the Run path of item 1 can be used",
+        "answers `no_active_sender_terminal` without it",
+        "`orca terminal list --json`, `orca terminal read` and `orca terminal send` with an explicit `--terminal <handle>` still work",
+        "`orca: yes (run path not_run: ORCA_TERMINAL_HANDLE missing)`, skip item 1",
+        "keep every other rule of \"Session control with Orca\", `restart` and `clear_redispatch` as they are",
+        "drops `ORCA_*`",
+        "Codex's `shell_environment_policy` must let `ORCA_*` through",
+        "Do not edit the person's Codex configuration, and do not guess a `--from` handle",
+        "only then the rules for a leader without Orca apply",
+    ] {
+        assert!(
+            section.contains(p),
+            "`Dispatch through an Orca Run` must say `{p}`:\n{section}"
+        );
+    }
+    for gone in [
+        "if either is missing there is no Orca for this round",
+        "item 1 is unusable",
+        "report the session-control step `not_run`",
+    ] {
+        assert!(
+            !section.contains(gone),
+            "a missing `ORCA_TERMINAL_HANDLE` must not make the whole session control `not_run`: `{gone}`"
+        );
+    }
+    let agent = workflow("mode-agent.md");
+    assert!(
+        !agent.contains("Dispatch through an Orca Run"),
+        "a lane does not create Runs"
     );
 }
 

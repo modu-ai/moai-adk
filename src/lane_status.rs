@@ -262,7 +262,7 @@ pub(crate) fn pages<T: Transport, C: Clock>(
     pages_with_evidence(client, first, None).map(|(values, _)| values)
 }
 
-fn pages_with_evidence<T: Transport, C: Clock>(
+pub(crate) fn pages_with_evidence<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     first: String,
     mut source_urls: Option<&mut Vec<String>>,

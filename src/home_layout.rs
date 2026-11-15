@@ -47,6 +47,8 @@ pub enum Rule {
 /// How this generation uses a name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RustUse {
+    /// This generation owns the name: it writes it, or reads a file the user writes there and
+    /// carries it with the HOME move.
     Writes,
     /// Reads only (a legacy source).
     Reads,
@@ -126,7 +128,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("bin", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:461 (table A: tool asset, backed up). No Rust writer: the installed command is `path/` (update.rs:509, bin_names.rs:95) and `versions/<v>/bin`; design #3009 §2 (마) lists a device-global `bin`, which no code makes yet, so the Go folder retires and the name stays free for it"),
     row("cleanup", Writes, false, Class::Rust, RustName, NO, "update_cleanup.rs:39,894"),
     row("config", Writes, true, ConfigGuide, GoRetires, MERGE, "session.rs:209 config/launcher.yaml (a folder); Go paths.go:450 config/sections/*.yaml (merge: sections/statusline.yaml user values). The hook TOML file no longer lives at `config` (it is `hook-config.toml`, hook_config.rs); design #3009 §2 (마) keeps `config` as the device-global settings place"),
-    row("hook-config.toml", Reads, false, Class::Rust, RustName, NO, "hook_config.rs: the hook TOML file; read here first, and from the old file name `config` only while that is a regular file (the folder `config/` of both generations cannot also be a file); the user writes it, this generation does not"),
+    row("hook-config.toml", Writes, false, Class::Rust, RustName, NO, "hook_config.rs: the hook TOML file; read here first, and from the old file name `config` only while that is a regular file (the folder `config/` of both generations cannot also be a file). The user writes it, but this generation owns the name, so the HOME move carries it (Codex review of #3019: after the marker the loader reads only `~/.moai`)"),
     row("home-routing", Writes, false, Class::Rust, RustName, NO, "home_routing.rs:30,134"),
     row("home-style", Writes, false, Class::Rust, RustName, NO, "home_style.rs:31,135"),
     row("installations", Writes, false, Class::Rust, RustName, NO, "install.rs:368,445, update.rs:960"),
@@ -410,7 +412,7 @@ mod tests {
         // `config` is the launcher folder; the hook file has its own name and is only read.
         assert_eq!(lookup("config").unwrap().rule, GoRetires);
         let hook = lookup(crate::hook_config::HOOK_CONFIG_FILE).unwrap();
-        assert_eq!((hook.rust, hook.rule), (Reads, RustName));
+        assert_eq!((hook.rust, hook.rule), (Writes, RustName));
         // `bin`: no Rust writer (the command lives in `path/`), so the Go folder retires.
         assert_eq!(lookup("bin").unwrap().rust, RustUse::None);
     }

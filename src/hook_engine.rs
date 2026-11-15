@@ -77,7 +77,7 @@ impl Event {
 }
 
 /// The opt-in deny rules of stage 7 (B3, B9; decision 6779829826), off unless
-/// `~/.moai-cli/config` turns them on (see `hook_config`).
+/// `~/.moai-cli/hook-config.toml` turns them on (see `hook_config`).
 pub const OPT_IN_RULES: &str = "[hooks.outside_project_writes] enabled + allow: file writes outside the project (after symlinks and ..) are refused unless under allow; [hooks.primary_checkout] enabled + repos + allow_commands: switch, checkout <branch>, reset, stash (not list/show) and rebase are refused in a listed primary checkout that has linked worktrees. A missing or broken config turns both off";
 
 /// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
@@ -168,7 +168,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     let verdict = match event {
         Event::SessionCheck => session_check(cwd),
         Event::ToolPreflight => {
-            // Stage 7 opt-in rules (B3, B9; decision 6779829826) come from ~/.moai-cli/config,
+            // Stage 7 opt-in rules (B3, B9; decision 6779829826) come from ~/.moai-cli/hook-config.toml,
             // read once per call; an unusable file leaves them off and one line says why (N1).
             let loaded = crate::hook_config::load();
             if let Some(problem) = loaded.problem {
@@ -273,7 +273,7 @@ fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
-/// An unusable `~/.moai-cli/config` leaves one `config_error` line (session, host, fixed
+/// An unusable `~/.moai-cli/hook-config.toml` leaves one `config_error` line (session, host, fixed
 /// reason, time) in the engine log when `.moai-cli/` exists (#2391 N1): no path and no config
 /// text. Best effort, never changes the answer.
 fn record_config_error(
@@ -529,7 +529,7 @@ fn tool_preflight_deny(
     if let Some(reason) = guard {
         return Verdict::Deny(reason.to_string());
     }
-    // Stage 7 opt-in rules (B3, B9; decision 6779829826): off unless ~/.moai-cli/config turns
+    // Stage 7 opt-in rules (B3, B9; decision 6779829826): off unless ~/.moai-cli/hook-config.toml turns
     // them on; a missing or broken config leaves them off.
     let opt_in = if tool == "Bash" {
         config

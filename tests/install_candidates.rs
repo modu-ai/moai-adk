@@ -218,6 +218,63 @@ fn a_project_tree_moai_is_reported_never_run() {
     assert!(item["sha256"].as_str().unwrap().starts_with("sha256:"));
 }
 
+/// #3021 S0: a `moai` that is a routing shim is read as text and reported as `shim_mcp`;
+/// the file's bytes are the same afterwards, and a project-tree `moai` is not read at all.
+#[test]
+fn a_routing_shim_is_read_for_its_mcp_route_and_left_unchanged() {
+    let d = TempDir::new().unwrap();
+    let root = fs::canonicalize(d.path()).unwrap();
+    let home = root.join("home");
+    fs::create_dir_all(&home).unwrap();
+    let (shim_dir, plain_dir, proj) = (root.join("shim"), root.join("plain"), root.join("proj"));
+    let shim_text = "#!/bin/sh\n\
+        if [ \"${1:-}\" = --version ]; then echo 'moai-cli 0.0.0 (rust)'; exit 0; fi\n\
+        case \"${1:-}\" in\n  hook|mcp-server)\n    exec /nonexistent/moai.old \"$@\" ;;\nesac\n\
+        exec /nonexistent/moai-cli \"$@\"\n";
+    let shim = script(&shim_dir, shim_text);
+    script(&plain_dir, "#!/bin/sh\necho 'moai-adk 3.2.0'\n");
+    script(
+        &proj.join(".moai/bin"),
+        "#!/bin/sh\ncase \"$1\" in mcp-server) exit 0 ;; esac\n",
+    );
+
+    let before_bytes = fs::read(&shim).unwrap();
+    let before = tree_digest(&root, &[]).unwrap();
+    let c = inspect(
+        &home,
+        &join(&[&shim_dir, &plain_dir]),
+        &[("CLAUDE_PROJECT_DIR", &proj)],
+    );
+    assert_eq!(tree_digest(&root, &[]).unwrap(), before, "report only");
+    assert_eq!(
+        fs::read(&shim).unwrap(),
+        before_bytes,
+        "the shim is unchanged"
+    );
+
+    let items = c["items"].as_array().unwrap();
+    let find = |suffix: &str| {
+        items
+            .iter()
+            .find(|i| i["path"].as_str().unwrap().ends_with(suffix))
+            .unwrap_or_else(|| panic!("{suffix} in {c}"))
+    };
+    let s = &find("shim/moai")["shim_mcp"];
+    assert_eq!(s["status"], json!("mcp_route_without_oneshot"), "{s}");
+    assert_eq!(s["routes_mcp_server"], json!(true));
+    assert_eq!(s["sets_mcp_oneshot"], json!(false));
+    assert_eq!(s["basis"], json!("script text, not run"));
+    assert!(s["note"].as_str().unwrap().ends_with("(#3021)"), "{s}");
+    // A script without the route, and repository content that is never read.
+    let p = &find("plain/moai")["shim_mcp"];
+    assert_eq!(p["status"], json!("no_mcp_route"), "{p}");
+    assert_eq!(p["note"], json!(null));
+    assert_eq!(
+        find("proj/.moai/bin/moai")["shim_mcp"],
+        json!({ "status": "not_read" })
+    );
+}
+
 /// #2800 audit B1: a probed `moai` runs with a cleared environment — no token variable of
 /// this process reaches it — and outside the project and HOME folders.
 #[test]
