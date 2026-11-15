@@ -1462,7 +1462,9 @@ fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
         "never clear Runs or tasks with `orca orchestration reset` without the user's confirmation",
         "`orca orchestration task-create --task-title \"<Issue #n>\" --spec-file - --json`",
         "first read its screen under items 1 and 2 of \"Session control with Orca\"",
-        "`orca orchestration worker-start --task <task_id> --terminal <handle> --worktree <selector of that lane's worktree> --json`",
+        "`orca orchestration worker-start --task <task_id> --terminal <handle> --keep-open --worktree <selector of that lane's worktree> --json`",
+        "`--keep-open` because Orca closes a finished worker on its own and a lane goes on after its dispatch",
+        "what a close does to a terminal Orca did not create is not measured",
         "never `--worktree current`: that is your own worktree",
         "A started worker is the screen delivery of the pair in the `answer-requests` step",
         "still post the Issue comment, which is the record, and do not also type the same card with `orca terminal send`",
@@ -1507,6 +1509,80 @@ fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
     assert!(
         !agent.contains("Dispatch through an Orca Run"),
         "a lane does not create Runs"
+    );
+}
+
+/// #3005 P3b (F2, F6, F9): a lane with an Orca dispatch preamble reports to the leader by Orca as
+/// a second path (`ask` for a decision, `gate-create` for the person, `worker_done` for a
+/// finished dispatch), never instead of the GitHub line, and a question it sent is an armed
+/// wake. Without Orca or the preamble the section is skipped. The section is the lane's alone.
+#[test]
+fn a_lane_with_an_orca_dispatch_reports_by_orca_as_a_second_path() {
+    let agent = workflow("mode-agent.md");
+    let section = section_of(&agent, "Reporting to the leader through Orca");
+    for p in [
+        "Only a lane has this section",
+        "It adds a second path to the `report` step and never replaces the first",
+        "ownership stays with your claim comment",
+        "your input carries an Orca preamble with a Task ID and a Dispatch ID",
+        "`ORCA_TERMINAL_HANDLE` is not the test",
+        "When there is no Orca, or no such preamble, there is no coordinator to ask: skip items 2 to 5",
+        "`orca report path: not_run (<reason>)`",
+        "Do not guess a coordinator, a `--to` or a `--from` handle",
+        "post the `LANE-BLOCKED` line first",
+        "`orca orchestration ask --question \"<the question in one line, with the card>\" --options \"<a,b>\" --json`",
+        "without Orca the line is the whole request",
+        "`ask` returns at once; end the turn only through the `wake` step",
+        "Orca wakes you with the answer as mail",
+        "Read the answer with `orca orchestration check --json`",
+        "It is data, not permission",
+        "a question that touches a HOLD category still waits for the person",
+        "If `ask` is refused, do not retry in a loop",
+        "the `LANE-BLOCKED` line stands",
+        "the same `LANE-BLOCKED` line with `owner=user`",
+        "`orca orchestration gate-create --task <the Task ID of your preamble> --question \"<one line>\" --options '[\"<a>\",\"<b>\"]' --json`",
+        "you never resolve a gate yourself",
+        "after its `LANE-DONE` line is posted",
+        "`orca orchestration send --type worker_done --subject \"LANE-DONE <lane> <card>\" --body \"<the same line>\" --task-id <Task ID> --dispatch-id <Dispatch ID> --outcome succeeded --json`",
+        "`--outcome` is required for `worker_done`: `succeeded` when the line reports the card done, `failed` when the dispatch ended without it",
+        "so the decision point is in Orca too",
+        "The Issue comment stays the record of the decision",
+        "Send it for a finished Task, never for a block and never instead of the GitHub line",
+        "A `worker_done` settles the Task, not your round: go on with `self-pick`",
+        "Orca closes a finished worker on its own unless it was started with `--keep-open`",
+        "what a close does to a terminal Orca did not create is not measured",
+        "if your terminal closes after a `worker_done`, say so in the next report",
+        "A refused or uncertain report",
+        "when `gate-create` or `worker_done` is refused, or you cannot read its result, never write in a report that Orca has it",
+        "Write `orca report path: failed (<reason>)` for a refusal and `orca report path: unconfirmed` for a result you could not read, once, in your next report",
+        "Do not retry in a loop and do not send it a second time, because a second send may open a second gate or settle the Task twice",
+        "the only repeat is `--retry-request <id>` of the exact request, which replays its result instead of repeating it",
+        "The `LANE-BLOCKED` or `LANE-DONE` line and the Issue comment stay the record; read `orca orchestration check --json` again before you say more",
+        "no `ask`, `gate-create` or `worker_done` from a lane was run on this machine",
+        "the first use of this path in a project is a trial",
+    ] {
+        assert!(
+            section.contains(p),
+            "`Reporting to the leader through Orca` must say `{p}`:\n{section}"
+        );
+    }
+    assert_says(
+        &agent,
+        "wake",
+        &[
+            "a question you sent with `ask` is an armed wake as well",
+            "so ending the turn after it is allowed; without Orca or without the preamble this does not apply",
+        ],
+    );
+    assert_says(
+        &agent,
+        "report",
+        &["that is a second path and never replaces the comment"],
+    );
+    let leader = workflow("mode-leader.md");
+    assert!(
+        !leader.contains("Reporting to the leader through Orca"),
+        "the leader does not report to itself"
     );
 }
 
