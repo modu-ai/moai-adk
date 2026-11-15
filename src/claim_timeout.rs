@@ -30,6 +30,7 @@ use crate::claim::{claim_token, parse_claim_line};
 use crate::claim_verify::{
     classify_comment, evaluate, render_handoff_line, CommentKind, IssueComment, Verifier,
 };
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::forge::policy::{format_utc, next_link, parse_utc, Clock};
 use crate::forge::transport::Transport;
 use crate::forge::Client;
@@ -416,15 +417,23 @@ pub fn check<T: Transport, C: Clock>(t: &Target<'_>, transport: &T, clock: &C, n
         me: t.me.to_string(),
         ..Default::default()
     };
+    // Only a member's comment is read as a claim, a request or a sign of activity (Issue #3052).
+    let mut ignored = Dropped::default();
     let issue_url = format!("{base}/issues/{}/comments?per_page=100", t.issue);
     match read_list(&client, issue_url) {
-        Ok(items) => input.issue_comments = items.iter().filter_map(timed).collect(),
+        Ok(mut items) => {
+            ignored.merge(retain_rest(&mut items));
+            input.issue_comments = items.iter().filter_map(timed).collect();
+        }
         Err((_, e)) => return uncertain(&input, format!("issue comments unreadable: {e}")),
     }
     let since = format_utc(now - HEARTBEAT_SECS);
     let repo_url = format!("{base}/issues/comments?since={since}&per_page=100");
     match read_list(&client, repo_url) {
-        Ok(items) => input.repo_comments = items.iter().filter_map(timed).collect(),
+        Ok(mut items) => {
+            ignored.merge(retain_rest(&mut items));
+            input.repo_comments = items.iter().filter_map(timed).collect();
+        }
         Err((_, e)) => return uncertain(&input, format!("repository comments unreadable: {e}")),
     }
     input.repo_since = Some(since);
@@ -467,7 +476,11 @@ pub fn check<T: Transport, C: Clock>(t: &Target<'_>, transport: &T, clock: &C, n
             Err((_, e)) => return uncertain(&input, format!("branch commits unreadable: {e}")),
         }
     }
-    judge(&input, now)
+    let mut out = judge(&input, now);
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    out
 }
 
 #[cfg(test)]

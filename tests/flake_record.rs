@@ -32,7 +32,13 @@ fn issues(list: Value) -> Exchange {
     get(format!("{API}/issues?state=open&per_page=100"), list)
 }
 
-fn comments(n: u64, list: Value) -> Exchange {
+/// The comments of Issue `n`, each written by a member unless it already says otherwise.
+fn comments(n: u64, mut list: Value) -> Exchange {
+    for c in list.as_array_mut().into_iter().flatten() {
+        if c.get("author_association").is_none() {
+            c["author_association"] = json!("MEMBER");
+        }
+    }
     get(format!("{API}/issues/{n}/comments?per_page=100"), list)
 }
 
@@ -105,6 +111,47 @@ fn a_test_without_an_open_issue_gets_one() {
     assert!(text.contains(&format!("https://github.com/o/r/actions/runs/{RUN}")));
     // Only flaky rows are recorded.
     assert!(!text.contains("moai-cli::real"));
+}
+
+/// Issue #3052: a run line a non-member wrote does not make the run look recorded; the run is
+/// recorded and the answer names the comment it left out. The same line from a member skips.
+#[test]
+fn a_run_line_from_a_non_member_does_not_suppress_the_record() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let mut stranger = json!({"id": 77, "body": format!("{}\nx", run_marker(RUN, MAC))});
+        match association {
+            Some(a) => stranger["author_association"] = json!(a),
+            None => {
+                // `comments()` fills a missing association with a member's; build this one by hand.
+                stranger["author_association"] = json!(null);
+            }
+        }
+        let t = RecordedTransport::new(vec![
+            issues(json!([tracked(40, T1)])),
+            comments(40, json!([stranger])),
+            post(format!("{API}/issues/40/comments"), 201, json!({"id": 1})),
+        ]);
+        let out = run(&t, &classified(&[(MAC, T1)]));
+        assert_eq!(out["writes"], json!(1), "{association:?}: {out}");
+        assert_eq!(
+            out["ignored_control_lines"]["items"][0]["comment_id"],
+            json!(77),
+            "{association:?}: {out}"
+        );
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let t = RecordedTransport::new(vec![
+            issues(json!([tracked(40, T1)])),
+            comments(
+                40,
+                json!([{"id": 77, "author_association": association,
+                        "body": format!("{}\nx", run_marker(RUN, MAC))}]),
+            ),
+        ]);
+        let out = run(&t, &classified(&[(MAC, T1)]));
+        assert_eq!(out["writes"], json!(0), "{association}: {out}");
+        assert!(out.get("ignored_control_lines").is_none(), "{association}");
+    }
 }
 
 #[test]

@@ -2525,3 +2525,135 @@ fn an_earlier_root_move_failing_after_the_new_folder_leaves_nothing() {
     assert_eq!(fx.tree(), before);
     assert!(!fx.root.join(".moai").exists());
 }
+
+/// `go-state-apply` with the debug-build fault point `point` set (`MOAI_CLI_TEST_FAULT`).
+fn apply_with_fault(fx: &Fx, digest: &str, point: &str) -> Value {
+    let out = Command::new(EXE)
+        .args([
+            "go-state-apply",
+            fx.root.to_str().unwrap(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ])
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .env("MOAI_CLI_TEST_FAULT", point)
+        .output()
+        .unwrap();
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+/// The one stamp folder under `.moai/backups/` (not the `.gitignore` beside it).
+fn only_stamp(fx: &Fx) -> String {
+    let mut stamps: Vec<String> = fs::read_dir(fx.root.join(".moai/backups"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n != ".gitignore")
+        .collect();
+    assert_eq!(stamps.len(), 1, "{stamps:?}");
+    stamps.pop().unwrap()
+}
+
+/// F-I (#2936): the ignore file of the backup area is written right after the pending
+/// receipt. A failure there is outside the step-2 undo, so the Go folder stays renamed and
+/// the new `.moai/` stays with a `pending` receipt: the error says so and names the revert
+/// plan with the real backup stamp, and that revert brings the project back byte for byte.
+#[test]
+fn a_failed_ignore_file_after_the_rename_names_the_state_and_the_revert() {
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply_with_fault(
+        &fx,
+        p["plan_digest"].as_str().unwrap(),
+        "go_state_before_ignore",
+    );
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let stamp = only_stamp(&fx);
+    let message = v["error"]["message"].as_str().unwrap();
+    // The state is not the "put back" state of the other step-2 failures: say so.
+    assert!(!message.contains("nothing else changed"), "{v}");
+    assert!(!message.contains("renamed back"), "{v}");
+    assert_eq!(v["error"]["kind"], json!("partial"), "{v}");
+    // The claim about the files is pinned: none has moved yet (checked on disk below).
+    assert!(message.contains("no file has moved yet"), "{v}");
+    assert!(message.contains(".moai-backup"), "{v}");
+    assert!(
+        message.contains("injected test fault at go_state_before_ignore"),
+        "{v}"
+    );
+    assert!(
+        message.contains(&format!(
+            "`moai go-state-revert-plan <project> --backup {stamp}`"
+        )),
+        "{v}"
+    );
+    // What the message says is what is on disk: the Go folder under its backup name, a new
+    // `.moai/` with the pending receipt, and no file moved yet.
+    assert!(fx.root.join(".moai-backup/manifest.json").is_file());
+    assert!(!fx.root.join(".moai/manifest.json").exists());
+    assert!(fx.root.join(".claude/workflows/w.md").is_file());
+    let (_, receipt) = receipt_of(&fx, &stamp);
+    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+
+    let rp = revert_plan(&fx, &stamp);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    assert_eq!(item_action(&rp, ".moai"), json!("restore"), "{rp}");
+    let v = revert(&fx, &stamp, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+    assert!(!fx.root.join(".moai-backup").exists());
+}
+
+/// F-I (#2936), the earlier-root layout: the same stop leaves a new `.moai/` with a `pending`
+/// receipt and no state entry moved; the error names the revert plan and the revert restores
+/// the project.
+#[test]
+fn a_failed_ignore_file_of_an_earlier_root_move_names_the_state_and_the_revert() {
+    let fx = legacy_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply_with_fault(
+        &fx,
+        p["plan_digest"].as_str().unwrap(),
+        "go_state_legacy_before_ignore",
+    );
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let stamp = only_stamp(&fx);
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(!message.contains("nothing else changed"), "{v}");
+    assert_eq!(v["error"]["kind"], json!("partial"), "{v}");
+    assert!(message.contains("no file has moved yet"), "{v}");
+    assert!(
+        message.contains("injected test fault at go_state_legacy_before_ignore"),
+        "{v}"
+    );
+    assert!(
+        message.contains(&format!(
+            "`moai go-state-revert-plan <project> --backup {stamp}`"
+        )),
+        "{v}"
+    );
+    assert!(
+        fx.root.join(".moai-cli/project.yaml").is_file(),
+        "no entry moved"
+    );
+    let (_, receipt) = receipt_of(&fx, &stamp);
+    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+
+    let rp = revert_plan(&fx, &stamp);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    let v = revert(&fx, &stamp, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+    assert!(!fx.root.join(".moai").exists());
+}

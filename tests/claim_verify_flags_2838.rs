@@ -71,6 +71,7 @@ fn raw(id: i64, login: &str, session: &str, lease: &str) -> serde_json::Value {
     json!({
         "id": id,
         "user": {"login": login},
+        "author_association": "MEMBER",
         "body": format!("moai-claim: session={session} epoch=1 lease_until={lease}"),
     })
 }

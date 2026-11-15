@@ -149,6 +149,8 @@ fn from_plan(name: &'static str, host: &str, shown: &str, plan: &Value) -> HostS
             "action": plan["action"],
             "path": plan["path"],
             "hooks": plan["hooks"],
+            // Which entries of the old `moai-cli` set the write turns into `moai` (#3004 P4-2).
+            "migration": plan["binary_migration"],
             "trust_required": hooks::trust_notice(host),
         }),
         plan_digest: digest,

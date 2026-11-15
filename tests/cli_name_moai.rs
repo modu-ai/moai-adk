@@ -251,13 +251,15 @@ fn moai_beside_the_same_build_reads_the_moai_cli_receipt() {
     assert_eq!(inspect(&moai)["self"]["state"], "unrecorded");
 }
 
-/// #2812 W3, audit 6868377245 B1 and leader decision 6868439066 (나): the generated hook
-/// commands keep calling `moai-cli` until the alias retires (R5). With a Go-generation `moai`
-/// first on PATH, `hooks-plan` still resolves the hook binary, and the generated claim guard
-/// reaches this tool — the Go `moai` (which has no `claim-verify` and exits 1, switching the
-/// guard off) is never run. The fake Go records every call. Temporary HOME, project and PATH.
+/// #2812 W3, audit 6868377245 B1, #3004 P4-2: the generated hook commands call `moai`. With a
+/// Go-generation `moai` first on PATH, the hook binary is `wrong_generation` (never `resolved`),
+/// the Go `moai` is asked for `--version` and nothing else, and `hooks-apply` refuses to write a
+/// fresh hook set that would hand the claim guard to it (the Go `moai` has no `claim-verify` and
+/// exits 1, which a host reads as a non-blocking error, so the guard would be off while
+/// everything reported success). With the Rust `moai` first, the same apply writes. The fake Go
+/// records every call. Temporary HOME, project and PATH.
 #[test]
-fn generated_hooks_call_moai_cli_so_a_go_moai_first_on_path_never_takes_the_guard() {
+fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
     use std::fs;
     let tmp = TempDir::new().unwrap();
     let root = std::fs::canonicalize(tmp.path()).unwrap();
@@ -278,43 +280,96 @@ fn generated_hooks_call_moai_cli_so_a_go_moai_first_on_path_never_takes_the_guar
             go_log.display()
         ),
     );
-    common::copy_executable(std::path::Path::new(MOAI_CLI), &rust.join("moai-cli"));
-    let path = format!("{}:{}:/usr/bin:/bin", go.display(), rust.display());
+    common::copy_executable(std::path::Path::new(MOAI_CLI), &rust.join("moai"));
+    let go_first = format!("{}:{}:/usr/bin:/bin", go.display(), rust.display());
+    let rust_first = format!("{}:{}:/usr/bin:/bin", rust.display(), go.display());
 
-    let plan_with = |host: &str| -> serde_json::Value {
+    let run = |path: &str, args: &[&str]| -> (Option<i32>, serde_json::Value) {
         let out = Command::new(MOAI)
-            .args(["hooks-plan", ".", "--host", host])
+            .args(args)
             .env("HOME", &home)
-            .env("PATH", &path)
+            .env("PATH", path)
             .current_dir(&p)
             .output()
             .unwrap();
-        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
-        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()["result"].clone()
+        let v = serde_json::from_slice::<serde_json::Value>(&out.stdout)
+            .unwrap_or_else(|_| panic!("{}", text(&out.stderr)));
+        (out.status.code(), v)
     };
-    for host in ["claude", "codex"] {
-        let plan = plan_with(host);
-        assert_eq!(plan["hook_binary"]["name"], "moai-cli", "{host}: {plan}");
-        assert_eq!(plan["hook_binary"]["state"], "resolved", "{host}: {plan}");
+    let plan_with = |path: &str, host: &str| -> serde_json::Value {
+        let (code, v) = run(path, &["hooks-plan", ".", "--host", host]);
+        assert_eq!(code, Some(0), "{v}");
+        v["result"].clone()
+    };
+    for host in ["claude", "codex", "omp"] {
+        let plan = plan_with(&go_first, host);
+        assert_eq!(plan["hook_binary"]["name"], "moai", "{host}: {plan}");
+        assert_eq!(
+            plan["hook_binary"]["state"], "wrong_generation",
+            "{host}: {plan}"
+        );
+        assert_eq!(plan["hooks_active"], false, "{host}: {plan}");
+        assert_eq!(plan["gate"]["allowed"], false, "{host}: {plan}");
         for h in plan["hooks"].as_array().unwrap() {
             let c = h["command"].as_str().unwrap();
-            assert!(c.starts_with("moai-cli "), "{host}: {c}");
+            assert!(
+                c.starts_with("moai ") && !c.contains("moai-cli"),
+                "{host}: {c}"
+            );
         }
+        let (code, refused) = run(
+            &go_first,
+            &[
+                "hooks-apply",
+                ".",
+                "--host",
+                host,
+                "--plan-digest",
+                plan["plan_digest"].as_str().unwrap(),
+                "--permission-reference",
+                "test-3004",
+            ],
+        );
+        assert_ne!(code, Some(0), "{host}: {refused}");
+        assert!(
+            refused.to_string().contains("wrong_generation"),
+            "{refused}"
+        );
     }
-
-    // Planning reports the first `moai` on PATH (#3004 P4-1), so the Go `moai` was asked for
-    // its `--version` and nothing else, once per plan. That log is cleared here: the check
-    // below is that the generated guard itself never reaches the Go `moai`.
-    let plan = plan_with("claude");
-    let probes = fs::read_to_string(&go_log).unwrap();
+    // Nothing was written for any host, and the Go `moai` heard `--version` only.
+    for path in [".claude", ".codex", ".omp"] {
+        assert!(!p.join(path).exists(), "{path} was written");
+    }
+    let calls = fs::read_to_string(&go_log).unwrap();
     assert!(
-        probes.lines().count() >= 1 && probes.lines().all(|l| l == "--version"),
-        "planning may only probe --version: {probes:?}"
+        calls.lines().count() >= 1 && calls.lines().all(|l| l == "--version"),
+        "only --version may reach the Go moai: {calls:?}"
     );
-    fs::remove_file(&go_log).unwrap();
 
-    // Run the generated claim guard the way a host does: its command string through a shell
-    // with that PATH, the PreToolUse input on stdin.
+    // The Rust `moai` first: the same plan is `resolved`, and the apply writes.
+    let plan = plan_with(&rust_first, "codex");
+    assert_eq!(plan["hook_binary"]["state"], "resolved", "{plan}");
+    assert_eq!(plan["gate"]["allowed"], true, "{plan}");
+    let (code, applied) = run(
+        &rust_first,
+        &[
+            "hooks-apply",
+            ".",
+            "--host",
+            "codex",
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "test-3004",
+        ],
+    );
+    assert_eq!(code, Some(0), "{applied}");
+    assert!(p.join(".codex/hooks.json").is_file());
+
+    // Run the generated claim guard the way a host does with the Rust `moai` first: its
+    // command string through a shell with that PATH, the PreToolUse input on stdin. The Go
+    // `moai` is never reached.
+    fs::remove_file(&go_log).unwrap();
     let guard = plan["hooks"]
         .as_array()
         .unwrap()
@@ -329,7 +384,7 @@ fn generated_hooks_call_moai_cli_so_a_go_moai_first_on_path_never_takes_the_guar
     let mut child = Command::new("/bin/sh")
         .args(["-c", &guard])
         .env("HOME", &home)
-        .env("PATH", &path)
+        .env("PATH", &rust_first)
         .current_dir(&p)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

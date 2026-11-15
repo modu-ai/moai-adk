@@ -355,8 +355,8 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (UsageOther, Ko) => "명령줄이 올바르지 않아요",
         (PathFirstNote, En) => crate::install::PATH_FIRST_NOTE,
         (PathFirstNote, Ko) => {
-            "R5 전까지 hook 은 moai-cli 로 만들어져요. hook 이 moai 를 쓰게 하려면 Rust moai 를 \
-             PATH 맨 앞에 두세요(바꾼 것 없음)"
+            "PATH 맨 앞의 moai 가 Rust 빌드가 아니에요. 만들어진 hook 은 moai 를 부르므로 Rust moai 를 \
+             PATH 맨 앞에 둔 뒤에야 hooks-apply 가 hook 을 써요(바꾼 것 없음)"
         }
         (InitRemoved, En) => {
             "moai init was removed. Make a project folder, go into it and run moai cc, moai glm \

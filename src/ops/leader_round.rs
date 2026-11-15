@@ -147,7 +147,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         .filter(|a| a.reason == leader_round::IDLE_REASON)
         .map(|a| a.lane.as_str())
         .collect();
-    Ok(json!({
+    let mut out = json!({
         "now": moai_cli::forge::policy::format_utc(now),
         "lanes": lanes,
         "idle_lanes": idle_lanes,
@@ -155,5 +155,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         "partial": snap.as_ref().map(|s| s.partial.clone()).unwrap_or_default(),
         "api_calls": snap.as_ref().map_or(0, |s| s.api_calls),
         "writes": false,
-    }))
+    });
+    // Issue #3052: say which comments the fleet read left out because no member wrote them.
+    if let Some(s) = snap.as_ref().filter(|s| !s.ignored.is_empty()) {
+        out["ignored_control_lines"] = s.ignored.to_json();
+    }
+    Ok(out)
 }
