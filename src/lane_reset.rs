@@ -763,11 +763,25 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
                 cc(6000041, "Bot", "resume note - see claim"),
             ],
         );
+        // A note copied from another Issue's thread names that Issue, not this one.
+        let wrong_issue = thread(
+            5,
+            vec![
+                claim(6000050, "Bot", "agent-9"),
+                note(6000051, "Bot", "agent-9", 6, 6000050),
+            ],
+        );
         let items = claims_from_threads(
             "agent-9",
-            &[wrong_claim, wrong_lane, wrong_author, plain_text],
+            &[
+                wrong_claim,
+                wrong_lane,
+                wrong_author,
+                plain_text,
+                wrong_issue,
+            ],
         );
-        assert_eq!(items.len(), 4);
+        assert_eq!(items.len(), 5);
         assert!(items.iter().all(|i| i.resume_note.is_none()), "{items:?}");
     }
 
