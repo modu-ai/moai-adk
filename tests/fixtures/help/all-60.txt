@@ -221,8 +221,8 @@ Lane and leader
                           scheduler entry
   wait                    Wait until a condition holds on
                           GitHub
-  scope-check             Check a claim's write scope
-                          against others
+  scope-check             Check a write scope (--task
+                          records it)
   worktree-plan           Preview the branch and worktree of
                           a claim
   worktree-apply          Create the previewed worktree of a

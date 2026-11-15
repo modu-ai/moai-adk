@@ -498,10 +498,15 @@ pub fn physical_findings(root: &std::path::Path, scope: &[String]) -> Vec<Value>
 /// The write_scope is also inspected on disk under the `project` work tree (#2392 F6): a
 /// [`physical_findings`] entry blocks with reason `scope_symlink`, which no integration order
 /// lifts, and the inspected root is reported under `physical_check`.
+///
+/// `read_only` computes the same verdict and writes nothing, also for a journal record
+/// (#3048). A write that blocked the record names the command that closes it again under
+/// `record_update.undo`: a `blocked` record has no other way out.
 pub fn check_and_record<C: crate::forge::policy::Clock>(
     project: &std::path::Path,
     mine: &ClaimRecord,
     from_journal: bool,
+    read_only: bool,
     records: &[ClaimRecord],
     integration_order: Option<&str>,
     handed_off: &std::collections::BTreeMap<String, Value>,
@@ -535,11 +540,16 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
     };
     out["record_update"] = match (effect, from_journal) {
         (None, _) => json!({"applied": false, "reason": "no scope conflict"}),
+        (Some(_), _) if read_only => json!({
+            "applied": false,
+            "reason": "--read-only: the verdict was computed and nothing was written",
+        }),
         (Some(_), false) => not_written(),
         (Some(effect), true) => {
             let blocked = out["decision"] == "blocked";
+            let reason = effect["kind"].as_str().unwrap_or("scope_conflict").to_string();
             let journal = open_locked_journal(project)?;
-            commit_update(
+            let mut update = commit_update(
                 &journal,
                 &mine.task_key,
                 mine.epoch,
@@ -553,7 +563,17 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
                         r.effects.push(effect);
                     }
                 },
-            )?
+            )?;
+            if blocked && update["applied"] == true {
+                update["undo"] = json!({
+                    "command": format!(
+                        "moai claim-release . --task {} --epoch {} --reason {reason}",
+                        mine.task_key, mine.epoch
+                    ),
+                    "note": "the record stays `blocked` until it is released; `--read-only` looks without writing",
+                });
+            }
+            update
         }
     };
     Ok(out)
