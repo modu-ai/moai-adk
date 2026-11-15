@@ -282,11 +282,18 @@ pub trait HostConnector {
     fn verdicts(&self, project: &ProjectRef, number: u64) -> Result<Verdicts, ConnectorError>;
 }
 
-/// A marker is one HTML comment line starting `<!-- moai-`.
+/// The longest marker, in bytes.
+pub const MARKER_MAX_BYTES: usize = 200;
+
+/// A marker is one HTML comment line: it starts `<!-- moai-`, ends ` -->`, has no `-->` inside
+/// (that would close the comment early), no control character (so no second line), and is at
+/// most [`MARKER_MAX_BYTES`] bytes.
 pub fn check_marker(marker: &str) -> Result<(), ConnectorError> {
     let ok = marker.starts_with("<!-- moai-")
-        && marker.ends_with(" -->")
-        && marker.len() <= 200
+        && marker
+            .strip_suffix(" -->")
+            .is_some_and(|inner| !inner.contains("-->"))
+        && marker.len() <= MARKER_MAX_BYTES
         && !marker.chars().any(char::is_control);
     if ok {
         Ok(())
