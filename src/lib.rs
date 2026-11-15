@@ -114,6 +114,7 @@ pub mod search;
 pub mod self_audit;
 pub mod self_update;
 pub mod session;
+pub mod shim_check;
 pub mod skills_legacy;
 pub mod spec;
 pub mod spec_links;

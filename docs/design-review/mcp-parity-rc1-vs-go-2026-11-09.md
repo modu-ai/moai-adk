@@ -72,6 +72,8 @@
 
 집계(38): 있음 1 · 부분 13 · 없음 24.
 
+> shim 환경 주의 (#3021): 이름 `moai` 가 라우팅 shim 이면 Go MCP 서버가 쓰기 도구(`codex_role_audit` 등)를 일회성 프로세스로 넘겨 job 이 사라질 수 있다 (`unknown job`). 그러면 MCP 서버를 재연결한다. `moai install-inspect` 의 `shim_mcp` 가 이 모양을 읽기만 해서 알려 준다.
+
 ### 2.1 반대 방향 — Go MCP에 대응물이 없는 RC1 op
 
 RC1 49개 op 가운데 위 표가 쓰지 않은 op는 다음과 같다. MCP로 노출할 때는 이 op들의 계약이 기준이 된다.
