@@ -162,6 +162,8 @@ Lane and leader
   claim-release           Close the active claim as
                           cancelled
   claim-handoff           Hand a claim to another session
+  claim-link              Link a claim to the worktree you
+                          work in
   queue-free              List the open cards a lane may
                           take
   queue-query             Read the merge train from the

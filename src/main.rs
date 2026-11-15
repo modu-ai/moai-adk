@@ -398,6 +398,32 @@ enum Command {
         #[arg(long = "allowed-author", requires = "issue")]
         allowed_author: Vec<String>,
     },
+    /// Link a claim to the worktree you work in
+    ///
+    /// Point your active claim record at the worktree and branch you really work in (#3030),
+    /// so `claim-verify --hook` guards your commits there: run it after you made a worktree
+    /// or renamed the branch following the claim. Path and branch are read from git, never
+    /// typed. It checks your ownership against the claim comment first (GET only), changes
+    /// only the record's worktree, and writes nothing when the record already says the same.
+    ClaimLink {
+        /// A folder of the clone whose journal holds the claim (run it inside the new worktree).
+        project: PathBuf,
+        /// Issue number of the claim.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        issue: i64,
+        /// Id of your claim comment on the Issue.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        comment: i64,
+        /// Your session name, as written in the claim line (`session=`).
+        #[arg(long)]
+        lane: String,
+        /// OWNER/REPO; default: the project's `origin` remote on GitHub.
+        #[arg(long)]
+        repo: Option<String>,
+        /// The folder to link; default: the project folder.
+        #[arg(long)]
+        worktree: Option<PathBuf>,
+    },
     /// Show the current claim record of a task
     ///
     /// Read the current claim record of a task key; byte-identical when repeated.
@@ -1160,6 +1186,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         AuditClonePlan { .. } => "audit.clone.plan",
         ClaimAcquire { .. } => "claim.acquire",
         ClaimHandoff { .. } => "claim.handoff",
+        ClaimLink { .. } => "claim.link",
         ClaimRelease { .. } => "claim.release",
         ClaimShow { .. } => "claim.show",
         ClaimVerify { .. } => "claim.verify",
@@ -1416,6 +1443,26 @@ fn run_internal(
             &task,
             epoch,
             reason.as_deref().unwrap_or("unspecified"),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        // Typed errors: a held journal lock is the `unavailable` answer (#2345, #3030).
+        Command::ClaimLink {
+            project,
+            issue,
+            comment,
+            lane,
+            repo,
+            worktree,
+        } => moai_cli::claim_link::link_cli(
+            &moai_cli::claim_link::LinkRequest {
+                project: &project,
+                issue,
+                comment,
+                lane: &lane,
+                repo: repo.as_deref(),
+                worktree: worktree.as_deref(),
+            },
+            &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaimHandoff {
