@@ -313,6 +313,18 @@ pub fn project_skill_apply_confirmed(
     plan_digest: &str,
     permission: &str,
 ) -> Result<ProjectSkillApplyReceipt> {
+    confirmed_apply(req, plan_digest, permission, &|| {}, &|_| {})
+}
+
+/// [`project_skill_apply_confirmed`] with two seams for the tests: `between_plans` runs after
+/// the digest check and before the apply plans again; `before_copy` runs before each host's copy.
+fn confirmed_apply(
+    req: &ProjectSkillRequest,
+    plan_digest: &str,
+    permission: &str,
+    between_plans: &dyn Fn(),
+    before_copy: &dyn Fn(&str),
+) -> Result<ProjectSkillApplyReceipt> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
@@ -325,7 +337,8 @@ pub fn project_skill_apply_confirmed(
     }
     // The apply plans again; the plan it confirmed goes down with it, so a package or a project
     // that changed between the two plans is refused before anything is written (#3002 audit B1).
-    apply_core(req, Some(&confirmed), &|| {})
+    between_plans();
+    apply_core(req, Some(&confirmed), before_copy)
 }
 
 /// Copies the staged skill tree into `dest` with the same refusals the
@@ -464,17 +477,17 @@ fn own_copy_digests(project_root: &Path, host: &str) -> Vec<String> {
 /// `replace`) and persists the rollback receipt under
 /// `<project>/.moai-cli/project-skill-rollback/<request_id>/receipt.json`.
 pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillApplyReceipt> {
-    apply_core(req, None, &|| {})
+    apply_core(req, None, &|_| {})
 }
 
 /// The apply. `confirmed` is the plan a caller already checked its digest against: this
 /// function's own plan must be the same plan, and the package the copies are hashed against is
-/// that plan's. `after_stage` runs once the package is staged and before anything is written
-/// (a seam for the tests: a package that changes at that point).
+/// that plan's. `before_copy` runs before each host's copy, with the host's name, once the
+/// package is staged (a seam for the tests: a package that changes at that point).
 fn apply_core(
     req: &ProjectSkillRequest,
     confirmed: Option<&ProjectSkillPlan>,
-    after_stage: &dyn Fn(),
+    before_copy: &dyn Fn(&str),
 ) -> Result<ProjectSkillApplyReceipt> {
     if !req.opt_in {
         // REQ-I5-01: the default is off — refuse before any write.
@@ -506,7 +519,6 @@ fn apply_core(
     if staged.digest != plan.package_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
-    after_stage();
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -565,6 +577,7 @@ fn apply_core(
                 });
             }
             "create" => {
+                before_copy(&entry.host);
                 let host_made = dest
                     .parent()
                     .map(|p| missing_dirs(&root, p))
@@ -616,6 +629,7 @@ fn apply_core(
                         &format!("rollback backup failed: {e}"),
                     ));
                 }
+                before_copy(&entry.host);
                 let replaced_dir = rollback_dir.join(format!("replaced/{folder}"));
                 fs::create_dir_all(replaced_dir.parent().expect("replaced parent"))
                     .map_err(|_| "rollback replaced directory unavailable".to_string())?;
@@ -852,7 +866,7 @@ mod tests {
         assert!(left.is_empty(), "a temporary folder stayed: {left:?}");
     }
 
-    fn no_hook() {}
+    fn no_hook(_host: &str) {}
 
     /// #3002 audit B1: the confirmed apply plans twice (the digest check, then the apply's own
     /// plan). The digest it confirmed must reach the second plan, so a package that changed
@@ -910,7 +924,8 @@ mod tests {
         let source = tempfile::TempDir::new().unwrap();
         write_source(source.path());
         let req = request(project.path(), None, source.path(), true);
-        let altered = || fs::write(source.path().join("references/a.md"), b"late").unwrap();
+        let altered =
+            |_host: &str| fs::write(source.path().join("references/a.md"), b"late").unwrap();
         let err = apply_core(&req, None, &altered).unwrap_err();
         assert_eq!(
             crate::contract::classify(&err),
@@ -942,7 +957,8 @@ mod tests {
                 .count()
         };
         assert_eq!(rollbacks(project.path()), 1);
-        let altered = || fs::write(source.path().join("references/a.md"), b"v3").unwrap();
+        let altered =
+            |_host: &str| fs::write(source.path().join("references/a.md"), b"v3").unwrap();
         let err = apply_core(&req, None, &altered).unwrap_err();
         assert_eq!(
             crate::contract::classify(&err),
@@ -955,6 +971,84 @@ mod tests {
             1,
             "the failed apply left a rollback folder"
         );
+    }
+
+    /// The confirmed call hands its plan to the apply: a package that changes between the digest
+    /// check and the apply's own plan is refused, and nothing is written.
+    #[test]
+    fn the_confirmed_call_refuses_a_package_changed_between_its_two_plans() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        let digest = project_skill_plan(&req).unwrap().plan_digest;
+        let change = || fs::write(source.path().join("references/a.md"), b"between").unwrap();
+        let err = confirmed_apply(&req, &digest, "test:ref", &change, &no_hook).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan,
+            "{err}"
+        );
+        assert!(
+            fs::read_dir(project.path()).unwrap().next().is_none(),
+            "something was written"
+        );
+        // Nothing changed in between: the same call applies.
+        let digest = project_skill_plan(&req).unwrap().plan_digest;
+        assert!(confirmed_apply(&req, &digest, "test:ref", &|| {}, &no_hook).is_ok());
+    }
+
+    /// A stale plan found while copying the second host, after the first host landed, is still a
+    /// partial apply with a receipt: what landed stays reported and revertable.
+    #[test]
+    fn a_stale_copy_after_an_earlier_host_landed_is_a_partial_apply() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let mut req = request(project.path(), None, source.path(), true);
+        req.hosts = vec!["claude".into(), "codex".into()];
+        let late = |host: &str| {
+            if host == "codex" {
+                fs::write(source.path().join("references/a.md"), b"late").unwrap();
+            }
+        };
+        let err = apply_core(&req, None, &late).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::Partial,
+            "{err}"
+        );
+        assert!(project
+            .path()
+            .join(".claude/skills/moai/SKILL.md")
+            .is_file());
+        assert!(!project.path().join(".agents/skills/moai").exists());
+        let receipts: Vec<_> =
+            fs::read_dir(project.path().join(".moai-cli/project-skill-rollback"))
+                .unwrap()
+                .collect();
+        assert_eq!(receipts.len(), 1, "{receipts:?}");
+    }
+
+    /// Taking back what a refused apply made never removes a folder that was there before it.
+    #[test]
+    fn a_refused_copy_keeps_the_empty_folders_the_project_already_had() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        fs::create_dir_all(project.path().join(".claude/skills")).unwrap();
+        fs::create_dir_all(project.path().join(".moai-cli")).unwrap();
+        let altered =
+            |_host: &str| fs::write(source.path().join("references/a.md"), b"late").unwrap();
+        assert!(apply_core(&req, None, &altered).is_err());
+        assert!(project.path().join(".claude/skills").is_dir());
+        assert!(project.path().join(".moai-cli").is_dir());
+        assert!(!project.path().join(".claude/skills/moai").exists());
+        assert!(!project
+            .path()
+            .join(".moai-cli/project-skill-rollback")
+            .exists());
     }
 
     /// #3002 audit B3 (mutants M13, M14, M27): the plan digest binds the project, the package,
