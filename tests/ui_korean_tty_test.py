@@ -207,7 +207,7 @@ ERROR_CASES = {
 def capture_error(name, home, tty=True, binary=None, **extra):
     """(exit, stdout bytes, stderr text) of ERROR_CASES[name] with `NO_COLOR=1`; stderr on a
     pty when `tty`. `binary` runs another build under the name `moai-cli` (the frame names the
-    program as run)."""
+    program `moai` whatever name ran, #3004 P1)."""
     from tests import error_frame_tty_test as frame
 
     proj = os.path.join(home, "p")
@@ -270,7 +270,9 @@ class KoreanErrorFrame(unittest.TestCase):
                                  f"{name} {extra}")
 
     def test_a_control_character_in_the_program_name_is_shown_as_text(self):
-        # The next step names the program as run; a name with an OSC title and BEL is data.
+        # The next step names the program `moai` whatever name ran (#3004 P1), so an executable
+        # name with an OSC title and BEL never reaches the frame: no control byte, and the
+        # step reads as it does for any name.
         evil_dir = os.path.join(self.tmp.name, "evil")
         os.makedirs(evil_dir)
         evil = os.path.join(evil_dir, "mo\x1b]0;T\x07ai")
@@ -289,7 +291,8 @@ class KoreanErrorFrame(unittest.TestCase):
                 os.environ["MOAI_CLI_BIN"] = old
         self.assertNotIn("\x1b]", err)
         self.assertNotIn("\x07", err)
-        self.assertIn("run `mo\\x1b]0;T\\x07ai project-plan --help` to see its arguments", err)
+        self.assertNotIn("\\x1b", err)
+        self.assertIn("run `moai project-plan --help` to see its arguments", err)
 
 
 if __name__ == "__main__":
