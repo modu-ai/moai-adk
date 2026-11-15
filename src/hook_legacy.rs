@@ -255,6 +255,22 @@ pub fn check(plan: &Value, binary_state: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The gate of an install of the MoAI set into a project that has none of it: a fresh create,
+/// as [`check`] sees it. The Go hooks replacement (`go-hooks-apply`) installs the set after it
+/// took the Go entries out, so its own `hooks` plan is not a create yet when it is gated; this
+/// answers for the install it is about to make. The `moai` is probed once.
+pub fn fresh_install(
+    project: &Path,
+    home: Option<&Path>,
+    path_env: &str,
+) -> std::result::Result<(), String> {
+    let state = hooks::moai_state(project, path_env, home);
+    check(
+        &json!({"action": "create"}),
+        state["state"].as_str().unwrap_or("wrong_generation"),
+    )
+}
+
 /// The single gate: plans `host` in `project` again, now, and refuses what [`check`] refuses
 /// for the `moai` on `path_env`. `hooks-apply` and the `moai update` hook layer both call it, at
 /// plan time and again at apply time, because the plan digest binds the files and not the PATH.
