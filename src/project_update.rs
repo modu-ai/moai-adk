@@ -16,7 +16,7 @@ use crate::claude::{self, SettingsScope};
 use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
-use crate::{go_state, profile, project_detect, project_hosts, state_root, Profile};
+use crate::{go_state, profile, project_detect, project_hosts, state_root, status_line, Profile};
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
@@ -443,23 +443,53 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// Q2 A (#2936): the keys MoAI already owns, without `hooks` (only `hooks-apply` writes
 /// that key), are kept as they are; no key is added by default.
 fn settings_step(root: &Path, shown: &str) -> Result<Step> {
-    let mut owned = settings_stdin(claude::owned_settings(root)?);
-    // #2936 R8 (Q-H1, decision 6880072221): a project that has no status line of its own gets
-    // MoAI's. One it has stays as it is, and so does one MoAI wrote before.
-    if !owned.contains_key("statusLine")
-        && !claude::current_settings(root)?.contains_key("statusLine")
-    {
-        owned.insert("statusLine".into(), default_status_line());
-    }
-    let desired = claude::user_settings_desired_in(root, &owned, SettingsScope::Project)?;
-    let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
-    Ok(settings_from_plan(shown, &plan, owned))
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    settings_step_with(root, shown, home.as_deref(), &path_env)
 }
 
-/// The status line MoAI writes into a project that has none: the product command
-/// (`moai-cli statusline`, #2376), the same binary name the hooks call.
-fn default_status_line() -> Value {
-    json!({"type": "command", "command": "moai-cli statusline"})
+/// [`settings_step`] for a given HOME and PATH.
+///
+/// #3004 P4-3: the status line is `moai statusline` (`status_line::current`, the same binary
+/// name the hooks call). A project with none gets it, and a status line MoAI owns in the form
+/// the earlier releases wrote (`moai-cli statusline`) and the file still holds is rewritten to
+/// it, both only where [`status_line::gate`] lets it through. When the gate holds, the old
+/// status line stays in the printed owned keys (so nothing is rewritten) and the step says why
+/// in `status_line_migration`; the hooks step is not touched, its gate is the hook gate's. An
+/// edited or foreign status line is never touched and its text is never printed.
+fn settings_step_with(
+    root: &Path,
+    shown: &str,
+    home: Option<&Path>,
+    path_env: &str,
+) -> Result<Step> {
+    let mut owned = settings_stdin(claude::owned_settings(root)?);
+    let file = claude::current_settings(root)?;
+    // #2936 R8 (Q-H1, decision 6880072221): a project that has no status line of its own gets
+    // MoAI's. One it has stays as it is, and so does one MoAI wrote before.
+    let intent = status_line::intent(owned.get("statusLine"), file.get("statusLine"));
+    let verdict = match intent {
+        status_line::Intent::Write(kind) => {
+            let verdict = status_line::gate(kind, root, home, path_env);
+            if verdict.is_ok() {
+                owned.insert("statusLine".into(), status_line::current());
+            }
+            Some(verdict)
+        }
+        status_line::Intent::Keep(_) => None,
+    };
+    let desired = claude::user_settings_desired_in(root, &owned, SettingsScope::Project)?;
+    let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
+    let mut step = settings_from_plan(shown, &plan, owned);
+    step.preview["status_line_migration"] = status_line::migration(intent, verdict.as_ref());
+    if let Some(Err(held)) = &verdict {
+        // With nothing else to write, the hold is the news, not "current".
+        if step.state == "unchanged" {
+            step.state = "needs_decision";
+            step.reason = held.message.clone();
+        }
+    }
+    Ok(step)
 }
 
 /// The keys a printed settings apply carries on stdin: the owned keys without `hooks`.
