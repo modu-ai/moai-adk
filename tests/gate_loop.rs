@@ -98,13 +98,13 @@ fn list(prs: Value) -> Exchange {
 
 fn comments(head: &str, base: &str, auditor: &str, extra: Option<&str>) -> Value {
     let mut v = vec![
-        json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")}),
-        json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: {auditor}.\n")}),
+        json!({"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")}),
+        json!({"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: {auditor}.\n")}),
         // #2906 S5b: G5 reads the local check line for the head.
-        json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")}),
+        json!({"id": 250, "author_association": "MEMBER", "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")}),
     ];
     if let Some(e) = extra {
-        v.push(json!({"id": 300, "body": e}));
+        v.push(json!({"id": 300, "author_association": "MEMBER", "body": e}));
     }
     Value::Array(v)
 }
@@ -141,7 +141,9 @@ fn reads(dir: &TempDir, head: &str, cs: &Value) -> Vec<Exchange> {
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
-            response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
+            response: ok(
+                json!({"id": 555, "author_association": "MEMBER", "body": "moai-claim: session=agent-26 epoch=1\n"}),
+            ),
         },
         // #2859: the open pull requests (only this one), read before the tip.
         Exchange {
@@ -367,6 +369,59 @@ fn a_verdict_by_a_lane_without_a_claim_asks_once() {
     .unwrap();
     assert_eq!(out["pull_requests"][0]["outcome"], json!("already_asked"));
     assert!(writes(&t).is_empty());
+}
+
+/// Issue #3052: a loop marker a non-member wrote does not count as "already asked"; the loop
+/// asks, and the row names the comment it left out. The same marker from a member counts.
+#[test]
+fn a_marker_from_a_non_member_does_not_stop_the_loop_from_asking() {
+    let (dir, a, b) = repo(false);
+    let mark = format!("<!-- moai:gate-loop auditor head={b} -->");
+    for association in ["NONE", "CONTRIBUTOR", ""] {
+        let mut cs = comments(&b, &a, "agent-27", Some(&mark));
+        cs[3]["author_association"] = json!(association);
+        let mut ex = vec![list(
+            json!([{"number": 9, "draft": false, "head": {"sha": b}}]),
+        )];
+        ex.extend(reads(&dir, &b, &cs));
+        ex.push(marker_read(&cs));
+        ex.push(Exchange {
+            request: HttpRequest::new("POST", format!("{API}/issues/9/comments")),
+            response: created(),
+        });
+        let t = RecordedTransport::new(ex);
+        let out = once(
+            &target(&dir),
+            "fixture-approved",
+            false,
+            false,
+            &t,
+            &t,
+            &NoClock,
+        )
+        .unwrap();
+        let row = &out["pull_requests"][0];
+        assert_eq!(
+            row["outcome"],
+            json!("asked_auditor"),
+            "{association:?}: {out}"
+        );
+        assert_eq!(
+            writes(&t),
+            vec!["POST /issues/9/comments"],
+            "{association:?}"
+        );
+        assert_eq!(
+            row["ignored_control_lines"]["items"][0]["comment_id"],
+            json!(300),
+            "{association:?}: {out}"
+        );
+        assert_eq!(
+            row["ignored_control_lines"]["count"],
+            json!(1),
+            "one comment, read twice, is counted once: {out}"
+        );
+    }
 }
 
 #[test]
@@ -1045,8 +1100,8 @@ fn shell_prefilter_cases_stop_in_a_dry_run() {
         response: ok(json!({"check_runs": [{"name": "ci", "conclusion": c}]})),
     };
     let fail_on_head = json!([
-        {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={b}\n")},
-        {"id": 200, "body": format!("AUDIT #9 (x) head {b} base {a} — verdict: FAIL\n\n감사: agent-10.\n")},
+        {"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={b}\n")},
+        {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {b} base {a} — verdict: FAIL\n\n감사: agent-10.\n")},
     ]);
     let mut no_local_check = pass.clone();
     no_local_check
