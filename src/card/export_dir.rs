@@ -578,6 +578,20 @@ mod tests {
         assert!(matches!(err, DirError::Io { .. }), "{err:?}");
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn a_pipe_in_place_of_a_file_is_refused_and_does_not_wait_for_a_writer() {
+        use std::os::unix::ffi::OsStrExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let c = std::ffi::CString::new(tmp.path().join("C-1.md").as_os_str().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0, "mkfifo");
+        // The listing would already say "not a plain file"; this is the file swapped in later.
+        assert_eq!(
+            read_text(tmp.path(), "C-1.md", MAX_FILE_BYTES),
+            Err(DirError::Unexpected("C-1.md".into()))
+        );
+    }
+
     #[test]
     fn a_file_over_the_limit_or_not_text_is_refused_by_name() {
         let tmp = tempfile::tempdir().unwrap();
