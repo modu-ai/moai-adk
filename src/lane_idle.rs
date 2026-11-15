@@ -316,6 +316,17 @@ mod tests {
         assert_eq!(load(&f), IdleState::default());
         std::fs::write(&f, b"not json").unwrap();
         assert_eq!(load(&f), IdleState::default());
+        let padding = " ".repeat(5000);
+        std::fs::write(
+            &f,
+            format!(r#"{{"consecutive_empty":3,"last":"{padding}"}}"#),
+        )
+        .unwrap();
+        assert_eq!(
+            load(&f),
+            IdleState::default(),
+            "a valid file past the size limit is not read"
+        );
         std::fs::write(&f, vec![b' '; 5000]).unwrap();
         assert_eq!(load(&f), IdleState::default());
         std::fs::write(&f, br#"{"consecutive_empty":3,"last":"x"}"#).unwrap();
@@ -371,6 +382,7 @@ mod tests {
         let mut v = json!({"next": null});
         apply(&mut v, None, "agent-1", "o/r", 3, NOW);
         assert_eq!(v["idle"]["counting"], json!(false));
+        assert!(v.get("status").is_none(), "no clone never stops the lane");
         let mut v = json!({"next": null, "writes": false});
         apply(&mut v, Some(anchor), "agent-1", "o/r", 0, NOW);
         assert!(
