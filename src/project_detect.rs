@@ -118,12 +118,15 @@ const DB_DEPENDENCIES: &[(&str, &str)] = &[
     ("ioredis", "redis"),
 ];
 
-/// Folders the code walk never enters: VCS and MoAI state, build output, vendored deps.
+/// Folders the code walk never enters: VCS and MoAI state, the host folders MoAI writes hook
+/// and agent files into (`.omp/extensions/moai-hooks.ts` is TypeScript, #2936 R9), build
+/// output, vendored deps.
 const SKIP_DIRS: &[&str] = &[
     ".git",
     PROJECT_STATE_DIR,
     ".claude",
     ".codex",
+    ".omp",
     "target",
     "node_modules",
     ".venv",

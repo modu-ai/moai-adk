@@ -116,13 +116,11 @@ fn codex_lane_hook_plan_apply_revert() {
     assert_eq!(applied["state"], json!("applied"), "{applied}");
     let v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
     let stop = v["hooks"]["Stop"].as_array().unwrap();
-    assert_eq!(stop.len(), 2, "{v}");
+    // #2936 R9 S1: the base set has no `Stop` event, so the lane group is the only one; it is
+    // created, not skipped.
+    assert_eq!(stop.len(), 1, "{v}");
     assert_eq!(
-        stop[0]["hooks"][0]["command"],
-        json!("moai-cli hook-receipt --host codex")
-    );
-    assert_eq!(
-        stop[1],
+        stop[0],
         json!({"hooks": [{"type": "command", "command": COMMAND, "timeout": 120}]})
     );
 
@@ -199,7 +197,7 @@ fn lane_loop_flags_are_checked() {
 fn stop(f: &Fixture, snapshot: &str, stdin: &[u8]) -> (i32, String) {
     let v: Value =
         serde_json::from_slice(&fs::read(f.project.join(".codex/hooks.json")).unwrap()).unwrap();
-    let cmd = v["hooks"]["Stop"][1]["hooks"][0]["command"]
+    let cmd = v["hooks"]["Stop"][0]["hooks"][0]["command"]
         .as_str()
         .unwrap()
         .to_string();

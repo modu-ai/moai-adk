@@ -41,7 +41,7 @@ use std::path::{Path, PathBuf};
 type Result<T> = std::result::Result<T, String>;
 
 pub const SCHEMA_VERSION: u32 = 1;
-const PREFIX: &str = "move-journal-";
+pub(crate) const PREFIX: &str = "move-journal-";
 
 /// One planned move: absolute `from` to absolute `to`.
 #[derive(Clone, Debug, PartialEq, Eq)]

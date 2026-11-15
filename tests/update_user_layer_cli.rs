@@ -505,6 +505,10 @@ fn go_leftovers_are_previewed_outside_the_digest_and_confirm_moves_none() {
     );
     let mut with: Vec<&str> = PREVIEW_KEYS.to_vec();
     with.push("cleanup");
+    // #2871 U2b: a Go registry file makes this a Go HOME, so the home part is previewed too —
+    // beside the cleanup, outside the digest, and (this narrow PATH hides `lsof`) with nothing
+    // offered.
+    with.push("home");
     assert_eq!(keys(&p), with, "{p}");
     let token = p["cleanup"]["confirm_token"].as_str().unwrap();
     assert!(token.starts_with("cleanup:"), "{p}");

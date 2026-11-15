@@ -844,3 +844,19 @@ fn ci_file_names_are_filtered_and_capped_and_make_targets_stay_apart() {
         json!({"build": [], "test": ["make test"], "ci_files": []})
     );
 }
+
+/// #2936 R9 S5a: the folders MoAI writes host files into are not the project's code. The OMP
+/// hook module is a `.ts` file; counting it made the detected language drift after an install.
+#[test]
+fn the_host_folders_are_not_the_projects_code() {
+    for dir in [".claude", ".codex", ".omp/extensions"] {
+        let root = TempDir::new().unwrap();
+        write(root.path(), &format!("{dir}/hook.ts"), "export {};\n");
+        let found = detect(&root);
+        assert_eq!(
+            found["detected"]["languages"],
+            json!([]),
+            "{dir} was read as project code: {found}"
+        );
+    }
+}

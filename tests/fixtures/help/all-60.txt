@@ -16,6 +16,8 @@ Project
                           in one view
   language-setup          Choose the writing language item
                           by item
+  language-set            Record the conversation language
+                          in HOME
   index-build             Build the code map index
   agents-plan             Preview the AGENTS.md managed
                           section
@@ -47,6 +49,14 @@ Project
                           hooks
   go-hooks-apply          Replace Go-era project hooks
   go-hooks-revert         Undo a Go-era hook replacement
+  agents-merge-plan       Preview merging AGENTS.local.md
+                          into AGENTS.md
+  agents-merge-apply      Merge AGENTS.local.md into
+                          AGENTS.md
+  agents-merge-revert     Undo an AGENTS.local.md merge
+  agents-project-plan     Preview the base agents in a
+                          project
+  agents-project-apply    Write the previewed base agents
 Update and move
   update                  Update MoAI from the installed
                           package
@@ -66,6 +76,8 @@ Update and move
                           ~/.moai
   home-retire-apply       Retire the Go items in ~/.moai
   home-retire-revert      Undo a Go-item retire
+  home-install-plan       Preview moving ~/.moai-cli items
+                          to ~/.moai
   worktree-move-plan      Preview moving this clone's
                           worktrees
   worktree-move-apply     Move the previewed worktrees

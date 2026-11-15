@@ -299,8 +299,10 @@ enum Command {
     /// List the open cards a lane may take
     ///
     /// List the open cards a lane may take (#2675): typed JSON `{schema_version, owner, repo}`
-    /// on stdin; GET only. Every open Issue lands in one bucket (free, reserved, claimed, held,
-    /// epics, blocked); an empty result says `free_count: 0`.
+    /// on stdin; GET only. Every open Issue lands in one bucket (free, expired, unjudged,
+    /// reserved, claimed, held, epics, blocked); `startable_count` (= `free_count`) counts only
+    /// the work a lane can start now, so expired claims and cards whose text says HOLD without
+    /// a hold label are listed apart; an empty result says `free_count: 0` (#2973).
     QueueFree { project: PathBuf },
     /// Read the merge train from the leader's comment
     ///
@@ -846,6 +848,11 @@ enum Command {
         /// Without --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_cleanup: Option<String>,
+        /// The preview's `home.confirm_token` (#2871): move the Go generation's `~/.moai` items
+        /// it lists to `~/.moai-go-retired/<UTC>/`. Without --confirm the rest stays a preview;
+        /// not combinable with --confirm-cleanup.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_home: Option<String>,
         /// Print the JSON envelope on a terminal too, instead of the screens.
         #[arg(long)]
         json: bool,
@@ -1855,6 +1862,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::Update {
             confirm,
             confirm_cleanup,
+            confirm_home,
             json: _,
         } => {
             use moai_cli::update_tux::{self as tux, Asked};
@@ -1869,6 +1877,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &home,
                 confirm.as_deref(),
                 confirm_cleanup.as_deref(),
+                confirm_home.as_deref(),
                 |summary, preview| {
                     use moai_cli::ui_text::Msg;
                     if !tux::human() {
@@ -1907,7 +1916,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         && (e.contains("stale or altered plan") || e.contains("preview again")) =>
                 {
                     tux::set_asked(Asked::Stale);
-                    moai_cli::update::update_command(&home, None, None, |_, _| Ok(false))
+                    moai_cli::update::update_command(&home, None, None, None, |_, _| Ok(false))
                 }
                 other => other,
             }

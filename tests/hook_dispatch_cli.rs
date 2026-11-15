@@ -1784,7 +1784,8 @@ fn omp_tool_preflight_answers_block_and_reason_only() {
 }
 
 /// Session context is `{context}` (the module puts it in `before_agent_start`'s systemPrompt);
-/// turn-validation has no OMP event and is an engine error, never a silent allow.
+/// turn-validation is not wired for OMP (its `session_stop` exists, but the rules are empty and
+/// the module does not subscribe) and is an engine error, never a silent allow.
 #[test]
 fn omp_session_check_answers_context_and_turn_validation_is_an_engine_error() {
     let (_d, root) = repo("issue/77-k");
@@ -1802,7 +1803,11 @@ fn omp_session_check_answers_context_and_turn_validation_is_an_engine_error() {
         .contains("lane branch: Issue #77"));
     let r = omp("turn-validation", &root, br#"{"hook_event_name":"Stop"}"#);
     assert_engine_error(&r);
-    assert!(r.stderr.contains("no OMP event"), "{}", r.stderr);
+    assert!(
+        r.stderr.contains("not wired for OMP") && r.stderr.contains("session_stop"),
+        "{}",
+        r.stderr
+    );
 }
 
 /// OMP's `tool_result` carries `isError`; the module passes it as `tool_response.is_error`.

@@ -30,7 +30,7 @@ pub const KIND: &str = "go-retire";
 const MANIFEST_PREFIX: &str = "retire-manifest-";
 
 /// The kind of a top-level entry, from its own metadata (a link is never followed).
-fn kind_of(p: &Path) -> &'static str {
+pub(crate) fn kind_of(p: &Path) -> &'static str {
     match fs::symlink_metadata(p) {
         Ok(m) if m.file_type().is_symlink() => "link",
         Ok(m) if m.is_dir() => "folder",
@@ -39,7 +39,7 @@ fn kind_of(p: &Path) -> &'static str {
     }
 }
 
-fn class_str(c: Class) -> &'static str {
+pub(crate) fn class_str(c: Class) -> &'static str {
     match c {
         Class::Rust => "rust",
         Class::ToolAsset => "tool-asset",
@@ -50,7 +50,7 @@ fn class_str(c: Class) -> &'static str {
     }
 }
 
-fn rule_str(r: Rule) -> &'static str {
+pub(crate) fn rule_str(r: Rule) -> &'static str {
     match r {
         Rule::RustName => "rust-name",
         Rule::GoRetires => "go-retires",
@@ -95,6 +95,40 @@ pub fn decide(entry: Option<&Entry>, kind: &str, generation: &str) -> (&'static 
 
 fn canon(p: &Path) -> PathBuf {
     fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
+}
+
+/// The top-level names (lower-cased, the default macOS volume does not tell the case) that hold a
+/// Go marker: the entry itself, or the folder the marker file sits in.
+fn marker_holders(markers: &[String]) -> Vec<String> {
+    markers
+        .iter()
+        .filter_map(|m| m.strip_prefix(MOAI_DIR)?.strip_prefix('/'))
+        .filter_map(|rest| rest.split('/').next())
+        .map(str::to_ascii_lowercase)
+        .collect()
+}
+
+/// #2970 Codex review 4574332849: the Go markers are what makes a HOME `go` (or, beside a Rust
+/// marker, `mixed`). A retire that takes them while an entry is in use leaves a HOME that no
+/// longer reads as either, so the next preview lists nothing and that entry can never retire.
+/// While any entry is in use, the entries that hold a marker wait; the rest retire now, and the
+/// markers go with the entry in use once it is free. Other generations keep their verdict from
+/// the Rust marker, so they are not held.
+fn hold_markers_while_in_use(generation: &str, markers: &[String], entries: &mut [Value]) {
+    if !matches!(generation, "go" | "mixed")
+        || !entries.iter().any(|e| e["action"] == "skip-in-use")
+    {
+        return;
+    }
+    let holders = marker_holders(markers);
+    for e in entries.iter_mut() {
+        let name = e["name"].as_str().unwrap_or_default().to_ascii_lowercase();
+        if e["action"] == "retire" && holders.contains(&name) {
+            e["action"] = json!("keep");
+            e["reason"] = json!("marker_waits_for_in_use");
+            e["destination"] = Value::Null;
+        }
+    }
 }
 
 /// The preview for the HOME at `home`. `moai_home` is the `MOAI_HOME` value, `now` the clock
@@ -162,7 +196,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     let in_use = (active && blocks.is_empty()).then(InUse::read);
     let canon_moai = canon(&moai);
     let limit = crate::go_state::unrecorded_limit();
-    let entries: Vec<Value> = names
+    let mut entries: Vec<Value> = names
         .iter()
         .take(CANDIDATE_LIMIT)
         .map(|n| {
@@ -218,6 +252,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             })
         })
         .collect();
+    hold_markers_while_in_use(c.generation, &c.go_markers, &mut entries);
 
     let count = |a: &str| entries.iter().filter(|e| e["action"] == a).count();
     let counts = json!({
@@ -246,6 +281,16 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     {
         warnings.push("a key file stays in place until the merge step has offered it".to_string());
     }
+    if entries
+        .iter()
+        .any(|e| e["reason"] == "marker_waits_for_in_use")
+    {
+        warnings.push(
+            "an entry is in use, so the entries that hold a Go marker wait and the rest retire; \
+             preview again once the program stops"
+                .to_string(),
+        );
+    }
 
     let folder_shown = active.then(|| folder.display().to_string());
     let bound = json!({
@@ -259,6 +304,32 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         })).collect::<Vec<_>>(),
     });
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
+    // What the confirmation binds, without the clock: the HOME it was made for, the generation,
+    // the action, the blocks and the retirement set (the entries that retire). The dated folder
+    // is out, so `moai update` can hand the digest out as a token for a later run. An entry
+    // that stays or is in use is out too: the layer's own writes (a store like `.moai/agents`)
+    // add some, and they confirm nothing. An entry that starts or stops being retired moves
+    // the digest, so a program that frees (or takes) an item between preview and confirmation
+    // makes the token stale.
+    let stable = json!({
+        "mode": "retire",
+        "home": home.display().to_string(),
+        "generation": c.generation,
+        "action": action,
+        "blocks": blocks,
+        "entries": entries
+            .iter()
+            .filter(|e| e["action"] == "retire")
+            .map(|e| json!({
+                "name": e["name"], "kind": e["kind"], "action": e["action"], "reason": e["reason"],
+            }))
+            .collect::<Vec<_>>(),
+    });
+    let content_digest = crate::digest(
+        serde_json::to_string(&stable)
+            .unwrap_or_default()
+            .as_bytes(),
+    );
     Ok(json!({
         "schema_version": 1,
         "mode": "retire",
@@ -272,6 +343,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "total": total,
         "warnings": warnings,
         "plan_digest": plan_digest,
+        "content_digest": content_digest,
         "apply": "home-retire-apply with the same --now, this plan_digest and a permission reference; on a real HOME it runs only after the user confirms",
         "writes": false,
     }))
@@ -293,13 +365,55 @@ pub fn apply(
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value, String> {
+    apply_checked(
+        home,
+        moai_home,
+        now,
+        "plan_digest",
+        plan_digest,
+        permission_reference,
+    )
+}
+
+/// [`apply`] confirmed by the preview's `content_digest` (no dated folder in it) instead of its
+/// `plan_digest`: the preview and the apply may run at different clocks. `moai update` uses it.
+pub fn apply_confirmed(
+    home: &Path,
+    moai_home: Option<&str>,
+    now: &str,
+    content_digest: &str,
+    permission_reference: &str,
+) -> Result<Value, String> {
+    apply_checked(
+        home,
+        moai_home,
+        now,
+        "content_digest",
+        content_digest,
+        permission_reference,
+    )
+}
+
+fn apply_checked(
+    home: &Path,
+    moai_home: Option<&str>,
+    now: &str,
+    digest_key: &str,
+    expected: &str,
+    permission_reference: &str,
+) -> Result<Value, String> {
     if !crate::contract::permission_reference_ok(permission_reference) {
         return Err("permission reference required".into());
     }
     let fresh = plan(home, moai_home, now)?;
-    if fresh["plan_digest"].as_str() != Some(plan_digest) {
+    if fresh[digest_key].as_str() != Some(expected) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
     }
+    let plan_digest = fresh["plan_digest"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let plan_digest = plan_digest.as_str();
     if fresh["action"] != "retire" {
         return Err(format!(
             "the preview's action is `{}`, not `retire`; nothing was written",
@@ -385,6 +499,7 @@ pub fn apply(
     Ok(json!({
         "schema_version": 1,
         "state": "applied",
+        "stamp": stamp,
         "home": home.display().to_string(),
         "folder": folder.display().to_string(),
         "manifest": manifest_path.display().to_string(),
@@ -397,8 +512,23 @@ pub fn apply(
             "outcome": i.outcome,
         })).collect::<Vec<_>>(),
         "revert": format!("home-retire-revert --home {} --stamp {stamp} --permission-reference <ref>", home.display()),
-        "rerun": "home-retire-plan again: with no Go marker left the action is `none`",
+        "partial": report.items.len() > moved,
+        "rerun": rerun_text(report.items.len() - moved),
     }))
+}
+
+/// What to do next. An entry the journal skipped (a program started using it after the preview)
+/// may have been left behind with its Go markers already retired; then the HOME can read as no
+/// generation, the next preview lists nothing, and the way forward is the revert, then a new
+/// preview.
+fn rerun_text(not_moved: usize) -> &'static str {
+    if not_moved == 0 {
+        "home-retire-plan again: with no Go marker left the action is `none`"
+    } else {
+        "some entries were not moved (a program started using them after the preview): run \
+         home-retire-plan again; if it lists nothing while Go items remain, run home-retire-revert \
+         with this stamp, then preview again once the program has stopped"
+    }
 }
 
 /// Create `path` exclusively and write `bytes` into it, fsynced.
@@ -470,6 +600,16 @@ pub fn revert(
                 root.display()
             ))
         }
+    }
+    // #2970 Codex review 4574332851: the replay renames into `~/.moai`; a link there would send
+    // the retired entries (a credentials file among them) to wherever it points. Absent is left
+    // to the replay (it reports what it cannot put back).
+    let moai = home.join(MOAI_DIR);
+    if fs::symlink_metadata(&moai).is_ok_and(|m| !m.is_dir()) {
+        return Err(format!(
+            "{} is a link or not a folder; nothing was moved",
+            moai.display()
+        ));
     }
     let path = find_journal(&root, stamp)?;
     let journal = move_journal::read_journal(&path)?;
@@ -554,6 +694,57 @@ mod tests {
         }
     }
 
+    /// The `content_digest` holds no clock: two previews at different times give the same one
+    /// (the `plan_digest` names the dated folder, so it differs). It follows the retirement set
+    /// (what retires or is in use) and the HOME it was made for, and nothing else: an entry
+    /// that stays (a name this generation writes, user data, an unknown name) does not move it,
+    /// so the layer's own writes do not make a confirmed token stale.
+    #[test]
+    fn the_content_digest_is_clock_free_and_follows_the_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(dir.path()).unwrap();
+        let moai = home.join(".moai");
+        fs::create_dir_all(moai.join("state")).unwrap();
+        fs::write(moai.join("user-assets.json"), "{}").unwrap();
+        fs::write(moai.join("state/active-sessions.json"), "[]").unwrap();
+        fs::create_dir_all(moai.join("cache")).unwrap();
+        let a = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        let b = plan(&home, None, "2026-11-14T13:30:00Z").unwrap();
+        assert_eq!(a["action"], json!("retire"), "{a}");
+        assert_eq!(a["content_digest"], b["content_digest"]);
+        assert_ne!(a["plan_digest"], b["plan_digest"]);
+        // Entries that stay do not move the digest.
+        fs::write(moai.join("appeared-later"), "x").unwrap();
+        fs::create_dir_all(moai.join("agents")).unwrap();
+        let kept = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        assert_eq!(a["content_digest"], kept["content_digest"], "{kept}");
+        // A new retire candidate does.
+        fs::create_dir_all(moai.join("run")).unwrap();
+        let c = plan(&home, None, "2026-11-14T12:00:00Z").unwrap();
+        assert_ne!(a["content_digest"], c["content_digest"]);
+    }
+
+    /// Two HOMEs with the same layout do not share a `content_digest`.
+    #[test]
+    fn the_content_digest_names_its_home() {
+        let make = || {
+            let dir = tempfile::tempdir().unwrap();
+            let home = fs::canonicalize(dir.path()).unwrap();
+            let moai = home.join(".moai");
+            fs::create_dir_all(moai.join("state")).unwrap();
+            fs::write(moai.join("user-assets.json"), "{}").unwrap();
+            fs::write(moai.join("state/active-sessions.json"), "[]").unwrap();
+            fs::create_dir_all(moai.join("cache")).unwrap();
+            (dir, home)
+        };
+        let (_a, ha) = make();
+        let (_b, hb) = make();
+        let now = "2026-11-14T12:00:00Z";
+        let (pa, pb) = (plan(&ha, None, now).unwrap(), plan(&hb, None, now).unwrap());
+        assert_eq!(pa["action"], pb["action"]);
+        assert_ne!(pa["content_digest"], pb["content_digest"]);
+    }
+
     #[test]
     fn every_go_row_has_a_decision_and_no_rust_row_retires() {
         for e in home_layout::HOME_TABLE {
@@ -566,5 +757,88 @@ mod tests {
                 assert_eq!(action, "keep", "{name}");
             }
         }
+    }
+
+    #[test]
+    fn a_marker_is_held_by_the_top_level_name_it_sits_in() {
+        let markers = [
+            ".moai/user-assets.json".to_string(),
+            ".moai/state/active-sessions.json".to_string(),
+            ".moai/Credentials.yaml".to_string(),
+            // Not under `.moai/`, and the folder itself: no holder.
+            "other/x.json".to_string(),
+            ".moai".to_string(),
+        ];
+        assert_eq!(
+            marker_holders(&markers),
+            vec!["user-assets.json", "state", "credentials.yaml"]
+        );
+        assert!(marker_holders(&[]).is_empty());
+    }
+
+    fn row(name: &str, action: &str) -> Value {
+        json!({"name": name, "action": action, "reason": "r", "destination": "/to"})
+    }
+
+    /// While an entry is in use, only the entries that hold a Go marker wait, and only on a
+    /// generation whose verdict the markers decide. The match ignores case.
+    #[test]
+    fn the_markers_wait_only_while_an_entry_is_in_use_and_only_on_go_and_mixed() {
+        let markers = vec![
+            ".moai/user-assets.json".to_string(),
+            ".moai/state/active-sessions.json".to_string(),
+            ".moai/credentials.yaml".to_string(),
+        ];
+        let entries = || {
+            vec![
+                row("User-Assets.json", "retire"),
+                row("state", "retire"),
+                row("cache", "retire"),
+                row("Logs", "skip-in-use"),
+                row("specs", "keep"),
+                // A marker holder that already stays, or is in use itself, keeps its own say.
+                row("credentials.yaml", "keep"),
+            ]
+        };
+        let actions = |v: &[Value]| -> Vec<String> {
+            v.iter()
+                .map(|e| e["action"].as_str().unwrap().to_string())
+                .collect()
+        };
+        for g in ["go", "mixed"] {
+            let mut e = entries();
+            hold_markers_while_in_use(g, &markers, &mut e);
+            assert_eq!(
+                actions(&e),
+                ["keep", "keep", "retire", "skip-in-use", "keep", "keep"],
+                "{g}"
+            );
+            assert_eq!(e[0]["reason"], json!("marker_waits_for_in_use"));
+            assert_eq!(e[0]["destination"], Value::Null);
+            // An entry that already stays keeps its own reason.
+            assert_eq!(e[4]["reason"], json!("r"));
+            assert_eq!(e[5]["reason"], json!("r"));
+        }
+        for g in ["rust-first", "rust", "unknown", "empty", "none"] {
+            let mut e = entries();
+            hold_markers_while_in_use(g, &markers, &mut e);
+            assert_eq!(
+                actions(&e),
+                ["retire", "retire", "retire", "skip-in-use", "keep", "keep"],
+                "{g}"
+            );
+        }
+        // Nothing in use: nothing waits.
+        let mut free = vec![row("user-assets.json", "retire"), row("state", "retire")];
+        hold_markers_while_in_use("go", &markers, &mut free);
+        assert_eq!(actions(&free), ["retire", "retire"]);
+    }
+
+    #[test]
+    fn the_next_step_after_an_apply_says_when_something_was_not_moved() {
+        assert!(rerun_text(0).contains("`none`"));
+        let partial = rerun_text(1);
+        assert!(partial.contains("home-retire-revert") && partial.contains("not moved"));
+        assert_ne!(rerun_text(0), partial);
     }
 }
