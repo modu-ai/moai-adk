@@ -200,6 +200,24 @@ fn an_install_past_the_ignored_file_census_limit_is_still_rebuildable() {
     assert!(c["ignored_safe"].as_u64().unwrap() > 20_000, "{c}");
 }
 
+/// Codex review on #3058: a file written deep inside a package leaves the top `node_modules`
+/// mtime alone, but it is still recent activity, so the worktree is not a remove candidate.
+#[test]
+fn a_recent_write_deep_inside_the_install_keeps_the_worktree() {
+    let fx = fixture(true, &["busy"]);
+    install(&fx.wt("busy"));
+    let stamp = std::time::SystemTime::now() + std::time::Duration::from_secs(2 * 86_400);
+    fs::File::options()
+        .write(true)
+        .open(fx.wt("busy").join("node_modules/pkg/index.js"))
+        .unwrap()
+        .set_modified(stamp)
+        .unwrap();
+    let r = plan(&fx);
+    let c = row(&r, "busy");
+    assert_ne!(c["action"], "remove", "{c}");
+}
+
 /// Without a tracked lockfile nothing says the install can be rebuilt: the files are kept.
 #[test]
 fn an_install_without_a_tracked_lockfile_keeps_the_worktree() {

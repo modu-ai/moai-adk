@@ -515,6 +515,7 @@ pub(crate) fn ignored_split(
     )?;
     let (mut safe, mut kept, mut seen) = (0usize, Vec::new(), 0usize);
     let (mut git_marks, mut safe_files) = (Vec::new(), Vec::new());
+    let mut install_newest: Option<u64> = None;
     for rec in s.split('\0').filter(|r| r.len() > 3) {
         let (code, entry) = rec.split_at(3);
         if code != "!! " || entry == "target/" {
@@ -528,7 +529,9 @@ pub(crate) fn ignored_split(
         // falls through to the file-by-file census below, which fails closed.
         if entry == "node_modules/" && install_proof(wt) == (true, true) {
             let mut marks = Vec::new();
-            if let Some(n) = walk_install(&top, INSTALL_ENTRY_LIMIT, &mut marks) {
+            if let Some(n) =
+                walk_install(&top, INSTALL_ENTRY_LIMIT, &mut marks, &mut install_newest)
+            {
                 safe += n.max(1);
                 safe_files.push(top);
                 git_marks.extend(marks);
@@ -574,7 +577,8 @@ pub(crate) fn ignored_split(
         .filter_map(|f| fs::symlink_metadata(f).ok())
         .filter_map(|m| m.modified().ok())
         .filter_map(unix_secs)
-        .max();
+        .max()
+        .max(install_newest);
     kept.sort();
     kept.dedup();
     Some((safe, kept, newest))
@@ -675,11 +679,13 @@ pub(crate) fn install_proof(wt: &Path) -> (bool, bool) {
 /// Walks an install folder without following links. Returns how many entries it holds, or
 /// `None` when it is unreadable, holds more than `limit` entries, or holds anything but
 /// files, folders and links (a socket or pipe is not install output). A `.git` inside (a git
-/// dependency) is not walked into; it goes to `git_marks`, which keeps the worktree.
+/// dependency) is not walked into; it goes to `git_marks`, which keeps the worktree. `newest`
+/// is raised to the newest modification time of any entry walked.
 pub(crate) fn walk_install(
     top: &Path,
     limit: usize,
     git_marks: &mut Vec<PathBuf>,
+    newest: &mut Option<u64>,
 ) -> Option<usize> {
     let mut stack = vec![top.to_path_buf()];
     let mut seen = 0usize;
@@ -694,7 +700,13 @@ pub(crate) fn walk_install(
                 git_marks.push(p);
                 continue;
             }
-            let ft = fs::symlink_metadata(&p).ok()?.file_type();
+            let meta = fs::symlink_metadata(&p).ok()?;
+            // Writing inside a package does not change the top folder's mtime, so every
+            // entry's own mtime is kept for the recent-change check (Codex review on #3058).
+            if let Some(t) = meta.modified().ok().and_then(unix_secs) {
+                *newest = Some(newest.map_or(t, |n| n.max(t)));
+            }
+            let ft = meta.file_type();
             if ft.is_dir() {
                 stack.push(p);
             } else if !(ft.is_file() || ft.is_symlink()) {
@@ -1422,9 +1434,10 @@ mod tests {
         let d = install_fixture(4); // pkg + 4 files = 5 entries
         let top = d.path().join("node_modules");
         let mut marks = Vec::new();
-        assert_eq!(walk_install(&top, 5, &mut marks), Some(5));
-        assert_eq!(walk_install(&top, 4, &mut marks), None);
-        assert_eq!(walk_install(&top, 6, &mut marks), Some(5));
+        let mut newest = None;
+        assert_eq!(walk_install(&top, 5, &mut marks, &mut newest), Some(5));
+        assert_eq!(walk_install(&top, 4, &mut marks, &mut newest), None);
+        assert_eq!(walk_install(&top, 6, &mut marks, &mut newest), Some(5));
         assert!(marks.is_empty());
     }
 
@@ -1439,13 +1452,33 @@ mod tests {
         let top = d.path().join("node_modules");
         std::os::unix::fs::symlink(outside.path(), top.join("linked")).unwrap();
         let mut marks = Vec::new();
+        let mut newest = None;
         // pkg + its file + the link itself; nothing behind the link is counted
-        assert_eq!(walk_install(&top, 100, &mut marks), Some(3));
+        assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), Some(3));
         let fifo = top.join("pipe");
         let made = std::process::Command::new("mkfifo").arg(&fifo).status();
         if made.is_ok_and(|s| s.success()) {
-            assert_eq!(walk_install(&top, 100, &mut marks), None);
+            assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), None);
         }
+    }
+
+    /// Codex review on #3058: a file written deep inside a package leaves the top folder's mtime
+    /// alone, so the walk must report the newest mtime of any entry itself.
+    #[cfg(unix)]
+    #[test]
+    fn the_install_walk_reports_the_newest_entry_mtime_inside_packages() {
+        let d = install_fixture(2);
+        let top = d.path().join("node_modules");
+        let stamp = SystemTime::now() + std::time::Duration::from_secs(5 * 86_400);
+        fs::File::options()
+            .write(true)
+            .open(top.join("pkg/f1.js"))
+            .unwrap()
+            .set_modified(stamp)
+            .unwrap();
+        let (mut marks, mut newest) = (Vec::new(), None);
+        assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), Some(3));
+        assert_eq!(newest, unix_secs(stamp));
     }
 
     #[cfg(unix)]
@@ -1457,7 +1490,8 @@ mod tests {
         fs::create_dir_all(dep.join(".git/objects")).unwrap();
         fs::write(dep.join(".git/objects/o"), "x").unwrap();
         let mut marks = Vec::new();
-        assert_eq!(walk_install(&top, 100, &mut marks), Some(4)); // pkg, f0, gitdep, .git
+        let mut newest = None;
+        assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), Some(4)); // pkg, f0, gitdep, .git
         assert_eq!(marks, vec![dep.join(".git")]);
     }
 
