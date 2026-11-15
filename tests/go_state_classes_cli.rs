@@ -649,7 +649,9 @@ fn codex_files_stay_for_s1c() {
     let p = fx.plan();
     let i = item(&p, ".codex/config.toml");
     assert_eq!(i["action"], json!("leave"), "{p}");
-    assert!(i["reason"].as_str().unwrap().contains("S1c"), "{p}");
+    // S1c-1 classifies it (tests/go_state_codex_cli.rs): not a wiring record, so no rule moves it.
+    assert_eq!(i["class"], json!("unknown"), "{p}");
+    assert_eq!(i["reason"], json!("not generated_managed"), "{p}");
 }
 
 /// The backup step of `project-update-plan` shows how many items fall in each class.

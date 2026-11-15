@@ -716,14 +716,21 @@ fn retire_keeps_the_go_markers_on_a_mixed_home_while_an_entry_is_in_use() {
     let _busy = Kill(
         Command::new("sleep")
             .arg("60")
-            .current_dir(home.join(".moai/Logs"))
+            .current_dir(home.join(".moai/run"))
             .spawn()
             .unwrap(),
     );
     let p = plan(&home);
     assert_eq!(p["state"]["generation"], json!("mixed"), "{p}");
-    assert_eq!(act(&p, "Logs").0, "skip-in-use", "{p}");
+    assert_eq!(act(&p, "run").0, "skip-in-use", "{p}");
     assert_eq!(act(&p, "cache").0, "retire", "{p}");
+    // `logs` is written by this generation too (#2871 decision 6887464608): on a mixed HOME it
+    // is a shared name like `state` and `config`, kept in place and not judged for use.
+    assert_eq!(
+        act(&p, "Logs"),
+        ("keep".into(), "shared_name".into()),
+        "{p}"
+    );
     assert_eq!(
         act(&p, "credentials.yaml"),
         ("keep".into(), "marker_waits_for_in_use".into()),

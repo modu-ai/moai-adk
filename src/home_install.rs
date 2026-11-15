@@ -246,10 +246,29 @@ fn alias_table(home: &Path, old: &Path) -> (BTreeMap<String, String>, Vec<String
     (table, skipped)
 }
 
+/// Whether the entry a link target names moves. The table lookup ignores ASCII case (`Versions`
+/// is a Rust name too), so with no entry of exactly that name the case-folded one counts. On a
+/// case-sensitive disk `versions` and `Versions` can both exist; then the exact name decides, since
+/// that is the entry the link target resolves to (Codex review P2 4576362854 on #3003).
+fn entry_moves(entries: &[Value], name: &str) -> bool {
+    let moves = |e: &Value| e["action"] == "move";
+    match entries.iter().find(|e| e["name"].as_str() == Some(name)) {
+        Some(exact) => moves(exact),
+        None => entries.iter().any(|e| {
+            moves(e)
+                && e["name"]
+                    .as_str()
+                    .is_some_and(|x| x.eq_ignore_ascii_case(name))
+        }),
+    }
+}
+
 /// How each `path` entry would follow the move: a link into the old `versions` folder must be
 /// pointed at the new one; a file moves as it is. `versions_moves` says that `versions` and
 /// `path` both move: a link is re-pointed only then, since a `versions` that stays (a link, say)
-/// leaves the old target valid and the new one would not exist.
+/// leaves the old target valid and the new one would not exist. The prefix test below compares the
+/// link target with `old/versions` as written, so it assumes the lowercase spelling the installer
+/// always links with; a target spelled `Versions` is not re-pointed (#3003 audit N1).
 fn stub_plan(old: &Path, versions_moves: bool) -> Vec<Value> {
     let dir = old.join("path");
     if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
@@ -513,17 +532,11 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     } else {
         (BTreeMap::new(), Vec::new())
     };
-    // The table lookup ignores ASCII case (`Versions` is a Rust name too), so this does as well.
-    let moves = |n: &str| {
-        entries.iter().any(|e| {
-            e["action"] == "move"
-                && e["name"]
-                    .as_str()
-                    .is_some_and(|x| x.eq_ignore_ascii_case(n))
-        })
-    };
     let stub = if listed && !moved {
-        stub_plan(&old, moves("versions") && moves("path"))
+        stub_plan(
+            &old,
+            entry_moves(&entries, "versions") && entry_moves(&entries, "path"),
+        )
     } else {
         Vec::new()
     };
@@ -700,6 +713,30 @@ mod tests {
 
     fn row(name: &str) -> Option<&'static Entry> {
         home_layout::lookup(name)
+    }
+
+    fn listed(name: &str, action: &str) -> Value {
+        json!({ "name": name, "action": action })
+    }
+
+    /// Codex review P2 4576362854 on #3003: a case-sensitive disk can hold `versions` (stays) and
+    /// `Versions` (moves) side by side; a link into the lowercase one must not be re-pointed.
+    /// APFS folds case, so the two cannot exist together in a real HOME test; the entries are
+    /// built by hand.
+    #[test]
+    fn the_exact_name_decides_when_case_folded_siblings_exist() {
+        let both = [listed("versions", "keep"), listed("Versions", "move")];
+        assert!(!entry_moves(&both, "versions"));
+        let both = [listed("versions", "move"), listed("Versions", "keep")];
+        assert!(entry_moves(&both, "versions"));
+    }
+
+    #[test]
+    fn a_case_folded_entry_counts_when_no_entry_has_the_exact_name() {
+        assert!(entry_moves(&[listed("Versions", "move")], "versions"));
+        assert!(!entry_moves(&[listed("Versions", "keep")], "versions"));
+        assert!(!entry_moves(&[listed("agents", "move")], "versions"));
+        assert!(!entry_moves(&[], "versions"));
     }
 
     /// The earlier state folder, whatever generation the HOME is in.

@@ -165,3 +165,103 @@ fn the_old_call_without_the_flags_still_applies() {
     assert_eq!(out["ok"], json!(true), "{out}");
     assert!(copy_of(&f.a).is_file());
 }
+
+/// Every entry under `root` (relative path, and the bytes of a file); nothing is followed.
+fn tree(root: &str) -> Vec<(String, Option<Vec<u8>>)> {
+    fn walk(base: &Path, dir: &Path, out: &mut Vec<(String, Option<Vec<u8>>)>) {
+        let mut names: Vec<_> = fs::read_dir(dir).unwrap().map(|e| e.unwrap()).collect();
+        names.sort_by_key(|e| e.file_name());
+        for e in names {
+            let rel = e.path().strip_prefix(base).unwrap().display().to_string();
+            let meta = fs::symlink_metadata(e.path()).unwrap();
+            if meta.is_dir() {
+                out.push((rel, None));
+                walk(base, &e.path(), out);
+            } else {
+                out.push((rel, Some(fs::read(e.path()).unwrap_or_default())));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(Path::new(root), Path::new(root), &mut out);
+    out
+}
+
+fn kind(out: &Value) -> String {
+    out["error"]["kind"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// #2998 audit follow-up 3: a digest that is almost right is not right. Each variant keeps the
+/// real digest's first characters, or its letters, or only adds blank space, or is the package
+/// digest instead of the plan digest; every one is a stale plan, and the project tree is the
+/// same afterwards (no rollback folder, no state folder).
+#[test]
+fn a_digest_that_is_only_almost_right_is_refused_and_the_project_is_untouched() {
+    let f = fx();
+    let plan = f.plan(&f.a);
+    let d = digest(&plan);
+    let package = plan["package_digest"].as_str().unwrap().to_string();
+    let mut tail = d.clone();
+    tail.pop();
+    tail.push(if d.ends_with('0') { '1' } else { '0' });
+    let variants = [
+        ("last character changed", tail),
+        ("upper case", d.to_ascii_uppercase()),
+        ("trailing newline", format!("{d}\n")),
+        ("leading space", format!(" {d}")),
+        ("the package digest", package),
+        ("first 20 characters only", d[..20].to_string()),
+    ];
+    let before = tree(&f.a);
+    for (what, bad) in variants {
+        let out = f.apply(
+            &f.a,
+            &["--plan-digest", &bad, "--permission-reference", PERMISSION],
+        );
+        assert_eq!(out["ok"], json!(false), "{what}: {out}");
+        assert_eq!(kind(&out), "stale_plan", "{what}: {out}");
+        assert_eq!(before, tree(&f.a), "{what}: the project changed");
+    }
+}
+
+/// A reference that says nothing is refused with its own kind, whatever the digest, and nothing
+/// is written anywhere in the project.
+#[test]
+fn an_empty_null_or_placeholder_reference_is_refused_with_its_own_kind() {
+    let f = fx();
+    let d = digest(&f.plan(&f.a));
+    let before = tree(&f.a);
+    for bad in ["", "null", "placeholder", " null ", "a\u{7}b"] {
+        let out = f.apply(&f.a, &["--plan-digest", &d, "--permission-reference", bad]);
+        assert_eq!(out["ok"], json!(false), "{bad:?}: {out}");
+        assert_eq!(kind(&out), "permission_reference_missing", "{bad:?}: {out}");
+        assert_eq!(before, tree(&f.a), "{bad:?}: the project changed");
+    }
+}
+
+/// The digest binds the project by its real path: the same project reached through a link has
+/// the same plan, so a plan made through one name applies through the other.
+#[cfg(unix)]
+#[test]
+fn a_plan_made_through_a_link_to_the_project_applies_to_the_project() {
+    let f = fx();
+    let alias = Path::new(&f.b).join("alias");
+    std::os::unix::fs::symlink(&f.a, &alias).unwrap();
+    let alias = alias.to_str().unwrap().to_string();
+    let via_link = digest(&f.plan(&alias));
+    assert_eq!(via_link, digest(&f.plan(&f.a)));
+    let out = f.apply(
+        &f.a,
+        &[
+            "--plan-digest",
+            &via_link,
+            "--permission-reference",
+            PERMISSION,
+        ],
+    );
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert!(copy_of(&f.a).is_file());
+}
