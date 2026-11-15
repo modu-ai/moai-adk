@@ -77,6 +77,9 @@ pub struct Facts {
     pub in_use: Option<bool>,
     pub change_age_secs: Option<u64>,
     pub has_build_output: bool,
+    /// A real `node_modules` folder sits at the top (#3010 audit F1 on #3058): the worktree is
+    /// never a `remove` candidate, whatever the file census says about what is inside.
+    pub install_dir: bool,
 }
 
 /// True when a change `age_secs` old falls inside the window.
@@ -130,6 +133,14 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
             if !f.has_build_output && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
         {
             reasons.push("empty_worktree");
+            return ("skip", reasons);
+        }
+        // An install folder keeps the worktree out of `remove`, even when every file in it is
+        // one the per-file rules call safe (the primary checkout's own bytes, logs, nothing at
+        // all): the preview says "installed", so the decision must not say "remove" (leader
+        // decision 6895403187, B).
+        (Some(0), Some(0)) if f.install_dir => {
+            reasons.push("install_folder");
             return ("skip", reasons);
         }
         (Some(0), Some(0)) => return ("remove", reasons),
@@ -607,6 +618,122 @@ fn shown(path: &Path, root: &Path) -> String {
     }
 }
 
+/// Lock reasons written by `worktree-apply` are `moai claim <task_key> e<epoch>`; returns the
+/// key and the epoch, or `None` for any other reason (a hand-written lock is never ours).
+pub fn parse_moai_lock(reason: &str) -> Option<(String, u64)> {
+    let rest = reason.strip_prefix("moai claim ")?;
+    let (key, epoch) = rest.rsplit_once(" e")?;
+    let epoch: u64 = epoch.parse().ok()?;
+    (!key.is_empty() && !key.contains(char::is_whitespace)).then(|| (key.to_string(), epoch))
+}
+
+/// The Issue number a worktree belongs to: the digits before `#` in a claim key such as
+/// `3005#6886837864`, else the number in an `issue/<n>-…` branch, else `None`.
+pub fn issue_of(claim_key: Option<&str>, branch: Option<&str>) -> Option<u64> {
+    let from_key = claim_key
+        .and_then(|k| k.split_once('#'))
+        .and_then(|(n, _)| n.parse().ok());
+    from_key.or_else(|| {
+        let rest = branch?.strip_prefix("issue/")?;
+        let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+        digits.parse().ok()
+    })
+}
+
+/// Lockfiles whose tracked presence means an install folder can be rebuilt from the repo.
+const INSTALL_LOCKFILES: [&str; 6] = [
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb",
+];
+
+/// Whether the top-level `node_modules` of `wt` is a real folder (a link may point anywhere, so
+/// it is not one). One `lstat`, no git: the decision and the re-check use it (#3010).
+pub(crate) fn has_install_dir(wt: &Path) -> bool {
+    fs::symlink_metadata(wt.join("node_modules")).is_ok_and(|m| m.is_dir())
+}
+
+/// `(real install folder, lockfile tracked)` for the top-level `node_modules` of `wt`. The
+/// folder counts only as a real folder (a symlink may point anywhere), and the lockfile counts
+/// only when it is in the index (#3010). A fact for the preview (`lifecycle`), never a reason
+/// to remove: an install folder keeps its worktree (leader decision 6895403187, B).
+pub(crate) fn install_proof(wt: &Path) -> (bool, bool) {
+    let install_dir = has_install_dir(wt);
+    let lockfile_tracked = install_dir
+        && git_out(
+            wt,
+            &[&["ls-files", "--"][..], &INSTALL_LOCKFILES[..]].concat(),
+        )
+        .is_some_and(|s| !s.trim().is_empty());
+    (install_dir, lockfile_tracked)
+}
+
+/// Whether `path` is a worktree Codex made: `<home>/.codex/worktrees/<id>/<repo>`. A host-made
+/// worktree is shown in the preview and never deleted (user decision 6892859628, #3010).
+fn is_codex_worktree(path: &Path) -> bool {
+    let parts: Vec<_> = path.components().map(|c| c.as_os_str()).collect();
+    // ASCII case-insensitive: a case-insensitive file system names `.Codex/Worktrees` the same
+    // folders (audit on #3058)
+    parts
+        .windows(2)
+        .any(|w| w[0].eq_ignore_ascii_case(".codex") && w[1].eq_ignore_ascii_case("worktrees"))
+}
+
+/// Lifecycle facts of one worktree (#3010 P1). Read-only and additive: none of this enters the
+/// plan digest. The one fact a decision also reads is `install_dir`, and only to keep a worktree
+/// out of `remove` (`decide`, `busy_now`). Every
+/// value is an observation or a derivation from one; `created_by` is `null` unless the lock
+/// reason proves `worktree-apply` made it, and `admin_age_secs` is an estimate (the mtime of
+/// the worktree's `.git/worktrees/<name>/gitdir`, which `git worktree repair` or `move` can
+/// reset) — neither is a creation record.
+fn lifecycle(
+    path: &Path,
+    origin: &str,
+    branch: Option<&str>,
+    lock_reason: Option<&str>,
+    locked: bool,
+    now: u64,
+) -> Value {
+    let moai_lock = lock_reason.and_then(parse_moai_lock);
+    let claim_key = moai_lock.as_ref().map(|(k, _)| k.as_str());
+    let (install_dir, lockfile_tracked) = install_proof(path);
+    let mut classes: Vec<&str> = Vec::new();
+    if locked && moai_lock.is_some() {
+        classes.push("locked_by_moai");
+    }
+    if install_dir && lockfile_tracked {
+        classes.push("regenerable_install");
+    }
+    let admin_age = fs::read_to_string(path.join(".git"))
+        .ok()
+        .and_then(|t| {
+            t.trim()
+                .strip_prefix("gitdir:")
+                .map(|g| PathBuf::from(g.trim()))
+        })
+        .and_then(|admin| fs::metadata(admin.join("gitdir")).ok())
+        .and_then(|m| m.modified().ok())
+        .and_then(unix_secs)
+        .map(|t| now.saturating_sub(t));
+    json!({
+        "origin": origin,
+        "issue": issue_of(claim_key, branch),
+        "created_by": if moai_lock.is_some() { json!("worktree-apply") } else { Value::Null },
+        "claim_key": claim_key,
+        "claim_epoch": moai_lock.as_ref().map(|(_, e)| *e),
+        "locked": locked,
+        "lock_reason": lock_reason,
+        "install_dir": install_dir,
+        "install_lockfile_tracked": lockfile_tracked,
+        "classes": classes,
+        "admin_age_secs": admin_age,
+        "admin_age_note": "estimate: mtime of .git/worktrees/<name>/gitdir, not a creation record",
+    })
+}
+
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
 /// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
 /// recomputes this plan, and a squash merge alone never makes it remove (#2724).
@@ -743,12 +870,16 @@ pub fn plan_paced(
         let location = if i == 0 {
             "primary"
         } else {
-            crate::home_workdir::location_in(&path, &home_roots, &go_roots, &primary)
+            match crate::home_workdir::location_in(&path, &home_roots, &go_roots, &primary) {
+                "other" if is_codex_worktree(&path) => "codex",
+                l => l,
+            }
         };
         let mut f = Facts {
             primary: i == 0,
             // Without a known home the Go folder's shape alone still keeps it (fail-safe).
             preserved_location: location == "go"
+                || location == "codex"
                 || path
                     .to_string_lossy()
                     .contains("/.moai/worktrees/projects/")
@@ -758,6 +889,7 @@ pub fn plan_paced(
             locked: e.locked,
             prunable: e.prunable,
             has_build_output: !cargo.is_empty(),
+            install_dir: has_install_dir(&path),
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
@@ -836,6 +968,14 @@ pub fn plan_paced(
             "change_age_secs": f.change_age_secs,
             "trim_bytes": trim_bytes,
             "bytes_partial": partial,
+            "lifecycle": lifecycle(
+                &path,
+                location,
+                e.branch.as_deref(),
+                e.lock_reason.as_deref(),
+                e.locked,
+                now,
+            ),
         }));
     }
     candidates.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
@@ -866,6 +1006,9 @@ pub fn plan_paced(
         "candidates": candidates,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
+        // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
+        // this one, never a sum of sizes (clonefile and hard links make sums wrong).
+        "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
         "apply": "worktree-gc-apply with this plan_digest and a permission reference (#2498); on this machine the leader runs it only after the user confirms (#2389 comment 6774899518 item 2)",
         "network": "disabled",
@@ -907,6 +1050,11 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
         None => return Some("status_unknown"),
     }
     if removing {
+        // An install folder keeps the worktree whatever its files are, as in the plan: one that
+        // appeared after the plan was made is not deleted either (audit F1 on #3058).
+        if has_install_dir(wt) {
+            return Some("install_folder");
+        }
         // The same split the plan used (#2879 D2): only safe ignored files may go with it.
         let (_, preserved) = split_target(&wt.join("target"));
         let split = primary.and_then(|p| ignored_split(wt, p, &preserved));
@@ -1214,5 +1362,197 @@ mod tests {
         ] {
             assert!(!lane_temp_dir(no), "{no}");
         }
+    }
+
+    #[test]
+    fn only_a_worktree_apply_lock_reason_names_a_claim() {
+        assert_eq!(
+            parse_moai_lock("moai claim 3005#6886837864 e1"),
+            Some(("3005#6886837864".to_string(), 1))
+        );
+        assert_eq!(
+            parse_moai_lock("moai claim k e12"),
+            Some(("k".to_string(), 12))
+        );
+        for no in [
+            "",
+            "moai claim",
+            "moai claim k",
+            "moai claim k e",
+            "moai claim k e1x",
+            "moai claim k e-1",
+            "moai claim  e1",
+            "moai claim a b e1",
+            "Moai claim k e1",
+            "my own lock",
+            "wip moai claim k e1",
+        ] {
+            assert_eq!(parse_moai_lock(no), None, "{no:?}");
+        }
+    }
+
+    #[cfg(unix)]
+    fn tree(files: &[&str]) -> tempfile::TempDir {
+        let d = tempfile::tempdir().unwrap();
+        for f in files {
+            let p = d.path().join(f);
+            fs::create_dir_all(p.parent().unwrap()).unwrap();
+            fs::write(p, "x").unwrap();
+        }
+        d
+    }
+
+    /// Audit B4 on #3058: a lockfile counts as tracked only when git says so; where `git
+    /// ls-files` fails the answer is "not tracked", never "tracked" (a fact shown in the preview).
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_git_listing_never_counts_the_lockfile_as_tracked() {
+        let d = tree(&["node_modules/a/package.json", "package-lock.json"]);
+        assert_eq!(install_proof(d.path()), (true, false));
+    }
+
+    /// Audit B4 on #3058: a folder the ignored-file walk cannot read makes the walk fail (the
+    /// census is then unknown and the worktree is kept); it is never skipped.
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_folder_fails_the_ignored_file_walk() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = tree(&["top/ok/a.txt", "top/locked/b.txt"]);
+        let locked = d.path().join("top/locked");
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+        // a process that can still read it (root) proves nothing here
+        let readable = fs::read_dir(&locked).is_ok();
+        let (mut seen, mut marks) = (0usize, Vec::new());
+        let walked = walk_files(d.path().join("top"), &mut seen, &mut marks);
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+        if !readable {
+            assert!(walked.is_none());
+        }
+    }
+
+    #[test]
+    fn a_codex_worktree_is_told_by_its_home_folder() {
+        assert!(is_codex_worktree(Path::new(
+            "/h/.codex/worktrees/ab12/repo"
+        )));
+        assert!(!is_codex_worktree(Path::new(
+            "/h/worktrees/.codex/ab12/repo"
+        )));
+        assert!(!is_codex_worktree(Path::new("/h/.codex-x/worktrees/ab12")));
+        // a case-insensitive file system names the same folders `.Codex/Worktrees` (audit on #3058)
+        assert!(is_codex_worktree(Path::new(
+            "/h/.Codex/worktrees/ab12/repo"
+        )));
+        assert!(is_codex_worktree(Path::new(
+            "/h/.codex/Worktrees/ab12/repo"
+        )));
+    }
+
+    #[cfg(unix)]
+    fn gc_git(dir: &Path, args: &[&str]) {
+        let mut cmd = Command::new("git");
+        scrub_git_env(&mut cmd);
+        let ok = cmd
+            .args([
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=f@example.invalid",
+            ])
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?}");
+    }
+
+    /// Audit F1/F2 on #3058: the re-check right before a removal. A worktree with nothing in it
+    /// is free to go; an ignored file nobody can vouch for, or any install folder (even an
+    /// empty one, or one with the primary checkout's own bytes), refuses; the refusal ends when
+    /// the cause is gone; a re-check of something that is not removed never asks for either.
+    #[cfg(unix)]
+    #[test]
+    fn the_recheck_before_a_removal_refuses_files_and_an_install_folder() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(
+            primary.join(".gitignore"),
+            "target/\nnode_modules/\nnotes.md\n",
+        )
+        .unwrap();
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        fs::create_dir_all(primary.join("node_modules/pkg")).unwrap();
+        fs::write(primary.join("node_modules/pkg/index.js"), "one\n").unwrap();
+        gc_git(&primary, &["add", ".gitignore", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let probe = |removing| busy_now(&wt, removing, Some(&primary));
+
+        assert_eq!(probe(true), None, "a worktree with nothing in it");
+
+        fs::write(wt.join("notes.md"), "mine\n").unwrap();
+        assert_eq!(probe(true), Some("files_outside_build_output"));
+        assert_eq!(probe(false), None, "only a removal asks for the file check");
+        fs::remove_file(wt.join("notes.md")).unwrap();
+        assert_eq!(probe(true), None, "the refusal ends with its cause");
+
+        fs::create_dir_all(wt.join("node_modules")).unwrap();
+        assert_eq!(
+            probe(true),
+            Some("install_folder"),
+            "an empty install folder"
+        );
+        assert_eq!(probe(false), None);
+        fs::create_dir_all(wt.join("node_modules/pkg")).unwrap();
+        fs::write(wt.join("node_modules/pkg/index.js"), "one\n").unwrap();
+        assert_eq!(
+            probe(true),
+            Some("install_folder"),
+            "the same bytes as the primary checkout's"
+        );
+        fs::remove_dir_all(wt.join("node_modules")).unwrap();
+        assert_eq!(probe(true), None);
+    }
+
+    /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even
+    /// when every other fact says it is free to go; it does not change a decision that was not
+    /// `remove`.
+    #[test]
+    fn an_install_folder_stops_a_removal_and_nothing_else() {
+        let mut f = eligible();
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.install_dir = true;
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["install_folder"]));
+        // the other keepers still say their own reason alone
+        f.locked = true;
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["locked"]));
+        f.locked = false;
+        // a worktree that was a trim stays a trim
+        f.untracked = Some(2);
+        assert_eq!(decide(&f, 7_200), ("trim", vec!["untracked_files"]));
+    }
+
+    #[test]
+    fn the_issue_comes_from_the_claim_key_first_then_the_branch() {
+        assert_eq!(
+            issue_of(Some("3005#6886837864"), Some("issue/9-x")),
+            Some(3005)
+        );
+        assert_eq!(issue_of(Some("no-hash"), Some("issue/9-x")), Some(9));
+        assert_eq!(issue_of(None, Some("issue/3010-p1-lifecycle")), Some(3010));
+        for branch in ["main", "issue/", "issue/x-1", "feature/12-a", "issues/3-a"] {
+            assert_eq!(issue_of(None, Some(branch)), None, "{branch}");
+        }
+        assert_eq!(issue_of(None, None), None);
     }
 }
