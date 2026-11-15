@@ -53,6 +53,12 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - macOS·Linux, 그리고 Git Bash가 있는 Windows에서는 비차단 오류로 끝나고 동작은 진행된다(Claude: "Non-blocking error… The action goes ahead"). 이때 claim guard는 돌지 않는다.
   - **Git Bash가 없는 Windows는 다르다.** Claude 문서에 따르면 shell 형식 `PreToolUse` 훅이 `onFailure` 없이 0·2 외의 코드로 실패하면 도구 호출이 막힌다("Failed hooks on Windows without Git Bash"). 생성 훅은 shell 형식이고 `onFailure`를 두지 않으므로, 그 환경에서는 `moai-cli`가 없을 때 모든 Bash 호출이 막힐 수 있다. exec 형식(`args`)과 `onFailure` 값은 guard 정책 결정(D5)·훅 소유 방식(D7)과 함께 정하며, 그 전까지 HOLD다.
   - `hooks-plan`·`hooks-apply`는 자기 PATH에서 `moai-cli`를 찾았는지 `hook_binary.state`(`resolved` / `binary_unresolved`)로 보고한다. 못 찾으면 `hooks_active: false`, 찾아도 호스트 영수증이 있기 전에는 `hooks_active: "not_run"`이다. 호스트 훅 프로세스의 PATH는 셸과 다를 수 있으므로 `resolved`는 "이 PATH에서 찾았다"는 뜻일 뿐이다.
+  - 같은 결과의 `moai_on_path`(#3004 P4-1)는 PATH에서 처음 나오는 `moai`가 Rust 빌드인지 알려 준다. 생성 명령은 아직 `moai-cli`이므로 이 값은 생성 바이트와 `hooks_active`를 바꾸지 않고, 무엇도 막지 않는다. 훅 명령이 `moai`로 바뀔 때 `hook_binary`로 합쳐진다.
+    - `state`: `resolved`(Rust), `wrong_generation`(Go이거나 `--version` 첫 줄이 Rust 서명이 아님, 출력이 없거나 제한 시간 5초를 넘긴 경우 포함), `binary_unresolved`(PATH에 `moai` 없음), `not_probed`(`reason: project_tree`).
+    - Rust 서명은 첫 줄이 `moai-cli <버전> (rust)` 또는 `moai <버전> (rust)` 꼴일 때다(버전은 숫자로 시작하고 공백이 없다). 이 빌드의 버전 숫자에는 기대지 않는다. `moai-adk v3…`·`moai 3.2.0`·`moai version v3…`는 Go이고, 그 밖은 `unknown`이다.
+    - 상대 경로이거나 계획 중인 프로젝트 안(링크를 따라간 실제 경로 포함)에 있는 `moai`는 저장소 내용이므로 실행하지 않고 `not_probed`로만 보고한다.
+    - `wrong_generation`은 `path`·`generation`(`go` / `unknown`)·`version_line`(최대 200자)·`basis`·`note`를 싣는다. 탐침은 `--version` 한 인자, 셸 없이, 환경을 비우고 `HOME`만 넘기며(`PATH=/usr/bin:/bin`, 작업 폴더는 시스템 임시 폴더), stdout은 4096바이트까지 읽는다.
+  - `hooks-plan`의 `hook_status`에는 `binary`(위 `state`)와 `binary_generation`(`rust` / `go` / `unknown` / `absent` / `not_probed`)이 더해진다. `installed`는 그대로 생성 명령(`moai-cli`)을 뜻한다. `claim-verify --hook`·`hook-dispatch`는 이 탐침을 하지 않는다.
 - 훅 모드 출력과 종료 코드(#2348):
   - `hook-receipt`와 `claim-verify --hook`은 성공(exit 0)할 때 stdout에 아무것도 쓰지 않는다. 두 호스트 모두 stdout의 JSON 객체를 훅 출력으로 읽기 때문이다. 다른 호출은 envelope를 그대로 쓴다.
   - exit 2(차단)는 guard의 거부 하나뿐이다. 사용법 오류(알 수 없는 플래그·단어)와 `hook-receipt`의 오류는 exit 1(비차단 오류)이고, 사유는 stderr에 쓴다.
