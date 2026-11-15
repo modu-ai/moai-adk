@@ -49,7 +49,8 @@ fn name_ok(name: &str) -> bool {
 /// `..` part, nothing inside `.git`, no absolute or drive form, no glob or control character, no
 /// trailing slash (one spelling per folder), no secret-looking text.
 pub fn path_ok(path: &str) -> bool {
-    if path.is_empty() || path.len() > PATH_BYTES || path.ends_with('/') {
+    // A trailing slash leaves an empty last part, which the part check below refuses.
+    if path.is_empty() || path.len() > PATH_BYTES {
         return false;
     }
     let lower = path.to_ascii_lowercase();
