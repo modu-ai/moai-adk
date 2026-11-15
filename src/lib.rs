@@ -77,6 +77,7 @@ pub mod lane_reset;
 pub mod lane_status;
 pub mod language;
 pub mod launcher_init;
+pub mod launcher_terminal;
 pub mod layout;
 pub mod leader;
 pub mod leader_round;

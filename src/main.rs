@@ -127,6 +127,9 @@ struct LaunchOpts {
     /// Print the composed command as JSON instead of starting the host.
     #[arg(long)]
     dry_run: bool,
+    /// Print the JSON result even on a terminal (a pipe or a file always gets it; #3004 P9).
+    #[arg(long, hide = true)]
+    json: bool,
 }
 
 /// The Codex lane Stop hook of `hooks-plan` / `hooks-apply` (#2904 stage 2). Without either
@@ -1115,6 +1118,15 @@ fn launch(
         };
         request.name = Some(format!("agent-{n}"));
     }
+    // #3004 P9: on a terminal the notes are not printed after the host ends, so what the user
+    // must know is said once here, before it starts.
+    if !o.dry_run && moai_cli::launcher_terminal::wants_human(o.json) {
+        if let Ok(composed) = moai_cli::session::compose(&request) {
+            for line in moai_cli::launcher_terminal::startup_lines(&composed, &number_notes) {
+                eprintln!("{line}");
+            }
+        }
+    }
     let launched = session_launch(&request, o.dry_run);
     // The host has exited (or never started): the number is free again.
     drop(live_number);
@@ -1231,6 +1243,17 @@ fn role_of(h: &HostLaunch) -> Option<bool> {
         (false, true) => Some(false),
         (false, false) => None,
     }
+}
+
+/// #3004 P9: whether the launcher prints plain text instead of the JSON envelope (stdout is a
+/// terminal and `--json` was not given). The legacy `session` command keeps the envelope.
+fn launcher_is_human(cli: &Cli) -> bool {
+    let json = match &cli.command {
+        None => cli.launch.json,
+        Some(Command::Cc(h) | Command::Glm(h) | Command::Codex(h)) => h.launch.json,
+        Some(_) => return false,
+    };
+    moai_cli::launcher_terminal::wants_human(json)
 }
 
 /// Launcher paths (`-l`, `-a`, `cc|glm|codex`, `session`): plain JSON or a plain error line.
@@ -2442,9 +2465,10 @@ pub(crate) fn main() -> ExitCode {
     }
     let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
+        let human = launcher_is_human(&cli);
         return match run_launcher(cli) {
             Ok(value) => {
-                println!("{value}");
+                moai_cli::launcher_terminal::report(&value, human);
                 ExitCode::SUCCESS
             }
             Err(message) => {
