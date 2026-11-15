@@ -138,6 +138,12 @@ fn permissions_row(v: &Value) -> Row {
     }
 }
 
+/// `env` names the Go generation set for its own `moai`: a merged `PATH` that lists the Go bin
+/// folder would put the Go `moai` ahead of this one again, and `MOAI_CONFIG_SOURCE` points the
+/// Go program at its own settings. They are never offered back (leader decision 6887271793, F29).
+const GO_ENV_NAMES: [&str; 2] = ["PATH", "MOAI_CONFIG_SOURCE"];
+const GO_ENV_WHY: &str = "set for the Go generation's moai; it stays in the backup";
+
 fn env_row(v: &Value) -> Row {
     let Value::Object(map) = v else {
         return Row::other("env", "kept_in_backup", "env is not an object", json!({}));
@@ -145,6 +151,10 @@ fn env_row(v: &Value) -> Row {
     let mut carry = Map::new();
     let mut refused: Vec<Value> = Vec::new();
     for (name, val) in map {
+        if GO_ENV_NAMES.contains(&name.as_str()) {
+            refused.push(json!({ "name": shown(name), "why": GO_ENV_WHY }));
+            continue;
+        }
         match claude::env_entry_refusal(name, val) {
             None if carry.len() < claude::ENV_ENTRIES_MAX => {
                 carry.insert(name.clone(), val.clone());
@@ -416,6 +426,23 @@ mod tests {
         let shown = env.summary.to_string();
         assert!(shown.contains("MY_TOKEN") && shown.contains("OTHER"));
         assert!(!shown.contains(&secret));
+    }
+
+    #[test]
+    fn the_go_generations_path_is_never_carried_back() {
+        let r = rows(json!({"env": {
+            "EDITOR": "vim", "PATH": "/home/u/go/bin:/usr/bin", "MOAI_CONFIG_SOURCE": "x",
+        }}));
+        let env = r.iter().find(|r| r.key == "env").unwrap();
+        assert_eq!(env.carry.as_ref().unwrap(), &json!({"EDITOR": "vim"}));
+        let shown = env.summary.to_string();
+        assert!(shown.contains("PATH") && shown.contains("MOAI_CONFIG_SOURCE"));
+        assert!(!shown.contains("/home/u/go/bin"));
+
+        let only = rows(json!({"env": {"PATH": "/home/u/go/bin:/usr/bin"}}));
+        let env = only.iter().find(|r| r.key == "env").unwrap();
+        assert_eq!(env.state, "blocked");
+        assert!(env.carry.is_none());
     }
 
     #[test]

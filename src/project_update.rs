@@ -461,6 +461,10 @@ fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> S
     let digest = plan["plan_digest"].as_str().map(String::from);
     let (state, reason) = match plan["action"].as_str() {
         Some("create" | "update") => ("ready", "MoAI-owned keys to restore"),
+        Some("unchanged") if owned.is_empty() => (
+            "unchanged",
+            "MoAI owns no key in this file; the keys it has are left as they are",
+        ),
         Some("unchanged") => ("unchanged", "the MoAI-owned keys are current"),
         _ => (
             "conflict",

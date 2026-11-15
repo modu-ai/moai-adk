@@ -460,6 +460,27 @@ fn owned_settings_kept() {
     );
 }
 
+/// #2936 R8 (F3): a settings file whose keys are all the user's is left alone, and the step says
+/// that MoAI owns nothing there instead of calling the owned keys "current".
+#[test]
+fn a_settings_file_with_only_the_users_keys_says_moai_owns_none() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    fs::create_dir_all(fx.root.join(".claude")).unwrap();
+    let own = br#"{"statusLine":{"type":"command","command":"my-status"}}"#;
+    fs::write(fx.root.join(".claude/settings.json"), own).unwrap();
+    let plan = fx.plan();
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    let reason = settings["reason"].as_str().unwrap();
+    assert!(reason.contains("owns no key"), "{reason}");
+    assert!(!reason.contains("are current"), "{reason}");
+    assert_eq!(
+        fs::read(fx.root.join(".claude/settings.json")).unwrap(),
+        own
+    );
+}
+
 #[test]
 fn backup_phase_first() {
     let fx = Fx::new();
