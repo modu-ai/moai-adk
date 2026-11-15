@@ -1067,6 +1067,12 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
     None
 }
 
+/// The re-check `apply` runs right before it acts on one entry: only a `remove` asks for the
+/// file and install-folder check, a `trim` leaves those files alone (#3010, audit of #3058).
+fn recheck_entry(wt: &Path, action: &str, primary: &Path) -> Option<&'static str> {
+    busy_now(wt, action == "remove", Some(primary))
+}
+
 /// Deletes the cargo-owned trim paths of `wt` that the plan listed. Each path must still sit
 /// directly in `wt/target`, not be a symlink, and still be cargo-owned.
 fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
@@ -1156,7 +1162,7 @@ pub fn apply(
             .unwrap_or_else(|_| primary.join(&shown_path));
         let outcome = if wt == primary || !worktrees.contains(&wt) {
             Err("not a linked worktree of this repository".to_string())
-        } else if let Some(why) = busy_now(&wt, action == "remove", Some(&primary)) {
+        } else if let Some(why) = recheck_entry(&wt, action, &primary) {
             Err(format!("refused: {why}"))
         } else if action == "trim" {
             let paths: Vec<String> = c["trim_paths"]
@@ -1505,6 +1511,19 @@ mod tests {
         assert_eq!(probe(false), None, "only a removal asks for the file check");
         fs::remove_file(wt.join("notes.md")).unwrap();
         assert_eq!(probe(true), None, "the refusal ends with its cause");
+
+        // A plain untracked file (not ignored) is the other half of the file check (#3058 audit).
+        fs::write(wt.join("scratch.txt"), "mine\n").unwrap();
+        assert_eq!(probe(true), Some("files_outside_build_output"));
+        assert_eq!(probe(false), None, "only a removal asks for the file check");
+        // `apply` asks through `recheck_entry`: a `remove` entry refuses, a `trim` entry does not.
+        assert_eq!(
+            recheck_entry(&wt, "remove", &primary),
+            Some("files_outside_build_output")
+        );
+        assert_eq!(recheck_entry(&wt, "trim", &primary), None);
+        fs::remove_file(wt.join("scratch.txt")).unwrap();
+        assert_eq!(recheck_entry(&wt, "remove", &primary), None);
 
         fs::create_dir_all(wt.join("node_modules")).unwrap();
         assert_eq!(
