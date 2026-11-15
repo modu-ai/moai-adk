@@ -369,6 +369,38 @@ mod tests {
         assert_eq!(commands(&v), ["cargo build --locked -p 'a-core'"]);
     }
 
+    /// Mutation survivor: every selected member is named, in the order of the scope's folders.
+    #[test]
+    fn cargo_names_every_selected_member() {
+        let root = project(&[
+            ("Cargo.lock", ""),
+            ("crates/a/Cargo.toml", "[package]\nname = \"a-core\"\n"),
+            ("crates/b/Cargo.toml", "[package]\nname = \"b-core\"\n"),
+        ]);
+        let v = preview(root.path(), &scope(&["crates/a", "crates/b"])).unwrap();
+        assert_eq!(
+            commands(&v),
+            ["cargo build --locked -p 'a-core' -p 'b-core'"]
+        );
+    }
+
+    /// Mutation survivor, and the edges of the length limit: only letters, digits and
+    /// `@ / . _ -` are shown in a command, so no shell word can come out of a manifest.
+    #[test]
+    fn a_shown_package_name_is_plain_text_within_its_limit() {
+        for ok in ["a", "@scope/pkg.name_x-1", "A9"] {
+            assert!(name_ok(ok), "{ok}");
+        }
+        for no in [
+            "", "-x", "a b", "a;b", "a$b", "a`b", "a'b", "a\"b", "a&b", "a|b", "a\nb", "a(b",
+            "a>b", "a\\b", "a*b",
+        ] {
+            assert!(!name_ok(no), "{no:?}");
+        }
+        assert!(name_ok(&"a".repeat(214)));
+        assert!(!name_ok(&"a".repeat(215)));
+    }
+
     #[test]
     fn yarn_one_and_go_are_reported_as_full_installs() {
         let root = project(&[("yarn.lock", "# yarn lockfile v1\n"), ("apps/web/x", "")]);
