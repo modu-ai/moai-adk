@@ -69,6 +69,11 @@ fn a_test_identity_in_the_repository_config_refuses_every_committing_verb() {
             reason.contains("<fixture@example.invalid> is a test address"),
             "{cmd}: {reason:?}"
         );
+        // Codex review of #3019: the denial names the file the loader reads.
+        assert!(
+            reason.contains("~/.moai-cli/hook-config.toml)"),
+            "{cmd}: {reason:?}"
+        );
     }
     for cmd in [
         "git status",
