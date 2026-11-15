@@ -298,13 +298,14 @@ fn steps(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-const INSTALL: [&str; 9] = [
+const INSTALL: [&str; 10] = [
     "profile",
     "generation",
     "claude-settings",
     "github",
     "codex-hooks",
     "codex-config",
+    "codex-skill",
     "omp-hooks",
     "omp-config",
     "omp-agents",
@@ -1238,4 +1239,107 @@ fn a_status_line_the_user_changed_after_the_apply_is_kept_and_stays_byte_identic
         fs::read_to_string(fx.root.join(".codex/config.toml")).unwrap(),
         mine
     );
+}
+
+#[test]
+fn the_codex_skill_step_is_skipped_when_this_binary_has_no_install() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let s = step(&plan, "codex-skill");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(s["reason"].as_str().unwrap().contains("installed"), "{s}");
+}
+
+#[test]
+fn the_codex_skill_step_prints_its_apply_with_both_flags_and_settles() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    let plan = fx.plan_installed(&exe);
+    let s = step(&plan, "codex-skill");
+    assert_eq!(s["state"], "ready", "{s}");
+    let argv = argv_of(s);
+    assert_eq!(
+        &argv[..3],
+        ["moai", "project-skill-apply", fx.p()],
+        "{argv:?}"
+    );
+    assert_eq!(argv[3], "--plan-digest", "{argv:?}");
+    assert_eq!(argv[5], "--permission-reference", "{argv:?}");
+    assert_eq!(argv[6], PLACEHOLDER, "{argv:?}");
+    assert_eq!(argv.len(), 7, "{argv:?}");
+    let request = &s["apply"]["stdin"];
+    assert_eq!(request["opt_in"], json!(true), "{s}");
+    assert_eq!(request["hosts"], json!(["codex"]), "{s}");
+    assert_eq!(request["home"], json!(fx.home.to_str().unwrap()), "{s}");
+    assert!(
+        request["source_dir"]
+            .as_str()
+            .unwrap()
+            .ends_with("install/skills/moai"),
+        "{s}"
+    );
+    assert_eq!(s["preview"]["path"], ".agents/skills/moai", "{s}");
+    assert_eq!(s["preview"]["action"], "create", "{s}");
+    assert_no_forbidden_words(&plan);
+    let home = fx.home_tree();
+    let out = fx.apply_step(s);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert!(fx.root.join(".agents/skills/moai/SKILL.md").is_file());
+    assert_eq!(home, fx.home_tree(), "the apply wrote into HOME");
+    let again = fx.plan_installed(&exe);
+    let s = step(&again, "codex-skill");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+}
+
+#[test]
+fn a_moai_skill_in_the_users_codex_home_skips_the_project_copy() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    let skill = fx.home.join(".agents/skills/moai");
+    fs::create_dir_all(&skill).unwrap();
+    fs::write(skill.join("SKILL.md"), "mine\n").unwrap();
+    let plan = fx.plan_installed(&exe);
+    let s = step(&plan, "codex-skill");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(s["reason"].as_str().unwrap().contains("HOME"), "{s}");
+    assert!(!fx.root.join(".agents").exists());
+    assert_eq!(
+        fs::read_to_string(skill.join("SKILL.md")).unwrap(),
+        "mine\n"
+    );
+}
+
+#[test]
+fn a_linked_agents_folder_blocks_the_codex_skill_step_and_nothing_lands_beyond_it() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    let beyond = fx.home.parent().unwrap().join("beyond-skill");
+    fs::create_dir_all(&beyond).unwrap();
+    std::os::unix::fs::symlink(&beyond, fx.root.join(".agents")).unwrap();
+    let plan = fx.plan_installed(&exe);
+    let s = step(&plan, "codex-skill");
+    assert_eq!(s["state"], "blocked", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(fs::read_dir(&beyond).unwrap().next().is_none());
+}
+
+#[test]
+fn a_project_skill_folder_that_is_not_ours_is_blocked_and_kept() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    fx.write(".agents/skills/moai/SKILL.md", "my own skill\n");
+    let before = fx.tree();
+    let plan = fx.plan_installed(&exe);
+    let s = step(&plan, "codex-skill");
+    assert_eq!(s["state"], "blocked", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(before, fx.tree(), "the plan changed the tree");
 }

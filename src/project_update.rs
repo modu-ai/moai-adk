@@ -534,13 +534,14 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-const INSTALL: [&str; 9] = [
+const INSTALL: [&str; 10] = [
     "profile",
     "generation",
     "claude-settings",
     "github",
     "codex-hooks",
     "codex-config",
+    "codex-skill",
     "omp-hooks",
     "omp-config",
     "omp-agents",
