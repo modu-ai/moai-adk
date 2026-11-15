@@ -221,7 +221,9 @@ fn entry_moves(entries: &[Value], name: &str) -> bool {
 /// How each `path` entry would follow the move: a link into the old `versions` folder must be
 /// pointed at the new one; a file moves as it is. `versions_moves` says that `versions` and
 /// `path` both move: a link is re-pointed only then, since a `versions` that stays (a link, say)
-/// leaves the old target valid and the new one would not exist.
+/// leaves the old target valid and the new one would not exist. The prefix test below compares the
+/// link target with `old/versions` as written, so it assumes the lowercase spelling the installer
+/// always links with; a target spelled `Versions` is not re-pointed (#3003 audit N1).
 fn stub_plan(old: &Path, versions_moves: bool) -> Vec<Value> {
     let dir = old.join("path");
     if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
