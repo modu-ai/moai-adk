@@ -3101,6 +3101,49 @@ mod tests {
         assert_eq!(v["idle_read"], json!({"empty": 0, "reset": false}), "{v}");
     }
 
+    /// #3015 C2 with #3005 P8: a run that keeps its offer in the proposal folder and counts
+    /// empty reads does both — the answer carries `proposal` and `idle_read`; without a
+    /// registry the offer is not kept (`unavailable`) and the count still runs.
+    #[test]
+    fn a_run_can_keep_its_offer_and_count_its_reads() {
+        use crate::lane_idle::IdleBudget;
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut init = std::process::Command::new("git");
+        init.args(["init", "-q"]).current_dir(dir.path());
+        crate::identity::scrub_git_env(&mut init);
+        assert!(init.status().unwrap().success());
+        let target = Target {
+            owner: "o",
+            repo: "r",
+            lane: "agent-10",
+            tip_branch: None,
+            dir: dir.path(),
+        };
+        let clock = FakeClock {
+            now: Cell::new(0),
+            slept: Cell::new(0),
+        };
+        let budget = Some(IdleBudget { max: 5, already: 0 });
+        let go = |store: Option<&std::path::Path>| {
+            run_with_store(&target, &Quiet, &clock, 0, SHARED_LANES, store, budget).unwrap()
+        };
+        let none = go(None);
+        assert!(
+            none.get("proposal").is_none(),
+            "no store, no proposal: {none}"
+        );
+        assert_eq!(none["idle_read"]["reset"], json!(false), "{none}");
+        crate::lane_registry::register(dir.path(), "agent-10", None, 3600, None, 0).unwrap();
+        let registry = crate::lane_registry::registry_dir(dir.path()).unwrap();
+        let kept = go(Some(&registry));
+        assert_eq!(kept["proposal"]["status"], json!("none"), "{kept}");
+        assert!(kept.get("idle_read").is_some(), "{kept}");
+        let missing = dir.path().join("no-such-registry");
+        let lost = go(Some(&missing));
+        assert_eq!(lost["proposal"]["status"], json!("unavailable"), "{lost}");
+        assert!(lost.get("idle_read").is_some(), "{lost}");
+    }
+
     /// #2873 N9: `--shared-lanes` accepts 1 to 50 — 0 and 51 are refused.
     #[test]
     fn shared_lanes_are_bounded() {
