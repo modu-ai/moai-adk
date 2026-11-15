@@ -15,6 +15,7 @@ use super::export_format::{
     card_file_name, parse, Export, ExportError, Snapshot, EVENTS_FILE, INDEX_FILE,
 };
 use std::collections::BTreeSet;
+use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
@@ -168,6 +169,12 @@ pub fn write(dir: &Path, export: &Export) -> Result<(), DirError> {
     put_all(dir, export)
 }
 
+/// A file name as text. A name that is not UTF-8 is refused and shown with replacement marks.
+fn utf8_name(name: OsString) -> Result<String, DirError> {
+    name.into_string()
+        .map_err(|n| DirError::NotUtf8(n.to_string_lossy().into_owned()))
+}
+
 /// One file's text. The file is opened without following a link and must be a plain file.
 fn read_text(dir: &Path, name: &str, max: u64) -> Result<String, DirError> {
     let path = dir.join(name);
@@ -209,10 +216,7 @@ fn read_with_limit(dir: &Path, max: u64) -> Result<Export, DirError> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(dir).map_err(io(dir))? {
         let entry = entry.map_err(io(dir))?;
-        let name = entry
-            .file_name()
-            .into_string()
-            .map_err(|n| DirError::NotUtf8(n.to_string_lossy().into_owned()))?;
+        let name = utf8_name(entry.file_name())?;
         let plain = entry.file_type().map_err(io(dir))?.is_file();
         entries.push((name, plain));
         if entries.len() > MAX_CARD_FILES + 2 {
@@ -576,6 +580,20 @@ mod tests {
         // `read_text` is what runs after the listing said "plain file".
         let err = read_text(&dir, "C-1.md", MAX_FILE_BYTES).unwrap_err();
         assert!(matches!(err, DirError::Io { .. }), "{err:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_name_that_is_not_utf8_is_refused_and_shown_with_replacement_marks() {
+        use std::os::unix::ffi::OsStringExt;
+        assert_eq!(
+            utf8_name(OsString::from("C-1.md")),
+            Ok("C-1.md".to_string())
+        );
+        assert_eq!(
+            utf8_name(OsString::from_vec(vec![b'C', 0xff, b'.', b'm', b'd'])),
+            Err(DirError::NotUtf8("C\u{fffd}.md".into()))
+        );
     }
 
     #[cfg(unix)]
