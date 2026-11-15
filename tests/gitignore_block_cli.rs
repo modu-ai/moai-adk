@@ -1072,6 +1072,17 @@ fn no_repository_and_no_git_are_not_failures() {
         "git is not available, so your ignore rules and the files git tracks were not considered";
     assert_eq!(detail.lines().filter(|l| *l == note).count(), 1, "{detail}");
 
+    // Comments and blank lines are not rules: with only those, no git is still just a note.
+    let fx = Fx::new(None);
+    fs::write(
+        fx.root.join(".gitignore"),
+        "# nothing to ignore here\n\n   \n",
+    )
+    .unwrap();
+    fx.without_git();
+    let envelope = fx.plan_envelope("none");
+    assert_eq!(envelope["ok"], json!(true), "{envelope}");
+
     // With a rule to apply, git is needed to read it: the plan stops, and says why.
     let fx = Fx::new(None);
     fs::write(fx.root.join(".gitignore"), "*.json\n").unwrap();
