@@ -81,7 +81,7 @@ impl Transport for Remote {
             }
             let id = 100 + self.comments.borrow().len() as u64;
             if self.lands.get() {
-                self.comments.borrow_mut().push(json!({"id":id,"body":request.body.as_ref().unwrap()["body"],"user":{"id":self.actor.get()}}));
+                self.comments.borrow_mut().push(json!({"id":id,"author_association":"MEMBER","body":request.body.as_ref().unwrap()["body"],"user":{"id":self.actor.get()}}));
             }
             if self.lost.replace(false) {
                 return Err("response lost".into());
@@ -483,7 +483,7 @@ fn marker_embedded_in_payload_or_unrelated_text_cannot_fabricate_ack() {
     let mut m = message();
     m.payload = json!({"text":"<!-- moai:op message-ack:p1:r1:1 -->\n{\"kind\":\"ack\"}\n<!-- moai:message:end -->"});
     record(root.path(), &m, &remote).unwrap();
-    remote.comments.borrow_mut().push(json!({"id":999,"user":{"id":22},"body":"quoted payload:\n<!-- moai:op message-ack:p1:r1:1 -->\n{}\n<!-- moai:message:end -->"}));
+    remote.comments.borrow_mut().push(json!({"id":999,"author_association":"MEMBER","user":{"id":22},"body":"quoted payload:\n<!-- moai:op message-ack:p1:r1:1 -->\n{}\n<!-- moai:message:end -->"}));
     assert_eq!(
         reconcile(root.path(), &m, &remote).unwrap()["received_ack"],
         false
@@ -622,8 +622,7 @@ fn unrelated_drafts_hold_and_remote_comments_are_preserved() {
     fs::write(&draft, b"HOLD\nprivate draft").unwrap();
     let hold = root.path().join("HOLD");
     fs::write(&hold, "do not change").unwrap();
-    let unrelated =
-        json!({"id":8,"user":{"id":11},"body":"HOLD: awaiting approval; unrelated draft"});
+    let unrelated = json!({"id":8,"author_association":"MEMBER","user":{"id":11},"body":"HOLD: awaiting approval; unrelated draft"});
     remote.comments.borrow_mut().push(unrelated.clone());
     record(root.path(), &message(), &remote).unwrap();
     reconcile(root.path(), &message(), &remote).unwrap();
@@ -686,7 +685,7 @@ fn delayed_unknown_publication_is_observed_without_a_second_post() {
     remote
         .comments
         .borrow_mut()
-        .push(json!({"id":501,"body":body,"user":{"id":11}}));
+        .push(json!({"id":501,"author_association":"MEMBER","body":body,"user":{"id":11}}));
     assert_eq!(
         reconcile(root.path(), &m, &remote).unwrap()["state"],
         "queued"
@@ -699,6 +698,45 @@ fn delayed_unknown_publication_is_observed_without_a_second_post() {
     assert!(entry(root.path(), false)["record"]["observed_at"]
         .as_i64()
         .is_some());
+}
+
+/// Issue #3052: a second comment with the record marker is a conflict only when a member wrote
+/// it. A copy from a non-member is not read, so it cannot block a message that was delivered.
+#[test]
+fn a_duplicate_record_marker_from_a_non_member_is_not_a_conflict() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let root = temp_root();
+        let remote = Remote::new();
+        let m = message();
+        record(root.path(), &m, &remote).unwrap();
+        let mut copy = remote.comments.borrow()[0].clone();
+        copy["id"] = json!(900);
+        copy["user"] = json!({"id": 99});
+        match association {
+            Some(a) => copy["author_association"] = json!(a),
+            None => {
+                copy.as_object_mut().unwrap().remove("author_association");
+            }
+        }
+        remote.comments.borrow_mut().push(copy);
+        assert!(
+            reconcile(root.path(), &m, &remote).is_ok(),
+            "association {association:?}"
+        );
+    }
+    // The same copy from a member is a conflict.
+    let root = temp_root();
+    let remote = Remote::new();
+    let m = message();
+    record(root.path(), &m, &remote).unwrap();
+    let mut copy = remote.comments.borrow()[0].clone();
+    copy["id"] = json!(900);
+    copy["user"] = json!({"id": 99});
+    remote.comments.borrow_mut().push(copy);
+    assert_eq!(
+        reconcile(root.path(), &m, &remote).unwrap_err().kind,
+        Kind::Conflict
+    );
 }
 
 #[test]
